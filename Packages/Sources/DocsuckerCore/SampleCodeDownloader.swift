@@ -351,28 +351,37 @@ public final class SampleCodeDownloader {
         logInfo("🔐 Authentication required")
         logInfo("   Opening browser window for sign in...")
         logInfo("   Please sign in to your Apple Developer account")
-        logInfo("   The window will remain open - close it when done signing in")
         logInfo("")
-
-        let webView = await createWebView()
 
         #if os(macOS)
         if visibleBrowser {
+            // Create webview with proper frame
+            let webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 1024, height: 768))
+
+            // Load saved cookies first
+            await loadCookies(into: webView)
+
             // Create and show window
             let window = NSWindow(
-                contentRect: webView.frame,
-                styleMask: [.titled, .closable, .resizable],
+                contentRect: NSRect(x: 0, y: 0, width: 1024, height: 768),
+                styleMask: [.titled, .closable, .resizable, .miniaturizable],
                 backing: .buffered,
                 defer: false
             )
             window.title = "Apple Developer Sign In"
             window.contentView = webView
             window.center()
-            window.makeKeyAndOrderFront(nil)
+            window.isReleasedWhenClosed = false  // Important: keep window alive
 
             // Load Apple Developer login page
             let loginURL = URL(string: "https://developer.apple.com/account/")!
             webView.load(URLRequest(url: loginURL))
+
+            // Show window
+            window.makeKeyAndOrderFront(nil)
+
+            // Activate app to bring window to front
+            NSApp.activate(ignoringOtherApps: true)
 
             logInfo("✅ Browser window opened")
             logInfo("   Sign in to your Apple Developer account")

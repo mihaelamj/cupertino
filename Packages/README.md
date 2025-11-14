@@ -86,7 +86,7 @@ Download Apple sample code projects (zip/tar files):
 .build/debug/docsucker download-samples \
   --authenticate \
   --output-dir ~/.docsucker/sample-code \
-  --max-samples 10
+  --max-samples 100000
 
 # Subsequent runs - reuses saved cookies
 .build/debug/docsucker download-samples \
@@ -120,6 +120,229 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
   }
 }
 ```
+
+## How to Download Documentation
+
+### Complete Download (Everything)
+
+To download all available documentation in one go:
+
+```bash
+# 1. Build the tool
+cd Packages
+swift build
+
+# 2. Download all Apple documentation (~15,000 pages, 2-4 hours)
+.build/debug/docsucker crawl \
+  --start-url "https://developer.apple.com/documentation/" \
+  --max-pages 15000 \
+  --max-depth 15 \
+  --output-dir ~/.docsucker/docs
+
+# 3. Download all Swift Evolution proposals (~400 proposals, 2-5 minutes)
+.build/debug/docsucker crawl-evolution \
+  --output-dir ~/.docsucker/swift-evolution
+
+# 4. Download Apple sample code (first time - requires authentication)
+.build/debug/docsucker download-samples \
+  --authenticate \
+  --output-dir ~/.docsucker/sample-code \
+  --max-samples 100
+```
+
+**Total time:** ~2-4 hours
+**Total disk space:** ~2-3 GB
+
+### Selective Downloads
+
+#### Option 1: Specific Framework Only
+
+Download just the documentation for a specific framework:
+
+```bash
+# SwiftUI only (~500 pages, 5-10 minutes)
+.build/debug/docsucker crawl \
+  --start-url "https://developer.apple.com/documentation/swiftui" \
+  --max-pages 500 \
+  --output-dir ~/.docsucker/swiftui
+
+# Foundation only (~1000 pages, 10-15 minutes)
+.build/debug/docsucker crawl \
+  --start-url "https://developer.apple.com/documentation/foundation" \
+  --max-pages 1000 \
+  --output-dir ~/.docsucker/foundation
+
+# Combine only (~200 pages, 5 minutes)
+.build/debug/docsucker crawl \
+  --start-url "https://developer.apple.com/documentation/combine" \
+  --max-pages 200 \
+  --output-dir ~/.docsucker/combine
+```
+
+#### Option 2: Limited Sample Set
+
+Download a small number of pages for testing:
+
+```bash
+# Just 10 pages for testing
+.build/debug/docsucker crawl \
+  --start-url "https://developer.apple.com/documentation/swift" \
+  --max-pages 10 \
+  --output-dir ~/docsucker-test
+```
+
+### Authentication Flow for Sample Code Downloads
+
+Sample code downloads require Apple Developer authentication. Here's how it works:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                   Sample Code Download Flow                      │
+└─────────────────────────────────────────────────────────────────┘
+
+First Time Download (with --authenticate flag):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. User runs command:
+   $ docsucker download-samples --authenticate --max-samples 10
+
+2. Tool opens visible browser window
+   ┌─────────────────────────────────────┐
+   │  🌐 Apple Developer Sign In         │
+   │                                     │
+   │  Username: [____________]           │
+   │  Password: [____________]           │
+   │                                     │
+   │  [Sign In]                          │
+   └─────────────────────────────────────┘
+
+3. User manually signs in with Apple ID
+   • Enter Apple ID credentials
+   • Complete 2FA if required
+   • Accept terms if needed
+
+4. Tool waits for user to press ENTER
+   "Press ENTER after signing in..."
+
+5. Tool extracts authentication cookies
+   • Captures session cookies from WKWebView
+   • Saves to: ~/.docsucker/sample-code/.auth-cookies.json
+
+6. Tool proceeds with downloads
+   • Uses authenticated session
+   • Downloads sample code zip/tar files
+   • Shows progress for each file
+
+   ✅ Download completed!
+      Total: 10 samples
+      Downloaded: 10
+      Skipped: 0
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Subsequent Downloads (reuses saved cookies):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. User runs command (no --authenticate flag):
+   $ docsucker download-samples --max-samples 100
+
+2. Tool loads saved cookies
+   📂 Reading: ~/.docsucker/sample-code/.auth-cookies.json
+
+3. Tool creates authenticated WKWebView session
+   • Restores all authentication cookies
+   • Session is ready to download protected content
+
+4. Tool downloads samples automatically
+   • No user interaction required
+   • Uses saved authentication
+   • Downloads proceed normally
+
+   ✅ Download completed!
+      Total: 100 samples
+      Downloaded: 95
+      Skipped: 5 (already existed)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Cookie Management:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Cookie file location:
+  ~/.docsucker/sample-code/.auth-cookies.json
+
+To sign in with different account:
+  $ rm ~/.docsucker/sample-code/.auth-cookies.json
+  $ docsucker download-samples --authenticate --max-samples 10
+
+Cookie file contains:
+  {
+    "cookies": [
+      {
+        "name": "myacinfo",
+        "value": "...",
+        "domain": ".apple.com",
+        "path": "/",
+        "expiresDate": 1234567890.0
+      },
+      ...
+    ]
+  }
+
+Security notes:
+  • Cookies stored in plain JSON (local file only)
+  • Contains session tokens - keep secure
+  • Delete file to sign out
+  • File permissions: 644 (user read/write only)
+```
+
+### Export to PDF
+
+After downloading markdown documentation, you can export it to PDF:
+
+```bash
+# Export all markdown files to PDF
+.build/debug/docsucker export-pdf \
+  --input-dir ~/.docsucker/docs \
+  --output-dir ~/.docsucker/pdfs
+
+# Export with limit (first 100 files)
+.build/debug/docsucker export-pdf \
+  --input-dir ~/.docsucker/docs \
+  --output-dir ~/.docsucker/pdfs \
+  --max-files 100
+
+# Force re-export (overwrite existing PDFs)
+.build/debug/docsucker export-pdf \
+  --input-dir ~/.docsucker/docs \
+  --output-dir ~/.docsucker/pdfs \
+  --force
+```
+
+**PDF Features:**
+- Clean, readable layout with GitHub-style formatting
+- Syntax highlighting for code blocks
+- A4 page size (595x842 points)
+- Preserves headers, links, lists, bold, italic
+- ~1 second per file conversion time
+
+### Incremental Updates
+
+To update existing documentation without re-downloading everything:
+
+```bash
+# Update Apple docs (only downloads changed pages)
+.build/debug/docsucker update \
+  --output-dir ~/.docsucker/docs
+
+# Or re-run crawl command (uses cached metadata)
+.build/debug/docsucker crawl \
+  --start-url "https://developer.apple.com/documentation/" \
+  --max-pages 15000 \
+  --output-dir ~/.docsucker/docs
+```
+
+The tool uses SHA-256 content hashing to detect changes and skip unchanged pages.
 
 ## Project Structure
 
