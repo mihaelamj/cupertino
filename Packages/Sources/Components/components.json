@@ -1,0 +1,107 @@
+[
+  {
+    "kind": "help",
+    "payload": {}
+  },
+  {
+    "kind": "benefitbutton",
+    "payload": {
+      "text": "Click Me!",
+      "style": "black"
+    }
+  },
+  {
+    "kind": "button",
+    "payload": {
+      "title": "Secondary Button",
+      "style": "secondary",
+      "is_enabled": true,
+      "is_loading": false
+    }
+  },
+  {
+    "kind": "button",
+    "payload": {
+      "title": "Danger Action",
+      "style": "danger",
+      "is_enabled": true,
+      "is_loading": false
+    }
+  },
+  {
+    "kind": "benefitbutton",
+    "payload": {
+      "text": "Click Me!",
+      "style": "white"
+    }
+  },
+  {
+    "kind": "benefitcard",
+    "payload": {
+      "title": "Climate money",
+      "description": "Comprehensive health coverage for you and your family",
+      "badge_text": "Badge 23",
+      "background_image": "benefit_climate"
+    }
+  },
+  {
+    "kind": "benefitbutton",
+    "payload": {
+      "text": "Click Me!",
+      "style": "white",
+      "full_width": false
+    }
+  },
+  {
+    "kind": "benefitbutton",
+    "payload": {
+      "text": "Click Me!",
+      "style": "black",
+      "full_width": false
+    }
+  },
+  {
+    "kind": "benefitcard",
+    "payload": {
+      "title": "Feminine hyhiene",
+      "description": "Complete dental and else care including preventive and restorative services",
+      "badge_text": "hygiene",
+      "background_image": "benefit_hygiene"
+    }
+  },
+  {
+    "kind": "benefitcard",
+    "payload": {
+      "title": "Work benefit",
+      "description": "Complete dental and else care including preventive and restorative services",
+      "badge_text": "hygiene",
+      "background_image": "benefit_work"
+    }
+  },
+  {
+    "kind": "languageswitcher",
+    "payload": {
+      "current_language": "it",
+      "available_languages": ["en", "es", "fr", "de", "it", "pt", "zh", "ja"]
+    }
+  },
+  {
+    "kind": "benefitcard",
+    "payload": {
+      "title": "Benefits for asylum seekers",
+      "description": "Comprehensive health coverage for you and your family",
+      "badge_text": "Badge 1",
+      "status_text" : "Active",
+      "background_image": "benefit_asylum"
+    }
+  },
+  {
+    "kind": "benefitcard",
+    "payload": {
+      "title": "Propert Insurance",
+      "description": "Comprehensive health coverage for you and your family",
+      "badge_text": "Badge 2",
+      "background_image": "benefit_work"
+    }
+  }
+]

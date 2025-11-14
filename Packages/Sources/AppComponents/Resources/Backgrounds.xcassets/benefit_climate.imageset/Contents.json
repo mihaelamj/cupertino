@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "benefit_climate.jpg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

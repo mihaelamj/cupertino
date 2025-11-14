@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "benefit_work.jpg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

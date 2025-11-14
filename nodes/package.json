@@ -1,0 +1,23 @@
+{
+  "name": "apple-docs-crawler",
+  "version": "2.0.0",
+  "description": "Enhanced Apple documentation crawler with change detection, scheduling, and PDF generation",
+  "type": "module",
+  "scripts": {
+    "crawl": "node src/crawler.js",
+    "schedule": "node src/scheduler.js",
+    "merge": "node src/merge-pdfs.js",
+    "update": "node src/update.js"
+  },
+  "dependencies": {
+    "playwright": "^1.48.0",
+    "node-cron": "^3.0.3",
+    "pdf-lib": "^1.17.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

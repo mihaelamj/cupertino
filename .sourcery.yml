@@ -1,0 +1,37 @@
+# Sourcery Code Generation Configuration
+#
+# To run Sourcery and generate code:
+#   sourcery --config .sourcery.yml
+#
+# To run in watch mode (auto-regenerate on file changes):
+#   sourcery --config .sourcery.yml --watch
+#
+# To see verbose output:
+#   sourcery --config .sourcery.yml --verbose
+#
+# Generated files will be created in:
+#   - Packages/Sources/Components/CodeGen/
+#   - Packages/Sources/AppComponents/CodeGen/
+#
+
+configurations:
+    # Components package
+    - sources:
+        include:
+            - Packages/Sources/Components/
+      templates:
+          - Packages/Sources/SharedComponents/CodeGen/Templates/
+      output: Packages/Sources/Components/CodeGen/
+      baseIndentation: 4
+      parseDocumentation: true
+
+    # AppComponents package
+    - sources:
+        include:
+            - Packages/Sources/Components/Component.swift
+            - Packages/Sources/AppComponents/
+      templates:
+          - Packages/Sources/SharedComponents/CodeGen/Templates/
+      output: Packages/Sources/AppComponents/CodeGen/
+      baseIndentation: 4
+      parseDocumentation: true

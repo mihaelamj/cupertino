@@ -1,2 +1,1 @@
-# appledocsucker
-Apple Documentation sucker
+# base-project

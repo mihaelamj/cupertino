@@ -1,0 +1,123 @@
+disabled_rules: # rule identifiers to exclude from running
+  - opening_brace
+  - operator_whitespace
+  - orphaned_doc_comment
+
+opt_in_rules:
+  - empty_count
+  - shorthand_optional_binding
+  - weak_delegate
+
+excluded:
+  - "*.generated"
+  - "Packages/Tests/**" # Tests often use force unwrapping
+
+custom_rules:
+  # check's for Combine's .assign(to: xxx, on: self) ref-cycle
+  combine_assign_to_self:
+    included: ".*\\.swift"
+    name: "`assign` to self"
+    regex: '\.assign\(to: [^,]*, on: self\)'
+    message: "For assigning on self, use assignNoRetain(to: ..., on: self)."
+    severity: error
+  duplicate_remove_duplicates:
+    included: ".*\\.swift"
+    name: "Duplicate `removeDuplicates()`"
+    message: "ViewStore's publisher already does `removeDuplicates()`"
+    regex: 'publisher\.[^(|{|,]*removeDuplicates\(\)'
+    severity: error
+  dont_scale_to_zero:
+    included: ".*\\.swift"
+    name: "Don't scale down to 0."
+    regex: "\\.scaleEffect\\([^\\)]*(\\ 0\\ [^\\)]*\\)|0.0(\\ |\\))|\\ 0(\\)|,))"
+    message: "Please make sure to pass a number not equal zero, so transformations don't throw warnings like `ignoring singular matrix`."
+    severity: error
+  use_data_constructor_over_string_member:
+    included: ".*\\.swift"
+    name: "Do not use String.data(using: .utf8)"
+    regex: "\\.?data\\(using: \\.utf8\\)"
+    message: "Please use Data(string.utf8) instead of String.data(using: .utf8) because the Data constructor is non-optional and Strings are guaranteed to be encodable as .utf8"
+    severity: error
+  tca_explicit_generics_reducer:
+    included: ".*\\.swift"
+    name: "Explicit Generics for Reducer"
+    regex: 'Reduce\s+\{'
+    message: "Use explicit generics in ReducerBuilder (Reduce<State, Action>) for successful autocompletion."
+    severity: error
+  tca_scope_unused_closure_parameter:
+    name: "TCA Scope Unused Closure Parameter"
+    regex: '\.scope\(\s*state\s*:\s*\{\s*\_'
+    message: "Explicitly use closure parameter when scoping store (ensures the right state is being mutated)"
+    severity: error
+  tca_use_observe_viewstore_api:
+    name: "TCA ViewStore observe API"
+    regex: 'ViewStore\(store\.scope'
+    message: "Use modern observe: api instead of store.scope"
+    severity: error
+
+trailing_comma:
+    mandatory_comma: true
+
+cyclomatic_complexity:
+  ignores_case_statements: true
+  warning: 20
+
+file_length:
+  warning: 1000
+  error: 1000
+
+identifier_name:
+  allowed_symbols: "_"
+  min_length: 2
+  max_length:
+    warning: 90
+    error: 90
+  excluded:
+    - iO
+    - id
+    - vc
+    - x
+    - y
+    - i
+    - pi
+    - d
+
+type_name:
+  allowed_symbols: "_"
+  min_length: 2
+  max_length:
+    warning: 90
+    error: 90
+  excluded:
+    - iosAppApp
+    - macAppApp
+
+legacy_constant: error
+legacy_constructor: error
+
+line_length:
+  warning: 180
+  error: 180
+  ignores_comments: true
+  ignores_urls: true
+
+nesting:
+  type_level:
+    warning: 3
+    error: 3
+  function_level:
+    warning: 5
+    error: 5
+
+function_parameter_count:
+  warning: 5
+
+force_cast: warning
+
+type_body_length:
+  - 300 # warning
+  - 300 # error
+
+large_tuple:
+  - 3  # warning
+  - 10 # error

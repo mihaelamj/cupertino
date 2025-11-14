@@ -1,0 +1,42 @@
+# General Options
+--swiftversion 5.7
+
+# File Options
+--exclude Stage,Tasks/.build,ThirdParty,**/SwiftGen/*,**/Sourcery/*,Frameworks/swift-composable-architecture,**.generated.swift
+
+# Format Options
+
+--allman false
+--binarygrouping none
+--closingparen balanced
+--commas always
+--conflictmarkers reject
+--decimalgrouping none
+--elseposition same-line
+--exponentcase lowercase
+--exponentgrouping disabled
+--fractiongrouping disabled
+--fragment false
+--header ignore
+--hexgrouping none
+--hexliteralcase lowercase
+--ifdef no-indent
+--importgrouping alphabetized
+--indent 4
+--indentcase false
+# make sure this matches .swiftlint
+--maxwidth 180
+--nospaceoperators ..<,...
+--octalgrouping none
+--operatorfunc no-space
+--selfrequired 
+--stripunusedargs closure-only
+--trailingclosures
+--wraparguments before-first
+--wrapcollections before-first
+--wrapparameters before-first
+
+# Rules (for SwiftFormat 0.58.5)
+--disable hoistPatternLet
+--disable wrapMultilineStatementBraces
+--disable extensionAccessControl
