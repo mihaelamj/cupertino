@@ -23,7 +23,7 @@ cd Packages
 swift build --product docsucker
 ```
 
-The executable will be at: `.build/debug/docsucker`
+The executable will be at: `.build/debug/appledocsucker`
 
 ### Install to /usr/local/bin (optional):
 
@@ -39,7 +39,7 @@ cp .build/release/docsucker /usr/local/bin/
 To download the complete Apple documentation library:
 
 ```bash
-docsucker crawl \
+appledocsucker crawl \
   --start-url "https://developer.apple.com/documentation/" \
   --max-pages 15000 \
   --max-depth 15 \
@@ -61,7 +61,7 @@ docsucker crawl \
 Download just SwiftUI documentation:
 
 ```bash
-docsucker crawl \
+appledocsucker crawl \
   --start-url "https://developer.apple.com/documentation/swiftui" \
   --max-pages 500 \
   --output-dir ~/docs/swiftui
@@ -70,7 +70,7 @@ docsucker crawl \
 Download just Foundation framework:
 
 ```bash
-docsucker crawl \
+appledocsucker crawl \
   --start-url "https://developer.apple.com/documentation/foundation" \
   --max-pages 1000 \
   --output-dir ~/docs/foundation
@@ -81,7 +81,7 @@ docsucker crawl \
 Download all accepted Swift Evolution proposals from GitHub:
 
 ```bash
-docsucker crawl-evolution \
+appledocsucker crawl-evolution \
   --output-dir ~/.docsucker/swift-evolution
 ```
 
@@ -101,7 +101,7 @@ Download Apple sample code projects as zip/tar files:
 **First time - Authenticate with Apple:**
 
 ```bash
-docsucker download-samples \
+appledocsucker download-samples \
   --authenticate \
   --output-dir ~/.docsucker/sample-code \
   --max-samples 10
@@ -116,7 +116,7 @@ This will:
 **Subsequent downloads (reuses saved authentication):**
 
 ```bash
-docsucker download-samples \
+appledocsucker download-samples \
   --output-dir ~/.docsucker/sample-code \
   --max-samples 100
 ```
@@ -172,7 +172,7 @@ This will:
 Convert downloaded markdown documentation to PDF format:
 
 ```bash
-docsucker export-pdf \
+appledocsucker export-pdf \
   --input-dir ~/.docsucker/docs \
   --output-dir ~/.docsucker/pdfs
 ```
@@ -226,7 +226,7 @@ This will:
 Re-run crawl to update only changed pages:
 
 ```bash
-docsucker update \
+appledocsucker update \
   --output-dir ~/.docsucker/docs
 ```
 
@@ -240,13 +240,13 @@ This uses the saved metadata to:
 Initialize default configuration:
 
 ```bash
-docsucker config init
+appledocsucker config init
 ```
 
 View current configuration:
 
 ```bash
-docsucker config show
+appledocsucker config show
 ```
 
 Configuration is saved to: `~/.docsucker/config.json`
@@ -296,7 +296,7 @@ Arrays are one of the most commonly used data types...
 ### Download Top 100 Swift Pages
 
 ```bash
-docsucker crawl \
+appledocsucker crawl \
   --start-url "https://developer.apple.com/documentation/swift" \
   --max-pages 100 \
   --max-depth 3 \
@@ -306,7 +306,7 @@ docsucker crawl \
 ### Force Re-download Everything
 
 ```bash
-docsucker crawl \
+appledocsucker crawl \
   --start-url "https://developer.apple.com/documentation/" \
   --max-pages 15000 \
   --force \
@@ -316,7 +316,7 @@ docsucker crawl \
 ### Download with Custom Settings
 
 ```bash
-docsucker crawl \
+appledocsucker crawl \
   --start-url "https://developer.apple.com/documentation/combine" \
   --max-pages 200 \
   --max-depth 5 \
@@ -406,7 +406,7 @@ Some documentation pages may be inaccessible or moved. The crawler will continue
 ## Best Practices
 
 1. **Start Small**: Test with `--max-pages 10` first
-2. **Use Incremental Updates**: Run `docsucker update` regularly instead of full re-crawls
+2. **Use Incremental Updates**: Run `appledocsucker update` regularly instead of full re-crawls
 3. **Monitor Disk Space**: Full docs can be 2-3 GB
 4. **Be Respectful**: Default 0.5s delay between requests is reasonable
 5. **Backup Metadata**: Keep `.docsucker/metadata.json` for change detection

@@ -1,6 +1,9 @@
 import Foundation
 import MCPShared
 import MCPTransport
+#if canImport(DocsuckerLogging)
+import DocsuckerLogging
+#endif
 
 // MARK: - MCP Server
 
@@ -313,14 +316,23 @@ public actor MCPServer {
     // MARK: - Logging
 
     private func logInfo(_ message: String) {
+        #if canImport(DocsuckerLogging)
+        DocsuckerLogger.mcp.info(message)
+        #endif
         fputs("ℹ️  \(message)\n", stderr)
     }
 
     private func logWarning(_ message: String) {
+        #if canImport(DocsuckerLogging)
+        DocsuckerLogger.mcp.warning(message)
+        #endif
         fputs("⚠️  \(message)\n", stderr)
     }
 
     private func logError(_ message: String) {
+        #if canImport(DocsuckerLogging)
+        DocsuckerLogger.mcp.error(message)
+        #endif
         fputs("❌ \(message)\n", stderr)
     }
 }

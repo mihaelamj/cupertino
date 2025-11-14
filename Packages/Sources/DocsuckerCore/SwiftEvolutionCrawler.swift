@@ -1,5 +1,6 @@
 import Foundation
 import DocsuckerShared
+import DocsuckerLogging
 
 // MARK: - Swift Evolution Crawler
 
@@ -121,7 +122,7 @@ public final class SwiftEvolutionCrawler {
         }
 
         // Compute hash for change detection
-        let contentHash = HashUtilities.sha256(of: markdown)
+        _ = HashUtilities.sha256(of: markdown)
 
         // Save to file
         let outputPath = outputDirectory.appendingPathComponent(proposal.filename)
@@ -158,23 +159,32 @@ public final class SwiftEvolutionCrawler {
     // MARK: - Logging
 
     private func logInfo(_ message: String) {
+        DocsuckerLogger.evolution.info(message)
         print(message)
     }
 
     private func logError(_ message: String) {
-        fputs("❌ \(message)\n", stderr)
+        let errorMessage = "❌ \(message)"
+        DocsuckerLogger.evolution.error(message)
+        fputs("\(errorMessage)\n", stderr)
     }
 
     private func logStatistics(_ stats: EvolutionStatistics) {
-        print("📊 Statistics:")
-        print("   Total proposals: \(stats.totalProposals)")
-        print("   New: \(stats.newProposals)")
-        print("   Updated: \(stats.updatedProposals)")
-        print("   Errors: \(stats.errors)")
-        if let duration = stats.duration {
-            print("   Duration: \(Int(duration))s")
+        let messages = [
+            "📊 Statistics:",
+            "   Total proposals: \(stats.totalProposals)",
+            "   New: \(stats.newProposals)",
+            "   Updated: \(stats.updatedProposals)",
+            "   Errors: \(stats.errors)",
+            stats.duration.map { "   Duration: \(Int($0))s" } ?? "",
+            "",
+            "📁 Output: \(outputDirectory.path)",
+        ]
+
+        for message in messages where !message.isEmpty {
+            DocsuckerLogger.evolution.info(message)
+            print(message)
         }
-        print("\n📁 Output: \(outputDirectory.path)")
     }
 }
 

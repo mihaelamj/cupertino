@@ -21,7 +21,7 @@ cd Packages
 swift build --product docsucker
 
 # Verify binary exists
-ls -lh .build/debug/docsucker
+ls -lh .build/debug/appledocsucker
 ```
 
 **Expected**: Binary should be ~4.3MB
@@ -29,7 +29,7 @@ ls -lh .build/debug/docsucker
 ### 2. Help Command Test
 
 ```bash
-.build/debug/docsucker --help
+.build/debug/appledocsucker --help
 ```
 
 **Expected Output:**
@@ -52,7 +52,7 @@ SUBCOMMANDS:
 ### 3. Version Test
 
 ```bash
-.build/debug/docsucker --version
+.build/debug/appledocsucker --version
 ```
 
 **Expected**: `1.0.0`
@@ -61,7 +61,7 @@ SUBCOMMANDS:
 
 ```bash
 mkdir -p ~/docsucker-test
-.build/debug/docsucker crawl \
+.build/debug/appledocsucker crawl \
   --start-url "https://developer.apple.com/documentation/swift/array" \
   --max-pages 3 \
   --max-depth 1 \
@@ -118,7 +118,7 @@ du -sh ~/docsucker-test
 ### 5. Swift Evolution Test
 
 ```bash
-.build/debug/docsucker crawl-evolution \
+.build/debug/appledocsucker crawl-evolution \
   --output-dir ~/swift-evolution-test
 ```
 
@@ -156,7 +156,7 @@ head -20 ~/swift-evolution-test/SE-0001-keywords-as-argument-labels.md
 
 ```bash
 # Re-run crawl (should skip unchanged pages)
-.build/debug/docsucker crawl \
+.build/debug/appledocsucker crawl \
   --start-url "https://developer.apple.com/documentation/swift/array" \
   --max-pages 3 \
   --max-depth 1 \
@@ -178,10 +178,10 @@ head -20 ~/swift-evolution-test/SE-0001-keywords-as-argument-labels.md
 
 ```bash
 # Initialize config
-.build/debug/docsucker config init
+.build/debug/appledocsucker config init
 
 # Show config
-.build/debug/docsucker config show
+.build/debug/appledocsucker config show
 ```
 
 **Expected**: JSON configuration displayed
@@ -194,10 +194,10 @@ head -20 ~/swift-evolution-test/SE-0001-keywords-as-argument-labels.md
 
 ```bash
 # Build the MCP server
-swift build --product docsucker-mcp
+swift build --product appledocsucker-mcp
 
 # Verify binary exists
-ls -lh .build/debug/docsucker-mcp
+ls -lh .build/debug/appledocsucker-mcp
 ```
 
 **Expected**: Binary should be ~4.4MB
@@ -205,14 +205,14 @@ ls -lh .build/debug/docsucker-mcp
 ### 2. Help Command Test
 
 ```bash
-.build/debug/docsucker-mcp --help
+.build/debug/appledocsucker-mcp --help
 ```
 
 **Expected Output:**
 ```
 OVERVIEW: MCP Server for Apple Documentation and Swift Evolution
 
-USAGE: docsucker-mcp <subcommand>
+USAGE: appledocsucker-mcp <subcommand>
 
 OPTIONS:
   --version               Show the version.
@@ -225,7 +225,7 @@ SUBCOMMANDS:
 ### 3. Startup Test
 
 ```bash
-.build/debug/docsucker-mcp serve
+.build/debug/appledocsucker-mcp serve
 ```
 
 **Expected Output:**
@@ -247,8 +247,8 @@ SUBCOMMANDS:
 If you see errors about directories not found:
 ```bash
 # Download documentation first
-docsucker crawl --max-pages 10 --output-dir ~/.docsucker/docs
-docsucker crawl-evolution --output-dir ~/.docsucker/swift-evolution
+appledocsucker crawl --max-pages 10 --output-dir ~/.docsucker/docs
+appledocsucker crawl-evolution --output-dir ~/.docsucker/swift-evolution
 ```
 
 ### 4. Verify Documentation Exists
@@ -347,7 +347,7 @@ swift test
 
 ```bash
 # Download small sample (10 pages)
-.build/debug/docsucker crawl \
+.build/debug/appledocsucker crawl \
   --start-url "https://developer.apple.com/documentation/swift" \
   --max-pages 10 \
   --output-dir ~/.docsucker/docs
@@ -358,7 +358,7 @@ swift test
 #### Step 2: Download Swift Evolution
 
 ```bash
-.build/debug/docsucker crawl-evolution \
+.build/debug/appledocsucker crawl-evolution \
   --output-dir ~/.docsucker/swift-evolution
 ```
 
@@ -367,7 +367,7 @@ swift test
 #### Step 3: Start MCP Server
 
 ```bash
-.build/debug/docsucker-mcp serve
+.build/debug/appledocsucker-mcp serve
 ```
 
 **✅ Success**: Server starts and shows "Waiting for client connection..."
@@ -386,8 +386,8 @@ swift test
    ```json
    {
      "mcpServers": {
-       "docsucker": {
-         "command": "/Users/YOUR_USERNAME/.build/debug/docsucker-mcp",
+       "appledocsucker": {
+         "command": "/Users/YOUR_USERNAME/.build/debug/appledocsucker-mcp",
          "args": ["serve"]
        }
      }
@@ -436,7 +436,7 @@ ls ~/.docsucker/docs
 ls ~/.docsucker/swift-evolution
 
 # Use custom paths
-.build/debug/docsucker-mcp serve \
+.build/debug/appledocsucker-mcp serve \
   --docs-dir ~/my-docs \
   --evolution-dir ~/my-evolution
 ```
@@ -447,17 +447,17 @@ ls ~/.docsucker/swift-evolution
 
 1. Check binary path:
    ```bash
-   which docsucker-mcp
+   which appledocsucker-mcp
    # or
-   realpath .build/debug/docsucker-mcp
+   realpath .build/debug/appledocsucker-mcp
    ```
 
 2. Use full path in Claude config:
    ```json
    {
      "mcpServers": {
-       "docsucker": {
-         "command": "/Users/username/path/to/.build/debug/docsucker-mcp",
+       "appledocsucker": {
+         "command": "/Users/username/path/to/.build/debug/appledocsucker-mcp",
          "args": ["serve"]
        }
      }
@@ -467,7 +467,7 @@ ls ~/.docsucker/swift-evolution
 3. Check Claude logs:
    - Open Claude Desktop
    - Settings → Developer → View Logs
-   - Look for "docsucker" errors
+   - Look for "appledocsucker" errors
 
 ### Issue: Tests failing
 

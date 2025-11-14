@@ -1,6 +1,7 @@
 import Foundation
 import WebKit
 import DocsuckerShared
+import DocsuckerLogging
 #if canImport(AppKit)
 import AppKit
 #endif
@@ -466,7 +467,7 @@ public final class SampleCodeDownloader {
 
     private func loadPage(_ webView: WKWebView, url: URL) async throws -> String {
         // Load the page
-        _ = try await webView.load(URLRequest(url: url))
+        _ = webView.load(URLRequest(url: url))
 
         // Wait for page to fully render
         try await Task.sleep(for: .seconds(2))
@@ -480,23 +481,32 @@ public final class SampleCodeDownloader {
     // MARK: - Logging
 
     private func logInfo(_ message: String) {
+        DocsuckerLogger.samples.info(message)
         print(message)
     }
 
     private func logError(_ message: String) {
-        fputs("❌ \(message)\n", stderr)
+        let errorMessage = "❌ \(message)"
+        DocsuckerLogger.samples.error(message)
+        fputs("\(errorMessage)\n", stderr)
     }
 
     private func logStatistics(_ stats: SampleStatistics) {
-        print("📊 Statistics:")
-        print("   Total samples: \(stats.totalSamples)")
-        print("   Downloaded: \(stats.downloadedSamples)")
-        print("   Skipped: \(stats.skippedSamples)")
-        print("   Errors: \(stats.errors)")
-        if let duration = stats.duration {
-            print("   Duration: \(Int(duration))s")
+        let messages = [
+            "📊 Statistics:",
+            "   Total samples: \(stats.totalSamples)",
+            "   Downloaded: \(stats.downloadedSamples)",
+            "   Skipped: \(stats.skippedSamples)",
+            "   Errors: \(stats.errors)",
+            stats.duration.map { "   Duration: \(Int($0))s" } ?? "",
+            "",
+            "📁 Output: \(outputDirectory.path)",
+        ]
+
+        for message in messages where !message.isEmpty {
+            DocsuckerLogger.samples.info(message)
+            print(message)
         }
-        print("\n📁 Output: \(outputDirectory.path)")
     }
 }
 

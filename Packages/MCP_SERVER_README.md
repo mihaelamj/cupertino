@@ -24,13 +24,13 @@ Before starting the MCP server, you need to download documentation:
 
 ```bash
 # Download Apple documentation
-docsucker crawl \
+appledocsucker crawl \
   --start-url "https://developer.apple.com/documentation/" \
   --max-pages 15000 \
   --output-dir ~/.docsucker/docs
 
 # Download Swift Evolution proposals
-docsucker crawl-evolution \
+appledocsucker crawl-evolution \
   --output-dir ~/.docsucker/swift-evolution
 ```
 
@@ -40,16 +40,16 @@ docsucker crawl-evolution \
 
 ```bash
 cd Packages
-swift build --product docsucker-mcp
+swift build --product appledocsucker-mcp
 ```
 
-The executable will be at: `.build/debug/docsucker-mcp`
+The executable will be at: `.build/debug/appledocsucker-mcp`
 
 ### Install to /usr/local/bin (optional):
 
 ```bash
-swift build -c release --product docsucker-mcp
-cp .build/release/docsucker-mcp /usr/local/bin/
+swift build -c release --product appledocsucker-mcp
+cp .build/release/appledocsucker-mcp /usr/local/bin/
 ```
 
 ## Usage
@@ -57,7 +57,7 @@ cp .build/release/docsucker-mcp /usr/local/bin/
 ### Start the MCP Server
 
 ```bash
-docsucker-mcp serve \
+appledocsucker-mcp serve \
   --docs-dir ~/.docsucker/docs \
   --evolution-dir ~/.docsucker/swift-evolution
 ```
@@ -85,8 +85,8 @@ Edit your Claude Desktop configuration file:
 ```json
 {
   "mcpServers": {
-    "docsucker": {
-      "command": "/Users/YOUR_USERNAME/.local/bin/docsucker-mcp",
+    "appledocsucker": {
+      "command": "/Users/YOUR_USERNAME/.local/bin/appledocsucker-mcp",
       "args": ["serve"],
       "env": {}
     }
@@ -94,9 +94,9 @@ Edit your Claude Desktop configuration file:
 }
 ```
 
-**Note**: Replace `/Users/YOUR_USERNAME/.local/bin/docsucker-mcp` with the actual path to your binary:
-- If installed globally: `/usr/local/bin/docsucker-mcp`
-- If using build directory: `/path/to/Packages/.build/release/docsucker-mcp`
+**Note**: Replace `/Users/YOUR_USERNAME/.local/bin/appledocsucker-mcp` with the actual path to your binary:
+- If installed globally: `/usr/local/bin/appledocsucker-mcp`
+- If using build directory: `/path/to/Packages/.build/release/appledocsucker-mcp`
 
 ### 3. Custom Directories (Optional)
 
@@ -105,8 +105,8 @@ If you want to use custom documentation directories:
 ```json
 {
   "mcpServers": {
-    "docsucker": {
-      "command": "/usr/local/bin/docsucker-mcp",
+    "appledocsucker": {
+      "command": "/usr/local/bin/appledocsucker-mcp",
       "args": [
         "serve",
         "--docs-dir", "/Users/YOUR_USERNAME/my-docs",
@@ -135,8 +135,8 @@ Edit your Claude Code MCP settings:
 ```json
 {
   "mcpServers": {
-    "docsucker": {
-      "command": "/usr/local/bin/docsucker-mcp",
+    "appledocsucker": {
+      "command": "/usr/local/bin/appledocsucker-mcp",
       "args": ["serve"]
     }
   }
@@ -253,16 +253,16 @@ ls ~/.docsucker/swift-evolution
 
 **Check binary permissions:**
 ```bash
-chmod +x /usr/local/bin/docsucker-mcp
+chmod +x /usr/local/bin/appledocsucker-mcp
 ```
 
 ### Claude Can't Find Server
 
 **Verify binary path:**
 ```bash
-which docsucker-mcp
+which appledocsucker-mcp
 # or
-ls -la /usr/local/bin/docsucker-mcp
+ls -la /usr/local/bin/appledocsucker-mcp
 ```
 
 **Check Claude config syntax:**
@@ -274,8 +274,8 @@ cat ~/Library/Application\ Support/Claude/claude_desktop_config.json | python3 -
 
 **Make sure you downloaded docs first:**
 ```bash
-docsucker crawl --max-pages 100 --output-dir ~/.docsucker/docs
-docsucker crawl-evolution --output-dir ~/.docsucker/swift-evolution
+appledocsucker crawl --max-pages 100 --output-dir ~/.docsucker/docs
+appledocsucker crawl-evolution --output-dir ~/.docsucker/swift-evolution
 ```
 
 ### Server Crashes
@@ -283,14 +283,14 @@ docsucker crawl-evolution --output-dir ~/.docsucker/swift-evolution
 **Check logs in Claude Desktop:**
 - Open Claude Desktop
 - Go to Settings → Developer → View Logs
-- Look for errors related to "docsucker"
+- Look for errors related to "appledocsucker"
 
 ## Manual Testing
 
 You can test the MCP server manually using stdio:
 
 ```bash
-echo '{"jsonrpc":"2.0","id":1,"method":"resources/list","params":{}}' | docsucker-mcp serve
+echo '{"jsonrpc":"2.0","id":1,"method":"resources/list","params":{}}' | appledocsucker-mcp serve
 ```
 
 Expected output: JSON-RPC response with list of resources.
@@ -305,10 +305,10 @@ Expected output: JSON-RPC response with list of resources.
          │ MCP Protocol
          │ (JSON-RPC 2.0)
          │
-┌────────▼────────┐
-│  docsucker-mcp  │
-│   MCP Server    │
-└────────┬────────┘
+┌────────▼──────-----──┐
+│  appledocsucker-mcp  │
+│   MCP Server         │
+└────────┬─────-----───┘
          │
          ├─→ ~/.docsucker/docs/
          │   ├── swift/
@@ -409,7 +409,7 @@ Stored as-is from GitHub:
 
 ## Best Practices
 
-1. **Keep docs updated**: Run `docsucker update` periodically
+1. **Keep docs updated**: Run `appledocsucker update` periodically
 2. **Download before serving**: Ensure docs exist before starting server
 3. **Use absolute paths**: In config, use full paths not ~
 4. **Monitor logs**: Check Claude logs if issues occur

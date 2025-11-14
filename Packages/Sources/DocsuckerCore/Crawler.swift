@@ -1,6 +1,7 @@
 import Foundation
 import WebKit
 import DocsuckerShared
+import DocsuckerLogging
 
 // MARK: - Documentation Crawler
 
@@ -255,25 +256,34 @@ public final class DocumentationCrawler: NSObject {
     // MARK: - Logging
 
     private func logInfo(_ message: String) {
+        DocsuckerLogger.crawler.info(message)
         print(message)
     }
 
     private func logError(_ message: String) {
-        fputs("❌ \(message)\n", stderr)
+        let errorMessage = "❌ \(message)"
+        DocsuckerLogger.crawler.error(message)
+        fputs("\(errorMessage)\n", stderr)
     }
 
     private func logStatistics() async {
         let stats = await state.getStatistics()
-        print("📊 Statistics:")
-        print("   Total pages processed: \(stats.totalPages)")
-        print("   New pages: \(stats.newPages)")
-        print("   Updated pages: \(stats.updatedPages)")
-        print("   Skipped (unchanged): \(stats.skippedPages)")
-        print("   Errors: \(stats.errors)")
-        if let duration = stats.duration {
-            print("   Duration: \(Int(duration))s")
+        let messages = [
+            "📊 Statistics:",
+            "   Total pages processed: \(stats.totalPages)",
+            "   New pages: \(stats.newPages)",
+            "   Updated pages: \(stats.updatedPages)",
+            "   Skipped (unchanged): \(stats.skippedPages)",
+            "   Errors: \(stats.errors)",
+            stats.duration.map { "   Duration: \(Int($0))s" } ?? "",
+            "",
+            "📁 Output: \(configuration.outputDirectory.path)",
+        ]
+
+        for message in messages where !message.isEmpty {
+            DocsuckerLogger.crawler.info(message)
+            print(message)
         }
-        print("\n📁 Output: \(configuration.outputDirectory.path)")
     }
 }
 

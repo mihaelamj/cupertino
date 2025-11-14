@@ -100,7 +100,7 @@ class Docsucker < Formula
 
     # Install binaries
     bin.install ".build/release/docsucker"
-    bin.install ".build/release/docsucker-mcp"
+    bin.install ".build/release/appledocsucker-mcp"
 
     # Install documentation
     doc.install "README.md"
@@ -115,21 +115,21 @@ class Docsucker < Formula
 
       📚 CLI Usage:
         Download Apple documentation:
-          docsucker crawl --max-pages 15000 --output-dir ~/.docsucker/docs
+          appledocsucker crawl --max-pages 15000 --output-dir ~/.docsucker/docs
 
         Download Swift Evolution proposals:
-          docsucker crawl-evolution --output-dir ~/.docsucker/swift-evolution
+          appledocsucker crawl-evolution --output-dir ~/.docsucker/swift-evolution
 
       🤖 MCP Server Setup:
         1. Start server:
-           docsucker-mcp serve
+           appledocsucker-mcp serve
 
         2. Configure Claude Desktop:
            Edit ~/Library/Application Support/Claude/claude_desktop_config.json:
            {
              "mcpServers": {
-               "docsucker": {
-                 "command": "#{bin}/docsucker-mcp",
+               "appledocsucker": {
+                 "command": "#{bin}/appledocsucker-mcp",
                  "args": ["serve"]
                }
              }
@@ -155,12 +155,12 @@ class Docsucker < Formula
     assert_match "1.0.0", shell_output("#{bin}/docsucker --version")
 
     # Test MCP help
-    assert_match "MCP Server", shell_output("#{bin}/docsucker-mcp --help")
-    assert_match "1.0.0", shell_output("#{bin}/docsucker-mcp --version")
+    assert_match "MCP Server", shell_output("#{bin}/appledocsucker-mcp --help")
+    assert_match "1.0.0", shell_output("#{bin}/appledocsucker-mcp --version")
 
     # Test small crawl (integration test)
     testdir = testpath/"test-output"
-    system bin/"docsucker", "crawl",
+    system bin/"appledocsucker", "crawl",
            "--start-url", "https://developer.apple.com/documentation/swift/array",
            "--max-pages", "1",
            "--max-depth", "0",
@@ -262,11 +262,11 @@ brew install --build-from-source Formula/docsucker.rb
 brew test docsucker
 
 # 5. Verify installation
-docsucker --version
-docsucker-mcp --version
+appledocsucker --version
+appledocsucker-mcp --version
 
 # 6. Test functionality
-docsucker crawl --max-pages 1 --output-dir /tmp/test-docs
+appledocsucker crawl --max-pages 1 --output-dir /tmp/test-docs
 
 # 7. Uninstall
 brew uninstall docsucker
@@ -426,7 +426,7 @@ Submit to official [homebrew-core](https://github.com/Homebrew/homebrew-core) fo
 If you want to distribute pre-built binaries instead of building from source:
 
 ```ruby
-cask "docsucker" do
+cask "appledocsucker" do
   version "1.0.0"
   sha256 "SHA256_OF_ZIP"
 
@@ -435,8 +435,8 @@ cask "docsucker" do
   desc "Apple Documentation Crawler & MCP Server"
   homepage "https://github.com/YOUR_USERNAME/appledocsucker"
 
-  binary "docsucker"
-  binary "docsucker-mcp"
+  binary "appledocsucker"
+  binary "appledocsucker-mcp"
 end
 ```
 
@@ -604,8 +604,8 @@ git push
 # Test installation
 brew tap YOUR_USERNAME/tap
 brew install docsucker
-docsucker --version  # Should show 1.0.0
-docsucker-mcp --version
+appledocsucker --version  # Should show 1.0.0
+appledocsucker-mcp --version
 
 # Success! Users can now install with:
 # brew tap YOUR_USERNAME/tap

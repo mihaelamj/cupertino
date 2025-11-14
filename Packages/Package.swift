@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 
 import PackageDescription
 
@@ -18,11 +18,14 @@ let baseProducts: [Product] = [
 // Docsucker products (macOS only - uses FileManager.homeDirectoryForCurrentUser)
 #if os(macOS)
 let macOSOnlyProducts: [Product] = [
+    .singleTargetLibrary("DocsuckerLogging"),
     .singleTargetLibrary("DocsuckerShared"),
     .singleTargetLibrary("DocsuckerCore"),
+    .singleTargetLibrary("DocsuckerSearch"),
     .singleTargetLibrary("DocsuckerMCPSupport"),
-    .executable(name: "docsucker", targets: ["DocsuckerCLI"]),
-    .executable(name: "docsucker-mcp", targets: ["DocsuckerMCP"]),
+    .singleTargetLibrary("DocsSearchToolProvider"),
+    .executable(name: "appledocsucker", targets: ["DocsuckerCLI"]),
+    .executable(name: "appledocsucker-mcp", targets: ["DocsuckerMCP"]),
 ]
 #else
 let macOSOnlyProducts: [Product] = []
@@ -87,6 +90,15 @@ let targets: [Target] = {
 
     // ---------- Docsucker (Apple Docs Crawler → MCP Server - macOS only) ----------
     #if os(macOS)
+    let docsuckerLoggingTarget = Target.target(
+        name: "DocsuckerLogging",
+        dependencies: []
+    )
+    let docsuckerLoggingTestsTarget = Target.testTarget(
+        name: "DocsuckerLoggingTests",
+        dependencies: ["DocsuckerLogging"]
+    )
+
     let docsuckerSharedTarget = Target.target(
         name: "DocsuckerShared",
         dependencies: ["MCPShared"]
@@ -98,20 +110,38 @@ let targets: [Target] = {
 
     let docsuckerCoreTarget = Target.target(
         name: "DocsuckerCore",
-        dependencies: ["DocsuckerShared"]
+        dependencies: ["DocsuckerShared", "DocsuckerLogging"]
     )
     let docsuckerCoreTestsTarget = Target.testTarget(
         name: "DocsuckerCoreTests",
         dependencies: ["DocsuckerCore"]
     )
 
+    let docsuckerSearchTarget = Target.target(
+        name: "DocsuckerSearch",
+        dependencies: ["DocsuckerShared", "DocsuckerLogging"]
+    )
+    let docsuckerSearchTestsTarget = Target.testTarget(
+        name: "DocsuckerSearchTests",
+        dependencies: ["DocsuckerSearch"]
+    )
+
     let docsuckerMCPSupportTarget = Target.target(
         name: "DocsuckerMCPSupport",
-        dependencies: ["MCPServer", "MCPShared", "DocsuckerShared"]
+        dependencies: ["MCPServer", "MCPShared", "DocsuckerShared", "DocsuckerLogging"]
     )
     let docsuckerMCPSupportTestsTarget = Target.testTarget(
         name: "DocsuckerMCPSupportTests",
         dependencies: ["DocsuckerMCPSupport"]
+    )
+
+    let docsSearchToolProviderTarget = Target.target(
+        name: "DocsSearchToolProvider",
+        dependencies: ["MCPServer", "MCPShared", "DocsuckerSearch"]
+    )
+    let docsSearchToolProviderTestsTarget = Target.testTarget(
+        name: "DocsSearchToolProviderTests",
+        dependencies: ["DocsSearchToolProvider"]
     )
 
     let docsuckerCLITarget = Target.executableTarget(
@@ -119,6 +149,8 @@ let targets: [Target] = {
         dependencies: [
             "DocsuckerShared",
             "DocsuckerCore",
+            "DocsuckerSearch",
+            "DocsuckerLogging",
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
         ]
     )
@@ -130,18 +162,27 @@ let targets: [Target] = {
             "MCPTransport",
             "DocsuckerShared",
             "DocsuckerCore",
+            "DocsuckerSearch",
             "DocsuckerMCPSupport",
+            "DocsSearchToolProvider",
+            "DocsuckerLogging",
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
         ]
     )
 
     let docsuckerTargets: [Target] = [
+        docsuckerLoggingTarget,
+        docsuckerLoggingTestsTarget,
         docsuckerSharedTarget,
         docsuckerSharedTestsTarget,
         docsuckerCoreTarget,
         docsuckerCoreTestsTarget,
+        docsuckerSearchTarget,
+        docsuckerSearchTestsTarget,
         docsuckerMCPSupportTarget,
         docsuckerMCPSupportTestsTarget,
+        docsSearchToolProviderTarget,
+        docsSearchToolProviderTestsTarget,
         docsuckerCLITarget,
         docsuckerMCPTarget,
     ]

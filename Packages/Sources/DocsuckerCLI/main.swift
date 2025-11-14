@@ -2,23 +2,26 @@ import Foundation
 import ArgumentParser
 import DocsuckerShared
 import DocsuckerCore
+import DocsuckerSearch
+import DocsuckerLogging
 
 // MARK: - Docsucker CLI
 
 @main
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-struct Docsucker: AsyncParsableCommand {
+struct AppleDocsucker: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
+        commandName: "appledocsucker",
         abstract: "Apple Documentation Crawler",
         version: "1.0.0",
-        subcommands: [Crawl.self, CrawlEvolution.self, DownloadSamples.self, ExportPDF.self, Update.self, Config.self],
+        subcommands: [Crawl.self, CrawlEvolution.self, DownloadSamples.self, ExportPDF.self, Update.self, BuildIndex.self, Config.self],
         defaultSubcommand: Crawl.self
     )
 }
 
 // MARK: - Crawl Command
 
-extension Docsucker {
+extension AppleDocsucker {
     @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
     struct Crawl: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
@@ -41,7 +44,7 @@ extension Docsucker {
         var force: Bool = false
 
         mutating func run() async throws {
-            print("🚀 Docsucker - Apple Documentation Crawler\n")
+            ConsoleLogger.info("🚀 AppleDocsucker - Apple Documentation Crawler\n")
 
             // Create configuration
             guard let startURL = URL(string: startURL) else {
@@ -65,17 +68,18 @@ extension Docsucker {
             let crawler = await DocumentationCrawler(configuration: config)
 
             let stats = try await crawler.crawl { progress in
-                // Progress callback
-                print("   Progress: \(String(format: "%.1f", progress.percentage))% - \(progress.currentURL.lastPathComponent)")
+                // Progress callback - use output() for frequent updates (no logging)
+                ConsoleLogger.output("   Progress: \(String(format: "%.1f", progress.percentage))% - \(progress.currentURL.lastPathComponent)")
             }
 
-            print("\n✅ Crawl completed!")
-            print("   Total: \(stats.totalPages) pages")
-            print("   New: \(stats.newPages)")
-            print("   Updated: \(stats.updatedPages)")
-            print("   Skipped: \(stats.skippedPages)")
+            ConsoleLogger.output("")
+            ConsoleLogger.info("✅ Crawl completed!")
+            ConsoleLogger.info("   Total: \(stats.totalPages) pages")
+            ConsoleLogger.info("   New: \(stats.newPages)")
+            ConsoleLogger.info("   Updated: \(stats.updatedPages)")
+            ConsoleLogger.info("   Skipped: \(stats.skippedPages)")
             if let duration = stats.duration {
-                print("   Duration: \(Int(duration))s")
+                ConsoleLogger.info("   Duration: \(Int(duration))s")
             }
         }
     }
@@ -83,7 +87,7 @@ extension Docsucker {
 
 // MARK: - Crawl Evolution Command
 
-extension Docsucker {
+extension AppleDocsucker {
     @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
     struct CrawlEvolution: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
@@ -95,7 +99,7 @@ extension Docsucker {
         var outputDir: String = "~/.docsucker/swift-evolution"
 
         mutating func run() async throws {
-            print("🚀 Swift Evolution Crawler\n")
+            ConsoleLogger.info("🚀 Swift Evolution Crawler\n")
 
             let outputURL = URL(fileURLWithPath: outputDir).expandingTildeInPath
 
@@ -104,16 +108,17 @@ extension Docsucker {
 
             // Run crawler
             let stats = try await crawler.crawl { progress in
-                print("   Progress: \(String(format: "%.1f", progress.percentage))% - \(progress.proposalID)")
+                ConsoleLogger.output("   Progress: \(String(format: "%.1f", progress.percentage))% - \(progress.proposalID)")
             }
 
-            print("\n✅ Download completed!")
-            print("   Total: \(stats.totalProposals) proposals")
-            print("   New: \(stats.newProposals)")
-            print("   Updated: \(stats.updatedProposals)")
-            print("   Errors: \(stats.errors)")
+            ConsoleLogger.output("")
+            ConsoleLogger.info("✅ Download completed!")
+            ConsoleLogger.info("   Total: \(stats.totalProposals) proposals")
+            ConsoleLogger.info("   New: \(stats.newProposals)")
+            ConsoleLogger.info("   Updated: \(stats.updatedProposals)")
+            ConsoleLogger.info("   Errors: \(stats.errors)")
             if let duration = stats.duration {
-                print("   Duration: \(Int(duration))s")
+                ConsoleLogger.info("   Duration: \(Int(duration))s")
             }
         }
     }
@@ -121,7 +126,7 @@ extension Docsucker {
 
 // MARK: - Download Samples Command
 
-extension Docsucker {
+extension AppleDocsucker {
     @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
     struct DownloadSamples: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
@@ -142,7 +147,7 @@ extension Docsucker {
         var authenticate: Bool = false
 
         mutating func run() async throws {
-            print("🚀 Sample Code Downloader\n")
+            ConsoleLogger.info("🚀 Sample Code Downloader\n")
 
             let outputURL = URL(fileURLWithPath: outputDir).expandingTildeInPath
 
@@ -159,16 +164,17 @@ extension Docsucker {
 
             // Run crawler
             let stats = try await crawler.download { progress in
-                print("   Progress: \(String(format: "%.1f", progress.percentage))% - \(progress.sampleName)")
+                ConsoleLogger.output("   Progress: \(String(format: "%.1f", progress.percentage))% - \(progress.sampleName)")
             }
 
-            print("\n✅ Download completed!")
-            print("   Total: \(stats.totalSamples) samples")
-            print("   Downloaded: \(stats.downloadedSamples)")
-            print("   Skipped: \(stats.skippedSamples)")
-            print("   Errors: \(stats.errors)")
+            ConsoleLogger.output("")
+            ConsoleLogger.info("✅ Download completed!")
+            ConsoleLogger.info("   Total: \(stats.totalSamples) samples")
+            ConsoleLogger.info("   Downloaded: \(stats.downloadedSamples)")
+            ConsoleLogger.info("   Skipped: \(stats.skippedSamples)")
+            ConsoleLogger.info("   Errors: \(stats.errors)")
             if let duration = stats.duration {
-                print("   Duration: \(Int(duration))s")
+                ConsoleLogger.info("   Duration: \(Int(duration))s")
             }
         }
     }
@@ -176,7 +182,7 @@ extension Docsucker {
 
 // MARK: - Export PDF Command
 
-extension Docsucker {
+extension AppleDocsucker {
     @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
     struct ExportPDF: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
@@ -197,7 +203,7 @@ extension Docsucker {
         var force: Bool = false
 
         mutating func run() async throws {
-            print("📄 PDF Exporter\n")
+            ConsoleLogger.info("📄 PDF Exporter\n")
 
             let inputURL = URL(fileURLWithPath: inputDir).expandingTildeInPath
             let outputURL = URL(fileURLWithPath: outputDir).expandingTildeInPath
@@ -215,16 +221,17 @@ extension Docsucker {
 
             // Run export
             let stats = try await exporter.export { progress in
-                print("   Progress: \(String(format: "%.1f", progress.percentage))% - \(progress.fileName)")
+                ConsoleLogger.output("   Progress: \(String(format: "%.1f", progress.percentage))% - \(progress.fileName)")
             }
 
-            print("\n✅ Export completed!")
-            print("   Total: \(stats.totalFiles) files")
-            print("   Exported: \(stats.exportedFiles)")
-            print("   Skipped: \(stats.skippedFiles)")
-            print("   Errors: \(stats.errors)")
+            ConsoleLogger.output("")
+            ConsoleLogger.info("✅ Export completed!")
+            ConsoleLogger.info("   Total: \(stats.totalFiles) files")
+            ConsoleLogger.info("   Exported: \(stats.exportedFiles)")
+            ConsoleLogger.info("   Skipped: \(stats.skippedFiles)")
+            ConsoleLogger.info("   Errors: \(stats.errors)")
             if let duration = stats.duration {
-                print("   Duration: \(Int(duration))s")
+                ConsoleLogger.info("   Duration: \(Int(duration))s")
             }
         }
     }
@@ -232,7 +239,7 @@ extension Docsucker {
 
 // MARK: - Update Command
 
-extension Docsucker {
+extension AppleDocsucker {
     @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
     struct Update: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
@@ -243,7 +250,7 @@ extension Docsucker {
         var outputDir: String = "~/.docsucker/docs"
 
         mutating func run() async throws {
-            print("🔄 Docsucker - Incremental Update\n")
+            ConsoleLogger.info("🔄 AppleDocsucker - Incremental Update\n")
 
             // Load configuration
             let configURL = URL(fileURLWithPath: "~/.docsucker/config.json").expandingTildeInPath
@@ -264,18 +271,123 @@ extension Docsucker {
             let crawler = await DocumentationCrawler(configuration: config)
             let stats = try await crawler.crawl()
 
-            print("\n✅ Update completed!")
-            print("   Total: \(stats.totalPages) pages")
-            print("   New: \(stats.newPages)")
-            print("   Updated: \(stats.updatedPages)")
-            print("   Skipped: \(stats.skippedPages)")
+            ConsoleLogger.output("")
+            ConsoleLogger.info("✅ Update completed!")
+            ConsoleLogger.info("   Total: \(stats.totalPages) pages")
+            ConsoleLogger.info("   New: \(stats.newPages)")
+            ConsoleLogger.info("   Updated: \(stats.updatedPages)")
+            ConsoleLogger.info("   Skipped: \(stats.skippedPages)")
+        }
+    }
+}
+
+// MARK: - Build Index Command
+
+extension AppleDocsucker {
+    @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
+    struct BuildIndex: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            commandName: "build-index",
+            abstract: "Build search index from crawled documentation"
+        )
+
+        @Option(name: .long, help: "Directory containing crawled documentation")
+        var docsDir: String = "~/.docsucker/docs"
+
+        @Option(name: .long, help: "Directory containing Swift Evolution proposals")
+        var evolutionDir: String = "~/.docsucker/swift-evolution"
+
+        @Option(name: .long, help: "Metadata file path")
+        var metadataFile: String = "~/.docsucker/metadata.json"
+
+        @Option(name: .long, help: "Search database path")
+        var searchDB: String = "~/.docsucker/search.db"
+
+        @Flag(name: .long, help: "Clear existing index before building")
+        var clear: Bool = true
+
+        mutating func run() async throws {
+            ConsoleLogger.info("🔨 Building Search Index\n")
+
+            // Expand paths
+            let metadataURL = URL(fileURLWithPath: metadataFile).expandingTildeInPath
+            let docsURL = URL(fileURLWithPath: docsDir).expandingTildeInPath
+            let evolutionURL = URL(fileURLWithPath: evolutionDir).expandingTildeInPath
+            let searchDBURL = URL(fileURLWithPath: searchDB).expandingTildeInPath
+
+            // Check if metadata exists
+            guard FileManager.default.fileExists(atPath: metadataURL.path) else {
+                ConsoleLogger.info("❌ Metadata file not found: \(metadataURL.path)")
+                ConsoleLogger.info("   Run 'appledocsucker crawl' first to download documentation.")
+                throw ExitCode.failure
+            }
+
+            // Load metadata
+            ConsoleLogger.info("📖 Loading metadata...")
+            let metadata = try CrawlMetadata.load(from: metadataURL)
+            ConsoleLogger.info("   Found \(metadata.pages.count) pages in metadata")
+
+            // Initialize search index
+            ConsoleLogger.info("🗄️  Initializing search database...")
+            let searchIndex = try await SearchIndex(dbPath: searchDBURL)
+
+            // Check if Evolution directory exists
+            let hasEvolution = FileManager.default.fileExists(atPath: evolutionURL.path)
+            let evolutionDirToUse = hasEvolution ? evolutionURL : nil
+
+            if !hasEvolution {
+                ConsoleLogger.info("ℹ️  Swift Evolution directory not found, skipping proposals")
+                ConsoleLogger.info("   Run 'appledocsucker crawl-evolution' to download proposals")
+            }
+
+            // Build index
+            let builder = SearchIndexBuilder(
+                searchIndex: searchIndex,
+                metadata: metadata,
+                docsDirectory: docsURL,
+                evolutionDirectory: evolutionDirToUse
+            )
+
+            var lastPercent = 0.0
+            try await builder.buildIndex(clearExisting: clear) { processed, total in
+                let percent = Double(processed) / Double(total) * 100
+                if percent - lastPercent >= 5.0 {
+                    ConsoleLogger.output("   \(String(format: "%.0f%%", percent)) complete (\(processed)/\(total))")
+                    lastPercent = percent
+                }
+            }
+
+            // Show statistics
+            let docCount = try await searchIndex.documentCount()
+            let frameworks = try await searchIndex.listFrameworks()
+
+            ConsoleLogger.output("")
+            ConsoleLogger.info("✅ Search index built successfully!")
+            ConsoleLogger.info("   Total documents: \(docCount)")
+            ConsoleLogger.info("   Frameworks: \(frameworks.count)")
+            ConsoleLogger.info("   Database: \(searchDBURL.path)")
+            ConsoleLogger.info("   Size: \(formatFileSize(searchDBURL))")
+            ConsoleLogger.info("\n💡 Tip: Start the MCP server with 'appledocsucker-mcp serve' to enable search")
+        }
+
+        private func formatFileSize(_ url: URL) -> String {
+            guard let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+                  let size = attrs[.size] as? Int64
+            else {
+                return "unknown"
+            }
+
+            let formatter = ByteCountFormatter()
+            formatter.allowedUnits = [.useKB, .useMB, .useGB]
+            formatter.countStyle = .file
+            return formatter.string(fromByteCount: size)
         }
     }
 }
 
 // MARK: - Config Command
 
-extension Docsucker {
+extension AppleDocsucker {
     @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
     struct Config: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
@@ -301,8 +413,8 @@ extension Docsucker {
                         print(json)
                     }
                 } else {
-                    print("No configuration file found at: \(configURL.path)")
-                    print("Run 'docsucker config init' to create one.")
+                    ConsoleLogger.info("No configuration file found at: \(configURL.path)")
+                    ConsoleLogger.info("Run 'appledocsucker config init' to create one.")
                 }
             }
         }
@@ -317,12 +429,12 @@ extension Docsucker {
                 let configURL = URL(fileURLWithPath: "~/.docsucker/config.json").expandingTildeInPath
 
                 if FileManager.default.fileExists(atPath: configURL.path) {
-                    print("⚠️  Configuration file already exists at: \(configURL.path)")
-                    print("   Delete it first if you want to recreate.")
+                    ConsoleLogger.info("⚠️  Configuration file already exists at: \(configURL.path)")
+                    ConsoleLogger.info("   Delete it first if you want to recreate.")
                 } else {
                     let config = DocsuckerConfiguration()
                     try config.save(to: configURL)
-                    print("✅ Configuration created at: \(configURL.path)")
+                    ConsoleLogger.info("✅ Configuration created at: \(configURL.path)")
                 }
             }
         }

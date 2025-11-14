@@ -2,6 +2,12 @@
 <Workspace
    version = "1.0">
    <FileRef
+      location = "group:README.md">
+   </FileRef>
+   <FileRef
+      location = "group:TODO.txt">
+   </FileRef>
+   <FileRef
       location = "group:Packages">
    </FileRef>
 </Workspace>
