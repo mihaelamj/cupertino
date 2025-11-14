@@ -1,13 +1,13 @@
-import Foundation
 import ArgumentParser
-import MCPServer
-import MCPTransport
-import DocsuckerShared
+import DocsSearchToolProvider
 import DocsuckerCore
+import DocsuckerLogging
 import DocsuckerMCPSupport
 import DocsuckerSearch
-import DocsSearchToolProvider
-import DocsuckerLogging
+import DocsuckerShared
+import Foundation
+import MCPServer
+import MCPTransport
 
 // MARK: - Docsucker MCP Server CLI
 
@@ -17,7 +17,7 @@ struct AppleDocsuckerMCP: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "appledocsucker-mcp",
         abstract: "MCP Server for Apple Documentation and Swift Evolution",
-        version: "1.0.0",
+        version: "0.1.0",
         subcommands: [Serve.self],
         defaultSubcommand: Serve.self
     )
@@ -42,7 +42,6 @@ extension AppleDocsuckerMCP {
         var searchDB: String = "~/.docsucker/search.db"
 
         mutating func run() async throws {
-            // Create configuration
             let config = DocsuckerConfiguration(
                 crawler: CrawlerConfiguration(
                     outputDirectory: URL(fileURLWithPath: docsDir).expandingTildeInPath
@@ -52,45 +51,69 @@ extension AppleDocsuckerMCP {
             let evolutionURL = URL(fileURLWithPath: evolutionDir).expandingTildeInPath
             let searchDBURL = URL(fileURLWithPath: searchDB).expandingTildeInPath
 
-            // Create MCP server
-            let server = MCPServer(name: "docsucker", version: "1.0.0")
+            let server = MCPServer(name: "docsucker", version: "0.1.0")
 
-            // Register resource provider
+            await registerProviders(
+                server: server,
+                config: config,
+                evolutionURL: evolutionURL,
+                searchDBURL: searchDBURL
+            )
+
+            printStartupMessages(config: config, evolutionURL: evolutionURL, searchDBURL: searchDBURL)
+
+            let transport = StdioTransport()
+            try await server.connect(transport)
+
+            // Keep running indefinitely
+            while true {
+                try await Task.sleep(for: .seconds(60))
+            }
+        }
+
+        private func registerProviders(
+            server: MCPServer,
+            config: DocsuckerConfiguration,
+            evolutionURL: URL,
+            searchDBURL: URL
+        ) async {
             let resourceProvider = DocsResourceProvider(
                 configuration: config,
                 evolutionDirectory: evolutionURL
             )
             await server.registerResourceProvider(resourceProvider)
 
-            // Register tool provider (search functionality)
-            let hasSearchDB = FileManager.default.fileExists(atPath: searchDBURL.path)
-            if hasSearchDB {
-                do {
-                    let searchIndex = try await SearchIndex(dbPath: searchDBURL)
-                    let toolProvider = DocsSearchToolProvider(searchIndex: searchIndex)
-                    await server.registerToolProvider(toolProvider)
-                    let message = "✅ Search enabled (index found)"
-                    DocsuckerLogger.mcp.info(message)
-                    fputs("\(message)\n", stderr)
-                } catch {
-                    let errorMsg = "⚠️  Failed to load search index: \(error)"
-                    let hintMsg = "   Tools will not be available. Run 'appledocsucker build-index' to create the index."
-                    DocsuckerLogger.mcp.warning("\(errorMsg) \(hintMsg)")
-                    fputs("\(errorMsg)\n", stderr)
-                    fputs("\(hintMsg)\n", stderr)
-                }
-            } else {
+            await registerSearchProvider(server: server, searchDBURL: searchDBURL)
+        }
+
+        private func registerSearchProvider(server: MCPServer, searchDBURL: URL) async {
+            guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
                 let infoMsg = "ℹ️  Search index not found at: \(searchDBURL.path)"
                 let hintMsg = "   Tools will not be available. Run 'appledocsucker build-index' to enable search."
                 DocsuckerLogger.mcp.info("\(infoMsg) \(hintMsg)")
                 fputs("\(infoMsg)\n", stderr)
                 fputs("\(hintMsg)\n", stderr)
+                return
             }
 
-            // Connect to stdio transport
-            let transport = StdioTransport()
+            do {
+                let searchIndex = try await SearchIndex(dbPath: searchDBURL)
+                let toolProvider = DocsSearchToolProvider(searchIndex: searchIndex)
+                await server.registerToolProvider(toolProvider)
+                let message = "✅ Search enabled (index found)"
+                DocsuckerLogger.mcp.info(message)
+                fputs("\(message)\n", stderr)
+            } catch {
+                let errorMsg = "⚠️  Failed to load search index: \(error)"
+                let hintMsg = "   Tools will not be available. Run 'appledocsucker build-index' to create the index."
+                DocsuckerLogger.mcp.warning("\(errorMsg) \(hintMsg)")
+                fputs("\(errorMsg)\n", stderr)
+                fputs("\(hintMsg)\n", stderr)
+            }
+        }
 
-            let startupMessages = [
+        private func printStartupMessages(config: DocsuckerConfiguration, evolutionURL: URL, searchDBURL: URL) {
+            let messages = [
                 "🚀 AppleDocsucker MCP Server starting...",
                 "   Apple docs: \(config.crawler.outputDirectory.path)",
                 "   Evolution: \(evolutionURL.path)",
@@ -98,16 +121,11 @@ extension AppleDocsuckerMCP {
                 "   Waiting for client connection...",
             ]
 
-            for message in startupMessages {
+            for message in messages {
                 DocsuckerLogger.mcp.info(message)
                 fputs("\(message)\n", stderr)
             }
             fputs("\n", stderr)
-
-            try await server.connect(transport)
-
-            // Keep running indefinitely
-            try await Task.sleep(for: .seconds(TimeInterval.infinity))
         }
     }
 }

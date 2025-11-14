@@ -102,12 +102,16 @@ public struct InitializeRequest: Codable, Sendable {
     public let method: String = "initialize"
     public let params: Params
 
+    enum CodingKeys: String, CodingKey {
+        case params
+    }
+
     public init(
         protocolVersion: String,
         capabilities: ClientCapabilities,
         clientInfo: Implementation
     ) {
-        self.params = Params(
+        params = Params(
             protocolVersion: protocolVersion,
             capabilities: capabilities,
             clientInfo: clientInfo

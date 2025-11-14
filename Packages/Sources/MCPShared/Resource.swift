@@ -49,8 +49,12 @@ public struct ListResourcesRequest: Codable, Sendable {
     public let method: String = "resources/list"
     public let params: Params?
 
+    enum CodingKeys: String, CodingKey {
+        case params
+    }
+
     public init(cursor: String? = nil) {
-        self.params = cursor.map { Params(cursor: $0) }
+        params = cursor.map { Params(cursor: $0) }
     }
 
     public struct Params: Codable, Sendable {
@@ -77,8 +81,12 @@ public struct ReadResourceRequest: Codable, Sendable {
     public let method: String = "resources/read"
     public let params: Params
 
+    enum CodingKeys: String, CodingKey {
+        case params
+    }
+
     public init(uri: String) {
-        self.params = Params(uri: uri)
+        params = Params(uri: uri)
     }
 
     public struct Params: Codable, Sendable {
@@ -103,8 +111,12 @@ public struct ListResourceTemplatesRequest: Codable, Sendable {
     public let method: String = "resources/templates/list"
     public let params: Params?
 
+    enum CodingKeys: String, CodingKey {
+        case params
+    }
+
     public init(cursor: String? = nil) {
-        self.params = cursor.map { Params(cursor: $0) }
+        params = cursor.map { Params(cursor: $0) }
     }
 
     public struct Params: Codable, Sendable {
@@ -131,8 +143,12 @@ public struct SubscribeResourceRequest: Codable, Sendable {
     public let method: String = "resources/subscribe"
     public let params: Params
 
+    enum CodingKeys: String, CodingKey {
+        case params
+    }
+
     public init(uri: String) {
-        self.params = Params(uri: uri)
+        params = Params(uri: uri)
     }
 
     public struct Params: Codable, Sendable {
@@ -149,8 +165,12 @@ public struct UnsubscribeResourceRequest: Codable, Sendable {
     public let method: String = "resources/unsubscribe"
     public let params: Params
 
+    enum CodingKeys: String, CodingKey {
+        case params
+    }
+
     public init(uri: String) {
-        self.params = Params(uri: uri)
+        params = Params(uri: uri)
     }
 
     public struct Params: Codable, Sendable {
@@ -167,8 +187,12 @@ public struct ResourceUpdatedNotification: Codable, Sendable {
     public let method: String = "notifications/resources/updated"
     public let params: Params
 
+    enum CodingKeys: String, CodingKey {
+        case params
+    }
+
     public init(uri: String) {
-        self.params = Params(uri: uri)
+        params = Params(uri: uri)
     }
 
     public struct Params: Codable, Sendable {
@@ -183,6 +207,10 @@ public struct ResourceUpdatedNotification: Codable, Sendable {
 /// Resource list changed notification (server → client)
 public struct ResourceListChangedNotification: Codable, Sendable {
     public let method: String = "notifications/resources/list_changed"
+
+    enum CodingKeys: String, CodingKey {
+        case method
+    }
 
     public init() {}
 }

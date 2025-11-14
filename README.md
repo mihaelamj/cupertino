@@ -34,8 +34,8 @@ git clone https://github.com/YOUR_USERNAME/appledocsucker.git
 cd appledocsucker
 
 # Option 1: Using Makefile (works from root or Packages directory)
-make build
-sudo make install-symlinks  # Recommended for development
+make build                       # Build release binaries
+sudo make install                # Install to /usr/local/bin
 
 # Option 2: Using Swift Package Manager directly
 cd Packages
@@ -50,10 +50,11 @@ sudo ln -sf "$(pwd)/.build/release/appledocsucker-mcp" /usr/local/bin/appledocsu
 
 ```bash
 # One-time setup (works from root or Packages directory)
-make install-symlinks
+make build                       # Build binaries
+sudo make install                # Install to /usr/local/bin
 
 # After making changes (works from root or Packages directory)
-make update  # Rebuilds and changes are immediately live!
+sudo make update                 # Rebuild and reinstall
 ```
 
 ### Download Documentation
@@ -150,16 +151,17 @@ AppleDocsucker includes a comprehensive Makefile for easy building and installat
 make help
 
 # Common tasks
-make build              # Build release binaries
-make install-symlinks   # Install with symlinks (recommended for dev)
-make update             # Quick rebuild for development
-make test               # Run all tests
-make clean              # Clean build artifacts
+make build                  # Build release binaries
+sudo make install           # Install to /usr/local/bin
+sudo make update            # Rebuild and reinstall
+make test                   # Run all tests
+make clean                  # Clean build artifacts
 ```
 
 **Available make targets:**
 - `build`, `build-debug`, `build-release` - Build executables
-- `install`, `install-symlinks` - Install to /usr/local/bin
+- `install` - Install to /usr/local/bin (requires sudo)
+- `install-symlinks` - Install with symlinks (advanced, requires sudo)
 - `update` - Quick rebuild for development workflow
 - `test`, `test-unit`, `test-integration` - Run tests
 - `clean`, `distclean` - Clean build artifacts

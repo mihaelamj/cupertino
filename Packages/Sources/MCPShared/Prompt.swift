@@ -59,8 +59,12 @@ public struct ListPromptsRequest: Codable, Sendable {
     public let method: String = "prompts/list"
     public let params: Params?
 
+    enum CodingKeys: String, CodingKey {
+        case params
+    }
+
     public init(cursor: String? = nil) {
-        self.params = cursor.map { Params(cursor: $0) }
+        params = cursor.map { Params(cursor: $0) }
     }
 
     public struct Params: Codable, Sendable {
@@ -87,8 +91,12 @@ public struct GetPromptRequest: Codable, Sendable {
     public let method: String = "prompts/get"
     public let params: Params
 
+    enum CodingKeys: String, CodingKey {
+        case params
+    }
+
     public init(name: String, arguments: [String: String]? = nil) {
-        self.params = Params(name: name, arguments: arguments)
+        params = Params(name: name, arguments: arguments)
     }
 
     public struct Params: Codable, Sendable {
@@ -115,6 +123,10 @@ public struct GetPromptResult: Codable, Sendable {
 /// Prompt list changed notification (server → client)
 public struct PromptListChangedNotification: Codable, Sendable {
     public let method: String = "notifications/prompts/list_changed"
+
+    enum CodingKeys: String, CodingKey {
+        case method
+    }
 
     public init() {}
 }

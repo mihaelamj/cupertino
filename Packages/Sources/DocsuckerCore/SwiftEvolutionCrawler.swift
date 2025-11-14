@@ -1,6 +1,6 @@
-import Foundation
-import DocsuckerShared
 import DocsuckerLogging
+import DocsuckerShared
+import Foundation
 
 // MARK: - Swift Evolution Crawler
 
@@ -8,13 +8,15 @@ import DocsuckerLogging
 @MainActor
 public final class SwiftEvolutionCrawler {
     private let outputDirectory: URL
+    private let onlyAccepted: Bool
     private let githubAPI = "https://api.github.com"
     private let githubRaw = "https://raw.githubusercontent.com"
     private let repo = "swiftlang/swift-evolution"
     private let branch = "main"
 
-    public init(outputDirectory: URL) {
+    public init(outputDirectory: URL, onlyAccepted: Bool = false) {
         self.outputDirectory = outputDirectory
+        self.onlyAccepted = onlyAccepted
     }
 
     // MARK: - Public API
@@ -92,15 +94,23 @@ public final class SwiftEvolutionCrawler {
 
         // Filter for .md files and extract proposal metadata
         let proposals = files
-            .filter { $0.name.hasSuffix(".md") && $0.name.hasPrefix("SE-") }
             .compactMap { file -> ProposalMetadata? in
+                // Skip if no download_url (e.g., directories)
+                guard let downloadURL = file.download_url else {
+                    return nil
+                }
+                // Only process .md files
+                guard file.name.hasSuffix(".md") else {
+                    return nil
+                }
+                // Extract proposal ID (handles both "0001-..." and "SE-0001-..." formats)
                 guard let id = extractProposalID(from: file.name) else {
                     return nil
                 }
                 return ProposalMetadata(
                     id: id,
                     filename: file.name,
-                    downloadURL: file.download_url
+                    downloadURL: downloadURL
                 )
             }
             .sorted { $0.id < $1.id }
@@ -121,11 +131,22 @@ public final class SwiftEvolutionCrawler {
             throw EvolutionCrawlerError.invalidEncoding
         }
 
+        // Check status if filtering for accepted only
+        if onlyAccepted {
+            let status = extractStatus(from: markdown)
+            if !isAcceptedStatus(status) {
+                logInfo("   ⏭️  Skipped (status: \(status ?? "unknown"))")
+                stats.totalProposals += 1
+                return
+            }
+        }
+
         // Compute hash for change detection
         _ = HashUtilities.sha256(of: markdown)
 
-        // Save to file
-        let outputPath = outputDirectory.appendingPathComponent(proposal.filename)
+        // Save to file with SE- prefix
+        let filename = "\(proposal.id).md" // e.g., "SE-0001.md"
+        let outputPath = outputDirectory.appendingPathComponent(filename)
         let isNew = !FileManager.default.fileExists(atPath: outputPath.path)
 
         try markdown.write(to: outputPath, atomically: true, encoding: .utf8)
@@ -142,18 +163,48 @@ public final class SwiftEvolutionCrawler {
     }
 
     private func extractProposalID(from filename: String) -> String? {
-        // Extract SE-NNNN from filename like "SE-0001-keywords-as-argument-labels.md"
-        let pattern = #"^(SE-\d{4})"#
+        // Extract proposal number from filename
+        // Handles: "0001-keywords-as-argument-labels.md" -> "SE-0001"
+        // Also handles: "SE-0001-keywords-as-argument-labels.md" -> "SE-0001"
+        let pattern = #"^(?:SE-)?(\d{4})"#
         guard let regex = try? NSRegularExpression(pattern: pattern),
               let match = regex.firstMatch(
                   in: filename,
                   range: NSRange(filename.startIndex..., in: filename)
               ),
-              let range = Range(match.range, in: filename)
+              match.numberOfRanges > 1,
+              let numberRange = Range(match.range(at: 1), in: filename)
         else {
             return nil
         }
-        return String(filename[range])
+        let number = String(filename[numberRange])
+        return "SE-\(number)"
+    }
+
+    private func extractStatus(from markdown: String) -> String? {
+        // Extract status from markdown content
+        // Format: "* Status: **Implemented (Swift 2.2)**" or "* Status: **Accepted**"
+        let pattern = #"\* Status: \*\*([^\*]+)\*\*"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(
+                  in: markdown,
+                  range: NSRange(markdown.startIndex..., in: markdown)
+              ),
+              match.numberOfRanges > 1,
+              let statusRange = Range(match.range(at: 1), in: markdown)
+        else {
+            return nil
+        }
+        return String(markdown[statusRange])
+    }
+
+    private func isAcceptedStatus(_ status: String?) -> Bool {
+        guard let status = status?.lowercased() else {
+            return false
+        }
+        // Accept proposals that are "Implemented", "Accepted", or "Accepted with revisions"
+        return status.contains("implemented") ||
+            status.contains("accepted")
     }
 
     // MARK: - Logging
@@ -192,7 +243,7 @@ public final class SwiftEvolutionCrawler {
 
 struct GitHubFile: Codable {
     let name: String
-    let download_url: String
+    let download_url: String? // Optional - directories have null download_url
 }
 
 struct ProposalMetadata {

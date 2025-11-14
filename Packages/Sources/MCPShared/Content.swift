@@ -52,6 +52,10 @@ public struct TextContent: Codable, Sendable {
     public let type: String = "text"
     public let text: String
 
+    enum CodingKeys: String, CodingKey {
+        case text
+    }
+
     public init(text: String) {
         self.text = text
     }
@@ -63,6 +67,10 @@ public struct ImageContent: Codable, Sendable {
     public let data: String // base64 encoded
     public let mimeType: String
 
+    enum CodingKeys: String, CodingKey {
+        case data, mimeType
+    }
+
     public init(data: String, mimeType: String) {
         self.data = data
         self.mimeType = mimeType
@@ -73,6 +81,10 @@ public struct ImageContent: Codable, Sendable {
 public struct EmbeddedResource: Codable, Sendable {
     public let type: String = "resource"
     public let resource: ResourceContents
+
+    enum CodingKeys: String, CodingKey {
+        case resource
+    }
 
     public init(resource: ResourceContents) {
         self.resource = resource

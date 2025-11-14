@@ -43,8 +43,12 @@ public struct ListToolsRequest: Codable, Sendable {
     public let method: String = "tools/list"
     public let params: Params?
 
+    enum CodingKeys: String, CodingKey {
+        case params
+    }
+
     public init(cursor: String? = nil) {
-        self.params = cursor.map { Params(cursor: $0) }
+        params = cursor.map { Params(cursor: $0) }
     }
 
     public struct Params: Codable, Sendable {
@@ -71,8 +75,12 @@ public struct CallToolRequest: Codable, Sendable {
     public let method: String = "tools/call"
     public let params: Params
 
+    enum CodingKeys: String, CodingKey {
+        case params
+    }
+
     public init(name: String, arguments: [String: AnyCodable]? = nil) {
-        self.params = Params(name: name, arguments: arguments)
+        params = Params(name: name, arguments: arguments)
     }
 
     public struct Params: Codable, Sendable {
@@ -99,6 +107,10 @@ public struct CallToolResult: Codable, Sendable {
 /// Tool list changed notification (server → client)
 public struct ToolListChangedNotification: Codable, Sendable {
     public let method: String = "notifications/tools/list_changed"
+
+    enum CodingKeys: String, CodingKey {
+        case method
+    }
 
     public init() {}
 }

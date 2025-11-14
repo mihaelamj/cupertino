@@ -1,5 +1,67 @@
  ---
+ 
+ Log all
+ 
+ ```bash
+ log stream --predicate 'subsystem == "com.docsucker.appledocsucker"' --info --debug
+ ```
+ 
+ ```bash
+   appledocsucker crawl-evolution \
+    --output-dir /Volumes/Code/DeveloperExt/appledocsucker/swift-evolution \
+    --only-accepted
+    ```
+    
+```bash
+  appledocsucker --start-url https://developer.apple.com/documentation/swift \
+    --output-dir /Volumes/Code/DeveloperExt/appledocsucker/docs \
+    --max-pages 150000 \
+    --force
+```
+
+```bash
+appledocsucker build-index --docs-dir /Volumes/Code/DeveloperExt/appledocsucker/docs --evolution-dir
+  /Volumes/Code/DeveloperExt/appledocsucker/swift-evolution --metadata-file /Volumes/Code/DeveloperExt/appledocsucker/metadata.json
+  --search-db /Volumes/Code/DeveloperExt/appledocsucker/search.db
+```
+ 
   🔍 Making Docsucker Data Searchable for AI Agents
+  
+  ```bash
+    appledocsucker crawl \
+    --start-url "https://developer.apple.com/documentation/swift" \
+    --max-pages 10 \
+    --output-dir /Volumes/Code/DeveloperExt/appledocsucker/docs
+    
+  appledocsucker crawl-evolution \
+    --output-dir /Volumes/Code/DeveloperExt/appledocsucker/swift-evolution
+  ```
+  
+    appledocsucker crawl \
+    --start-url "https://developer.apple.com/documentation/swift" \
+    --max-pages 10 \
+    --output-dir /Volumes/Code/DeveloperExt/appledocsucker/docs
+
+  This will:
+  - Start from Swift documentation
+  - Download 10 pages
+  - Save them to /Volumes/Code/DeveloperExt/appledocsucker/docs/
+
+  Then to build the search index:
+
+  appledocsucker build-index \
+    --docs-dir /Volumes/Code/DeveloperExt/appledocsucker/docs \
+    --output /Volumes/Code/DeveloperExt/appledocsucker/search.db
+
+  And to test the MCP server with the search database:
+
+  appledocsucker-mcp serve \
+    --docs-dir /Volumes/Code/DeveloperExt/appledocsucker/docs \
+    --search-db /Volumes/Code/DeveloperExt/appledocsucker/search.db
+
+  You can watch the crawl progress in real-time in another terminal with:
+
+  log stream --predicate 'subsystem == "com.docsucker.appledocsucker" AND category == "crawler"'
 
   Current State Analysis
 

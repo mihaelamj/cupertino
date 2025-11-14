@@ -1,6 +1,6 @@
-import Foundation
-import DocsuckerShared
 import DocsuckerLogging
+import DocsuckerShared
+import Foundation
 
 // MARK: - Search Index Builder
 
@@ -125,15 +125,7 @@ public actor SearchIndexBuilder {
             return
         }
 
-        let files = try FileManager.default.contentsOfDirectory(
-            at: evolutionDirectory,
-            includingPropertiesForKeys: [.contentModificationDateKey],
-            options: [.skipsHiddenFiles]
-        )
-
-        let proposalFiles = files.filter {
-            $0.pathExtension == "md" && $0.lastPathComponent.hasPrefix("SE-")
-        }
+        let proposalFiles = try getProposalFiles(from: evolutionDirectory)
 
         guard !proposalFiles.isEmpty else {
             logInfo("⚠️  No Swift Evolution proposals found")
@@ -151,37 +143,11 @@ public actor SearchIndexBuilder {
                 continue
             }
 
-            // Extract proposal ID from filename
-            let filename = file.deletingPathExtension().lastPathComponent
-            let proposalID = extractProposalID(from: filename) ?? filename
-
-            // Extract title
-            let title = extractTitle(from: content) ?? proposalID
-
-            // Build URI
-            let uri = "swift-evolution://\(proposalID)"
-
-            // Get file modification date
-            let attributes = try? FileManager.default.attributesOfItem(atPath: file.path)
-            let modDate = attributes?[.modificationDate] as? Date ?? Date()
-
-            // Compute content hash
-            let contentHash = HashUtilities.sha256(of: content)
-
-            // Index document
             do {
-                try await searchIndex.indexDocument(
-                    uri: uri,
-                    framework: "swift-evolution",
-                    title: title,
-                    content: content,
-                    filePath: file.path,
-                    contentHash: contentHash,
-                    lastCrawled: modDate
-                )
+                try await indexProposal(file: file, content: content)
                 indexed += 1
             } catch {
-                logError("Failed to index \(uri): \(error)")
+                logError("Failed to index \(file.lastPathComponent): \(error)")
                 skipped += 1
             }
 
@@ -191,6 +157,39 @@ public actor SearchIndexBuilder {
         }
 
         logInfo("   Swift Evolution: \(indexed) indexed, \(skipped) skipped")
+    }
+
+    private func getProposalFiles(from directory: URL) throws -> [URL] {
+        let files = try FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        )
+
+        return files.filter {
+            $0.pathExtension == "md" && $0.lastPathComponent.range(of: #"^\d{4}-"#, options: .regularExpression) != nil
+        }
+    }
+
+    private func indexProposal(file: URL, content: String) async throws {
+        let filename = file.deletingPathExtension().lastPathComponent
+        let proposalID = extractProposalID(from: filename) ?? filename
+        let title = extractTitle(from: content) ?? proposalID
+        let uri = "swift-evolution://\(proposalID)"
+
+        let attributes = try? FileManager.default.attributesOfItem(atPath: file.path)
+        let modDate = attributes?[.modificationDate] as? Date ?? Date()
+        let contentHash = HashUtilities.sha256(of: content)
+
+        try await searchIndex.indexDocument(
+            uri: uri,
+            framework: "swift-evolution",
+            title: title,
+            content: content,
+            filePath: file.path,
+            contentHash: contentHash,
+            lastCrawled: modDate
+        )
     }
 
     // MARK: - Helper Methods
@@ -225,8 +224,7 @@ public actor SearchIndexBuilder {
         let pattern = #"(SE-\d+)"#
         if let regex = try? NSRegularExpression(pattern: pattern, options: []),
            let match = regex.firstMatch(in: filename, range: NSRange(filename.startIndex..., in: filename)),
-           let range = Range(match.range(at: 1), in: filename)
-        {
+           let range = Range(match.range(at: 1), in: filename) {
             return String(filename[range])
         }
         return nil

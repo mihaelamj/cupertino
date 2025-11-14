@@ -1,9 +1,9 @@
-import Foundation
 import ArgumentParser
-import DocsuckerShared
 import DocsuckerCore
-import DocsuckerSearch
 import DocsuckerLogging
+import DocsuckerSearch
+import DocsuckerShared
+import Foundation
 
 // MARK: - Docsucker CLI
 
@@ -13,7 +13,7 @@ struct AppleDocsucker: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "appledocsucker",
         abstract: "Apple Documentation Crawler",
-        version: "1.0.0",
+        version: "0.1.0",
         subcommands: [Crawl.self, CrawlEvolution.self, DownloadSamples.self, ExportPDF.self, Update.self, BuildIndex.self, Config.self],
         defaultSubcommand: Crawl.self
     )
@@ -98,13 +98,19 @@ extension AppleDocsucker {
         @Option(name: .long, help: "Output directory for proposals")
         var outputDir: String = "~/.docsucker/swift-evolution"
 
+        @Flag(name: .long, help: "Only download accepted/implemented proposals")
+        var onlyAccepted: Bool = false
+
         mutating func run() async throws {
             ConsoleLogger.info("🚀 Swift Evolution Crawler\n")
 
             let outputURL = URL(fileURLWithPath: outputDir).expandingTildeInPath
 
             // Create crawler
-            let crawler = await SwiftEvolutionCrawler(outputDirectory: outputURL)
+            let crawler = await SwiftEvolutionCrawler(
+                outputDirectory: outputURL,
+                onlyAccepted: onlyAccepted
+            )
 
             // Run crawler
             let stats = try await crawler.crawl { progress in
@@ -138,7 +144,7 @@ extension AppleDocsucker {
         var outputDir: String = "~/.docsucker/sample-code"
 
         @Option(name: .long, help: "Maximum number of samples to download")
-        var maxSamples: Int? = nil
+        var maxSamples: Int?
 
         @Flag(name: .long, help: "Force re-download of existing files")
         var force: Bool = false
@@ -197,7 +203,7 @@ extension AppleDocsucker {
         var outputDir: String = "~/.docsucker/pdfs"
 
         @Option(name: .long, help: "Maximum number of files to convert")
-        var maxFiles: Int? = nil
+        var maxFiles: Int?
 
         @Flag(name: .long, help: "Force re-export of existing PDFs")
         var force: Bool = false

@@ -98,20 +98,22 @@ swift build -c release
 
 ### 4. Install Globally
 
-#### Option 1: Symlinks (Recommended for Development)
+#### Option 1: Install (Recommended)
 
-Changes are reflected immediately after rebuild - no reinstall needed!
+Copies binaries to /usr/local/bin.
 
 **Using Makefile (Easiest - works from root or Packages):**
 
 ```bash
 # From root directory
 cd appledocsucker
-make install-symlinks
+make build                       # Build binaries
+sudo make install                # Install to /usr/local/bin
 
 # OR from Packages directory
 cd appledocsucker/Packages
-make install-symlinks
+make build                       # Build binaries
+sudo make install                # Install to /usr/local/bin
 
 # Verify
 which appledocsucker
@@ -121,7 +123,7 @@ appledocsucker --version
 **To update after code changes (works from root or Packages):**
 
 ```bash
-make update  # Rebuilds and changes are immediately live!
+sudo make update  # Rebuilds and reinstalls
 ```
 
 **Manual installation:**
@@ -139,23 +141,21 @@ which appledocsucker
 appledocsucker --version
 ```
 
-#### Option 2: Copy Binaries
+#### Option 2: Symlinks (Advanced)
 
-Requires manual copy after each change.
+Changes reflected immediately after rebuild - no reinstall needed. Can have PATH issues with sudo.
 
 **Using Makefile (works from root or Packages):**
 
 ```bash
-make install
+make build
+sudo make install-symlinks
 ```
 
-**Manual installation (must be in Packages directory):**
+**To update:**
 
 ```bash
-cd Packages
-swift build -c release
-sudo cp .build/release/appledocsucker /usr/local/bin/
-sudo cp .build/release/appledocsucker-mcp /usr/local/bin/
+make update  # Just rebuild, symlinks auto-update
 ```
 
 #### Option 3: Use Directly from Build Directory
@@ -177,14 +177,15 @@ swift build
 
 ```bash
 # One-time setup (from either root or Packages directory)
-make install-symlinks
+make build                       # Build binaries
+sudo make install                # Install to /usr/local/bin
 
 # Development iteration
 # 1. Make code changes
 # 2. Run (from either root or Packages directory):
-make update
+sudo make update                 # Rebuild and reinstall
 
-# That's it! Changes are live.
+# That's it! Changes are installed and ready.
 ```
 
 **Alternative: Manual Script**

@@ -8,6 +8,11 @@ BUILD_DIR = .build
 SWIFT = swift
 INSTALL = install
 
+# Get the absolute path to this Makefile's directory
+# This works even when run with sudo
+MAKEFILE_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+PROJECT_DIR := $(MAKEFILE_DIR)
+
 # Build configuration
 SWIFT_BUILD_FLAGS = -c release
 PRODUCT_NAME_CLI = appledocsucker
@@ -40,9 +45,9 @@ help:
 	@echo "  $(GREEN)make build$(RESET)         - Build both executables (release mode)"
 	@echo "  $(GREEN)make build-debug$(RESET)   - Build both executables (debug mode)"
 	@echo "  $(GREEN)make build-release$(RESET) - Build both executables (release mode, optimized)"
-	@echo "  $(GREEN)make install$(RESET)       - Install executables to $(BINDIR) (copy)"
-	@echo "  $(GREEN)make install-symlinks$(RESET) - Install with symlinks (recommended for dev)"
-	@echo "  $(GREEN)make update$(RESET)        - Quick rebuild and update for development"
+	@echo "  $(GREEN)make install$(RESET)       - Install executables to $(BINDIR) (recommended)"
+	@echo "  $(GREEN)make install-symlinks$(RESET) - Install with symlinks (advanced)"
+	@echo "  $(GREEN)make update$(RESET)        - Rebuild and reinstall for development"
 	@echo "  $(GREEN)make uninstall$(RESET)     - Remove installed executables"
 	@echo "  $(GREEN)make test$(RESET)          - Run all tests"
 	@echo "  $(GREEN)make test-unit$(RESET)     - Run unit tests only (skip integration)"
@@ -94,41 +99,57 @@ build-release:
 	@echo "  CLI: $(BUILD_DIR)/release/$(PRODUCT_NAME_CLI)"
 	@echo "  MCP: $(BUILD_DIR)/release/$(PRODUCT_NAME_MCP)"
 
-## install: Install executables to PREFIX/bin (copy, requires sudo if PREFIX=/usr/local)
-install: build-release
-	@echo "$(BOLD)$(GREEN)Installing to $(BINDIR) (copy)...$(RESET)"
+## install: Install executables to PREFIX/bin (copy)
+install:
+	@if [ ! -f "$(PROJECT_DIR)/$(BUILD_DIR)/release/$(PRODUCT_NAME_CLI)" ]; then \
+		echo "$(YELLOW)⚠ Release binaries not found. Please build first:$(RESET)"; \
+		echo "$(YELLOW)  make build$(RESET)"; \
+		exit 1; \
+	fi
+	@echo "$(BOLD)$(GREEN)Installing to $(BINDIR)...$(RESET)"
 	@mkdir -p $(BINDIR)
-	$(INSTALL) -m 755 $(BUILD_DIR)/release/$(PRODUCT_NAME_CLI) $(BINDIR)/$(PRODUCT_NAME_CLI)
-	$(INSTALL) -m 755 $(BUILD_DIR)/release/$(PRODUCT_NAME_MCP) $(BINDIR)/$(PRODUCT_NAME_MCP)
+	$(INSTALL) -m 755 $(PROJECT_DIR)/$(BUILD_DIR)/release/$(PRODUCT_NAME_CLI) $(BINDIR)/$(PRODUCT_NAME_CLI)
+	$(INSTALL) -m 755 $(PROJECT_DIR)/$(BUILD_DIR)/release/$(PRODUCT_NAME_MCP) $(BINDIR)/$(PRODUCT_NAME_MCP)
 	@echo "$(GREEN)✓ Installation complete$(RESET)"
 	@echo "  Installed: $(BINDIR)/$(PRODUCT_NAME_CLI)"
 	@echo "  Installed: $(BINDIR)/$(PRODUCT_NAME_MCP)"
 	@echo ""
-	@echo "$(YELLOW)Note: Files are copied. Use 'make install-symlinks' for development.$(RESET)"
+	@echo "$(YELLOW)Development workflow: Run 'make update' after code changes to rebuild and reinstall.$(RESET)"
 	@echo ""
 	@echo "$(YELLOW)Verify installation:$(RESET)"
 	@echo "  $(PRODUCT_NAME_CLI) --version"
 	@echo "  $(PRODUCT_NAME_MCP) --version"
 
-## install-symlinks: Install with symlinks (recommended for development)
-install-symlinks: build-release
+## install-symlinks: Install with symlinks (advanced - requires full paths)
+install-symlinks:
+	@if [ ! -f "$(PROJECT_DIR)/$(BUILD_DIR)/release/$(PRODUCT_NAME_CLI)" ]; then \
+		echo "$(YELLOW)⚠ Release binaries not found. Please build first:$(RESET)"; \
+		echo "$(YELLOW)  make build$(RESET)"; \
+		exit 1; \
+	fi
 	@echo "$(BOLD)$(GREEN)Installing to $(BINDIR) (symlinks)...$(RESET)"
 	@mkdir -p $(BINDIR)
-	@ln -sf "$(PWD)/$(BUILD_DIR)/release/$(PRODUCT_NAME_CLI)" $(BINDIR)/$(PRODUCT_NAME_CLI)
-	@ln -sf "$(PWD)/$(BUILD_DIR)/release/$(PRODUCT_NAME_MCP)" $(BINDIR)/$(PRODUCT_NAME_MCP)
+	@ln -sf "$(PROJECT_DIR)/$(BUILD_DIR)/release/$(PRODUCT_NAME_CLI)" $(BINDIR)/$(PRODUCT_NAME_CLI)
+	@ln -sf "$(PROJECT_DIR)/$(BUILD_DIR)/release/$(PRODUCT_NAME_MCP)" $(BINDIR)/$(PRODUCT_NAME_MCP)
 	@echo "$(GREEN)✓ Installation complete (symlinks)$(RESET)"
-	@echo "  Symlinked: $(BINDIR)/$(PRODUCT_NAME_CLI) -> $(PWD)/$(BUILD_DIR)/release/$(PRODUCT_NAME_CLI)"
-	@echo "  Symlinked: $(BINDIR)/$(PRODUCT_NAME_MCP) -> $(PWD)/$(BUILD_DIR)/release/$(PRODUCT_NAME_MCP)"
+	@echo "  Symlinked: $(BINDIR)/$(PRODUCT_NAME_CLI) -> $(PROJECT_DIR)/$(BUILD_DIR)/release/$(PRODUCT_NAME_CLI)"
+	@echo "  Symlinked: $(BINDIR)/$(PRODUCT_NAME_MCP) -> $(PROJECT_DIR)/$(BUILD_DIR)/release/$(PRODUCT_NAME_MCP)"
 	@echo ""
-	@echo "$(YELLOW)Development workflow: Just run 'make update' to rebuild and use!$(RESET)"
+	@echo "$(YELLOW)Development workflow: Just run 'make update' to rebuild (changes auto-apply via symlinks).$(RESET)"
 	@echo ""
 	@echo "$(YELLOW)Verify installation:$(RESET)"
 	@echo "  $(PRODUCT_NAME_CLI) --version"
 	@echo "  $(PRODUCT_NAME_MCP) --version"
 
-## update: Quick rebuild for development (use with install-symlinks)
+## update: Rebuild and reinstall for development
 update: build-release
-	@echo "$(GREEN)✓ Update complete! Changes are live.$(RESET)"
+	@# Check if binaries are symlinked or copied
+	@if [ -L "$(BINDIR)/$(PRODUCT_NAME_CLI)" ]; then \
+		echo "$(GREEN)✓ Update complete! Symlinks automatically use new build.$(RESET)"; \
+	else \
+		$(MAKE) install; \
+		echo "$(GREEN)✓ Update complete! Binaries reinstalled.$(RESET)"; \
+	fi
 	@echo ""
 	@echo "$(YELLOW)Test your changes:$(RESET)"
 	@echo "  $(PRODUCT_NAME_CLI) --version"
