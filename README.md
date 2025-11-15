@@ -60,7 +60,8 @@ sudo make update                 # Rebuild and reinstall
 ### Download Documentation
 
 ```bash
-# Download all Apple documentation (~2-4 hours)
+# Download all Apple documentation (~20-24 hours for 13,000 pages)
+# Note: Takes time due to 0.5s delay between requests to respect Apple's servers
 appledocsucker crawl \
   --start-url "https://developer.apple.com/documentation/" \
   --max-pages 15000 \
@@ -226,10 +227,19 @@ log stream --predicate 'subsystem == "com.docsucker.appledocsucker"'
 |-----------|------|------|
 | Build CLI | 10-15s | 4.3MB |
 | Build MCP | 10-15s | 4.4MB |
-| Crawl 15,000 pages | 2-4 hours | 2-3GB |
+| Crawl 13,000 pages | 20-24 hours | 2-3GB |
 | Swift Evolution | 2-5 min | 10-20MB |
 | Build search index | 2-5 min | ~50MB |
 | Search query | <100ms | - |
+
+**Why does crawling take 20+ hours?**
+
+The crawler respects Apple's servers with a **0.5 second delay between each request**. For 13,000 pages:
+- 13,000 pages × 0.5s = 6,500 seconds (~1.8 hours minimum)
+- Plus page rendering, parsing, and saving time
+- **Total: ~20-24 hours for initial full crawl**
+
+This is a **one-time operation**. Incremental updates use change detection to skip unchanged pages and complete much faster.
 
 ## Example Use Cases
 

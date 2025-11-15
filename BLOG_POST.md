@@ -54,10 +54,12 @@ AI Agents (Claude, etc.)
 
 Uses **WKWebView** to handle JavaScript-heavy pages:
 - Breadth-first traversal starting from any Apple docs URL
-- Respects rate limits with configurable delays
+- Respects Apple's servers with 0.5s delay between requests (configurable)
 - Resume capability for interrupted crawls
 - SHA256 change detection for incremental updates
-- Crawls ~13,000 pages in 22 hours (one-time)
+- Crawls ~13,000 pages in 20-24 hours (one-time operation)
+
+**Why 20+ hours?** The crawler waits 0.5 seconds between each request to be respectful to Apple's servers. With 13,000 pages, this adds up to significant time, but it's a **one-time crawl** - future updates use change detection and are much faster.
 
 ### 2. Clean Markdown Conversion
 
@@ -187,7 +189,7 @@ Claude now has **instant access to 13,000+ documentation pages**.
 Download once, search forever:
 
 ```bash
-# One-time download (~2-4 hours)
+# One-time download (~20-24 hours for full crawl)
 appledocsucker crawl --max-pages 15000
 
 # Build search index (~2-5 minutes)
