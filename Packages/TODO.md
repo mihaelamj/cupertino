@@ -43,9 +43,11 @@ claude code --continue
 - ✅ MCP server for AI agents
 - ✅ Homebrew installation
 - ✅ Swift Evolution proposal indexing (429 proposals)
-- ✅ Sample code download (607 projects, 27GB)
+- ✅ Sample code download (607 projects, 26GB)
+- ✅ Sample README verification (100% have README.md)
 - ✅ SwiftLint compliance
 - ✅ os.log logging implementation
+- ✅ Directory structure documentation (hardcoded paths)
 
 ---
 

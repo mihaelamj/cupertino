@@ -15,9 +15,10 @@ Current state:
 - Search indexing with SQLite FTS5
 - Currently crawling ~13,000 pages
 
-Read: /Volumes/Code/DeveloperExt/work/appledocsucker/Packages/Package.swift
-Read: /Volumes/Code/DeveloperExt/work/appledocsucker/Packages/GUI_PROPOSAL.md
-Read: /Volumes/Code/DeveloperExt/work/appledocsucker/Packages/SAMPLE_CODE_PLAN.md
+Read key files:
+- DIRECTORY_STRUCTURE.md (hardcoded paths reference)
+- TODO.md (comprehensive task list)
+- CONSTRAINTS.md (critical constraints)
 
 What do you want help with?
 ```
@@ -168,11 +169,12 @@ Planned (Not Started):
 - [ ] API-level granular indexing (SAMPLE_CODE_PLAN.md Phase 4)
 
 Key Files to Read:
-1. /Volumes/Code/DeveloperExt/work/appledocsucker/Packages/Package.swift
-2. /Volumes/Code/DeveloperExt/work/appledocsucker/Packages/GUI_PROPOSAL.md
-3. /Volumes/Code/DeveloperExt/work/appledocsucker/Packages/SAMPLE_CODE_PLAN.md
-4. /Volumes/Code/DeveloperExt/work/appledocsucker/Packages/Sources/DocsuckerCore/WebCrawler.swift
-5. /Volumes/Code/DeveloperExt/work/appledocsucker/Packages/Sources/DocsuckerSearch/SearchIndex.swift
+1. DIRECTORY_STRUCTURE.md - Hardcoded paths reference (read this first!)
+2. TODO.md - Comprehensive task list with all phases
+3. CONSTRAINTS.md - Critical constraints and design decisions
+4. GUI_PROPOSAL.md - Native macOS SwiftUI GUI plan
+5. SAMPLE_CODE_PLAN.md - Sample code integration plan
+6. Package.swift - Swift package configuration
 
 Important Notes:
 - Hardcoded base path: /Volumes/Code/DeveloperExt/appledocsucker
