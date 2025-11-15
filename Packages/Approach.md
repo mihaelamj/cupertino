@@ -1,5 +1,7 @@
  ---
  
+ process:appledocsucker AND category:crawler
+ 
  Log all
  
  ```bash
