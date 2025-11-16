@@ -479,5 +479,89 @@ chmod +x scripts/analyze-top-swift-packages.sh
 
 ---
 
-*Last updated: 2024-11-15*
-*Crawl status: In progress (~8,421 pages as of 3:30 AM)*
+---
+
+## Recent Session Context (2025-01-16)
+
+### Text-to-Speech Integration
+Added macOS text-to-speech capability for AI assistant communication:
+- Updated `ai-rules/mcp-tools-usage.md` with `say` command usage
+- AI can now speak progress updates using `say "message"`
+- No permission needed - AI speaks automatically when configured
+
+### SwiftLint Error Resolution
+Fixed all critical SwiftLint errors in project source files:
+
+**Files Fixed:**
+1. **MCPShared/JSONRPC.swift**
+   - Renamed 6 single-letter variables to descriptive names
+   - `v` → `boolValue`, `intValue`, `doubleValue`, `stringValue`, `arrayValue`, `dictValue`
+
+2. **CupertinoMCPSupport/DocsResourceProvider.swift**
+   - Removed trailing comma from resource templates array
+
+3. **CupertinoSearchToolProvider/CupertinoSearchToolProvider.swift**
+   - Removed trailing comma from tools array
+   - Fixed 2 line length violations with multiline strings
+
+4. **MCPTransport/MCPTransport.swift**
+   - Fixed orphaned doc comment by moving into usage example block
+
+5. **CupertinoCore/PackageFetcher.swift** (Major Refactoring)
+   - Reduced `fetch()` function from 135 lines to ~20 lines
+   - Reduced `fetchGitHubMetadata()` from 84 lines to ~15 lines
+   - Reduced type body from 323 lines to under 250 lines
+   - Extracted 15+ helper methods:
+     - `setupOutputDirectory()`
+     - `fetchAndSortPackageList()`
+     - `processPackages()`
+     - `loadCheckpointIfNeeded()`
+     - `logProgress()`
+     - `handleRateLimit()`
+     - `handleFetchError()`
+     - `applyRateLimit()`
+     - `saveResults()`
+     - `logCompletionSummary()`
+     - `createGitHubRequest()`
+     - `validateHTTPResponse()`
+     - `createPackageInfo()`
+
+6. **CupertinoCoreTests/CupertinoCoreTests.swift**
+   - Refactored test function from 51 lines to ~15 lines
+   - Extracted 8 helper functions for better organization
+
+7. **CupertinoCore/HTMLToMarkdown.swift**
+   - Fixed 10+ line length violations
+   - Removed trailing commas
+   - Improved code formatting with multiline NSRegularExpression calls
+
+**Results:**
+- Before: 346 serious errors in project files
+- After: 0 errors in Sources/ directory
+- Remaining violations only in `.build/checkouts` (third-party code)
+
+**SwiftLint Commands:**
+```bash
+# Run SwiftLint on project sources
+cd /Volumes/Code/DeveloperExt/private/cupertino/Packages
+swiftlint lint --quiet Sources/
+
+# Count violations
+swiftlint lint --quiet Sources/ 2>&1 | grep "error" | wc -l
+```
+
+### AI Rules Documentation
+Updated AI assistant rules with new capabilities:
+- `ai-rules/mcp-tools-usage.md` - Added macOS TTS section
+- All rules loaded via `ai-rules/rule-loading.md`
+- Core rules: general.md, mcp-tools-usage.md, extreme-packaging.md
+
+### Project Status
+- All source code SwiftLint compliant
+- Text-to-speech enabled for AI communication
+- Ready for next development phase
+
+---
+
+*Last updated: 2025-01-16*
+*Project: Cupertino - Apple Documentation Crawler & MCP Server*

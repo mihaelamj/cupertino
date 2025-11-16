@@ -20,7 +20,7 @@ A Swift command-line tool for downloading and converting Apple documentation to 
 
 ```bash
 cd Packages
-swift build --product docsucker
+swift build --product cupertino
 ```
 
 The executable will be at: `.build/debug/cupertino`
@@ -28,8 +28,8 @@ The executable will be at: `.build/debug/cupertino`
 ### Install to /usr/local/bin (optional):
 
 ```bash
-swift build -c release --product docsucker
-cp .build/release/docsucker /usr/local/bin/
+swift build -c release --product cupertino
+cp .build/release/cupertino /usr/local/bin/
 ```
 
 ## Usage
@@ -43,14 +43,14 @@ cupertino crawl \
   --start-url "https://developer.apple.com/documentation/" \
   --max-pages 15000 \
   --max-depth 15 \
-  --output-dir ~/.docsucker/docs
+  --output-dir ~/.cupertino/docs
 ```
 
 **Parameters:**
 - `--start-url` - Starting URL to crawl from
 - `--max-pages` - Maximum number of pages to download (default: 15000)
 - `--max-depth` - Maximum link depth to follow (default: 15)
-- `--output-dir` - Where to save the documentation (default: `~/.docsucker/docs`)
+- `--output-dir` - Where to save the documentation (default: `~/.cupertino/docs`)
 - `--force` - Force recrawl all pages (ignore cache)
 
 **Estimated time:** 2-4 hours for full documentation
@@ -82,7 +82,7 @@ Download all accepted Swift Evolution proposals from GitHub:
 
 ```bash
 cupertino crawl-evolution \
-  --output-dir ~/.docsucker/swift-evolution
+  --output-dir ~/.cupertino/swift-evolution
 ```
 
 This will:
@@ -103,7 +103,7 @@ Download Apple sample code projects as zip/tar files:
 ```bash
 cupertino download-samples \
   --authenticate \
-  --output-dir ~/.docsucker/sample-code \
+  --output-dir ~/.cupertino/sample-code \
   --max-samples 10
 ```
 
@@ -117,13 +117,13 @@ This will:
 
 ```bash
 cupertino download-samples \
-  --output-dir ~/.docsucker/sample-code \
+  --output-dir ~/.cupertino/sample-code \
   --max-samples 100
 ```
 
 **Parameters:**
 - `--authenticate` - Launch visible browser for authentication (use on first run)
-- `--output-dir` - Where to save sample code files (default: `~/.docsucker/sample-code`)
+- `--output-dir` - Where to save sample code files (default: `~/.cupertino/sample-code`)
 - `--max-samples` - Limit number of samples to download (optional, downloads all if not specified)
 - `--force` - Force re-download of existing files
 
@@ -173,13 +173,13 @@ Convert downloaded markdown documentation to PDF format:
 
 ```bash
 cupertino export-pdf \
-  --input-dir ~/.docsucker/docs \
-  --output-dir ~/.docsucker/pdfs
+  --input-dir ~/.cupertino/docs \
+  --output-dir ~/.cupertino/pdfs
 ```
 
 **Parameters:**
-- `--input-dir` - Directory containing markdown files (default: `~/.docsucker/docs`)
-- `--output-dir` - Directory for PDF output (default: `~/.docsucker/pdfs`)
+- `--input-dir` - Directory containing markdown files (default: `~/.cupertino/docs`)
+- `--output-dir` - Directory for PDF output (default: `~/.cupertino/pdfs`)
 - `--max-files` - Limit number of files to convert (optional)
 - `--force` - Force re-export of existing PDFs
 
@@ -227,7 +227,7 @@ Re-run crawl to update only changed pages:
 
 ```bash
 cupertino update \
-  --output-dir ~/.docsucker/docs
+  --output-dir ~/.cupertino/docs
 ```
 
 This uses the saved metadata to:
@@ -256,7 +256,7 @@ Configuration is saved to: `~/.docsucker/config.json`
 ### Directory Structure
 
 ```
-~/.docsucker/docs/
+~/.cupertino/docs/
 ├── swift/
 │   ├── documentation_swift_array.md
 │   ├── documentation_swift_string.md
@@ -268,7 +268,7 @@ Configuration is saved to: `~/.docsucker/config.json`
 ├── foundation/
 │   ├── documentation_foundation_url.md
 │   └── ...
-└── .docsucker/
+└── .cupertino/
     └── metadata.json
 ```
 
@@ -310,7 +310,7 @@ cupertino crawl \
   --start-url "https://developer.apple.com/documentation/" \
   --max-pages 15000 \
   --force \
-  --output-dir ~/.docsucker/docs
+  --output-dir ~/.cupertino/docs
 ```
 
 ### Download with Custom Settings
@@ -333,7 +333,7 @@ During crawling, you'll see real-time progress:
 🚀 Starting crawl
    Start URL: https://developer.apple.com/documentation/swift
    Max pages: 100
-   Output: ~/.docsucker/docs
+   Output: ~/.cupertino/docs
 
 📄 [1/100] depth=0 [swift] https://developer.apple.com/documentation/swift
    ✅ Saved new page: documentation_swift.md
@@ -354,12 +354,12 @@ During crawling, you'll see real-time progress:
    Errors: 0
    Duration: 180s
 
-📁 Output: ~/.docsucker/docs
+📁 Output: ~/.cupertino/docs
 ```
 
 ## Configuration File Format
 
-`~/.docsucker/config.json`:
+`~/.cupertino/config.json`:
 
 ```json
 {
@@ -367,7 +367,7 @@ During crawling, you'll see real-time progress:
     "startURL": "https://developer.apple.com/documentation/",
     "maxPages": 15000,
     "maxDepth": 15,
-    "outputDirectory": "~/.docsucker/docs",
+    "outputDirectory": "~/.cupertino/docs",
     "requestDelay": 0.5
   },
   "changeDetection": {
@@ -387,8 +387,8 @@ During crawling, you'll see real-time progress:
 Make sure the output directory is writable:
 
 ```bash
-mkdir -p ~/.docsucker/docs
-chmod 755 ~/.docsucker/docs
+mkdir -p ~/.cupertino/docs
+chmod 755 ~/.cupertino/docs
 ```
 
 ### Error: Network Timeout
@@ -409,7 +409,7 @@ Some documentation pages may be inaccessible or moved. The crawler will continue
 2. **Use Incremental Updates**: Run `cupertino update` regularly instead of full re-crawls
 3. **Monitor Disk Space**: Full docs can be 2-3 GB
 4. **Be Respectful**: Default 0.5s delay between requests is reasonable
-5. **Backup Metadata**: Keep `.docsucker/metadata.json` for change detection
+5. **Backup Metadata**: Keep `.cupertino/metadata.json` for change detection
 
 ## Use Cases
 

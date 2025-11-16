@@ -1,4 +1,5 @@
 // MARK: - MCPTransport Package
+
 //
 // Transport layer implementations for Model Context Protocol.
 // Supports stdio (for CLI/Claude Desktop) and HTTP/SSE (for web clients).
@@ -7,12 +8,14 @@
 
 @_exported import MCPShared
 
-/// Current transport implementations:
-/// - StdioTransport: Standard input/output for CLI tools and Claude Desktop
-/// - HTTPTransport: Coming soon - HTTP with Server-Sent Events for web clients
-
 // MARK: - Usage Example
+
 /*
+ Current transport implementations:
+ - StdioTransport: Standard input/output for CLI tools and Claude Desktop
+ - HTTPTransport: Coming soon - HTTP with Server-Sent Events for web clients
+
+ Example usage:
  // Create and start stdio transport
  let transport = StdioTransport()
  try await transport.start()

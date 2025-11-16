@@ -1,4 +1,4 @@
-# AppleCupertino - Directory Structure Reference
+# Cupertino - Directory Structure Reference
 
 ## Hardcoded Paths
 
@@ -6,22 +6,22 @@
 
 ### Base Directory
 ```
-/Volumes/Code/DeveloperExt/appledocsucker/
+/Volumes/Code/DeveloperExt/private/cupertino/
 ```
 
 ### Data Directories
 
 | Directory | Absolute Path | Contents | Size | Count |
 |-----------|---------------|----------|------|-------|
-| **Documentation** | `/Volumes/Code/DeveloperExt/appledocsucker/docs` | Crawled Apple docs (markdown) | 61 MB | 10,099+ files |
-| **Swift Evolution** | `/Volumes/Code/DeveloperExt/appledocsucker/swift-evolution` | Accepted proposals (markdown) | 8.2 MB | 429 files |
-| **Sample Code** | `/Volumes/Code/DeveloperExt/appledocsucker/sample-code` | Sample projects (.zip) | 26 GB | 607 files |
-| **Search Database** | `/Volumes/Code/DeveloperExt/appledocsucker/search.db` | SQLite FTS5 index | ~100 MB | 1 file |
+| **Documentation** | `/Volumes/Code/DeveloperExt/private/cupertino/docs` | Crawled Apple docs (markdown) | 61 MB | 10,099+ files |
+| **Swift Evolution** | `/Volumes/Code/DeveloperExt/private/cupertino/swift-evolution` | Accepted proposals (markdown) | 8.2 MB | 429 files |
+| **Sample Code** | `/Volumes/Code/DeveloperExt/private/cupertino/sample-code` | Sample projects (.zip) | 26 GB | 607 files |
+| **Search Database** | `/Volumes/Code/DeveloperExt/private/cupertino/search.db` | SQLite FTS5 index | ~100 MB | 1 file |
 
 ### Directory Tree
 
 ```
-/Volumes/Code/DeveloperExt/appledocsucker/
+/Volumes/Code/DeveloperExt/private/cupertino/
 │
 ├── docs/                           # Documentation markdown files
 │   ├── swift/                      # Framework subdirectories
@@ -114,19 +114,19 @@ Use these hardcoded paths in Swift code:
 
 ```swift
 // Base directory
-let baseDir = "/Volumes/Code/DeveloperExt/cupertino"
+let baseDir = "/Volumes/Code/DeveloperExt/private/cupertino"
 
 // Data directories
-let docsDir = "/Volumes/Code/DeveloperExt/appledocsucker/docs"
-let evolutionDir = "/Volumes/Code/DeveloperExt/appledocsucker/swift-evolution"
-let samplesDir = "/Volumes/Code/DeveloperExt/appledocsucker/sample-code"
-let searchDB = "/Volumes/Code/DeveloperExt/appledocsucker/search.db"
+let docsDir = "/Volumes/Code/DeveloperExt/private/cupertino/docs"
+let evolutionDir = "/Volumes/Code/DeveloperExt/private/cupertino/swift-evolution"
+let samplesDir = "/Volumes/Code/DeveloperExt/private/cupertino/sample-code"
+let searchDB = "/Volumes/Code/DeveloperExt/private/cupertino/search.db"
 ```
 
 ### Shell Scripts
 ```bash
 # Base directory
-BASE_DIR="/Volumes/Code/DeveloperExt/cupertino"
+BASE_DIR="/Volumes/Code/DeveloperExt/private/cupertino"
 
 # Data directories
 DOCS_DIR="$BASE_DIR/docs"
@@ -138,7 +138,7 @@ SEARCH_DB="$BASE_DIR/search.db"
 ## External SSD Info
 
 - **Volume:** `/Volumes/Code`
-- **Project Root:** `/Volumes/Code/DeveloperExt/cupertino`
+- **Project Root:** `/Volumes/Code/DeveloperExt/private/cupertino`
 - **Available Space:** ~1.6 TB free
 - **File System:** APFS (case-sensitive)
 
@@ -154,19 +154,19 @@ SEARCH_DB="$BASE_DIR/search.db"
 
 ```bash
 # Check documentation count
-find /Volumes/Code/DeveloperExt/appledocsucker/docs -name "*.md" | wc -l
+find /Volumes/Code/DeveloperExt/private/cupertino/docs -name "*.md" | wc -l
 
 # Check Swift Evolution count
-find /Volumes/Code/DeveloperExt/appledocsucker/swift-evolution -name "*.md" | wc -l
+find /Volumes/Code/DeveloperExt/private/cupertino/swift-evolution -name "*.md" | wc -l
 
 # Check sample code count
-find /Volumes/Code/DeveloperExt/appledocsucker/sample-code -name "*.zip" | wc -l
+find /Volumes/Code/DeveloperExt/private/cupertino/sample-code -name "*.zip" | wc -l
 
 # Check total size
-du -sh /Volumes/Code/DeveloperExt/cupertino
+du -sh /Volumes/Code/DeveloperExt/private/cupertino
 
 # Verify README in sample
-unzip -l /Volumes/Code/DeveloperExt/appledocsucker/sample-code/accelerate-blurring-an-image.zip | grep README
+unzip -l /Volumes/Code/DeveloperExt/private/cupertino/sample-code/accelerate-blurring-an-image.zip | grep README
 ```
 
 ---

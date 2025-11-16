@@ -84,7 +84,9 @@ public actor CupertinoSearchToolProvider: ToolProvider {
         markdown += "Found **\(results.count)** result\(results.count == 1 ? "" : "s"):\n\n"
 
         if results.isEmpty {
-            markdown += "_No results found. Try different keywords or check available frameworks using `list_frameworks`._\n"
+            markdown += """
+            _No results found. Try different keywords or check available frameworks using `list_frameworks`._
+            """
         } else {
             for (index, result) in results.enumerated() {
                 markdown += "## \(index + 1). \(result.title)\n\n"
@@ -122,7 +124,10 @@ public actor CupertinoSearchToolProvider: ToolProvider {
         markdown += "Total documents: **\(totalDocs)**\n\n"
 
         if frameworks.isEmpty {
-            markdown += "_No frameworks found. The search index may be empty. Run `cupertino build-index` to index your documentation._\n"
+            markdown += """
+            _No frameworks found. The search index may be empty. \
+            Run `cupertino build-index` to index your documentation._
+            """
         } else {
             markdown += "| Framework | Documents |\n"
             markdown += "|-----------|----------:|\n"

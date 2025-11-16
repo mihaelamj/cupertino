@@ -5,7 +5,9 @@ import Foundation
 
 /// Fetches Swift packages from SwiftPackageIndex and enriches with GitHub metadata
 public actor PackageFetcher {
-    private let packageListURL = URL(string: "https://raw.githubusercontent.com/SwiftPackageIndex/PackageList/main/packages.json")!
+    private let packageListURL = URL(
+        string: "https://raw.githubusercontent.com/SwiftPackageIndex/PackageList/main/packages.json"
+    )!
     private let outputDirectory: URL
     private let limit: Int?
     private let resumeFromCheckpoint: Bool
@@ -23,40 +25,60 @@ public actor PackageFetcher {
     public func fetch(onProgress: ((PackageFetchProgress) -> Void)? = nil) async throws -> PackageFetchStatistics {
         var stats = PackageFetchStatistics(startTime: Date())
 
+        try setupOutputDirectory()
+        let packageURLs = try await fetchAndSortPackageList()
+        let (packages, _) = try await processPackages(
+            packageURLs,
+            stats: &stats,
+            onProgress: onProgress
+        )
+
+        let sortedPackages = packages
+            .filter { $0.error == nil || $0.stars > 0 }
+            .sorted { $0.stars > $1.stars }
+
+        try saveResults(sortedPackages, processedCount: packages.count, errors: stats.errors)
+
+        stats.endTime = Date()
+        stats.totalPackages = sortedPackages.count
+
+        logCompletionSummary(sortedPackages, stats: stats)
+
+        return stats
+    }
+
+    // MARK: - Private Methods - Setup
+
+    private func setupOutputDirectory() throws {
         logInfo("📦 Fetching Swift packages from SwiftPackageIndex...")
         logInfo("   Package list: \(packageListURL.absoluteString)")
         logInfo("   Output: \(outputDirectory.path)")
-
-        // Create output directory
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+    }
 
-        // Download package list
+    private func fetchAndSortPackageList() async throws -> [String] {
         logInfo("\n📥 Downloading package list...")
         var packageURLs = try await downloadPackageList()
         logInfo("   Found \(packageURLs.count) packages")
 
-        // Quick pre-fetch: Get star counts for all packages first (lightweight)
         logInfo("\n⭐ Pre-fetching star counts to sort by popularity...")
         packageURLs = try await sortPackagesByStars(packageURLs)
         logInfo("   ✓ Packages sorted by star count (most popular first)")
 
-        // Load checkpoint if resuming
-        var packages: [PackageInfo] = []
-        var startIndex = 0
+        return packageURLs
+    }
 
-        if resumeFromCheckpoint {
-            if let checkpoint = try? loadCheckpoint() {
-                packages = checkpoint.packages
-                startIndex = checkpoint.processedCount
-                logInfo("📂 Resuming from checkpoint: \(startIndex) packages processed")
-            }
-        }
-
-        // Determine how many to process
+    private func processPackages(
+        _ packageURLs: [String],
+        stats: inout PackageFetchStatistics,
+        onProgress: ((PackageFetchProgress) -> Void)?
+    ) async throws -> ([PackageInfo], Bool) {
+        var packages = try loadCheckpointIfNeeded()
+        let startIndex = packages.count
         let totalToProcess = limit.map { min($0, packageURLs.count) } ?? packageURLs.count
+
         logInfo("\n🔍 Fetching metadata for \(totalToProcess) packages...\n")
 
-        // Fetch metadata for each package
         var rateLimited = false
 
         for index in startIndex..<totalToProcess {
@@ -68,118 +90,123 @@ public actor PackageFetcher {
                 continue
             }
 
-            // Progress logging
-            if (index + 1) % 100 == 0 {
-                logInfo("\n[\(index + 1)/\(totalToProcess)] Fetching \(owner)/\(repo)...")
-                logInfo("   💾 Saving checkpoint...")
-                try? saveCheckpoint(packages: packages, processedCount: index + 1)
-            } else if (index + 1) % 10 == 0 {
-                logInfo("[\(index + 1)/\(totalToProcess)] \(owner)/\(repo)")
-            }
+            logProgress(index: index, total: totalToProcess, owner: owner, repo: repo)
 
-            // Fetch GitHub metadata
-            let packageInfo: PackageInfo
             do {
-                packageInfo = try await fetchGitHubMetadata(owner: owner, repo: repo)
+                let packageInfo = try await fetchGitHubMetadata(owner: owner, repo: repo)
                 packages.append(packageInfo)
                 stats.successfulFetches += 1
             } catch PackageFetchError.rateLimited {
-                logError("\n⚠️  Rate limited at package \(index + 1)/\(totalToProcess)")
-                logInfo("   💾 Checkpoint saved")
-                logInfo("   ⏸️  Wait 60 minutes or use GitHub token for higher limits")
-                rateLimited = true
-                try? saveCheckpoint(packages: packages, processedCount: index)
+                rateLimited = try handleRateLimit(packages: packages, index: index, total: totalToProcess)
                 break
-            } catch PackageFetchError.notFound {
-                // Package deleted/moved - save with minimal info
-                packages.append(PackageInfo(
-                    owner: owner,
-                    repo: repo,
-                    stars: 0,
-                    description: nil,
-                    url: "https://github.com/\(owner)/\(repo)",
-                    archived: false,
-                    fork: false,
-                    updatedAt: nil,
-                    language: nil,
-                    license: nil,
-                    error: "not_found"
-                ))
-                stats.errors += 1
             } catch {
-                logError("Failed to fetch \(owner)/\(repo): \(error)")
-                packages.append(PackageInfo(
-                    owner: owner,
-                    repo: repo,
-                    stars: 0,
-                    description: nil,
-                    url: "https://github.com/\(owner)/\(repo)",
-                    archived: false,
-                    fork: false,
-                    updatedAt: nil,
-                    language: nil,
-                    license: nil,
-                    error: "fetch_failed"
-                ))
-                stats.errors += 1
+                try handleFetchError(error, owner: owner, repo: repo, packages: &packages, stats: &stats)
             }
 
-            // Progress callback
-            if let onProgress {
-                let progress = PackageFetchProgress(
-                    current: index + 1,
-                    total: totalToProcess,
-                    packageName: "\(owner)/\(repo)",
-                    stats: stats
-                )
-                onProgress(progress)
-            }
+            onProgress?(PackageFetchProgress(
+                current: index + 1,
+                total: totalToProcess,
+                packageName: "\(owner)/\(repo)",
+                stats: stats
+            ))
 
-            // Rate limiting: 1 request per second
-            if (index + 1) % 50 == 0 {
-                try await Task.sleep(for: .seconds(5)) // Extra pause every 50
-            } else {
-                try await Task.sleep(for: .seconds(1.2))
-            }
+            try await applyRateLimit(index: index)
         }
 
-        // Save final checkpoint
         if !rateLimited {
             try? saveCheckpoint(packages: packages, processedCount: totalToProcess)
         }
 
-        // Sort by stars (descending)
-        let sortedPackages = packages
-            .filter { $0.error == nil || $0.stars > 0 }
-            .sorted { $0.stars > $1.stars }
+        return (packages, rateLimited)
+    }
 
-        // Save results
+    private func loadCheckpointIfNeeded() throws -> [PackageInfo] {
+        guard resumeFromCheckpoint, let checkpoint = try? loadCheckpoint() else {
+            return []
+        }
+        logInfo("📂 Resuming from checkpoint: \(checkpoint.processedCount) packages processed")
+        return checkpoint.packages
+    }
+
+    private func logProgress(index: Int, total: Int, owner: String, repo: String) {
+        if (index + 1) % 100 == 0 {
+            logInfo("\n[\(index + 1)/\(total)] Fetching \(owner)/\(repo)...")
+            logInfo("   💾 Saving checkpoint...")
+        } else if (index + 1) % 10 == 0 {
+            logInfo("[\(index + 1)/\(total)] \(owner)/\(repo)")
+        }
+    }
+
+    private func handleRateLimit(packages: [PackageInfo], index: Int, total: Int) throws -> Bool {
+        logError("\n⚠️  Rate limited at package \(index + 1)/\(total)")
+        logInfo("   💾 Checkpoint saved")
+        logInfo("   ⏸️  Wait 60 minutes or use GitHub token for higher limits")
+        try? saveCheckpoint(packages: packages, processedCount: index)
+        return true
+    }
+
+    private func handleFetchError(
+        _ error: Error,
+        owner: String,
+        repo: String,
+        packages: inout [PackageInfo],
+        stats: inout PackageFetchStatistics
+    ) throws {
+        let errorType = (error as? PackageFetchError == .notFound) ? "not_found" : "fetch_failed"
+        if errorType == "fetch_failed" {
+            logError("Failed to fetch \(owner)/\(repo): \(error)")
+        }
+
+        packages.append(PackageInfo(
+            owner: owner,
+            repo: repo,
+            stars: 0,
+            description: nil,
+            url: "https://github.com/\(owner)/\(repo)",
+            archived: false,
+            fork: false,
+            updatedAt: nil,
+            language: nil,
+            license: nil,
+            error: errorType
+        ))
+        stats.errors += 1
+    }
+
+    private func applyRateLimit(index: Int) async throws {
+        if (index + 1) % 50 == 0 {
+            try await Task.sleep(for: .seconds(5))
+        } else {
+            try await Task.sleep(for: .seconds(1.2))
+        }
+    }
+
+    private func saveResults(_ packages: [PackageInfo], processedCount: Int, errors: Int) throws {
         let output = PackageFetchOutput(
-            totalPackages: sortedPackages.count,
-            totalProcessed: packages.count,
-            errors: stats.errors,
+            totalPackages: packages.count,
+            totalProcessed: processedCount,
+            errors: errors,
             generatedAt: Date(),
-            packages: sortedPackages
+            packages: packages
         )
 
         let outputFile = outputDirectory.appendingPathComponent("swift-packages-with-stars.json")
         try saveJSON(output, to: outputFile)
+    }
 
-        stats.endTime = Date()
-        stats.totalPackages = sortedPackages.count
-
+    private func logCompletionSummary(_ packages: [PackageInfo], stats: PackageFetchStatistics) {
         logInfo("\n✅ Fetch completed!")
-        logInfo("   Total packages: \(sortedPackages.count)")
+        logInfo("   Total packages: \(packages.count)")
         logInfo("   Successful: \(stats.successfulFetches)")
         logInfo("   Errors: \(stats.errors)")
         if let duration = stats.duration {
             logInfo("   Duration: \(Int(duration))s")
         }
+        let outputFile = outputDirectory.appendingPathComponent("swift-packages-with-stars.json")
         logInfo("\n📁 Output: \(outputFile.path)")
 
-        // Show top 20
         logInfo("\nTop 20 packages by stars:")
-        for (index, pkg) in sortedPackages.prefix(20).enumerated() {
+        for (index, pkg) in packages.prefix(20).enumerated() {
             let archived = pkg.archived ? " [ARCHIVED]" : ""
             let fork = pkg.fork ? " [FORK]" : ""
             logInfo(String(
@@ -191,11 +218,9 @@ public actor PackageFetcher {
                 fork
             ))
         }
-
-        return stats
     }
 
-    // MARK: - Private Methods
+    // MARK: - Private Methods - Sorting
 
     private func sortPackagesByStars(_ packageURLs: [String]) async throws -> [String] {
         // Quick fetch: only get star counts (much lighter than full metadata)
@@ -285,113 +310,72 @@ public actor PackageFetcher {
 
     private func fetchGitHubMetadata(owner: String, repo: String) async throws -> PackageInfo {
         let cacheKey = "\(owner)/\(repo)"
+        let request = createGitHubRequest(owner: owner, repo: repo)
+        let (data, response) = try await URLSession.shared.data(for: request)
 
-        // Check if we already have star count cached from sorting phase
-        if let cachedStars = starCache[cacheKey] {
-            // We have stars cached, but still need other metadata (description, language, etc.)
-            // Fetch full metadata but we could skip if stars is all we need
-            let url = URL(string: "https://api.github.com/repos/\(owner)/\(repo)")!
-
-            var request = URLRequest(url: url)
-            request.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
-            request.setValue(CupertinoConstants.App.userAgent, forHTTPHeaderField: "User-Agent")
-
-            if let token = ProcessInfo.processInfo.environment["GITHUB_TOKEN"] {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
-
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw PackageFetchError.invalidResponse
-            }
-
-            switch httpResponse.statusCode {
-            case 200:
-                let decoder = JSONDecoder()
-                decoder.keyDecodingStrategy = .convertFromSnakeCase
-                let repoData = try decoder.decode(GitHubRepository.self, from: data)
-
-                // Use cached stars instead of refetching
-                return PackageInfo(
-                    owner: owner,
-                    repo: repo,
-                    stars: cachedStars, // Use cached value!
-                    description: repoData.description,
-                    url: repoData.htmlUrl,
-                    archived: repoData.archived,
-                    fork: repoData.fork,
-                    updatedAt: repoData.updatedAt,
-                    language: repoData.language,
-                    license: repoData.license?.spdxId
-                )
-
-            case 404:
-                throw PackageFetchError.notFound
-
-            case 403:
-                if let remaining = httpResponse.value(forHTTPHeaderField: "X-RateLimit-Remaining"),
-                   let remainingInt = Int(remaining),
-                   remainingInt == 0 {
-                    throw PackageFetchError.rateLimited
-                }
-                throw PackageFetchError.forbidden
-
-            default:
-                throw PackageFetchError.httpError(httpResponse.statusCode)
-            }
-        } else {
-            // No cache, fetch everything (shouldn't happen after sorting, but handle it)
-            let url = URL(string: "https://api.github.com/repos/\(owner)/\(repo)")!
-
-            var request = URLRequest(url: url)
-            request.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
-            request.setValue(CupertinoConstants.App.userAgent, forHTTPHeaderField: "User-Agent")
-
-            if let token = ProcessInfo.processInfo.environment["GITHUB_TOKEN"] {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
-
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw PackageFetchError.invalidResponse
-            }
-
-            switch httpResponse.statusCode {
-            case 200:
-                let decoder = JSONDecoder()
-                decoder.keyDecodingStrategy = .convertFromSnakeCase
-                let repoData = try decoder.decode(GitHubRepository.self, from: data)
-
-                return PackageInfo(
-                    owner: owner,
-                    repo: repo,
-                    stars: repoData.stargazersCount,
-                    description: repoData.description,
-                    url: repoData.htmlUrl,
-                    archived: repoData.archived,
-                    fork: repoData.fork,
-                    updatedAt: repoData.updatedAt,
-                    language: repoData.language,
-                    license: repoData.license?.spdxId
-                )
-
-            case 404:
-                throw PackageFetchError.notFound
-
-            case 403:
-                if let remaining = httpResponse.value(forHTTPHeaderField: "X-RateLimit-Remaining"),
-                   let remainingInt = Int(remaining),
-                   remainingInt == 0 {
-                    throw PackageFetchError.rateLimited
-                }
-                throw PackageFetchError.forbidden
-
-            default:
-                throw PackageFetchError.httpError(httpResponse.statusCode)
-            }
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw PackageFetchError.invalidResponse
         }
+
+        try validateHTTPResponse(httpResponse)
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let repoData = try decoder.decode(GitHubRepository.self, from: data)
+
+        let stars = starCache[cacheKey] ?? repoData.stargazersCount
+        return createPackageInfo(owner: owner, repo: repo, repoData: repoData, stars: stars)
+    }
+
+    private func createGitHubRequest(owner: String, repo: String) -> URLRequest {
+        let url = URL(string: "https://api.github.com/repos/\(owner)/\(repo)")!
+        var request = URLRequest(url: url)
+        request.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
+        request.setValue(CupertinoConstants.App.userAgent, forHTTPHeaderField: "User-Agent")
+
+        if let token = ProcessInfo.processInfo.environment["GITHUB_TOKEN"] {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        return request
+    }
+
+    private func validateHTTPResponse(_ response: HTTPURLResponse) throws {
+        switch response.statusCode {
+        case 200:
+            return
+        case 404:
+            throw PackageFetchError.notFound
+        case 403:
+            if let remaining = response.value(forHTTPHeaderField: "X-RateLimit-Remaining"),
+               let remainingInt = Int(remaining),
+               remainingInt == 0 {
+                throw PackageFetchError.rateLimited
+            }
+            throw PackageFetchError.forbidden
+        default:
+            throw PackageFetchError.httpError(response.statusCode)
+        }
+    }
+
+    private func createPackageInfo(
+        owner: String,
+        repo: String,
+        repoData: GitHubRepository,
+        stars: Int
+    ) -> PackageInfo {
+        PackageInfo(
+            owner: owner,
+            repo: repo,
+            stars: stars,
+            description: repoData.description,
+            url: repoData.htmlUrl,
+            archived: repoData.archived,
+            fork: repoData.fork,
+            updatedAt: repoData.updatedAt,
+            language: repoData.language,
+            license: repoData.license?.spdxId
+        )
     }
 
     private func loadCheckpoint() throws -> PackageFetchCheckpoint {
@@ -530,7 +514,7 @@ private struct GitHubLicense: Codable {
 
 // MARK: - Errors
 
-enum PackageFetchError: Error {
+enum PackageFetchError: Error, Equatable {
     case rateLimited
     case notFound
     case forbidden

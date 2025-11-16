@@ -1,6 +1,6 @@
-# AppleDocsucker - Apple Documentation Crawler & MCP Server
+# Cupertino - Apple Documentation Crawler & MCP Server
 
-TBD
+A Swift-based tool to crawl, index, and serve Apple's developer documentation to AI agents via the Model Context Protocol (MCP).
 
 [![Swift 6.2+](https://img.shields.io/badge/Swift-6.2+-orange.svg)](https://swift.org)
 [![macOS 15+](https://img.shields.io/badge/macOS-15+-blue.svg)](https://www.apple.com/macos)
@@ -17,7 +17,7 @@ TBD
 
 ## Quick Start
 
-> **Note:** All commands in this guide work from both the **root directory** (`appledocsucker/`) and the **Packages directory** (`appledocsucker/Packages/`). The root Makefile automatically delegates to Packages/Makefile.
+> **Note:** All commands in this guide work from both the **root directory** (`cupertino/`) and the **Packages directory** (`cupertino/Packages/`). The root Makefile automatically delegates to Packages/Makefile.
 
 ### Installation
 
@@ -30,8 +30,8 @@ TBD
 **Build from source:**
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/appledocsucker.git
-cd appledocsucker
+git clone https://github.com/YOUR_USERNAME/cupertino.git
+cd cupertino
 
 # Option 1: Using Makefile (works from root or Packages directory)
 make build                       # Build release binaries
@@ -42,8 +42,8 @@ cd Packages
 swift build -c release
 
 # Install manually (from Packages directory)
-sudo ln -sf "$(pwd)/.build/release/appledocsucker" /usr/local/bin/appledocsucker
-sudo ln -sf "$(pwd)/.build/release/appledocsucker-mcp" /usr/local/bin/appledocsucker-mcp
+sudo ln -sf "$(pwd)/.build/release/cupertino" /usr/local/bin/cupertino
+sudo ln -sf "$(pwd)/.build/release/cupertino-mcp" /usr/local/bin/cupertino-mcp
 ```
 
 **Quick development workflow:**
@@ -62,17 +62,17 @@ sudo make update                 # Rebuild and reinstall
 ```bash
 # Download all Apple documentation (~20-24 hours for 13,000 pages)
 # Note: Takes time due to 0.5s delay between requests to respect Apple's servers
-appledocsucker crawl \
+cupertino crawl \
   --start-url "https://developer.apple.com/documentation/" \
   --max-pages 15000 \
-  --output-dir ~/.docsucker/docs
+  --output-dir ~/.cupertino/docs
 
 # Download Swift Evolution proposals (~2-5 minutes)
-appledocsucker crawl-evolution \
-  --output-dir ~/.docsucker/swift-evolution
+cupertino crawl-evolution \
+  --output-dir ~/.cupertino/swift-evolution
 
 # Build search index (~2-5 minutes)
-appledocsucker build-index
+cupertino build-index
 ```
 
 ### Use with Claude Desktop
@@ -82,8 +82,8 @@ appledocsucker build-index
 ```json
 {
   "mcpServers": {
-    "appledocsucker": {
-      "command": "/usr/local/bin/appledocsucker-mcp",
+    "cupertino": {
+      "command": "/usr/local/bin/cupertino-mcp",
       "args": ["serve"]
     }
   }
@@ -99,7 +99,7 @@ appledocsucker build-index
 
 ## Available Commands
 
-### CLI Tool (`appledocsucker`)
+### CLI Tool (`cupertino`)
 
 | Command | Description |
 |---------|-------------|
@@ -111,15 +111,15 @@ appledocsucker build-index
 | `update` | Incremental update of existing docs |
 | `config` | Manage configuration |
 
-### MCP Server (`appledocsucker-mcp`)
+### MCP Server (`cupertino-mcp`)
 
 | Command | Description |
 |---------|-------------|
 | `serve` | Start MCP server for AI agents |
 
 **MCP Resources:**
-- `apple://documentation/*` - Read any Apple documentation page
-- `swift-evolution://{proposal-id}` - Read Swift Evolution proposals (e.g., `swift-evolution://0001`)
+- `apple-docs://{framework}/{page}` - Read any Apple documentation page
+- `swift-evolution://{proposal-id}` - Read Swift Evolution proposals (e.g., `swift-evolution://SE-0001`)
 
 **MCP Tools (requires search index):**
 - `search_docs` - Search documentation by keywords
@@ -127,7 +127,7 @@ appledocsucker build-index
 
 ## Search Features
 
-AppleDocsucker includes a powerful full-text search engine:
+Cupertino includes a powerful full-text search engine:
 
 - **Technology:** SQLite FTS5 with BM25 ranking
 - **Stemming:** Porter stemming for better matches (e.g., "running" matches "run")
@@ -141,11 +141,11 @@ AppleDocsucker includes a powerful full-text search engine:
 
 ## Build System
 
-AppleDocsucker includes a comprehensive Makefile for easy building and installation.
+Cupertino includes a comprehensive Makefile for easy building and installation.
 
 **Works from either location:**
-- Root directory: `cd appledocsucker && make build`
-- Packages directory: `cd appledocsucker/Packages && make build`
+- Root directory: `cd cupertino && make build`
+- Packages directory: `cd cupertino/Packages && make build`
 
 ```bash
 # Show all available commands
@@ -181,42 +181,42 @@ make clean                  # Clean build artifacts
 
 ## Architecture
 
-AppleDocsucker uses an **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** architecture with 9 packages:
+Cupertino uses an **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** architecture with 11 packages:
 
 ```
 Foundation Layer:
-  ├─ MCPShared          # MCP protocol models
-  ├─ DocsuckerLogging   # os.log infrastructure
-  └─ DocsuckerShared    # Configuration & models
+  ├─ MCPShared              # MCP protocol models
+  ├─ CupertinoLogging       # os.log infrastructure
+  └─ CupertinoShared        # Configuration & models
 
 Infrastructure Layer:
-  ├─ MCPTransport       # JSON-RPC transport (stdio)
-  ├─ MCPServer          # MCP server implementation
-  └─ DocsuckerCore      # Crawler & downloaders
+  ├─ MCPTransport           # JSON-RPC transport (stdio)
+  ├─ MCPServer              # MCP server implementation
+  └─ CupertinoCore          # Crawler & downloaders
 
 Application Layer:
-  ├─ DocsuckerSearch    # SQLite FTS5 search
-  ├─ DocsuckerMCPSupport # Resource providers
-  └─ DocsSearchToolProvider # Search tools
+  ├─ CupertinoSearch        # SQLite FTS5 search
+  ├─ CupertinoMCPSupport    # Resource providers
+  └─ CupertinoSearchToolProvider # Search tool implementations
 
 Executables:
-  ├─ DocsuckerCLI       # CLI tool
-  └─ DocsuckerMCP       # MCP server
+  ├─ CupertinoCLI           # CLI tool (cupertino)
+  └─ CupertinoMCP           # MCP server (cupertino-mcp)
 ```
 
 ## Logging
 
-AppleDocsucker uses **os.log** for structured logging across all components:
+Cupertino uses **os.log** for structured logging across all components:
 
 ```bash
 # View all logs
-log show --predicate 'subsystem == "com.docsucker.appledocsucker"' --last 1h
+log show --predicate 'subsystem == "com.cupertino"' --last 1h
 
 # View specific category
-log show --predicate 'subsystem == "com.docsucker.appledocsucker" AND category == "crawler"' --last 1h
+log show --predicate 'subsystem == "com.cupertino" AND category == "crawler"' --last 1h
 
 # Stream live logs
-log stream --predicate 'subsystem == "com.docsucker.appledocsucker"'
+log stream --predicate 'subsystem == "com.cupertino"'
 ```
 
 **Categories:** crawler, mcp, search, cli, transport, pdf, evolution, samples
@@ -248,7 +248,7 @@ This is a **one-time operation**. Incremental updates use change detection to sk
 Download all documentation for offline development:
 
 ```bash
-appledocsucker crawl --max-pages 15000 --output-dir ~/offline-docs
+cupertino crawl --max-pages 15000 --output-dir ~/offline-docs
 ```
 
 ### 2. Framework-Specific Research
@@ -256,7 +256,7 @@ appledocsucker crawl --max-pages 15000 --output-dir ~/offline-docs
 Download just SwiftUI documentation:
 
 ```bash
-appledocsucker crawl \
+cupertino crawl \
   --start-url "https://developer.apple.com/documentation/swiftui" \
   --max-pages 500 \
   --output-dir ~/swiftui-docs
@@ -267,7 +267,7 @@ appledocsucker crawl \
 Serve documentation to Claude for code assistance:
 
 ```bash
-appledocsucker-mcp serve
+cupertino-mcp serve
 # Then ask Claude: "How do I use @Observable in SwiftUI?"
 ```
 
@@ -276,7 +276,7 @@ appledocsucker-mcp serve
 Build searchable documentation archive:
 
 ```bash
-appledocsucker build-index
+cupertino build-index
 # MCP server now provides search_docs tool to AI agents
 ```
 

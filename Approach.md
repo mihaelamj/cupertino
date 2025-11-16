@@ -1,4 +1,4 @@
-# AppleDocsucker - Download & Index Approach
+# Cupertino - Download & Index Approach
 
 This document provides ready-to-use commands for downloading and indexing Apple documentation.
 
@@ -6,20 +6,20 @@ This document provides ready-to-use commands for downloading and indexing Apple 
 
 All documentation will be stored in:
 ```
-/Volumes/Code/DeveloperExt/appledocsucker
+/Volumes/Code/DeveloperExt/private/cupertino
 ```
 
 ## Prerequisites
 
 Ensure the binaries are installed:
 ```bash
-which appledocsucker
-which appledocsucker-mcp
+which cupertino
+which cupertino-mcp
 ```
 
 If not installed, run from the project root:
 ```bash
-cd /Volumes/Code/DeveloperExt/work/appledocsucker
+cd /Volumes/Code/DeveloperExt/private/cupertino
 sudo make install-symlinks
 ```
 
@@ -28,46 +28,46 @@ sudo make install-symlinks
 ### 1. Download All Apple Documentation (~2-4 hours)
 
 ```bash
-appledocsucker crawl \
+cupertino crawl \
   --start-url "https://developer.apple.com/documentation/" \
   --max-pages 15000 \
-  --output-dir /Volumes/Code/DeveloperExt/appledocsucker/docs
+  --output-dir /Volumes/Code/DeveloperExt/private/cupertino/docs
 ```
 
 **What this does:**
 - Crawls all Apple documentation pages (15,000+ pages)
 - Saves as Markdown files with metadata
-- Creates directory structure: `/Volumes/Code/DeveloperExt/appledocsucker/docs/`
+- Creates directory structure: `/Volumes/Code/DeveloperExt/private/cupertino/docs/`
 - Estimated time: 2-4 hours
 - Estimated size: 2-3 GB
 
 ### 2. Download Swift Evolution Proposals (~2-5 minutes)
 
 ```bash
-appledocsucker crawl-evolution \
-  --output-dir /Volumes/Code/DeveloperExt/appledocsucker/swift-evolution
+cupertino crawl-evolution \
+  --output-dir /Volumes/Code/DeveloperExt/private/cupertino/swift-evolution
 ```
 
 **What this does:**
 - Downloads all ~400 Swift Evolution proposals from GitHub
 - Saves as Markdown files
-- Creates directory: `/Volumes/Code/DeveloperExt/appledocsucker/swift-evolution/`
+- Creates directory: `/Volumes/Code/DeveloperExt/private/cupertino/swift-evolution/`
 - Estimated time: 2-5 minutes
 - Estimated size: 10-20 MB
 
 ### 3. Build Search Index (~2-5 minutes)
 
 ```bash
-appledocsucker build-index \
-  --docs-dir /Volumes/Code/DeveloperExt/appledocsucker/docs \
-  --evolution-dir /Volumes/Code/DeveloperExt/appledocsucker/swift-evolution \
-  --output /Volumes/Code/DeveloperExt/appledocsucker/search.db
+cupertino build-index \
+  --docs-dir /Volumes/Code/DeveloperExt/private/cupertino/docs \
+  --evolution-dir /Volumes/Code/DeveloperExt/private/cupertino/swift-evolution \
+  --output /Volumes/Code/DeveloperExt/private/cupertino/search.db
 ```
 
 **What this does:**
 - Creates SQLite FTS5 full-text search index
 - Indexes both Apple docs and Swift Evolution proposals
-- Creates file: `/Volumes/Code/DeveloperExt/appledocsucker/search.db`
+- Creates file: `/Volumes/Code/DeveloperExt/private/cupertino/search.db`
 - Estimated time: 2-5 minutes
 - Estimated size: ~50 MB
 
@@ -95,35 +95,35 @@ For testing or quick setup, use a smaller dataset:
 ### 1. Download Swift Documentation Only
 
 ```bash
-appledocsucker crawl \
+cupertino crawl \
   --start-url "https://developer.apple.com/documentation/swift" \
   --max-pages 100 \
-  --output-dir /Volumes/Code/DeveloperExt/appledocsucker/docs
+  --output-dir /Volumes/Code/DeveloperExt/private/cupertino/docs
 ```
 
 ### 2. Download Swift Evolution
 
 ```bash
-appledocsucker crawl-evolution \
-  --output-dir /Volumes/Code/DeveloperExt/appledocsucker/swift-evolution
+cupertino crawl-evolution \
+  --output-dir /Volumes/Code/DeveloperExt/private/cupertino/swift-evolution
 ```
 
 ### 3. Build Search Index
 
 ```bash
-appledocsucker build-index \
-  --docs-dir /Volumes/Code/DeveloperExt/appledocsucker/docs \
-  --evolution-dir /Volumes/Code/DeveloperExt/appledocsucker/swift-evolution \
-  --output /Volumes/Code/DeveloperExt/appledocsucker/search.db
+cupertino build-index \
+  --docs-dir /Volumes/Code/DeveloperExt/private/cupertino/docs \
+  --evolution-dir /Volumes/Code/DeveloperExt/private/cupertino/swift-evolution \
+  --output /Volumes/Code/DeveloperExt/private/cupertino/search.db
 ```
 
 ### 4. Test MCP Server
 
 ```bash
-appledocsucker-mcp serve \
-  --docs-dir /Volumes/Code/DeveloperExt/appledocsucker/docs \
-  --evolution-dir /Volumes/Code/DeveloperExt/appledocsucker/swift-evolution \
-  --search-db /Volumes/Code/DeveloperExt/appledocsucker/search.db
+cupertino-mcp serve \
+  --docs-dir /Volumes/Code/DeveloperExt/private/cupertino/docs \
+  --evolution-dir /Volumes/Code/DeveloperExt/private/cupertino/swift-evolution \
+  --search-db /Volumes/Code/DeveloperExt/private/cupertino/search.db
 ```
 
 ---
@@ -133,37 +133,37 @@ appledocsucker-mcp serve \
 ### SwiftUI Only
 
 ```bash
-appledocsucker crawl \
+cupertino crawl \
   --start-url "https://developer.apple.com/documentation/swiftui" \
   --max-pages 500 \
-  --output-dir /Volumes/Code/DeveloperExt/appledocsucker/docs
+  --output-dir /Volumes/Code/DeveloperExt/private/cupertino/docs
 ```
 
 ### UIKit Only
 
 ```bash
-appledocsucker crawl \
+cupertino crawl \
   --start-url "https://developer.apple.com/documentation/uikit" \
   --max-pages 1000 \
-  --output-dir /Volumes/Code/DeveloperExt/appledocsucker/docs
+  --output-dir /Volumes/Code/DeveloperExt/private/cupertino/docs
 ```
 
 ### Foundation Only
 
 ```bash
-appledocsucker crawl \
+cupertino crawl \
   --start-url "https://developer.apple.com/documentation/foundation" \
   --max-pages 800 \
-  --output-dir /Volumes/Code/DeveloperExt/appledocsucker/docs
+  --output-dir /Volumes/Code/DeveloperExt/private/cupertino/docs
 ```
 
 ### Combine Only
 
 ```bash
-appledocsucker crawl \
+cupertino crawl \
   --start-url "https://developer.apple.com/documentation/combine" \
   --max-pages 200 \
-  --output-dir /Volumes/Code/DeveloperExt/appledocsucker/docs
+  --output-dir /Volumes/Code/DeveloperExt/private/cupertino/docs
 ```
 
 ---
@@ -173,8 +173,8 @@ appledocsucker crawl \
 After initial download, update existing documentation with changes:
 
 ```bash
-appledocsucker update \
-  --docs-dir /Volumes/Code/DeveloperExt/appledocsucker/docs
+cupertino update \
+  --docs-dir /Volumes/Code/DeveloperExt/private/cupertino/docs
 ```
 
 **What this does:**
@@ -186,10 +186,10 @@ appledocsucker update \
 Then rebuild the search index:
 
 ```bash
-appledocsucker build-index \
-  --docs-dir /Volumes/Code/DeveloperExt/appledocsucker/docs \
-  --evolution-dir /Volumes/Code/DeveloperExt/appledocsucker/swift-evolution \
-  --output /Volumes/Code/DeveloperExt/appledocsucker/search.db
+cupertino build-index \
+  --docs-dir /Volumes/Code/DeveloperExt/private/cupertino/docs \
+  --evolution-dir /Volumes/Code/DeveloperExt/private/cupertino/swift-evolution \
+  --output /Volumes/Code/DeveloperExt/private/cupertino/search.db
 ```
 
 ---
@@ -197,18 +197,18 @@ appledocsucker build-index \
 ## Directory Structure After Full Download
 
 ```
-/Volumes/Code/DeveloperExt/appledocsucker/
+/Volumes/Code/DeveloperExt/private/cupertino/
 ├── docs/                           # Apple documentation (2-3 GB)
 │   ├── documentation_swift.md
 │   ├── documentation_swiftui.md
 │   ├── documentation_uikit.md
 │   ├── ... (15,000+ files)
-│   └── .docsucker_metadata.json    # Crawl metadata
+│   └── .cupertino_metadata.json    # Crawl metadata
 ├── swift-evolution/                # Swift Evolution proposals (10-20 MB)
 │   ├── SE-0001.md
 │   ├── SE-0002.md
 │   ├── ... (400+ files)
-│   └── .docsucker_metadata.json    # Crawl metadata
+│   └── .cupertino_metadata.json    # Crawl metadata
 └── search.db                       # Search index (~50 MB)
 ```
 
@@ -216,13 +216,13 @@ appledocsucker build-index \
 
 ## Configuration (Optional)
 
-Create a config file at `~/.docsucker/config.json`:
+Create a config file at `~/.cupertino/config.json`:
 
 ```json
 {
-  "defaultDocsDir": "/Volumes/Code/DeveloperExt/appledocsucker/docs",
-  "defaultEvolutionDir": "/Volumes/Code/DeveloperExt/appledocsucker/swift-evolution",
-  "defaultSearchDB": "/Volumes/Code/DeveloperExt/appledocsucker/search.db",
+  "defaultDocsDir": "/Volumes/Code/DeveloperExt/private/cupertino/docs",
+  "defaultEvolutionDir": "/Volumes/Code/DeveloperExt/private/cupertino/swift-evolution",
+  "defaultSearchDB": "/Volumes/Code/DeveloperExt/private/cupertino/search.db",
   "maxConcurrentDownloads": 5,
   "requestDelayMs": 100
 }
@@ -232,9 +232,9 @@ Then you can use shorter commands:
 
 ```bash
 # With config file
-appledocsucker crawl --max-pages 15000
-appledocsucker build-index
-appledocsucker-mcp serve
+cupertino crawl --max-pages 15000
+cupertino build-index
+cupertino-mcp serve
 ```
 
 ---
@@ -246,13 +246,13 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "appledocsucker": {
-      "command": "/usr/local/bin/appledocsucker-mcp",
+    "cupertino": {
+      "command": "/usr/local/bin/cupertino-mcp",
       "args": [
         "serve",
-        "--docs-dir", "/Volumes/Code/DeveloperExt/appledocsucker/docs",
-        "--evolution-dir", "/Volumes/Code/DeveloperExt/appledocsucker/swift-evolution",
-        "--search-db", "/Volumes/Code/DeveloperExt/appledocsucker/search.db"
+        "--docs-dir", "/Volumes/Code/DeveloperExt/private/cupertino/docs",
+        "--evolution-dir", "/Volumes/Code/DeveloperExt/private/cupertino/swift-evolution",
+        "--search-db", "/Volumes/Code/DeveloperExt/private/cupertino/search.db"
       ]
     }
   }
@@ -272,19 +272,19 @@ Restart Claude Desktop, then ask:
 
 ```bash
 # In another terminal while crawling
-log stream --predicate 'subsystem == "com.docsucker.appledocsucker"'
+log stream --predicate 'subsystem == "com.cupertino"'
 ```
 
 ### View Recent Logs
 
 ```bash
-log show --predicate 'subsystem == "com.docsucker.appledocsucker"' --last 1h
+log show --predicate 'subsystem == "com.cupertino"' --last 1h
 ```
 
 ### View Specific Category
 
 ```bash
-log show --predicate 'subsystem == "com.docsucker.appledocsucker" AND category == "crawler"' --last 1h
+log show --predicate 'subsystem == "com.cupertino" AND category == "crawler"' --last 1h
 ```
 
 ---
@@ -303,25 +303,25 @@ You need at least 3-4 GB free for full documentation.
 
 ```bash
 # Count downloaded files
-find /Volumes/Code/DeveloperExt/appledocsucker/docs -name "*.md" | wc -l
+find /Volumes/Code/DeveloperExt/private/cupertino/docs -name "*.md" | wc -l
 
 # Check metadata
-cat /Volumes/Code/DeveloperExt/appledocsucker/docs/.docsucker_metadata.json
+cat /Volumes/Code/DeveloperExt/private/cupertino/docs/.cupertino_metadata.json
 ```
 
 ### Verify Search Index
 
 ```bash
 # Check database exists
-ls -lh /Volumes/Code/DeveloperExt/appledocsucker/search.db
+ls -lh /Volumes/Code/DeveloperExt/private/cupertino/search.db
 
 # Count indexed documents
-sqlite3 /Volumes/Code/DeveloperExt/appledocsucker/search.db "SELECT COUNT(*) FROM docs_fts;"
+sqlite3 /Volumes/Code/DeveloperExt/private/cupertino/search.db "SELECT COUNT(*) FROM docs_fts;"
 ```
 
 ### Resume Interrupted Download
 
-If a crawl is interrupted, simply run the same command again. AppleDocsucker will:
+If a crawl is interrupted, simply run the same command again. Cupertino will:
 - Read existing metadata
 - Skip already-downloaded pages
 - Continue from where it left off
@@ -353,8 +353,8 @@ If a crawl is interrupted, simply run the same command again. AppleDocsucker wil
 After completing the download and indexing:
 
 1. **Test MCP Server:** Ask Claude to search documentation
-2. **Set up auto-updates:** Create a cron job to run `appledocsucker update` weekly
+2. **Set up auto-updates:** Create a cron job to run `cupertino update` weekly
 3. **Explore search:** Use the `search_docs` MCP tool to find relevant documentation
-4. **Export PDFs:** Use `appledocsucker export-pdf` to create PDF versions
+4. **Export PDFs:** Use `cupertino export-pdf` to create PDF versions
 
 See [README.md](README.md) and [DEVELOPMENT.md](DEVELOPMENT.md) for more details.

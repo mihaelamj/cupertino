@@ -27,11 +27,11 @@ Before starting the MCP server, you need to download documentation:
 cupertino crawl \
   --start-url "https://developer.apple.com/documentation/" \
   --max-pages 15000 \
-  --output-dir ~/.docsucker/docs
+  --output-dir ~/.cupertino/docs
 
 # Download Swift Evolution proposals
 cupertino crawl-evolution \
-  --output-dir ~/.docsucker/swift-evolution
+  --output-dir ~/.cupertino/swift-evolution
 ```
 
 ## Installation
@@ -58,13 +58,13 @@ cp .build/release/cupertino-mcp /usr/local/bin/
 
 ```bash
 cupertino-mcp serve \
-  --docs-dir ~/.docsucker/docs \
-  --evolution-dir ~/.docsucker/swift-evolution
+  --docs-dir ~/.cupertino/docs \
+  --evolution-dir ~/.cupertino/swift-evolution
 ```
 
 **Parameters:**
-- `--docs-dir` - Directory containing Apple documentation (default: `~/.docsucker/docs`)
-- `--evolution-dir` - Directory containing Swift Evolution proposals (default: `~/.docsucker/swift-evolution`)
+- `--docs-dir` - Directory containing Apple documentation (default: `~/.cupertino/docs`)
+- `--evolution-dir` - Directory containing Swift Evolution proposals (default: `~/.cupertino/swift-evolution`)
 
 The server communicates via stdin/stdout using JSON-RPC 2.0.
 
@@ -234,8 +234,8 @@ When the server starts, you'll see:
 
 ```
 🚀 Cupertino MCP Server starting...
-   Apple docs: /Users/username/.docsucker/docs
-   Evolution: /Users/username/.docsucker/swift-evolution
+   Apple docs: /Users/username/.cupertino/docs
+   Evolution: /Users/username/.cupertino/swift-evolution
    Waiting for client connection...
 ```
 
@@ -247,8 +247,8 @@ The server then communicates via JSON-RPC 2.0 over stdin/stdout.
 
 **Check paths exist:**
 ```bash
-ls ~/.docsucker/docs
-ls ~/.docsucker/swift-evolution
+ls ~/.cupertino/docs
+ls ~/.cupertino/swift-evolution
 ```
 
 **Check binary permissions:**
@@ -274,8 +274,8 @@ cat ~/Library/Application\ Support/Claude/claude_desktop_config.json | python3 -
 
 **Make sure you downloaded docs first:**
 ```bash
-cupertino crawl --max-pages 100 --output-dir ~/.docsucker/docs
-cupertino crawl-evolution --output-dir ~/.docsucker/swift-evolution
+cupertino crawl --max-pages 100 --output-dir ~/.cupertino/docs
+cupertino crawl-evolution --output-dir ~/.cupertino/swift-evolution
 ```
 
 ### Server Crashes
@@ -310,12 +310,12 @@ Expected output: JSON-RPC response with list of resources.
 │   MCP Server         │
 └────────┬─────-----───┘
          │
-         ├─→ ~/.docsucker/docs/
+         ├─→ ~/.cupertino/docs/
          │   ├── swift/
          │   ├── swiftui/
          │   └── foundation/
          │
-         └─→ ~/.docsucker/swift-evolution/
+         └─→ ~/.cupertino/swift-evolution/
              ├── SE-0001-*.md
              ├── SE-0255-*.md
              └── SE-0400-*.md
@@ -328,7 +328,7 @@ Expected output: JSON-RPC response with list of resources.
 Organized by framework in the docs directory:
 
 ```
-~/.docsucker/docs/
+~/.cupertino/docs/
 ├── swift/
 │   ├── documentation_swift_array.md
 │   ├── documentation_swift_string.md
@@ -350,7 +350,7 @@ Organized by framework in the docs directory:
 Stored as-is from GitHub:
 
 ```
-~/.docsucker/swift-evolution/
+~/.cupertino/swift-evolution/
 ├── SE-0001-keywords-as-argument-labels.md
 ├── SE-0002-remove-currying.md
 ├── SE-0255-omit-return.md

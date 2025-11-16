@@ -231,20 +231,44 @@ public enum HTMLToMarkdown {
         var result = markdown
 
         // Convert list items first (need dotMatchesLineSeparators for multiline items)
-        if let regex = try? NSRegularExpression(pattern: #"<li[^>]*>(.*?)</li>"#, options: [.caseInsensitive, .dotMatchesLineSeparators]) {
+        if let regex = try? NSRegularExpression(
+            pattern: #"<li[^>]*>(.*?)</li>"#,
+            options: [.caseInsensitive, .dotMatchesLineSeparators]
+        ) {
             let nsString = result as NSString
-            result = regex.stringByReplacingMatches(in: result, options: [], range: NSRange(location: 0, length: nsString.length), withTemplate: "\n- $1\n")
+            result = regex.stringByReplacingMatches(
+                in: result,
+                options: [],
+                range: NSRange(location: 0, length: nsString.length),
+                withTemplate: "\n- $1\n"
+            )
         }
 
         // Then remove list containers
-        if let regex = try? NSRegularExpression(pattern: #"<ul[^>]*>(.*?)</ul>"#, options: [.caseInsensitive, .dotMatchesLineSeparators]) {
+        if let regex = try? NSRegularExpression(
+            pattern: #"<ul[^>]*>(.*?)</ul>"#,
+            options: [.caseInsensitive, .dotMatchesLineSeparators]
+        ) {
             let nsString = result as NSString
-            result = regex.stringByReplacingMatches(in: result, options: [], range: NSRange(location: 0, length: nsString.length), withTemplate: "$1\n\n")
+            result = regex.stringByReplacingMatches(
+                in: result,
+                options: [],
+                range: NSRange(location: 0, length: nsString.length),
+                withTemplate: "$1\n\n"
+            )
         }
 
-        if let regex = try? NSRegularExpression(pattern: #"<ol[^>]*>(.*?)</ol>"#, options: [.caseInsensitive, .dotMatchesLineSeparators]) {
+        if let regex = try? NSRegularExpression(
+            pattern: #"<ol[^>]*>(.*?)</ol>"#,
+            options: [.caseInsensitive, .dotMatchesLineSeparators]
+        ) {
             let nsString = result as NSString
-            result = regex.stringByReplacingMatches(in: result, options: [], range: NSRange(location: 0, length: nsString.length), withTemplate: "$1\n\n")
+            result = regex.stringByReplacingMatches(
+                in: result,
+                options: [],
+                range: NSRange(location: 0, length: nsString.length),
+                withTemplate: "$1\n\n"
+            )
         }
 
         return result
@@ -310,9 +334,17 @@ public enum HTMLToMarkdown {
         )
 
         // Remove SVG elements (icons, graphics) - use dotMatchesLineSeparators for multiline SVG
-        if let regex = try? NSRegularExpression(pattern: #"<svg[^>]*>.*?</svg>"#, options: [.caseInsensitive, .dotMatchesLineSeparators]) {
+        if let regex = try? NSRegularExpression(
+            pattern: #"<svg[^>]*>.*?</svg>"#,
+            options: [.caseInsensitive, .dotMatchesLineSeparators]
+        ) {
             let nsString = result as NSString
-            result = regex.stringByReplacingMatches(in: result, options: [], range: NSRange(location: 0, length: nsString.length), withTemplate: "")
+            result = regex.stringByReplacingMatches(
+                in: result,
+                options: [],
+                range: NSRange(location: 0, length: nsString.length),
+                withTemplate: ""
+            )
         }
 
         return result
@@ -343,9 +375,17 @@ public enum HTMLToMarkdown {
         )
 
         // Also remove if it appears as plain text at start of line
-        if let regex = try? NSRegularExpression(pattern: #"^\s*This page requires JavaScript\.?\s*\n+"#, options: [.anchorsMatchLines]) {
+        if let regex = try? NSRegularExpression(
+            pattern: #"^\s*This page requires JavaScript\.?\s*\n+"#,
+            options: [.anchorsMatchLines]
+        ) {
             let nsString = result as NSString
-            result = regex.stringByReplacingMatches(in: result, options: [], range: NSRange(location: 0, length: nsString.length), withTemplate: "")
+            result = regex.stringByReplacingMatches(
+                in: result,
+                options: [],
+                range: NSRange(location: 0, length: nsString.length),
+                withTemplate: ""
+            )
         }
 
         return result
@@ -422,11 +462,23 @@ public enum HTMLToMarkdown {
 
     private static func cleanupStrayCharacters(_ markdown: String) -> String {
         var result = markdown
-        if let regex = try? NSRegularExpression(pattern: #"^\s*">+\s*"#, options: [.anchorsMatchLines]) {
+        if let regex = try? NSRegularExpression(
+            pattern: #"^\s*">+\s*"#,
+            options: [.anchorsMatchLines]
+        ) {
             let nsString = result as NSString
-            result = regex.stringByReplacingMatches(in: result, options: [], range: NSRange(location: 0, length: nsString.length), withTemplate: "")
+            result = regex.stringByReplacingMatches(
+                in: result,
+                options: [],
+                range: NSRange(location: 0, length: nsString.length),
+                withTemplate: ""
+            )
         }
-        result = result.replacingOccurrences(of: #"\n\s*">+\s*\n"#, with: "\n", options: .regularExpression)
+        result = result.replacingOccurrences(
+            of: #"\n\s*">+\s*\n"#,
+            with: "\n",
+            options: .regularExpression
+        )
         return result
     }
 

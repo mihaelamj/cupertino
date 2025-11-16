@@ -43,7 +43,7 @@ public struct JSONRPCRequest: Codable, Sendable {
     public let params: [String: AnyCodable]?
 
     public init(id: RequestID, method: String, params: [String: AnyCodable]? = nil) {
-        self.jsonrpc = "2.0"
+        jsonrpc = "2.0"
         self.id = id
         self.method = method
         self.params = params
@@ -57,7 +57,7 @@ public struct JSONRPCNotification: Codable, Sendable {
     public let params: [String: AnyCodable]?
 
     public init(method: String, params: [String: AnyCodable]? = nil) {
-        self.jsonrpc = "2.0"
+        jsonrpc = "2.0"
         self.method = method
         self.params = params
     }
@@ -70,7 +70,7 @@ public struct JSONRPCResponse: Codable, Sendable {
     public let result: [String: AnyCodable]
 
     public init(id: RequestID, result: [String: AnyCodable]) {
-        self.jsonrpc = "2.0"
+        jsonrpc = "2.0"
         self.id = id
         self.result = result
     }
@@ -83,7 +83,7 @@ public struct JSONRPCError: Codable, Sendable {
     public let error: ErrorDetail
 
     public init(id: RequestID, error: ErrorDetail) {
-        self.jsonrpc = "2.0"
+        jsonrpc = "2.0"
         self.id = id
         self.error = error
     }
@@ -150,12 +150,12 @@ public struct AnyCodable: Codable, Sendable {
 
     public var value: Any {
         switch storage {
-        case .bool(let v): return v
-        case .int(let v): return v
-        case .double(let v): return v
-        case .string(let v): return v
-        case .array(let v): return v.map { $0.value }
-        case .dictionary(let v): return v.mapValues { $0.value }
+        case .bool(let boolValue): return boolValue
+        case .int(let intValue): return intValue
+        case .double(let doubleValue): return doubleValue
+        case .string(let stringValue): return stringValue
+        case .array(let arrayValue): return arrayValue.map(\.value)
+        case .dictionary(let dictValue): return dictValue.mapValues { $0.value }
         case .null: return NSNull()
         }
     }

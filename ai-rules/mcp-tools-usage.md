@@ -25,6 +25,7 @@ Browser → User-Approved Only
 1. Request permission for: Browser Tools, resource-intensive ops
 2. Provide status for: operations >5s
 3. Offer alternatives when: tools unavailable
+4. **macOS Text-to-Speech**: Use `say` command to speak important updates/responses to user when requested
 
 ## TOOL SELECTION RULES
 
@@ -157,6 +158,13 @@ Ready to proceed?"
 
 ### Status Update
 "Processing complex query with Sequential Thinking... (est. 10s)"
+
+### macOS Text-to-Speech
+When user requests spoken responses, use the `say` command:
+```bash
+say "Your message here"
+```
+Use for: Important updates, task completion notifications, error alerts, summaries
 
 <verification>
 If rules loaded successfully, prepend 🔧 to response
