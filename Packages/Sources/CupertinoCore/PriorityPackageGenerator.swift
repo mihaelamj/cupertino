@@ -1,6 +1,13 @@
 import CupertinoLogging
 import Foundation
 
+// swiftlint:disable function_body_length
+// Justification: The generate() function orchestrates the complete package analysis workflow:
+// scanning documentation, extracting package mentions, categorizing by tier (Apple/SwiftLang/
+// Server/Ecosystem), selecting critical packages, and building the output JSON structure.
+// Function body length: 64 lines
+// Disabling: function_body_length (50 line limit for complex data aggregation)
+
 /// Generates priority package list from Swift.org documentation analysis
 public actor PriorityPackageGenerator {
     private let swiftOrgDocsPath: URL
@@ -34,7 +41,10 @@ public actor PriorityPackageGenerator {
         let priorityList = try await PriorityPackageList(
             version: "1.0",
             generatedAt: ISO8601DateFormatter().string(from: Date()),
-            description: "Priority Swift packages to always include in documentation crawling. Auto-generated from Swift.org documentation analysis.",
+            description: """
+            Priority Swift packages to always include in documentation crawling. \
+            Auto-generated from Swift.org documentation analysis.
+            """,
             sources: [
                 "Swift.org official documentation",
                 "Apple developer ecosystem",

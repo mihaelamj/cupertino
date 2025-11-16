@@ -5,7 +5,20 @@ import WebKit
 
 // MARK: - HTML to Markdown Converter
 
-// swiftlint:disable type_body_length
+// swiftlint:disable file_length type_body_length
+// Justification: This file contains a comprehensive HTML-to-Markdown converter
+// with specialized handling for documentation pages. The conversion logic includes:
+// - Content extraction from various HTML structures (main, article, body)
+// - Code block protection and restoration to prevent mangling
+// - HTML element conversion (headers, links, lists, formatting)
+// - Entity decoding and cleanup
+// - Removal of unwanted UI elements (JavaScript warnings, accessibility instructions)
+// Splitting this into multiple files would break the logical cohesion of the conversion
+// pipeline and make it harder to understand the sequential transformation steps.
+// The file is well-organized with clear MARK comments separating concerns.
+// File length: 580+ lines | Type body length: 400+ lines
+// Disabling: file_length (400 line limit), type_body_length (250 line limit)
+
 // Converts HTML documentation to clean Markdown
 public enum HTMLToMarkdown {
     /// Convert HTML string to Markdown
@@ -64,20 +77,22 @@ public enum HTMLToMarkdown {
 
     private static func extractMainContent(from html: String) -> String {
         // Try to extract main content area - need dotMatchesLineSeparators for multiline content
-        if let regex = try? NSRegularExpression(pattern: #"<main[^>]*>(.*?)</main>"#, options: [.caseInsensitive, .dotMatchesLineSeparators]),
+        let options: NSRegularExpression.Options = [.caseInsensitive, .dotMatchesLineSeparators]
+
+        if let regex = try? NSRegularExpression(pattern: #"<main[^>]*>(.*?)</main>"#, options: options),
            let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
            let range = Range(match.range, in: html) {
             return String(html[range])
         }
 
-        if let regex = try? NSRegularExpression(pattern: #"<article[^>]*>(.*?)</article>"#, options: [.caseInsensitive, .dotMatchesLineSeparators]),
+        if let regex = try? NSRegularExpression(pattern: #"<article[^>]*>(.*?)</article>"#, options: options),
            let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
            let range = Range(match.range, in: html) {
             return String(html[range])
         }
 
         // Fallback to body content
-        if let regex = try? NSRegularExpression(pattern: #"<body[^>]*>(.*?)</body>"#, options: [.caseInsensitive, .dotMatchesLineSeparators]),
+        if let regex = try? NSRegularExpression(pattern: #"<body[^>]*>(.*?)</body>"#, options: options),
            let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
            let range = Range(match.range, in: html) {
             return String(html[range])
@@ -120,13 +135,17 @@ public enum HTMLToMarkdown {
         return markdown
     }
 
-    private static func extractAndProtectCodeBlocks(_ html: String, into storage: inout [String: String]) -> String {
+    private static func extractAndProtectCodeBlocks(
+        _ html: String,
+        into storage: inout [String: String]
+    ) -> String {
         var result = html
         var blockIndex = 0
+        let regexOptions: NSRegularExpression.Options = [.caseInsensitive, .dotMatchesLineSeparators]
 
         // Extract <pre><code> blocks with language
         let pattern = #"<pre[^>]*>\s*<code\s+class=[\"'](?:language-)?(\w+)[\"'][^>]*>(.*?)</code>\s*</pre>"#
-        if let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive, .dotMatchesLineSeparators]) {
+        if let regex = try? NSRegularExpression(pattern: pattern, options: regexOptions) {
             let nsString = result as NSString
             let matches = regex.matches(in: result, range: NSRange(location: 0, length: nsString.length))
 
@@ -152,7 +171,7 @@ public enum HTMLToMarkdown {
 
         // Fallback: Extract <pre><code> blocks without language
         let fallbackPattern = #"<pre[^>]*>\s*<code[^>]*>(.*?)</code>\s*</pre>"#
-        if let regex = try? NSRegularExpression(pattern: fallbackPattern, options: [.caseInsensitive, .dotMatchesLineSeparators]) {
+        if let regex = try? NSRegularExpression(pattern: fallbackPattern, options: regexOptions) {
             let nsString = result as NSString
             let matches = regex.matches(in: result, range: NSRange(location: 0, length: nsString.length))
 
@@ -186,34 +205,50 @@ public enum HTMLToMarkdown {
 
     private static func convertHeaders(_ markdown: String) -> String {
         var result = markdown
-        result = result.replacingOccurrences(of: #"<h1[^>]*>(.*?)</h1>"#, with: "# $1\n\n", options: .regularExpression)
-        result = result.replacingOccurrences(of: #"<h2[^>]*>(.*?)</h2>"#, with: "## $1\n\n", options: .regularExpression)
-        result = result.replacingOccurrences(of: #"<h3[^>]*>(.*?)</h3>"#, with: "### $1\n\n", options: .regularExpression)
-        result = result.replacingOccurrences(of: #"<h4[^>]*>(.*?)</h4>"#, with: "#### $1\n\n", options: .regularExpression)
-        result = result.replacingOccurrences(of: #"<h5[^>]*>(.*?)</h5>"#, with: "##### $1\n\n", options: .regularExpression)
-        result = result.replacingOccurrences(of: #"<h6[^>]*>(.*?)</h6>"#, with: "###### $1\n\n", options: .regularExpression)
+        result = result.replacingOccurrences(
+            of: #"<h1[^>]*>(.*?)</h1>"#, with: "# $1\n\n", options: .regularExpression
+        )
+        result = result.replacingOccurrences(
+            of: #"<h2[^>]*>(.*?)</h2>"#, with: "## $1\n\n", options: .regularExpression
+        )
+        result = result.replacingOccurrences(
+            of: #"<h3[^>]*>(.*?)</h3>"#, with: "### $1\n\n", options: .regularExpression
+        )
+        result = result.replacingOccurrences(
+            of: #"<h4[^>]*>(.*?)</h4>"#, with: "#### $1\n\n", options: .regularExpression
+        )
+        result = result.replacingOccurrences(
+            of: #"<h5[^>]*>(.*?)</h5>"#, with: "##### $1\n\n", options: .regularExpression
+        )
+        result = result.replacingOccurrences(
+            of: #"<h6[^>]*>(.*?)</h6>"#, with: "###### $1\n\n", options: .regularExpression
+        )
         return result
     }
 
     private static func convertInlineFormatting(_ markdown: String) -> String {
         var result = markdown
+        let regexOptions: NSRegularExpression.Options = [.caseInsensitive, .dotMatchesLineSeparators]
 
         // Inline code (use dotMatchesLineSeparators to handle multiline code)
-        if let regex = try? NSRegularExpression(pattern: #"<code[^>]*>(.*?)</code>"#, options: [.caseInsensitive, .dotMatchesLineSeparators]) {
+        if let regex = try? NSRegularExpression(pattern: #"<code[^>]*>(.*?)</code>"#, options: regexOptions) {
             let nsString = result as NSString
-            result = regex.stringByReplacingMatches(in: result, options: [], range: NSRange(location: 0, length: nsString.length), withTemplate: "`$1`")
+            let range = NSRange(location: 0, length: nsString.length)
+            result = regex.stringByReplacingMatches(in: result, options: [], range: range, withTemplate: "`$1`")
         }
 
         // Bold
-        if let regex = try? NSRegularExpression(pattern: #"<(strong|b)[^>]*>(.*?)</\1>"#, options: [.caseInsensitive, .dotMatchesLineSeparators]) {
+        if let regex = try? NSRegularExpression(pattern: #"<(strong|b)[^>]*>(.*?)</\1>"#, options: regexOptions) {
             let nsString = result as NSString
-            result = regex.stringByReplacingMatches(in: result, options: [], range: NSRange(location: 0, length: nsString.length), withTemplate: "**$2**")
+            let range = NSRange(location: 0, length: nsString.length)
+            result = regex.stringByReplacingMatches(in: result, options: [], range: range, withTemplate: "**$2**")
         }
 
         // Italic
-        if let regex = try? NSRegularExpression(pattern: #"<(em|i)[^>]*>(.*?)</\1>"#, options: [.caseInsensitive, .dotMatchesLineSeparators]) {
+        if let regex = try? NSRegularExpression(pattern: #"<(em|i)[^>]*>(.*?)</\1>"#, options: regexOptions) {
             let nsString = result as NSString
-            result = regex.stringByReplacingMatches(in: result, options: [], range: NSRange(location: 0, length: nsString.length), withTemplate: "*$2*")
+            let range = NSRange(location: 0, length: nsString.length)
+            result = regex.stringByReplacingMatches(in: result, options: [], range: range, withTemplate: "*$2*")
         }
 
         return result

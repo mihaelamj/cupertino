@@ -3,6 +3,13 @@ import Foundation
 
 // MARK: - Package Fetcher
 
+// swiftlint:disable file_length type_body_length
+// Justification: This actor manages the complete Swift package fetching and enrichment workflow.
+// It coordinates multiple async operations: downloading package lists, enriching with GitHub data,
+// caching results, checkpoint/resume logic, and rate limiting. The logic is cohesive and sequential.
+// File length: 523 lines | Type body length: 326 lines
+// Disabling: file_length (400 line limit), type_body_length (250 line limit)
+
 /// Fetches Swift packages from SwiftPackageIndex and enriches with GitHub metadata
 public actor PackageFetcher {
     private let packageListURL = URL(

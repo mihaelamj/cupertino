@@ -7,6 +7,13 @@ import Foundation
 
 // MARK: - Crawl Command
 
+// swiftlint:disable file_length
+// Justification: This file contains the CLI command implementations for the cupertino tool.
+// It includes: argument parsing, configuration setup, session management, multi-type crawling
+// coordination, and error handling. Cohesive command logic should remain in a single file.
+// File length: 441 lines
+// Disabling: file_length (400 line limit)
+
 extension Cupertino {
     @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
     struct Crawl: AsyncParsableCommand {
@@ -14,7 +21,13 @@ extension Cupertino {
             abstract: "Crawl documentation using WKWebView"
         )
 
-        @Option(name: .long, help: "Type of documentation to crawl: docs (Apple), swift (Swift.org), evolution (Swift Evolution), packages (Swift packages)")
+        @Option(
+            name: .long,
+            help: """
+            Type of documentation to crawl: docs (Apple), swift (Swift.org), \
+            evolution (Swift Evolution), packages (Swift packages)
+            """
+        )
         var type: CrawlType = .docs
 
         @Option(name: .long, help: "Start URL to crawl from (overrides --type default)")
@@ -29,7 +42,13 @@ extension Cupertino {
         @Option(name: .long, help: "Output directory for documentation")
         var outputDir: String?
 
-        @Option(name: .long, help: "Allowed URL prefixes (comma-separated). If not specified, auto-detects based on start URL")
+        @Option(
+            name: .long,
+            help: """
+            Allowed URL prefixes (comma-separated). \
+            If not specified, auto-detects based on start URL
+            """
+        )
         var allowedPrefixes: String?
 
         @Flag(name: .long, help: "Force recrawl of all pages")
@@ -42,142 +61,185 @@ extension Cupertino {
         var onlyAccepted: Bool = false
 
         mutating func run() async throws {
-            if resume {
-                ConsoleLogger.info("🔄 AppleCupertino - Resuming from saved session\n")
-            } else {
-                ConsoleLogger.info("🚀 AppleCupertino - Crawling \(type.displayName)\n")
-            }
+            logStartMessage()
 
-            // Handle "all" type - crawl everything in parallel
             if type == .all {
-                ConsoleLogger.info("📚 Crawling all documentation types in parallel:\n")
-
-                // Capture values before entering task group
-                let baseCommand = self
-
-                try await withThrowingTaskGroup(of: (CrawlType, Result<Void, Error>).self) { group in
-                    // Launch all crawls concurrently
-                    for crawlType in CrawlType.allTypes {
-                        group.addTask {
-                            ConsoleLogger.info("🚀 Starting \(crawlType.displayName)...")
-                            var crawlCommand = baseCommand
-                            crawlCommand.type = crawlType
-                            crawlCommand.outputDir = crawlType.defaultOutputDir
-
-                            do {
-                                try await crawlCommand.run()
-                                return (crawlType, .success(()))
-                            } catch {
-                                return (crawlType, .failure(error))
-                            }
-                        }
-                    }
-
-                    // Collect results
-                    var results: [(CrawlType, Result<Void, Error>)] = []
-                    for try await result in group {
-                        results.append(result)
-                        let (crawlType, outcome) = result
-                        switch outcome {
-                        case .success:
-                            ConsoleLogger.info("✅ Completed \(crawlType.displayName)")
-                        case .failure(let error):
-                            ConsoleLogger.error("❌ Failed \(crawlType.displayName): \(error)")
-                        }
-                    }
-
-                    // Check if any failed
-                    let failures = results.filter {
-                        if case .failure = $0.1 { return true }
-                        return false
-                    }
-
-                    if failures.isEmpty {
-                        ConsoleLogger.info("\n✅ All documentation types crawled successfully!")
-                    } else {
-                        ConsoleLogger.info("\n⚠️  Completed with \(failures.count) failure(s)")
-                        throw ExitCode.failure
-                    }
-                }
+                try await runAllCrawls()
                 return
             }
 
-            // Handle evolution type specially (uses different crawler)
             if type == .evolution {
                 try await runEvolutionCrawl()
                 return
             }
 
-            // Determine start URL
+            try await runStandardCrawl()
+        }
+
+        private func logStartMessage() {
+            if resume {
+                ConsoleLogger.info("🔄 AppleCupertino - Resuming from saved session\n")
+            } else {
+                ConsoleLogger.info("🚀 AppleCupertino - Crawling \(type.displayName)\n")
+            }
+        }
+
+        private mutating func runAllCrawls() async throws {
+            ConsoleLogger.info("📚 Crawling all documentation types in parallel:\n")
+            let baseCommand = self
+
+            try await withThrowingTaskGroup(of: (CrawlType, Result<Void, Error>).self) { group in
+                for crawlType in CrawlType.allTypes {
+                    group.addTask {
+                        await crawlSingleType(crawlType, baseCommand: baseCommand)
+                    }
+                }
+
+                let results = try await collectCrawlResults(from: group)
+                try validateCrawlResults(results)
+            }
+        }
+
+        private func crawlSingleType(
+            _ crawlType: CrawlType,
+            baseCommand: Crawl
+        ) async -> (CrawlType, Result<Void, Error>) {
+            ConsoleLogger.info("🚀 Starting \(crawlType.displayName)...")
+            var crawlCommand = baseCommand
+            crawlCommand.type = crawlType
+            crawlCommand.outputDir = crawlType.defaultOutputDir
+
+            do {
+                try await crawlCommand.run()
+                return (crawlType, .success(()))
+            } catch {
+                return (crawlType, .failure(error))
+            }
+        }
+
+        private func collectCrawlResults(
+            from group: inout ThrowingTaskGroup<(CrawlType, Result<Void, Error>), Error>
+        ) async throws -> [(CrawlType, Result<Void, Error>)] {
+            var results: [(CrawlType, Result<Void, Error>)] = []
+            for try await result in group {
+                results.append(result)
+                let (crawlType, outcome) = result
+                switch outcome {
+                case .success:
+                    ConsoleLogger.info("✅ Completed \(crawlType.displayName)")
+                case .failure(let error):
+                    ConsoleLogger.error("❌ Failed \(crawlType.displayName): \(error)")
+                }
+            }
+            return results
+        }
+
+        private func validateCrawlResults(_ results: [(CrawlType, Result<Void, Error>)]) throws {
+            let failures = results.filter {
+                if case .failure = $0.1 { return true }
+                return false
+            }
+
+            if failures.isEmpty {
+                ConsoleLogger.info("\n✅ All documentation types crawled successfully!")
+            } else {
+                ConsoleLogger.info("\n⚠️  Completed with \(failures.count) failure(s)")
+                throw ExitCode.failure
+            }
+        }
+
+        private mutating func runStandardCrawl() async throws {
+            let url = try validateStartURL()
+            let outputDirectory = try await determineOutputDirectory(for: url)
+            let config = createConfiguration(url: url, outputDirectory: outputDirectory)
+            try await executeCrawl(with: config)
+        }
+
+        private func validateStartURL() throws -> URL {
             let urlString = startURL ?? type.defaultURL
             guard let url = URL(string: urlString) else {
                 throw ValidationError("Invalid start URL: \(urlString)")
             }
+            return url
+        }
 
-            // Auto-detect output directory based on type if not provided
-            let defaultOutputDir: String
+        private func determineOutputDirectory(for url: URL) async throws -> URL {
             if let outputDir {
-                defaultOutputDir = outputDir
-            } else {
-                // Check for existing session to resume from
-                let homeDir = FileManager.default.homeDirectoryForCurrentUser
-                let defaultCandidates = [
-                    homeDir.appendingPathComponent(".cupertino/docs"),
-                    homeDir.appendingPathComponent(".cupertino/swift-org"),
-                    homeDir.appendingPathComponent(".cupertino/swift-book"),
-                ]
+                return URL(fileURLWithPath: outputDir).expandingTildeInPath
+            }
+            return try await findExistingSession(for: url)
+                ?? URL(fileURLWithPath: type.defaultOutputDir).expandingTildeInPath
+        }
 
-                var foundSession: String?
+        private func findExistingSession(for url: URL) async throws -> URL? {
+            let homeDir = FileManager.default.homeDirectoryForCurrentUser
+            let candidates = [
+                homeDir.appendingPathComponent(".cupertino/docs"),
+                homeDir.appendingPathComponent(".cupertino/swift-org"),
+                homeDir.appendingPathComponent(".cupertino/swift-book"),
+            ]
 
-                // Helper function to check a metadata file
-                func checkMetadataFile(_ metadataFile: URL) -> String? {
-                    guard FileManager.default.fileExists(atPath: metadataFile.path) else { return nil }
-                    guard let data = try? Data(contentsOf: metadataFile),
-                          let metadata = try? JSONDecoder().decode(CrawlMetadata.self, from: data),
-                          let session = metadata.crawlState,
-                          session.isActive,
-                          session.startURL == url.absoluteString else { return nil }
-                    return session.outputDirectory
+            for candidate in candidates {
+                if let sessionDir = checkForSession(at: candidate, matching: url) {
+                    return sessionDir
                 }
-
-                // Check default candidates first
-                for candidate in defaultCandidates {
-                    let metadataFile = candidate.appendingPathComponent("metadata.json")
-                    if let outputDir = checkMetadataFile(metadataFile) {
-                        foundSession = outputDir
-                        ConsoleLogger.info("📂 Found existing session, resuming to: \(outputDir)")
-                        break
-                    }
-                }
-
-                // If not found in defaults, check other common locations
-                if foundSession == nil {
-                    let cupertinoDir = homeDir.appendingPathComponent(".cupertino")
-                    if let contents = try? FileManager.default.contentsOfDirectory(
-                        at: cupertinoDir,
-                        includingPropertiesForKeys: [.isDirectoryKey],
-                        options: [.skipsHiddenFiles]
-                    ) {
-                        for dir in contents where (try? dir.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
-                            let metadataFile = dir.appendingPathComponent("metadata.json")
-                            if let outputDir = checkMetadataFile(metadataFile) {
-                                foundSession = outputDir
-                                ConsoleLogger.info("📂 Found existing session, resuming to: \(outputDir)")
-                                break
-                            }
-                        }
-                    }
-                }
-
-                defaultOutputDir = foundSession ?? type.defaultOutputDir
             }
 
-            let outputDirectory = URL(fileURLWithPath: defaultOutputDir).expandingTildeInPath
+            return try await scanCupertinoDirectory(for: url)
+        }
 
-            // Parse allowed prefixes if provided
-            let prefixes: [String]? = allowedPrefixes?.split(separator: ",").map { String($0.trimmingCharacters(in: .whitespaces)) }
+        private func checkForSession(at directory: URL, matching url: URL) -> URL? {
+            let metadataFile = directory.appendingPathComponent("metadata.json")
+            guard FileManager.default.fileExists(atPath: metadataFile.path),
+                  let data = try? Data(contentsOf: metadataFile),
+                  let metadata = try? JSONDecoder().decode(CrawlMetadata.self, from: data),
+                  let session = metadata.crawlState,
+                  session.isActive,
+                  session.startURL == url.absoluteString,
+                  let outputDir = URL(string: session.outputDirectory)
+            else {
+                return nil
+            }
+            ConsoleLogger.info(
+                "📂 Found existing session, resuming to: \(session.outputDirectory)"
+            )
+            return outputDir
+        }
 
-            let config = CupertinoConfiguration(
+        private func scanCupertinoDirectory(for url: URL) async throws -> URL? {
+            let homeDir = FileManager.default.homeDirectoryForCurrentUser
+            let cupertinoDir = homeDir.appendingPathComponent(".cupertino")
+
+            guard let contents = try? FileManager.default.contentsOfDirectory(
+                at: cupertinoDir,
+                includingPropertiesForKeys: [.isDirectoryKey],
+                options: [.skipsHiddenFiles]
+            ) else {
+                return nil
+            }
+
+            for dir in contents {
+                let isDirectory = (try? dir.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory
+                guard isDirectory == true else {
+                    continue
+                }
+                if let sessionDir = checkForSession(at: dir, matching: url) {
+                    return sessionDir
+                }
+            }
+
+            return nil
+        }
+
+        private func createConfiguration(
+            url: URL,
+            outputDirectory: URL
+        ) -> CupertinoConfiguration {
+            let prefixes: [String]? = allowedPrefixes?
+                .split(separator: ",")
+                .map { String($0.trimmingCharacters(in: .whitespaces)) }
+
+            return CupertinoConfiguration(
                 crawler: CrawlerConfiguration(
                     startURL: url,
                     allowedPrefixes: prefixes,
@@ -191,14 +253,20 @@ extension Cupertino {
                 ),
                 output: OutputConfiguration(format: .markdown)
             )
+        }
 
-            // Run crawler
+        private func executeCrawl(with config: CupertinoConfiguration) async throws {
             let crawler = await DocumentationCrawler(configuration: config)
-
             let stats = try await crawler.crawl { progress in
-                ConsoleLogger.output("   Progress: \(String(format: "%.1f", progress.percentage))% - \(progress.currentURL.lastPathComponent)")
+                let percentage = String(format: "%.1f", progress.percentage)
+                let urlComponent = progress.currentURL.lastPathComponent
+                ConsoleLogger.output("   Progress: \(percentage)% - \(urlComponent)")
             }
 
+            logCrawlCompletion(stats)
+        }
+
+        private func logCrawlCompletion(_ stats: CrawlStatistics) {
             ConsoleLogger.output("")
             ConsoleLogger.info("✅ Crawl completed!")
             ConsoleLogger.info("   Total: \(stats.totalPages) pages")
@@ -219,7 +287,8 @@ extension Cupertino {
             )
 
             let stats = try await crawler.crawl { progress in
-                ConsoleLogger.output("   Progress: \(String(format: "%.1f", progress.percentage))% - \(progress.proposalID)")
+                let percentage = String(format: "%.1f", progress.percentage)
+                ConsoleLogger.output("   Progress: \(percentage)% - \(progress.proposalID)")
             }
 
             ConsoleLogger.output("")

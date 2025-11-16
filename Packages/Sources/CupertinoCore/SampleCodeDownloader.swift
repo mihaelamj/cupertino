@@ -8,7 +8,21 @@ import AppKit
 
 // MARK: - Sample Code Downloader
 
-// swiftlint:disable type_body_length function_body_length
+// swiftlint:disable file_length type_body_length function_body_length
+// Justification: This file contains a complete sample code downloading system
+// with WebKit integration for authentication and download handling. Components include:
+// - WebKit webview management and navigation delegation
+// - Authentication cookie handling (loading/saving)
+// - Download progress tracking and file management
+// - ZIP/TAR archive extraction
+// - State machine for download workflow (authentication, extraction, cleanup)
+// - Statistics tracking and logging
+// The class manages complex async workflows with browser automation and must handle
+// multiple edge cases (authentication, redirects, different archive formats).
+// Splitting would separate tightly-coupled browser automation logic and make debugging harder.
+// File length: 583 lines | Type body length: 400+ lines | Function body length: 70+ lines
+// Disabling: file_length (400 line limit), type_body_length (250 line limit),
+//            function_body_length (50 line limit for complex download workflows)
 
 /// Downloads Apple sample code projects (zip/tar files)
 @MainActor
@@ -22,7 +36,12 @@ public final class SampleCodeDownloader {
 
     private var sharedWebView: WKWebView?
 
-    public init(outputDirectory: URL, maxSamples: Int? = nil, forceDownload: Bool = false, visibleBrowser: Bool = false) {
+    public init(
+        outputDirectory: URL,
+        maxSamples: Int? = nil,
+        forceDownload: Bool = false,
+        visibleBrowser: Bool = false
+    ) {
         self.outputDirectory = outputDirectory
         self.maxSamples = maxSamples
         self.forceDownload = forceDownload
@@ -182,12 +201,17 @@ public final class SampleCodeDownloader {
         return samples
     }
 
-    private func downloadSample(_ sample: SampleMetadata, stats: inout SampleStatistics) async throws {
+    private func downloadSample(
+        _ sample: SampleMetadata,
+        stats: inout SampleStatistics
+    ) async throws {
         logInfo("📦 [\(stats.totalSamples + 1)] \(sample.name)")
 
         // Check if already downloaded
-        let existingFiles = try? FileManager.default.contentsOfDirectory(at: outputDirectory, includingPropertiesForKeys: nil)
-            .filter { $0.lastPathComponent.hasPrefix(sample.slug) }
+        let existingFiles = try? FileManager.default.contentsOfDirectory(
+            at: outputDirectory,
+            includingPropertiesForKeys: nil
+        ).filter { $0.lastPathComponent.hasPrefix(sample.slug) }
 
         if !forceDownload, !(existingFiles?.isEmpty ?? true) {
             stats.skippedSamples += 1
@@ -341,7 +365,10 @@ public final class SampleCodeDownloader {
         #endif
 
         let webView = WKWebView(frame: frame, configuration: config)
-        webView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+        webView.customUserAgent = """
+        Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) \
+        AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15
+        """
 
         // Load saved cookies
         await loadCookies(into: webView)

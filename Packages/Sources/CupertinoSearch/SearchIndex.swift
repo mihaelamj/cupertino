@@ -3,9 +3,20 @@ import SQLite3
 
 // MARK: - Search Index
 
+// swiftlint:disable file_length type_body_length function_body_length function_parameter_count
+// Justification: This actor implements a complete SQLite FTS5 full-text search engine.
+// It manages: database initialization, schema creation, document indexing with metadata,
+// search query processing, statistics aggregation, and transaction management. The functions
+// require multiple parameters to properly index documents with all metadata (id, title,
+// framework, url, type, summary, content). Splitting would separate tightly-coupled SQL operations.
+// File length: 421 lines | Type body length: 319 lines | Function body length: 66 lines | Parameters: 7
+// Disabling: file_length (400 line limit), type_body_length (250 line limit),
+//            function_body_length (50 line limit for SQL operations),
+//            function_parameter_count (5 param limit, need 7 for complete document metadata)
+
 /// SQLite FTS5-based full-text search index for documentation
 public actor SearchIndex {
-    private var db: OpaquePointer?
+    private var database: OpaquePointer?
     private let dbPath: URL
     private var isInitialized = false
 
@@ -33,9 +44,9 @@ public actor SearchIndex {
 
     /// Close the database connection explicitly
     public func disconnect() {
-        if let db {
-            sqlite3_close(db)
-            self.db = nil
+        if let database {
+            sqlite3_close(database)
+            self.database = nil
         }
     }
 
@@ -50,11 +61,11 @@ public actor SearchIndex {
             throw SearchError.sqliteError("Failed to open database: \(errorMessage)")
         }
 
-        db = dbPointer
+        database = dbPointer
     }
 
     private func createTables() async throws {
-        guard let db else {
+        guard let database else {
             throw SearchError.databaseNotInitialized
         }
 
@@ -117,7 +128,7 @@ public actor SearchIndex {
         var errorPointer: UnsafeMutablePointer<CChar>?
         defer { sqlite3_free(errorPointer) }
 
-        guard sqlite3_exec(db, sql, nil, nil, &errorPointer) == SQLITE_OK else {
+        guard sqlite3_exec(database, sql, nil, nil, &errorPointer) == SQLITE_OK else {
             let errorMessage = errorPointer.map { String(cString: $0) } ?? "Unknown error"
             throw SearchError.sqliteError("Failed to create tables: \(errorMessage)")
         }
@@ -137,7 +148,7 @@ public actor SearchIndex {
         sourceType: String = "apple",
         packageId: Int? = nil
     ) async throws {
-        guard let db else {
+        guard let database else {
             throw SearchError.databaseNotInitialized
         }
 
@@ -154,7 +165,7 @@ public actor SearchIndex {
         var statement: OpaquePointer?
         defer { sqlite3_finalize(statement) }
 
-        guard sqlite3_prepare_v2(db, ftsSql, -1, &statement, nil) == SQLITE_OK else {
+        guard sqlite3_prepare_v2(database, ftsSql, -1, &statement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(db))
             throw SearchError.prepareFailed("FTS insert: \(errorMessage)")
         }
@@ -180,7 +191,7 @@ public actor SearchIndex {
         var metaStatement: OpaquePointer?
         defer { sqlite3_finalize(metaStatement) }
 
-        guard sqlite3_prepare_v2(db, metaSql, -1, &metaStatement, nil) == SQLITE_OK else {
+        guard sqlite3_prepare_v2(database, metaSql, -1, &metaStatement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(db))
             throw SearchError.prepareFailed("Metadata insert: \(errorMessage)")
         }
@@ -213,7 +224,7 @@ public actor SearchIndex {
         framework: String? = nil,
         limit: Int = 20
     ) async throws -> [SearchResult] {
-        guard let db else {
+        guard let database else {
             throw SearchError.databaseNotInitialized
         }
 
@@ -244,7 +255,7 @@ public actor SearchIndex {
         var statement: OpaquePointer?
         defer { sqlite3_finalize(statement) }
 
-        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
+        guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(db))
             throw SearchError.searchFailed("Prepare failed: \(errorMessage)")
         }
@@ -298,7 +309,7 @@ public actor SearchIndex {
 
     /// List all frameworks with document counts
     public func listFrameworks() async throws -> [String: Int] {
-        guard let db else {
+        guard let database else {
             throw SearchError.databaseNotInitialized
         }
 
@@ -312,7 +323,7 @@ public actor SearchIndex {
         var statement: OpaquePointer?
         defer { sqlite3_finalize(statement) }
 
-        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
+        guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(db))
             throw SearchError.searchFailed("List frameworks failed: \(errorMessage)")
         }
@@ -334,7 +345,7 @@ public actor SearchIndex {
 
     /// Get total document count
     public func documentCount() async throws -> Int {
-        guard let db else {
+        guard let database else {
             throw SearchError.databaseNotInitialized
         }
 
@@ -343,7 +354,7 @@ public actor SearchIndex {
         var statement: OpaquePointer?
         defer { sqlite3_finalize(statement) }
 
-        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
+        guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
             throw SearchError.searchFailed("Count failed")
         }
 
@@ -356,7 +367,7 @@ public actor SearchIndex {
 
     /// Clear all documents from the index
     public func clearIndex() async throws {
-        guard let db else {
+        guard let database else {
             throw SearchError.databaseNotInitialized
         }
 
@@ -368,7 +379,7 @@ public actor SearchIndex {
         var errorPointer: UnsafeMutablePointer<CChar>?
         defer { sqlite3_free(errorPointer) }
 
-        guard sqlite3_exec(db, sql, nil, nil, &errorPointer) == SQLITE_OK else {
+        guard sqlite3_exec(database, sql, nil, nil, &errorPointer) == SQLITE_OK else {
             let errorMessage = errorPointer.map { String(cString: $0) } ?? "Unknown error"
             throw SearchError.sqliteError("Failed to clear index: \(errorMessage)")
         }

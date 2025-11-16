@@ -7,6 +7,12 @@ import AppKit
 
 // MARK: - PDF Exporter
 
+// swiftlint:disable function_body_length
+// Justification: The convertMarkdownToHTML function contains sequential regex replacements
+// for comprehensive Markdown-to-HTML conversion (headers, lists, formatting, code blocks).
+// Function body length: 80 lines
+// Disabling: function_body_length (50 line limit for sequential conversion pipeline)
+
 /// Exports markdown documentation to PDF format
 @MainActor
 public final class PDFExporter {
@@ -85,10 +91,8 @@ public final class PDFExporter {
             includingPropertiesForKeys: [.isRegularFileKey],
             options: [.skipsHiddenFiles]
         ) {
-            for case let fileURL as URL in enumerator {
-                if fileURL.pathExtension == "md" {
-                    files.append(fileURL)
-                }
+            for case let fileURL as URL in enumerator where fileURL.pathExtension == "md" {
+                files.append(fileURL)
             }
         }
 
@@ -100,7 +104,10 @@ public final class PDFExporter {
 
         // Determine output path
         let relativePath = fileURL.path.replacingOccurrences(of: inputDirectory.path, with: "")
-        let outputPath = outputDirectory.appendingPathComponent(relativePath).deletingPathExtension().appendingPathExtension("pdf")
+        let outputPath = outputDirectory
+            .appendingPathComponent(relativePath)
+            .deletingPathExtension()
+            .appendingPathExtension("pdf")
 
         // Check if already exists
         if !forceExport, FileManager.default.fileExists(atPath: outputPath.path) {
@@ -137,7 +144,11 @@ public final class PDFExporter {
         html = regexReplace(html, pattern: #"`([^`]+)`"#, replacement: "<code>$1</code>")
 
         // Convert code blocks with language
-        html = regexReplace(html, pattern: #"```(\w+)\n(.*?)\n```"#, replacement: "<pre><code class=\"language-$1\">$2</code></pre>")
+        html = regexReplace(
+            html,
+            pattern: #"```(\w+)\n(.*?)\n```"#,
+            replacement: "<pre><code class=\"language-$1\">$2</code></pre>"
+        )
 
         // Convert code blocks without language
         html = regexReplace(html, pattern: #"```\n(.*?)\n```"#, replacement: "<pre><code>$1</code></pre>")

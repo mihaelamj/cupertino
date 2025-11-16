@@ -2,6 +2,22 @@
 
 This document outlines the code style and formatting rules for the Cupertino project, derived from `.swiftlint.yml` and `.swiftformat` configurations.
 
+## Zero Tolerance Policy
+
+**CRITICAL RULE**: Never accept SwiftLint warnings or errors.
+
+- **Zero errors**: Mandatory - build must have zero errors
+- **Zero warnings**: Mandatory - all warnings must be fixed
+- **If a warning is genuinely impossible to fix**: Disable it in the source file with `swiftlint:disable` and provide a clear comment explaining why
+- **Never tolerate**: "It's just a warning" - fix it or disable it with justification
+
+Example of acceptable disable:
+```swift
+// swiftlint:disable file_length
+// Justification: This file handles complex HTML parsing with many edge cases.
+// Splitting would reduce cohesion. File length is acceptable given functionality.
+```
+
 ## SwiftFormat Rules
 
 ### Indentation & Spacing
