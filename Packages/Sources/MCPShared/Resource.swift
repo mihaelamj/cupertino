@@ -46,7 +46,7 @@ public struct ResourceTemplate: Codable, Sendable {
 
 /// List all available resources
 public struct ListResourcesRequest: Codable, Sendable {
-    public let method: String = "resources/list"
+    public let method: String = MCPMethod.resourcesList
     public let params: Params?
 
     enum CodingKeys: String, CodingKey {
@@ -78,7 +78,7 @@ public struct ListResourcesResult: Codable, Sendable {
 
 /// Read a specific resource
 public struct ReadResourceRequest: Codable, Sendable {
-    public let method: String = "resources/read"
+    public let method: String = MCPMethod.resourcesRead
     public let params: Params
 
     enum CodingKeys: String, CodingKey {
@@ -108,7 +108,7 @@ public struct ReadResourceResult: Codable, Sendable {
 
 /// List resource templates
 public struct ListResourceTemplatesRequest: Codable, Sendable {
-    public let method: String = "resources/templates/list"
+    public let method: String = MCPMethod.resourcesTemplatesList
     public let params: Params?
 
     enum CodingKeys: String, CodingKey {
@@ -140,7 +140,7 @@ public struct ListResourceTemplatesResult: Codable, Sendable {
 
 /// Subscribe to resource updates
 public struct SubscribeResourceRequest: Codable, Sendable {
-    public let method: String = "resources/subscribe"
+    public let method: String = MCPMethod.resourcesSubscribe
     public let params: Params
 
     enum CodingKeys: String, CodingKey {
@@ -162,7 +162,7 @@ public struct SubscribeResourceRequest: Codable, Sendable {
 
 /// Unsubscribe from resource updates
 public struct UnsubscribeResourceRequest: Codable, Sendable {
-    public let method: String = "resources/unsubscribe"
+    public let method: String = MCPMethod.resourcesUnsubscribe
     public let params: Params
 
     enum CodingKeys: String, CodingKey {
@@ -184,7 +184,7 @@ public struct UnsubscribeResourceRequest: Codable, Sendable {
 
 /// Resource updated notification (server → client)
 public struct ResourceUpdatedNotification: Codable, Sendable {
-    public let method: String = "notifications/resources/updated"
+    public let method: String = MCPMethod.notificationsResourcesUpdated
     public let params: Params
 
     enum CodingKeys: String, CodingKey {
@@ -206,7 +206,7 @@ public struct ResourceUpdatedNotification: Codable, Sendable {
 
 /// Resource list changed notification (server → client)
 public struct ResourceListChangedNotification: Codable, Sendable {
-    public let method: String = "notifications/resources/list_changed"
+    public let method: String = MCPMethod.notificationsResourcesListChanged
 
     enum CodingKeys: String, CodingKey {
         case method

@@ -57,7 +57,7 @@ public final class SwiftEvolutionCrawler {
                 }
 
                 // Rate limiting - be respectful to GitHub
-                try await Task.sleep(for: .milliseconds(500))
+                try await Task.sleep(for: CupertinoConstants.Delay.swiftEvolution)
             } catch {
                 stats.errors += 1
                 logError("Failed to download \(proposal.id): \(error)")
@@ -79,7 +79,7 @@ public final class SwiftEvolutionCrawler {
         let url = URL(string: "\(githubAPI)/repos/\(repo)/contents/proposals?ref=\(branch)")!
 
         var request = URLRequest(url: url)
-        request.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
+        request.setValue(CupertinoConstants.HTTPHeader.githubAccept, forHTTPHeaderField: CupertinoConstants.HTTPHeader.accept)
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
@@ -100,7 +100,7 @@ public final class SwiftEvolutionCrawler {
                     return nil
                 }
                 // Only process .md files
-                guard file.name.hasSuffix(".md") else {
+                guard file.name.hasSuffix(CupertinoConstants.FileName.markdownExtension) else {
                     return nil
                 }
                 // Extract proposal ID (handles both "0001-..." and "SE-0001-..." formats)
@@ -145,7 +145,7 @@ public final class SwiftEvolutionCrawler {
         _ = HashUtilities.sha256(of: markdown)
 
         // Save to file with SE- prefix
-        let filename = "\(proposal.id).md" // e.g., "SE-0001.md"
+        let filename = "\(proposal.id)\(CupertinoConstants.FileName.markdownExtension)" // e.g., "SE-0001.md"
         let outputPath = outputDirectory.appendingPathComponent(filename)
         let isNew = !FileManager.default.fileExists(atPath: outputPath.path)
 

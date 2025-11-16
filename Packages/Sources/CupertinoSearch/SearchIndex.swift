@@ -222,7 +222,7 @@ public actor SearchIndex {
     public func search(
         query: String,
         framework: String? = nil,
-        limit: Int = 20
+        limit: Int = CupertinoConstants.Limit.defaultSearchLimit
     ) async throws -> [SearchResult] {
         guard let database else {
             throw SearchError.databaseNotInitialized
@@ -387,7 +387,10 @@ public actor SearchIndex {
 
     // MARK: - Helper Methods
 
-    private func extractSummary(from content: String, maxLength: Int = 500) -> String {
+    private func extractSummary(
+        from content: String,
+        maxLength: Int = CupertinoConstants.ContentLimit.summaryMaxLength
+    ) -> String {
         // Remove YAML front matter
         var cleaned = content
 

@@ -56,7 +56,7 @@ public struct PromptMessage: Codable, Sendable {
 
 /// List all available prompts
 public struct ListPromptsRequest: Codable, Sendable {
-    public let method: String = "prompts/list"
+    public let method: String = MCPMethod.promptsList
     public let params: Params?
 
     enum CodingKeys: String, CodingKey {
@@ -88,7 +88,7 @@ public struct ListPromptsResult: Codable, Sendable {
 
 /// Get a specific prompt
 public struct GetPromptRequest: Codable, Sendable {
-    public let method: String = "prompts/get"
+    public let method: String = MCPMethod.promptsGet
     public let params: Params
 
     enum CodingKeys: String, CodingKey {
@@ -122,7 +122,7 @@ public struct GetPromptResult: Codable, Sendable {
 
 /// Prompt list changed notification (server → client)
 public struct PromptListChangedNotification: Codable, Sendable {
-    public let method: String = "notifications/prompts/list_changed"
+    public let method: String = MCPMethod.notificationsPromptsListChanged
 
     enum CodingKeys: String, CodingKey {
         case method

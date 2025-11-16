@@ -67,9 +67,15 @@ public actor PackageFetcher {
         var packageURLs = try await downloadPackageList()
         logInfo("   Found \(packageURLs.count) packages")
 
+        // Try to load priority packages
+        let priorityURLs = loadPriorityPackages()
+        if !priorityURLs.isEmpty {
+            logInfo("\n⚡ Loaded \(priorityURLs.count) priority packages (will be processed first)")
+        }
+
         logInfo("\n⭐ Pre-fetching star counts to sort by popularity...")
-        packageURLs = try await sortPackagesByStars(packageURLs)
-        logInfo("   ✓ Packages sorted by star count (most popular first)")
+        packageURLs = try await sortPackagesByStars(packageURLs, priorityURLs: priorityURLs)
+        logInfo("   ✓ Packages sorted by priority and star count")
 
         return packageURLs
     }
@@ -168,7 +174,7 @@ public actor PackageFetcher {
             repo: repo,
             stars: 0,
             description: nil,
-            url: "https://github.com/\(owner)/\(repo)",
+            url: CupertinoConstants.URLTemplate.githubRepo(owner: owner, repo: repo),
             archived: false,
             fork: false,
             updatedAt: nil,
@@ -180,10 +186,10 @@ public actor PackageFetcher {
     }
 
     private func applyRateLimit(index: Int) async throws {
-        if (index + 1) % 50 == 0 {
-            try await Task.sleep(for: .seconds(5))
+        if (index + 1) % CupertinoConstants.Interval.progressLogEvery == 0 {
+            try await Task.sleep(for: CupertinoConstants.Delay.packageFetchHighPriority)
         } else {
-            try await Task.sleep(for: .seconds(1.2))
+            try await Task.sleep(for: CupertinoConstants.Delay.packageFetchNormal)
         }
     }
 
@@ -196,7 +202,7 @@ public actor PackageFetcher {
             packages: packages
         )
 
-        let outputFile = outputDirectory.appendingPathComponent("swift-packages-with-stars.json")
+        let outputFile = outputDirectory.appendingPathComponent(CupertinoConstants.FileName.packagesWithStars)
         try saveJSON(output, to: outputFile)
     }
 
@@ -208,11 +214,11 @@ public actor PackageFetcher {
         if let duration = stats.duration {
             logInfo("   Duration: \(Int(duration))s")
         }
-        let outputFile = outputDirectory.appendingPathComponent("swift-packages-with-stars.json")
+        let outputFile = outputDirectory.appendingPathComponent(CupertinoConstants.FileName.packagesWithStars)
         logInfo("\n📁 Output: \(outputFile.path)")
 
-        logInfo("\nTop 20 packages by stars:")
-        for (index, pkg) in packages.prefix(20).enumerated() {
+        logInfo("\nTop \(CupertinoConstants.Limit.topPackagesDisplay) packages by stars:")
+        for (index, pkg) in packages.prefix(CupertinoConstants.Limit.topPackagesDisplay).enumerated() {
             let archived = pkg.archived ? " [ARCHIVED]" : ""
             let fork = pkg.fork ? " [FORK]" : ""
             logInfo(String(
@@ -226,13 +232,38 @@ public actor PackageFetcher {
         }
     }
 
+    // MARK: - Private Methods - Priority Packages
+
+    private func loadPriorityPackages() -> [String] {
+        let priorityFile = outputDirectory.appendingPathComponent(CupertinoConstants.FileName.priorityPackages)
+
+        guard FileManager.default.fileExists(atPath: priorityFile.path),
+              let data = try? Data(contentsOf: priorityFile),
+              let priorityList = try? JSONDecoder().decode(PriorityPackageList.self, from: data) else {
+            return []
+        }
+
+        // Collect URLs in priority order: Tier 1 → Tier 2 → Tier 3 → Tier 4
+        var urls: [String] = []
+        urls.append(contentsOf: priorityList.priorityLevels.tier1AppleOfficial.packages.map(\.url))
+        urls.append(contentsOf: priorityList.priorityLevels.tier2Swiftlang.packages.map(\.url))
+        urls.append(contentsOf: priorityList.priorityLevels.tier3SwiftServer.packages.map(\.url))
+        urls.append(contentsOf: priorityList.priorityLevels.tier4Ecosystem.packages.map(\.url))
+
+        return urls
+    }
+
     // MARK: - Private Methods - Sorting
 
-    private func sortPackagesByStars(_ packageURLs: [String]) async throws -> [String] {
+    private func sortPackagesByStars(_ packageURLs: [String], priorityURLs: [String]) async throws -> [String] {
+        // Separate priority packages from regular packages
+        let prioritySet = Set(priorityURLs)
+        let regularURLs = packageURLs.filter { !prioritySet.contains($0) }
+
         // Quick fetch: only get star counts (much lighter than full metadata)
         var packageStars: [(url: String, stars: Int)] = []
 
-        for (index, url) in packageURLs.enumerated() {
+        for (index, url) in regularURLs.enumerated() {
             guard let (owner, repo) = extractOwnerRepo(from: url) else {
                 packageStars.append((url, 0))
                 continue
@@ -240,7 +271,7 @@ public actor PackageFetcher {
 
             // Progress every 100
             if (index + 1) % 100 == 0 {
-                logInfo("   [\(index + 1)/\(packageURLs.count)] Fetched star counts...")
+                logInfo("   [\(index + 1)/\(regularURLs.count)] Fetched star counts...")
             }
 
             // Fetch only stars (lightweight)
@@ -256,15 +287,18 @@ public actor PackageFetcher {
             }
 
             // Rate limiting
-            if (index + 1) % 50 == 0 {
-                try await Task.sleep(for: .seconds(2))
+            if (index + 1) % CupertinoConstants.Interval.progressLogEvery == 0 {
+                try await Task.sleep(for: CupertinoConstants.Delay.packageStarsHighPriority)
             } else {
-                try await Task.sleep(for: .seconds(0.5))
+                try await Task.sleep(for: CupertinoConstants.Delay.packageStarsNormal)
             }
         }
 
-        // Sort by stars descending
-        return packageStars.sorted { $0.stars > $1.stars }.map(\.url)
+        // Sort regular packages by stars descending
+        let sortedRegular = packageStars.sorted { $0.stars > $1.stars }.map(\.url)
+
+        // Return priority packages first, then sorted regular packages
+        return priorityURLs + sortedRegular
     }
 
     private func fetchStarCount(owner: String, repo: String) async throws -> Int {
@@ -383,7 +417,7 @@ public actor PackageFetcher {
     }
 
     private func loadCheckpoint() throws -> PackageFetchCheckpoint {
-        let checkpointFile = outputDirectory.appendingPathComponent("checkpoint.json")
+        let checkpointFile = outputDirectory.appendingPathComponent(CupertinoConstants.FileName.checkpoint)
         let data = try Data(contentsOf: checkpointFile)
         return try JSONDecoder().decode(PackageFetchCheckpoint.self, from: data)
     }
@@ -394,7 +428,7 @@ public actor PackageFetcher {
             packages: packages,
             timestamp: Date()
         )
-        let checkpointFile = outputDirectory.appendingPathComponent("checkpoint.json")
+        let checkpointFile = outputDirectory.appendingPathComponent(CupertinoConstants.FileName.checkpoint)
         try saveJSON(checkpoint, to: checkpointFile)
     }
 

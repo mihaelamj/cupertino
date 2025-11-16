@@ -27,7 +27,7 @@ extension Cupertino {
         var startURL: String?
 
         @Option(name: .long, help: "Maximum number of pages to crawl")
-        var maxPages: Int = 15000
+        var maxPages: Int = CupertinoConstants.Limit.defaultMaxPages
 
         @Option(name: .long, help: "Maximum depth to crawl")
         var maxDepth: Int = 15
@@ -341,10 +341,10 @@ extension Cupertino {
             try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
 
             if ProcessInfo.processInfo.environment[CupertinoConstants.EnvVar.githubToken] == nil {
-                ConsoleLogger.info("💡 Tip: Set GITHUB_TOKEN environment variable for higher rate limits")
-                ConsoleLogger.info("   Without token: 60 requests/hour")
-                ConsoleLogger.info("   With token: 5000 requests/hour")
-                ConsoleLogger.info("   export GITHUB_TOKEN=your_token_here\n")
+                ConsoleLogger.info(CupertinoConstants.Message.gitHubTokenTip)
+                ConsoleLogger.info("   \(CupertinoConstants.Message.rateLimitWithoutToken)")
+                ConsoleLogger.info("   \(CupertinoConstants.Message.rateLimitWithToken)")
+                ConsoleLogger.info("   \(CupertinoConstants.Message.exportGitHubToken)\n")
             }
 
             let fetcher = PackageFetcher(
@@ -366,7 +366,7 @@ extension Cupertino {
             if let duration = stats.duration {
                 ConsoleLogger.info("   Duration: \(Int(duration))s")
             }
-            ConsoleLogger.info("\n📁 Output: \(outputURL.path)/swift-packages-with-stars.json")
+            ConsoleLogger.info("\n📁 Output: \(outputURL.path)/\(CupertinoConstants.FileName.packagesWithStars)")
         }
 
         private func runCodeFetch() async throws {
@@ -485,7 +485,7 @@ extension Cupertino {
             ConsoleLogger.info("   Frameworks: \(frameworks.count)")
             ConsoleLogger.info("   Database: \(searchDBURL.path)")
             ConsoleLogger.info("   Size: \(formatFileSize(searchDBURL))")
-            ConsoleLogger.info("\n💡 Tip: Start the MCP server with 'cupertino-mcp serve' to enable search")
+            ConsoleLogger.info("\n💡 Tip: Start the MCP server with '\(CupertinoConstants.App.mcpCommandName) serve' to enable search")
         }
 
         private func formatFileSize(_ url: URL) -> String {

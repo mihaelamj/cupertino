@@ -28,10 +28,10 @@ public actor DocsResourceProvider: ResourceProvider {
 
             for (url, pageMetadata) in metadata.pages {
                 let resource = Resource(
-                    uri: "apple-docs://\(pageMetadata.framework)/\(URLUtilities.filename(from: URL(string: url)!))",
+                    uri: "\(CupertinoConstants.MCP.appleDocsScheme)\(pageMetadata.framework)/\(URLUtilities.filename(from: URL(string: url)!))",
                     name: extractTitle(from: url),
-                    description: "Apple Documentation: \(pageMetadata.framework)",
-                    mimeType: "text/markdown"
+                    description: "\(CupertinoConstants.MCP.appleDocsDescriptionPrefix) \(pageMetadata.framework)",
+                    mimeType: CupertinoConstants.MCP.mimeTypeMarkdown
                 )
                 resources.append(resource)
             }
@@ -47,13 +47,13 @@ public actor DocsResourceProvider: ResourceProvider {
                     includingPropertiesForKeys: nil
                 )
 
-                for file in files where file.pathExtension == "md" && file.lastPathComponent.hasPrefix("SE-") {
+                for file in files where file.pathExtension == "md" && file.lastPathComponent.hasPrefix(CupertinoConstants.MCP.sePrefix) {
                     let proposalID = file.deletingPathExtension().lastPathComponent
                     let resource = Resource(
-                        uri: "swift-evolution://\(proposalID)",
+                        uri: "\(CupertinoConstants.MCP.swiftEvolutionScheme)\(proposalID)",
                         name: proposalID,
-                        description: "Swift Evolution Proposal",
-                        mimeType: "text/markdown"
+                        description: CupertinoConstants.MCP.swiftEvolutionDescription,
+                        mimeType: CupertinoConstants.MCP.mimeTypeMarkdown
                     )
                     resources.append(resource)
                 }
@@ -72,7 +72,7 @@ public actor DocsResourceProvider: ResourceProvider {
         let filePath: URL
         let markdown: String
 
-        if uri.hasPrefix("apple-docs://") {
+        if uri.hasPrefix(CupertinoConstants.MCP.appleDocsScheme) {
             // Parse URI: apple-docs://framework/filename
             guard let components = parseAppleDocsURI(uri) else {
                 throw ResourceError.invalidURI(uri)
@@ -81,7 +81,7 @@ public actor DocsResourceProvider: ResourceProvider {
             // Find the file
             filePath = configuration.crawler.outputDirectory
                 .appendingPathComponent(components.framework)
-                .appendingPathComponent("\(components.filename).md")
+                .appendingPathComponent("\(components.filename)\(CupertinoConstants.FileName.markdownExtension)")
 
             guard FileManager.default.fileExists(atPath: filePath.path) else {
                 throw ResourceError.notFound(uri)
@@ -90,7 +90,7 @@ public actor DocsResourceProvider: ResourceProvider {
             // Read markdown content
             markdown = try String(contentsOf: filePath, encoding: .utf8)
 
-        } else if uri.hasPrefix("swift-evolution://") {
+        } else if uri.hasPrefix(CupertinoConstants.MCP.swiftEvolutionScheme) {
             // Parse URI: swift-evolution://SE-NNNN
             guard let proposalID = parseEvolutionURI(uri) else {
                 throw ResourceError.invalidURI(uri)
@@ -117,7 +117,7 @@ public actor DocsResourceProvider: ResourceProvider {
         let contents = ResourceContents.text(
             TextResourceContents(
                 uri: uri,
-                mimeType: "text/markdown",
+                mimeType: CupertinoConstants.MCP.mimeTypeMarkdown,
                 text: markdown
             )
         )
@@ -128,16 +128,16 @@ public actor DocsResourceProvider: ResourceProvider {
     public func listResourceTemplates(cursor: String?) async throws -> ListResourceTemplatesResult? {
         let templates = [
             ResourceTemplate(
-                uriTemplate: "apple-docs://{framework}/{page}",
-                name: "Apple Documentation Page",
-                description: "Access Apple documentation by framework and page name",
-                mimeType: "text/markdown"
+                uriTemplate: CupertinoConstants.MCP.templateAppleDocs,
+                name: CupertinoConstants.MCP.appleDocsTemplateName,
+                description: CupertinoConstants.MCP.appleDocsTemplateDescription,
+                mimeType: CupertinoConstants.MCP.mimeTypeMarkdown
             ),
             ResourceTemplate(
-                uriTemplate: "swift-evolution://{proposalID}",
-                name: "Swift Evolution Proposal",
-                description: "Access Swift Evolution proposals by ID (e.g., SE-0001)",
-                mimeType: "text/markdown"
+                uriTemplate: CupertinoConstants.MCP.templateSwiftEvolution,
+                name: CupertinoConstants.MCP.swiftEvolutionDescription,
+                description: CupertinoConstants.MCP.swiftEvolutionTemplateDescription,
+                mimeType: CupertinoConstants.MCP.mimeTypeMarkdown
             ),
         ]
 
@@ -177,11 +177,11 @@ public actor DocsResourceProvider: ResourceProvider {
 
     private func parseAppleDocsURI(_ uri: String) -> (framework: String, filename: String)? {
         // Expected format: apple-docs://framework/filename
-        guard uri.hasPrefix("apple-docs://") else {
+        guard uri.hasPrefix(CupertinoConstants.MCP.appleDocsScheme) else {
             return nil
         }
 
-        let path = uri.replacingOccurrences(of: "apple-docs://", with: "")
+        let path = uri.replacingOccurrences(of: CupertinoConstants.MCP.appleDocsScheme, with: "")
         let components = path.split(separator: "/", maxSplits: 1)
 
         guard components.count == 2 else {
@@ -193,11 +193,11 @@ public actor DocsResourceProvider: ResourceProvider {
 
     private func parseEvolutionURI(_ uri: String) -> String? {
         // Expected format: swift-evolution://SE-NNNN
-        guard uri.hasPrefix("swift-evolution://") else {
+        guard uri.hasPrefix(CupertinoConstants.MCP.swiftEvolutionScheme) else {
             return nil
         }
 
-        let proposalID = uri.replacingOccurrences(of: "swift-evolution://", with: "")
+        let proposalID = uri.replacingOccurrences(of: CupertinoConstants.MCP.swiftEvolutionScheme, with: "")
         return proposalID.isEmpty ? nil : proposalID
     }
 
@@ -229,7 +229,7 @@ enum ResourceError: Error, LocalizedError {
         case .notFound(let uri):
             return "Resource not found: \(uri)"
         case .noDocumentation:
-            return "No documentation has been crawled yet. Run 'cupertino crawl' first."
+            return "No documentation has been crawled yet. Run '\(CupertinoConstants.App.commandName) \(CupertinoConstants.Command.crawl)' first."
         }
     }
 }

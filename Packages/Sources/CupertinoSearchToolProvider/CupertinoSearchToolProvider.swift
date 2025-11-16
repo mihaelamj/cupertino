@@ -1,4 +1,5 @@
 import CupertinoSearch
+import CupertinoShared
 import Foundation
 import MCPServer
 import MCPShared
@@ -18,25 +19,19 @@ public actor CupertinoSearchToolProvider: ToolProvider {
     public func listTools(cursor: String?) async throws -> ListToolsResult {
         let tools = [
             Tool(
-                name: "search_docs",
-                description: """
-                Search Apple documentation and Swift Evolution proposals by keywords. \
-                Returns a ranked list of relevant documents with URIs that can be read using resources/read.
-                """,
+                name: CupertinoConstants.MCP.toolSearchDocs,
+                description: CupertinoConstants.MCP.toolSearchDocsDescription,
                 inputSchema: JSONSchema(
-                    type: "object",
+                    type: CupertinoConstants.MCP.schemaTypeObject,
                     properties: nil,
-                    required: ["query"]
+                    required: [CupertinoConstants.MCP.schemaParamQuery]
                 )
             ),
             Tool(
-                name: "list_frameworks",
-                description: """
-                List all available frameworks in the documentation index with document counts. \
-                Useful for discovering what documentation is available.
-                """,
+                name: CupertinoConstants.MCP.toolListFrameworks,
+                description: CupertinoConstants.MCP.toolListFrameworksDescription,
                 inputSchema: JSONSchema(
-                    type: "object",
+                    type: CupertinoConstants.MCP.schemaTypeObject,
                     properties: [:],
                     required: []
                 )
@@ -48,9 +43,9 @@ public actor CupertinoSearchToolProvider: ToolProvider {
 
     public func callTool(name: String, arguments: [String: AnyCodable]?) async throws -> CallToolResult {
         switch name {
-        case "search_docs":
+        case CupertinoConstants.MCP.toolSearchDocs:
             return try await handleSearchDocs(arguments: arguments)
-        case "list_frameworks":
+        case CupertinoConstants.MCP.toolListFrameworks:
             return try await handleListFrameworks()
         default:
             throw ToolError.unknownTool(name)
@@ -60,12 +55,14 @@ public actor CupertinoSearchToolProvider: ToolProvider {
     // MARK: - Tool Handlers
 
     private func handleSearchDocs(arguments: [String: AnyCodable]?) async throws -> CallToolResult {
-        guard let query = arguments?["query"]?.value as? String else {
-            throw ToolError.missingArgument("query")
+        guard let query = arguments?[CupertinoConstants.MCP.schemaParamQuery]?.value as? String else {
+            throw ToolError.missingArgument(CupertinoConstants.MCP.schemaParamQuery)
         }
 
-        let framework = arguments?["framework"]?.value as? String
-        let limit = min((arguments?["limit"]?.value as? Int) ?? 20, 100)
+        let framework = arguments?[CupertinoConstants.MCP.schemaParamFramework]?.value as? String
+        let defaultLimit = CupertinoConstants.Limit.defaultSearchLimit
+        let requestedLimit = (arguments?[CupertinoConstants.MCP.schemaParamLimit]?.value as? Int) ?? defaultLimit
+        let limit = min(requestedLimit, CupertinoConstants.Limit.maxSearchLimit)
 
         // Perform search
         let results = try await searchIndex.search(
@@ -84,15 +81,13 @@ public actor CupertinoSearchToolProvider: ToolProvider {
         markdown += "Found **\(results.count)** result\(results.count == 1 ? "" : "s"):\n\n"
 
         if results.isEmpty {
-            markdown += """
-            _No results found. Try different keywords or check available frameworks using `list_frameworks`._
-            """
+            markdown += CupertinoConstants.MCP.messageNoResults
         } else {
             for (index, result) in results.enumerated() {
                 markdown += "## \(index + 1). \(result.title)\n\n"
                 markdown += "- **Framework:** `\(result.framework)`\n"
                 markdown += "- **URI:** `\(result.uri)`\n"
-                markdown += "- **Score:** \(String(format: "%.2f", result.score))\n"
+                markdown += "- **Score:** \(String(format: CupertinoConstants.MCP.formatScore, result.score))\n"
                 markdown += "- **Words:** \(result.wordCount)\n\n"
 
                 // Add summary
@@ -106,7 +101,8 @@ public actor CupertinoSearchToolProvider: ToolProvider {
             }
 
             markdown += "\n\n"
-            markdown += "💡 **Tip:** Use `resources/read` with the URI to get the full document content.\n"
+            markdown += CupertinoConstants.MCP.tipUseResourcesRead
+            markdown += "\n"
         }
 
         let content = ContentBlock.text(
@@ -124,10 +120,8 @@ public actor CupertinoSearchToolProvider: ToolProvider {
         markdown += "Total documents: **\(totalDocs)**\n\n"
 
         if frameworks.isEmpty {
-            markdown += """
-            _No frameworks found. The search index may be empty. \
-            Run `cupertino build-index` to index your documentation._
-            """
+            let cmd = "\(CupertinoConstants.App.commandName) \(CupertinoConstants.Command.buildIndex)"
+            markdown += CupertinoConstants.MCP.messageNoFrameworks(buildIndexCommand: cmd)
         } else {
             markdown += "| Framework | Documents |\n"
             markdown += "|-----------|----------:|\n"
@@ -138,7 +132,8 @@ public actor CupertinoSearchToolProvider: ToolProvider {
             }
 
             markdown += "\n"
-            markdown += "💡 **Tip:** Use `search_docs` with the `framework` parameter to filter results.\n"
+            markdown += CupertinoConstants.MCP.tipFilterByFramework
+            markdown += "\n"
         }
 
         let content = ContentBlock.text(

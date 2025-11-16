@@ -40,7 +40,7 @@ public struct JSONSchema: Codable, Sendable {
 
 /// List all available tools
 public struct ListToolsRequest: Codable, Sendable {
-    public let method: String = "tools/list"
+    public let method: String = MCPMethod.toolsList
     public let params: Params?
 
     enum CodingKeys: String, CodingKey {
@@ -72,7 +72,7 @@ public struct ListToolsResult: Codable, Sendable {
 
 /// Call a tool
 public struct CallToolRequest: Codable, Sendable {
-    public let method: String = "tools/call"
+    public let method: String = MCPMethod.toolsCall
     public let params: Params
 
     enum CodingKeys: String, CodingKey {
@@ -106,7 +106,7 @@ public struct CallToolResult: Codable, Sendable {
 
 /// Tool list changed notification (server → client)
 public struct ToolListChangedNotification: Codable, Sendable {
-    public let method: String = "notifications/tools/list_changed"
+    public let method: String = MCPMethod.notificationsToolsListChanged
 
     enum CodingKeys: String, CodingKey {
         case method

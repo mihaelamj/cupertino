@@ -16,7 +16,7 @@ public struct CrawlerConfiguration: Codable, Sendable {
     public init(
         startURL: URL = URL(string: CupertinoConstants.BaseURL.appleDeveloperDocs)!,
         allowedPrefixes: [String]? = nil,
-        maxPages: Int = 15000,
+        maxPages: Int = CupertinoConstants.Limit.defaultMaxPages,
         maxDepth: Int = 15,
         outputDirectory: URL = CupertinoConstants.defaultDocsDirectory,
         logFile: URL? = nil,

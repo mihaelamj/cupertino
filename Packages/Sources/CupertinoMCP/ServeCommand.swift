@@ -75,7 +75,8 @@ extension CupertinoMCP {
         private func registerSearchProvider(server: MCPServer, searchDBURL: URL) async {
             guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
                 let infoMsg = "ℹ️  Search index not found at: \(searchDBURL.path)"
-                let hintMsg = "   Tools will not be available. Run 'cupertino build-index' to enable search."
+                let cmd = "\(CupertinoConstants.App.commandName) \(CupertinoConstants.Command.buildIndex)"
+                let hintMsg = "   Tools will not be available. Run '\(cmd)' to enable search."
                 CupertinoLogger.mcp.info("\(infoMsg) \(hintMsg)")
                 fputs("\(infoMsg)\n", stderr)
                 fputs("\(hintMsg)\n", stderr)
@@ -91,7 +92,8 @@ extension CupertinoMCP {
                 fputs("\(message)\n", stderr)
             } catch {
                 let errorMsg = "⚠️  Failed to load search index: \(error)"
-                let hintMsg = "   Tools will not be available. Run 'cupertino build-index' to create the index."
+                let cmd = "\(CupertinoConstants.App.commandName) \(CupertinoConstants.Command.buildIndex)"
+                let hintMsg = "   Tools will not be available. Run '\(cmd)' to create the index."
                 CupertinoLogger.mcp.warning("\(errorMsg) \(hintMsg)")
                 fputs("\(errorMsg)\n", stderr)
                 fputs("\(hintMsg)\n", stderr)

@@ -1,5 +1,19 @@
 import Foundation
 
+// MARK: - MCP Content Type Constants
+
+/// MCP protocol content type identifiers
+public enum MCPContentType {
+    /// Text content type identifier
+    public static let text = "text"
+
+    /// Image content type identifier
+    public static let image = "image"
+
+    /// Resource content type identifier
+    public static let resource = "resource"
+}
+
 // MARK: - Content Blocks
 
 /// Content blocks that can be returned from tools, prompts, or resources
@@ -17,13 +31,13 @@ public enum ContentBlock: Codable, Sendable {
         let type = try container.decode(String.self, forKey: .type)
 
         switch type {
-        case "text":
+        case MCPContentType.text:
             let textContent = try TextContent(from: decoder)
             self = .text(textContent)
-        case "image":
+        case MCPContentType.image:
             let imageContent = try ImageContent(from: decoder)
             self = .image(imageContent)
-        case "resource":
+        case MCPContentType.resource:
             let resourceContent = try EmbeddedResource(from: decoder)
             self = .resource(resourceContent)
         default:
@@ -49,7 +63,7 @@ public enum ContentBlock: Codable, Sendable {
 
 /// Text content block
 public struct TextContent: Codable, Sendable {
-    public let type: String = "text"
+    public let type: String = MCPContentType.text
     public let text: String
 
     enum CodingKeys: String, CodingKey {
@@ -63,7 +77,7 @@ public struct TextContent: Codable, Sendable {
 
 /// Image content block (base64 encoded)
 public struct ImageContent: Codable, Sendable {
-    public let type: String = "image"
+    public let type: String = MCPContentType.image
     public let data: String // base64 encoded
     public let mimeType: String
 
@@ -79,7 +93,7 @@ public struct ImageContent: Codable, Sendable {
 
 /// Embedded resource content
 public struct EmbeddedResource: Codable, Sendable {
-    public let type: String = "resource"
+    public let type: String = MCPContentType.resource
     public let resource: ResourceContents
 
     enum CodingKeys: String, CodingKey {

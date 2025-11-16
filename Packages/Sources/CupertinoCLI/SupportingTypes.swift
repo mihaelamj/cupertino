@@ -14,8 +14,8 @@ extension Cupertino {
 
         var displayName: String {
             switch self {
-            case .docs: return "Apple Documentation"
-            case .swift: return "Swift.org Documentation"
+            case .docs: return "\(CupertinoConstants.DisplayName.apple) Documentation"
+            case .swift: return "\(CupertinoConstants.DisplayName.swiftOrg) Documentation"
             case .evolution: return "Swift Evolution Proposals"
             case .packages: return "Swift Package Documentation"
             case .all: return "All Documentation"

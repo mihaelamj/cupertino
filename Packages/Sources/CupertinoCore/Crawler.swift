@@ -118,8 +118,8 @@ public final class DocumentationCrawler: NSObject {
                     outputDirectory: configuration.outputDirectory
                 )
 
-                // Log progress every 50 pages
-                if visited.count % 50 == 0 {
+                // Log progress periodically
+                if visited.count % CupertinoConstants.Interval.progressLogEvery == 0 {
                     await logProgressUpdate()
                 }
             } catch {
@@ -170,7 +170,7 @@ public final class DocumentationCrawler: NSObject {
         )
 
         let filename = URLUtilities.filename(from: url)
-        let filePath = frameworkDir.appendingPathComponent("\(filename).md")
+        let filePath = frameworkDir.appendingPathComponent("\(filename)\(CupertinoConstants.FileName.markdownExtension)")
 
         // Check if we should recrawl
         let shouldRecrawl = await state.shouldRecrawl(
@@ -239,7 +239,7 @@ public final class DocumentationCrawler: NSObject {
 
             // Set timeout
             let timeoutTask = Task {
-                try await Task.sleep(for: .seconds(30))
+                try await Task.sleep(for: CupertinoConstants.Timeout.pageLoad)
                 continuation.resume(throwing: CrawlerError.timeout)
             }
 
@@ -252,7 +252,7 @@ public final class DocumentationCrawler: NSObject {
                     return
                 }
 
-                self.webView.evaluateJavaScript("document.documentElement.outerHTML") { result, error in
+                self.webView.evaluateJavaScript(CupertinoConstants.JavaScript.getDocumentHTML) { result, error in
                     if let error {
                         continuation.resume(throwing: error)
                     } else if let html = result as? String {
@@ -385,12 +385,12 @@ public final class DocumentationCrawler: NSObject {
             return
         }
 
-        logInfo("\n📋 Generating priority package list from Swift.org documentation...")
+        logInfo("\n📋 Generating priority package list from \(CupertinoConstants.DisplayName.swiftOrg) documentation...")
 
         // Use the output directory as Swift.org docs path
         let outputPath = configuration.outputDirectory
             .deletingLastPathComponent()
-            .appendingPathComponent("priority-packages.json")
+            .appendingPathComponent(CupertinoConstants.FileName.priorityPackages)
 
         let generator = PriorityPackageGenerator(
             swiftOrgDocsPath: configuration.outputDirectory,

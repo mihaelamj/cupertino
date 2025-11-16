@@ -99,7 +99,7 @@ public struct ServerCapabilities: Codable, Sendable {
 }
 
 public struct InitializeRequest: Codable, Sendable {
-    public let method: String = "initialize"
+    public let method: String = MCPMethod.initialize
     public let params: Params
 
     enum CodingKeys: String, CodingKey {

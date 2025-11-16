@@ -160,37 +160,37 @@ public actor MCPServer {
     private func routeRequest(_ request: JSONRPCRequest) async throws -> [String: AnyCodable] {
         switch request.method {
         // Initialization
-        case "initialize":
+        case MCPMethod.initialize:
             return try await handleInitialize(request)
 
         // Resources
-        case "resources/list":
+        case MCPMethod.resourcesList:
             try ensureInitialized()
             return try await handleListResources(request)
 
-        case "resources/read":
+        case MCPMethod.resourcesRead:
             try ensureInitialized()
             return try await handleReadResource(request)
 
-        case "resources/templates/list":
+        case MCPMethod.resourcesTemplatesList:
             try ensureInitialized()
             return try await handleListResourceTemplates(request)
 
         // Tools
-        case "tools/list":
+        case MCPMethod.toolsList:
             try ensureInitialized()
             return try await handleListTools(request)
 
-        case "tools/call":
+        case MCPMethod.toolsCall:
             try ensureInitialized()
             return try await handleCallTool(request)
 
         // Prompts
-        case "prompts/list":
+        case MCPMethod.promptsList:
             try ensureInitialized()
             return try await handleListPrompts(request)
 
-        case "prompts/get":
+        case MCPMethod.promptsGet:
             try ensureInitialized()
             return try await handleGetPrompt(request)
 

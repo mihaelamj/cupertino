@@ -48,7 +48,7 @@ public final class SampleCodeDownloader {
         self.visibleBrowser = visibleBrowser
 
         // Store cookies in output directory
-        cookiesPath = outputDirectory.appendingPathComponent(".auth-cookies.json")
+        cookiesPath = outputDirectory.appendingPathComponent(CupertinoConstants.FileName.authCookies)
     }
 
     // MARK: - Public API
@@ -104,7 +104,7 @@ public final class SampleCodeDownloader {
                 }
 
                 // Rate limiting - be respectful to Apple's servers
-                try await Task.sleep(for: .seconds(1))
+                try await Task.sleep(for: CupertinoConstants.Delay.sampleCodeBetweenPages)
             } catch {
                 stats.errors += 1
                 logError("Failed to download \(sample.name): \(error)")
@@ -127,7 +127,7 @@ public final class SampleCodeDownloader {
         _ = try await loadPage(webView, url: URL(string: sampleCodeListURL)!)
 
         // Wait extra time for dynamic content to load
-        try await Task.sleep(for: .seconds(5))
+        try await Task.sleep(for: CupertinoConstants.Delay.sampleCodePageLoad)
 
         // Extract samples using JavaScript
         let samples = try await extractSamplesWithJavaScript(webView)
@@ -225,7 +225,7 @@ public final class SampleCodeDownloader {
         _ = try await loadPage(webView, url: URL(string: sample.url)!)
 
         // Wait for page to fully load
-        try await Task.sleep(for: .seconds(3))
+        try await Task.sleep(for: CupertinoConstants.Delay.sampleCodeInteraction)
 
         // Find download link using JavaScript
         guard let downloadURL = try await findDownloadLinkWithJavaScript(webView, sampleURL: sample.url) else {
@@ -499,10 +499,10 @@ public final class SampleCodeDownloader {
         _ = webView.load(URLRequest(url: url))
 
         // Wait for page to fully render
-        try await Task.sleep(for: .seconds(2))
+        try await Task.sleep(for: CupertinoConstants.Delay.sampleCodeDownload)
 
         // Get HTML content
-        let html = try await webView.evaluateJavaScript("document.documentElement.outerHTML") as? String ?? ""
+        let html = try await webView.evaluateJavaScript(CupertinoConstants.JavaScript.getDocumentHTML) as? String ?? ""
 
         return html
     }

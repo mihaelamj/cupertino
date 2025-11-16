@@ -1,5 +1,0 @@
-#  TODO:
-
-- Abstract out SampleCodeDownloader & SwiftEvolutionCrawler
-- Add ability to create other downloaders/suckers
-

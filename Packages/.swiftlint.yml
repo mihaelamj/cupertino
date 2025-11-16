@@ -1,0 +1,42 @@
+# SwiftLint Configuration for Cupertino
+
+# Excluded paths (don't lint these)
+excluded:
+  - .build
+  - .swiftpm
+  - Tests/LinuxMain.swift
+  - Packages
+
+# Opt-in rules (explicitly enable these)
+opt_in_rules:
+  - trailing_comma
+
+# Disabled rules (allow these)
+disabled_rules:
+  - blanket_disable_command  # We use these intentionally for large files
+  - file_length              # Some files are legitimately long
+  - type_body_length         # Some types are legitimately large
+  - function_body_length     # Some functions are complex
+
+# Rule configurations
+line_length:
+  warning: 120
+  error: 200
+  ignores_comments: true
+  ignores_urls: true
+
+identifier_name:
+  min_length:
+    warning: 3
+    error: 2
+  excluded:
+    - id
+    - x
+    - y
+    - db
+
+trailing_comma:
+  mandatory_comma: true
+
+# Reporter (output format)
+reporter: "xcode"

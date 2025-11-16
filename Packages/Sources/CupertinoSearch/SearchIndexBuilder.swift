@@ -151,7 +151,7 @@ public actor SearchIndexBuilder {
                 skipped += 1
             }
 
-            if (index + 1) % 50 == 0 {
+            if (index + 1) % CupertinoConstants.Interval.progressLogEvery == 0 {
                 logInfo("   Progress: \(index + 1)/\(proposalFiles.count)")
             }
         }

@@ -8,7 +8,7 @@ import Foundation
 public actor CrawlerState {
     private let configuration: ChangeDetectionConfiguration
     private var metadata: CrawlMetadata
-    private var autoSaveInterval: TimeInterval = 30.0 // Save every 30 seconds
+    private var autoSaveInterval: TimeInterval = CupertinoConstants.Interval.autoSave
     private var lastAutoSave: Date = .init()
 
     public init(configuration: ChangeDetectionConfiguration) {

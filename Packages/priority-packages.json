@@ -81,7 +81,6 @@
       "packages": [
         {"owner": "vapor", "repo": "vapor"},
         {"owner": "vapor", "repo": "swift-getting-started-web-server"},
-        {"owner": "Alamofire", "repo": "Alamofire"},
         {"owner": "pointfreeco", "repo": "swift-composable-architecture"},
         {"owner": "pointfreeco", "repo": "swift-custom-dump"},
         {"owner": "pointfreeco", "repo": "swift-dependencies"},

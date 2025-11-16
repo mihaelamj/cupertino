@@ -22,9 +22,38 @@ public enum CupertinoConstants {
     // MARK: - File Names
 
     public enum FileName {
+        // MARK: Configuration Files
+
+        /// Main metadata file for crawler state
         public static let metadata = "metadata.json"
+
+        /// Configuration file
         public static let config = "config.json"
+
+        /// Search database file
         public static let searchDatabase = "search.db"
+
+        // MARK: Package Data Files
+
+        /// Swift packages with GitHub stars data
+        public static let packagesWithStars = "swift-packages-with-stars.json"
+
+        /// Priority packages list
+        public static let priorityPackages = "priority-packages.json"
+
+        /// Package fetch checkpoint file
+        public static let checkpoint = "checkpoint.json"
+
+        /// Authentication cookies file
+        public static let authCookies = ".auth-cookies.json"
+
+        // MARK: File Extensions
+
+        /// Markdown file extension
+        public static let markdownExtension = ".md"
+
+        /// JSON file extension
+        public static let jsonExtension = ".json"
     }
 
     // MARK: - Default Paths
@@ -89,6 +118,9 @@ public enum CupertinoConstants {
         /// Command name
         public static let commandName = "cupertino"
 
+        /// MCP server command name
+        public static let mcpCommandName = "cupertino-mcp"
+
         /// MCP server name
         public static let mcpServerName = "cupertino"
 
@@ -97,6 +129,41 @@ public enum CupertinoConstants {
 
         /// Current version
         public static let version = "0.1.5"
+    }
+
+    // MARK: - Display Names
+
+    public enum DisplayName {
+        /// Swift.org display name (for log messages and UI)
+        public static let swiftOrg = "Swift.org"
+
+        /// Apple display name
+        public static let apple = "Apple"
+    }
+
+    // MARK: - GitHub Organizations
+
+    public enum GitHubOrg {
+        /// Apple organization name (lowercase for comparisons)
+        public static let apple = "apple"
+
+        /// Apple organization display name
+        public static let appleDisplay = "Apple"
+
+        /// SwiftLang organization name (lowercase for comparisons)
+        public static let swiftlang = "swiftlang"
+
+        /// SwiftLang organization display name
+        public static let swiftlangDisplay = "SwiftLang"
+
+        /// Swift Server organization name (lowercase for comparisons)
+        public static let swiftServer = "swift-server"
+
+        /// Swift Server organization display name
+        public static let swiftServerDisplay = "Swift Server"
+
+        /// All official Swift organization names (lowercase)
+        public static let officialOrgs = [apple, swiftlang, swiftServer]
     }
 
     // MARK: - Logging
@@ -133,6 +200,9 @@ public enum CupertinoConstants {
 
         // MARK: GitHub
 
+        /// GitHub base URL
+        public static let github = "https://github.com"
+
         /// GitHub API Base
         public static let githubAPI = "https://api.github.com"
 
@@ -142,6 +212,22 @@ public enum CupertinoConstants {
         /// SwiftPackageIndex Package List
         public static let swiftPackageList =
             "https://raw.githubusercontent.com/SwiftPackageIndex/PackageList/main/packages.json"
+    }
+
+    // MARK: - URL Templates
+
+    public enum URLTemplate {
+        /// GitHub repository URL template
+        /// Usage: URLTemplate.githubRepo(owner: "apple", repo: "swift")
+        public static func githubRepo(owner: String, repo: String) -> String {
+            "\(BaseURL.github)/\(owner)/\(repo)"
+        }
+
+        /// GitHub repository URL (raw string format for pattern matching contexts)
+        /// Usage: `url: "\(CupertinoConstants.URLTemplate.githubRepoFormat(owner: owner, repo: repo))"`
+        public static func githubRepoFormat(owner: String, repo: String) -> String {
+            githubRepo(owner: owner, repo: repo)
+        }
     }
 
     // MARK: - Regex Patterns
@@ -191,5 +277,408 @@ public enum CupertinoConstants {
     public enum EnvVar {
         /// GitHub token environment variable
         public static let githubToken = "GITHUB_TOKEN"
+    }
+
+    // MARK: - MCP Server
+
+    public enum MCP {
+        // MARK: Resource URI Schemes
+
+        /// Apple documentation resource URI scheme
+        public static let appleDocsScheme = "apple-docs://"
+
+        /// Swift Evolution proposal resource URI scheme
+        public static let swiftEvolutionScheme = "swift-evolution://"
+
+        // MARK: Tool Names
+
+        /// Search documentation tool name
+        public static let toolSearchDocs = "search_docs"
+
+        /// List frameworks tool name
+        public static let toolListFrameworks = "list_frameworks"
+
+        // MARK: Resource Template URIs
+
+        /// Apple documentation resource template
+        public static let templateAppleDocs = "apple-docs://{framework}/{page}"
+
+        /// Swift Evolution resource template
+        public static let templateSwiftEvolution = "swift-evolution://{proposalID}"
+
+        // MARK: Resource Descriptions
+
+        /// Apple documentation resource description prefix
+        public static let appleDocsDescriptionPrefix = "Apple Documentation:"
+
+        /// Swift Evolution proposal resource description
+        public static let swiftEvolutionDescription = "Swift Evolution Proposal"
+
+        /// Apple documentation template name
+        public static let appleDocsTemplateName = "Apple Documentation Page"
+
+        /// Apple documentation template description
+        public static let appleDocsTemplateDescription = "Access Apple documentation by framework and page name"
+
+        /// Swift Evolution template description
+        public static let swiftEvolutionTemplateDescription = "Access Swift Evolution proposals by ID (e.g., SE-0001)"
+
+        // MARK: MIME Types
+
+        /// Markdown MIME type
+        public static let mimeTypeMarkdown = "text/markdown"
+
+        // MARK: Swift Evolution
+
+        /// Swift Evolution proposal ID prefix
+        public static let sePrefix = "SE-"
+
+        // MARK: Tool Descriptions
+
+        /// Search docs tool description
+        public static let toolSearchDocsDescription = """
+        Search Apple documentation and Swift Evolution proposals by keywords. \
+        Returns a ranked list of relevant documents with URIs that can be read using resources/read.
+        """
+
+        /// List frameworks tool description
+        public static let toolListFrameworksDescription = """
+        List all available frameworks in the documentation index with document counts. \
+        Useful for discovering what documentation is available.
+        """
+
+        // MARK: JSON Schema
+
+        /// JSON Schema type: object
+        public static let schemaTypeObject = "object"
+
+        /// JSON Schema parameter: query
+        public static let schemaParamQuery = "query"
+
+        /// JSON Schema parameter: framework
+        public static let schemaParamFramework = "framework"
+
+        /// JSON Schema parameter: limit
+        public static let schemaParamLimit = "limit"
+
+        // MARK: Messages & Tips
+
+        /// Tip for using resources/read
+        public static let tipUseResourcesRead = "💡 **Tip:** Use `resources/read` with the URI to get the full document content."
+
+        /// Tip for filtering by framework
+        public static let tipFilterByFramework = "💡 **Tip:** Use `search_docs` with the `framework` parameter to filter results."
+
+        /// No results found message
+        public static let messageNoResults = "_No results found. Try different keywords or check available frameworks using `list_frameworks`._"
+
+        /// No frameworks found message
+        public static func messageNoFrameworks(buildIndexCommand: String) -> String {
+            "_No frameworks found. The search index may be empty. Run `\(buildIndexCommand)` to index your documentation._"
+        }
+
+        // MARK: Formatting
+
+        /// Score number format (2 decimal places)
+        public static let formatScore = "%.2f"
+    }
+
+    // MARK: - CLI Commands
+
+    public enum Command {
+        /// Build index command name
+        public static let buildIndex = "build-index"
+
+        /// Crawl command name
+        public static let crawl = "crawl"
+
+        /// Serve command name (MCP)
+        public static let serve = "serve"
+    }
+
+    // MARK: - Messages
+
+    public enum Message {
+        // MARK: GitHub Token Instructions
+
+        /// Export GitHub token instruction (for bash shell)
+        public static let exportGitHubToken = "export GITHUB_TOKEN=your_token_here"
+
+        /// GitHub rate limit without token
+        public static let rateLimitWithoutToken = "Without token: 60 requests/hour"
+
+        /// GitHub rate limit with token
+        public static let rateLimitWithToken = "With token: 5000 requests/hour"
+
+        /// Tip about setting GitHub token
+        public static let gitHubTokenTip = "💡 Tip: Set GITHUB_TOKEN environment variable for higher rate limits"
+    }
+
+    // MARK: - Delays and Timeouts
+
+    /// Network delays and timeout values
+    public enum Delay {
+        /// Delay between Swift Evolution proposal fetches
+        /// Rationale: GitHub API rate limiting (60 req/hour without token)
+        public static let swiftEvolution: Duration = .milliseconds(500)
+
+        /// Delay between sample code page loads
+        /// Rationale: Avoid overwhelming Apple's servers
+        public static let sampleCodeBetweenPages: Duration = .seconds(1)
+
+        /// Wait time for sample code page to load completely
+        /// Rationale: JavaScript-heavy pages need time to render
+        public static let sampleCodePageLoad: Duration = .seconds(5)
+
+        /// Delay after sample code page interaction
+        /// Rationale: Wait for UI state to update
+        public static let sampleCodeInteraction: Duration = .seconds(3)
+
+        /// Delay before sample code download
+        /// Rationale: Ensure download link is ready
+        public static let sampleCodeDownload: Duration = .seconds(2)
+
+        /// Rate limit delay for package fetching (high priority packages)
+        /// Rationale: GitHub API secondary rate limits
+        public static let packageFetchHighPriority: Duration = .seconds(5)
+
+        /// Rate limit delay for package fetching (normal priority)
+        /// Rationale: Balance speed vs API limits
+        public static let packageFetchNormal: Duration = .seconds(1.2)
+
+        /// Rate limit delay for package star count (high priority)
+        /// Rationale: Star count fetches are lighter, can be faster
+        public static let packageStarsHighPriority: Duration = .seconds(2)
+
+        /// Rate limit delay for package star count (normal)
+        /// Rationale: Minimize total fetch time
+        public static let packageStarsNormal: Duration = .seconds(0.5)
+    }
+
+    /// Timeout values for operations
+    public enum Timeout {
+        /// Timeout for page loading in crawler
+        /// Rationale: Complex pages can take time, but 30s is reasonable limit
+        public static let pageLoad: Duration = .seconds(30)
+
+        /// Maximum time to wait for WKWebView navigation
+        /// Rationale: Matches page load timeout for consistency
+        public static let webViewNavigation: Duration = .seconds(30)
+    }
+
+    // MARK: - Intervals
+
+    /// Periodic operation intervals
+    public enum Interval {
+        /// Auto-save interval for crawler state
+        /// Rationale: Balance between data safety and I/O overhead
+        public static let autoSave: TimeInterval = 30.0
+
+        /// Log progress every N items
+        /// Rationale: Enough to show progress without spamming logs
+        public static let progressLogEvery: Int = 50
+    }
+
+    // MARK: - Content Limits
+
+    /// Content size and length limits
+    public enum ContentLimit {
+        /// Maximum length for summary extraction (characters)
+        /// Rationale: ~2-3 sentences, readable preview length
+        public static let summaryMaxLength: Int = 500
+
+        /// Maximum content preview length (characters)
+        /// Rationale: Shorter preview for quick display
+        public static let previewMaxLength: Int = 200
+    }
+
+    // MARK: - JavaScript Code
+
+    public enum JavaScript {
+        /// Get the full HTML content of the current document
+        public static let getDocumentHTML = "document.documentElement.outerHTML"
+    }
+
+    // MARK: - Default Limits
+
+    public enum Limit {
+        // MARK: Crawler Limits
+
+        /// Default maximum number of pages to crawl
+        public static let defaultMaxPages = 15000
+
+        // MARK: Search Limits
+
+        /// Default search result limit
+        public static let defaultSearchLimit = 20
+
+        /// Maximum search result limit
+        public static let maxSearchLimit = 100
+
+        // MARK: Display Limits
+
+        /// Number of top packages to display
+        public static let topPackagesDisplay = 20
+    }
+
+    // MARK: - Database Schema
+
+    public enum Database {
+        // MARK: Table Names
+
+        /// Main FTS5 search table name
+        public static let tableDocsFTS = "docs_fts"
+
+        /// Documents metadata table name
+        public static let tableDocsMetadata = "docs_metadata"
+
+        /// Packages table name
+        public static let tablePackages = "packages"
+
+        /// Package dependencies table name
+        public static let tablePackageDependencies = "package_dependencies"
+
+        // MARK: Column Names - docs_metadata
+
+        /// URI column (primary key)
+        public static let colURI = "uri"
+
+        /// Framework column
+        public static let colFramework = "framework"
+
+        /// File path column
+        public static let colFilePath = "file_path"
+
+        /// Content hash column
+        public static let colContentHash = "content_hash"
+
+        /// Last crawled timestamp column
+        public static let colLastCrawled = "last_crawled"
+
+        /// Word count column
+        public static let colWordCount = "word_count"
+
+        /// Source type column
+        public static let colSourceType = "source_type"
+
+        /// Package ID column (foreign key)
+        public static let colPackageID = "package_id"
+
+        // MARK: Column Names - docs_fts
+
+        /// Title column (FTS)
+        public static let colTitle = "title"
+
+        /// Summary column (FTS)
+        public static let colSummary = "summary"
+
+        /// Content column (FTS)
+        public static let colContent = "content"
+
+        // MARK: Column Names - packages
+
+        /// Package ID column
+        public static let colID = "id"
+
+        /// Package name column
+        public static let colName = "name"
+
+        /// Package owner column
+        public static let colOwner = "owner"
+
+        /// Repository URL column
+        public static let colRepositoryURL = "repository_url"
+
+        /// Documentation URL column
+        public static let colDocumentationURL = "documentation_url"
+
+        /// Stars count column
+        public static let colStars = "stars"
+
+        /// Last updated timestamp column
+        public static let colLastUpdated = "last_updated"
+
+        /// Is Apple official flag column
+        public static let colIsAppleOfficial = "is_apple_official"
+
+        /// Description column
+        public static let colDescription = "description"
+
+        // MARK: Index Names
+
+        /// Framework index name
+        public static let idxFramework = "idx_framework"
+
+        /// Source type index name
+        public static let idxSourceType = "idx_source_type"
+
+        /// Package owner index name
+        public static let idxPackageOwner = "idx_package_owner"
+
+        /// Package official flag index name
+        public static let idxPackageOfficial = "idx_package_official"
+
+        // MARK: Default Values
+
+        /// Default source type for Apple documentation
+        public static let defaultSourceTypeApple = "apple"
+
+        // MARK: SQL Functions
+
+        /// BM25 ranking function name
+        public static let funcBM25 = "bm25"
+
+        /// COUNT aggregate function
+        public static let funcCount = "COUNT"
+    }
+
+    // MARK: - Priority Package List
+
+    public enum PriorityPackage {
+        /// Priority package list version
+        public static let version = "1.0"
+
+        // MARK: Tier Descriptions
+
+        /// Tier 1 description (Apple official packages)
+        public static let tier1Description = "Apple official packages - always crawled first"
+
+        /// Tier 2 description (SwiftLang packages)
+        public static let tier2Description = "SwiftLang official packages - core Swift tooling and infrastructure"
+
+        /// Tier 3 description (Swift Server packages)
+        public static let tier3Description = "Swift Server Work Group packages - mentioned in Swift.org docs"
+
+        /// Tier 4 description (Ecosystem packages)
+        public static let tier4Description = "Popular ecosystem packages mentioned in Swift.org documentation"
+
+        // MARK: Package List Metadata
+
+        /// Package list description
+        public static let listDescription = """
+        Priority Swift packages to always include in documentation crawling. \
+        Auto-generated from Swift.org documentation analysis.
+        """
+
+        /// Update policy for priority package list
+        public static let updatePolicy = "Regenerate this list whenever Swift.org documentation is re-crawled"
+
+        /// Data sources for priority package list
+        public static let sources: [String] = [
+            "Swift.org official documentation",
+            "Apple developer ecosystem",
+            "Swift Evolution proposals",
+        ]
+
+        /// Notes about priority package list
+        public static let notes: [String] = [
+            "This file is automatically generated by analyzing Swift.org documentation",
+            "Packages are categorized by source and importance",
+            "Tier 1 (Apple official) should always be crawled",
+            "Tier 2 (SwiftLang) provides core Swift tooling",
+            "Tier 3 (Server) for server-side Swift applications",
+            "Tier 4 (Ecosystem) includes popular community packages",
+            "Re-generate this file when Swift.org docs are updated",
+        ]
     }
 }

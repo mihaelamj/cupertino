@@ -2,13 +2,19 @@
 <Workspace
    version = "1.0">
    <FileRef
+      location = "group:ToDo.md">
+   </FileRef>
+   <FileRef
       location = "group:README.md">
    </FileRef>
    <FileRef
-      location = "group:TODO.txt">
+      location = "group:AGENTS.md">
    </FileRef>
    <FileRef
-      location = "group:AGENTS.md">
+      location = "group:CUPERTINO_FILES_AND_FOLDERS.md">
+   </FileRef>
+   <FileRef
+      location = "group:DEVELOPMENT.md">
    </FileRef>
    <Group
       location = "group:ai-rules"
