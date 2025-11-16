@@ -74,10 +74,10 @@ cupertino build-index \
 ### 4. Start MCP Server
 
 ```bash
-appledocsucker-mcp serve \
-  --docs-dir /Volumes/Code/DeveloperExt/appledocsucker/docs \
-  --evolution-dir /Volumes/Code/DeveloperExt/appledocsucker/swift-evolution \
-  --search-db /Volumes/Code/DeveloperExt/appledocsucker/search.db
+cupertino-mcp serve \
+  --docs-dir /Volumes/Code/DeveloperExt/private/cupertino/docs \
+  --evolution-dir /Volumes/Code/DeveloperExt/private/cupertino/swift-evolution \
+  --search-db /Volumes/Code/DeveloperExt/private/cupertino/search.db
 ```
 
 **What this does:**

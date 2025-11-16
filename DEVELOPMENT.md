@@ -1,6 +1,6 @@
 # Development Guide
 
-Complete guide for local development, building, testing, and contributing to AppleDocsucker.
+Complete guide for local development, building, testing, and contributing to Cupertino.
 
 > **Important:** All `make` commands work from both the **root directory** and the **Packages directory**. The root Makefile automatically delegates to Packages/Makefile. Swift Package Manager commands (`swift build`, `swift test`) must be run from the Packages directory.
 
@@ -39,8 +39,8 @@ Complete guide for local development, building, testing, and contributing to App
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/appledocsucker.git
-cd appledocsucker
+git clone https://github.com/YOUR_USERNAME/cupertino.git
+cd cupertino
 ```
 
 ### 2. Build All Targets
@@ -51,11 +51,11 @@ The Makefile works from **either** the root directory or the Packages directory:
 
 ```bash
 # From root directory
-cd appledocsucker
+cd cupertino
 make build
 
 # OR from Packages directory
-cd appledocsucker/Packages
+cd cupertino/Packages
 make build
 
 # Shortcuts work from both locations
@@ -93,8 +93,8 @@ swift build -c release
 ```
 
 **Binary locations:**
-- `Packages/.build/release/appledocsucker` (~4.3MB)
-- `Packages/.build/release/appledocsucker-mcp` (~4.4MB)
+- `Packages/.build/release/cupertino` (~4.3MB)
+- `Packages/.build/release/cupertino-mcp` (~4.4MB)
 
 ### 4. Install Globally
 
@@ -106,18 +106,18 @@ Copies binaries to /usr/local/bin.
 
 ```bash
 # From root directory
-cd appledocsucker
+cd cupertino
 make build                       # Build binaries
 sudo make install                # Install to /usr/local/bin
 
 # OR from Packages directory
-cd appledocsucker/Packages
+cd cupertino/Packages
 make build                       # Build binaries
 sudo make install                # Install to /usr/local/bin
 
 # Verify
-which appledocsucker
-appledocsucker --version
+which cupertino
+cupertino --version
 ```
 
 **To update after code changes (works from root or Packages):**
@@ -133,12 +133,12 @@ cd Packages
 swift build -c release
 
 # Create symlinks
-sudo ln -sf "$(pwd)/.build/release/appledocsucker" /usr/local/bin/appledocsucker
-sudo ln -sf "$(pwd)/.build/release/appledocsucker-mcp" /usr/local/bin/appledocsucker-mcp
+sudo ln -sf "$(pwd)/.build/release/cupertino" /usr/local/bin/cupertino
+sudo ln -sf "$(pwd)/.build/release/cupertino-mcp" /usr/local/bin/cupertino-mcp
 
 # Verify
-which appledocsucker
-appledocsucker --version
+which cupertino
+cupertino --version
 ```
 
 #### Option 2: Symlinks (Advanced)
@@ -167,8 +167,8 @@ cd Packages
 swift build
 
 # Use with full path
-./build/debug/appledocsucker --help
-./build/debug/appledocsucker-mcp --help
+./build/debug/cupertino --help
+./build/debug/cupertino-mcp --help
 ```
 
 ### Quick Update Workflow
@@ -206,8 +206,8 @@ echo "✅ Build complete!"
 echo ""
 echo "If using symlinks, changes are already live."
 echo "If using copies, run:"
-echo "  sudo cp .build/release/appledocsucker /usr/local/bin/"
-echo "  sudo cp .build/release/appledocsucker-mcp /usr/local/bin/"
+echo "  sudo cp .build/release/cupertino /usr/local/bin/"
+echo "  sudo cp .build/release/cupertino-mcp /usr/local/bin/"
 ```
 
 Make it executable:
@@ -221,7 +221,7 @@ chmod +x update.sh
 
 ## Project Structure
 
-AppleDocsucker uses an **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** architecture with 9 separate packages organized in layers:
+Cupertino uses an **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** architecture with 9 separate packages organized in layers:
 
 ```
 Packages/
@@ -230,29 +230,29 @@ Packages/
 ├── Sources/
 │   ├── Foundation Layer (No dependencies)
 │   │   ├── MCPShared/              # MCP protocol models
-│   │   ├── DocsuckerLogging/       # os.log infrastructure
-│   │   └── DocsuckerShared/        # Configuration & models
+│   │   ├── CupertinoLogging/       # os.log infrastructure
+│   │   └── CupertinoShared/        # Configuration & models
 │   │
 │   ├── Infrastructure Layer
 │   │   ├── MCPTransport/           # JSON-RPC transport (stdio)
 │   │   ├── MCPServer/              # MCP server implementation
-│   │   └── DocsuckerCore/          # Crawler & downloaders
+│   │   └── CupertinoCore/          # Crawler & downloaders
 │   │
 │   ├── Application Layer
-│   │   ├── DocsuckerSearch/        # SQLite FTS5 search
-│   │   ├── DocsuckerMCPSupport/    # Resource providers
-│   │   └── DocsSearchToolProvider/ # Search tools
+│   │   ├── CupertinoSearch/        # SQLite FTS5 search
+│   │   ├── CupertinoMCPSupport/    # Resource providers
+│   │   └── CupertinoSearchToolProvider/ # Search tools
 │   │
 │   └── Executables
-│       ├── DocsuckerCLI/           # CLI tool (main.swift)
-│       └── DocsuckerMCP/           # MCP server (main.swift)
+│       ├── CupertinoCLI/           # CLI tool (main.swift)
+│       └── CupertinoMCP/           # MCP server (main.swift)
 │
 └── Tests/
     ├── MCPSharedTests/
     ├── MCPServerTests/
-    ├── DocsuckerCoreTests/
-    ├── DocsuckerSearchTests/
-    ├── DocsuckerLoggingTests/
+    ├── CupertinoCoreTests/
+    ├── CupertinoSearchTests/
+    ├── CupertinoLoggingTests/
     └── ... (one test target per package)
 ```
 
@@ -261,10 +261,10 @@ Packages/
 | File | Purpose |
 |------|---------|
 | `Package.swift` | Swift Package Manager manifest |
-| `Sources/DocsuckerCLI/main.swift` | CLI entry point |
-| `Sources/DocsuckerMCP/main.swift` | MCP server entry point |
-| `Sources/DocsuckerCore/Crawler.swift` | Main documentation crawler |
-| `Sources/DocsuckerSearch/SearchIndex.swift` | SQLite FTS5 search engine |
+| `Sources/CupertinoCLI/main.swift` | CLI entry point |
+| `Sources/CupertinoMCP/main.swift` | MCP server entry point |
+| `Sources/CupertinoCore/Crawler.swift` | Main documentation crawler |
+| `Sources/CupertinoSearch/SearchIndex.swift` | SQLite FTS5 search engine |
 
 ---
 
@@ -276,7 +276,7 @@ Edit files in `Packages/Sources/`:
 
 ```bash
 # Example: Edit the crawler
-vim Packages/Sources/DocsuckerCore/Crawler.swift
+vim Packages/Sources/CupertinoCore/Crawler.swift
 ```
 
 ### 2. Build
@@ -310,12 +310,12 @@ swift test
 ```bash
 # From Packages directory
 cd Packages
-.build/debug/appledocsucker --help
-.build/debug/appledocsucker-mcp serve
+.build/debug/cupertino --help
+.build/debug/cupertino-mcp serve
 
 # OR if installed globally
-appledocsucker --help
-appledocsucker-mcp serve
+cupertino --help
+cupertino-mcp serve
 ```
 
 ### 5. Update Global Installation
@@ -337,13 +337,13 @@ swift build -c release
 **Using Makefile (Recommended):**
 ```bash
 # 1. Edit code
-vim Packages/Sources/DocsuckerCore/Crawler.swift
+vim Packages/Sources/CupertinoCore/Crawler.swift
 
 # 2. Build and test (from root or Packages directory)
 make build && make test
 
 # 3. Test locally (if installed globally)
-appledocsucker crawl --max-pages 1 --output-dir /tmp/test
+cupertino crawl --max-pages 1 --output-dir /tmp/test
 
 # 4. If looks good, update (from root or Packages directory)
 make update
@@ -354,14 +354,14 @@ make update
 **Using Swift Package Manager directly:**
 ```bash
 # 1. Edit code
-vim Packages/Sources/DocsuckerCore/Crawler.swift
+vim Packages/Sources/CupertinoCore/Crawler.swift
 
 # 2. Build and test (must be in Packages directory)
 cd Packages
 swift build && swift test
 
 # 3. Test locally
-.build/debug/appledocsucker crawl --max-pages 1 --output-dir /tmp/test
+.build/debug/cupertino crawl --max-pages 1 --output-dir /tmp/test
 
 # 4. If looks good, rebuild release
 swift build -c release
@@ -389,7 +389,7 @@ swift test
 
 ```bash
 # Run specific test file
-swift test --filter DocsuckerCoreTests
+swift test --filter CupertinoCoreTests
 
 # Run specific test
 swift test --filter testDownloadRealAppleDocPage
@@ -431,7 +431,7 @@ Test the full workflow locally:
 
 ```bash
 # 1. Download small sample
-.build/debug/appledocsucker crawl \
+.build/debug/cupertino crawl \
   --start-url "https://developer.apple.com/documentation/swift/array" \
   --max-pages 3 \
   --output-dir /tmp/docsucker-test
@@ -440,12 +440,12 @@ Test the full workflow locally:
 find /tmp/docsucker-test -name "*.md"
 
 # 3. Build search index
-.build/debug/appledocsucker build-index \
+.build/debug/cupertino build-index \
   --docs-dir /tmp/docsucker-test \
   --search-db /tmp/docsucker-test/search.db
 
 # 4. Start MCP server
-.build/debug/appledocsucker-mcp serve \
+.build/debug/cupertino-mcp serve \
   --docs-dir /tmp/docsucker-test \
   --search-db /tmp/docsucker-test/search.db
 ```
@@ -495,7 +495,7 @@ Install pre-commit:
 
 ```bash
 brew install pre-commit
-cd /path/to/appledocsucker
+cd /path/to/cupertino
 pre-commit install
 ```
 
@@ -525,7 +525,7 @@ Debug builds include symbols and are slower but easier to debug:
 
 ```bash
 swift build  # Defaults to debug
-lldb .build/debug/appledocsucker
+lldb .build/debug/cupertino
 ```
 
 ### Console Logging
@@ -534,19 +534,19 @@ View os.log output:
 
 ```bash
 # Stream live logs
-log stream --predicate 'subsystem == "com.docsucker.appledocsucker"'
+log stream --predicate 'subsystem == "com.docsucker.cupertino"'
 
 # View recent logs
-log show --predicate 'subsystem == "com.docsucker.appledocsucker"' --last 1h
+log show --predicate 'subsystem == "com.docsucker.cupertino"' --last 1h
 
 # Filter by category
-log show --predicate 'subsystem == "com.docsucker.appledocsucker" AND category == "crawler"' --last 1h
+log show --predicate 'subsystem == "com.docsucker.cupertino" AND category == "crawler"' --last 1h
 ```
 
 ### Xcode Debugging
 
 1. Open `Package.swift` in Xcode
-2. Select scheme: `appledocsucker` or `appledocsucker-mcp`
+2. Select scheme: `cupertino` or `cupertino-mcp`
 3. Edit scheme → Run → Arguments → Add command-line args
 4. Set breakpoints
 5. Run (⌘R)
@@ -555,16 +555,16 @@ log show --predicate 'subsystem == "com.docsucker.appledocsucker" AND category =
 
 ```bash
 # Verbose output (if implemented)
-appledocsucker crawl --verbose
+cupertino crawl --verbose
 
 # Test with small sample
-appledocsucker crawl --max-pages 1 --output-dir /tmp/test
+cupertino crawl --max-pages 1 --output-dir /tmp/test
 
 # Check file permissions
-ls -la ~/.docsucker/
+ls -la ~/.cupertino/
 
 # Verify SQLite database
-sqlite3 ~/.docsucker/search.db "SELECT COUNT(*) FROM docs_fts;"
+sqlite3 ~/.cupertino/search.db "SELECT COUNT(*) FROM docs_fts;"
 ```
 
 ---
@@ -573,7 +573,7 @@ sqlite3 ~/.docsucker/search.db "SELECT COUNT(*) FROM docs_fts;"
 
 ### Add New Command to CLI
 
-1. Edit `Sources/DocsuckerCLI/main.swift`
+1. Edit `Sources/CupertinoCLI/main.swift`
 2. Create new `struct` conforming to `AsyncParsableCommand`
 3. Add to subcommands in `CommandConfiguration`
 4. Implement `run()` method
@@ -581,7 +581,7 @@ sqlite3 ~/.docsucker/search.db "SELECT COUNT(*) FROM docs_fts;"
 Example:
 
 ```swift
-extension AppleDocsucker {
+extension Cupertino {
     struct MyNewCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             abstract: "Description of my command"
@@ -596,22 +596,22 @@ extension AppleDocsucker {
 
 // Add to main configuration:
 static let configuration = CommandConfiguration(
-    commandName: "appledocsucker",
+    commandName: "cupertino",
     subcommands: [..., MyNewCommand.self]
 )
 ```
 
 ### Add New MCP Resource Type
 
-1. Edit `Sources/DocsuckerMCPSupport/DocsResourceProvider.swift`
+1. Edit `Sources/CupertinoMCPSupport/CupertinoResourceProvider.swift`
 2. Add new URI scheme handling in `readResource()`
 3. Update `listResources()` to include new resources
 
 ### Add New Search Feature
 
-1. Edit `Sources/DocsuckerSearch/SearchIndex.swift`
+1. Edit `Sources/CupertinoSearch/SearchIndex.swift`
 2. Add new SQL queries or FTS5 features
-3. Update `Sources/DocsSearchToolProvider/DocsSearchToolProvider.swift` to expose via MCP
+3. Update `Sources/CupertinoSearchToolProvider/CupertinoSearchToolProvider.swift` to expose via MCP
 
 ### Update Dependencies
 
@@ -650,7 +650,7 @@ time swift build -c release
 ### Measure Crawl Performance
 
 ```bash
-time .build/release/appledocsucker crawl --max-pages 100 --output-dir /tmp/perf-test
+time .build/release/cupertino crawl --max-pages 100 --output-dir /tmp/perf-test
 ```
 
 ### Profile with Instruments
@@ -689,7 +689,7 @@ swift package update
 
 **Error:** `Search index not found`
 
-**Solution:** Run `appledocsucker build-index` first
+**Solution:** Run `cupertino build-index` first
 
 **Error:** `Permission denied`
 
@@ -726,8 +726,8 @@ Before creating a new release:
 
 ## Getting Help
 
-- **Issues:** [GitHub Issues](https://github.com/YOUR_USERNAME/appledocsucker/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/YOUR_USERNAME/appledocsucker/discussions)
+- **Issues:** [GitHub Issues](https://github.com/YOUR_USERNAME/cupertino/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/YOUR_USERNAME/cupertino/discussions)
 - **Documentation:** See README.md and Packages/*.md files
 
 ---

@@ -7,7 +7,7 @@ claude code --continue
 **IMPORTANT: All paths are hardcoded to ensure consistency**
 
 ```
-/Volumes/Code/DeveloperExt/appledocsucker/
+/Volumes/Code/DeveloperExt/private/cupertino/
 ├── docs/                    # Crawled Apple documentation (markdown)
 ├── swift-evolution/         # Swift Evolution proposals (markdown)
 ├── sample-code/            # Sample code .zip files (607 samples)
@@ -15,11 +15,11 @@ claude code --continue
 ```
 
 **Hardcoded paths used in code:**
-- Base: `/Volumes/Code/DeveloperExt/cupertino`
-- Docs: `/Volumes/Code/DeveloperExt/appledocsucker/docs`
-- Evolution: `/Volumes/Code/DeveloperExt/appledocsucker/swift-evolution`
-- Samples: `/Volumes/Code/DeveloperExt/appledocsucker/sample-code`
-- Search DB: `/Volumes/Code/DeveloperExt/appledocsucker/search.db`
+- Base: `/Volumes/Code/DeveloperExt/private/cupertino`
+- Docs: `/Volumes/Code/DeveloperExt/private/cupertino/docs`
+- Evolution: `/Volumes/Code/DeveloperExt/private/cupertino/swift-evolution`
+- Samples: `/Volumes/Code/DeveloperExt/private/cupertino/sample-code`
+- Search DB: `/Volumes/Code/DeveloperExt/private/cupertino/search.db`
 
 **What's in each folder:**
 - `docs/`: ~10,099+ markdown files organized by framework (61 MB)
@@ -36,7 +36,7 @@ claude code --continue
   - Original crawl started: Nov 14, 2024 12:00 AM
   - Original crawl killed at: Nov 15, 2024 ~7:45 PM (at page 12,661, depth=4 in Accelerate)
   - Resumed: Nov 15, 2024 ~7:47 PM from Accelerate framework
-  - Current command: `cupertino crawl --start-url https://developer.apple.com/documentation/accelerate --output-dir /Volumes/Code/DeveloperExt/appledocsucker/docs --max-pages 150000 --force`
+  - Current command: `cupertino crawl --start-url https://developer.apple.com/documentation/accelerate --output-dir /Volumes/Code/DeveloperExt/private/cupertino/docs --max-pages 150000 --force`
   - Status: Running in background (bash_id: 40ae3f), skipping unchanged pages via SHA256 detection
   - Note: No crawl state persistence - using `--force` to rediscover pages and skip unchanged ones
 
@@ -70,9 +70,9 @@ claude code --continue
 - [ ] Rebuild search index with all downloaded documentation
   ```bash
   cupertino build-index \
-    --docs-dir /Volumes/Code/DeveloperExt/appledocsucker/docs \
-    --evolution-dir /Volumes/Code/DeveloperExt/appledocsucker/swift-evolution \
-    --search-db /Volumes/Code/DeveloperExt/appledocsucker/search.db
+    --docs-dir /Volumes/Code/DeveloperExt/private/cupertino/docs \
+    --evolution-dir /Volumes/Code/DeveloperExt/private/cupertino/swift-evolution \
+    --search-db /Volumes/Code/DeveloperExt/private/cupertino/search.db
   ```
 - [ ] **Store crawl metadata in index:**
   - Crawl started: 2024-11-14 00:00:00
@@ -208,7 +208,7 @@ claude code --continue
   - **Crawl time estimate:** ~30-40 seconds (60-80 pages × 0.5s delay) + rendering time = ~5-10 minutes
 - [ ] Run package analysis script:
   ```bash
-  cd /Volumes/Code/DeveloperExt/cupertino
+  cd /Volumes/Code/DeveloperExt/private/cupertino
   mkdir -p scripts
   # Copy script from WARMUP.md
   chmod +x scripts/analyze-top-swift-packages.sh
@@ -346,7 +346,7 @@ claude code --continue
 - [ ] Compare two snapshots or check results
 - [ ] Implement delta calculation (added/modified/removed)
 - [ ] Generate delta JSON files
-- [ ] Store in `/Volumes/Code/DeveloperExt/appledocsucker/deltas/`
+- [ ] Store in `/Volumes/Code/DeveloperExt/private/cupertino/deltas/`
 
 ### Phase 5d: MCP Integration (1 hour)
 - [ ] Add `get_documentation_changes` MCP tool
@@ -500,7 +500,7 @@ Total: ~32-37 GB (sample zips must be kept, cannot automate downloads)
 **Implementation approach:**
 ```bash
 # Index all already-downloaded sample READMEs
-cd /Volumes/Code/DeveloperExt/cupertino
+cd /Volumes/Code/DeveloperExt/private/cupertino
 
 # 1. Index all sample READMEs (extracts temp, indexes, deletes extraction)
 cupertino index-samples \
@@ -522,7 +522,7 @@ cupertino index-samples \
 
 ## Known Issues / Tech Debt
 
-- [ ] **Swift Evolution proposal listing bug** - DocsResourceProvider.swift:51 looks for `hasPrefix("SE-")` but actual files are named `0001-*.md`, `0002-*.md`, etc. (without "SE-" prefix). This means MCP resource listing returns zero proposals. Fix: Remove the "SE-" prefix check or adjust to match actual filenames.
+- [ ] **Swift Evolution proposal listing bug** - CupertinoResourceProvider.swift:51 looks for `hasPrefix("SE-")` but actual files are named `0001-*.md`, `0002-*.md`, etc. (without "SE-" prefix). This means MCP resource listing returns zero proposals. Fix: Remove the "SE-" prefix check or adjust to match actual filenames.
 - [ ] SwiftLint type_body_length warning in HTMLToMarkdown.swift (disabled)
 - [ ] Error handling could be more granular
 - [ ] No retry logic for failed HTTP requests

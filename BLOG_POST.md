@@ -1,14 +1,14 @@
-# AppleDocsucker: Bringing Apple Documentation to AI Agents
+# Cupertino: Bringing Apple Documentation to AI Agents
 
 **Published:** November 15, 2024
-**Author:** AppleDocsucker Team
+**Author:** Cupertino Team
 **Reading Time:** 8 minutes
 
 ---
 
 ## TL;DR
 
-AppleDocsucker is a Swift-based toolset that crawls 13,000+ Apple documentation pages, converts them to clean Markdown, indexes them with SQLite FTS5, and serves them to AI agents via the Model Context Protocol (MCP). Built in Swift 6.2 for macOS, it enables AI-assisted development with offline, searchable Apple documentation.
+Cupertino is a Swift-based toolset that crawls 13,000+ Apple documentation pages, converts them to clean Markdown, indexes them with SQLite FTS5, and serves them to AI agents via the Model Context Protocol (MCP). Built in Swift 6.2 for macOS, it enables AI-assisted development with offline, searchable Apple documentation.
 
 **Key Stats:**
 - 📚 13,000+ documentation pages indexed
@@ -30,13 +30,13 @@ When building iOS, macOS, or Swift applications, developers constantly reference
 3. **Online-only** - No offline access for local AI agents
 4. **Not searchable** - No structured API for programmatic queries
 
-**AppleDocsucker solves all four problems.**
+**Cupertino solves all four problems.**
 
 ---
 
 ## The Solution: Crawl, Convert, Index, Serve
 
-AppleDocsucker implements a complete pipeline:
+Cupertino implements a complete pipeline:
 
 ```
 Apple Docs (HTML)
@@ -129,27 +129,27 @@ Claude: [Uses search_docs("@Observable SwiftUI")]
 
 ## Architecture: ExtremePackaging in Action
 
-AppleDocsucker uses **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** - a Swift Package Manager pattern with 9 focused packages:
+Cupertino uses **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** - a Swift Package Manager pattern with 9 focused packages:
 
 ```
 Foundation Layer:
   ├─ MCPShared          # MCP protocol models
-  ├─ DocsuckerLogging   # os.log infrastructure
-  └─ DocsuckerShared    # Configuration & models
+  ├─ CupertinoLogging   # os.log infrastructure
+  └─ CupertinoShared    # Configuration & models
 
 Infrastructure Layer:
   ├─ MCPTransport       # JSON-RPC transport
   ├─ MCPServer          # MCP server core
-  └─ DocsuckerCore      # Crawler & downloaders
+  └─ CupertinoCore      # Crawler & downloaders
 
 Application Layer:
-  ├─ DocsuckerSearch    # SQLite FTS5 search
-  ├─ DocsuckerMCPSupport # MCP resource providers
-  └─ DocsSearchToolProvider # Search tools
+  ├─ CupertinoSearch    # SQLite FTS5 search
+  ├─ CupertinoMCPSupport # MCP resource providers
+  └─ CupertinoSearchToolProvider # Search tools
 
 Executables:
-  ├─ DocsuckerCLI       # Command-line tool
-  └─ DocsuckerMCP       # MCP server
+  ├─ CupertinoCLI       # Command-line tool
+  └─ CupertinoMCP       # MCP server
 ```
 
 **Benefits:**
@@ -169,8 +169,8 @@ Executables:
 ```json
 {
   "mcpServers": {
-    "appledocsucker": {
-      "command": "/usr/local/bin/appledocsucker-mcp",
+    "cupertino": {
+      "command": "/usr/local/bin/cupertino-mcp",
       "args": ["serve"]
     }
   }
@@ -190,10 +190,10 @@ Download once, search forever:
 
 ```bash
 # One-time download (~20-24 hours for full crawl)
-appledocsucker crawl --max-pages 15000
+cupertino crawl --max-pages 15000
 
 # Build search index (~2-5 minutes)
-appledocsucker build-index
+cupertino build-index
 
 # Now work offline with full documentation access
 ```
@@ -210,14 +210,14 @@ Track Apple documentation changes over time:
 
 ```bash
 # Quick check for changes (2-5 minutes vs 3-4 hours)
-appledocsucker check --output changes.json
+cupertino check --output changes.json
 
 # See what's new
 cat changes.json
 # {"new": 15, "modified": 47, "removed": 2}
 
 # Selective update
-appledocsucker update --only-changed changes.json
+cupertino update --only-changed changes.json
 ```
 
 **Use cases:**
@@ -258,7 +258,7 @@ Uses **os.log** for production-quality logging:
 
 ```bash
 # View all logs
-log show --predicate 'subsystem == "com.docsucker.appledocsucker"' --last 1h
+log show --predicate 'subsystem == "com.docsucker.cupertino"' --last 1h
 
 # Filter by category
 log stream --predicate 'category == "crawler"'
@@ -270,7 +270,7 @@ log stream --predicate 'category == "crawler"'
 
 ## Beyond Apple Docs
 
-AppleDocsucker's architecture supports more than just Apple documentation:
+Cupertino's architecture supports more than just Apple documentation:
 
 ### ✅ Already Implemented
 
@@ -321,8 +321,8 @@ AppleDocsucker's architecture supports more than just Apple documentation:
 **Build from source:**
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/appledocsucker.git
-cd appledocsucker
+git clone https://github.com/YOUR_USERNAME/cupertino.git
+cd cupertino
 
 # Build and install
 make build
@@ -333,15 +333,15 @@ sudo make install
 
 ```bash
 # 1. Download Apple documentation
-appledocsucker crawl \
+cupertino crawl \
   --start-url "https://developer.apple.com/documentation/" \
   --max-pages 15000
 
 # 2. Download Swift Evolution proposals
-appledocsucker crawl-evolution
+cupertino crawl-evolution
 
 # 3. Build search index
-appledocsucker build-index
+cupertino build-index
 
 # 4. Configure Claude Desktop (see config above)
 
@@ -377,7 +377,7 @@ appledocsucker build-index
 
 ### 1. Native Tools Over Web GUIs
 
-AppleDocsucker is a **native macOS application** written in Swift. No web frameworks, no Electron, no JavaScript. Just fast, native Swift code.
+Cupertino is a **native macOS application** written in Swift. No web frameworks, no Electron, no JavaScript. Just fast, native Swift code.
 
 ### 2. Realistic Time Estimates
 
@@ -387,7 +387,7 @@ We built the entire tool in 5 hours. Documentation says "6-8 hours for GUI" not 
 
 Paths are hardcoded where it makes sense:
 ```swift
-let docsDir = "/Volumes/Code/DeveloperExt/appledocsucker/docs"
+let docsDir = "/Volumes/Code/DeveloperExt/cupertino/docs"
 ```
 
 No complex configuration files for single-user tools. Easy to change, easy to understand.
@@ -448,7 +448,7 @@ The goal isn't pixel-perfect HTML rendering. It's **clean, structured text** tha
 
 ## Contributing
 
-AppleDocsucker is **open source** and welcomes contributions!
+Cupertino is **open source** and welcomes contributions!
 
 **Areas needing help:**
 - Third-party package integration
@@ -464,7 +464,7 @@ AppleDocsucker is **open source** and welcomes contributions!
 
 ---
 
-## Why "AppleDocsucker"?
+## Why "Cupertino"?
 
 The name is straightforward:
 - **Apple** - Apple developer documentation
@@ -497,16 +497,16 @@ Think of it as a "vacuum cleaner" for Apple docs. Direct, descriptive, memorable
 
 ## Conclusion
 
-AppleDocsucker bridges the gap between **Apple's extensive documentation** and **AI-assisted development**. By crawling, converting, indexing, and serving documentation via MCP, it enables AI agents like Claude to provide accurate, up-to-date guidance for Swift and Apple platform development.
+Cupertino bridges the gap between **Apple's extensive documentation** and **AI-assisted development**. By crawling, converting, indexing, and serving documentation via MCP, it enables AI agents like Claude to provide accurate, up-to-date guidance for Swift and Apple platform development.
 
-Whether you're building iOS apps, macOS tools, or exploring Swift Evolution proposals, AppleDocsucker ensures that both you and your AI assistants have instant access to the information you need.
+Whether you're building iOS apps, macOS tools, or exploring Swift Evolution proposals, Cupertino ensures that both you and your AI assistants have instant access to the information you need.
 
 **Try it today:**
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/appledocsucker.git
-cd appledocsucker && make build && sudo make install
-appledocsucker crawl --max-pages 15000
+git clone https://github.com/YOUR_USERNAME/cupertino.git
+cd cupertino && make build && sudo make install
+cupertino crawl --max-pages 15000
 ```
 
 Happy coding with your AI pair programmer!
@@ -515,9 +515,9 @@ Happy coding with your AI pair programmer!
 
 ## Links
 
-- **GitHub:** https://github.com/YOUR_USERNAME/appledocsucker
+- **GitHub:** https://github.com/YOUR_USERNAME/cupertino
 - **Documentation:** [README.md](README.md)
-- **Issues:** https://github.com/YOUR_USERNAME/appledocsucker/issues
+- **Issues:** https://github.com/YOUR_USERNAME/cupertino/issues
 - **MCP Specification:** https://modelcontextprotocol.io
 - **Model Context Protocol:** https://github.com/anthropics/mcp
 
