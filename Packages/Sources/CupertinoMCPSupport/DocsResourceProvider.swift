@@ -13,8 +13,7 @@ public actor DocsResourceProvider: ResourceProvider {
 
     public init(configuration: CupertinoConfiguration, evolutionDirectory: URL? = nil) {
         self.configuration = configuration
-        self.evolutionDirectory = evolutionDirectory ?? FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".cupertino/swift-evolution")
+        self.evolutionDirectory = evolutionDirectory ?? CupertinoConstants.defaultSwiftEvolutionDirectory
         // Metadata will be loaded lazily on first access
     }
 

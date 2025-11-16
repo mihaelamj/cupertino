@@ -1,4 +1,5 @@
 // MARK: - MCPServer Package
+
 //
 // High-level MCP server implementation with provider abstractions.
 // Handles initialization, request routing, and protocol compliance.
@@ -9,6 +10,7 @@
 @_exported import MCPTransport
 
 // MARK: - Usage Example
+
 /*
  // Create server
  let server = MCPServer(name: "MyServer", version: "1.0.0")

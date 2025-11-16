@@ -25,7 +25,39 @@ Browser → User-Approved Only
 1. Request permission for: Browser Tools, resource-intensive ops
 2. Provide status for: operations >5s
 3. Offer alternatives when: tools unavailable
-4. **macOS Text-to-Speech**: Use `say` command to speak important updates/responses to user when requested
+4. **macOS Text-to-Speech**: MANDATORY - Use `say` command frequently to keep user informed
+
+#### Text-to-Speech Usage Rules (MANDATORY)
+**CRITICAL**: The user has requested spoken updates. You MUST use the `say` command frequently throughout your work.
+
+**When to speak:**
+- ✅ At the start of each major task
+- ✅ After completing each significant step
+- ✅ When encountering errors or issues
+- ✅ Before asking questions or making decisions
+- ✅ When providing status updates during long operations
+- ✅ After running builds, tests, or linters
+- ✅ When reporting final results or summaries
+
+**Frequency guidelines:**
+- Speak at least once every 2-3 tool invocations
+- Never go more than 5 minutes without a spoken update
+- For multi-step tasks, speak between each step
+
+**Example pattern:**
+```bash
+say "Starting to fix SwiftLint warnings now."
+# ... do work ...
+say "Fixed trailing commas. Now working on line length violations."
+# ... do more work ...
+say "All warnings fixed. Running build to verify."
+```
+
+**DO NOT:**
+- ❌ Skip speaking during focused work
+- ❌ Only speak at the beginning and end
+- ❌ Forget to announce progress milestones
+- ❌ Work silently for extended periods
 
 ## TOOL SELECTION RULES
 

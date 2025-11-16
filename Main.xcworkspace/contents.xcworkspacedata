@@ -8,6 +8,67 @@
       location = "group:TODO.txt">
    </FileRef>
    <FileRef
+      location = "group:AGENTS.md">
+   </FileRef>
+   <Group
+      location = "group:ai-rules"
+      name = "ai-rules">
+      <FileRef
+         location = "group:dev_workflow.md">
+      </FileRef>
+      <FileRef
+         location = "group:code-style.md">
+      </FileRef>
+      <FileRef
+         location = "group:view-model.md">
+      </FileRef>
+      <FileRef
+         location = "group:view.md">
+      </FileRef>
+      <FileRef
+         location = "group:dependencies.md">
+      </FileRef>
+      <FileRef
+         location = "group:general.md">
+      </FileRef>
+      <FileRef
+         location = "group:components.md">
+      </FileRef>
+      <FileRef
+         location = "group:testing.md">
+      </FileRef>
+      <FileRef
+         location = "group:taskmaster.md">
+      </FileRef>
+      <FileRef
+         location = "group:commits.md">
+      </FileRef>
+      <FileRef
+         location = "group:self_improve.md">
+      </FileRef>
+      <FileRef
+         location = "group:rule-loading.md">
+      </FileRef>
+      <FileRef
+         location = "group:extreme-packaging.md">
+      </FileRef>
+      <FileRef
+         location = "group:app-colors.md">
+      </FileRef>
+      <FileRef
+         location = "group:rules.md">
+      </FileRef>
+      <FileRef
+         location = "group:app-fonts.md">
+      </FileRef>
+      <FileRef
+         location = "group:mcp-tools-usage.md">
+      </FileRef>
+      <FileRef
+         location = "group:openapi-generated.md">
+      </FileRef>
+   </Group>
+   <FileRef
       location = "group:Packages">
    </FileRef>
 </Workspace>

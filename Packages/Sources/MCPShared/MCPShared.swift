@@ -1,4 +1,5 @@
 // MARK: - MCPShared Package
+
 //
 // Core Model Context Protocol types and JSON-RPC 2.0 implementation.
 // This package contains all protocol messages, types, and structures
@@ -6,9 +7,9 @@
 //
 // Zero dependencies - Foundation layer package.
 
-@_exported import struct Foundation.UUID
 @_exported import struct Foundation.Data
 @_exported import struct Foundation.URL
+@_exported import struct Foundation.UUID
 
 // Re-export all public types
 // This allows users to: import MCPShared
@@ -17,6 +18,7 @@
 public let protocolVersion = MCPProtocolVersion
 
 // MARK: - Usage Example
+
 /*
  // Create an initialize request
  let initRequest = InitializeRequest(

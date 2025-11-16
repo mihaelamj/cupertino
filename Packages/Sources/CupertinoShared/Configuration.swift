@@ -14,12 +14,11 @@ public struct CrawlerConfiguration: Codable, Sendable {
     public let retryAttempts: Int
 
     public init(
-        startURL: URL = URL(string: "https://developer.apple.com/documentation/")!,
+        startURL: URL = URL(string: CupertinoConstants.BaseURL.appleDeveloperDocs)!,
         allowedPrefixes: [String]? = nil,
         maxPages: Int = 15000,
         maxDepth: Int = 15,
-        outputDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".cupertino/docs"),
+        outputDirectory: URL = CupertinoConstants.defaultDocsDirectory,
         logFile: URL? = nil,
         requestDelay: TimeInterval = 0.5,
         retryAttempts: Int = 3
@@ -46,7 +45,8 @@ public struct CrawlerConfiguration: Codable, Sendable {
             }
         } else {
             // Fallback to Apple docs
-            self.allowedPrefixes = ["https://developer.apple.com/documentation"]
+            let docsURL = CupertinoConstants.BaseURL.appleDeveloperDocs
+            self.allowedPrefixes = [docsURL.replacingOccurrences(of: "/documentation/", with: "/documentation")]
         }
 
         self.maxPages = maxPages
@@ -96,11 +96,10 @@ public struct ChangeDetectionConfiguration: Codable, Sendable {
             self.metadataFile = metadataFile
         } else if let outputDirectory {
             // Store metadata.json in the output directory itself
-            self.metadataFile = outputDirectory.appendingPathComponent("metadata.json")
+            self.metadataFile = outputDirectory.appendingPathComponent(CupertinoConstants.FileName.metadata)
         } else {
             // Global fallback
-            self.metadataFile = FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent(".cupertino/metadata.json")
+            self.metadataFile = CupertinoConstants.defaultMetadataFile
         }
 
         self.forceRecrawl = forceRecrawl

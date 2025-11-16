@@ -221,8 +221,7 @@ public actor SearchIndexBuilder {
 
     private func extractProposalID(from filename: String) -> String? {
         // Extract SE-NNNN from filenames like "SE-0001-optional-binding.md"
-        let pattern = #"(SE-\d+)"#
-        if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+        if let regex = try? NSRegularExpression(pattern: CupertinoConstants.Pattern.seReference, options: []),
            let match = regex.firstMatch(in: filename, range: NSRange(filename.startIndex..., in: filename)),
            let range = Range(match.range(at: 1), in: filename) {
             return String(filename[range])

@@ -1,9 +1,10 @@
+import CupertinoShared
 import Foundation
 import SQLite3
 
 // MARK: - Search Index
 
-// swiftlint:disable file_length type_body_length function_body_length function_parameter_count
+// swiftlint:disable type_body_length function_body_length function_parameter_count
 // Justification: This actor implements a complete SQLite FTS5 full-text search engine.
 // It manages: database initialization, schema creation, document indexing with metadata,
 // search query processing, statistics aggregation, and transaction management. The functions
@@ -21,8 +22,7 @@ public actor SearchIndex {
     private var isInitialized = false
 
     public init(
-        dbPath: URL = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".cupertino/search.db")
+        dbPath: URL = CupertinoConstants.defaultSearchDatabase
     ) async throws {
         self.dbPath = dbPath
 
@@ -166,7 +166,7 @@ public actor SearchIndex {
         defer { sqlite3_finalize(statement) }
 
         guard sqlite3_prepare_v2(database, ftsSql, -1, &statement, nil) == SQLITE_OK else {
-            let errorMessage = String(cString: sqlite3_errmsg(db))
+            let errorMessage = String(cString: sqlite3_errmsg(database))
             throw SearchError.prepareFailed("FTS insert: \(errorMessage)")
         }
 
@@ -177,7 +177,7 @@ public actor SearchIndex {
         sqlite3_bind_text(statement, 5, (summary as NSString).utf8String, -1, nil)
 
         guard sqlite3_step(statement) == SQLITE_DONE else {
-            let errorMessage = String(cString: sqlite3_errmsg(db))
+            let errorMessage = String(cString: sqlite3_errmsg(database))
             throw SearchError.insertFailed("FTS insert: \(errorMessage)")
         }
 
@@ -192,7 +192,7 @@ public actor SearchIndex {
         defer { sqlite3_finalize(metaStatement) }
 
         guard sqlite3_prepare_v2(database, metaSql, -1, &metaStatement, nil) == SQLITE_OK else {
-            let errorMessage = String(cString: sqlite3_errmsg(db))
+            let errorMessage = String(cString: sqlite3_errmsg(database))
             throw SearchError.prepareFailed("Metadata insert: \(errorMessage)")
         }
 
@@ -211,7 +211,7 @@ public actor SearchIndex {
         }
 
         guard sqlite3_step(metaStatement) == SQLITE_DONE else {
-            let errorMessage = String(cString: sqlite3_errmsg(db))
+            let errorMessage = String(cString: sqlite3_errmsg(database))
             throw SearchError.insertFailed("Metadata insert: \(errorMessage)")
         }
     }
@@ -256,7 +256,7 @@ public actor SearchIndex {
         defer { sqlite3_finalize(statement) }
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
-            let errorMessage = String(cString: sqlite3_errmsg(db))
+            let errorMessage = String(cString: sqlite3_errmsg(database))
             throw SearchError.searchFailed("Prepare failed: \(errorMessage)")
         }
 
@@ -324,7 +324,7 @@ public actor SearchIndex {
         defer { sqlite3_finalize(statement) }
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
-            let errorMessage = String(cString: sqlite3_errmsg(db))
+            let errorMessage = String(cString: sqlite3_errmsg(database))
             throw SearchError.searchFailed("List frameworks failed: \(errorMessage)")
         }
 

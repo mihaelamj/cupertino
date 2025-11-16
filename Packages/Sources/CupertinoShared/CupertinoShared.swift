@@ -18,7 +18,7 @@
  // Create configuration
  let config = CupertinoConfiguration(
      crawler: CrawlerConfiguration(
-         startURL: URL(string: "https://developer.apple.com/documentation/swiftui")!,
+         startURL: URL(string: "\(CupertinoConstants.BaseURL.appleDeveloperDocs)swiftui")!,
          maxPages: 1000
      ),
      changeDetection: ChangeDetectionConfiguration(enabled: true),
@@ -26,23 +26,24 @@
  )
 
  // Save configuration
- let configURL = URL(fileURLWithPath: "~/.cupertino/config.json").expandingTildeInPath
+ let configURL = CupertinoConstants.defaultConfigFile
  try config.save(to: configURL)
 
  // Create metadata tracker
  var metadata = CrawlMetadata()
 
  // Add page
- metadata.pages["https://developer.apple.com/documentation/swiftui/view"] = PageMetadata(
-     url: "https://developer.apple.com/documentation/swiftui/view",
+ let exampleURL = "\(CupertinoConstants.BaseURL.appleDeveloperDocs)swiftui/view"
+ metadata.pages[exampleURL] = PageMetadata(
+     url: exampleURL,
      framework: "swiftui",
-     filePath: "~/.cupertino/docs/swiftui/view.md",
+     filePath: CupertinoConstants.defaultDocsDirectory.appendingPathComponent("swiftui/view.md").path,
      contentHash: HashUtilities.sha256(of: "content"),
      depth: 1
  )
 
  // Save metadata
- let metadataURL = URL(fileURLWithPath: "~/.cupertino/metadata.json").expandingTildeInPath
+ let metadataURL = CupertinoConstants.defaultMetadataFile
  try metadata.save(to: metadataURL)
  */
 

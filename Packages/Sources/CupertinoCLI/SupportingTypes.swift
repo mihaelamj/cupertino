@@ -1,4 +1,5 @@
 import ArgumentParser
+import CupertinoShared
 import Foundation
 
 // MARK: - Supporting Types
@@ -23,8 +24,8 @@ extension Cupertino {
 
         var defaultURL: String {
             switch self {
-            case .docs: return "https://developer.apple.com/documentation/"
-            case .swift: return "https://docs.swift.org/swift-book/documentation/the-swift-programming-language/"
+            case .docs: return CupertinoConstants.BaseURL.appleDeveloperDocs
+            case .swift: return CupertinoConstants.BaseURL.swiftBook
             case .evolution: return "" // N/A - uses different crawler
             case .packages: return "" // Package documentation not yet implemented
             case .all: return "" // N/A - crawls all types sequentially
@@ -32,12 +33,19 @@ extension Cupertino {
         }
 
         var defaultOutputDir: String {
+            let homeDir = FileManager.default.homeDirectoryForCurrentUser.path
+            let baseDir = CupertinoConstants.baseDirectoryName
             switch self {
-            case .docs: return "~/.cupertino/docs"
-            case .swift: return "~/.cupertino/swift-org"
-            case .evolution: return "~/.cupertino/swift-evolution"
-            case .packages: return "~/.cupertino/packages"
-            case .all: return "~/.cupertino" // Parent directory
+            case .docs:
+                return "\(homeDir)/\(baseDir)/\(CupertinoConstants.Directory.docs)"
+            case .swift:
+                return "\(homeDir)/\(baseDir)/\(CupertinoConstants.Directory.swiftOrg)"
+            case .evolution:
+                return "\(homeDir)/\(baseDir)/\(CupertinoConstants.Directory.swiftEvolution)"
+            case .packages:
+                return "\(homeDir)/\(baseDir)/\(CupertinoConstants.Directory.packages)"
+            case .all:
+                return "\(homeDir)/\(baseDir)"
             }
         }
 

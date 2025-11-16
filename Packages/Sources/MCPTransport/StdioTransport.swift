@@ -29,8 +29,8 @@ public actor StdioTransport: MCPTransport {
         self.output = output
 
         var continuation: AsyncStream<JSONRPCMessage>.Continuation!
-        self._messages = AsyncStream { continuation = $0 }
-        self.messagesContinuation = continuation
+        _messages = AsyncStream { continuation = $0 }
+        messagesContinuation = continuation
     }
 
     public func start() async throws {
@@ -67,7 +67,7 @@ public actor StdioTransport: MCPTransport {
 
             // Write newline-delimited JSON
             var outputData = data
-            outputData.append(contentsOf: [0x0A]) // \n
+            outputData.append(contentsOf: [0x0a]) // \n
 
             try output.write(contentsOf: outputData)
 
@@ -92,9 +92,9 @@ public actor StdioTransport: MCPTransport {
                     buffer.append(chunk)
 
                     // Process complete lines (newline-delimited JSON)
-                    while let newlineIndex = buffer.firstIndex(of: 0x0A) {
+                    while let newlineIndex = buffer.firstIndex(of: 0x0a) {
                         let lineData = buffer.prefix(upTo: newlineIndex)
-                        buffer.removeSubrange(buffer.startIndex ... newlineIndex)
+                        buffer.removeSubrange(buffer.startIndex...newlineIndex)
 
                         // Skip empty lines
                         guard !lineData.isEmpty else {

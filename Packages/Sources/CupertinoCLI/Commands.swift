@@ -7,13 +7,6 @@ import Foundation
 
 // MARK: - Crawl Command
 
-// swiftlint:disable file_length
-// Justification: This file contains the CLI command implementations for the cupertino tool.
-// It includes: argument parsing, configuration setup, session management, multi-type crawling
-// coordination, and error handling. Cohesive command logic should remain in a single file.
-// File length: 441 lines
-// Disabling: file_length (400 line limit)
-
 extension Cupertino {
     @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
     struct Crawl: AsyncParsableCommand {
@@ -91,16 +84,16 @@ extension Cupertino {
             try await withThrowingTaskGroup(of: (CrawlType, Result<Void, Error>).self) { group in
                 for crawlType in CrawlType.allTypes {
                     group.addTask {
-                        await crawlSingleType(crawlType, baseCommand: baseCommand)
+                        await Self.crawlSingleType(crawlType, baseCommand: baseCommand)
                     }
                 }
 
-                let results = try await collectCrawlResults(from: group)
+                let results = try await collectCrawlResults(from: &group)
                 try validateCrawlResults(results)
             }
         }
 
-        private func crawlSingleType(
+        private static func crawlSingleType(
             _ crawlType: CrawlType,
             baseCommand: Crawl
         ) async -> (CrawlType, Result<Void, Error>) {
@@ -172,11 +165,10 @@ extension Cupertino {
         }
 
         private func findExistingSession(for url: URL) async throws -> URL? {
-            let homeDir = FileManager.default.homeDirectoryForCurrentUser
             let candidates = [
-                homeDir.appendingPathComponent(".cupertino/docs"),
-                homeDir.appendingPathComponent(".cupertino/swift-org"),
-                homeDir.appendingPathComponent(".cupertino/swift-book"),
+                CupertinoConstants.defaultDocsDirectory,
+                CupertinoConstants.defaultSwiftOrgDirectory,
+                CupertinoConstants.defaultSwiftBookDirectory,
             ]
 
             for candidate in candidates {
@@ -189,7 +181,7 @@ extension Cupertino {
         }
 
         private func checkForSession(at directory: URL, matching url: URL) -> URL? {
-            let metadataFile = directory.appendingPathComponent("metadata.json")
+            let metadataFile = directory.appendingPathComponent(CupertinoConstants.FileName.metadata)
             guard FileManager.default.fileExists(atPath: metadataFile.path),
                   let data = try? Data(contentsOf: metadataFile),
                   let metadata = try? JSONDecoder().decode(CrawlMetadata.self, from: data),
@@ -207,8 +199,7 @@ extension Cupertino {
         }
 
         private func scanCupertinoDirectory(for url: URL) async throws -> URL? {
-            let homeDir = FileManager.default.homeDirectoryForCurrentUser
-            let cupertinoDir = homeDir.appendingPathComponent(".cupertino")
+            let cupertinoDir = CupertinoConstants.defaultBaseDirectory
 
             guard let contents = try? FileManager.default.contentsOfDirectory(
                 at: cupertinoDir,
@@ -279,7 +270,8 @@ extension Cupertino {
         }
 
         private func runEvolutionCrawl() async throws {
-            let outputURL = URL(fileURLWithPath: outputDir ?? "~/.cupertino/swift-evolution").expandingTildeInPath
+            let defaultPath = CupertinoConstants.defaultSwiftEvolutionDirectory.path
+            let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
 
             let crawler = await SwiftEvolutionCrawler(
                 outputDirectory: outputURL,
@@ -343,11 +335,12 @@ extension Cupertino {
         }
 
         private func runPackageFetch() async throws {
-            let outputURL = URL(fileURLWithPath: outputDir ?? "~/.cupertino/packages").expandingTildeInPath
+            let defaultPath = CupertinoConstants.defaultPackagesDirectory.path
+            let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
 
             try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
 
-            if ProcessInfo.processInfo.environment["GITHUB_TOKEN"] == nil {
+            if ProcessInfo.processInfo.environment[CupertinoConstants.EnvVar.githubToken] == nil {
                 ConsoleLogger.info("💡 Tip: Set GITHUB_TOKEN environment variable for higher rate limits")
                 ConsoleLogger.info("   Without token: 60 requests/hour")
                 ConsoleLogger.info("   With token: 5000 requests/hour")
@@ -377,7 +370,8 @@ extension Cupertino {
         }
 
         private func runCodeFetch() async throws {
-            let outputURL = URL(fileURLWithPath: outputDir ?? "~/.cupertino/sample-code").expandingTildeInPath
+            let defaultPath = CupertinoConstants.defaultSampleCodeDirectory.path
+            let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
 
             try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
 
@@ -416,16 +410,16 @@ extension Cupertino {
         )
 
         @Option(name: .long, help: "Directory containing crawled documentation")
-        var docsDir: String = "~/.cupertino/docs"
+        var docsDir: String = CupertinoConstants.defaultDocsDirectory.path
 
         @Option(name: .long, help: "Directory containing Swift Evolution proposals")
-        var evolutionDir: String = "~/.cupertino/swift-evolution"
+        var evolutionDir: String = CupertinoConstants.defaultSwiftEvolutionDirectory.path
 
         @Option(name: .long, help: "Metadata file path")
-        var metadataFile: String = "~/.cupertino/metadata.json"
+        var metadataFile: String = CupertinoConstants.defaultMetadataFile.path
 
         @Option(name: .long, help: "Search database path")
-        var searchDB: String = "~/.cupertino/search.db"
+        var searchDB: String = CupertinoConstants.defaultSearchDatabase.path
 
         @Flag(name: .long, help: "Clear existing index before building")
         var clear: Bool = true

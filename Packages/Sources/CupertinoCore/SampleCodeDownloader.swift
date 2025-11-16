@@ -8,7 +8,7 @@ import AppKit
 
 // MARK: - Sample Code Downloader
 
-// swiftlint:disable file_length type_body_length function_body_length
+// swiftlint:disable type_body_length function_body_length
 // Justification: This file contains a complete sample code downloading system
 // with WebKit integration for authentication and download handling. Components include:
 // - WebKit webview management and navigation delegation
@@ -31,7 +31,7 @@ public final class SampleCodeDownloader {
     private let maxSamples: Int?
     private let forceDownload: Bool
     private let visibleBrowser: Bool
-    private let sampleCodeListURL = "https://developer.apple.com/documentation/samplecode/"
+    private let sampleCodeListURL = CupertinoConstants.BaseURL.appleSampleCode
     private let cookiesPath: URL
 
     private var sharedWebView: WKWebView?
@@ -190,7 +190,7 @@ public final class SampleCodeDownloader {
             }
 
             let slug = urlString
-                .replacingOccurrences(of: "https://developer.apple.com/documentation/", with: "")
+                .replacingOccurrences(of: CupertinoConstants.BaseURL.appleDeveloperDocs, with: "")
                 .replacingOccurrences(of: "/", with: "-")
                 .lowercased()
 
@@ -305,7 +305,7 @@ public final class SampleCodeDownloader {
             if result.hasPrefix("http") {
                 return URL(string: result)
             } else if result.hasPrefix("/") {
-                return URL(string: "https://developer.apple.com\(result)")
+                return URL(string: "\(CupertinoConstants.BaseURL.appleDeveloper)\(result)")
             } else {
                 // Relative to current page
                 if let baseURL = URL(string: sampleURL) {
@@ -404,7 +404,7 @@ public final class SampleCodeDownloader {
             window.isReleasedWhenClosed = false // Important: keep window alive
 
             // Load Apple Developer login page
-            let loginURL = URL(string: "https://developer.apple.com/account/")!
+            let loginURL = URL(string: CupertinoConstants.BaseURL.appleDeveloperAccount)!
             webView.load(URLRequest(url: loginURL))
 
             // Show window

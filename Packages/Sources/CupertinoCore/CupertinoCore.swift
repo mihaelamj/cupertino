@@ -19,7 +19,7 @@
  // Create configuration
  let config = CupertinoConfiguration(
      crawler: CrawlerConfiguration(
-         startURL: URL(string: "https://developer.apple.com/documentation/swiftui")!,
+         startURL: URL(string: "\(CupertinoConstants.BaseURL.appleDeveloperDocs)swiftui")!,
          maxPages: 100
      )
  )

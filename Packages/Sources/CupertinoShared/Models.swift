@@ -206,8 +206,8 @@ public enum URLUtilities {
 
         // Remove known domain prefixes
         cleaned = cleaned
-            .replacingOccurrences(of: "https://developer.apple.com/", with: "")
-            .replacingOccurrences(of: "https://docs.swift.org/", with: "")
+            .replacingOccurrences(of: "\(CupertinoConstants.BaseURL.appleDeveloper)/", with: "")
+            .replacingOccurrences(of: "\(CupertinoConstants.BaseURL.swiftOrg)", with: "")
             .replacingOccurrences(of: "https://www.swift.org/", with: "")
 
         // Normalize to safe filename

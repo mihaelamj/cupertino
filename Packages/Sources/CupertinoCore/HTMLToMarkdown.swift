@@ -1,3 +1,4 @@
+import CupertinoShared
 import Foundation
 #if canImport(WebKit)
 import WebKit
@@ -5,7 +6,7 @@ import WebKit
 
 // MARK: - HTML to Markdown Converter
 
-// swiftlint:disable file_length type_body_length
+// swiftlint:disable type_body_length
 // Justification: This file contains a comprehensive HTML-to-Markdown converter
 // with specialized handling for documentation pages. The conversion logic includes:
 // - Content extraction from various HTML structures (main, article, body)
@@ -144,7 +145,7 @@ public enum HTMLToMarkdown {
         let regexOptions: NSRegularExpression.Options = [.caseInsensitive, .dotMatchesLineSeparators]
 
         // Extract <pre><code> blocks with language
-        let pattern = #"<pre[^>]*>\s*<code\s+class=[\"'](?:language-)?(\w+)[\"'][^>]*>(.*?)</code>\s*</pre>"#
+        let pattern = CupertinoConstants.Pattern.htmlCodeBlockWithLanguage
         if let regex = try? NSRegularExpression(pattern: pattern, options: regexOptions) {
             let nsString = result as NSString
             let matches = regex.matches(in: result, range: NSRange(location: 0, length: nsString.length))

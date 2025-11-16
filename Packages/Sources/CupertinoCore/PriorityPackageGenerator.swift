@@ -1,4 +1,5 @@
 import CupertinoLogging
+import CupertinoShared
 import Foundation
 
 // swiftlint:disable function_body_length
@@ -138,8 +139,7 @@ public actor PriorityPackageGenerator {
     }
 
     private func extractGitHubURLs(from content: String) -> [PriorityPackageInfo] {
-        let pattern = #"https://github\.com/([^/\s\)\"]+)/([^/\s\)\"\.]+)"#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+        guard let regex = try? NSRegularExpression(pattern: CupertinoConstants.Pattern.githubURLLenient) else {
             return []
         }
 

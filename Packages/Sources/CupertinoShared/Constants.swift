@@ -105,4 +105,91 @@ public enum CupertinoConstants {
         /// Main subsystem identifier for logging
         public static let subsystem = "com.cupertino.cli"
     }
+
+    // MARK: - URLs
+
+    public enum BaseURL {
+        // MARK: Apple Developer
+
+        /// Base Apple Developer URL
+        public static let appleDeveloper = "https://developer.apple.com"
+
+        /// Apple Developer Documentation
+        public static let appleDeveloperDocs = "https://developer.apple.com/documentation/"
+
+        /// Apple Sample Code List
+        public static let appleSampleCode = "https://developer.apple.com/documentation/samplecode/"
+
+        /// Apple Developer Account
+        public static let appleDeveloperAccount = "https://developer.apple.com/account/"
+
+        // MARK: Swift.org
+
+        /// Swift.org Documentation Base
+        public static let swiftOrg = "https://docs.swift.org/"
+
+        /// Swift Book Documentation
+        public static let swiftBook = "https://docs.swift.org/swift-book/documentation/the-swift-programming-language/"
+
+        // MARK: GitHub
+
+        /// GitHub API Base
+        public static let githubAPI = "https://api.github.com"
+
+        /// GitHub API Repos Endpoint Template (use with owner/repo)
+        public static let githubAPIRepos = "https://api.github.com/repos"
+
+        /// SwiftPackageIndex Package List
+        public static let swiftPackageList =
+            "https://raw.githubusercontent.com/SwiftPackageIndex/PackageList/main/packages.json"
+    }
+
+    // MARK: - Regex Patterns
+
+    public enum Pattern {
+        /// GitHub URL pattern: https://github.com/owner/repo or https://github.com/owner/repo.git
+        public static let githubURL = #"https://github\.com/([^/]+)/([^/]+?)(?:\.git)?$"#
+
+        /// GitHub URL pattern (lenient): Matches various GitHub URL formats
+        public static let githubURLLenient = #"https://github\.com/([^/\s\)\"]+)/([^/\s\)\"\.]+)"#
+
+        /// HTML anchor tag href extraction
+        public static let htmlHref = #"<a[^>]*href=[\"']([^\"']*)[\"']"#
+
+        /// Swift Evolution proposal number
+        public static let seProposalNumber = #"^(?:SE-)?(\d{4})"#
+
+        /// Swift Evolution status in markdown
+        public static let seStatus = #"\* Status: \*\*([^\*]+)\*\*"#
+
+        /// HTML pre/code block with language
+        public static let htmlCodeBlockWithLanguage =
+            #"<pre[^>]*>\s*<code\s+class=[\"'](?:language-)?(\w+)[\"'][^>]*>(.*?)</code>\s*</pre>"#
+
+        /// Swift Evolution reference (SE-NNNN)
+        public static let seReference = #"(SE-\d+)"#
+    }
+
+    // MARK: - HTTP Headers
+
+    public enum HTTPHeader {
+        /// GitHub API Accept header
+        public static let githubAccept = "application/vnd.github.v3+json"
+
+        /// Authorization header name
+        public static let authorization = "Authorization"
+
+        /// Accept header name
+        public static let accept = "Accept"
+
+        /// User-Agent header name
+        public static let userAgent = "User-Agent"
+    }
+
+    // MARK: - Environment Variables
+
+    public enum EnvVar {
+        /// GitHub token environment variable
+        public static let githubToken = "GITHUB_TOKEN"
+    }
 }

@@ -9,7 +9,7 @@ import Foundation
 public final class SwiftEvolutionCrawler {
     private let outputDirectory: URL
     private let onlyAccepted: Bool
-    private let githubAPI = "https://api.github.com"
+    private let githubAPI = CupertinoConstants.BaseURL.githubAPI
     private let githubRaw = "https://raw.githubusercontent.com"
     private let repo = "swiftlang/swift-evolution"
     private let branch = "main"
@@ -166,8 +166,7 @@ public final class SwiftEvolutionCrawler {
         // Extract proposal number from filename
         // Handles: "0001-keywords-as-argument-labels.md" -> "SE-0001"
         // Also handles: "SE-0001-keywords-as-argument-labels.md" -> "SE-0001"
-        let pattern = #"^(?:SE-)?(\d{4})"#
-        guard let regex = try? NSRegularExpression(pattern: pattern),
+        guard let regex = try? NSRegularExpression(pattern: CupertinoConstants.Pattern.seProposalNumber),
               let match = regex.firstMatch(
                   in: filename,
                   range: NSRange(filename.startIndex..., in: filename)
@@ -184,8 +183,7 @@ public final class SwiftEvolutionCrawler {
     private func extractStatus(from markdown: String) -> String? {
         // Extract status from markdown content
         // Format: "* Status: **Implemented (Swift 2.2)**" or "* Status: **Accepted**"
-        let pattern = #"\* Status: \*\*([^\*]+)\*\*"#
-        guard let regex = try? NSRegularExpression(pattern: pattern),
+        guard let regex = try? NSRegularExpression(pattern: CupertinoConstants.Pattern.seStatus),
               let match = regex.firstMatch(
                   in: markdown,
                   range: NSRange(markdown.startIndex..., in: markdown)

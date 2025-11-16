@@ -5,14 +5,13 @@ import WebKit
 
 // MARK: - Documentation Crawler
 
-// swiftlint:disable file_length type_body_length function_body_length
+// swiftlint:disable function_body_length
 // Justification: This class implements the core web crawling engine with WKWebView integration.
 // It manages: page navigation, URL queue processing, change detection, content extraction,
 // progress tracking, session persistence, and navigation delegation. The crawling logic is
 // inherently stateful and requires coordinating multiple async operations in sequence.
-// File length: 446 lines | Type body length: 278 lines | Function body length: 67 lines
-// Disabling: file_length (400 line limit), type_body_length (250 line limit),
-//            function_body_length (50 line limit for main crawl loop)
+// Function body length: 67 lines
+// Disabling: function_body_length (50 line limit for main crawl loop)
 
 /// Main crawler for Apple documentation using WKWebView
 @MainActor
@@ -270,7 +269,7 @@ public final class DocumentationCrawler: NSObject {
         var links: [URL] = []
 
         // Extract href attributes from <a> tags
-        let pattern = #"<a[^>]*href=[\"']([^\"']*)[\"']"#
+        let pattern = CupertinoConstants.Pattern.htmlHref
         if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
             let nsString = html as NSString
             let matches = regex.matches(in: html, range: NSRange(location: 0, length: nsString.length))

@@ -1,9 +1,10 @@
 import CupertinoLogging
+import CupertinoShared
 import Foundation
 
 // MARK: - Package Fetcher
 
-// swiftlint:disable file_length type_body_length
+// swiftlint:disable type_body_length
 // Justification: This actor manages the complete Swift package fetching and enrichment workflow.
 // It coordinates multiple async operations: downloading package lists, enriching with GitHub data,
 // caching results, checkpoint/resume logic, and rate limiting. The logic is cohesive and sequential.
@@ -12,9 +13,7 @@ import Foundation
 
 /// Fetches Swift packages from SwiftPackageIndex and enriches with GitHub metadata
 public actor PackageFetcher {
-    private let packageListURL = URL(
-        string: "https://raw.githubusercontent.com/SwiftPackageIndex/PackageList/main/packages.json"
-    )!
+    private let packageListURL = URL(string: CupertinoConstants.BaseURL.swiftPackageList)!
     private let outputDirectory: URL
     private let limit: Int?
     private let resumeFromCheckpoint: Bool
@@ -269,14 +268,14 @@ public actor PackageFetcher {
     }
 
     private func fetchStarCount(owner: String, repo: String) async throws -> Int {
-        let url = URL(string: "https://api.github.com/repos/\(owner)/\(repo)")!
+        let url = URL(string: "\(CupertinoConstants.BaseURL.githubAPIRepos)/\(owner)/\(repo)")!
 
         var request = URLRequest(url: url)
-        request.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
+        request.setValue(CupertinoConstants.HTTPHeader.githubAccept, forHTTPHeaderField: "Accept")
         request.setValue(CupertinoConstants.App.userAgent, forHTTPHeaderField: "User-Agent")
 
-        if let token = ProcessInfo.processInfo.environment["GITHUB_TOKEN"] {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if let token = ProcessInfo.processInfo.environment[CupertinoConstants.EnvVar.githubToken] {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: CupertinoConstants.HTTPHeader.authorization)
         }
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -302,9 +301,7 @@ public actor PackageFetcher {
 
     private func extractOwnerRepo(from githubURL: String) -> (String, String)? {
         // Match: https://github.com/owner/repo.git or https://github.com/owner/repo
-        let pattern = #"https://github\.com/([^/]+)/([^/]+?)(?:\.git)?$"#
-
-        guard let regex = try? NSRegularExpression(pattern: pattern),
+        guard let regex = try? NSRegularExpression(pattern: CupertinoConstants.Pattern.githubURL),
               let match = regex.firstMatch(in: githubURL, range: NSRange(githubURL.startIndex..., in: githubURL)),
               let ownerRange = Range(match.range(at: 1), in: githubURL),
               let repoRange = Range(match.range(at: 2), in: githubURL)
@@ -335,13 +332,13 @@ public actor PackageFetcher {
     }
 
     private func createGitHubRequest(owner: String, repo: String) -> URLRequest {
-        let url = URL(string: "https://api.github.com/repos/\(owner)/\(repo)")!
+        let url = URL(string: "\(CupertinoConstants.BaseURL.githubAPIRepos)/\(owner)/\(repo)")!
         var request = URLRequest(url: url)
-        request.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
+        request.setValue(CupertinoConstants.HTTPHeader.githubAccept, forHTTPHeaderField: "Accept")
         request.setValue(CupertinoConstants.App.userAgent, forHTTPHeaderField: "User-Agent")
 
-        if let token = ProcessInfo.processInfo.environment["GITHUB_TOKEN"] {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if let token = ProcessInfo.processInfo.environment[CupertinoConstants.EnvVar.githubToken] {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: CupertinoConstants.HTTPHeader.authorization)
         }
 
         return request
