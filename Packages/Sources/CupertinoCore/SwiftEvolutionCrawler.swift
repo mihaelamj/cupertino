@@ -10,9 +10,9 @@ public final class SwiftEvolutionCrawler {
     private let outputDirectory: URL
     private let onlyAccepted: Bool
     private let githubAPI = CupertinoConstants.BaseURL.githubAPI
-    private let githubRaw = "https://raw.githubusercontent.com"
-    private let repo = "swiftlang/swift-evolution"
-    private let branch = "main"
+    private let githubRaw = CupertinoConstants.BaseURL.githubRaw
+    private let repo = CupertinoConstants.SwiftEvolution.repository
+    private let branch = CupertinoConstants.SwiftEvolution.branch
 
     public init(outputDirectory: URL, onlyAccepted: Bool = false) {
         self.outputDirectory = outputDirectory
@@ -79,7 +79,10 @@ public final class SwiftEvolutionCrawler {
         let url = URL(string: "\(githubAPI)/repos/\(repo)/contents/proposals?ref=\(branch)")!
 
         var request = URLRequest(url: url)
-        request.setValue(CupertinoConstants.HTTPHeader.githubAccept, forHTTPHeaderField: CupertinoConstants.HTTPHeader.accept)
+        request.setValue(
+            CupertinoConstants.HTTPHeader.githubAccept,
+            forHTTPHeaderField: CupertinoConstants.HTTPHeader.accept
+        )
 
         let (data, response) = try await URLSession.shared.data(for: request)
 

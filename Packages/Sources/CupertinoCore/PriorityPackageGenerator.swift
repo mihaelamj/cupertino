@@ -164,17 +164,7 @@ public actor PriorityPackageGenerator {
 
     private func selectCriticalApplePackages(from all: [PriorityPackageInfo]) -> [PriorityPackageInfo] {
         // Priority Apple packages (most commonly used)
-        let criticalRepos = [
-            "swift", "swift-algorithms", "swift-argument-parser", "swift-asn1",
-            "swift-async-algorithms", "swift-atomics", "swift-cassandra-client",
-            "swift-certificates", "swift-cluster-membership", "swift-collections",
-            "swift-crypto", "swift-distributed-actors", "swift-docc", "swift-driver",
-            "swift-format", "swift-log", "swift-metrics", "swift-nio", "swift-nio-http2",
-            "swift-nio-ssl", "swift-nio-transport-services", "swift-numerics",
-            "swift-openapi-generator", "swift-openapi-runtime", "swift-openapi-urlsession",
-            "swift-package-manager", "swift-protobuf", "swift-service-context",
-            "swift-system", "swift-testing", "sourcekit-lsp",
-        ]
+        let criticalRepos = CupertinoConstants.CriticalApplePackages.repositories
 
         return all.filter { pkg in
             criticalRepos.contains(pkg.repo.lowercased())
@@ -183,13 +173,7 @@ public actor PriorityPackageGenerator {
 
     private func selectTopEcosystemPackages(from all: [PriorityPackageInfo]) -> [PriorityPackageInfo] {
         // Well-known ecosystem packages
-        let knownPackages = [
-            "vapor/vapor", "vapor/swift-getting-started-web-server",
-            "Alamofire/Alamofire",
-            "pointfreeco/swift-composable-architecture",
-            "pointfreeco/swift-custom-dump",
-            "pointfreeco/swift-dependencies",
-        ]
+        let knownPackages = CupertinoConstants.KnownEcosystemPackages.repositories
 
         return all.filter { pkg in
             knownPackages.contains("\(pkg.owner)/\(pkg.repo)")

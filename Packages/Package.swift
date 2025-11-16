@@ -63,7 +63,7 @@ let targets: [Target] = {
 
     let mcpTransportTarget = Target.target(
         name: "MCPTransport",
-        dependencies: ["MCPShared"]
+        dependencies: ["CupertinoShared", "MCPShared"]
     )
     let mcpTransportTestsTarget = Target.testTarget(
         name: "MCPTransportTests",

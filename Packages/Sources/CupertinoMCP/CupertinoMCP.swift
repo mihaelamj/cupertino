@@ -7,7 +7,7 @@ import CupertinoShared
 struct CupertinoMCP: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: CupertinoConstants.App.mcpCommandName,
-        abstract: "MCP Server for Apple Documentation, Swift Evolution, Swift Packages, and Code Samples",
+        abstract: CupertinoConstants.HelpText.mcpAbstract,
         version: CupertinoConstants.App.version,
         subcommands: [Serve.self],
         defaultSubcommand: Serve.self

@@ -381,7 +381,7 @@ public final class DocumentationCrawler: NSObject {
     /// Auto-generate priority package list if this was a Swift.org crawl
     private func generatePriorityPackagesIfSwiftOrg() async throws {
         // Check if start URL is Swift.org
-        guard configuration.startURL.absoluteString.contains("swift.org") else {
+        guard configuration.startURL.absoluteString.contains(CupertinoConstants.HostDomain.swiftOrg) else {
             return
         }
 

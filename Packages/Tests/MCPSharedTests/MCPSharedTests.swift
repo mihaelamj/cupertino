@@ -1,7 +1,7 @@
-import Testing
 @testable import MCPShared
+import Testing
 
-@Test func testRequestIDCoding() throws {
+@Test func requestIDCoding() throws {
     let stringID = RequestID.string("test-123")
     let intID = RequestID.int(42)
 

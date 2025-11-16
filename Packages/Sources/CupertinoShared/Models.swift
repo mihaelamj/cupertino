@@ -184,11 +184,11 @@ public enum URLUtilities {
         let pathComponents = url.pathComponents
 
         // Handle docs.swift.org URLs (e.g., /swift-book/documentation/the-swift-programming-language/*)
-        if url.host?.contains("swift.org") == true {
-            if pathComponents.contains("swift-book") {
-                return "swift-book"
+        if url.host?.contains(CupertinoConstants.HostDomain.swiftOrg) == true {
+            if pathComponents.contains(CupertinoConstants.PathComponent.swiftBook) {
+                return CupertinoConstants.PathComponent.swiftBook
             }
-            return "swift-org"
+            return CupertinoConstants.PathComponent.swiftOrgFramework
         }
 
         // Handle developer.apple.com URLs (e.g., /documentation/swiftui/*)
@@ -208,7 +208,7 @@ public enum URLUtilities {
         cleaned = cleaned
             .replacingOccurrences(of: "\(CupertinoConstants.BaseURL.appleDeveloper)/", with: "")
             .replacingOccurrences(of: "\(CupertinoConstants.BaseURL.swiftOrg)", with: "")
-            .replacingOccurrences(of: "https://www.swift.org/", with: "")
+            .replacingOccurrences(of: CupertinoConstants.URLCleanupPattern.swiftOrgWWW, with: "")
 
         // Normalize to safe filename
         cleaned = cleaned

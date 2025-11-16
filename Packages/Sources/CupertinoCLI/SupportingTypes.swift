@@ -14,11 +14,11 @@ extension Cupertino {
 
         var displayName: String {
             switch self {
-            case .docs: return "\(CupertinoConstants.DisplayName.apple) Documentation"
-            case .swift: return "\(CupertinoConstants.DisplayName.swiftOrg) Documentation"
-            case .evolution: return "Swift Evolution Proposals"
-            case .packages: return "Swift Package Documentation"
-            case .all: return "All Documentation"
+            case .docs: return CupertinoConstants.DisplayName.appleDocs
+            case .swift: return CupertinoConstants.DisplayName.swiftOrgDocs
+            case .evolution: return CupertinoConstants.DisplayName.swiftEvolution
+            case .packages: return CupertinoConstants.DisplayName.swiftPackages
+            case .all: return CupertinoConstants.DisplayName.allDocs
             }
         }
 
@@ -60,8 +60,8 @@ extension Cupertino {
 
         var displayName: String {
             switch self {
-            case .packages: return "Swift Package Metadata"
-            case .code: return "Apple Sample Code"
+            case .packages: return CupertinoConstants.DisplayName.packageMetadata
+            case .code: return CupertinoConstants.DisplayName.sampleCode
             }
         }
     }

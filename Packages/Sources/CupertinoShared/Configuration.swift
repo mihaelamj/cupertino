@@ -34,10 +34,10 @@ public struct CrawlerConfiguration: Codable, Sendable {
             let basePrefix = "\(scheme)://\(host)"
 
             // Add common documentation paths based on host
-            if host.contains("swift.org") {
+            if host.contains(CupertinoConstants.HostDomain.swiftOrg) {
                 // Allow entire swift.org domain - user can curate via start URL
                 self.allowedPrefixes = [basePrefix]
-            } else if host.contains("apple.com") {
+            } else if host.contains(CupertinoConstants.HostDomain.appleCom) {
                 self.allowedPrefixes = ["\(basePrefix)/documentation"]
             } else {
                 // Generic: allow entire host

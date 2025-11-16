@@ -1,3 +1,4 @@
+import CupertinoShared
 import Foundation
 import MCPShared
 
@@ -53,28 +54,28 @@ public enum JSONRPCMessage: Sendable {
 
         // Try to determine message type by presence of fields
         if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            if json["id"] != nil {
-                if json["method"] != nil {
+            if json[CupertinoConstants.JSONRPCField.id] != nil {
+                if json[CupertinoConstants.JSONRPCField.method] != nil {
                     // Has id + method = request
                     let req = try decoder.decode(JSONRPCRequest.self, from: data)
                     return .request(req)
-                } else if json["error"] != nil {
+                } else if json[CupertinoConstants.JSONRPCField.error] != nil {
                     // Has id + error = error response
                     let err = try decoder.decode(JSONRPCError.self, from: data)
                     return .error(err)
-                } else if json["result"] != nil {
+                } else if json[CupertinoConstants.JSONRPCField.result] != nil {
                     // Has id + result = success response
                     let res = try decoder.decode(JSONRPCResponse.self, from: data)
                     return .response(res)
                 }
-            } else if json["method"] != nil {
+            } else if json[CupertinoConstants.JSONRPCField.method] != nil {
                 // Has method but no id = notification
                 let notif = try decoder.decode(JSONRPCNotification.self, from: data)
                 return .notification(notif)
             }
         }
 
-        throw TransportError.invalidMessage("Unable to determine JSON-RPC message type")
+        throw TransportError.invalidMessage(CupertinoConstants.ErrorMessage.invalidJSONRPCMessage)
     }
 }
 

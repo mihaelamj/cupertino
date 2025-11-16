@@ -15,16 +15,16 @@ extension CupertinoMCP {
     @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
     struct Serve: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
-            abstract: "Start MCP server (serves docs to AI agents like Claude)"
+            abstract: CupertinoConstants.HelpText.mcpAbstract
         )
 
-        @Option(name: .long, help: "Apple documentation directory")
+        @Option(name: .long, help: ArgumentHelp(CupertinoConstants.HelpText.docsDir))
         var docsDir: String = CupertinoConstants.defaultDocsDirectory.path
 
-        @Option(name: .long, help: "Swift Evolution proposals directory")
+        @Option(name: .long, help: ArgumentHelp(CupertinoConstants.HelpText.evolutionDir))
         var evolutionDir: String = CupertinoConstants.defaultSwiftEvolutionDirectory.path
 
-        @Option(name: .long, help: "Search database path")
+        @Option(name: .long, help: ArgumentHelp(CupertinoConstants.HelpText.searchDB))
         var searchDB: String = CupertinoConstants.defaultSearchDatabase.path
 
         mutating func run() async throws {

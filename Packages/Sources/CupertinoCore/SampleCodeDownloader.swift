@@ -471,7 +471,7 @@ public final class SampleCodeDownloader {
 
             // Filter for Apple-related cookies
             let appleCookies = cookies.filter { cookie in
-                cookie.domain.contains("apple.com")
+                cookie.domain.contains(CupertinoConstants.HostDomain.appleCom)
             }
 
             let cookieData = appleCookies.map { cookie in

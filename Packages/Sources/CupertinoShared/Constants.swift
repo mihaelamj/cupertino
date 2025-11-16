@@ -139,6 +139,31 @@ public enum CupertinoConstants {
 
         /// Apple display name
         public static let apple = "Apple"
+
+        // MARK: Documentation Type Display Names
+
+        /// Apple Documentation display name
+        public static let appleDocs = "Apple Documentation"
+
+        /// Swift.org Documentation display name
+        public static let swiftOrgDocs = "Swift.org Documentation"
+
+        /// Swift Evolution Proposals display name
+        public static let swiftEvolution = "Swift Evolution Proposals"
+
+        /// Swift Package Documentation display name
+        public static let swiftPackages = "Swift Package Documentation"
+
+        /// All Documentation display name
+        public static let allDocs = "All Documentation"
+
+        // MARK: Fetch Type Display Names
+
+        /// Swift Package Metadata display name
+        public static let packageMetadata = "Swift Package Metadata"
+
+        /// Apple Sample Code display name
+        public static let sampleCode = "Apple Sample Code"
     }
 
     // MARK: - GitHub Organizations
@@ -208,6 +233,9 @@ public enum CupertinoConstants {
 
         /// GitHub API Repos Endpoint Template (use with owner/repo)
         public static let githubAPIRepos = "https://api.github.com/repos"
+
+        /// GitHub Raw Content Base URL
+        public static let githubRaw = "https://raw.githubusercontent.com"
 
         /// SwiftPackageIndex Package List
         public static let swiftPackageList =
@@ -364,17 +392,23 @@ public enum CupertinoConstants {
         // MARK: Messages & Tips
 
         /// Tip for using resources/read
-        public static let tipUseResourcesRead = "💡 **Tip:** Use `resources/read` with the URI to get the full document content."
+        public static let tipUseResourcesRead =
+            "💡 **Tip:** Use `resources/read` with the URI to get the full document content."
 
         /// Tip for filtering by framework
-        public static let tipFilterByFramework = "💡 **Tip:** Use `search_docs` with the `framework` parameter to filter results."
+        public static let tipFilterByFramework =
+            "💡 **Tip:** Use `search_docs` with the `framework` parameter to filter results."
 
         /// No results found message
-        public static let messageNoResults = "_No results found. Try different keywords or check available frameworks using `list_frameworks`._"
+        public static let messageNoResults =
+            "_No results found. Try different keywords or check available frameworks using `list_frameworks`._"
 
         /// No frameworks found message
         public static func messageNoFrameworks(buildIndexCommand: String) -> String {
-            "_No frameworks found. The search index may be empty. Run `\(buildIndexCommand)` to index your documentation._"
+            """
+            _No frameworks found. The search index may be empty. \
+            Run `\(buildIndexCommand)` to index your documentation._
+            """
         }
 
         // MARK: Formatting
@@ -490,6 +524,150 @@ public enum CupertinoConstants {
         /// Maximum content preview length (characters)
         /// Rationale: Shorter preview for quick display
         public static let previewMaxLength: Int = 200
+    }
+
+    // MARK: - Swift Evolution
+
+    /// Swift Evolution repository configuration
+    public enum SwiftEvolution {
+        /// Swift Evolution repository (owner/repo format)
+        public static let repository = "swiftlang/swift-evolution"
+
+        /// Default branch to fetch from
+        public static let branch = "main"
+
+        /// Repository owner
+        public static let owner = "swiftlang"
+
+        /// Repository name
+        public static let repo = "swift-evolution"
+    }
+
+    // MARK: - Priority Packages
+
+    /// Critical Apple packages that should always be included
+    public enum CriticalApplePackages {
+        /// List of critical Apple package repository names
+        /// These are the most commonly used Apple packages and should be prioritized
+        public static let repositories: [String] = [
+            "swift",
+            "swift-algorithms",
+            "swift-argument-parser",
+            "swift-asn1",
+            "swift-async-algorithms",
+            "swift-atomics",
+            "swift-cassandra-client",
+            "swift-certificates",
+            "swift-cluster-membership",
+            "swift-collections",
+            "swift-crypto",
+            "swift-distributed-actors",
+            "swift-docc",
+            "swift-driver",
+            "swift-format",
+            "swift-log",
+            "swift-metrics",
+            "swift-nio",
+            "swift-nio-http2",
+            "swift-nio-ssl",
+            "swift-nio-transport-services",
+            "swift-numerics",
+            "swift-openapi-generator",
+            "swift-openapi-runtime",
+            "swift-openapi-urlsession",
+            "swift-package-manager",
+            "swift-protobuf",
+            "swift-service-context",
+            "swift-system",
+            "swift-testing",
+            "sourcekit-lsp",
+        ]
+    }
+
+    /// Well-known ecosystem packages
+    public enum KnownEcosystemPackages {
+        /// List of well-known ecosystem packages (owner/repo format)
+        /// Note: Excludes deprecated packages (Alamofire, RxSwift, etc.)
+        public static let repositories: [String] = [
+            "vapor/vapor",
+            "vapor/swift-getting-started-web-server",
+            "pointfreeco/swift-composable-architecture",
+            "pointfreeco/swift-custom-dump",
+            "pointfreeco/swift-dependencies",
+        ]
+    }
+
+    // MARK: - CLI Help Strings
+
+    /// Help text for CLI commands and options
+    public enum HelpText {
+        /// Apple documentation directory help text
+        public static let docsDir = "Apple documentation directory"
+
+        /// Swift Evolution proposals directory help text
+        public static let evolutionDir = "Swift Evolution proposals directory"
+
+        /// Search database path help text
+        public static let searchDB = "Search database path"
+
+        /// MCP server abstract description
+        public static let mcpAbstract =
+            "MCP Server for Apple Documentation, Swift Evolution, Swift Packages, and Code Samples"
+    }
+
+    // MARK: - Host Domain Identifiers
+
+    /// Domain identifiers for URL classification
+    public enum HostDomain {
+        /// Swift.org domain identifier
+        public static let swiftOrg = "swift.org"
+
+        /// Apple.com domain identifier
+        public static let appleCom = "apple.com"
+    }
+
+    // MARK: - Path Components
+
+    /// Common path components for URL classification
+    public enum PathComponent {
+        /// Swift Book path component
+        public static let swiftBook = "swift-book"
+
+        /// Swift.org framework identifier
+        public static let swiftOrgFramework = "swift-org"
+    }
+
+    // MARK: - URL Cleanup Patterns
+
+    /// URL patterns for cleanup and normalization
+    public enum URLCleanupPattern {
+        /// Swift.org base URL for cleanup
+        public static let swiftOrgWWW = "https://www.swift.org/"
+    }
+
+    // MARK: - JSON-RPC Message Fields
+
+    /// Field names for JSON-RPC message parsing
+    public enum JSONRPCField {
+        /// ID field
+        public static let id = "id"
+
+        /// Method field
+        public static let method = "method"
+
+        /// Error field
+        public static let error = "error"
+
+        /// Result field
+        public static let result = "result"
+    }
+
+    // MARK: - Error Messages
+
+    /// Error message constants
+    public enum ErrorMessage {
+        /// Invalid JSON-RPC message type error
+        public static let invalidJSONRPCMessage = "Unable to determine JSON-RPC message type"
     }
 
     // MARK: - JavaScript Code
