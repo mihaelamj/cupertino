@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swift Concurrency: Memory, Threads & CPU Diagrams</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f7;
+        }
+        h1 {
+            color: #1d1d1f;
+            border-bottom: 3px solid #0071e3;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #1d1d1f;
+            margin-top: 40px;
+        }
+        .diagram-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        svg {
+            width: 100%;
+            height: auto;
+            max-width: 1200px;
+        }
+        .explanation {
+            background: #f0f8ff;
+            border-left: 4px solid #0071e3;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>Swift Concurrency: Memory, Threads & CPU Visualization</h1>
+    
+    <div class="explanation">
+        <strong>Legend:</strong><br>
+        🟦 Blue = Swift Concurrency Runtime Components<br>
+        🟩 Green = User Code/Tasks<br>
+        🟨 Yellow = Memory/Heap<br>
+        🟥 Red = CPU Cores<br>
+        🟪 Purple = Actors/Isolation<br>
+        ⚪ Gray = System/OS Components
+    </div>
+
+    <!-- RULE 1: Task Fundamentals -->
+    <div class="diagram-container">
+        <h2>Rule 1: Task Fundamentals</h2>
+        <svg viewBox="0 0 1200 600" xmlns="http://www.w3.org/2000/svg">
+            <!-- CPU Cores -->
+            <g id="cpu-cores">
+                <rect x="50" y="50" width="120" height="80" fill="#ff6b6b" stroke="#c92a2a" stroke-width="2" rx="5"/>
+                <text x="110" y="95" text-anchor="middle" font-weight="bold" fill="white">CPU Core 0</text>
+                
+                <rect x="200" y="50" width="120" height="80" fill="#ff6b6b" stroke="#c92a2a" stroke-width="2" rx="5"/>
+                <text x="260" y="95" text-anchor="middle" font-weight="bold" fill="white">CPU Core 1</text>
+                
+                <rect x="350" y="50" width="120" height="80" fill="#ff6b6b" stroke="#c92a2a" stroke-width="2" rx="5"/>
+                <text x="410" y="95" text-anchor="middle" font-weight="bold" fill="white">CPU Core 2</text>
+            </g>
+            
+            <!-- Thread Pool -->
+            <g id="thread-pool">
+                <rect x="50" y="180" width="420" height="120" fill="#e9ecef" stroke="#868e96" stroke-width="2" rx="5"/>
+                <text x="260" y="205" text-anchor="middle" font-weight="bold">Cooperative Thread Pool</text>
+                
+                <rect x="70" y="220" width="80" height="60" fill="#4c6ef5" stroke="#364fc7" stroke-width="2" rx="3"/>
+                <text x="110" y="255" text-anchor="middle" fill="white">Thread 1</text>
+                
+                <rect x="170" y="220" width="80" height="60" fill="#4c6ef5" stroke="#364fc7" stroke-width="2" rx="3"/>
+                <text x="210" y="255" text-anchor="middle" fill="white">Thread 2</text>
+                
+                <rect x="270" y="220" width="80" height="60" fill="#4c6ef5" stroke="#364fc7" stroke-width="2" rx="3"/>
+                <text x="310" y="255" text-anchor="middle" fill="white">Thread 3</text>
+                
+                <rect x="370" y="220" width="80" height="60" fill="#4c6ef5" stroke="#364fc7" stroke-width="2" rx="3"/>
+                <text x="410" y="255" text-anchor="middle" fill="white">Thread 4</text>
+            </g>
+            
+            <!-- Memory/Heap -->
+            <g id="heap">
+                <rect x="550" y="50" width="600" height="500" fill="#fff9db" stroke="#fab005" stroke-width="2" rx="5"/>
+                <text x="850" y="80" text-anchor="middle" font-weight="bold" font-size="18">Heap Memory</text>
+                
+                <!-- Task object in heap -->
+                <rect x="600" y="120" width="200" height="150" fill="#51cf66" stroke="#2f9e44" stroke-width="2" rx="5"/>
+                <text x="700" y="145" text-anchor="middle" font-weight="bold">Task Object</text>
+                <text x="700" y="170" text-anchor="middle">• State: Running</text>
+                <text x="700" y="190" text-anchor="middle">• Priority: Default</text>
+                <text x="700" y="210" text-anchor="middle">• Continuation</text>
+                <text x="700" y="230" text-anchor="middle">• Context</text>
+                <text x="700" y="250" text-anchor="middle">• Result Storage</text>
+                
+                <!-- Task closure -->
+                <rect x="850" y="120" width="200" height="100" fill="#51cf66" stroke="#2f9e44" stroke-width="2" rx="5"/>
+                <text x="950" y="145" text-anchor="middle" font-weight="bold">Task Closure</text>
+                <text x="950" y="170" text-anchor="middle">async {</text>
+                <text x="950" y="190" text-anchor="middle">  // user code</text>
+                <text x="950" y="210" text-anchor="middle">}</text>
+                
+                <!-- Stack frame -->
+                <rect x="600" y="320" width="200" height="120" fill="#ffd43b" stroke="#fab005" stroke-width="2" rx="5"/>
+                <text x="700" y="345" text-anchor="middle" font-weight="bold">Task Stack Frame</text>
+                <text x="700" y="370" text-anchor="middle">• Local variables</text>
+                <text x="700" y="390" text-anchor="middle">• Return address</text>
+                <text x="700" y="410" text-anchor="middle">• Suspension point</text>
+            </g>
+            
+            <!-- Runtime Scheduler -->
+            <g id="scheduler">
+                <rect x="50" y="350" width="420" height="100" fill="#748ffc" stroke="#5c7cfa" stroke-width="2" rx="5"/>
+                <text x="260" y="380" text-anchor="middle" font-weight="bold" fill="white">Swift Concurrency Runtime Scheduler</text>
+                <text x="260" y="405" text-anchor="middle" fill="white">• Task queue management</text>
+                <text x="260" y="425" text-anchor="middle" fill="white">• Thread assignment</text>
+            </g>
+            
+            <!-- Arrows showing flow -->
+            <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+                </marker>
+            </defs>
+            
+            <line x1="110" y1="130" x2="110" y2="220" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+            <line x1="260" y1="130" x2="210" y2="220" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+            <line x1="410" y1="130" x2="310" y2="220" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+            
+            <line x1="450" y1="250" x2="600" y2="195" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+            <text x="480" y="220" font-size="12">executes</text>
+            
+            <line x1="800" y1="195" x2="850" y2="170" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+            
+            <line x1="260" y1="300" x2="260" y2="350" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+        </svg>
+        <div class="explanation">
+            <strong>What happens:</strong> When you create a <code>Task { }</code>, Swift allocates a Task object on the heap containing state, continuation, and context. The runtime scheduler assigns it to an available thread from the cooperative thread pool (usually 1 thread per CPU core). The task's code executes on that thread until completion or suspension.
+        </div>
+    </div>
+
+    <!-- RULE 2: Structured Concurrency - Parent/Child Tasks -->
+    <div class="diagram-container">
+        <h2>Rule 2: Child Tasks Must Complete Before Parent Returns</h2>
+        <svg viewBox="0 0 1200 700" xmlns="http://www.w3.org/2000/svg">
+            <!-- Memory/Heap -->
+            <rect x="550" y="50" width="600" height="600" fill="#fff9db" stroke="#fab005" stroke-width="2" rx="5"/>
+            <text x="850" y="80" text-anchor="middle" font-weight="bold" font-size="18">Heap Memory</text>
+            
+            <!-- Parent Task -->
+            <rect x="600" y="120" width="220" height="180" fill="#51cf66" stroke="#2f9e44" stroke-width="3" rx="5"/>
+            <text x="710" y="145" text-anchor="middle" font-weight="bold">Parent Task</text>
+            <text x="710" y="170" text-anchor="middle">State: Suspended</text>
+            <text x="710" y="190" text-anchor="middle">Waiting for: 2 children</text>
+            <rect x="620" y="210" width="180" height="30" fill="#ffd43b" stroke="#fab005" stroke-width="2" rx="3"/>
+            <text x="710" y="230" text-anchor="middle">Child Task Registry</text>
+            <text x="710" y="260" text-anchor="middle">TaskGroup context</text>
+            <text x="710" y="280" text-anchor="middle">Cancellation token</text>
+            
+            <!-- Child Task 1 -->
+            <rect x="600" y="350" width="200" height="120" fill="#a5d8ff" stroke="#339af0" stroke-width="2" rx="5"/>
+            <text x="700" y="375" text-anchor="middle" font-weight="bold">Child Task 1</text>
+            <text x="700" y="395" text-anchor="middle">State: Running</text>
+            <text x="700" y="415" text-anchor="middle">Parent ref ↑</text>
+            <text x="700" y="435" text-anchor="middle">Priority: Inherited</text>
+            
+            <!-- Child Task 2 -->
+            <rect x="850" y="350" width="200" height="120" fill="#a5d8ff" stroke="#339af0" stroke-width="2" rx="5"/>
+            <text x="950" y="375" text-anchor="middle" font-weight="bold">Child Task 2</text>
+            <text x="950" y="395" text-anchor="middle">State: Running</text>
+            <text x="950" y="415" text-anchor="middle">Parent ref ↑</text>
+            <text x="950" y="435" text-anchor="middle">Priority: Inherited</text>
+            
+            <!-- Links between parent and children -->
+            <line x1="710" y1="300" x2="700" y2="350" stroke="#2f9e44" stroke-width="2" stroke-dasharray="5,5"/>
+            <line x1="710" y1="300" x2="950" y2="350" stroke="#2f9e44" stroke-width="2" stroke-dasharray="5,5"/>
+            
+            <!-- Thread Pool Execution -->
+            <rect x="50" y="200" width="450" height="300" fill="#e9ecef" stroke="#868e96" stroke-width="2" rx="5"/>
+            <text x="275" y="230" text-anchor="middle" font-weight="bold">Thread Pool Execution</text>
+            
+            <rect x="80" y="260" width="120" height="80" fill="#4c6ef5" stroke="#364fc7" stroke-width="2" rx="3"/>
+            <text x="140" y="285" text-anchor="middle" fill="white">Thread 1</text>
+            <text x="140" y="305" text-anchor="middle" fill="white">Parent Task</text>
+            <text x="140" y="325" text-anchor="middle" fill="white">(suspended)</text>
+            
+            <rect x="220" y="260" width="120" height="80" fill="#4c6ef5" stroke="#364fc7" stroke-width="2" rx="3"/>
+            <text x="280" y="285" text-anchor="middle" fill="white">Thread 2</text>
+            <text x="280" y="305" text-anchor="middle" fill="white">Child Task 1</text>
+            <text x="280" y="325" text-anchor="middle" fill="white">(running)</text>
+            
+            <rect x="360" y="260" width="120" height="80" fill="#4c6ef5" stroke="#364fc7" stroke-width="2" rx="3"/>
+            <text x="420" y="285" text-anchor="middle" fill="white">Thread 3</text>
+            <text x="420" y="305" text-anchor="middle" fill="white">Child Task 2</text>
+            <text x="420" y="325" text-anchor="middle" fill="white">(running)</text>
+            
+            <!-- Timeline -->
+            <rect x="80" y="380" width="400" height="100" fill="#f8f9fa" stroke="#868e96" stroke-width="1" rx="3"/>
+            <text x="280" y="405" text-anchor="middle" font-weight="bold">Execution Timeline</text>
+            
+            <line x1="100" y1="430" x2="460" y2="430" stroke="#333" stroke-width="1"/>
+            <line x1="100" y1="425" x2="100" y2="435" stroke="#333" stroke-width="1"/>
+            <line x1="200" y1="425" x2="200" y2="435" stroke="#333" stroke-width="1"/>
+            <line x1="350" y1="425" x2="350" y2="435" stroke="#333" stroke-width="1"/>
+            <line x1="460" y1="425" x2="460" y2="435" stroke="#333" stroke-width="1"/>
+            
+            <text x="100" y="450" text-anchor="middle" font-size="10">Start</text>
+            <text x="200" y="450" text-anchor="middle" font-size="10">Children spawn</text>
+            <text x="350" y="450" text-anchor="middle" font-size="10">Children complete</text>
+            <text x="460" y="450" text-anchor="middle" font-size="10">Parent resumes</text>
+            
+            <!-- Parent task bar -->
+            <rect x="100" y="420" width="100" height="5" fill="#51cf66"/>
+            <rect x="350" y="420" width="110" height="5" fill="#51cf66"/>
+            <!-- Children task bars -->
+            <rect x="200" y="415" width="150" height="5" fill="#339af0"/>
+            <rect x="200" y="425" width="150" height="5" fill="#339af0"/>
+            
+            <!-- Cancellation propagation -->
+            <g id="cancellation">
+                <rect x="600" y="520" width="450" height="80" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2" rx="5"/>
+                <text x="825" y="545" text-anchor="middle" font-weight="bold">Cancellation Propagation</text>
+                <text x="825" y="570" text-anchor="middle">If parent is cancelled → all children are cancelled</text>
+                <text x="825" y="590" text-anchor="middle">Automatic cleanup on scope exit</text>
+            </g>
+        </svg>
+        <div class="explanation">
+            <strong>What happens:</strong> Parent task creates a TaskGroup context with a child task registry. Each child task holds a reference to its parent. The parent suspends until all children complete. Children inherit priority from parent. Cancellation automatically propagates from parent to all children. Memory is cleaned up only after all children complete.
+        </div>
+    </div>
+
+    <!-- RULE 3: Task Groups -->
+    <div class="diagram-container">
+        <h2>Rule 3: Task Groups</h2>
+        <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+            <!-- Heap Memory -->
+            <rect x="50" y="50" width="1100" height="700" fill="#fff9db" stroke="#fab005" stroke-width="2" rx="5"/>
+            <text x="600" y="80" text-anchor="middle" font-weight="bold" font-size="18">Heap Memory - TaskGroup Structure</text>
+            
+            <!-- TaskGroup Object -->
+            <rect x="100" y="120" width="300" height="200" fill="#748ffc" stroke="#5c7cfa" stroke-width="3" rx="5"/>
+            <text x="250" y="145" text-anchor="middle" font-weight="bold" fill="white">TaskGroup Object</text>
+            <text x="250" y="170" text-anchor="middle" fill="white">• Task queue (FIFO)</text>
+            <text x="250" y="190" text-anchor="middle" fill="white">• Result buffer</text>
+            <text x="250" y="210" text-anchor="middle" fill="white">• Cancellation state</text>
+            <text x="250" y="230" text-anchor="middle" fill="white">• Max concurrency: unlimited</text>
+            <text x="250" y="250" text-anchor="middle" fill="white">• Pending count: 4</text>
+            <text x="250" y="270" text-anchor="middle" fill="white">• Completed count: 0</text>
+            <rect x="120" y="285" width="260" height="25" fill="#ffd43b" stroke="#fab005" stroke-width="2" rx="3"/>
+            <text x="250" y="302" text-anchor="middle">Iterator State</text>
+            
+            <!-- Individual Tasks in Group -->
+            <g id="group-tasks">
+                <rect x="500" y="120" width="150" height="100" fill="#51cf66" stroke="#2f9e44" stroke-width="2" rx="5"/>
+                <text x="575" y="145" text-anchor="middle" font-weight="bold">Task 1</text>
+                <text x="575" y="165" text-anchor="middle">State: Running</text>
+                <text x="575" y="185" text-anchor="middle">Index: 0</text>
+                <text x="575" y="205" text-anchor="middle">Result: Pending</text>
+                
+                <rect x="700" y="120" width="150" height="100" fill="#51cf66" stroke="#2f9e44" stroke-width="2" rx="5"/>
+                <text x="775" y="145" text-anchor="middle" font-weight="bold">Task 2</text>
+                <text x="775" y="165" text-anchor="middle">State: Running</text>
+                <text x="775" y="185" text-anchor="middle">Index: 1</text>
+                <text x="775" y="205" text-anchor="middle">Result: Pending</text>
+                
+                <rect x="900" y="120" width="150" height="100" fill="#51cf66" stroke="#2f9e44" stroke-width="2" rx="5"/>
+                <text x="975" y="145" text-anchor="middle" font-weight="bold">Task 3</text>
+                <text x="975" y="165" text-anchor="middle">State: Queued</text>
+                <text x="975" y="185" text-anchor="middle">Index: 2</text>
+                <text x="975" y="205" text-anchor="middle">Result: Pending</text>
+                
+                <rect x="500" y="250" width="150" height="100" fill="#a5d8ff" stroke="#339af0" stroke-width="2" rx="5"/>
+                <text x="575" y="275" text-anchor="middle" font-weight="bold">Task 4</text>
+                <text x="575" y="295" text-anchor="middle">State: Queued</text>
+                <text x="575" y="315" text-anchor="middle">Index: 3</text>
+                <text x="575" y="335" text-anchor="middle">Result: Pending</text>
+            </g>
+            
+            <!-- Result Collection Buffer -->
+            <rect x="100" y="380" width="950" height="120" fill="#d0ebff" stroke="#339af0" stroke-width="2" rx="5"/>
+            <text x="575" y="405" text-anchor="middle" font-weight="bold">Result Collection Buffer (Order of Completion)</text>
+            
+            <rect x="130" y="420" width="100" height="60" fill="#f8f9fa" stroke="#868e96" stroke-width="1" rx="3" stroke-dasharray="5,5"/>
+            <text x="180" y="455" text-anchor="middle">Empty</text>
+            
+            <rect x="250" y="420" width="100" height="60" fill="#f8f9fa" stroke="#868e96" stroke-width="1" rx="3" stroke-dasharray="5,5"/>
+            <text x="300" y="455" text-anchor="middle">Empty</text>
+            
+            <rect x="370" y="420" width="100" height="60" fill="#f8f9fa" stroke="#868e96" stroke-width="1" rx="3" stroke-dasharray="5,5"/>
+            <text x="420" y="455" text-anchor="middle">Empty</text>
+            
+            <rect x="490" y="420" width="100" height="60" fill="#f8f9fa" stroke="#868e96" stroke-width="1" rx="3" stroke-dasharray="5,5"/>
+            <text x="540" y="455" text-anchor="middle">Empty</text>
+            
+            <text x="700" y="455" text-anchor="middle">← Tasks complete in any order</text>
+            
+            <!-- Thread Pool -->
+            <rect x="100" y="540" width="950" height="180" fill="#e9ecef" stroke="#868e96" stroke-width="2" rx="5"/>
+            <text x="575" y="570" text-anchor="middle" font-weight="bold">Concurrent Execution on Thread Pool</text>
+            
+            <rect x="150" y="600" width="150" height="80" fill="#4c6ef5" stroke="#364fc7" stroke-width="2" rx="3"/>
+            <text x="225" y="625" text-anchor="middle" fill="white">Thread 1</text>
+            <text x="225" y="650" text-anchor="middle" fill="white">Executing Task 1</text>
+            
+            <rect x="350" y="600" width="150" height="80" fill="#4c6ef5" stroke="#364fc7" stroke-width="2" rx="3"/>
+            <text x="425" y="625" text-anchor="middle" fill="white">Thread 2</text>
+            <text x="425" y="650" text-anchor="middle" fill="white">Executing Task 2</text>
+            
+            <rect x="550" y="600" width="150" height="80" fill="#4c6ef5" stroke="#364fc7" stroke-width="2" rx="3"/>
+            <text x="625" y="625" text-anchor="middle" fill="white">Thread 3</text>
+            <text x="625" y="650" text-anchor="middle" fill="white">Idle</text>
+            
+            <rect x="750" y="600" width="150" height="80" fill="#4c6ef5" stroke="#364fc7" stroke-width="2" rx="3"/>
+            <text x="825" y="625" text-anchor="middle" fill="white">Thread 4</text>
+            <text x="825" y="650" text-anchor="middle" fill="white">Idle</text>
+            
+            <!-- Arrows showing relationships -->
+            <line x1="400" y1="220" x2="500" y2="170" stroke="#5c7cfa" stroke-width="2" stroke-dasharray="5,5"/>
+            <line x1="400" y1="220" x2="700" y2="170" stroke="#5c7cfa" stroke-width="2" stroke-dasharray="5,5"/>
+            <line x1="400" y1="220" x2="900" y2="170" stroke="#5c7cfa" stroke-width="2" stroke-dasharray="5,5"/>
+            <line x1="400" y1="220" x2="500" y2="300" stroke="#5c7cfa" stroke-width="2" stroke-dasharray="5,5"/>
+            
+            <text x="450" y="100" font-weight="bold">manages</text>
+            
+            <!-- Flow arrows -->
+            <line x1="575" y1="220" x2="180" y2="420" stroke="#2f9e44" stroke-width="2" marker-end="url(#arrowhead)" stroke-dasharray="3,3"/>
+            <text x="380" y="320" font-size="12">completes →</text>
+        </svg>
+        <div class="explanation">
+            <strong>What happens:</strong> <code>withTaskGroup</code> creates a TaskGroup object that manages a queue of child tasks. Tasks run concurrently up to system limits (typically CPU core count). Results are collected in completion order (not creation order). The group provides an async iterator to consume results. All tasks must complete before the group scope exits.
+        </div>
+    </div>
+
+    <!-- RULE 7: Actor Isolation -->
+    <div class="diagram-container">
+        <h2>Rule 7: Actor Isolation (Cooperative Scheduling)</h2>
+        <svg viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg">
+            <!-- Global Thread Pool -->
+            <rect x="50" y="50" width="600" height="200" fill="#e9ecef" stroke="#868e96" stroke-width="2" rx="5"/>
+            <text x="350" y="80" text-anchor="middle" font-weight="bold" font-size="18">Global Concurrent Executor (Thread Pool)</text>
+            
+            <rect x="80" y="110" width="130" height="100" fill="#4c6ef5" stroke="#364fc7" stroke-width="2" rx="3"/>
+            <text x="145" y="135" text-anchor="middle" fill="white" font-weight="bold">Thread 1</text>
+            <text x="145" y="160" text-anchor="middle" fill="white" font-size="11">Currently:</text>
+            <text x="145" y="180" text-anchor="middle" fill="white" font-size="11">Actor A</text>
+            <text x="145" y="200" text-anchor="middle" fill="white" font-size="11">deposit()</text>
+            
+            <rect x="230" y="110" width="130" height="100" fill="#4c6ef5" stroke="#364fc7" stroke-width="2" rx="3"/>
+            <text x="295" y="135" text-anchor="middle" fill="white" font-weight="bold">Thread 2</text>
+            <text x="295" y="160" text-anchor="middle" fill="white" font-size="11">Currently:</text>
+            <text x="295" y="180" text-anchor="middle" fill="white" font-size="11">Task X</text>
+            <text x="295" y="200" text-anchor="middle" fill="white" font-size="11">(non-actor)</text>
+            
+            <rect x="380" y="110" width="130" height="100" fill="#4c6ef5" stroke="#364fc7" stroke-width="2" rx="3"/>
+            <text x="445" y="135" text-anchor="middle" fill="white" font-weight="bold">Thread 3</text>
+            <text x="445" y="160" text-anchor="middle" fill="white" font-size="11">Currently:</text>
+            <text x="445" y="180" text-anchor="middle" fill="white" font-size="11">Actor B</text>
+            <text x="445" y="200" text-anchor="middle" fill="white" font-size="11">process()</text>
+            
+            <rect x="530" y="110" width="100" height="100" fill="#748ffc" stroke="#5c7cfa" stroke-width="2" rx="3"/>
+            <text x="580" y="135" text-anchor="middle" fill="white" font-weight="bold">Thread 4</text>
+            <text x="580" y="160" text-anchor="middle" fill="white" font-size="11">Idle</text>
+            
+            <text x="350" y="240" text-anchor="middle" font-style="italic">Shared by ALL actors and tasks - no dedicated threads!</text>
+            
+            <!-- Actor A in Heap -->
+            <rect x="50" y="300" width="600" height="550" fill="#fff9db" stroke="#fab005" stroke-width="2" rx="5"/>
+            <text x="350" y="330" text-anchor="middle" font-weight="bold" font-size="18">Actor A: BankAccount (in Heap)</text>
+            
+            <!-- Actor Object -->
+            <rect x="100" y="370" width="500" height="450" fill="#cc5de8" stroke="#9c36b5" stroke-width="3" rx="5"/>
+            <text x="350" y="400" text-anchor="middle" font-weight="bold" fill="white" font-size="16">Actor Instance</text>
+            
+            <!-- Actor State -->
+            <rect x="130" y="430" width="440" height="100" fill="#f8f9fa" stroke="#868e96" stroke-width="2" rx="3"/>
+            <text x="350" y="455" text-anchor="middle" font-weight="bold">Isolated State (Protected)</text>
+            <text x="350" y="480" text-anchor="middle">balance: 1000.0</text>
+            <text x="350" y="505" text-anchor="middle">transactions: [...]</text>
+            <text x="350" y="525" text-anchor="middle">🔒 Only one task can access at a time</text>
+            
+            <!-- Actor Runtime Metadata -->
+            <rect x="130" y="550" width="440" height="120" fill="#e599f7" stroke="#9775fa" stroke-width="2" rx="3"/>
+            <text x="350" y="575" text-anchor="middle" font-weight="bold" fill="white">Actor Runtime Metadata</text>
+            <text x="350" y="600" text-anchor="middle" fill="white">• Isolation flag (locked/unlocked)</text>
+            <text x="350" y="620" text-anchor="middle" fill="white">• Currently executing: deposit() on Thread 1</text>
+            <text x="350" y="640" text-anchor="middle" fill="white">• Next job pointer → Job Queue</text>
+            <text x="350" y="660" text-anchor="middle" fill="white">• NO dedicated thread or serial queue!</text>
+            
+            <!-- Job Queue (Mailbox) -->
+            <rect x="130" y="690" width="440" height="110" fill="#ffd43b" stroke="#fab005" stroke-width="2" rx="5"/>
+            <text x="350" y="715" text-anchor="middle" font-weight="bold">Job Queue (Mailbox) - FIFO</text>
+            
+            <rect x="150" y="735" width="90" height="35" fill="#51cf66" stroke="#2f9e44" stroke-width="2" rx="3"/>
+            <text x="195" y="757" text-anchor="middle" font-size="11">withdraw(50)</text>
+            
+            <rect x="250" y="735" width="90" height="35" fill="#51cf66" stroke="#2f9e44" stroke-width="2" rx="3"/>
+            <text x="295" y="757" text-anchor="middle" font-size="11">getBalance()</text>
+            
+            <rect x="350" y="735" width="90" height="35" fill="#51cf66" stroke="#2f9e44" stroke-width="2" rx="3"/>
+            <text x="395" y="757" text-anchor="middle" font-size="11">transfer(200)</text>
+            
+            <rect x="450" y="735" width="100" height="35" fill="#a5d8ff" stroke="#339af0" stroke-width="2" rx="3"/>
+            <text x="500" y="757" text-anchor="middle" font-size="11">deposit(75)</text>
+            
+            <!-- How Serial Execution Works -->
+            <rect x="700" y="300" width="650" height="550" fill="#d0ebff" stroke="#339af0" stroke-width="2" rx="5"/>
+            <text x="1025" y="330" text-anchor="middle" font-weight="bold" font-size="18">How Serial Execution is Guaranteed</text>
+            
+            <!-- Step by step execution -->
+            <g id="execution-steps">
+                <rect x="730" y="360" width="590" height="460" fill="#f8f9fa" stroke="#868e96" stroke-width="1" rx="3"/>
+                
+                <!-- Step 1 -->
+                <rect x="750" y="380" width="550" height="80" fill="#c3fae8" stroke="#37b679" stroke-width="1" rx="3"/>
+                <text x="770" y="405" font-weight="bold">1. Task calls actor method</text>
+                <text x="770" y="425" font-family="monospace" font-size="11">await account.deposit(100)</text>
+                <text x="770" y="445">→ Creates a Job and adds to actor's queue</text>
+                
+                <!-- Step 2 -->
+                <rect x="750" y="470" width="550" height="80" fill="#ffec99" stroke="#fab005" stroke-width="1" rx="3"/>
+                <text x="770" y="495" font-weight="bold">2. Runtime checks actor isolation</text>
+                <text x="770" y="515">If unlocked: Acquire lock, execute on current thread</text>
+                <text x="770" y="535">If locked: Add to queue, suspend caller</text>
+                
+                <!-- Step 3 -->
+                <rect x="750" y="560" width="550" height="80" fill="#a5d8ff" stroke="#339af0" stroke-width="1" rx="3"/>
+                <text x="770" y="585" font-weight="bold">3. Job executes on any available thread</text>
+                <text x="770" y="605">Thread 1, 2, 3, or 4 - doesn't matter which!</text>
+                <text x="770" y="625">Actor ensures only ONE job runs at a time</text>
+                
+                <!-- Step 4 -->
+                <rect x="750" y="650" width="550" height="80" fill="#ffc9c9" stroke="#fa5252" stroke-width="1" rx="3"/>
+                <text x="770" y="675" font-weight="bold">4. When job completes</text>
+                <text x="770" y="695">→ Check queue for next job</text>
+                <text x="770" y="715">→ If empty: unlock actor / If not: run next job</text>
+                
+                <!-- Key insight -->
+                <rect x="750" y="740" width="550" height="60" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2" rx="3"/>
+                <text x="1025" y="765" text-anchor="middle" font-weight="bold">⚠️ Key: Serial execution WITHOUT dedicated thread!</text>
+                <text x="1025" y="785" text-anchor="middle">Cooperative scheduling on shared thread pool</text>
+            </g>
+            
+            <!-- Arrows and flow -->
+            <path d="M 145 210 Q 145 280 350 370" stroke="#4c6ef5" stroke-width="3" fill="none" marker-end="url(#arrowhead)" stroke-dasharray="5,5"/>
+            <text x="200" y="290" fill="#4c6ef5" font-weight="bold">executing</text>
+            
+            <path d="M 570 640 Q 650 640 730 600" stroke="#fab005" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+            <text x="640" y="630" fill="#fab005" font-size="11">when done, pick next</text>
+            
+            <!-- Important note -->
+            <rect x="50" y="870" width="1300" height="40" fill="#748ffc" stroke="#5c7cfa" stroke-width="2" rx="3"/>
+            <text x="700" y="895" text-anchor="middle" fill="white" font-weight="bold">
+                Actor achieves "serial executor" semantics through runtime coordination, NOT through a dedicated serial queue or thread!
+            </text>
+        </svg>
+        <div class="explanation">
+            <strong>What happens:</strong> Actors use the <strong>global concurrent executor</strong> (shared thread pool) for execution. Each actor maintains a <strong>job queue</strong> (mailbox) for pending operations. The runtime ensures <strong>serial execution semantics</strong> by allowing only one job from an actor's queue to execute at a time, but this job can run on ANY available thread. There's no dedicated thread or GCD serial queue per actor - it's cooperative scheduling with runtime-enforced mutual exclusion. When a job completes, the runtime checks if there are more jobs queued and continues execution or unlocks the actor.
+        </div>
+    </div>
+
+    <!-- RULE 10: Actor Executors -->
+    <div class="diagram-container">
+        <h2>Rule 10: Custom Actor Executors (Swift 5.9+)</h2>
+        <svg viewBox="0 0 1400 700" xmlns="http://www.w3.org/2000/svg">
+            <text x="700" y="30" text-anchor="middle" font-weight="bold" font-size="20">Evolution: Custom Actor Executors (SE-0392)</text>
+            
+            <!-- Default Executor -->
+            <rect x="50" y="60" width="600" height="300" fill="#e7f5ff" stroke="#1c7ed6" stroke-width="3" rx="5"/>
+            <text x="350" y="90" text-anchor="middle" font-weight="bold" font-size="16">Default: Global Concurrent Executor</text>
+            
+            <rect x="80" y="120" width="540" height="80" fill="#a5d8ff" stroke="#339af0" stroke-width="2" rx="3"/>
+            <text x="350" y="145" text-anchor="middle" font-weight="bold">actor DefaultActor { }</text>
+            <text x="350" y="170" text-anchor="middle">• Uses shared thread pool</text>
+            <text x="350" y="190" text-anchor="middle">• Jobs can run on any available thread</text>
+            
+            <!-- Thread pool visualization -->
+            <rect x="80" y="220" width="540" height="120" fill="#f8f9fa" stroke="#868e96" stroke-width="1" rx="3"/>
+            <text x="350" y="245" text-anchor="middle" font-weight="bold">Shared Thread Pool</text>
+            
+            <rect x="100" y="270" width="100" height="50" fill="#4c6ef5" stroke="#364fc7" rx="3"/>
+            <text x="150" y="300" text-anchor="middle" fill="white">Thread 1</text>
+            
+            <rect x="220" y="270" width="100" height="50" fill="#4c6ef5" stroke="#364fc7" rx="3"/>
+            <text x="270" y="300" text-anchor="middle" fill="white">Thread 2</text>
+            
+            <rect x="340" y="270" width="100" height="50" fill="#4c6ef5" stroke="#364fc7" rx="3"/>
+            <text x="390" y="300" text-anchor="middle" fill="white">Thread 3</text>
+            
+            <rect x="460" y="270" width="140" height="50" fill="#4c6ef5" stroke="#364fc7" rx="3"/>
+            <text x="530" y="300" text-anchor="middle" fill="white">Thread N...</text>
+            
+            <!-- Custom Serial Executor -->
+            <rect x="50" y="380" width="600" height="300" fill="#fff9db" stroke="#fab005" stroke-width="3" rx="5"/>
+            <text x="350" y="410" text-anchor="middle" font-weight="bold" font-size="16">Custom: Serial Queue Executor</text>
+            
+            <rect x="80" y="440" width="540" height="120" fill="#ffd43b" stroke="#fab005" stroke-width="2" rx="3"/>
+            <text x="350" y="465" text-anchor="middle" font-family="monospace" font-size="11">actor DatabaseActor {</text>
+            <text x="350" y="485" text-anchor="middle" font-family="monospace" font-size="11">  nonisolated var unownedExecutor: UnownedSerialExecutor {</text>
+            <text x="350" y="505" text-anchor="middle" font-family="monospace" font-size="11">    MainActor.sharedUnownedExecutor // or custom</text>
+            <text x="350" y="525" text-anchor="middle" font-family="monospace" font-size="11">  }</text>
+            <text x="350" y="545" text-anchor="middle" font-family="monospace" font-size="11">}</text>
+            
+            <rect x="80" y="580" width="540" height="80" fill="#f8f9fa" stroke="#868e96" stroke-width="1" rx="3"/>
+            <text x="350" y="605" text-anchor="middle" font-weight="bold">Benefits of Custom Executor</text>
+            <text x="350" y="625" text-anchor="middle">• Can bind to specific thread (e.g., UI thread)</text>
+            <text x="350" y="645" text-anchor="middle">• Integration with existing systems (DispatchQueue, RunLoop)</text>
+            
+            <!-- Custom Event Loop Executor -->
+            <rect x="700" y="60" width="650" height="620" fill="#d0ebff" stroke="#339af0" stroke-width="3" rx="5"/>
+            <text x="1025" y="90" text-anchor="middle" font-weight="bold" font-size="16">Custom: Event Loop Executor</text>
+            
+            <rect x="730" y="120" width="590" height="180" fill="#c3fae8" stroke="#37b679" stroke-width="2" rx="3"/>
+            <text x="1025" y="145" text-anchor="middle" font-family="monospace" font-size="11">// Network service actor with event loop</text>
+            <text x="1025" y="165" text-anchor="middle" font-family="monospace" font-size="11">actor NetworkService {</text>
+            <text x="1025" y="185" text-anchor="middle" font-family="monospace" font-size="11">  let eventLoop: EventLoop</text>
+            <text x="1025" y="205" text-anchor="middle" font-family="monospace" font-size="11">  </text>
+            <text x="1025" y="225" text-anchor="middle" font-family="monospace" font-size="11">  nonisolated var unownedExecutor: UnownedSerialExecutor {</text>
+            <text x="1025" y="245" text-anchor="middle" font-family="monospace" font-size="11">    eventLoop.unownedExecutor</text>
+            <text x="1025" y="265" text-anchor="middle" font-family="monospace" font-size="11">  }</text>
+            <text x="1025" y="285" text-anchor="middle" font-family="monospace" font-size="11">}</text>
+            
+            <!-- Event Loop Thread -->
+            <rect x="730" y="320" width="590" height="200" fill="#f8f9fa" stroke="#868e96" stroke-width="2" rx="3"/>
+            <text x="1025" y="345" text-anchor="middle" font-weight="bold">Dedicated Event Loop Thread</text>
+            
+            <rect x="850" y="370" width="350" height="60" fill="#748ffc" stroke="#5c7cfa" stroke-width="2" rx="3"/>
+            <text x="1025" y="395" text-anchor="middle" fill="white" font-weight="bold">Event Loop Thread</text>
+            <text x="1025" y="415" text-anchor="middle" fill="white">All NetworkService operations run here</text>
+            
+            <!-- Event queue -->
+            <rect x="760" y="450" width="530" height="50" fill="#e9ecef" stroke="#868e96" stroke-width="1" rx="3"/>
+            <text x="1025" y="475" text-anchor="middle">Event Queue: [I/O event] → [actor job] → [timer] → [actor job]</text>
+            
+            <!-- Use cases -->
+            <rect x="730" y="540" width="590" height="120" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2" rx="3"/>
+            <text x="1025" y="565" text-anchor="middle" font-weight="bold">Common Custom Executor Use Cases</text>
+            <text x="1025" y="590" text-anchor="middle">• UI frameworks: Bind to main thread/RunLoop</text>
+            <text x="1025" y="610" text-anchor="middle">• Networking: Bind to NIO EventLoop</text>
+            <text x="1025" y="630" text-anchor="middle">• Databases: Bind to connection thread</text>
+            <text x="1025" y="650" text-anchor="middle">• Testing: Deterministic execution order</text>
+        </svg>
+        <div class="explanation">
+            <strong>What happens:</strong> Swift 5.9+ allows actors to specify custom executors instead of using the default global concurrent executor. This enables: binding actors to specific threads (like MainActor), integration with existing event loops (NIO, RunLoop), and deterministic execution for testing. The actor still maintains serial execution semantics but gains control over WHERE that execution happens.
+        </div>
+    </div>
+
+    <!-- RULE 9: Actor Reentrancy -->
+    <div class="diagram-container">
+        <h2>Rule 9: Actor Reentrancy & State Validation</h2>
+        <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+            <!-- Timeline -->
+            <rect x="50" y="50" width="1100" height="700" fill="#f8f9fa" stroke="#868e96" stroke-width="2" rx="5"/>
+            <text x="600" y="80" text-anchor="middle" font-weight="bold" font-size="18">Actor Reentrancy Timeline</text>
+            
+            <!-- Time axis -->
+            <line x1="150" y1="650" x2="1050" y2="650" stroke="#333" stroke-width="2"/>
+            <text x="150" y="680" text-anchor="middle">T0</text>
+            <text x="350" y="680" text-anchor="middle">T1</text>
+            <text x="550" y="680" text-anchor="middle">T2</text>
+            <text x="750" y="680" text-anchor="middle">T3</text>
+            <text x="950" y="680" text-anchor="middle">T4</text>
+            
+            <!-- Actor State Box -->
+            <rect x="100" y="120" width="300" height="500" fill="#cc5de8" stroke="#9c36b5" stroke-width="3" rx="5"/>
+            <text x="250" y="150" text-anchor="middle" font-weight="bold" fill="white">Actor State Over Time</text>
+            
+            <!-- State at different times -->
+            <g id="state-t0">
+                <rect x="120" y="180" width="260" height="60" fill="#f8f9fa" stroke="#868e96" stroke-width="1" rx="3"/>
+                <text x="250" y="200" text-anchor="middle" font-weight="bold">T0: Initial State</text>
+                <text x="250" y="220" text-anchor="middle">balance: 1000</text>
+            </g>
+            
+            <g id="state-t1">
+                <rect x="120" y="260" width="260" height="60" fill="#ffec99" stroke="#fab005" stroke-width="1" rx="3"/>
+                <text x="250" y="280" text-anchor="middle" font-weight="bold">T1: Method A starts</text>
+                <text x="250" y="300" text-anchor="middle">balance: 1000 (checking)</text>
+            </g>
+            
+            <g id="state-t2">
+                <rect x="120" y="340" width="260" height="60" fill="#ff8787" stroke="#c92a2a" stroke-width="1" rx="3"/>
+                <text x="250" y="360" text-anchor="middle" font-weight="bold">T2: Method B interleaves!</text>
+                <text x="250" y="380" text-anchor="middle">balance: 500 (modified)</text>
+            </g>
+            
+            <g id="state-t3">
+                <rect x="120" y="420" width="260" height="60" fill="#ffec99" stroke="#fab005" stroke-width="1" rx="3"/>
+                <text x="250" y="440" text-anchor="middle" font-weight="bold">T3: Method A resumes</text>
+                <text x="250" y="460" text-anchor="middle">⚠️ Assumption invalid!</text>
+            </g>
+            
+            <g id="state-t4">
+                <rect x="120" y="500" width="260" height="100" fill="#ff6b6b" stroke="#c92a2a" stroke-width="2" rx="3"/>
+                <text x="250" y="525" text-anchor="middle" font-weight="bold">T4: Potential Bug!</text>
+                <text x="250" y="545" text-anchor="middle">Expected: balance ≥ 1000</text>
+                <text x="250" y="565" text-anchor="middle">Actual: balance = 500</text>
+                <text x="250" y="585" text-anchor="middle">❌ Invariant violated</text>
+            </g>
+            
+            <!-- Execution Flow -->
+            <g id="execution-flow">
+                <rect x="450" y="120" width="650" height="500" fill="#e9ecef" stroke="#868e96" stroke-width="2" rx="5"/>
+                <text x="775" y="150" text-anchor="middle" font-weight="bold">Execution Flow with Suspension Points</text>
+                
+                <!-- Method A execution -->
+                <rect x="500" y="180" width="550" height="180" fill="#a5d8ff" stroke="#339af0" stroke-width="2" rx="3"/>
+                <text x="775" y="205" text-anchor="middle" font-weight="bold">Method A: transferLargeAmount()</text>
+                
+                <rect x="520" y="220" width="150" height="40" fill="#51cf66" stroke="#2f9e44" stroke-width="1" rx="3"/>
+                <text x="595" y="245" text-anchor="middle">1. Check balance</text>
+                
+                <rect x="690" y="220" width="180" height="40" fill="#ffd43b" stroke="#fab005" stroke-width="2" rx="3"/>
+                <text x="780" y="245" text-anchor="middle">2. await networkCall() 🔄</text>
+                
+                <rect x="890" y="220" width="140" height="40" fill="#ff8787" stroke="#c92a2a" stroke-width="1" rx="3"/>
+                <text x="960" y="245" text-anchor="middle">3. SUSPENDED</text>
+                
+                <rect x="520" y="280" width="180" height="40" fill="#ff6b6b" stroke="#c92a2a" stroke-width="2" rx="3"/>
+                <text x="610" y="305" text-anchor="middle">4. Resume (wrong state!)</text>
+                
+                <!-- Method B execution -->
+                <rect x="500" y="400" width="350" height="100" fill="#ffc9c9" stroke="#fa5252" stroke-width="2" rx="3"/>
+                <text x="675" y="425" text-anchor="middle" font-weight="bold">Method B: withdraw() - Interleaved!</text>
+                
+                <rect x="520" y="440" width="150" height="40" fill="#51cf66" stroke="#2f9e44" stroke-width="1" rx="3"/>
+                <text x="595" y="465" text-anchor="middle">1. Deduct 500</text>
+                
+                <rect x="690" y="440" width="140" height="40" fill="#51cf66" stroke="#2f9e44" stroke-width="1" rx="3"/>
+                <text x="760" y="465" text-anchor="middle">2. Complete ✓</text>
+            </g>
+            
+            <!-- Solution Box -->
+            <rect x="100" y="720" width="1000" height="50" fill="#d0ebff" stroke="#339af0" stroke-width="2" rx="3"/>
+            <text x="600" y="750" text-anchor="middle" font-weight="bold">Solution: Always revalidate state after suspension points! Check invariants after every await.</text>
+            
+            <!-- Warning indicators -->
+            <text x="780" y="340" font-size="30" text-anchor="middle">⚠️</text>
+            <text x="780" y="370" text-anchor="middle" font-weight="bold" fill="red">Reentrancy Point!</text>
+        </svg>
+        <div class="explanation">
+            <strong>What happens:</strong> When an actor method hits an <code>await</code>, it suspends and releases the actor's isolation lock. Other methods can execute during this suspension, potentially changing state. When the original method resumes, assumptions about state may be invalid. Always recheck conditions after suspension points!
+        </div>
+    </div>
+
+    <!-- RULE 13: @MainActor -->
+    <div class="diagram-container">
+        <h2>Rule 13: @MainActor Isolation</h2>
+        <svg viewBox="0 0 1200 700" xmlns="http://www.w3.org/2000/svg">
+            <!-- Main Thread / RunLoop -->
+            <rect x="50" y="50" width="500" height="600" fill="#e7f5ff" stroke="#1c7ed6" stroke-width="3" rx="5"/>
+            <text x="300" y="80" text-anchor="middle" font-weight="bold" font-size="18">Main Thread / Main RunLoop</text>
+            
+            <!-- Main Actor -->
+            <rect x="100" y="120" width="400" height="150" fill="#ff6b6b" stroke="#c92a2a" stroke-width="3" rx="5"/>
+            <text x="300" y="150" text-anchor="middle" font-weight="bold" fill="white">@MainActor (Global Actor)</text>
+            <text x="300" y="175" text-anchor="middle" fill="white">• Singleton instance</text>
+            <text x="300" y="195" text-anchor="middle" fill="white">• Bound to main thread</text>
+            <text x="300" y="215" text-anchor="middle" fill="white">• Serial execution guaranteed</text>
+            <text x="300" y="235" text-anchor="middle" fill="white">• UI updates must happen here</text>
+            
+            <!-- UI Components -->
+            <rect x="100" y="300" width="400" height="120" fill="#ffd43b" stroke="#fab005" stroke-width="2" rx="5"/>
+            <text x="300" y="325" text-anchor="middle" font-weight="bold">UI Components (Auto @MainActor)</text>
+            <text x="300" y="350" text-anchor="middle">• UIViewController / NSViewController</text>
+            <text x="300" y="370" text-anchor="middle">• UIView / NSView</text>
+            <text x="300" y="390" text-anchor="middle">• SwiftUI Views</text>
+            <text x="300" y="410" text-anchor="middle">• @Published properties</text>
+            
+            <!-- Main Actor Queue -->
+            <rect x="100" y="450" width="400" height="150" fill="#f8f9fa" stroke="#868e96" stroke-width="2" rx="5"/>
+            <text x="300" y="475" text-anchor="middle" font-weight="bold">Main Actor Queue</text>
+            
+            <rect x="120" y="495" width="110" height="40" fill="#51cf66" stroke="#2f9e44" stroke-width="1" rx="3"/>
+            <text x="175" y="520" text-anchor="middle">updateUI()</text>
+            
+            <rect x="240" y="495" width="110" height="40" fill="#51cf66" stroke="#2f9e44" stroke-width="1" rx="3"/>
+            <text x="295" y="520" text-anchor="middle">animate()</text>
+            
+            <rect x="360" y="495" width="110" height="40" fill="#51cf66" stroke="#2f9e44" stroke-width="1" rx="3"/>
+            <text x="415" y="520" text-anchor="middle">layout()</text>
+            
+            <rect x="180" y="545" width="110" height="40" fill="#a5d8ff" stroke="#339af0" stroke-width="1" rx="3"/>
+            <text x="235" y="570" text-anchor="middle">userTap()</text>
+            
+            <rect x="300" y="545" width="110" height="40" fill="#a5d8ff" stroke="#339af0" stroke-width="1" rx="3"/>
+            <text x="355" y="570" text-anchor="middle">scroll()</text>
+            
+            <!-- Background Thread Pool -->
+            <rect x="650" y="50" width="500" height="600" fill="#fff9db" stroke="#fab005" stroke-width="2" rx="5"/>
+            <text x="900" y="80" text-anchor="middle" font-weight="bold" font-size="18">Background Thread Pool</text>
+            
+            <!-- Background Tasks -->
+            <rect x="700" y="120" width="400" height="200" fill="#e9ecef" stroke="#868e96" stroke-width="2" rx="5"/>
+            <text x="900" y="150" text-anchor="middle" font-weight="bold">Background Tasks</text>
+            
+            <rect x="730" y="180" width="340" height="60" fill="#51cf66" stroke="#2f9e44" stroke-width="2" rx="3"/>
+            <text x="900" y="205" text-anchor="middle" font-weight="bold">Task { } - Default executor</text>
+            <text x="900" y="230" text-anchor="middle">Runs on any available thread</text>
+            
+            <rect x="730" y="250" width="340" height="60" fill="#a5d8ff" stroke="#339af0" stroke-width="2" rx="3"/>
+            <text x="900" y="275" text-anchor="middle" font-weight="bold">nonisolated async function</text>
+            <text x="900" y="300" text-anchor="middle">Not bound to any actor</text>
+            
+            <!-- Thread Hopping Examples -->
+            <rect x="700" y="350" width="400" height="250" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2" rx="5"/>
+            <text x="900" y="380" text-anchor="middle" font-weight="bold">Thread Hopping Scenarios</text>
+            
+            <rect x="720" y="400" width="360" height="50" fill="#ffec99" stroke="#fab005" stroke-width="1" rx="3"/>
+            <text x="900" y="420" text-anchor="middle" font-weight="bold">Background → Main</text>
+            <text x="900" y="440" text-anchor="middle">await MainActor.run { updateUI() }</text>
+            
+            <rect x="720" y="460" width="360" height="50" fill="#ffec99" stroke="#fab005" stroke-width="1" rx="3"/>
+            <text x="900" y="480" text-anchor="middle" font-weight="bold">Main → Background</text>
+            <text x="900" y="500" text-anchor="middle">Task.detached { heavyWork() }</text>
+            
+            <rect x="720" y="520" width="360" height="60" fill="#ffec99" stroke="#fab005" stroke-width="1" rx="3"/>
+            <text x="900" y="540" text-anchor="middle" font-weight="bold">Automatic Hop</text>
+            <text x="900" y="560" text-anchor="middle">@MainActor func called from background</text>
+            <text x="900" y="580" text-anchor="middle">= automatic thread switch</text>
+            
+            <!-- Arrows showing thread hopping -->
+            <path d="M 700 230 Q 600 230 500 400" stroke="red" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+            <text x="600" y="220" fill="red" font-weight="bold">hop to main</text>
+            
+            <path d="M 500 500 Q 600 500 700 300" stroke="blue" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+            <text x="600" y="520" fill="blue" font-weight="bold">hop to background</text>
+        </svg>
+        <div class="explanation">
+            <strong>What happens:</strong> @MainActor is a global actor singleton that executes all its work on the main thread. UI updates must happen here. Background tasks automatically hop to the main thread when calling @MainActor methods. This ensures UI consistency but requires careful management to avoid blocking the main thread with heavy work.
+        </div>
+    </div>
+
+    <!-- RULE 16: Sendable -->
+    <div class="diagram-container">
+        <h2>Rule 16: Sendable Protocol Fundamentals</h2>
+        <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+            <!-- Title -->
+            <text x="600" y="30" text-anchor="middle" font-weight="bold" font-size="20">Sendable: Safe Data Transfer Across Isolation Boundaries</text>
+            
+            <!-- Isolation Domain 1 -->
+            <rect x="50" y="70" width="450" height="650" fill="#e7f5ff" stroke="#1c7ed6" stroke-width="3" rx="5"/>
+            <text x="275" y="100" text-anchor="middle" font-weight="bold">Isolation Domain A (Actor/Task)</text>
+            
+            <!-- Sendable Types -->
+            <rect x="80" y="130" width="390" height="250" fill="#d0ebff" stroke="#339af0" stroke-width="2" rx="5"/>
+            <text x="275" y="155" text-anchor="middle" font-weight="bold">✅ Sendable Types (Safe to Share)</text>
+            
+            <rect x="100" y="175" width="160" height="60" fill="#51cf66" stroke="#2f9e44" stroke-width="1" rx="3"/>
+            <text x="180" y="195" text-anchor="middle" font-weight="bold">Value Types</text>
+            <text x="180" y="215" text-anchor="middle">struct Point</text>
+            <text x="180" y="230" text-anchor="middle">Int, String, Bool</text>
+            
+            <rect x="280" y="175" width="170" height="60" fill="#51cf66" stroke="#2f9e44" stroke-width="1" rx="3"/>
+            <text x="365" y="195" text-anchor="middle" font-weight="bold">Immutable Classes</text>
+            <text x="365" y="215" text-anchor="middle">final class + let only</text>
+            
+            <rect x="100" y="250" width="160" height="60" fill="#51cf66" stroke="#2f9e44" stroke-width="1" rx="3"/>
+            <text x="180" y="270" text-anchor="middle" font-weight="bold">Actors</text>
+            <text x="180" y="290" text-anchor="middle">Reference but safe</text>
+            <text x="180" y="305" text-anchor="middle">(isolated access)</text>
+            
+            <rect x="280" y="250" width="170" height="60" fill="#51cf66" stroke="#2f9e44" stroke-width="1" rx="3"/>
+            <text x="365" y="270" text-anchor="middle" font-weight="bold">@Sendable Closures</text>
+            <text x="365" y="290" text-anchor="middle">No captured mutables</text>
+            
+            <rect x="100" y="325" width="350" height="40" fill="#51cf66" stroke="#2f9e44" stroke-width="1" rx="3"/>
+            <text x="275" y="350" text-anchor="middle">Enums with Sendable associated values</text>
+            
+            <!-- Non-Sendable Types -->
+            <rect x="80" y="410" width="390" height="200" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2" rx="5"/>
+            <text x="275" y="435" text-anchor="middle" font-weight="bold">❌ Non-Sendable (Unsafe to Share)</text>
+            
+            <rect x="100" y="455" width="350" height="40" fill="#ff8787" stroke="#c92a2a" stroke-width="1" rx="3"/>
+            <text x="275" y="480" text-anchor="middle">class MutableClass { var data: Int }</text>
+            
+            <rect x="100" y="505" width="350" height="40" fill="#ff8787" stroke="#c92a2a" stroke-width="1" rx="3"/>
+            <text x="275" y="530" text-anchor="middle">Closures capturing mutable state</text>
+            
+            <rect x="100" y="555" width="350" height="40" fill="#ff8787" stroke="#c92a2a" stroke-width="1" rx="3"/>
+            <text x="275" y="580" text-anchor="middle">NSMutableArray, NSMutableDictionary</text>
+            
+            <!-- Memory Layout -->
+            <rect x="80" y="630" width="390" height="70" fill="#ffd43b" stroke="#fab005" stroke-width="2" rx="5"/>
+            <text x="275" y="655" text-anchor="middle" font-weight="bold">Memory: Stack & Heap</text>
+            <text x="275" y="680" text-anchor="middle">Local copies for value types</text>
+            
+            <!-- Isolation Boundary -->
+            <rect x="540" y="70" width="100" height="650" fill="#868e96" stroke="#495057" stroke-width="3" rx="5"/>
+            <text x="590" y="380" text-anchor="middle" font-weight="bold" fill="white" transform="rotate(-90 590 380)">Isolation Boundary</text>
+            
+            <!-- Isolation Domain 2 -->
+            <rect x="680" y="70" width="450" height="650" fill="#fff9db" stroke="#fab005" stroke-width="3" rx="5"/>
+            <text x="905" y="100" text-anchor="middle" font-weight="bold">Isolation Domain B (Different Actor/Task)</text>
+            
+            <!-- Transfer Scenarios -->
+            <rect x="710" y="130" width="390" height="250" fill="#e9ecef" stroke="#868e96" stroke-width="2" rx="5"/>
+            <text x="905" y="155" text-anchor="middle" font-weight="bold">Transfer Scenarios</text>
+            
+            <!-- Safe transfer -->
+            <rect x="730" y="175" width="350" height="80" fill="#d0ebff" stroke="#339af0" stroke-width="2" rx="3"/>
+            <text x="905" y="200" text-anchor="middle" font-weight="bold">✅ Safe: Value Type Copy</text>
+            <text x="905" y="220" text-anchor="middle">let point = Point(x: 10, y: 20)</text>
+            <text x="905" y="240" text-anchor="middle">Creates independent copy</text>
+            
+            <!-- Unsafe transfer -->
+            <rect x="730" y="270" width="350" height="80" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2" rx="3"/>
+            <text x="905" y="295" text-anchor="middle" font-weight="bold">❌ Unsafe: Shared Mutable</text>
+            <text x="905" y="315" text-anchor="middle">class Buffer { var data: [UInt8] }</text>
+            <text x="905" y="335" text-anchor="middle">Both domains access same memory!</text>
+            
+            <!-- Compiler checks -->
+            <rect x="710" y="410" width="390" height="200" fill="#c3fae8" stroke="#37b679" stroke-width="2" rx="5"/>
+            <text x="905" y="435" text-anchor="middle" font-weight="bold">Compiler Enforcement (Swift 6)</text>
+            
+            <rect x="730" y="455" width="350" height="60" fill="#96f2d7" stroke="#20c997" stroke-width="1" rx="3"/>
+            <text x="905" y="475" text-anchor="middle" font-weight="bold">Compile-time checks</text>
+            <text x="905" y="495" text-anchor="middle">Error: "Type 'MutableClass' does not</text>
+            <text x="905" y="510" text-anchor="middle">conform to Sendable"</text>
+            
+            <rect x="730" y="530" width="350" height="60" fill="#96f2d7" stroke="#20c997" stroke-width="1" rx="3"/>
+            <text x="905" y="550" text-anchor="middle" font-weight="bold">@unchecked Sendable</text>
+            <text x="905" y="570" text-anchor="middle">Manual guarantee of thread-safety</text>
+            <text x="905" y="585" text-anchor="middle">(Use with extreme caution!)</text>
+            
+            <!-- Arrows showing data flow -->
+            <g id="data-flow">
+                <!-- Safe transfer -->
+                <path d="M 470 205 L 540 205 L 640 205 L 710 205" stroke="#2f9e44" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+                <text x="590" y="195" text-anchor="middle" fill="#2f9e44" font-weight="bold">COPY</text>
+                
+                <!-- Unsafe transfer attempt -->
+                <path d="M 470 480 L 540 480" stroke="#c92a2a" stroke-width="3" fill="none"/>
+                <text x="590" y="470" text-anchor="middle" fill="#c92a2a" font-weight="bold">BLOCKED</text>
+                <text x="590" y="490" text-anchor="middle" fill="#c92a2a" font-size="20">⛔</text>
+                
+                <!-- Actor reference (safe) -->
+                <path d="M 470 280 L 540 280 L 640 280 L 710 280" stroke="#339af0" stroke-width="3" fill="none" marker-end="url(#arrowhead)" stroke-dasharray="5,5"/>
+                <text x="590" y="270" text-anchor="middle" fill="#339af0" font-weight="bold">REF</text>
+                <text x="590" y="290" text-anchor="middle" fill="#339af0" font-size="10">(isolated)</text>
+            </g>
+            
+            <!-- Bottom note -->
+            <rect x="50" y="740" width="1080" height="40" fill="#748ffc" stroke="#5c7cfa" stroke-width="2" rx="3"/>
+            <text x="590" y="765" text-anchor="middle" fill="white" font-weight="bold">Key: Sendable prevents data races by ensuring only thread-safe types cross isolation boundaries</text>
+        </svg>
+        <div class="explanation">
+            <strong>What happens:</strong> Sendable protocol marks types that are safe to share across concurrent contexts. Value types are copied (each domain gets its own copy). Immutable reference types can be safely shared. Mutable reference types are blocked at compile time. Swift 6 enforces these rules strictly to prevent data races.
+        </div>
+    </div>
+
+    <!-- RULE 5: async let -->
+    <div class="diagram-container">
+        <h2>Rule 5: async let Implicit Cancellation & Awaiting</h2>
+        <svg viewBox="0 0 1200 700" xmlns="http://www.w3.org/2000/svg">
+            <!-- Memory Layout -->
+            <rect x="50" y="50" width="500" height="600" fill="#fff9db" stroke="#fab005" stroke-width="2" rx="5"/>
+            <text x="300" y="80" text-anchor="middle" font-weight="bold" font-size="18">Stack Frame & Heap</text>
+            
+            <!-- Parent function stack frame -->
+            <rect x="80" y="120" width="440" height="200" fill="#e9ecef" stroke="#868e96" stroke-width="2" rx="5"/>
+            <text x="300" y="145" text-anchor="middle" font-weight="bold">Parent Function Stack Frame</text>
+            
+            <rect x="100" y="170" width="400" height="40" fill="#d0ebff" stroke="#339af0" stroke-width="1" rx="3"/>
+            <text x="300" y="195" text-anchor="middle">async let result1 = fetchData1() // placeholder</text>
+            
+            <rect x="100" y="220" width="400" height="40" fill="#d0ebff" stroke="#339af0" stroke-width="1" rx="3"/>
+            <text x="300" y="245" text-anchor="middle">async let result2 = fetchData2() // placeholder</text>
+            
+            <rect x="100" y="270" width="400" height="40" fill="#ffd43b" stroke="#fab005" stroke-width="1" rx="3"/>
+            <text x="300" y="295" text-anchor="middle">Child task handles (references to heap)</text>
+            
+            <!-- Child tasks in heap -->
+            <rect x="80" y="350" width="200" height="120" fill="#51cf66" stroke="#2f9e44" stroke-width="2" rx="5"/>
+            <text x="180" y="375" text-anchor="middle" font-weight="bold">Child Task 1</text>
+            <text x="180" y="395" text-anchor="middle">State: Running</text>
+            <text x="180" y="415" text-anchor="middle">fetchData1()</text>
+            <text x="180" y="435" text-anchor="middle">Partial result</text>
+            <text x="180" y="455" text-anchor="middle">Cancellation flag</text>
+            
+            <rect x="320" y="350" width="200" height="120" fill="#51cf66" stroke="#2f9e44" stroke-width="2" rx="5"/>
+            <text x="420" y="375" text-anchor="middle" font-weight="bold">Child Task 2</text>
+            <text x="420" y="395" text-anchor="middle">State: Running</text>
+            <text x="420" y="415" text-anchor="middle">fetchData2()</text>
+            <text x="420" y="435" text-anchor="middle">Partial result</text>
+            <text x="420" y="455" text-anchor="middle">Cancellation flag</text>
+            
+            <!-- Scope exit behavior -->
+            <rect x="80" y="500" width="440" height="120" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2" rx="5"/>
+            <text x="300" y="525" text-anchor="middle" font-weight="bold">Implicit Behavior at Scope Exit</text>
+            <text x="300" y="550" text-anchor="middle">1. If not awaited → Cancel child tasks</text>
+            <text x="300" y="570" text-anchor="middle">2. Wait for cancellation to complete</text>
+            <text x="300" y="590" text-anchor="middle">3. Clean up resources</text>
+            <text x="300" y="610" text-anchor="middle">⚠️ Can cause unexpected delays!</text>
+            
+            <!-- Execution Timeline -->
+            <rect x="600" y="50" width="550" height="600" fill="#f8f9fa" stroke="#868e96" stroke-width="2" rx="5"/>
+            <text x="875" y="80" text-anchor="middle" font-weight="bold" font-size="18">Execution Timeline</text>
+            
+            <!-- Timeline scenarios -->
+            <g id="scenario1">
+                <rect x="630" y="120" width="490" height="150" fill="#d0ebff" stroke="#339af0" stroke-width="2" rx="3"/>
+                <text x="875" y="145" text-anchor="middle" font-weight="bold">Scenario 1: Normal Await</text>
+                
+                <line x1="650" y1="180" x2="1100" y2="180" stroke="#333" stroke-width="1"/>
+                <text x="650" y="175" font-size="10">Time →</text>
+                
+                <!-- Parent execution -->
+                <rect x="650" y="190" width="100" height="20" fill="#748ffc"/>
+                <text x="700" y="205" text-anchor="middle" fill="white" font-size="10">create async let</text>
+                
+                <!-- Child tasks running -->
+                <rect x="750" y="185" width="200" height="10" fill="#51cf66"/>
+                <text x="850" y="195" text-anchor="middle" font-size="8">child 1 running</text>
+                <rect x="750" y="195" width="150" height="10" fill="#51cf66"/>
+                <text x="825" y="205" text-anchor="middle" font-size="8">child 2 running</text>
+                
+                <!-- Await point -->
+                <rect x="950" y="190" width="100" height="20" fill="#748ffc"/>
+                <text x="1000" y="205" text-anchor="middle" fill="white" font-size="10">await results</text>
+                
+                <rect x="1050" y="190" width="50" height="20" fill="#2f9e44"/>
+                <text x="1075" y="205" text-anchor="middle" fill="white" font-size="10">done</text>
+            </g>
+            
+            <g id="scenario2">
+                <rect x="630" y="290" width="490" height="150" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2" rx="3"/>
+                <text x="875" y="315" text-anchor="middle" font-weight="bold">Scenario 2: Early Return (Implicit Cancel)</text>
+                
+                <line x1="650" y1="350" x2="1100" y2="350" stroke="#333" stroke-width="1"/>
+                
+                <!-- Parent execution -->
+                <rect x="650" y="360" width="100" height="20" fill="#748ffc"/>
+                <text x="700" y="375" text-anchor="middle" fill="white" font-size="10">create async let</text>
+                
+                <!-- Child tasks running -->
+                <rect x="750" y="355" width="300" height="10" fill="#51cf66"/>
+                <text x="900" y="365" text-anchor="middle" font-size="8">child 1 running...</text>
+                <rect x="750" y="365" width="250" height="10" fill="#51cf66"/>
+                <text x="875" y="375" text-anchor="middle" font-size="8">child 2 running...</text>
+                
+                <!-- Early return -->
+                <rect x="850" y="380" width="80" height="20" fill="#c92a2a"/>
+                <text x="890" y="395" text-anchor="middle" fill="white" font-size="10">return early!</text>
+                
+                <!-- Cancellation -->
+                <rect x="930" y="355" width="120" height="10" fill="#ff8787" stroke-dasharray="3,3"/>
+                <text x="990" y="365" text-anchor="middle" font-size="8">child 1 cancelled</text>
+                <rect x="930" y="365" width="70" height="10" fill="#ff8787" stroke-dasharray="3,3"/>
+                <text x="965" y="375" text-anchor="middle" font-size="8">child 2 cancelled</text>
+                
+                <!-- Forced wait -->
+                <rect x="1050" y="380" width="50" height="20" fill="#ffd43b"/>
+                <text x="1075" y="395" text-anchor="middle" font-size="9">wait!</text>
+            </g>
+            
+            <g id="scenario3">
+                <rect x="630" y="460" width="490" height="150" fill="#c3fae8" stroke="#37b679" stroke-width="2" rx="3"/>
+                <text x="875" y="485" text-anchor="middle" font-weight="bold">Scenario 3: Error Propagation</text>
+                
+                <line x1="650" y1="520" x2="1100" y2="520" stroke="#333" stroke-width="1"/>
+                
+                <!-- Parent execution -->
+                <rect x="650" y="530" width="100" height="20" fill="#748ffc"/>
+                <text x="700" y="545" text-anchor="middle" fill="white" font-size="10">create async let</text>
+                
+                <!-- Child tasks -->
+                <rect x="750" y="525" width="150" height="10" fill="#51cf66"/>
+                <text x="825" y="535" text-anchor="middle" font-size="8">child 1 running</text>
+                <rect x="750" y="535" width="100" height="10" fill="#ff8787"/>
+                <text x="800" y="545" text-anchor="middle" font-size="8">child 2 throws!</text>
+                
+                <!-- Error handling -->
+                <rect x="900" y="530" width="100" height="20" fill="#ff6b6b"/>
+                <text x="950" y="545" text-anchor="middle" fill="white" font-size="10">handle error</text>
+                
+                <!-- Cancel other task -->
+                <rect x="850" y="525" width="50" height="10" fill="#ff8787" stroke-dasharray="3,3"/>
+                <text x="875" y="560" text-anchor="middle" font-size="8">child 1 auto-cancelled</text>
+            </g>
+        </svg>
+        <div class="explanation">
+            <strong>What happens:</strong> <code>async let</code> creates child tasks that run concurrently. The bindings are placeholders until awaited. If scope exits without awaiting, Swift automatically cancels child tasks and waits for them to finish. This prevents resource leaks but can cause unexpected delays. Always explicitly await or cancel async let bindings!
+        </div>
+    </div>
+
+    <!-- RULE 4: Task Priority Inheritance -->
+    <div class="diagram-container">
+        <h2>Rule 4: Task Priority & Inheritance</h2>
+        <svg viewBox="0 0 1200 600" xmlns="http://www.w3.org/2000/svg">
+            <!-- Priority Levels -->
+            <rect x="50" y="50" width="300" height="500" fill="#f8f9fa" stroke="#868e96" stroke-width="2" rx="5"/>
+            <text x="200" y="80" text-anchor="middle" font-weight="bold" font-size="18">Task Priority Levels</text>
+            
+            <rect x="80" y="110" width="240" height="60" fill="#ff6b6b" stroke="#c92a2a" stroke-width="2" rx="3"/>
+            <text x="200" y="135" text-anchor="middle" font-weight="bold" fill="white">High Priority</text>
+            <text x="200" y="155" text-anchor="middle" fill="white">User-initiated actions</text>
+            
+            <rect x="80" y="190" width="240" height="60" fill="#fab005" stroke="#f59f00" stroke-width="2" rx="3"/>
+            <text x="200" y="215" text-anchor="middle" font-weight="bold">Medium Priority</text>
+            <text x="200" y="235" text-anchor="middle">(default)</text>
+            
+            <rect x="80" y="270" width="240" height="60" fill="#51cf66" stroke="#2f9e44" stroke-width="2" rx="3"/>
+            <text x="200" y="295" text-anchor="middle" font-weight="bold">Low Priority</text>
+            <text x="200" y="315" text-anchor="middle">Utility work</text>
+            
+            <rect x="80" y="350" width="240" height="60" fill="#748ffc" stroke="#5c7cfa" stroke-width="2" rx="3"/>
+            <text x="200" y="375" text-anchor="middle" font-weight="bold" fill="white">Background Priority</text>
+            <text x="200" y="395" text-anchor="middle" fill="white">Not time-sensitive</text>
+            
+            <!-- Priority Escalation -->
+            <rect x="80" y="440" width="240" height="80" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2" rx="3"/>
+            <text x="200" y="465" text-anchor="middle" font-weight="bold">Priority Escalation</text>
+            <text x="200" y="485" text-anchor="middle">Low priority task can be</text>
+            <text x="200" y="505" text-anchor="middle">boosted if high priority waits</text>
+            
+            <!-- Task Hierarchy -->
+            <rect x="400" y="50" width="750" height="500" fill="#fff9db" stroke="#fab005" stroke-width="2" rx="5"/>
+            <text x="775" y="80" text-anchor="middle" font-weight="bold" font-size="18">Priority Inheritance in Task Hierarchy</text>
+            
+            <!-- Parent Task -->
+            <rect x="550" y="120" width="450" height="100" fill="#ff6b6b" stroke="#c92a2a" stroke-width="3" rx="5"/>
+            <text x="775" y="145" text-anchor="middle" font-weight="bold" fill="white">Parent Task (High Priority)</text>
+            <text x="775" y="170" text-anchor="middle" fill="white">Task.priority = .high</text>
+            <text x="775" y="195" text-anchor="middle" fill="white">User tapped button → needs fast response</text>
+            
+            <!-- Child Tasks -->
+            <rect x="450" y="270" width="200" height="80" fill="#ffc9c9" stroke="#fa5252" stroke-width="2" rx="3"/>
+            <text x="550" y="295" text-anchor="middle" font-weight="bold">Child Task 1</text>
+            <text x="550" y="315" text-anchor="middle">Inherits: High</text>
+            <text x="550" y="335" text-anchor="middle">fetchUserData()</text>
+            
+            <rect x="675" y="270" width="200" height="80" fill="#ffc9c9" stroke="#fa5252" stroke-width="2" rx="3"/>
+            <text x="775" y="295" text-anchor="middle" font-weight="bold">Child Task 2</text>
+            <text x="775" y="315" text-anchor="middle">Inherits: High</text>
+            <text x="775" y="335" text-anchor="middle">loadImage()</text>
+            
+            <rect x="900" y="270" width="200" height="80" fill="#ffc9c9" stroke="#fa5252" stroke-width="2" rx="3"/>
+            <text x="1000" y="295" text-anchor="middle" font-weight="bold">Child Task 3</text>
+            <text x="1000" y="315" text-anchor="middle">Inherits: High</text>
+            <text x="1000" y="335" text-anchor="middle">updateCache()</text>
+            
+            <!-- Detached Task (no inheritance) -->
+            <rect x="550" y="400" width="450" height="100" fill="#e9ecef" stroke="#868e96" stroke-width="2" rx="5"/>
+            <text x="775" y="425" text-anchor="middle" font-weight="bold">Task.detached(priority: .background)</text>
+            <text x="775" y="450" text-anchor="middle">⚠️ Does NOT inherit parent priority</text>
+            <text x="775" y="475" text-anchor="middle">Explicitly set to background</text>
+            
+            <!-- Arrows showing inheritance -->
+            <line x1="775" y1="220" x2="550" y2="270" stroke="#c92a2a" stroke-width="2" stroke-dasharray="5,5"/>
+            <line x1="775" y1="220" x2="775" y2="270" stroke="#c92a2a" stroke-width="2" stroke-dasharray="5,5"/>
+            <line x1="775" y1="220" x2="1000" y2="270" stroke="#c92a2a" stroke-width="2" stroke-dasharray="5,5"/>
+            <text x="850" y="245" fill="#c92a2a" font-weight="bold">inherits</text>
+            
+            <!-- No inheritance arrow -->
+            <line x1="775" y1="350" x2="775" y2="400" stroke="#868e96" stroke-width="2"/>
+            <text x="775" y="380" text-anchor="middle" font-size="20">✂️</text>
+            <text x="830" y="380" font-weight="bold">no inheritance</text>
+        </svg>
+        <div class="explanation">
+            <strong>What happens:</strong> Tasks inherit priority from their parent by default. High priority tasks get more CPU time and can preempt lower priority work. Priority can escalate if a high-priority task waits on a lower-priority one. <code>Task.detached</code> breaks inheritance chain and must specify priority explicitly.
+        </div>
+    </div>
+
+    <!-- RULE 24: NO DispatchQueue -->
+    <div class="diagram-container">
+        <h2>Rule 24: NO DispatchQueue in Structured Concurrency</h2>
+        <svg viewBox="0 0 1200 700" xmlns="http://www.w3.org/2000/svg">
+            <!-- Old Way (DispatchQueue) -->
+            <rect x="50" y="50" width="500" height="600" fill="#ffe3e3" stroke="#c92a2a" stroke-width="3" rx="5"/>
+            <text x="300" y="80" text-anchor="middle" font-weight="bold" font-size="18">❌ Old Way: DispatchQueue</text>
+            
+            <!-- Problems with DispatchQueue -->
+            <rect x="80" y="110" width="440" height="300" fill="#ffb3b3" stroke="#fa5252" stroke-width="2" rx="3"/>
+            <text x="300" y="135" text-anchor="middle" font-weight="bold">Problems with DispatchQueue</text>
+            
+            <rect x="100" y="160" width="400" height="40" fill="white" stroke="#c92a2a" stroke-width="1" rx="3"/>
+            <text x="300" y="185" text-anchor="middle">• No structured parent-child relationships</text>
+            
+            <rect x="100" y="210" width="400" height="40" fill="white" stroke="#c92a2a" stroke-width="1" rx="3"/>
+            <text x="300" y="235" text-anchor="middle">• Manual cancellation propagation</text>
+            
+            <rect x="100" y="260" width="400" height="40" fill="white" stroke="#c92a2a" stroke-width="1" rx="3"/>
+            <text x="300" y="285" text-anchor="middle">• Thread explosion possible</text>
+            
+            <rect x="100" y="310" width="400" height="40" fill="white" stroke="#c92a2a" stroke-width="1" rx="3"/>
+            <text x="300" y="335" text-anchor="middle">• No priority inheritance</text>
+            
+            <rect x="100" y="360" width="400" height="40" fill="white" stroke="#c92a2a" stroke-width="1" rx="3"/>
+            <text x="300" y="385" text-anchor="middle">• Callback hell / pyramid of doom</text>
+            
+            <!-- Old code example -->
+            <rect x="80" y="430" width="440" height="180" fill="#f8f9fa" stroke="#868e96" stroke-width="1" rx="3"/>
+            <text x="300" y="455" text-anchor="middle" font-family="monospace" font-size="12">// Old way - DON'T DO THIS!</text>
+            <text x="100" y="480" font-family="monospace" font-size="11">DispatchQueue.global().async {</text>
+            <text x="100" y="500" font-family="monospace" font-size="11">    let data = fetchData()</text>
+            <text x="100" y="520" font-family="monospace" font-size="11">    DispatchQueue.main.async {</text>
+            <text x="100" y="540" font-family="monospace" font-size="11">        updateUI(data)</text>
+            <text x="100" y="560" font-family="monospace" font-size="11">        // No automatic cleanup!</text>
+            <text x="100" y="580" font-family="monospace" font-size="11">    }</text>
+            <text x="100" y="600" font-family="monospace" font-size="11">}</text>
+            
+            <!-- New Way (Swift Concurrency) -->
+            <rect x="650" y="50" width="500" height="600" fill="#d0ebff" stroke="#339af0" stroke-width="3" rx="5"/>
+            <text x="900" y="80" text-anchor="middle" font-weight="bold" font-size="18">✅ New Way: Swift Concurrency</text>
+            
+            <!-- Benefits -->
+            <rect x="680" y="110" width="440" height="300" fill="#a5d8ff" stroke="#1c7ed6" stroke-width="2" rx="3"/>
+            <text x="900" y="135" text-anchor="middle" font-weight="bold">Benefits of Task/Actor System</text>
+            
+            <rect x="700" y="160" width="400" height="40" fill="white" stroke="#339af0" stroke-width="1" rx="3"/>
+            <text x="900" y="185" text-anchor="middle">• Structured task hierarchy</text>
+            
+            <rect x="700" y="210" width="400" height="40" fill="white" stroke="#339af0" stroke-width="1" rx="3"/>
+            <text x="900" y="235" text-anchor="middle">• Automatic cancellation propagation</text>
+            
+            <rect x="700" y="260" width="400" height="40" fill="white" stroke="#339af0" stroke-width="1" rx="3"/>
+            <text x="900" y="285" text-anchor="middle">• Cooperative thread pool (no explosion)</text>
+            
+            <rect x="700" y="310" width="400" height="40" fill="white" stroke="#339af0" stroke-width="1" rx="3"/>
+            <text x="900" y="335" text-anchor="middle">• Priority inheritance built-in</text>
+            
+            <rect x="700" y="360" width="400" height="40" fill="white" stroke="#339af0" stroke-width="1" rx="3"/>
+            <text x="900" y="385" text-anchor="middle">• Linear, readable async/await code</text>
+            
+            <!-- New code example -->
+            <rect x="680" y="430" width="440" height="180" fill="#f8f9fa" stroke="#868e96" stroke-width="1" rx="3"/>
+            <text x="900" y="455" text-anchor="middle" font-family="monospace" font-size="12">// New way - DO THIS!</text>
+            <text x="700" y="480" font-family="monospace" font-size="11">Task { @MainActor in</text>
+            <text x="700" y="500" font-family="monospace" font-size="11">    let data = await fetchData()</text>
+            <text x="700" y="520" font-family="monospace" font-size="11">    updateUI(data)</text>
+            <text x="700" y="540" font-family="monospace" font-size="11">    // Automatic cleanup!</text>
+            <text x="700" y="560" font-family="monospace" font-size="11">    // Cancellation handled!</text>
+            <text x="700" y="580" font-family="monospace" font-size="11">    // Priority inherited!</text>
+            <text x="700" y="600" font-family="monospace" font-size="11">}</text>
+        </svg>
+        <div class="explanation">
+            <strong>What happens:</strong> DispatchQueue creates unstructured concurrency with no parent-child relationships, manual resource management, and potential thread explosion. Swift's Task system provides structured concurrency with automatic cleanup, cancellation propagation, and a cooperative thread pool that prevents thread explosion.
+        </div>
+    </div>
+</body>
+</html>
