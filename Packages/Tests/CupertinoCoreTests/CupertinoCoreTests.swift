@@ -1,5 +1,6 @@
 import AppKit
 @testable import CupertinoCore
+@testable import CupertinoSearch
 @testable import CupertinoShared
 import Foundation
 import Testing

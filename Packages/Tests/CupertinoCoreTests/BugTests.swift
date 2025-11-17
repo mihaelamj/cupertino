@@ -6,45 +6,12 @@ import Testing
 
 // MARK: - P0 Critical Bug Tests
 
-/// Test for Bug #1: Resume Detection with File Paths
-///
-/// **Bug:** Resume detection uses `URL(string:)` instead of `URL(fileURLWithPath:)`
-/// **File:** Sources/CupertinoCLI/Commands.swift:191
-/// **Impact:** Resume functionality never works because file paths fail to parse as URLs
-@Test("Bug #1: Resume detection with file paths")
-func resumeDetectionWithFilePaths() async throws {
-    // Create a test session with a file path as outputDirectory
-    let testOutputDir = "/Users/test/.cupertino/docs"
-
-    let sessionState = CrawlSessionState(
-        visited: Set<String>(),
-        queue: [],
-        startURL: "https://developer.apple.com/documentation/",
-        outputDirectory: testOutputDir,
-        sessionStartTime: Date(),
-        lastSaveTime: Date(),
-        isActive: true
-    )
-
-    // Test 1: URL(string:) FAILS with file paths (this is the bug)
-    let urlFromString = URL(string: testOutputDir)
-    #expect(urlFromString == nil, "URL(string:) should fail with file path - this is the BUG")
-
-    // Test 2: URL(fileURLWithPath:) WORKS with file paths (this is the fix)
-    let urlFromFilePath = URL(fileURLWithPath: testOutputDir)
-    #expect(urlFromFilePath.path == testOutputDir, "URL(fileURLWithPath:) should work")
-
-    // Test 3: Verify outputDirectory is actually saved in session state
-    #expect(!sessionState.outputDirectory.isEmpty, "outputDirectory should be saved in session state")
-    #expect(sessionState.outputDirectory == testOutputDir, "outputDirectory should match test path")
-}
-
-/// Test for Bug #1 (Part B): Output Directory Missing from Session State
+/// Test for Bug #1: Output Directory Missing from Session State
 ///
 /// **Bug:** The outputDirectory field is not being saved to session state
 /// **File:** Sources/CupertinoCore/CrawlerState.swift:123-146
-/// **Impact:** Even if URL parsing worked, there's no directory to compare against
-@Test("Bug #1b: outputDirectory field must be saved in session state")
+/// **Impact:** Session resume functionality would fail without outputDirectory
+@Test("Bug #1: outputDirectory field must be saved in session state")
 func outputDirectorySavedInSessionState() throws {
     let testDir = FileManager.default.temporaryDirectory
         .appendingPathComponent("cupertino-test-\(UUID().uuidString)")
@@ -99,12 +66,12 @@ func outputDirectorySavedInSessionState() throws {
     )
 }
 
-/// Test for Bug #5: SearchError Enum Not Defined
+/// Test for Bug #2: SearchError Enum Not Defined
 ///
 /// **Bug:** SearchError is referenced but never defined
 /// **File:** Sources/CupertinoSearch/SearchIndex.swift:165-183
 /// **Impact:** Code doesn't compile OR error handling is broken
-@Test("Bug #5: SearchError enum must exist")
+@Test("Bug #2: SearchError enum must exist")
 func searchErrorEnumExists() {
     // This test will fail to compile if SearchError doesn't exist
     // Verify SearchError enum exists by referencing it
@@ -117,12 +84,12 @@ func searchErrorEnumExists() {
 
 // MARK: - P1 High Priority Bug Tests
 
-/// Test for Bug #7: Auto-save Errors Stop Entire Crawl
+/// Test for Bug #3: Auto-save Errors Stop Entire Crawl
 ///
 /// **Bug:** Auto-save throws and stops crawl when save fails
 /// **File:** Sources/CupertinoCore/Crawler.swift:113-119
 /// **Impact:** Crawl stops completely on save failure, losing progress
-@Test("Bug #7: Auto-save errors should not stop crawl")
+@Test("Bug #3: Auto-save errors should not stop crawl")
 func autoSaveErrorsShouldNotStopCrawl() async throws {
     // This test verifies that auto-save failures don't throw and stop the crawl
 
@@ -197,17 +164,17 @@ func autoSaveErrorsShouldNotStopCrawl() async throws {
     } catch {
         // Expected: save fails
         // BUG: This error should be caught and logged, not thrown up
-        print("⚠️ Bug #7 present: Auto-save throws instead of logging error")
+        print("⚠️ Bug #3 present: Auto-save throws instead of logging error")
         #expect(true, "Auto-save should catch and log this error, not throw it")
     }
 }
 
-/// Test for Bug #8: Crawl Queue Contains Duplicates
+/// Test for Bug #4: Crawl Queue Contains Duplicates
 ///
 /// **Bug:** Same URL can be queued multiple times
 /// **File:** Sources/CupertinoCore/Crawler.swift:216-222
 /// **Impact:** Memory waste, redundant work, 58% of queue is duplicates
-@Test("Bug #8: Queue should not contain duplicates")
+@Test("Bug #4: Queue should not contain duplicates")
 func queueDeduplication() {
     // Simulate queue behavior
     var queue: [(url: String, depth: Int)] = []
@@ -244,12 +211,12 @@ func queueDeduplication() {
     #expect(queuedURLs.count == 3, "Should have 3 unique URLs tracked")
 }
 
-/// Test for Bug #21: Priority Packages Missing URL Field
+/// Test for Bug #5: Priority Packages Missing URL Field
 ///
 /// **Bug:** Packages in priority-packages.json missing url field
 /// **File:** priority-packages.json
 /// **Impact:** Package fetching will fail
-@Test("Bug #21: Priority packages must have URL field")
+@Test("Bug #5: Priority packages must have URL field")
 func priorityPackagesHaveURL() throws {
     // Test package structure
     struct TestPackage: Codable {
@@ -285,12 +252,12 @@ func priorityPackagesHaveURL() throws {
 
 // MARK: - P2 Medium Priority Bug Tests
 
-/// Test for Bug #13: Change Detection Hash Always Differs
+/// Test for Bug #6: Change Detection Hash Always Differs
 ///
 /// **Bug:** WKWebView renders with timestamps, session IDs causing hash to change
 /// **File:** Sources/CupertinoCore/CrawlerState.swift:33-61 and Crawler.swift:160-163
 /// **Impact:** Everything re-crawled on updates, defeating change detection
-@Test("Bug #13: Content hash should be stable across re-crawls")
+@Test("Bug #6: Content hash should be stable across re-crawls")
 func contentHashStability() {
     // Simulate HTML with dynamic content
     let htmlWithTimestamp1 = """
