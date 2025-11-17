@@ -14,7 +14,7 @@ echo '{
   "id": 1,
   "method": "resources/list",
   "params": {}
-}' | timeout 5 .build/debug/docsucker-mcp serve 2>&1
+}' | timeout 5 .build/debug/cupertino-mcp serve 2>&1
 
 echo ""
 echo "Test complete!"

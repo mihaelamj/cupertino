@@ -1,4 +1,5 @@
 @testable import CupertinoCore
+@testable import CupertinoSearch
 @testable import CupertinoShared
 import Foundation
 import Testing
@@ -15,14 +16,14 @@ func resumeDetectionWithFilePaths() async throws {
     // Create a test session with a file path as outputDirectory
     let testOutputDir = "/Users/test/.cupertino/docs"
 
-    let sessionState = CrawlerState.SessionState(
-        isActive: true,
-        startURL: "https://developer.apple.com/documentation/",
-        startTime: Date(),
-        lastSaveTime: Date(),
+    let sessionState = CrawlSessionState(
+        visited: Set<String>(),
         queue: [],
-        visited: Set(),
-        outputDirectory: testOutputDir // File path, not URL
+        startURL: "https://developer.apple.com/documentation/",
+        outputDirectory: testOutputDir,
+        sessionStartTime: Date(),
+        lastSaveTime: Date(),
+        isActive: true
     )
 
     // Test 1: URL(string:) FAILS with file paths (this is the bug)
@@ -34,7 +35,7 @@ func resumeDetectionWithFilePaths() async throws {
     #expect(urlFromFilePath.path == testOutputDir, "URL(fileURLWithPath:) should work")
 
     // Test 3: Verify outputDirectory is actually saved in session state
-    #expect(sessionState.outputDirectory != nil, "outputDirectory should be saved in session state")
+    #expect(!sessionState.outputDirectory.isEmpty, "outputDirectory should be saved in session state")
     #expect(sessionState.outputDirectory == testOutputDir, "outputDirectory should match test path")
 }
 
@@ -55,20 +56,20 @@ func outputDirectorySavedInSessionState() throws {
     let outputDir = testDir.appendingPathComponent("docs")
 
     // Create a session state with outputDirectory
-    let sessionState = CrawlerState.SessionState(
-        isActive: true,
-        startURL: "https://developer.apple.com/documentation/",
-        startTime: Date(),
-        lastSaveTime: Date(),
+    let sessionState = CrawlSessionState(
+        visited: Set<String>(),
         queue: [],
-        visited: Set(),
-        outputDirectory: outputDir.path
+        startURL: "https://developer.apple.com/documentation/",
+        outputDirectory: outputDir.path,
+        sessionStartTime: Date(),
+        lastSaveTime: Date(),
+        isActive: true
     )
 
     // Create metadata with this session state
     let metadata = CrawlMetadata(
-        lastCrawl: Date(),
         pages: [:],
+        lastCrawl: Date(),
         stats: CrawlStatistics(
             totalPages: 0,
             newPages: 0,
@@ -106,14 +107,12 @@ func outputDirectorySavedInSessionState() throws {
 @Test("Bug #5: SearchError enum must exist")
 func searchErrorEnumExists() {
     // This test will fail to compile if SearchError doesn't exist
-    // Try to reference SearchError type
-    let errorType = type(of: SearchError.self)
-    #expect(errorType != nil, "SearchError enum must be defined")
+    // Verify SearchError enum exists by referencing it
+    _ = SearchError.self
 
-    // Verify we can create expected error cases
-    // (Uncomment once SearchError is defined)
-    // let error = SearchError.prepareFailed("test")
-    // #expect(error != nil, "Should be able to create SearchError.prepareFailed")
+    // Verify we can create error cases
+    let error = SearchError.prepareFailed("test")
+    #expect(error.localizedDescription.contains("test"), "SearchError should contain error message")
 }
 
 // MARK: - P1 High Priority Bug Tests
@@ -136,8 +135,8 @@ func autoSaveErrorsShouldNotStopCrawl() async throws {
     // Create metadata file
     let metadataFile = testDir.appendingPathComponent("metadata.json")
     let initialMetadata = CrawlMetadata(
-        lastCrawl: Date(),
         pages: [:],
+        lastCrawl: Date(),
         stats: CrawlStatistics(
             totalPages: 0,
             newPages: 0,
@@ -167,14 +166,17 @@ func autoSaveErrorsShouldNotStopCrawl() async throws {
 
     // Try to save - should NOT throw, but log error instead
     let updatedMetadata = CrawlMetadata(
+        pages: [
+            "test": PageMetadata(
+                url: "https://example.com",
+                framework: "test",
+                filePath: "/test/path",
+                contentHash: "hash123",
+                depth: 0,
+                lastCrawled: Date()
+            ),
+        ],
         lastCrawl: Date(),
-        pages: ["test": PageMetadata(
-            url: "https://example.com",
-            framework: "test",
-            filePath: "/test/path",
-            contentHash: "hash123",
-            lastCrawled: Date()
-        )],
         stats: CrawlStatistics(
             totalPages: 1,
             newPages: 1,
@@ -209,7 +211,7 @@ func autoSaveErrorsShouldNotStopCrawl() async throws {
 func queueDeduplication() {
     // Simulate queue behavior
     var queue: [(url: String, depth: Int)] = []
-    var visited: Set<String> = []
+    let visited: Set<String> = []
     var queuedURLs: Set<String> = [] // THE FIX: Track queued URLs
 
     let urlsToQueue = [
@@ -221,10 +223,8 @@ func queueDeduplication() {
     ]
 
     // BUGGY behavior (current implementation)
-    for url in urlsToQueue {
-        if !visited.contains(url) {
-            queue.append((url: url, depth: 1)) // No deduplication!
-        }
+    for url in urlsToQueue where !visited.contains(url) {
+        queue.append((url: url, depth: 1)) // No deduplication!
     }
 
     #expect(queue.count == 5, "BUGGY: All URLs added to queue, including duplicates")
@@ -339,14 +339,10 @@ func contentHashStability() {
 
 extension CrawlMetadata {
     static func load(from url: URL) throws -> CrawlMetadata {
-        let data = try Data(contentsOf: url)
-        return try JSONDecoder().decode(CrawlMetadata.self, from: data)
+        try JSONCoding.decode(CrawlMetadata.self, from: url)
     }
 
     func save(to url: URL) throws {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let data = try encoder.encode(self)
-        try data.write(to: url)
+        try JSONCoding.encode(self, to: url)
     }
 }

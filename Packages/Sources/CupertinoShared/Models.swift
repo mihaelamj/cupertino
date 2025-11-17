@@ -58,27 +58,12 @@ public struct CrawlMetadata: Codable, Sendable {
 
     /// Save metadata to file
     public func save(to url: URL) throws {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
-        let data = try encoder.encode(self)
-
-        // Ensure directory exists
-        let directory = url.deletingLastPathComponent()
-        try FileManager.default.createDirectory(
-            at: directory,
-            withIntermediateDirectories: true
-        )
-
-        try data.write(to: url)
+        try JSONCoding.encode(self, to: url)
     }
 
     /// Load metadata from file
     public static func load(from url: URL) throws -> CrawlMetadata {
-        let data = try Data(contentsOf: url)
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode(CrawlMetadata.self, from: data)
+        try JSONCoding.decode(CrawlMetadata.self, from: url)
     }
 }
 

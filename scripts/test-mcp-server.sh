@@ -1,10 +1,10 @@
 #!/bin/bash
-# Test script for Docsucker MCP Server
+# Test script for Cupertino MCP Server
 # This script sends test requests to verify the server is working correctly
 
 set -e
 
-echo "🧪 Testing Docsucker MCP Server"
+echo "🧪 Testing Cupertino MCP Server"
 echo "================================"
 echo ""
 
@@ -14,14 +14,14 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Check if docsucker-mcp exists
-if ! command -v .build/debug/docsucker-mcp &> /dev/null; then
-    echo -e "${RED}❌ docsucker-mcp not found${NC}"
-    echo "   Build it first: swift build --product docsucker-mcp"
+# Check if cupertino-mcp exists
+if ! command -v .build/debug/cupertino-mcp &> /dev/null; then
+    echo -e "${RED}❌ cupertino-mcp not found${NC}"
+    echo "   Build it first: swift build --product cupertino-mcp"
     exit 1
 fi
 
-echo -e "${GREEN}✅ Found docsucker-mcp${NC}"
+echo -e "${GREEN}✅ Found cupertino-mcp${NC}"
 echo ""
 
 # Test 1: Initialize request
@@ -43,7 +43,7 @@ INIT_REQUEST='{
   }
 }'
 
-echo "$INIT_REQUEST" | .build/debug/docsucker-mcp serve 2>/dev/null | {
+echo "$INIT_REQUEST" | .build/debug/cupertino-mcp serve 2>/dev/null | {
     read -r response
     if echo "$response" | grep -q '"result"'; then
         echo -e "${GREEN}✅ Initialize successful${NC}"
@@ -66,7 +66,7 @@ LIST_REQUEST='{
   "params": {}
 }'
 
-echo "$LIST_REQUEST" | .build/debug/docsucker-mcp serve 2>/dev/null | {
+echo "$LIST_REQUEST" | .build/debug/cupertino-mcp serve 2>/dev/null | {
     read -r response
     if echo "$response" | grep -q '"result"'; then
         echo -e "${GREEN}✅ List resources successful${NC}"
@@ -84,7 +84,7 @@ for r in resources[:3]:
 " 2>/dev/null
         else
             echo -e "${YELLOW}⚠️  No resources found. Did you download documentation first?${NC}"
-            echo "   Run: docsucker crawl --max-pages 10 --output-dir ~/.docsucker/docs"
+            echo "   Run: cupertino crawl --max-pages 10 --output-dir ~/.cupertino/docs"
         fi
     else
         echo -e "${RED}❌ List resources failed${NC}"
@@ -104,7 +104,7 @@ TEMPLATE_REQUEST='{
   "params": {}
 }'
 
-echo "$TEMPLATE_REQUEST" | .build/debug/docsucker-mcp serve 2>/dev/null | {
+echo "$TEMPLATE_REQUEST" | .build/debug/cupertino-mcp serve 2>/dev/null | {
     read -r response
     if echo "$response" | grep -q '"result"'; then
         echo -e "${GREEN}✅ List templates successful${NC}"
@@ -129,7 +129,7 @@ echo "Test 4: Read Resource (if available)"
 echo "-------------------------------------"
 
 # Try to get first resource URI
-FIRST_URI=$(echo "$LIST_REQUEST" | .build/debug/docsucker-mcp serve 2>/dev/null | python3 -c "
+FIRST_URI=$(echo "$LIST_REQUEST" | .build/debug/cupertino-mcp serve 2>/dev/null | python3 -c "
 import sys, json
 try:
     data = json.load(sys.stdin)
@@ -154,7 +154,7 @@ EOF
 )
 
     echo "   Reading: $FIRST_URI"
-    echo "$READ_REQUEST" | .build/debug/docsucker-mcp serve 2>/dev/null | {
+    echo "$READ_REQUEST" | .build/debug/cupertino-mcp serve 2>/dev/null | {
         read -r response
         if echo "$response" | grep -q '"result"'; then
             echo -e "${GREEN}✅ Read resource successful${NC}"
@@ -182,7 +182,7 @@ echo "🎉 MCP Server Test Complete"
 echo ""
 echo "Next steps:"
 echo "1. If no resources found, download docs:"
-echo "   docsucker crawl --max-pages 10 --output-dir ~/.docsucker/docs"
+echo "   cupertino crawl --max-pages 10 --output-dir ~/.cupertino/docs"
 echo ""
 echo "2. Configure Claude Desktop:"
 echo "   Edit ~/Library/Application Support/Claude/claude_desktop_config.json"
@@ -190,8 +190,8 @@ echo ""
 echo "3. Add this configuration:"
 echo '   {
      "mcpServers": {
-       "docsucker": {
-         "command": "/usr/local/bin/docsucker-mcp",
+       "cupertino": {
+         "command": "/usr/local/bin/cupertino-mcp",
          "args": ["serve"]
        }
      }

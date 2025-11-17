@@ -27,8 +27,10 @@ public actor DocsResourceProvider: ResourceProvider {
             let metadata = try await getMetadata()
 
             for (url, pageMetadata) in metadata.pages {
+                let uri = "\(CupertinoConstants.MCP.appleDocsScheme)\(pageMetadata.framework)/"
+                    + "\(URLUtilities.filename(from: URL(string: url)!))"
                 let resource = Resource(
-                    uri: "\(CupertinoConstants.MCP.appleDocsScheme)\(pageMetadata.framework)/\(URLUtilities.filename(from: URL(string: url)!))",
+                    uri: uri,
                     name: extractTitle(from: url),
                     description: "\(CupertinoConstants.MCP.appleDocsDescriptionPrefix) \(pageMetadata.framework)",
                     mimeType: CupertinoConstants.MCP.mimeTypeMarkdown
@@ -47,7 +49,8 @@ public actor DocsResourceProvider: ResourceProvider {
                     includingPropertiesForKeys: nil
                 )
 
-                for file in files where file.pathExtension == "md" && file.lastPathComponent.hasPrefix(CupertinoConstants.MCP.sePrefix) {
+                for file in files where file.pathExtension == "md"
+                    && file.lastPathComponent.hasPrefix(CupertinoConstants.MCP.sePrefix) {
                     let proposalID = file.deletingPathExtension().lastPathComponent
                     let resource = Resource(
                         uri: "\(CupertinoConstants.MCP.swiftEvolutionScheme)\(proposalID)",
@@ -229,7 +232,8 @@ enum ResourceError: Error, LocalizedError {
         case .notFound(let uri):
             return "Resource not found: \(uri)"
         case .noDocumentation:
-            return "No documentation has been crawled yet. Run '\(CupertinoConstants.App.commandName) \(CupertinoConstants.Command.crawl)' first."
+            return "No documentation has been crawled yet. "
+                + "Run '\(CupertinoConstants.App.commandName) \(CupertinoConstants.Command.crawl)' first."
         }
     }
 }

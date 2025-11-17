@@ -1,3 +1,4 @@
+import AppKit
 @testable import CupertinoCore
 @testable import CupertinoShared
 import Foundation
@@ -16,6 +17,9 @@ import Testing
 @Test(.tags(.integration))
 @MainActor
 func downloadRealAppleDocPage() async throws {
+    // Set up NSApplication run loop for WKWebView
+    _ = NSApplication.shared
+
     let tempDir = createTempDirectory()
     defer { cleanupTempDirectory(tempDir) }
 

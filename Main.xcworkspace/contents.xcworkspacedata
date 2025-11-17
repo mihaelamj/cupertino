@@ -2,20 +2,63 @@
 <Workspace
    version = "1.0">
    <FileRef
-      location = "group:ToDo.md">
-   </FileRef>
-   <FileRef
       location = "group:README.md">
    </FileRef>
    <FileRef
       location = "group:AGENTS.md">
    </FileRef>
-   <FileRef
-      location = "group:CUPERTINO_FILES_AND_FOLDERS.md">
-   </FileRef>
-   <FileRef
-      location = "group:DEVELOPMENT.md">
-   </FileRef>
+   <Group
+      location = "group:docs"
+      name = "docs">
+      <FileRef
+         location = "group:DEVELOPMENT.md">
+      </FileRef>
+      <FileRef
+         location = "group:Approach.md">
+      </FileRef>
+      <FileRef
+         location = "group:ToDo.md">
+      </FileRef>
+      <FileRef
+         location = "group:CUPERTINO_FILES_AND_FOLDERS.md">
+      </FileRef>
+      <FileRef
+         location = "group:CONSTANTS_REFACTORING_NEEDED.md">
+      </FileRef>
+      <FileRef
+         location = "group:BLOG_POST.md">
+      </FileRef>
+      <FileRef
+         location = "group:FINAL_COMPLIANCE_REPORT.md">
+      </FileRef>
+      <FileRef
+         location = "group:BUGS.md">
+      </FileRef>
+      <FileRef
+         location = "group:Warmup.md">
+      </FileRef>
+      <FileRef
+         location = "group:SWIFT_6_LANGUAGE_MODE_CONCURRENCY.md">
+      </FileRef>
+      <FileRef
+         location = "group:RULES_USAGE_MAP.md">
+      </FileRef>
+      <FileRef
+         location = "group:CONSTANTS_REFACTORING_COMPLETE.md">
+      </FileRef>
+      <FileRef
+         location = "group:BUILD_VERIFICATION_REPORT.md">
+      </FileRef>
+      <FileRef
+         location = "group:CONCURRENCY_COMPLIANCE_ANALYSIS.md">
+      </FileRef>
+      <FileRef
+         location = "group:TESTING_GUIDE.md">
+      </FileRef>
+      <FileRef
+         location = "group:UPDATE_STRATEGY.md">
+      </FileRef>
+   </Group>
    <Group
       location = "group:ai-rules"
       name = "ai-rules">

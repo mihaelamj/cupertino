@@ -85,22 +85,21 @@ public actor StdioTransport: MCPTransport {
     private func readLoop() async {
         var buffer = Data()
 
-        while _isConnected {
-            do {
-                // Read available data from stdin
-                if let chunk = try input.read(upToCount: 4096), !chunk.isEmpty {
-                    buffer.append(chunk)
+        do {
+            // Use async bytes sequence (non-blocking, async iteration)
+            for try await byte in input.bytes {
+                guard _isConnected else {
+                    break
+                }
 
-                    // Process complete lines (newline-delimited JSON)
-                    while let newlineIndex = buffer.firstIndex(of: 0x0a) {
-                        let lineData = buffer.prefix(upTo: newlineIndex)
-                        buffer.removeSubrange(buffer.startIndex...newlineIndex)
+                buffer.append(byte)
 
-                        // Skip empty lines
-                        guard !lineData.isEmpty else {
-                            continue
-                        }
+                // Process complete lines (newline-delimited JSON)
+                if byte == 0x0a { // \n
+                    let lineData = Data(buffer.dropLast()) // Remove the newline
 
+                    // Skip empty lines
+                    if !lineData.isEmpty {
                         // Parse and emit message
                         do {
                             let message = try JSONRPCMessage.decode(from: lineData)
@@ -115,15 +114,14 @@ public actor StdioTransport: MCPTransport {
                             fputs("Error decoding message: \(error)\n", stderr)
                         }
                     }
-                } else {
-                    // No data available, wait briefly
-                    try await Task.sleep(for: .milliseconds(10))
+
+                    // Clear buffer for next message
+                    buffer.removeAll(keepingCapacity: true)
                 }
-            } catch {
-                if _isConnected {
-                    fputs("Error reading stdin: \(error)\n", stderr)
-                }
-                break
+            }
+        } catch {
+            if _isConnected {
+                fputs("Error reading stdin: \(error)\n", stderr)
             }
         }
 
@@ -135,18 +133,6 @@ public actor StdioTransport: MCPTransport {
 // MARK: - FileHandle Extensions
 
 extension FileHandle {
-    /// Read up to count bytes from the file handle
-    func read(upToCount count: Int) throws -> Data? {
-        #if canImport(Darwin)
-        // Use availableData on Darwin platforms
-        let data = availableData
-        return data.isEmpty ? nil : Data(data.prefix(count))
-        #else
-        // Use read(upToCount:) on Linux
-        return try read(upToCount: count)
-        #endif
-    }
-
     /// Write data to the file handle
     func write(contentsOf data: Data) throws {
         #if canImport(Darwin)

@@ -87,26 +87,27 @@ public actor PriorityPackageGenerator {
     private func extractGitHubPackages() async throws -> [PriorityPackageInfo] {
         var packages: [String: PriorityPackageInfo] = [:]
 
-        // Get all markdown files using DispatchQueue to avoid async context issues
-        let allURLs: [URL] = try await withCheckedThrowingContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                let fileManager = FileManager.default
-                guard let enumerator = fileManager.enumerator(
-                    at: self.swiftOrgDocsPath,
-                    includingPropertiesForKeys: [.isRegularFileKey],
-                    options: [.skipsHiddenFiles]
-                ) else {
-                    continuation.resume(throwing: PriorityPackageError.cannotReadDirectory(self.swiftOrgDocsPath.path))
-                    return
-                }
+        // Get all markdown files using Task.detached for structured concurrency
+        // FileManager.enumerator must run in synchronous context
+        let allURLs: [URL] = try await Task.detached(priority: .userInitiated) { @Sendable () -> [URL] in
+            let fileManager = FileManager.default
+            guard let enumerator = fileManager.enumerator(
+                at: self.swiftOrgDocsPath,
+                includingPropertiesForKeys: [.isRegularFileKey],
+                options: [.skipsHiddenFiles]
+            ) else {
+                throw PriorityPackageError.cannotReadDirectory(self.swiftOrgDocsPath.path)
+            }
 
-                var urls: [URL] = []
-                for case let fileURL as URL in enumerator where fileURL.pathExtension == "md" {
+            // Force synchronous iteration in this detached task
+            var urls: [URL] = []
+            while let element = enumerator.nextObject() {
+                if let fileURL = element as? URL, fileURL.pathExtension == "md" {
                     urls.append(fileURL)
                 }
-                continuation.resume(returning: urls)
             }
-        }
+            return urls
+        }.value
 
         // Process each file
         for fileURL in allURLs {
@@ -181,25 +182,25 @@ public actor PriorityPackageGenerator {
     }
 
     private func countMarkdownFiles() async throws -> Int {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                let fileManager = FileManager.default
-                guard let enumerator = fileManager.enumerator(
-                    at: self.swiftOrgDocsPath,
-                    includingPropertiesForKeys: [.isRegularFileKey],
-                    options: [.skipsHiddenFiles]
-                ) else {
-                    continuation.resume(returning: 0)
-                    return
-                }
+        await Task.detached(priority: .userInitiated) { @Sendable () -> Int in
+            let fileManager = FileManager.default
+            guard let enumerator = fileManager.enumerator(
+                at: self.swiftOrgDocsPath,
+                includingPropertiesForKeys: [.isRegularFileKey],
+                options: [.skipsHiddenFiles]
+            ) else {
+                return 0
+            }
 
-                var count = 0
-                for case let fileURL as URL in enumerator where fileURL.pathExtension == "md" {
+            // Force synchronous iteration in this detached task
+            var count = 0
+            while let element = enumerator.nextObject() {
+                if let fileURL = element as? URL, fileURL.pathExtension == "md" {
                     count += 1
                 }
-                continuation.resume(returning: count)
             }
-        }
+            return count
+        }.value
     }
 }
 

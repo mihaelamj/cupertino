@@ -1,6 +1,7 @@
 import CupertinoLogging
 import CupertinoShared
 import Foundation
+import os
 import WebKit
 
 // MARK: - Documentation Crawler
@@ -170,7 +171,9 @@ public final class DocumentationCrawler: NSObject {
         )
 
         let filename = URLUtilities.filename(from: url)
-        let filePath = frameworkDir.appendingPathComponent("\(filename)\(CupertinoConstants.FileName.markdownExtension)")
+        let filePath = frameworkDir.appendingPathComponent(
+            "\(filename)\(CupertinoConstants.FileName.markdownExtension)"
+        )
 
         // Check if we should recrawl
         let shouldRecrawl = await state.shouldRecrawl(
@@ -234,35 +237,56 @@ public final class DocumentationCrawler: NSObject {
     }
 
     private func loadPage(url: URL) async throws -> String {
-        try await withCheckedThrowingContinuation { continuation in
-            webView.load(URLRequest(url: url))
+        // Use structured concurrency: proper task racing with withThrowingTaskGroup
+        webView.load(URLRequest(url: url))
 
-            // Set timeout
-            let timeoutTask = Task {
+        // Race timeout vs page load - first to complete wins
+        return try await withThrowingTaskGroup(of: String?.self) { group in
+            // Task 1: Timeout task returns nil
+            group.addTask {
                 try await Task.sleep(for: CupertinoConstants.Timeout.pageLoad)
-                continuation.resume(throwing: CrawlerError.timeout)
+                return nil
             }
 
-            // Wait for load to complete
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
-                timeoutTask.cancel()
-
-                guard let self else {
-                    continuation.resume(throwing: CrawlerError.invalidState)
-                    return
-                }
-
-                self.webView.evaluateJavaScript(CupertinoConstants.JavaScript.getDocumentHTML) { result, error in
-                    if let error {
-                        continuation.resume(throwing: error)
-                    } else if let html = result as? String {
-                        continuation.resume(returning: html)
-                    } else {
-                        continuation.resume(throwing: CrawlerError.invalidHTML)
-                    }
-                }
+            // Task 2: Load page content returns HTML
+            group.addTask {
+                try await self.loadPageContent()
             }
+
+            // Get first result - true racing behavior
+            for try await result in group {
+                if let html = result {
+                    // HTML loaded successfully - cancel timeout task
+                    group.cancelAll()
+                    return html
+                }
+                // If result is nil, timeout won - continue to next iteration
+                // which will throw or return remaining task result
+            }
+
+            // If we get here, timeout won the race
+            group.cancelAll()
+            throw CrawlerError.timeout
         }
+    }
+
+    /// Helper method to load page content (stays on MainActor)
+    private func loadPageContent() async throws -> String {
+        // Wait for page to load
+        try await Task.sleep(for: .seconds(5))
+
+        // Use modern async evaluateJavaScript API
+        let result = try await webView.evaluateJavaScript(
+            CupertinoConstants.JavaScript.getDocumentHTML,
+            in: nil,
+            contentWorld: .page
+        )
+
+        guard let html = result as? String else {
+            throw CrawlerError.invalidHTML
+        }
+
+        return html
     }
 
     private func extractLinks(from html: String, baseURL: URL) -> [URL] {
