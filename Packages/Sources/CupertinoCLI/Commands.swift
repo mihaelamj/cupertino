@@ -53,30 +53,20 @@ extension Cupertino {
         @Flag(name: .long, help: "Only download accepted/implemented proposals (evolution type only)")
         var onlyAccepted: Bool = false
 
-        mutating func validate() throws {
-            print("DEBUG: Crawl.validate() called")
-        }
-
         mutating func run() async throws {
-            print("DEBUG: Crawl.run() called!")
-            do {
-                logStartMessage()
+            logStartMessage()
 
-                if type == .all {
-                    try await runAllCrawls()
-                    return
-                }
-
-                if type == .evolution {
-                    try await runEvolutionCrawl()
-                    return
-                }
-
-                try await runStandardCrawl()
-            } catch {
-                print("DEBUG: Error in run(): \(error)")
-                throw error
+            if type == .all {
+                try await runAllCrawls()
+                return
             }
+
+            if type == .evolution {
+                try await runEvolutionCrawl()
+                return
+            }
+
+            try await runStandardCrawl()
         }
 
         private func logStartMessage() {
