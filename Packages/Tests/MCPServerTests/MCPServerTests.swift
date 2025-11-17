@@ -1,3 +1,4 @@
+@testable import CupertinoLogging
 @testable import MCPServer
 import Testing
 

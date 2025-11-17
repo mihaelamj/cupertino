@@ -76,7 +76,7 @@ let targets: [Target] = {
     )
     let mcpServerTestsTarget = Target.testTarget(
         name: "MCPServerTests",
-        dependencies: ["MCPServer"]
+        dependencies: ["MCPServer", "CupertinoLogging"]
     )
 
     let mcpTargets = [

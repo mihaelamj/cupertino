@@ -11,52 +11,49 @@
       location = "group:docs"
       name = "docs">
       <FileRef
+         location = "group:BUGS_FIXED.md">
+      </FileRef>
+      <FileRef
+         location = "group:CHANGELOG.md">
+      </FileRef>
+      <FileRef
          location = "group:DEVELOPMENT.md">
       </FileRef>
       <FileRef
-         location = "group:Approach.md">
+         location = "group:DOCSUCKER_CLI_README.md">
       </FileRef>
       <FileRef
-         location = "group:ToDo.md">
+         location = "group:GITHUB_ACTIONS_PLAN.md">
       </FileRef>
       <FileRef
-         location = "group:CUPERTINO_FILES_AND_FOLDERS.md">
+         location = "group:GUI_PROPOSAL.md">
       </FileRef>
       <FileRef
-         location = "group:CONSTANTS_REFACTORING_NEEDED.md">
+         location = "group:HOMEBREW.md">
       </FileRef>
       <FileRef
-         location = "group:BLOG_POST.md">
+         location = "group:MCP_SERVER_README.md">
       </FileRef>
       <FileRef
-         location = "group:FINAL_COMPLIANCE_REPORT.md">
+         location = "group:PROJECT_STATUS.md">
       </FileRef>
       <FileRef
-         location = "group:BUGS.md">
-      </FileRef>
-      <FileRef
-         location = "group:Warmup.md">
-      </FileRef>
-      <FileRef
-         location = "group:SWIFT_6_LANGUAGE_MODE_CONCURRENCY.md">
+         location = "group:RELEASE.md">
       </FileRef>
       <FileRef
          location = "group:RULES_USAGE_MAP.md">
       </FileRef>
       <FileRef
-         location = "group:CONSTANTS_REFACTORING_COMPLETE.md">
-      </FileRef>
-      <FileRef
-         location = "group:BUILD_VERIFICATION_REPORT.md">
-      </FileRef>
-      <FileRef
-         location = "group:CONCURRENCY_COMPLIANCE_ANALYSIS.md">
+         location = "group:SWIFT_6_LANGUAGE_MODE_CONCURRENCY.md">
       </FileRef>
       <FileRef
          location = "group:TESTING_GUIDE.md">
       </FileRef>
       <FileRef
-         location = "group:UPDATE_STRATEGY.md">
+         location = "group:UNIFIED_JSON_CODING.md">
+      </FileRef>
+      <FileRef
+         location = "group:WKWEBVIEW_HEADLESS_TESTING.md">
       </FileRef>
    </Group>
    <Group
