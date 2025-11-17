@@ -114,7 +114,7 @@ let targets: [Target] = {
     )
     let cupertinoCoreTestsTarget = Target.testTarget(
         name: "CupertinoCoreTests",
-        dependencies: ["CupertinoCore"]
+        dependencies: ["CupertinoCore", "CupertinoSearch"]
     )
 
     let cupertinoSearchTarget = Target.target(
