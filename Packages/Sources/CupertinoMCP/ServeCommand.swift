@@ -12,7 +12,7 @@ import MCPTransport
 // MARK: - Serve Command
 
 extension CupertinoMCP {
-    @available(macOS 15.0, *)
+    @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
     struct Serve: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             abstract: CupertinoConstants.HelpText.mcpAbstract

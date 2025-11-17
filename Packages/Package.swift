@@ -202,7 +202,7 @@ let targets: [Target] = {
 let package = Package(
     name: "Cupertino",
     platforms: [
-        .macOS(.v15),
+        .macOS(.v13),
     ],
     products: allProducts,
     dependencies: deps,

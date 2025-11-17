@@ -3,7 +3,7 @@ import CupertinoShared
 
 // MARK: - Cupertino MCP Server CLI
 
-@available(macOS 15.0, *)
+@available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
 struct CupertinoMCP: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: CupertinoConstants.App.mcpCommandName,

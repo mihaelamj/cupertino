@@ -8,7 +8,7 @@ import Foundation
 // MARK: - Crawl Command
 
 extension Cupertino {
-    @available(macOS 15.0, *)
+    @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
     struct Crawl: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             abstract: "Crawl documentation using WKWebView"
@@ -53,20 +53,30 @@ extension Cupertino {
         @Flag(name: .long, help: "Only download accepted/implemented proposals (evolution type only)")
         var onlyAccepted: Bool = false
 
+        mutating func validate() throws {
+            print("DEBUG: Crawl.validate() called")
+        }
+
         mutating func run() async throws {
-            logStartMessage()
+            print("DEBUG: Crawl.run() called!")
+            do {
+                logStartMessage()
 
-            if type == .all {
-                try await runAllCrawls()
-                return
+                if type == .all {
+                    try await runAllCrawls()
+                    return
+                }
+
+                if type == .evolution {
+                    try await runEvolutionCrawl()
+                    return
+                }
+
+                try await runStandardCrawl()
+            } catch {
+                print("DEBUG: Error in run(): \(error)")
+                throw error
             }
-
-            if type == .evolution {
-                try await runEvolutionCrawl()
-                return
-            }
-
-            try await runStandardCrawl()
         }
 
         private func logStartMessage() {
@@ -183,17 +193,15 @@ extension Cupertino {
         private func checkForSession(at directory: URL, matching url: URL) -> URL? {
             let metadataFile = directory.appendingPathComponent(CupertinoConstants.FileName.metadata)
             guard FileManager.default.fileExists(atPath: metadataFile.path),
-                  let metadata = try? JSONCoding.decode(CrawlMetadata.self, from: metadataFile),
+                  let data = try? Data(contentsOf: metadataFile),
+                  let metadata = try? JSONDecoder().decode(CrawlMetadata.self, from: data),
                   let session = metadata.crawlState,
                   session.isActive,
-                  session.startURL == url.absoluteString
+                  session.startURL == url.absoluteString,
+                  let outputDir = URL(string: session.outputDirectory)
             else {
                 return nil
             }
-
-            // Use fileURLWithPath for file system paths (not URL(string:))
-            let outputDir = URL(fileURLWithPath: session.outputDirectory)
-
             ConsoleLogger.info(
                 "📂 Found existing session, resuming to: \(session.outputDirectory)"
             )
@@ -301,7 +309,7 @@ extension Cupertino {
 // MARK: - Fetch Command
 
 extension Cupertino {
-    @available(macOS 15.0, *)
+    @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
     struct Fetch: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             abstract: "Fetch resources without web crawling"
@@ -405,7 +413,7 @@ extension Cupertino {
 // MARK: - Index Command
 
 extension Cupertino {
-    @available(macOS 15.0, *)
+    @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
     struct Index: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             abstract: "Build FTS5 search index from crawled documentation"
