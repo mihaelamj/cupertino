@@ -123,6 +123,24 @@ public actor SearchIndex {
 
         CREATE INDEX IF NOT EXISTS idx_pkg_dep_package ON package_dependencies(package_id);
         CREATE INDEX IF NOT EXISTS idx_pkg_dep_depends ON package_dependencies(depends_on_package_id);
+
+        CREATE VIRTUAL TABLE IF NOT EXISTS sample_code_fts USING fts5(
+            url,
+            framework,
+            title,
+            description,
+            tokenize='porter unicode61'
+        );
+
+        CREATE TABLE IF NOT EXISTS sample_code_metadata (
+            url TEXT PRIMARY KEY,
+            framework TEXT NOT NULL,
+            zip_filename TEXT NOT NULL,
+            web_url TEXT NOT NULL,
+            last_indexed INTEGER
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_sample_framework ON sample_code_metadata(framework);
         """
 
         var errorPointer: UnsafeMutablePointer<CChar>?
@@ -132,6 +150,176 @@ public actor SearchIndex {
             let errorMessage = errorPointer.map { String(cString: $0) } ?? "Unknown error"
             throw SearchError.sqliteError("Failed to create tables: \(errorMessage)")
         }
+    }
+
+    // MARK: - Sample Code Indexing
+
+    /// Index a sample code entry
+    public func indexSampleCode(
+        url: String,
+        framework: String,
+        title: String,
+        description: String,
+        zipFilename: String,
+        webURL: String
+    ) async throws {
+        guard let database else {
+            throw SearchError.databaseNotInitialized
+        }
+
+        // Insert into FTS5 table
+        let ftsSql = """
+        INSERT OR REPLACE INTO sample_code_fts (url, framework, title, description)
+        VALUES (?, ?, ?, ?);
+        """
+
+        var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
+
+        guard sqlite3_prepare_v2(database, ftsSql, -1, &statement, nil) == SQLITE_OK else {
+            let errorMessage = String(cString: sqlite3_errmsg(database))
+            throw SearchError.prepareFailed("Sample code FTS insert: \(errorMessage)")
+        }
+
+        sqlite3_bind_text(statement, 1, (url as NSString).utf8String, -1, nil)
+        sqlite3_bind_text(statement, 2, (framework as NSString).utf8String, -1, nil)
+        sqlite3_bind_text(statement, 3, (title as NSString).utf8String, -1, nil)
+        sqlite3_bind_text(statement, 4, (description as NSString).utf8String, -1, nil)
+
+        guard sqlite3_step(statement) == SQLITE_DONE else {
+            let errorMessage = String(cString: sqlite3_errmsg(database))
+            throw SearchError.insertFailed("Sample code FTS insert: \(errorMessage)")
+        }
+
+        // Insert metadata
+        let metaSql = """
+        INSERT OR REPLACE INTO sample_code_metadata
+        (url, framework, zip_filename, web_url, last_indexed)
+        VALUES (?, ?, ?, ?, ?);
+        """
+
+        var metaStatement: OpaquePointer?
+        defer { sqlite3_finalize(metaStatement) }
+
+        guard sqlite3_prepare_v2(database, metaSql, -1, &metaStatement, nil) == SQLITE_OK else {
+            let errorMessage = String(cString: sqlite3_errmsg(database))
+            throw SearchError.prepareFailed("Sample code metadata insert: \(errorMessage)")
+        }
+
+        sqlite3_bind_text(metaStatement, 1, (url as NSString).utf8String, -1, nil)
+        sqlite3_bind_text(metaStatement, 2, (framework as NSString).utf8String, -1, nil)
+        sqlite3_bind_text(metaStatement, 3, (zipFilename as NSString).utf8String, -1, nil)
+        sqlite3_bind_text(metaStatement, 4, (webURL as NSString).utf8String, -1, nil)
+        sqlite3_bind_int64(metaStatement, 5, Int64(Date().timeIntervalSince1970))
+
+        guard sqlite3_step(metaStatement) == SQLITE_DONE else {
+            let errorMessage = String(cString: sqlite3_errmsg(database))
+            throw SearchError.insertFailed("Sample code metadata insert: \(errorMessage)")
+        }
+    }
+
+    /// Search sample code - optionally checks for local files in sampleCodeDirectory
+    public func searchSampleCode(
+        query: String,
+        framework: String? = nil,
+        limit: Int = CupertinoConstants.Limit.defaultSearchLimit,
+        sampleCodeDirectory: URL? = nil
+    ) async throws -> [SampleCodeSearchResult] {
+        guard let database else {
+            throw SearchError.databaseNotInitialized
+        }
+
+        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else {
+            throw SearchError.invalidQuery("Query cannot be empty")
+        }
+
+        var sql = """
+        SELECT
+            f.url,
+            f.framework,
+            f.title,
+            f.description,
+            m.zip_filename,
+            m.web_url,
+            bm25(sample_code_fts) as rank
+        FROM sample_code_fts f
+        JOIN sample_code_metadata m ON f.url = m.url
+        WHERE sample_code_fts MATCH ?
+        """
+
+        if framework != nil {
+            sql += " AND f.framework = ?"
+        }
+
+        sql += " ORDER BY rank LIMIT ?;"
+
+        var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
+
+        guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
+            let errorMessage = String(cString: sqlite3_errmsg(database))
+            throw SearchError.searchFailed("Sample code search prepare failed: \(errorMessage)")
+        }
+
+        // Bind parameters
+        sqlite3_bind_text(statement, 1, (query as NSString).utf8String, -1, nil)
+
+        if let framework {
+            sqlite3_bind_text(statement, 2, (framework as NSString).utf8String, -1, nil)
+            sqlite3_bind_int(statement, 3, Int32(limit))
+        } else {
+            sqlite3_bind_int(statement, 2, Int32(limit))
+        }
+
+        // Execute and collect results
+        var results: [SampleCodeSearchResult] = []
+
+        while sqlite3_step(statement) == SQLITE_ROW {
+            guard let urlPtr = sqlite3_column_text(statement, 0),
+                  let frameworkPtr = sqlite3_column_text(statement, 1),
+                  let titlePtr = sqlite3_column_text(statement, 2),
+                  let descriptionPtr = sqlite3_column_text(statement, 3),
+                  let zipFilenamePtr = sqlite3_column_text(statement, 4),
+                  let webURLPtr = sqlite3_column_text(statement, 5)
+            else {
+                continue
+            }
+
+            let url = String(cString: urlPtr)
+            let framework = String(cString: frameworkPtr)
+            let title = String(cString: titlePtr)
+            let description = String(cString: descriptionPtr)
+            let zipFilename = String(cString: zipFilenamePtr)
+            let webURL = String(cString: webURLPtr)
+            let rank = sqlite3_column_double(statement, 6)
+
+            // Check if local file exists
+            var localPath: String?
+            var hasLocalFile = false
+            if let sampleCodeDir = sampleCodeDirectory {
+                let localFileURL = sampleCodeDir.appendingPathComponent(zipFilename)
+                if FileManager.default.fileExists(atPath: localFileURL.path) {
+                    localPath = localFileURL.path
+                    hasLocalFile = true
+                }
+            }
+
+            results.append(
+                SampleCodeSearchResult(
+                    url: url,
+                    framework: framework,
+                    title: title,
+                    description: description,
+                    zipFilename: zipFilename,
+                    webURL: webURL,
+                    localPath: localPath,
+                    hasLocalFile: hasLocalFile,
+                    rank: rank
+                )
+            )
+        }
+
+        return results
     }
 
     // MARK: - Indexing
