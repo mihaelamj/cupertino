@@ -35,23 +35,37 @@ The "documentation" prefix is Apple's URL convention, not something we hardcode.
 
 ## ✅ 4. Document Commands (COMPLETED)
 
-- ✅ Created `docs/commands/` directory
-- ✅ Documented all 3 commands in separate files:
-  - `crawl.md` - Web crawling with WKWebView
-  - `fetch.md` - Resource fetching (packages, sample code)
-  - `index.md` - FTS5 search index building
-- ✅ Created `README.md` with quick start, workflows, and examples
-- ✅ Included default locations, advanced features, and typical workflows
+- ✅ Created `docs/commands/` directory with folder-based structure
+- ✅ Each command is a folder: `crawl/`, `fetch/`, `index/`
+- ✅ Each option is a separate file within the command folder
+- ✅ Complex options like `--type` are folders with files for each value
+- ✅ Total: 30 command documentation files
+- ✅ Documented `--type all` for crawl (crawls docs, swift, evolution in parallel)
 
-## 5. Hardcoded folder names and file names
-- we need those
-- those are artefacts we create
-- we need to know where to find things
-- follow the naming now in /Volumes/Code/DeveloperExt/cupertino_test/  for folder names
-- I want the same folder-based documentation as for commands
+## ✅ 5. Document Artifacts - Hardcoded folder names and file names (COMPLETED)
 
+- ✅ Created `docs/artifacts/` directory with folder-based structure
+- ✅ Documented all generated folders: docs/, swift-org/, swift-evolution/, sample-code/, packages/
+- ✅ Documented all generated files: metadata.json, checkpoint.json, search.db
+- ✅ Used real filenames from /Volumes/Code/DeveloperExt/cupertino_test/
+- ✅ Each artifact has detailed README with structure, examples, and usage
+- ✅ Total: 9 artifact documentation files
+- ✅ Reorganized structure: moved metadata.json and checkpoint.json to respective folders
+- ✅ All examples use actual filename patterns (e.g., documentation_swift_array.md)
 
-## 6. fetch authenticate does not work
-- it never opens the safari browser, I opened it manually
-- investigate how other terminal comamnds are doing it
-- maybe search GitHub for code examples
+## 6. Each whole command must be atomic
+- that means it must be able to be executed independently of other commands
+- now, we do have dependent commands, but hopefully we moved dependencies to the resources files, with prefetched resources
+- that is important so that:
+  - each command can be executed alone
+  - each command can be executed in parallel with other commands
+  - each command can be tested alone
+  - each command can be tested in parallel with other commands
+  - all of this applies to parallel execution as well
+
+## 7. We don't have clearly defined commands to update embedded resources:
+- maybe we do, but it certainly is not clear
+- we must make it more intuitive and clear
+- updating all swift packages
+- updating all apple sample sources
+- there is always a possibility that we will need to add more pre-fetched resources
