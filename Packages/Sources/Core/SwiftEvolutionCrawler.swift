@@ -1,0 +1,317 @@
+import Foundation
+import Logging
+import Shared
+
+// MARK: - Swift Evolution Crawler
+
+/// Crawls Swift Evolution proposals from GitHub
+extension Core {
+    @MainActor
+    public final class EvolutionCrawler {
+        private let outputDirectory: URL
+        private let onlyAccepted: Bool
+        private let githubAPI = CupertinoConstants.BaseURL.githubAPI
+        private let githubRaw = CupertinoConstants.BaseURL.githubRaw
+        private let repo = CupertinoConstants.SwiftEvolution.repository
+        private let branch = CupertinoConstants.SwiftEvolution.branch
+
+        public init(outputDirectory: URL, onlyAccepted: Bool = false) {
+            self.outputDirectory = outputDirectory
+            self.onlyAccepted = onlyAccepted
+        }
+
+        // MARK: - Public API
+
+        /// Crawl Swift Evolution proposals
+        public func crawl(onProgress: ((EvolutionProgress) -> Void)? = nil) async throws -> EvolutionStatistics {
+            var stats = EvolutionStatistics(startTime: Date())
+
+            logInfo("🚀 Starting Swift Evolution crawler")
+            logInfo("   Repository: \(repo)")
+            logInfo("   Output: \(outputDirectory.path)")
+
+            // Create output directory
+            try FileManager.default.createDirectory(
+                at: outputDirectory,
+                withIntermediateDirectories: true
+            )
+
+            // Fetch proposals list
+            logInfo("\n📋 Fetching proposals list...")
+            let proposals = try await fetchProposalsList()
+            logInfo("   Found \(proposals.count) proposals")
+
+            // Download each proposal
+            for (index, proposal) in proposals.enumerated() {
+                do {
+                    try await downloadProposal(proposal, stats: &stats)
+
+                    // Progress callback
+                    if let onProgress {
+                        let progress = EvolutionProgress(
+                            current: index + 1,
+                            total: proposals.count,
+                            proposalID: proposal.id,
+                            stats: stats
+                        )
+                        onProgress(progress)
+                    }
+
+                    // Rate limiting - be respectful to GitHub
+                    try await Task.sleep(for: CupertinoConstants.Delay.swiftEvolution)
+                } catch {
+                    stats.errors += 1
+                    logError("Failed to download \(proposal.id): \(error)")
+                }
+            }
+
+            stats.endTime = Date()
+
+            logInfo("\n✅ Crawl completed!")
+            logStatistics(stats)
+
+            return stats
+        }
+
+        // MARK: - Private Methods
+
+        private func fetchProposalsList() async throws -> [ProposalMetadata] {
+            // Fetch proposals directory listing from GitHub API
+            let url = URL(string: "\(githubAPI)/repos/\(repo)/contents/proposals?ref=\(branch)")!
+
+            var request = URLRequest(url: url)
+            request.setValue(
+                CupertinoConstants.HTTPHeader.githubAccept,
+                forHTTPHeaderField: CupertinoConstants.HTTPHeader.accept
+            )
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200
+            else {
+                throw EvolutionCrawlerError.invalidResponse
+            }
+
+            // Parse JSON response
+            let files = try JSONDecoder().decode([GitHubFile].self, from: data)
+
+            // Filter for .md files and extract proposal metadata
+            let proposals = files
+                .compactMap { file -> ProposalMetadata? in
+                    // Skip if no downloadURL (e.g., directories)
+                    guard let downloadURL = file.downloadURL else {
+                        return nil
+                    }
+                    // Only process .md files
+                    guard file.name.hasSuffix(CupertinoConstants.FileName.markdownExtension) else {
+                        return nil
+                    }
+                    // Extract proposal ID (handles both "0001-..." and "SE-0001-..." formats)
+                    guard let id = extractProposalID(from: file.name) else {
+                        return nil
+                    }
+                    return ProposalMetadata(
+                        id: id,
+                        filename: file.name,
+                        downloadURL: downloadURL
+                    )
+                }
+                .sorted { $0.id < $1.id }
+
+            return proposals
+        }
+
+        private func downloadProposal(_ proposal: ProposalMetadata, stats: inout EvolutionStatistics) async throws {
+            logInfo("📄 [\(stats.totalProposals + 1)] \(proposal.id)")
+
+            // Download markdown content
+            guard let url = URL(string: proposal.downloadURL) else {
+                throw EvolutionCrawlerError.invalidURL(proposal.downloadURL)
+            }
+
+            let (data, _) = try await URLSession.shared.data(from: url)
+            guard let markdown = String(data: data, encoding: .utf8) else {
+                throw EvolutionCrawlerError.invalidEncoding
+            }
+
+            // Check status if filtering for accepted only
+            if onlyAccepted {
+                let status = extractStatus(from: markdown)
+                if !isAcceptedStatus(status) {
+                    logInfo("   ⏭️  Skipped (status: \(status ?? "unknown"))")
+                    stats.totalProposals += 1
+                    return
+                }
+            }
+
+            // Compute hash for change detection
+            _ = HashUtilities.sha256(of: markdown)
+
+            // Save to file with SE- prefix
+            let filename = "\(proposal.id)\(CupertinoConstants.FileName.markdownExtension)" // e.g., "SE-0001.md"
+            let outputPath = outputDirectory.appendingPathComponent(filename)
+            let isNew = !FileManager.default.fileExists(atPath: outputPath.path)
+
+            try markdown.write(to: outputPath, atomically: true, encoding: .utf8)
+
+            if isNew {
+                stats.newProposals += 1
+                logInfo("   ✅ Saved new proposal")
+            } else {
+                stats.updatedProposals += 1
+                logInfo("   ♻️  Updated proposal")
+            }
+
+            stats.totalProposals += 1
+        }
+
+        private func extractProposalID(from filename: String) -> String? {
+            // Extract proposal number from filename
+            // Handles: "0001-keywords-as-argument-labels.md" -> "SE-0001"
+            // Also handles: "SE-0001-keywords-as-argument-labels.md" -> "SE-0001"
+            guard let regex = try? NSRegularExpression(pattern: CupertinoConstants.Pattern.seProposalNumber),
+                  let match = regex.firstMatch(
+                      in: filename,
+                      range: NSRange(filename.startIndex..., in: filename)
+                  ),
+                  match.numberOfRanges > 1,
+                  let numberRange = Range(match.range(at: 1), in: filename)
+            else {
+                return nil
+            }
+            let number = String(filename[numberRange])
+            return "SE-\(number)"
+        }
+
+        private func extractStatus(from markdown: String) -> String? {
+            // Extract status from markdown content
+            // Format: "* Status: **Implemented (Swift 2.2)**" or "* Status: **Accepted**"
+            guard let regex = try? NSRegularExpression(pattern: CupertinoConstants.Pattern.seStatus),
+                  let match = regex.firstMatch(
+                      in: markdown,
+                      range: NSRange(markdown.startIndex..., in: markdown)
+                  ),
+                  match.numberOfRanges > 1,
+                  let statusRange = Range(match.range(at: 1), in: markdown)
+            else {
+                return nil
+            }
+            return String(markdown[statusRange])
+        }
+
+        private func isAcceptedStatus(_ status: String?) -> Bool {
+            guard let status = status?.lowercased() else {
+                return false
+            }
+            // Accept proposals that are "Implemented", "Accepted", or "Accepted with revisions"
+            return status.contains("implemented") ||
+                status.contains("accepted")
+        }
+
+        // MARK: - Logging
+
+        private func logInfo(_ message: String) {
+            CupertinoLogger.evolution.info(message)
+            print(message)
+        }
+
+        private func logError(_ message: String) {
+            let errorMessage = "❌ \(message)"
+            CupertinoLogger.evolution.error(message)
+            fputs("\(errorMessage)\n", stderr)
+        }
+
+        private func logStatistics(_ stats: EvolutionStatistics) {
+            let messages = [
+                "📊 Statistics:",
+                "   Total proposals: \(stats.totalProposals)",
+                "   New: \(stats.newProposals)",
+                "   Updated: \(stats.updatedProposals)",
+                "   Errors: \(stats.errors)",
+                stats.duration.map { "   Duration: \(Int($0))s" } ?? "",
+                "",
+                "📁 Output: \(outputDirectory.path)",
+            ]
+
+            for message in messages where !message.isEmpty {
+                CupertinoLogger.evolution.info(message)
+                print(message)
+            }
+        }
+    }
+}
+
+// MARK: - Backward Compatibility
+
+/// Legacy type alias for backward compatibility
+public typealias SwiftEvolutionCrawler = Core.EvolutionCrawler
+
+// MARK: - Models
+
+struct GitHubFile: Codable {
+    let name: String
+    let downloadURL: String? // Optional - directories have null download_url
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case downloadURL = "download_url"
+    }
+}
+
+struct ProposalMetadata {
+    let id: String
+    let filename: String
+    let downloadURL: String
+}
+
+public struct EvolutionStatistics: Sendable {
+    public var totalProposals: Int = 0
+    public var newProposals: Int = 0
+    public var updatedProposals: Int = 0
+    public var errors: Int = 0
+    public var startTime: Date?
+    public var endTime: Date?
+
+    public init(
+        totalProposals: Int = 0,
+        newProposals: Int = 0,
+        updatedProposals: Int = 0,
+        errors: Int = 0,
+        startTime: Date? = nil,
+        endTime: Date? = nil
+    ) {
+        self.totalProposals = totalProposals
+        self.newProposals = newProposals
+        self.updatedProposals = updatedProposals
+        self.errors = errors
+        self.startTime = startTime
+        self.endTime = endTime
+    }
+
+    public var duration: TimeInterval? {
+        guard let start = startTime, let end = endTime else {
+            return nil
+        }
+        return end.timeIntervalSince(start)
+    }
+}
+
+public struct EvolutionProgress: Sendable {
+    public let current: Int
+    public let total: Int
+    public let proposalID: String
+    public let stats: EvolutionStatistics
+
+    public var percentage: Double {
+        Double(current) / Double(total) * 100
+    }
+}
+
+// MARK: - Errors
+
+enum EvolutionCrawlerError: Error {
+    case invalidResponse
+    case invalidURL(String)
+    case invalidEncoding
+}

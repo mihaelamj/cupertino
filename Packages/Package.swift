@@ -9,23 +9,21 @@ import PackageDescription
 // -------------------------------------------------------------
 
 let baseProducts: [Product] = [
-    // MCP Framework (cross-platform)
-    .singleTargetLibrary("MCPShared"),
-    .singleTargetLibrary("MCPTransport"),
-    .singleTargetLibrary("MCPServer"),
+    // MCP Framework (cross-platform, consolidated from MCPShared + MCPTransport + MCPServer)
+    .singleTargetLibrary("MCP"),
 ]
 
 // Cupertino products (macOS only - uses FileManager.homeDirectoryForCurrentUser)
 #if os(macOS)
 let macOSOnlyProducts: [Product] = [
-    .singleTargetLibrary("CupertinoLogging"),
-    .singleTargetLibrary("CupertinoShared"),
-    .singleTargetLibrary("CupertinoCore"),
-    .singleTargetLibrary("CupertinoSearch"),
-    .singleTargetLibrary("CupertinoMCPSupport"),
-    .singleTargetLibrary("CupertinoSearchToolProvider"),
-    .executable(name: "cupertino", targets: ["CupertinoCLI"]),
-    .executable(name: "cupertino-mcp", targets: ["CupertinoMCP"]),
+    .singleTargetLibrary("Logging"),
+    .singleTargetLibrary("Shared"),
+    .singleTargetLibrary("Core"),
+    .singleTargetLibrary("Search"),
+    .singleTargetLibrary("Resources"),
+    .singleTargetLibrary("MCPSupport"),
+    .singleTargetLibrary("SearchToolProvider"),
+    .executable(name: "cupertino", targets: ["CLI"]),
 ]
 #else
 let macOSOnlyProducts: [Product] = []
@@ -51,167 +49,132 @@ let deps: [Package.Dependency] = [
 // -------------------------------------------------------------
 
 let targets: [Target] = {
-    // ---------- MCP Framework (Foundation → Infrastructure) ----------
-    let mcpSharedTarget = Target.target(
-        name: "MCPShared",
+    // ---------- MCP Framework (Consolidated from MCPShared + MCPTransport + MCPServer) ----------
+    let mcpTarget = Target.target(
+        name: "MCP",
         dependencies: []
     )
-    let mcpSharedTestsTarget = Target.testTarget(
-        name: "MCPSharedTests",
-        dependencies: ["MCPShared"]
-    )
-
-    let mcpTransportTarget = Target.target(
-        name: "MCPTransport",
-        dependencies: ["CupertinoShared", "MCPShared"]
-    )
-    let mcpTransportTestsTarget = Target.testTarget(
-        name: "MCPTransportTests",
-        dependencies: ["MCPTransport"]
-    )
-
-    let mcpServerTarget = Target.target(
-        name: "MCPServer",
-        dependencies: ["MCPShared", "MCPTransport", "CupertinoShared"]
-    )
-    let mcpServerTestsTarget = Target.testTarget(
-        name: "MCPServerTests",
-        dependencies: ["MCPServer", "CupertinoLogging"]
+    let mcpTestsTarget = Target.testTarget(
+        name: "MCPTests",
+        dependencies: ["MCP"]
     )
 
     let mcpTargets = [
-        mcpSharedTarget,
-        mcpSharedTestsTarget,
-        mcpTransportTarget,
-        mcpTransportTestsTarget,
-        mcpServerTarget,
-        mcpServerTestsTarget,
+        mcpTarget,
+        mcpTestsTarget,
     ]
 
     // ---------- Cupertino (Apple Docs Crawler → MCP Server - macOS only) ----------
     #if os(macOS)
-    let cupertinoLoggingTarget = Target.target(
-        name: "CupertinoLogging",
-        dependencies: ["CupertinoShared"]
+    let loggingTarget = Target.target(
+        name: "Logging",
+        dependencies: ["Shared"]
     )
-    let cupertinoLoggingTestsTarget = Target.testTarget(
-        name: "CupertinoLoggingTests",
-        dependencies: ["CupertinoLogging"]
-    )
-
-    let cupertinoSharedTarget = Target.target(
-        name: "CupertinoShared",
-        dependencies: ["MCPShared"]
-    )
-    let cupertinoSharedTestsTarget = Target.testTarget(
-        name: "CupertinoSharedTests",
-        dependencies: ["CupertinoShared"]
+    let loggingTestsTarget = Target.testTarget(
+        name: "LoggingTests",
+        dependencies: ["Logging", "TestSupport"]
     )
 
-    let cupertinoResourcesTarget = Target.target(
-        name: "CupertinoResources",
+    let sharedTarget = Target.target(
+        name: "Shared",
+        dependencies: ["MCP"]
+    )
+    let sharedTestsTarget = Target.testTarget(
+        name: "SharedTests",
+        dependencies: ["Shared", "TestSupport"]
+    )
+
+    let resourcesTarget = Target.target(
+        name: "Resources",
         resources: [.process("Resources")]
     )
 
-    let cupertinoCoreTarget = Target.target(
-        name: "CupertinoCore",
-        dependencies: ["CupertinoShared", "CupertinoLogging", "CupertinoResources"]
+    let coreTarget = Target.target(
+        name: "Core",
+        dependencies: ["Shared", "Logging", "Resources"]
     )
-    let cupertinoCoreTestsTarget = Target.testTarget(
-        name: "CupertinoCoreTests",
-        dependencies: ["CupertinoCore", "CupertinoSearch"]
-    )
-
-    let cupertinoSearchTarget = Target.target(
-        name: "CupertinoSearch",
-        dependencies: ["CupertinoShared", "CupertinoLogging"]
-    )
-    let cupertinoSearchTestsTarget = Target.testTarget(
-        name: "CupertinoSearchTests",
-        dependencies: ["CupertinoSearch"]
+    let coreTestsTarget = Target.testTarget(
+        name: "CoreTests",
+        dependencies: ["Core", "Search", "TestSupport"]
     )
 
-    let cupertinoMCPSupportTarget = Target.target(
-        name: "CupertinoMCPSupport",
-        dependencies: ["MCPServer", "MCPShared", "CupertinoShared", "CupertinoLogging"]
+    let searchTarget = Target.target(
+        name: "Search",
+        dependencies: ["Shared", "Logging"]
     )
-    let cupertinoMCPSupportTestsTarget = Target.testTarget(
-        name: "CupertinoMCPSupportTests",
-        dependencies: ["CupertinoMCPSupport"]
-    )
-
-    let cupertinoSearchToolProviderTarget = Target.target(
-        name: "CupertinoSearchToolProvider",
-        dependencies: ["MCPServer", "MCPShared", "CupertinoSearch"]
-    )
-    let cupertinoSearchToolProviderTestsTarget = Target.testTarget(
-        name: "CupertinoSearchToolProviderTests",
-        dependencies: ["CupertinoSearchToolProvider"]
+    let searchTestsTarget = Target.testTarget(
+        name: "SearchTests",
+        dependencies: ["Search", "TestSupport"]
     )
 
-    let cupertinoCLITarget = Target.executableTarget(
-        name: "CupertinoCLI",
+    let mcpSupportTarget = Target.target(
+        name: "MCPSupport",
+        dependencies: ["MCP", "Shared", "Logging"]
+    )
+    let mcpSupportTestsTarget = Target.testTarget(
+        name: "MCPSupportTests",
+        dependencies: ["MCPSupport", "TestSupport"]
+    )
+
+    let searchToolProviderTarget = Target.target(
+        name: "SearchToolProvider",
+        dependencies: ["MCP", "Search"]
+    )
+    let searchToolProviderTestsTarget = Target.testTarget(
+        name: "SearchToolProviderTests",
+        dependencies: ["SearchToolProvider", "TestSupport"]
+    )
+
+    let cliTarget = Target.executableTarget(
+        name: "CLI",
         dependencies: [
-            "CupertinoShared",
-            "CupertinoCore",
-            "CupertinoSearch",
-            "CupertinoLogging",
+            "Shared",
+            "Core",
+            "Search",
+            "Logging",
             // MCP dependencies (for mcp serve command)
-            "MCPServer",
-            "MCPTransport",
-            "CupertinoMCPSupport",
-            "CupertinoSearchToolProvider",
+            "MCP",
+            "MCPSupport",
+            "SearchToolProvider",
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
         ]
     )
 
-    let cupertinoMCPTarget = Target.executableTarget(
-        name: "CupertinoMCP",
-        dependencies: [
-            "MCPServer",
-            "MCPTransport",
-            "CupertinoShared",
-            "CupertinoCore",
-            "CupertinoSearch",
-            "CupertinoMCPSupport",
-            "CupertinoSearchToolProvider",
-            "CupertinoLogging",
-            .product(name: "ArgumentParser", package: "swift-argument-parser"),
-        ]
+    let testSupportTarget = Target.target(
+        name: "TestSupport",
+        dependencies: []
     )
 
-    let cupertinoCLITestsTarget = Target.testTarget(
-        name: "CupertinoCLITests",
+    let cliTestsTarget = Target.testTarget(
+        name: "CLITests",
         dependencies: [
-            "CupertinoCLI",
-            "CupertinoCore",
-            "CupertinoSearch",
-            "CupertinoShared",
-            "CupertinoMCP",
-            "CupertinoMCPSupport",
-            "MCPServer",
-            "MCPShared",
-            "MCPTransport",
+            "CLI",
+            "Core",
+            "Search",
+            "Shared",
+            "MCPSupport",
+            "MCP",
+            "TestSupport",
         ]
     )
 
     let cupertinoTargets: [Target] = [
-        cupertinoLoggingTarget,
-        cupertinoLoggingTestsTarget,
-        cupertinoSharedTarget,
-        cupertinoSharedTestsTarget,
-        cupertinoResourcesTarget,
-        cupertinoCoreTarget,
-        cupertinoCoreTestsTarget,
-        cupertinoSearchTarget,
-        cupertinoSearchTestsTarget,
-        cupertinoMCPSupportTarget,
-        cupertinoMCPSupportTestsTarget,
-        cupertinoSearchToolProviderTarget,
-        cupertinoSearchToolProviderTestsTarget,
-        cupertinoCLITarget,
-        cupertinoCLITestsTarget,
-        cupertinoMCPTarget,
+        loggingTarget,
+        loggingTestsTarget,
+        sharedTarget,
+        sharedTestsTarget,
+        resourcesTarget,
+        coreTarget,
+        coreTestsTarget,
+        searchTarget,
+        searchTestsTarget,
+        mcpSupportTarget,
+        mcpSupportTestsTarget,
+        searchToolProviderTarget,
+        searchToolProviderTestsTarget,
+        testSupportTarget,
+        cliTarget,
+        cliTestsTarget,
     ]
     #else
     let cupertinoTargets: [Target] = []
