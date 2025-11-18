@@ -64,3 +64,24 @@ The crawler creates:
 - Supports change detection via content hashing
 - Auto-saves progress for resume capability
 - Respects URL prefixes to stay within documentation boundaries
+
+## Next Steps
+
+After crawling documentation:
+
+1. **Build a search index** (recommended):
+   ```bash
+   cupertino index
+   ```
+
+2. **Start the MCP server**:
+   ```bash
+   cupertino
+   ```
+
+The MCP server will serve the crawled documentation to AI assistants like Claude.
+
+## See Also
+
+- [../index/](../index/) - Build search index
+- [../mcp/](../mcp/) - MCP server commands

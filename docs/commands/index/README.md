@@ -69,3 +69,24 @@ The FTS5 index supports:
 - Index size is typically ~10-20% of total documentation size
 - Supports incremental updates (without `--clear`)
 - Compatible with MCP server for AI integration
+
+## Next Steps
+
+After building the search index, you can start the MCP server:
+
+```bash
+cupertino
+```
+
+Or explicitly:
+
+```bash
+cupertino mcp serve
+```
+
+The server will automatically detect and use the search index to provide search tools to AI assistants.
+
+## See Also
+
+- [../mcp/](../mcp/) - MCP server commands
+- [../crawl/](../crawl/) - Download documentation

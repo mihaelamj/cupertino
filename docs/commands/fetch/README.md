@@ -59,3 +59,9 @@ cupertino fetch --type packages --resume
 - **Sample Code**: Requires authentication with Apple ID
 - Both types support resume capability via checkpoints
 - Change detection prevents re-downloading unchanged resources
+
+## See Also
+
+- [../crawl/](../crawl/) - Download documentation
+- [../index/](../index/) - Build search index
+- [../mcp/](../mcp/) - MCP server commands
