@@ -11,6 +11,69 @@ import Testing
     #expect(markdown.contains("# Title"))
 }
 
+// MARK: - SampleCodeCatalog Tests
+
+@Test("SampleCodeCatalog loads from JSON resource")
+func sampleCodeCatalogLoadsFromJSON() async throws {
+    let count = await SampleCodeCatalog.count
+    #expect(count == 606, "Should have 606 sample code entries")
+    print("   ✅ Loaded \(count) sample code entries")
+}
+
+@Test("SampleCodeCatalog has correct metadata")
+func sampleCodeCatalogMetadata() async throws {
+    let version = await SampleCodeCatalog.version
+    let lastCrawled = await SampleCodeCatalog.lastCrawled
+
+    #expect(version == "1.0", "Version should be 1.0")
+    #expect(lastCrawled == "2025-11-17", "Last crawled should be 2025-11-17")
+    print("   ✅ Version: \(version), Last crawled: \(lastCrawled)")
+}
+
+@Test("SampleCodeCatalog entries have required fields")
+func sampleCodeCatalogEntriesValid() async throws {
+    let entries = await SampleCodeCatalog.allEntries
+    #expect(!entries.isEmpty, "Should have at least one entry")
+
+    // Verify first entry has all required fields
+    let firstEntry = entries[0]
+    #expect(!firstEntry.title.isEmpty, "Entry should have title")
+    #expect(!firstEntry.url.isEmpty, "Entry should have URL")
+    #expect(!firstEntry.framework.isEmpty, "Entry should have framework")
+    #expect(!firstEntry.description.isEmpty, "Entry should have description")
+    #expect(!firstEntry.zipFilename.isEmpty, "Entry should have zipFilename")
+    #expect(!firstEntry.webURL.isEmpty, "Entry should have webURL")
+
+    print("   ✅ Sample entry: \(firstEntry.title)")
+}
+
+@Test("SampleCodeCatalog search works")
+func sampleCodeCatalogSearch() async throws {
+    let results = await SampleCodeCatalog.search("Swift")
+    #expect(!results.isEmpty, "Search for 'Swift' should return results")
+
+    // Verify search results contain the query
+    for result in results.prefix(5) {
+        let containsSwift = result.title.contains("Swift") || result.description.contains("Swift")
+        #expect(containsSwift, "Search result should contain 'Swift'")
+    }
+
+    print("   ✅ Found \(results.count) results for 'Swift'")
+}
+
+@Test("SampleCodeCatalog framework filtering works")
+func sampleCodeCatalogFrameworkFilter() async throws {
+    let swiftUIEntries = await SampleCodeCatalog.entries(for: "SwiftUI")
+    #expect(!swiftUIEntries.isEmpty, "Should have SwiftUI entries")
+
+    // Verify all results are for the correct framework
+    for entry in swiftUIEntries {
+        #expect(entry.framework.lowercased() == "swiftui", "Entry should be SwiftUI framework")
+    }
+
+    print("   ✅ Found \(swiftUIEntries.count) SwiftUI entries")
+}
+
 // MARK: - Integration Tests
 
 /// Integration test: Downloads a real Apple documentation page

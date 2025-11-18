@@ -2,6 +2,12 @@ import Foundation
 
 // MARK: - Cupertino Constants
 
+// swiftlint:disable type_body_length
+// Justification: CupertinoConstants serves as central configuration hub for the entire application.
+// Contains directory names, file names, URL patterns, limits, delays, and MCP configuration.
+// Splitting would scatter related constants and reduce discoverability.
+// Organized with clear MARK sections for easy navigation.
+
 /// Global constants for Cupertino application
 public enum CupertinoConstants {
     // MARK: - Directory Names

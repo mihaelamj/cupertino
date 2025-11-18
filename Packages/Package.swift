@@ -108,9 +108,14 @@ let targets: [Target] = {
         dependencies: ["CupertinoShared"]
     )
 
+    let cupertinoResourcesTarget = Target.target(
+        name: "CupertinoResources",
+        resources: [.process("Resources")]
+    )
+
     let cupertinoCoreTarget = Target.target(
         name: "CupertinoCore",
-        dependencies: ["CupertinoShared", "CupertinoLogging"]
+        dependencies: ["CupertinoShared", "CupertinoLogging", "CupertinoResources"]
     )
     let cupertinoCoreTestsTarget = Target.testTarget(
         name: "CupertinoCoreTests",
@@ -170,11 +175,27 @@ let targets: [Target] = {
         ]
     )
 
+    let cupertinoCLITestsTarget = Target.testTarget(
+        name: "CupertinoCLITests",
+        dependencies: [
+            "CupertinoCLI",
+            "CupertinoCore",
+            "CupertinoSearch",
+            "CupertinoShared",
+            "CupertinoMCP",
+            "CupertinoMCPSupport",
+            "MCPServer",
+            "MCPShared",
+            "MCPTransport",
+        ]
+    )
+
     let cupertinoTargets: [Target] = [
         cupertinoLoggingTarget,
         cupertinoLoggingTestsTarget,
         cupertinoSharedTarget,
         cupertinoSharedTestsTarget,
+        cupertinoResourcesTarget,
         cupertinoCoreTarget,
         cupertinoCoreTestsTarget,
         cupertinoSearchTarget,
@@ -184,6 +205,7 @@ let targets: [Target] = {
         cupertinoSearchToolProviderTarget,
         cupertinoSearchToolProviderTestsTarget,
         cupertinoCLITarget,
+        cupertinoCLITestsTarget,
         cupertinoMCPTarget,
     ]
     #else

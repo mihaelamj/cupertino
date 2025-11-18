@@ -11,6 +11,7 @@ opt_in_rules:
 excluded:
   - "*.generated"
   - "Packages/Tests/**" # Tests often use force unwrapping
+  - "Packages/.build/**" # Exclude build artifacts and dependencies
 
 custom_rules:
   # check's for Combine's .assign(to: xxx, on: self) ref-cycle

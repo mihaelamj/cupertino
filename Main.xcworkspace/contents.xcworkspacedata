@@ -7,11 +7,17 @@
    <FileRef
       location = "group:AGENTS.md">
    </FileRef>
+   <FileRef
+      location = "group:COMPREHENSIVE_ANALYSIS.md">
+   </FileRef>
    <Group
       location = "group:docs"
       name = "docs">
       <FileRef
          location = "group:BUGS_FIXED.md">
+      </FileRef>
+      <FileRef
+         location = "group:TODO.md">
       </FileRef>
       <FileRef
          location = "group:CHANGELOG.md">
@@ -20,7 +26,7 @@
          location = "group:DEVELOPMENT.md">
       </FileRef>
       <FileRef
-         location = "group:DOCSUCKER_CLI_README.md">
+         location = "group:CUPERTINO_CLI_README.md">
       </FileRef>
       <FileRef
          location = "group:GITHUB_ACTIONS_PLAN.md">
@@ -42,6 +48,9 @@
       </FileRef>
       <FileRef
          location = "group:RULES_USAGE_MAP.md">
+      </FileRef>
+      <FileRef
+         location = "group:SWIFT_6_COMPLIANCE_AUDIT.md">
       </FileRef>
       <FileRef
          location = "group:SWIFT_6_LANGUAGE_MODE_CONCURRENCY.md">
