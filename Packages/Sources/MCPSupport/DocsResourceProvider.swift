@@ -6,13 +6,13 @@ import Shared
 
 /// Provides crawled documentation as MCP resources
 public actor DocsResourceProvider: ResourceProvider {
-    private let configuration: CupertinoConfiguration
+    private let configuration: Shared.Configuration
     private var metadata: CrawlMetadata?
     private let evolutionDirectory: URL
 
-    public init(configuration: CupertinoConfiguration, evolutionDirectory: URL? = nil) {
+    public init(configuration: Shared.Configuration, evolutionDirectory: URL? = nil) {
         self.configuration = configuration
-        self.evolutionDirectory = evolutionDirectory ?? CupertinoConstants.defaultSwiftEvolutionDirectory
+        self.evolutionDirectory = evolutionDirectory ?? Shared.Constants.defaultSwiftEvolutionDirectory
         // Metadata will be loaded lazily on first access
     }
 
@@ -26,13 +26,13 @@ public actor DocsResourceProvider: ResourceProvider {
             let metadata = try await getMetadata()
 
             for (url, pageMetadata) in metadata.pages {
-                let uri = "\(CupertinoConstants.MCP.appleDocsScheme)\(pageMetadata.framework)/"
+                let uri = "\(Shared.Constants.MCP.appleDocsScheme)\(pageMetadata.framework)/"
                     + "\(URLUtilities.filename(from: URL(string: url)!))"
                 let resource = Resource(
                     uri: uri,
                     name: extractTitle(from: url),
-                    description: "\(CupertinoConstants.MCP.appleDocsDescriptionPrefix) \(pageMetadata.framework)",
-                    mimeType: CupertinoConstants.MCP.mimeTypeMarkdown
+                    description: "\(Shared.Constants.MCP.appleDocsDescriptionPrefix) \(pageMetadata.framework)",
+                    mimeType: Shared.Constants.MCP.mimeTypeMarkdown
                 )
                 resources.append(resource)
             }
@@ -49,13 +49,13 @@ public actor DocsResourceProvider: ResourceProvider {
                 )
 
                 for file in files where file.pathExtension == "md"
-                    && file.lastPathComponent.hasPrefix(CupertinoConstants.MCP.sePrefix) {
+                    && file.lastPathComponent.hasPrefix(Shared.Constants.MCP.sePrefix) {
                     let proposalID = file.deletingPathExtension().lastPathComponent
                     let resource = Resource(
-                        uri: "\(CupertinoConstants.MCP.swiftEvolutionScheme)\(proposalID)",
+                        uri: "\(Shared.Constants.MCP.swiftEvolutionScheme)\(proposalID)",
                         name: proposalID,
-                        description: CupertinoConstants.MCP.swiftEvolutionDescription,
-                        mimeType: CupertinoConstants.MCP.mimeTypeMarkdown
+                        description: Shared.Constants.MCP.swiftEvolutionDescription,
+                        mimeType: Shared.Constants.MCP.mimeTypeMarkdown
                     )
                     resources.append(resource)
                 }
@@ -74,7 +74,7 @@ public actor DocsResourceProvider: ResourceProvider {
         let filePath: URL
         let markdown: String
 
-        if uri.hasPrefix(CupertinoConstants.MCP.appleDocsScheme) {
+        if uri.hasPrefix(Shared.Constants.MCP.appleDocsScheme) {
             // Parse URI: apple-docs://framework/filename
             guard let components = parseAppleDocsURI(uri) else {
                 throw ResourceError.invalidURI(uri)
@@ -83,7 +83,7 @@ public actor DocsResourceProvider: ResourceProvider {
             // Find the file
             filePath = configuration.crawler.outputDirectory
                 .appendingPathComponent(components.framework)
-                .appendingPathComponent("\(components.filename)\(CupertinoConstants.FileName.markdownExtension)")
+                .appendingPathComponent("\(components.filename)\(Shared.Constants.FileName.markdownExtension)")
 
             guard FileManager.default.fileExists(atPath: filePath.path) else {
                 throw ResourceError.notFound(uri)
@@ -92,7 +92,7 @@ public actor DocsResourceProvider: ResourceProvider {
             // Read markdown content
             markdown = try String(contentsOf: filePath, encoding: .utf8)
 
-        } else if uri.hasPrefix(CupertinoConstants.MCP.swiftEvolutionScheme) {
+        } else if uri.hasPrefix(Shared.Constants.MCP.swiftEvolutionScheme) {
             // Parse URI: swift-evolution://SE-NNNN
             guard let proposalID = parseEvolutionURI(uri) else {
                 throw ResourceError.invalidURI(uri)
@@ -119,7 +119,7 @@ public actor DocsResourceProvider: ResourceProvider {
         let contents = ResourceContents.text(
             TextResourceContents(
                 uri: uri,
-                mimeType: CupertinoConstants.MCP.mimeTypeMarkdown,
+                mimeType: Shared.Constants.MCP.mimeTypeMarkdown,
                 text: markdown
             )
         )
@@ -130,16 +130,16 @@ public actor DocsResourceProvider: ResourceProvider {
     public func listResourceTemplates(cursor: String?) async throws -> ListResourceTemplatesResult? {
         let templates = [
             ResourceTemplate(
-                uriTemplate: CupertinoConstants.MCP.templateAppleDocs,
-                name: CupertinoConstants.MCP.appleDocsTemplateName,
-                description: CupertinoConstants.MCP.appleDocsTemplateDescription,
-                mimeType: CupertinoConstants.MCP.mimeTypeMarkdown
+                uriTemplate: Shared.Constants.MCP.templateAppleDocs,
+                name: Shared.Constants.MCP.appleDocsTemplateName,
+                description: Shared.Constants.MCP.appleDocsTemplateDescription,
+                mimeType: Shared.Constants.MCP.mimeTypeMarkdown
             ),
             ResourceTemplate(
-                uriTemplate: CupertinoConstants.MCP.templateSwiftEvolution,
-                name: CupertinoConstants.MCP.swiftEvolutionDescription,
-                description: CupertinoConstants.MCP.swiftEvolutionTemplateDescription,
-                mimeType: CupertinoConstants.MCP.mimeTypeMarkdown
+                uriTemplate: Shared.Constants.MCP.templateSwiftEvolution,
+                name: Shared.Constants.MCP.swiftEvolutionDescription,
+                description: Shared.Constants.MCP.swiftEvolutionTemplateDescription,
+                mimeType: Shared.Constants.MCP.mimeTypeMarkdown
             ),
         ]
 
@@ -179,11 +179,11 @@ public actor DocsResourceProvider: ResourceProvider {
 
     private func parseAppleDocsURI(_ uri: String) -> (framework: String, filename: String)? {
         // Expected format: apple-docs://framework/filename
-        guard uri.hasPrefix(CupertinoConstants.MCP.appleDocsScheme) else {
+        guard uri.hasPrefix(Shared.Constants.MCP.appleDocsScheme) else {
             return nil
         }
 
-        let path = uri.replacingOccurrences(of: CupertinoConstants.MCP.appleDocsScheme, with: "")
+        let path = uri.replacingOccurrences(of: Shared.Constants.MCP.appleDocsScheme, with: "")
         let components = path.split(separator: "/", maxSplits: 1)
 
         guard components.count == 2 else {
@@ -195,11 +195,11 @@ public actor DocsResourceProvider: ResourceProvider {
 
     private func parseEvolutionURI(_ uri: String) -> String? {
         // Expected format: swift-evolution://SE-NNNN
-        guard uri.hasPrefix(CupertinoConstants.MCP.swiftEvolutionScheme) else {
+        guard uri.hasPrefix(Shared.Constants.MCP.swiftEvolutionScheme) else {
             return nil
         }
 
-        let proposalID = uri.replacingOccurrences(of: CupertinoConstants.MCP.swiftEvolutionScheme, with: "")
+        let proposalID = uri.replacingOccurrences(of: Shared.Constants.MCP.swiftEvolutionScheme, with: "")
         return proposalID.isEmpty ? nil : proposalID
     }
 
@@ -232,7 +232,7 @@ enum ResourceError: Error, LocalizedError {
             return "Resource not found: \(uri)"
         case .noDocumentation:
             return "No documentation has been crawled yet. "
-                + "Run '\(CupertinoConstants.App.commandName) \(CupertinoConstants.Command.crawl)' first."
+                + "Run '\(Shared.Constants.App.commandName) \(Shared.Constants.Command.crawl)' first."
         }
     }
 }

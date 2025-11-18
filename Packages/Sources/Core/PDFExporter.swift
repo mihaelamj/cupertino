@@ -276,13 +276,13 @@ public final class PDFExporter {
     // MARK: - Logging
 
     private func logInfo(_ message: String) {
-        CupertinoLogger.pdf.info(message)
+        Logging.Logger.pdf.info(message)
         print(message)
     }
 
     private func logError(_ message: String) {
         let errorMessage = "❌ \(message)"
-        CupertinoLogger.pdf.error(message)
+        Logging.Logger.pdf.error(message)
         fputs("\(errorMessage)\n", stderr)
     }
 
@@ -299,7 +299,7 @@ public final class PDFExporter {
         ]
 
         for message in messages where !message.isEmpty {
-            CupertinoLogger.pdf.info(message)
+            Logging.Logger.pdf.info(message)
             print(message)
         }
     }

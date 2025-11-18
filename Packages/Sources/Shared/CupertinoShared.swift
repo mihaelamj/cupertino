@@ -14,34 +14,34 @@
 
 /*
  // Create configuration
- let config = CupertinoConfiguration(
-     crawler: CrawlerConfiguration(
-         startURL: URL(string: "\(CupertinoConstants.BaseURL.appleDeveloperDocs)swiftui")!,
+ let config = Shared.Configuration(
+     crawler: Shared.CrawlerConfiguration(
+         startURL: URL(string: "\(Shared.Constants.BaseURL.appleDeveloperDocs)swiftui")!,
          maxPages: 1000
      ),
-     changeDetection: ChangeDetectionConfiguration(enabled: true),
-     output: OutputConfiguration(format: .markdown)
+     changeDetection: Shared.ChangeDetectionConfiguration(enabled: true),
+     output: Shared.OutputConfiguration(format: .markdown)
  )
 
  // Save configuration
- let configURL = CupertinoConstants.defaultConfigFile
+ let configURL = Shared.Constants.defaultConfigFile
  try config.save(to: configURL)
 
  // Create metadata tracker
  var metadata = CrawlMetadata()
 
  // Add page
- let exampleURL = "\(CupertinoConstants.BaseURL.appleDeveloperDocs)swiftui/view"
+ let exampleURL = "\(Shared.Constants.BaseURL.appleDeveloperDocs)swiftui/view"
  metadata.pages[exampleURL] = PageMetadata(
      url: exampleURL,
      framework: "swiftui",
-     filePath: CupertinoConstants.defaultDocsDirectory.appendingPathComponent("swiftui/view.md").path,
+     filePath: Shared.Constants.defaultDocsDirectory.appendingPathComponent("swiftui/view.md").path,
      contentHash: HashUtilities.sha256(of: "content"),
      depth: 1
  )
 
  // Save metadata
- let metadataURL = CupertinoConstants.defaultMetadataFile
+ let metadataURL = Shared.Constants.defaultMetadataFile
  try metadata.save(to: metadataURL)
  */
 

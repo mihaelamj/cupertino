@@ -10,10 +10,10 @@ extension Core {
     public final class EvolutionCrawler {
         private let outputDirectory: URL
         private let onlyAccepted: Bool
-        private let githubAPI = CupertinoConstants.BaseURL.githubAPI
-        private let githubRaw = CupertinoConstants.BaseURL.githubRaw
-        private let repo = CupertinoConstants.SwiftEvolution.repository
-        private let branch = CupertinoConstants.SwiftEvolution.branch
+        private let githubAPI = Shared.Constants.BaseURL.githubAPI
+        private let githubRaw = Shared.Constants.BaseURL.githubRaw
+        private let repo = Shared.Constants.SwiftEvolution.repository
+        private let branch = Shared.Constants.SwiftEvolution.branch
 
         public init(outputDirectory: URL, onlyAccepted: Bool = false) {
             self.outputDirectory = outputDirectory
@@ -58,7 +58,7 @@ extension Core {
                     }
 
                     // Rate limiting - be respectful to GitHub
-                    try await Task.sleep(for: CupertinoConstants.Delay.swiftEvolution)
+                    try await Task.sleep(for: Shared.Constants.Delay.swiftEvolution)
                 } catch {
                     stats.errors += 1
                     logError("Failed to download \(proposal.id): \(error)")
@@ -81,8 +81,8 @@ extension Core {
 
             var request = URLRequest(url: url)
             request.setValue(
-                CupertinoConstants.HTTPHeader.githubAccept,
-                forHTTPHeaderField: CupertinoConstants.HTTPHeader.accept
+                Shared.Constants.HTTPHeader.githubAccept,
+                forHTTPHeaderField: Shared.Constants.HTTPHeader.accept
             )
 
             let (data, response) = try await URLSession.shared.data(for: request)
@@ -104,7 +104,7 @@ extension Core {
                         return nil
                     }
                     // Only process .md files
-                    guard file.name.hasSuffix(CupertinoConstants.FileName.markdownExtension) else {
+                    guard file.name.hasSuffix(Shared.Constants.FileName.markdownExtension) else {
                         return nil
                     }
                     // Extract proposal ID (handles both "0001-..." and "SE-0001-..." formats)
@@ -149,7 +149,7 @@ extension Core {
             _ = HashUtilities.sha256(of: markdown)
 
             // Save to file with SE- prefix
-            let filename = "\(proposal.id)\(CupertinoConstants.FileName.markdownExtension)" // e.g., "SE-0001.md"
+            let filename = "\(proposal.id)\(Shared.Constants.FileName.markdownExtension)" // e.g., "SE-0001.md"
             let outputPath = outputDirectory.appendingPathComponent(filename)
             let isNew = !FileManager.default.fileExists(atPath: outputPath.path)
 
@@ -170,7 +170,7 @@ extension Core {
             // Extract proposal number from filename
             // Handles: "0001-keywords-as-argument-labels.md" -> "SE-0001"
             // Also handles: "SE-0001-keywords-as-argument-labels.md" -> "SE-0001"
-            guard let regex = try? NSRegularExpression(pattern: CupertinoConstants.Pattern.seProposalNumber),
+            guard let regex = try? NSRegularExpression(pattern: Shared.Constants.Pattern.seProposalNumber),
                   let match = regex.firstMatch(
                       in: filename,
                       range: NSRange(filename.startIndex..., in: filename)
@@ -187,7 +187,7 @@ extension Core {
         private func extractStatus(from markdown: String) -> String? {
             // Extract status from markdown content
             // Format: "* Status: **Implemented (Swift 2.2)**" or "* Status: **Accepted**"
-            guard let regex = try? NSRegularExpression(pattern: CupertinoConstants.Pattern.seStatus),
+            guard let regex = try? NSRegularExpression(pattern: Shared.Constants.Pattern.seStatus),
                   let match = regex.firstMatch(
                       in: markdown,
                       range: NSRange(markdown.startIndex..., in: markdown)
@@ -212,13 +212,13 @@ extension Core {
         // MARK: - Logging
 
         private func logInfo(_ message: String) {
-            CupertinoLogger.evolution.info(message)
+            Logging.Logger.evolution.info(message)
             print(message)
         }
 
         private func logError(_ message: String) {
             let errorMessage = "❌ \(message)"
-            CupertinoLogger.evolution.error(message)
+            Logging.Logger.evolution.error(message)
             fputs("\(errorMessage)\n", stderr)
         }
 
@@ -235,17 +235,12 @@ extension Core {
             ]
 
             for message in messages where !message.isEmpty {
-                CupertinoLogger.evolution.info(message)
+                Logging.Logger.evolution.info(message)
                 print(message)
             }
         }
     }
 }
-
-// MARK: - Backward Compatibility
-
-/// Legacy type alias for backward compatibility
-public typealias SwiftEvolutionCrawler = Core.EvolutionCrawler
 
 // MARK: - Models
 

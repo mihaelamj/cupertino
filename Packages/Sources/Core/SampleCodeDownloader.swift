@@ -31,7 +31,7 @@ public final class SampleCodeDownloader {
     private let maxSamples: Int?
     private let forceDownload: Bool
     private let visibleBrowser: Bool
-    private let sampleCodeListURL = CupertinoConstants.BaseURL.appleSampleCode
+    private let sampleCodeListURL = Shared.Constants.BaseURL.appleSampleCode
     private let cookiesPath: URL
 
     private var sharedWebView: WKWebView?
@@ -48,7 +48,7 @@ public final class SampleCodeDownloader {
         self.visibleBrowser = visibleBrowser
 
         // Store cookies in output directory
-        cookiesPath = outputDirectory.appendingPathComponent(CupertinoConstants.FileName.authCookies)
+        cookiesPath = outputDirectory.appendingPathComponent(Shared.Constants.FileName.authCookies)
     }
 
     // MARK: - Public API
@@ -104,7 +104,7 @@ public final class SampleCodeDownloader {
                 }
 
                 // Rate limiting - be respectful to Apple's servers
-                try await Task.sleep(for: CupertinoConstants.Delay.sampleCodeBetweenPages)
+                try await Task.sleep(for: Shared.Constants.Delay.sampleCodeBetweenPages)
             } catch {
                 stats.errors += 1
                 logError("Failed to download \(sample.name): \(error)")
@@ -127,7 +127,7 @@ public final class SampleCodeDownloader {
         _ = try await loadPage(webView, url: URL(string: sampleCodeListURL)!)
 
         // Wait extra time for dynamic content to load
-        try await Task.sleep(for: CupertinoConstants.Delay.sampleCodePageLoad)
+        try await Task.sleep(for: Shared.Constants.Delay.sampleCodePageLoad)
 
         // Extract samples using JavaScript
         let samples = try await extractSamplesWithJavaScript(webView)
@@ -190,7 +190,7 @@ public final class SampleCodeDownloader {
             }
 
             let slug = urlString
-                .replacingOccurrences(of: CupertinoConstants.BaseURL.appleDeveloperDocs, with: "")
+                .replacingOccurrences(of: Shared.Constants.BaseURL.appleDeveloperDocs, with: "")
                 .replacingOccurrences(of: "/", with: "-")
                 .lowercased()
 
@@ -225,7 +225,7 @@ public final class SampleCodeDownloader {
         _ = try await loadPage(webView, url: URL(string: sample.url)!)
 
         // Wait for page to fully load
-        try await Task.sleep(for: CupertinoConstants.Delay.sampleCodeInteraction)
+        try await Task.sleep(for: Shared.Constants.Delay.sampleCodeInteraction)
 
         // Find download link using JavaScript
         guard let downloadURL = try await findDownloadLinkWithJavaScript(webView, sampleURL: sample.url) else {
@@ -305,7 +305,7 @@ public final class SampleCodeDownloader {
             if result.hasPrefix("http") {
                 return URL(string: result)
             } else if result.hasPrefix("/") {
-                return URL(string: "\(CupertinoConstants.BaseURL.appleDeveloper)\(result)")
+                return URL(string: "\(Shared.Constants.BaseURL.appleDeveloper)\(result)")
             } else {
                 // Relative to current page
                 if let baseURL = URL(string: sampleURL) {
@@ -404,7 +404,7 @@ public final class SampleCodeDownloader {
             window.isReleasedWhenClosed = false // Important: keep window alive
 
             // Load Apple Developer login page
-            let loginURL = URL(string: CupertinoConstants.BaseURL.appleDeveloperAccount)!
+            let loginURL = URL(string: Shared.Constants.BaseURL.appleDeveloperAccount)!
             webView.load(URLRequest(url: loginURL))
 
             // Show window
@@ -471,7 +471,7 @@ public final class SampleCodeDownloader {
 
             // Filter for Apple-related cookies
             let appleCookies = cookies.filter { cookie in
-                cookie.domain.contains(CupertinoConstants.HostDomain.appleCom)
+                cookie.domain.contains(Shared.Constants.HostDomain.appleCom)
             }
 
             let cookieData = appleCookies.map { cookie in
@@ -499,10 +499,10 @@ public final class SampleCodeDownloader {
         _ = webView.load(URLRequest(url: url))
 
         // Wait for page to fully render
-        try await Task.sleep(for: CupertinoConstants.Delay.sampleCodeDownload)
+        try await Task.sleep(for: Shared.Constants.Delay.sampleCodeDownload)
 
         // Get HTML content
-        let html = try await webView.evaluateJavaScript(CupertinoConstants.JavaScript.getDocumentHTML) as? String ?? ""
+        let html = try await webView.evaluateJavaScript(Shared.Constants.JavaScript.getDocumentHTML) as? String ?? ""
 
         return html
     }
@@ -510,13 +510,13 @@ public final class SampleCodeDownloader {
     // MARK: - Logging
 
     private func logInfo(_ message: String) {
-        CupertinoLogger.samples.info(message)
+        Logging.Logger.samples.info(message)
         print(message)
     }
 
     private func logError(_ message: String) {
         let errorMessage = "❌ \(message)"
-        CupertinoLogger.samples.error(message)
+        Logging.Logger.samples.error(message)
         fputs("\(errorMessage)\n", stderr)
     }
 
@@ -533,7 +533,7 @@ public final class SampleCodeDownloader {
         ]
 
         for message in messages where !message.isEmpty {
-            CupertinoLogger.samples.info(message)
+            Logging.Logger.samples.info(message)
             print(message)
         }
     }

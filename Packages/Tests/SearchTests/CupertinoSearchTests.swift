@@ -7,7 +7,7 @@ import TestSupport
 
 @Test("Search result model is Codable")
 func searchResultCodable() throws {
-    let result = SearchResult(
+    let result = Search.Result(
         uri: "apple://documentation/swift/array",
         framework: "swift",
         title: "Array",
@@ -24,7 +24,7 @@ func searchResultCodable() throws {
     let encoder = JSONEncoder()
     let data = try encoder.encode(result)
     let decoder = JSONDecoder()
-    let decoded = try decoder.decode(SearchResult.self, from: data)
+    let decoded = try decoder.decode(Search.Result.self, from: data)
 
     #expect(decoded.uri == result.uri)
     #expect(decoded.title == result.title)

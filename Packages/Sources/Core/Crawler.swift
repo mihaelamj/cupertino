@@ -18,9 +18,9 @@ import WebKit
 extension Core {
     @MainActor
     public final class Crawler: NSObject {
-        private let configuration: CrawlerConfiguration
-        private let changeDetection: ChangeDetectionConfiguration
-        private let output: OutputConfiguration
+        private let configuration: Shared.CrawlerConfiguration
+        private let changeDetection: Shared.ChangeDetectionConfiguration
+        private let output: Shared.OutputConfiguration
         private let state: CrawlerState
 
         private var webView: WKWebView!
@@ -30,7 +30,7 @@ extension Core {
 
         private var onProgress: ((CrawlProgress) -> Void)?
 
-        public init(configuration: CupertinoConfiguration) async {
+        public init(configuration: Shared.Configuration) async {
             self.configuration = configuration.crawler
             changeDetection = configuration.changeDetection
             output = configuration.output
@@ -121,7 +121,7 @@ extension Core {
                     )
 
                     // Log progress periodically
-                    if visited.count % CupertinoConstants.Interval.progressLogEvery == 0 {
+                    if visited.count % Shared.Constants.Interval.progressLogEvery == 0 {
                         await logProgressUpdate()
                     }
                 } catch {
@@ -173,7 +173,7 @@ extension Core {
 
             let filename = URLUtilities.filename(from: url)
             let filePath = frameworkDir.appendingPathComponent(
-                "\(filename)\(CupertinoConstants.FileName.markdownExtension)"
+                "\(filename)\(Shared.Constants.FileName.markdownExtension)"
             )
 
             // Check if we should recrawl
@@ -245,7 +245,7 @@ extension Core {
             return try await withThrowingTaskGroup(of: String?.self) { group in
                 // Task 1: Timeout task returns nil
                 group.addTask {
-                    try await Task.sleep(for: CupertinoConstants.Timeout.pageLoad)
+                    try await Task.sleep(for: Shared.Constants.Timeout.pageLoad)
                     return nil
                 }
 
@@ -278,7 +278,7 @@ extension Core {
 
             // Use modern async evaluateJavaScript API
             let result = try await webView.evaluateJavaScript(
-                CupertinoConstants.JavaScript.getDocumentHTML,
+                Shared.Constants.JavaScript.getDocumentHTML,
                 in: nil,
                 contentWorld: .page
             )
@@ -294,7 +294,7 @@ extension Core {
             var links: [URL] = []
 
             // Extract href attributes from <a> tags
-            let pattern = CupertinoConstants.Pattern.htmlHref
+            let pattern = Shared.Constants.Pattern.htmlHref
             if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
                 let nsString = html as NSString
                 let matches = regex.matches(in: html, range: NSRange(location: 0, length: nsString.length))
@@ -331,14 +331,14 @@ extension Core {
         // MARK: - Logging
 
         private func logInfo(_ message: String) {
-            CupertinoLogger.crawler.info(message)
+            Logging.Logger.crawler.info(message)
             print(message)
             fflush(stdout)
         }
 
         private func logError(_ message: String) {
             let errorMessage = "❌ \(message)"
-            CupertinoLogger.crawler.error(message)
+            Logging.Logger.crawler.error(message)
             fputs("\(errorMessage)\n", stderr)
             fflush(stderr)
         }
@@ -364,7 +364,7 @@ extension Core {
             ]
 
             for message in messages {
-                CupertinoLogger.crawler.info(message)
+                Logging.Logger.crawler.info(message)
                 print(message)
             }
         }
@@ -384,7 +384,7 @@ extension Core {
             ]
 
             for message in messages where !message.isEmpty {
-                CupertinoLogger.crawler.info(message)
+                Logging.Logger.crawler.info(message)
                 print(message)
             }
         }
@@ -406,16 +406,16 @@ extension Core {
         /// Auto-generate priority package list if this was a Swift.org crawl
         private func generatePriorityPackagesIfSwiftOrg() async throws {
             // Check if start URL is Swift.org
-            guard configuration.startURL.absoluteString.contains(CupertinoConstants.HostDomain.swiftOrg) else {
+            guard configuration.startURL.absoluteString.contains(Shared.Constants.HostDomain.swiftOrg) else {
                 return
             }
 
-            logInfo("\n📋 Generating priority package list from \(CupertinoConstants.DisplayName.swiftOrg) documentation...")
+            logInfo("\n📋 Generating priority package list from \(Shared.Constants.DisplayName.swiftOrg) documentation...")
 
             // Use the output directory as Swift.org docs path
             let outputPath = configuration.outputDirectory
                 .deletingLastPathComponent()
-                .appendingPathComponent(CupertinoConstants.FileName.priorityPackages)
+                .appendingPathComponent(Shared.Constants.FileName.priorityPackages)
 
             let generator = PriorityPackageGenerator(
                 swiftOrgDocsPath: configuration.outputDirectory,
@@ -430,11 +430,6 @@ extension Core {
         }
     }
 }
-
-// MARK: - Backward Compatibility
-
-/// Legacy type alias for backward compatibility
-public typealias DocumentationCrawler = Core.Crawler
 
 // MARK: - WKNavigationDelegate
 

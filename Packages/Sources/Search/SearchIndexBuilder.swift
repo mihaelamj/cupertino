@@ -7,13 +7,13 @@ import Shared
 /// Builds search index from crawled documentation
 extension Search {
     public actor IndexBuilder {
-        private let searchIndex: SearchIndex
+        private let searchIndex: Search.Index
         private let metadata: CrawlMetadata
         private let docsDirectory: URL
         private let evolutionDirectory: URL?
 
         public init(
-            searchIndex: SearchIndex,
+            searchIndex: Search.Index,
             metadata: CrawlMetadata,
             docsDirectory: URL,
             evolutionDirectory: URL? = nil
@@ -152,7 +152,7 @@ extension Search {
                     skipped += 1
                 }
 
-                if (index + 1) % CupertinoConstants.Interval.progressLogEvery == 0 {
+                if (index + 1) % Shared.Constants.Interval.progressLogEvery == 0 {
                     logInfo("   Progress: \(index + 1)/\(proposalFiles.count)")
                 }
             }
@@ -222,7 +222,7 @@ extension Search {
 
         private func extractProposalID(from filename: String) -> String? {
             // Extract SE-NNNN from filenames like "SE-0001-optional-binding.md"
-            if let regex = try? NSRegularExpression(pattern: CupertinoConstants.Pattern.seReference, options: []),
+            if let regex = try? NSRegularExpression(pattern: Shared.Constants.Pattern.seReference, options: []),
                let match = regex.firstMatch(in: filename, range: NSRange(filename.startIndex..., in: filename)),
                let range = Range(match.range(at: 1), in: filename) {
                 return String(filename[range])
@@ -231,19 +231,14 @@ extension Search {
         }
 
         private func logInfo(_ message: String) {
-            CupertinoLogger.search.info(message)
+            Logging.Logger.search.info(message)
             print(message)
         }
 
         private func logError(_ message: String) {
             let errorMessage = "❌ \(message)"
-            CupertinoLogger.search.error(message)
+            Logging.Logger.search.error(message)
             fputs("\(errorMessage)\n", stderr)
         }
     }
 }
-
-// MARK: - Backward Compatibility
-
-/// Legacy type alias for backward compatibility
-public typealias SearchIndexBuilder = Search.IndexBuilder

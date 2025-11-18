@@ -42,11 +42,6 @@ extension Search {
     }
 }
 
-// MARK: - Backward Compatibility
-
-/// Legacy type alias for backward compatibility
-public typealias SearchResult = Search.Result
-
 // MARK: - Sample Code Search Result
 
 /// A sample code search result with metadata and local file information
@@ -101,11 +96,6 @@ extension Search {
         }
     }
 }
-
-// MARK: - Backward Compatibility
-
-/// Legacy type alias for backward compatibility
-public typealias SampleCodeSearchResult = Search.SampleCodeResult
 
 // MARK: - Search Errors
 

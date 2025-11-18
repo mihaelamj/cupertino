@@ -11,7 +11,7 @@ extension Logging {
         // MARK: - Subsystems
 
         /// Main subsystem identifier
-        private static let subsystem = CupertinoConstants.Logging.subsystem
+        private static let subsystem = Shared.Constants.Logging.subsystem
 
         /// Logger for crawler operations
         public static let crawler = os.Logger(subsystem: subsystem, category: "crawler")
@@ -38,11 +38,6 @@ extension Logging {
         public static let samples = os.Logger(subsystem: subsystem, category: "samples")
     }
 }
-
-// MARK: - Backward Compatibility
-
-/// Legacy type alias for backward compatibility
-public typealias CupertinoLogger = Logging.Logger
 
 // MARK: - Convenience Extensions
 
@@ -108,11 +103,6 @@ extension Logging {
         }
     }
 }
-
-// MARK: - Backward Compatibility
-
-/// Legacy type alias for backward compatibility
-public typealias ConsoleLogger = Logging.ConsoleLogger
 
 // MARK: - Log Viewing Instructions
 

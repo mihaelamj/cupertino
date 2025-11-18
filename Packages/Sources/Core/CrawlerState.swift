@@ -6,12 +6,12 @@ import Shared
 
 /// Manages crawler state including metadata and change detection
 public actor CrawlerState {
-    private let configuration: ChangeDetectionConfiguration
+    private let configuration: Shared.ChangeDetectionConfiguration
     private var metadata: CrawlMetadata
-    private var autoSaveInterval: TimeInterval = CupertinoConstants.Interval.autoSave
+    private var autoSaveInterval: TimeInterval = Shared.Constants.Interval.autoSave
     private var lastAutoSave: Date = .init()
 
-    public init(configuration: ChangeDetectionConfiguration) {
+    public init(configuration: Shared.ChangeDetectionConfiguration) {
         self.configuration = configuration
         metadata = CrawlMetadata()
 
@@ -19,9 +19,9 @@ public actor CrawlerState {
         if FileManager.default.fileExists(atPath: configuration.metadataFile.path) {
             do {
                 metadata = try CrawlMetadata.load(from: configuration.metadataFile)
-                CupertinoLogger.crawler.info("✅ Loaded existing metadata: \(metadata.pages.count) pages")
+                Logging.Logger.crawler.info("✅ Loaded existing metadata: \(metadata.pages.count) pages")
             } catch {
-                CupertinoLogger.crawler.warning("⚠️  Failed to load metadata: \(error.localizedDescription)")
+                Logging.Logger.crawler.warning("⚠️  Failed to load metadata: \(error.localizedDescription)")
                 print("⚠️  Failed to load metadata: \(error.localizedDescription)")
                 print("   Starting with fresh metadata")
             }
@@ -142,7 +142,7 @@ public actor CrawlerState {
         try metadata.save(to: configuration.metadataFile)
         lastAutoSave = Date()
 
-        CupertinoLogger.crawler.info("💾 Saved session state: \(visited.count) visited, \(queue.count) queued")
+        Logging.Logger.crawler.info("💾 Saved session state: \(visited.count) visited, \(queue.count) queued")
     }
 
     /// Check if auto-save is needed and perform it

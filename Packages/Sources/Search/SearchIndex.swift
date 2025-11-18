@@ -23,7 +23,7 @@ extension Search {
         private var isInitialized = false
 
         public init(
-            dbPath: URL = CupertinoConstants.defaultSearchDatabase
+            dbPath: URL = Shared.Constants.defaultSearchDatabase
         ) async throws {
             self.dbPath = dbPath
 
@@ -223,9 +223,9 @@ extension Search {
         public func searchSampleCode(
             query: String,
             framework: String? = nil,
-            limit: Int = CupertinoConstants.Limit.defaultSearchLimit,
+            limit: Int = Shared.Constants.Limit.defaultSearchLimit,
             sampleCodeDirectory: URL? = nil
-        ) async throws -> [SampleCodeSearchResult] {
+        ) async throws -> [Search.SampleCodeResult] {
             guard let database else {
                 throw SearchError.databaseNotInitialized
             }
@@ -273,7 +273,7 @@ extension Search {
             }
 
             // Execute and collect results
-            var results: [SampleCodeSearchResult] = []
+            var results: [Search.SampleCodeResult] = []
 
             while sqlite3_step(statement) == SQLITE_ROW {
                 guard let urlPtr = sqlite3_column_text(statement, 0),
@@ -306,7 +306,7 @@ extension Search {
                 }
 
                 results.append(
-                    SampleCodeSearchResult(
+                    Search.SampleCodeResult(
                         url: url,
                         framework: framework,
                         title: title,
@@ -411,8 +411,8 @@ extension Search {
         public func search(
             query: String,
             framework: String? = nil,
-            limit: Int = CupertinoConstants.Limit.defaultSearchLimit
-        ) async throws -> [SearchResult] {
+            limit: Int = Shared.Constants.Limit.defaultSearchLimit
+        ) async throws -> [Search.Result] {
             guard let database else {
                 throw SearchError.databaseNotInitialized
             }
@@ -460,7 +460,7 @@ extension Search {
             }
 
             // Execute and collect results
-            var results: [SearchResult] = []
+            var results: [Search.Result] = []
 
             while sqlite3_step(statement) == SQLITE_ROW {
                 guard let uriPtr = sqlite3_column_text(statement, 0),
@@ -481,7 +481,7 @@ extension Search {
                 let rank = sqlite3_column_double(statement, 6)
 
                 results.append(
-                    SearchResult(
+                    Search.Result(
                         uri: uri,
                         framework: framework,
                         title: title,
@@ -578,7 +578,7 @@ extension Search {
 
         private func extractSummary(
             from content: String,
-            maxLength: Int = CupertinoConstants.ContentLimit.summaryMaxLength
+            maxLength: Int = Shared.Constants.ContentLimit.summaryMaxLength
         ) -> String {
             // Remove YAML front matter
             var cleaned = content
@@ -623,8 +623,3 @@ extension Search {
         }
     }
 }
-
-// MARK: - Backward Compatibility
-
-/// Legacy type alias for backward compatibility
-public typealias SearchIndex = Search.Index

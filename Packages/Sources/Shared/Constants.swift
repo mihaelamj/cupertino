@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Cupertino Constants
 
 // swiftlint:disable type_body_length
-// Justification: CupertinoConstants serves as central configuration hub for the entire application.
+// Justification: Shared.Constants serves as central configuration hub for the entire application.
 // Contains directory names, file names, URL patterns, limits, delays, and MCP configuration.
 // Splitting would scatter related constants and reduce discoverability.
 // Organized with clear MARK sections for easy navigation.
@@ -259,7 +259,7 @@ extension Shared {
             }
 
             /// GitHub repository URL (raw string format for pattern matching contexts)
-            /// Usage: `url: "\(CupertinoConstants.URLTemplate.githubRepoFormat(owner: owner, repo: repo))"`
+            /// Usage: `url: "\(Shared.Constants.URLTemplate.githubRepoFormat(owner: owner, repo: repo))"`
             public static func githubRepoFormat(owner: String, repo: String) -> String {
                 githubRepo(owner: owner, repo: repo)
             }
@@ -868,8 +868,3 @@ extension Shared {
         }
     }
 }
-
-// MARK: - Backward Compatibility
-
-/// Legacy type alias for backward compatibility
-public typealias CupertinoConstants = Shared.Constants

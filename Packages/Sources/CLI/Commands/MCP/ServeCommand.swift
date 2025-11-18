@@ -13,7 +13,7 @@ import Shared
 struct ServeCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "serve",
-        abstract: CupertinoConstants.HelpText.mcpAbstract,
+        abstract: Shared.Constants.HelpText.mcpAbstract,
         discussion: """
         Starts the Model Context Protocol (MCP) server that provides documentation
         search and access capabilities for AI assistants.
@@ -26,18 +26,18 @@ struct ServeCommand: AsyncParsableCommand {
         """
     )
 
-    @Option(name: .long, help: ArgumentHelp(CupertinoConstants.HelpText.docsDir))
-    var docsDir: String = CupertinoConstants.defaultDocsDirectory.path
+    @Option(name: .long, help: ArgumentHelp(Shared.Constants.HelpText.docsDir))
+    var docsDir: String = Shared.Constants.defaultDocsDirectory.path
 
-    @Option(name: .long, help: ArgumentHelp(CupertinoConstants.HelpText.evolutionDir))
-    var evolutionDir: String = CupertinoConstants.defaultSwiftEvolutionDirectory.path
+    @Option(name: .long, help: ArgumentHelp(Shared.Constants.HelpText.evolutionDir))
+    var evolutionDir: String = Shared.Constants.defaultSwiftEvolutionDirectory.path
 
-    @Option(name: .long, help: ArgumentHelp(CupertinoConstants.HelpText.searchDB))
-    var searchDB: String = CupertinoConstants.defaultSearchDatabase.path
+    @Option(name: .long, help: ArgumentHelp(Shared.Constants.HelpText.searchDB))
+    var searchDB: String = Shared.Constants.defaultSearchDatabase.path
 
     mutating func run() async throws {
-        let config = CupertinoConfiguration(
-            crawler: CrawlerConfiguration(
+        let config = Shared.Configuration(
+            crawler: Shared.CrawlerConfiguration(
                 outputDirectory: URL(fileURLWithPath: docsDir).expandingTildeInPath
             )
         )
@@ -57,7 +57,7 @@ struct ServeCommand: AsyncParsableCommand {
             throw ExitCode.failure
         }
 
-        let server = MCPServer(name: CupertinoConstants.App.mcpServerName, version: CupertinoConstants.App.version)
+        let server = MCPServer(name: Shared.Constants.App.mcpServerName, version: Shared.Constants.App.version)
 
         await registerProviders(
             server: server,
@@ -79,7 +79,7 @@ struct ServeCommand: AsyncParsableCommand {
 
     private func registerProviders(
         server: MCPServer,
-        config: CupertinoConfiguration,
+        config: Shared.Configuration,
         evolutionURL: URL,
         searchDBURL: URL
     ) async {
@@ -95,32 +95,32 @@ struct ServeCommand: AsyncParsableCommand {
     private func registerSearchProvider(server: MCPServer, searchDBURL: URL) async {
         guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
             let infoMsg = "ℹ️  Search index not found at: \(searchDBURL.path)"
-            let cmd = "\(CupertinoConstants.App.commandName) data index"
+            let cmd = "\(Shared.Constants.App.commandName) data index"
             let hintMsg = "   Tools will not be available. Run '\(cmd)' to enable search."
-            CupertinoLogger.mcp.info("\(infoMsg) \(hintMsg)")
+            Logging.Logger.mcp.info("\(infoMsg) \(hintMsg)")
             fputs("\(infoMsg)\n", stderr)
             fputs("\(hintMsg)\n", stderr)
             return
         }
 
         do {
-            let searchIndex = try await SearchIndex(dbPath: searchDBURL)
+            let searchIndex = try await Search.Index(dbPath: searchDBURL)
             let toolProvider = CupertinoSearchToolProvider(searchIndex: searchIndex)
             await server.registerToolProvider(toolProvider)
             let message = "✅ Search enabled (index found)"
-            CupertinoLogger.mcp.info(message)
+            Logging.Logger.mcp.info(message)
             fputs("\(message)\n", stderr)
         } catch {
             let errorMsg = "⚠️  Failed to load search index: \(error)"
-            let cmd = "\(CupertinoConstants.App.commandName) data index"
+            let cmd = "\(Shared.Constants.App.commandName) data index"
             let hintMsg = "   Tools will not be available. Run '\(cmd)' to create the index."
-            CupertinoLogger.mcp.warning("\(errorMsg) \(hintMsg)")
+            Logging.Logger.mcp.warning("\(errorMsg) \(hintMsg)")
             fputs("\(errorMsg)\n", stderr)
             fputs("\(hintMsg)\n", stderr)
         }
     }
 
-    private func printStartupMessages(config: CupertinoConfiguration, evolutionURL: URL, searchDBURL: URL) {
+    private func printStartupMessages(config: Shared.Configuration, evolutionURL: URL, searchDBURL: URL) {
         let messages = [
             "🚀 Cupertino MCP Server starting...",
             "   Apple docs: \(config.crawler.outputDirectory.path)",
@@ -130,7 +130,7 @@ struct ServeCommand: AsyncParsableCommand {
         ]
 
         for message in messages {
-            CupertinoLogger.mcp.info(message)
+            Logging.Logger.mcp.info(message)
             fputs("\(message)\n", stderr)
         }
         fputs("\n", stderr)
@@ -152,7 +152,7 @@ struct ServeCommand: AsyncParsableCommand {
     }
 
     private func printGettingStartedGuide() {
-        let cmd = CupertinoConstants.App.commandName
+        let cmd = Shared.Constants.App.commandName
         let guide = """
 
         ╭─────────────────────────────────────────────────────────────────────────╮

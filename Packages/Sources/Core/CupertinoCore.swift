@@ -17,15 +17,15 @@
 
 /*
  // Create configuration
- let config = CupertinoConfiguration(
-     crawler: CrawlerConfiguration(
-         startURL: URL(string: "\(CupertinoConstants.BaseURL.appleDeveloperDocs)swiftui")!,
+ let config = Shared.Configuration(
+     crawler: Shared.CrawlerConfiguration(
+         startURL: URL(string: "\(Shared.Constants.BaseURL.appleDeveloperDocs)swiftui")!,
          maxPages: 100
      )
  )
 
  // Create and run crawler
- let crawler = await DocumentationCrawler(configuration: config)
+ let crawler = await Core.Crawler(configuration: config)
 
  let stats = try await crawler.crawl { progress in
      print("Progress: \(progress.percentage)% - \(progress.currentURL)")

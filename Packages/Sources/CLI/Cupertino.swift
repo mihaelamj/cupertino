@@ -7,9 +7,9 @@ import Shared
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
 struct Cupertino: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: CupertinoConstants.App.commandName,
+        commandName: Shared.Constants.App.commandName,
         abstract: "MCP Server for Apple Documentation, Swift Evolution, and Swift Packages",
-        version: CupertinoConstants.App.version,
+        version: Shared.Constants.App.version,
         subcommands: [
             MCPCommand.self,
             Crawl.self,

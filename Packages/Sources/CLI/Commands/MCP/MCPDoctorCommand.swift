@@ -27,14 +27,14 @@ struct MCPDoctorCommand: AsyncParsableCommand {
         """
     )
 
-    @Option(name: .long, help: ArgumentHelp(CupertinoConstants.HelpText.docsDir))
-    var docsDir: String = CupertinoConstants.defaultDocsDirectory.path
+    @Option(name: .long, help: ArgumentHelp(Shared.Constants.HelpText.docsDir))
+    var docsDir: String = Shared.Constants.defaultDocsDirectory.path
 
-    @Option(name: .long, help: ArgumentHelp(CupertinoConstants.HelpText.evolutionDir))
-    var evolutionDir: String = CupertinoConstants.defaultSwiftEvolutionDirectory.path
+    @Option(name: .long, help: ArgumentHelp(Shared.Constants.HelpText.evolutionDir))
+    var evolutionDir: String = Shared.Constants.defaultSwiftEvolutionDirectory.path
 
-    @Option(name: .long, help: ArgumentHelp(CupertinoConstants.HelpText.searchDB))
-    var searchDB: String = CupertinoConstants.defaultSearchDatabase.path
+    @Option(name: .long, help: ArgumentHelp(Shared.Constants.HelpText.searchDB))
+    var searchDB: String = Shared.Constants.defaultSearchDatabase.path
 
     mutating func run() async throws {
         print("🏥 MCP Server Health Check")
@@ -136,7 +136,7 @@ struct MCPDoctorCommand: AsyncParsableCommand {
         }
 
         do {
-            let searchIndex = try await SearchIndex(dbPath: searchDBURL)
+            let searchIndex = try await Search.Index(dbPath: searchDBURL)
             let frameworks = try await searchIndex.listFrameworks()
             let fileSize = try FileManager.default.attributesOfItem(atPath: searchDBURL.path)[.size] as? UInt64 ?? 0
             let sizeMB = Double(fileSize) / 1048576.0
@@ -157,7 +157,7 @@ struct MCPDoctorCommand: AsyncParsableCommand {
     private func checkResourceProviders() -> Bool {
         print("🔧 Providers")
         print("   ✓ DocsResourceProvider: available")
-        print("   ✓ CupertinoSearchToolProvider: available")
+        print("   ✓ SearchToolProvider: available")
         print()
         return true
     }

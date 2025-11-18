@@ -15,11 +15,11 @@ extension Shared {
         public let retryAttempts: Int
 
         public init(
-            startURL: URL = URL(string: CupertinoConstants.BaseURL.appleDeveloperDocs)!,
+            startURL: URL = URL(string: Shared.Constants.BaseURL.appleDeveloperDocs)!,
             allowedPrefixes: [String]? = nil,
-            maxPages: Int = CupertinoConstants.Limit.defaultMaxPages,
+            maxPages: Int = Shared.Constants.Limit.defaultMaxPages,
             maxDepth: Int = 15,
-            outputDirectory: URL = CupertinoConstants.defaultDocsDirectory,
+            outputDirectory: URL = Shared.Constants.defaultDocsDirectory,
             logFile: URL? = nil,
             requestDelay: TimeInterval = 0.5,
             retryAttempts: Int = 3
@@ -35,10 +35,10 @@ extension Shared {
                 let basePrefix = "\(scheme)://\(host)"
 
                 // Add common documentation paths based on host
-                if host.contains(CupertinoConstants.HostDomain.swiftOrg) {
+                if host.contains(Shared.Constants.HostDomain.swiftOrg) {
                     // Allow entire swift.org domain - user can curate via start URL
                     self.allowedPrefixes = [basePrefix]
-                } else if host.contains(CupertinoConstants.HostDomain.appleCom) {
+                } else if host.contains(Shared.Constants.HostDomain.appleCom) {
                     self.allowedPrefixes = ["\(basePrefix)/documentation"]
                 } else {
                     // Generic: allow entire host
@@ -46,7 +46,7 @@ extension Shared {
                 }
             } else {
                 // Fallback to Apple docs
-                let docsURL = CupertinoConstants.BaseURL.appleDeveloperDocs
+                let docsURL = Shared.Constants.BaseURL.appleDeveloperDocs
                 self.allowedPrefixes = [docsURL.replacingOccurrences(of: "/documentation/", with: "/documentation")]
             }
 
@@ -99,10 +99,10 @@ extension Shared {
                 self.metadataFile = metadataFile
             } else if let outputDirectory {
                 // Store metadata.json in the output directory itself
-                self.metadataFile = outputDirectory.appendingPathComponent(CupertinoConstants.FileName.metadata)
+                self.metadataFile = outputDirectory.appendingPathComponent(Shared.Constants.FileName.metadata)
             } else {
                 // Global fallback
-                self.metadataFile = CupertinoConstants.defaultMetadataFile
+                self.metadataFile = Shared.Constants.defaultMetadataFile
             }
 
             self.forceRecrawl = forceRecrawl
@@ -153,10 +153,10 @@ extension Shared {
         }
 
         /// Load complete configuration from JSON file
-        public static func load(from url: URL) throws -> CupertinoConfiguration {
+        public static func load(from url: URL) throws -> Shared.Configuration {
             let data = try Data(contentsOf: url)
             let decoder = JSONDecoder()
-            return try decoder.decode(CupertinoConfiguration.self, from: data)
+            return try decoder.decode(Shared.Configuration.self, from: data)
         }
 
         /// Save complete configuration to JSON file
@@ -178,17 +178,3 @@ extension Shared {
         }
     }
 }
-
-// MARK: - Backward Compatibility
-
-/// Legacy type alias for backward compatibility
-public typealias CrawlerConfiguration = Shared.CrawlerConfiguration
-
-/// Legacy type alias for backward compatibility
-public typealias ChangeDetectionConfiguration = Shared.ChangeDetectionConfiguration
-
-/// Legacy type alias for backward compatibility
-public typealias OutputConfiguration = Shared.OutputConfiguration
-
-/// Legacy type alias for backward compatibility
-public typealias CupertinoConfiguration = Shared.Configuration

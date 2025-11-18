@@ -1,5 +1,4 @@
 import Foundation
-import Logging
 
 // MARK: - MCP Server
 
@@ -316,17 +315,14 @@ public actor MCPServer {
     // MARK: - Logging
 
     private func logInfo(_ message: String) {
-        CupertinoLogger.mcp.info(message)
         fputs("ℹ️  \(message)\n", stderr)
     }
 
     private func logWarning(_ message: String) {
-        CupertinoLogger.mcp.warning(message)
         fputs("⚠️  \(message)\n", stderr)
     }
 
     private func logError(_ message: String) {
-        CupertinoLogger.mcp.error(message)
         fputs("❌ \(message)\n", stderr)
     }
 }

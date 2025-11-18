@@ -47,10 +47,10 @@ struct MCPServerCommandTests {
         try "# Swift\n\nTest content about Swift language.".write(to: testFile, atomically: true, encoding: .utf8)
 
         let server = MCPServer(name: "test-server", version: "1.0.0")
-        let config = CupertinoConfiguration(
-            crawler: CrawlerConfiguration(outputDirectory: tempDir),
-            changeDetection: ChangeDetectionConfiguration(),
-            output: OutputConfiguration()
+        let config = Shared.Configuration(
+            crawler: Shared.CrawlerConfiguration(outputDirectory: tempDir),
+            changeDetection: Shared.ChangeDetectionConfiguration(),
+            output: Shared.OutputConfiguration()
         )
         let provider = DocsResourceProvider(configuration: config)
 
@@ -89,10 +89,10 @@ struct MCPServerCommandTests {
         )
         try testContent.write(to: testFile, atomically: true, encoding: .utf8)
 
-        let config = CupertinoConfiguration(
-            crawler: CrawlerConfiguration(outputDirectory: tempDir),
-            changeDetection: ChangeDetectionConfiguration(),
-            output: OutputConfiguration()
+        let config = Shared.Configuration(
+            crawler: Shared.CrawlerConfiguration(outputDirectory: tempDir),
+            changeDetection: Shared.ChangeDetectionConfiguration(),
+            output: Shared.OutputConfiguration()
         )
         let provider = DocsResourceProvider(configuration: config)
 
@@ -124,7 +124,7 @@ struct MCPServerCommandTests {
 
         // Create search index with test data
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await SearchIndex(dbPath: searchDbPath)
+        let searchIndex = try await Search.Index(dbPath: searchDbPath)
 
         // Index a test document
         try await searchIndex.indexDocument(
@@ -169,7 +169,7 @@ struct MCPServerCommandTests {
 
         // Create and populate search index
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await SearchIndex(dbPath: searchDbPath)
+        let searchIndex = try await Search.Index(dbPath: searchDbPath)
 
         try await searchIndex.indexDocument(
             uri: "https://developer.apple.com/documentation/swift/array",
@@ -217,10 +217,10 @@ struct MCPServerCommandTests {
         let testFile = tempDir.appendingPathComponent("SE-0255-omit-return.md")
         try testProposal.write(to: testFile, atomically: true, encoding: .utf8)
 
-        let config = CupertinoConfiguration(
-            crawler: CrawlerConfiguration(outputDirectory: tempDir),
-            changeDetection: ChangeDetectionConfiguration(),
-            output: OutputConfiguration()
+        let config = Shared.Configuration(
+            crawler: Shared.CrawlerConfiguration(outputDirectory: tempDir),
+            changeDetection: Shared.ChangeDetectionConfiguration(),
+            output: Shared.OutputConfiguration()
         )
         let provider = DocsResourceProvider(configuration: config, evolutionDirectory: tempDir)
 
@@ -255,10 +255,10 @@ struct MCPServerCommandTests {
             .appendingPathComponent("cupertino-error-test-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let config = CupertinoConfiguration(
-            crawler: CrawlerConfiguration(outputDirectory: tempDir),
-            changeDetection: ChangeDetectionConfiguration(),
-            output: OutputConfiguration()
+        let config = Shared.Configuration(
+            crawler: Shared.CrawlerConfiguration(outputDirectory: tempDir),
+            changeDetection: Shared.ChangeDetectionConfiguration(),
+            output: Shared.OutputConfiguration()
         )
         let provider = DocsResourceProvider(configuration: config)
 
@@ -294,18 +294,18 @@ struct MCPServerIntegrationTests {
 
         // Step 1: Crawl
         print("\n   📥 Step 1: Crawling documentation...")
-        let config = CupertinoConfiguration(
-            crawler: CrawlerConfiguration(
+        let config = Shared.Configuration(
+            crawler: Shared.CrawlerConfiguration(
                 startURL: URL(string: "https://developer.apple.com/documentation/swift")!,
                 maxPages: 1,
                 maxDepth: 0,
                 outputDirectory: tempDir
             ),
-            changeDetection: ChangeDetectionConfiguration(forceRecrawl: true),
-            output: OutputConfiguration(format: .markdown)
+            changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true),
+            output: Shared.OutputConfiguration(format: .markdown)
         )
 
-        let crawler = await DocumentationCrawler(configuration: config)
+        let crawler = await Core.Crawler(configuration: config)
         let stats = try await crawler.crawl()
         #expect(stats.totalPages > 0, "Should have crawled pages")
         print("   ✅ Crawled \(stats.totalPages) page(s)")
@@ -313,10 +313,10 @@ struct MCPServerIntegrationTests {
         // Step 2: Build index
         print("\n   🔍 Step 2: Building search index...")
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await SearchIndex(dbPath: searchDbPath)
+        let searchIndex = try await Search.Index(dbPath: searchDbPath)
 
         let metadata = try CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
-        let builder = SearchIndexBuilder(
+        let builder = Search.IndexBuilder(
             searchIndex: searchIndex,
             metadata: metadata,
             docsDirectory: tempDir,
@@ -330,10 +330,10 @@ struct MCPServerIntegrationTests {
         let server = MCPServer(name: "test-server", version: "1.0.0")
 
         // Register providers
-        let mcpConfig = CupertinoConfiguration(
-            crawler: CrawlerConfiguration(outputDirectory: tempDir),
-            changeDetection: ChangeDetectionConfiguration(),
-            output: OutputConfiguration()
+        let mcpConfig = Shared.Configuration(
+            crawler: Shared.CrawlerConfiguration(outputDirectory: tempDir),
+            changeDetection: Shared.ChangeDetectionConfiguration(),
+            output: Shared.OutputConfiguration()
         )
         let docsProvider = DocsResourceProvider(configuration: mcpConfig)
         let searchProvider = CupertinoSearchToolProvider(searchIndex: searchIndex)

@@ -145,7 +145,7 @@ public enum HTMLToMarkdown {
         let regexOptions: NSRegularExpression.Options = [.caseInsensitive, .dotMatchesLineSeparators]
 
         // Extract <pre><code> blocks with language
-        let pattern = CupertinoConstants.Pattern.htmlCodeBlockWithLanguage
+        let pattern = Shared.Constants.Pattern.htmlCodeBlockWithLanguage
         if let regex = try? NSRegularExpression(pattern: pattern, options: regexOptions) {
             let nsString = result as NSString
             let matches = regex.matches(in: result, range: NSRange(location: 0, length: nsString.length))

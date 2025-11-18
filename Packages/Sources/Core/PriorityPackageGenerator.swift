@@ -20,46 +20,46 @@ public actor PriorityPackageGenerator {
     }
 
     public func generate() async throws -> PriorityPackageList {
-        ConsoleLogger.info("🔍 Scanning \(CupertinoConstants.DisplayName.swiftOrg) documentation for package mentions...")
+        Logging.ConsoleLogger.info("🔍 Scanning \(Shared.Constants.DisplayName.swiftOrg) documentation for package mentions...")
 
         let packages = try await extractGitHubPackages()
 
         // Categorize packages
-        let applePackages = packages.filter { $0.owner.lowercased() == CupertinoConstants.GitHubOrg.apple }
-        let swiftlangPackages = packages.filter { $0.owner.lowercased() == CupertinoConstants.GitHubOrg.swiftlang }
-        let serverPackages = packages.filter { $0.owner.lowercased() == CupertinoConstants.GitHubOrg.swiftServer }
+        let applePackages = packages.filter { $0.owner.lowercased() == Shared.Constants.GitHubOrg.apple }
+        let swiftlangPackages = packages.filter { $0.owner.lowercased() == Shared.Constants.GitHubOrg.swiftlang }
+        let serverPackages = packages.filter { $0.owner.lowercased() == Shared.Constants.GitHubOrg.swiftServer }
         let ecosystemPackages = packages.filter {
-            !CupertinoConstants.GitHubOrg.officialOrgs.contains($0.owner.lowercased())
+            !Shared.Constants.GitHubOrg.officialOrgs.contains($0.owner.lowercased())
         }
 
-        ConsoleLogger.info("📦 Found \(packages.count) unique GitHub repositories:")
-        ConsoleLogger.info("   • \(CupertinoConstants.GitHubOrg.appleDisplay) packages: \(applePackages.count)")
-        ConsoleLogger.info("   • \(CupertinoConstants.GitHubOrg.swiftlangDisplay) packages: \(swiftlangPackages.count)")
-        ConsoleLogger.info("   • \(CupertinoConstants.GitHubOrg.swiftServerDisplay) packages: \(serverPackages.count)")
-        ConsoleLogger.info("   • Ecosystem packages: \(ecosystemPackages.count)")
+        Logging.ConsoleLogger.info("📦 Found \(packages.count) unique GitHub repositories:")
+        Logging.ConsoleLogger.info("   • \(Shared.Constants.GitHubOrg.appleDisplay) packages: \(applePackages.count)")
+        Logging.ConsoleLogger.info("   • \(Shared.Constants.GitHubOrg.swiftlangDisplay) packages: \(swiftlangPackages.count)")
+        Logging.ConsoleLogger.info("   • \(Shared.Constants.GitHubOrg.swiftServerDisplay) packages: \(serverPackages.count)")
+        Logging.ConsoleLogger.info("   • Ecosystem packages: \(ecosystemPackages.count)")
 
         // Build priority list
         let priorityList = try await PriorityPackageList(
-            version: CupertinoConstants.PriorityPackage.version,
+            version: Shared.Constants.PriorityPackage.version,
             generatedAt: ISO8601DateFormatter().string(from: Date()),
-            description: CupertinoConstants.PriorityPackage.listDescription,
-            sources: CupertinoConstants.PriorityPackage.sources,
-            updatePolicy: CupertinoConstants.PriorityPackage.updatePolicy,
+            description: Shared.Constants.PriorityPackage.listDescription,
+            sources: Shared.Constants.PriorityPackage.sources,
+            updatePolicy: Shared.Constants.PriorityPackage.updatePolicy,
             priorityLevels: PriorityLevels(
                 tier1AppleOfficial: TierInfo(
-                    description: CupertinoConstants.PriorityPackage.tier1Description,
+                    description: Shared.Constants.PriorityPackage.tier1Description,
                     packages: selectCriticalApplePackages(from: applePackages)
                 ),
                 tier2Swiftlang: TierInfo(
-                    description: CupertinoConstants.PriorityPackage.tier2Description,
+                    description: Shared.Constants.PriorityPackage.tier2Description,
                     packages: swiftlangPackages.sorted { $0.repo < $1.repo }
                 ),
                 tier3SwiftServer: TierInfo(
-                    description: CupertinoConstants.PriorityPackage.tier3Description,
+                    description: Shared.Constants.PriorityPackage.tier3Description,
                     packages: serverPackages.sorted { $0.repo < $1.repo }
                 ),
                 tier4Ecosystem: TierInfo(
-                    description: CupertinoConstants.PriorityPackage.tier4Description,
+                    description: Shared.Constants.PriorityPackage.tier4Description,
                     packages: selectTopEcosystemPackages(from: ecosystemPackages)
                 )
             ),
@@ -70,7 +70,7 @@ public actor PriorityPackageGenerator {
                 totalUniqueReposFound: packages.count,
                 sourceFilesScanned: countMarkdownFiles()
             ),
-            notes: CupertinoConstants.PriorityPackage.notes
+            notes: Shared.Constants.PriorityPackage.notes
         )
 
         // Save to JSON
@@ -79,7 +79,7 @@ public actor PriorityPackageGenerator {
         let data = try encoder.encode(priorityList)
         try data.write(to: outputPath)
 
-        ConsoleLogger.info("💾 Saved priority package list to: \(outputPath.path)")
+        Logging.ConsoleLogger.info("💾 Saved priority package list to: \(outputPath.path)")
 
         return priorityList
     }
@@ -125,7 +125,7 @@ public actor PriorityPackageGenerator {
     }
 
     private func extractGitHubURLs(from content: String) -> [PriorityPackageInfo] {
-        guard let regex = try? NSRegularExpression(pattern: CupertinoConstants.Pattern.githubURLLenient) else {
+        guard let regex = try? NSRegularExpression(pattern: Shared.Constants.Pattern.githubURLLenient) else {
             return []
         }
 
@@ -156,7 +156,7 @@ public actor PriorityPackageGenerator {
             packages.append(PriorityPackageInfo(
                 owner: owner,
                 repo: repo,
-                url: CupertinoConstants.URLTemplate.githubRepo(owner: owner, repo: repo)
+                url: Shared.Constants.URLTemplate.githubRepo(owner: owner, repo: repo)
             ))
         }
 
@@ -165,7 +165,7 @@ public actor PriorityPackageGenerator {
 
     private func selectCriticalApplePackages(from all: [PriorityPackageInfo]) -> [PriorityPackageInfo] {
         // Priority Apple packages (most commonly used)
-        let criticalRepos = CupertinoConstants.CriticalApplePackages.repositories
+        let criticalRepos = Shared.Constants.CriticalApplePackages.repositories
 
         return all.filter { pkg in
             criticalRepos.contains(pkg.repo.lowercased())
@@ -174,7 +174,7 @@ public actor PriorityPackageGenerator {
 
     private func selectTopEcosystemPackages(from all: [PriorityPackageInfo]) -> [PriorityPackageInfo] {
         // Well-known ecosystem packages
-        let knownPackages = CupertinoConstants.KnownEcosystemPackages.repositories
+        let knownPackages = Shared.Constants.KnownEcosystemPackages.repositories
 
         return all.filter { pkg in
             knownPackages.contains("\(pkg.owner)/\(pkg.repo)")

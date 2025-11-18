@@ -26,21 +26,21 @@ struct CrawlCommandTests {
             .appendingPathComponent("cupertino-crawl-test-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let config = CupertinoConfiguration(
-            crawler: CrawlerConfiguration(
+        let config = Shared.Configuration(
+            crawler: Shared.CrawlerConfiguration(
                 startURL: URL(string: "https://developer.apple.com/documentation/swift")!,
                 maxPages: 1,
                 maxDepth: 0,
                 outputDirectory: tempDir
             ),
-            changeDetection: ChangeDetectionConfiguration(forceRecrawl: true),
-            output: OutputConfiguration(format: .markdown)
+            changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true),
+            output: Shared.OutputConfiguration(format: .markdown)
         )
 
         print("🧪 Test: Crawl single page")
         print("   URL: \(config.crawler.startURL)")
 
-        let crawler = await DocumentationCrawler(configuration: config)
+        let crawler = await Core.Crawler(configuration: config)
         let stats = try await crawler.crawl()
 
         // Verify stats
@@ -84,26 +84,26 @@ struct CrawlCommandTests {
             .appendingPathComponent("cupertino-resume-test-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let config = CupertinoConfiguration(
-            crawler: CrawlerConfiguration(
+        let config = Shared.Configuration(
+            crawler: Shared.CrawlerConfiguration(
                 startURL: URL(string: "https://developer.apple.com/documentation/swift")!,
                 maxPages: 1,
                 maxDepth: 0,
                 outputDirectory: tempDir
             ),
-            changeDetection: ChangeDetectionConfiguration(enabled: true, forceRecrawl: false),
-            output: OutputConfiguration(format: .markdown)
+            changeDetection: Shared.ChangeDetectionConfiguration(enabled: true, forceRecrawl: false),
+            output: Shared.OutputConfiguration(format: .markdown)
         )
 
         print("🧪 Test: Crawl with resume")
 
         // First crawl
-        let crawler1 = await DocumentationCrawler(configuration: config)
+        let crawler1 = await Core.Crawler(configuration: config)
         let stats1 = try await crawler1.crawl()
         #expect(stats1.newPages == 1, "First crawl should have 1 new page")
 
         // Second crawl (should skip unchanged)
-        let crawler2 = await DocumentationCrawler(configuration: config)
+        let crawler2 = await Core.Crawler(configuration: config)
         let stats2 = try await crawler2.crawl()
         #expect(stats2.skippedPages == 1, "Second crawl should skip unchanged page")
         #expect(stats2.newPages == 0, "Second crawl should have no new pages")
@@ -122,7 +122,7 @@ struct CrawlCommandTests {
 
         print("🧪 Test: Crawl Swift Evolution proposal")
 
-        let crawler = SwiftEvolutionCrawler(
+        let crawler = Core.EvolutionCrawler(
             outputDirectory: tempDir,
             onlyAccepted: true
         )
@@ -159,26 +159,26 @@ struct IndexCommandTests {
         print("🧪 Test: Build search index")
 
         // First, crawl a page to have data
-        let config = CupertinoConfiguration(
-            crawler: CrawlerConfiguration(
+        let config = Shared.Configuration(
+            crawler: Shared.CrawlerConfiguration(
                 startURL: URL(string: "https://developer.apple.com/documentation/swift")!,
                 maxPages: 1,
                 maxDepth: 0,
                 outputDirectory: tempDir
             ),
-            changeDetection: ChangeDetectionConfiguration(forceRecrawl: true),
-            output: OutputConfiguration(format: .markdown)
+            changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true),
+            output: Shared.OutputConfiguration(format: .markdown)
         )
 
-        let crawler = await DocumentationCrawler(configuration: config)
+        let crawler = await Core.Crawler(configuration: config)
         _ = try await crawler.crawl()
 
         // Build search index
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await SearchIndex(dbPath: searchDbPath)
+        let searchIndex = try await Search.Index(dbPath: searchDbPath)
 
         let metadata = try CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
-        let builder = SearchIndexBuilder(
+        let builder = Search.IndexBuilder(
             searchIndex: searchIndex,
             metadata: metadata,
             docsDirectory: tempDir,
@@ -214,25 +214,25 @@ struct IndexCommandTests {
         print("🧪 Test: Search with framework filter")
 
         // Crawl and index
-        let config = CupertinoConfiguration(
-            crawler: CrawlerConfiguration(
+        let config = Shared.Configuration(
+            crawler: Shared.CrawlerConfiguration(
                 startURL: URL(string: "https://developer.apple.com/documentation/swift")!,
                 maxPages: 1,
                 maxDepth: 0,
                 outputDirectory: tempDir
             ),
-            changeDetection: ChangeDetectionConfiguration(forceRecrawl: true),
-            output: OutputConfiguration(format: .markdown)
+            changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true),
+            output: Shared.OutputConfiguration(format: .markdown)
         )
 
-        let crawler = await DocumentationCrawler(configuration: config)
+        let crawler = await Core.Crawler(configuration: config)
         _ = try await crawler.crawl()
 
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await SearchIndex(dbPath: searchDbPath)
+        let searchIndex = try await Search.Index(dbPath: searchDbPath)
 
         let metadata = try CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
-        let builder = SearchIndexBuilder(
+        let builder = Search.IndexBuilder(
             searchIndex: searchIndex,
             metadata: metadata,
             docsDirectory: tempDir,
@@ -267,14 +267,14 @@ struct IndexCommandTests {
         print("🧪 Test: Index empty directory")
 
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await SearchIndex(dbPath: searchDbPath)
+        let searchIndex = try await Search.Index(dbPath: searchDbPath)
 
         // Create empty metadata
         let emptyMetadata = CrawlMetadata()
         let metadataFile = tempDir.appendingPathComponent("metadata.json")
         try emptyMetadata.save(to: metadataFile)
 
-        let builder = SearchIndexBuilder(
+        let builder = Search.IndexBuilder(
             searchIndex: searchIndex,
             metadata: emptyMetadata,
             docsDirectory: tempDir,
@@ -305,7 +305,7 @@ struct FetchCommandTests {
 
         print("🧪 Test: Fetch Swift packages")
 
-        let fetcher = PackageFetcher(
+        let fetcher = Core.PackageFetcher(
             outputDirectory: tempDir
         )
 

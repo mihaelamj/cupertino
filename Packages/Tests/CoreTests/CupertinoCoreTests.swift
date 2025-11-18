@@ -245,7 +245,7 @@ func downloadRealAppleDocPage() async throws {
     let config = createTestConfiguration(outputDirectory: tempDir)
     logTestStart(config: config)
 
-    let crawler = await DocumentationCrawler(configuration: config)
+    let crawler = await Core.Crawler(configuration: config)
     let stats = try await crawler.crawl()
 
     try verifyBasicStats(stats)
@@ -265,20 +265,20 @@ private func cleanupTempDirectory(_ tempDir: URL) {
     try? FileManager.default.removeItem(at: tempDir)
 }
 
-private func createTestConfiguration(outputDirectory: URL) -> CupertinoConfiguration {
-    CupertinoConfiguration(
-        crawler: CrawlerConfiguration(
+private func createTestConfiguration(outputDirectory: URL) -> Shared.Configuration {
+    Shared.Configuration(
+        crawler: Shared.CrawlerConfiguration(
             startURL: URL(string: "https://developer.apple.com/documentation/swift")!,
             maxPages: 1,
             maxDepth: 1,
             outputDirectory: outputDirectory
         ),
-        changeDetection: ChangeDetectionConfiguration(forceRecrawl: true),
-        output: OutputConfiguration(format: .markdown)
+        changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true),
+        output: Shared.OutputConfiguration(format: .markdown)
     )
 }
 
-private func logTestStart(config: CupertinoConfiguration) {
+private func logTestStart(config: Shared.Configuration) {
     print("🧪 Integration Test: Downloading real Apple doc page...")
     print("   URL: \(config.crawler.startURL)")
     print("   Output: \(config.crawler.outputDirectory.path)")

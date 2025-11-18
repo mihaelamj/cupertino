@@ -27,7 +27,7 @@ extension Cupertino {
         var startURL: String?
 
         @Option(name: .long, help: "Maximum number of pages to crawl")
-        var maxPages: Int = CupertinoConstants.Limit.defaultMaxPages
+        var maxPages: Int = Shared.Constants.Limit.defaultMaxPages
 
         @Option(name: .long, help: "Maximum depth to crawl")
         var maxDepth: Int = 15
@@ -71,14 +71,14 @@ extension Cupertino {
 
         private func logStartMessage() {
             if resume {
-                ConsoleLogger.info("🔄 AppleCupertino - Resuming from saved session\n")
+                Logging.ConsoleLogger.info("🔄 AppleCupertino - Resuming from saved session\n")
             } else {
-                ConsoleLogger.info("🚀 AppleCupertino - Crawling \(type.displayName)\n")
+                Logging.ConsoleLogger.info("🚀 AppleCupertino - Crawling \(type.displayName)\n")
             }
         }
 
         private mutating func runAllCrawls() async throws {
-            ConsoleLogger.info("📚 Crawling all documentation types in parallel:\n")
+            Logging.ConsoleLogger.info("📚 Crawling all documentation types in parallel:\n")
             let baseCommand = self
 
             try await withThrowingTaskGroup(of: (CrawlType, Result<Void, Error>).self) { group in
@@ -97,7 +97,7 @@ extension Cupertino {
             _ crawlType: CrawlType,
             baseCommand: Crawl
         ) async -> (CrawlType, Result<Void, Error>) {
-            ConsoleLogger.info("🚀 Starting \(crawlType.displayName)...")
+            Logging.ConsoleLogger.info("🚀 Starting \(crawlType.displayName)...")
             var crawlCommand = baseCommand
             crawlCommand.type = crawlType
             crawlCommand.outputDir = crawlType.defaultOutputDir
@@ -119,9 +119,9 @@ extension Cupertino {
                 let (crawlType, outcome) = result
                 switch outcome {
                 case .success:
-                    ConsoleLogger.info("✅ Completed \(crawlType.displayName)")
+                    Logging.ConsoleLogger.info("✅ Completed \(crawlType.displayName)")
                 case .failure(let error):
-                    ConsoleLogger.error("❌ Failed \(crawlType.displayName): \(error)")
+                    Logging.ConsoleLogger.error("❌ Failed \(crawlType.displayName): \(error)")
                 }
             }
             return results
@@ -134,9 +134,9 @@ extension Cupertino {
             }
 
             if failures.isEmpty {
-                ConsoleLogger.info("\n✅ All documentation types crawled successfully!")
+                Logging.ConsoleLogger.info("\n✅ All documentation types crawled successfully!")
             } else {
-                ConsoleLogger.info("\n⚠️  Completed with \(failures.count) failure(s)")
+                Logging.ConsoleLogger.info("\n⚠️  Completed with \(failures.count) failure(s)")
                 throw ExitCode.failure
             }
         }
@@ -166,9 +166,9 @@ extension Cupertino {
 
         private func findExistingSession(for url: URL) async throws -> URL? {
             let candidates = [
-                CupertinoConstants.defaultDocsDirectory,
-                CupertinoConstants.defaultSwiftOrgDirectory,
-                CupertinoConstants.defaultSwiftBookDirectory,
+                Shared.Constants.defaultDocsDirectory,
+                Shared.Constants.defaultSwiftOrgDirectory,
+                Shared.Constants.defaultSwiftBookDirectory,
             ]
 
             for candidate in candidates {
@@ -181,7 +181,7 @@ extension Cupertino {
         }
 
         private func checkForSession(at directory: URL, matching url: URL) -> URL? {
-            let metadataFile = directory.appendingPathComponent(CupertinoConstants.FileName.metadata)
+            let metadataFile = directory.appendingPathComponent(Shared.Constants.FileName.metadata)
             guard FileManager.default.fileExists(atPath: metadataFile.path),
                   let data = try? Data(contentsOf: metadataFile),
                   let metadata = try? JSONDecoder().decode(CrawlMetadata.self, from: data),
@@ -192,14 +192,14 @@ extension Cupertino {
             else {
                 return nil
             }
-            ConsoleLogger.info(
+            Logging.ConsoleLogger.info(
                 "📂 Found existing session, resuming to: \(session.outputDirectory)"
             )
             return outputDir
         }
 
         private func scanCupertinoDirectory(for url: URL) async throws -> URL? {
-            let cupertinoDir = CupertinoConstants.defaultBaseDirectory
+            let cupertinoDir = Shared.Constants.defaultBaseDirectory
 
             guard let contents = try? FileManager.default.contentsOfDirectory(
                 at: cupertinoDir,
@@ -225,72 +225,72 @@ extension Cupertino {
         private func createConfiguration(
             url: URL,
             outputDirectory: URL
-        ) -> CupertinoConfiguration {
+        ) -> Shared.Configuration {
             let prefixes: [String]? = allowedPrefixes?
                 .split(separator: ",")
                 .map { String($0.trimmingCharacters(in: .whitespaces)) }
 
-            return CupertinoConfiguration(
-                crawler: CrawlerConfiguration(
+            return Shared.Configuration(
+                crawler: Shared.CrawlerConfiguration(
                     startURL: url,
                     allowedPrefixes: prefixes,
                     maxPages: maxPages,
                     maxDepth: maxDepth,
                     outputDirectory: outputDirectory
                 ),
-                changeDetection: ChangeDetectionConfiguration(
+                changeDetection: Shared.ChangeDetectionConfiguration(
                     forceRecrawl: force,
                     outputDirectory: outputDirectory
                 ),
-                output: OutputConfiguration(format: .markdown)
+                output: Shared.OutputConfiguration(format: .markdown)
             )
         }
 
-        private func executeCrawl(with config: CupertinoConfiguration) async throws {
-            let crawler = await DocumentationCrawler(configuration: config)
+        private func executeCrawl(with config: Shared.Configuration) async throws {
+            let crawler = await Core.Crawler(configuration: config)
             let stats = try await crawler.crawl { progress in
                 let percentage = String(format: "%.1f", progress.percentage)
                 let urlComponent = progress.currentURL.lastPathComponent
-                ConsoleLogger.output("   Progress: \(percentage)% - \(urlComponent)")
+                Logging.ConsoleLogger.output("   Progress: \(percentage)% - \(urlComponent)")
             }
 
             logCrawlCompletion(stats)
         }
 
         private func logCrawlCompletion(_ stats: CrawlStatistics) {
-            ConsoleLogger.output("")
-            ConsoleLogger.info("✅ Crawl completed!")
-            ConsoleLogger.info("   Total: \(stats.totalPages) pages")
-            ConsoleLogger.info("   New: \(stats.newPages)")
-            ConsoleLogger.info("   Updated: \(stats.updatedPages)")
-            ConsoleLogger.info("   Skipped: \(stats.skippedPages)")
+            Logging.ConsoleLogger.output("")
+            Logging.ConsoleLogger.info("✅ Crawl completed!")
+            Logging.ConsoleLogger.info("   Total: \(stats.totalPages) pages")
+            Logging.ConsoleLogger.info("   New: \(stats.newPages)")
+            Logging.ConsoleLogger.info("   Updated: \(stats.updatedPages)")
+            Logging.ConsoleLogger.info("   Skipped: \(stats.skippedPages)")
             if let duration = stats.duration {
-                ConsoleLogger.info("   Duration: \(Int(duration))s")
+                Logging.ConsoleLogger.info("   Duration: \(Int(duration))s")
             }
         }
 
         private func runEvolutionCrawl() async throws {
-            let defaultPath = CupertinoConstants.defaultSwiftEvolutionDirectory.path
+            let defaultPath = Shared.Constants.defaultSwiftEvolutionDirectory.path
             let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
 
-            let crawler = await SwiftEvolutionCrawler(
+            let crawler = await Core.EvolutionCrawler(
                 outputDirectory: outputURL,
                 onlyAccepted: onlyAccepted
             )
 
             let stats = try await crawler.crawl { progress in
                 let percentage = String(format: "%.1f", progress.percentage)
-                ConsoleLogger.output("   Progress: \(percentage)% - \(progress.proposalID)")
+                Logging.ConsoleLogger.output("   Progress: \(percentage)% - \(progress.proposalID)")
             }
 
-            ConsoleLogger.output("")
-            ConsoleLogger.info("✅ Download completed!")
-            ConsoleLogger.info("   Total: \(stats.totalProposals) proposals")
-            ConsoleLogger.info("   New: \(stats.newProposals)")
-            ConsoleLogger.info("   Updated: \(stats.updatedProposals)")
-            ConsoleLogger.info("   Errors: \(stats.errors)")
+            Logging.ConsoleLogger.output("")
+            Logging.ConsoleLogger.info("✅ Download completed!")
+            Logging.ConsoleLogger.info("   Total: \(stats.totalProposals) proposals")
+            Logging.ConsoleLogger.info("   New: \(stats.newProposals)")
+            Logging.ConsoleLogger.info("   Updated: \(stats.updatedProposals)")
+            Logging.ConsoleLogger.info("   Errors: \(stats.errors)")
             if let duration = stats.duration {
-                ConsoleLogger.info("   Duration: \(Int(duration))s")
+                Logging.ConsoleLogger.info("   Duration: \(Int(duration))s")
             }
         }
     }
@@ -324,7 +324,7 @@ extension Cupertino {
         var authenticate: Bool = false
 
         mutating func run() async throws {
-            ConsoleLogger.info("📦 Fetching \(type.displayName)\n")
+            Logging.ConsoleLogger.info("📦 Fetching \(type.displayName)\n")
 
             switch type {
             case .packages:
@@ -335,19 +335,19 @@ extension Cupertino {
         }
 
         private func runPackageFetch() async throws {
-            let defaultPath = CupertinoConstants.defaultPackagesDirectory.path
+            let defaultPath = Shared.Constants.defaultPackagesDirectory.path
             let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
 
             try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
 
-            if ProcessInfo.processInfo.environment[CupertinoConstants.EnvVar.githubToken] == nil {
-                ConsoleLogger.info(CupertinoConstants.Message.gitHubTokenTip)
-                ConsoleLogger.info("   \(CupertinoConstants.Message.rateLimitWithoutToken)")
-                ConsoleLogger.info("   \(CupertinoConstants.Message.rateLimitWithToken)")
-                ConsoleLogger.info("   \(CupertinoConstants.Message.exportGitHubToken)\n")
+            if ProcessInfo.processInfo.environment[Shared.Constants.EnvVar.githubToken] == nil {
+                Logging.ConsoleLogger.info(Shared.Constants.Message.gitHubTokenTip)
+                Logging.ConsoleLogger.info("   \(Shared.Constants.Message.rateLimitWithoutToken)")
+                Logging.ConsoleLogger.info("   \(Shared.Constants.Message.rateLimitWithToken)")
+                Logging.ConsoleLogger.info("   \(Shared.Constants.Message.exportGitHubToken)\n")
             }
 
-            let fetcher = PackageFetcher(
+            let fetcher = Core.PackageFetcher(
                 outputDirectory: outputURL,
                 limit: limit,
                 resume: resume
@@ -355,22 +355,22 @@ extension Cupertino {
 
             let stats = try await fetcher.fetch { progress in
                 let percent = String(format: "%.1f", progress.percentage)
-                ConsoleLogger.output("   Progress: \(percent)% - \(progress.packageName)")
+                Logging.ConsoleLogger.output("   Progress: \(percent)% - \(progress.packageName)")
             }
 
-            ConsoleLogger.output("")
-            ConsoleLogger.info("✅ Fetch completed!")
-            ConsoleLogger.info("   Total packages: \(stats.totalPackages)")
-            ConsoleLogger.info("   Successful: \(stats.successfulFetches)")
-            ConsoleLogger.info("   Errors: \(stats.errors)")
+            Logging.ConsoleLogger.output("")
+            Logging.ConsoleLogger.info("✅ Fetch completed!")
+            Logging.ConsoleLogger.info("   Total packages: \(stats.totalPackages)")
+            Logging.ConsoleLogger.info("   Successful: \(stats.successfulFetches)")
+            Logging.ConsoleLogger.info("   Errors: \(stats.errors)")
             if let duration = stats.duration {
-                ConsoleLogger.info("   Duration: \(Int(duration))s")
+                Logging.ConsoleLogger.info("   Duration: \(Int(duration))s")
             }
-            ConsoleLogger.info("\n📁 Output: \(outputURL.path)/\(CupertinoConstants.FileName.packagesWithStars)")
+            Logging.ConsoleLogger.info("\n📁 Output: \(outputURL.path)/\(Shared.Constants.FileName.packagesWithStars)")
         }
 
         private func runCodeFetch() async throws {
-            let defaultPath = CupertinoConstants.defaultSampleCodeDirectory.path
+            let defaultPath = Shared.Constants.defaultSampleCodeDirectory.path
             let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
 
             try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
@@ -384,17 +384,17 @@ extension Cupertino {
 
             let stats = try await crawler.download { progress in
                 let percent = String(format: "%.1f", progress.percentage)
-                ConsoleLogger.output("   Progress: \(percent)% - \(progress.sampleName)")
+                Logging.ConsoleLogger.output("   Progress: \(percent)% - \(progress.sampleName)")
             }
 
-            ConsoleLogger.output("")
-            ConsoleLogger.info("✅ Download completed!")
-            ConsoleLogger.info("   Total: \(stats.totalSamples) samples")
-            ConsoleLogger.info("   Downloaded: \(stats.downloadedSamples)")
-            ConsoleLogger.info("   Skipped: \(stats.skippedSamples)")
-            ConsoleLogger.info("   Errors: \(stats.errors)")
+            Logging.ConsoleLogger.output("")
+            Logging.ConsoleLogger.info("✅ Download completed!")
+            Logging.ConsoleLogger.info("   Total: \(stats.totalSamples) samples")
+            Logging.ConsoleLogger.info("   Downloaded: \(stats.downloadedSamples)")
+            Logging.ConsoleLogger.info("   Skipped: \(stats.skippedSamples)")
+            Logging.ConsoleLogger.info("   Errors: \(stats.errors)")
             if let duration = stats.duration {
-                ConsoleLogger.info("   Duration: \(Int(duration))s")
+                Logging.ConsoleLogger.info("   Duration: \(Int(duration))s")
             }
         }
     }
@@ -410,22 +410,22 @@ extension Cupertino {
         )
 
         @Option(name: .long, help: "Directory containing crawled documentation")
-        var docsDir: String = CupertinoConstants.defaultDocsDirectory.path
+        var docsDir: String = Shared.Constants.defaultDocsDirectory.path
 
         @Option(name: .long, help: "Directory containing Swift Evolution proposals")
-        var evolutionDir: String = CupertinoConstants.defaultSwiftEvolutionDirectory.path
+        var evolutionDir: String = Shared.Constants.defaultSwiftEvolutionDirectory.path
 
         @Option(name: .long, help: "Metadata file path")
-        var metadataFile: String = CupertinoConstants.defaultMetadataFile.path
+        var metadataFile: String = Shared.Constants.defaultMetadataFile.path
 
         @Option(name: .long, help: "Search database path")
-        var searchDB: String = CupertinoConstants.defaultSearchDatabase.path
+        var searchDB: String = Shared.Constants.defaultSearchDatabase.path
 
         @Flag(name: .long, help: "Clear existing index before building")
         var clear: Bool = false
 
         mutating func run() async throws {
-            ConsoleLogger.info("🔨 Building Search Index\n")
+            Logging.ConsoleLogger.info("🔨 Building Search Index\n")
 
             // Expand paths
             let metadataURL = URL(fileURLWithPath: metadataFile).expandingTildeInPath
@@ -435,31 +435,31 @@ extension Cupertino {
 
             // Check if metadata exists
             guard FileManager.default.fileExists(atPath: metadataURL.path) else {
-                ConsoleLogger.info("❌ Metadata file not found: \(metadataURL.path)")
-                ConsoleLogger.info("   Run 'cupertino crawl' first to download documentation.")
+                Logging.ConsoleLogger.info("❌ Metadata file not found: \(metadataURL.path)")
+                Logging.ConsoleLogger.info("   Run 'cupertino crawl' first to download documentation.")
                 throw ExitCode.failure
             }
 
             // Load metadata
-            ConsoleLogger.info("📖 Loading metadata...")
+            Logging.ConsoleLogger.info("📖 Loading metadata...")
             let metadata = try CrawlMetadata.load(from: metadataURL)
-            ConsoleLogger.info("   Found \(metadata.pages.count) pages in metadata")
+            Logging.ConsoleLogger.info("   Found \(metadata.pages.count) pages in metadata")
 
             // Initialize search index
-            ConsoleLogger.info("🗄️  Initializing search database...")
-            let searchIndex = try await SearchIndex(dbPath: searchDBURL)
+            Logging.ConsoleLogger.info("🗄️  Initializing search database...")
+            let searchIndex = try await Search.Index(dbPath: searchDBURL)
 
             // Check if Evolution directory exists
             let hasEvolution = FileManager.default.fileExists(atPath: evolutionURL.path)
             let evolutionDirToUse = hasEvolution ? evolutionURL : nil
 
             if !hasEvolution {
-                ConsoleLogger.info("ℹ️  Swift Evolution directory not found, skipping proposals")
-                ConsoleLogger.info("   Run 'cupertino crawl --type evolution' to download proposals")
+                Logging.ConsoleLogger.info("ℹ️  Swift Evolution directory not found, skipping proposals")
+                Logging.ConsoleLogger.info("   Run 'cupertino crawl --type evolution' to download proposals")
             }
 
             // Build index
-            let builder = SearchIndexBuilder(
+            let builder = Search.IndexBuilder(
                 searchIndex: searchIndex,
                 metadata: metadata,
                 docsDirectory: docsURL,
@@ -470,7 +470,7 @@ extension Cupertino {
             try await builder.buildIndex(clearExisting: clear) { processed, total in
                 let percent = Double(processed) / Double(total) * 100
                 if percent - lastPercent >= 5.0 {
-                    ConsoleLogger.output("   \(String(format: "%.0f%%", percent)) complete (\(processed)/\(total))")
+                    Logging.ConsoleLogger.output("   \(String(format: "%.0f%%", percent)) complete (\(processed)/\(total))")
                     lastPercent = percent
                 }
             }
@@ -479,13 +479,13 @@ extension Cupertino {
             let docCount = try await searchIndex.documentCount()
             let frameworks = try await searchIndex.listFrameworks()
 
-            ConsoleLogger.output("")
-            ConsoleLogger.info("✅ Search index built successfully!")
-            ConsoleLogger.info("   Total documents: \(docCount)")
-            ConsoleLogger.info("   Frameworks: \(frameworks.count)")
-            ConsoleLogger.info("   Database: \(searchDBURL.path)")
-            ConsoleLogger.info("   Size: \(formatFileSize(searchDBURL))")
-            ConsoleLogger.info("\n💡 Tip: Start the MCP server with '\(CupertinoConstants.App.mcpCommandName) serve' to enable search")
+            Logging.ConsoleLogger.output("")
+            Logging.ConsoleLogger.info("✅ Search index built successfully!")
+            Logging.ConsoleLogger.info("   Total documents: \(docCount)")
+            Logging.ConsoleLogger.info("   Frameworks: \(frameworks.count)")
+            Logging.ConsoleLogger.info("   Database: \(searchDBURL.path)")
+            Logging.ConsoleLogger.info("   Size: \(formatFileSize(searchDBURL))")
+            Logging.ConsoleLogger.info("\n💡 Tip: Start the MCP server with '\(Shared.Constants.App.mcpCommandName) serve' to enable search")
         }
 
         private func formatFileSize(_ url: URL) -> String {

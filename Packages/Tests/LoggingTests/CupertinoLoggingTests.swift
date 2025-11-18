@@ -8,14 +8,14 @@ import TestSupport
 func loggerConfiguration() {
     // Verify loggers are accessible and initialized
     // Just accessing them is sufficient - they're static lets so they always exist
-    _ = CupertinoLogger.crawler
-    _ = CupertinoLogger.mcp
-    _ = CupertinoLogger.search
-    _ = CupertinoLogger.cli
-    _ = CupertinoLogger.transport
-    _ = CupertinoLogger.pdf
-    _ = CupertinoLogger.evolution
-    _ = CupertinoLogger.samples
+    _ = Logging.Logger.crawler
+    _ = Logging.Logger.mcp
+    _ = Logging.Logger.search
+    _ = Logging.Logger.cli
+    _ = Logging.Logger.transport
+    _ = Logging.Logger.pdf
+    _ = Logging.Logger.evolution
+    _ = Logging.Logger.samples
 
     // Test passes if we can access all loggers without error
     #expect(Bool(true))
@@ -24,7 +24,7 @@ func loggerConfiguration() {
 @Test("ConsoleLogger outputs messages without crashing")
 func consoleLogger() {
     // Basic smoke test - just verify these don't crash
-    ConsoleLogger.info("Test info message")
-    ConsoleLogger.error("Test error message")
-    ConsoleLogger.output("Test output message")
+    Logging.ConsoleLogger.info("Test info message")
+    Logging.ConsoleLogger.error("Test error message")
+    Logging.ConsoleLogger.output("Test output message")
 }

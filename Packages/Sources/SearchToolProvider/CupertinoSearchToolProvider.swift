@@ -7,9 +7,9 @@ import Shared
 
 /// Provides search tools for MCP clients to query documentation
 public actor CupertinoSearchToolProvider: ToolProvider {
-    private let searchIndex: SearchIndex
+    private let searchIndex: Search.Index
 
-    public init(searchIndex: SearchIndex) {
+    public init(searchIndex: Search.Index) {
         self.searchIndex = searchIndex
     }
 
@@ -18,19 +18,19 @@ public actor CupertinoSearchToolProvider: ToolProvider {
     public func listTools(cursor: String?) async throws -> ListToolsResult {
         let tools = [
             Tool(
-                name: CupertinoConstants.MCP.toolSearchDocs,
-                description: CupertinoConstants.MCP.toolSearchDocsDescription,
+                name: Shared.Constants.MCP.toolSearchDocs,
+                description: Shared.Constants.MCP.toolSearchDocsDescription,
                 inputSchema: JSONSchema(
-                    type: CupertinoConstants.MCP.schemaTypeObject,
+                    type: Shared.Constants.MCP.schemaTypeObject,
                     properties: nil,
-                    required: [CupertinoConstants.MCP.schemaParamQuery]
+                    required: [Shared.Constants.MCP.schemaParamQuery]
                 )
             ),
             Tool(
-                name: CupertinoConstants.MCP.toolListFrameworks,
-                description: CupertinoConstants.MCP.toolListFrameworksDescription,
+                name: Shared.Constants.MCP.toolListFrameworks,
+                description: Shared.Constants.MCP.toolListFrameworksDescription,
                 inputSchema: JSONSchema(
-                    type: CupertinoConstants.MCP.schemaTypeObject,
+                    type: Shared.Constants.MCP.schemaTypeObject,
                     properties: [:],
                     required: []
                 )
@@ -42,9 +42,9 @@ public actor CupertinoSearchToolProvider: ToolProvider {
 
     public func callTool(name: String, arguments: [String: AnyCodable]?) async throws -> CallToolResult {
         switch name {
-        case CupertinoConstants.MCP.toolSearchDocs:
+        case Shared.Constants.MCP.toolSearchDocs:
             return try await handleSearchDocs(arguments: arguments)
-        case CupertinoConstants.MCP.toolListFrameworks:
+        case Shared.Constants.MCP.toolListFrameworks:
             return try await handleListFrameworks()
         default:
             throw ToolError.unknownTool(name)
@@ -54,14 +54,14 @@ public actor CupertinoSearchToolProvider: ToolProvider {
     // MARK: - Tool Handlers
 
     private func handleSearchDocs(arguments: [String: AnyCodable]?) async throws -> CallToolResult {
-        guard let query = arguments?[CupertinoConstants.MCP.schemaParamQuery]?.value as? String else {
-            throw ToolError.missingArgument(CupertinoConstants.MCP.schemaParamQuery)
+        guard let query = arguments?[Shared.Constants.MCP.schemaParamQuery]?.value as? String else {
+            throw ToolError.missingArgument(Shared.Constants.MCP.schemaParamQuery)
         }
 
-        let framework = arguments?[CupertinoConstants.MCP.schemaParamFramework]?.value as? String
-        let defaultLimit = CupertinoConstants.Limit.defaultSearchLimit
-        let requestedLimit = (arguments?[CupertinoConstants.MCP.schemaParamLimit]?.value as? Int) ?? defaultLimit
-        let limit = min(requestedLimit, CupertinoConstants.Limit.maxSearchLimit)
+        let framework = arguments?[Shared.Constants.MCP.schemaParamFramework]?.value as? String
+        let defaultLimit = Shared.Constants.Limit.defaultSearchLimit
+        let requestedLimit = (arguments?[Shared.Constants.MCP.schemaParamLimit]?.value as? Int) ?? defaultLimit
+        let limit = min(requestedLimit, Shared.Constants.Limit.maxSearchLimit)
 
         // Perform search
         let results = try await searchIndex.search(
@@ -80,13 +80,13 @@ public actor CupertinoSearchToolProvider: ToolProvider {
         markdown += "Found **\(results.count)** result\(results.count == 1 ? "" : "s"):\n\n"
 
         if results.isEmpty {
-            markdown += CupertinoConstants.MCP.messageNoResults
+            markdown += Shared.Constants.MCP.messageNoResults
         } else {
             for (index, result) in results.enumerated() {
                 markdown += "## \(index + 1). \(result.title)\n\n"
                 markdown += "- **Framework:** `\(result.framework)`\n"
                 markdown += "- **URI:** `\(result.uri)`\n"
-                markdown += "- **Score:** \(String(format: CupertinoConstants.MCP.formatScore, result.score))\n"
+                markdown += "- **Score:** \(String(format: Shared.Constants.MCP.formatScore, result.score))\n"
                 markdown += "- **Words:** \(result.wordCount)\n\n"
 
                 // Add summary
@@ -100,7 +100,7 @@ public actor CupertinoSearchToolProvider: ToolProvider {
             }
 
             markdown += "\n\n"
-            markdown += CupertinoConstants.MCP.tipUseResourcesRead
+            markdown += Shared.Constants.MCP.tipUseResourcesRead
             markdown += "\n"
         }
 
@@ -119,8 +119,8 @@ public actor CupertinoSearchToolProvider: ToolProvider {
         markdown += "Total documents: **\(totalDocs)**\n\n"
 
         if frameworks.isEmpty {
-            let cmd = "\(CupertinoConstants.App.commandName) \(CupertinoConstants.Command.buildIndex)"
-            markdown += CupertinoConstants.MCP.messageNoFrameworks(buildIndexCommand: cmd)
+            let cmd = "\(Shared.Constants.App.commandName) \(Shared.Constants.Command.buildIndex)"
+            markdown += Shared.Constants.MCP.messageNoFrameworks(buildIndexCommand: cmd)
         } else {
             markdown += "| Framework | Documents |\n"
             markdown += "|-----------|----------:|\n"
@@ -131,7 +131,7 @@ public actor CupertinoSearchToolProvider: ToolProvider {
             }
 
             markdown += "\n"
-            markdown += CupertinoConstants.MCP.tipFilterByFramework
+            markdown += Shared.Constants.MCP.tipFilterByFramework
             markdown += "\n"
         }
 

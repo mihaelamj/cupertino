@@ -14,7 +14,7 @@ import Shared
 /// Fetches Swift packages from SwiftPackageIndex and enriches with GitHub metadata
 extension Core {
     public actor PackageFetcher {
-        private let packageListURL = URL(string: CupertinoConstants.BaseURL.swiftPackageList)!
+        private let packageListURL = URL(string: Shared.Constants.BaseURL.swiftPackageList)!
         private let outputDirectory: URL
         private let limit: Int?
         private let resumeFromCheckpoint: Bool
@@ -175,7 +175,7 @@ extension Core {
                 repo: repo,
                 stars: 0,
                 description: nil,
-                url: CupertinoConstants.URLTemplate.githubRepo(owner: owner, repo: repo),
+                url: Shared.Constants.URLTemplate.githubRepo(owner: owner, repo: repo),
                 archived: false,
                 fork: false,
                 updatedAt: nil,
@@ -187,10 +187,10 @@ extension Core {
         }
 
         private func applyRateLimit(index: Int) async throws {
-            if (index + 1) % CupertinoConstants.Interval.progressLogEvery == 0 {
-                try await Task.sleep(for: CupertinoConstants.Delay.packageFetchHighPriority)
+            if (index + 1) % Shared.Constants.Interval.progressLogEvery == 0 {
+                try await Task.sleep(for: Shared.Constants.Delay.packageFetchHighPriority)
             } else {
-                try await Task.sleep(for: CupertinoConstants.Delay.packageFetchNormal)
+                try await Task.sleep(for: Shared.Constants.Delay.packageFetchNormal)
             }
         }
 
@@ -203,7 +203,7 @@ extension Core {
                 packages: packages
             )
 
-            let outputFile = outputDirectory.appendingPathComponent(CupertinoConstants.FileName.packagesWithStars)
+            let outputFile = outputDirectory.appendingPathComponent(Shared.Constants.FileName.packagesWithStars)
             try saveJSON(output, to: outputFile)
         }
 
@@ -215,11 +215,11 @@ extension Core {
             if let duration = stats.duration {
                 logInfo("   Duration: \(Int(duration))s")
             }
-            let outputFile = outputDirectory.appendingPathComponent(CupertinoConstants.FileName.packagesWithStars)
+            let outputFile = outputDirectory.appendingPathComponent(Shared.Constants.FileName.packagesWithStars)
             logInfo("\n📁 Output: \(outputFile.path)")
 
-            logInfo("\nTop \(CupertinoConstants.Limit.topPackagesDisplay) packages by stars:")
-            for (index, pkg) in packages.prefix(CupertinoConstants.Limit.topPackagesDisplay).enumerated() {
+            logInfo("\nTop \(Shared.Constants.Limit.topPackagesDisplay) packages by stars:")
+            for (index, pkg) in packages.prefix(Shared.Constants.Limit.topPackagesDisplay).enumerated() {
                 let archived = pkg.archived ? " [ARCHIVED]" : ""
                 let fork = pkg.fork ? " [FORK]" : ""
                 logInfo(String(
@@ -236,7 +236,7 @@ extension Core {
         // MARK: - Private Methods - Priority Packages
 
         private func loadPriorityPackages() -> [String] {
-            let priorityFile = outputDirectory.appendingPathComponent(CupertinoConstants.FileName.priorityPackages)
+            let priorityFile = outputDirectory.appendingPathComponent(Shared.Constants.FileName.priorityPackages)
 
             guard FileManager.default.fileExists(atPath: priorityFile.path),
                   let data = try? Data(contentsOf: priorityFile),
@@ -288,10 +288,10 @@ extension Core {
                 }
 
                 // Rate limiting
-                if (index + 1) % CupertinoConstants.Interval.progressLogEvery == 0 {
-                    try await Task.sleep(for: CupertinoConstants.Delay.packageStarsHighPriority)
+                if (index + 1) % Shared.Constants.Interval.progressLogEvery == 0 {
+                    try await Task.sleep(for: Shared.Constants.Delay.packageStarsHighPriority)
                 } else {
-                    try await Task.sleep(for: CupertinoConstants.Delay.packageStarsNormal)
+                    try await Task.sleep(for: Shared.Constants.Delay.packageStarsNormal)
                 }
             }
 
@@ -303,14 +303,14 @@ extension Core {
         }
 
         private func fetchStarCount(owner: String, repo: String) async throws -> Int {
-            let url = URL(string: "\(CupertinoConstants.BaseURL.githubAPIRepos)/\(owner)/\(repo)")!
+            let url = URL(string: "\(Shared.Constants.BaseURL.githubAPIRepos)/\(owner)/\(repo)")!
 
             var request = URLRequest(url: url)
-            request.setValue(CupertinoConstants.HTTPHeader.githubAccept, forHTTPHeaderField: "Accept")
-            request.setValue(CupertinoConstants.App.userAgent, forHTTPHeaderField: "User-Agent")
+            request.setValue(Shared.Constants.HTTPHeader.githubAccept, forHTTPHeaderField: "Accept")
+            request.setValue(Shared.Constants.App.userAgent, forHTTPHeaderField: "User-Agent")
 
-            if let token = ProcessInfo.processInfo.environment[CupertinoConstants.EnvVar.githubToken] {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: CupertinoConstants.HTTPHeader.authorization)
+            if let token = ProcessInfo.processInfo.environment[Shared.Constants.EnvVar.githubToken] {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: Shared.Constants.HTTPHeader.authorization)
             }
 
             let (data, response) = try await URLSession.shared.data(for: request)
@@ -336,7 +336,7 @@ extension Core {
 
         private func extractOwnerRepo(from githubURL: String) -> (String, String)? {
             // Match: https://github.com/owner/repo.git or https://github.com/owner/repo
-            guard let regex = try? NSRegularExpression(pattern: CupertinoConstants.Pattern.githubURL),
+            guard let regex = try? NSRegularExpression(pattern: Shared.Constants.Pattern.githubURL),
                   let match = regex.firstMatch(in: githubURL, range: NSRange(githubURL.startIndex..., in: githubURL)),
                   let ownerRange = Range(match.range(at: 1), in: githubURL),
                   let repoRange = Range(match.range(at: 2), in: githubURL)
@@ -367,13 +367,13 @@ extension Core {
         }
 
         private func createGitHubRequest(owner: String, repo: String) -> URLRequest {
-            let url = URL(string: "\(CupertinoConstants.BaseURL.githubAPIRepos)/\(owner)/\(repo)")!
+            let url = URL(string: "\(Shared.Constants.BaseURL.githubAPIRepos)/\(owner)/\(repo)")!
             var request = URLRequest(url: url)
-            request.setValue(CupertinoConstants.HTTPHeader.githubAccept, forHTTPHeaderField: "Accept")
-            request.setValue(CupertinoConstants.App.userAgent, forHTTPHeaderField: "User-Agent")
+            request.setValue(Shared.Constants.HTTPHeader.githubAccept, forHTTPHeaderField: "Accept")
+            request.setValue(Shared.Constants.App.userAgent, forHTTPHeaderField: "User-Agent")
 
-            if let token = ProcessInfo.processInfo.environment[CupertinoConstants.EnvVar.githubToken] {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: CupertinoConstants.HTTPHeader.authorization)
+            if let token = ProcessInfo.processInfo.environment[Shared.Constants.EnvVar.githubToken] {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: Shared.Constants.HTTPHeader.authorization)
             }
 
             return request
@@ -418,7 +418,7 @@ extension Core {
         }
 
         private func loadCheckpoint() throws -> PackageFetchCheckpoint {
-            let checkpointFile = outputDirectory.appendingPathComponent(CupertinoConstants.FileName.checkpoint)
+            let checkpointFile = outputDirectory.appendingPathComponent(Shared.Constants.FileName.checkpoint)
             let data = try Data(contentsOf: checkpointFile)
             return try JSONDecoder().decode(PackageFetchCheckpoint.self, from: data)
         }
@@ -429,7 +429,7 @@ extension Core {
                 packages: packages,
                 timestamp: Date()
             )
-            let checkpointFile = outputDirectory.appendingPathComponent(CupertinoConstants.FileName.checkpoint)
+            let checkpointFile = outputDirectory.appendingPathComponent(Shared.Constants.FileName.checkpoint)
             try saveJSON(checkpoint, to: checkpointFile)
         }
 
@@ -444,21 +444,16 @@ extension Core {
         // MARK: - Logging
 
         private func logInfo(_ message: String) {
-            CupertinoLogger.crawler.info(message)
+            Logging.Logger.crawler.info(message)
             print(message)
         }
 
         private func logError(_ message: String) {
-            CupertinoLogger.crawler.error(message)
+            Logging.Logger.crawler.error(message)
             fputs("\(message)\n", stderr)
         }
     }
 }
-
-// MARK: - Backward Compatibility
-
-/// Legacy type alias for backward compatibility
-public typealias PackageFetcher = Core.PackageFetcher
 
 // MARK: - Models
 

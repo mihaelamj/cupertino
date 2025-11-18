@@ -14,18 +14,18 @@ extension Cupertino {
 
         var displayName: String {
             switch self {
-            case .docs: return CupertinoConstants.DisplayName.appleDocs
-            case .swift: return CupertinoConstants.DisplayName.swiftOrgDocs
-            case .evolution: return CupertinoConstants.DisplayName.swiftEvolution
-            case .packages: return CupertinoConstants.DisplayName.swiftPackages
-            case .all: return CupertinoConstants.DisplayName.allDocs
+            case .docs: return Shared.Constants.DisplayName.appleDocs
+            case .swift: return Shared.Constants.DisplayName.swiftOrgDocs
+            case .evolution: return Shared.Constants.DisplayName.swiftEvolution
+            case .packages: return Shared.Constants.DisplayName.swiftPackages
+            case .all: return Shared.Constants.DisplayName.allDocs
             }
         }
 
         var defaultURL: String {
             switch self {
-            case .docs: return CupertinoConstants.BaseURL.appleDeveloperDocs
-            case .swift: return CupertinoConstants.BaseURL.swiftBook
+            case .docs: return Shared.Constants.BaseURL.appleDeveloperDocs
+            case .swift: return Shared.Constants.BaseURL.swiftBook
             case .evolution: return "" // N/A - uses different crawler
             case .packages: return "" // Package documentation not yet implemented
             case .all: return "" // N/A - crawls all types sequentially
@@ -34,16 +34,16 @@ extension Cupertino {
 
         var defaultOutputDir: String {
             let homeDir = FileManager.default.homeDirectoryForCurrentUser.path
-            let baseDir = CupertinoConstants.baseDirectoryName
+            let baseDir = Shared.Constants.baseDirectoryName
             switch self {
             case .docs:
-                return "\(homeDir)/\(baseDir)/\(CupertinoConstants.Directory.docs)"
+                return "\(homeDir)/\(baseDir)/\(Shared.Constants.Directory.docs)"
             case .swift:
-                return "\(homeDir)/\(baseDir)/\(CupertinoConstants.Directory.swiftOrg)"
+                return "\(homeDir)/\(baseDir)/\(Shared.Constants.Directory.swiftOrg)"
             case .evolution:
-                return "\(homeDir)/\(baseDir)/\(CupertinoConstants.Directory.swiftEvolution)"
+                return "\(homeDir)/\(baseDir)/\(Shared.Constants.Directory.swiftEvolution)"
             case .packages:
-                return "\(homeDir)/\(baseDir)/\(CupertinoConstants.Directory.packages)"
+                return "\(homeDir)/\(baseDir)/\(Shared.Constants.Directory.packages)"
             case .all:
                 return "\(homeDir)/\(baseDir)"
             }
@@ -60,8 +60,8 @@ extension Cupertino {
 
         var displayName: String {
             switch self {
-            case .packages: return CupertinoConstants.DisplayName.packageMetadata
-            case .code: return CupertinoConstants.DisplayName.sampleCode
+            case .packages: return Shared.Constants.DisplayName.packageMetadata
+            case .code: return Shared.Constants.DisplayName.sampleCode
             }
         }
     }
