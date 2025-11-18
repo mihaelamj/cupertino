@@ -9,13 +9,13 @@ import Foundation
 import Testing
 import TestSupport
 
-// MARK: - MCP Server Command Tests
+// MARK: - MCP Command Tests
 
-/// Tests for the MCP server (cupertino-mcp serve)
+/// Tests for the `cupertino mcp` command
 /// Verifies server initialization, resource providers, and tool providers
 
-@Suite("MCP Server Tests")
-struct MCPServerCommandTests {
+@Suite("MCP Command Tests")
+struct MCPCommandTests {
     @Test("MCP server initializes successfully")
     func serverInitialization() async throws {
         print("🧪 Test: MCP server initialization")
