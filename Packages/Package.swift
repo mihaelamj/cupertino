@@ -156,6 +156,11 @@ let targets: [Target] = {
             "CupertinoCore",
             "CupertinoSearch",
             "CupertinoLogging",
+            // MCP dependencies (for mcp serve command)
+            "MCPServer",
+            "MCPTransport",
+            "CupertinoMCPSupport",
+            "CupertinoSearchToolProvider",
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
         ]
     )
