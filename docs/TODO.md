@@ -9,8 +9,8 @@
 - ✅ BONUS: Added priority packages catalog (31 Apple + 5 ecosystem packages)
 
 ## ✅ 2. All Swift Packages (COMPLETED)
-- ✅ currnetly I have crawled all github swift packages
-- ✅ the operation first crawled Swift Pacjage Index
+- ✅ currently I have crawled all github swift packages
+- ✅ the operation first crawled Swift Package Index
 - ✅ then it crawled package metadata from GitHub
 - ✅ the data from that crawl is available in folder:
 /Volumes/Code/DeveloperExt/cupertino_test/packages/checkpoint.json
@@ -69,3 +69,30 @@ The "documentation" prefix is Apple's URL convention, not something we hardcode.
 - updating all swift packages
 - updating all apple sample sources
 - there is always a possibility that we will need to add more pre-fetched resources
+
+## 8. We must refactor commands
+- the current architecture is (probably) redundant
+- it is certainly complicated
+- I feel it is incomplete
+- before refactoring, TODO items 6 and 7 must be done
+- then we must agree on the:
+    - architecture
+    - functionality
+    - confirm/change naming
+    - agree in detail on expected results
+
+## 9. Implement error handling improvements
+
+- Implement Semigroup protocol for statistics merging (`CrawlStatistics`, `PackageFetchStatistics`)
+- Consider Optional extensions if boilerplate reduction is significant
+- See [docs/ERROR_HANDLING.md](ERROR_HANDLING.md) for detailed design and rationale
+
+**Summary from design doc:**
+- Primary approach: Use `async throws` for 95% of code
+- Result type: Only use for `TaskGroup.nextResult()` parallel error collection
+- Continue using: Sum types (enums), product types (structs), map/flatMap
+- New pattern: Semigroup for combining statistics
+
+
+
+
