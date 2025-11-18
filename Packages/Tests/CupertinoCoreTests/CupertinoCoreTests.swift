@@ -74,6 +74,160 @@ func sampleCodeCatalogFrameworkFilter() async throws {
     print("   ✅ Found \(swiftUIEntries.count) SwiftUI entries")
 }
 
+// MARK: - SwiftPackagesCatalog Tests
+
+@Test("SwiftPackagesCatalog loads from JSON resource")
+func swiftPackagesCatalogLoadsFromJSON() async throws {
+    let count = await SwiftPackagesCatalog.count
+    #expect(count == 9699, "Should have 9699 Swift packages")
+    print("   ✅ Loaded \(count) Swift packages")
+}
+
+@Test("SwiftPackagesCatalog has correct metadata")
+func swiftPackagesCatalogMetadata() async throws {
+    let version = await SwiftPackagesCatalog.version
+    let lastCrawled = await SwiftPackagesCatalog.lastCrawled
+    let source = await SwiftPackagesCatalog.source
+
+    #expect(version == "1.0", "Version should be 1.0")
+    #expect(lastCrawled == "2025-11-17", "Last crawled should be 2025-11-17")
+    #expect(source == "Swift Package Index + GitHub API", "Source should match")
+    print("   ✅ Version: \(version), Last crawled: \(lastCrawled)")
+    print("   ✅ Source: \(source)")
+}
+
+@Test("SwiftPackagesCatalog entries have required fields")
+func swiftPackagesCatalogEntriesValid() async throws {
+    let packages = await SwiftPackagesCatalog.allPackages
+    #expect(!packages.isEmpty, "Should have at least one package")
+
+    // Verify first entry has all required fields
+    let firstPackage = packages[0]
+    #expect(!firstPackage.owner.isEmpty, "Package should have owner")
+    #expect(!firstPackage.repo.isEmpty, "Package should have repo")
+    #expect(!firstPackage.url.isEmpty, "Package should have URL")
+    #expect(!firstPackage.updatedAt.isEmpty, "Package should have updatedAt")
+
+    print("   ✅ Sample package: \(firstPackage.owner)/\(firstPackage.repo)")
+}
+
+@Test("SwiftPackagesCatalog search works")
+func swiftPackagesCatalogSearch() async throws {
+    let results = await SwiftPackagesCatalog.search("SwiftUI")
+    #expect(!results.isEmpty, "Search for 'SwiftUI' should return results")
+
+    print("   ✅ Found \(results.count) results for 'SwiftUI'")
+}
+
+@Test("SwiftPackagesCatalog top packages returns sorted by stars")
+func swiftPackagesCatalogTopPackages() async throws {
+    let topPackages = await SwiftPackagesCatalog.topPackages(limit: 10)
+    #expect(topPackages.count == 10, "Should return 10 top packages")
+
+    // Verify they are sorted by stars (descending)
+    for index in 0..<(topPackages.count - 1) {
+        #expect(topPackages[index].stars >= topPackages[index + 1].stars, "Packages should be sorted by stars")
+    }
+
+    print("   ✅ Top package: \(topPackages[0].owner)/\(topPackages[0].repo) with \(topPackages[0].stars) stars")
+}
+
+@Test("SwiftPackagesCatalog active packages filter works")
+func swiftPackagesCatalogActivePackages() async throws {
+    let activePackages = await SwiftPackagesCatalog.activePackages(minStars: 100)
+    #expect(!activePackages.isEmpty, "Should have active packages with 100+ stars")
+
+    // Verify all are non-fork, non-archived, and have minimum stars
+    for package in activePackages {
+        #expect(!package.fork, "Package should not be a fork")
+        #expect(!package.archived, "Package should not be archived")
+        #expect(package.stars >= 100, "Package should have at least 100 stars")
+    }
+
+    print("   ✅ Found \(activePackages.count) active packages with 100+ stars")
+}
+
+// MARK: - PriorityPackagesCatalog Tests
+
+@Test("PriorityPackagesCatalog loads from JSON resource")
+func priorityPackagesCatalogLoadsFromJSON() async throws {
+    let stats = await PriorityPackagesCatalog.stats
+    #expect(stats.totalPriorityPackages == 36, "Should have 36 priority packages total")
+    #expect(stats.totalCriticalApplePackages == 31, "Should have 31 Apple packages")
+    #expect(stats.totalEcosystemPackages == 5, "Should have 5 ecosystem packages")
+    print("   ✅ Loaded \(stats.totalPriorityPackages) priority packages")
+}
+
+@Test("PriorityPackagesCatalog has correct metadata")
+func priorityPackagesCatalogMetadata() async throws {
+    let version = await PriorityPackagesCatalog.version
+    let lastUpdated = await PriorityPackagesCatalog.lastUpdated
+    let description = await PriorityPackagesCatalog.description
+
+    #expect(version == "1.0", "Version should be 1.0")
+    #expect(lastUpdated == "2025-11-17", "Last updated should be 2025-11-17")
+    #expect(!description.isEmpty, "Description should not be empty")
+    print("   ✅ Version: \(version), Last updated: \(lastUpdated)")
+}
+
+@Test("PriorityPackagesCatalog Apple packages are valid")
+func priorityPackagesCatalogApplePackages() async throws {
+    let applePackages = await PriorityPackagesCatalog.applePackages
+    #expect(applePackages.count == 31, "Should have 31 Apple packages")
+
+    // Verify known critical packages exist
+    let repos = applePackages.map(\.repo)
+    #expect(repos.contains("swift"), "Should contain swift")
+    #expect(repos.contains("swift-nio"), "Should contain swift-nio")
+    #expect(repos.contains("swift-testing"), "Should contain swift-testing")
+
+    print("   ✅ Apple packages validated")
+}
+
+@Test("PriorityPackagesCatalog ecosystem packages are valid")
+func priorityPackagesCatalogEcosystemPackages() async throws {
+    let ecosystemPackages = await PriorityPackagesCatalog.ecosystemPackages
+    #expect(ecosystemPackages.count == 5, "Should have 5 ecosystem packages")
+
+    // Verify known ecosystem packages exist
+    let fullNames = ecosystemPackages.map { "\($0.owner ?? "")/\($0.repo)" }
+    #expect(fullNames.contains("vapor/vapor"), "Should contain vapor/vapor")
+    #expect(fullNames.contains("pointfreeco/swift-composable-architecture"), "Should contain TCA")
+
+    print("   ✅ Ecosystem packages validated")
+}
+
+@Test("PriorityPackagesCatalog priority check works")
+func priorityPackagesCatalogPriorityCheck() async throws {
+    // Test known priority packages
+    let isSwiftPriority = await PriorityPackagesCatalog.isPriority(owner: "apple", repo: "swift")
+    let isNIOPriority = await PriorityPackagesCatalog.isPriority(owner: "apple", repo: "swift-nio")
+    let isVaporPriority = await PriorityPackagesCatalog.isPriority(owner: "vapor", repo: "vapor")
+
+    #expect(isSwiftPriority, "swift should be priority")
+    #expect(isNIOPriority, "swift-nio should be priority")
+    #expect(isVaporPriority, "vapor should be priority")
+
+    // Test non-priority package
+    let isRandomPriority = await PriorityPackagesCatalog.isPriority(owner: "random", repo: "package")
+    #expect(!isRandomPriority, "random package should not be priority")
+
+    print("   ✅ Priority check working correctly")
+}
+
+@Test("PriorityPackagesCatalog package lookup works")
+func priorityPackagesCatalogPackageLookup() async throws {
+    let swiftPackage = await PriorityPackagesCatalog.package(named: "swift")
+    #expect(swiftPackage != nil, "Should find swift package")
+    #expect(swiftPackage?.repo == "swift", "Package repo should match")
+
+    let vaporPackage = await PriorityPackagesCatalog.package(named: "vapor")
+    #expect(vaporPackage != nil, "Should find vapor package")
+    #expect(vaporPackage?.owner == "vapor", "Vapor owner should be vapor")
+
+    print("   ✅ Package lookup working correctly")
+}
+
 // MARK: - Integration Tests
 
 /// Integration test: Downloads a real Apple documentation page

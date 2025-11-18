@@ -1,0 +1,174 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2025-11-17",
+  "description": "Curated list of high-priority Swift packages",
+  "tiers": {
+    "apple_official": {
+      "description": "Critical Apple-maintained Swift packages",
+      "owner": "apple",
+      "count": 31,
+      "packages": [
+        {
+          "repo": "swift",
+          "url": "https://github.com/apple/swift"
+        },
+        {
+          "repo": "swift-algorithms",
+          "url": "https://github.com/apple/swift-algorithms"
+        },
+        {
+          "repo": "swift-argument-parser",
+          "url": "https://github.com/apple/swift-argument-parser"
+        },
+        {
+          "repo": "swift-asn1",
+          "url": "https://github.com/apple/swift-asn1"
+        },
+        {
+          "repo": "swift-async-algorithms",
+          "url": "https://github.com/apple/swift-async-algorithms"
+        },
+        {
+          "repo": "swift-atomics",
+          "url": "https://github.com/apple/swift-atomics"
+        },
+        {
+          "repo": "swift-cassandra-client",
+          "url": "https://github.com/apple/swift-cassandra-client"
+        },
+        {
+          "repo": "swift-certificates",
+          "url": "https://github.com/apple/swift-certificates"
+        },
+        {
+          "repo": "swift-cluster-membership",
+          "url": "https://github.com/apple/swift-cluster-membership"
+        },
+        {
+          "repo": "swift-collections",
+          "url": "https://github.com/apple/swift-collections"
+        },
+        {
+          "repo": "swift-crypto",
+          "url": "https://github.com/apple/swift-crypto"
+        },
+        {
+          "repo": "swift-distributed-actors",
+          "url": "https://github.com/apple/swift-distributed-actors"
+        },
+        {
+          "repo": "swift-docc",
+          "url": "https://github.com/apple/swift-docc"
+        },
+        {
+          "repo": "swift-driver",
+          "url": "https://github.com/apple/swift-driver"
+        },
+        {
+          "repo": "swift-format",
+          "url": "https://github.com/apple/swift-format"
+        },
+        {
+          "repo": "swift-log",
+          "url": "https://github.com/apple/swift-log"
+        },
+        {
+          "repo": "swift-metrics",
+          "url": "https://github.com/apple/swift-metrics"
+        },
+        {
+          "repo": "swift-nio",
+          "url": "https://github.com/apple/swift-nio"
+        },
+        {
+          "repo": "swift-nio-http2",
+          "url": "https://github.com/apple/swift-nio-http2"
+        },
+        {
+          "repo": "swift-nio-ssl",
+          "url": "https://github.com/apple/swift-nio-ssl"
+        },
+        {
+          "repo": "swift-nio-transport-services",
+          "url": "https://github.com/apple/swift-nio-transport-services"
+        },
+        {
+          "repo": "swift-numerics",
+          "url": "https://github.com/apple/swift-numerics"
+        },
+        {
+          "repo": "swift-openapi-generator",
+          "url": "https://github.com/apple/swift-openapi-generator"
+        },
+        {
+          "repo": "swift-openapi-runtime",
+          "url": "https://github.com/apple/swift-openapi-runtime"
+        },
+        {
+          "repo": "swift-openapi-urlsession",
+          "url": "https://github.com/apple/swift-openapi-urlsession"
+        },
+        {
+          "repo": "swift-package-manager",
+          "url": "https://github.com/apple/swift-package-manager"
+        },
+        {
+          "repo": "swift-protobuf",
+          "url": "https://github.com/apple/swift-protobuf"
+        },
+        {
+          "repo": "swift-service-context",
+          "url": "https://github.com/apple/swift-service-context"
+        },
+        {
+          "repo": "swift-system",
+          "url": "https://github.com/apple/swift-system"
+        },
+        {
+          "repo": "swift-testing",
+          "url": "https://github.com/apple/swift-testing"
+        },
+        {
+          "repo": "sourcekit-lsp",
+          "url": "https://github.com/apple/sourcekit-lsp"
+        }
+      ]
+    },
+    "ecosystem": {
+      "description": "Well-known ecosystem packages (excludes deprecated: Alamofire, RxSwift)",
+      "count": 5,
+      "packages": [
+        {
+          "owner": "vapor",
+          "repo": "vapor",
+          "url": "https://github.com/vapor/vapor"
+        },
+        {
+          "owner": "vapor",
+          "repo": "swift-getting-started-web-server",
+          "url": "https://github.com/vapor/swift-getting-started-web-server"
+        },
+        {
+          "owner": "pointfreeco",
+          "repo": "swift-composable-architecture",
+          "url": "https://github.com/pointfreeco/swift-composable-architecture"
+        },
+        {
+          "owner": "pointfreeco",
+          "repo": "swift-custom-dump",
+          "url": "https://github.com/pointfreeco/swift-custom-dump"
+        },
+        {
+          "owner": "pointfreeco",
+          "repo": "swift-dependencies",
+          "url": "https://github.com/pointfreeco/swift-dependencies"
+        }
+      ]
+    }
+  },
+  "stats": {
+    "totalCriticalApplePackages": 31,
+    "totalEcosystemPackages": 5,
+    "totalPriorityPackages": 36
+  }
+}
