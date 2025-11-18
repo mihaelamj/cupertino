@@ -17,7 +17,7 @@ public struct SwiftPackageEntry: Codable, Sendable {
     public let license: String?
     public let fork: Bool
     public let archived: Bool
-    public let updatedAt: String
+    public let updatedAt: String?
 
     public init(
         owner: String,
@@ -29,7 +29,7 @@ public struct SwiftPackageEntry: Codable, Sendable {
         license: String?,
         fork: Bool,
         archived: Bool,
-        updatedAt: String
+        updatedAt: String?
     ) {
         self.owner = owner
         self.repo = repo

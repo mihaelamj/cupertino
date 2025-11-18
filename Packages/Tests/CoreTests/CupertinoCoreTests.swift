@@ -107,7 +107,10 @@ func swiftPackagesCatalogEntriesValid() async throws {
     #expect(!firstPackage.owner.isEmpty, "Package should have owner")
     #expect(!firstPackage.repo.isEmpty, "Package should have repo")
     #expect(!firstPackage.url.isEmpty, "Package should have URL")
-    #expect(!firstPackage.updatedAt.isEmpty, "Package should have updatedAt")
+    // updatedAt is optional - some packages may not have it
+    if let updatedAt = firstPackage.updatedAt {
+        #expect(!updatedAt.isEmpty, "If updatedAt exists, it should not be empty")
+    }
 
     print("   ✅ Sample package: \(firstPackage.owner)/\(firstPackage.repo)")
 }
