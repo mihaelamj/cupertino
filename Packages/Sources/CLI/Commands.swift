@@ -18,7 +18,7 @@ extension Cupertino {
             name: .long,
             help: """
             Type of documentation to crawl: docs (Apple), swift (Swift.org), \
-            evolution (Swift Evolution), packages (Swift packages)
+            evolution (Swift Evolution), packages (Swift packages), all (all types in parallel)
             """
         )
         var type: CrawlType = .docs
