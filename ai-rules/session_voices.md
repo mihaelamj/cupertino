@@ -12,6 +12,20 @@ HIGH — This rule overrides any conflicting behavior. Spoken alerts MUST always
 Keywords: say, macOS voice, audio alert, Karen, Jamie, session voice, terminal, silence, mute, unmute, Codex, Claude Code
 </cognitive_triggers>
 
+## Scope — Codex Only
+
+These audio rules apply **ONLY to Codex CLI sessions**.
+
+Claude Code must **NOT** speak aloud and must **NOT** use these rules.
+Claude should ignore all voice-binding, spoken alerts, and TTS logic.
+
+Codex alone is responsible for:
+- calling the `speak` helper script,
+- binding sessions to different voices,
+- issuing spoken alerts when user input is required,
+- respecting mute/unmute variables,
+- and following all voice-related rules in this file.
+
 ## CRITICAL RULES
 
 ### Rule 1 — Spoken Alerts When User Input Is Needed
