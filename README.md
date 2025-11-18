@@ -34,7 +34,7 @@ git clone https://github.com/YOUR_USERNAME/cupertino.git
 cd cupertino
 
 # Option 1: Using Makefile (works from root or Packages directory)
-make build                       # Build release binaries
+make build                       # Build release binary
 sudo make install                # Install to /usr/local/bin
 
 # Option 2: Using Swift Package Manager directly
@@ -43,7 +43,6 @@ swift build -c release
 
 # Install manually (from Packages directory)
 sudo ln -sf "$(pwd)/.build/release/cupertino" /usr/local/bin/cupertino
-sudo ln -sf "$(pwd)/.build/release/cupertino-mcp" /usr/local/bin/cupertino-mcp
 ```
 
 **Quick development workflow:**
@@ -68,11 +67,11 @@ cupertino crawl \
   --output-dir ~/.cupertino/docs
 
 # Download Swift Evolution proposals (~2-5 minutes)
-cupertino crawl-evolution \
+cupertino crawl --type evolution \
   --output-dir ~/.cupertino/swift-evolution
 
 # Build search index (~2-5 minutes)
-cupertino build-index
+cupertino index
 ```
 
 ### Use with Claude Desktop
@@ -83,12 +82,13 @@ cupertino build-index
 {
   "mcpServers": {
     "cupertino": {
-      "command": "/usr/local/bin/cupertino-mcp",
-      "args": ["serve"]
+      "command": "/usr/local/bin/cupertino"
     }
   }
 }
 ```
+
+**Note:** The `cupertino` command defaults to `cupertino mcp serve` when run without arguments, making it perfect for MCP server use.
 
 2. **Restart Claude Desktop**
 
@@ -99,23 +99,26 @@ cupertino build-index
 
 ## Available Commands
 
-### CLI Tool (`cupertino`)
+### Main Command Structure
+
+```bash
+cupertino                    # defaults to: cupertino mcp serve
+cupertino mcp serve          # start MCP server
+cupertino mcp doctor         # check server health
+cupertino crawl              # crawl documentation
+cupertino fetch              # fetch packages
+cupertino index              # build search index
+```
+
+### Command Reference
 
 | Command | Description |
 |---------|-------------|
-| `crawl` | Download Apple documentation |
-| `crawl-evolution` | Download Swift Evolution proposals |
-| `download-samples` | Download Apple sample code projects |
-| `build-index` | Build full-text search index |
-| `export-pdf` | Export documentation to PDF |
-| `update` | Incremental update of existing docs |
-| `config` | Manage configuration |
-
-### MCP Server (`cupertino-mcp`)
-
-| Command | Description |
-|---------|-------------|
-| `serve` | Start MCP server for AI agents |
+| `mcp serve` | Start MCP server for AI agents (default command) |
+| `mcp doctor` | Check MCP server configuration and health |
+| `crawl` | Download Apple documentation and Swift Evolution |
+| `fetch` | Fetch Swift packages and sample code |
+| `index` | Build full-text search index |
 
 **MCP Resources:**
 - `apple-docs://{framework}/{page}` - Read any Apple documentation page
@@ -181,28 +184,32 @@ make clean                  # Clean build artifacts
 
 ## Architecture
 
-Cupertino uses an **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** architecture with 11 packages:
+Cupertino uses an **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** architecture with 9 consolidated packages:
 
 ```
 Foundation Layer:
-  ├─ MCPShared              # MCP protocol models
-  ├─ CupertinoLogging       # os.log infrastructure
-  └─ CupertinoShared        # Configuration & models
+  ├─ MCP                    # Consolidated MCP framework (Protocol + Transport + Server)
+  ├─ Logging                # os.log infrastructure
+  └─ Shared                 # Configuration & models
 
 Infrastructure Layer:
-  ├─ MCPTransport           # JSON-RPC transport (stdio)
-  ├─ MCPServer              # MCP server implementation
-  └─ CupertinoCore          # Crawler & downloaders
+  ├─ Core                   # Crawler & downloaders
+  └─ Search                 # SQLite FTS5 search
 
 Application Layer:
-  ├─ CupertinoSearch        # SQLite FTS5 search
-  ├─ CupertinoMCPSupport    # Resource providers
-  └─ CupertinoSearchToolProvider # Search tool implementations
+  ├─ MCPSupport             # Resource providers
+  ├─ SearchToolProvider     # Search tool implementations
+  └─ Resources              # Embedded resources
 
-Executables:
-  ├─ CupertinoCLI           # CLI tool (cupertino)
-  └─ CupertinoMCP           # MCP server (cupertino-mcp)
+Executable:
+  └─ CLI                    # Unified cupertino binary
 ```
+
+### v0.2 Package Changes
+
+- **Consolidated MCP:** MCPShared + MCPTransport + MCPServer → MCP
+- **Namespaced Types:** CupertinoLogging → Logging, CupertinoShared → Shared, etc.
+- **Unified Binary:** Single `cupertino` binary (no separate `cupertino-mcp`)
 
 ## Logging
 
@@ -267,7 +274,7 @@ cupertino crawl \
 Serve documentation to Claude for code assistance:
 
 ```bash
-cupertino-mcp serve
+cupertino mcp serve
 # Then ask Claude: "How do I use @Observable in SwiftUI?"
 ```
 
@@ -276,7 +283,7 @@ cupertino-mcp serve
 Build searchable documentation archive:
 
 ```bash
-cupertino build-index
+cupertino index
 # MCP server now provides search_docs tool to AI agents
 ```
 

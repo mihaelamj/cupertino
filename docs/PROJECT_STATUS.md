@@ -1,13 +1,21 @@
 # Cupertino Project Status
 
-**Last Updated:** 2025-11-17
+**Last Updated:** 2025-11-18
+**Version:** v0.2.0
 **Status:** ✅ PRODUCTION READY
 
 ---
 
 ## Quick Summary
 
-Cupertino is an Apple documentation crawler that converts Apple's developer documentation to Markdown format. Built with Swift 6.2, 100% concurrency compliant, and fully tested.
+Cupertino is an Apple documentation crawler that converts Apple's developer documentation to Markdown format and serves it via MCP (Model Context Protocol) to AI agents. Built with Swift 6.2, 100% concurrency compliant, and fully tested.
+
+### v0.2 Highlights
+
+- **Unified Architecture:** Single `cupertino` binary (replaced separate `cupertino-mcp`)
+- **Consolidated Packages:** 12 packages reduced to 9 with namespaced types
+- **MCP-First Design:** Binary defaults to starting MCP server
+- **New Commands:** `cupertino mcp doctor` for health checks
 
 ### Current State
 - ✅ **Production Ready** - All core functionality working
@@ -104,18 +112,31 @@ swiftlint lint . --strict
 
 ## Architecture
 
-### Packages
-- **CupertinoCore** - Crawling, HTML to Markdown
-- **CupertinoShared** - Models, utilities, constants
-- **CupertinoSearch** - Full-text search index
-- **CupertinoLogging** - Unified logging
-- **MCPServer** - Model Context Protocol server
-- **MCPTransport** - JSON-RPC transport
-- **CupertinoMCPSupport** - MCP integration
+### v0.2 Package Structure
 
-### Executables
-- **cupertino** - CLI tool
-- **cupertino-mcp** - MCP server
+**Foundation Layer:**
+- **MCP** - Consolidated MCP framework (Protocol + Transport + Server)
+- **Logging** - os.log infrastructure
+- **Shared** - Configuration & models
+
+**Infrastructure Layer:**
+- **Core** - Crawler & downloaders
+- **Search** - SQLite FTS5 search
+
+**Application Layer:**
+- **MCPSupport** - Resource providers
+- **SearchToolProvider** - Search tool implementations
+- **Resources** - Embedded resources
+
+**Executable:**
+- **CLI** - Unified cupertino binary
+
+### Package Changes from v0.1
+
+- ❌ Removed: Separate `cupertino-mcp` binary
+- ✅ Consolidated: MCPShared + MCPTransport + MCPServer → MCP
+- ✅ Namespaced: CupertinoLogging → Logging, CupertinoShared → Shared, etc.
+- ✅ Unified: Single CLI binary with MCP commands
 
 ---
 
@@ -169,32 +190,35 @@ Solved headless WKWebView testing with `NSApplication.shared`:
 
 ## Usage
 
-### CLI Tool
+### v0.2 Command Structure
+
 ```bash
-# Crawl Apple documentation
-cupertino crawl https://developer.apple.com/documentation/swift
+# MCP Server (default command)
+cupertino                    # Starts MCP server
+cupertino mcp serve          # Explicit MCP server start
+cupertino mcp doctor         # Check MCP server health
 
-# Search documentation
-cupertino search "async await"
-
-# Start MCP server
-cupertino serve
+# Documentation
+cupertino crawl              # Crawl Apple documentation
+cupertino crawl --type evolution  # Crawl Swift Evolution
+cupertino fetch --type code  # Fetch sample code
+cupertino fetch --type packages   # Fetch package metadata
+cupertino index              # Build search index
 ```
 
-### MCP Server
-```bash
-# Start server
-cupertino-mcp
+### MCP Server Integration
 
-# Use with Claude Desktop (add to config)
+```json
 {
   "mcpServers": {
     "cupertino": {
-      "command": "/path/to/cupertino-mcp"
+      "command": "/usr/local/bin/cupertino"
     }
   }
 }
 ```
+
+**Note:** The binary defaults to `mcp serve`, so no args needed in Claude config.
 
 ---
 

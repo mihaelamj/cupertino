@@ -81,7 +81,7 @@ cupertino crawl \
 Download all accepted Swift Evolution proposals from GitHub:
 
 ```bash
-cupertino crawl-evolution \
+cupertino crawl --type evolution \
   --output-dir ~/.cupertino/swift-evolution
 ```
 
@@ -101,10 +101,10 @@ Download Apple sample code projects as zip/tar files:
 **First time - Authenticate with Apple:**
 
 ```bash
-cupertino download-samples \
+cupertino fetch --type code \
   --authenticate \
   --output-dir ~/.cupertino/sample-code \
-  --max-samples 10
+  --limit 10
 ```
 
 This will:
@@ -116,15 +116,15 @@ This will:
 **Subsequent downloads (reuses saved authentication):**
 
 ```bash
-cupertino download-samples \
+cupertino fetch --type code \
   --output-dir ~/.cupertino/sample-code \
-  --max-samples 100
+  --limit 100
 ```
 
 **Parameters:**
 - `--authenticate` - Launch visible browser for authentication (use on first run)
 - `--output-dir` - Where to save sample code files (default: `~/.cupertino/sample-code`)
-- `--max-samples` - Limit number of samples to download (optional, downloads all if not specified)
+- `--limit` - Limit number of samples to download (optional, downloads all if not specified)
 - `--force` - Force re-download of existing files
 
 This will:
@@ -167,89 +167,37 @@ This will:
 **Estimated time:** Variable (depends on number of samples and authentication)
 **Estimated size:** Varies per sample (typically 50KB - 50MB each)
 
-### 5. Export Documentation to PDF
+### 5. Build Search Index
 
-Convert downloaded markdown documentation to PDF format:
+Build a full-text search index from downloaded documentation:
 
 ```bash
-cupertino export-pdf \
-  --input-dir ~/.cupertino/docs \
-  --output-dir ~/.cupertino/pdfs
+cupertino index
 ```
 
 **Parameters:**
-- `--input-dir` - Directory containing markdown files (default: `~/.cupertino/docs`)
-- `--output-dir` - Directory for PDF output (default: `~/.cupertino/pdfs`)
-- `--max-files` - Limit number of files to convert (optional)
-- `--force` - Force re-export of existing PDFs
+- `--docs-dir` - Directory containing Apple documentation (default: `~/.cupertino/docs`)
+- `--evolution-dir` - Directory containing Swift Evolution proposals (default: `~/.cupertino/swift-evolution`)
+- `--search-db` - Output database path (default: `~/.cupertino/search.db`)
+- `--clear` - Clear existing index first
 
-This will:
-- Scan the input directory recursively for `.md` files
-- Convert each markdown file to a styled PDF
-- Preserve the directory structure in the output
-- Skip already exported files (unless `--force` is used)
+This creates a SQLite FTS5 search index that enables fast full-text search across all documentation.
 
-**Example output:**
-```
-📄 PDF Exporter
+**Estimated time:** ~2-5 minutes
+**Estimated size:** ~50MB
 
-📋 Scanning for markdown files...
-   Found 150 markdown files
-   Exporting 150 files
+### 7. Update Existing Documentation (Incremental)
 
-📄 [1/150] documentation_swift_array.md
-   ✅ Exported: documentation_swift_array.pdf
-   Progress: 0.7%
-
-...
-
-✅ Export completed!
-   Total: 150 files
-   Exported: 145
-   Skipped: 5
-   Errors: 0
-   Duration: 120s
-```
-
-**PDF Features:**
-- 📝 **Styled formatting** - Clean, readable layout with proper typography
-- 💻 **Syntax highlighting** - Code blocks with language-specific formatting
-- 📄 **A4 page size** - Standard 595x842 points
-- 🎨 **Custom CSS** - Matches GitHub markdown styling
-- 📚 **Preserves structure** - Headers, links, lists, bold, italic, code
-
-**Estimated time:** ~1 second per file
-**Estimated size:** Typically 50-500KB per PDF
-
-### 6. Update Existing Documentation (Incremental)
-
-Re-run crawl to update only changed pages:
+Re-run crawl with `--resume` to continue from where you left off, or simply re-run the crawl command - it will automatically skip unchanged pages:
 
 ```bash
-cupertino update \
-  --output-dir ~/.cupertino/docs
+cupertino crawl --resume
 ```
 
 This uses the saved metadata to:
 - Skip unchanged pages (based on SHA-256 hash)
 - Only download new or modified content
 - Much faster than full crawl
-
-### 5. Configuration Management
-
-Initialize default configuration:
-
-```bash
-cupertino config init
-```
-
-View current configuration:
-
-```bash
-cupertino config show
-```
-
-Configuration is saved to: `~/.docsucker/config.json`
 
 ## Output Format
 

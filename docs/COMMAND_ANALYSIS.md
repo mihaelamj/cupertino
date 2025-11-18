@@ -1,8 +1,17 @@
 # Cupertino CLI Command Analysis & Refactoring Recommendations
 
-**Version:** 1.0
+> **⚠️ NOTICE: This document is now outdated.**
+> This analysis was written for v0.1.5. The v0.2 refactoring has been **completed**.
+> For current command structure, see:
+> - [README.md](../README.md) - Current command reference
+> - [REFACTORING_v0.2_PLAN.md](REFACTORING_v0.2_PLAN.md) - Implementation details
+> - [MCP_SERVER_README.md](MCP_SERVER_README.md) - MCP server usage
+> - [CUPERTINO_CLI_README.md](CUPERTINO_CLI_README.md) - CLI command usage
+
+**Version:** 1.0 (Historical)
 **Last Updated:** 2025-11-18
-**Current CLI Version:** 0.1.5
+**Analyzed CLI Version:** 0.1.5 (Pre-refactoring)
+**Current CLI Version:** 0.2.0
 
 ---
 

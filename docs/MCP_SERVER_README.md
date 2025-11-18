@@ -10,6 +10,10 @@ MCP (Model Context Protocol) is a standardized protocol for providing context to
 - Search through documentation collections
 - Access up-to-date information from your local documentation cache
 
+## v0.2 Architecture
+
+In v0.2, the MCP server is integrated into the main `cupertino` binary. The binary defaults to starting the MCP server when run without arguments, making configuration simpler.
+
 ## Features
 
 - 🤖 **AI Agent Integration** - Works with Claude, Claude Code, and other MCP-compatible agents
@@ -40,24 +44,30 @@ cupertino crawl-evolution \
 
 ```bash
 cd Packages
-swift build --product cupertino-mcp
+swift build --product cupertino
 ```
 
-The executable will be at: `.build/debug/cupertino-mcp`
+The executable will be at: `.build/debug/cupertino`
 
 ### Install to /usr/local/bin (optional):
 
 ```bash
-swift build -c release --product cupertino-mcp
-cp .build/release/cupertino-mcp /usr/local/bin/
+swift build -c release --product cupertino
+cp .build/release/cupertino /usr/local/bin/
 ```
 
 ## Usage
 
 ### Start the MCP Server
 
+The `cupertino` binary defaults to starting the MCP server:
+
 ```bash
-cupertino-mcp serve \
+# Option 1: Run with default command (recommended for MCP)
+cupertino
+
+# Option 2: Explicit command
+cupertino mcp serve \
   --docs-dir ~/.cupertino/docs \
   --evolution-dir ~/.cupertino/swift-evolution
 ```
@@ -67,6 +77,17 @@ cupertino-mcp serve \
 - `--evolution-dir` - Directory containing Swift Evolution proposals (default: `~/.cupertino/swift-evolution`)
 
 The server communicates via stdin/stdout using JSON-RPC 2.0.
+
+### Check Server Health
+
+```bash
+cupertino mcp doctor
+```
+
+This command verifies:
+- Documentation directories exist
+- Search database is accessible
+- Required resources are available
 
 ## Integration with Claude Desktop
 
@@ -86,17 +107,15 @@ Edit your Claude Desktop configuration file:
 {
   "mcpServers": {
     "cupertino": {
-      "command": "/Users/YOUR_USERNAME/.local/bin/cupertino-mcp",
-      "args": ["serve"],
-      "env": {}
+      "command": "/usr/local/bin/cupertino"
     }
   }
 }
 ```
 
-**Note**: Replace `/Users/YOUR_USERNAME/.local/bin/cupertino-mcp` with the actual path to your binary:
-- If installed globally: `/usr/local/bin/cupertino-mcp`
-- If using build directory: `/path/to/Packages/.build/release/cupertino-mcp`
+**Note**: The `cupertino` binary defaults to `mcp serve`, so no args are needed. Replace `/usr/local/bin/cupertino` with the actual path to your binary:
+- If installed globally: `/usr/local/bin/cupertino`
+- If using build directory: `/path/to/Packages/.build/release/cupertino`
 
 ### 3. Custom Directories (Optional)
 
@@ -106,13 +125,12 @@ If you want to use custom documentation directories:
 {
   "mcpServers": {
     "cupertino": {
-      "command": "/usr/local/bin/cupertino-mcp",
+      "command": "/usr/local/bin/cupertino",
       "args": [
-        "serve",
+        "mcp", "serve",
         "--docs-dir", "/Users/YOUR_USERNAME/my-docs",
         "--evolution-dir", "/Users/YOUR_USERNAME/my-evolution"
-      ],
-      "env": {}
+      ]
     }
   }
 }
@@ -136,8 +154,7 @@ Edit your Claude Code MCP settings:
 {
   "mcpServers": {
     "cupertino": {
-      "command": "/usr/local/bin/cupertino-mcp",
-      "args": ["serve"]
+      "command": "/usr/local/bin/cupertino"
     }
   }
 }
@@ -253,16 +270,16 @@ ls ~/.cupertino/swift-evolution
 
 **Check binary permissions:**
 ```bash
-chmod +x /usr/local/bin/cupertino-mcp
+chmod +x /usr/local/bin/cupertino
 ```
 
 ### Claude Can't Find Server
 
 **Verify binary path:**
 ```bash
-which cupertino-mcp
+which cupertino
 # or
-ls -la /usr/local/bin/cupertino-mcp
+ls -la /usr/local/bin/cupertino
 ```
 
 **Check Claude config syntax:**
@@ -275,7 +292,7 @@ cat ~/Library/Application\ Support/Claude/claude_desktop_config.json | python3 -
 **Make sure you downloaded docs first:**
 ```bash
 cupertino crawl --max-pages 100 --output-dir ~/.cupertino/docs
-cupertino crawl-evolution --output-dir ~/.cupertino/swift-evolution
+cupertino crawl --type evolution --output-dir ~/.cupertino/swift-evolution
 ```
 
 ### Server Crashes
@@ -290,7 +307,7 @@ cupertino crawl-evolution --output-dir ~/.cupertino/swift-evolution
 You can test the MCP server manually using stdio:
 
 ```bash
-echo '{"jsonrpc":"2.0","id":1,"method":"resources/list","params":{}}' | cupertino-mcp serve
+echo '{"jsonrpc":"2.0","id":1,"method":"resources/list","params":{}}' | cupertino mcp serve
 ```
 
 Expected output: JSON-RPC response with list of resources.
@@ -305,10 +322,10 @@ Expected output: JSON-RPC response with list of resources.
          │ MCP Protocol
          │ (JSON-RPC 2.0)
          │
-┌────────▼──────-----──┐
-│  cupertino-mcp  │
-│   MCP Server         │
-└────────┬─────-----───┘
+┌────────▼────────────┐
+│  cupertino          │
+│  (MCP Server)       │
+└────────┬────────────┘
          │
          ├─→ ~/.cupertino/docs/
          │   ├── swift/
@@ -320,6 +337,12 @@ Expected output: JSON-RPC response with list of resources.
              ├── SE-0255-*.md
              └── SE-0400-*.md
 ```
+
+### v0.2 Changes
+
+- **Unified Binary:** No separate `cupertino-mcp` binary
+- **Default Command:** `cupertino` defaults to `mcp serve`
+- **Health Check:** New `cupertino mcp doctor` command
 
 ## Resource Organization
 
