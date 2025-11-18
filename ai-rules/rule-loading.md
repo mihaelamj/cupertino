@@ -78,6 +78,26 @@ Rules are under `ai-rules` folder. If the folder exist in local project director
 
 **Keywords:** commit, git, version control, feat, fix, branch, conventional commits
 
+### 🔊 voice-alerts.md — Session Voices, Spoken Alerts, Mute/Unmute
+**Load when:**
+- Working in Claude Code (CLI) or Codex
+- Running multiple terminal sessions that need different voices (Karen / Jamie)
+- Requiring spoken alerts via macOS `say`
+- Performing tasks that may need user confirmation (destructive actions, ambiguous paths)
+- Wanting session-bound voice profiles to distinguish agents
+- Using mute/unmute commands for spoken alerts
+
+**Keywords:** say, voice, audio, macOS voice, Karen, Jamie, session voice, terminal, mute, unmute, spoken alert, Codex, Claude Code
+
+**Critical behavior:**
+✅ Each session MUST bind to one voice (e.g. "Karen (Premium)" or "Jamie (Premium)")  
+✅ Spoken alerts MUST prefix `<SessionName> session:` so the user knows WHO is talking  
+✅ Agents MUST speak aloud whenever user confirmation is required, unless muted  
+✅ Spoken alerts MUST be ≤ 8 words and high-signal  
+✅ MUST respect `mute voice` and `unmute voice` commands instantly  
+✅ MUST fall back to text-only alerts when audio unavailable  
+✅ Works in Claude Code *and* Codex—use Bash tool if available  
+
 ### 📚 rules.md - Rule File Creation
 **Load when:**
 - Creating new rule files
