@@ -422,7 +422,7 @@ extension Cupertino {
         var searchDB: String = CupertinoConstants.defaultSearchDatabase.path
 
         @Flag(name: .long, help: "Clear existing index before building")
-        var clear: Bool = true
+        var clear: Bool = false
 
         mutating func run() async throws {
             ConsoleLogger.info("🔨 Building Search Index\n")
