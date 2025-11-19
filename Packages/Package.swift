@@ -145,17 +145,35 @@ let targets: [Target] = {
         dependencies: []
     )
 
-    let cliTestsTarget = Target.testTarget(
-        name: "CLITests",
-        dependencies: [
-            "CLI",
-            "Core",
-            "Search",
-            "Shared",
-            "MCPSupport",
-            "MCP",
-            "TestSupport",
-        ]
+    // CLI Command Test Targets
+    let crawlTestsTarget = Target.testTarget(
+        name: "CrawlTests",
+        dependencies: ["CLI", "Core", "Shared", "TestSupport"],
+        path: "Tests/CLICommandTests/CrawlTests"
+    )
+
+    let fetchTestsTarget = Target.testTarget(
+        name: "FetchTests",
+        dependencies: ["CLI", "Core", "Shared", "TestSupport"],
+        path: "Tests/CLICommandTests/FetchTests"
+    )
+
+    let indexTestsTarget = Target.testTarget(
+        name: "IndexTests",
+        dependencies: ["CLI", "Core", "Search", "Shared", "TestSupport"],
+        path: "Tests/CLICommandTests/IndexTests"
+    )
+
+    let mcpServeTestsTarget = Target.testTarget(
+        name: "MCPServeTests",
+        dependencies: ["CLI", "MCP", "MCPSupport", "Search", "SearchToolProvider", "Shared", "TestSupport"],
+        path: "Tests/CLICommandTests/MCPServeTests"
+    )
+
+    let mcpDoctorTestsTarget = Target.testTarget(
+        name: "MCPDoctorTests",
+        dependencies: ["CLI", "MCP", "MCPSupport", "Search", "Shared", "TestSupport"],
+        path: "Tests/CLICommandTests/MCPDoctorTests"
     )
 
     let cupertinoTargets: [Target] = [
@@ -174,7 +192,12 @@ let targets: [Target] = {
         searchToolProviderTestsTarget,
         testSupportTarget,
         cliTarget,
-        cliTestsTarget,
+        // CLI Command Tests
+        crawlTestsTarget,
+        fetchTestsTarget,
+        indexTestsTarget,
+        mcpServeTestsTarget,
+        mcpDoctorTestsTarget,
     ]
     #else
     let cupertinoTargets: [Target] = []
