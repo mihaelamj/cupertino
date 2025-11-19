@@ -62,237 +62,79 @@ struct PackageCuratorApp {
                 fflush(stdout)
             }
 
-            // Render based on view mode
-            let content: String
-            switch state.viewMode {
-            case .home:
-                let stats = HomeStats(
-                    totalPackages: state.packages.count,
-                    selectedPackages: state.packages.filter(\.isSelected).count,
-                    downloadedPackages: state.packages.filter(\.isDownloaded).count,
-                    artifactCount: artifacts.count,
-                    totalSize: artifacts.reduce(0) { $0 + $1.sizeBytes }
-                )
-                content = homeView.render(cursor: homeCursor, width: cols, height: rows, stats: stats)
-            case .packages:
-                content = packageView.render(state: state, width: cols, height: rows)
-            case .library:
-                content = libraryView.render(artifacts: artifacts, cursor: libraryCursor, width: cols, height: rows)
-            case .settings:
-                content = settingsView.render(
-                    cursor: settingsCursor,
-                    width: cols,
-                    height: rows,
-                    baseDirectory: state.baseDirectory,
-                    isEditing: state.isEditingSettings,
-                    editBuffer: state.editBuffer,
-                    statusMessage: state.statusMessage
-                )
-            }
+            // Render current view using extracted helper
+            let pageSize = rows - 4
+            let content = renderCurrentView(
+                state: state,
+                rows: rows,
+                cols: cols,
+                pageSize: pageSize,
+                homeCursor: homeCursor,
+                libraryCursor: libraryCursor,
+                settingsCursor: settingsCursor,
+                artifacts: artifacts,
+                homeView: homeView,
+                packageView: packageView,
+                libraryView: libraryView,
+                settingsView: settingsView
+            )
             await screen.render(content)
 
             // Handle input (non-blocking with 0.1s timeout in terminal)
             if let key = input.readKey() {
-                let pageSize = rows - 4
-
-                // View-specific handling
-                switch state.viewMode {
-                case .home:
-                    switch key {
-                    case .arrowUp, .char("k"):
-                        homeCursor = max(0, homeCursor - 1)
-                    case .arrowDown, .char("j"):
-                        homeCursor = min(2, homeCursor + 1)
-                    case .char("1"):
-                        state.viewMode = .packages
-                    case .char("2"):
-                        state.viewMode = .library
-                    case .char("3"):
-                        state.viewMode = .settings
-                    case .enter:
-                        state.viewMode = [ViewMode.packages, .library, .settings][homeCursor]
-                    case .char("q"), .ctrl("c"), .escape:
-                        running = false
-                    default:
-                        break
-                    }
+                // Check for view transitions
+                if let newView = ViewRouter.handleViewTransition(key: key, state: state, homeCursor: homeCursor) {
+                    state.viewMode = newView
                     continue
-
-                case .library:
-                    switch key {
-                    case .arrowUp, .char("k"):
-                        libraryCursor = max(0, libraryCursor - 1)
-                    case .arrowDown, .char("j"):
-                        libraryCursor = min(artifacts.count - 1, libraryCursor + 1)
-                    case .char("o"), .enter:
-                        if libraryCursor < artifacts.count {
-                            openInFinder(url: artifacts[libraryCursor].path)
-                        }
-                    case .char("h"), .escape:
-                        state.viewMode = .home
-                    case .char("q"), .ctrl("c"):
-                        running = false
-                    default:
-                        break
-                    }
-                    continue
-
-                case .settings:
-                    // Handle edit mode separately
-                    if state.isEditingSettings {
-                        switch key {
-                        case .enter:
-                            // Save new base directory
-                            if ConfigManager.validateBasePath(state.editBuffer) {
-                                let expandedPath = ConfigManager.expandPath(state.editBuffer)
-                                state.baseDirectory = expandedPath
-                                let newConfig = ConfigManager.TUIConfig(baseDirectory: expandedPath)
-                                do {
-                                    try ConfigManager.save(newConfig)
-                                    state.statusMessage = Colors.brightCyan + "🔄 Reloading data from new location..." + Colors.reset
-                                    state.isEditingSettings = false
-                                    state.editBuffer = ""
-
-                                    // Force a render to show "Reloading..." message
-                                    let reloadContent = settingsView.render(
-                                        cursor: settingsCursor,
-                                        width: cols,
-                                        height: rows,
-                                        baseDirectory: state.baseDirectory,
-                                        isEditing: false,
-                                        editBuffer: "",
-                                        statusMessage: state.statusMessage
-                                    )
-                                    await screen.render(reloadContent)
-
-                                    // Reload artifacts and package status from new base directory
-                                    artifacts = scanLibraryArtifacts(baseDir: expandedPath)
-                                    let downloadedPackages = checkDownloadedPackages(in: expandedPath)
-
-                                    // Update package download status
-                                    for index in state.packages.indices {
-                                        let pkg = state.packages[index].package
-                                        let isDownloaded = downloadedPackages.contains("\(pkg.owner)/\(pkg.repo)".lowercased())
-                                        state.packages[index].isDownloaded = isDownloaded
-                                    }
-
-                                    state.statusMessage = "✅ Base directory saved and reloaded: \(expandedPath)"
-                                } catch {
-                                    state.statusMessage = "❌ Failed to save config: \(error.localizedDescription)"
-                                    state.isEditingSettings = false
-                                    state.editBuffer = ""
-                                }
-                            } else {
-                                state.statusMessage = "❌ Invalid path - must be absolute or start with ~"
-                                state.isEditingSettings = false
-                                state.editBuffer = ""
-                            }
-                        case .escape:
-                            // Cancel edit
-                            state.isEditingSettings = false
-                            state.editBuffer = ""
-                            state.statusMessage = ""
-                        case .backspace:
-                            if !state.editBuffer.isEmpty {
-                                state.editBuffer.removeLast()
-                            }
-                        case let .paste(text):
-                            // Handle pasted text - filter to printable characters only
-                            let filtered = text.filter(\.isPrintable)
-                            state.editBuffer.append(contentsOf: filtered)
-                        case let .char(character) where character.isPrintable:
-                            state.editBuffer.append(character)
-                        default:
-                            break
-                        }
-                    } else {
-                        // Normal navigation mode
-                        switch key {
-                        case .arrowUp, .char("k"):
-                            settingsCursor = max(0, settingsCursor - 1)
-                        case .arrowDown, .char("j"):
-                            settingsCursor = min(6, settingsCursor + 1)
-                        case .char("e"):
-                            // Only allow editing base directory (cursor 0)
-                            if settingsCursor == 0 {
-                                state.isEditingSettings = true
-                                state.editBuffer = state.baseDirectory
-                            }
-                        case .char("h"), .escape:
-                            state.viewMode = .home
-                        case .char("q"), .ctrl("c"):
-                            running = false
-                        default:
-                            break
-                        }
-                    }
-                    continue
-
-                case .packages:
-                    break
                 }
 
-                // Package view handling
-                // Search mode handling
-                if state.isSearching {
-                    switch key {
-                    case .escape, .enter:
-                        state.isSearching = false
-                    case .backspace:
-                        if !state.searchQuery.isEmpty {
-                            state.searchQuery.removeLast()
-                            state.cursor = 0
-                            state.scrollOffset = 0
-                            // Auto-exit search mode when query becomes empty
-                            if state.searchQuery.isEmpty {
-                                state.isSearching = false
-                            }
+                // Process input and update state
+                let result = InputHandler.handleInput(
+                    key,
+                    state: state,
+                    homeCursor: &homeCursor,
+                    libraryCursor: &libraryCursor,
+                    settingsCursor: &settingsCursor,
+                    artifacts: artifacts,
+                    pageSize: pageSize
+                )
+
+                switch result {
+                case .quit:
+                    running = false
+                case .continueRunning:
+                    continue
+                case .render:
+                    // Check if we need to reload artifacts after settings change
+                    if state.statusMessage.contains("Reloading") {
+                        // Force a render to show "Reloading..." message
+                        let reloadContent = settingsView.render(
+                            cursor: settingsCursor,
+                            width: cols,
+                            height: rows,
+                            baseDirectory: state.baseDirectory,
+                            isEditing: false,
+                            editBuffer: "",
+                            statusMessage: state.statusMessage
+                        )
+                        await screen.render(reloadContent)
+
+                        // Reload artifacts and package status from new base directory
+                        artifacts = scanLibraryArtifacts(baseDir: state.baseDirectory)
+                        let downloadedPackages = checkDownloadedPackages(in: state.baseDirectory)
+
+                        // Update package download status
+                        for index in state.packages.indices {
+                            let pkg = state.packages[index].package
+                            let isDownloaded = downloadedPackages.contains("\(pkg.owner)/\(pkg.repo)".lowercased())
+                            state.packages[index].isDownloaded = isDownloaded
                         }
-                    case let .char(character) where character.isLetter || character.isNumber || character.isWhitespace || "-_./".contains(character):
-                        state.searchQuery.append(character)
-                        state.cursor = 0
-                        state.scrollOffset = 0
-                    default:
-                        break
+
+                        state.statusMessage = "✅ Base directory saved and reloaded: \(state.baseDirectory)"
                     }
-                } else {
-                    // Normal mode handling
-                    switch key {
-                    case .arrowUp, .char("k"):
-                        state.moveCursor(delta: -1, pageSize: pageSize)
-                    case .arrowDown, .char("j"):
-                        state.moveCursor(delta: 1, pageSize: pageSize)
-                    case .arrowLeft, .pageUp:
-                        state.moveCursor(delta: -pageSize, pageSize: pageSize)
-                    case .arrowRight, .pageDown:
-                        state.moveCursor(delta: pageSize, pageSize: pageSize)
-                    case .homeKey, .ctrl("a"):
-                        state.moveCursor(delta: -state.cursor, pageSize: pageSize)
-                    case .endKey, .ctrl("e"):
-                        let lastIndex = state.visiblePackages.count - 1
-                        state.moveCursor(delta: lastIndex - state.cursor, pageSize: pageSize)
-                    case .space:
-                        state.toggleCurrent()
-                    case .char("f"):
-                        state.cycleFilterMode()
-                    case .char("s"):
-                        state.cycleSortMode()
-                    case .char("w"):
-                        try saveSelections(state: state)
-                    case .char("/"):
-                        state.isSearching = true
-                    case .char("o"), .enter:
-                        openCurrentPackageInBrowser(state: state)
-                    case .char("h"), .escape:
-                        state.viewMode = .home
-                    case .char("q"), .ctrl("c"):
-                        running = false
-                    default:
-                        break
-                    }
+                    // Continue to next iteration for render
                 }
             }
-            // No sleep needed - terminal timeout provides ~10 FPS natural rate
         }
 
         // Cleanup terminal
@@ -302,6 +144,48 @@ struct PackageCuratorApp {
         await screen.disableRawMode(originalTermios)
         print(Screen.clearScreen + Screen.home, terminator: "")
         fflush(stdout)
+    }
+
+    /// Render the current view based on state
+    static func renderCurrentView(
+        state: AppState,
+        rows: Int,
+        cols: Int,
+        pageSize: Int,
+        homeCursor: Int,
+        libraryCursor: Int,
+        settingsCursor: Int,
+        artifacts: [ArtifactInfo],
+        homeView: HomeView,
+        packageView: PackageView,
+        libraryView: LibraryView,
+        settingsView: SettingsView
+    ) -> String {
+        switch state.viewMode {
+        case .home:
+            let stats = HomeStats(
+                totalPackages: state.packages.count,
+                selectedPackages: state.packages.filter(\.isSelected).count,
+                downloadedPackages: state.packages.filter(\.isDownloaded).count,
+                artifactCount: artifacts.count,
+                totalSize: artifacts.reduce(0) { $0 + $1.sizeBytes }
+            )
+            return homeView.render(cursor: homeCursor, width: cols, height: rows, stats: stats)
+        case .packages:
+            return packageView.render(state: state, width: cols, height: rows)
+        case .library:
+            return libraryView.render(artifacts: artifacts, cursor: libraryCursor, width: cols, height: rows)
+        case .settings:
+            return settingsView.render(
+                cursor: settingsCursor,
+                width: cols,
+                height: rows,
+                baseDirectory: state.baseDirectory,
+                isEditing: state.isEditingSettings,
+                editBuffer: state.editBuffer,
+                statusMessage: state.statusMessage
+            )
+        }
     }
 
     static func openCurrentPackageInBrowser(state: AppState) {
