@@ -126,13 +126,13 @@ cupertino serve
 
 📚 Documentation Directories
    ✗ Apple docs: /Users/username/.cupertino/docs (not found)
-     → Run: cupertino crawl --type docs
+     → Run: cupertino fetch --type docs
    ⚠  Swift Evolution: /Users/username/.cupertino/swift-evolution (not found)
-     → Run: cupertino crawl --type evolution
+     → Run: cupertino fetch --type evolution
 
 🔍 Search Index
    ✗ Database: /Users/username/.cupertino/search.db (not found)
-     → Run: cupertino index
+     → Run: cupertino save
 
 🔧 Providers
    ✓ DocsResourceProvider: available
@@ -199,10 +199,10 @@ Confirms that:
 
 ```bash
 # Download documentation
-cupertino crawl --type docs
+cupertino fetch --type docs
 
 # Build search index
-cupertino index
+cupertino save
 
 # Verify everything is set up
 cupertino doctor
@@ -220,7 +220,7 @@ If the server won't start or clients can't access resources:
 cupertino doctor
 
 # Follow the suggestions in the output
-# Example: "Run: cupertino crawl --type docs"
+# Example: "Run: cupertino fetch --type docs"
 ```
 
 ### CI/CD Validation
@@ -256,12 +256,12 @@ cupertino doctor \
 **Problem:**
 ```
 ✗ Apple docs: /Users/username/.cupertino/docs (not found)
-  → Run: cupertino crawl --type docs
+  → Run: cupertino fetch --type docs
 ```
 
 **Solution:**
 ```bash
-cupertino crawl --type docs
+cupertino fetch --type docs
 ```
 
 ### Search Database Not Found
@@ -269,12 +269,12 @@ cupertino crawl --type docs
 **Problem:**
 ```
 ✗ Database: /Users/username/.cupertino/search.db (not found)
-  → Run: cupertino index
+  → Run: cupertino save
 ```
 
 **Solution:**
 ```bash
-cupertino index
+cupertino save
 ```
 
 ### Database Error
@@ -282,7 +282,7 @@ cupertino index
 **Problem:**
 ```
 ✗ Database error: unable to open database file
-  → Run: cupertino index
+  → Run: cupertino save
 ```
 
 **Possible causes:**
@@ -293,7 +293,7 @@ cupertino index
 **Solution:**
 ```bash
 # Rebuild the index
-cupertino index --clear
+cupertino save --clear
 ```
 
 ### Custom Path Issues

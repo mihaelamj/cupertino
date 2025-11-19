@@ -12,7 +12,7 @@ Created in the output directory of crawl operations:
 ## Created By
 
 ```bash
-cupertino crawl --type <docs|swift|evolution>
+cupertino fetch --type <docs|swift|evolution>
 ```
 
 ## Purpose
@@ -77,13 +77,13 @@ jq '.pages | to_entries | map(select(.value.framework == "swiftui"))' metadata.j
 ### Resume Crawl
 ```bash
 # Automatically uses metadata.json
-cupertino crawl --resume
+cupertino fetch --resume
 ```
 
 ### Force Recrawl (Ignore Metadata)
 ```bash
 # Ignores content hashes, recrawls everything
-cupertino crawl --force
+cupertino fetch --force
 ```
 
 ## Change Detection
@@ -104,8 +104,8 @@ When re-crawling:
 
 ## Used By
 
-- `cupertino crawl --resume` - Resume functionality
-- `cupertino index` - URL mapping for search results
+- `cupertino fetch --resume` - Resume functionality
+- `cupertino save` - URL mapping for search results
 - Change detection on re-crawl
 
 ## Notes

@@ -64,12 +64,12 @@ All Cupertino artifacts are stored under:
 
 | Operation | Creates | Location |
 |-----------|---------|----------|
-| `cupertino crawl --type docs` | Markdown files + metadata | `~/.cupertino/docs/` |
-| `cupertino crawl --type swift` | Markdown files + metadata | `~/.cupertino/swift-org/` |
-| `cupertino crawl --type evolution` | Proposal files + metadata | `~/.cupertino/swift-evolution/` |
+| `cupertino fetch --type docs` | Markdown files + metadata | `~/.cupertino/docs/` |
+| `cupertino fetch --type swift` | Markdown files + metadata | `~/.cupertino/swift-org/` |
+| `cupertino fetch --type evolution` | Proposal files + metadata | `~/.cupertino/swift-evolution/` |
 | `cupertino fetch --type code` | ZIP files + checkpoint | `~/.cupertino/sample-code/` |
 | `cupertino fetch --type packages` | Package data + checkpoint | `~/.cupertino/packages/` |
-| `cupertino index` | Search database | `~/.cupertino/search.db` |
+| `cupertino save` | Search database | `~/.cupertino/search.db` |
 
 ## Customizing Locations
 

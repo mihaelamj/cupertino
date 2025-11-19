@@ -10,10 +10,10 @@ Swift Evolution proposals documenting the evolution of the Swift language.
 
 ```bash
 # All proposals
-cupertino crawl --type evolution
+cupertino fetch --type evolution
 
 # Only accepted/implemented
-cupertino crawl --type evolution --only-accepted
+cupertino fetch --type evolution --only-accepted
 ```
 
 ## Structure
@@ -50,7 +50,7 @@ cupertino crawl --type evolution --only-accepted
 
 ### Get Only Accepted
 ```bash
-cupertino crawl --type evolution --only-accepted
+cupertino fetch --type evolution --only-accepted
 ```
 
 Downloads only proposals with status:
@@ -81,7 +81,7 @@ Downloads only proposals with status:
 ### Search Proposals
 ```bash
 # Build search index
-cupertino index --evolution-dir ~/.cupertino/swift-evolution
+cupertino save --evolution-dir ~/.cupertino/swift-evolution
 ```
 
 ### Browse Locally
@@ -100,7 +100,7 @@ ls ~/.cupertino/swift-evolution/proposals/SE-0123*.md
 
 ```bash
 # Use custom directory
-cupertino crawl --type evolution --output-dir ./evolution
+cupertino fetch --type evolution --output-dir ./evolution
 ```
 
 ## Notes

@@ -5,7 +5,7 @@ Clear existing index before building
 ## Synopsis
 
 ```bash
-cupertino index --clear
+cupertino save --clear
 ```
 
 ## Description
@@ -34,17 +34,17 @@ Deletes the existing search database and rebuilds from scratch.
 
 ### Rebuild Index (Default)
 ```bash
-cupertino index --clear
+cupertino save --clear
 ```
 
 ### Incremental Update
 ```bash
-cupertino index --no-clear
+cupertino save --no-clear
 ```
 
 ### Clear with Custom Database
 ```bash
-cupertino index --clear --search-db ./my-search.db
+cupertino save --clear --search-db ./my-search.db
 ```
 
 ## Use Cases

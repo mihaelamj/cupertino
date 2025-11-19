@@ -115,10 +115,10 @@ class Cupertino < Formula
 
       📚 CLI Usage:
         Download Apple documentation:
-          cupertino crawl --max-pages 15000 --output-dir ~/.docsucker/docs
+          cupertino fetch --max-pages 15000 --output-dir ~/.docsucker/docs
 
         Download Swift Evolution proposals:
-          cupertino crawl-evolution --output-dir ~/.docsucker/swift-evolution
+          cupertino fetch-evolution --output-dir ~/.docsucker/swift-evolution
 
       🤖 MCP Server Setup:
         1. Start server:
@@ -266,7 +266,7 @@ cupertino --version
 cupertino-mcp --version
 
 # 6. Test functionality
-cupertino crawl --max-pages 1 --output-dir /tmp/test-docs
+cupertino fetch --max-pages 1 --output-dir /tmp/test-docs
 
 # 7. Uninstall
 brew uninstall docsucker

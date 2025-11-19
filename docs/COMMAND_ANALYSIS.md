@@ -110,19 +110,19 @@ enum CrawlType {
 
 ```bash
 # Default crawl (Apple docs)
-cupertino crawl
+cupertino fetch
 
 # Crawl everything
-cupertino crawl --type all
+cupertino fetch --type all
 
 # Evolution proposals (accepted only)
-cupertino crawl --type evolution --only-accepted
+cupertino fetch --type evolution --only-accepted
 
 # Resume interrupted crawl
-cupertino crawl --resume
+cupertino fetch --resume
 
 # Force full recrawl with custom limit
-cupertino crawl --force --max-pages 5000
+cupertino fetch --force --max-pages 5000
 ```
 
 ---
@@ -227,16 +227,16 @@ Creates: `search.db` (SQLite with FTS5 extension)
 
 ```bash
 # Build index with defaults
-cupertino index
+cupertino save
 
 # Clear and rebuild
-cupertino index --clear
+cupertino save --clear
 
 # Custom paths
-cupertino index --docs-dir ~/my-docs --search-db ~/my-search.db
+cupertino save --docs-dir ~/my-docs --search-db ~/my-search.db
 
 # Skip evolution proposals
-cupertino index --evolution-dir /nonexistent
+cupertino save --evolution-dir /nonexistent
 ```
 
 ---
@@ -300,7 +300,7 @@ cupertino-mcp serve --docs-dir ~/my-docs --search-db ~/my-search.db
 
 ```bash
 # Index command
-cupertino index --docs-dir ~/.cupertino/docs --evolution-dir ~/.cupertino/swift-evolution
+cupertino save --docs-dir ~/.cupertino/docs --evolution-dir ~/.cupertino/swift-evolution
 
 # Serve command (must repeat same paths!)
 cupertino-mcp serve --docs-dir ~/.cupertino/docs --evolution-dir ~/.cupertino/swift-evolution
@@ -346,8 +346,8 @@ case packages    // "Swift package metadata" - IMPLEMENTED
 
 ```bash
 # Setup workflow requires switching binaries
-cupertino crawl --type all
-cupertino index
+cupertino fetch --type all
+cupertino save
 cupertino-mcp serve    # ← Different binary!
 ```
 
@@ -377,7 +377,7 @@ cupertino-mcp serve    # ← Different binary!
 **Index command has 5 options just for paths:**
 
 ```bash
-cupertino index \
+cupertino save \
   --docs-dir ~/.cupertino/docs \
   --evolution-dir ~/.cupertino/swift-evolution \
   --metadata-file ~/.cupertino/metadata.json \
@@ -440,10 +440,10 @@ cupertino fetch --type all
 
 ```bash
 # Current: 3-4 separate commands
-cupertino crawl --type all
+cupertino fetch --type all
 cupertino fetch --type packages
 cupertino fetch --type code
-cupertino index
+cupertino save
 cupertino-mcp serve
 ```
 
@@ -541,10 +541,10 @@ cupertino clean --dry-run
 
 ```bash
 # Current: verbose
-cupertino crawl --type docs --max-pages 1000 --output-dir ~/docs
+cupertino fetch --type docs --max-pages 1000 --output-dir ~/docs
 
 # Wanted: concise
-cupertino crawl -t docs -m 1000 -o ~/docs
+cupertino fetch -t docs -m 1000 -o ~/docs
 ```
 
 ---
@@ -557,13 +557,13 @@ cupertino crawl -t docs -m 1000 -o ~/docs
 
 ```bash
 # Quiet mode
-cupertino crawl --quiet
+cupertino fetch --quiet
 
 # Verbose mode
-cupertino crawl --verbose
+cupertino fetch --verbose
 
 # JSON output for scripting
-cupertino crawl --json
+cupertino fetch --json
 ```
 
 ---
@@ -588,7 +588,7 @@ max_depth = 10
 
 ```bash
 # Uses config automatically
-cupertino crawl
+cupertino fetch
 ```
 
 ---
@@ -601,13 +601,13 @@ cupertino crawl
 
 **Current:**
 ```bash
-cupertino crawl
+cupertino fetch
 cupertino-mcp serve
 ```
 
 **Proposed:**
 ```bash
-cupertino crawl
+cupertino fetch
 cupertino serve    # Or: cupertino mcp serve
 ```
 
@@ -884,9 +884,9 @@ cupertino update --type all --force
 **Proposed:**
 
 ```bash
-cupertino crawl -t docs -m 1000 -o ~/docs
+cupertino fetch -t docs -m 1000 -o ~/docs
 # Instead of:
-cupertino crawl --type docs --max-pages 1000 --output-dir ~/docs
+cupertino fetch --type docs --max-pages 1000 --output-dir ~/docs
 ```
 
 **Mapping:**
@@ -909,13 +909,13 @@ var outputDir: String?
 
 ```bash
 # Quiet mode (errors only)
-cupertino crawl --quiet
+cupertino fetch --quiet
 
 # Verbose mode (detailed progress)
-cupertino crawl --verbose
+cupertino fetch --verbose
 
 # JSON output (machine-readable)
-cupertino crawl --json > output.json
+cupertino fetch --json > output.json
 ```
 
 **Implementation:**
@@ -956,10 +956,10 @@ mode = "verbose"
 **Usage:**
 ```bash
 # Uses config automatically
-cupertino crawl
+cupertino fetch
 
 # Override config
-cupertino crawl --max-pages 5000
+cupertino fetch --max-pages 5000
 ```
 
 ---
@@ -1047,10 +1047,10 @@ Commands:
 
 **Current (4 commands, 2 binaries):**
 ```bash
-cupertino crawl --type all
+cupertino fetch --type all
 cupertino fetch --type packages
 cupertino fetch --type code
-cupertino index
+cupertino save
 cupertino-mcp serve
 ```
 
@@ -1071,10 +1071,10 @@ rm -rf ~/.cupertino/docs
 rm -rf ~/.cupertino/swift-evolution
 
 # Recrawl everything
-cupertino crawl --type all --force
+cupertino fetch --type all --force
 
 # Rebuild index
-cupertino index --clear
+cupertino save --clear
 ```
 
 **Proposed:**

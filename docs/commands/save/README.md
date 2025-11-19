@@ -1,11 +1,11 @@
-# cupertino index
+# cupertino save
 
 Build FTS5 search index from crawled documentation
 
 ## Synopsis
 
 ```bash
-cupertino index [options]
+cupertino save [options]
 ```
 
 ## Description
@@ -24,22 +24,22 @@ The `index` command builds a Full-Text Search (FTS5) SQLite database from previo
 
 ### Build Index from Default Locations
 ```bash
-cupertino index
+cupertino save
 ```
 
 ### Build Index from Custom Documentation
 ```bash
-cupertino index --docs-dir ./my-docs --search-db ./my-search.db
+cupertino save --docs-dir ./my-docs --search-db ./my-search.db
 ```
 
 ### Rebuild Index (Clear and Rebuild)
 ```bash
-cupertino index --clear
+cupertino save --clear
 ```
 
 ### Index Multiple Sources
 ```bash
-cupertino index --docs-dir ./apple-docs --evolution-dir ./evolution
+cupertino save --docs-dir ./apple-docs --evolution-dir ./evolution
 ```
 
 ## Output
@@ -64,7 +64,7 @@ The FTS5 index supports:
 
 ## Notes
 
-- Requires crawled documentation (run `cupertino crawl` first)
+- Requires crawled documentation (run `cupertino fetch` first)
 - Uses SQLite FTS5 for optimal search performance
 - Index size is typically ~10-20% of total documentation size
 - Supports incremental updates (without `--clear`)

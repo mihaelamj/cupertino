@@ -7,25 +7,25 @@ import Foundation
 import Testing
 import TestSupport
 
-// MARK: - Index Command Tests
+// MARK: - Save Command Tests
 
-/// Tests for the `cupertino index` command
+/// Tests for the `cupertino save` command
 /// Verifies search index building, framework filtering, and empty directory handling
 
-@Suite("Index Command Tests")
-struct IndexCommandTests {
+@Suite("Save Command Tests")
+struct SaveCommandTests {
     @Test("Build search index from crawled docs", .tags(.integration))
     @MainActor
     func buildSearchIndex() async throws {
         _ = NSApplication.shared
 
         let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cupertino-index-test-\(UUID().uuidString)")
+            .appendingPathComponent("cupertino-save-test-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         print("🧪 Test: Build search index")
 
-        // First, crawl a page to have data
+        // First, fetch a page to have data
         let config = Shared.Configuration(
             crawler: Shared.CrawlerConfiguration(
                 startURL: URL(string: "https://developer.apple.com/documentation/swift")!,
@@ -33,7 +33,7 @@ struct IndexCommandTests {
                 maxDepth: 0,
                 outputDirectory: tempDir
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true),
+            changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true, outputDirectory: tempDir),
             output: Shared.OutputConfiguration(format: .markdown)
         )
 
@@ -66,7 +66,7 @@ struct IndexCommandTests {
             print("   ✅ First result: \(firstResult.title)")
         }
 
-        print("   ✅ Index build test passed!")
+        print("   ✅ Save build test passed!")
     }
 
     @Test("Search index with framework filter", .tags(.integration))
@@ -80,7 +80,7 @@ struct IndexCommandTests {
 
         print("🧪 Test: Search with framework filter")
 
-        // Crawl and index
+        // Fetch and save
         let config = Shared.Configuration(
             crawler: Shared.CrawlerConfiguration(
                 startURL: URL(string: "https://developer.apple.com/documentation/swift")!,
@@ -88,7 +88,7 @@ struct IndexCommandTests {
                 maxDepth: 0,
                 outputDirectory: tempDir
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true),
+            changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true, outputDirectory: tempDir),
             output: Shared.OutputConfiguration(format: .markdown)
         )
 
@@ -123,15 +123,15 @@ struct IndexCommandTests {
         print("   ✅ Search filter test passed!")
     }
 
-    @Test("Index handles empty directory gracefully")
-    func indexEmptyDirectory() async throws {
+    @Test("Save handles empty directory gracefully")
+    func saveEmptyDirectory() async throws {
         let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cupertino-empty-index-test-\(UUID().uuidString)")
+            .appendingPathComponent("cupertino-empty-save-test-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-        print("🧪 Test: Index empty directory")
+        print("🧪 Test: Save empty directory")
 
         let searchDbPath = tempDir.appendingPathComponent("search.db")
         let searchIndex = try await Search.Index(dbPath: searchDbPath)
@@ -148,11 +148,11 @@ struct IndexCommandTests {
             evolutionDirectory: nil
         )
 
-        // Should not throw, just index 0 documents
+        // Should not throw, just save 0 documents
         try await builder.buildIndex()
 
         let results = try await searchIndex.search(query: "anything", limit: 10)
-        #expect(results.isEmpty, "Empty index should return no results")
+        #expect(results.isEmpty, "Empty save should return no results")
 
         print("   ✅ Empty directory test passed!")
     }

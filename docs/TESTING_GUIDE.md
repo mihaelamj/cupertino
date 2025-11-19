@@ -61,7 +61,7 @@ SUBCOMMANDS:
 
 ```bash
 mkdir -p ~/docsucker-test
-.build/debug/cupertino crawl \
+.build/debug/cupertino fetch \
   --start-url "https://developer.apple.com/documentation/swift/array" \
   --max-pages 3 \
   --max-depth 1 \
@@ -118,7 +118,7 @@ du -sh ~/docsucker-test
 ### 5. Swift Evolution Test
 
 ```bash
-.build/debug/cupertino crawl-evolution \
+.build/debug/cupertino fetch-evolution \
   --output-dir ~/swift-evolution-test
 ```
 
@@ -156,7 +156,7 @@ head -20 ~/swift-evolution-test/SE-0001-keywords-as-argument-labels.md
 
 ```bash
 # Re-run crawl (should skip unchanged pages)
-.build/debug/cupertino crawl \
+.build/debug/cupertino fetch \
   --start-url "https://developer.apple.com/documentation/swift/array" \
   --max-pages 3 \
   --max-depth 1 \
@@ -247,8 +247,8 @@ SUBCOMMANDS:
 If you see errors about directories not found:
 ```bash
 # Download documentation first
-cupertino crawl --max-pages 10 --output-dir ~/.docsucker/docs
-cupertino crawl-evolution --output-dir ~/.docsucker/swift-evolution
+cupertino fetch --max-pages 10 --output-dir ~/.docsucker/docs
+cupertino fetch-evolution --output-dir ~/.docsucker/swift-evolution
 ```
 
 ### 4. Verify Documentation Exists
@@ -347,7 +347,7 @@ swift test
 
 ```bash
 # Download small sample (10 pages)
-.build/debug/cupertino crawl \
+.build/debug/cupertino fetch \
   --start-url "https://developer.apple.com/documentation/swift" \
   --max-pages 10 \
   --output-dir ~/.docsucker/docs
@@ -358,7 +358,7 @@ swift test
 #### Step 2: Download Swift Evolution
 
 ```bash
-.build/debug/cupertino crawl-evolution \
+.build/debug/cupertino fetch-evolution \
   --output-dir ~/.docsucker/swift-evolution
 ```
 

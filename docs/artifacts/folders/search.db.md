@@ -9,7 +9,7 @@ SQLite database with Full-Text Search (FTS5) index for fast documentation search
 ## Created By
 
 ```bash
-cupertino index
+cupertino save
 ```
 
 ## Purpose
@@ -115,17 +115,17 @@ snippet(documents, 1, '<mark>', '</mark>', '...', 32)
 
 ```bash
 # Clear and rebuild from scratch
-cupertino index --clear
+cupertino save --clear
 
 # Update with new documentation
-cupertino index --no-clear
+cupertino save --no-clear
 ```
 
 ## Customizing Location
 
 ```bash
 # Use custom database path
-cupertino index --search-db ./my-search.db
+cupertino save --search-db ./my-search.db
 ```
 
 ## Technical Details

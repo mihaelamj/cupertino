@@ -5,7 +5,7 @@ Output path for search database
 ## Synopsis
 
 ```bash
-cupertino index --search-db <path>
+cupertino save --search-db <path>
 ```
 
 ## Description
@@ -20,21 +20,21 @@ Specifies where to create the SQLite FTS5 search database.
 
 ### Use Default Location
 ```bash
-cupertino index
+cupertino save
 ```
 
 ### Custom Database Path
 ```bash
-cupertino index --search-db ./my-search.db
+cupertino save --search-db ./my-search.db
 ```
 
 ### Separate Database per Documentation Type
 ```bash
 # Apple docs
-cupertino index --docs-dir ~/.cupertino/docs --search-db ~/.cupertino/apple-search.db
+cupertino save --docs-dir ~/.cupertino/docs --search-db ~/.cupertino/apple-search.db
 
 # Swift.org
-cupertino index --docs-dir ~/.cupertino/swift-org --search-db ~/.cupertino/swift-search.db
+cupertino save --docs-dir ~/.cupertino/swift-org --search-db ~/.cupertino/swift-search.db
 ```
 
 ## Database Format

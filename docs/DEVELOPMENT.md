@@ -343,7 +343,7 @@ vim Packages/Sources/CupertinoCore/Crawler.swift
 make build && make test
 
 # 3. Test locally (if installed globally)
-cupertino crawl --max-pages 1 --output-dir /tmp/test
+cupertino fetch --max-pages 1 --output-dir /tmp/test
 
 # 4. If looks good, update (from root or Packages directory)
 make update
@@ -361,7 +361,7 @@ cd Packages
 swift build && swift test
 
 # 3. Test locally
-.build/debug/cupertino crawl --max-pages 1 --output-dir /tmp/test
+.build/debug/cupertino fetch --max-pages 1 --output-dir /tmp/test
 
 # 4. If looks good, rebuild release
 swift build -c release
@@ -431,7 +431,7 @@ Test the full workflow locally:
 
 ```bash
 # 1. Download small sample
-.build/debug/cupertino crawl \
+.build/debug/cupertino fetch \
   --start-url "https://developer.apple.com/documentation/swift/array" \
   --max-pages 3 \
   --output-dir /tmp/docsucker-test
@@ -555,10 +555,10 @@ log show --predicate 'subsystem == "com.docsucker.cupertino" AND category == "cr
 
 ```bash
 # Verbose output (if implemented)
-cupertino crawl --verbose
+cupertino fetch --verbose
 
 # Test with small sample
-cupertino crawl --max-pages 1 --output-dir /tmp/test
+cupertino fetch --max-pages 1 --output-dir /tmp/test
 
 # Check file permissions
 ls -la ~/.cupertino/
@@ -650,7 +650,7 @@ time swift build -c release
 ### Measure Crawl Performance
 
 ```bash
-time .build/release/cupertino crawl --max-pages 100 --output-dir /tmp/perf-test
+time .build/release/cupertino fetch --max-pages 100 --output-dir /tmp/perf-test
 ```
 
 ### Profile with Instruments

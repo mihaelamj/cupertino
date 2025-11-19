@@ -28,13 +28,13 @@ Before starting the MCP server, you need to download documentation:
 
 ```bash
 # Download Apple documentation
-cupertino crawl \
+cupertino fetch \
   --start-url "https://developer.apple.com/documentation/" \
   --max-pages 15000 \
   --output-dir ~/.cupertino/docs
 
 # Download Swift Evolution proposals
-cupertino crawl-evolution \
+cupertino fetch-evolution \
   --output-dir ~/.cupertino/swift-evolution
 ```
 
@@ -291,8 +291,8 @@ cat ~/Library/Application\ Support/Claude/claude_desktop_config.json | python3 -
 
 **Make sure you downloaded docs first:**
 ```bash
-cupertino crawl --max-pages 100 --output-dir ~/.cupertino/docs
-cupertino crawl --type evolution --output-dir ~/.cupertino/swift-evolution
+cupertino fetch --max-pages 100 --output-dir ~/.cupertino/docs
+cupertino fetch --type evolution --output-dir ~/.cupertino/swift-evolution
 ```
 
 ### Server Crashes

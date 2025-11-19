@@ -9,7 +9,7 @@ Crawled Apple developer documentation in Markdown format.
 ## Created By
 
 ```bash
-cupertino crawl --type docs
+cupertino fetch --type docs
 ```
 
 ## Structure
@@ -87,7 +87,7 @@ docs/storekit/documentation_storekit_product_subscriptionoffer_signature.md
 ### Search This Documentation
 ```bash
 # Build search index
-cupertino index --docs-dir ~/.cupertino/docs
+cupertino save --docs-dir ~/.cupertino/docs
 
 # Use with MCP
 cupertino-mcp serve
@@ -103,7 +103,7 @@ open ~/.cupertino/docs/swiftui/view/index.md
 
 ```bash
 # Use custom directory
-cupertino crawl --type docs --output-dir ./my-apple-docs
+cupertino fetch --type docs --output-dir ./my-apple-docs
 ```
 
 ## Notes

@@ -301,7 +301,7 @@ struct MCPServerIntegrationTests {
                 maxDepth: 0,
                 outputDirectory: tempDir
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true),
+            changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true, outputDirectory: tempDir),
             output: Shared.OutputConfiguration(format: .markdown)
         )
 

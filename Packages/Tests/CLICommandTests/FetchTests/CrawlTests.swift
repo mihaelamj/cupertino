@@ -7,21 +7,21 @@ import Foundation
 import Testing
 import TestSupport
 
-// MARK: - Crawl Command Tests
+// MARK: - Web Crawl Tests
 
-/// Tests for the `cupertino crawl` command
-/// Verifies crawling functionality, resume capability, and Evolution proposals
+/// Tests for the `cupertino fetch` command (web crawling)
+/// Verifies web crawling functionality, resume capability, and Evolution proposals
 
-@Suite("Crawl Command Tests")
-struct CrawlCommandTests {
-    @Test("Crawl single Apple documentation page", .tags(.integration))
+@Suite("Web Crawl Tests")
+struct WebCrawlTests {
+    @Test("Fetch single Apple documentation page", .tags(.integration))
     @MainActor
-    func crawlSinglePage() async throws {
+    func fetchSinglePage() async throws {
         // Set up NSApplication for WKWebView
         _ = NSApplication.shared
 
         let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cupertino-crawl-test-\(UUID().uuidString)")
+            .appendingPathComponent("cupertino-fetch-test-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let config = Shared.Configuration(
@@ -31,11 +31,11 @@ struct CrawlCommandTests {
                 maxDepth: 0,
                 outputDirectory: tempDir
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true),
+            changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true, outputDirectory: tempDir),
             output: Shared.OutputConfiguration(format: .markdown)
         )
 
-        print("🧪 Test: Crawl single page")
+        print("🧪 Test: Fetch single page")
         print("   URL: \(config.crawler.startURL)")
 
         let crawler = await Core.Crawler(configuration: config)
@@ -70,12 +70,12 @@ struct CrawlCommandTests {
         #expect(!metadata.pages.isEmpty, "Metadata should contain pages")
         #expect(metadata.stats.totalPages == 1, "Metadata stats should match")
 
-        print("   ✅ Crawl test passed!")
+        print("   ✅ Fetch test passed!")
     }
 
-    @Test("Crawl with resume capability", .tags(.integration))
+    @Test("Fetch with resume capability", .tags(.integration))
     @MainActor
-    func crawlWithResume() async throws {
+    func fetchWithResume() async throws {
         _ = NSApplication.shared
 
         let tempDir = FileManager.default.temporaryDirectory
@@ -89,36 +89,36 @@ struct CrawlCommandTests {
                 maxDepth: 0,
                 outputDirectory: tempDir
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(enabled: true, forceRecrawl: false),
+            changeDetection: Shared.ChangeDetectionConfiguration(enabled: true, forceRecrawl: false, outputDirectory: tempDir),
             output: Shared.OutputConfiguration(format: .markdown)
         )
 
-        print("🧪 Test: Crawl with resume")
+        print("🧪 Test: Fetch with resume")
 
-        // First crawl
+        // First fetch
         let crawler1 = await Core.Crawler(configuration: config)
         let stats1 = try await crawler1.crawl()
-        #expect(stats1.newPages == 1, "First crawl should have 1 new page")
+        #expect(stats1.newPages == 1, "First fetch should have 1 new page")
 
-        // Second crawl (should skip unchanged)
+        // Second fetch (should skip unchanged)
         let crawler2 = await Core.Crawler(configuration: config)
         let stats2 = try await crawler2.crawl()
-        #expect(stats2.skippedPages == 1, "Second crawl should skip unchanged page")
-        #expect(stats2.newPages == 0, "Second crawl should have no new pages")
+        #expect(stats2.skippedPages == 1, "Second fetch should skip unchanged page")
+        #expect(stats2.newPages == 0, "Second fetch should have no new pages")
 
         print("   ✅ Resume test passed!")
     }
 
-    @Test("Crawl Swift Evolution proposal", .tags(.integration))
+    @Test("Fetch Swift Evolution proposal", .tags(.integration))
     @MainActor
-    func crawlSwiftEvolution() async throws {
+    func fetchSwiftEvolution() async throws {
         _ = NSApplication.shared
 
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("cupertino-evolution-test-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        print("🧪 Test: Crawl Swift Evolution proposal")
+        print("🧪 Test: Fetch Swift Evolution proposal")
 
         let crawler = Core.EvolutionCrawler(
             outputDirectory: tempDir,
@@ -137,7 +137,7 @@ struct CrawlCommandTests {
             print("   ✅ Downloaded: \(firstFile.lastPathComponent)")
         }
 
-        print("   ✅ Evolution crawl test passed!")
+        print("   ✅ Evolution fetch test passed!")
     }
 }
 

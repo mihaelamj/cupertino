@@ -415,7 +415,7 @@ extension Cupertino {
             // Check if metadata exists
             guard FileManager.default.fileExists(atPath: metadataURL.path) else {
                 Logging.ConsoleLogger.info("❌ Metadata file not found: \(metadataURL.path)")
-                Logging.ConsoleLogger.info("   Run 'cupertino crawl' first to download documentation.")
+                Logging.ConsoleLogger.info("   Run 'cupertino fetch' first to download documentation.")
                 throw ExitCode.failure
             }
 
@@ -434,7 +434,7 @@ extension Cupertino {
 
             if !hasEvolution {
                 Logging.ConsoleLogger.info("ℹ️  Swift Evolution directory not found, skipping proposals")
-                Logging.ConsoleLogger.info("   Run 'cupertino crawl --type evolution' to download proposals")
+                Logging.ConsoleLogger.info("   Run 'cupertino fetch --type evolution' to download proposals")
             }
 
             // Build index

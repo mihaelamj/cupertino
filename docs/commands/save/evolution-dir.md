@@ -5,7 +5,7 @@ Directory containing Swift Evolution proposals
 ## Synopsis
 
 ```bash
-cupertino index --evolution-dir <path>
+cupertino save --evolution-dir <path>
 ```
 
 ## Description
@@ -20,17 +20,17 @@ Specifies the directory containing Swift Evolution proposal Markdown files to in
 
 ### Include Evolution Proposals (Default)
 ```bash
-cupertino index
+cupertino save
 ```
 
 ### Custom Evolution Directory
 ```bash
-cupertino index --evolution-dir ./my-evolution
+cupertino save --evolution-dir ./my-evolution
 ```
 
 ### No Evolution Proposals
 ```bash
-cupertino index --evolution-dir ""
+cupertino save --evolution-dir ""
 ```
 
 ## Expected Structure
@@ -53,6 +53,6 @@ evolution-dir/
 
 - Directory must exist if specified
 - Should contain Markdown (`.md`) files from Swift Evolution
-- Works with output from `cupertino crawl --type evolution`
+- Works with output from `cupertino fetch --type evolution`
 - Indexed separately but searchable together
 - Can be empty or omitted if not needed

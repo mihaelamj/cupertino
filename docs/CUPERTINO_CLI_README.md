@@ -39,7 +39,7 @@ cp .build/release/cupertino /usr/local/bin/
 To download the complete Apple documentation library:
 
 ```bash
-cupertino crawl \
+cupertino fetch \
   --start-url "https://developer.apple.com/documentation/" \
   --max-pages 15000 \
   --max-depth 15 \
@@ -61,7 +61,7 @@ cupertino crawl \
 Download just SwiftUI documentation:
 
 ```bash
-cupertino crawl \
+cupertino fetch \
   --start-url "https://developer.apple.com/documentation/swiftui" \
   --max-pages 500 \
   --output-dir ~/docs/swiftui
@@ -70,7 +70,7 @@ cupertino crawl \
 Download just Foundation framework:
 
 ```bash
-cupertino crawl \
+cupertino fetch \
   --start-url "https://developer.apple.com/documentation/foundation" \
   --max-pages 1000 \
   --output-dir ~/docs/foundation
@@ -81,7 +81,7 @@ cupertino crawl \
 Download all accepted Swift Evolution proposals from GitHub:
 
 ```bash
-cupertino crawl --type evolution \
+cupertino fetch --type evolution \
   --output-dir ~/.cupertino/swift-evolution
 ```
 
@@ -172,7 +172,7 @@ This will:
 Build a full-text search index from downloaded documentation:
 
 ```bash
-cupertino index
+cupertino save
 ```
 
 **Parameters:**
@@ -191,7 +191,7 @@ This creates a SQLite FTS5 search index that enables fast full-text search acros
 Re-run crawl with `--resume` to continue from where you left off, or simply re-run the crawl command - it will automatically skip unchanged pages:
 
 ```bash
-cupertino crawl --resume
+cupertino fetch --resume
 ```
 
 This uses the saved metadata to:
@@ -244,7 +244,7 @@ Arrays are one of the most commonly used data types...
 ### Download Top 100 Swift Pages
 
 ```bash
-cupertino crawl \
+cupertino fetch \
   --start-url "https://developer.apple.com/documentation/swift" \
   --max-pages 100 \
   --max-depth 3 \
@@ -254,7 +254,7 @@ cupertino crawl \
 ### Force Re-download Everything
 
 ```bash
-cupertino crawl \
+cupertino fetch \
   --start-url "https://developer.apple.com/documentation/" \
   --max-pages 15000 \
   --force \
@@ -264,7 +264,7 @@ cupertino crawl \
 ### Download with Custom Settings
 
 ```bash
-cupertino crawl \
+cupertino fetch \
   --start-url "https://developer.apple.com/documentation/combine" \
   --max-pages 200 \
   --max-depth 5 \

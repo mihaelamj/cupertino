@@ -5,7 +5,7 @@ Path to metadata.json file from crawl
 ## Synopsis
 
 ```bash
-cupertino index --metadata-file <path>
+cupertino save --metadata-file <path>
 ```
 
 ## Description
@@ -20,17 +20,17 @@ Specifies the metadata file created during crawling. Contains additional informa
 
 ### Use Default Metadata
 ```bash
-cupertino index
+cupertino save
 ```
 
 ### Custom Metadata File
 ```bash
-cupertino index --metadata-file ./my-docs/metadata.json
+cupertino save --metadata-file ./my-docs/metadata.json
 ```
 
 ### No Metadata File
 ```bash
-cupertino index --metadata-file ""
+cupertino save --metadata-file ""
 ```
 
 ## Metadata File Contents
@@ -51,7 +51,7 @@ The metadata.json file includes:
 ## Notes
 
 - Optional but recommended
-- Created automatically by `cupertino crawl`
+- Created automatically by `cupertino fetch`
 - JSON format
 - If omitted, index still works but with less metadata
 - Must match the docs directory being indexed

@@ -199,11 +199,11 @@ cupertino mcp serve          # Explicit MCP server start
 cupertino mcp doctor         # Check MCP server health
 
 # Documentation
-cupertino crawl              # Crawl Apple documentation
-cupertino crawl --type evolution  # Crawl Swift Evolution
+cupertino fetch              # Crawl Apple documentation
+cupertino fetch --type evolution  # Crawl Swift Evolution
 cupertino fetch --type code  # Fetch sample code
 cupertino fetch --type packages   # Fetch package metadata
-cupertino index              # Build search index
+cupertino save              # Build search index
 ```
 
 ### MCP Server Integration

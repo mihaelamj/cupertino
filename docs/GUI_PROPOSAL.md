@@ -587,7 +587,7 @@ Both CLI and GUI communicate through the same XPC service:
 cupertino gui show
 
 # Start crawl that GUI can monitor
-cupertino crawl --start-url ... --gui-attach
+cupertino fetch --start-url ... --gui-attach
 
 # Query GUI status from CLI
 cupertino gui status

@@ -9,7 +9,7 @@ Crawled Swift.org documentation including The Swift Programming Language book.
 ## Created By
 
 ```bash
-cupertino crawl --type swift
+cupertino fetch --type swift
 ```
 
 ## Structure
@@ -104,7 +104,7 @@ swift-org/swift-org/packages_logging.html.md
 ### Search This Documentation
 ```bash
 # Build search index
-cupertino index --docs-dir ~/.cupertino/swift-org --search-db ~/.cupertino/swift-search.db
+cupertino save --docs-dir ~/.cupertino/swift-org --search-db ~/.cupertino/swift-search.db
 ```
 
 ### Read The Swift Book
@@ -117,7 +117,7 @@ open ~/.cupertino/swift-org/swift-book/
 
 ```bash
 # Use custom directory
-cupertino crawl --type swift --output-dir ./swift-docs
+cupertino fetch --type swift --output-dir ./swift-docs
 ```
 
 ## Notes

@@ -55,10 +55,10 @@ brew install cupertino
 brew install cupertino-mcp
 
 # Step 2: Build database (complex, time-consuming)
-cupertino crawl --type all
+cupertino fetch --type all
 cupertino fetch --type packages
 cupertino fetch --type code
-cupertino index
+cupertino save
 
 # Step 3: Finally use the product
 cupertino-mcp serve
@@ -244,10 +244,10 @@ cupertino-tools [no default - must specify]
 
 **Current workflow:**
 ```bash
-cupertino crawl --type all
+cupertino fetch --type all
 cupertino fetch --type packages
 cupertino fetch --type code
-cupertino index
+cupertino save
 ```
 
 **New workflow:**
@@ -373,7 +373,7 @@ print("   Update your scripts accordingly")
 **Compatibility:**
 ```bash
 # Old commands still work (with warning)
-cupertino crawl          # → shows deprecation, runs cupertino-tools crawl
+cupertino fetch          # → shows deprecation, runs cupertino-tools crawl
 cupertino-mcp serve      # → shows deprecation, runs cupertino serve
 ```
 
@@ -402,9 +402,9 @@ cupertino-mcp serve      # → shows deprecation, runs cupertino serve
 
 **Migration:**
 Replace in your scripts:
-- `cupertino crawl` → `cupertino-tools crawl`
+- `cupertino fetch` → `cupertino-tools crawl`
 - `cupertino fetch` → `cupertino-tools fetch`
-- `cupertino index` → `cupertino-tools index`
+- `cupertino save` → `cupertino-tools index`
 - `cupertino-mcp serve` → `cupertino serve`
 
 **Why?**
@@ -472,9 +472,9 @@ cupertino
 
 **Old workflow (v0.1.x):**
 ```bash
-cupertino crawl --type all
+cupertino fetch --type all
 cupertino fetch --type packages
-cupertino index
+cupertino save
 cupertino-mcp serve
 ```
 
@@ -493,13 +493,13 @@ cupertino
 ```yaml
 # Old (.github/workflows/build-database.yml)
 - name: Crawl documentation
-  run: cupertino crawl --type all
+  run: cupertino fetch --type all
 
 - name: Fetch resources
   run: cupertino fetch --type packages
 
 - name: Build index
-  run: cupertino index
+  run: cupertino save
 
 # New (.github/workflows/build-database.yml)
 - name: Build database

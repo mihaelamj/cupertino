@@ -73,13 +73,13 @@ Before starting the MCP server, you need:
 
 1. **Downloaded documentation**:
    ```bash
-   cupertino crawl --type docs
-   cupertino crawl --type evolution
+   cupertino fetch --type docs
+   cupertino fetch --type evolution
    ```
 
 2. **Search index** (recommended):
    ```bash
-   cupertino index
+   cupertino save
    ```
 
 Without documentation, the server will display a getting started guide and exit.
@@ -161,7 +161,7 @@ When the server starts successfully:
 
 ```
 ℹ️  Search index not found at: /Users/username/.cupertino/search.db
-   Tools will not be available. Run 'cupertino index' to enable search.
+   Tools will not be available. Run 'cupertino save' to enable search.
 ```
 
 The server will still work for resource access, but search tools won't be available.
@@ -184,13 +184,13 @@ If you start the server without any documentation, you'll see:
 First, download the documentation you want to serve:
 
 • Apple Developer Documentation (recommended):
-  $ cupertino crawl --type docs
+  $ cupertino fetch --type docs
 
 • Swift Evolution Proposals:
-  $ cupertino crawl --type evolution
+  $ cupertino fetch --type evolution
 
 • Swift.org Documentation:
-  $ cupertino crawl --type swift
+  $ cupertino fetch --type swift
 
 ⏱️  Crawling takes 10-30 minutes depending on content type.
    You can resume if interrupted with --resume flag.
@@ -199,7 +199,7 @@ First, download the documentation you want to serve:
 ───────────────────────────────────────────────────────────────────────────
 After crawling, create a search index for fast lookups:
 
-  $ cupertino index
+  $ cupertino save
 
 ⏱️  Indexing typically takes 2-5 minutes.
 
@@ -262,8 +262,8 @@ ls -la ~/.cupertino/swift-evolution
 
 **Solution:** Download documentation first:
 ```bash
-cupertino crawl --type docs
-cupertino crawl --type evolution
+cupertino fetch --type docs
+cupertino fetch --type evolution
 ```
 
 ### No Search Tools Available
@@ -275,7 +275,7 @@ ls -la ~/.cupertino/search.db
 
 **Solution:** Build the search index:
 ```bash
-cupertino index
+cupertino save
 ```
 
 ### Binary Not Found

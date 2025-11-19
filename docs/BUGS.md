@@ -11,7 +11,7 @@ Known issues and bugs that need to be fixed.
 **Status**: Fixed
 **Priority**: Medium
 **Component**: Index command
-**Affected Command**: `cupertino index --clear`
+**Affected Command**: `cupertino save --clear`
 
 ## Open Bugs
 
@@ -27,7 +27,7 @@ Known issues and bugs that need to be fixed.
 
 ### 2. index command requires crawl to run first (dependency violation)
 - `index` command fails if `metadata.json` doesn't exist
-- Error message: "Run 'cupertino crawl' first to download documentation"
+- Error message: "Run 'cupertino fetch' first to download documentation"
 - Creates hard dependency: crawl → index
 - Violates atomicity requirement (TODO #6)
 
@@ -35,7 +35,7 @@ Known issues and bugs that need to be fixed.
 **Priority**: Medium
 **Component**: Index command
 **Location**: `Sources/CupertinoCLI/Commands.swift:437-440`
-**Affected Command**: `cupertino index`
+**Affected Command**: `cupertino save`
 **Related**: TODO #6 (command atomicity)
 
 ### 3. MCP server requires index to run first (dependency violation)
@@ -66,13 +66,13 @@ Known issues and bugs that need to be fixed.
 **Related**: TODO #7 (resource update commands)
 
 ### 5. Index command cannot resume after interruption
-**Problem**: If you interrupt `cupertino index` while it's building the search database, you must start over from scratch.
+**Problem**: If you interrupt `cupertino save` while it's building the search database, you must start over from scratch.
 
 **Why this matters**: Building the search index can take several minutes. If the process crashes or you press Ctrl+C, all progress is lost.
 
 **Example scenario**:
 ```bash
-$ cupertino index
+$ cupertino save
 Building search index...
 Progress: 5000/10000 pages indexed
 ^C  # User presses Ctrl+C or process crashes
@@ -93,23 +93,23 @@ Progress: 5000/10000 pages indexed
 **Priority**: Medium
 **Component**: Index command
 **Location**: `Sources/CupertinoCLI/Commands.swift:405-504`
-**Affected Command**: `cupertino index`
+**Affected Command**: `cupertino save`
 **Related**: TODO #6 (command atomicity)
 
 ### 6. metadata.json can be corrupted if process crashes during write
-**Problem**: When `cupertino crawl` writes `metadata.json`, it doesn't use atomic writes. If the process crashes mid-write, the file can be left corrupted.
+**Problem**: When `cupertino fetch` writes `metadata.json`, it doesn't use atomic writes. If the process crashes mid-write, the file can be left corrupted.
 
 **Why this matters**: `metadata.json` is critical - the `index` command depends on it. A corrupted file breaks indexing.
 
 **Example scenario**:
 ```bash
-$ cupertino crawl --type docs
+$ cupertino fetch --type docs
 Crawling documentation...
 Visited 1000 pages...
 Writing metadata.json...  # ← Process crashes here
 # metadata.json is now half-written and corrupted
 
-$ cupertino index
+$ cupertino save
 Error: Failed to parse metadata.json (corrupted JSON)
 ```
 
@@ -131,11 +131,11 @@ Error: Failed to parse metadata.json (corrupted JSON)
 **Priority**: Medium
 **Component**: Crawl command
 **Location**: `Sources/CupertinoCLI/Commands.swift` (crawl command metadata write)
-**Affected Command**: `cupertino crawl`
+**Affected Command**: `cupertino fetch`
 **Related**: TODO #6 (command atomicity)
 
 ### 7. Crawl command has no transaction support for multi-file operations
-**Problem**: When `cupertino crawl` runs, it creates hundreds of markdown files plus `metadata.json`. If the process crashes partway through, you're left with an inconsistent state - some files from the new crawl, some from the old crawl, and metadata that doesn't match.
+**Problem**: When `cupertino fetch` runs, it creates hundreds of markdown files plus `metadata.json`. If the process crashes partway through, you're left with an inconsistent state - some files from the new crawl, some from the old crawl, and metadata that doesn't match.
 
 **Why this matters**: You can't tell which files are current and which are stale. The `index` command might index a mix of old and new documentation.
 
@@ -146,7 +146,7 @@ $ ls ~/.cupertino/docs/ | wc -l
 500
 
 # New crawl starts
-$ cupertino crawl --type docs --force
+$ cupertino fetch --type docs --force
 Crawling documentation...
 Saved 300 new pages...  # ← Process crashes here
 
@@ -187,6 +187,6 @@ $ ls ~/.cupertino/docs/ | wc -l
 **Priority**: Low (workaround exists: delete output dir and restart)
 **Component**: Crawl command
 **Location**: `Sources/CupertinoCore/Crawler.swift` (markdown file writes)
-**Affected Command**: `cupertino crawl`
+**Affected Command**: `cupertino fetch`
 **Related**: TODO #6 (command atomicity)
 **Note**: This is a complex problem - might defer until architecture refactor (TODO #8)

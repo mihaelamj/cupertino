@@ -5,7 +5,7 @@ Directory containing crawled documentation
 ## Synopsis
 
 ```bash
-cupertino index --docs-dir <path>
+cupertino save --docs-dir <path>
 ```
 
 ## Description
@@ -20,22 +20,22 @@ Specifies the directory containing Markdown files from a previous crawl operatio
 
 ### Index Default Documentation
 ```bash
-cupertino index
+cupertino save
 ```
 
 ### Index Custom Directory
 ```bash
-cupertino index --docs-dir ./my-docs
+cupertino save --docs-dir ./my-docs
 ```
 
 ### Index Swift.org Documentation
 ```bash
-cupertino index --docs-dir ~/.cupertino/swift-org
+cupertino save --docs-dir ~/.cupertino/swift-org
 ```
 
 ### Absolute Path
 ```bash
-cupertino index --docs-dir /Users/username/Documents/apple-docs
+cupertino save --docs-dir /Users/username/Documents/apple-docs
 ```
 
 ## Expected Structure
@@ -55,6 +55,6 @@ docs-dir/
 
 - Directory must exist
 - Should contain Markdown (`.md`) files
-- Works with output from `cupertino crawl`
+- Works with output from `cupertino fetch`
 - Tilde (`~`) expansion is supported
 - Recursive: indexes all `.md` files in subdirectories
