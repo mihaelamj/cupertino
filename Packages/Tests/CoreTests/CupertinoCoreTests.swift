@@ -342,4 +342,535 @@ private func verifyMetadata(_ metadataFile: URL) throws {
     }
 }
 
+// MARK: - CrawlerState Change Detection Tests
+
+@Test("CrawlerState initializes with empty metadata")
+func crawlerStateInitialization() async throws {
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    let config = Shared.ChangeDetectionConfiguration(
+        enabled: true,
+        metadataFile: tempDir.appendingPathComponent("metadata.json"),
+        forceRecrawl: false
+    )
+
+    let state = CrawlerState(configuration: config)
+    let pageCount = await state.getPageCount()
+
+    #expect(pageCount == 0)
+    print("   ✅ CrawlerState initialized with empty metadata")
+}
+
+@Test("CrawlerState loads existing metadata on initialization")
+func crawlerStateLoadsExistingMetadata() async throws {
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+    let metadataFile = tempDir.appendingPathComponent("metadata.json")
+
+    // Create initial metadata with some pages
+    var metadata = CrawlMetadata()
+    metadata.pages["https://example.com/doc1"] = PageMetadata(
+        url: "https://example.com/doc1",
+        framework: "test",
+        filePath: "/test/doc1.md",
+        contentHash: "hash1",
+        depth: 0
+    )
+    metadata.pages["https://example.com/doc2"] = PageMetadata(
+        url: "https://example.com/doc2",
+        framework: "test",
+        filePath: "/test/doc2.md",
+        contentHash: "hash2",
+        depth: 1
+    )
+    try metadata.save(to: metadataFile)
+
+    // Initialize state - should load existing metadata
+    let config = Shared.ChangeDetectionConfiguration(
+        enabled: true,
+        metadataFile: metadataFile,
+        forceRecrawl: false
+    )
+    let state = CrawlerState(configuration: config)
+    let pageCount = await state.getPageCount()
+
+    #expect(pageCount == 2)
+    print("   ✅ CrawlerState loaded existing metadata with \(pageCount) pages")
+}
+
+@Test("CrawlerState shouldRecrawl detects new pages")
+func crawlerStateShouldRecrawlNewPage() async throws {
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    let config = Shared.ChangeDetectionConfiguration(
+        enabled: true,
+        metadataFile: tempDir.appendingPathComponent("metadata.json"),
+        forceRecrawl: false
+    )
+
+    let state = CrawlerState(configuration: config)
+
+    // New page should be recrawled
+    let shouldRecrawl = await state.shouldRecrawl(
+        url: "https://example.com/new-page",
+        contentHash: "hash123",
+        filePath: URL(fileURLWithPath: "/test/new.md")
+    )
+
+    #expect(shouldRecrawl)
+    print("   ✅ New page correctly identified for crawling")
+}
+
+@Test("CrawlerState shouldRecrawl detects content changes")
+func crawlerStateShouldRecrawlContentChanged() async throws {
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+    let metadataFile = tempDir.appendingPathComponent("metadata.json")
+    let outputFile = tempDir.appendingPathComponent("doc.md")
+
+    // Create file and metadata
+    try "Original content".write(to: outputFile, atomically: true, encoding: .utf8)
+
+    var metadata = CrawlMetadata()
+    metadata.pages["https://example.com/doc"] = PageMetadata(
+        url: "https://example.com/doc",
+        framework: "test",
+        filePath: outputFile.path,
+        contentHash: "old-hash",
+        depth: 0
+    )
+    try metadata.save(to: metadataFile)
+
+    let config = Shared.ChangeDetectionConfiguration(
+        enabled: true,
+        metadataFile: metadataFile,
+        forceRecrawl: false
+    )
+    let state = CrawlerState(configuration: config)
+
+    // Same URL but different hash should trigger recrawl
+    let shouldRecrawl = await state.shouldRecrawl(
+        url: "https://example.com/doc",
+        contentHash: "new-hash",
+        filePath: outputFile
+    )
+
+    #expect(shouldRecrawl)
+    print("   ✅ Content change correctly detected")
+}
+
+@Test("CrawlerState shouldRecrawl skips unchanged pages")
+func crawlerStateShouldRecrawlSkipsUnchanged() async throws {
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+    let metadataFile = tempDir.appendingPathComponent("metadata.json")
+    let outputFile = tempDir.appendingPathComponent("doc.md")
+
+    // Create file and metadata
+    try "Content".write(to: outputFile, atomically: true, encoding: .utf8)
+
+    var metadata = CrawlMetadata()
+    metadata.pages["https://example.com/doc"] = PageMetadata(
+        url: "https://example.com/doc",
+        framework: "test",
+        filePath: outputFile.path,
+        contentHash: "same-hash",
+        depth: 0
+    )
+    try metadata.save(to: metadataFile)
+
+    let config = Shared.ChangeDetectionConfiguration(
+        enabled: true,
+        metadataFile: metadataFile,
+        forceRecrawl: false
+    )
+    let state = CrawlerState(configuration: config)
+
+    // Same URL, same hash, file exists - should skip
+    let shouldRecrawl = await state.shouldRecrawl(
+        url: "https://example.com/doc",
+        contentHash: "same-hash",
+        filePath: outputFile
+    )
+
+    #expect(!shouldRecrawl)
+    print("   ✅ Unchanged page correctly skipped")
+}
+
+@Test("CrawlerState shouldRecrawl detects missing files")
+func crawlerStateShouldRecrawlMissingFile() async throws {
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+    let metadataFile = tempDir.appendingPathComponent("metadata.json")
+    let outputFile = tempDir.appendingPathComponent("missing.md")
+
+    // Create metadata but NOT the file
+    var metadata = CrawlMetadata()
+    metadata.pages["https://example.com/doc"] = PageMetadata(
+        url: "https://example.com/doc",
+        framework: "test",
+        filePath: outputFile.path,
+        contentHash: "hash123",
+        depth: 0
+    )
+    try metadata.save(to: metadataFile)
+
+    let config = Shared.ChangeDetectionConfiguration(
+        enabled: true,
+        metadataFile: metadataFile,
+        forceRecrawl: false
+    )
+    let state = CrawlerState(configuration: config)
+
+    // File missing should trigger recrawl
+    let shouldRecrawl = await state.shouldRecrawl(
+        url: "https://example.com/doc",
+        contentHash: "hash123",
+        filePath: outputFile
+    )
+
+    #expect(shouldRecrawl)
+    print("   ✅ Missing file correctly detected")
+}
+
+@Test("CrawlerState respects forceRecrawl flag")
+func crawlerStateForceRecrawl() async throws {
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+    let metadataFile = tempDir.appendingPathComponent("metadata.json")
+    let outputFile = tempDir.appendingPathComponent("doc.md")
+
+    // Create file and metadata
+    try "Content".write(to: outputFile, atomically: true, encoding: .utf8)
+
+    var metadata = CrawlMetadata()
+    metadata.pages["https://example.com/doc"] = PageMetadata(
+        url: "https://example.com/doc",
+        framework: "test",
+        filePath: outputFile.path,
+        contentHash: "same-hash",
+        depth: 0
+    )
+    try metadata.save(to: metadataFile)
+
+    let config = Shared.ChangeDetectionConfiguration(
+        enabled: true,
+        metadataFile: metadataFile,
+        forceRecrawl: true // Force recrawl
+    )
+    let state = CrawlerState(configuration: config)
+
+    // Even with same hash and existing file, should recrawl when forced
+    let shouldRecrawl = await state.shouldRecrawl(
+        url: "https://example.com/doc",
+        contentHash: "same-hash",
+        filePath: outputFile
+    )
+
+    #expect(shouldRecrawl)
+    print("   ✅ forceRecrawl flag correctly enforced")
+}
+
+@Test("CrawlerState respects disabled change detection")
+func crawlerStateDisabledChangeDetection() async throws {
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+    let metadataFile = tempDir.appendingPathComponent("metadata.json")
+    let outputFile = tempDir.appendingPathComponent("doc.md")
+
+    // Create file and metadata
+    try "Content".write(to: outputFile, atomically: true, encoding: .utf8)
+
+    var metadata = CrawlMetadata()
+    metadata.pages["https://example.com/doc"] = PageMetadata(
+        url: "https://example.com/doc",
+        framework: "test",
+        filePath: outputFile.path,
+        contentHash: "same-hash",
+        depth: 0
+    )
+    try metadata.save(to: metadataFile)
+
+    let config = Shared.ChangeDetectionConfiguration(
+        enabled: false, // Disabled
+        metadataFile: metadataFile,
+        forceRecrawl: false
+    )
+    let state = CrawlerState(configuration: config)
+
+    // With change detection disabled, should always recrawl
+    let shouldRecrawl = await state.shouldRecrawl(
+        url: "https://example.com/doc",
+        contentHash: "same-hash",
+        filePath: outputFile
+    )
+
+    #expect(shouldRecrawl)
+    print("   ✅ Disabled change detection correctly handled")
+}
+
+@Test("CrawlerState updatePage adds page metadata")
+func crawlerStateUpdatePage() async throws {
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    let config = Shared.ChangeDetectionConfiguration(
+        enabled: true,
+        metadataFile: tempDir.appendingPathComponent("metadata.json"),
+        forceRecrawl: false
+    )
+
+    let state = CrawlerState(configuration: config)
+
+    let initialCount = await state.getPageCount()
+    #expect(initialCount == 0)
+
+    // Update a page
+    await state.updatePage(
+        url: "https://example.com/doc",
+        framework: "swift",
+        filePath: "/test/doc.md",
+        contentHash: "hash123",
+        depth: 2
+    )
+
+    let newCount = await state.getPageCount()
+    #expect(newCount == 1)
+    print("   ✅ Page metadata successfully added")
+}
+
+@Test("CrawlerState updateStatistics modifies stats")
+func crawlerStateUpdateStatistics() async throws {
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    let config = Shared.ChangeDetectionConfiguration(
+        enabled: true,
+        metadataFile: tempDir.appendingPathComponent("metadata.json"),
+        forceRecrawl: false
+    )
+
+    let state = CrawlerState(configuration: config)
+
+    await state.updateStatistics { stats in
+        stats.totalPages = 10
+        stats.newPages = 5
+        stats.updatedPages = 3
+        stats.skippedPages = 2
+        stats.errors = 1
+    }
+
+    let stats = await state.getStatistics()
+    #expect(stats.totalPages == 10)
+    #expect(stats.newPages == 5)
+    #expect(stats.updatedPages == 3)
+    #expect(stats.skippedPages == 2)
+    #expect(stats.errors == 1)
+    print("   ✅ Statistics successfully updated")
+}
+
+@Test("CrawlerState session state management")
+func crawlerStateSessionManagement() async throws {
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+    let config = Shared.ChangeDetectionConfiguration(
+        enabled: true,
+        metadataFile: tempDir.appendingPathComponent("metadata.json"),
+        forceRecrawl: false
+    )
+
+    let state = CrawlerState(configuration: config)
+
+    // Initially no active session
+    let hasActiveSession1 = await state.hasActiveSession()
+    #expect(!hasActiveSession1)
+
+    // Save session state
+    let visited = Set(["https://example.com/1", "https://example.com/2"])
+    let queue = [
+        (url: URL(string: "https://example.com/3")!, depth: 1),
+        (url: URL(string: "https://example.com/4")!, depth: 2),
+    ]
+
+    try await state.saveSessionState(
+        visited: visited,
+        queue: queue,
+        startURL: URL(string: "https://example.com/start")!,
+        outputDirectory: tempDir
+    )
+
+    // Now should have active session
+    let hasActiveSession2 = await state.hasActiveSession()
+    #expect(hasActiveSession2)
+
+    // Get saved session
+    let savedSession = await state.getSavedSession()
+    #expect(savedSession != nil)
+    #expect(savedSession?.visited.count == 2)
+    #expect(savedSession?.queue.count == 2)
+
+    // Clear session
+    await state.clearSessionState()
+    let hasActiveSession3 = await state.hasActiveSession()
+    #expect(!hasActiveSession3)
+
+    print("   ✅ Session state management working correctly")
+}
+
+@Test("CrawlerState finalizeCrawl saves metadata")
+func crawlerStateFinalizeAndSave() async throws {
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+    let metadataFile = tempDir.appendingPathComponent("metadata.json")
+    let config = Shared.ChangeDetectionConfiguration(
+        enabled: true,
+        metadataFile: metadataFile,
+        forceRecrawl: false
+    )
+
+    let state = CrawlerState(configuration: config)
+
+    // Update some data
+    await state.updatePage(
+        url: "https://example.com/doc",
+        framework: "swift",
+        filePath: "/test/doc.md",
+        contentHash: "hash123",
+        depth: 0
+    )
+
+    let stats = CrawlStatistics(
+        totalPages: 5,
+        newPages: 3,
+        updatedPages: 1,
+        skippedPages: 1,
+        errors: 0,
+        startTime: Date(),
+        endTime: Date()
+    )
+
+    // Finalize should save metadata
+    try await state.finalizeCrawl(stats: stats)
+
+    // Verify file exists
+    #expect(FileManager.default.fileExists(atPath: metadataFile.path))
+
+    // Verify we can load it back
+    let loadedMetadata = try CrawlMetadata.load(from: metadataFile)
+    #expect(loadedMetadata.pages.count == 1)
+    #expect(loadedMetadata.stats.totalPages == 5)
+    #expect(loadedMetadata.lastCrawl != nil)
+
+    print("   ✅ Metadata finalized and saved correctly")
+}
+
+@Test("CrawlerState autoSaveIfNeeded respects interval")
+func crawlerStateAutoSaveInterval() async throws {
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+    let metadataFile = tempDir.appendingPathComponent("metadata.json")
+    let config = Shared.ChangeDetectionConfiguration(
+        enabled: true,
+        metadataFile: metadataFile,
+        forceRecrawl: false
+    )
+
+    let state = CrawlerState(configuration: config)
+
+    let visited = Set(["https://example.com/1"])
+    let queue = [(url: URL(string: "https://example.com/2")!, depth: 1)]
+    let startURL = URL(string: "https://example.com/start")!
+
+    // First auto-save should NOT happen immediately (interval not elapsed since init)
+    try await state.autoSaveIfNeeded(
+        visited: visited,
+        queue: queue,
+        startURL: startURL,
+        outputDirectory: tempDir
+    )
+
+    // File should not exist yet - interval not elapsed
+    #expect(!FileManager.default.fileExists(atPath: metadataFile.path))
+    print("   ✅ Auto-save correctly skipped (interval not elapsed)")
+
+    // Force a save using saveSessionState directly
+    try await state.saveSessionState(
+        visited: visited,
+        queue: queue,
+        startURL: startURL,
+        outputDirectory: tempDir
+    )
+
+    // Now file should exist
+    #expect(FileManager.default.fileExists(atPath: metadataFile.path))
+    print("   ✅ Manual save succeeded")
+
+    // Immediate auto-save call should not save again (interval not elapsed)
+    let modDate1 = try FileManager.default.attributesOfItem(atPath: metadataFile.path)[.modificationDate] as? Date
+
+    try await state.autoSaveIfNeeded(
+        visited: visited,
+        queue: queue,
+        startURL: startURL,
+        outputDirectory: tempDir
+    )
+
+    let modDate2 = try FileManager.default.attributesOfItem(atPath: metadataFile.path)[.modificationDate] as? Date
+
+    // File should not have been modified (no new save)
+    #expect(modDate1 == modDate2)
+    print("   ✅ Auto-save respects interval (file not modified)")
+}
+
+@Test("HashUtilities sha256 produces consistent hashes")
+func hashUtilitiesSHA256Consistency() throws {
+    let content1 = "Hello, World!"
+    let content2 = "Hello, World!"
+    let content3 = "Different content"
+
+    let hash1 = HashUtilities.sha256(of: content1)
+    let hash2 = HashUtilities.sha256(of: content2)
+    let hash3 = HashUtilities.sha256(of: content3)
+
+    // Same content should produce same hash
+    #expect(hash1 == hash2)
+
+    // Different content should produce different hash
+    #expect(hash1 != hash3)
+
+    // Hash should be 64 characters (256 bits in hex)
+    #expect(hash1.count == 64)
+
+    print("   ✅ SHA-256 hashing working correctly")
+}
+
 // Note: Test tags are now defined in TestSupport/TestTags.swift
