@@ -5,6 +5,7 @@ import Shared
 
 @main
 struct PackageCuratorApp {
+    @MainActor
     static func main() async throws {
         // Load packages
         let packages = await SwiftPackagesCatalog.allPackages
@@ -41,17 +42,17 @@ struct PackageCuratorApp {
         var settingsCursor = 0
 
         // Setup terminal
-        let originalTermios = await screen.enableRawMode()
-        await screen.enterAltScreen()
+        let originalTermios = screen.enableRawMode()
+        screen.enterAltScreen()
         print(Screen.hideCursor, terminator: "")
 
         var running = true
         // Initialize with actual terminal size to avoid false initial "resize"
-        var lastSize = await screen.getSize()
+        var lastSize = screen.getSize()
 
         while running {
             // Get current terminal size (handles resize)
-            let (rows, cols) = await screen.getSize()
+            let (rows, cols) = screen.getSize()
 
             // Detect resize
             let didResize = rows != lastSize.rows || cols != lastSize.cols
@@ -78,7 +79,7 @@ struct PackageCuratorApp {
                 libraryView: libraryView,
                 settingsView: settingsView
             )
-            await screen.render(content)
+            screen.render(content)
 
             // Handle input (non-blocking with 0.1s timeout in terminal)
             if let key = input.readKey() {
@@ -117,7 +118,7 @@ struct PackageCuratorApp {
                             editBuffer: "",
                             statusMessage: state.statusMessage
                         )
-                        await screen.render(reloadContent)
+                        screen.render(reloadContent)
 
                         // Reload artifacts and package status from new base directory
                         artifacts = scanLibraryArtifacts(baseDir: state.baseDirectory)
@@ -140,13 +141,14 @@ struct PackageCuratorApp {
         // Cleanup terminal
         print(Screen.showCursor, terminator: "")
         fflush(stdout)
-        await screen.exitAltScreen()
-        await screen.disableRawMode(originalTermios)
+        screen.exitAltScreen()
+        screen.disableRawMode(originalTermios)
         print(Screen.clearScreen + Screen.home, terminator: "")
         fflush(stdout)
     }
 
     /// Render the current view based on state
+    @MainActor
     static func renderCurrentView(
         state: AppState,
         rows: Int,
@@ -188,6 +190,7 @@ struct PackageCuratorApp {
         }
     }
 
+    @MainActor
     static func openCurrentPackageInBrowser(state: AppState) {
         let visible = state.visiblePackages
         guard state.cursor < visible.count else { return }
@@ -207,6 +210,7 @@ struct PackageCuratorApp {
         }
     }
 
+    @MainActor
     static func saveSelections(state: AppState) throws {
         let selected = state.packages.filter(\.isSelected).map(\.package)
 
@@ -335,6 +339,7 @@ struct PackageCuratorApp {
     }
 
     /// Reload artifacts and download status from new base directory
+    @MainActor
     static func reloadData(state: AppState, newBaseDir: String) -> [ArtifactInfo] {
         let baseDirURL = URL(fileURLWithPath: newBaseDir)
 

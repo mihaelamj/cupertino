@@ -31,7 +31,7 @@ public final class PDFExporter {
     // MARK: - Public API
 
     /// Export markdown files to PDF
-    public func export(onProgress: ((PDFProgress) -> Void)? = nil) async throws -> PDFStatistics {
+    public func export(onProgress: (@Sendable (PDFProgress) -> Void)? = nil) async throws -> PDFStatistics {
         var stats = PDFStatistics(startTime: Date())
 
         logInfo("📄 Starting PDF export")

@@ -29,7 +29,7 @@ extension Search {
         /// Build search index from all crawled documents
         public func buildIndex(
             clearExisting: Bool = true,
-            onProgress: ((Int, Int) -> Void)? = nil
+            onProgress: (@Sendable (Int, Int) -> Void)? = nil
         ) async throws {
             logInfo("🔨 Building search index...")
 
@@ -53,7 +53,7 @@ extension Search {
 
         // MARK: - Private Methods
 
-        private func indexAppleDocs(onProgress: ((Int, Int) -> Void)?) async throws {
+        private func indexAppleDocs(onProgress: (@Sendable (Int, Int) -> Void)?) async throws {
             let total = metadata.pages.count
             guard total > 0 else {
                 logInfo("⚠️  No Apple documentation found in metadata")
@@ -116,7 +116,7 @@ extension Search {
             logInfo("   Apple Docs: \(indexed) indexed, \(skipped) skipped")
         }
 
-        private func indexEvolutionProposals(onProgress: ((Int, Int) -> Void)?) async throws {
+        private func indexEvolutionProposals(onProgress: (@Sendable (Int, Int) -> Void)?) async throws {
             guard let evolutionDirectory else {
                 return
             }

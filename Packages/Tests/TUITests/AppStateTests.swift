@@ -6,6 +6,7 @@ import TestSupport
 
 // MARK: - AppState Tests
 
+@MainActor
 @Test("AppState initializes with default values")
 func appStateInitialization() {
     let state = AppState()
@@ -21,6 +22,7 @@ func appStateInitialization() {
     #expect(state.statusMessage.isEmpty, "Status message should be empty")
 }
 
+@MainActor
 @Test("AppState visible packages filters correctly")
 func appStateVisiblePackagesFilter() async {
     let state = AppState()
@@ -84,6 +86,7 @@ func appStateVisiblePackagesFilter() async {
     #expect(state.visiblePackages.count == 2, "Should show 2 downloaded packages")
 }
 
+@MainActor
 @Test("AppState search query filters packages")
 func appStateSearchFilter() async {
     let state = AppState()
@@ -142,6 +145,7 @@ func appStateSearchFilter() async {
     #expect(state.visiblePackages.count == 2, "Case insensitive search should find both")
 }
 
+@MainActor
 @Test("AppState sort modes work correctly")
 func appStateSortModes() async {
     let state = AppState()
@@ -210,6 +214,7 @@ func appStateSortModes() async {
     #expect(byRecent[2].package.updatedAt == "2025-11-17", "Oldest should be last")
 }
 
+@MainActor
 @Test("AppState toggleCurrent changes selection")
 func appStateToggleCurrent() async {
     let state = AppState()
@@ -242,6 +247,7 @@ func appStateToggleCurrent() async {
     #expect(!state.packages[0].isSelected, "Should be unselected after second toggle")
 }
 
+@MainActor
 @Test("AppState moveCursor handles boundaries")
 func appStateMoveCursor() async {
     let state = AppState()
@@ -292,6 +298,7 @@ func appStateMoveCursor() async {
     #expect(state.scrollOffset >= 0, "Scroll offset should be non-negative")
 }
 
+@MainActor
 @Test("AppState cycleSortMode rotates through modes")
 func appStateCycleSortMode() {
     let state = AppState()
@@ -307,6 +314,7 @@ func appStateCycleSortMode() {
     #expect(state.sortMode == .stars, "Should cycle back to stars")
 }
 
+@MainActor
 @Test("AppState cycleFilterMode rotates through modes")
 func appStateCycleFilterMode() {
     let state = AppState()
@@ -327,6 +335,7 @@ func appStateCycleFilterMode() {
     #expect(state.filterMode == .all, "Should cycle back to all")
 }
 
+@MainActor
 @Test("AppState handles empty packages gracefully")
 func appStateEmptyPackages() {
     let state = AppState()

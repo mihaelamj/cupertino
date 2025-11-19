@@ -3,6 +3,7 @@ import Foundation
 import Resources
 
 /// Open a package's GitHub page in the default browser
+@MainActor
 func openCurrentPackageInBrowser(state: AppState) {
     let visible = state.visiblePackages
     guard state.cursor < visible.count else { return }
@@ -23,6 +24,7 @@ func openCurrentPackageInBrowser(state: AppState) {
 }
 
 /// Save selected packages to priority-packages.json
+@MainActor
 func saveSelections(state: AppState) throws {
     let selected = state.packages.filter(\.isSelected).map(\.package)
 

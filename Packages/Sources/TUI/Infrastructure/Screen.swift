@@ -17,7 +17,9 @@ actor Screen {
     static let altScreenOff = "\u{001B}[?1049l"
 
     // Terminal size
-    func getSize() -> (rows: Int, cols: Int) {
+    // Note: nonisolated because ioctl() accesses global POSIX file descriptors
+    // which are not thread-safe. This must only be called from main thread.
+    nonisolated func getSize() -> (rows: Int, cols: Int) {
         var windowSize = winsize()
         if ioctl(STDOUT_FILENO, TIOCGWINSZ, &windowSize) == 0 {
             return (Int(windowSize.ws_row), Int(windowSize.ws_col))
@@ -26,7 +28,9 @@ actor Screen {
     }
 
     // Raw mode (no buffering, no echo)
-    func enableRawMode() -> termios {
+    // Note: nonisolated because tcgetattr/tcsetattr access global terminal state
+    // via POSIX file descriptors. Must only be called from main thread.
+    nonisolated func enableRawMode() -> termios {
         var original = termios()
         tcgetattr(STDIN_FILENO, &original)
 
@@ -44,7 +48,8 @@ actor Screen {
         return original
     }
 
-    func disableRawMode(_ original: termios) {
+    // Note: nonisolated because tcsetattr accesses global terminal state
+    nonisolated func disableRawMode(_ original: termios) {
         var orig = original
         tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig)
     }
@@ -55,19 +60,23 @@ actor Screen {
     }
 
     // Rendering
-    func render(_ content: String) {
+    // Note: nonisolated because print() and fflush() access global stdout
+    // TUI is inherently single-threaded, so this is safe when called from main thread
+    nonisolated func render(_ content: String) {
         // Reset any lingering formatting, clear screen, move to home, then render content
         print("\u{001B}[0m" + Screen.clearScreen + Screen.home + content, terminator: "")
         fflush(stdout)
     }
 
     // Enter/exit alternate screen buffer
-    func enterAltScreen() {
+    // Note: nonisolated because print() and fflush() access global stdout
+    nonisolated func enterAltScreen() {
         print(Screen.altScreenOn, terminator: "")
         fflush(stdout)
     }
 
-    func exitAltScreen() {
+    // Note: nonisolated because print() and fflush() access global stdout
+    nonisolated func exitAltScreen() {
         print(Screen.altScreenOff, terminator: "")
         fflush(stdout)
     }

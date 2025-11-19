@@ -23,7 +23,7 @@ extension Core {
         // MARK: - Public API
 
         /// Crawl Swift Evolution proposals
-        public func crawl(onProgress: ((EvolutionProgress) -> Void)? = nil) async throws -> EvolutionStatistics {
+        public func crawl(onProgress: (@Sendable (EvolutionProgress) -> Void)? = nil) async throws -> EvolutionStatistics {
             var stats = EvolutionStatistics(startTime: Date())
 
             logInfo("🚀 Starting Swift Evolution crawler")

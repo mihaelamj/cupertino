@@ -28,7 +28,7 @@ extension Core {
         private var queue: [(url: URL, depth: Int)] = []
         private var stats: CrawlStatistics
 
-        private var onProgress: ((CrawlProgress) -> Void)?
+        private var onProgress: (@Sendable (CrawlProgress) -> Void)?
 
         public init(configuration: Shared.Configuration) async {
             self.configuration = configuration.crawler
@@ -47,7 +47,7 @@ extension Core {
         // MARK: - Public API
 
         /// Start crawling from the configured start URL
-        public func crawl(onProgress: ((CrawlProgress) -> Void)? = nil) async throws -> CrawlStatistics {
+        public func crawl(onProgress: (@Sendable (CrawlProgress) -> Void)? = nil) async throws -> CrawlStatistics {
             self.onProgress = onProgress
 
             // Check for resumable session

@@ -1,6 +1,7 @@
 import Core
 import Foundation
 
+@MainActor
 struct PackageView {
     func render(state: AppState, width: Int, height: Int) -> String {
         // Always start with a reset to clear any lingering ANSI codes

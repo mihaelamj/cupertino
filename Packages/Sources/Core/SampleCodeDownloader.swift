@@ -54,7 +54,7 @@ public final class SampleCodeDownloader {
     // MARK: - Public API
 
     /// Download sample code projects
-    public func download(onProgress: ((SampleProgress) -> Void)? = nil) async throws -> SampleStatistics {
+    public func download(onProgress: (@Sendable (SampleProgress) -> Void)? = nil) async throws -> SampleStatistics {
         var stats = SampleStatistics(startTime: Date())
 
         logInfo("🚀 Starting sample code downloader")
@@ -418,7 +418,10 @@ public final class SampleCodeDownloader {
             logInfo("   Press Enter when you're done signing in...")
 
             // Wait for user to press enter
-            _ = readLine()
+            // Note: Using Task.detached to avoid blocking MainActor with synchronous readLine()
+            await Task.detached {
+                _ = readLine()
+            }.value
 
             // Save cookies
             await saveCookies(from: webView)

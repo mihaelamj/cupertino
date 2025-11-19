@@ -14,6 +14,9 @@ enum ViewMode {
     case settings
 }
 
+/// App state for TUI
+/// Note: @MainActor because TUI runs on main thread and state is shared across async calls
+@MainActor
 final class AppState {
     var packages: [PackageEntry] = []
     var cursor: Int = 0

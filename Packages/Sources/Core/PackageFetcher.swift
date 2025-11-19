@@ -29,7 +29,7 @@ extension Core {
         // MARK: - Public API
 
         /// Fetch packages and enrich with GitHub metadata
-        public func fetch(onProgress: ((PackageFetchProgress) -> Void)? = nil) async throws -> PackageFetchStatistics {
+        public func fetch(onProgress: (@Sendable (PackageFetchProgress) -> Void)? = nil) async throws -> PackageFetchStatistics {
             var stats = PackageFetchStatistics(startTime: Date())
 
             try setupOutputDirectory()
@@ -84,7 +84,7 @@ extension Core {
         private func processPackages(
             _ packageURLs: [String],
             stats: inout PackageFetchStatistics,
-            onProgress: ((PackageFetchProgress) -> Void)?
+            onProgress: (@Sendable (PackageFetchProgress) -> Void)?
         ) async throws -> ([PackageInfo], Bool) {
             var packages = try loadCheckpointIfNeeded()
             let startIndex = packages.count

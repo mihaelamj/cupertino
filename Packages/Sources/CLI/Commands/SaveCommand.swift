@@ -70,12 +70,18 @@ struct SaveCommand: AsyncParsableCommand {
             evolutionDirectory: evolutionDirToUse
         )
 
-        var lastPercent = 0.0
+        // Note: Using a class to hold mutable state since @Sendable closures can't capture mutable vars
+        // The actor guarantees sequential execution, so this is thread-safe
+        final class ProgressTracker: @unchecked Sendable {
+            var lastPercent = 0.0
+        }
+        let tracker = ProgressTracker()
+
         try await builder.buildIndex(clearExisting: clear) { processed, total in
             let percent = Double(processed) / Double(total) * 100
-            if percent - lastPercent >= 5.0 {
+            if percent - tracker.lastPercent >= 5.0 {
                 Logging.ConsoleLogger.output("   \(String(format: "%.0f%%", percent)) complete (\(processed)/\(total))")
-                lastPercent = percent
+                tracker.lastPercent = percent
             }
         }
 

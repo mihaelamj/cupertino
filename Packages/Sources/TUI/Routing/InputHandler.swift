@@ -8,6 +8,7 @@ enum InputResult {
 }
 
 /// Handles all keyboard input and state mutations
+@MainActor
 enum InputHandler {
     /// Process a key input and mutate state accordingly
     /// - Parameters:

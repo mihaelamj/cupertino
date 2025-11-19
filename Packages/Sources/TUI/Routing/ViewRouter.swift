@@ -1,6 +1,7 @@
 import Foundation
 
 /// Handles view transitions and routing logic
+@MainActor
 enum ViewRouter {
     /// Process input and determine if a view transition should occur
     /// - Parameters:
