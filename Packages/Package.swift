@@ -24,6 +24,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("MCPSupport"),
     .singleTargetLibrary("SearchToolProvider"),
     .executable(name: "cupertino", targets: ["CLI"]),
+    .executable(name: "cupertino-tui", targets: ["TUI"]),
 ]
 #else
 let macOSOnlyProducts: [Product] = []
@@ -140,6 +141,17 @@ let targets: [Target] = {
         ]
     )
 
+    let tuiTarget = Target.executableTarget(
+        name: "TUI",
+        dependencies: [
+            "Shared",
+            "Core",
+            "Search",
+            "Resources",
+            "Logging",
+        ]
+    )
+
     let testSupportTarget = Target.target(
         name: "TestSupport",
         dependencies: []
@@ -186,6 +198,7 @@ let targets: [Target] = {
         searchToolProviderTestsTarget,
         testSupportTarget,
         cliTarget,
+        tuiTarget,
         // CLI Command Tests
         serveTestsTarget,
         doctorTestsTarget,
