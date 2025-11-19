@@ -20,9 +20,10 @@ All Cupertino artifacts are stored under:
 | [docs/](folders/docs/) | Crawled Apple documentation | [README](folders/docs/) + [metadata.json](folders/docs/metadata.json.md) |
 | [swift-org/](folders/swift-org/) | Crawled Swift.org documentation | [README](folders/swift-org/) + [metadata.json](folders/docs/metadata.json.md) |
 | [swift-evolution/](folders/swift-evolution/) | Swift Evolution proposals | [README](folders/swift-evolution/) + [metadata.json](folders/docs/metadata.json.md) |
-| [sample-code/](folders/sample-code/) | Apple sample code ZIP files | [README](folders/sample-code/) + [checkpoint.json](folders/packages/checkpoint.json.md) |
-| [packages/](folders/packages/) | Swift package metadata | [README](folders/packages/) + [checkpoint.json](folders/packages/checkpoint.json.md) |
+| [sample-code/](folders/sample-code/) | Apple sample code ZIP files | [README](folders/sample-code/) + [.auth-cookies.json](folders/sample-code/.auth-cookies.json.md) |
+| [packages/](folders/packages/) | Swift package metadata | [README](folders/packages/) + [swift-packages-with-stars.json](folders/packages/swift-packages-with-stars.json.md) + [checkpoint.json](folders/packages/checkpoint.json.md) |
 | [search.db](folders/search.db.md) | FTS5 search index database | File documentation |
+| [config.json](folders/config.json.md) | Application configuration | File documentation |
 
 ## Quick Reference
 
@@ -47,7 +48,8 @@ All Cupertino artifacts are stored under:
 │   ├── checkpoint.json
 │   └── *.zip              # 600+ ZIP files
 └── packages/              # Swift Packages
-    └── checkpoint.json    # Package metadata
+    ├── checkpoint.json                    # Progress tracking
+    └── swift-packages-with-stars.json    # Final output (9,699 packages)
 ```
 
 ### Index Artifacts

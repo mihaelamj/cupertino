@@ -16,23 +16,24 @@ cupertino fetch --type packages
 
 ```
 ~/.cupertino/packages/
-└── checkpoint.json    # All package metadata
+├── checkpoint.json                    # Progress tracking (resume capability)
+└── swift-packages-with-stars.json    # PRIMARY OUTPUT (all packages, clean)
 ```
 
 ## Contents
 
-### [checkpoint.json](checkpoint.json.md)
+### [swift-packages-with-stars.json](swift-packages-with-stars.json.md) - Primary Output
 
-See [checkpoint.json documentation](checkpoint.json.md) for complete structure details.
+**This is the main output file** containing all successfully fetched packages.
 
 Quick preview:
 
 ```json
 {
-  "version": "1.0",
-  "lastCrawled": "2025-11-17",
-  "source": "Swift Package Index + GitHub API",
-  "count": 9699,
+  "totalPackages": 9699,
+  "totalProcessed": 10000,
+  "errors": 301,
+  "generatedAt": "2025-11-19T10:30:00Z",
   "packages": [
     {
       "owner": "apple",
@@ -50,6 +51,12 @@ Quick preview:
 }
 ```
 
+See [swift-packages-with-stars.json documentation](swift-packages-with-stars.json.md) for complete details.
+
+### [checkpoint.json](checkpoint.json.md) - Progress Tracking
+
+Used internally for resume capability. Contains all packages including those that failed to fetch (with error messages).
+
 ## Package Information
 
 Each package entry includes:
@@ -66,9 +73,10 @@ Each package entry includes:
 
 ## Size
 
-- **Single JSON file**
-- **~10,000 packages**
-- **~3-5 MB file size**
+- **Two JSON files** (checkpoint + with-stars)
+- **~10,000 packages** total
+- **~3-5 MB** for swift-packages-with-stars.json
+- **Similar size** for checkpoint.json
 
 ## Data Sources
 
@@ -79,31 +87,35 @@ Each package entry includes:
 
 ### Query Packages
 ```bash
-# Find SwiftUI packages
-jq '.packages[] | select(.repo | contains("SwiftUI"))' ~/.cupertino/packages/checkpoint.json
+# Top 20 packages by stars (already sorted in with-stars file)
+jq '.packages[0:20] | .[] | {owner, repo, stars}' ~/.cupertino/packages/swift-packages-with-stars.json
 
-# Top packages by stars
-jq '.packages | sort_by(-.stars) | .[0:10]' ~/.cupertino/packages/checkpoint.json
+# Find SwiftUI packages
+jq '.packages[] | select(.description | contains("SwiftUI"))' ~/.cupertino/packages/swift-packages-with-stars.json
 
 # Count by license
-jq '.packages | group_by(.license) | map({license: .[0].license, count: length})' ~/.cupertino/packages/checkpoint.json
+jq '.packages | group_by(.license) | map({license: .[0].license, count: length})' ~/.cupertino/packages/swift-packages-with-stars.json
+
+# Check fetch statistics
+jq '{total: .totalPackages, errors: .errors, errorRate: (.errors/.totalProcessed*100)}' ~/.cupertino/packages/swift-packages-with-stars.json
 ```
 
 ### Load Into Database
 ```bash
-# Import to SQLite
+# Import to SQLite (use with-stars for clean data)
 sqlite3 packages.db <<EOF
 CREATE TABLE packages (...);
 .mode json
-.import checkpoint.json packages
+.import swift-packages-with-stars.json packages
 EOF
 ```
 
 ### Use in Code
 ```swift
-// Swift
-let data = try Data(contentsOf: URL(fileURLWithPath: "checkpoint.json"))
-let packages = try JSONDecoder().decode(PackageList.self, from: data)
+// Swift - Load clean package data
+let data = try Data(contentsOf: URL(fileURLWithPath: "swift-packages-with-stars.json"))
+let output = try JSONDecoder().decode(PackageFetchOutput.self, from: data)
+let packages = output.packages  // Clean, sorted packages
 ```
 
 ## Resuming Fetch
@@ -120,10 +132,44 @@ cupertino fetch --type packages --resume
 cupertino fetch --type packages --output-dir ./my-packages
 ```
 
+## Workflow: From Fetch to Embedded Catalog
+
+This directory contains the **source data** for package curation:
+
+### 1. Fetch Packages (Automatic)
+```bash
+cupertino fetch --type packages
+# → Creates checkpoint.json (for resume)
+# → Creates swift-packages-with-stars.json (clean output)
+```
+
+### 2. Manual Curation
+- Review `swift-packages-with-stars.json`
+- Select packages for README crawling
+- Conservative selection (packages added almost manually)
+- Prioritize:
+  - Apple official packages
+  - High star count packages
+  - Swift ecosystem essentials
+  - Packages mentioned in Swift.org docs
+
+### 3. README Crawling (Future - Slow Process)
+- Fetch README.md from GitHub for each curated package
+- Slow process due to GitHub API rate limits
+- Only crawl selected packages, not all 9,699
+
+### 4. Embed in Resources
+- Transform curated data to catalog format
+- Include README content
+- Save as `Packages/Sources/Resources/Resources/swift-packages-catalog.json`
+- Rebuild app with updated resource
+
 ## Notes
 
-- All data in one JSON file for easy processing
-- No authentication required
-- Public data from Swift Package Index and GitHub
-- Updated snapshot of Swift ecosystem
-- Can be re-fetched anytime to get latest data
+- **Two output files** - checkpoint (resume) + with-stars (final output)
+- **No authentication required** for fetch
+- **Public data** from Swift Package Index and GitHub
+- **Clean data** - Errors filtered out, sorted by stars
+- **Source for curation** - Not directly embedded in app
+- **Can be regenerated** periodically to capture new packages
+- **Large files** (~3-5 MB each) - version control with care
