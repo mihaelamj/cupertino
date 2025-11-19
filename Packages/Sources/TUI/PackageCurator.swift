@@ -63,9 +63,9 @@ struct PackageCuratorApp {
                     state.moveCursor(delta: -pageSize, pageSize: pageSize)
                 case .pageDown:
                     state.moveCursor(delta: pageSize, pageSize: pageSize)
-                case .homeKey:
+                case .homeKey, .ctrl("a"):
                     state.moveCursor(delta: -state.cursor, pageSize: pageSize)
-                case .endKey:
+                case .endKey, .ctrl("e"):
                     let lastIndex = state.visiblePackages.count - 1
                     state.moveCursor(delta: lastIndex - state.cursor, pageSize: pageSize)
                 case .space:

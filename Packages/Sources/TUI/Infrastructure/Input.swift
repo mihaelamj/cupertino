@@ -20,8 +20,13 @@ final class Input {
             return parseSingleByte(buffer[0])
         }
 
-        // Arrow keys and escape sequences: ESC [ A/B/C/D
+        // Arrow keys: ESC [ A/B/C/D
         if count >= 3, buffer[0] == 27, buffer[1] == 91 {
+            // Extended sequences: ESC [ N ~  (like PageUp = ESC[5~)
+            if count >= 4, buffer[3] == 126 {
+                return parseExtendedEscapeSequence(buffer[2])
+            }
+            // Simple sequences: ESC [ N
             return parseEscapeSequence(buffer[2])
         }
 
@@ -54,14 +59,22 @@ final class Input {
 
     private func parseEscapeSequence(_ code: UInt8) -> Key {
         switch code {
-        case 65: return .arrowUp
-        case 66: return .arrowDown
-        case 67: return .arrowRight
-        case 68: return .arrowLeft
+        case 65: return .arrowUp // ESC [ A
+        case 66: return .arrowDown // ESC [ B
+        case 67: return .arrowRight // ESC [ C
+        case 68: return .arrowLeft // ESC [ D
+        case 72: return .homeKey // ESC [ H (some terminals)
+        case 70: return .endKey // ESC [ F (some terminals)
+        default: return .unknown
+        }
+    }
+
+    private func parseExtendedEscapeSequence(_ code: UInt8) -> Key {
+        switch code {
+        case 49: return .homeKey // ESC [ 1 ~ (macOS Terminal)
+        case 52: return .endKey // ESC [ 4 ~ (macOS Terminal)
         case 53: return .pageUp // ESC [ 5 ~
         case 54: return .pageDown // ESC [ 6 ~
-        case 72: return .homeKey
-        case 70: return .endKey
         default: return .unknown
         }
     }
