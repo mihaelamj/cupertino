@@ -13,7 +13,7 @@ import Shared
 struct ServeCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "serve",
-        abstract: Shared.Constants.HelpText.mcpAbstract,
+        abstract: "Start MCP server for documentation access",
         discussion: """
         Starts the Model Context Protocol (MCP) server that provides documentation
         search and access capabilities for AI assistants.
