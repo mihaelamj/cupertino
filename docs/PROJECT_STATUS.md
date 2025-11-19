@@ -1,6 +1,6 @@
 # Cupertino Project Status
 
-**Last Updated:** 2025-11-18
+**Last Updated:** 2025-11-19
 **Version:** v0.2.0
 **Status:** ✅ PRODUCTION READY
 
@@ -15,12 +15,13 @@ Cupertino is an Apple documentation crawler that converts Apple's developer docu
 - **Unified Architecture:** Single `cupertino` binary (replaced separate `cupertino-mcp`)
 - **Consolidated Packages:** 12 packages reduced to 9 with namespaced types
 - **MCP-First Design:** Binary defaults to starting MCP server
-- **New Commands:** `cupertino mcp doctor` for health checks
+- **Simplified Commands:** `fetch`, `save`, `serve`, `doctor` (unified crawl+fetch, renamed index→save)
+- **Comprehensive Testing:** 93 tests covering all functionality
 
 ### Current State
 - ✅ **Production Ready** - All core functionality working
 - ✅ **6 Bugs Fixed** - All production bugs resolved
-- ✅ **35 Tests Passing** - 100% pass rate
+- ✅ **93 Tests Passing** - 100% pass rate
 - ✅ **0 Lint Violations** - Clean codebase
 - ✅ **Swift 6.2 Compliant** - 100% structured concurrency
 
@@ -66,22 +67,33 @@ All production bugs have been fixed:
 ## Test Results
 
 ### Summary
-- **Total Tests:** 35
+- **Total Tests:** 93
 - **Pass Rate:** 100%
-- **Execution:** Individual test suites (to avoid runner limitation)
+- **Test Suites:** 7
+- **Duration:** ~350 seconds (includes real network crawling)
 
 ### Test Suites
-1. **JSONCoding Tests** (22 tests) - ISO8601 encoding/decoding ✅
-2. **Bug Regression Tests** (6 tests) - Verify fixes ✅
-3. **Integration Tests** (1 test) - Real Apple docs download ✅
-4. **Core Functionality** (6 tests) - Search, logging, MCP, config ✅
+1. **Web Crawl Tests** (3 tests) - Fetch command with web crawling ✅
+2. **Fetch Command Tests** (1 test) - Package/code fetching ✅
+3. **Save Command Tests** (3 tests) - Search index building ✅
+4. **MCP Doctor Tests** (3 tests) - Health checks ✅
+5. **MCP Command Tests** (2 tests) - Tool/resource providers ✅
+6. **MCP Server Integration** (1 test) - Complete workflow ✅
+7. **Core Tests** (80 tests) - Search, logging, state, catalogs, JSONCoding ✅
 
-### Integration Test Results
+### Integration Test Highlights
 ```
-🚀 Downloaded real Apple documentation
+🚀 Web Crawl: Fetch single Apple documentation page
    URL: https://developer.apple.com/documentation/swift
    Content: 5988 characters
-   Duration: 5.7 seconds
+   Duration: 6 seconds
+   Status: ✅ SUCCESS
+
+🚀 Swift Evolution: Fetch 429 proposals
+   Duration: 350 seconds
+   Status: ✅ SUCCESS
+
+🚀 Complete MCP Workflow: Crawl → Index → Search → Read
    Status: ✅ SUCCESS
 ```
 
@@ -195,15 +207,23 @@ Solved headless WKWebView testing with `NSApplication.shared`:
 ```bash
 # MCP Server (default command)
 cupertino                    # Starts MCP server
-cupertino mcp serve          # Explicit MCP server start
-cupertino mcp doctor         # Check MCP server health
+cupertino serve              # Explicit MCP server start
+cupertino doctor             # Check MCP server health
 
-# Documentation
-cupertino fetch              # Crawl Apple documentation
-cupertino fetch --type evolution  # Crawl Swift Evolution
-cupertino fetch --type code  # Fetch sample code
-cupertino fetch --type packages   # Fetch package metadata
-cupertino save              # Build search index
+# Documentation Fetching (unified crawl + fetch)
+cupertino fetch              # Fetch Apple documentation (default: docs)
+cupertino fetch --type docs  # Apple Developer Docs (web crawl)
+cupertino fetch --type swift # Swift.org docs (web crawl)
+cupertino fetch --type evolution  # Swift Evolution proposals (web crawl)
+cupertino fetch --type code  # Sample code catalog (direct download)
+cupertino fetch --type packages   # Package metadata (API fetch)
+cupertino fetch --type all   # Fetch all sources
+
+# Search Index (renamed from index→save)
+cupertino save               # Build search index from fetched docs
+cupertino save --docs-dir ~/.cupertino/docs      # Specify docs directory
+cupertino save --evolution-dir ~/.cupertino/evolution  # Evolution proposals
+cupertino save --search-db ~/.cupertino/search.db      # Specify database path
 ```
 
 ### MCP Server Integration
@@ -222,13 +242,19 @@ cupertino save              # Build search index
 
 ---
 
-## Known Limitations
+## Testing Infrastructure
 
-### Test Runner Issue
-- **Issue:** Full test suite crashes with signal 11
-- **Cause:** Test runner can't handle multiple NSApplication instances
-- **Workaround:** Run test suites individually
-- **Impact:** None on production code (all tests pass individually)
+### Test Status
+- **Total Tests:** 93 tests across 7 suites ✅
+- **Pass Rate:** 100%
+- **Integration Tests:** Full network crawling verified (real Apple docs, Swift Evolution)
+- **Duration:** ~350 seconds for full suite
+- **Configuration:** All tests properly configured with outputDirectory for metadata
+
+### Previous Issues (Resolved)
+- ✅ **Test Runner Crash:** Fixed with proper ChangeDetectionConfiguration setup
+- ✅ **Metadata Creation:** Tests now properly pass outputDirectory parameter
+- ✅ **WKWebView Testing:** Solved with NSApplication.shared initialization
 
 ---
 
