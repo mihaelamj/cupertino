@@ -81,7 +81,7 @@ cupertino
 Or explicitly:
 
 ```bash
-cupertino mcp serve
+cupertino serve
 ```
 
 The server will automatically detect and use the search index to provide search tools to AI assistants.

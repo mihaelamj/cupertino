@@ -199,7 +199,7 @@ struct ServeCommand: AsyncParsableCommand {
         The server will provide documentation access to AI assistants like Claude.
 
         ───────────────────────────────────────────────────────────────────────────
-        💡 TIP: Run '\(cmd) mcp doctor' to check your setup anytime.
+        💡 TIP: Run '\(cmd) doctor' to check your setup anytime.
 
         📖 For more information, see the README or run '\(cmd) --help'
 
