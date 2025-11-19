@@ -158,22 +158,16 @@ let targets: [Target] = {
         path: "Tests/CLICommandTests/DoctorTests"
     )
 
-    let crawlTestsTarget = Target.testTarget(
-        name: "CrawlTests",
-        dependencies: ["CLI", "Core", "Shared", "TestSupport"],
-        path: "Tests/CLICommandTests/CrawlTests"
-    )
-
     let fetchTestsTarget = Target.testTarget(
         name: "FetchTests",
         dependencies: ["CLI", "Core", "Shared", "TestSupport"],
         path: "Tests/CLICommandTests/FetchTests"
     )
 
-    let indexTestsTarget = Target.testTarget(
-        name: "IndexTests",
+    let saveTestsTarget = Target.testTarget(
+        name: "SaveTests",
         dependencies: ["CLI", "Core", "Search", "Shared", "TestSupport"],
-        path: "Tests/CLICommandTests/IndexTests"
+        path: "Tests/CLICommandTests/SaveTests"
     )
 
     let cupertinoTargets: [Target] = [
@@ -195,9 +189,8 @@ let targets: [Target] = {
         // CLI Command Tests
         serveTestsTarget,
         doctorTestsTarget,
-        crawlTestsTarget,
         fetchTestsTarget,
-        indexTestsTarget,
+        saveTestsTarget,
     ]
     #else
     let cupertinoTargets: [Target] = []

@@ -5,23 +5,24 @@ import Logging
 import Search
 import Shared
 
-// MARK: - Crawl Command
+// MARK: - Fetch Command
 
 extension Cupertino {
     @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-    struct Crawl: AsyncParsableCommand {
+    struct Fetch: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
-            abstract: "Crawl documentation using WKWebView"
+            abstract: "Fetch documentation and resources"
         )
 
         @Option(
             name: .long,
             help: """
-            Type of documentation to crawl: docs (Apple), swift (Swift.org), \
-            evolution (Swift Evolution), packages (Swift packages), all (all types in parallel)
+            Type of documentation to fetch: docs (Apple), swift (Swift.org), \
+            evolution (Swift Evolution), packages (Swift packages), code (Sample code), \
+            all (all types in parallel)
             """
         )
-        var type: CrawlType = .docs
+        var type: FetchType = .docs
 
         @Option(name: .long, help: "Start URL to crawl from (overrides --type default)")
         var startURL: String?
@@ -53,14 +54,32 @@ extension Cupertino {
         @Flag(name: .long, help: "Only download accepted/implemented proposals (evolution type only)")
         var onlyAccepted: Bool = false
 
+        @Option(name: .long, help: "Maximum number of items to fetch (packages/code types only)")
+        var limit: Int?
+
+        @Flag(name: .long, help: "Launch visible browser for authentication (code type only)")
+        var authenticate: Bool = false
+
         mutating func run() async throws {
             logStartMessage()
 
             if type == .all {
-                try await runAllCrawls()
+                try await runAllFetches()
                 return
             }
 
+            // Direct fetch types (packages, code)
+            if type == .packages {
+                try await runPackageFetch()
+                return
+            }
+
+            if type == .code {
+                try await runCodeFetch()
+                return
+            }
+
+            // Web crawl types (docs, swift, evolution)
             if type == .evolution {
                 try await runEvolutionCrawl()
                 return
@@ -71,70 +90,70 @@ extension Cupertino {
 
         private func logStartMessage() {
             if resume {
-                Logging.ConsoleLogger.info("🔄 AppleCupertino - Resuming from saved session\n")
+                Logging.ConsoleLogger.info("🔄 Cupertino - Resuming from saved session\n")
             } else {
-                Logging.ConsoleLogger.info("🚀 AppleCupertino - Crawling \(type.displayName)\n")
+                Logging.ConsoleLogger.info("🚀 Cupertino - Fetching \(type.displayName)\n")
             }
         }
 
-        private mutating func runAllCrawls() async throws {
-            Logging.ConsoleLogger.info("📚 Crawling all documentation types in parallel:\n")
+        private mutating func runAllFetches() async throws {
+            Logging.ConsoleLogger.info("📚 Fetching all documentation types in parallel:\n")
             let baseCommand = self
 
-            try await withThrowingTaskGroup(of: (CrawlType, Result<Void, Error>).self) { group in
-                for crawlType in CrawlType.allTypes {
+            try await withThrowingTaskGroup(of: (FetchType, Result<Void, Error>).self) { group in
+                for fetchType in FetchType.allTypes {
                     group.addTask {
-                        await Self.crawlSingleType(crawlType, baseCommand: baseCommand)
+                        await Self.fetchSingleType(fetchType, baseCommand: baseCommand)
                     }
                 }
 
-                let results = try await collectCrawlResults(from: &group)
-                try validateCrawlResults(results)
+                let results = try await collectFetchResults(from: &group)
+                try validateFetchResults(results)
             }
         }
 
-        private static func crawlSingleType(
-            _ crawlType: CrawlType,
-            baseCommand: Crawl
-        ) async -> (CrawlType, Result<Void, Error>) {
-            Logging.ConsoleLogger.info("🚀 Starting \(crawlType.displayName)...")
-            var crawlCommand = baseCommand
-            crawlCommand.type = crawlType
-            crawlCommand.outputDir = crawlType.defaultOutputDir
+        private static func fetchSingleType(
+            _ fetchType: FetchType,
+            baseCommand: Fetch
+        ) async -> (FetchType, Result<Void, Error>) {
+            Logging.ConsoleLogger.info("🚀 Starting \(fetchType.displayName)...")
+            var fetchCommand = baseCommand
+            fetchCommand.type = fetchType
+            fetchCommand.outputDir = fetchType.defaultOutputDir
 
             do {
-                try await crawlCommand.run()
-                return (crawlType, .success(()))
+                try await fetchCommand.run()
+                return (fetchType, .success(()))
             } catch {
-                return (crawlType, .failure(error))
+                return (fetchType, .failure(error))
             }
         }
 
-        private func collectCrawlResults(
-            from group: inout ThrowingTaskGroup<(CrawlType, Result<Void, Error>), Error>
-        ) async throws -> [(CrawlType, Result<Void, Error>)] {
-            var results: [(CrawlType, Result<Void, Error>)] = []
+        private func collectFetchResults(
+            from group: inout ThrowingTaskGroup<(FetchType, Result<Void, Error>), Error>
+        ) async throws -> [(FetchType, Result<Void, Error>)] {
+            var results: [(FetchType, Result<Void, Error>)] = []
             for try await result in group {
                 results.append(result)
-                let (crawlType, outcome) = result
+                let (fetchType, outcome) = result
                 switch outcome {
                 case .success:
-                    Logging.ConsoleLogger.info("✅ Completed \(crawlType.displayName)")
+                    Logging.ConsoleLogger.info("✅ Completed \(fetchType.displayName)")
                 case .failure(let error):
-                    Logging.ConsoleLogger.error("❌ Failed \(crawlType.displayName): \(error)")
+                    Logging.ConsoleLogger.error("❌ Failed \(fetchType.displayName): \(error)")
                 }
             }
             return results
         }
 
-        private func validateCrawlResults(_ results: [(CrawlType, Result<Void, Error>)]) throws {
+        private func validateFetchResults(_ results: [(FetchType, Result<Void, Error>)]) throws {
             let failures = results.filter {
                 if case .failure = $0.1 { return true }
                 return false
             }
 
             if failures.isEmpty {
-                Logging.ConsoleLogger.info("\n✅ All documentation types crawled successfully!")
+                Logging.ConsoleLogger.info("\n✅ All documentation types fetched successfully!")
             } else {
                 Logging.ConsoleLogger.info("\n⚠️  Completed with \(failures.count) failure(s)")
                 throw ExitCode.failure
@@ -293,46 +312,6 @@ extension Cupertino {
                 Logging.ConsoleLogger.info("   Duration: \(Int(duration))s")
             }
         }
-    }
-}
-
-// MARK: - Fetch Command
-
-extension Cupertino {
-    @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-    struct Fetch: AsyncParsableCommand {
-        static let configuration = CommandConfiguration(
-            abstract: "Fetch resources without web crawling"
-        )
-
-        @Option(name: .long, help: "Type of resource to fetch: packages (Swift packages), code (Apple sample code)")
-        var type: FetchType
-
-        @Option(name: .long, help: "Output directory")
-        var outputDir: String?
-
-        @Option(name: .long, help: "Maximum number of items to fetch")
-        var limit: Int?
-
-        @Flag(name: .long, help: "Force re-download of existing files")
-        var force: Bool = false
-
-        @Flag(name: .long, help: "Resume from checkpoint if interrupted")
-        var resume: Bool = false
-
-        @Flag(name: .long, help: "Launch visible browser for authentication (code type only)")
-        var authenticate: Bool = false
-
-        mutating func run() async throws {
-            Logging.ConsoleLogger.info("📦 Fetching \(type.displayName)\n")
-
-            switch type {
-            case .packages:
-                try await runPackageFetch()
-            case .code:
-                try await runCodeFetch()
-            }
-        }
 
         private func runPackageFetch() async throws {
             let defaultPath = Shared.Constants.defaultPackagesDirectory.path
@@ -400,13 +379,13 @@ extension Cupertino {
     }
 }
 
-// MARK: - Index Command
+// MARK: - Save Command
 
 extension Cupertino {
     @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-    struct Index: AsyncParsableCommand {
+    struct Save: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
-            abstract: "Build FTS5 search index from crawled documentation"
+            abstract: "Save documentation to database and build search indexes"
         )
 
         @Option(name: .long, help: "Directory containing crawled documentation")
