@@ -9,6 +9,7 @@ final class AppState {
     var searchQuery: String = ""
     var showOnlySelected: Bool = false
     var statusMessage: String = ""
+    var isSearching: Bool = false
 
     var visiblePackages: [PackageEntry] {
         var filtered = packages

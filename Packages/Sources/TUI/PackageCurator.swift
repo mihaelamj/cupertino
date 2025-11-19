@@ -50,30 +50,54 @@ struct PackageCuratorApp {
             // Handle input (non-blocking with 0.1s timeout in terminal)
             if let key = input.readKey() {
                 let pageSize = rows - 4
-                switch key {
-                case .arrowUp, .char("k"):
-                    state.moveCursor(delta: -1, pageSize: pageSize)
-                case .arrowDown, .char("j"):
-                    state.moveCursor(delta: 1, pageSize: pageSize)
-                case .arrowLeft, .pageUp:
-                    state.moveCursor(delta: -pageSize, pageSize: pageSize)
-                case .arrowRight, .pageDown:
-                    state.moveCursor(delta: pageSize, pageSize: pageSize)
-                case .homeKey, .ctrl("a"):
-                    state.moveCursor(delta: -state.cursor, pageSize: pageSize)
-                case .endKey, .ctrl("e"):
-                    let lastIndex = state.visiblePackages.count - 1
-                    state.moveCursor(delta: lastIndex - state.cursor, pageSize: pageSize)
-                case .space:
-                    state.toggleCurrent()
-                case .char("s"):
-                    state.cycleSortMode()
-                case .char("w"):
-                    try saveSelections(state: state)
-                case .char("q"), .ctrl("c"), .escape:
-                    running = false
-                default:
-                    break
+
+                // Search mode handling
+                if state.isSearching {
+                    switch key {
+                    case .escape, .enter:
+                        state.isSearching = false
+                    case .backspace:
+                        if !state.searchQuery.isEmpty {
+                            state.searchQuery.removeLast()
+                            state.cursor = 0
+                            state.scrollOffset = 0
+                        }
+                    case let .char(ch) where ch.isLetter || ch.isNumber || ch.isWhitespace || "-_./".contains(ch):
+                        state.searchQuery.append(ch)
+                        state.cursor = 0
+                        state.scrollOffset = 0
+                    default:
+                        break
+                    }
+                } else {
+                    // Normal mode handling
+                    switch key {
+                    case .arrowUp, .char("k"):
+                        state.moveCursor(delta: -1, pageSize: pageSize)
+                    case .arrowDown, .char("j"):
+                        state.moveCursor(delta: 1, pageSize: pageSize)
+                    case .arrowLeft, .pageUp:
+                        state.moveCursor(delta: -pageSize, pageSize: pageSize)
+                    case .arrowRight, .pageDown:
+                        state.moveCursor(delta: pageSize, pageSize: pageSize)
+                    case .homeKey, .ctrl("a"):
+                        state.moveCursor(delta: -state.cursor, pageSize: pageSize)
+                    case .endKey, .ctrl("e"):
+                        let lastIndex = state.visiblePackages.count - 1
+                        state.moveCursor(delta: lastIndex - state.cursor, pageSize: pageSize)
+                    case .space:
+                        state.toggleCurrent()
+                    case .char("s"):
+                        state.cycleSortMode()
+                    case .char("w"):
+                        try saveSelections(state: state)
+                    case .char("/"):
+                        state.isSearching = true
+                    case .char("q"), .ctrl("c"), .escape:
+                        running = false
+                    default:
+                        break
+                    }
                 }
             }
             // No sleep needed - terminal timeout provides ~10 FPS natural rate

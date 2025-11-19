@@ -11,8 +11,17 @@ struct PackageView {
         // Title bar
         let selectedCount = state.packages.filter(\.isSelected).count
         let totalCount = state.packages.count
+        let visibleCount = visible.count
         let title = "Swift Packages Curator"
-        let stats = "Sort: \(state.sortMode.rawValue)  Selected: \(selectedCount)/\(totalCount)"
+
+        // Show search query and result count if searching
+        let stats: String
+        if state.isSearching || !state.searchQuery.isEmpty {
+            let searchPrompt = state.isSearching ? "Search: \(state.searchQuery)_" : "Search: \(state.searchQuery)"
+            stats = "\(searchPrompt)  Results: \(visibleCount)/\(totalCount)  Selected: \(selectedCount)"
+        } else {
+            stats = "Sort: \(state.sortMode.rawValue)  Selected: \(selectedCount)/\(totalCount)"
+        }
 
         result += Box.topLeft + String(repeating: Box.horizontal, count: width - 2) + Box.topRight + "\r\n"
         result += renderPaddedLine(title, width: width)
@@ -36,7 +45,12 @@ struct PackageView {
 
         // Footer
         result += Box.teeRight + String(repeating: Box.horizontal, count: width - 2) + Box.teeLeft + "\r\n"
-        let help = "↑↓/jk:Move  ←→:Page  ^A/^E:Jump  Space:Select  s:Sort  w:Save  q:Quit"
+        let help: String
+        if state.isSearching {
+            help = "Type to search  Backspace:Delete  Enter/Esc:Exit search"
+        } else {
+            help = "↑↓/jk:Move  ←→:Page  ^A/^E:Jump  Space:Select  s:Sort  /:Search  w:Save  q:Quit"
+        }
         result += renderPaddedLine(help, width: width)
         result += Box.bottomLeft + String(repeating: Box.horizontal, count: width - 2)
         result += Box.bottomRight + "\r\n"
