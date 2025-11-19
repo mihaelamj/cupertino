@@ -93,6 +93,8 @@ struct PackageCuratorApp {
                         try saveSelections(state: state)
                     case .char("/"):
                         state.isSearching = true
+                    case .char("o"), .enter:
+                        openCurrentPackageInBrowser(state: state)
                     case .char("q"), .ctrl("c"), .escape:
                         running = false
                     default:
@@ -108,6 +110,25 @@ struct PackageCuratorApp {
         await screen.disableRawMode(originalTermios)
         print(Screen.showCursor)
         fflush(stdout)
+    }
+
+    static func openCurrentPackageInBrowser(state: AppState) {
+        let visible = state.visiblePackages
+        guard state.cursor < visible.count else { return }
+
+        let package = visible[state.cursor].package
+        let url = package.url
+
+        // Use macOS 'open' command to open URL in default browser
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        process.arguments = [url]
+
+        do {
+            try process.run()
+        } catch {
+            // Silently fail - don't crash the TUI
+        }
     }
 
     static func saveSelections(state: AppState) throws {

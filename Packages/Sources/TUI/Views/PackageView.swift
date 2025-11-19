@@ -49,7 +49,7 @@ struct PackageView {
         if state.isSearching {
             help = "Type to search  Backspace:Delete  Enter/Esc:Exit search"
         } else {
-            help = "↑↓/jk:Move  ←→:Page  ^A/^E:Jump  Space:Select  s:Sort  /:Search  w:Save  q:Quit"
+            help = "↑↓/jk:Move  ←→:Page  Space:Select  o/Enter:Open  s:Sort  /:Search  w:Save  q:Quit"
         }
         result += renderPaddedLine(help, width: width)
         result += Box.bottomLeft + String(repeating: Box.horizontal, count: width - 2)
