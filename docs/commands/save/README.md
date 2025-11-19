@@ -10,7 +10,7 @@ cupertino save [options]
 
 ## Description
 
-The `index` command builds a Full-Text Search (FTS5) SQLite database from previously crawled documentation. This enables fast, efficient searching across all downloaded documentation.
+The `save` command builds a Full-Text Search (FTS5) SQLite database from previously fetched documentation. This enables fast, efficient searching across all downloaded documentation.
 
 ## Options
 
@@ -88,5 +88,6 @@ The server will automatically detect and use the search index to provide search 
 
 ## See Also
 
-- [../mcp/](../mcp/) - MCP server commands
-- [../crawl/](../crawl/) - Download documentation
+- [../serve/](../serve/) - Start MCP server
+- [../fetch/](../fetch/) - Download documentation
+- [../doctor/](../doctor/) - Check server health

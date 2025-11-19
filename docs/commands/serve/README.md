@@ -309,5 +309,5 @@ cat ~/Library/Application\ Support/Claude/claude_desktop_config.json | python3 -
 
 - [doctor](../doctor/) - Check server health
 - [../../MCP_SERVER_README.md](../../MCP_SERVER_README.md) - Detailed server guide
-- [../crawl/](../crawl/) - Download documentation
-- [../index/](../index/) - Build search index
+- [../fetch/](../fetch/) - Download documentation
+- [../save/](../save/) - Build search index

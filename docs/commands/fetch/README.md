@@ -1,31 +1,71 @@
 # cupertino fetch
 
-Fetch resources without web crawling
+Fetch Apple documentation, Swift Evolution proposals, Swift packages, and sample code
 
 ## Synopsis
 
 ```bash
-cupertino fetch --type <type> [options]
+cupertino fetch [--type <type>] [options]
 ```
 
 ## Description
 
-The `fetch` command downloads resources directly without using WKWebView crawling. This is faster and more efficient for bulk downloads of known resources like Swift packages or Apple sample code.
+The `fetch` command is the unified fetching command that handles both web crawling and direct downloads:
+
+- **Web Crawling** (docs, swift, evolution): Uses WKWebView to render and crawl JavaScript-heavy documentation sites
+- **Direct Fetching** (packages, code): Downloads resources directly from APIs without web crawling
+- **Parallel Fetching** (all): Fetches all types concurrently for maximum efficiency
 
 ## Options
 
-- [--type](type/) - Type of resource to fetch (packages, code) **[REQUIRED]**
+### Core Options
+
+- [--type](type/) - Type of documentation to fetch **[default: docs]**
+  - `docs` - Apple Developer Documentation (web crawl)
+  - `swift` - Swift.org Documentation (web crawl)
+  - `evolution` - Swift Evolution Proposals (web crawl)
+  - `packages` - Swift Package Index metadata (direct download)
+  - `code` - Apple Sample Code (direct download)
+  - `all` - All types in parallel
+
+### Web Crawl Options
+
+- `--start-url` - Start URL to crawl from (overrides --type default)
+- `--max-pages` - Maximum number of pages to crawl (default: 100000)
+- `--max-depth` - Maximum crawl depth (default: 15)
+- `--allowed-prefixes` - Comma-separated URL prefixes to allow (auto-detected if not specified)
+- [--force](force.md) - Force recrawl of all pages (ignore change detection)
+- [--resume](resume.md) - Resume from saved session (auto-detects and continues)
+- `--only-accepted` - Only download accepted/implemented proposals (evolution type only)
+
+### Direct Fetch Options
+
 - [--output-dir](output-dir.md) - Output directory for downloaded resources
-- [--limit](limit.md) - Maximum number of items to fetch
-- [--force](force.md) - Force re-download of existing files
-- [--resume](resume.md) - Resume from checkpoint if interrupted
-- [--authenticate](authenticate.md) - Launch visible browser for authentication (code only)
+- [--limit](limit.md) - Maximum number of items to fetch (packages/code types only)
+- [--authenticate](authenticate.md) - Launch visible browser for authentication (code type only)
 
 ## Examples
 
-### Fetch All Swift Packages
+### Fetch Apple Documentation (Default)
 ```bash
-cupertino fetch --type packages
+cupertino fetch
+# or explicitly:
+cupertino fetch --type docs
+```
+
+### Fetch Swift Evolution Proposals
+```bash
+cupertino fetch --type evolution
+```
+
+### Fetch All Types in Parallel
+```bash
+cupertino fetch --type all
+```
+
+### Fetch Swift Packages (Limited)
+```bash
+cupertino fetch --type packages --limit 100
 ```
 
 ### Fetch Apple Sample Code (with Authentication)
@@ -33,35 +73,125 @@ cupertino fetch --type packages
 cupertino fetch --type code --authenticate
 ```
 
-### Fetch Limited Number of Packages
+### Custom Web Crawl
 ```bash
-cupertino fetch --type packages --limit 50 --output-dir ./my-packages
+cupertino fetch --start-url https://developer.apple.com/documentation/swiftui \
+                --max-pages 500 \
+                --output-dir ./my-docs
 ```
 
-### Resume Interrupted Fetch
+### Resume Interrupted Crawl
 ```bash
-cupertino fetch --type packages --resume
+cupertino fetch --type docs --resume
+```
+
+### Force Recrawl
+```bash
+cupertino fetch --type docs --force
 ```
 
 ## Output
 
-### Swift Packages
-- **checkpoint.json** - Progress tracking with package metadata
-- **Package metadata** - JSON files with GitHub information
+### Web Crawl Types (docs, swift, evolution)
 
-### Apple Sample Code
-- **ZIP files** - Downloaded sample code projects
-- **checkpoint.json** - Progress tracking
+Default locations:
+- **docs**: `~/.cupertino/docs/`
+- **swift**: `~/.cupertino/swift-docs/`
+- **evolution**: `~/.cupertino/swift-evolution/`
+
+Output files:
+- **Markdown files** - Converted documentation pages
+- **metadata.json** - Crawl metadata for change detection and resume
+- **session.json** - Session state for resuming interrupted crawls
+
+### Direct Fetch Types (packages, code)
+
+Default locations:
+- **packages**: `~/.cupertino/packages/`
+- **code**: `~/.cupertino/sample-code/`
+
+Output files:
+- **packages-with-stars.json** - Package metadata with GitHub information
+- **checkpoint.json** - Progress tracking for resume capability
+- **ZIP files** - Downloaded sample code projects (code type)
+
+## Features
+
+### Smart Change Detection
+
+Web crawl types use content hashing to detect changes:
+- Only re-downloads modified pages
+- Compares content hash, not timestamps
+- Significantly reduces crawl time on updates
+
+### Session Resume
+
+All types support resuming interrupted operations:
+- **Web crawls**: Saves session state every 100 pages
+- **Direct fetches**: Checkpoints after each item
+- Use `--resume` flag to continue from last checkpoint
+
+### Parallel Fetching
+
+The `all` type fetches everything concurrently:
+```bash
+cupertino fetch --type all
+# Runs: docs, swift, evolution, packages, code in parallel
+```
+
+### Rate Limiting
+
+- **Web crawls**: Respects politeness delays between requests
+- **GitHub API**: Automatic rate limiting (60/hour without token, 5000/hour with token)
+- **Apple Downloads**: Throttled to prevent server overload
 
 ## Notes
 
-- **Packages**: Fetches from Swift Package Index API + GitHub API
-- **Sample Code**: Requires authentication with Apple ID
-- Both types support resume capability via checkpoints
-- Change detection prevents re-downloading unchanged resources
+### Authentication
+
+**Sample Code (`--type code`)** requires Apple ID authentication:
+- Use `--authenticate` to launch visible browser
+- Sign in with your Apple Developer account
+- Cookies are saved for future runs
+- No authentication needed for docs, swift, evolution, or packages
+
+### GitHub Token (Optional)
+
+For faster package fetching, set GITHUB_TOKEN:
+```bash
+export GITHUB_TOKEN=ghp_your_token_here
+cupertino fetch --type packages
+```
+
+This increases rate limit from 60/hour to 5000/hour.
+
+### Performance
+
+Typical crawl times:
+- **Single page**: ~5-6 seconds (includes JS rendering)
+- **Apple docs** (~10,000 pages): 10-30 minutes with change detection
+- **Swift Evolution** (~500 proposals): 5-10 minutes
+- **Packages** (full index): 2-4 hours (due to GitHub API rate limiting)
+- **Sample Code** (~200 projects): 20-40 minutes
+
+## Next Steps
+
+After fetching documentation, build the search index:
+
+```bash
+cupertino save
+```
+
+Then start the MCP server:
+
+```bash
+cupertino serve
+# or simply:
+cupertino
+```
 
 ## See Also
 
-- [../crawl/](../crawl/) - Download documentation
-- [../index/](../index/) - Build search index
-- [../mcp/](../mcp/) - MCP server commands
+- [save](../save/) - Build search index from fetched documentation
+- [serve](../serve/) - Start MCP server
+- [doctor](../doctor/) - Check server health

@@ -8,9 +8,9 @@ import Search
 import SearchToolProvider
 import Shared
 
-// MARK: - MCP Doctor Command
+// MARK: - Doctor Command
 
-struct MCPDoctorCommand: AsyncParsableCommand {
+struct DoctorCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "doctor",
         abstract: "Check MCP server health and configuration",

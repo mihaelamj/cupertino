@@ -320,5 +320,5 @@ cupertino doctor \
 
 - [serve](../serve/) - Start the MCP server
 - [../../MCP_SERVER_README.md](../../MCP_SERVER_README.md) - Detailed server guide
-- [../crawl/](../crawl/) - Download documentation
-- [../index/](../index/) - Build search index
+- [../fetch/](../fetch/) - Download documentation
+- [../save/](../save/) - Build search index
