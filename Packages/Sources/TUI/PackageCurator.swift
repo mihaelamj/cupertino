@@ -61,6 +61,10 @@ struct PackageCuratorApp {
                             state.searchQuery.removeLast()
                             state.cursor = 0
                             state.scrollOffset = 0
+                            // Auto-exit search mode when query becomes empty
+                            if state.searchQuery.isEmpty {
+                                state.isSearching = false
+                            }
                         }
                     case let .char(ch) where ch.isLetter || ch.isNumber || ch.isWhitespace || "-_./".contains(ch):
                         state.searchQuery.append(ch)

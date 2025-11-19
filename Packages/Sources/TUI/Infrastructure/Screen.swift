@@ -10,11 +10,11 @@ actor Screen {
     // ANSI escape codes
     static let ESC = "\u{001B}["
     static let clearScreen = "\(ESC)2J"
-    static let hideCursor = "\(ESC)?25l"
-    static let showCursor = "\(ESC)?25h"
+    static let hideCursor = "\u{001B}[?25l"
+    static let showCursor = "\u{001B}[?25h"
     static let home = "\(ESC)H"
-    static let altScreenOn = "\(ESC)?1049h"
-    static let altScreenOff = "\(ESC)?1049l"
+    static let altScreenOn = "\u{001B}[?1049h"
+    static let altScreenOff = "\u{001B}[?1049l"
 
     // Terminal size
     func getSize() -> (rows: Int, cols: Int) {
@@ -56,7 +56,8 @@ actor Screen {
 
     // Rendering
     func render(_ content: String) {
-        print(Screen.clearScreen + Screen.home + content, terminator: "")
+        // Reset any lingering formatting, clear screen, move to home, then render content
+        print("\u{001B}[0m" + Screen.clearScreen + Screen.home + content, terminator: "")
         fflush(stdout)
     }
 

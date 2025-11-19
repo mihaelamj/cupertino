@@ -3,7 +3,8 @@ import Foundation
 
 struct PackageView {
     func render(state: AppState, width: Int, height: Int) -> String {
-        var result = ""
+        // Always start with a reset to clear any lingering ANSI codes
+        var result = Colors.reset
         let visible = state.visiblePackages
         let pageSize = height - 4 // Account for header & footer
         let page = Array(visible.dropFirst(state.scrollOffset).prefix(pageSize))
@@ -33,7 +34,7 @@ struct PackageView {
             let absoluteIndex = state.scrollOffset + index
             let isCurrentLine = absoluteIndex == state.cursor
 
-            let line = renderPackageLine(entry: entry, width: width, highlight: isCurrentLine)
+            let line = renderPackageLine(entry: entry, width: width, highlight: isCurrentLine, searchQuery: state.searchQuery)
             result += line + "\r\n"
         }
 
@@ -55,6 +56,9 @@ struct PackageView {
         result += Box.bottomLeft + String(repeating: Box.horizontal, count: width - 2)
         result += Box.bottomRight + "\r\n"
 
+        // Always end with a reset to ensure clean state
+        result += Colors.reset
+
         return result
     }
 
@@ -64,7 +68,7 @@ struct PackageView {
         return Box.vertical + " " + text + String(repeating: " ", count: padding) + " " + Box.vertical + "\r\n"
     }
 
-    private func renderPackageLine(entry: PackageEntry, width: Int, highlight: Bool) -> String {
+    private func renderPackageLine(entry: PackageEntry, width: Int, highlight: Bool, searchQuery: String) -> String {
         // Selection indicator: [★] or [ ]
         let checkbox = entry.isSelected ? "[★]" : "[ ]"
         let name = "\(entry.package.owner)/\(entry.package.repo)"
@@ -79,17 +83,25 @@ struct PackageView {
         let nameMaxWidth = contentWidth - checkboxWidth - starsTextWidth - 2 // 2 spaces for padding
 
         // Truncate name if too long
-        let truncatedName: String
+        let plainName: String
         if name.count > nameMaxWidth {
             let index = name.index(name.startIndex, offsetBy: nameMaxWidth - 1)
-            truncatedName = String(name[..<index]) + "…"
+            plainName = String(name[..<index]) + "…"
         } else {
-            truncatedName = name
+            plainName = name
         }
 
-        // Build line with exact spacing
-        let padding = max(0, nameMaxWidth - truncatedName.count)
-        var line = Box.vertical + " " + checkbox + " " + truncatedName
+        // Highlight search matches
+        let displayName: String
+        if !searchQuery.isEmpty {
+            displayName = highlightMatches(in: plainName, query: searchQuery)
+        } else {
+            displayName = plainName
+        }
+
+        // Build line with exact spacing (using plain name for width calculation)
+        let padding = max(0, nameMaxWidth - plainName.count)
+        var line = Box.vertical + " " + checkbox + " " + displayName
         line += String(repeating: " ", count: padding) + " ⭐ " + starsNum + " " + Box.vertical
 
         // Highlight current line
@@ -98,5 +110,45 @@ struct PackageView {
         }
 
         return line
+    }
+
+    private func highlightMatches(in text: String, query: String) -> String {
+        guard !query.isEmpty else { return text }
+
+        let lowercasedText = text.lowercased()
+        let lowercasedQuery = query.lowercased()
+        var result = ""
+        var currentIndex = text.startIndex
+
+        while currentIndex < text.endIndex {
+            // Search in the remaining lowercase text
+            let remainingLowercased = String(lowercasedText[currentIndex...])
+
+            if let matchRange = remainingLowercased.range(of: lowercasedQuery) {
+                // Calculate offset from start of remaining text
+                let matchOffset = remainingLowercased.distance(from: remainingLowercased.startIndex, to: matchRange.lowerBound)
+
+                // Calculate actual indices in original text
+                let matchStart = text.index(currentIndex, offsetBy: matchOffset)
+                let matchEnd = text.index(matchStart, offsetBy: query.count)
+
+                // Add text before match
+                if currentIndex < matchStart {
+                    result += String(text[currentIndex..<matchStart])
+                }
+
+                // Add highlighted match
+                result += Colors.bold + Colors.brightYellow + String(text[matchStart..<matchEnd]) + Colors.reset
+
+                // Move past the match
+                currentIndex = matchEnd
+            } else {
+                // No more matches, add remaining text
+                result += String(text[currentIndex...])
+                break
+            }
+        }
+
+        return result
     }
 }
