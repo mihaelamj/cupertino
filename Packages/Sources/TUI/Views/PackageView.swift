@@ -36,7 +36,7 @@ struct PackageView {
 
         // Footer
         result += Box.teeRight + String(repeating: Box.horizontal, count: width - 2) + Box.teeLeft + "\r\n"
-        let help = "Arrows/jk:Move  Space:Select  s:Sort  w:Save  q:Quit"
+        let help = "↑↓/jk:Move  PgUp/PgDn:Page  Home/End:Jump  Space:Select  s:Sort  w:Save  q:Quit"
         result += renderPaddedLine(help, width: width)
         result += Box.bottomLeft + String(repeating: Box.horizontal, count: width - 2)
         result += Box.bottomRight + "\r\n"

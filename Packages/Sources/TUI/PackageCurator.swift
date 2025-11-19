@@ -35,19 +35,39 @@ struct PackageCuratorApp {
         }
 
         var running = true
+        var lastSize: (rows: Int, cols: Int) = (0, 0)
+
         while running {
-            // Render
+            // Get current terminal size (handles resize)
             let (rows, cols) = await screen.getSize()
+
+            // Clear screen on resize to avoid artifacts
+            if rows != lastSize.rows || cols != lastSize.cols {
+                print(Screen.clearScreen + Screen.home, terminator: "")
+                lastSize = (rows, cols)
+            }
+
+            // Render
             let content = view.render(state: state, width: cols, height: rows)
             await screen.render(content)
 
             // Handle input
             if let key = input.readKey() {
+                let pageSize = rows - 4
                 switch key {
                 case .arrowUp, .char("k"):
-                    state.moveCursor(delta: -1, pageSize: rows - 4)
+                    state.moveCursor(delta: -1, pageSize: pageSize)
                 case .arrowDown, .char("j"):
-                    state.moveCursor(delta: 1, pageSize: rows - 4)
+                    state.moveCursor(delta: 1, pageSize: pageSize)
+                case .pageUp:
+                    state.moveCursor(delta: -pageSize, pageSize: pageSize)
+                case .pageDown:
+                    state.moveCursor(delta: pageSize, pageSize: pageSize)
+                case .homeKey:
+                    state.moveCursor(delta: -state.cursor, pageSize: pageSize)
+                case .endKey:
+                    let lastIndex = state.visiblePackages.count - 1
+                    state.moveCursor(delta: lastIndex - state.cursor, pageSize: pageSize)
                 case .space:
                     state.toggleCurrent()
                 case .char("s"):
