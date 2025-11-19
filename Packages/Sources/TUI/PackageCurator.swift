@@ -51,7 +51,7 @@ struct PackageCuratorApp {
             let content = view.render(state: state, width: cols, height: rows)
             await screen.render(content)
 
-            // Handle input
+            // Handle input (non-blocking with 0.1s timeout in terminal)
             if let key = input.readKey() {
                 let pageSize = rows - 4
                 switch key {
@@ -80,9 +80,7 @@ struct PackageCuratorApp {
                     break
                 }
             }
-
-            // Small delay to avoid busy loop
-            try await Task.sleep(nanoseconds: 16000000) // ~60 FPS
+            // No sleep needed - terminal timeout provides ~10 FPS natural rate
         }
     }
 

@@ -36,6 +36,10 @@ actor Screen {
         raw.c_oflag &= ~UInt(OPOST)
         raw.c_cflag |= UInt(CS8)
 
+        // Non-blocking read with minimal timeout
+        raw.c_cc.16 = 0 // VMIN = 0 (return immediately)
+        raw.c_cc.17 = 1 // VTIME = 0.1 seconds
+
         tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw)
         return original
     }
