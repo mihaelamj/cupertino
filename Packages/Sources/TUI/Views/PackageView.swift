@@ -15,8 +15,10 @@ struct PackageView {
         let stats = "Sort: \(state.sortMode.rawValue)     Selected: \(selectedCount)/\(totalCount)"
 
         result += Box.topLeft + String(repeating: Box.horizontal, count: width - 2) + Box.topRight + "\n"
-        result += Box.vertical + " \(title)" + String(repeating: " ", count: width - title.count - 3) + Box.vertical + "\n"
-        result += Box.vertical + " \(stats)" + String(repeating: " ", count: width - stats.count - 3) + Box.vertical + "\n"
+        result += Box.vertical + " \(title)"
+        result += String(repeating: " ", count: width - title.count - 3) + Box.vertical + "\n"
+        result += Box.vertical + " \(stats)"
+        result += String(repeating: " ", count: width - stats.count - 3) + Box.vertical + "\n"
         result += Box.teeRight + String(repeating: Box.horizontal, count: width - 2) + Box.teeLeft + "\n"
 
         // Package list
@@ -32,7 +34,8 @@ struct PackageView {
             // Build line with proper spacing
             let baseContent = "\(checkbox) \(name)"
             let paddingSize = max(1, width - baseContent.count - stars.count - 10)
-            var line = Box.vertical + " \(baseContent)" + String(repeating: " ", count: paddingSize) + stars + " " + Box.vertical
+            var line = Box.vertical + " \(baseContent)"
+            line += String(repeating: " ", count: paddingSize) + stars + " " + Box.vertical
 
             // Highlight current line
             if isCurrentLine {
@@ -51,8 +54,10 @@ struct PackageView {
         // Footer
         result += Box.teeRight + String(repeating: Box.horizontal, count: width - 2) + Box.teeLeft + "\n"
         let help = "↑↓:Navigate  Space:Toggle  s:Sort  /:Search  w:Save  q:Quit"
-        result += Box.vertical + " \(help)" + String(repeating: " ", count: width - help.count - 3) + Box.vertical + "\n"
-        result += Box.bottomLeft + String(repeating: Box.horizontal, count: width - 2) + Box.bottomRight + "\n"
+        result += Box.vertical + " \(help)"
+        result += String(repeating: " ", count: width - help.count - 3) + Box.vertical + "\n"
+        result += Box.bottomLeft + String(repeating: Box.horizontal, count: width - 2)
+        result += Box.bottomRight + "\n"
 
         return result
     }

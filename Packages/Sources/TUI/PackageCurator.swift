@@ -44,9 +44,9 @@ struct PackageCuratorApp {
             // Handle input
             if let key = input.readKey() {
                 switch key {
-                case .up, .char("k"):
+                case .arrowUp, .char("k"):
                     state.moveCursor(delta: -1, pageSize: rows - 4)
-                case .down, .char("j"):
+                case .arrowDown, .char("j"):
                     state.moveCursor(delta: 1, pageSize: rows - 4)
                 case .space:
                     state.toggleCurrent()

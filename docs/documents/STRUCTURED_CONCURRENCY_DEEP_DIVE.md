@@ -1433,9 +1433,184 @@ This pattern is discussed in WWDC 2021 session "Protect mutable state with Swift
 
 ---
 
-### Pattern 8: Weak Self in Long-Running Tasks
+### Pattern 8: @main Attribute for Executable Entry Points
 
-**Source:** `Sources/MCPServer/MCPServer.swift`
+#### Apple's Documentation
+
+**Source:** Swift Evolution Proposals
+- SE-0281: `@main`: Type-Based Program Entry Points
+- SE-0323: Asynchronous Main Semantics
+
+**Key Concepts from SE-0281:**
+- `@main` designates a type as the program entry point
+- Type must provide `static func main()` (can be `async` and/or `throws`)
+- Cannot coexist with top-level code (including imports in same file)
+- Replaces need for separate `main.swift` file
+
+**Key Concepts from SE-0323 (Async Main):**
+- Async main runs synchronously up to first suspension point
+- Allows initialization before tasks created by initializers run
+- Main function implicitly runs on MainActor
+- Prevents thread hopping at entry point
+
+**Correct Usage Patterns:**
+
+**Pattern 1: ArgumentParser (Cupertino CLI)**
+```swift
+// Cupertino.swift - ONLY contains @main struct
+@main
+@available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
+struct Cupertino: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "cupertino",
+        abstract: "MCP Server for Apple Documentation",
+        subcommands: [FetchCommand.self, SaveCommand.self],
+        defaultSubcommand: ServeCommand.self
+    )
+}
+```
+
+**Why This Works:**
+- ArgumentParser provides `main()` implementation via `AsyncParsableCommand`
+- No top-level code (imports are handled by ArgumentParser framework)
+- Clean separation of entry point
+
+**Pattern 2: Custom Async Main (SE-0323)**
+```swift
+// AppEntry.swift - Separate file for @main
+@main
+struct AppEntry {
+    static func main() async throws {
+        // Runs synchronously until first await
+        let config = loadConfiguration()  // Synchronous
+
+        // First suspension point - tasks can run here
+        await setupDatabase()
+
+        // Main logic
+        try await runApp()
+    }
+}
+```
+
+**Why Separate File?**
+From SE-0281 documentation:
+> "A `main.swift` file is always considered to be an entry point, even if it has no top-level code. Because of this, placing the `@main`-designated type in a `main.swift` file is an error."
+
+**Incorrect Pattern (Causes Error):**
+```swift
+// ❌ ERROR: main.swift with @main attribute
+import Foundation  // ← Top-level code!
+
+@main
+struct MyApp {
+    static func main() async {
+        // Error: 'main' attribute cannot be used in a module
+        // that contains top-level code
+    }
+}
+```
+
+**Swift Compiler Behavior:**
+- Imports count as "top-level code"
+- Any code outside type declarations is "top-level"
+- `@main` requires NO top-level code in file
+- Solution: Use separate file or use `main.swift` without `@main`
+
+**Async Main Execution (SE-0323):**
+
+**Before Suspension:**
+```swift
+@main struct App {
+    static func main() async {
+        print("1")  // ← Runs synchronously
+        setupGlobals()  // ← Runs synchronously
+
+        await doWork()  // ← First suspension point
+        // Tasks from initializers run here
+    }
+}
+```
+
+**After First `await`:**
+- Main function suspends
+- Continuation enqueued on MainActor
+- Other tasks on main queue can run
+- Consistent with async/await semantics
+
+**MainActor Isolation (SE-0323):**
+```swift
+@MainActor
+var globalUI: String = ""
+
+@main struct App {
+    static func main() async {
+        // Implicitly @MainActor - no await needed
+        globalUI = "updated"  // ✅ Synchronous access
+    }
+}
+```
+
+#### Cupertino Implementation
+
+**Executable Targets:**
+1. **CLI (cupertino)** - Uses ArgumentParser pattern
+2. **TUI (cupertino-tui)** - Needs custom async main
+
+**Current TUI Error:**
+```
+Sources/TUI/main.swift:5:1: error: 'main' attribute cannot be used in a module that contains top-level code
+```
+
+**Cause:** Imports in same file as `@main` struct
+
+**Solution Options:**
+
+**Option A: Rename to PackageCurator.swift**
+```swift
+// PackageCurator.swift (not main.swift)
+import Core
+import Foundation
+import Resources
+
+@main
+struct PackageCuratorApp {
+    static func main() async throws {
+        // Implementation...
+    }
+}
+```
+
+**Option B: Use main.swift without @main**
+```swift
+// main.swift (old-style)
+import Core
+import Foundation
+import Resources
+
+@available(macOS 13.0, *)
+struct PackageCuratorApp {
+    static func main() async throws {
+        // Implementation...
+    }
+}
+
+// Top-level call
+await PackageCuratorApp.main()
+```
+
+**Recommendation:** Option A (rename file) - cleaner, modern Swift
+
+**Apple API Reference:**
+- [SE-0281: @main Attribute](https://github.com/apple/swift-evolution/blob/main/proposals/0281-main-attribute.md)
+- [SE-0323: Async Main Semantics](https://github.com/apple/swift-evolution/blob/main/proposals/0323-async-main-semantics.md)
+- [Swift Language Guide: Entry Points](https://docs.swift.org/swift-book/documentation/the-swift-programming-language/declarations/#Entry-Point)
+
+---
+
+### Pattern 9: Weak Self in Long-Running Tasks
+
+**Source:** `Sources/MCPSupport/MCPServer.swift`
 
 ```swift
 public actor MCPServer {

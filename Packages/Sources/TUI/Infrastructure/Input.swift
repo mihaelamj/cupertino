@@ -1,13 +1,13 @@
 import Foundation
 
 enum Key {
-    case up, down, left, right
+    case arrowUp, arrowDown, arrowLeft, arrowRight
     case pageUp, pageDown
-    case home, end
+    case homeKey, endKey
     case space, tab, enter, escape
     case char(Character)
     case ctrl(Character)
-    case delete, backspace
+    case deleteKey, backspace
     case unknown
 }
 
@@ -17,41 +17,52 @@ final class Input {
         let count = read(STDIN_FILENO, &buffer, 8)
 
         if count == 1 {
-            switch buffer[0] {
-            case 27: return .escape
-            case 32: return .space
-            case 9: return .tab
-            case 13: return .enter
-            case 127: return .backspace
-            case 3: return .ctrl("c")
-            case 4: return .ctrl("d")
-            case 1...26:
-                let char = Character(UnicodeScalar(buffer[0] + 96))
-                return .ctrl(char)
-            case 65...90, 97...122:
-                return .char(Character(UnicodeScalar(buffer[0])))
-            case 48...57:
-                return .char(Character(UnicodeScalar(buffer[0])))
-            case 47: return .char("/")
-            default: return .unknown
-            }
+            return parseSingleByte(buffer[0])
         }
 
-        // Arrow keys: ESC [ A/B/C/D
+        // Arrow keys and escape sequences: ESC [ A/B/C/D
         if count >= 3, buffer[0] == 27, buffer[1] == 91 {
-            switch buffer[2] {
-            case 65: return .up
-            case 66: return .down
-            case 67: return .right
-            case 68: return .left
-            case 53: return .pageUp // ESC [ 5 ~
-            case 54: return .pageDown // ESC [ 6 ~
-            case 72: return .home
-            case 70: return .end
-            default: return .unknown
-            }
+            return parseEscapeSequence(buffer[2])
         }
 
         return .unknown
+    }
+
+    private func parseSingleByte(_ byte: UInt8) -> Key {
+        switch byte {
+        case 27: return .escape
+        case 32: return .space
+        case 9: return .tab
+        case 13: return .enter
+        case 127: return .backspace
+        case 3: return .ctrl("c")
+        case 4: return .ctrl("d")
+        case 1...26: return parseControlChar(byte)
+        case 47, 48...57, 65...90, 97...122: return parseRegularChar(byte)
+        default: return .unknown
+        }
+    }
+
+    private func parseControlChar(_ byte: UInt8) -> Key {
+        let char = Character(UnicodeScalar(byte + 96))
+        return .ctrl(char)
+    }
+
+    private func parseRegularChar(_ byte: UInt8) -> Key {
+        .char(Character(UnicodeScalar(byte)))
+    }
+
+    private func parseEscapeSequence(_ code: UInt8) -> Key {
+        switch code {
+        case 65: return .arrowUp
+        case 66: return .arrowDown
+        case 67: return .arrowRight
+        case 68: return .arrowLeft
+        case 53: return .pageUp // ESC [ 5 ~
+        case 54: return .pageDown // ESC [ 6 ~
+        case 72: return .homeKey
+        case 70: return .endKey
+        default: return .unknown
+        }
     }
 }
