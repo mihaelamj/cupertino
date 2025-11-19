@@ -26,14 +26,6 @@ struct PackageCuratorApp {
         await screen.enterAltScreen()
         print(Screen.hideCursor, terminator: "")
 
-        defer {
-            Task {
-                await screen.exitAltScreen()
-                await screen.disableRawMode(originalTermios)
-                print(Screen.showCursor)
-            }
-        }
-
         var running = true
         var lastSize: (rows: Int, cols: Int) = (0, 0)
 
@@ -59,9 +51,9 @@ struct PackageCuratorApp {
                     state.moveCursor(delta: -1, pageSize: pageSize)
                 case .arrowDown, .char("j"):
                     state.moveCursor(delta: 1, pageSize: pageSize)
-                case .pageUp:
+                case .arrowLeft, .pageUp:
                     state.moveCursor(delta: -pageSize, pageSize: pageSize)
-                case .pageDown:
+                case .arrowRight, .pageDown:
                     state.moveCursor(delta: pageSize, pageSize: pageSize)
                 case .homeKey, .ctrl("a"):
                     state.moveCursor(delta: -state.cursor, pageSize: pageSize)
@@ -82,6 +74,12 @@ struct PackageCuratorApp {
             }
             // No sleep needed - terminal timeout provides ~10 FPS natural rate
         }
+
+        // Cleanup terminal
+        await screen.exitAltScreen()
+        await screen.disableRawMode(originalTermios)
+        print(Screen.showCursor)
+        fflush(stdout)
     }
 
     static func saveSelections(state: AppState) throws {
