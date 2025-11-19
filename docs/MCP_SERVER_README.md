@@ -67,7 +67,7 @@ The `cupertino` binary defaults to starting the MCP server:
 cupertino
 
 # Option 2: Explicit command
-cupertino mcp serve \
+cupertino serve \
   --docs-dir ~/.cupertino/docs \
   --evolution-dir ~/.cupertino/swift-evolution
 ```
@@ -81,7 +81,7 @@ The server communicates via stdin/stdout using JSON-RPC 2.0.
 ### Check Server Health
 
 ```bash
-cupertino mcp doctor
+cupertino doctor
 ```
 
 This command verifies:
@@ -307,7 +307,7 @@ cupertino fetch --type evolution --output-dir ~/.cupertino/swift-evolution
 You can test the MCP server manually using stdio:
 
 ```bash
-echo '{"jsonrpc":"2.0","id":1,"method":"resources/list","params":{}}' | cupertino mcp serve
+echo '{"jsonrpc":"2.0","id":1,"method":"resources/list","params":{}}' | cupertino serve
 ```
 
 Expected output: JSON-RPC response with list of resources.
@@ -342,7 +342,7 @@ Expected output: JSON-RPC response with list of resources.
 
 - **Unified Binary:** No separate `cupertino-mcp` binary
 - **Default Command:** `cupertino` defaults to `mcp serve`
-- **Health Check:** New `cupertino mcp doctor` command
+- **Health Check:** New `cupertino doctor` command
 
 ## Resource Organization
 

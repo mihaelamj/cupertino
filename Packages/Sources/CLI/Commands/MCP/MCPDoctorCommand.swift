@@ -87,7 +87,7 @@ struct MCPDoctorCommand: AsyncParsableCommand {
             print("   ✓ Apple docs: \(docsURL.path) (\(count) files)")
         } else {
             print("   ✗ Apple docs: \(docsURL.path) (not found)")
-            print("     → Run: cupertino data crawl docs")
+            print("     → Run: cupertino fetch --type docs")
             hasIssues = true
         }
 
@@ -97,7 +97,7 @@ struct MCPDoctorCommand: AsyncParsableCommand {
             print("   ✓ Swift Evolution: \(evolutionURL.path) (\(count) proposals)")
         } else {
             print("   ⚠  Swift Evolution: \(evolutionURL.path) (not found)")
-            print("     → Run: cupertino data crawl")
+            print("     → Run: cupertino fetch --type evolution")
             hasIssues = true
         }
 
@@ -130,7 +130,7 @@ struct MCPDoctorCommand: AsyncParsableCommand {
 
         guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
             print("   ✗ Database: \(searchDBURL.path) (not found)")
-            print("     → Run: cupertino data index")
+            print("     → Run: cupertino save")
             print()
             return false
         }
@@ -148,7 +148,7 @@ struct MCPDoctorCommand: AsyncParsableCommand {
             return true
         } catch {
             print("   ✗ Database error: \(error)")
-            print("     → Run: cupertino data index")
+            print("     → Run: cupertino save")
             print()
             return false
         }

@@ -608,7 +608,7 @@ cupertino-mcp serve
 **Proposed:**
 ```bash
 cupertino fetch
-cupertino serve    # Or: cupertino mcp serve
+cupertino serve    # Or: cupertino serve
 ```
 
 **Benefits:**

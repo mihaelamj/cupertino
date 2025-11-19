@@ -13,7 +13,7 @@ The v0.2 refactoring has been successfully completed. All major objectives achie
 1. **Consolidated MCP Framework:** MCPShared + MCPTransport + MCPServer → MCP
 2. **Namespaced Packages:** CupertinoLogging → Logging, CupertinoShared → Shared, etc.
 3. **Unified Binary:** Single `cupertino` binary (replaces separate `cupertino-mcp`)
-4. **New Command Structure:** `cupertino mcp serve`, `cupertino mcp doctor`, etc.
+4. **New Command Structure:** `cupertino serve`, `cupertino doctor`, etc.
 5. **Default MCP Server:** Running `cupertino` without args starts the MCP server
 
 **Package Count:** Reduced from 12 to 9 packages
