@@ -1,45 +1,77 @@
-# Voice Alerts, Session Binding & Audio Control
+# Voice Alerts, Session Voice Binding & Speech Rules
 
 <objective>
-You MUST use macOS `say` to speak aloud whenever user input is needed AND you MUST bind each session to a distinct voice so the user can immediately know which session is speaking (e.g., two terminals, two agents).
+Use macOS `say` for all spoken alerts.
+Each session must speak using a distinct macOS voice so the user can immediately recognize who is talking.
 </objective>
 
 <priority>
-HIGH — This rule overrides any conflicting behavior. Spoken alerts MUST always follow these rules unless the user explicitly disables audio.
+HIGH — Spoken alerts must always follow these rules unless the user explicitly disables audio.
 </priority>
 
-<cognitive_triggers>
-Keywords: say, macOS voice, audio alert, Karen, Jamie, session voice, terminal, silence, mute, unmute, Codex, Claude Code
-</cognitive_triggers>
+## Session Voice Binding
 
-## Scope — Codex Only
+Every session must assign itself one macOS system voice from the user-approved set:
 
-These audio rules apply **ONLY to Codex CLI sessions**.
+- Jamie
+- Karen
+- Ava
+- Evan
+- Samantha
 
-Claude Code must **NOT** speak aloud and must **NOT** use these rules.
-Claude should ignore all voice-binding, spoken alerts, and TTS logic.
+Once a session chooses its voice, it must use that voice consistently for its entire lifetime.
 
-Codex alone is responsible for:
-- calling the `speak` helper script,
-- binding sessions to different voices,
-- issuing spoken alerts when user input is required,
-- respecting mute/unmute variables,
-- and following all voice-related rules in this file.
+Example:
 
-## CRITICAL RULES
+```
+SESSION_VOICE="Jamie"
+```
 
-### Rule 1 — Spoken Alerts When User Input Is Needed
-You MUST speak when you:
-- need confirmation,
-- require user clarification,
-- detect destructive or high-impact actions,
-- are uncertain about multiple architectural paths.
+## Speech Rules
+
+### Rule 1 — Speak When You Need User Input
+
+Whenever the agent:
+- needs clarification,
+- needs confirmation,
+- is uncertain,
+- is about to perform a high-impact or ambiguous action,
+
+it must both **print** and **speak** the notice.
 
 **Pattern:**
 
-```bash
-# Text
-<SessionName> session: I need your input: <short reason>.
+```
+# Printed
+<SessionName>: I need your input: <short reason>.
 
-# Speech
-say -v "<SESSION_VOICE>" "<SessionName> session: I need your input."
+# Spoken
+say -v "$SESSION_VOICE" "<SessionName> needs your input."
+```
+
+### Rule 2 — Only Use macOS `say`
+
+No other audio commands are allowed.
+Only:
+
+```
+say -v "$SESSION_VOICE" "<message>"
+```
+
+### Rule 3 — Distinct Voices for Multiple Sessions
+
+If multiple sessions are open simultaneously:
+- they must not share the same voice
+- each must pick a unique voice from the list above
+
+This enables immediate voice identification without looking at the terminal.
+
+### Rule 4 — Optional Mute
+
+If the user sets:
+
+```
+AUDIO_MUTED=true
+```
+
+the agent must still print the message but must **not** call `say`.
