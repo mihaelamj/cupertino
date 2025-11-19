@@ -14,12 +14,12 @@ struct PackageView {
         let title = "Swift Packages Curator"
         let stats = "Sort: \(state.sortMode.rawValue)     Selected: \(selectedCount)/\(totalCount)"
 
-        result += Box.topLeft + String(repeating: Box.horizontal, count: width - 2) + Box.topRight + "\n"
+        result += Box.topLeft + String(repeating: Box.horizontal, count: width - 2) + Box.topRight + "\r\n"
         result += Box.vertical + " \(title)"
-        result += String(repeating: " ", count: width - title.count - 3) + Box.vertical + "\n"
+        result += String(repeating: " ", count: width - title.count - 3) + Box.vertical + "\r\n"
         result += Box.vertical + " \(stats)"
-        result += String(repeating: " ", count: width - stats.count - 3) + Box.vertical + "\n"
-        result += Box.teeRight + String(repeating: Box.horizontal, count: width - 2) + Box.teeLeft + "\n"
+        result += String(repeating: " ", count: width - stats.count - 3) + Box.vertical + "\r\n"
+        result += Box.teeRight + String(repeating: Box.horizontal, count: width - 2) + Box.teeLeft + "\r\n"
 
         // Package list
         for (index, entry) in page.enumerated() {
@@ -42,22 +42,22 @@ struct PackageView {
                 line = Colors.invert + line + Colors.reset
             }
 
-            result += line + "\n"
+            result += line + "\r\n"
         }
 
         // Fill remaining space
         let remaining = pageSize - page.count
         for _ in 0..<remaining {
-            result += Box.vertical + String(repeating: " ", count: width - 2) + Box.vertical + "\n"
+            result += Box.vertical + String(repeating: " ", count: width - 2) + Box.vertical + "\r\n"
         }
 
         // Footer
-        result += Box.teeRight + String(repeating: Box.horizontal, count: width - 2) + Box.teeLeft + "\n"
+        result += Box.teeRight + String(repeating: Box.horizontal, count: width - 2) + Box.teeLeft + "\r\n"
         let help = "↑↓:Navigate  Space:Toggle  s:Sort  /:Search  w:Save  q:Quit"
         result += Box.vertical + " \(help)"
-        result += String(repeating: " ", count: width - help.count - 3) + Box.vertical + "\n"
+        result += String(repeating: " ", count: width - help.count - 3) + Box.vertical + "\r\n"
         result += Box.bottomLeft + String(repeating: Box.horizontal, count: width - 2)
-        result += Box.bottomRight + "\n"
+        result += Box.bottomRight + "\r\n"
 
         return result
     }
