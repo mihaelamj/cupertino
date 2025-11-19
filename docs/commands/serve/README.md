@@ -1,11 +1,11 @@
-# cupertino mcp serve
+# cupertino serve
 
 Start the MCP server
 
 ## Synopsis
 
 ```bash
-cupertino mcp serve [options]
+cupertino serve [options]
 ```
 
 ## Description
@@ -20,12 +20,11 @@ The server runs indefinitely until terminated (Ctrl+C).
 
 ## Default Command
 
-The `cupertino` binary defaults to `mcp serve`, so these commands are equivalent:
+The `cupertino` binary defaults to `serve`, so these commands are equivalent:
 
 ```bash
 cupertino
-cupertino mcp
-cupertino mcp serve
+cupertino serve
 ```
 
 This makes it easy to configure in MCP client applications - you only need to specify the binary path.
@@ -41,7 +40,7 @@ Directory containing Apple documentation.
 
 **Example:**
 ```bash
-cupertino mcp serve --docs-dir ~/my-custom-docs
+cupertino serve --docs-dir ~/my-custom-docs
 ```
 
 ### --evolution-dir
@@ -53,7 +52,7 @@ Directory containing Swift Evolution proposals.
 
 **Example:**
 ```bash
-cupertino mcp serve --evolution-dir ~/my-evolution
+cupertino serve --evolution-dir ~/my-evolution
 ```
 
 ### --search-db
@@ -65,7 +64,7 @@ Path to the search database file.
 
 **Example:**
 ```bash
-cupertino mcp serve --search-db ~/my-search.db
+cupertino serve --search-db ~/my-search.db
 ```
 
 ## Prerequisites
@@ -101,7 +100,7 @@ The server will use:
 ### Start with Custom Directories
 
 ```bash
-cupertino mcp serve \
+cupertino serve \
   --docs-dir ~/custom/apple-docs \
   --evolution-dir ~/custom/evolution \
   --search-db ~/custom/search.db
@@ -121,7 +120,7 @@ cupertino mcp serve \
 }
 ```
 
-No args needed - the binary defaults to `mcp serve`!
+No args needed - the binary defaults to `serve`!
 
 ### Use with Custom Directories in Claude
 
@@ -131,7 +130,7 @@ No args needed - the binary defaults to `mcp serve`!
     "cupertino": {
       "command": "/usr/local/bin/cupertino",
       "args": [
-        "mcp", "serve",
+        "serve",
         "--docs-dir", "/Users/YOUR_USERNAME/my-docs",
         "--evolution-dir", "/Users/YOUR_USERNAME/my-evolution"
       ]
@@ -308,8 +307,7 @@ cat ~/Library/Application\ Support/Claude/claude_desktop_config.json | python3 -
 
 ## See Also
 
-- [doctor](doctor.md) - Check server health
-- [README](README.md) - MCP command overview
+- [doctor](../doctor/) - Check server health
 - [../../MCP_SERVER_README.md](../../MCP_SERVER_README.md) - Detailed server guide
 - [../crawl/](../crawl/) - Download documentation
 - [../index/](../index/) - Build search index

@@ -11,7 +11,7 @@ import TestSupport
 
 // MARK: - MCP Command Tests
 
-/// Tests for the `cupertino mcp` command
+/// Tests for the `cupertino serve` command
 /// Verifies server initialization, resource providers, and tool providers
 
 @Suite("MCP Command Tests")

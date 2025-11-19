@@ -1,11 +1,11 @@
-# cupertino mcp doctor
+# cupertino doctor
 
 Check MCP server health and configuration
 
 ## Synopsis
 
 ```bash
-cupertino mcp doctor [options]
+cupertino doctor [options]
 ```
 
 ## Description
@@ -32,7 +32,7 @@ Directory containing Apple documentation.
 
 **Example:**
 ```bash
-cupertino mcp doctor --docs-dir ~/my-custom-docs
+cupertino doctor --docs-dir ~/my-custom-docs
 ```
 
 ### --evolution-dir
@@ -44,7 +44,7 @@ Directory containing Swift Evolution proposals.
 
 **Example:**
 ```bash
-cupertino mcp doctor --evolution-dir ~/my-evolution
+cupertino doctor --evolution-dir ~/my-evolution
 ```
 
 ### --search-db
@@ -56,7 +56,7 @@ Path to the search database file.
 
 **Example:**
 ```bash
-cupertino mcp doctor --search-db ~/my-search.db
+cupertino doctor --search-db ~/my-search.db
 ```
 
 ## Examples
@@ -64,13 +64,13 @@ cupertino mcp doctor --search-db ~/my-search.db
 ### Check Default Configuration
 
 ```bash
-cupertino mcp doctor
+cupertino doctor
 ```
 
 ### Check Custom Configuration
 
 ```bash
-cupertino mcp doctor \
+cupertino doctor \
   --docs-dir ~/custom/docs \
   --evolution-dir ~/custom/evolution \
   --search-db ~/custom/search.db
@@ -80,10 +80,10 @@ cupertino mcp doctor \
 
 ```bash
 # Check health first
-cupertino mcp doctor
+cupertino doctor
 
 # If all checks pass, start server
-cupertino mcp serve
+cupertino serve
 ```
 
 ## Output
@@ -205,7 +205,7 @@ cupertino crawl --type docs
 cupertino index
 
 # Verify everything is set up
-cupertino mcp doctor
+cupertino doctor
 
 # Start the server
 cupertino
@@ -217,7 +217,7 @@ If the server won't start or clients can't access resources:
 
 ```bash
 # Run diagnostics
-cupertino mcp doctor
+cupertino doctor
 
 # Follow the suggestions in the output
 # Example: "Run: cupertino crawl --type docs"
@@ -229,7 +229,7 @@ cupertino mcp doctor
 #!/bin/bash
 # Verify server setup in CI
 
-cupertino mcp doctor
+cupertino doctor
 if [ $? -eq 0 ]; then
     echo "Server configuration valid"
     exit 0
@@ -243,7 +243,7 @@ fi
 
 ```bash
 # After installing to custom location
-cupertino mcp doctor \
+cupertino doctor \
   --docs-dir /opt/cupertino/docs \
   --evolution-dir /opt/cupertino/evolution \
   --search-db /opt/cupertino/search.db
@@ -304,7 +304,7 @@ Doctor checks wrong paths after using custom directories.
 **Solution:**
 Specify the same paths you'll use with `serve`:
 ```bash
-cupertino mcp doctor \
+cupertino doctor \
   --docs-dir ~/my-docs \
   --evolution-dir ~/my-evolution
 ```
@@ -318,8 +318,7 @@ cupertino mcp doctor \
 
 ## See Also
 
-- [serve](serve.md) - Start the MCP server
-- [README](README.md) - MCP command overview
+- [serve](../serve/) - Start the MCP server
 - [../../MCP_SERVER_README.md](../../MCP_SERVER_README.md) - Detailed server guide
 - [../crawl/](../crawl/) - Download documentation
 - [../index/](../index/) - Build search index
