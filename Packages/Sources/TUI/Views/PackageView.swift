@@ -71,16 +71,19 @@ struct PackageView {
     private func renderPackageLine(entry: PackageEntry, width: Int, highlight: Bool, searchQuery: String) -> String {
         // Selection indicator: [★] or [ ]
         let checkbox = entry.isSelected ? "[★]" : "[ ]"
+        // Download indicator: 📦 for downloaded packages
+        let downloadIndicator = entry.isDownloaded ? "📦" : "  "
         let name = "\(entry.package.owner)/\(entry.package.repo)"
         let starsNum = NumberFormatter.localizedString(from: NSNumber(value: entry.package.stars), number: .decimal)
 
-        // Calculate visible widths (emoji ⭐ = 2 columns, star ★ in checkbox = 1 column)
+        // Calculate visible widths (emoji ⭐ = 2 columns, star ★ in checkbox = 1 column, 📦 = 2 columns)
         let checkboxWidth = 3 // [ ] or [★]
+        let downloadWidth = 2 // 📦 or "  "
         let starsTextWidth = starsNum.count + 3 // "⭐ " (emoji=2) + number
 
         // Available space for name
         let contentWidth = width - 4 // "│ " and " │"
-        let nameMaxWidth = contentWidth - checkboxWidth - starsTextWidth - 2 // 2 spaces for padding
+        let nameMaxWidth = contentWidth - checkboxWidth - downloadWidth - starsTextWidth - 3 // 3 spaces for padding
 
         // Truncate name if too long
         let plainName: String
@@ -101,7 +104,7 @@ struct PackageView {
 
         // Build line with exact spacing (using plain name for width calculation)
         let padding = max(0, nameMaxWidth - plainName.count)
-        var line = Box.vertical + " " + checkbox + " " + displayName
+        var line = Box.vertical + " " + checkbox + " " + downloadIndicator + " " + displayName
         line += String(repeating: " ", count: padding) + " ⭐ " + starsNum + " " + Box.vertical
 
         // Highlight current line

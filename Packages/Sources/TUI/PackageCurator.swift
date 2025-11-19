@@ -1,6 +1,7 @@
 import Core
 import Foundation
 import Resources
+import Shared
 
 @main
 struct PackageCuratorApp {
@@ -9,11 +10,16 @@ struct PackageCuratorApp {
         let packages = await SwiftPackagesCatalog.allPackages
         let priorityURLs = await PriorityPackagesCatalog.allPackages.map(\.url)
 
+        // Check which packages are downloaded
+        let docsDirectory = Shared.Constants.defaultDocsDirectory
+        let downloadedPackages = checkDownloadedPackages(in: docsDirectory)
+
         // Initialize state
         let state = AppState()
         state.packages = packages.map { pkg in
             let isSelected = priorityURLs.contains(pkg.url)
-            return PackageEntry(package: pkg, isSelected: isSelected)
+            let isDownloaded = downloadedPackages.contains("\(pkg.owner)/\(pkg.repo)".lowercased())
+            return PackageEntry(package: pkg, isSelected: isSelected, isDownloaded: isDownloaded)
         }
 
         // Initialize UI components
@@ -175,5 +181,39 @@ struct PackageCuratorApp {
         try data.write(to: resourcesPath)
 
         state.statusMessage = "✅ Saved \(selected.count) packages"
+    }
+
+    /// Check which packages are downloaded in the docs directory
+    static func checkDownloadedPackages(in docsDirectory: URL) -> Set<String> {
+        guard FileManager.default.fileExists(atPath: docsDirectory.path) else {
+            return []
+        }
+
+        var downloaded = Set<String>()
+
+        do {
+            let contents = try FileManager.default.contentsOfDirectory(
+                at: docsDirectory,
+                includingPropertiesForKeys: [.isDirectoryKey],
+                options: [.skipsHiddenFiles]
+            )
+
+            for url in contents {
+                let isDirectory = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
+                if isDirectory {
+                    // Directory name format is typically "owner-repo" or "owner/repo"
+                    let dirName = url.lastPathComponent.lowercased()
+                    // Handle both formats: "owner/repo" and "owner-repo"
+                    let normalized = dirName.replacingOccurrences(of: "-", with: "/")
+                    downloaded.insert(normalized)
+                    // Also add the original format
+                    downloaded.insert(dirName)
+                }
+            }
+        } catch {
+            // Silently fail if we can't read the directory
+        }
+
+        return downloaded
     }
 }
