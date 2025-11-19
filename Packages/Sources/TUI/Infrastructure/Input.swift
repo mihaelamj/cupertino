@@ -6,6 +6,7 @@ enum Key {
     case homeKey, endKey
     case space, tab, enter, escape
     case char(Character)
+    case paste(String)
     case ctrl(Character)
     case deleteKey, backspace
     case unknown
@@ -13,8 +14,8 @@ enum Key {
 
 final class Input {
     func readKey() -> Key? {
-        var buffer = [UInt8](repeating: 0, count: 8)
-        let count = read(STDIN_FILENO, &buffer, 8)
+        var buffer = [UInt8](repeating: 0, count: 256) // Increased buffer for paste
+        let count = read(STDIN_FILENO, &buffer, 256)
 
         if count == 1 {
             return parseSingleByte(buffer[0])
@@ -28,6 +29,14 @@ final class Input {
             }
             // Simple sequences: ESC [ N
             return parseEscapeSequence(buffer[2])
+        }
+
+        // Handle multi-byte input (paste or multi-character input)
+        if count > 1 {
+            let bytes = Array(buffer.prefix(count))
+            if let string = String(bytes: bytes, encoding: .utf8), !string.isEmpty {
+                return .paste(string)
+            }
         }
 
         return .unknown

@@ -21,7 +21,7 @@ struct PackageView {
             let searchPrompt = state.isSearching ? "Search: \(state.searchQuery)_" : "Search: \(state.searchQuery)"
             stats = "\(searchPrompt)  Results: \(visibleCount)/\(totalCount)  Selected: \(selectedCount)"
         } else {
-            stats = "Sort: \(state.sortMode.rawValue)  Selected: \(selectedCount)/\(totalCount)"
+            stats = "Filter: \(state.filterMode.rawValue)  Sort: \(state.sortMode.rawValue)  Selected: \(selectedCount)/\(totalCount)"
         }
 
         result += Box.topLeft + String(repeating: Box.horizontal, count: width - 2) + Box.topRight + "\r\n"
@@ -50,7 +50,7 @@ struct PackageView {
         if state.isSearching {
             help = "Type to search  Backspace:Delete  Enter/Esc:Exit search"
         } else {
-            help = "↑↓/jk:Move  ←→:Page  Space:Select  o/Enter:Open  s:Sort  /:Search  w:Save  q:Quit"
+            help = "↑↓/jk:Move  Space:Select  o:Open  f:Filter  s:Sort  /:Search  w:Save  h/Esc:Home  q:Quit"
         }
         result += renderPaddedLine(help, width: width)
         result += Box.bottomLeft + String(repeating: Box.horizontal, count: width - 2)

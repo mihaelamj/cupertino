@@ -182,6 +182,11 @@ let targets: [Target] = {
         path: "Tests/CLICommandTests/SaveTests"
     )
 
+    let tuiTestsTarget = Target.testTarget(
+        name: "TUITests",
+        dependencies: ["TUI", "Core", "Shared", "TestSupport"]
+    )
+
     let cupertinoTargets: [Target] = [
         loggingTarget,
         loggingTestsTarget,
@@ -204,6 +209,8 @@ let targets: [Target] = {
         doctorTestsTarget,
         fetchTestsTarget,
         saveTestsTarget,
+        // TUI Tests
+        tuiTestsTarget,
     ]
     #else
     let cupertinoTargets: [Target] = []
