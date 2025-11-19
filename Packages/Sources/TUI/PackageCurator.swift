@@ -27,19 +27,23 @@ struct PackageCuratorApp {
         print(Screen.hideCursor, terminator: "")
 
         var running = true
-        var lastSize: (rows: Int, cols: Int) = (0, 0)
+        // Initialize with actual terminal size to avoid false initial "resize"
+        var lastSize = await screen.getSize()
 
         while running {
             // Get current terminal size (handles resize)
             let (rows, cols) = await screen.getSize()
 
-            // Clear screen on resize to avoid artifacts
-            if rows != lastSize.rows || cols != lastSize.cols {
-                print(Screen.clearScreen + Screen.home, terminator: "")
+            // Detect resize
+            let didResize = rows != lastSize.rows || cols != lastSize.cols
+            if didResize {
                 lastSize = (rows, cols)
+                // Force a full redraw on next render
+                print(Screen.clearScreen + Screen.home, terminator: "")
+                fflush(stdout)
             }
 
-            // Render
+            // Render (always render to update on resize)
             let content = view.render(state: state, width: cols, height: rows)
             await screen.render(content)
 
