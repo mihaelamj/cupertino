@@ -17,6 +17,11 @@ final class Input {
         var buffer = [UInt8](repeating: 0, count: 256) // Increased buffer for paste
         let count = read(STDIN_FILENO, &buffer, 256)
 
+        // No input available (timeout) - return nil so we don't trigger redraw
+        if count < 1 {
+            return nil
+        }
+
         if count == 1 {
             return parseSingleByte(buffer[0])
         }
@@ -52,7 +57,9 @@ final class Input {
         case 3: return .ctrl("c")
         case 4: return .ctrl("d")
         case 1...26: return parseControlChar(byte)
-        case 47, 48...57, 65...90, 97...122: return parseRegularChar(byte)
+        // Allow: / (47), 0-9 (48-57), : (58), @ (64), A-Z (65-90), _ (95), a-z (97-122), ~ (126)
+        // Also allow - (45), . (46) for paths
+        case 45...58, 64, 65...90, 95, 97...122, 126: return parseRegularChar(byte)
         default: return .unknown
         }
     }

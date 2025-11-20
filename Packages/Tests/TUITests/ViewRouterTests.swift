@@ -6,6 +6,7 @@ import TestSupport
 
 // MARK: - ViewRouter Tests
 
+@MainActor
 @Test("ViewRouter handles home to packages transition via number key")
 func viewRouterHomeToPackagesNumber() {
     let state = AppState()
@@ -16,6 +17,7 @@ func viewRouterHomeToPackagesNumber() {
     #expect(result == .packages, "Pressing '1' from home should navigate to packages")
 }
 
+@MainActor
 @Test("ViewRouter handles home to library transition via number key")
 func viewRouterHomeToLibraryNumber() {
     let state = AppState()
@@ -26,6 +28,7 @@ func viewRouterHomeToLibraryNumber() {
     #expect(result == .library, "Pressing '2' from home should navigate to library")
 }
 
+@MainActor
 @Test("ViewRouter handles home to settings transition via number key")
 func viewRouterHomeToSettingsNumber() {
     let state = AppState()
@@ -36,6 +39,7 @@ func viewRouterHomeToSettingsNumber() {
     #expect(result == .settings, "Pressing '3' from home should navigate to settings")
 }
 
+@MainActor
 @Test("ViewRouter handles home enter navigation based on cursor")
 func viewRouterHomeEnterNavigation() {
     let state = AppState()
@@ -54,6 +58,7 @@ func viewRouterHomeEnterNavigation() {
     #expect(result == .settings, "Enter with cursor at 2 should go to settings")
 }
 
+@MainActor
 @Test("ViewRouter returns nil for non-navigation keys in home view")
 func viewRouterHomeNonNavigation() {
     let state = AppState()
@@ -64,6 +69,7 @@ func viewRouterHomeNonNavigation() {
     #expect(result == nil, "Non-navigation keys should return nil")
 }
 
+@MainActor
 @Test("ViewRouter handles library back to home via h key")
 func viewRouterLibraryBackH() {
     let state = AppState()
@@ -74,6 +80,7 @@ func viewRouterLibraryBackH() {
     #expect(result == .home, "Pressing 'h' from library should navigate to home")
 }
 
+@MainActor
 @Test("ViewRouter handles library back to home via escape")
 func viewRouterLibraryBackEscape() {
     let state = AppState()
@@ -84,6 +91,7 @@ func viewRouterLibraryBackEscape() {
     #expect(result == .home, "Pressing escape from library should navigate to home")
 }
 
+@MainActor
 @Test("ViewRouter handles settings back to home")
 func viewRouterSettingsBack() {
     let state = AppState()
@@ -97,6 +105,7 @@ func viewRouterSettingsBack() {
     #expect(resultEscape == .home, "Pressing escape from settings should navigate to home")
 }
 
+@MainActor
 @Test("ViewRouter blocks navigation when editing settings")
 func viewRouterSettingsEditingBlocked() {
     let state = AppState()
@@ -108,6 +117,7 @@ func viewRouterSettingsEditingBlocked() {
     #expect(result == nil, "Navigation should be blocked when editing settings")
 }
 
+@MainActor
 @Test("ViewRouter handles packages back to home")
 func viewRouterPackagesBack() {
     let state = AppState()
@@ -121,6 +131,7 @@ func viewRouterPackagesBack() {
     #expect(resultEscape == .home, "Pressing escape from packages should navigate to home")
 }
 
+@MainActor
 @Test("ViewRouter blocks navigation when searching packages")
 func viewRouterPackagesSearchingBlocked() {
     let state = AppState()
@@ -132,6 +143,7 @@ func viewRouterPackagesSearchingBlocked() {
     #expect(result == nil, "Navigation should be blocked when searching")
 }
 
+@MainActor
 @Test("ViewRouter returns nil for non-navigation keys in all views")
 func viewRouterNonNavigationKeys() {
     let state = AppState()

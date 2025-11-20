@@ -11,12 +11,11 @@ struct PackageCuratorApp {
         let packages = await SwiftPackagesCatalog.allPackages
         let priorityURLs = await PriorityPackagesCatalog.allPackages.map(\.url)
 
-        // Check which packages are downloaded
-        let docsDirectory = Shared.Constants.defaultDocsDirectory
-        let downloadedPackages = checkDownloadedPackages(in: docsDirectory)
-
-        // Load configuration
+        // Load configuration first
         let config = ConfigManager.load()
+
+        // Check which packages are downloaded using configured base directory
+        let downloadedPackages = checkDownloadedPackages(in: config.baseDirectory)
 
         // Initialize state
         let state = AppState()
@@ -28,7 +27,7 @@ struct PackageCuratorApp {
         }
 
         // Scan library artifacts
-        var artifacts = scanLibraryArtifacts()
+        var artifacts = scanLibraryArtifacts(baseDir: config.baseDirectory)
 
         // Initialize UI components
         let screen = Screen()
@@ -44,48 +43,73 @@ struct PackageCuratorApp {
         // Setup terminal
         let originalTermios = screen.enableRawMode()
         screen.enterAltScreen()
+        print(Screen.clearScreen + Screen.home, terminator: "")
+        fflush(stdout)
         print(Screen.hideCursor, terminator: "")
 
         var running = true
         // Initialize with actual terminal size to avoid false initial "resize"
         var lastSize = screen.getSize()
 
+        // Initial render
+        var needsRedraw = true
+
         while running {
             // Get current terminal size (handles resize)
             let (rows, cols) = screen.getSize()
+            let pageSize = rows - 11 // Match PackageView footer size (4 header + 7 footer lines)
 
             // Detect resize
             let didResize = rows != lastSize.rows || cols != lastSize.cols
             if didResize {
                 lastSize = (rows, cols)
-                // Force a full redraw on next render
-                print(Screen.clearScreen + Screen.home, terminator: "")
-                fflush(stdout)
+                needsRedraw = true
+            }
+            if state.needsScreenClear {
+                state.needsScreenClear = false
+                needsRedraw = true
             }
 
-            // Render current view using extracted helper
-            let pageSize = rows - 4
-            let content = renderCurrentView(
-                state: state,
-                rows: rows,
-                cols: cols,
-                pageSize: pageSize,
-                homeCursor: homeCursor,
-                libraryCursor: libraryCursor,
-                settingsCursor: settingsCursor,
-                artifacts: artifacts,
-                homeView: homeView,
-                packageView: packageView,
-                libraryView: libraryView,
-                settingsView: settingsView
-            )
-            screen.render(content)
+            // Only render when something changed
+            if needsRedraw {
+                // Clear screen and explicitly position at (1,1)
+                print("\u{001B}[2J\u{001B}[1;1H", terminator: "")
+                fflush(stdout)
+
+                // Render current view using extracted helper
+                let content = renderCurrentView(
+                    state: state,
+                    rows: rows,
+                    cols: cols,
+                    pageSize: pageSize,
+                    homeCursor: homeCursor,
+                    libraryCursor: libraryCursor,
+                    settingsCursor: settingsCursor,
+                    artifacts: artifacts,
+                    homeView: homeView,
+                    packageView: packageView,
+                    libraryView: libraryView,
+                    settingsView: settingsView
+                )
+                screen.render(content)
+                needsRedraw = false
+            }
 
             // Handle input (non-blocking with 0.1s timeout in terminal)
             if let key = input.readKey() {
+                // Only redraw if input actually changes something
                 // Check for view transitions
                 if let newView = ViewRouter.handleViewTransition(key: key, state: state, homeCursor: homeCursor) {
+                    let oldView = state.viewMode
                     state.viewMode = newView
+
+                    // Clear search state when leaving packages view
+                    if oldView == .packages, newView != .packages {
+                        state.searchQuery = ""
+                        state.isSearching = false
+                    }
+
+                    needsRedraw = true
                     continue
                 }
 
@@ -106,8 +130,9 @@ struct PackageCuratorApp {
                 case .continueRunning:
                     continue
                 case .render:
+                    needsRedraw = true
                     // Check if we need to reload artifacts after settings change
-                    if state.statusMessage.contains("Reloading") {
+                    if state.needsReload {
                         // Force a render to show "Reloading..." message
                         let reloadContent = settingsView.render(
                             cursor: settingsCursor,
@@ -121,17 +146,25 @@ struct PackageCuratorApp {
                         screen.render(reloadContent)
 
                         // Reload artifacts and package status from new base directory
-                        artifacts = scanLibraryArtifacts(baseDir: state.baseDirectory)
+                        let newArtifacts = scanLibraryArtifacts(baseDir: state.baseDirectory)
+                        artifacts = newArtifacts
+
                         let downloadedPackages = checkDownloadedPackages(in: state.baseDirectory)
 
                         // Update package download status
+                        var updatedCount = 0
                         for index in state.packages.indices {
                             let pkg = state.packages[index].package
+                            let wasDownloaded = state.packages[index].isDownloaded
                             let isDownloaded = downloadedPackages.contains("\(pkg.owner)/\(pkg.repo)".lowercased())
                             state.packages[index].isDownloaded = isDownloaded
+                            if isDownloaded != wasDownloaded {
+                                updatedCount += 1
+                            }
                         }
 
-                        state.statusMessage = "✅ Base directory saved and reloaded: \(state.baseDirectory)"
+                        state.statusMessage = "✅ Reloaded: \(newArtifacts.count) collections, \(updatedCount) packages updated"
+                        state.needsReload = false
                     }
                     // Continue to next iteration for render
                 }

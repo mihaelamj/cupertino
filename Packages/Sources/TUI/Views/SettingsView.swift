@@ -64,16 +64,26 @@ struct SettingsView {
             : "e:Edit  Esc/h:Home  q:Quit"
         result += renderPaddedLine(help, width: width)
         result += Box.bottomLeft + String(repeating: Box.horizontal, count: width - 2)
-        result += Box.bottomRight + "\r\n"
+        result += Box.bottomRight + Colors.reset + "\r\n"
 
-        result += Colors.reset
         return result
     }
 
     private func renderPaddedLine(_ text: String, width: Int) -> String {
         let contentWidth = width - 4
-        let padding = max(0, contentWidth - text.count)
-        return Box.vertical + " " + text + String(repeating: " ", count: padding) + " " + Box.vertical + "\r\n"
+        let sanitized = TextSanitizer.removeEmojis(from: text)
+
+        // Truncate if too long
+        let displayText: String
+        if sanitized.count > contentWidth {
+            displayText = String(sanitized.prefix(contentWidth - 1)) + "…"
+        } else {
+            displayText = text == sanitized ? text : sanitized
+        }
+
+        let finalSanitized = TextSanitizer.removeEmojis(from: displayText)
+        let padding = max(0, contentWidth - finalSanitized.count)
+        return Box.vertical + " " + displayText + String(repeating: " ", count: padding) + " " + Box.vertical + "\r\n"
     }
 
     private func renderSettingLine(
@@ -86,21 +96,32 @@ struct SettingsView {
         let readOnlyIndicator = setting.editable ? "" : " " + Colors.dim + "[read-only]" + Colors.reset
         let displayValue = isEditing ? editBuffer + "█" : setting.value
 
-        let line = "  \(setting.label): \(displayValue)\(readOnlyIndicator)"
-
         let contentWidth = width - 4
-        // Account for ANSI codes not taking space
-        let lineLength = setting.editable ?
-            ("  \(setting.label): \(displayValue)".count) :
-            ("  \(setting.label): \(displayValue) [read-only]".count)
-        let padding = max(0, contentWidth - lineLength)
+
+        // Build plain version for width calculation
+        let plainLine = setting.editable ?
+            "  \(setting.label): \(displayValue)" :
+            "  \(setting.label): \(displayValue) [read-only]"
+        let sanitizedLine = TextSanitizer.removeEmojis(from: plainLine)
+
+        // Truncate if necessary
+        let line: String
+        if sanitizedLine.count > contentWidth {
+            let truncatedPlain = String(sanitizedLine.prefix(contentWidth - 1)) + "…"
+            line = truncatedPlain // Use truncated plain text
+        } else {
+            line = "  \(setting.label): \(displayValue)\(readOnlyIndicator)"
+        }
+
+        let finalSanitized = TextSanitizer.removeEmojis(from: line.replacingOccurrences(of: "\u{001B}\\[[0-9;]*m", with: "", options: .regularExpression))
+        let padding = max(0, contentWidth - finalSanitized.count)
 
         var result = Box.vertical + " " + line + String(repeating: " ", count: padding) + " " + Box.vertical
 
         if selected, !isEditing {
-            result = Colors.bold + Colors.brightCyan + result + Colors.reset
+            result = Colors.bgAppleBlue + Colors.black + result + Colors.reset
         } else if isEditing {
-            result = Colors.bold + Colors.brightYellow + result + Colors.reset
+            result = Colors.bgAppleOrange + Colors.black + result + Colors.reset
         }
 
         return result

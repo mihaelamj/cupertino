@@ -16,9 +16,9 @@ struct HomeView {
 
         // Menu items
         let menuItems = [
-            MenuItem(key: "1", icon: "📦", title: "Packages", subtitle: "Browse \(stats.totalPackages) Swift packages"),
-            MenuItem(key: "2", icon: "📚", title: "Library", subtitle: "\(stats.artifactCount) artifact collections"),
-            MenuItem(key: "3", icon: "⚙️", title: "Settings", subtitle: "Configure Cupertino"),
+            MenuItem(key: "1", icon: "*", title: "Packages", subtitle: "Browse \(stats.totalPackages) Swift packages"),
+            MenuItem(key: "2", icon: "*", title: "Library", subtitle: "\(stats.artifactCount) artifact collections"),
+            MenuItem(key: "3", icon: "*", title: "Settings", subtitle: "Configure Cupertino"),
         ]
 
         result += Box.topLeft + String(repeating: Box.horizontal, count: width - 2) + Box.topRight + "\r\n"
@@ -26,20 +26,13 @@ struct HomeView {
         result += renderPaddedLine(subtitle, width: width, center: true)
         result += Box.teeRight + String(repeating: Box.horizontal, count: width - 2) + Box.teeLeft + "\r\n"
 
-        // Stats section
-        result += renderPaddedLine("", width: width)
-        result += renderPaddedLine("📊 Quick Stats", width: width)
-        result += renderPaddedLine("", width: width)
-        result += renderPaddedLine("  • \(stats.selectedPackages) packages selected", width: width)
-        result += renderPaddedLine("  • \(stats.downloadedPackages) packages downloaded", width: width)
-        result += renderPaddedLine("  • \(formatBytes(stats.totalSize)) total storage", width: width)
-        result += renderPaddedLine("", width: width)
+        // Stats section - compact
+        result += renderPaddedLine("Quick Stats", width: width)
+        result += renderPaddedLine("  • \(stats.selectedPackages) selected  • \(stats.downloadedPackages) downloaded  • \(formatBytes(stats.totalSize))", width: width)
         result += Box.teeRight + String(repeating: Box.horizontal, count: width - 2) + Box.teeLeft + "\r\n"
 
-        // Menu
-        result += renderPaddedLine("", width: width)
+        // Menu - compact
         result += renderPaddedLine("Select a view:", width: width)
-        result += renderPaddedLine("", width: width)
 
         for (index, item) in menuItems.enumerated() {
             let isSelected = index == cursor
@@ -47,9 +40,21 @@ struct HomeView {
             result += line + "\r\n"
         }
 
-        // Fill space
-        let usedLines = 16 // approximate
-        let remaining = height - usedLines - 2
+        // Fill remaining space
+        // Count actual lines used:
+        // 1: top border
+        // 2: title + subtitle
+        // 1: separator
+        // 2: stats (header + compact line)
+        // 1: separator
+        // 1: "Select a view"
+        // 3: menu items
+        // 1: separator (below)
+        // 1: help
+        // 1: bottom border
+        // Total: 14 lines
+        let usedLines = 14
+        let remaining = max(0, height - usedLines)
         for _ in 0..<remaining {
             result += Box.vertical + String(repeating: " ", count: width - 2) + Box.vertical + "\r\n"
         }
@@ -59,9 +64,8 @@ struct HomeView {
         let help = "↑↓/jk:Navigate  Enter/1-3:Select  q:Quit"
         result += renderPaddedLine(help, width: width)
         result += Box.bottomLeft + String(repeating: Box.horizontal, count: width - 2)
-        result += Box.bottomRight + "\r\n"
+        result += Box.bottomRight + Colors.reset + "\r\n"
 
-        result += Colors.reset
         return result
     }
 
@@ -79,8 +83,8 @@ struct HomeView {
     }
 
     private func renderMenuItem(item: MenuItem, width: Int, selected: Bool) -> String {
-        let prefix = selected ? "▶ " : "  "
-        let line = "\(prefix)\(item.icon)  \(item.key). \(item.title) - \(item.subtitle)"
+        let prefix = selected ? "> " : "  "
+        let line = "\(prefix)\(item.icon) \(item.key). \(item.title) - \(item.subtitle)"
 
         let contentWidth = width - 4
         let padding = max(0, contentWidth - line.count)
@@ -88,7 +92,7 @@ struct HomeView {
         var result = Box.vertical + " " + line + String(repeating: " ", count: padding) + " " + Box.vertical
 
         if selected {
-            result = Colors.bold + Colors.brightCyan + result + Colors.reset
+            result = Colors.bgAppleBlue + Colors.black + result + Colors.reset
         }
 
         return result

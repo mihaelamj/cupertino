@@ -6,6 +6,7 @@ import TestSupport
 
 // MARK: - InputHandler Tests
 
+@MainActor
 @Test("InputHandler detects quit from q key")
 func inputHandlerQuitQ() {
     let state = AppState()
@@ -27,6 +28,7 @@ func inputHandlerQuitQ() {
     #expect(result == .quit, "Pressing 'q' should quit")
 }
 
+@MainActor
 @Test("InputHandler detects quit from ctrl-c")
 func inputHandlerQuitCtrlC() {
     let state = AppState()
@@ -48,6 +50,7 @@ func inputHandlerQuitCtrlC() {
     #expect(result == .quit, "Pressing ctrl-c should quit")
 }
 
+@MainActor
 @Test("InputHandler detects quit from escape in home view")
 func inputHandlerQuitEscapeHome() {
     let state = AppState()
@@ -69,6 +72,7 @@ func inputHandlerQuitEscapeHome() {
     #expect(result == .quit, "Pressing escape in home view should quit")
 }
 
+@MainActor
 @Test("InputHandler moves home cursor up with k")
 func inputHandlerHomeCursorUpK() {
     let state = AppState()
@@ -90,6 +94,7 @@ func inputHandlerHomeCursorUpK() {
     #expect(homeCursor == 1, "k should move cursor up")
 }
 
+@MainActor
 @Test("InputHandler moves home cursor down with j")
 func inputHandlerHomeCursorDownJ() {
     let state = AppState()
@@ -111,6 +116,7 @@ func inputHandlerHomeCursorDownJ() {
     #expect(homeCursor == 1, "j should move cursor down")
 }
 
+@MainActor
 @Test("InputHandler clamps home cursor at boundaries")
 func inputHandlerHomeCursorBoundaries() {
     let state = AppState()
@@ -145,6 +151,7 @@ func inputHandlerHomeCursorBoundaries() {
     #expect(homeCursor == 2, "Cursor should stay at max (2)")
 }
 
+@MainActor
 @Test("InputHandler moves library cursor")
 func inputHandlerLibraryCursor() {
     let state = AppState()
@@ -184,6 +191,7 @@ func inputHandlerLibraryCursor() {
     #expect(libraryCursor == 1, "j should move library cursor down")
 }
 
+@MainActor
 @Test("InputHandler enters settings edit mode with e key")
 func inputHandlerSettingsEditMode() {
     let state = AppState()
@@ -207,6 +215,7 @@ func inputHandlerSettingsEditMode() {
     #expect(state.editBuffer == "/test/path", "Edit buffer should be populated with current path")
 }
 
+@MainActor
 @Test("InputHandler does not enter edit mode when cursor not on base directory")
 func inputHandlerSettingsEditModeWrongCursor() {
     let state = AppState()
@@ -228,6 +237,7 @@ func inputHandlerSettingsEditModeWrongCursor() {
     #expect(!state.isEditingSettings, "Should not enter edit mode")
 }
 
+@MainActor
 @Test("InputHandler handles backspace in settings edit mode")
 func inputHandlerSettingsBackspace() {
     let state = AppState()
@@ -251,6 +261,7 @@ func inputHandlerSettingsBackspace() {
     #expect(state.editBuffer == "tes", "Backspace should remove last character")
 }
 
+@MainActor
 @Test("InputHandler handles character input in settings edit mode")
 func inputHandlerSettingsCharInput() {
     let state = AppState()
@@ -274,6 +285,7 @@ func inputHandlerSettingsCharInput() {
     #expect(state.editBuffer == "/test/", "Should append character to buffer")
 }
 
+@MainActor
 @Test("InputHandler handles paste in settings edit mode")
 func inputHandlerSettingsPaste() {
     let state = AppState()
@@ -297,6 +309,7 @@ func inputHandlerSettingsPaste() {
     #expect(state.editBuffer == "/Users/test/Documents", "Should paste full path")
 }
 
+@MainActor
 @Test("InputHandler cancels settings edit on escape")
 func inputHandlerSettingsCancelEdit() {
     let state = AppState()
@@ -323,6 +336,7 @@ func inputHandlerSettingsCancelEdit() {
     #expect(state.statusMessage.isEmpty, "Status message should be cleared")
 }
 
+@MainActor
 @Test("InputHandler enters search mode with slash key")
 func inputHandlerEnterSearchMode() {
     let state = AppState()
@@ -344,6 +358,7 @@ func inputHandlerEnterSearchMode() {
     #expect(state.isSearching, "Should enter search mode")
 }
 
+@MainActor
 @Test("InputHandler exits search mode on escape")
 func inputHandlerExitSearchMode() {
     let state = AppState()
@@ -366,6 +381,7 @@ func inputHandlerExitSearchMode() {
     #expect(!state.isSearching, "Should exit search mode")
 }
 
+@MainActor
 @Test("InputHandler handles search query input")
 func inputHandlerSearchQueryInput() {
     let state = AppState()
@@ -391,6 +407,7 @@ func inputHandlerSearchQueryInput() {
     #expect(state.scrollOffset == 0, "Scroll offset should reset to 0")
 }
 
+@MainActor
 @Test("InputHandler handles backspace in search mode")
 func inputHandlerSearchBackspace() {
     let state = AppState()
@@ -414,6 +431,7 @@ func inputHandlerSearchBackspace() {
     #expect(state.searchQuery == "tes", "Should remove last character from query")
 }
 
+@MainActor
 @Test("InputHandler auto-exits search when query becomes empty")
 func inputHandlerSearchAutoExit() {
     let state = AppState()
@@ -438,6 +456,7 @@ func inputHandlerSearchAutoExit() {
     #expect(!state.isSearching, "Should auto-exit search mode")
 }
 
+@MainActor
 @Test("InputHandler toggles package selection with space")
 func inputHandlerToggleSelection() {
     let state = AppState()
@@ -475,6 +494,7 @@ func inputHandlerToggleSelection() {
     #expect(state.packages[0].isSelected, "Package should be selected")
 }
 
+@MainActor
 @Test("InputHandler cycles filter mode with f key")
 func inputHandlerCycleFilter() {
     let state = AppState()
@@ -497,6 +517,7 @@ func inputHandlerCycleFilter() {
     #expect(state.filterMode == .selected, "Should cycle to selected filter")
 }
 
+@MainActor
 @Test("InputHandler cycles sort mode with s key")
 func inputHandlerCycleSort() {
     let state = AppState()
@@ -520,6 +541,7 @@ func inputHandlerCycleSort() {
     #expect(state.sortMode == .name, "Should cycle to name sort")
 }
 
+@MainActor
 @Test("InputHandler moves package cursor with arrow keys")
 func inputHandlerPackageCursorMovement() {
     let state = AppState()
@@ -569,6 +591,7 @@ func inputHandlerPackageCursorMovement() {
     #expect(state.cursor == 5, "Arrow down should move cursor down")
 }
 
+@MainActor
 @Test("InputHandler handles page up and page down")
 func inputHandlerPageNavigation() {
     let state = AppState()

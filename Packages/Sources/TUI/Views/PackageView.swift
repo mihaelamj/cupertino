@@ -6,8 +6,25 @@ struct PackageView {
     func render(state: AppState, width: Int, height: Int) -> String {
         // Always start with a reset to clear any lingering ANSI codes
         var result = Colors.reset
+
+        // Enforce minimum terminal size
+        let minWidth = 80
+        let minHeight = 24
+
+        if width < minWidth || height < minHeight {
+            result += Colors.reset
+            result += "\r\n\r\n"
+            result += "  Terminal too small!\r\n"
+            result += "  Minimum size: \(minWidth)x\(minHeight)\r\n"
+            result += "  Current size: \(width)x\(height)\r\n"
+            result += "\r\n"
+            result += "  Please resize your terminal window.\r\n"
+            return result
+        }
+
         let visible = state.visiblePackages
-        let pageSize = height - 4 // Account for header & footer
+        // Header: 4 lines, Footer: 7 lines (separator + pkg name + desc + metadata + separator + help + bottom)
+        let pageSize = height - 11
         let page = Array(visible.dropFirst(state.scrollOffset).prefix(pageSize))
 
         // Title bar
@@ -16,13 +33,19 @@ struct PackageView {
         let visibleCount = visible.count
         let title = "Swift Packages Curator"
 
-        // Show search query and result count if searching
+        // Calculate page numbers
+        let currentPage = visible.isEmpty ? 0 : (state.cursor / pageSize) + 1
+        let totalPages = visible.isEmpty ? 0 : (visibleCount + pageSize - 1) / pageSize
+
+        // Stats line - ensure it fits within width
         let stats: String
         if state.isSearching || !state.searchQuery.isEmpty {
             let searchPrompt = state.isSearching ? "Search: \(state.searchQuery)_" : "Search: \(state.searchQuery)"
-            stats = "\(searchPrompt)  Results: \(visibleCount)/\(totalCount)  Selected: \(selectedCount)"
+            let fullStats = "\(searchPrompt)  Results: \(visibleCount)/\(totalCount)  Page: \(currentPage)/\(totalPages)  Selected: \(selectedCount)"
+            stats = String(fullStats.prefix(width - 4))
         } else {
-            stats = "Filter: \(state.filterMode.rawValue)  Sort: \(state.sortMode.rawValue)  Selected: \(selectedCount)/\(totalCount)"
+            let fullStats = "Filter: \(state.filterMode.rawValue)  Sort: \(state.sortMode.rawValue)  Page: \(currentPage)/\(totalPages)  Selected: \(selectedCount)/\(totalCount)"
+            stats = String(fullStats.prefix(width - 4))
         }
 
         result += Box.topLeft + String(repeating: Box.horizontal, count: width - 2) + Box.topRight + "\r\n"
@@ -45,78 +68,151 @@ struct PackageView {
             result += Box.vertical + String(repeating: " ", count: width - 2) + Box.vertical + "\r\n"
         }
 
-        // Footer
+        // Footer with current package info
         result += Box.teeRight + String(repeating: Box.horizontal, count: width - 2) + Box.teeLeft + "\r\n"
+
+        // Show current package details with metadata
+        if !visible.isEmpty, state.cursor < visible.count {
+            let currentPkg = visible[state.cursor].package
+            let pkgInfo = "\(currentPkg.owner)/\(currentPkg.repo)"
+
+            // Show page info: "Showing 1-20 of 150" or "Showing 1-5 of 5 (filtered)"
+            let startIdx = state.scrollOffset + 1
+            let endIdx = min(state.scrollOffset + pageSize, visible.count)
+            let pageInfo = visible.count < totalCount ?
+                " [\(startIdx)-\(endIdx)/\(visible.count) filtered from \(totalCount)]" :
+                " [\(startIdx)-\(endIdx)/\(totalCount)]"
+
+            // Build metadata line (License • Updated)
+            var metadata: [String] = []
+            if let license = currentPkg.license {
+                metadata.append(license)
+            }
+            if let updated = currentPkg.updatedAt {
+                // Parse ISO date and format as relative time
+                let updatedStr = formatRelativeDate(updated)
+                metadata.append("Updated \(updatedStr)")
+            }
+            let metadataLine = metadata.isEmpty ? "" : Colors.gray + metadata.joined(separator: " • ") + Colors.reset
+
+            let desc = currentPkg.description ?? "No description"
+
+            result += renderPaddedLine(Colors.brightCyan + pkgInfo + Colors.reset + pageInfo, width: width)
+            result += renderPaddedLine(desc, width: width)
+            if !metadataLine.isEmpty {
+                result += renderPaddedLine(metadataLine, width: width)
+            }
+        } else {
+            result += renderPaddedLine("", width: width)
+            result += renderPaddedLine("", width: width)
+            result += renderPaddedLine("", width: width)
+        }
+
+        // Separator line before help
+        result += Box.teeRight + String(repeating: Box.horizontal, count: width - 2) + Box.teeLeft + "\r\n"
+
+        // Help text (minimum 80 width guaranteed)
         let help: String
         if state.isSearching {
-            help = "Type to search  Backspace:Delete  Enter/Esc:Exit search"
+            help = "↑↓/jk:Navigate  Ctrl+O:Open  Type to search  Backspace:Delete  Enter/Esc:Exit search"
         } else {
             help = "↑↓/jk:Move  Space:Select  o:Open  f:Filter  s:Sort  /:Search  w:Save  h/Esc:Home  q:Quit"
         }
         result += renderPaddedLine(help, width: width)
         result += Box.bottomLeft + String(repeating: Box.horizontal, count: width - 2)
-        result += Box.bottomRight + "\r\n"
-
-        // Always end with a reset to ensure clean state
-        result += Colors.reset
+        result += Box.bottomRight + Colors.reset + "\r\n"
 
         return result
     }
 
     private func renderPaddedLine(_ text: String, width: Int) -> String {
-        let contentWidth = width - 4 // Account for "│ " and " │"
-        let padding = max(0, contentWidth - text.count)
-        return Box.vertical + " " + text + String(repeating: " ", count: padding) + " " + Box.vertical + "\r\n"
+        let contentWidth = max(10, width - 4) // Account for "│ " and " │", minimum 10 chars
+        // Strip ANSI codes and remove emojis
+        let plainText = stripAnsiCodes(text)
+        let sanitized = TextSanitizer.removeEmojis(from: plainText)
+        let visibleLength = sanitized.count
+
+        // Truncate if text is too long for the available width
+        let displayText: String
+        if visibleLength > contentWidth {
+            let truncated = String(sanitized.prefix(contentWidth - 3))
+            displayText = truncated + "..."
+        } else {
+            // Use sanitized text if original had emojis
+            displayText = plainText == sanitized ? text : sanitized
+        }
+
+        let finalPlainText = stripAnsiCodes(displayText)
+        let finalSanitized = TextSanitizer.removeEmojis(from: finalPlainText)
+        let padding = max(0, contentWidth - finalSanitized.count)
+        return Box.vertical + " " + displayText + String(repeating: " ", count: padding) + " " + Box.vertical + "\r\n"
+    }
+
+    /// Strip ANSI escape codes from a string to get visible character count
+    private func stripAnsiCodes(_ text: String) -> String {
+        // Remove ANSI escape sequences: \u{001B}[...m
+        text.replacingOccurrences(of: "\u{001B}\\[[0-9;]*m", with: "", options: .regularExpression)
     }
 
     private func renderPackageLine(entry: PackageEntry, width: Int, highlight: Bool, searchQuery: String) -> String {
-        // Selection indicator: [★] or [ ]
-        let checkbox = entry.isSelected ? "[★]" : "[ ]"
-        // Download indicator: 📦 for downloaded packages
-        let downloadIndicator = entry.isDownloaded ? "📦" : "  "
+        // Selection indicator: [*] or [ ]
+        let checkbox = entry.isSelected ? "[*]" : "[ ]"
+        // Download indicator: [D] for downloaded packages
+        let downloadIndicator = entry.isDownloaded ? "[D]" : "   "
         let name = "\(entry.package.owner)/\(entry.package.repo)"
         let starsNum = NumberFormatter.localizedString(from: NSNumber(value: entry.package.stars), number: .decimal)
 
-        // Calculate visible widths (emoji ⭐ = 2 columns, star ★ in checkbox = 1 column, 📦 = 2 columns)
-        let checkboxWidth = 3 // [ ] or [★]
-        let downloadWidth = 2 // 📦 or "  "
-        let starsTextWidth = starsNum.count + 3 // "⭐ " (emoji=2) + number
+        // Calculate visible widths (no emojis)
+        let checkboxWidth = checkbox.count
+        let downloadWidth = downloadIndicator.count
+        let starsTextWidth = starsNum.count
 
         // Available space for name
         let contentWidth = width - 4 // "│ " and " │"
-        let nameMaxWidth = contentWidth - checkboxWidth - downloadWidth - starsTextWidth - 3 // 3 spaces for padding
+        // Fixed components: checkbox(3) + download(3) + " * "(3) + spaces(2) = 11 + starsTextWidth
+        // Spaces: (1) after checkbox, (1) after download
+        // Note: spaces in "│ " and " │" are already subtracted in contentWidth
+        let nameMaxWidth = contentWidth - checkboxWidth - downloadWidth - starsTextWidth - 3 - 2 // 3 for " * ", 2 for spaces after checkbox and download
 
-        // Truncate name if too long
+        // Sanitize and truncate name if too long
+        let sanitizedName = TextSanitizer.removeEmojis(from: name)
         let plainName: String
-        if name.count > nameMaxWidth {
-            let index = name.index(name.startIndex, offsetBy: nameMaxWidth - 1)
-            plainName = String(name[..<index]) + "…"
+        if sanitizedName.count > nameMaxWidth {
+            plainName = String(sanitizedName.prefix(nameMaxWidth - 1)) + "…"
         } else {
-            plainName = name
+            plainName = sanitizedName
         }
 
-        // Highlight search matches
+        // Highlight search matches (pass highlight flag to adjust colors)
         let displayName: String
         if !searchQuery.isEmpty {
-            displayName = highlightMatches(in: plainName, query: searchQuery)
+            displayName = highlightMatches(in: plainName, query: searchQuery, isLineHighlighted: highlight)
         } else {
             displayName = plainName
         }
 
-        // Build line with exact spacing (using plain name for width calculation)
-        let padding = max(0, nameMaxWidth - plainName.count)
-        var line = Box.vertical + " " + checkbox + " " + downloadIndicator + " " + displayName
-        line += String(repeating: " ", count: padding) + " ⭐ " + starsNum + " " + Box.vertical
+        // Build line with exact spacing
+        let plainDisplayName = stripAnsiCodes(displayName)
+        let displayNameWidth = plainDisplayName.count
+        let padding = max(0, nameMaxWidth - displayNameWidth)
 
-        // Highlight current line
+        // Highlight current line with cyan background, black text, and bold
         if highlight {
-            line = Colors.invert + line + Colors.reset
+            // Apply background to entire line, resetting after each component to avoid conflicts
+            var line = Colors.bgAppleBlue + Colors.black + Colors.bold
+            line += Box.vertical + " " + checkbox + " " + downloadIndicator + " "
+            line += displayName + Colors.bgAppleBlue + Colors.black + Colors.bold // Re-apply after displayName (which may have its own colors)
+            line += String(repeating: " ", count: padding) + " * " + starsNum + " "
+            line += Colors.reset + Box.vertical
+            return line
+        } else {
+            var line = Box.vertical + " " + checkbox + " " + downloadIndicator + " " + displayName
+            line += String(repeating: " ", count: padding) + " * " + starsNum + " " + Box.vertical
+            return line
         }
-
-        return line
     }
 
-    private func highlightMatches(in text: String, query: String) -> String {
+    private func highlightMatches(in text: String, query: String, isLineHighlighted: Bool) -> String {
         guard !query.isEmpty else { return text }
 
         let lowercasedText = text.lowercased()
@@ -142,7 +238,13 @@ struct PackageView {
                 }
 
                 // Add highlighted match
-                result += Colors.bold + Colors.brightYellow + String(text[matchStart..<matchEnd]) + Colors.reset
+                // When line is highlighted (blue bg), use yellow text on blue background
+                // When line is not highlighted, use yellow background with black text
+                if isLineHighlighted {
+                    result += Colors.yellow + String(text[matchStart..<matchEnd]) + Colors.bgAppleBlue + Colors.black + Colors.bold
+                } else {
+                    result += Colors.bgYellow + Colors.black + String(text[matchStart..<matchEnd]) + Colors.reset
+                }
 
                 // Move past the match
                 currentIndex = matchEnd
@@ -154,5 +256,32 @@ struct PackageView {
         }
 
         return result
+    }
+
+    /// Format ISO8601 date string to relative time (e.g., "2 months ago")
+    private func formatRelativeDate(_ isoDateString: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        guard let date = formatter.date(from: isoDateString) else {
+            return isoDateString
+        }
+
+        let now = Date()
+        let interval = now.timeIntervalSince(date)
+        let days = Int(interval / 86400)
+
+        if days < 1 {
+            return "today"
+        } else if days < 7 {
+            return "\(days) day\(days == 1 ? "" : "s") ago"
+        } else if days < 30 {
+            let weeks = days / 7
+            return "\(weeks) week\(weeks == 1 ? "" : "s") ago"
+        } else if days < 365 {
+            let months = days / 30
+            return "\(months) month\(months == 1 ? "" : "s") ago"
+        } else {
+            let years = days / 365
+            return "\(years) year\(years == 1 ? "" : "s") ago"
+        }
     }
 }

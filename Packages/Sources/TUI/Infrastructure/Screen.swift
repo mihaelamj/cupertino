@@ -63,8 +63,8 @@ actor Screen {
     // Note: nonisolated because print() and fflush() access global stdout
     // TUI is inherently single-threaded, so this is safe when called from main thread
     nonisolated func render(_ content: String) {
-        // Reset any lingering formatting, clear screen, move to home, then render content
-        print("\u{001B}[0m" + Screen.clearScreen + Screen.home + content, terminator: "")
+        // Just print content - clearing is done by caller
+        print(content, terminator: "")
         fflush(stdout)
     }
 

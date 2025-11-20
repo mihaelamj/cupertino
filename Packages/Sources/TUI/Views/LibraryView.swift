@@ -11,6 +11,7 @@ struct ArtifactInfo {
 struct LibraryView {
     func render(artifacts: [ArtifactInfo], cursor: Int, width: Int, height: Int) -> String {
         var result = Colors.reset
+
         let pageSize = height - 4
         let page = Array(artifacts.prefix(pageSize))
 
@@ -41,39 +42,40 @@ struct LibraryView {
         let help = "↑↓/jk:Move  Enter/o:Open  Tab:Packages  q:Quit"
         result += renderPaddedLine(help, width: width)
         result += Box.bottomLeft + String(repeating: Box.horizontal, count: width - 2)
-        result += Box.bottomRight + "\r\n"
+        result += Box.bottomRight + Colors.reset + "\r\n"
 
-        result += Colors.reset
         return result
     }
 
     private func renderPaddedLine(_ text: String, width: Int) -> String {
         let contentWidth = width - 4
-        let padding = max(0, contentWidth - text.count)
-        return Box.vertical + " " + text + String(repeating: " ", count: padding) + " " + Box.vertical + "\r\n"
+        let sanitized = TextSanitizer.removeEmojis(from: text)
+        let padding = max(0, contentWidth - sanitized.count)
+        let displayText = text == sanitized ? text : sanitized
+        return Box.vertical + " " + displayText + String(repeating: " ", count: padding) + " " + Box.vertical + "\r\n"
     }
 
     private func renderArtifactLine(artifact: ArtifactInfo, width: Int, highlight: Bool) -> String {
-        let icon = "📚"
+        let icon = "*"
         let name = artifact.name
         let itemsText = "\(artifact.itemCount) items"
         let sizeText = formatBytes(artifact.sizeBytes)
 
-        // Calculate widths
-        let iconWidth = 2
+        // Calculate widths (no emojis)
+        let iconWidth = icon.count
         let itemsWidth = itemsText.count
         let sizeWidth = sizeText.count
         let contentWidth = width - 4
 
         let nameMaxWidth = contentWidth - iconWidth - itemsWidth - sizeWidth - 4 // spaces for padding
 
-        // Truncate name if needed
+        // Sanitize and truncate name if needed
+        let sanitizedName = TextSanitizer.removeEmojis(from: name)
         let displayName: String
-        if name.count > nameMaxWidth {
-            let index = name.index(name.startIndex, offsetBy: nameMaxWidth - 1)
-            displayName = String(name[..<index]) + "…"
+        if sanitizedName.count > nameMaxWidth {
+            displayName = String(sanitizedName.prefix(nameMaxWidth - 1)) + "…"
         } else {
-            displayName = name
+            displayName = sanitizedName
         }
 
         let padding = max(0, nameMaxWidth - displayName.count)
@@ -81,7 +83,7 @@ struct LibraryView {
         line += String(repeating: " ", count: padding) + " " + itemsText + "  " + sizeText + " " + Box.vertical
 
         if highlight {
-            line = Colors.invert + line + Colors.reset
+            line = Colors.bgAppleBlue + Colors.black + line + Colors.reset
         }
 
         return line

@@ -33,16 +33,17 @@ final class AppState {
     var isEditingSettings: Bool = false
     var editBuffer: String = ""
     var baseDirectory: String = ""
+    var needsReload: Bool = false
+    var needsScreenClear: Bool = false // Track when we need to force clear screen
 
     var visiblePackages: [PackageEntry] {
         var filtered = packages
 
-        // Apply search filter
+        // Apply search filter (only searches owner/repo, not description)
         if !searchQuery.isEmpty {
             filtered = filtered.filter { entry in
                 entry.package.owner.localizedCaseInsensitiveContains(searchQuery) ||
-                    entry.package.repo.localizedCaseInsensitiveContains(searchQuery) ||
-                    entry.package.description?.localizedCaseInsensitiveContains(searchQuery) == true
+                    entry.package.repo.localizedCaseInsensitiveContains(searchQuery)
             }
         }
 
@@ -76,21 +77,31 @@ final class AppState {
         }
     }
 
-    func moveCursor(delta: Int, pageSize: Int) {
+    func moveCursor(delta: Int, pageSize: Int) -> Bool {
         let visible = visiblePackages
-        guard !visible.isEmpty else { return }
+        guard !visible.isEmpty else { return false }
+
+        let oldCursor = cursor
+        let oldScrollOffset = scrollOffset
 
         cursor = max(0, min(cursor + delta, visible.count - 1))
 
-        // Auto-scroll
-        if cursor < scrollOffset {
-            scrollOffset = cursor
-        } else if cursor >= scrollOffset + pageSize {
+        // Simple scrolling: keep cursor visible, no fancy centering
+        // Scroll down if cursor goes below visible area
+        if cursor >= scrollOffset + pageSize {
             scrollOffset = cursor - pageSize + 1
         }
+        // Scroll up if cursor goes above visible area
+        else if cursor < scrollOffset {
+            scrollOffset = cursor
+        }
+
+        // Return true only if cursor or scroll position changed
+        return cursor != oldCursor || scrollOffset != oldScrollOffset
     }
 
     func cycleSortMode() {
+        needsScreenClear = true
         switch sortMode {
         case .stars: sortMode = .name
         case .name: sortMode = .recent
@@ -102,6 +113,7 @@ final class AppState {
         // Reset cursor when changing filters
         cursor = 0
         scrollOffset = 0
+        needsScreenClear = true
 
         switch filterMode {
         case .all: filterMode = .selected
