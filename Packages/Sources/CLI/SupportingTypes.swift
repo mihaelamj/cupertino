@@ -10,6 +10,7 @@ extension Cupertino {
         case swift
         case evolution
         case packages
+        case packageDocs = "package-docs"
         case code
         case all
 
@@ -19,6 +20,7 @@ extension Cupertino {
             case .swift: return Shared.Constants.DisplayName.swiftOrgDocs
             case .evolution: return Shared.Constants.DisplayName.swiftEvolution
             case .packages: return Shared.Constants.DisplayName.packageMetadata
+            case .packageDocs: return Shared.Constants.DisplayName.swiftPackages
             case .code: return Shared.Constants.DisplayName.sampleCode
             case .all: return Shared.Constants.DisplayName.allDocs
             }
@@ -30,6 +32,7 @@ extension Cupertino {
             case .swift: return Shared.Constants.BaseURL.swiftBook
             case .evolution: return "" // N/A - uses different fetcher
             case .packages: return "" // API-based fetching
+            case .packageDocs: return "" // GitHub raw content downloading
             case .code: return "" // Web-based download
             case .all: return "" // N/A - fetches all types sequentially
             }
@@ -47,6 +50,8 @@ extension Cupertino {
                 return "\(homeDir)/\(baseDir)/\(Shared.Constants.Directory.swiftEvolution)"
             case .packages:
                 return "\(homeDir)/\(baseDir)/\(Shared.Constants.Directory.packages)"
+            case .packageDocs:
+                return "\(homeDir)/\(baseDir)/\(Shared.Constants.Directory.packages)"
             case .code:
                 return "\(homeDir)/\(baseDir)/\(Shared.Constants.Directory.sampleCode)"
             case .all:
@@ -59,7 +64,7 @@ extension Cupertino {
         }
 
         static var directFetchTypes: [FetchType] {
-            [.packages, .code]
+            [.packages, .packageDocs, .code]
         }
 
         static var allTypes: [FetchType] {

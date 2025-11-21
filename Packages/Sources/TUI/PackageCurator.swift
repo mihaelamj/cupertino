@@ -342,21 +342,21 @@ struct PackageCuratorApp {
     static func scanLibraryArtifactsInDirectory(_ baseDir: URL) -> [ArtifactInfo] {
         var artifacts: [ArtifactInfo] = []
 
+        // Artifact directories matching fetch command output locations
+        // Each entry maps a display name to its output directory
         let artifactDirs: [(name: String, subpath: String)] = [
-            ("Apple Documentation", "docs"),
-            ("Swift Evolution", "swift-evolution"),
-            ("Swift.org", "swift-org"),
-            ("Swift Book", "swift-book"),
-            ("Swift Packages", "packages"),
-            ("Sample Code", "sample-code"),
+            (Shared.Constants.DisplayName.appleDocs, Shared.Constants.Directory.docs),
+            (Shared.Constants.DisplayName.swiftOrgDocs, Shared.Constants.Directory.swiftOrg),
+            (Shared.Constants.DisplayName.swiftEvolution, Shared.Constants.Directory.swiftEvolution),
+            (Shared.Constants.DisplayName.swiftPackages, Shared.Constants.Directory.packages),
+            (Shared.Constants.DisplayName.sampleCode, Shared.Constants.Directory.sampleCode),
         ]
 
         for (name, subpath) in artifactDirs {
             let path = baseDir.appendingPathComponent(subpath)
-            guard FileManager.default.fileExists(atPath: path.path) else {
-                continue
-            }
 
+            // Always show all artifact types, even if empty/not downloaded
+            // This helps users discover what's available
             let itemCount = countItems(in: path)
             let size = calculateDirectorySize(path)
 

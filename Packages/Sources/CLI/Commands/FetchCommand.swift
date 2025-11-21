@@ -19,7 +19,8 @@ struct FetchCommand: AsyncParsableCommand {
         name: .long,
         help: """
         Type of documentation to fetch: docs (Apple), swift (Swift.org), \
-        evolution (Swift Evolution), packages (Swift packages), code (Sample code), \
+        evolution (Swift Evolution), packages (Swift package metadata), \
+        package-docs (Swift package READMEs), code (Sample code), \
         all (all types in parallel)
         """
     )
@@ -69,9 +70,14 @@ struct FetchCommand: AsyncParsableCommand {
             return
         }
 
-        // Direct fetch types (packages, code)
+        // Direct fetch types (packages, package-docs, code)
         if type == .packages {
             try await runPackageFetch()
+            return
+        }
+
+        if type == .packageDocs {
+            try await runPackageDocsFetch()
             return
         }
 
@@ -347,6 +353,74 @@ struct FetchCommand: AsyncParsableCommand {
             Logging.ConsoleLogger.info("   Duration: \(Int(duration))s")
         }
         Logging.ConsoleLogger.info("\n📁 Output: \(outputURL.path)/\(Shared.Constants.FileName.packagesWithStars)")
+    }
+
+    private func runPackageDocsFetch() async throws {
+        let defaultPath = Shared.Constants.defaultPackagesDirectory.path
+        let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
+
+        try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
+
+        // Load priority packages
+        let priorityPackages = await PriorityPackagesCatalog.allPackages
+
+        guard !priorityPackages.isEmpty else {
+            Logging.ConsoleLogger.error("❌ Error: No priority packages found")
+            Logging.ConsoleLogger.error("   Searched:")
+            Logging.ConsoleLogger.error("   - ~/.cupertino/packages/priority-packages.json")
+            Logging.ConsoleLogger.error("   - Shared.Constants.CriticalApplePackages")
+            Logging.ConsoleLogger.error("   - Shared.Constants.KnownEcosystemPackages")
+            Logging.ConsoleLogger.error("\n   Please ensure at least one package source is configured.")
+            throw ExitCode.failure
+        }
+
+        // Convert to PackageReference format
+        let packageRefs = priorityPackages.compactMap { pkg -> PackageReference? in
+            // Extract owner from URL if not provided
+            let owner: String
+            if let explicitOwner = pkg.owner, !explicitOwner.isEmpty {
+                owner = explicitOwner
+            } else {
+                // Parse from GitHub URL: https://github.com/owner/repo
+                guard let url = URL(string: pkg.url) else {
+                    return nil
+                }
+                let pathComponents = Array(url.pathComponents.dropFirst())
+                guard pathComponents.count >= 2 else {
+                    return nil
+                }
+                owner = pathComponents[0]
+            }
+
+            let isApple = owner == "apple" || owner == "swiftlang" || owner == "swift-server"
+            return PackageReference(
+                owner: owner,
+                repo: pkg.repo,
+                url: pkg.url,
+                priority: isApple ? .appleOfficial : .ecosystem
+            )
+        }
+
+        Logging.ConsoleLogger.info("📦 Downloading documentation for \(packageRefs.count) priority packages...")
+        Logging.ConsoleLogger.info("   Output: \(outputURL.path)\n")
+
+        let downloader = Core.PackageDocumentationDownloader(outputDirectory: outputURL)
+
+        let stats = try await downloader.download(packages: packageRefs) { progress in
+            let percent = String(format: "%.1f", progress.percentage)
+            Logging.ConsoleLogger.output("   Progress: \(percent)% - \(progress.currentPackage)")
+        }
+
+        Logging.ConsoleLogger.output("")
+        Logging.ConsoleLogger.info("✅ Download completed!")
+        Logging.ConsoleLogger.info("   Total packages: \(stats.totalPackages)")
+        Logging.ConsoleLogger.info("   New READMEs: \(stats.newREADMEs)")
+        Logging.ConsoleLogger.info("   Updated READMEs: \(stats.updatedREADMEs)")
+        Logging.ConsoleLogger.info("   Errors: \(stats.errors)")
+        if let duration = stats.duration {
+            Logging.ConsoleLogger.info("   Duration: \(Int(duration))s")
+        }
+        Logging.ConsoleLogger.info("\n📁 Output: \(outputURL.path)/")
     }
 
     private func runCodeFetch() async throws {

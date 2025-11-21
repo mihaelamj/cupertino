@@ -21,6 +21,7 @@ Specifies which type of resource to fetch. Different types use different fetchin
 
 ### Direct Fetch Types (API/Direct Download)
 - [packages](packages.md) - Swift Package Index metadata
+- [package-docs](package-docs.md) - Swift Package Documentation (READMEs)
 - [code](code.md) - Apple Sample Code projects
 
 ### Special Type
@@ -41,6 +42,9 @@ cupertino fetch --type evolution
 # Fetch Swift Packages
 cupertino fetch --type packages
 
+# Fetch Swift Package Documentation
+cupertino fetch --type package-docs
+
 # Fetch Apple Sample Code (requires auth)
 cupertino fetch --type code --authenticate
 
@@ -56,6 +60,7 @@ cupertino fetch --type all
 | `swift` | docs.swift.org | Web crawl | Markdown | No | ~200 pages |
 | `evolution` | GitHub | Direct download | Markdown | No | ~400 proposals |
 | `packages` | Swift Package Index | API | JSON | No | ~10,000 packages |
+| `package-docs` | GitHub | Direct download | Markdown | No | 36 READMEs |
 | `code` | Apple Developer | Direct download | ZIP | Yes | ~600 projects |
 | `all` | All sources | Mixed | Mixed | Optional* | ~14,000+ items |
 
@@ -80,7 +85,7 @@ Each type has a default output directory:
 ├── docs/              # --type docs
 ├── swift-book/        # --type swift
 ├── swift-evolution/   # --type evolution
-├── packages/          # --type packages
+├── packages/          # --type packages & package-docs
 └── sample-code/       # --type code
 ```
 

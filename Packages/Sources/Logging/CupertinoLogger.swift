@@ -36,6 +36,9 @@ extension Logging {
 
         /// Logger for sample code downloads
         public static let samples = os.Logger(subsystem: subsystem, category: "samples")
+
+        /// Logger for package documentation downloads
+        public static let packageDownloader = os.Logger(subsystem: subsystem, category: "package-downloader")
     }
 }
 
