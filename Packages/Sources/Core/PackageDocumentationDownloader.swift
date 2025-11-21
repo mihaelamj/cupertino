@@ -81,8 +81,8 @@ extension Core {
                         repo: package.repo
                     ) {
                         logInfo("  📚 Found documentation site: \(site.baseURL)")
-                        // TODO: Download documentation site in future PR
-                        // For now, just detect and log
+                        // Note: Full documentation site downloading will be implemented
+                        // in a future enhancement. Currently detects sites for visibility.
                     }
 
                 } catch {

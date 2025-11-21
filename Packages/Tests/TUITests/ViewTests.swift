@@ -427,7 +427,10 @@ func allViewsMatchWidth() {
     let homeLines = homeOutput.split(separator: "\r\n", omittingEmptySubsequences: false).map(String.init).filter { !$0.isEmpty }
     for (index, line) in homeLines.enumerated() {
         let lineWidth = visibleWidth(line)
-        #expect(lineWidth == width, "HomeView line \(index) should be \(width) chars, got \(w)")
+        #expect(
+            lineWidth == width,
+            "HomeView line \(index) should be \(width) chars, got \(lineWidth)"
+        )
     }
 
     // Test SettingsView
@@ -444,7 +447,10 @@ func allViewsMatchWidth() {
     let settingsLines = settingsOutput.split(separator: "\r\n", omittingEmptySubsequences: false).map(String.init).filter { !$0.isEmpty }
     for (index, line) in settingsLines.enumerated() {
         let lineWidth = visibleWidth(line)
-        #expect(lineWidth == width, "SettingsView line \(index) should be \(width) chars, got \(w)")
+        #expect(
+            lineWidth == width,
+            "SettingsView line \(index) should be \(width) chars, got \(lineWidth)"
+        )
     }
 
     // Test LibraryView
@@ -456,7 +462,10 @@ func allViewsMatchWidth() {
     let libraryLines = libraryOutput.split(separator: "\r\n", omittingEmptySubsequences: false).map(String.init).filter { !$0.isEmpty }
     for (index, line) in libraryLines.enumerated() {
         let lineWidth = visibleWidth(line)
-        #expect(lineWidth == width, "LibraryView line \(index) should be \(width) chars, got \(w)")
+        #expect(
+            lineWidth == width,
+            "LibraryView line \(index) should be \(width) chars, got \(lineWidth)"
+        )
     }
 }
 
@@ -495,7 +504,10 @@ func packageViewSelectedState() {
 
         for line in packageLines {
             let lineWidth = visibleWidth(line)
-            #expect(lineWidth == width, "Selected=\(isSelected): Package line should be \(width) chars, got \(w)")
+            #expect(
+                lineWidth == width,
+                "Selected=\(isSelected): Package line should be \(width) chars, got \(lineWidth)"
+            )
         }
     }
 }
@@ -533,7 +545,10 @@ func packageViewDownloadedState() {
 
         for line in packageLines {
             let lineWidth = visibleWidth(line)
-            #expect(lineWidth == width, "Downloaded=\(isDownloaded): Package line should be \(width) chars, got \(w)")
+            #expect(
+                lineWidth == width,
+                "Downloaded=\(isDownloaded): Package line should be \(width) chars, got \(lineWidth)"
+            )
         }
     }
 }
@@ -572,7 +587,7 @@ func packageViewSearchHighlighting() {
 
     for line in packageLines {
         let lineWidth = visibleWidth(line)
-        #expect(lineWidth == width, "Package line with search highlighting should be \(width) chars, got \(w). Line: '\(stripAnsiCodes(line))'")
+        #expect(lineWidth == width, "Package line with search highlighting should be \(width) chars, got \(lineWidth). Line: '\(stripAnsiCodes(line))'")
     }
 }
 
@@ -610,7 +625,7 @@ func packageViewSearchHighlightingOnSelected() {
 
     for line in packageLines {
         let lineWidth = visibleWidth(line)
-        #expect(lineWidth == width, "Selected line with search highlighting should be \(width) chars, got \(w)")
+        #expect(lineWidth == width, "Selected line with search highlighting should be \(width) chars, got \(lineWidth)")
     }
 }
 
@@ -647,7 +662,7 @@ func packageViewLongNames() {
 
     for line in packageLines {
         let lineWidth = visibleWidth(line)
-        #expect(lineWidth == width, "Long package name should be truncated to \(width) chars total, got \(w)")
+        #expect(lineWidth == width, "Long package name should be truncated to \(width) chars total, got \(lineWidth)")
 
         // Also verify truncation actually happened
         let plain = stripAnsiCodes(line)
@@ -726,7 +741,7 @@ func packageViewMinimumWidth() {
 
     for (index, line) in lines.enumerated() {
         let lineWidth = visibleWidth(line)
-        #expect(lineWidth == width, "Line \(index) at minimum width should be \(width) chars, got \(w)")
+        #expect(lineWidth == width, "Line \(index) at minimum width should be \(width) chars, got \(lineWidth)")
     }
 }
 
@@ -832,7 +847,7 @@ func packageViewLargeWidth() {
 
     for (index, line) in lines.enumerated() {
         let lineWidth = visibleWidth(line)
-        #expect(lineWidth == width, "Line \(index) at large width should be \(width) chars, got \(w)")
+        #expect(lineWidth == width, "Line \(index) at large width should be \(width) chars, got \(lineWidth)")
     }
 }
 
@@ -868,7 +883,7 @@ func packageViewZeroStars() {
 
     for line in packageLines {
         let lineWidth = visibleWidth(line)
-        #expect(lineWidth == width, "Package with 0 stars should be \(width) chars, got \(w)")
+        #expect(lineWidth == width, "Package with 0 stars should be \(width) chars, got \(lineWidth)")
     }
 }
 
@@ -907,7 +922,7 @@ func packageViewCombinedStates() {
 
     for line in packageLines {
         let lineWidth = visibleWidth(line)
-        #expect(lineWidth == width, "Combined state (selected+downloaded+search+cursor) should be \(width) chars, got \(w)")
+        #expect(lineWidth == width, "Combined state (selected+downloaded+search+cursor) should be \(width) chars, got \(lineWidth)")
     }
 }
 
@@ -926,7 +941,7 @@ func homeViewCursorStates() {
 
         for (index, line) in lines.enumerated() {
             let lineWidth = visibleWidth(line)
-            #expect(lineWidth == width, "HomeView line \(index) with cursor=\(cursor) should be \(width) chars, got \(w)")
+            #expect(lineWidth == width, "HomeView line \(index) with cursor=\(cursor) should be \(width) chars, got \(lineWidth)")
         }
     }
 }
@@ -949,7 +964,7 @@ func homeViewLargeNumbers() {
 
     for (index, line) in lines.enumerated() {
         let lineWidth = visibleWidth(line)
-        #expect(lineWidth == width, "HomeView with large numbers line \(index) should be \(width) chars, got \(w)")
+        #expect(lineWidth == width, "HomeView with large numbers line \(index) should be \(width) chars, got \(lineWidth)")
     }
 }
 
@@ -972,7 +987,7 @@ func libraryViewSelectedState() {
 
         for (index, line) in lines.enumerated() {
             let lineWidth = visibleWidth(line)
-            #expect(lineWidth == width, "LibraryView line \(index) with cursor=\(cursor) should be \(width) chars, got \(w)")
+            #expect(lineWidth == width, "LibraryView line \(index) with cursor=\(cursor) should be \(width) chars, got \(lineWidth)")
         }
     }
 }
@@ -996,7 +1011,7 @@ func libraryViewLongName() {
 
     for (index, line) in lines.enumerated() {
         let lineWidth = visibleWidth(line)
-        #expect(lineWidth == width, "LibraryView with long name line \(index) should be \(width) chars, got \(w)")
+        #expect(lineWidth == width, "LibraryView with long name line \(index) should be \(width) chars, got \(lineWidth)")
     }
 }
 
@@ -1022,7 +1037,7 @@ func settingsViewEditMode() {
 
     for (index, line) in lines.enumerated() {
         let lineWidth = visibleWidth(line)
-        #expect(lineWidth == width, "SettingsView edit mode line \(index) should be \(width) chars, got \(w)")
+        #expect(lineWidth == width, "SettingsView edit mode line \(index) should be \(width) chars, got \(lineWidth)")
     }
 }
 
@@ -1046,7 +1061,7 @@ func settingsViewWithStatus() {
 
     for (index, line) in lines.enumerated() {
         let lineWidth = visibleWidth(line)
-        #expect(lineWidth == width, "SettingsView with status line \(index) should be \(width) chars, got \(w)")
+        #expect(lineWidth == width, "SettingsView with status line \(index) should be \(width) chars, got \(lineWidth)")
     }
 }
 
@@ -1072,7 +1087,7 @@ func settingsViewLongPath() {
 
     for (index, line) in lines.enumerated() {
         let lineWidth = visibleWidth(line)
-        #expect(lineWidth == width, "SettingsView with long path line \(index) should be \(width) chars, got \(w)")
+        #expect(lineWidth == width, "SettingsView with long path line \(index) should be \(width) chars, got \(lineWidth)")
     }
 }
 
@@ -1098,7 +1113,7 @@ func settingsViewCursorStates() {
 
         for (index, line) in lines.enumerated() {
             let lineWidth = visibleWidth(line)
-            #expect(lineWidth == width, "SettingsView line \(index) with cursor=\(cursor) should be \(width) chars, got \(w)")
+            #expect(lineWidth == width, "SettingsView line \(index) with cursor=\(cursor) should be \(width) chars, got \(lineWidth)")
         }
     }
 }
