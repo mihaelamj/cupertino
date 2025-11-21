@@ -16,6 +16,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Select Xcode version
+      run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+    - name: Verify Swift version
+      run: swift --version
     - name: Build
       working-directory: Packages
       run: swift build -v
