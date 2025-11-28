@@ -33,6 +33,7 @@
 
 ## Search & Indexing
 
+- [ ] Add vector/semantic search using sqlite-vec embeddings
 - [ ] Implement search highlighting
 - [ ] Implement fuzzy search
 - [ ] Add filter by source_type
