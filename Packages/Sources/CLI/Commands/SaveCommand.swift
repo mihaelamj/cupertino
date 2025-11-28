@@ -88,12 +88,22 @@ struct SaveCommand: AsyncParsableCommand {
             Logging.ConsoleLogger.info("   Run 'cupertino fetch --type evolution' to download proposals")
         }
 
+        // Check if Swift.org directory exists
+        let hasSwiftOrg = FileManager.default.fileExists(atPath: swiftOrgURL.path)
+        let swiftOrgDirToUse = hasSwiftOrg ? swiftOrgURL : nil
+
+        if !hasSwiftOrg {
+            Logging.ConsoleLogger.info("ℹ️  Swift.org directory not found, skipping Swift.org docs")
+            Logging.ConsoleLogger.info("   Run 'cupertino fetch --type swift' to download Swift.org documentation")
+        }
+
         // Build index
         let builder = Search.IndexBuilder(
             searchIndex: searchIndex,
             metadata: metadata,
             docsDirectory: docsURL,
-            evolutionDirectory: evolutionDirToUse
+            evolutionDirectory: evolutionDirToUse,
+            swiftOrgDirectory: swiftOrgDirToUse
         )
 
         // Note: Using a class to hold mutable state since @Sendable closures can't capture mutable vars
@@ -121,7 +131,7 @@ struct SaveCommand: AsyncParsableCommand {
         Logging.ConsoleLogger.info("   Frameworks: \(frameworks.count)")
         Logging.ConsoleLogger.info("   Database: \(searchDBURL.path)")
         Logging.ConsoleLogger.info("   Size: \(formatFileSize(searchDBURL))")
-        Logging.ConsoleLogger.info("\n💡 Tip: Start the MCP server with '\(Shared.Constants.App.mcpCommandName) serve' to enable search")
+        Logging.ConsoleLogger.info("\n💡 Tip: Start the MCP server with '\(Shared.Constants.App.commandName) serve' to enable search")
     }
 
     private func formatFileSize(_ url: URL) -> String {

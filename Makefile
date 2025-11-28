@@ -1,8 +1,8 @@
-# Root Makefile for Docsucker
+# Root Makefile for Cupertino
 # Delegates all commands to Packages/Makefile
 
 .PHONY: help all build build-debug build-release install install-symlinks uninstall update test test-unit test-integration
-.PHONY: clean distclean format lint archive bottle dev run-cli run-mcp watch version b i u t c
+.PHONY: clean distclean format lint archive bottle dev run-cli run-tui watch version b i u t c
 
 # Default target
 all:
@@ -73,8 +73,8 @@ dev:
 run-cli:
 	@$(MAKE) -C Packages run-cli ARGS="$(ARGS)"
 
-run-mcp:
-	@$(MAKE) -C Packages run-mcp ARGS="$(ARGS)"
+run-tui:
+	@$(MAKE) -C Packages run-tui ARGS="$(ARGS)"
 
 watch:
 	@$(MAKE) -C Packages watch

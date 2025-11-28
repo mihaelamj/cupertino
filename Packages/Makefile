@@ -1,4 +1,4 @@
-# Makefile for Docsucker
+# Makefile for Cupertino
 # Apple Documentation Crawler & MCP Server
 
 # Configuration
@@ -16,7 +16,7 @@ PROJECT_DIR := $(MAKEFILE_DIR)
 # Build configuration
 SWIFT_BUILD_FLAGS = -c release
 PRODUCT_NAME_CLI = cupertino
-PRODUCT_NAME_MCP = cupertino-mcp
+PRODUCT_NAME_TUI = cupertino-tui
 
 # Detect architecture
 ARCH := $(shell uname -m)
@@ -39,7 +39,7 @@ all: build
 
 ## help: Show this help message
 help:
-	@echo "$(BOLD)Docsucker - Makefile Help$(RESET)"
+	@echo "$(BOLD)Cupertino - Makefile Help$(RESET)"
 	@echo ""
 	@echo "$(BOLD)Available targets:$(RESET)"
 	@echo "  $(GREEN)make build$(RESET)         - Build both executables (release mode)"
@@ -83,21 +83,21 @@ build: build-release
 
 ## build-debug: Build in debug mode
 build-debug:
-	@echo "$(BOLD)$(GREEN)Building Docsucker (debug)...$(RESET)"
+	@echo "$(BOLD)$(GREEN)Building Cupertino (debug)...$(RESET)"
 	$(SWIFT) build --product $(PRODUCT_NAME_CLI)
-	$(SWIFT) build --product $(PRODUCT_NAME_MCP)
+	$(SWIFT) build --product $(PRODUCT_NAME_TUI)
 	@echo "$(GREEN)✓ Build complete$(RESET)"
 	@echo "  CLI: $(BUILD_DIR)/debug/$(PRODUCT_NAME_CLI)"
-	@echo "  MCP: $(BUILD_DIR)/debug/$(PRODUCT_NAME_MCP)"
+	@echo "  TUI: $(BUILD_DIR)/debug/$(PRODUCT_NAME_TUI)"
 
 ## build-release: Build in release mode (optimized)
 build-release:
-	@echo "$(BOLD)$(GREEN)Building Docsucker (release)...$(RESET)"
+	@echo "$(BOLD)$(GREEN)Building Cupertino (release)...$(RESET)"
 	$(SWIFT) build $(SWIFT_BUILD_FLAGS) --product $(PRODUCT_NAME_CLI)
-	$(SWIFT) build $(SWIFT_BUILD_FLAGS) --product $(PRODUCT_NAME_MCP)
+	$(SWIFT) build $(SWIFT_BUILD_FLAGS) --product $(PRODUCT_NAME_TUI)
 	@echo "$(GREEN)✓ Build complete$(RESET)"
 	@echo "  CLI: $(BUILD_DIR)/release/$(PRODUCT_NAME_CLI)"
-	@echo "  MCP: $(BUILD_DIR)/release/$(PRODUCT_NAME_MCP)"
+	@echo "  TUI: $(BUILD_DIR)/release/$(PRODUCT_NAME_TUI)"
 
 ## install: Install executables to PREFIX/bin (copy)
 install:
@@ -109,16 +109,16 @@ install:
 	@echo "$(BOLD)$(GREEN)Installing to $(BINDIR)...$(RESET)"
 	@mkdir -p $(BINDIR)
 	$(INSTALL) -m 755 $(PROJECT_DIR)/$(BUILD_DIR)/release/$(PRODUCT_NAME_CLI) $(BINDIR)/$(PRODUCT_NAME_CLI)
-	$(INSTALL) -m 755 $(PROJECT_DIR)/$(BUILD_DIR)/release/$(PRODUCT_NAME_MCP) $(BINDIR)/$(PRODUCT_NAME_MCP)
+	$(INSTALL) -m 755 $(PROJECT_DIR)/$(BUILD_DIR)/release/$(PRODUCT_NAME_TUI) $(BINDIR)/$(PRODUCT_NAME_TUI)
 	@echo "$(GREEN)✓ Installation complete$(RESET)"
 	@echo "  Installed: $(BINDIR)/$(PRODUCT_NAME_CLI)"
-	@echo "  Installed: $(BINDIR)/$(PRODUCT_NAME_MCP)"
+	@echo "  Installed: $(BINDIR)/$(PRODUCT_NAME_TUI)"
 	@echo ""
 	@echo "$(YELLOW)Development workflow: Run 'make update' after code changes to rebuild and reinstall.$(RESET)"
 	@echo ""
 	@echo "$(YELLOW)Verify installation:$(RESET)"
 	@echo "  $(PRODUCT_NAME_CLI) --version"
-	@echo "  $(PRODUCT_NAME_MCP) --version"
+	@echo "  $(PRODUCT_NAME_TUI) --version"
 
 ## install-symlinks: Install with symlinks (advanced - requires full paths)
 install-symlinks:
@@ -130,16 +130,16 @@ install-symlinks:
 	@echo "$(BOLD)$(GREEN)Installing to $(BINDIR) (symlinks)...$(RESET)"
 	@mkdir -p $(BINDIR)
 	@ln -sf "$(PROJECT_DIR)/$(BUILD_DIR)/release/$(PRODUCT_NAME_CLI)" $(BINDIR)/$(PRODUCT_NAME_CLI)
-	@ln -sf "$(PROJECT_DIR)/$(BUILD_DIR)/release/$(PRODUCT_NAME_MCP)" $(BINDIR)/$(PRODUCT_NAME_MCP)
+	@ln -sf "$(PROJECT_DIR)/$(BUILD_DIR)/release/$(PRODUCT_NAME_TUI)" $(BINDIR)/$(PRODUCT_NAME_TUI)
 	@echo "$(GREEN)✓ Installation complete (symlinks)$(RESET)"
 	@echo "  Symlinked: $(BINDIR)/$(PRODUCT_NAME_CLI) -> $(PROJECT_DIR)/$(BUILD_DIR)/release/$(PRODUCT_NAME_CLI)"
-	@echo "  Symlinked: $(BINDIR)/$(PRODUCT_NAME_MCP) -> $(PROJECT_DIR)/$(BUILD_DIR)/release/$(PRODUCT_NAME_MCP)"
+	@echo "  Symlinked: $(BINDIR)/$(PRODUCT_NAME_TUI) -> $(PROJECT_DIR)/$(BUILD_DIR)/release/$(PRODUCT_NAME_TUI)"
 	@echo ""
 	@echo "$(YELLOW)Development workflow: Just run 'make update' to rebuild (changes auto-apply via symlinks).$(RESET)"
 	@echo ""
 	@echo "$(YELLOW)Verify installation:$(RESET)"
 	@echo "  $(PRODUCT_NAME_CLI) --version"
-	@echo "  $(PRODUCT_NAME_MCP) --version"
+	@echo "  $(PRODUCT_NAME_TUI) --version"
 
 ## update: Rebuild and reinstall for development
 update: build-release
@@ -153,13 +153,13 @@ update: build-release
 	@echo ""
 	@echo "$(YELLOW)Test your changes:$(RESET)"
 	@echo "  $(PRODUCT_NAME_CLI) --version"
-	@echo "  $(PRODUCT_NAME_MCP) --version"
+	@echo "  $(PRODUCT_NAME_TUI) --version"
 
 ## uninstall: Remove installed executables
 uninstall:
 	@echo "$(BOLD)$(YELLOW)Uninstalling from $(BINDIR)...$(RESET)"
 	rm -f $(BINDIR)/$(PRODUCT_NAME_CLI)
-	rm -f $(BINDIR)/$(PRODUCT_NAME_MCP)
+	rm -f $(BINDIR)/$(PRODUCT_NAME_TUI)
 	@echo "$(GREEN)✓ Uninstall complete$(RESET)"
 
 ## test: Run all tests
@@ -222,7 +222,7 @@ archive: build-release
 	ARCHIVE_NAME="cupertino-$$VERSION-$(ARCH)-apple-darwin"; \
 	mkdir -p "$$ARCHIVE_NAME/bin"; \
 	cp $(BUILD_DIR)/release/$(PRODUCT_NAME_CLI) "$$ARCHIVE_NAME/bin/"; \
-	cp $(BUILD_DIR)/release/$(PRODUCT_NAME_MCP) "$$ARCHIVE_NAME/bin/"; \
+	cp $(BUILD_DIR)/release/$(PRODUCT_NAME_TUI) "$$ARCHIVE_NAME/bin/"; \
 	cp README.md "$$ARCHIVE_NAME/"; \
 	cp DOCSUCKER_CLI_README.md "$$ARCHIVE_NAME/"; \
 	cp MCP_SERVER_README.md "$$ARCHIVE_NAME/"; \
@@ -237,7 +237,7 @@ bottle: build-release
 	BOTTLE_NAME="cupertino-$$VERSION.$(ARCH)_monterey.bottle.tar.gz"; \
 	mkdir -p bottle/$(PREFIX)/bin; \
 	cp $(BUILD_DIR)/release/$(PRODUCT_NAME_CLI) bottle/$(PREFIX)/bin/; \
-	cp $(BUILD_DIR)/release/$(PRODUCT_NAME_MCP) bottle/$(PREFIX)/bin/; \
+	cp $(BUILD_DIR)/release/$(PRODUCT_NAME_TUI) bottle/$(PREFIX)/bin/; \
 	cd bottle && tar -czf "../$$BOTTLE_NAME" .; \
 	rm -rf bottle; \
 	echo "$(GREEN)✓ Bottle created: $$BOTTLE_NAME$(RESET)"; \
@@ -255,10 +255,10 @@ run-cli: build-debug
 	@echo "$(BOLD)$(GREEN)Running $(PRODUCT_NAME_CLI)...$(RESET)"
 	$(BUILD_DIR)/debug/$(PRODUCT_NAME_CLI) $(ARGS)
 
-## run-mcp: Run MCP server in debug mode
-run-mcp: build-debug
-	@echo "$(BOLD)$(GREEN)Running $(PRODUCT_NAME_MCP)...$(RESET)"
-	$(BUILD_DIR)/debug/$(PRODUCT_NAME_MCP) serve $(ARGS)
+## run-tui: Run TUI in debug mode
+run-tui: build-debug
+	@echo "$(BOLD)$(GREEN)Running $(PRODUCT_NAME_TUI)...$(RESET)"
+	$(BUILD_DIR)/debug/$(PRODUCT_NAME_TUI) $(ARGS)
 
 ## watch: Watch for changes and rebuild (requires fswatch)
 watch:
@@ -275,13 +275,13 @@ watch:
 
 ## version: Show version information
 version:
-	@echo "$(BOLD)Docsucker Version Information$(RESET)"
+	@echo "$(BOLD)Cupertino Version Information$(RESET)"
 	@if [ -f $(BUILD_DIR)/release/$(PRODUCT_NAME_CLI) ]; then \
 		echo "  CLI: $$($(BUILD_DIR)/release/$(PRODUCT_NAME_CLI) --version)"; \
-		echo "  MCP: $$($(BUILD_DIR)/release/$(PRODUCT_NAME_MCP) --version)"; \
+		echo "  TUI: $$($(BUILD_DIR)/release/$(PRODUCT_NAME_TUI) --version)"; \
 	elif [ -f $(BUILD_DIR)/debug/$(PRODUCT_NAME_CLI) ]; then \
 		echo "  CLI: $$($(BUILD_DIR)/debug/$(PRODUCT_NAME_CLI) --version)"; \
-		echo "  MCP: $$($(BUILD_DIR)/debug/$(PRODUCT_NAME_MCP) --version)"; \
+		echo "  TUI: $$($(BUILD_DIR)/debug/$(PRODUCT_NAME_TUI) --version)"; \
 	else \
 		echo "  $(YELLOW)Not built yet. Run: make build$(RESET)"; \
 	fi

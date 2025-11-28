@@ -12,6 +12,7 @@ extension Search {
         private let metadata: CrawlMetadata?
         private let docsDirectory: URL
         private let evolutionDirectory: URL?
+        private let swiftOrgDirectory: URL?
         private let indexSampleCode: Bool
 
         public init(
@@ -19,12 +20,14 @@ extension Search {
             metadata: CrawlMetadata?,
             docsDirectory: URL,
             evolutionDirectory: URL? = nil,
+            swiftOrgDirectory: URL? = nil,
             indexSampleCode: Bool = true
         ) {
             self.searchIndex = searchIndex
             self.metadata = metadata
             self.docsDirectory = docsDirectory
             self.evolutionDirectory = evolutionDirectory
+            self.swiftOrgDirectory = swiftOrgDirectory
             self.indexSampleCode = indexSampleCode
         }
 
@@ -49,6 +52,11 @@ extension Search {
             // Index Swift Evolution proposals if available
             if evolutionDirectory != nil {
                 try await indexEvolutionProposals(onProgress: onProgress)
+            }
+
+            // Index Swift.org documentation if available
+            if swiftOrgDirectory != nil {
+                try await indexSwiftOrgDocs(onProgress: onProgress)
             }
 
             // Index Sample Code catalog if requested
@@ -333,6 +341,77 @@ extension Search {
                 contentHash: contentHash,
                 lastCrawled: modDate
             )
+        }
+
+        // MARK: - Swift.org Documentation
+
+        private func indexSwiftOrgDocs(onProgress: (@Sendable (Int, Int) -> Void)?) async throws {
+            guard let swiftOrgDirectory else {
+                return
+            }
+
+            guard FileManager.default.fileExists(atPath: swiftOrgDirectory.path) else {
+                logInfo("⚠️  Swift.org directory not found: \(swiftOrgDirectory.path)")
+                return
+            }
+
+            let markdownFiles = try findMarkdownFiles(in: swiftOrgDirectory)
+
+            guard !markdownFiles.isEmpty else {
+                logInfo("⚠️  No Swift.org documentation found")
+                return
+            }
+
+            logInfo("🔶 Indexing \(markdownFiles.count) Swift.org documentation pages...")
+
+            var indexed = 0
+            var skipped = 0
+
+            for (index, file) in markdownFiles.enumerated() {
+                guard let content = try? String(contentsOf: file, encoding: .utf8) else {
+                    skipped += 1
+                    continue
+                }
+
+                // Extract category from path: swift-org/{category}/...
+                let category = extractFrameworkFromPath(file, relativeTo: swiftOrgDirectory) ?? "swift-org"
+
+                // Extract title from markdown
+                let title = extractTitle(from: content) ?? file.deletingPathExtension().lastPathComponent
+
+                // Generate URI: swift-org://{category}/{filename}
+                let filename = file.deletingPathExtension().lastPathComponent
+                let uri = "swift-org://\(category)/\(filename)"
+
+                // Calculate content hash
+                let contentHash = HashUtilities.sha256(of: content)
+
+                // Use file modification date
+                let attributes = try? FileManager.default.attributesOfItem(atPath: file.path)
+                let modDate = attributes?[.modificationDate] as? Date ?? Date()
+
+                do {
+                    try await searchIndex.indexDocument(
+                        uri: uri,
+                        framework: "swift-org",
+                        title: title,
+                        content: content,
+                        filePath: file.path,
+                        contentHash: contentHash,
+                        lastCrawled: modDate
+                    )
+                    indexed += 1
+                } catch {
+                    logError("Failed to index \(uri): \(error)")
+                    skipped += 1
+                }
+
+                if (index + 1) % Shared.Constants.Interval.progressLogEvery == 0 {
+                    logInfo("   Progress: \(index + 1)/\(markdownFiles.count)")
+                }
+            }
+
+            logInfo("   Swift.org: \(indexed) indexed, \(skipped) skipped")
         }
 
         // MARK: - Helper Methods

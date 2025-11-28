@@ -125,9 +125,6 @@ extension Shared {
             /// Command name
             public static let commandName = "cupertino"
 
-            /// MCP server command name
-            public static let mcpCommandName = "cupertino-mcp"
-
             /// MCP server name
             public static let mcpServerName = "cupertino"
 

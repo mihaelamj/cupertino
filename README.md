@@ -15,7 +15,7 @@ Cupertino is a local, structured, AI-ready documentation system for Apple platfo
 - **Crawls** Apple Developer documentation, Swift.org, Swift Evolution proposals, and Swift package metadata
 - **Indexes** everything into a fast, searchable SQLite FTS5 database with BM25 ranking
 - **Serves** documentation to AI agents like Claude via the Model Context Protocol
-- **Provides** offline access to 15,000+ documentation pages
+- **Provides** offline access to 22,000+ documentation pages across 261 frameworks
 
 ### Why Build This?
 
@@ -85,9 +85,47 @@ cupertino save
 2. **Restart Claude Desktop**
 
 3. **Ask Claude about Apple APIs:**
-   - "Show me the documentation for Swift Array"
-   - "Search for documentation about SwiftUI animations"
-   - "What does Swift Evolution proposal SE-0255 say?"
+   - "Search for SwiftUI documentation"
+   - "What does Swift Evolution proposal SE-0001 propose?"
+   - "List available frameworks"
+
+### What You Get
+
+Once configured, Claude Desktop can search your local documentation:
+
+**Search Results Example:**
+```
+# Search Results for "SwiftUI"
+
+Found **20** results:
+
+## 1. NSHostingView | Apple Developer Documentation
+- **Framework:** `swiftui`
+- **URI:** `apple-docs://swiftui/documentation_swiftui_nshostingview`
+- **Score:** 1.82
+
+An AppKit view that hosts a SwiftUI view hierarchy.
+
+## 2. UIHostingController | Apple Developer Documentation
+- **Framework:** `swiftui`
+- **URI:** `apple-docs://swiftui/documentation_swiftui_uihostingcontroller`
+
+A UIKit view controller that manages a SwiftUI view hierarchy.
+...
+```
+
+**Framework Statistics:**
+| Framework | Documents |
+|-----------|----------:|
+| SwiftUI | 5,853 |
+| Swift | 2,814 |
+| UIKit | 1,906 |
+| AppKit | 1,316 |
+| Foundation | 1,219 |
+| Swift.org | 501 |
+| Swift Evolution | 429 |
+| ... | ... |
+| **Total** | **22,044** |
 
 ## Core Features
 
@@ -140,7 +178,7 @@ These catalogs are indexed during `cupertino save` and enable instant search wit
   - Framework filtering
   - Snippet generation
   - Sub-100ms query performance
-- **Size**: ~160MB index for full documentation (31,000+ documents)
+- **Size**: ~160MB index for full documentation (22,000+ documents across 261 frameworks)
 - **Storage**: Database must be on local filesystem - SQLite does not work reliably on network drives (NFS/SMB)
 
 ### 4. Model Context Protocol Server
@@ -388,9 +426,10 @@ log stream --predicate 'subsystem == "com.cupertino"'
 | Operation | Time | Size |
 |-----------|------|------|
 | Build CLI | 10-15s | 4.3MB |
-| Crawl 13,000 pages | 20-24 hours | 2-3GB |
-| Swift Evolution | 2-5 min | 10-20MB |
-| Build search index | 2-5 min | ~50MB |
+| Crawl 21,000+ pages | 20-24 hours | 2-3GB |
+| Swift Evolution | 2-5 min | 429 proposals |
+| Swift.org docs | 5-10 min | 501 pages |
+| Build search index | 2-5 min | ~160MB |
 | Search query | <100ms | - |
 
 ### Why Crawling Takes 20+ Hours
@@ -466,7 +505,7 @@ Contributions are welcome! Please read [DEVELOPMENT.md](DEVELOPMENT.md) for:
 
 ## Project Status
 
-**Version:** v0.2.0
+**Version:** 0.1.5
 **Status:** ✅ Production Ready
 
 - ✅ All core functionality working
