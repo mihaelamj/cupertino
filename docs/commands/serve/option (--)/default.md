@@ -1,4 +1,4 @@
-# Default Options Behavior
+why don't I see any changes to docs'# Default Options Behavior
 
 When no options are specified for `serve` command
 

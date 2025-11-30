@@ -7,6 +7,7 @@ extension Search {
     public struct Result: Codable, Sendable, Identifiable {
         public let id: UUID
         public let uri: String
+        public let source: String
         public let framework: String
         public let title: String
         public let summary: String
@@ -17,6 +18,7 @@ extension Search {
         public init(
             id: UUID = UUID(),
             uri: String,
+            source: String,
             framework: String,
             title: String,
             summary: String,
@@ -26,6 +28,7 @@ extension Search {
         ) {
             self.id = id
             self.uri = uri
+            self.source = source
             self.framework = framework
             self.title = title
             self.summary = summary

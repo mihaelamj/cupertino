@@ -91,6 +91,7 @@ The server will automatically detect and use the search index to provide search 
 
 ## See Also
 
-- [../serve/](../serve/) - Start MCP server
-- [../fetch/](../fetch/) - Download documentation
-- [../doctor/](../doctor/) - Check server health
+- [search](../search/) - Search documentation from CLI
+- [serve](../serve/) - Start MCP server
+- [fetch](../fetch/) - Download documentation
+- [doctor](../doctor/) - Check server health

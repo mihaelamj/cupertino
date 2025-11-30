@@ -130,8 +130,8 @@ extension Core {
                         await logProgressUpdate()
                     }
 
-                    // Recycle WKWebView every 500 pages to prevent memory buildup (#25)
-                    if visited.count % 500 == 0 {
+                    // Recycle WKWebView every 50 pages to prevent memory buildup (#25)
+                    if visited.count % 50 == 0 {
                         await recycleWebView()
                     }
                 } catch {

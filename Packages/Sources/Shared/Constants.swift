@@ -330,6 +330,9 @@ extension Shared {
             /// List frameworks tool name
             public static let toolListFrameworks = "list_frameworks"
 
+            /// Read document tool name
+            public static let toolReadDocument = "read_document"
+
             // MARK: Resource Template URIs
 
             /// Apple documentation resource template
@@ -380,6 +383,12 @@ extension Shared {
             Useful for discovering what documentation is available.
             """
 
+            /// Read document tool description
+            public static let toolReadDocumentDescription = """
+            Read a document by URI. Returns the full document content in the requested format. \
+            Use URIs from search_docs results. Format parameter: 'json' (default, structured) or 'markdown' (rendered).
+            """
+
             // MARK: JSON Schema
 
             /// JSON Schema type: object
@@ -393,6 +402,18 @@ extension Shared {
 
             /// JSON Schema parameter: limit
             public static let schemaParamLimit = "limit"
+
+            /// JSON Schema parameter: uri
+            public static let schemaParamURI = "uri"
+
+            /// JSON Schema parameter: format
+            public static let schemaParamFormat = "format"
+
+            /// Format value: json
+            public static let formatValueJSON = "json"
+
+            /// Format value: markdown
+            public static let formatValueMarkdown = "markdown"
 
             // MARK: Messages & Tips
 

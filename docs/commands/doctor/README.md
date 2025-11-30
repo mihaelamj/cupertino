@@ -319,6 +319,6 @@ cupertino doctor \
 ## See Also
 
 - [serve](../serve/) - Start the MCP server
-- [../../MCP_SERVER_README.md](../../MCP_SERVER_README.md) - Detailed server guide
-- [../fetch/](../fetch/) - Download documentation
-- [../save/](../save/) - Build search index
+- [search](../search/) - Search documentation from CLI
+- [fetch](../fetch/) - Download documentation
+- [save](../save/) - Build search index

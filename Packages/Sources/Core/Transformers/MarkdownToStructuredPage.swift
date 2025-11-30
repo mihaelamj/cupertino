@@ -218,18 +218,44 @@ public enum MarkdownToStructuredPage {
         var foundKindLine = false
         var abstract = ""
 
+        // Known kinds that appear before "# Title"
+        let knownKinds = Set([
+            "structure", "struct", "class", "protocol", "enumeration", "enum",
+            "function", "func", "property", "instance property", "type property",
+            "method", "instance method", "type method", "operator", "type alias",
+            "typealias", "macro", "module", "framework", "article", "tutorial",
+            "collection", "api collection", "sample code", "initializer", "case",
+        ])
+
         for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            var trimmed = line.trimmingCharacters(in: .whitespaces)
 
             // Look for "Kind# Title" line
-            if trimmed.contains("# "), !trimmed.hasPrefix("#") {
-                foundKindLine = true
-                continue
+            if !trimmed.hasPrefix("#"), let hashRange = trimmed.range(of: "# ") {
+                let beforeHash = String(trimmed[..<hashRange.lowerBound]).lowercased()
+                // Check if text before # is a known kind
+                if knownKinds.contains(beforeHash) {
+                    foundKindLine = true
+                    continue
+                }
             }
 
             if foundKindLine {
-                // Stop at code block or section header
-                if trimmed.hasPrefix("```") || trimmed.hasPrefix("## ") {
+                // Stop at code block
+                if trimmed.hasPrefix("```") {
+                    break
+                }
+
+                // WebKit concatenates abstract with ## [Topics] on same line
+                // Split off the section header if present
+                if let sectionRange = trimmed.range(of: "## [") {
+                    trimmed = String(trimmed[..<sectionRange.lowerBound])
+                } else if let sectionRange = trimmed.range(of: "## "), !trimmed.hasPrefix("## ") {
+                    trimmed = String(trimmed[..<sectionRange.lowerBound])
+                }
+
+                // Stop at standalone section header
+                if trimmed.hasPrefix("## ") {
                     break
                 }
 

@@ -35,6 +35,15 @@ public actor CupertinoSearchToolProvider: ToolProvider {
                     required: []
                 )
             ),
+            Tool(
+                name: Shared.Constants.MCP.toolReadDocument,
+                description: Shared.Constants.MCP.toolReadDocumentDescription,
+                inputSchema: JSONSchema(
+                    type: Shared.Constants.MCP.schemaTypeObject,
+                    properties: nil,
+                    required: [Shared.Constants.MCP.schemaParamURI]
+                )
+            ),
         ]
 
         return ListToolsResult(tools: tools)
@@ -46,6 +55,8 @@ public actor CupertinoSearchToolProvider: ToolProvider {
             return try await handleSearchDocs(arguments: arguments)
         case Shared.Constants.MCP.toolListFrameworks:
             return try await handleListFrameworks()
+        case Shared.Constants.MCP.toolReadDocument:
+            return try await handleReadDocument(arguments: arguments)
         default:
             throw ToolError.unknownTool(name)
         }
@@ -137,6 +148,32 @@ public actor CupertinoSearchToolProvider: ToolProvider {
 
         let content = ContentBlock.text(
             TextContent(text: markdown)
+        )
+
+        return CallToolResult(content: [content])
+    }
+
+    private func handleReadDocument(arguments: [String: AnyCodable]?) async throws -> CallToolResult {
+        guard let uri = arguments?[Shared.Constants.MCP.schemaParamURI]?.value as? String else {
+            throw ToolError.missingArgument(Shared.Constants.MCP.schemaParamURI)
+        }
+
+        // Parse format parameter (default: json)
+        let formatString = (arguments?[Shared.Constants.MCP.schemaParamFormat]?.value as? String)
+            ?? Shared.Constants.MCP.formatValueJSON
+        let format: Search.Index.DocumentFormat = formatString == Shared.Constants.MCP.formatValueMarkdown
+            ? .markdown : .json
+
+        // Get document content from search index
+        guard let documentContent = try await searchIndex.getDocumentContent(uri: uri, format: format) else {
+            throw ToolError.invalidArgument(
+                Shared.Constants.MCP.schemaParamURI,
+                "Document not found: \(uri)"
+            )
+        }
+
+        let content = ContentBlock.text(
+            TextContent(text: documentContent)
         )
 
         return CallToolResult(content: [content])
