@@ -1,7 +1,246 @@
 import CryptoKit
 import Foundation
 
-// MARK: - Documentation Page
+// MARK: - Structured Documentation Page
+
+/// Represents a fully structured documentation page with rich content
+/// This model is designed to be populated from both Apple JSON API and HTML sources
+/// and is suitable for database storage and querying
+public struct StructuredDocumentationPage: Codable, Sendable, Identifiable, Hashable {
+    public let id: UUID
+    public let url: URL
+    public let title: String
+    public let kind: Kind
+    public let source: Source
+
+    // Content
+    public let abstract: String?
+    public let declaration: Declaration?
+    public let overview: String?
+    public let sections: [Section]
+    public let codeExamples: [CodeExample]
+
+    // Apple-specific metadata (nil for non-Apple sources)
+    public let platforms: [String]?
+    public let module: String?
+    public let conformsTo: [String]? // Protocols this type conforms to
+    public let inheritedBy: [String]? // Types that inherit from this
+    public let conformingTypes: [String]? // Types that conform to this protocol
+
+    // Raw markdown from original source (HTML conversion)
+    public let rawMarkdown: String?
+
+    // Crawl metadata
+    public let crawledAt: Date
+    public let contentHash: String
+
+    public init(
+        id: UUID = UUID(),
+        url: URL,
+        title: String,
+        kind: Kind,
+        source: Source,
+        abstract: String? = nil,
+        declaration: Declaration? = nil,
+        overview: String? = nil,
+        sections: [Section] = [],
+        codeExamples: [CodeExample] = [],
+        platforms: [String]? = nil,
+        module: String? = nil,
+        conformsTo: [String]? = nil,
+        inheritedBy: [String]? = nil,
+        conformingTypes: [String]? = nil,
+        rawMarkdown: String? = nil,
+        crawledAt: Date = Date(),
+        contentHash: String = ""
+    ) {
+        self.id = id
+        self.url = url
+        self.title = title
+        self.kind = kind
+        self.source = source
+        self.abstract = abstract
+        self.declaration = declaration
+        self.overview = overview
+        self.sections = sections
+        self.codeExamples = codeExamples
+        self.platforms = platforms
+        self.module = module
+        self.conformsTo = conformsTo
+        self.inheritedBy = inheritedBy
+        self.conformingTypes = conformingTypes
+        self.rawMarkdown = rawMarkdown
+        self.crawledAt = crawledAt
+        self.contentHash = contentHash
+    }
+
+    // MARK: - Nested Types
+
+    /// The kind/type of documentation page
+    public enum Kind: String, Codable, Sendable, CaseIterable {
+        case `protocol`
+        case `class`
+        case `struct`
+        case `enum`
+        case function
+        case property
+        case method
+        case `operator`
+        case typeAlias = "typealias"
+        case macro
+        case article
+        case tutorial
+        case collection // API collection (index page)
+        case framework
+        case unknown
+    }
+
+    /// The source of the documentation
+    public enum Source: String, Codable, Sendable {
+        case appleJSON // Apple's JSON API
+        case appleWebKit // WKWebView rendered HTML
+        case swiftOrg // Swift.org documentation
+        case github // GitHub README/docs
+        case custom // Other sources
+    }
+
+    /// A code declaration with optional language
+    public struct Declaration: Codable, Sendable, Hashable {
+        public let code: String
+        public let language: String?
+
+        public init(code: String, language: String? = "swift") {
+            self.code = code
+            self.language = language
+        }
+    }
+
+    /// A documentation section with title and content
+    public struct Section: Codable, Sendable, Hashable {
+        public let title: String
+        public let content: String
+        public let items: [Item]?
+
+        public init(title: String, content: String = "", items: [Item]? = nil) {
+            self.title = title
+            self.content = content
+            self.items = items
+        }
+
+        /// An item within a section (e.g., a method in "Instance Methods")
+        public struct Item: Codable, Sendable, Hashable {
+            public let name: String
+            public let description: String?
+            public let url: URL?
+
+            public init(name: String, description: String? = nil, url: URL? = nil) {
+                self.name = name
+                self.description = description
+                self.url = url
+            }
+        }
+    }
+
+    /// A code example with optional syntax highlighting
+    public struct CodeExample: Codable, Sendable, Hashable {
+        public let code: String
+        public let language: String?
+        public let caption: String?
+
+        public init(code: String, language: String? = "swift", caption: String? = nil) {
+            self.code = code
+            self.language = language
+            self.caption = caption
+        }
+    }
+
+    // MARK: - Computed Properties
+
+    /// Generate markdown representation of this page
+    public var markdown: String {
+        var result = "---\n"
+        result += "source: \(url.absoluteString)\n"
+        result += "crawled: \(ISO8601DateFormatter().string(from: crawledAt))\n"
+        result += "kind: \(kind.rawValue)\n"
+        result += "---\n\n"
+
+        result += "# \(title)\n\n"
+
+        if kind != .article, kind != .tutorial, kind != .collection {
+            result += "**\(kind.rawValue.capitalized)**\n\n"
+        }
+
+        if let abstract, !abstract.isEmpty {
+            result += "\(abstract)\n\n"
+        }
+
+        if let declaration {
+            result += "## Declaration\n\n"
+            result += "```\(declaration.language ?? "")\n"
+            result += "\(declaration.code)\n"
+            result += "```\n\n"
+        }
+
+        if let overview, !overview.isEmpty {
+            result += "## Overview\n\n"
+            result += "\(overview)\n\n"
+        }
+
+        for example in codeExamples {
+            if let caption = example.caption {
+                result += "\(caption)\n\n"
+            }
+            result += "```\(example.language ?? "")\n"
+            result += "\(example.code)\n"
+            result += "```\n\n"
+        }
+
+        for section in sections {
+            result += "## \(section.title)\n\n"
+            if !section.content.isEmpty {
+                result += "\(section.content)\n\n"
+            }
+            if let items = section.items {
+                for item in items {
+                    result += "- **\(item.name)**"
+                    if let desc = item.description {
+                        result += ": \(desc)"
+                    }
+                    result += "\n"
+                }
+                result += "\n"
+            }
+        }
+
+        if let conforms = conformsTo, !conforms.isEmpty {
+            result += "## Conforms To\n\n"
+            for proto in conforms {
+                result += "- \(proto)\n"
+            }
+            result += "\n"
+        }
+
+        if let inheritedBy, !inheritedBy.isEmpty {
+            result += "## Inherited By\n\n"
+            for type in inheritedBy {
+                result += "- \(type)\n"
+            }
+            result += "\n"
+        }
+
+        if let conforming = conformingTypes, !conforming.isEmpty {
+            result += "## Conforming Types\n\n"
+            for type in conforming {
+                result += "- \(type)\n"
+            }
+            result += "\n"
+        }
+
+        return result
+    }
+}
+
+// MARK: - Documentation Page (Crawl Metadata)
 
 /// Represents a single documentation page
 public struct DocumentationPage: Codable, Sendable, Identifiable {
@@ -40,17 +279,20 @@ public struct DocumentationPage: Codable, Sendable, Identifiable {
 /// Metadata tracking crawl state and statistics
 public struct CrawlMetadata: Codable, Sendable {
     public var pages: [String: PageMetadata] // URL -> metadata
+    public var frameworks: [String: FrameworkStats] // framework name -> stats
     public var lastCrawl: Date?
     public var stats: CrawlStatistics
     public var crawlState: CrawlSessionState? // Resume state
 
     public init(
         pages: [String: PageMetadata] = [:],
+        frameworks: [String: FrameworkStats] = [:],
         lastCrawl: Date? = nil,
         stats: CrawlStatistics = CrawlStatistics(),
         crawlState: CrawlSessionState? = nil
     ) {
         self.pages = pages
+        self.frameworks = frameworks
         self.lastCrawl = lastCrawl
         self.stats = stats
         self.crawlState = crawlState
@@ -64,6 +306,71 @@ public struct CrawlMetadata: Codable, Sendable {
     /// Load metadata from file
     public static func load(from url: URL) throws -> CrawlMetadata {
         try JSONCoding.decode(CrawlMetadata.self, from: url)
+    }
+
+    /// Get statistics grouped by framework
+    public func statsByFramework() -> [String: FrameworkStats] {
+        // If frameworks dict is populated, return it
+        if !frameworks.isEmpty {
+            return frameworks
+        }
+
+        // Otherwise compute from pages
+        var stats: [String: FrameworkStats] = [:]
+        for (_, page) in pages {
+            let framework = page.framework.lowercased()
+            if var existing = stats[framework] {
+                existing.pageCount += 1
+                existing.lastCrawled = max(existing.lastCrawled ?? .distantPast, page.lastCrawled)
+                stats[framework] = existing
+            } else {
+                stats[framework] = FrameworkStats(
+                    name: page.framework,
+                    pageCount: 1,
+                    lastCrawled: page.lastCrawled
+                )
+            }
+        }
+        return stats
+    }
+}
+
+// MARK: - Framework Stats
+
+/// Statistics for a single framework
+public struct FrameworkStats: Codable, Sendable {
+    public var name: String
+    public var pageCount: Int
+    public var newPages: Int
+    public var updatedPages: Int
+    public var errors: Int
+    public var lastCrawled: Date?
+    public var crawlStatus: CrawlStatus
+
+    public enum CrawlStatus: String, Codable, Sendable {
+        case notStarted = "not_started"
+        case inProgress = "in_progress"
+        case complete
+        case partial
+        case failed
+    }
+
+    public init(
+        name: String,
+        pageCount: Int = 0,
+        newPages: Int = 0,
+        updatedPages: Int = 0,
+        errors: Int = 0,
+        lastCrawled: Date? = nil,
+        crawlStatus: CrawlStatus = .notStarted
+    ) {
+        self.name = name
+        self.pageCount = pageCount
+        self.newPages = newPages
+        self.updatedPages = updatedPages
+        self.errors = errors
+        self.lastCrawled = lastCrawled
+        self.crawlStatus = crawlStatus
     }
 }
 

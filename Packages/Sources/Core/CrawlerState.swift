@@ -68,7 +68,8 @@ public actor CrawlerState {
         framework: String,
         filePath: String,
         contentHash: String,
-        depth: Int
+        depth: Int,
+        isNew: Bool = true
     ) {
         let pageMetadata = PageMetadata(
             url: url,
@@ -79,6 +80,64 @@ public actor CrawlerState {
             lastCrawled: Date()
         )
         metadata.pages[url] = pageMetadata
+
+        // Update framework stats
+        let fwKey = framework.lowercased()
+        if var fwStats = metadata.frameworks[fwKey] {
+            fwStats.pageCount += 1
+            if isNew {
+                fwStats.newPages += 1
+            } else {
+                fwStats.updatedPages += 1
+            }
+            fwStats.lastCrawled = Date()
+            fwStats.crawlStatus = .inProgress
+            metadata.frameworks[fwKey] = fwStats
+        } else {
+            metadata.frameworks[fwKey] = FrameworkStats(
+                name: framework,
+                pageCount: 1,
+                newPages: isNew ? 1 : 0,
+                updatedPages: isNew ? 0 : 1,
+                lastCrawled: Date(),
+                crawlStatus: .inProgress
+            )
+        }
+    }
+
+    /// Record an error for a framework
+    public func recordFrameworkError(framework: String) {
+        let fwKey = framework.lowercased()
+        if var fwStats = metadata.frameworks[fwKey] {
+            fwStats.errors += 1
+            metadata.frameworks[fwKey] = fwStats
+        } else {
+            metadata.frameworks[fwKey] = FrameworkStats(
+                name: framework,
+                errors: 1,
+                crawlStatus: .inProgress
+            )
+        }
+    }
+
+    /// Mark a framework as complete
+    public func markFrameworkComplete(framework: String) {
+        let fwKey = framework.lowercased()
+        if var fwStats = metadata.frameworks[fwKey] {
+            fwStats.crawlStatus = .complete
+            fwStats.lastCrawled = Date()
+            metadata.frameworks[fwKey] = fwStats
+        }
+    }
+
+    /// Get stats for a specific framework
+    public func getFrameworkStats(framework: String) -> FrameworkStats? {
+        metadata.frameworks[framework.lowercased()]
+    }
+
+    /// Get all framework stats
+    public func getAllFrameworkStats() -> [String: FrameworkStats] {
+        metadata.frameworks
     }
 
     /// Finalize crawl and save metadata

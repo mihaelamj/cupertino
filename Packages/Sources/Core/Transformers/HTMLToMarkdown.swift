@@ -21,7 +21,43 @@ import WebKit
 // Disabling: file_length (400 line limit), type_body_length (250 line limit)
 
 // Converts HTML documentation to clean Markdown
-public enum HTMLToMarkdown {
+public struct HTMLToMarkdown: ContentTransformer, @unchecked Sendable {
+    public typealias RawContent = String
+
+    public init() {}
+
+    // MARK: - ContentTransformer Protocol
+
+    /// Transform HTML content to Markdown (protocol conformance)
+    public func transform(_ content: String, url: URL) -> String? {
+        Self.convert(content, url: url)
+    }
+
+    /// Extract links from HTML content (protocol conformance)
+    public func extractLinks(from content: String) -> [URL] {
+        Self.extractLinks(from: content)
+    }
+
+    // MARK: - Static API (backwards compatible)
+
+    /// Extract links from HTML content
+    public static func extractLinks(from html: String) -> [URL] {
+        var links: [URL] = []
+        let pattern = #"<a[^>]+href=["']([^"']+)["'][^>]*>"#
+        if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
+            let nsString = html as NSString
+            let matches = regex.matches(in: html, range: NSRange(location: 0, length: nsString.length))
+            for match in matches where match.numberOfRanges >= 2 {
+                let hrefRange = match.range(at: 1)
+                let href = nsString.substring(with: hrefRange)
+                if let url = URL(string: href) {
+                    links.append(url)
+                }
+            }
+        }
+        return links
+    }
+
     /// Convert HTML string to Markdown
     public static func convert(_ html: String, url: URL) -> String {
         var markdown = ""
@@ -596,5 +632,372 @@ extension String {
         }
 
         return result
+    }
+}
+
+// MARK: - HTML to StructuredDocumentationPage Converter
+
+extension HTMLToMarkdown {
+    /// Convert HTML to a StructuredDocumentationPage (best-effort extraction)
+    /// Note: This is less structured than JSON API output since HTML doesn't
+    /// have explicit semantic structure
+    public static func toStructuredPage(
+        _ html: String,
+        url: URL,
+        source: StructuredDocumentationPage.Source = .appleWebKit
+    ) -> StructuredDocumentationPage? {
+        // Extract title
+        guard let title = extractTitle(from: html) else {
+            return nil
+        }
+
+        // Detect source from URL
+        let detectedSource = detectSource(from: url, provided: source)
+
+        // Extract kind (best-effort from HTML structure)
+        let kind = detectKind(from: html, url: url)
+
+        // Extract abstract (first paragraph after title)
+        let abstract = extractAbstract(from: html)
+
+        // Extract declaration (first code block that looks like a declaration)
+        let declaration = extractDeclarationFromHTML(from: html)
+
+        // Extract code examples
+        let codeExamples = extractCodeExamplesFromHTML(from: html)
+
+        // Extract overview (paragraphs before sections)
+        let overview = extractOverviewFromHTML(from: html)
+
+        // Extract sections (H2 headers and their content)
+        let sections = extractSectionsFromHTML(from: html)
+
+        // Compute content hash
+        let contentHash = HashUtilities.sha256(of: html)
+
+        // Generate markdown representation
+        let markdown = convert(html, url: url)
+
+        return StructuredDocumentationPage(
+            url: url,
+            title: title,
+            kind: kind,
+            source: detectedSource,
+            abstract: abstract,
+            declaration: declaration,
+            overview: overview,
+            sections: sections,
+            codeExamples: codeExamples,
+            rawMarkdown: markdown,
+            crawledAt: Date(),
+            contentHash: contentHash
+        )
+    }
+
+    // MARK: - Private Helpers for Structured Page
+
+    private static func detectSource(
+        from url: URL,
+        provided: StructuredDocumentationPage.Source
+    ) -> StructuredDocumentationPage.Source {
+        guard let host = url.host?.lowercased() else {
+            return provided
+        }
+
+        if host.contains("developer.apple.com") {
+            return .appleWebKit
+        } else if host.contains("swift.org") || host.contains("docs.swift.org") {
+            return .swiftOrg
+        } else if host.contains("github.com") || host.contains("github.io") {
+            return .github
+        }
+
+        return provided
+    }
+
+    private static func detectKind(
+        from html: String,
+        url: URL
+    ) -> StructuredDocumentationPage.Kind {
+        let lowercased = html.lowercased()
+
+        // Check URL path for hints
+        let path = url.path.lowercased()
+        if path.contains("/tutorials/") {
+            return .tutorial
+        }
+
+        // Check HTML content for role indicators
+        if let roleMatch = lowercased.range(
+            of: #"<span[^>]*class="[^"]*role[^"]*"[^>]*>([^<]+)</span>"#,
+            options: .regularExpression
+        ) {
+            let role = String(lowercased[roleMatch]).lowercased()
+            if role.contains("protocol") { return .protocol }
+            if role.contains("class") { return .class }
+            if role.contains("struct") { return .struct }
+            if role.contains("enum") { return .enum }
+            if role.contains("function") { return .function }
+            if role.contains("property") { return .property }
+            if role.contains("method") { return .method }
+        }
+
+        // Check for declaration patterns in code blocks
+        if lowercased.contains("protocol "), lowercased.contains("<code") {
+            return .protocol
+        }
+        if lowercased.contains("class "), lowercased.contains("<code") {
+            return .class
+        }
+        if lowercased.contains("struct "), lowercased.contains("<code") {
+            return .struct
+        }
+        if lowercased.contains("enum "), lowercased.contains("<code") {
+            return .enum
+        }
+
+        // Check meta description for hints
+        if let metaMatch = lowercased.range(
+            of: #"<meta[^>]*name="description"[^>]*content="([^"]+)""#,
+            options: .regularExpression
+        ) {
+            let desc = String(lowercased[metaMatch])
+            if desc.contains("protocol") { return .protocol }
+            if desc.contains("class") { return .class }
+            if desc.contains("struct") { return .struct }
+        }
+
+        return .unknown
+    }
+
+    private static func extractAbstract(from html: String) -> String? {
+        // Look for og:description meta tag
+        if let regex = try? NSRegularExpression(
+            pattern: #"<meta[^>]*property="og:description"[^>]*content="([^"]+)""#,
+            options: .caseInsensitive
+        ) {
+            let nsString = html as NSString
+            if let match = regex.firstMatch(
+                in: html,
+                range: NSRange(location: 0, length: nsString.length)
+            ),
+                match.numberOfRanges >= 2 {
+                let contentRange = match.range(at: 1)
+                let content = nsString.substring(with: contentRange)
+                let decoded = decodeHTMLEntities(content)
+                if !decoded.isEmpty {
+                    return decoded
+                }
+            }
+        }
+
+        // Fallback to first <p> in main content
+        let mainContent = extractMainContent(from: html)
+        if let regex = try? NSRegularExpression(
+            pattern: #"<p[^>]*>(.*?)</p>"#,
+            options: [.caseInsensitive, .dotMatchesLineSeparators]
+        ) {
+            let nsString = mainContent as NSString
+            if let match = regex.firstMatch(
+                in: mainContent,
+                range: NSRange(location: 0, length: nsString.length)
+            ),
+                match.numberOfRanges >= 2 {
+                let contentRange = match.range(at: 1)
+                var content = nsString.substring(with: contentRange)
+                content = stripHTML(content)
+                content = decodeHTMLEntities(content)
+                let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty, trimmed.count > 10 {
+                    return trimmed
+                }
+            }
+        }
+
+        return nil
+    }
+
+    private static func extractDeclarationFromHTML(
+        from html: String
+    ) -> StructuredDocumentationPage.Declaration? {
+        let mainContent = extractMainContent(from: html)
+        let regexOptions: NSRegularExpression.Options = [.caseInsensitive, .dotMatchesLineSeparators]
+
+        // Look for code block with language indicator
+        let pattern = Shared.Constants.Pattern.htmlCodeBlockWithLanguage
+        if let regex = try? NSRegularExpression(pattern: pattern, options: regexOptions) {
+            let nsString = mainContent as NSString
+            if let match = regex.firstMatch(
+                in: mainContent,
+                range: NSRange(location: 0, length: nsString.length)
+            ),
+                match.numberOfRanges >= 3 {
+                let languageRange = match.range(at: 1)
+                let codeRange = match.range(at: 2)
+
+                if languageRange.location != NSNotFound, codeRange.location != NSNotFound {
+                    let language = nsString.substring(with: languageRange).lowercased()
+                    var code = nsString.substring(with: codeRange)
+                    code = stripHTML(code)
+                    code = decodeHTMLEntities(code)
+                    let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                    // Check if this looks like a declaration
+                    if looksLikeDeclaration(trimmed) {
+                        return StructuredDocumentationPage.Declaration(
+                            code: trimmed,
+                            language: language.isEmpty ? "swift" : language
+                        )
+                    }
+                }
+            }
+        }
+
+        // Fallback: look for any code block that looks like a declaration
+        let fallbackPattern = #"<pre[^>]*>\s*<code[^>]*>(.*?)</code>\s*</pre>"#
+        if let regex = try? NSRegularExpression(pattern: fallbackPattern, options: regexOptions) {
+            let nsString = mainContent as NSString
+            let matches = regex.matches(
+                in: mainContent,
+                range: NSRange(location: 0, length: nsString.length)
+            )
+
+            for match in matches where match.numberOfRanges >= 2 {
+                let codeRange = match.range(at: 1)
+                if codeRange.location != NSNotFound {
+                    var code = nsString.substring(with: codeRange)
+                    code = stripHTML(code)
+                    code = decodeHTMLEntities(code)
+                    let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                    if looksLikeDeclaration(trimmed) {
+                        return StructuredDocumentationPage.Declaration(
+                            code: trimmed,
+                            language: "swift"
+                        )
+                    }
+                }
+            }
+        }
+
+        return nil
+    }
+
+    private static func looksLikeDeclaration(_ code: String) -> Bool {
+        let keywords = ["protocol ", "class ", "struct ", "enum ", "func ", "var ", "let ", "@"]
+        return keywords.contains { code.hasPrefix($0) }
+    }
+
+    private static func extractCodeExamplesFromHTML(
+        from html: String
+    ) -> [StructuredDocumentationPage.CodeExample] {
+        var examples: [StructuredDocumentationPage.CodeExample] = []
+        let mainContent = extractMainContent(from: html)
+        let regexOptions: NSRegularExpression.Options = [.caseInsensitive, .dotMatchesLineSeparators]
+
+        // Extract code blocks with language
+        let pattern = Shared.Constants.Pattern.htmlCodeBlockWithLanguage
+        if let regex = try? NSRegularExpression(pattern: pattern, options: regexOptions) {
+            let nsString = mainContent as NSString
+            let matches = regex.matches(
+                in: mainContent,
+                range: NSRange(location: 0, length: nsString.length)
+            )
+
+            for match in matches where match.numberOfRanges >= 3 {
+                let languageRange = match.range(at: 1)
+                let codeRange = match.range(at: 2)
+
+                if codeRange.location != NSNotFound {
+                    let language = languageRange.location != NSNotFound
+                        ? nsString.substring(with: languageRange).lowercased()
+                        : nil
+                    var code = nsString.substring(with: codeRange)
+                    code = stripHTML(code)
+                    code = decodeHTMLEntities(code)
+                    let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                    // Skip if this looks like a declaration (already captured)
+                    if !looksLikeDeclaration(trimmed), !trimmed.isEmpty {
+                        examples.append(StructuredDocumentationPage.CodeExample(
+                            code: trimmed,
+                            language: language
+                        ))
+                    }
+                }
+            }
+        }
+
+        return examples
+    }
+
+    private static func extractOverviewFromHTML(from html: String) -> String? {
+        let mainContent = extractMainContent(from: html)
+        var paragraphs: [String] = []
+        let regexOptions: NSRegularExpression.Options = [.caseInsensitive, .dotMatchesLineSeparators]
+
+        if let regex = try? NSRegularExpression(
+            pattern: #"<p[^>]*>(.*?)</p>"#,
+            options: regexOptions
+        ) {
+            let nsString = mainContent as NSString
+            let matches = regex.matches(
+                in: mainContent,
+                range: NSRange(location: 0, length: nsString.length)
+            )
+
+            // Take up to first 3 paragraphs as overview
+            for match in matches.prefix(3) where match.numberOfRanges >= 2 {
+                let contentRange = match.range(at: 1)
+                if contentRange.location != NSNotFound {
+                    var content = nsString.substring(with: contentRange)
+                    content = stripHTML(content)
+                    content = decodeHTMLEntities(content)
+                    let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmed.isEmpty, trimmed.count > 20 {
+                        paragraphs.append(trimmed)
+                    }
+                }
+            }
+        }
+
+        return paragraphs.isEmpty ? nil : paragraphs.joined(separator: "\n\n")
+    }
+
+    private static func extractSectionsFromHTML(
+        from html: String
+    ) -> [StructuredDocumentationPage.Section] {
+        var sections: [StructuredDocumentationPage.Section] = []
+        let mainContent = extractMainContent(from: html)
+
+        // Find all H2 headers
+        if let regex = try? NSRegularExpression(
+            pattern: #"<h2[^>]*>(.*?)</h2>"#,
+            options: [.caseInsensitive, .dotMatchesLineSeparators]
+        ) {
+            let nsString = mainContent as NSString
+            let matches = regex.matches(
+                in: mainContent,
+                range: NSRange(location: 0, length: nsString.length)
+            )
+
+            for match in matches where match.numberOfRanges >= 2 {
+                let titleRange = match.range(at: 1)
+                if titleRange.location != NSNotFound {
+                    var title = nsString.substring(with: titleRange)
+                    title = stripHTML(title)
+                    title = decodeHTMLEntities(title)
+                    let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                    if !trimmedTitle.isEmpty {
+                        sections.append(StructuredDocumentationPage.Section(
+                            title: trimmedTitle
+                        ))
+                    }
+                }
+            }
+        }
+
+        return sections
     }
 }

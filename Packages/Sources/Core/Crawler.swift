@@ -2,7 +2,6 @@ import Foundation
 import Logging
 import os
 import Shared
-import WebKit
 
 // MARK: - Documentation Crawler
 
@@ -23,12 +22,13 @@ extension Core {
         private let output: Shared.OutputConfiguration
         private let state: CrawlerState
 
-        private var webView: WKWebView!
+        private var webPageFetcher: WKWebCrawler.WKWebContentFetcher!
         private var visited = Set<String>()
         private var queue: [(url: URL, depth: Int)] = []
         private var stats: CrawlStatistics
 
         private var onProgress: (@Sendable (CrawlProgress) -> Void)?
+        private var logFileHandle: FileHandle?
 
         public init(configuration: Shared.Configuration) async {
             self.configuration = configuration.crawler
@@ -38,10 +38,15 @@ extension Core {
             stats = CrawlStatistics()
             super.init()
 
-            // Initialize WKWebView
-            let webConfiguration = WKWebViewConfiguration()
-            webView = WKWebView(frame: .zero, configuration: webConfiguration)
-            webView.navigationDelegate = self
+            // Initialize WKWebContentFetcher from WKWebCrawler namespace
+            webPageFetcher = WKWebCrawler.WKWebContentFetcher()
+
+            // Temporary debug logging for #25
+            let logPath = self.configuration.outputDirectory
+                .deletingLastPathComponent()
+                .appendingPathComponent("crawl-debug.log")
+            FileManager.default.createFile(atPath: logPath.path, contents: nil)
+            logFileHandle = try? FileHandle(forWritingTo: logPath)
         }
 
         // MARK: - Public API
@@ -110,7 +115,7 @@ extension Core {
                 visited.insert(normalizedURL.absoluteString)
 
                 do {
-                    try await crawlPage(url: normalizedURL, depth: depth)
+                    try await crawlPageWithRetry(url: normalizedURL, depth: depth, maxRetries: 2)
 
                     // Auto-save session state periodically
                     try await state.autoSaveIfNeeded(
@@ -123,6 +128,11 @@ extension Core {
                     // Log progress periodically
                     if visited.count % Shared.Constants.Interval.progressLogEvery == 0 {
                         await logProgressUpdate()
+                    }
+
+                    // Recycle WKWebView every 500 pages to prevent memory buildup (#25)
+                    if visited.count % 500 == 0 {
+                        await recycleWebView()
                     }
                 } catch {
                     await state.updateStatistics { $0.errors += 1 }
@@ -153,17 +163,72 @@ extension Core {
 
         // MARK: - Private Methods
 
+        /// Crawl a page with retry mechanism for difficult pages (#25)
+        /// On failure, recycles WKWebView and retries up to maxRetries times
+        private func crawlPageWithRetry(url: URL, depth: Int, maxRetries: Int) async throws {
+            var lastError: Error?
+
+            for attempt in 0...maxRetries {
+                if attempt > 0 {
+                    logInfo("🔄 Retry \(attempt)/\(maxRetries) for \(url.lastPathComponent) - recycling WebView")
+                    await recycleWebView()
+                    // Brief pause before retry
+                    try await Task.sleep(for: .seconds(1))
+                }
+
+                do {
+                    try await crawlPage(url: url, depth: depth)
+                    return // Success
+                } catch {
+                    lastError = error
+                    logError("Attempt \(attempt + 1) failed for \(url.absoluteString): \(error)")
+                }
+            }
+
+            // All retries exhausted
+            throw lastError ?? CrawlerError.invalidState
+        }
+
         private func crawlPage(url: URL, depth: Int) async throws {
             let framework = URLUtilities.extractFramework(from: url)
 
+            // Get framework page count for display
+            let fwStats = await state.getFrameworkStats(framework: framework)
+            let fwPageCount = fwStats?.pageCount ?? 0
+
             let urlString = url.absoluteString
-            logInfo("📄 [\(visited.count)/\(configuration.maxPages)] depth=\(depth) [\(framework)] \(urlString)")
+            let progress = "[\(visited.count)/\(configuration.maxPages)] [\(framework):\(fwPageCount + 1)]"
+            logInfo("📄 \(progress) depth=\(depth) \(urlString)")
 
-            // Load page with WKWebView
-            let html = try await loadPage(url: url)
+            // Try JSON API first (better data quality), fall back to HTML if unavailable
+            var structuredPage: StructuredDocumentationPage?
+            var markdown: String
+            var links: [URL]
 
-            // Compute content hash
-            let contentHash = HashUtilities.sha256(of: html)
+            // Check if this URL could have a JSON API endpoint (Apple docs)
+            let hasJSONEndpoint = AppleJSONToMarkdown.jsonAPIURL(from: url) != nil
+
+            if hasJSONEndpoint {
+                do {
+                    (structuredPage, markdown, links) = try await loadPageViaJSON(url: url)
+                } catch {
+                    // JSON API failed, fall back to HTML
+                    logInfo("   ⚠️ JSON API unavailable, using HTML fallback")
+                    let html = try await loadPage(url: url)
+                    markdown = HTMLToMarkdown.convert(html, url: url)
+                    links = extractLinks(from: html, baseURL: url)
+                    structuredPage = HTMLToMarkdown.toStructuredPage(html, url: url)
+                }
+            } else {
+                // No JSON endpoint available, use HTML directly
+                let html = try await loadPage(url: url)
+                markdown = HTMLToMarkdown.convert(html, url: url)
+                links = extractLinks(from: html, baseURL: url)
+                structuredPage = HTMLToMarkdown.toStructuredPage(html, url: url)
+            }
+
+            // Compute content hash from structured page or markdown
+            let contentHash = structuredPage?.contentHash ?? HashUtilities.sha256(of: markdown)
 
             // Determine output path
             let frameworkDir = configuration.outputDirectory.appendingPathComponent(framework)
@@ -173,7 +238,14 @@ extension Core {
             )
 
             let filename = URLUtilities.filename(from: url)
-            let filePath = frameworkDir.appendingPathComponent(
+
+            // JSON file path (primary output format)
+            let jsonFilePath = frameworkDir.appendingPathComponent(
+                "\(filename)\(Shared.Constants.FileName.jsonExtension)"
+            )
+
+            // Markdown file path (optional, for backwards compatibility)
+            let markdownFilePath = frameworkDir.appendingPathComponent(
                 "\(filename)\(Shared.Constants.FileName.markdownExtension)"
             )
 
@@ -181,7 +253,7 @@ extension Core {
             let shouldRecrawl = await state.shouldRecrawl(
                 url: url.absoluteString,
                 contentHash: contentHash,
-                filePath: filePath
+                filePath: jsonFilePath
             )
 
             if !shouldRecrawl {
@@ -191,36 +263,45 @@ extension Core {
                 return
             }
 
-            // Convert HTML to Markdown
-            let markdown = HTMLToMarkdown.convert(html, url: url)
+            // Save JSON file (primary output)
+            let isNew = !FileManager.default.fileExists(atPath: jsonFilePath.path)
 
-            // Save to file
-            let isNew = !FileManager.default.fileExists(atPath: filePath.path)
-            try markdown.write(to: filePath, atomically: true, encoding: .utf8)
+            if let page = structuredPage {
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                encoder.dateEncodingStrategy = .iso8601
+                let jsonData = try encoder.encode(page)
+                try jsonData.write(to: jsonFilePath)
+            }
 
-            // Update metadata
+            // Optionally save markdown (can be disabled in config later)
+            if output.includeMarkdown {
+                try markdown.write(to: markdownFilePath, atomically: true, encoding: .utf8)
+            }
+
+            // Update metadata with framework tracking
             await state.updatePage(
                 url: url.absoluteString,
                 framework: framework,
-                filePath: filePath.path,
+                filePath: jsonFilePath.path,
                 contentHash: contentHash,
-                depth: depth
+                depth: depth,
+                isNew: isNew
             )
 
             // Update stats
             if isNew {
                 await state.updateStatistics { $0.newPages += 1 }
-                logInfo("   ✅ Saved new page: \(filePath.lastPathComponent)")
+                logInfo("   ✅ Saved new page: \(jsonFilePath.lastPathComponent)")
             } else {
                 await state.updateStatistics { $0.updatedPages += 1 }
-                logInfo("   ♻️  Updated page: \(filePath.lastPathComponent)")
+                logInfo("   ♻️  Updated page: \(jsonFilePath.lastPathComponent)")
             }
 
             await state.updateStatistics { $0.totalPages += 1 }
 
-            // Extract and enqueue links
+            // Enqueue discovered links
             if depth < configuration.maxDepth {
-                let links = extractLinks(from: html, baseURL: url)
                 for link in links where shouldVisit(url: link) {
                     queue.append((url: link, depth: depth + 1))
                 }
@@ -238,57 +319,43 @@ extension Core {
             }
         }
 
-        private func loadPage(url: URL) async throws -> String {
-            // Use structured concurrency: proper task racing with withThrowingTaskGroup
-            webView.load(URLRequest(url: url))
-
-            // Race timeout vs page load - first to complete wins
-            return try await withThrowingTaskGroup(of: String?.self) { group in
-                // Task 1: Timeout task returns nil
-                group.addTask {
-                    try await Task.sleep(for: Shared.Constants.Timeout.pageLoad)
-                    return nil
-                }
-
-                // Task 2: Load page content returns HTML
-                group.addTask {
-                    try await self.loadPageContent()
-                }
-
-                // Get first result - true racing behavior
-                for try await result in group {
-                    if let html = result {
-                        // HTML loaded successfully - cancel timeout task
-                        group.cancelAll()
-                        return html
-                    }
-                    // If result is nil, timeout won - continue to next iteration
-                    // which will throw or return remaining task result
-                }
-
-                // If we get here, timeout won the race
-                group.cancelAll()
-                throw CrawlerError.timeout
+        /// Load page via Apple's JSON API - avoids WKWebView memory issues
+        /// Returns structured page data for JSON output and links for crawling
+        private func loadPageViaJSON(url: URL) async throws -> (
+            structuredPage: StructuredDocumentationPage?,
+            markdown: String,
+            links: [URL]
+        ) {
+            guard let jsonURL = AppleJSONToMarkdown.jsonAPIURL(from: url) else {
+                throw CrawlerError.invalidState
             }
-        }
 
-        /// Helper method to load page content (stays on MainActor)
-        private func loadPageContent() async throws -> String {
-            // Wait for page to load
-            try await Task.sleep(for: .seconds(5))
+            logInfo("   📡 Using JSON API: \(jsonURL.lastPathComponent)")
 
-            // Use modern async evaluateJavaScript API
-            let result = try await webView.evaluateJavaScript(
-                Shared.Constants.JavaScript.getDocumentHTML,
-                in: nil,
-                contentWorld: .page
-            )
+            let (data, response) = try await URLSession.shared.data(from: jsonURL)
 
-            guard let html = result as? String else {
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200
+            else {
                 throw CrawlerError.invalidHTML
             }
 
-            return html
+            // Create structured page from JSON
+            let structuredPage = AppleJSONToMarkdown.toStructuredPage(data, url: url)
+
+            // Also create markdown for backwards compatibility
+            guard let markdown = AppleJSONToMarkdown.convert(data, url: url) else {
+                throw CrawlerError.invalidHTML
+            }
+
+            let links = AppleJSONToMarkdown.extractLinks(from: data)
+
+            return (structuredPage, markdown, links)
+        }
+
+        private func loadPage(url: URL) async throws -> String {
+            // Delegate to WKWebCrawler's WKWebContentFetcher
+            try await webPageFetcher.fetch(url: url)
         }
 
         private func extractLinks(from html: String, baseURL: URL) -> [URL] {
@@ -332,9 +399,11 @@ extension Core {
         // MARK: - Logging
 
         private func logInfo(_ message: String) {
+            let memoryMsg = "🧠 \(String(format: "%.1f", getMemoryUsageMB()))MB | \(message)"
             Logging.Logger.crawler.info(message)
-            print(message)
+            print(memoryMsg)
             fflush(stdout)
+            logToFile(memoryMsg)
         }
 
         private func logError(_ message: String) {
@@ -404,6 +473,34 @@ extension Core {
             }
         }
 
+        // MARK: - Temporary Debug Logging (#25)
+
+        private func logToFile(_ message: String) {
+            guard let handle = logFileHandle else { return }
+            let timestamp = ISO8601DateFormatter().string(from: Date())
+            let line = "[\(timestamp)] \(message)\n"
+            let data = Data(line.utf8)
+            if !data.isEmpty {
+                handle.write(data)
+                try? handle.synchronize()
+            }
+        }
+
+        private func getMemoryUsageMB() -> Double {
+            // Delegate to WKWebCrawler's WKWebContentFetcher
+            webPageFetcher.getMemoryUsageMB()
+        }
+
+        private func recycleWebView() async {
+            let memBefore = getMemoryUsageMB()
+            // Delegate to WKWebCrawler's WKWebContentFetcher
+            webPageFetcher.recycle()
+            let memAfter = getMemoryUsageMB()
+            let before = String(format: "%.1f", memBefore)
+            let after = String(format: "%.1f", memAfter)
+            logInfo("♻️ Recycled WKWebContentFetcher: \(before)MB → \(after)MB")
+        }
+
         /// Auto-generate priority package list if this was a Swift.org crawl
         private func generatePriorityPackagesIfSwiftOrg() async throws {
             // Check if start URL is Swift.org
@@ -430,18 +527,6 @@ extension Core {
             logInfo("   📁 Saved to: \(outputPath.path)")
             logInfo("   💡 This list will be used for prioritizing package documentation crawls")
         }
-    }
-}
-
-// MARK: - WKNavigationDelegate
-
-extension Core.Crawler: WKNavigationDelegate {
-    public func webView(
-        _ webView: WKWebView,
-        didFailProvisionalNavigation navigation: WKNavigation!,
-        withError error: Error
-    ) {
-        logError("Navigation failed: \(error.localizedDescription)")
     }
 }
 

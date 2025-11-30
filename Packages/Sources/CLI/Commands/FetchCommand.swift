@@ -62,6 +62,9 @@ struct FetchCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Launch visible browser for authentication (code type only)")
     var authenticate: Bool = false
 
+    @Flag(name: .long, help: "Use Apple's JSON API instead of WKWebView (faster, no memory issues)")
+    var useJsonApi: Bool = false
+
     mutating func run() async throws {
         logStartMessage()
 
@@ -262,7 +265,8 @@ struct FetchCommand: AsyncParsableCommand {
                 allowedPrefixes: prefixes,
                 maxPages: maxPages,
                 maxDepth: maxDepth,
-                outputDirectory: outputDirectory
+                outputDirectory: outputDirectory,
+                useJSONAPI: useJsonApi
             ),
             changeDetection: Shared.ChangeDetectionConfiguration(
                 forceRecrawl: force,

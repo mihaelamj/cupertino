@@ -13,6 +13,7 @@ extension Shared {
         public let logFile: URL?
         public let requestDelay: TimeInterval
         public let retryAttempts: Int
+        public let useJSONAPI: Bool
 
         public init(
             startURL: URL = URL(string: Shared.Constants.BaseURL.appleDeveloperDocs)!,
@@ -22,7 +23,8 @@ extension Shared {
             outputDirectory: URL = Shared.Constants.defaultDocsDirectory,
             logFile: URL? = nil,
             requestDelay: TimeInterval = 0.5,
-            retryAttempts: Int = 3
+            retryAttempts: Int = 3,
+            useJSONAPI: Bool = false
         ) {
             self.startURL = startURL
 
@@ -56,6 +58,7 @@ extension Shared {
             self.logFile = logFile
             self.requestDelay = requestDelay
             self.retryAttempts = retryAttempts
+            self.useJSONAPI = useJSONAPI
         }
 
         /// Load configuration from JSON file
@@ -112,19 +115,26 @@ extension Shared {
 
 // MARK: - Output Configuration
 
-/// Configuration for output format (Markdown, HTML, etc.)
+/// Configuration for output format
 extension Shared {
     public struct OutputConfiguration: Codable, Sendable {
         public let format: OutputFormat
+        public let includeMarkdown: Bool
 
         public init(
-            format: OutputFormat = .markdown
+            format: OutputFormat = .json,
+            includeMarkdown: Bool = false
         ) {
             self.format = format
+            self.includeMarkdown = includeMarkdown
         }
 
         public enum OutputFormat: String, Codable, Sendable {
+            /// Primary output is JSON (StructuredDocumentationPage)
+            case json
+            /// Primary output is markdown
             case markdown
+            /// Primary output is HTML
             case html
         }
     }

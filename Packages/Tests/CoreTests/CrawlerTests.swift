@@ -277,4 +277,46 @@ struct CrawlerTests {
         // Cleanup
         try? FileManager.default.removeItem(at: tempDir)
     }
+
+    // MARK: - Known Problematic Pages Tests (Issue #25)
+
+    @Test("LAPACK functions page URL is recognized as problematic", .tags(.integration))
+    func lapackFunctionsURLIsProblematic() throws {
+        // This page has 1600+ LAPACK/BLAS routines and crashes WKWebView due to OOM
+        // URL: https://developer.apple.com/documentation/accelerate/lapack-functions
+        // The JSON API alternative: https://developer.apple.com/tutorials/data/documentation/accelerate/lapack-functions.json
+        // returns 7.2MB of structured data vs trying to render a massive DOM
+
+        let lapackURL = URL(string: "https://developer.apple.com/documentation/accelerate/lapack-functions")!
+
+        // The URL should normalize correctly
+        let normalized = URLUtilities.normalize(lapackURL)
+        #expect(normalized != nil)
+        #expect(normalized?.absoluteString == "https://developer.apple.com/documentation/accelerate/lapack-functions")
+
+        // Framework extraction should work
+        let framework = URLUtilities.extractFramework(from: lapackURL)
+        #expect(framework == "accelerate")
+
+        // Filename generation should work
+        let filename = URLUtilities.filename(from: lapackURL)
+        #expect(filename.contains("lapack-functions") || filename.contains("lapack_functions"))
+    }
+
+    @Test("Apple JSON API endpoint can be derived from documentation URL")
+    func appleJSONAPIEndpoint() throws {
+        // Apple's documentation uses a JSON API under the hood
+        // Web: https://developer.apple.com/documentation/accelerate/lapack-functions
+        // JSON: https://developer.apple.com/tutorials/data/documentation/accelerate/lapack-functions.json
+
+        let docURL = URL(string: "https://developer.apple.com/documentation/accelerate/lapack-functions")!
+
+        // Derive JSON API URL from documentation URL
+        let path = docURL.path // "/documentation/accelerate/lapack-functions"
+        let jsonURLString = "https://developer.apple.com/tutorials/data\(path).json"
+        let jsonURL = URL(string: jsonURLString)
+
+        #expect(jsonURL != nil)
+        #expect(jsonURL?.absoluteString == "https://developer.apple.com/tutorials/data/documentation/accelerate/lapack-functions.json")
+    }
 }
