@@ -238,13 +238,49 @@ swift-evolution://{proposalID}
 - `swift-evolution://SE-0255`
 - `swift-evolution://SE-0400`
 
-## Search Tools
+## MCP Tools
 
-If a search index is available, the server provides search tools:
+If a search index is available, the server provides these tools:
 
-- **search** - Full-text search across all documentation
-- **search_by_framework** - Search within a specific framework
-- **list_frameworks** - List all indexed frameworks
+### search_docs
+
+Full-text search across all documentation.
+
+**Parameters:**
+- `query` (required): Search keywords
+- `framework` (optional): Filter by framework name
+- `limit` (optional): Max results (default: 20, max: 100)
+
+### list_frameworks
+
+List all indexed frameworks with document counts.
+
+**Parameters:** None
+
+### read_document
+
+Read a document by URI. Returns the full document content in the requested format.
+
+**Parameters:**
+- `uri` (required): Document URI from search results (e.g., `apple-docs://swiftui/documentation_swiftui_view`)
+- `format` (optional): Output format - `json` or `markdown`
+  - `json` (default): Returns full structured document data including:
+    - title, kind, module, declaration
+    - abstract, overview, discussion
+    - code examples with language tags
+    - parameters, return values, conformance info
+    - platform availability, deprecation notices
+  - `markdown`: Returns rendered markdown content
+
+**Example:**
+```json
+{
+  "uri": "apple-docs://swiftui/documentation_swiftui_view",
+  "format": "json"
+}
+```
+
+**Tip:** JSON format is recommended for AI agents as it provides structured, machine-readable data that's easier to parse and understand
 
 ## Stopping the Server
 
@@ -307,7 +343,7 @@ cat ~/Library/Application\ Support/Claude/claude_desktop_config.json | python3 -
 
 ## See Also
 
+- [search](../search/) - Search documentation from CLI
 - [doctor](../doctor/) - Check server health
-- [../../MCP_SERVER_README.md](../../MCP_SERVER_README.md) - Detailed server guide
-- [../fetch/](../fetch/) - Download documentation
-- [../save/](../save/) - Build search index
+- [fetch](../fetch/) - Download documentation
+- [save](../save/) - Build search index

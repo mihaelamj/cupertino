@@ -82,8 +82,8 @@ public actor DocsResourceProvider: ResourceProvider {
 
         // Try database first if search index is available
         if let searchIndex {
-            if let dbContent = try await searchIndex.getDocumentContent(uri: uri) {
-                // Found in database - return immediately
+            if let dbContent = try await searchIndex.getDocumentContent(uri: uri, format: .markdown) {
+                // Found in database - return markdown
                 let contents = ResourceContents.text(
                     TextResourceContents(
                         uri: uri,
@@ -96,25 +96,34 @@ public actor DocsResourceProvider: ResourceProvider {
         }
 
         // Database lookup failed or no index - fall back to filesystem
-        let filePath: URL
-
         if uri.hasPrefix(Shared.Constants.MCP.appleDocsScheme) {
             // Parse URI: apple-docs://framework/filename
             guard let components = parseAppleDocsURI(uri) else {
                 throw ResourceError.invalidURI(uri)
             }
 
-            // Find the file
-            filePath = configuration.crawler.outputDirectory
+            let baseDir = configuration.crawler.outputDirectory
                 .appendingPathComponent(components.framework)
-                .appendingPathComponent("\(components.filename)\(Shared.Constants.FileName.markdownExtension)")
 
-            guard FileManager.default.fileExists(atPath: filePath.path) else {
+            // Try JSON file first (new format), then fall back to MD (old format)
+            let jsonPath = baseDir.appendingPathComponent("\(components.filename).json")
+            let mdFilename = "\(components.filename)\(Shared.Constants.FileName.markdownExtension)"
+            let mdPath = baseDir.appendingPathComponent(mdFilename)
+
+            if FileManager.default.fileExists(atPath: jsonPath.path) {
+                // Read JSON and extract rawMarkdown
+                let jsonData = try Data(contentsOf: jsonPath)
+                let page = try JSONDecoder().decode(StructuredDocumentationPage.self, from: jsonData)
+                guard let rawMarkdown = page.rawMarkdown else {
+                    throw ResourceError.notFound(uri)
+                }
+                markdown = rawMarkdown
+            } else if FileManager.default.fileExists(atPath: mdPath.path) {
+                // Fall back to markdown file
+                markdown = try String(contentsOf: mdPath, encoding: .utf8)
+            } else {
                 throw ResourceError.notFound(uri)
             }
-
-            // Read markdown content from filesystem
-            markdown = try String(contentsOf: filePath, encoding: .utf8)
 
         } else if uri.hasPrefix(Shared.Constants.MCP.swiftEvolutionScheme) {
             // Parse URI: swift-evolution://SE-NNNN

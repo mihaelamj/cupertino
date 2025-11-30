@@ -193,5 +193,6 @@ cupertino
 ## See Also
 
 - [save](../save/) - Build search index from fetched documentation
+- [search](../search/) - Search documentation from CLI
 - [serve](../serve/) - Start MCP server
 - [doctor](../doctor/) - Check server health

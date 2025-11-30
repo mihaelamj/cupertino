@@ -22,12 +22,14 @@ func createTestSearchIndex() async throws -> (index: Search.Index, cleanup: () t
 /// Creates a test search index with a sample document already indexed
 /// - Parameters:
 ///   - uri: Document URI (default: "test://doc")
+///   - source: Source name (default: "apple-docs")
 ///   - framework: Framework name (default: "swift")
 ///   - title: Document title (default: "Test Document")
 ///   - content: Document content (default: "Test content")
 /// - Returns: A tuple containing the search index and cleanup function
 func createTestSearchIndexWithDocument(
     uri: String = "test://doc",
+    source: String = "apple-docs",
     framework: String = "swift",
     title: String = "Test Document",
     content: String = "Test content"
@@ -36,6 +38,7 @@ func createTestSearchIndexWithDocument(
 
     try await index.indexDocument(
         uri: uri,
+        source: source,
         framework: framework,
         title: title,
         content: content,
@@ -54,6 +57,7 @@ func createTestSearchIndexWithDocument(
 func searchResultCodable() throws {
     let result = Search.Result(
         uri: "apple://documentation/swift/array",
+        source: "apple-docs",
         framework: "swift",
         title: "Array",
         summary: "An ordered collection of elements",
@@ -72,6 +76,7 @@ func searchResultCodable() throws {
     let decoded = try decoder.decode(Search.Result.self, from: data)
 
     #expect(decoded.uri == result.uri)
+    #expect(decoded.source == result.source)
     #expect(decoded.title == result.title)
     #expect(decoded.score == result.score)
 }
@@ -139,6 +144,7 @@ func searchIndexFrameworkFilter() async throws {
     // Index documents in different frameworks
     try await index.indexDocument(
         uri: "swift://array",
+        source: "apple-docs",
         framework: "swift",
         title: "Array",
         content: "Swift array collection",
@@ -150,6 +156,7 @@ func searchIndexFrameworkFilter() async throws {
 
     try await index.indexDocument(
         uri: "uikit://array",
+        source: "apple-docs",
         framework: "uikit",
         title: "UIView Array",
         content: "UIKit array of views",
@@ -185,6 +192,7 @@ func searchIndexResultLimit() async throws {
     for docNumber in 1...10 {
         try await index.indexDocument(
             uri: "test://doc\(docNumber)",
+            source: "apple-docs",
             framework: "swift",
             title: "Document \(docNumber) about swift arrays",
             content: "Swift content about arrays and collections",
@@ -228,6 +236,7 @@ func searchIndexUpdateDocument() async throws {
     // Index original document
     try await index.indexDocument(
         uri: uri,
+        source: "apple-docs",
         framework: "swift",
         title: "Array",
         content: "Original content about arrays",
@@ -240,6 +249,7 @@ func searchIndexUpdateDocument() async throws {
     // Update document
     try await index.indexDocument(
         uri: uri,
+        source: "apple-docs",
         framework: "swift",
         title: "Array Updated",
         content: "Updated content about dictionaries",
@@ -298,6 +308,7 @@ func searchIndexBM25Ranking() async throws {
     // Doc 1: Title match + multiple content matches (highest relevance)
     try await index.indexDocument(
         uri: "doc1",
+        source: "apple-docs",
         framework: "swift",
         title: "SwiftUI Array Manipulation",
         content: "SwiftUI provides powerful SwiftUI array tools for SwiftUI development",
@@ -310,6 +321,7 @@ func searchIndexBM25Ranking() async throws {
     // Doc 2: Content match only (lower relevance)
     try await index.indexDocument(
         uri: "doc2",
+        source: "apple-docs",
         framework: "uikit",
         title: "UIKit Collections",
         content: "UIKit has some SwiftUI compatibility",
@@ -322,6 +334,7 @@ func searchIndexBM25Ranking() async throws {
     // Doc 3: Single content match (lowest relevance)
     try await index.indexDocument(
         uri: "doc3",
+        source: "apple-docs",
         framework: "foundation",
         title: "Foundation Framework",
         content: "This document mentions SwiftUI once",
@@ -363,6 +376,7 @@ func searchIndexMultipleSourceTypes() async throws {
     // Index documents from different sources
     try await index.indexDocument(
         uri: "apple://doc",
+        source: "apple-docs",
         framework: "swift",
         title: "Apple Swift Doc",
         content: "Official Apple documentation",
@@ -374,7 +388,8 @@ func searchIndexMultipleSourceTypes() async throws {
 
     try await index.indexDocument(
         uri: "evolution://SE-0001",
-        framework: "swift",
+        source: "swift-evolution",
+        framework: nil,
         title: "Swift Evolution Proposal",
         content: "Allow documentation keywords",
         filePath: "/test.md",
@@ -385,6 +400,72 @@ func searchIndexMultipleSourceTypes() async throws {
 
     let results = try await index.search(query: "documentation", framework: nil, limit: 10)
     #expect(results.count == 2)
+
+    await index.disconnect()
+}
+
+@Test("SearchIndex filters by source")
+func searchIndexSourceFilter() async throws {
+    let tempDB = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString).db")
+    defer { try? FileManager.default.removeItem(at: tempDB) }
+
+    let index = try await Search.Index(dbPath: tempDB)
+
+    // Index documents from different sources with common keyword "swift"
+    try await index.indexDocument(
+        uri: "apple-docs://swiftui/view",
+        source: "apple-docs",
+        framework: "swiftui",
+        title: "View Protocol",
+        content: "A swift type that represents part of your app's user interface",
+        filePath: "/test.md",
+        contentHash: "test-hash",
+        lastCrawled: Date(),
+        sourceType: "apple"
+    )
+
+    try await index.indexDocument(
+        uri: "swift-evolution://SE-0302",
+        source: "swift-evolution",
+        framework: nil,
+        title: "SE-0302 Sendable",
+        content: "Swift proposal for concurrency safety with Sendable protocol",
+        filePath: "/test.md",
+        contentHash: "test-hash",
+        lastCrawled: Date(),
+        sourceType: "swift-evolution"
+    )
+
+    try await index.indexDocument(
+        uri: "swift-book://concurrency",
+        source: "swift-book",
+        framework: nil,
+        title: "Concurrency",
+        content: "Swift has built-in support for writing asynchronous and parallel code",
+        filePath: "/test.md",
+        contentHash: "test-hash",
+        lastCrawled: Date(),
+        sourceType: "swift-book"
+    )
+
+    // Search all sources with common keyword
+    let allResults = try await index.search(query: "swift", source: nil, framework: nil, limit: 10)
+    #expect(allResults.count == 3)
+
+    // Search specific source - evolution
+    let evolutionResults = try await index.search(query: "swift", source: "swift-evolution", framework: nil, limit: 10)
+    #expect(evolutionResults.count == 1)
+    #expect(evolutionResults[0].source == "swift-evolution")
+
+    // Search specific source - apple-docs
+    let appleDocsResults = try await index.search(query: "swift", source: "apple-docs", framework: nil, limit: 10)
+    #expect(appleDocsResults.count == 1)
+    #expect(appleDocsResults[0].source == "apple-docs")
+
+    // Search specific source - swift-book
+    let swiftBookResults = try await index.search(query: "swift", source: "swift-book", framework: nil, limit: 10)
+    #expect(swiftBookResults.count == 1)
+    #expect(swiftBookResults[0].source == "swift-book")
 
     await index.disconnect()
 }

@@ -141,6 +141,7 @@ struct MCPCommandTests {
         // Index a test document
         try await searchIndex.indexDocument(
             uri: "https://developer.apple.com/documentation/swift",
+            source: "apple-docs",
             framework: "swift",
             title: "Swift Programming Language",
             content: "Swift is a powerful programming language for iOS, macOS, and more.",
@@ -185,6 +186,7 @@ struct MCPCommandTests {
 
         try await searchIndex.indexDocument(
             uri: "https://developer.apple.com/documentation/swift/array",
+            source: "apple-docs",
             framework: "swift",
             title: "Array",
             content: "An ordered, random-access collection of elements.",

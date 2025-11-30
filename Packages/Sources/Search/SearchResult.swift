@@ -1,4 +1,5 @@
 import Foundation
+import Shared
 
 // MARK: - Search Result
 
@@ -7,6 +8,7 @@ extension Search {
     public struct Result: Codable, Sendable, Identifiable {
         public let id: UUID
         public let uri: String
+        public let source: String
         public let framework: String
         public let title: String
         public let summary: String
@@ -17,6 +19,7 @@ extension Search {
         public init(
             id: UUID = UUID(),
             uri: String,
+            source: String,
             framework: String,
             title: String,
             summary: String,
@@ -26,6 +29,7 @@ extension Search {
         ) {
             self.id = id
             self.uri = uri
+            self.source = source
             self.framework = framework
             self.title = title
             self.summary = summary
@@ -34,10 +38,50 @@ extension Search {
             self.rank = rank
         }
 
+        /// True if summary was truncated from full content (use read_document to get full content)
+        public var summaryTruncated: Bool {
+            // Summary ends with "..." or is close to the max length threshold
+            summary.hasSuffix("...") || summary.count >= Shared.Constants.ContentLimit.summaryMaxLength - 50
+        }
+
         /// Inverted score (higher = better match, for easier interpretation)
         public var score: Double {
             // BM25 returns negative scores, invert for positive scores
             -rank
+        }
+
+        // MARK: - Custom Codable (include computed properties)
+
+        private enum CodingKeys: String, CodingKey {
+            case id, uri, source, framework, title, summary, filePath, wordCount, rank, summaryTruncated
+        }
+
+        public func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(id, forKey: .id)
+            try container.encode(uri, forKey: .uri)
+            try container.encode(source, forKey: .source)
+            try container.encode(framework, forKey: .framework)
+            try container.encode(title, forKey: .title)
+            try container.encode(summary, forKey: .summary)
+            try container.encode(filePath, forKey: .filePath)
+            try container.encode(wordCount, forKey: .wordCount)
+            try container.encode(rank, forKey: .rank)
+            try container.encode(summaryTruncated, forKey: .summaryTruncated)
+        }
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            id = try container.decode(UUID.self, forKey: .id)
+            uri = try container.decode(String.self, forKey: .uri)
+            source = try container.decode(String.self, forKey: .source)
+            framework = try container.decode(String.self, forKey: .framework)
+            title = try container.decode(String.self, forKey: .title)
+            summary = try container.decode(String.self, forKey: .summary)
+            filePath = try container.decode(String.self, forKey: .filePath)
+            wordCount = try container.decode(Int.self, forKey: .wordCount)
+            rank = try container.decode(Double.self, forKey: .rank)
+            // summaryTruncated is computed, ignore during decode
         }
     }
 }

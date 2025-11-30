@@ -186,9 +186,13 @@ These catalogs are indexed during `cupertino save` and enable instant search wit
 - **Resources**: Direct access to documentation pages
   - `apple-docs://{framework}/{page}`
   - `swift-evolution://{proposal-id}`
-- **Tools**: Search capabilities for AI agents
+- **Tools**: Search and read capabilities for AI agents
   - `search_docs` - Full-text search across all documentation
   - `list_frameworks` - List available frameworks
+  - `read_document` - Read document by URI with format option
+    - Parameters: `uri` (required), `format` (optional: `json` or `markdown`, default: `json`)
+    - JSON format returns the full structured document data (recommended for AI)
+    - Markdown format returns rendered content for human reading
 
 ### 5. Intelligent Crawling
 
@@ -206,6 +210,8 @@ These catalogs are indexed during `cupertino save` and enable instant search wit
 | `cupertino serve` | Start MCP server |
 | `cupertino fetch` | Download documentation |
 | `cupertino save` | Build search index |
+| `cupertino search` | Search documentation from CLI |
+| `cupertino read` | Read full document by URI |
 | `cupertino doctor` | Check server health |
 
 See [docs/commands/](docs/commands/) for detailed usage and options.
@@ -386,6 +392,7 @@ Each command has detailed documentation:
 - [docs/commands/fetch/](docs/commands/fetch/) - Download documentation
 - [docs/commands/save/](docs/commands/save/) - Build search indexes
 - [docs/commands/serve/](docs/commands/serve/) - Start MCP server
+- [docs/commands/search/](docs/commands/search/) - Search documentation from CLI
 - [docs/commands/doctor/](docs/commands/doctor/) - Check server health
 
 ## Contributing
@@ -404,7 +411,7 @@ For development setup, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Project Status
 
-**Version:** 0.1.5
+**Version:** 0.1.6
 **Status:** ✅ Production Ready
 
 - ✅ All core functionality working

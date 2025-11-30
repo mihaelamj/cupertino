@@ -132,7 +132,7 @@ extension Shared {
             public static let userAgent = "CupertinoCrawler/1.0"
 
             /// Current version
-            public static let version = "0.1.5"
+            public static let version = "0.1.6"
         }
 
         // MARK: - Display Names
@@ -330,6 +330,9 @@ extension Shared {
             /// List frameworks tool name
             public static let toolListFrameworks = "list_frameworks"
 
+            /// Read document tool name
+            public static let toolReadDocument = "read_document"
+
             // MARK: Resource Template URIs
 
             /// Apple documentation resource template
@@ -380,6 +383,12 @@ extension Shared {
             Useful for discovering what documentation is available.
             """
 
+            /// Read document tool description
+            public static let toolReadDocumentDescription = """
+            Read a document by URI. Returns the full document content in the requested format. \
+            Use URIs from search_docs results. Format parameter: 'json' (default, structured) or 'markdown' (rendered).
+            """
+
             // MARK: JSON Schema
 
             /// JSON Schema type: object
@@ -393,6 +402,18 @@ extension Shared {
 
             /// JSON Schema parameter: limit
             public static let schemaParamLimit = "limit"
+
+            /// JSON Schema parameter: uri
+            public static let schemaParamURI = "uri"
+
+            /// JSON Schema parameter: format
+            public static let schemaParamFormat = "format"
+
+            /// Format value: json
+            public static let formatValueJSON = "json"
+
+            /// Format value: markdown
+            public static let formatValueMarkdown = "markdown"
 
             // MARK: Messages & Tips
 
@@ -523,8 +544,8 @@ extension Shared {
         /// Content size and length limits
         public enum ContentLimit {
             /// Maximum length for summary extraction (characters)
-            /// Rationale: ~2-3 sentences, readable preview length
-            public static let summaryMaxLength: Int = 500
+            /// Rationale: Enough for declaration + overview of properties/methods
+            public static let summaryMaxLength: Int = 1500
 
             /// Maximum content preview length (characters)
             /// Rationale: Shorter preview for quick display

@@ -120,10 +120,11 @@ extension Search {
                 // Build URI
                 let uri = "apple-docs://\(pageMetadata.framework)/\(URLUtilities.filename(from: URL(string: url)!))"
 
-                // Index document
+                // Index document (Apple docs from /docs folder)
                 do {
                     try await searchIndex.indexDocument(
                         uri: uri,
+                        source: "apple-docs",
                         framework: pageMetadata.framework,
                         title: title,
                         content: content,
@@ -156,57 +157,95 @@ extension Search {
 
             logInfo("📂 Scanning directory for documentation (no metadata.json)...")
 
-            // Recursively find all .md files
-            let markdownFiles = try findMarkdownFiles(in: docsDirectory)
+            // Recursively find all .json and .md files (JSON preferred over MD)
+            let docFiles = try findDocFiles(in: docsDirectory)
 
-            guard !markdownFiles.isEmpty else {
-                logInfo("⚠️  No markdown files found in \(docsDirectory.path)")
+            guard !docFiles.isEmpty else {
+                logInfo("⚠️  No documentation files found in \(docsDirectory.path)")
                 return
             }
 
-            logInfo("📚 Indexing \(markdownFiles.count) documentation pages from directory...")
+            logInfo("📚 Indexing \(docFiles.count) documentation pages from directory...")
 
             var indexed = 0
             var skipped = 0
 
-            for (index, file) in markdownFiles.enumerated() {
+            for (index, file) in docFiles.enumerated() {
                 // Extract framework from path: docs/{framework}/...
                 guard let framework = extractFrameworkFromPath(file, relativeTo: docsDirectory) else {
                     skipped += 1
                     continue
                 }
 
-                // Read markdown content
-                guard let content = try? String(contentsOf: file, encoding: .utf8) else {
-                    skipped += 1
-                    continue
-                }
+                // Always work with StructuredDocumentationPage
+                let structuredPage: StructuredDocumentationPage
+                let jsonString: String
 
-                // Extract title from markdown
-                let title = extractTitle(from: content) ?? file.deletingPathExtension().lastPathComponent
+                if file.pathExtension == "json" {
+                    // JSON format: decode directly
+                    do {
+                        let jsonData = try Data(contentsOf: file)
+                        jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
+                        let decoder = JSONDecoder()
+                        decoder.dateDecodingStrategy = .iso8601
+                        structuredPage = try decoder.decode(StructuredDocumentationPage.self, from: jsonData)
+                    } catch {
+                        logError("Failed to decode \(file.lastPathComponent): \(error)")
+                        skipped += 1
+                        continue
+                    }
+                } else {
+                    // Markdown format: convert to StructuredDocumentationPage
+                    guard let mdContent = try? String(contentsOf: file, encoding: .utf8) else {
+                        skipped += 1
+                        continue
+                    }
+
+                    let pageURL = URL(string: "https://developer.apple.com/documentation/\(framework)/\(file.deletingPathExtension().lastPathComponent)")
+                    guard let converted = MarkdownToStructuredPage.convert(mdContent, url: pageURL) else {
+                        logError("Failed to convert \(file.lastPathComponent) to structured page")
+                        skipped += 1
+                        continue
+                    }
+                    structuredPage = converted
+
+                    // Encode to JSON
+                    let encoder = JSONEncoder()
+                    encoder.dateEncodingStrategy = .iso8601
+                    guard let jsonData = try? encoder.encode(structuredPage),
+                          let json = String(data: jsonData, encoding: .utf8) else {
+                        logError("Failed to encode \(file.lastPathComponent) to JSON")
+                        skipped += 1
+                        continue
+                    }
+                    jsonString = json
+                }
 
                 // Generate URI: apple-docs://{framework}/{filename}
                 let filename = file.deletingPathExtension().lastPathComponent
                 let uri = "apple-docs://\(framework)/\(filename)"
 
-                // Calculate content hash
-                let contentHash = HashUtilities.sha256(of: content)
-
-                // Use file modification date
-                let attributes = try? FileManager.default.attributesOfItem(atPath: file.path)
-                let modDate = attributes?[.modificationDate] as? Date ?? Date()
-
-                // Index document
+                // Index using indexStructuredDocument (Apple docs from /docs folder)
                 do {
-                    try await searchIndex.indexDocument(
+                    try await searchIndex.indexStructuredDocument(
                         uri: uri,
+                        source: "apple-docs",
                         framework: framework,
-                        title: title,
-                        content: content,
-                        filePath: file.path,
-                        contentHash: contentHash,
-                        lastCrawled: modDate
+                        page: structuredPage,
+                        jsonData: jsonString
                     )
+
+                    // Index code examples if present
+                    if !structuredPage.codeExamples.isEmpty {
+                        let examples = structuredPage.codeExamples.map {
+                            (code: $0.code, language: $0.language ?? "swift")
+                        }
+                        try await searchIndex.indexCodeExamples(
+                            docUri: uri,
+                            codeExamples: examples
+                        )
+                    }
+
                     indexed += 1
                 } catch {
                     logError("Failed to index \(uri): \(error)")
@@ -214,12 +253,53 @@ extension Search {
                 }
 
                 if (index + 1) % 100 == 0 {
-                    onProgress?(index + 1, markdownFiles.count)
-                    logInfo("   Progress: \(index + 1)/\(markdownFiles.count) (\(indexed) indexed, \(skipped) skipped)")
+                    onProgress?(index + 1, docFiles.count)
+                    logInfo("   Progress: \(index + 1)/\(docFiles.count) (\(indexed) indexed, \(skipped) skipped)")
                 }
             }
 
             logInfo("   Directory scan: \(indexed) indexed, \(skipped) skipped")
+        }
+
+        private func findDocFiles(in directory: URL) throws -> [URL] {
+            var jsonFiles: Set<String> = [] // Track JSON filenames to skip duplicate MDs
+            var docFiles: [URL] = []
+
+            if let enumerator = FileManager.default.enumerator(
+                at: directory,
+                includingPropertiesForKeys: [.isRegularFileKey],
+                options: [.skipsHiddenFiles]
+            ) {
+                // First pass: collect all files
+                var allFiles: [URL] = []
+                for case let fileURL as URL in enumerator {
+                    let ext = fileURL.pathExtension.lowercased()
+                    guard ext == "json" || ext == "md" else { continue }
+
+                    let attributes = try? fileURL.resourceValues(forKeys: [.isRegularFileKey])
+                    if attributes?.isRegularFile == true {
+                        allFiles.append(fileURL)
+                    }
+                }
+
+                // Second pass: prefer JSON over MD for same filename
+                for file in allFiles {
+                    let basename = file.deletingPathExtension().lastPathComponent
+                    let dir = file.deletingLastPathComponent().path
+
+                    if file.pathExtension.lowercased() == "json" {
+                        jsonFiles.insert("\(dir)/\(basename)")
+                        docFiles.append(file)
+                    } else if file.pathExtension.lowercased() == "md" {
+                        // Only add MD if no JSON exists for same basename
+                        if !jsonFiles.contains("\(dir)/\(basename)") {
+                            docFiles.append(file)
+                        }
+                    }
+                }
+            }
+
+            return docFiles
         }
 
         private func findMarkdownFiles(in directory: URL) throws -> [URL] {
@@ -332,9 +412,11 @@ extension Search {
             let modDate = attributes?[.modificationDate] as? Date ?? Date()
             let contentHash = HashUtilities.sha256(of: content)
 
+            // Swift Evolution source - no framework, just source
             try await searchIndex.indexDocument(
                 uri: uri,
-                framework: "swift-evolution",
+                source: "swift-evolution",
+                framework: nil,
                 title: title,
                 content: content,
                 filePath: file.path,
@@ -373,15 +455,15 @@ extension Search {
                     continue
                 }
 
-                // Extract category from path: swift-org/{category}/...
-                let category = extractFrameworkFromPath(file, relativeTo: swiftOrgDirectory) ?? "swift-org"
+                // Extract source from path: swift-org/{source}/... (swift-book or swift-org)
+                let source = extractFrameworkFromPath(file, relativeTo: swiftOrgDirectory) ?? "swift-org"
 
                 // Extract title from markdown
                 let title = extractTitle(from: content) ?? file.deletingPathExtension().lastPathComponent
 
-                // Generate URI: swift-org://{category}/{filename}
+                // Generate URI: {source}://{filename}
                 let filename = file.deletingPathExtension().lastPathComponent
-                let uri = "swift-org://\(category)/\(filename)"
+                let uri = "\(source)://\(filename)"
 
                 // Calculate content hash
                 let contentHash = HashUtilities.sha256(of: content)
@@ -391,9 +473,11 @@ extension Search {
                 let modDate = attributes?[.modificationDate] as? Date ?? Date()
 
                 do {
+                    // Use extracted source (e.g., "swift-book" or "swift-org"), no framework
                     try await searchIndex.indexDocument(
                         uri: uri,
-                        framework: "swift-org",
+                        source: source,
+                        framework: nil,
                         title: title,
                         content: content,
                         filePath: file.path,
