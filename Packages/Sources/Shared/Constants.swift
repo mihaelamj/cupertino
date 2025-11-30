@@ -132,7 +132,7 @@ extension Shared {
             public static let userAgent = "CupertinoCrawler/1.0"
 
             /// Current version
-            public static let version = "0.1.6"
+            public static let version = "0.1.7"
         }
 
         // MARK: - Display Names
