@@ -162,7 +162,8 @@ func priorityPackagesCatalogLoadsFromJSON() async throws {
     #expect(stats.totalPriorityPackages < 50, "Priority package count should be reasonable")
     #expect(stats.totalCriticalApplePackages > 25, "Should have 25+ Apple packages")
     #expect(stats.totalEcosystemPackages > 0, "Should have ecosystem packages")
-    #expect(stats.totalPriorityPackages == stats.totalCriticalApplePackages + stats.totalEcosystemPackages, "Total should equal sum of Apple and ecosystem packages")
+    let expectedTotal = stats.totalCriticalApplePackages + stats.totalEcosystemPackages
+    #expect(stats.totalPriorityPackages == expectedTotal, "Total should equal sum")
     print("   ✅ Loaded \(stats.totalPriorityPackages) priority packages")
 }
 
@@ -196,7 +197,7 @@ func priorityPackagesCatalogApplePackages() async throws {
 @Test("PriorityPackagesCatalog ecosystem packages are valid")
 func priorityPackagesCatalogEcosystemPackages() async throws {
     let ecosystemPackages = await PriorityPackagesCatalog.ecosystemPackages
-    #expect(ecosystemPackages.count > 0, "Should have ecosystem packages")
+    #expect(!ecosystemPackages.isEmpty, "Should have ecosystem packages")
     #expect(ecosystemPackages.count < 20, "Ecosystem package count should be reasonable")
 
     // Verify known ecosystem packages exist
@@ -306,35 +307,42 @@ private func verifyOutputDirectory(_ tempDir: URL) throws {
 }
 
 private func verifyMarkdownFiles(_ tempDir: URL) throws {
-    let markdownFiles = findMarkdownFiles(in: tempDir)
-    #expect(!markdownFiles.isEmpty, "Should have created at least one markdown file")
+    // Look for JSON or MD files (crawler now outputs JSON by default)
+    let docFiles = findDocumentFiles(in: tempDir)
+    #expect(!docFiles.isEmpty, "Should have created at least one documentation file")
 
-    if let firstFile = markdownFiles.first {
-        try verifyMarkdownContent(firstFile)
+    if let firstFile = docFiles.first {
+        try verifyDocumentContent(firstFile)
     }
 }
 
-private func findMarkdownFiles(in directory: URL) -> [URL] {
+/// Find documentation files (JSON or markdown)
+private func findDocumentFiles(in directory: URL) -> [URL] {
     let enumerator = FileManager.default.enumerator(
         at: directory,
         includingPropertiesForKeys: [.isRegularFileKey]
     )
-    var markdownFiles: [URL] = []
+    var docFiles: [URL] = []
 
     while let fileURL = enumerator?.nextObject() as? URL {
-        if fileURL.pathExtension == "md" {
-            markdownFiles.append(fileURL)
+        let ext = fileURL.pathExtension.lowercased()
+        if ext == "json" || ext == "md" {
+            docFiles.append(fileURL)
         }
     }
 
-    return markdownFiles
+    return docFiles
 }
 
-private func verifyMarkdownContent(_ fileURL: URL) throws {
+private func findMarkdownFiles(in directory: URL) -> [URL] {
+    findDocumentFiles(in: directory).filter { $0.pathExtension == "md" }
+}
+
+private func verifyDocumentContent(_ fileURL: URL) throws {
     let content = try String(contentsOf: fileURL, encoding: .utf8)
-    #expect(content.count > 100, "Markdown content should be substantial")
-    #expect(content.contains("Swift"), "Content should mention Swift")
-    print("   ✅ Created markdown file: \(fileURL.lastPathComponent)")
+    #expect(content.count > 100, "Documentation content should be substantial")
+    #expect(content.lowercased().contains("swift"), "Content should mention Swift")
+    print("   ✅ Created documentation file: \(fileURL.lastPathComponent)")
     print("   ✅ Content size: \(content.count) characters")
 }
 

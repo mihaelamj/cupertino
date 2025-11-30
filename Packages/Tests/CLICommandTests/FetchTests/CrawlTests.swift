@@ -51,14 +51,14 @@ struct WebCrawlTests {
         let dirExists = FileManager.default.fileExists(atPath: tempDir.path, isDirectory: &isDirectory)
         #expect(dirExists && isDirectory.boolValue, "Output directory should exist")
 
-        // Verify markdown file was created
-        let markdownFiles = findMarkdownFiles(in: tempDir)
-        #expect(!markdownFiles.isEmpty, "Should have created markdown files")
+        // Verify documentation file was created (JSON or markdown)
+        let docFiles = findDocumentFiles(in: tempDir)
+        #expect(!docFiles.isEmpty, "Should have created documentation files")
 
-        if let firstFile = markdownFiles.first {
+        if let firstFile = docFiles.first {
             let content = try String(contentsOf: firstFile, encoding: .utf8)
-            #expect(content.count > 100, "Markdown content should be substantial")
-            #expect(content.contains("Swift"), "Content should mention Swift")
+            #expect(content.count > 100, "Documentation content should be substantial")
+            #expect(content.lowercased().contains("swift"), "Content should mention Swift")
             print("   ✅ Created: \(firstFile.lastPathComponent) (\(content.count) chars)")
         }
 
@@ -89,7 +89,11 @@ struct WebCrawlTests {
                 maxDepth: 0,
                 outputDirectory: tempDir
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(enabled: true, forceRecrawl: false, outputDirectory: tempDir),
+            changeDetection: Shared.ChangeDetectionConfiguration(
+                enabled: true,
+                forceRecrawl: false,
+                outputDirectory: tempDir
+            ),
             output: Shared.OutputConfiguration(format: .markdown)
         )
 
@@ -143,18 +147,24 @@ struct WebCrawlTests {
 
 // MARK: - Helper Functions
 
-private func findMarkdownFiles(in directory: URL) -> [URL] {
+/// Find documentation files (JSON preferred, then markdown)
+private func findDocumentFiles(in directory: URL) -> [URL] {
     let enumerator = FileManager.default.enumerator(
         at: directory,
         includingPropertiesForKeys: [.isRegularFileKey]
     )
-    var markdownFiles: [URL] = []
+    var docFiles: [URL] = []
 
     while let fileURL = enumerator?.nextObject() as? URL {
-        if fileURL.pathExtension == "md" {
-            markdownFiles.append(fileURL)
+        let ext = fileURL.pathExtension.lowercased()
+        if ext == "json" || ext == "md" {
+            docFiles.append(fileURL)
         }
     }
 
-    return markdownFiles
+    return docFiles
+}
+
+private func findMarkdownFiles(in directory: URL) -> [URL] {
+    findDocumentFiles(in: directory).filter { $0.pathExtension == "md" }
 }

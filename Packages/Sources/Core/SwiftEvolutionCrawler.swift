@@ -229,14 +229,12 @@ extension Core {
         // MARK: - Logging
 
         private func logInfo(_ message: String) {
-            Logging.Logger.evolution.info(message)
-            print(message)
+            Log.info(message, category: .evolution)
         }
 
         private func logError(_ message: String) {
             let errorMessage = "❌ \(message)"
-            Logging.Logger.evolution.error(message)
-            fputs("\(errorMessage)\n", stderr)
+            Log.error(errorMessage, category: .evolution)
         }
 
         private func logStatistics(_ stats: EvolutionStatistics) {
@@ -252,8 +250,7 @@ extension Core {
             ]
 
             for message in messages where !message.isEmpty {
-                Logging.Logger.evolution.info(message)
-                print(message)
+                Log.info(message, category: .evolution)
             }
         }
     }

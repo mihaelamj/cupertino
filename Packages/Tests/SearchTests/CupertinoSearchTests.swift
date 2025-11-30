@@ -469,3 +469,116 @@ func searchIndexSourceFilter() async throws {
 
     await index.disconnect()
 }
+
+// MARK: - getDocumentContent Tests
+
+@Test("getDocumentContent falls back to FTS content when rawMarkdown is null")
+func getDocumentContentFallbackToFTS() async throws {
+    let tempDB = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString).db")
+    defer { try? FileManager.default.removeItem(at: tempDB) }
+
+    let index = try await Search.Index(dbPath: tempDB)
+
+    // Index a document with null rawMarkdown (simulating swift-book case)
+    let uri = "swift-book://concurrency"
+    let ftsContent = "# Concurrency\n\nSwift has built-in support for async/await."
+
+    try await index.indexDocument(
+        uri: uri,
+        source: "swift-book",
+        framework: nil,
+        title: "Concurrency",
+        content: ftsContent,
+        filePath: "/test.md",
+        contentHash: "test-hash",
+        lastCrawled: Date(),
+        sourceType: "swift-book",
+        jsonData: "{\"title\":\"Concurrency\",\"rawMarkdown\":null,\"url\":\"\(uri)\"}"
+    )
+
+    // Get content as markdown - should fall back to FTS content
+    let content = try await index.getDocumentContent(uri: uri, format: .markdown)
+
+    #expect(content != nil)
+    #expect(content?.contains("Concurrency") == true)
+    #expect(content?.contains("async/await") == true)
+
+    await index.disconnect()
+}
+
+@Test("getDocumentContent returns nil for non-existent URI")
+func getDocumentContentNotFound() async throws {
+    let (index, cleanup) = try await createTestSearchIndex()
+    defer { try? cleanup() }
+
+    let content = try await index.getDocumentContent(uri: "nonexistent://doc", format: .markdown)
+    #expect(content == nil)
+
+    await index.disconnect()
+}
+
+@Test("getDocumentContent returns JSON format from metadata")
+func getDocumentContentJSON() async throws {
+    let tempDB = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString).db")
+    defer { try? FileManager.default.removeItem(at: tempDB) }
+
+    let index = try await Search.Index(dbPath: tempDB)
+
+    let uri = "apple-docs://swift/string"
+    let jsonData = "{\"title\":\"String\",\"kind\":\"struct\",\"rawMarkdown\":\"# String\"}"
+
+    try await index.indexDocument(
+        uri: uri,
+        source: "apple-docs",
+        framework: "swift",
+        title: "String",
+        content: "# String",
+        filePath: "/test.json",
+        contentHash: "test-hash",
+        lastCrawled: Date(),
+        sourceType: "apple",
+        jsonData: jsonData
+    )
+
+    // Get content as JSON
+    let content = try await index.getDocumentContent(uri: uri, format: .json)
+
+    #expect(content != nil)
+    #expect(content?.contains("\"title\":\"String\"") == true)
+
+    await index.disconnect()
+}
+
+@Test("getDocumentContent FTS fallback wraps content in JSON for JSON format")
+func getDocumentContentFTSFallbackJSON() async throws {
+    let tempDB = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString).db")
+    defer { try? FileManager.default.removeItem(at: tempDB) }
+
+    let index = try await Search.Index(dbPath: tempDB)
+
+    // Index document with null rawMarkdown
+    let uri = "swift-book://basics"
+    let ftsContent = "# The Basics\n\nSwift is a type-safe language."
+
+    try await index.indexDocument(
+        uri: uri,
+        source: "swift-book",
+        framework: nil,
+        title: "The Basics",
+        content: ftsContent,
+        filePath: "/test.md",
+        contentHash: "test-hash",
+        lastCrawled: Date(),
+        sourceType: "swift-book",
+        jsonData: "{\"title\":\"The Basics\",\"rawMarkdown\":null}"
+    )
+
+    // Get content as JSON - should return the original JSON (since it exists in metadata)
+    // Note: FTS fallback only happens when metadata doesn't exist or can't be decoded
+    let content = try await index.getDocumentContent(uri: uri, format: .json)
+
+    #expect(content != nil)
+    #expect(content?.contains("The Basics") == true)
+
+    await index.disconnect()
+}

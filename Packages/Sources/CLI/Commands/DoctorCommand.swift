@@ -37,8 +37,8 @@ struct DoctorCommand: AsyncParsableCommand {
     var searchDB: String = Shared.Constants.defaultSearchDatabase.path
 
     mutating func run() async throws {
-        print("🏥 MCP Server Health Check")
-        print()
+        Log.output("🏥 MCP Server Health Check")
+        Log.output("")
 
         var allChecks = true
 
@@ -55,21 +55,21 @@ struct DoctorCommand: AsyncParsableCommand {
         allChecks = checkResourceProviders() && allChecks
 
         // Summary
-        print()
+        Log.output("")
         if allChecks {
-            print("✅ All checks passed - MCP server ready")
+            Log.output("✅ All checks passed - MCP server ready")
         } else {
-            print("⚠️  Some checks failed - see above for details")
+            Log.output("⚠️  Some checks failed - see above for details")
             throw ExitCode(1)
         }
     }
 
     private func checkServerInitialization() -> Bool {
-        print("✅ MCP Server")
-        print("   ✓ Server can initialize")
-        print("   ✓ Transport: stdio")
-        print("   ✓ Protocol version: 2024-11-05")
-        print()
+        Log.output("✅ MCP Server")
+        Log.output("   ✓ Server can initialize")
+        Log.output("   ✓ Transport: stdio")
+        Log.output("   ✓ Protocol version: 2024-11-05")
+        Log.output("")
         return true
     }
 
@@ -79,29 +79,29 @@ struct DoctorCommand: AsyncParsableCommand {
 
         var hasIssues = false
 
-        print("📚 Documentation Directories")
+        Log.output("📚 Documentation Directories")
 
         // Check docs directory
         if FileManager.default.fileExists(atPath: docsURL.path) {
             let count = countMarkdownFiles(in: docsURL)
-            print("   ✓ Apple docs: \(docsURL.path) (\(count) files)")
+            Log.output("   ✓ Apple docs: \(docsURL.path) (\(count) files)")
         } else {
-            print("   ✗ Apple docs: \(docsURL.path) (not found)")
-            print("     → Run: cupertino fetch --type docs")
+            Log.output("   ✗ Apple docs: \(docsURL.path) (not found)")
+            Log.output("     → Run: cupertino fetch --type docs")
             hasIssues = true
         }
 
         // Check evolution directory
         if FileManager.default.fileExists(atPath: evolutionURL.path) {
             let count = countMarkdownFiles(in: evolutionURL)
-            print("   ✓ Swift Evolution: \(evolutionURL.path) (\(count) proposals)")
+            Log.output("   ✓ Swift Evolution: \(evolutionURL.path) (\(count) proposals)")
         } else {
-            print("   ⚠  Swift Evolution: \(evolutionURL.path) (not found)")
-            print("     → Run: cupertino fetch --type evolution")
+            Log.output("   ⚠  Swift Evolution: \(evolutionURL.path) (not found)")
+            Log.output("     → Run: cupertino fetch --type evolution")
             hasIssues = true
         }
 
-        print()
+        Log.output("")
         return !hasIssues
     }
 
@@ -124,12 +124,12 @@ struct DoctorCommand: AsyncParsableCommand {
     private func checkSearchDatabase() async -> Bool {
         let searchDBURL = URL(fileURLWithPath: searchDB).expandingTildeInPath
 
-        print("🔍 Search Index")
+        Log.output("🔍 Search Index")
 
         guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
-            print("   ✗ Database: \(searchDBURL.path) (not found)")
-            print("     → Run: cupertino save")
-            print()
+            Log.output("   ✗ Database: \(searchDBURL.path) (not found)")
+            Log.output("     → Run: cupertino save")
+            Log.output("")
             return false
         }
 
@@ -139,24 +139,24 @@ struct DoctorCommand: AsyncParsableCommand {
             let fileSize = try FileManager.default.attributesOfItem(atPath: searchDBURL.path)[.size] as? UInt64 ?? 0
             let sizeMB = Double(fileSize) / 1048576.0
 
-            print("   ✓ Database: \(searchDBURL.path)")
-            print("   ✓ Size: \(String(format: "%.1f", sizeMB)) MB")
-            print("   ✓ Frameworks: \(frameworks.count)")
-            print()
+            Log.output("   ✓ Database: \(searchDBURL.path)")
+            Log.output("   ✓ Size: \(String(format: "%.1f", sizeMB)) MB")
+            Log.output("   ✓ Frameworks: \(frameworks.count)")
+            Log.output("")
             return true
         } catch {
-            print("   ✗ Database error: \(error)")
-            print("     → Run: cupertino save")
-            print()
+            Log.output("   ✗ Database error: \(error)")
+            Log.output("     → Run: cupertino save")
+            Log.output("")
             return false
         }
     }
 
     private func checkResourceProviders() -> Bool {
-        print("🔧 Providers")
-        print("   ✓ DocsResourceProvider: available")
-        print("   ✓ SearchToolProvider: available")
-        print()
+        Log.output("🔧 Providers")
+        Log.output("   ✓ DocsResourceProvider: available")
+        Log.output("   ✓ SearchToolProvider: available")
+        Log.output("")
         return true
     }
 }

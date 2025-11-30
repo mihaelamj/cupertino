@@ -213,7 +213,7 @@ struct FetchCommand: AsyncParsableCommand {
         let metadataFile = directory.appendingPathComponent(Shared.Constants.FileName.metadata)
         guard FileManager.default.fileExists(atPath: metadataFile.path),
               let data = try? Data(contentsOf: metadataFile),
-              let metadata = try? JSONDecoder().decode(CrawlMetadata.self, from: data),
+              let metadata = try? JSONCoding.decode(CrawlMetadata.self, from: data),
               let session = metadata.crawlState,
               session.isActive,
               session.startURL == url.absoluteString,

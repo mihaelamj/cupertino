@@ -400,17 +400,13 @@ extension Core {
 
         private func logInfo(_ message: String) {
             let memoryMsg = "🧠 \(String(format: "%.1f", getMemoryUsageMB()))MB | \(message)"
-            Logging.Logger.crawler.info(message)
-            print(memoryMsg)
-            fflush(stdout)
+            Log.info(memoryMsg, category: .crawler)
             logToFile(memoryMsg)
         }
 
         private func logError(_ message: String) {
             let errorMessage = "❌ \(message)"
-            Logging.Logger.crawler.error(message)
-            fputs("\(errorMessage)\n", stderr)
-            fflush(stderr)
+            Log.error(errorMessage, category: .crawler)
         }
 
         private func logProgressUpdate() async {
@@ -434,8 +430,7 @@ extension Core {
             ]
 
             for message in messages {
-                Logging.Logger.crawler.info(message)
-                print(message)
+                Log.info(message, category: .crawler)
             }
         }
 
@@ -454,8 +449,7 @@ extension Core {
             ]
 
             for message in messages where !message.isEmpty {
-                Logging.Logger.crawler.info(message)
-                print(message)
+                Log.info(message, category: .crawler)
             }
         }
 

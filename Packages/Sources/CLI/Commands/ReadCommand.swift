@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import Logging
 import Search
 import Shared
 
@@ -34,8 +35,8 @@ struct ReadCommand: AsyncParsableCommand {
         let dbPath = resolveSearchDbPath()
 
         guard FileManager.default.fileExists(atPath: dbPath.path) else {
-            print("Error: Search database not found at \(dbPath.path)")
-            print("Run 'cupertino save' to build the search index first.")
+            Log.error("Search database not found at \(dbPath.path)")
+            Log.output("Run 'cupertino save' to build the search index first.")
             throw ExitCode.failure
         }
 
@@ -51,11 +52,11 @@ struct ReadCommand: AsyncParsableCommand {
         let documentFormat: Search.Index.DocumentFormat = format == .markdown ? .markdown : .json
 
         guard let content = try await searchIndex.getDocumentContent(uri: uri, format: documentFormat) else {
-            print("Error: Document not found: \(uri)")
+            Log.error("Document not found: \(uri)")
             throw ExitCode.failure
         }
 
-        print(content)
+        Log.output(content)
     }
 
     // MARK: - Path Resolution

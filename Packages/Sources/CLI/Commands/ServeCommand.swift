@@ -99,8 +99,7 @@ struct ServeCommand: AsyncParsableCommand {
             let toolProvider = CupertinoSearchToolProvider(searchIndex: searchIndex)
             await server.registerToolProvider(toolProvider)
             let message = "✅ Search enabled (index found)"
-            Logging.Logger.mcp.info(message)
-            fputs("\(message)\n", stderr)
+            Log.info(message, category: .mcp)
         }
     }
 
@@ -109,9 +108,7 @@ struct ServeCommand: AsyncParsableCommand {
             let infoMsg = "ℹ️  Search index not found at: \(searchDBURL.path)"
             let cmd = "\(Shared.Constants.App.commandName) data index"
             let hintMsg = "   Tools will not be available. Run '\(cmd)' to enable search."
-            Logging.Logger.mcp.info("\(infoMsg) \(hintMsg)")
-            fputs("\(infoMsg)\n", stderr)
-            fputs("\(hintMsg)\n", stderr)
+            Log.info("\(infoMsg) \(hintMsg)", category: .mcp)
             return nil
         }
 
@@ -122,9 +119,7 @@ struct ServeCommand: AsyncParsableCommand {
             let errorMsg = "⚠️  Failed to load search index: \(error)"
             let cmd = "\(Shared.Constants.App.commandName) data index"
             let hintMsg = "   Tools will not be available. Run '\(cmd)' to create the index."
-            Logging.Logger.mcp.warning("\(errorMsg) \(hintMsg)")
-            fputs("\(errorMsg)\n", stderr)
-            fputs("\(hintMsg)\n", stderr)
+            Log.warning("\(errorMsg) \(hintMsg)", category: .mcp)
             return nil
         }
     }
@@ -139,10 +134,8 @@ struct ServeCommand: AsyncParsableCommand {
         ]
 
         for message in messages {
-            Logging.Logger.mcp.info(message)
-            fputs("\(message)\n", stderr)
+            Log.info(message, category: .mcp)
         }
-        fputs("\n", stderr)
     }
 
     private func checkForData(docsDir: URL, evolutionDir: URL, searchDB: URL) -> Bool {
@@ -215,6 +208,7 @@ struct ServeCommand: AsyncParsableCommand {
 
         """
 
+        // Use stderr for getting started guide (stdout is for MCP protocol)
         fputs(guide, stderr)
     }
 }

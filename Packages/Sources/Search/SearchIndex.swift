@@ -1758,11 +1758,12 @@ extension Search {
             sqlite3_bind_text(statement, 1, (uri as NSString).utf8String, -1, nil)
 
             guard sqlite3_step(statement) == SQLITE_ROW else {
-                return nil
+                // Not found in metadata, try FTS content as fallback
+                return try await getContentFromFTS(uri: uri, format: format)
             }
 
             guard let jsonPtr = sqlite3_column_text(statement, 0) else {
-                return nil
+                return try await getContentFromFTS(uri: uri, format: format)
             }
 
             let jsonString = String(cString: jsonPtr)
@@ -1773,15 +1774,69 @@ extension Search {
                 return jsonString
 
             case .markdown:
-                // Decode and return rawMarkdown or generate markdown
+                // Try multiple fallbacks for markdown content
                 let jsonData = Data(jsonString.utf8)
                 let decoder = JSONDecoder()
                 decoder.dateDecodingStrategy = .iso8601
-                guard let page = try? decoder.decode(StructuredDocumentationPage.self, from: jsonData) else {
-                    return nil
+
+                if let page = try? decoder.decode(StructuredDocumentationPage.self, from: jsonData) {
+                    // 1. Try rawMarkdown first
+                    if let rawMarkdown = page.rawMarkdown, !rawMarkdown.isEmpty {
+                        return rawMarkdown
+                    }
+                    // 2. Try generated markdown from structured data
+                    let generated = page.markdown
+                    if !generated.isEmpty, generated != "# \(page.title)\n\n" {
+                        return generated
+                    }
                 }
-                // Return rawMarkdown if available, otherwise generate markdown
-                return page.rawMarkdown ?? page.markdown
+
+                // 3. Fall back to FTS content table
+                return try await getContentFromFTS(uri: uri, format: format)
+            }
+        }
+
+        /// Get content from the FTS table as a fallback
+        private func getContentFromFTS(uri: String, format: DocumentFormat) async throws -> String? {
+            guard let database else {
+                return nil
+            }
+
+            let ftsSql = """
+            SELECT content
+            FROM docs_fts
+            WHERE uri = ?
+            LIMIT 1;
+            """
+
+            var ftsStatement: OpaquePointer?
+            defer { sqlite3_finalize(ftsStatement) }
+
+            guard sqlite3_prepare_v2(database, ftsSql, -1, &ftsStatement, nil) == SQLITE_OK else {
+                return nil
+            }
+
+            sqlite3_bind_text(ftsStatement, 1, (uri as NSString).utf8String, -1, nil)
+
+            guard sqlite3_step(ftsStatement) == SQLITE_ROW,
+                  let contentPtr = sqlite3_column_text(ftsStatement, 0) else {
+                return nil
+            }
+
+            let content = String(cString: contentPtr)
+
+            switch format {
+            case .json:
+                // Wrap FTS content in a minimal JSON structure
+                let escaped = content
+                    .replacingOccurrences(of: "\\", with: "\\\\")
+                    .replacingOccurrences(of: "\"", with: "\\\"")
+                    .replacingOccurrences(of: "\n", with: "\\n")
+                    .replacingOccurrences(of: "\r", with: "\\r")
+                    .replacingOccurrences(of: "\t", with: "\\t")
+                return "{\"uri\":\"\(uri)\",\"rawMarkdown\":\"\(escaped)\"}"
+            case .markdown:
+                return content
             }
         }
 

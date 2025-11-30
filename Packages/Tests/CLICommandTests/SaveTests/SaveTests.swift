@@ -224,23 +224,47 @@ struct SaveCommandTests {
 
         print("🧪 Test: Build index without metadata.json")
 
-        // Create directory structure: docs/swift/array.md
+        // Create directory structure: docs/swift/array.json
         let swiftDir = tempDir.appendingPathComponent("docs/swift")
         try FileManager.default.createDirectory(at: swiftDir, withIntermediateDirectories: true)
 
-        // Create test markdown files
-        let arrayDoc = swiftDir.appendingPathComponent("array.md")
-        try "# Array\n\nAn ordered collection of elements.".write(to: arrayDoc, atomically: true, encoding: .utf8)
+        // Create test JSON files (StructuredDocumentationPage format)
+        let arrayPage = StructuredDocumentationPage(
+            url: URL(string: "https://developer.apple.com/documentation/swift/array")!,
+            title: "Array",
+            kind: .struct,
+            source: .appleWebKit,
+            abstract: "An ordered collection of elements.",
+            rawMarkdown: "# Array\n\nAn ordered collection of elements."
+        )
+        let arrayDoc = swiftDir.appendingPathComponent("array.json")
+        try JSONCoding.encode(arrayPage, to: arrayDoc)
 
-        let dictDoc = swiftDir.appendingPathComponent("dictionary.md")
-        try "# Dictionary\n\nA collection of key-value pairs.".write(to: dictDoc, atomically: true, encoding: .utf8)
+        let dictPage = StructuredDocumentationPage(
+            url: URL(string: "https://developer.apple.com/documentation/swift/dictionary")!,
+            title: "Dictionary",
+            kind: .struct,
+            source: .appleWebKit,
+            abstract: "A collection of key-value pairs.",
+            rawMarkdown: "# Dictionary\n\nA collection of key-value pairs."
+        )
+        let dictDoc = swiftDir.appendingPathComponent("dictionary.json")
+        try JSONCoding.encode(dictPage, to: dictDoc)
 
         // Create swiftui directory
         let swiftuiDir = tempDir.appendingPathComponent("docs/swiftui")
         try FileManager.default.createDirectory(at: swiftuiDir, withIntermediateDirectories: true)
 
-        let viewDoc = swiftuiDir.appendingPathComponent("view.md")
-        try "# View\n\nA piece of user interface.".write(to: viewDoc, atomically: true, encoding: .utf8)
+        let viewPage = StructuredDocumentationPage(
+            url: URL(string: "https://developer.apple.com/documentation/swiftui/view")!,
+            title: "View",
+            kind: .protocol,
+            source: .appleWebKit,
+            abstract: "A piece of user interface.",
+            rawMarkdown: "# View\n\nA piece of user interface."
+        )
+        let viewDoc = swiftuiDir.appendingPathComponent("view.json")
+        try JSONCoding.encode(viewPage, to: viewDoc)
 
         // Build index WITHOUT metadata.json
         let searchDbPath = tempDir.appendingPathComponent("search.db")
@@ -248,7 +272,7 @@ struct SaveCommandTests {
 
         let builder = Search.IndexBuilder(
             searchIndex: searchIndex,
-            metadata: nil,  // No metadata!
+            metadata: nil, // No metadata!
             docsDirectory: tempDir.appendingPathComponent("docs"),
             evolutionDirectory: nil
         )
@@ -281,12 +305,20 @@ struct SaveCommandTests {
 
         print("🧪 Test: Directory scanning with nested folders")
 
-        // Create nested structure: docs/foundation/collections/array.md
+        // Create nested structure: docs/foundation/collections/array.json
         let nestedDir = tempDir.appendingPathComponent("docs/foundation/collections")
         try FileManager.default.createDirectory(at: nestedDir, withIntermediateDirectories: true)
 
-        let nestedDoc = nestedDir.appendingPathComponent("array.md")
-        try "# NSArray\n\nFoundation array class.".write(to: nestedDoc, atomically: true, encoding: .utf8)
+        let nestedPage = StructuredDocumentationPage(
+            url: URL(string: "https://developer.apple.com/documentation/foundation/nsarray")!,
+            title: "NSArray",
+            kind: .class,
+            source: .appleWebKit,
+            abstract: "Foundation array class.",
+            rawMarkdown: "# NSArray\n\nFoundation array class."
+        )
+        let nestedDoc = nestedDir.appendingPathComponent("array.json")
+        try JSONCoding.encode(nestedPage, to: nestedDoc)
 
         // Build index
         let searchDbPath = tempDir.appendingPathComponent("search.db")

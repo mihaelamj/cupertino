@@ -1,4 +1,5 @@
 import Foundation
+import Logging
 import MCP
 import Search
 import Shared
@@ -113,7 +114,7 @@ public actor DocsResourceProvider: ResourceProvider {
             if FileManager.default.fileExists(atPath: jsonPath.path) {
                 // Read JSON and extract rawMarkdown
                 let jsonData = try Data(contentsOf: jsonPath)
-                let page = try JSONDecoder().decode(StructuredDocumentationPage.self, from: jsonData)
+                let page = try JSONCoding.decode(StructuredDocumentationPage.self, from: jsonData)
                 guard let rawMarkdown = page.rawMarkdown else {
                     throw ResourceError.notFound(uri)
                 }
@@ -191,7 +192,7 @@ public actor DocsResourceProvider: ResourceProvider {
         do {
             metadata = try CrawlMetadata.load(from: metadataURL)
         } catch {
-            print("⚠️  Failed to load metadata: \(error)")
+            Log.warning("Failed to load metadata: \(error)", category: .mcp)
         }
     }
 

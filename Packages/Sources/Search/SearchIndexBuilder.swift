@@ -173,6 +173,7 @@ extension Search {
             for (index, file) in docFiles.enumerated() {
                 // Extract framework from path: docs/{framework}/...
                 guard let framework = extractFrameworkFromPath(file, relativeTo: docsDirectory) else {
+                    logError("Could not extract framework from path: \(file.path) (relative to \(docsDirectory.path))")
                     skipped += 1
                     continue
                 }
@@ -265,36 +266,41 @@ extension Search {
             var jsonFiles: Set<String> = [] // Track JSON filenames to skip duplicate MDs
             var docFiles: [URL] = []
 
-            if let enumerator = FileManager.default.enumerator(
+            guard let enumerator = FileManager.default.enumerator(
                 at: directory,
-                includingPropertiesForKeys: [.isRegularFileKey],
+                includingPropertiesForKeys: nil,
                 options: [.skipsHiddenFiles]
-            ) {
-                // First pass: collect all files
-                var allFiles: [URL] = []
-                for case let fileURL as URL in enumerator {
-                    let ext = fileURL.pathExtension.lowercased()
-                    guard ext == "json" || ext == "md" else { continue }
+            ) else {
+                return docFiles
+            }
 
-                    let attributes = try? fileURL.resourceValues(forKeys: [.isRegularFileKey])
-                    if attributes?.isRegularFile == true {
-                        allFiles.append(fileURL)
-                    }
+            // First pass: collect all files
+            var allFiles: [URL] = []
+            while let element = enumerator.nextObject() {
+                guard let fileURL = element as? URL else { continue }
+                let ext = fileURL.pathExtension.lowercased()
+                guard ext == "json" || ext == "md" else { continue }
+
+                // Use FileManager to check if it's a file (more reliable than resourceValues)
+                var isDirectory: ObjCBool = false
+                if FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDirectory),
+                   !isDirectory.boolValue {
+                    allFiles.append(fileURL)
                 }
+            }
 
-                // Second pass: prefer JSON over MD for same filename
-                for file in allFiles {
-                    let basename = file.deletingPathExtension().lastPathComponent
-                    let dir = file.deletingLastPathComponent().path
+            // Second pass: prefer JSON over MD for same filename
+            for file in allFiles {
+                let basename = file.deletingPathExtension().lastPathComponent
+                let dir = file.deletingLastPathComponent().path
 
-                    if file.pathExtension.lowercased() == "json" {
-                        jsonFiles.insert("\(dir)/\(basename)")
+                if file.pathExtension.lowercased() == "json" {
+                    jsonFiles.insert("\(dir)/\(basename)")
+                    docFiles.append(file)
+                } else if file.pathExtension.lowercased() == "md" {
+                    // Only add MD if no JSON exists for same basename
+                    if !jsonFiles.contains("\(dir)/\(basename)") {
                         docFiles.append(file)
-                    } else if file.pathExtension.lowercased() == "md" {
-                        // Only add MD if no JSON exists for same basename
-                        if !jsonFiles.contains("\(dir)/\(basename)") {
-                            docFiles.append(file)
-                        }
                     }
                 }
             }
@@ -324,9 +330,9 @@ extension Search {
         }
 
         private func extractFrameworkFromPath(_ file: URL, relativeTo baseDir: URL) -> String? {
-            // Get path relative to base directory
-            let basePath = baseDir.path
-            let filePath = file.path
+            // Standardize both paths to handle /private/var vs /var symlink issues
+            let basePath = baseDir.standardizedFileURL.path
+            let filePath = file.standardizedFileURL.path
 
             guard filePath.hasPrefix(basePath) else {
                 return nil
@@ -617,14 +623,12 @@ extension Search {
         }
 
         private func logInfo(_ message: String) {
-            Logging.Logger.search.info(message)
-            print(message)
+            Log.info(message, category: .search)
         }
 
         private func logError(_ message: String) {
             let errorMessage = "❌ \(message)"
-            Logging.Logger.search.error(message)
-            fputs("\(errorMessage)\n", stderr)
+            Log.error(errorMessage, category: .search)
         }
     }
 }

@@ -446,13 +446,11 @@ extension Core {
         // MARK: - Logging
 
         private func logInfo(_ message: String) {
-            Logging.Logger.crawler.info(message)
-            print(message)
+            Log.info(message, category: .packages)
         }
 
         private func logError(_ message: String) {
-            Logging.Logger.crawler.error(message)
-            fputs("\(message)\n", stderr)
+            Log.error(message, category: .packages)
         }
     }
 }

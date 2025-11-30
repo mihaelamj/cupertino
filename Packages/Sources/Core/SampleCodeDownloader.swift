@@ -513,14 +513,12 @@ public final class SampleCodeDownloader {
     // MARK: - Logging
 
     private func logInfo(_ message: String) {
-        Logging.Logger.samples.info(message)
-        print(message)
+        Log.info(message, category: .samples)
     }
 
     private func logError(_ message: String) {
         let errorMessage = "❌ \(message)"
-        Logging.Logger.samples.error(message)
-        fputs("\(errorMessage)\n", stderr)
+        Log.error(errorMessage, category: .samples)
     }
 
     private func logStatistics(_ stats: SampleStatistics) {
@@ -536,8 +534,7 @@ public final class SampleCodeDownloader {
         ]
 
         for message in messages where !message.isEmpty {
-            Logging.Logger.samples.info(message)
-            print(message)
+            Log.info(message, category: .samples)
         }
     }
 }

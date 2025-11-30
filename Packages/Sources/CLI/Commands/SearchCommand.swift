@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import Logging
 import Search
 import Shared
 
@@ -54,8 +55,8 @@ struct SearchCommand: AsyncParsableCommand {
         let dbPath = resolveSearchDbPath()
 
         guard FileManager.default.fileExists(atPath: dbPath.path) else {
-            print("Error: Search database not found at \(dbPath.path)")
-            print("Run 'cupertino save' to build the search index first.")
+            Log.error("Search database not found at \(dbPath.path)")
+            Log.output("Run 'cupertino save' to build the search index first.")
             throw ExitCode.failure
         }
 
@@ -99,27 +100,28 @@ struct SearchCommand: AsyncParsableCommand {
 
     private func outputText(_ results: [Search.Result]) {
         if results.isEmpty {
-            print("No results found for '\(query)'")
+            Log.output("No results found for '\(query)'")
             return
         }
 
-        print("Found \(results.count) result(s) for '\(query)':\n")
+        Log.output("Found \(results.count) result(s) for '\(query)':\n")
 
         for (index, result) in results.enumerated() {
-            print("[\(index + 1)] \(result.title)")
-            print("    Source: \(result.source) | Framework: \(result.framework)")
-            print("    URI: \(result.uri)")
+            Log.output("[\(index + 1)] \(result.title)")
+            Log.output("    Source: \(result.source) | Framework: \(result.framework)")
+            Log.output("    URI: \(result.uri)")
 
             // Show summary
             if !result.summary.isEmpty {
-                print("    \(result.summary)")
+                Log.output("    \(result.summary)")
                 if result.summaryTruncated {
-                    print("    ...")
-                    print("    [truncated at ~\(result.summary.split(separator: " ").count) words] Full document: \(result.uri)")
+                    Log.output("    ...")
+                    let wordCount = result.summary.split(separator: " ").count
+                    Log.output("    [truncated at ~\(wordCount) words] Full document: \(result.uri)")
                 }
             }
 
-            print()
+            Log.output("")
         }
     }
 
@@ -130,33 +132,33 @@ struct SearchCommand: AsyncParsableCommand {
         do {
             let data = try encoder.encode(results)
             if let jsonString = String(data: data, encoding: .utf8) {
-                print(jsonString)
+                Log.output(jsonString)
             }
         } catch {
-            print("Error encoding JSON: \(error)")
+            Log.error("Error encoding JSON: \(error)")
         }
     }
 
     private func outputMarkdown(_ results: [Search.Result]) {
         if results.isEmpty {
-            print("# Search Results\n\nNo results found for '\(query)'")
+            Log.output("# Search Results\n\nNo results found for '\(query)'")
             return
         }
 
-        print("# Search Results for '\(query)'\n")
-        print("Found \(results.count) result(s).\n")
+        Log.output("# Search Results for '\(query)'\n")
+        Log.output("Found \(results.count) result(s).\n")
 
         for (index, result) in results.enumerated() {
-            print("## \(index + 1). \(result.title)\n")
-            print("- **Source:** \(result.source)")
-            print("- **Framework:** \(result.framework)")
-            print("- **URI:** `\(result.uri)`")
+            Log.output("## \(index + 1). \(result.title)\n")
+            Log.output("- **Source:** \(result.source)")
+            Log.output("- **Framework:** \(result.framework)")
+            Log.output("- **URI:** `\(result.uri)`")
 
             if !result.summary.isEmpty {
-                print("\n> \(result.summary)")
+                Log.output("\n> \(result.summary)")
             }
 
-            print()
+            Log.output("")
         }
     }
 }
