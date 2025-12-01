@@ -12,6 +12,7 @@ CLI commands for the Cupertino documentation server.
 | [search](search/) | Search documentation from the command line |
 | [read](read/) | Read full document content by URI |
 | [doctor](doctor/) | Check server health and configuration |
+| [cleanup](cleanup/) | Clean up downloaded sample code archives |
 
 ## Quick Reference
 

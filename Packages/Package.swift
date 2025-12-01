@@ -19,6 +19,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Logging"),
     .singleTargetLibrary("Shared"),
     .singleTargetLibrary("Core"),
+    .singleTargetLibrary("Cleanup"),
     .singleTargetLibrary("Search"),
     .singleTargetLibrary("Resources"),
     .singleTargetLibrary("MCPSupport"),
@@ -100,6 +101,15 @@ let targets: [Target] = {
         dependencies: ["Core", "Search", "TestSupport"]
     )
 
+    let cleanupTarget = Target.target(
+        name: "Cleanup",
+        dependencies: ["Shared", "Logging"]
+    )
+    let cleanupTestsTarget = Target.testTarget(
+        name: "CleanupTests",
+        dependencies: ["Cleanup", "TestSupport"]
+    )
+
     let searchTarget = Target.target(
         name: "Search",
         dependencies: ["Shared", "Logging", "Core"]
@@ -132,6 +142,7 @@ let targets: [Target] = {
         dependencies: [
             "Shared",
             "Core",
+            "Cleanup",
             "Search",
             "Logging",
             // MCP dependencies (for mcp serve command)
@@ -213,6 +224,8 @@ let targets: [Target] = {
         resourcesTarget,
         coreTarget,
         coreTestsTarget,
+        cleanupTarget,
+        cleanupTestsTarget,
         searchTarget,
         searchTestsTarget,
         mcpSupportTarget,

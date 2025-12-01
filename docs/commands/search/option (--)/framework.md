@@ -1,4 +1,4 @@
-# --framework, -f
+command# --framework, -f
 
 Filter search results by Apple framework
 

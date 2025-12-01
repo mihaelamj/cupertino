@@ -26,24 +26,15 @@ struct ServeCommand: AsyncParsableCommand {
         """
     )
 
-    @Option(name: .long, help: ArgumentHelp(Shared.Constants.HelpText.docsDir))
-    var docsDir: String = Shared.Constants.defaultDocsDirectory.path
-
-    @Option(name: .long, help: ArgumentHelp(Shared.Constants.HelpText.evolutionDir))
-    var evolutionDir: String = Shared.Constants.defaultSwiftEvolutionDirectory.path
-
-    @Option(name: .long, help: ArgumentHelp(Shared.Constants.HelpText.searchDB))
-    var searchDB: String = Shared.Constants.defaultSearchDatabase.path
-
     mutating func run() async throws {
         let config = Shared.Configuration(
             crawler: Shared.CrawlerConfiguration(
-                outputDirectory: URL(fileURLWithPath: docsDir).expandingTildeInPath
+                outputDirectory: Shared.Constants.defaultDocsDirectory
             )
         )
 
-        let evolutionURL = URL(fileURLWithPath: evolutionDir).expandingTildeInPath
-        let searchDBURL = URL(fileURLWithPath: searchDB).expandingTildeInPath
+        let evolutionURL = Shared.Constants.defaultSwiftEvolutionDirectory
+        let searchDBURL = Shared.Constants.defaultSearchDatabase
 
         // Check if there's anything to serve
         let hasData = checkForData(

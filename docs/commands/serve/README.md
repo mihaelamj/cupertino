@@ -5,7 +5,8 @@ Start the MCP server
 ## Synopsis
 
 ```bash
-cupertino serve [options]
+cupertino serve
+cupertino  # equivalent - serve is the default command
 ```
 
 ## Description
@@ -29,44 +30,6 @@ cupertino serve
 
 This makes it easy to configure in MCP client applications - you only need to specify the binary path.
 
-## Options
-
-### --docs-dir
-
-Directory containing Apple documentation.
-
-**Type:** String
-**Default:** `~/.cupertino/docs`
-
-**Example:**
-```bash
-cupertino serve --docs-dir ~/my-custom-docs
-```
-
-### --evolution-dir
-
-Directory containing Swift Evolution proposals.
-
-**Type:** String
-**Default:** `~/.cupertino/swift-evolution`
-
-**Example:**
-```bash
-cupertino serve --evolution-dir ~/my-evolution
-```
-
-### --search-db
-
-Path to the search database file.
-
-**Type:** String
-**Default:** `~/.cupertino/search.db`
-
-**Example:**
-```bash
-cupertino serve --search-db ~/my-search.db
-```
-
 ## Prerequisites
 
 Before starting the MCP server, you need:
@@ -86,25 +49,16 @@ Without documentation, the server will display a getting started guide and exit.
 
 ## Examples
 
-### Start with Defaults
+### Start Server
 
 ```bash
 cupertino
 ```
 
-The server will use:
+The server will use default paths:
 - Docs: `~/.cupertino/docs`
 - Evolution: `~/.cupertino/swift-evolution`
 - Search DB: `~/.cupertino/search.db`
-
-### Start with Custom Directories
-
-```bash
-cupertino serve \
-  --docs-dir ~/custom/apple-docs \
-  --evolution-dir ~/custom/evolution \
-  --search-db ~/custom/search.db
-```
 
 ### Use in Claude Desktop Config
 
@@ -121,23 +75,6 @@ cupertino serve \
 ```
 
 No args needed - the binary defaults to `serve`!
-
-### Use with Custom Directories in Claude
-
-```json
-{
-  "mcpServers": {
-    "cupertino": {
-      "command": "/usr/local/bin/cupertino",
-      "args": [
-        "serve",
-        "--docs-dir", "/Users/YOUR_USERNAME/my-docs",
-        "--evolution-dir", "/Users/YOUR_USERNAME/my-evolution"
-      ]
-    }
-  }
-}
-```
 
 ## Server Output
 
@@ -165,52 +102,6 @@ When the server starts successfully:
 ```
 
 The server will still work for resource access, but search tools won't be available.
-
-## Getting Started Guide
-
-If you start the server without any documentation, you'll see:
-
-```
-╭─────────────────────────────────────────────────────────────────────────╮
-│                                                                         │
-│  👋 Welcome to Cupertino MCP Server!                                    │
-│                                                                         │
-│  No documentation found to serve. Let's get you started!                │
-│                                                                         │
-╰─────────────────────────────────────────────────────────────────────────╯
-
-📚 STEP 1: Crawl Documentation
-───────────────────────────────────────────────────────────────────────────
-First, download the documentation you want to serve:
-
-• Apple Developer Documentation (recommended):
-  $ cupertino fetch --type docs
-
-• Swift Evolution Proposals:
-  $ cupertino fetch --type evolution
-
-• Swift.org Documentation:
-  $ cupertino fetch --type swift
-
-⏱️  Crawling takes 10-30 minutes depending on content type.
-   You can resume if interrupted with --resume flag.
-
-🔍 STEP 2: Build Search Index
-───────────────────────────────────────────────────────────────────────────
-After crawling, create a search index for fast lookups:
-
-  $ cupertino save
-
-⏱️  Indexing typically takes 2-5 minutes.
-
-🚀 STEP 3: Start the Server
-───────────────────────────────────────────────────────────────────────────
-Once you have data, start the MCP server:
-
-  $ cupertino
-
-The server will provide documentation access to AI assistants like Claude.
-```
 
 ## Resource URIs
 
@@ -262,25 +153,8 @@ List all indexed frameworks with document counts.
 Read a document by URI. Returns the full document content in the requested format.
 
 **Parameters:**
-- `uri` (required): Document URI from search results (e.g., `apple-docs://swiftui/documentation_swiftui_view`)
+- `uri` (required): Document URI from search results
 - `format` (optional): Output format - `json` or `markdown`
-  - `json` (default): Returns full structured document data including:
-    - title, kind, module, declaration
-    - abstract, overview, discussion
-    - code examples with language tags
-    - parameters, return values, conformance info
-    - platform availability, deprecation notices
-  - `markdown`: Returns rendered markdown content
-
-**Example:**
-```json
-{
-  "uri": "apple-docs://swiftui/documentation_swiftui_view",
-  "format": "json"
-}
-```
-
-**Tip:** JSON format is recommended for AI agents as it provides structured, machine-readable data that's easier to parse and understand
 
 ## Stopping the Server
 
@@ -313,33 +187,6 @@ ls -la ~/.cupertino/search.db
 ```bash
 cupertino save
 ```
-
-### Binary Not Found
-
-**Check installation:**
-```bash
-which cupertino
-# or
-ls -la /usr/local/bin/cupertino
-```
-
-**Solution:** Install the binary:
-```bash
-cd Packages
-swift build -c release --product cupertino
-cp .build/release/cupertino /usr/local/bin/
-```
-
-### Client Can't Connect
-
-**Verify config syntax (Claude Desktop):**
-```bash
-cat ~/Library/Application\ Support/Claude/claude_desktop_config.json | python3 -m json.tool
-```
-
-**Check logs:**
-- Claude Desktop: Settings → Developer → View Logs
-- Look for errors related to "cupertino"
 
 ## See Also
 
