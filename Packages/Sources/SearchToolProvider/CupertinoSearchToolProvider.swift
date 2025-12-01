@@ -69,6 +69,7 @@ public actor CupertinoSearchToolProvider: ToolProvider {
             throw ToolError.missingArgument(Shared.Constants.MCP.schemaParamQuery)
         }
 
+        let source = arguments?[Shared.Constants.MCP.schemaParamSource]?.value as? String
         let framework = arguments?[Shared.Constants.MCP.schemaParamFramework]?.value as? String
         let defaultLimit = Shared.Constants.Limit.defaultSearchLimit
         let requestedLimit = (arguments?[Shared.Constants.MCP.schemaParamLimit]?.value as? Int) ?? defaultLimit
@@ -77,6 +78,7 @@ public actor CupertinoSearchToolProvider: ToolProvider {
         // Perform search
         let results = try await searchIndex.search(
             query: query,
+            source: source,
             framework: framework,
             limit: limit
         )
@@ -84,6 +86,9 @@ public actor CupertinoSearchToolProvider: ToolProvider {
         // Format results as markdown
         var markdown = "# Search Results for \"\(query)\"\n\n"
 
+        if let source {
+            markdown += "_Filtered to source: **\(source)**_\n\n"
+        }
         if let framework {
             markdown += "_Filtered to framework: **\(framework)**_\n\n"
         }

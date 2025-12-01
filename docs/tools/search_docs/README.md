@@ -1,4 +1,4 @@
-, evolution is source, , package, # search_docs
+# search_docs
 
 Full-text search across all indexed documentation.
 
@@ -9,6 +9,7 @@ Full-text search across all indexed documentation.
   "name": "search_docs",
   "arguments": {
     "query": "Actors Swift concurrency",
+    "source": "apple-docs",
     "framework": "swift",
     "limit": 10
   }
@@ -38,9 +39,24 @@ Search keywords to find in documentation.
 - More specific queries return more relevant results
 - Framework names can help narrow results (e.g., "SwiftUI animation")
 
+### source (optional)
+
+Filter results to a specific documentation source.
+
+**Type:** String
+
+**Default:** None (searches all sources)
+
+**Values:**
+- `"apple-docs"` - Apple Developer Documentation
+- `"swift-book"` - The Swift Programming Language book
+- `"swift-org"` - Swift.org documentation
+- `"swift-evolution"` - Swift Evolution proposals
+- `"packages"` - Swift Package documentation
+
 ### framework (optional)
 
-Filter results to a specific framework.
+Filter results to a specific framework (applies to `apple-docs` source).
 
 **Type:** String
 
@@ -104,6 +120,15 @@ A type whose mutable state is protected from concurrent access...
 ```json
 {
   "query": "SwiftUI"
+}
+```
+
+### Source-Filtered Search
+
+```json
+{
+  "query": "async",
+  "source": "swift-book"
 }
 ```
 

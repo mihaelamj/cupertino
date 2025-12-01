@@ -397,6 +397,9 @@ extension Shared {
             /// JSON Schema parameter: query
             public static let schemaParamQuery = "query"
 
+            /// JSON Schema parameter: source
+            public static let schemaParamSource = "source"
+
             /// JSON Schema parameter: framework
             public static let schemaParamFramework = "framework"
 
