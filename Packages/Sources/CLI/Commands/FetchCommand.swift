@@ -216,11 +216,11 @@ struct FetchCommand: AsyncParsableCommand {
               let metadata = try? JSONCoding.decode(CrawlMetadata.self, from: data),
               let session = metadata.crawlState,
               session.isActive,
-              session.startURL == url.absoluteString,
-              let outputDir = URL(string: session.outputDirectory)
+              session.startURL == url.absoluteString
         else {
             return nil
         }
+        let outputDir = URL(fileURLWithPath: session.outputDirectory)
         Logging.ConsoleLogger.info(
             "📂 Found existing session, resuming to: \(session.outputDirectory)"
         )
