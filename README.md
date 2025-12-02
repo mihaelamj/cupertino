@@ -423,7 +423,7 @@ For development setup, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Project Status
 
-**Version:** 0.1.6
+**Version:** 0.2.0
 **Status:** ✅ Production Ready
 
 - ✅ All core functionality working
