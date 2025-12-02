@@ -1,3 +1,16 @@
+## 0.2.1
+
+### Fixed
+- Fixed crawler filename collision causing parent documentation pages to be overwritten by operators/methods (#45)
+- Crawler now generates unique filenames for URLs with special characters using hash suffixes
+- Parent types (Text, Color, Date, String structs) will be restored on next crawl
+
+### Related Issues
+- Closes #45
+- Related to #28 (Search Ranking Improvements)
+
+---
+
 ## 0.2.0
 
 ### Fixed
