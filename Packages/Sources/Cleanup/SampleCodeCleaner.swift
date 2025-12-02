@@ -12,24 +12,15 @@ public actor SampleCodeCleaner {
     private let keepOriginals: Bool
 
     /// Patterns of files/folders to remove from archives
+    /// Standard gitignore patterns - safe to remove (build artifacts, not source code)
     private static let cleanupPatterns: [String] = [
         ".git",
-        ".gitignore",
-        ".gitattributes",
         ".DS_Store",
-        ".Trashes",
-        "._*",
-        "xcuserdata",
-        "*.xcuserstate",
         "DerivedData",
         "build",
         ".build",
-        "Pods",
-        ".swiftpm",
-        "*.xcworkspace/xcuserdata",
-        "*.xcodeproj/xcuserdata",
-        "*.xcodeproj/project.xcworkspace/xcuserdata",
-        "__MACOSX",
+        "xcuserdata",
+        "*.xcuserstate",
     ]
 
     public init(
@@ -268,19 +259,16 @@ public actor SampleCodeCleaner {
 
     /// Compress directory to ZIP using ditto
     private func compressDirectory(_ directory: URL, to zipURL: URL) async throws -> Bool {
-        // Get the contents of the temp directory (should be a single folder)
-        let contents = try FileManager.default.contentsOfDirectory(
-            at: directory,
-            includingPropertiesForKeys: nil,
-            options: [.skipsHiddenFiles]
-        )
-
-        // Use the first directory as the source (this is the project folder)
-        let sourceDir = contents.first ?? directory
+        // Sample code ZIPs extract flat (no wrapper directory)
+        // All files (.git, source dirs, xcodeproj, etc.) are at temp directory root
+        // We need to compress ALL contents together, not pick a single directory
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
-        process.arguments = ["-ck", "--keepParent", sourceDir.path, zipURL.path]
+
+        // Compress the directory itself (which contains all the extracted files)
+        // This recreates the flat structure in the ZIP
+        process.arguments = ["-ck", directory.path, zipURL.path]
 
         try process.run()
         process.waitUntilExit()
