@@ -11,15 +11,18 @@ public actor DocsResourceProvider: ResourceProvider {
     private let configuration: Shared.Configuration
     private var metadata: CrawlMetadata?
     private let evolutionDirectory: URL
+    private let archiveDirectory: URL
     private let searchIndex: Search.Index?
 
     public init(
         configuration: Shared.Configuration,
         evolutionDirectory: URL? = nil,
+        archiveDirectory: URL? = nil,
         searchIndex: Search.Index? = nil
     ) {
         self.configuration = configuration
         self.evolutionDirectory = evolutionDirectory ?? Shared.Constants.defaultSwiftEvolutionDirectory
+        self.archiveDirectory = archiveDirectory ?? Shared.Constants.defaultArchiveDirectory
         self.searchIndex = searchIndex
         // Metadata will be loaded lazily on first access
     }
@@ -69,6 +72,16 @@ public actor DocsResourceProvider: ResourceProvider {
                 }
             } catch {
                 // Evolution proposals directory doesn't exist or can't be read
+            }
+        }
+
+        // Add Apple Archive documentation
+        if FileManager.default.fileExists(atPath: archiveDirectory.path) {
+            do {
+                let archiveResources = try listArchiveResources()
+                resources.append(contentsOf: archiveResources)
+            } catch {
+                // Archive directory doesn't exist or can't be read
             }
         }
 
@@ -144,6 +157,23 @@ public actor DocsResourceProvider: ResourceProvider {
 
             // Read markdown content from filesystem
             markdown = try String(contentsOf: file, encoding: .utf8)
+
+        } else if uri.hasPrefix(Shared.Constants.MCP.appleArchiveScheme) {
+            // Parse URI: apple-archive://guideUID/filename
+            guard let components = parseArchiveURI(uri) else {
+                throw ResourceError.invalidURI(uri)
+            }
+
+            // Construct file path: archive/{guideUID}/{filename}.md
+            let filePath = archiveDirectory
+                .appendingPathComponent(components.guideUID)
+                .appendingPathComponent("\(components.filename).md")
+
+            guard FileManager.default.fileExists(atPath: filePath.path) else {
+                throw ResourceError.notFound(uri)
+            }
+
+            markdown = try String(contentsOf: filePath, encoding: .utf8)
 
         } else {
             throw ResourceError.invalidURI(uri)
@@ -248,6 +278,53 @@ public actor DocsResourceProvider: ResourceProvider {
             .replacingOccurrences(of: "-", with: " ")
             .replacingOccurrences(of: "_", with: " ")
             .capitalized
+    }
+
+    private func listArchiveResources() throws -> [Resource] {
+        var resources: [Resource] = []
+
+        let guides = try FileManager.default.contentsOfDirectory(
+            at: archiveDirectory,
+            includingPropertiesForKeys: nil
+        )
+
+        for guide in guides where guide.hasDirectoryPath {
+            let guideUID = guide.lastPathComponent
+            let files = try FileManager.default.contentsOfDirectory(
+                at: guide,
+                includingPropertiesForKeys: nil
+            )
+
+            for file in files where file.pathExtension == "md" {
+                let filename = file.deletingPathExtension().lastPathComponent
+                let uri = "\(Shared.Constants.MCP.appleArchiveScheme)\(guideUID)/\(filename)"
+                let resource = Resource(
+                    uri: uri,
+                    name: filename.replacingOccurrences(of: "-", with: " ").capitalized,
+                    description: "Apple Archive documentation",
+                    mimeType: Shared.Constants.MCP.mimeTypeMarkdown
+                )
+                resources.append(resource)
+            }
+        }
+
+        return resources
+    }
+
+    private func parseArchiveURI(_ uri: String) -> (guideUID: String, filename: String)? {
+        // Expected format: apple-archive://guideUID/filename
+        guard uri.hasPrefix(Shared.Constants.MCP.appleArchiveScheme) else {
+            return nil
+        }
+
+        let path = uri.replacingOccurrences(of: Shared.Constants.MCP.appleArchiveScheme, with: "")
+        let components = path.split(separator: "/", maxSplits: 1)
+
+        guard components.count == 2 else {
+            return nil
+        }
+
+        return (guideUID: String(components[0]), filename: String(components[1]))
     }
 }
 

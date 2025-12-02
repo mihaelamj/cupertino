@@ -28,6 +28,9 @@ struct SaveCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Directory containing package READMEs")
     var packagesDir: String?
 
+    @Option(name: .long, help: "Directory containing Apple Archive documentation")
+    var archiveDir: String?
+
     @Option(name: .long, help: "Metadata file path")
     var metadataFile: String?
 
@@ -97,13 +100,25 @@ struct SaveCommand: AsyncParsableCommand {
             Logging.ConsoleLogger.info("   Run 'cupertino fetch --type swift' to download Swift.org documentation")
         }
 
+        // Check if Archive directory exists
+        let archiveURL = archiveDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+            ?? effectiveBase.appendingPathComponent(Shared.Constants.Directory.archive)
+        let hasArchive = FileManager.default.fileExists(atPath: archiveURL.path)
+        let archiveDirToUse = hasArchive ? archiveURL : nil
+
+        if !hasArchive {
+            Logging.ConsoleLogger.info("ℹ️  Archive directory not found, skipping Apple Archive docs")
+            Logging.ConsoleLogger.info("   Run 'cupertino fetch --type archive' to download Apple Archive documentation")
+        }
+
         // Build index
         let builder = Search.IndexBuilder(
             searchIndex: searchIndex,
             metadata: metadata,
             docsDirectory: docsURL,
             evolutionDirectory: evolutionDirToUse,
-            swiftOrgDirectory: swiftOrgDirToUse
+            swiftOrgDirectory: swiftOrgDirToUse,
+            archiveDirectory: archiveDirToUse
         )
 
         // Note: Using a class to hold mutable state since @Sendable closures can't capture mutable vars

@@ -53,6 +53,7 @@ Filter results to a specific documentation source.
 - `"swift-org"` - Swift.org documentation
 - `"swift-evolution"` - Swift Evolution proposals
 - `"packages"` - Swift Package documentation
+- `"apple-archive"` - Apple Archive legacy programming guides
 
 ### framework (optional)
 
@@ -90,6 +91,18 @@ Maximum number of results to return.
 **Default:** 20
 
 **Maximum:** 100
+
+### include_archive (optional)
+
+Include Apple Archive legacy programming guides in search results.
+
+**Type:** Boolean
+
+**Default:** `false` (archive excluded by default)
+
+Archive documentation is excluded by default to prioritize modern documentation. Set to `true` to include legacy guides like Core Animation Programming Guide, Quartz 2D Programming Guide, etc. These contain foundational knowledge not available in modern docs.
+
+**Note:** You can also search archive exclusively using `source: "apple-archive"`.
 
 ## Response
 
@@ -169,6 +182,24 @@ A type whose mutable state is protected from concurrent access...
   "query": "Actors Swift concurrency isolation",
   "framework": "swift",
   "limit": 10
+}
+```
+
+### Include Archive Guides
+
+```json
+{
+  "query": "Core Animation layers",
+  "include_archive": true
+}
+```
+
+### Search Archive Only
+
+```json
+{
+  "query": "CALayer",
+  "source": "apple-archive"
 }
 ```
 

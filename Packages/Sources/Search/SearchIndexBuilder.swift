@@ -13,6 +13,7 @@ extension Search {
         private let docsDirectory: URL
         private let evolutionDirectory: URL?
         private let swiftOrgDirectory: URL?
+        private let archiveDirectory: URL?
         private let indexSampleCode: Bool
 
         public init(
@@ -21,6 +22,7 @@ extension Search {
             docsDirectory: URL,
             evolutionDirectory: URL? = nil,
             swiftOrgDirectory: URL? = nil,
+            archiveDirectory: URL? = nil,
             indexSampleCode: Bool = true
         ) {
             self.searchIndex = searchIndex
@@ -28,6 +30,7 @@ extension Search {
             self.docsDirectory = docsDirectory
             self.evolutionDirectory = evolutionDirectory
             self.swiftOrgDirectory = swiftOrgDirectory
+            self.archiveDirectory = archiveDirectory
             self.indexSampleCode = indexSampleCode
         }
 
@@ -57,6 +60,11 @@ extension Search {
             // Index Swift.org documentation if available
             if swiftOrgDirectory != nil {
                 try await indexSwiftOrgDocs(onProgress: onProgress)
+            }
+
+            // Index Apple Archive documentation if available
+            if archiveDirectory != nil {
+                try await indexArchiveDocs(onProgress: onProgress)
             }
 
             // Index Sample Code catalog if requested
@@ -504,7 +512,126 @@ extension Search {
             logInfo("   Swift.org: \(indexed) indexed, \(skipped) skipped")
         }
 
+        // MARK: - Apple Archive Documentation
+
+        private func indexArchiveDocs(onProgress: (@Sendable (Int, Int) -> Void)?) async throws {
+            guard let archiveDirectory else {
+                return
+            }
+
+            guard FileManager.default.fileExists(atPath: archiveDirectory.path) else {
+                logInfo("⚠️  Archive directory not found: \(archiveDirectory.path)")
+                return
+            }
+
+            let markdownFiles = try findMarkdownFiles(in: archiveDirectory)
+
+            guard !markdownFiles.isEmpty else {
+                logInfo("⚠️  No Apple Archive documentation found")
+                return
+            }
+
+            logInfo("📜 Indexing \(markdownFiles.count) Apple Archive documentation pages...")
+
+            var indexed = 0
+            var skipped = 0
+
+            for (index, file) in markdownFiles.enumerated() {
+                guard let content = try? String(contentsOf: file, encoding: .utf8) else {
+                    skipped += 1
+                    continue
+                }
+
+                // Extract guide ID (book UID) from path: archive/{guideUID}/...
+                let guideID = extractFrameworkFromPath(file, relativeTo: archiveDirectory) ?? "unknown"
+
+                // Extract metadata from front matter
+                let metadata = extractArchiveMetadata(from: content)
+                let title = metadata["title"] ?? extractTitle(from: content) ?? file.deletingPathExtension().lastPathComponent
+                let bookTitle = metadata["book"] ?? guideID
+                // Use framework field if available, otherwise fall back to book title
+                let baseFramework = metadata["framework"] ?? bookTitle
+                // Expand framework synonyms (e.g., QuartzCore -> QuartzCore, CoreAnimation)
+                let framework = expandFrameworkSynonyms(baseFramework)
+
+                // Generate URI: apple-archive://{guideID}/{filename}
+                let filename = file.deletingPathExtension().lastPathComponent
+                let uri = "apple-archive://\(guideID)/\(filename)"
+
+                // Calculate content hash
+                let contentHash = HashUtilities.sha256(of: content)
+
+                // Use file modification date
+                let attributes = try? FileManager.default.attributesOfItem(atPath: file.path)
+                let modDate = attributes?[.modificationDate] as? Date ?? Date()
+
+                do {
+                    // Apple Archive source with framework (or book title as fallback)
+                    try await searchIndex.indexDocument(
+                        uri: uri,
+                        source: "apple-archive",
+                        framework: framework,
+                        title: title,
+                        content: content,
+                        filePath: file.path,
+                        contentHash: contentHash,
+                        lastCrawled: modDate
+                    )
+                    indexed += 1
+                } catch {
+                    logError("Failed to index \(uri): \(error)")
+                    skipped += 1
+                }
+
+                if (index + 1) % Shared.Constants.Interval.progressLogEvery == 0 {
+                    logInfo("   Progress: \(index + 1)/\(markdownFiles.count)")
+                }
+            }
+
+            logInfo("   Apple Archive: \(indexed) indexed, \(skipped) skipped")
+        }
+
+        private func extractArchiveMetadata(from markdown: String) -> [String: String] {
+            var metadata: [String: String] = [:]
+
+            // Look for YAML front matter
+            guard markdown.hasPrefix("---") else { return metadata }
+
+            if let endRange = markdown.range(of: "\n---", range: markdown.index(markdown.startIndex, offsetBy: 3)..<markdown.endIndex) {
+                let frontMatter = String(markdown[markdown.index(markdown.startIndex, offsetBy: 4)..<endRange.lowerBound])
+
+                for line in frontMatter.split(separator: "\n") {
+                    let parts = line.split(separator: ":", maxSplits: 1)
+                    if parts.count == 2 {
+                        let key = parts[0].trimmingCharacters(in: .whitespaces)
+                        var value = parts[1].trimmingCharacters(in: .whitespaces)
+                        // Remove quotes
+                        if value.hasPrefix("\""), value.hasSuffix("\"") {
+                            value = String(value.dropFirst().dropLast())
+                        }
+                        metadata[key] = value
+                    }
+                }
+            }
+
+            return metadata
+        }
+
         // MARK: - Helper Methods
+
+        /// Framework synonyms - maps a framework to additional names it should be indexed under
+        private static let frameworkSynonyms: [String: [String]] = [
+            "QuartzCore": ["CoreAnimation"],
+            "CoreGraphics": ["Quartz2D"],
+        ]
+
+        /// Expand framework to include synonyms (returns comma-separated list)
+        private func expandFrameworkSynonyms(_ framework: String) -> String {
+            if let synonyms = Self.frameworkSynonyms[framework], !synonyms.isEmpty {
+                return ([framework] + synonyms).joined(separator: ", ")
+            }
+            return framework
+        }
 
         private func extractTitle(from markdown: String) -> String? {
             // Remove front matter first

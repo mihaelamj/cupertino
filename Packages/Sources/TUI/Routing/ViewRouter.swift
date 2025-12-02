@@ -19,6 +19,8 @@ enum ViewRouter {
             return handleHomeTransition(key: key, homeCursor: homeCursor)
         case .library:
             return handleLibraryTransition(key: key)
+        case .archive:
+            return handleArchiveTransition(key: key, state: state)
         case .settings:
             return handleSettingsTransition(key: key, state: state)
         case .packages:
@@ -35,15 +37,29 @@ enum ViewRouter {
         case .char("2"):
             return .library
         case .char("3"):
+            return .archive
+        case .char("4"):
             return .settings
         case .enter:
-            return [ViewMode.packages, .library, .settings][homeCursor]
+            return [ViewMode.packages, .library, .archive, .settings][homeCursor]
         default:
             return nil
         }
     }
 
     private static func handleLibraryTransition(key: Key) -> ViewMode? {
+        switch key {
+        case .char("h"), .escape:
+            return .home
+        default:
+            return nil
+        }
+    }
+
+    private static func handleArchiveTransition(key: Key, state: AppState) -> ViewMode? {
+        // Don't allow navigation when searching
+        guard !state.isArchiveSearching else { return nil }
+
         switch key {
         case .char("h"), .escape:
             return .home
