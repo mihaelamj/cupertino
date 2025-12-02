@@ -6,7 +6,7 @@ CLI commands for the Cupertino documentation server.
 
 | Command | Description |
 |---------|-------------|
-| [fetch](fetch/) | Download documentation from Apple, Swift Evolution, and Swift.org |
+| [fetch](fetch/) | Download documentation from Apple, Swift Evolution, Swift.org, and Apple Archive |
 | [save](save/) | Build FTS5 search index from downloaded documentation |
 | [serve](serve/) | Start MCP server for AI agent access |
 | [search](search/) | Search documentation from the command line |
@@ -20,6 +20,7 @@ CLI commands for the Cupertino documentation server.
 # Download documentation
 cupertino fetch --type docs
 cupertino fetch --type evolution
+cupertino fetch --type archive
 
 # Build search index
 cupertino save
@@ -31,6 +32,7 @@ cupertino serve
 # Search documentation
 cupertino search "SwiftUI View" --limit 10
 cupertino search "async" --source swift-evolution
+cupertino search "Core Animation" --include-archive
 
 # Read full document
 cupertino read "apple-docs://swiftui/documentation_swiftui_view" --format markdown
@@ -47,6 +49,7 @@ cupertino doctor
 # 1. Download documentation (takes time)
 cupertino fetch --type docs --max-pages 15000
 cupertino fetch --type evolution
+cupertino fetch --type archive  # Legacy programming guides
 
 # 2. Build search index
 cupertino save

@@ -24,6 +24,7 @@ extension Shared {
             public static let swiftBook = "swift-book"
             public static let packages = "packages"
             public static let sampleCode = "sample-code"
+            public static let archive = "archive"
         }
 
         // MARK: - File Names
@@ -101,6 +102,11 @@ extension Shared {
             defaultBaseDirectory.appendingPathComponent(Directory.sampleCode)
         }
 
+        /// Default archive directory: ~/.cupertino/archive
+        public static var defaultArchiveDirectory: URL {
+            defaultBaseDirectory.appendingPathComponent(Directory.archive)
+        }
+
         /// Default metadata file: ~/.cupertino/metadata.json
         public static var defaultMetadataFile: URL {
             defaultBaseDirectory.appendingPathComponent(FileName.metadata)
@@ -168,6 +174,9 @@ extension Shared {
 
             /// Apple Sample Code display name
             public static let sampleCode = "Apple Sample Code"
+
+            /// Apple Archive Documentation display name
+            public static let archive = "Apple Archive Documentation"
         }
 
         // MARK: - GitHub Organizations
@@ -212,6 +221,9 @@ extension Shared {
 
             /// Apple Developer Documentation
             public static let appleDeveloperDocs = "https://developer.apple.com/documentation/"
+
+            /// Apple Archive Documentation
+            public static let appleArchive = "https://developer.apple.com/library/archive/"
 
             /// Apple Sample Code List
             public static let appleSampleCode = "https://developer.apple.com/documentation/samplecode/"
@@ -319,6 +331,9 @@ extension Shared {
             /// Apple documentation resource URI scheme
             public static let appleDocsScheme = "apple-docs://"
 
+            /// Apple archive documentation resource URI scheme
+            public static let appleArchiveScheme = "apple-archive://"
+
             /// Swift Evolution proposal resource URI scheme
             public static let swiftEvolutionScheme = "swift-evolution://"
 
@@ -374,7 +389,10 @@ extension Shared {
             /// Search docs tool description
             public static let toolSearchDocsDescription = """
             Search Apple documentation and Swift Evolution proposals by keywords. \
-            Returns a ranked list of relevant documents with URIs that can be read using resources/read.
+            Returns a ranked list of relevant documents with URIs that can be read using resources/read. \
+            Optional parameters: source (apple-docs, swift-evolution, swift-org, swift-book, apple-archive), \
+            framework (e.g. swiftui, foundation), include_archive (bool, includes legacy Apple Archive guides \
+            like Core Animation Programming Guide - useful for foundational concepts not in modern docs).
             """
 
             /// List frameworks tool description
@@ -405,6 +423,9 @@ extension Shared {
 
             /// JSON Schema parameter: language
             public static let schemaParamLanguage = "language"
+
+            /// JSON Schema parameter: include_archive
+            public static let schemaParamIncludeArchive = "include_archive"
 
             /// JSON Schema parameter: limit
             public static let schemaParamLimit = "limit"
@@ -519,6 +540,10 @@ extension Shared {
             /// Rate limit delay for package star count (normal)
             /// Rationale: Minimize total fetch time
             public static let packageStarsNormal: Duration = .seconds(0.5)
+
+            /// Delay between archive page fetches
+            /// Rationale: Respectful crawling of Apple's archive servers
+            public static let archivePage: Duration = .milliseconds(500)
         }
 
         /// Timeout values for operations

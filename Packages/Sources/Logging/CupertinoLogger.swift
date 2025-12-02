@@ -36,6 +36,9 @@ extension Logging {
 
         /// Logger for package documentation downloads
         public static let packageDownloader = os.Logger(subsystem: subsystem, category: "package-downloader")
+
+        /// Logger for Apple archive documentation operations
+        public static let archive = os.Logger(subsystem: subsystem, category: "archive")
     }
 }
 

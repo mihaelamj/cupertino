@@ -14,6 +14,7 @@ func homeViewBasicRender() {
         selectedPackages: 10,
         downloadedPackages: 5,
         artifactCount: 3,
+        archiveGuideCount: 47,
         totalSize: 1024 * 1024 * 100 // 100 MB
     )
 
@@ -28,7 +29,7 @@ func homeViewBasicRender() {
 @Test("HomeView renders menu items")
 func homeViewMenuItems() {
     let view = HomeView()
-    let stats = HomeStats(totalPackages: 0, selectedPackages: 0, downloadedPackages: 0, artifactCount: 0, totalSize: 0)
+    let stats = HomeStats(totalPackages: 0, selectedPackages: 0, downloadedPackages: 0, artifactCount: 0, archiveGuideCount: 0, totalSize: 0)
 
     let output = view.render(cursor: 0, width: 80, height: 24, stats: stats)
 
@@ -41,7 +42,7 @@ func homeViewMenuItems() {
 @Test("HomeView handles different cursor positions")
 func homeViewCursorPositions() {
     let view = HomeView()
-    let stats = HomeStats(totalPackages: 0, selectedPackages: 0, downloadedPackages: 0, artifactCount: 0, totalSize: 0)
+    let stats = HomeStats(totalPackages: 0, selectedPackages: 0, downloadedPackages: 0, artifactCount: 0, archiveGuideCount: 0, totalSize: 0)
 
     let output0 = view.render(cursor: 0, width: 80, height: 24, stats: stats)
     let output1 = view.render(cursor: 1, width: 80, height: 24, stats: stats)
@@ -276,7 +277,7 @@ func viewsUseBoxDrawing() {
         cursor: 0,
         width: 80,
         height: 24,
-        stats: HomeStats(totalPackages: 0, selectedPackages: 0, downloadedPackages: 0, artifactCount: 0, totalSize: 0)
+        stats: HomeStats(totalPackages: 0, selectedPackages: 0, downloadedPackages: 0, artifactCount: 0, archiveGuideCount: 0, totalSize: 0)
     )
     let settingsOutput = settingsView.render(cursor: 0, width: 80, height: 24, baseDirectory: "/test", isEditing: false, editBuffer: "", statusMessage: "")
     let libraryOutput = libraryView.render(artifacts: [], cursor: 0, width: 80, height: 24)
@@ -422,7 +423,7 @@ func allViewsMatchWidth() {
         cursor: 0,
         width: width,
         height: height,
-        stats: HomeStats(totalPackages: 10, selectedPackages: 5, downloadedPackages: 3, artifactCount: 2, totalSize: 1024)
+        stats: HomeStats(totalPackages: 10, selectedPackages: 5, downloadedPackages: 3, artifactCount: 2, archiveGuideCount: 47, totalSize: 1024)
     )
     let homeLines = homeOutput.split(separator: "\r\n", omittingEmptySubsequences: false).map(String.init).filter { !$0.isEmpty }
     for (index, line) in homeLines.enumerated() {
@@ -933,7 +934,7 @@ func packageViewCombinedStates() {
 func homeViewCursorStates() {
     let homeView = HomeView()
     let width = 100
-    let stats = HomeStats(totalPackages: 10, selectedPackages: 5, downloadedPackages: 3, artifactCount: 2, totalSize: 1024)
+    let stats = HomeStats(totalPackages: 10, selectedPackages: 5, downloadedPackages: 3, artifactCount: 2, archiveGuideCount: 47, totalSize: 1024)
 
     for cursor in 0...2 {
         let output = homeView.render(cursor: cursor, width: width, height: 24, stats: stats)
@@ -956,6 +957,7 @@ func homeViewLargeNumbers() {
         selectedPackages: 888888,
         downloadedPackages: 777777,
         artifactCount: 666,
+        archiveGuideCount: 999,
         totalSize: 999999999999 // ~1TB
     )
 

@@ -14,7 +14,7 @@ A Swift-based tool to crawl, index, and serve Apple's developer documentation to
 
 Cupertino is a local, structured, AI-ready documentation system for Apple platforms. It:
 
-- **Crawls** Apple Developer documentation, Swift.org, Swift Evolution proposals, and Swift package metadata
+- **Crawls** Apple Developer documentation, Swift.org, Swift Evolution proposals, Apple Archive legacy guides, and Swift package metadata
 - **Indexes** everything into a fast, searchable SQLite FTS5 database with BM25 ranking
 - **Serves** documentation to AI agents like Claude via the Model Context Protocol
 - **Provides** offline access to 22,000+ documentation pages across 261 frameworks
@@ -161,6 +161,11 @@ A UIKit view controller that manages a SwiftUI view hierarchy.
   - Priority package catalogs
   - README files
   - Sample code
+
+- **Apple Archive Legacy Guides** (~75 pages)
+  - Pre-2016 programming guides (Core Animation, Quartz 2D, Core Text, etc.)
+  - Deep conceptual knowledge not in modern docs
+  - Excluded from search by default (use `--include-archive`)
 
 ### 2. Bundled Resources
 
@@ -423,7 +428,7 @@ For development setup, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Project Status
 
-**Version:** 0.2.2
+**Version:** 0.2.3
 **Status:** ✅ Production Ready
 
 - ✅ All core functionality working

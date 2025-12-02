@@ -42,6 +42,8 @@ enum InputHandler {
             didChange = handleHomeInput(key: key, homeCursor: &homeCursor)
         case .library:
             didChange = handleLibraryInput(key: key, libraryCursor: &libraryCursor, artifacts: artifacts)
+        case .archive:
+            didChange = handleArchiveInput(key: key, state: state, pageSize: pageSize)
         case .settings:
             didChange = handleSettingsInput(key: key, state: state, settingsCursor: &settingsCursor)
         case .packages:
@@ -73,7 +75,7 @@ enum InputHandler {
         case .arrowUp, .char("k"):
             homeCursor = max(0, homeCursor - 1)
         case .arrowDown, .char("j"):
-            homeCursor = min(2, homeCursor + 1)
+            homeCursor = min(3, homeCursor + 1) // 4 items: packages, library, archive, settings
         default:
             return false
         }
@@ -102,6 +104,113 @@ enum InputHandler {
             return false
         }
         return libraryCursor != oldCursor
+    }
+
+    // MARK: - Archive View Input
+
+    private static func handleArchiveInput(key: Key, state: AppState, pageSize: Int) -> Bool {
+        if state.isArchiveSearching {
+            return handleArchiveSearchMode(key: key, state: state)
+        } else {
+            return handleArchiveNavigationMode(key: key, state: state, pageSize: pageSize)
+        }
+    }
+
+    private static func handleArchiveSearchMode(key: Key, state: AppState) -> Bool {
+        let pageSize = 20
+        switch key {
+        case .escape:
+            state.archiveSearchQuery = ""
+            state.isArchiveSearching = false
+            return true
+        case .enter:
+            state.isArchiveSearching = false
+            return true
+        case .arrowUp, .char("k"):
+            return state.moveArchiveCursor(delta: -1, pageSize: pageSize)
+        case .arrowDown, .char("j"):
+            return state.moveArchiveCursor(delta: 1, pageSize: pageSize)
+        case .ctrl("o"):
+            openCurrentArchiveInBrowser(state: state)
+            return false
+        case .backspace:
+            if !state.archiveSearchQuery.isEmpty {
+                state.archiveSearchQuery.removeLast()
+                state.archiveCursor = 0
+                state.archiveScrollOffset = 0
+                if state.archiveSearchQuery.isEmpty {
+                    state.isArchiveSearching = false
+                }
+                return true
+            }
+            return false
+        case let .char(character) where
+            character.isLetter || character.isNumber || character.isWhitespace || "-_./".contains(character):
+            state.archiveSearchQuery.append(character)
+            state.archiveCursor = 0
+            state.archiveScrollOffset = 0
+            return true
+        default:
+            return false
+        }
+    }
+
+    private static func handleArchiveNavigationMode(key: Key, state: AppState, pageSize: Int) -> Bool {
+        switch key {
+        case .arrowUp, .char("k"):
+            return state.moveArchiveCursor(delta: -1, pageSize: pageSize)
+        case .arrowDown, .char("j"):
+            return state.moveArchiveCursor(delta: 1, pageSize: pageSize)
+        case .arrowLeft, .pageUp:
+            return state.moveArchiveCursor(delta: -pageSize, pageSize: pageSize)
+        case .arrowRight, .pageDown:
+            return state.moveArchiveCursor(delta: pageSize, pageSize: pageSize)
+        case .space:
+            state.toggleCurrentArchive()
+            return true
+        case .char("f"):
+            state.cycleArchiveFilterCategory()
+            return true
+        case .char("w"):
+            do {
+                try saveArchiveSelections(state: state)
+            } catch {
+                state.archiveStatusMessage = "Failed to save: \(error.localizedDescription)"
+            }
+            return true
+        case .char("/"):
+            state.isArchiveSearching = true
+            return true
+        case .char("o"), .enter:
+            openCurrentArchiveInBrowser(state: state)
+            return false
+        default:
+            return false
+        }
+    }
+
+    private static func openCurrentArchiveInBrowser(state: AppState) {
+        let visible = state.visibleArchiveEntries
+        guard state.archiveCursor < visible.count else { return }
+
+        let entry = visible[state.archiveCursor]
+        guard let url = entry.url else { return }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        process.arguments = [url.absoluteString]
+
+        do {
+            try process.run()
+        } catch {
+            // Silently fail
+        }
+    }
+
+    private static func saveArchiveSelections(state: AppState) throws {
+        try ArchiveGuidesCatalog.saveSelectedGuides(state.archiveEntries)
+        let selectedCount = state.archiveEntries.filter(\.isSelected).count
+        state.archiveStatusMessage = "Saved \(selectedCount) guides"
     }
 
     // MARK: - Settings View Input
@@ -206,6 +315,10 @@ enum InputHandler {
         case .arrowRight, .pageDown:
             // Page down while searching
             return state.moveCursor(delta: pageSize, pageSize: pageSize)
+        case .space:
+            // Allow selection while searching
+            state.toggleCurrent()
+            return true
         case .ctrl("o"):
             // Open current package in browser while searching (Ctrl+O to avoid conflict with 'o' character in search)
             openCurrentPackageInBrowser(state: state)

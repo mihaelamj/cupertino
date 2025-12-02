@@ -1,6 +1,7 @@
 import Core
 import Foundation
 import Resources
+import Shared
 
 /// Open a package's GitHub page in the default browser
 @MainActor
@@ -23,7 +24,45 @@ func openCurrentPackageInBrowser(state: AppState) {
     }
 }
 
-/// Save selected packages to priority-packages.json
+/// User-writable location for selected packages: ~/.cupertino/selected-packages.json
+private var userPackageSelectionsURL: URL {
+    Shared.Constants.defaultBaseDirectory.appendingPathComponent("selected-packages.json")
+}
+
+/// Load selected package URLs from user file (~/.cupertino/selected-packages.json)
+/// Returns empty set if file doesn't exist (will use bundled priority-packages.json defaults)
+func loadUserSelectedPackageURLs() -> Set<String> {
+    let fileURL = userPackageSelectionsURL
+
+    guard FileManager.default.fileExists(atPath: fileURL.path) else {
+        return []
+    }
+
+    do {
+        let data = try Data(contentsOf: fileURL)
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let tiers = json["tiers"] as? [String: Any] else {
+            return []
+        }
+
+        var urls = Set<String>()
+        for (_, tierValue) in tiers {
+            if let tier = tierValue as? [String: Any],
+               let packages = tier["packages"] as? [[String: Any]] {
+                for pkg in packages {
+                    if let url = pkg["url"] as? String {
+                        urls.insert(url)
+                    }
+                }
+            }
+        }
+        return urls
+    } catch {
+        return []
+    }
+}
+
+/// Save selected packages to ~/.cupertino/selected-packages.json
 @MainActor
 func saveSelections(state: AppState) throws {
     let selected = state.packages.filter(\.isSelected).map(\.package)
@@ -54,17 +93,17 @@ func saveSelections(state: AppState) throws {
         ],
     ]
 
-    // Write to Resources directory
+    // Ensure ~/.cupertino directory exists
+    let baseDir = Shared.Constants.defaultBaseDirectory
+    if !FileManager.default.fileExists(atPath: baseDir.path) {
+        try FileManager.default.createDirectory(at: baseDir, withIntermediateDirectories: true)
+    }
+
+    // Write to user-writable location
     let data = try JSONSerialization.data(withJSONObject: catalogJSON, options: [.prettyPrinted, .sortedKeys])
-    let resourcesPath = CupertinoResources.bundle.bundleURL
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-        .appendingPathComponent("Sources/Resources/Resources/priority-packages.json")
+    try data.write(to: userPackageSelectionsURL)
 
-    try data.write(to: resourcesPath)
-
-    state.statusMessage = "✅ Saved \(selected.count) packages"
+    state.statusMessage = "✅ Saved \(selected.count) packages to ~/.cupertino/"
 }
 
 /// Open a URL (file or directory) in Finder

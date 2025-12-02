@@ -18,7 +18,8 @@ struct HomeView {
         let menuItems = [
             MenuItem(key: "1", icon: "*", title: "Packages", subtitle: "Browse \(stats.totalPackages) Swift packages"),
             MenuItem(key: "2", icon: "*", title: "Library", subtitle: "\(stats.artifactCount) artifact collections"),
-            MenuItem(key: "3", icon: "*", title: "Settings", subtitle: "Configure Cupertino"),
+            MenuItem(key: "3", icon: "*", title: "Archive", subtitle: "\(stats.archiveGuideCount) classic Apple guides"),
+            MenuItem(key: "4", icon: "*", title: "Settings", subtitle: "Configure Cupertino"),
         ]
 
         result += Box.topLeft + String(repeating: Box.horizontal, count: width - 2) + Box.topRight + "\r\n"
@@ -28,11 +29,17 @@ struct HomeView {
 
         // Stats section - compact
         result += renderPaddedLine("Quick Stats", width: width)
-        let selected = "  • \(stats.selectedPackages) selected"
-        let downloaded = "  • \(stats.downloadedPackages) downloaded"
-        let totalSize = "  • \(formatBytes(stats.totalSize))"
-        let statsLine = "\(selected)\(downloaded)\(totalSize)"
+        let selected = " \(stats.selectedPackages) pkgs"
+        let downloaded = " \(stats.downloadedPackages) dl"
+        let totalSize = " \(formatBytes(stats.totalSize))"
+        let statsLine = "•\(selected) •\(downloaded) •\(totalSize)"
         result += renderPaddedLine(statsLine, width: width)
+        result += Box.teeRight + String(repeating: Box.horizontal, count: width - 2) + Box.teeLeft + "\r\n"
+
+        // Quick Commands section
+        result += renderPaddedLine("Quick Commands:", width: width)
+        result += renderPaddedLine("  cupertino fetch --type package-docs", width: width)
+        result += renderPaddedLine("  cupertino fetch --type archive", width: width)
         result += Box.teeRight + String(repeating: Box.horizontal, count: width - 2) + Box.teeLeft + "\r\n"
 
         // Menu - compact
@@ -51,13 +58,15 @@ struct HomeView {
         // 1: separator
         // 2: stats (header + compact line)
         // 1: separator
+        // 3: quick commands (header + 2 commands)
+        // 1: separator
         // 1: "Select a view"
-        // 3: menu items
+        // 4: menu items (packages, library, archive, settings)
         // 1: separator (below)
         // 1: help
         // 1: bottom border
-        // Total: 14 lines
-        let usedLines = 14
+        // Total: 19 lines
+        let usedLines = 19
         let remaining = max(0, height - usedLines)
         for _ in 0..<remaining {
             result += Box.vertical + String(repeating: " ", count: width - 2) + Box.vertical + "\r\n"
@@ -126,5 +135,6 @@ struct HomeStats {
     let selectedPackages: Int
     let downloadedPackages: Int
     let artifactCount: Int
+    let archiveGuideCount: Int
     let totalSize: Int64
 }

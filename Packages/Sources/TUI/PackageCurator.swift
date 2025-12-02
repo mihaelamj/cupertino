@@ -9,7 +9,15 @@ struct PackageCuratorApp {
     static func main() async throws {
         // Load packages
         let packages = await SwiftPackagesCatalog.allPackages
-        let priorityURLs = await PriorityPackagesCatalog.allPackages.map(\.url)
+
+        // Load user selections first, fall back to bundled priority packages
+        let userSelectedURLs = loadUserSelectedPackageURLs()
+        let priorityURLs: Set<String>
+        if !userSelectedURLs.isEmpty {
+            priorityURLs = userSelectedURLs
+        } else {
+            priorityURLs = await Set(PriorityPackagesCatalog.allPackages.map(\.url))
+        }
 
         // Load configuration first
         let config = ConfigManager.load()
@@ -29,12 +37,23 @@ struct PackageCuratorApp {
         // Scan library artifacts
         var artifacts = scanLibraryArtifacts(baseDir: config.baseDirectory)
 
+        // Load archive guides
+        let archiveGuides = ArchiveGuidesCatalog.allGuides
+        let selectedGuidePaths = ArchiveGuidesCatalog.loadSelectedGuidePaths()
+        state.archiveEntries = archiveGuides.map { entry in
+            var mutableEntry = entry
+            // Required guides are always selected, others use user selection
+            mutableEntry.isSelected = entry.isRequired || selectedGuidePaths.contains(entry.path)
+            return mutableEntry
+        }
+
         // Initialize UI components
         let screen = Screen()
         let input = Input()
         let homeView = HomeView()
         let packageView = PackageView()
         let libraryView = LibraryView()
+        let archiveView = ArchiveView()
         let settingsView = SettingsView()
         var homeCursor = 0
         var libraryCursor = 0
@@ -89,6 +108,7 @@ struct PackageCuratorApp {
                     homeView: homeView,
                     packageView: packageView,
                     libraryView: libraryView,
+                    archiveView: archiveView,
                     settingsView: settingsView
                 )
                 screen.render(content)
@@ -197,6 +217,7 @@ struct PackageCuratorApp {
         homeView: HomeView,
         packageView: PackageView,
         libraryView: LibraryView,
+        archiveView: ArchiveView,
         settingsView: SettingsView
     ) -> String {
         switch state.viewMode {
@@ -206,6 +227,7 @@ struct PackageCuratorApp {
                 selectedPackages: state.packages.filter(\.isSelected).count,
                 downloadedPackages: state.packages.filter(\.isDownloaded).count,
                 artifactCount: artifacts.count,
+                archiveGuideCount: state.archiveEntries.count,
                 totalSize: artifacts.reduce(0) { $0 + $1.sizeBytes }
             )
             return homeView.render(cursor: homeCursor, width: cols, height: rows, stats: stats)
@@ -213,6 +235,19 @@ struct PackageCuratorApp {
             return packageView.render(state: state, width: cols, height: rows)
         case .library:
             return libraryView.render(artifacts: artifacts, cursor: libraryCursor, width: cols, height: rows)
+        case .archive:
+            let visible = state.visibleArchiveEntries
+            return archiveView.render(
+                entries: visible,
+                cursor: state.archiveCursor,
+                scrollOffset: state.archiveScrollOffset,
+                width: cols,
+                height: rows,
+                filterCategory: state.archiveFilterCategory,
+                searchQuery: state.archiveSearchQuery,
+                isSearching: state.isArchiveSearching,
+                statusMessage: state.archiveStatusMessage
+            )
         case .settings:
             return settingsView.render(
                 cursor: settingsCursor,
@@ -244,49 +279,6 @@ struct PackageCuratorApp {
         } catch {
             // Silently fail - don't crash the TUI
         }
-    }
-
-    @MainActor
-    static func saveSelections(state: AppState) throws {
-        let selected = state.packages.filter(\.isSelected).map(\.package)
-
-        // Convert to priority package format
-        let priorityPackages = selected.map { pkg in
-            PriorityPackage(owner: pkg.owner, repo: pkg.repo, url: pkg.url)
-        }
-
-        // Create catalog JSON structure
-        let catalogJSON: [String: Any] = [
-            "version": "1.0",
-            "lastUpdated": ISO8601DateFormatter().string(from: Date()),
-            "description": "Curated list of high-priority Swift packages (TUI generated)",
-            "tiers": [
-                "ecosystem": [
-                    "description": "Essential ecosystem packages",
-                    "count": priorityPackages.count,
-                    "packages": priorityPackages.map { [
-                        "owner": $0.owner ?? "",
-                        "repo": $0.repo,
-                        "url": $0.url,
-                    ] },
-                ],
-            ],
-            "stats": [
-                "totalPriorityPackages": priorityPackages.count,
-            ],
-        ]
-
-        // Write to Resources directory
-        let data = try JSONSerialization.data(withJSONObject: catalogJSON, options: [.prettyPrinted, .sortedKeys])
-        let resourcesPath = CupertinoResources.bundle.bundleURL
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("Sources/Resources/Resources/priority-packages.json")
-
-        try data.write(to: resourcesPath)
-
-        state.statusMessage = "✅ Saved \(selected.count) packages"
     }
 
     /// Check which packages are downloaded in the docs directory

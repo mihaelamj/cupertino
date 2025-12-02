@@ -76,13 +76,18 @@ public actor CupertinoSearchToolProvider: ToolProvider {
         let requestedLimit = (arguments?[Shared.Constants.MCP.schemaParamLimit]?.value as? Int) ?? defaultLimit
         let limit = min(requestedLimit, Shared.Constants.Limit.maxSearchLimit)
 
+        // Include archive only if explicitly requested via parameter or source=apple-archive
+        let includeArchive = (arguments?[Shared.Constants.MCP.schemaParamIncludeArchive]?.value as? Bool) ?? false
+
         // Perform search
+        // Archive documentation is excluded by default unless include_archive=true or source=apple-archive
         let results = try await searchIndex.search(
             query: query,
             source: source,
             framework: framework,
             language: language,
-            limit: limit
+            limit: limit,
+            includeArchive: includeArchive
         )
 
         // Format results as markdown

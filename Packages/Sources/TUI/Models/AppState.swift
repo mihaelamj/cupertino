@@ -11,6 +11,7 @@ enum ViewMode {
     case home
     case packages
     case library
+    case archive
     case settings
 }
 
@@ -35,6 +36,15 @@ final class AppState {
     var baseDirectory: String = ""
     var needsReload: Bool = false
     var needsScreenClear: Bool = false // Track when we need to force clear screen
+
+    // Archive state
+    var archiveEntries: [ArchiveEntry] = []
+    var archiveCursor: Int = 0
+    var archiveScrollOffset: Int = 0
+    var archiveSearchQuery: String = ""
+    var isArchiveSearching: Bool = false
+    var archiveFilterCategory: String?
+    var archiveStatusMessage: String = ""
 
     var visiblePackages: [PackageEntry] {
         var filtered = packages
@@ -121,6 +131,97 @@ final class AppState {
         case .all: filterMode = .selected
         case .selected: filterMode = .downloaded
         case .downloaded: filterMode = .all
+        }
+    }
+
+    // MARK: - Archive Methods
+
+    var visibleArchiveEntries: [ArchiveEntry] {
+        var filtered = archiveEntries
+
+        // Apply search filter
+        if !archiveSearchQuery.isEmpty {
+            filtered = filtered.filter { entry in
+                entry.title.localizedCaseInsensitiveContains(archiveSearchQuery) ||
+                    entry.framework.localizedCaseInsensitiveContains(archiveSearchQuery) ||
+                    entry.category.localizedCaseInsensitiveContains(archiveSearchQuery) ||
+                    entry.description.localizedCaseInsensitiveContains(archiveSearchQuery)
+            }
+        }
+
+        // Apply category filter
+        if let category = archiveFilterCategory {
+            filtered = filtered.filter { $0.category == category }
+        }
+
+        return filtered
+    }
+
+    func toggleCurrentArchive() {
+        let visible = visibleArchiveEntries
+        guard archiveCursor < visible.count else { return }
+
+        let entry = visible[archiveCursor]
+
+        // Don't allow deselecting required entries
+        if entry.isRequired, entry.isSelected {
+            archiveStatusMessage = "Cannot deselect required guide"
+            return
+        }
+
+        if let index = archiveEntries.firstIndex(where: { $0.path == entry.path }) {
+            archiveEntries[index].isSelected.toggle()
+        }
+    }
+
+    func moveArchiveCursor(delta: Int, pageSize: Int) -> Bool {
+        let visible = visibleArchiveEntries
+        guard !visible.isEmpty else { return false }
+
+        let oldCursor = archiveCursor
+        let oldScrollOffset = archiveScrollOffset
+
+        archiveCursor = max(0, min(archiveCursor + delta, visible.count - 1))
+
+        // Simple scrolling: keep cursor visible
+        if archiveCursor >= archiveScrollOffset + pageSize {
+            archiveScrollOffset = archiveCursor - pageSize + 1
+        } else if archiveCursor < archiveScrollOffset {
+            archiveScrollOffset = archiveCursor
+        }
+
+        return archiveCursor != oldCursor || archiveScrollOffset != oldScrollOffset
+    }
+
+    /// Get unique categories for filtering
+    var archiveCategories: [String] {
+        Array(Set(archiveEntries.map(\.category))).sorted()
+    }
+
+    func cycleArchiveFilterCategory() {
+        archiveCursor = 0
+        archiveScrollOffset = 0
+        needsScreenClear = true
+
+        let categories = archiveCategories
+        guard !categories.isEmpty else {
+            archiveFilterCategory = nil
+            return
+        }
+
+        if let current = archiveFilterCategory {
+            if let index = categories.firstIndex(of: current) {
+                let nextIndex = index + 1
+                if nextIndex < categories.count {
+                    archiveFilterCategory = categories[nextIndex]
+                } else {
+                    archiveFilterCategory = nil // cycle back to "all"
+                }
+            } else {
+                archiveFilterCategory = categories.first
+            }
+        } else {
+            archiveFilterCategory = categories.first
         }
     }
 }

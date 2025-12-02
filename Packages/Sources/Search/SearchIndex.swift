@@ -1518,7 +1518,8 @@ extension Search {
             source: String? = nil,
             framework: String? = nil,
             language: String? = nil,
-            limit: Int = Shared.Constants.Limit.defaultSearchLimit
+            limit: Int = Shared.Constants.Limit.defaultSearchLimit,
+            includeArchive: Bool = false
         ) async throws -> [Search.Result] {
             guard let database else {
                 throw SearchError.databaseNotInitialized
@@ -1535,6 +1536,9 @@ extension Search {
 
             // Use explicit source or detected source
             let effectiveSource = source ?? detectedSource
+
+            // Check if user explicitly requested archive
+            let archiveRequested = effectiveSource == "apple-archive"
 
             // Use remaining query after extracting source prefix
             let queryToSearch = remainingQuery.isEmpty ? query : remainingQuery
@@ -1559,6 +1563,9 @@ extension Search {
 
             if effectiveSource != nil {
                 sql += " AND f.source = ?"
+            } else if !includeArchive, !archiveRequested {
+                // Exclude apple-archive by default unless explicitly requested or includeArchive is true
+                sql += " AND f.source != 'apple-archive'"
             }
             if framework != nil {
                 sql += " AND f.framework = ?"
@@ -1712,6 +1719,23 @@ extension Search {
                     }
                 }()
 
+                // Apply source-based ranking multiplier
+                // Prefer modern Apple docs over archived guides (but archives still valuable)
+                let sourceMultiplier: Double = {
+                    switch source {
+                    case "apple-docs":
+                        return 1.0 // Baseline - modern docs
+                    case "apple-archive":
+                        return 1.5 // Slight penalty - archived guides (older but foundational)
+                    case "swift-evolution":
+                        return 1.3 // Slight penalty - proposals (reference, not tutorials)
+                    case "swift-book", "swift-org":
+                        return 0.9 // Slight boost - official Swift docs
+                    default:
+                        return 1.0
+                    }
+                }()
+
                 // Apply intelligent title and query matching heuristics
                 let combinedBoost: Double = {
                     // Use original query for semantic matching (not sanitized)
@@ -1791,7 +1815,7 @@ extension Search {
                 // CRITICAL: BM25 scores are negative, LOWER = better
                 // To boost (improve rank), we need to make MORE negative
                 // So we DIVIDE by multipliers (smaller multiplier = larger negative number)
-                let adjustedRank = bm25Rank / (kindMultiplier * combinedBoost)
+                let adjustedRank = bm25Rank / (kindMultiplier * sourceMultiplier * combinedBoost)
 
                 results.append(
                     Search.Result(

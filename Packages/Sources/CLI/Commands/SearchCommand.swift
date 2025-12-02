@@ -21,10 +21,16 @@ struct SearchCommand: AsyncParsableCommand {
     @Option(
         name: .shortAndLong,
         help: """
-        Filter by source: apple-docs, swift-evolution, swift-org, swift-book, packages, apple-sample-code
+        Filter by source: apple-docs, swift-evolution, swift-org, swift-book, packages, apple-sample-code, apple-archive
         """
     )
     var source: String?
+
+    @Flag(
+        name: .long,
+        help: "Include Apple Archive documentation in results (excluded by default)"
+    )
+    var includeArchive: Bool = false
 
     @Option(
         name: .shortAndLong,
@@ -75,12 +81,14 @@ struct SearchCommand: AsyncParsableCommand {
         }
 
         // Perform search
+        // Archive is excluded by default unless --include-archive or --source apple-archive
         let results = try await searchIndex.search(
             query: query,
             source: source,
             framework: framework,
             language: language,
-            limit: limit
+            limit: limit,
+            includeArchive: includeArchive
         )
 
         // Output results

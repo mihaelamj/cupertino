@@ -25,7 +25,9 @@ The `fetch` command is the unified fetching command that handles both web crawli
   - `swift` - Swift.org Documentation (web crawl)
   - `evolution` - Swift Evolution Proposals (web crawl)
   - `packages` - Swift Package Index metadata (direct download)
+  - `package-docs` - Swift Package READMEs (direct download)
   - `code` - Apple Sample Code (direct download)
+  - `archive` - Apple Archive guides (legacy programming guides)
   - `all` - All types in parallel
 
 ### Web Crawl Options
@@ -73,6 +75,12 @@ cupertino fetch --type packages --limit 100
 cupertino fetch --type code --authenticate
 ```
 
+### Fetch Apple Archive Guides (Legacy Documentation)
+```bash
+cupertino fetch --type archive
+# Fetches: Core Animation, Core Graphics, Core Text, etc.
+```
+
 ### Custom Web Crawl
 ```bash
 cupertino fetch --start-url https://developer.apple.com/documentation/swiftui \
@@ -96,8 +104,9 @@ cupertino fetch --type docs --force
 
 Default locations:
 - **docs**: `~/.cupertino/docs/`
-- **swift**: `~/.cupertino/swift-docs/`
+- **swift**: `~/.cupertino/swift-org/`
 - **evolution**: `~/.cupertino/swift-evolution/`
+- **archive**: `~/.cupertino/archive/`
 
 Output files:
 - **Markdown files** - Converted documentation pages

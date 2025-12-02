@@ -34,12 +34,28 @@ cupertino search "Observable macro"
 Filter results by documentation source.
 
 **Type:** String
-**Values:** `apple-docs`, `swift-evolution`, `swift-org`, `swift-book`, `packages`, `apple-sample-code`
+**Values:** `apple-docs`, `swift-evolution`, `swift-org`, `swift-book`, `packages`, `apple-sample-code`, `apple-archive`
 
 **Example:**
 ```bash
 cupertino search "concurrency" --source swift-evolution
 cupertino search "View" --source apple-docs
+cupertino search "CALayer" --source apple-archive
+```
+
+### --include-archive
+
+Include Apple Archive legacy programming guides in search results.
+
+**Type:** Flag (boolean)
+**Default:** false (archive excluded by default)
+
+Archive documentation is excluded from search by default to prioritize modern documentation. Use this flag to include legacy guides like Core Animation Programming Guide, Quartz 2D Programming Guide, etc.
+
+**Example:**
+```bash
+cupertino search "Core Animation" --include-archive
+cupertino search "CALayer" --include-archive --framework quartzcore
 ```
 
 ### -f, --framework

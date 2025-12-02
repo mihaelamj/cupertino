@@ -1,3 +1,23 @@
+## 0.2.3
+
+### Added
+- **Apple Archive Documentation Crawler** - Crawl legacy Apple programming guides (Core Animation, Core Graphics, Core Text, etc.) (#41)
+- `cupertino fetch --type archive` - Fetch archived Apple programming guides
+- `--include-archive` flag for search command - Include legacy guides in results
+- `include_archive` parameter for MCP `search_docs` tool
+- Framework synonyms for better search (QuartzCore↔CoreAnimation, CoreGraphics↔Quartz2D)
+- Source-based search ranking (modern docs rank higher, archive docs have slight penalty)
+- TUI Archive view for browsing and selecting archive guides
+
+### Changed
+- Archive documentation excluded from search by default (use `--include-archive` or `--source apple-archive`)
+- Updated MCP tool description to document archive features
+
+### Related Issues
+- Closes #41
+
+---
+
 ## 0.2.2
 
 ### Added

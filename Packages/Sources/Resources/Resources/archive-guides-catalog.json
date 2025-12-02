@@ -1,0 +1,374 @@
+{
+  "count": 47,
+  "guides": [
+    {
+      "title": "Quartz 2D Programming Guide",
+      "framework": "CoreGraphics",
+      "category": "Core Frameworks",
+      "path": "GraphicsImaging/Conceptual/drawingwithquartz2d",
+      "description": "Foundational 2D graphics programming with Core Graphics.",
+      "required": true
+    },
+    {
+      "title": "Core Animation Programming Guide",
+      "framework": "QuartzCore",
+      "category": "Core Frameworks",
+      "path": "Cocoa/Conceptual/CoreAnimation_guide",
+      "description": "Layer-based animation and compositing.",
+      "required": true
+    },
+    {
+      "title": "Animation Types and Timing Programming Guide",
+      "framework": "QuartzCore",
+      "category": "Core Frameworks",
+      "path": "Cocoa/Conceptual/Animation_Types_Timing",
+      "description": "Animation timing functions and types.",
+      "required": true
+    },
+    {
+      "title": "Core Image Programming Guide",
+      "framework": "CoreImage",
+      "category": "Core Frameworks",
+      "path": "GraphicsImaging/Conceptual/CoreImaging",
+      "description": "Image processing and filter operations using Core Image.",
+      "required": true
+    },
+    {
+      "title": "Core Audio Overview",
+      "framework": "CoreAudio",
+      "category": "Core Frameworks",
+      "path": "MusicAudio/Conceptual/CoreAudioOverview",
+      "description": "Low-level audio services and hardware abstraction.",
+      "required": true
+    },
+    {
+      "title": "Audio Unit Hosting Guide",
+      "framework": "CoreAudio",
+      "category": "Core Frameworks",
+      "path": "MusicAudio/Conceptual/AudioUnitHostingGuide_iOS",
+      "description": "Hosting audio units for audio processing.",
+      "required": true
+    },
+    {
+      "title": "Core Text Programming Guide",
+      "framework": "CoreText",
+      "category": "Core Frameworks",
+      "path": "StringsTextFonts/Conceptual/CoreText_Programming",
+      "description": "Advanced text layout and font handling with Core Text.",
+      "required": true
+    },
+    {
+      "title": "Objective-C Runtime Programming Guide",
+      "framework": "Objective-C",
+      "category": "Language & Runtime",
+      "path": "Cocoa/Conceptual/ObjCRuntimeGuide",
+      "description": "Essential guide for understanding iOS/macOS internals and runtime behavior.",
+      "required": false
+    },
+    {
+      "title": "Key-Value Observing Programming Guide",
+      "framework": "Foundation",
+      "category": "Language & Runtime",
+      "path": "Cocoa/Conceptual/KeyValueObserving",
+      "description": "Fundamental observer pattern still used throughout Apple frameworks.",
+      "required": false
+    },
+    {
+      "title": "Key-Value Coding Programming Guide",
+      "framework": "Foundation",
+      "category": "Language & Runtime",
+      "path": "Cocoa/Conceptual/KeyValueCoding",
+      "description": "Foundation for bindings, predicates, and many framework features.",
+      "required": false
+    },
+    {
+      "title": "Memory Management Programming Guide",
+      "framework": "Objective-C",
+      "category": "Language & Runtime",
+      "path": "Cocoa/Conceptual/MemoryMgmt",
+      "description": "Essential for understanding ARC behavior and memory patterns.",
+      "required": false
+    },
+    {
+      "title": "Cocoa Fundamentals Guide",
+      "framework": "Cocoa",
+      "category": "Cocoa Fundamentals",
+      "path": "Cocoa/Conceptual/CocoaFundamentals",
+      "description": "Comprehensive introduction to Cocoa architecture and patterns.",
+      "required": false
+    },
+    {
+      "title": "Coding Guidelines for Cocoa",
+      "framework": "Cocoa",
+      "category": "Cocoa Fundamentals",
+      "path": "Cocoa/Conceptual/CodingGuidelines",
+      "description": "Apple's official naming conventions and coding style guidelines.",
+      "required": false
+    },
+    {
+      "title": "Exception Programming Topics",
+      "framework": "Objective-C",
+      "category": "Cocoa Fundamentals",
+      "path": "Cocoa/Conceptual/Exceptions",
+      "description": "Objective-C exception handling and error recovery.",
+      "required": false
+    },
+    {
+      "title": "Threading Programming Guide",
+      "framework": "Foundation",
+      "category": "Cocoa Fundamentals",
+      "path": "Cocoa/Conceptual/Multithreading",
+      "description": "Foundational concurrency concepts and thread management.",
+      "required": false
+    },
+    {
+      "title": "App Programming Guide for iOS",
+      "framework": "UIKit",
+      "category": "Application Architecture",
+      "path": "iPhone/Conceptual/iPhoneOSProgrammingGuide",
+      "description": "iOS application architecture patterns and lifecycle.",
+      "required": false
+    },
+    {
+      "title": "Mac App Programming Guide",
+      "framework": "AppKit",
+      "category": "Application Architecture",
+      "path": "General/Conceptual/MOSXAppProgrammingGuide",
+      "description": "macOS application architecture and design patterns.",
+      "required": false
+    },
+    {
+      "title": "View Controller Programming Guide for iOS",
+      "framework": "UIKit",
+      "category": "Application Architecture",
+      "path": "iPhone/Conceptual/ViewControllerPGforiPhoneOS",
+      "description": "View controller design patterns and navigation.",
+      "required": false
+    },
+    {
+      "title": "Table View Programming Guide for iOS",
+      "framework": "UIKit",
+      "category": "Application Architecture",
+      "path": "UserExperience/Conceptual/TableView_iPhone",
+      "description": "UITableView usage patterns and customization.",
+      "required": false
+    },
+    {
+      "title": "Core Data Programming Guide",
+      "framework": "CoreData",
+      "category": "Data & Persistence",
+      "path": "Cocoa/Conceptual/CoreData",
+      "description": "Core Data object graph management and persistence.",
+      "required": false
+    },
+    {
+      "title": "Property List Programming Guide",
+      "framework": "Foundation",
+      "category": "Data & Persistence",
+      "path": "Cocoa/Conceptual/PropertyLists",
+      "description": "Property list formats, reading, and writing.",
+      "required": false
+    },
+    {
+      "title": "Archives and Serializations Programming Guide",
+      "framework": "Foundation",
+      "category": "Data & Persistence",
+      "path": "Cocoa/Conceptual/Archiving",
+      "description": "Object archiving and serialization techniques.",
+      "required": false
+    },
+    {
+      "title": "String Programming Guide",
+      "framework": "Foundation",
+      "category": "Text & Strings",
+      "path": "Cocoa/Conceptual/Strings",
+      "description": "NSString and string manipulation techniques.",
+      "required": false
+    },
+    {
+      "title": "Attributed String Programming Guide",
+      "framework": "Foundation",
+      "category": "Text & Strings",
+      "path": "Cocoa/Conceptual/AttributedStrings",
+      "description": "Rich text formatting with attributed strings.",
+      "required": false
+    },
+    {
+      "title": "Text System Overview",
+      "framework": "UIKit",
+      "category": "Text & Strings",
+      "path": "Cocoa/Conceptual/TextArchitecture",
+      "description": "Cocoa text system architecture and components.",
+      "required": false
+    },
+    {
+      "title": "Collections Programming Topics",
+      "framework": "Foundation",
+      "category": "Collections & Data Structures",
+      "path": "Cocoa/Conceptual/Collections",
+      "description": "NSArray, NSDictionary, NSSet, and collection patterns.",
+      "required": false
+    },
+    {
+      "title": "Number and Value Programming Topics",
+      "framework": "Foundation",
+      "category": "Collections & Data Structures",
+      "path": "Cocoa/Conceptual/NumbersandValues",
+      "description": "NSNumber, NSValue, and numeric types.",
+      "required": false
+    },
+    {
+      "title": "Date and Time Programming Guide",
+      "framework": "Foundation",
+      "category": "Collections & Data Structures",
+      "path": "Cocoa/Conceptual/DatesAndTimes",
+      "description": "NSDate, calendars, and time zone handling.",
+      "required": false
+    },
+    {
+      "title": "File System Programming Guide",
+      "framework": "Foundation",
+      "category": "System Services",
+      "path": "FileManagement/Conceptual/FileSystemProgrammingGuide",
+      "description": "File system access and management.",
+      "required": false
+    },
+    {
+      "title": "Networking Overview",
+      "framework": "Foundation",
+      "category": "System Services",
+      "path": "NetworkingInternetWeb/Conceptual/NetworkingOverview",
+      "description": "High-level networking concepts and APIs.",
+      "required": false
+    },
+    {
+      "title": "URL Loading System Programming Guide",
+      "framework": "Foundation",
+      "category": "System Services",
+      "path": "Cocoa/Conceptual/URLLoadingSystem",
+      "description": "NSURLSession and URL loading infrastructure.",
+      "required": false
+    },
+    {
+      "title": "Auto Layout Guide",
+      "framework": "UIKit",
+      "category": "User Interface",
+      "path": "UserExperience/Conceptual/AutolayoutPG",
+      "description": "Constraint-based layout system concepts.",
+      "required": false
+    },
+    {
+      "title": "iOS Human Interface Guidelines",
+      "framework": "UIKit",
+      "category": "User Interface",
+      "path": "UserExperience/Conceptual/MobileHIG",
+      "description": "Classic iOS design principles and guidelines.",
+      "required": false
+    },
+    {
+      "title": "View Programming Guide for iOS",
+      "framework": "UIKit",
+      "category": "User Interface",
+      "path": "WindowsViews/Conceptual/ViewPG_iPhoneOS",
+      "description": "UIView hierarchy, drawing, and compositing.",
+      "required": false
+    },
+    {
+      "title": "Instruments User Guide",
+      "framework": "DeveloperTools",
+      "category": "Performance & Debugging",
+      "path": "DeveloperTools/Conceptual/InstrumentsUserGuide",
+      "description": "Performance profiling and analysis with Instruments.",
+      "required": false
+    },
+    {
+      "title": "Performance Overview",
+      "framework": "Performance",
+      "category": "Performance & Debugging",
+      "path": "Performance/Conceptual/PerformanceOverview",
+      "description": "Performance optimization strategies and best practices.",
+      "required": false
+    },
+    {
+      "title": "Debugging with Xcode",
+      "framework": "DeveloperTools",
+      "category": "Performance & Debugging",
+      "path": "DeveloperTools/Conceptual/debugging_with_xcode",
+      "description": "Xcode debugger usage and techniques.",
+      "required": false
+    },
+    {
+      "title": "Secure Coding Guide",
+      "framework": "Security",
+      "category": "Security",
+      "path": "Security/Conceptual/SecureCodingGuide",
+      "description": "Security best practices and secure coding techniques.",
+      "required": false
+    },
+    {
+      "title": "Keychain Services Programming Guide",
+      "framework": "Security",
+      "category": "Security",
+      "path": "Security/Conceptual/keychainServConcepts",
+      "description": "Secure credential storage with Keychain.",
+      "required": false
+    },
+    {
+      "title": "Internationalization and Localization Guide",
+      "framework": "Foundation",
+      "category": "Internationalization",
+      "path": "MacOSX/Conceptual/BPInternational",
+      "description": "App internationalization and localization techniques.",
+      "required": false
+    },
+    {
+      "title": "Bundle Programming Guide",
+      "framework": "CoreFoundation",
+      "category": "Bundles & Resources",
+      "path": "CoreFoundation/Conceptual/CFBundles",
+      "description": "Bundle structure and resource management.",
+      "required": false
+    },
+    {
+      "title": "Resource Programming Guide",
+      "framework": "Foundation",
+      "category": "Bundles & Resources",
+      "path": "Cocoa/Conceptual/LoadingResources",
+      "description": "Loading and managing application resources.",
+      "required": false
+    },
+    {
+      "title": "Notification Programming Topics",
+      "framework": "Foundation",
+      "category": "Other Essential Topics",
+      "path": "Cocoa/Conceptual/Notifications",
+      "description": "NotificationCenter patterns and usage.",
+      "required": false
+    },
+    {
+      "title": "Timer Programming Topics",
+      "framework": "Foundation",
+      "category": "Other Essential Topics",
+      "path": "Cocoa/Conceptual/Timers",
+      "description": "NSTimer scheduling and run loop integration.",
+      "required": false
+    },
+    {
+      "title": "Error Handling Programming Guide",
+      "framework": "Foundation",
+      "category": "Other Essential Topics",
+      "path": "Cocoa/Conceptual/ErrorHandlingCocoa",
+      "description": "NSError patterns and error recovery.",
+      "required": false
+    },
+    {
+      "title": "Predicate Programming Guide",
+      "framework": "Foundation",
+      "category": "Other Essential Topics",
+      "path": "Cocoa/Conceptual/Predicates",
+      "description": "NSPredicate query language and filtering.",
+      "required": false
+    }
+  ],
+  "baseURL": "https://developer.apple.com/library/archive/documentation"
+}
