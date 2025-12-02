@@ -810,7 +810,7 @@ extension Search {
                     parts.append(truncated)
                 }
 
-            case .method, .property, .`operator`, .macro:
+            case .method, .property, .operator, .macro:
                 // Members: focused on identity and usage
                 parts.append(page.title)
                 parts.append(page.title)
@@ -1569,7 +1569,7 @@ extension Search {
 
             // Fetch significantly more results so title/kind boosts can surface buried gems
             // View protocol has poor BM25 but exact title match should bring it to top
-            let fetchLimit = min(limit * 20, 1000)  // Fetch 20x more, max 1000
+            let fetchLimit = min(limit * 20, 1000) // Fetch 20x more, max 1000
             sql += " ORDER BY rank LIMIT ?;"
 
             var statement: OpaquePointer?
@@ -1623,7 +1623,79 @@ extension Search {
                 let filePath = String(cString: filePathPtr)
                 let wordCount = Int(sqlite3_column_int(statement, 6))
                 let bm25Rank = sqlite3_column_double(statement, 7)
-                let kind = String(cString: kindPtr)
+                let rawKind = String(cString: kindPtr)
+
+                // Infer kind when unknown using multiple signals
+                let kind: String = {
+                    if rawKind != "unknown" && !rawKind.isEmpty {
+                        return rawKind
+                    }
+
+                    // SIGNAL 1: URL depth analysis
+                    // Shallow paths like /documentation/swiftui/view → core type
+                    // Deep paths like /documentation/swiftui/view/body-8kl5o → member
+                    let pathComponents = uri.components(separatedBy: "/")
+                        .filter { !$0.isEmpty && $0 != "documentation" }
+                    let urlDepth = pathComponents.count
+
+                    // SIGNAL 2: Title pattern analysis
+                    let titleLower = title.lowercased()
+                    let titleTrimmed = title.trimmingCharacters(in: .whitespaces)
+
+                    // Method patterns: contains parentheses like foo(_:) or init(from:)
+                    if title.contains("(_:") || title.contains("(") && title.contains(":)") {
+                        return "method"
+                    }
+
+                    // Operator patterns: starts with operator symbols
+                    if titleTrimmed.hasPrefix("+") || titleTrimmed.hasPrefix("-") ||
+                        titleTrimmed.hasPrefix("*") || titleTrimmed.hasPrefix("/") ||
+                        titleTrimmed.hasPrefix("==") || titleTrimmed.hasPrefix("!=") ||
+                        titleTrimmed.hasPrefix("<") || titleTrimmed.hasPrefix(">") {
+                        return "method" // Operators are methods
+                    }
+
+                    // Property patterns: camelCase starting lowercase, single word
+                    let words = title.components(separatedBy: .whitespaces)
+                    if words.count == 1 {
+                        let first = titleTrimmed.first
+                        if let first, first.isLowercase, !title.contains("(") {
+                            return "property"
+                        }
+                    }
+
+                    // Protocol suffix pattern
+                    if titleLower.hasSuffix("protocol") || titleLower.hasSuffix("delegate") {
+                        return "protocol"
+                    }
+
+                    // SIGNAL 3: URL depth heuristic for Apple docs
+                    // /framework/type → depth 2 = core type
+                    // /framework/type/member → depth 3+ = member
+                    if uri.hasPrefix("apple-docs://") {
+                        if urlDepth <= 2 {
+                            // Short path + CamelCase title = likely core type
+                            if let first = titleTrimmed.first, first.isUppercase, !title.contains("(") {
+                                return "struct" // Default to struct for unknown core types
+                            }
+                        } else if urlDepth >= 3 {
+                            // Deep path = likely member
+                            if let first = titleTrimmed.first, first.isLowercase {
+                                return "property"
+                            }
+                        }
+                    }
+
+                    // SIGNAL 4: Word count as quality signal
+                    // Core types typically have rich documentation
+                    if wordCount > 500, urlDepth <= 2 {
+                        if let first = titleTrimmed.first, first.isUppercase {
+                            return "struct" // Rich docs + short path + CamelCase = core type
+                        }
+                    }
+
+                    return "unknown"
+                }()
 
                 // Apply kind-based ranking multiplier
                 // BM25 scores are NEGATIVE (lower = better match)
@@ -1632,9 +1704,9 @@ extension Search {
                 let kindMultiplier: Double = {
                     switch kind {
                     case "protocol", "class", "struct", "framework":
-                        return 0.5  // Divide to boost (smaller negative = better rank)
+                        return 0.5 // Divide to boost (smaller negative = better rank)
                     case "property", "method":
-                        return 2.0  // Multiply to penalize (larger negative = worse rank)
+                        return 2.0 // Multiply to penalize (larger negative = worse rank)
                     default:
                         return 1.0
                     }
@@ -1645,7 +1717,7 @@ extension Search {
                     // Use original query for semantic matching (not sanitized)
                     let queryWords = query.lowercased()
                         .components(separatedBy: .whitespacesAndNewlines)
-                        .filter { !$0.isEmpty && $0.count > 1 }  // Filter noise words
+                        .filter { !$0.isEmpty && $0.count > 1 } // Filter noise words
 
                     let titleLower = title.lowercased()
                     let titleWords = titleLower.components(separatedBy: .whitespacesAndNewlines)
@@ -1655,20 +1727,20 @@ extension Search {
 
                     // HEURISTIC 1: Short query exact title match (user knows what they want)
                     // "View" searching for "View" protocol = almost certainly what they want
-                    if queryWords.count <= 3 && titleLower == queryWords.joined(separator: " ") {
-                        boost *= 0.05  // 20x boost - user typed exact name
+                    if queryWords.count <= 3, titleLower == queryWords.joined(separator: " ") {
+                        boost *= 0.05 // 20x boost - user typed exact name
                     }
                     // First word exact match (very strong signal)
-                    else if !titleWords.isEmpty && !queryWords.isEmpty && titleWords[0] == queryWords[0] {
-                        boost *= 0.15  // 6-7x boost - title starts with query word
+                    else if !titleWords.isEmpty, !queryWords.isEmpty, titleWords[0] == queryWords[0] {
+                        boost *= 0.15 // 6-7x boost - title starts with query word
                     }
                     // All query words in title
                     else if queryWords.allSatisfy({ titleLower.contains($0) }) {
-                        boost *= 0.3  // 3x boost - all terms match
+                        boost *= 0.3 // 3x boost - all terms match
                     }
                     // Any query word in title
                     else if queryWords.contains(where: { titleLower.contains($0) }) {
-                        boost *= 0.6  // ~1.5x boost - partial match
+                        boost *= 0.6 // ~1.5x boost - partial match
                     }
 
                     // HEURISTIC: Penalize nested types when searching for parent type
@@ -1676,32 +1748,32 @@ extension Search {
                     // Reason: "Text.Scale" starts with "Text" and gets the 0.15 boost
                     // Solution: If query has no dot but title does, apply penalty
                     let queryLower = query.lowercased()
-                    if !queryLower.contains(".") && titleLower.contains(".") {
-                        boost *= 2.0  // Penalty: nested types should rank below parent types
+                    if !queryLower.contains("."), titleLower.contains(".") {
+                        boost *= 2.0 // Penalty: nested types should rank below parent types
                     }
 
                     // HEURISTIC 2: Query pattern analysis
                     let queryText = query.lowercased()
 
                     // "X protocol" pattern → boost protocols more
-                    if queryText.contains("protocol") && kind == "protocol" {
-                        boost *= 0.4  // Extra 2.5x for protocols when user asks for protocols
+                    if queryText.contains("protocol"), kind == "protocol" {
+                        boost *= 0.4 // Extra 2.5x for protocols when user asks for protocols
                     }
                     // "X class" pattern → boost classes
-                    else if queryText.contains("class") && kind == "class" {
+                    else if queryText.contains("class"), kind == "class" {
                         boost *= 0.4
                     }
                     // "X struct" pattern → boost structs
-                    else if queryText.contains("struct") && kind == "struct" {
+                    else if queryText.contains("struct"), kind == "struct" {
                         boost *= 0.4
                     }
 
                     // HEURISTIC 3: Context-aware kind boosting
                     // Single-word queries with framework filter = looking for core type
-                    if queryWords.count == 1 && framework == "swiftui" {
+                    if queryWords.count == 1, framework == "swiftui" {
                         switch kind {
                         case "protocol", "class", "struct":
-                            boost *= 0.5  // Additional 2x for core types with short queries
+                            boost *= 0.5 // Additional 2x for core types with short queries
                         default:
                             break
                         }
@@ -1709,8 +1781,8 @@ extension Search {
 
                     // HEURISTIC 4: Penalize overly verbose titles for short queries
                     // If query is short but title is long, it's probably not what user wants
-                    if queryWords.count <= 2 && title.count > 50 {
-                        boost *= 1.3  // Slight penalty for verbose titles vs short queries
+                    if queryWords.count <= 2, title.count > 50 {
+                        boost *= 1.3 // Slight penalty for verbose titles vs short queries
                     }
 
                     return boost

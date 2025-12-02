@@ -1,3 +1,18 @@
+## 0.2.2
+
+### Added
+- Intelligent kind inference for unknown document types using URL depth, title patterns, and word count signals
+- Improved search ranking for core types when `kind=unknown`
+
+### Fixed
+- Fixed URL scheme error when resuming crawl session (#47)
+
+### Related Issues
+- Closes #47
+- Related to #28 (Search Ranking Improvements)
+
+---
+
 ## 0.2.1
 
 ### Fixed
