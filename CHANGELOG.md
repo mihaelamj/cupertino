@@ -1,3 +1,16 @@
+## 0.2.6
+
+### Fixed
+- **MCP Server Tool Registration** - Fixed bug where only sample code tools were exposed (#55)
+  - Created `CompositeToolProvider` that delegates to both `DocumentationToolProvider` and `SampleCodeToolProvider`
+  - All 7 MCP tools now properly exposed: `search_docs`, `list_frameworks`, `read_document`, `search_samples`, `list_samples`, `read_sample`, `read_sample_file`
+  - Follows composite pattern with proper separation of concerns
+
+### Related Issues
+- Fixes #55
+
+---
+
 ## 0.2.5
 
 ### Added
@@ -10,15 +23,8 @@
   - `cupertino list-frameworks` - List available frameworks with document counts
 - All new commands support `--format text|json|markdown` output
 
-### Fixed
-- **MCP Server Tool Registration** - Fixed bug where only sample code tools were exposed (#55)
-  - Unified `CupertinoSearchToolProvider` and `SampleToolProvider` into single `CupertinoUnifiedToolProvider`
-  - All 7 MCP tools now available: `search_docs`, `list_frameworks`, `read_document`, `search_samples`, `list_samples`, `read_sample`, `read_sample_file`
-  - Updated serve command documentation to include sample code tools
-
 ### Related Issues
 - Closes #51
-- Fixes #55
 
 ---
 

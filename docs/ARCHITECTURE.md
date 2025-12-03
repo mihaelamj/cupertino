@@ -1,7 +1,7 @@
 # Cupertino Architecture
 
-**Version:** v0.2.0
-**Last Updated:** 2025-11-22
+**Version:** v0.2.6
+**Last Updated:** 2025-12-03
 **Swift Version:** 6.2
 **Language Mode:** Swift 6 with Strict Concurrency Checking
 
@@ -23,7 +23,7 @@
 
 Cupertino is a Swift-based Apple documentation crawler and MCP (Model Context Protocol) server. The project uses **ExtremePackaging** architecture to organize code into focused, reusable modules.
 
-### Package Structure (v0.2.0)
+### Package Structure (v0.2.6)
 
 Cupertino uses **ExtremePackaging** architecture with 10 consolidated packages:
 
