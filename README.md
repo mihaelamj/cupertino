@@ -456,6 +456,14 @@ MIT License - see [LICENSE](LICENSE) for details
 - Implements [Model Context Protocol](https://modelcontextprotocol.io) specification
 - Inspired by the need for offline Apple documentation access
 
+## Related Repositories
+
+- **[cupertino-desktop](https://github.com/mihaelamj/cupertino-desktop)** - Native macOS desktop app with graphical interface
+- **[cupertino-docs](https://github.com/mihaelamj/cupertino-docs)** - Pre-built documentation archive for quick installation
+- **[cupertino-sample-code](https://github.com/mihaelamj/cupertino-sample-code)** - Apple sample code repository mirror
+
+The docs and sample-code repositories will be used by the planned `make install (full)` command (see [#52](https://github.com/mihaelamj/cupertino/issues/52)), providing pre-built documentation and sample code to avoid the initial 20+ hour crawl.
+
 ## Support
 
 - **Issues:** [GitHub Issues](https://github.com/mihaelamj/cupertino/issues)
