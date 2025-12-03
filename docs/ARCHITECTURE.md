@@ -25,7 +25,7 @@ Cupertino is a Swift-based Apple documentation crawler and MCP (Model Context Pr
 
 ### Package Structure (v0.2.0)
 
-Cupertino uses **ExtremePackaging** architecture with 9 consolidated packages:
+Cupertino uses **ExtremePackaging** architecture with 10 consolidated packages:
 
 ```
 Foundation Layer:
@@ -35,7 +35,8 @@ Foundation Layer:
 
 Infrastructure Layer:
   ├─ Core                   # Crawler & downloaders
-  └─ Search                 # SQLite FTS5 search
+  ├─ Search                 # SQLite FTS5 search for documentation
+  └─ SampleIndex            # SQLite FTS5 search for sample code
 
 Application Layer:
   ├─ MCPSupport             # Resource providers
@@ -374,7 +375,20 @@ Estimated size: ~10-20 MB
 
 Downloads Apple sample code projects as zip/tar files. First-time use requires authentication with Apple ID, after which authentication cookies are saved for subsequent downloads.
 
-#### 5. Build Search Index
+#### 5. Clean Up Sample Code Archives
+
+Cleans up downloaded sample code ZIP archives by removing unnecessary files like .git folders, xcuserdata, and build artifacts. This significantly reduces storage (from ~26GB to ~2-3GB) and improves indexing quality.
+
+#### 6. Index Sample Code for Search
+
+Indexes sample code projects for full-text search using a separate SQLite FTS5 database (`~/.cupertino/samples.db`). The index includes:
+- Project metadata (title, description, frameworks)
+- README content
+- Source files (Swift, Objective-C, Metal, etc.)
+
+**Important:** Run cleanup before indexing to remove unnecessary files.
+
+#### 7. Build Search Index
 
 Builds a full-text search index from downloaded documentation with parameters for:
 - Directory containing Apple documentation

@@ -26,7 +26,8 @@ The `fetch` command is the unified fetching command that handles both web crawli
   - `evolution` - Swift Evolution Proposals (web crawl)
   - `packages` - Swift Package Index metadata (direct download)
   - `package-docs` - Swift Package READMEs (direct download)
-  - `code` - Apple Sample Code (direct download)
+  - `code` - Apple Sample Code (direct download from Apple, requires auth)
+  - `samples` - Apple Sample Code (git clone from GitHub, recommended)
   - `archive` - Apple Archive guides (legacy programming guides)
   - `all` - All types in parallel
 
@@ -70,9 +71,17 @@ cupertino fetch --type all
 cupertino fetch --type packages --limit 100
 ```
 
-### Fetch Apple Sample Code (with Authentication)
+### Fetch Apple Sample Code from GitHub (Recommended)
+```bash
+cupertino fetch --type samples
+# Clones https://github.com/mihaelamj/cupertino-sample-code
+# 606 projects, ~10GB with Git LFS, ~4 minutes
+```
+
+### Fetch Apple Sample Code from Apple (with Authentication)
 ```bash
 cupertino fetch --type code --authenticate
+# Slower, requires Apple ID login
 ```
 
 ### Fetch Apple Archive Guides (Legacy Documentation)
@@ -113,16 +122,18 @@ Output files:
 - **metadata.json** - Crawl metadata for change detection and resume
 - **session.json** - Session state for resuming interrupted crawls
 
-### Direct Fetch Types (packages, code)
+### Direct Fetch Types (packages, code, samples)
 
 Default locations:
 - **packages**: `~/.cupertino/packages/`
-- **code**: `~/.cupertino/sample-code/`
+- **code**: `~/.cupertino/sample-code/` (ZIP files)
+- **samples**: `~/.cupertino/sample-code/cupertino-sample-code/` (extracted folders)
 
 Output files:
 - **packages-with-stars.json** - Package metadata with GitHub information
 - **checkpoint.json** - Progress tracking for resume capability
 - **ZIP files** - Downloaded sample code projects (code type)
+- **Project folders** - Extracted Xcode projects (samples type)
 
 ## Features
 

@@ -23,7 +23,8 @@ All Cupertino artifacts are stored under:
 | [archive/](folders/archive/) | Apple Archive programming guides | [README](folders/archive/) |
 | [sample-code/](folders/sample-code/) | Apple sample code ZIP files | [README](folders/sample-code/) + [.auth-cookies.json](folders/sample-code/.auth-cookies.json.md) |
 | [packages/](folders/packages/) | Swift package metadata | [README](folders/packages/) + [swift-packages-with-stars.json](folders/packages/swift-packages-with-stars.json.md) + [checkpoint.json](folders/packages/checkpoint.json.md) |
-| [search.db](folders/search.db.md) | FTS5 search index database | File documentation |
+| [search.db](folders/search.db.md) | FTS5 search index for documentation | File documentation |
+| [samples.db](folders/samples.db.md) | FTS5 search index for sample code | File documentation |
 | [config.json](folders/config.json.md) | Application configuration | File documentation |
 
 ## Quick Reference
@@ -58,7 +59,8 @@ All Cupertino artifacts are stored under:
 ### Index Artifacts
 ```
 ~/.cupertino/
-└── search.db              # FTS5 Search Database
+├── search.db              # FTS5 Search Database (documentation)
+└── samples.db             # FTS5 Search Database (sample code)
 ```
 
 ## Finding Artifacts
@@ -72,8 +74,10 @@ All Cupertino artifacts are stored under:
 | `cupertino fetch --type evolution` | Proposal files + metadata | `~/.cupertino/swift-evolution/` |
 | `cupertino fetch --type archive` | Markdown files | `~/.cupertino/archive/` |
 | `cupertino fetch --type code` | ZIP files + checkpoint | `~/.cupertino/sample-code/` |
+| `cupertino fetch --type samples` | Git clone (606 projects) | `~/.cupertino/sample-code/cupertino-sample-code/` |
 | `cupertino fetch --type packages` | Package data + checkpoint | `~/.cupertino/packages/` |
-| `cupertino save` | Search database | `~/.cupertino/search.db` |
+| `cupertino save` | Documentation search database | `~/.cupertino/search.db` |
+| `cupertino index` | Sample code search database | `~/.cupertino/samples.db` |
 
 ## Customizing Locations
 

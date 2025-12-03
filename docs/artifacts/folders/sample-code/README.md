@@ -1,6 +1,6 @@
-# sample-code/ - Apple Sample Code ZIP Files
+# sample-code/ - Apple Sample Code Projects
 
-Downloaded Apple sample code projects as ZIP files.
+Downloaded Apple sample code projects - either as ZIP files or extracted folders.
 
 ## Location
 
@@ -9,6 +9,10 @@ Downloaded Apple sample code projects as ZIP files.
 ## Created By
 
 ```bash
+# Option 1: GitHub (recommended - faster, no auth required)
+cupertino fetch --type samples
+
+# Option 2: Apple Website (slower, requires Apple ID)
 cupertino fetch --type code --authenticate
 ```
 
@@ -16,18 +20,30 @@ cupertino fetch --type code --authenticate
 
 ```
 ~/.cupertino/sample-code/
-├── checkpoint.json                                          # Progress tracking
-├── accelerate-adding-a-bokeh-effect-to-images.zip
+├── checkpoint.json                                          # Progress tracking (code type)
+├── cupertino-sample-code/                                   # GitHub clone (samples type)
+│   ├── .git/
+│   ├── accelerate-adding-a-bokeh-effect-to-images/
+│   ├── arkit-creating-a-collaborative-session/
+│   ├── swiftui-building-lists-and-navigation/
+│   └── ...                                                  # 606 extracted projects
+├── accelerate-adding-a-bokeh-effect-to-images.zip           # ZIP files (code type)
 ├── arkit-creating-a-collaborative-session.zip
-├── swiftui-building-lists-and-navigation.zip
-├── uikit-implementing-modern-collection-views.zip
 └── ...                                                      # 600+ ZIP files
 ```
 
 ## Contents
 
-### ZIP Files
-- **~600 sample code projects**
+### GitHub Clone (samples type)
+- **606 sample code projects** as extracted folders
+- Cloned from https://github.com/mihaelamj/cupertino-sample-code
+- Uses Git LFS for large binary files (~10GB total)
+- Ready to open in Xcode immediately
+- Pull to update: `cd cupertino-sample-code && git pull`
+
+### ZIP Files (code type)
+- **~600 sample code projects** as ZIP archives
+- Downloaded directly from Apple Developer website
 - Complete Xcode projects
 - Ready to build and run
 - Covers all Apple platforms (iOS, macOS, watchOS, tvOS, visionOS)
@@ -91,24 +107,51 @@ ls ~/.cupertino/sample-code/arkit-*.zip
 
 ## Authentication
 
-**Required**: Must use `--authenticate` flag to download sample code
+### GitHub (samples type) - No authentication required
+```bash
+cupertino fetch --type samples
+```
+Requires Git and Git LFS installed:
+```bash
+brew install git-lfs
+git lfs install
+```
 
-Downloading requires:
+### Apple Website (code type) - Apple ID required
+```bash
+cupertino fetch --type code --authenticate
+```
+Must use `--authenticate` flag. Requires:
 - Valid Apple ID
 - Safari browser for authentication
 - macOS system
 
-## Resuming Downloads
+## Indexing for Search
 
+After fetching, index the samples for full-text search:
 ```bash
-# Resume if interrupted
-cupertino fetch --type code --authenticate --resume
+cupertino index
+# or force reindex:
+cupertino index --force
 ```
+
+This creates `samples.db` with 18,000+ indexed source files.
+
+## MCP Tools
+
+After indexing, these MCP tools become available:
+- `search_samples` - Search projects and code
+- `list_samples` - List all indexed projects
+- `read_sample` - Read project README
+- `read_sample_file` - Read specific source file
 
 ## Customizing Location
 
 ```bash
-# Use custom directory
+# GitHub clone to custom directory
+cupertino fetch --type samples --output-dir ./samples
+
+# Apple download to custom directory
 cupertino fetch --type code --authenticate --output-dir ./samples
 ```
 
@@ -119,3 +162,4 @@ cupertino fetch --type code --authenticate --output-dir ./samples
 - Projects are maintained and updated by Apple
 - Great learning resource for all skill levels
 - Can build and run immediately in Xcode
+- GitHub method is recommended (faster, no auth required)

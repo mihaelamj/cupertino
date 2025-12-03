@@ -138,7 +138,7 @@ extension Shared {
             public static let userAgent = "CupertinoCrawler/1.0"
 
             /// Current version
-            public static let version = "0.2.3"
+            public static let version = "0.2.5"
         }
 
         // MARK: - Display Names
@@ -348,6 +348,20 @@ extension Shared {
             /// Read document tool name
             public static let toolReadDocument = "read_document"
 
+            // MARK: Sample Code Tool Names
+
+            /// Search samples tool name
+            public static let toolSearchSamples = "search_samples"
+
+            /// List samples tool name
+            public static let toolListSamples = "list_samples"
+
+            /// Read sample tool name
+            public static let toolReadSample = "read_sample"
+
+            /// Read sample file tool name
+            public static let toolReadSampleFile = "read_sample_file"
+
             // MARK: Resource Template URIs
 
             /// Apple documentation resource template
@@ -407,6 +421,33 @@ extension Shared {
             Use URIs from search_docs results. Format parameter: 'json' (default, structured) or 'markdown' (rendered).
             """
 
+            // MARK: Sample Code Tool Descriptions
+
+            /// Search samples tool description
+            public static let toolSearchSamplesDescription = """
+            Search Apple sample code projects and source files by keywords. \
+            Returns relevant projects with READMEs and source files containing matching code. \
+            Optional parameters: framework, limit, search_files (default true).
+            """
+
+            /// List samples tool description
+            public static let toolListSamplesDescription = """
+            List all indexed Apple sample code projects with metadata. \
+            Useful for discovering available sample code before searching.
+            """
+
+            /// Read sample tool description
+            public static let toolReadSampleDescription = """
+            Read a sample code project's README and metadata by project ID. \
+            Use project IDs from search_samples or list_samples results.
+            """
+
+            /// Read sample file tool description
+            public static let toolReadSampleFileDescription = """
+            Read a specific source file from a sample code project. \
+            Requires project_id and file_path parameters. File paths are relative to project root.
+            """
+
             // MARK: JSON Schema
 
             /// JSON Schema type: object
@@ -435,6 +476,15 @@ extension Shared {
 
             /// JSON Schema parameter: format
             public static let schemaParamFormat = "format"
+
+            /// JSON Schema parameter: project_id
+            public static let schemaParamProjectId = "project_id"
+
+            /// JSON Schema parameter: file_path
+            public static let schemaParamFilePath = "file_path"
+
+            /// JSON Schema parameter: search_files
+            public static let schemaParamSearchFiles = "search_files"
 
             /// Format value: json
             public static let formatValueJSON = "json"

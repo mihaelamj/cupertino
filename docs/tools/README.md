@@ -4,11 +4,22 @@ Cupertino provides these MCP tools for AI agents to search and read documentatio
 
 ## Available Tools
 
+### Documentation Tools (requires `cupertino save`)
+
 | Tool | Description |
 |------|-------------|
 | [search_docs](search_docs/) | Full-text search across all indexed documentation |
 | [list_frameworks](list_frameworks/) | List available frameworks with document counts |
 | [read_document](read_document/) | Read a document by URI in JSON or Markdown format |
+
+### Sample Code Tools (requires `cupertino index`)
+
+| Tool | Description |
+|------|-------------|
+| [search_samples](search_samples/) | Search sample code projects and files |
+| [list_samples](list_samples/) | List all indexed sample projects |
+| [read_sample](read_sample/) | Read sample project README |
+| [read_sample_file](read_sample_file/) | Read specific source file from a sample |
 
 ## How Tools Work
 

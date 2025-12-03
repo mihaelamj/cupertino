@@ -12,6 +12,7 @@ extension Cupertino {
         case packages
         case packageDocs = "package-docs"
         case code
+        case samples
         case archive
         case all
 
@@ -23,6 +24,7 @@ extension Cupertino {
             case .packages: return Shared.Constants.DisplayName.packageMetadata
             case .packageDocs: return Shared.Constants.DisplayName.swiftPackages
             case .code: return Shared.Constants.DisplayName.sampleCode
+            case .samples: return "Sample Code (GitHub)"
             case .archive: return Shared.Constants.DisplayName.archive
             case .all: return Shared.Constants.DisplayName.allDocs
             }
@@ -35,7 +37,8 @@ extension Cupertino {
             case .evolution: return "" // N/A - uses different fetcher
             case .packages: return "" // API-based fetching
             case .packageDocs: return "" // GitHub raw content downloading
-            case .code: return "" // Web-based download
+            case .code: return "" // Web-based download from Apple
+            case .samples: return "" // Git clone from GitHub
             case .archive: return Shared.Constants.BaseURL.appleArchive
             case .all: return "" // N/A - fetches all types sequentially
             }
@@ -57,6 +60,8 @@ extension Cupertino {
                 return "\(homeDir)/\(baseDir)/\(Shared.Constants.Directory.packages)"
             case .code:
                 return "\(homeDir)/\(baseDir)/\(Shared.Constants.Directory.sampleCode)"
+            case .samples:
+                return "\(homeDir)/\(baseDir)/\(Shared.Constants.Directory.sampleCode)"
             case .archive:
                 return "\(homeDir)/\(baseDir)/\(Shared.Constants.Directory.archive)"
             case .all:
@@ -69,7 +74,7 @@ extension Cupertino {
         }
 
         static var directFetchTypes: [FetchType] {
-            [.packages, .packageDocs, .code, .archive]
+            [.packages, .packageDocs, .code, .samples, .archive]
         }
 
         static var allTypes: [FetchType] {

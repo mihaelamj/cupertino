@@ -4,6 +4,7 @@ import Foundation
 import Logging
 import MCP
 import MCPSupport
+import SampleIndex
 import Search
 import SearchToolProvider
 import Shared
@@ -19,8 +20,17 @@ struct ServeCommand: AsyncParsableCommand {
         search and access capabilities for AI assistants.
 
         The server communicates via stdio using JSON-RPC and provides:
-        • Resource providers for documentation access
-        • Search tools for querying indexed documentation
+
+        Documentation Tools (requires 'cupertino save'):
+        • search_docs - Full-text search across all documentation
+        • list_frameworks - List available frameworks with document counts
+        • read_document - Read full document content by URI
+
+        Sample Code Tools (requires 'cupertino index'):
+        • search_samples - Search sample code projects and files
+        • list_samples - List all indexed sample projects
+        • read_sample - Read sample project README
+        • read_sample_file - Read specific source file from a sample
 
         The server runs indefinitely until terminated.
         """
@@ -91,6 +101,37 @@ struct ServeCommand: AsyncParsableCommand {
             await server.registerToolProvider(toolProvider)
             let message = "✅ Search enabled (index found)"
             Log.info(message, category: .mcp)
+        }
+
+        // Register sample code tool provider if index is available
+        let sampleIndex = await loadSampleIndex()
+        if let sampleIndex {
+            let sampleToolProvider = SampleToolProvider(database: sampleIndex)
+            await server.registerToolProvider(sampleToolProvider)
+            let message = "✅ Sample code search enabled (index found)"
+            Log.info(message, category: .mcp)
+        }
+    }
+
+    private func loadSampleIndex() async -> SampleIndex.Database? {
+        let sampleDBURL = SampleIndex.defaultDatabasePath
+        guard FileManager.default.fileExists(atPath: sampleDBURL.path) else {
+            let infoMsg = "ℹ️  Sample code index not found at: \(sampleDBURL.path)"
+            let cmd = "\(Shared.Constants.App.commandName) index"
+            let hintMsg = "   Sample tools will not be available. Run '\(cmd)' to enable."
+            Log.info("\(infoMsg) \(hintMsg)", category: .mcp)
+            return nil
+        }
+
+        do {
+            let sampleIndex = try await SampleIndex.Database(dbPath: sampleDBURL)
+            return sampleIndex
+        } catch {
+            let errorMsg = "⚠️  Failed to load sample index: \(error)"
+            let cmd = "\(Shared.Constants.App.commandName) index"
+            let hintMsg = "   Sample tools will not be available. Run '\(cmd)' to create the index."
+            Log.warning("\(errorMsg) \(hintMsg)", category: .mcp)
+            return nil
         }
     }
 

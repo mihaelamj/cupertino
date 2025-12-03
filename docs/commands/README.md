@@ -8,9 +8,15 @@ CLI commands for the Cupertino documentation server.
 |---------|-------------|
 | [fetch](fetch/) | Download documentation from Apple, Swift Evolution, Swift.org, and Apple Archive |
 | [save](save/) | Build FTS5 search index from downloaded documentation |
+| [index](index/) | Index sample code for full-text search |
 | [serve](serve/) | Start MCP server for AI agent access |
 | [search](search/) | Search documentation from the command line |
 | [read](read/) | Read full document content by URI |
+| [list-frameworks](list-frameworks/) | List available frameworks with document counts |
+| [list-samples](list-samples/) | List indexed Apple sample code projects |
+| [search-samples](search-samples/) | Search Apple sample code projects and files |
+| [read-sample](read-sample/) | Read a sample project's README and metadata |
+| [read-sample-file](read-sample-file/) | Read a source file from a sample project |
 | [doctor](doctor/) | Check server health and configuration |
 | [cleanup](cleanup/) | Clean up downloaded sample code archives |
 
@@ -37,6 +43,15 @@ cupertino search "Core Animation" --include-archive
 # Read full document
 cupertino read "apple-docs://swiftui/documentation_swiftui_view" --format markdown
 
+# List frameworks
+cupertino list-frameworks
+
+# Sample code commands
+cupertino list-samples --limit 10
+cupertino search-samples "SwiftUI" --framework swiftui
+cupertino read-sample building-a-document-based-app-with-swiftui
+cupertino read-sample-file building-a-document-based-app-with-swiftui ContentView.swift
+
 # Check health
 cupertino doctor
 ```
@@ -57,6 +72,19 @@ cupertino save
 # 3. Start server or use CLI
 cupertino serve  # For MCP/AI agents
 cupertino search "your query"  # For CLI usage
+```
+
+### Sample Code Setup
+
+```bash
+# Option 1: From GitHub (recommended - faster, no auth)
+cupertino fetch --type samples
+cupertino index
+
+# Option 2: From Apple (slower, requires Apple ID)
+cupertino fetch --type code --authenticate
+cupertino cleanup
+cupertino index
 ```
 
 ### Search and Read

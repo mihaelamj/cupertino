@@ -21,9 +21,11 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Core"),
     .singleTargetLibrary("Cleanup"),
     .singleTargetLibrary("Search"),
+    .singleTargetLibrary("SampleIndex"),
     .singleTargetLibrary("Resources"),
     .singleTargetLibrary("MCPSupport"),
     .singleTargetLibrary("SearchToolProvider"),
+    .singleTargetLibrary("MCPClient"),
     .executable(name: "cupertino", targets: ["CLI"]),
     .executable(name: "cupertino-tui", targets: ["TUI"]),
     .executable(name: "mock-ai-agent", targets: ["MockAIAgent"]),
@@ -119,6 +121,15 @@ let targets: [Target] = {
         dependencies: ["Search", "TestSupport"]
     )
 
+    let sampleIndexTarget = Target.target(
+        name: "SampleIndex",
+        dependencies: ["Shared", "Logging"]
+    )
+    let sampleIndexTestsTarget = Target.testTarget(
+        name: "SampleIndexTests",
+        dependencies: ["SampleIndex", "TestSupport"]
+    )
+
     let mcpSupportTarget = Target.target(
         name: "MCPSupport",
         dependencies: ["MCP", "Shared", "Logging", "Search"]
@@ -130,11 +141,20 @@ let targets: [Target] = {
 
     let searchToolProviderTarget = Target.target(
         name: "SearchToolProvider",
-        dependencies: ["MCP", "Search"]
+        dependencies: ["MCP", "Search", "SampleIndex"]
     )
     let searchToolProviderTestsTarget = Target.testTarget(
         name: "SearchToolProviderTests",
         dependencies: ["SearchToolProvider", "TestSupport"]
+    )
+
+    let mcpClientTarget = Target.target(
+        name: "MCPClient",
+        dependencies: ["MCP"]
+    )
+    let mcpClientTestsTarget = Target.testTarget(
+        name: "MCPClientTests",
+        dependencies: ["MCPClient", "TestSupport"]
     )
 
     let cliTarget = Target.executableTarget(
@@ -144,6 +164,7 @@ let targets: [Target] = {
             "Core",
             "Cleanup",
             "Search",
+            "SampleIndex",
             "Logging",
             // MCP dependencies (for mcp serve command)
             "MCP",
@@ -228,10 +249,14 @@ let targets: [Target] = {
         cleanupTestsTarget,
         searchTarget,
         searchTestsTarget,
+        sampleIndexTarget,
+        sampleIndexTestsTarget,
         mcpSupportTarget,
         mcpSupportTestsTarget,
         searchToolProviderTarget,
         searchToolProviderTestsTarget,
+        mcpClientTarget,
+        mcpClientTestsTarget,
         testSupportTarget,
         cliTarget,
         tuiTarget,

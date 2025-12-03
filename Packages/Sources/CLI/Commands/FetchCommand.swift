@@ -20,7 +20,8 @@ struct FetchCommand: AsyncParsableCommand {
         help: """
         Type of documentation to fetch: docs (Apple), swift (Swift.org), \
         evolution (Swift Evolution), packages (Swift package metadata), \
-        package-docs (Swift package READMEs), code (Sample code), \
+        package-docs (Swift package READMEs), code (Sample code from Apple), \
+        samples (Sample code from GitHub - recommended), \
         archive (Apple Archive guides), all (all types in parallel)
         """
     )
@@ -86,6 +87,11 @@ struct FetchCommand: AsyncParsableCommand {
 
         if type == .code {
             try await runCodeFetch()
+            return
+        }
+
+        if type == .samples {
+            try await runSamplesFetch()
             return
         }
 
@@ -459,6 +465,26 @@ struct FetchCommand: AsyncParsableCommand {
         if let duration = stats.duration {
             Logging.ConsoleLogger.info("   Duration: \(Int(duration))s")
         }
+    }
+
+    private func runSamplesFetch() async throws {
+        let defaultPath = Shared.Constants.defaultSampleCodeDirectory.path
+        let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
+
+        let fetcher = GitHubSampleCodeFetcher(outputDirectory: outputURL)
+
+        let stats = try await fetcher.fetch { progress in
+            Logging.ConsoleLogger.output("   \(progress.message)")
+        }
+
+        Logging.ConsoleLogger.output("")
+        Logging.ConsoleLogger.info("✅ Fetch completed!")
+        Logging.ConsoleLogger.info("   Action: \(stats.action.description)")
+        Logging.ConsoleLogger.info("   Projects: \(stats.projectCount)")
+        if let duration = stats.duration {
+            Logging.ConsoleLogger.info("   Duration: \(Int(duration))s")
+        }
+        Logging.ConsoleLogger.info("\n📁 Output: \(outputURL.path)/cupertino-sample-code")
     }
 
     private func runArchiveCrawl() async throws {

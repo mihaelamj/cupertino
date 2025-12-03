@@ -64,6 +64,9 @@ cupertino fetch --type docs --max-pages 15000
 # Download Swift Evolution proposals (~2-5 minutes)
 cupertino fetch --type evolution
 
+# Download sample code from GitHub (~4 minutes, 606 projects)
+cupertino fetch --type samples
+
 # Build search index (~2-5 minutes)
 cupertino save
 ```
@@ -160,7 +163,11 @@ A UIKit view controller that manages a SwiftUI view hierarchy.
 - **Swift Package Metadata**
   - Priority package catalogs
   - README files
-  - Sample code
+
+- **Apple Sample Code** (606 projects)
+  - Two fetch methods: GitHub (recommended) or Apple website
+  - Full-text search across all source files
+  - 18,000+ indexed Swift files
 
 - **Apple Archive Legacy Guides** (~75 pages)
   - Pre-2016 programming guides (Core Animation, Quartz 2D, Core Text, etc.)
@@ -230,6 +237,7 @@ These catalogs are indexed during `cupertino save` and enable instant search wit
 | `cupertino search` | Search documentation from CLI |
 | `cupertino read` | Read full document by URI |
 | `cupertino doctor` | Check server health |
+| `cupertino index` | Index sample code for search |
 
 See [docs/commands/](docs/commands/) for detailed usage and options.
 

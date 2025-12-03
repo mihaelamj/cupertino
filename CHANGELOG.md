@@ -1,3 +1,39 @@
+## 0.2.5
+
+### Added
+- **CLI Sample Code Commands** - Full parity with MCP sample code tools (#51)
+  - `cupertino list-samples` - List indexed sample projects
+  - `cupertino search-samples <query>` - Search sample code projects and files
+  - `cupertino read-sample <project-id>` - Read project README and metadata
+  - `cupertino read-sample-file <project-id> <path>` - Read source file content
+- **CLI Framework List Command**
+  - `cupertino list-frameworks` - List available frameworks with document counts
+- All new commands support `--format text|json|markdown` output
+
+### Related Issues
+- Closes #51
+
+---
+
+## 0.2.4
+
+### Added
+- **GitHub Sample Code Fetcher** - Fast alternative to Apple website scraping
+  - `cupertino fetch --type samples` - Clone/pull from public GitHub repository
+  - 606 projects, ~10GB with Git LFS
+  - Much faster than `--type code` (~4 minutes vs hours)
+- **Sample Code Directory Indexing** - Index extracted project directories (not just ZIPs)
+  - `SampleIndexBuilder` now scans both ZIP files and extracted folders
+  - Supports GitHub-cloned projects in `cupertino-sample-code/` subdirectory
+  - 18,000+ source files indexed for full-text search
+
+### Changed
+- Sample code can now be fetched from two sources:
+  - `--type samples` - GitHub (recommended, faster)
+  - `--type code` - Apple website (requires authentication)
+
+---
+
 ## 0.2.3
 
 ### Added
