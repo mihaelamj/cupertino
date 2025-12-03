@@ -98,8 +98,8 @@ struct ServeCommand: AsyncParsableCommand {
         // Initialize sample code index if available
         let sampleIndex = await loadSampleIndex()
 
-        // Register unified tool provider with both indexes
-        let toolProvider = CupertinoUnifiedToolProvider(searchIndex: searchIndex, sampleDatabase: sampleIndex)
+        // Register composite tool provider with both indexes
+        let toolProvider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: sampleIndex)
         await server.registerToolProvider(toolProvider)
 
         // Log availability of each index
@@ -138,7 +138,7 @@ struct ServeCommand: AsyncParsableCommand {
     private func loadSearchIndex(searchDBURL: URL) async -> Search.Index? {
         guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
             let infoMsg = "ℹ️  Search index not found at: \(searchDBURL.path)"
-            let cmd = "\(Shared.Constants.App.commandName) data index"
+            let cmd = "\(Shared.Constants.App.commandName) save"
             let hintMsg = "   Tools will not be available. Run '\(cmd)' to enable search."
             Log.info("\(infoMsg) \(hintMsg)", category: .mcp)
             return nil
@@ -149,7 +149,7 @@ struct ServeCommand: AsyncParsableCommand {
             return searchIndex
         } catch {
             let errorMsg = "⚠️  Failed to load search index: \(error)"
-            let cmd = "\(Shared.Constants.App.commandName) data index"
+            let cmd = "\(Shared.Constants.App.commandName) save"
             let hintMsg = "   Tools will not be available. Run '\(cmd)' to create the index."
             Log.warning("\(errorMsg) \(hintMsg)", category: .mcp)
             return nil

@@ -29,7 +29,7 @@ Cupertino is a local, structured, AI-ready documentation system for Apple platfo
 
 ## Quick Start
 
-> **Note:** All commands must be run from the Packages directory (`cupertino/Packages/`).
+> **Note:** All build and install commands must be run from the Packages directory (`cupertino/Packages/`). Once installed, `cupertino` can be called from anywhere.
 
 ### Requirements
 
@@ -52,6 +52,29 @@ sudo make install                # Install to /usr/local/bin
 cd Packages
 swift build -c release
 sudo ln -sf "$(pwd)/.build/release/cupertino" /usr/local/bin/cupertino
+```
+
+### Quick Reference
+
+```bash
+# Fetch documentation
+cupertino fetch --type docs          # Apple Developer Documentation
+cupertino fetch --type swift         # Swift.org documentation
+cupertino fetch --type evolution     # Swift Evolution proposals
+cupertino fetch --type packages      # Swift package metadata
+cupertino fetch --type package-docs  # Swift package READMEs
+cupertino fetch --type code          # Sample code from Apple (requires auth)
+cupertino fetch --type samples       # Sample code from GitHub (recommended)
+cupertino fetch --type archive       # Apple Archive programming guides
+cupertino fetch --type all           # All types in parallel
+
+# Build indexes
+cupertino save                       # Build documentation search index
+cupertino index                      # Index sample code for search
+
+# Start server
+cupertino                            # Start MCP server (default command)
+cupertino serve                      # Start MCP server (explicit)
 ```
 
 ### Download Documentation
@@ -211,12 +234,18 @@ These catalogs are indexed during `cupertino save` and enable instant search wit
   - `apple-docs://{framework}/{page}`
   - `swift-evolution://{proposal-id}`
 - **Tools**: Search and read capabilities for AI agents
-  - `search_docs` - Full-text search across all documentation
-  - `list_frameworks` - List available frameworks
-  - `read_document` - Read document by URI with format option
-    - Parameters: `uri` (required), `format` (optional: `json` or `markdown`, default: `json`)
-    - JSON format returns the full structured document data (recommended for AI)
-    - Markdown format returns rendered content for human reading
+  - **Documentation Tools** (requires `cupertino save`):
+    - `search_docs` - Full-text search across all documentation
+    - `list_frameworks` - List available frameworks
+    - `read_document` - Read document by URI with format option
+      - Parameters: `uri` (required), `format` (optional: `json` or `markdown`, default: `json`)
+      - JSON format returns the full structured document data (recommended for AI)
+      - Markdown format returns rendered content for human reading
+  - **Sample Code Tools** (requires `cupertino index`):
+    - `search_samples` - Search sample code projects and files
+    - `list_samples` - List all indexed sample projects
+    - `read_sample` - Read sample project README and metadata
+    - `read_sample_file` - Read specific source file from a sample
 
 ### 5. Intelligent Crawling
 
