@@ -84,25 +84,25 @@ public struct StructuredDocumentationPage: Codable, Sendable, Identifiable, Hash
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         // Generate UUID if id is missing (for backwards compatibility)
-        self.id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
-        self.url = try container.decode(URL.self, forKey: .url)
-        self.title = try container.decode(String.self, forKey: .title)
-        self.kind = try container.decode(Kind.self, forKey: .kind)
-        self.source = try container.decode(Source.self, forKey: .source)
-        self.abstract = try container.decodeIfPresent(String.self, forKey: .abstract)
-        self.declaration = try container.decodeIfPresent(Declaration.self, forKey: .declaration)
-        self.overview = try container.decodeIfPresent(String.self, forKey: .overview)
-        self.sections = try container.decode([Section].self, forKey: .sections)
-        self.codeExamples = try container.decode([CodeExample].self, forKey: .codeExamples)
-        self.language = try container.decodeIfPresent(String.self, forKey: .language)
-        self.platforms = try container.decodeIfPresent([String].self, forKey: .platforms)
-        self.module = try container.decodeIfPresent(String.self, forKey: .module)
-        self.conformsTo = try container.decodeIfPresent([String].self, forKey: .conformsTo)
-        self.inheritedBy = try container.decodeIfPresent([String].self, forKey: .inheritedBy)
-        self.conformingTypes = try container.decodeIfPresent([String].self, forKey: .conformingTypes)
-        self.rawMarkdown = try container.decodeIfPresent(String.self, forKey: .rawMarkdown)
-        self.crawledAt = try container.decode(Date.self, forKey: .crawledAt)
-        self.contentHash = try container.decode(String.self, forKey: .contentHash)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        url = try container.decode(URL.self, forKey: .url)
+        title = try container.decode(String.self, forKey: .title)
+        kind = try container.decode(Kind.self, forKey: .kind)
+        source = try container.decode(Source.self, forKey: .source)
+        abstract = try container.decodeIfPresent(String.self, forKey: .abstract)
+        declaration = try container.decodeIfPresent(Declaration.self, forKey: .declaration)
+        overview = try container.decodeIfPresent(String.self, forKey: .overview)
+        sections = try container.decode([Section].self, forKey: .sections)
+        codeExamples = try container.decode([CodeExample].self, forKey: .codeExamples)
+        language = try container.decodeIfPresent(String.self, forKey: .language)
+        platforms = try container.decodeIfPresent([String].self, forKey: .platforms)
+        module = try container.decodeIfPresent(String.self, forKey: .module)
+        conformsTo = try container.decodeIfPresent([String].self, forKey: .conformsTo)
+        inheritedBy = try container.decodeIfPresent([String].self, forKey: .inheritedBy)
+        conformingTypes = try container.decodeIfPresent([String].self, forKey: .conformingTypes)
+        rawMarkdown = try container.decodeIfPresent(String.self, forKey: .rawMarkdown)
+        crawledAt = try container.decode(Date.self, forKey: .crawledAt)
+        contentHash = try container.decode(String.self, forKey: .contentHash)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -426,11 +426,11 @@ public struct CrawlMetadata: Codable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         // Decode with defaults for missing fields
-        self.pages = try container.decodeIfPresent([String: PageMetadata].self, forKey: .pages) ?? [:]
-        self.frameworks = try container.decodeIfPresent([String: FrameworkStats].self, forKey: .frameworks) ?? [:]
-        self.lastCrawl = try container.decodeIfPresent(Date.self, forKey: .lastCrawl)
-        self.stats = try container.decodeIfPresent(CrawlStatistics.self, forKey: .stats) ?? CrawlStatistics()
-        self.crawlState = try container.decodeIfPresent(CrawlSessionState.self, forKey: .crawlState)
+        pages = try container.decodeIfPresent([String: PageMetadata].self, forKey: .pages) ?? [:]
+        frameworks = try container.decodeIfPresent([String: FrameworkStats].self, forKey: .frameworks) ?? [:]
+        lastCrawl = try container.decodeIfPresent(Date.self, forKey: .lastCrawl)
+        stats = try container.decodeIfPresent(CrawlStatistics.self, forKey: .stats) ?? CrawlStatistics()
+        crawlState = try container.decodeIfPresent(CrawlSessionState.self, forKey: .crawlState)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -483,13 +483,13 @@ public struct FrameworkStats: Codable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         // Provide defaults for missing fields
-        self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
-        self.pageCount = try container.decodeIfPresent(Int.self, forKey: .pageCount) ?? 0
-        self.newPages = try container.decodeIfPresent(Int.self, forKey: .newPages) ?? 0
-        self.updatedPages = try container.decodeIfPresent(Int.self, forKey: .updatedPages) ?? 0
-        self.errors = try container.decodeIfPresent(Int.self, forKey: .errors) ?? 0
-        self.lastCrawled = try container.decodeIfPresent(Date.self, forKey: .lastCrawled)
-        self.crawlStatus = try container.decodeIfPresent(CrawlStatus.self, forKey: .crawlStatus) ?? .notStarted
+        name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        pageCount = try container.decodeIfPresent(Int.self, forKey: .pageCount) ?? 0
+        newPages = try container.decodeIfPresent(Int.self, forKey: .newPages) ?? 0
+        updatedPages = try container.decodeIfPresent(Int.self, forKey: .updatedPages) ?? 0
+        errors = try container.decodeIfPresent(Int.self, forKey: .errors) ?? 0
+        lastCrawled = try container.decodeIfPresent(Date.self, forKey: .lastCrawled)
+        crawlStatus = try container.decodeIfPresent(CrawlStatus.self, forKey: .crawlStatus) ?? .notStarted
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -531,12 +531,12 @@ public struct PageMetadata: Codable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         // Provide defaults for missing fields
-        self.url = try container.decodeIfPresent(String.self, forKey: .url) ?? ""
-        self.framework = try container.decodeIfPresent(String.self, forKey: .framework) ?? "unknown"
-        self.filePath = try container.decodeIfPresent(String.self, forKey: .filePath) ?? ""
-        self.contentHash = try container.decodeIfPresent(String.self, forKey: .contentHash) ?? ""
-        self.depth = try container.decodeIfPresent(Int.self, forKey: .depth) ?? 0
-        self.lastCrawled = try container.decodeIfPresent(Date.self, forKey: .lastCrawled) ?? Date()
+        url = try container.decodeIfPresent(String.self, forKey: .url) ?? ""
+        framework = try container.decodeIfPresent(String.self, forKey: .framework) ?? "unknown"
+        filePath = try container.decodeIfPresent(String.self, forKey: .filePath) ?? ""
+        contentHash = try container.decodeIfPresent(String.self, forKey: .contentHash) ?? ""
+        depth = try container.decodeIfPresent(Int.self, forKey: .depth) ?? 0
+        lastCrawled = try container.decodeIfPresent(Date.self, forKey: .lastCrawled) ?? Date()
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -589,13 +589,13 @@ public struct CrawlStatistics: Codable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         // Provide defaults for missing fields
-        self.totalPages = try container.decodeIfPresent(Int.self, forKey: .totalPages) ?? 0
-        self.newPages = try container.decodeIfPresent(Int.self, forKey: .newPages) ?? 0
-        self.updatedPages = try container.decodeIfPresent(Int.self, forKey: .updatedPages) ?? 0
-        self.skippedPages = try container.decodeIfPresent(Int.self, forKey: .skippedPages) ?? 0
-        self.errors = try container.decodeIfPresent(Int.self, forKey: .errors) ?? 0
-        self.startTime = try container.decodeIfPresent(Date.self, forKey: .startTime)
-        self.endTime = try container.decodeIfPresent(Date.self, forKey: .endTime)
+        totalPages = try container.decodeIfPresent(Int.self, forKey: .totalPages) ?? 0
+        newPages = try container.decodeIfPresent(Int.self, forKey: .newPages) ?? 0
+        updatedPages = try container.decodeIfPresent(Int.self, forKey: .updatedPages) ?? 0
+        skippedPages = try container.decodeIfPresent(Int.self, forKey: .skippedPages) ?? 0
+        errors = try container.decodeIfPresent(Int.self, forKey: .errors) ?? 0
+        startTime = try container.decodeIfPresent(Date.self, forKey: .startTime)
+        endTime = try container.decodeIfPresent(Date.self, forKey: .endTime)
     }
 
     private enum CodingKeys: String, CodingKey {

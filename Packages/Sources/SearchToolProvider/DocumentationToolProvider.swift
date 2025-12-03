@@ -6,7 +6,7 @@ import Shared
 // MARK: - Documentation Search Tool Provider
 
 /// Provides search tools for MCP clients to query documentation
-public actor CupertinoSearchToolProvider: ToolProvider {
+public actor DocumentationToolProvider: ToolProvider {
     private let searchIndex: Search.Index
 
     public init(searchIndex: Search.Index) {
@@ -58,7 +58,7 @@ public actor CupertinoSearchToolProvider: ToolProvider {
         case Shared.Constants.MCP.toolReadDocument:
             return try await handleReadDocument(arguments: arguments)
         default:
-            throw ToolError.unknownTool(name)
+            throw DocumentationToolError.unknownTool(name)
         }
     }
 
@@ -66,7 +66,7 @@ public actor CupertinoSearchToolProvider: ToolProvider {
 
     private func handleSearchDocs(arguments: [String: AnyCodable]?) async throws -> CallToolResult {
         guard let query = arguments?[Shared.Constants.MCP.schemaParamQuery]?.value as? String else {
-            throw ToolError.missingArgument(Shared.Constants.MCP.schemaParamQuery)
+            throw DocumentationToolError.missingArgument(Shared.Constants.MCP.schemaParamQuery)
         }
 
         let source = arguments?[Shared.Constants.MCP.schemaParamSource]?.value as? String
@@ -170,7 +170,7 @@ public actor CupertinoSearchToolProvider: ToolProvider {
 
     private func handleReadDocument(arguments: [String: AnyCodable]?) async throws -> CallToolResult {
         guard let uri = arguments?[Shared.Constants.MCP.schemaParamURI]?.value as? String else {
-            throw ToolError.missingArgument(Shared.Constants.MCP.schemaParamURI)
+            throw DocumentationToolError.missingArgument(Shared.Constants.MCP.schemaParamURI)
         }
 
         // Parse format parameter (default: json)
@@ -181,7 +181,7 @@ public actor CupertinoSearchToolProvider: ToolProvider {
 
         // Get document content from search index
         guard let documentContent = try await searchIndex.getDocumentContent(uri: uri, format: format) else {
-            throw ToolError.invalidArgument(
+            throw DocumentationToolError.invalidArgument(
                 Shared.Constants.MCP.schemaParamURI,
                 "Document not found: \(uri)"
             )
@@ -197,7 +197,7 @@ public actor CupertinoSearchToolProvider: ToolProvider {
 
 // MARK: - Tool Errors
 
-enum ToolError: Error, LocalizedError {
+enum DocumentationToolError: Error, LocalizedError {
     case unknownTool(String)
     case missingArgument(String)
     case invalidArgument(String, String) // argument name, reason

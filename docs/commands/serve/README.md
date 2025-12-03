@@ -158,6 +158,43 @@ Read a document by URI. Returns the full document content in the requested forma
 - `uri` (required): Document URI from search results
 - `format` (optional): Output format - `json` or `markdown`
 
+## Sample Code Tools
+
+If sample code is indexed (via `cupertino index`), the server provides these additional tools:
+
+### search_samples
+
+Search sample code projects and source files.
+
+**Parameters:**
+- `query` (required): Search keywords
+- `framework` (optional): Filter by framework name
+- `limit` (optional): Max results (default: 20, max: 100)
+- `search_files` (optional): Also search file contents (default: true)
+
+### list_samples
+
+List all indexed sample code projects.
+
+**Parameters:**
+- `framework` (optional): Filter by framework name
+- `limit` (optional): Max results (default: 50, max: 100)
+
+### read_sample
+
+Read a sample project's README and metadata.
+
+**Parameters:**
+- `project_id` (required): Sample project ID from search results
+
+### read_sample_file
+
+Read a specific source file from a sample project.
+
+**Parameters:**
+- `project_id` (required): Sample project ID
+- `file_path` (required): Path to file within the project
+
 ## Stopping the Server
 
 Press `Ctrl+C` to stop the server gracefully.

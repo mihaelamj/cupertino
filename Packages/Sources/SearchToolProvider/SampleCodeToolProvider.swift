@@ -6,7 +6,7 @@ import Shared
 // MARK: - Sample Code Search Tool Provider
 
 /// Provides sample code search tools for MCP clients
-public actor SampleToolProvider: ToolProvider {
+public actor SampleCodeToolProvider: ToolProvider {
     private let database: SampleIndex.Database
 
     public init(database: SampleIndex.Database) {
