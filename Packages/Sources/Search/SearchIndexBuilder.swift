@@ -412,7 +412,7 @@ extension Search {
 
             return files.filter {
                 $0.pathExtension == "md" &&
-                    $0.lastPathComponent.range(of: #"^\d{4}-"#, options: .regularExpression) != nil
+                    $0.lastPathComponent.hasPrefix("SE-")
             }
         }
 

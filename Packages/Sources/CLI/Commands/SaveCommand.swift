@@ -78,6 +78,13 @@ struct SaveCommand: AsyncParsableCommand {
             metadata = nil
         }
 
+        // Delete existing database to avoid FTS5 duplicate rows
+        // (FTS5 doesn't support INSERT OR REPLACE properly)
+        if FileManager.default.fileExists(atPath: searchDBURL.path) {
+            Logging.ConsoleLogger.info("🗑️  Removing existing database for clean re-index...")
+            try FileManager.default.removeItem(at: searchDBURL)
+        }
+
         // Initialize search index
         Logging.ConsoleLogger.info("🗄️  Initializing search database...")
         let searchIndex = try await Search.Index(dbPath: searchDBURL)

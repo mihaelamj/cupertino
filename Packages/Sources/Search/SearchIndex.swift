@@ -704,9 +704,9 @@ extension Search {
             // Determine language with heuristics fallback
             let effectiveLanguage = language ?? detectLanguage(from: content)
 
-            // Insert into FTS5 table
+            // Insert into FTS5 table (db should be deleted before full re-index)
             let ftsSql = """
-            INSERT OR REPLACE INTO docs_fts (uri, source, framework, language, title, content, summary)
+            INSERT INTO docs_fts (uri, source, framework, language, title, content, summary)
             VALUES (?, ?, ?, ?, ?, ?, ?);
             """
 
@@ -868,9 +868,9 @@ extension Search {
                 throw SearchError.databaseNotInitialized
             }
 
-            // Insert into FTS5 table
+            // Insert into FTS5 table (db should be deleted before full re-index)
             let ftsSql = """
-            INSERT OR REPLACE INTO docs_fts (uri, source, framework, language, title, content, summary)
+            INSERT INTO docs_fts (uri, source, framework, language, title, content, summary)
             VALUES (?, ?, ?, ?, ?, ?, ?);
             """
 
@@ -1722,6 +1722,11 @@ extension Search {
                 // Apply source-based ranking multiplier
                 // Prefer modern Apple docs over archived guides (but archives still valuable)
                 let sourceMultiplier: Double = {
+                    // Penalize release notes - they match almost every query but rarely what user wants
+                    if uri.contains("release-notes") {
+                        return 2.5 // Strong penalty - release notes pollute general searches
+                    }
+
                     switch source {
                     case "apple-docs":
                         return 1.0 // Baseline - modern docs
