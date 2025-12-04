@@ -1,3 +1,13 @@
+## 0.2.7
+
+### Fixed
+- **Search Ranking** - Penalize release notes in search results (2.5x multiplier) to prevent them polluting unrelated queries (#57)
+- **Swift Evolution Indexing** - Fix filename pattern to match `SE-0001.md` format (#61)
+- **Database Re-indexing** - Delete database before re-index to prevent FTS5 duplicate rows doubling db size (#62)
+- **Serve Output** - Simplified startup messages to show only DB paths; server now requires at least one database to start (#60)
+
+---
+
 ## 0.2.6
 
 ### Fixed

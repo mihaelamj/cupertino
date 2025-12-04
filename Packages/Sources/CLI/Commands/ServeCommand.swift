@@ -156,34 +156,35 @@ struct ServeCommand: AsyncParsableCommand {
         }
     }
 
-    private func printStartupMessages(config: Shared.Configuration, evolutionURL: URL, searchDBURL: URL) {
-        let messages = [
-            "🚀 Cupertino MCP Server starting...",
-            "   Apple docs: \(config.crawler.outputDirectory.path)",
-            "   Evolution: \(evolutionURL.path)",
-            "   Search DB: \(searchDBURL.path)",
-            "   Waiting for client connection...",
-        ]
+    private func printStartupMessages(config _: Shared.Configuration, evolutionURL _: URL, searchDBURL: URL) {
+        var messages = ["🚀 Cupertino MCP Server starting..."]
+
+        // Add search DB path if it exists
+        if FileManager.default.fileExists(atPath: searchDBURL.path) {
+            messages.append("   Search DB: \(searchDBURL.path)")
+        }
+
+        // Add samples DB path if it exists
+        let sampleDBURL = SampleIndex.defaultDatabasePath
+        if FileManager.default.fileExists(atPath: sampleDBURL.path) {
+            messages.append("   Samples DB: \(sampleDBURL.path)")
+        }
+
+        messages.append("   Waiting for client connection...")
 
         for message in messages {
             Log.info(message, category: .mcp)
         }
     }
 
-    private func checkForData(docsDir: URL, evolutionDir: URL, searchDB: URL) -> Bool {
+    private func checkForData(docsDir _: URL, evolutionDir _: URL, searchDB: URL) -> Bool {
         let fileManager = FileManager.default
 
-        // Check if any data directories exist and contain files
-        let hasAppleDocs = fileManager.fileExists(atPath: docsDir.path) &&
-            (try? fileManager.contentsOfDirectory(atPath: docsDir.path).filter { !$0.hasPrefix(".") })?.isEmpty == false
-
-        let evolutionContents = try? fileManager.contentsOfDirectory(atPath: evolutionDir.path)
-            .filter { !$0.hasPrefix(".") }
-        let hasEvolution = fileManager.fileExists(atPath: evolutionDir.path) && evolutionContents?.isEmpty == false
-
+        // Check if either database exists
         let hasSearchDB = fileManager.fileExists(atPath: searchDB.path)
+        let hasSamplesDB = fileManager.fileExists(atPath: SampleIndex.defaultDatabasePath.path)
 
-        return hasAppleDocs || hasEvolution || hasSearchDB
+        return hasSearchDB || hasSamplesDB
     }
 
     private func printGettingStartedGuide() {

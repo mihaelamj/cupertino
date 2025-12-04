@@ -55,10 +55,9 @@ Without documentation, the server will display a getting started guide and exit.
 cupertino
 ```
 
-The server will use default paths:
-- Docs: `~/.cupertino/docs`
-- Evolution: `~/.cupertino/swift-evolution`
+The server will use default database paths:
 - Search DB: `~/.cupertino/search.db`
+- Samples DB: `~/.cupertino/sample-code/samples.db`
 
 ### Use in Claude Desktop Config
 
@@ -82,11 +81,12 @@ When the server starts successfully:
 
 ```
 🚀 Cupertino MCP Server starting...
-   Apple docs: /Users/username/.cupertino/docs
-   Evolution: /Users/username/.cupertino/swift-evolution
    Search DB: /Users/username/.cupertino/search.db
+   Samples DB: /Users/username/.cupertino/sample-code/samples.db
    Waiting for client connection...
 ```
+
+Note: Only existing databases are shown. At least one database (search or samples) must exist for the server to start.
 
 ### With Search Index
 
