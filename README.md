@@ -17,7 +17,7 @@ Cupertino is a local, structured, AI-ready documentation system for Apple platfo
 - **Crawls** Apple Developer documentation, Swift.org, Swift Evolution proposals, Apple Archive legacy guides, and Swift package metadata
 - **Indexes** everything into a fast, searchable SQLite FTS5 database with BM25 ranking
 - **Serves** documentation to AI agents like Claude via the Model Context Protocol
-- **Provides** offline access to 22,000+ documentation pages across 261 frameworks
+- **Provides** offline access to 138,000+ documentation pages across 263 frameworks
 
 ### Why Build This?
 
@@ -184,15 +184,15 @@ A UIKit view controller that manages a SwiftUI view hierarchy.
 **Framework Statistics:**
 | Framework | Documents |
 |-----------|----------:|
-| SwiftUI | 5,853 |
-| Swift | 2,814 |
-| UIKit | 1,906 |
-| AppKit | 1,316 |
-| Foundation | 1,219 |
-| Swift.org | 501 |
-| Swift Evolution | 429 |
+| Accelerate | 14,193 |
+| AppKit | 12,644 |
+| UIKit | 10,038 |
+| Swift | 9,893 |
+| SwiftUI | 9,741 |
+| SIMD | 6,453 |
+| Foundation | 6,068 |
 | ... | ... |
-| **Total** | **22,044** |
+| **263 Frameworks** | **138,414** |
 
 ## Core Features
 
@@ -254,7 +254,7 @@ These catalogs are indexed during `cupertino save` and enable instant search wit
   - Framework filtering
   - Snippet generation
   - Sub-100ms query performance
-- **Size**: ~160MB index for full documentation (22,000+ documents across 261 frameworks)
+- **Size**: ~1.1GB index for full documentation (138,000+ documents across 263 frameworks)
 - **Storage**: Database must be on local filesystem - SQLite does not work reliably on network drives (NFS/SMB)
 
 ### 4. Model Context Protocol Server
