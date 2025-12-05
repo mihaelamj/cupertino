@@ -49,6 +49,14 @@ jobs:
           # Show size
           ls -lh cupertino
 
+      - name: Ad-hoc Code Sign
+        run: |
+          # Ad-hoc sign the binary so it runs without quarantine issues
+          codesign --force --sign - cupertino
+
+          # Verify signing
+          codesign -dv cupertino
+
       - name: Create Release Archive
         run: |
           # Get version from tag
