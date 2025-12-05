@@ -8,6 +8,9 @@
       location = "group:AGENTS.md">
    </FileRef>
    <FileRef
+      location = "group:install.sh">
+   </FileRef>
+   <FileRef
       location = "group:docs">
    </FileRef>
    <FileRef

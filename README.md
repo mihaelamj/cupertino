@@ -29,16 +29,26 @@ Cupertino is a local, structured, AI-ready documentation system for Apple platfo
 
 ## Quick Start
 
-> **Note:** All build and install commands must be run from the Packages directory (`cupertino/Packages/`). Once installed, `cupertino` can be called from anywhere.
+> **Note:** When building from source, commands must be run from the `Packages` directory. The one-command install works from anywhere.
 
 ### Requirements
 
 - macOS 15+ (Sequoia)
-- Swift 6.2+
-- Xcode 16.0+
 - ~2-3 GB disk space for full documentation
 
+*Building from source additionally requires Swift 6.2+ and Xcode 16.0+*
+
 ### Installation
+
+**One-command install (recommended):**
+
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/mihaelamj/cupertino/main/install.sh)
+```
+
+This downloads a pre-built, signed, and notarized universal binary, installs it to `/usr/local/bin`, and downloads the documentation databases.
+
+**Or build from source:**
 
 ```bash
 git clone https://github.com/mihaelamj/cupertino.git
