@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build Universal Binary
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Show Swift Version
+        run: swift --version
+
+      - name: Build for arm64
+        working-directory: Packages
+        run: |
+          swift build -c release --arch arm64
+          cp .build/release/cupertino ../cupertino-arm64
+
+      - name: Build for x86_64
+        working-directory: Packages
+        run: |
+          swift build -c release --arch x86_64
+          cp .build/release/cupertino ../cupertino-x86_64
+
+      - name: Create Universal Binary
+        run: |
+          lipo -create -output cupertino \
+            cupertino-arm64 \
+            cupertino-x86_64
+
+          # Verify it's universal
+          lipo -info cupertino
+
+          # Show size
+          ls -lh cupertino
+
+      - name: Create Release Archive
+        run: |
+          # Get version from tag
+          VERSION=${GITHUB_REF#refs/tags/}
+
+          # Create archive
+          tar -czvf cupertino-${VERSION}-macos-universal.tar.gz cupertino
+
+          # Calculate checksum
+          shasum -a 256 cupertino-${VERSION}-macos-universal.tar.gz > cupertino-${VERSION}-macos-universal.tar.gz.sha256
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            cupertino-*.tar.gz
+            cupertino-*.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
