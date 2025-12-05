@@ -26,6 +26,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("MCPSupport"),
     .singleTargetLibrary("SearchToolProvider"),
     .singleTargetLibrary("MCPClient"),
+    .singleTargetLibrary("RemoteSync"),
     .executable(name: "cupertino", targets: ["CLI"]),
     .executable(name: "cupertino-tui", targets: ["TUI"]),
     .executable(name: "mock-ai-agent", targets: ["MockAIAgent"]),
@@ -157,6 +158,15 @@ let targets: [Target] = {
         dependencies: ["MCPClient", "TestSupport"]
     )
 
+    let remoteSyncTarget = Target.target(
+        name: "RemoteSync",
+        dependencies: []
+    )
+    let remoteSyncTestsTarget = Target.testTarget(
+        name: "RemoteSyncTests",
+        dependencies: ["RemoteSync", "TestSupport"]
+    )
+
     let cliTarget = Target.executableTarget(
         name: "CLI",
         dependencies: [
@@ -166,6 +176,7 @@ let targets: [Target] = {
             "Search",
             "SampleIndex",
             "Logging",
+            "RemoteSync",
             // MCP dependencies (for mcp serve command)
             "MCP",
             "MCPSupport",
@@ -257,6 +268,8 @@ let targets: [Target] = {
         searchToolProviderTestsTarget,
         mcpClientTarget,
         mcpClientTestsTarget,
+        remoteSyncTarget,
+        remoteSyncTestsTarget,
         testSupportTarget,
         cliTarget,
         tuiTarget,

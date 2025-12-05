@@ -151,7 +151,7 @@ struct MCPCommandTests {
         )
 
         let server = MCPServer(name: "test-server", version: "1.0.0")
-        let provider = CupertinoSearchToolProvider(searchIndex: searchIndex)
+        let provider = DocumentationToolProvider(searchIndex: searchIndex)
 
         await server.registerToolProvider(provider)
 
@@ -195,7 +195,7 @@ struct MCPCommandTests {
             lastCrawled: Date()
         )
 
-        let provider = CupertinoSearchToolProvider(searchIndex: searchIndex)
+        let provider = DocumentationToolProvider(searchIndex: searchIndex)
 
         // Execute search
         let arguments: [String: AnyCodable] = [
@@ -350,7 +350,7 @@ struct MCPServerIntegrationTests {
             output: Shared.OutputConfiguration()
         )
         let docsProvider = DocsResourceProvider(configuration: mcpConfig)
-        let searchProvider = CupertinoSearchToolProvider(searchIndex: searchIndex)
+        let searchProvider = DocumentationToolProvider(searchIndex: searchIndex)
 
         await server.registerResourceProvider(docsProvider)
         await server.registerToolProvider(searchProvider)

@@ -14,16 +14,23 @@ The `save` command builds a Full-Text Search (FTS5) SQLite database from previou
 
 ## Options
 
-- [--base-dir](base-dir.md) - Base directory (auto-fills all directories from standard structure)
-- [--docs-dir](docs-dir.md) - Directory containing crawled documentation
-- [--evolution-dir](evolution-dir.md) - Directory containing Swift Evolution proposals
-- [--swift-org-dir](swift-org-dir.md) - Directory containing Swift.org documentation
-- [--packages-dir](packages-dir.md) - Directory containing package READMEs
-- [--metadata-file](metadata-file.md) - Path to metadata.json file
-- [--search-db](search-db.md) - Output path for search database
-- [--clear](clear.md) - Clear existing index before building
+- [--remote](option%20%28--%29/remote/) - **Stream from GitHub** (instant setup, no local files)
+- [--base-dir](option%20%28--%29/base-dir.md) - Base directory (auto-fills all directories from standard structure)
+- [--docs-dir](option%20%28--%29/docs-dir.md) - Directory containing crawled documentation
+- [--evolution-dir](option%20%28--%29/evolution-dir.md) - Directory containing Swift Evolution proposals
+- [--swift-org-dir](option%20%28--%29/swift-org-dir.md) - Directory containing Swift.org documentation
+- [--packages-dir](option%20%28--%29/packages-dir.md) - Directory containing package READMEs
+- [--metadata-file](option%20%28--%29/metadata-file.md) - Path to metadata.json file
+- [--search-db](option%20%28--%29/search-db.md) - Output path for search database
+- [--clear](option%20%28--%29/clear.md) - Clear existing index before building
 
 ## Examples
+
+### Quick Setup (Recommended)
+Stream documentation from GitHub - no crawling needed:
+```bash
+cupertino save --remote
+```
 
 ### Build Index from Default Locations
 ```bash
@@ -67,10 +74,11 @@ The FTS5 index supports:
 
 ## Notes
 
-- Requires crawled documentation (run `cupertino fetch` first)
+- **Remote mode** (`--remote`): No prerequisites - streams from GitHub
+- **Local mode**: Requires crawled documentation (run `cupertino fetch` first)
 - Uses SQLite FTS5 for optimal search performance
 - Index size is typically ~10-20% of total documentation size
-- Supports incremental updates (without `--clear`)
+- Remote mode is resumable if interrupted
 - Compatible with MCP server for AI integration
 
 ## Next Steps

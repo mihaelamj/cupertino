@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import Logging
+import RemoteSync
 import Search
 import Shared
 
@@ -40,7 +41,16 @@ struct SaveCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Clear existing index before building")
     var clear: Bool = false
 
+    @Flag(name: .long, help: "Stream documentation from GitHub (instant setup, no local files needed)")
+    var remote: Bool = false
+
     mutating func run() async throws {
+        // Handle remote mode separately
+        if remote {
+            try await runRemote()
+            return
+        }
+
         Logging.ConsoleLogger.info("🔨 Building Search Index\n")
 
         // Determine effective base directory
@@ -167,5 +177,142 @@ struct SaveCommand: AsyncParsableCommand {
         formatter.allowedUnits = [.useKB, .useMB, .useGB]
         formatter.countStyle = .file
         return formatter.string(fromByteCount: size)
+    }
+
+    // MARK: - Remote Mode
+
+    private func runRemote() async throws {
+        Logging.ConsoleLogger.info("🚀 Building Search Index from Remote\n")
+
+        // Determine paths
+        let effectiveBase = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+            ?? Shared.Constants.defaultBaseDirectory
+
+        let searchDBURL = searchDB.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+            ?? effectiveBase.appendingPathComponent(Shared.Constants.FileName.searchDatabase)
+
+        let stateFileURL = effectiveBase.appendingPathComponent("remote-save-state.json")
+
+        // Create fetcher and indexer
+        let fetcher = GitHubFetcher()
+        let indexer = RemoteIndexer(
+            fetcher: fetcher,
+            stateFileURL: stateFileURL,
+            appVersion: Shared.Constants.App.version
+        )
+
+        // Check for resumable state
+        if await indexer.hasResumableState() {
+            let state = await indexer.getState()
+            let completedCount = state.frameworksCompleted.count
+            let total = state.frameworksTotal
+            let framework = state.currentFramework ?? "unknown"
+
+            Logging.ConsoleLogger.info("📋 Found previous session")
+            Logging.ConsoleLogger.info("   Phase: \(state.phase.rawValue)")
+            Logging.ConsoleLogger.info("   Progress: \(completedCount)/\(total) frameworks")
+            if let current = state.currentFramework {
+                Logging.ConsoleLogger.info("   Current: \(current) (\(state.currentFileIndex)/\(state.filesTotal) files)")
+            }
+            Logging.ConsoleLogger.output("")
+
+            // Ask user if they want to resume
+            print("Resume from \(framework)? [Y/n] ", terminator: "")
+            if let response = readLine()?.lowercased(), response == "n" || response == "no" {
+                Logging.ConsoleLogger.info("🔄 Starting fresh...")
+                try await indexer.clearState()
+
+                // Delete existing database
+                if FileManager.default.fileExists(atPath: searchDBURL.path) {
+                    try FileManager.default.removeItem(at: searchDBURL)
+                }
+            } else {
+                Logging.ConsoleLogger.info("▶️  Resuming...")
+            }
+        } else {
+            // Delete existing database for fresh start
+            if FileManager.default.fileExists(atPath: searchDBURL.path) {
+                Logging.ConsoleLogger.info("🗑️  Removing existing database for clean re-index...")
+                try FileManager.default.removeItem(at: searchDBURL)
+            }
+        }
+
+        // Initialize search index
+        Logging.ConsoleLogger.info("🗄️  Initializing search database...")
+        let searchIndex = try await Search.Index(dbPath: searchDBURL)
+
+        // Create progress display
+        let progressDisplay = AnimatedProgress(barWidth: 20, useEmoji: true)
+        let reporter = ProgressReporter(display: progressDisplay)
+
+        // Track stats - using a class to hold mutable state for @Sendable closures
+        final class StatsTracker: @unchecked Sendable {
+            var successCount = 0
+            var errorCount = 0
+        }
+        let stats = StatsTracker()
+        let startTime = Date()
+
+        // Run the indexer
+        Logging.ConsoleLogger.output("")
+
+        try await indexer.run(
+            indexDocument: { uri, source, framework, title, content, jsonData in
+                // Index the document
+                try await searchIndex.indexDocument(
+                    uri: uri,
+                    source: source,
+                    framework: framework,
+                    language: nil,
+                    title: title,
+                    content: content,
+                    filePath: uri,
+                    contentHash: content.hashValue.description,
+                    lastCrawled: Date(),
+                    sourceType: source,
+                    packageId: nil,
+                    jsonData: jsonData
+                )
+            },
+            onProgress: { progress in
+                reporter.update(progress)
+            },
+            onDocument: { result in
+                if result.success {
+                    stats.successCount += 1
+                } else {
+                    stats.errorCount += 1
+                }
+            }
+        )
+
+        // Show final statistics
+        let elapsed = Date().timeIntervalSince(startTime)
+        let docCount = try await searchIndex.documentCount()
+        let frameworks = try await searchIndex.listFrameworks()
+
+        reporter.finish(message: "")
+        Logging.ConsoleLogger.output("")
+        Logging.ConsoleLogger.info("✅ Remote sync completed!")
+        Logging.ConsoleLogger.info("   Total documents: \(docCount)")
+        Logging.ConsoleLogger.info("   Frameworks: \(frameworks.count)")
+        Logging.ConsoleLogger.info("   Indexed: \(stats.successCount) | Errors: \(stats.errorCount)")
+        Logging.ConsoleLogger.info("   Time: \(formatDuration(elapsed))")
+        Logging.ConsoleLogger.info("   Database: \(searchDBURL.path)")
+        Logging.ConsoleLogger.info("   Size: \(formatFileSize(searchDBURL))")
+        Logging.ConsoleLogger.info("\n💡 Tip: Start the MCP server with '\(Shared.Constants.App.commandName) serve' to enable search")
+    }
+
+    private func formatDuration(_ interval: TimeInterval) -> String {
+        let totalSeconds = Int(interval)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            return String(format: "%02d:%02d", minutes, seconds)
+        }
     }
 }

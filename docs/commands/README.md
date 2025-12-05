@@ -6,6 +6,7 @@ CLI commands for the Cupertino documentation server.
 
 | Command | Description |
 |---------|-------------|
+| [setup](setup/) | **Download pre-built databases from GitHub (fastest)** |
 | [fetch](fetch/) | Download documentation from Apple, Swift Evolution, Swift.org, and Apple Archive |
 | [save](save/) | Build FTS5 search index from downloaded documentation |
 | [index](index/) | Index sample code for full-text search |
@@ -19,16 +20,21 @@ CLI commands for the Cupertino documentation server.
 | [read-sample-file](read-sample-file/) | Read a source file from a sample project |
 | [doctor](doctor/) | Check server health and configuration |
 | [cleanup](cleanup/) | Clean up downloaded sample code archives |
+| [release](release/) | Package and upload databases to GitHub Releases (maintainer only) |
 
 ## Quick Reference
 
 ```bash
-# Download documentation
+# Quick Setup (Recommended) - instant, no crawling
+cupertino setup
+cupertino serve
+
+# Or download documentation manually
 cupertino fetch --type docs
 cupertino fetch --type evolution
 cupertino fetch --type archive
 
-# Build search index
+# Build search index (from local files)
 cupertino save
 
 # Start MCP server (default command)
@@ -58,7 +64,17 @@ cupertino doctor
 
 ## Workflow
 
-### Initial Setup
+### Quick Setup (Recommended)
+
+```bash
+# Download pre-built databases (~30 seconds)
+cupertino setup
+
+# Start server
+cupertino serve
+```
+
+### Manual Setup (Advanced)
 
 ```bash
 # 1. Download documentation (takes time)

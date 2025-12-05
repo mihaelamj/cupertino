@@ -1,3 +1,41 @@
+## 0.3.0
+
+### Added
+- **Setup Command** - Instant database download from GitHub Releases (#65)
+  - `cupertino setup` - Download pre-built databases in ~30 seconds
+  - Version parity - CLI version matches release tag for schema compatibility
+  - Progress bar with percentage and download size
+  - `--base-dir` option for custom location
+  - `--force` flag to re-download
+- **Release Command** - Automated database publishing for maintainers (#66)
+  - `cupertino release` - Package and upload databases to GitHub Releases
+  - Creates versioned zip with SHA256 checksum
+  - `--dry-run` for local testing
+  - Handles existing releases (deletes and recreates)
+- **Remote Sync** - New `--remote` flag for `cupertino save` command (#52)
+  - Stream documentation directly from GitHub without local crawling
+  - Build database locally in ~45 minutes instead of 20+ hours
+  - Resumable - if interrupted, continue from where you left off
+  - No disk bloat - streams directly to SQLite
+  - Uses raw.githubusercontent.com (no API rate limits)
+- **RemoteSync Package** - New standalone Swift 6 package with strict concurrency
+  - `RemoteIndexer` actor for orchestrating remote sync
+  - `GitHubFetcher` actor for HTTP operations
+  - `RemoteIndexState` Sendable struct for state persistence
+  - `AnimatedProgress` for terminal progress display
+
+### Documentation
+- Updated README with "Instant Setup" quick start using `cupertino setup`
+- Added `docs/commands/setup/README.md` documentation
+- Added `docs/commands/release/README.md` documentation
+- Added `docs/commands/save/option (--)/remote/` documentation
+- Updated `docs/commands/README.md` with new commands
+
+### Related Issues
+- Closes #52, #65, #66
+
+---
+
 ## 0.2.7
 
 ### Fixed

@@ -11,6 +11,7 @@ struct Cupertino: AsyncParsableCommand {
         abstract: "MCP Server for Apple Documentation, Swift Evolution, and Swift Packages",
         version: Shared.Constants.App.version,
         subcommands: [
+            SetupCommand.self,
             FetchCommand.self,
             SaveCommand.self,
             IndexCommand.self,
@@ -24,6 +25,7 @@ struct Cupertino: AsyncParsableCommand {
             ReadSampleFileCommand.self,
             DoctorCommand.self,
             CleanupCommand.self,
+            ReleaseCommand.self,
         ],
         defaultSubcommand: ServeCommand.self
     )
