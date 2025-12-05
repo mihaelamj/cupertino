@@ -155,7 +155,7 @@ success "Binary ready!"
 # Install
 info "Installing to $INSTALL_PATH (requires sudo)..."
 sudo mkdir -p /usr/local/bin
-sudo cp "$TEMP_DIR/cupertino" "$INSTALL_PATH"
+sudo ditto "$TEMP_DIR/cupertino" "$INSTALL_PATH"
 sudo chmod +x "$INSTALL_PATH"
 
 # Verify installation
