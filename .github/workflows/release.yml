@@ -30,6 +30,8 @@ jobs:
         run: |
           swift build -c release --arch arm64
           cp .build/release/cupertino ../cupertino-arm64
+          # Copy resource bundle (only need one, it's the same for both archs)
+          cp -R .build/arm64-apple-macosx/release/Cupertino_Resources.bundle ../
 
       - name: Build for x86_64
         working-directory: Packages
@@ -105,8 +107,8 @@ jobs:
           # Get version from tag
           VERSION=${GITHUB_REF#refs/tags/}
 
-          # Create archive
-          tar -czvf cupertino-${VERSION}-macos-universal.tar.gz cupertino
+          # Create archive with binary and resource bundle
+          tar -czvf cupertino-${VERSION}-macos-universal.tar.gz cupertino Cupertino_Resources.bundle
 
           # Calculate checksum
           shasum -a 256 cupertino-${VERSION}-macos-universal.tar.gz > cupertino-${VERSION}-macos-universal.tar.gz.sha256

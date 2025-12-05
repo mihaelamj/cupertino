@@ -72,6 +72,7 @@ if [[ "$MACOS_VERSION" -lt 15 ]]; then
 fi
 
 # Check for existing installation
+REINSTALL=false
 if [[ -f "$INSTALL_PATH" ]]; then
     EXISTING_VERSION=$("$INSTALL_PATH" --version 2>/dev/null || echo "unknown")
     warn "Existing installation found: $EXISTING_VERSION"
@@ -85,6 +86,7 @@ if [[ -f "$INSTALL_PATH" ]]; then
     else
         info "Reinstalling (--yes flag)..."
     fi
+    REINSTALL=true
 fi
 
 # Create temp directory
@@ -127,15 +129,20 @@ build_from_source() {
     info "Found: $(swift --version 2>&1 | head -1)"
 
     info "Cloning repository..."
-    git clone --depth 1 "https://github.com/${REPO}.git" "$TEMP_DIR/cupertino" 2>&1 | tail -1
+    git clone --depth 1 "https://github.com/${REPO}.git" "$TEMP_DIR/cupertino-src" 2>&1 | tail -1
 
     info "Building from source (this may take 1-2 minutes)..."
-    cd "$TEMP_DIR/cupertino/Packages"
+    cd "$TEMP_DIR/cupertino-src/Packages"
     swift build -c release 2>&1 | grep -E "(Build complete|Compiling|Linking|error:)" | tail -5
 
     if [[ -f ".build/release/cupertino" ]]; then
-        cp ".build/release/cupertino" "$TEMP_DIR/cupertino-bin"
-        mv "$TEMP_DIR/cupertino-bin" "$TEMP_DIR/cupertino"
+        cp ".build/release/cupertino" "$TEMP_DIR/cupertino"
+        # Copy resource bundle
+        if [[ -d ".build/arm64-apple-macosx/release/Cupertino_Resources.bundle" ]]; then
+            cp -R ".build/arm64-apple-macosx/release/Cupertino_Resources.bundle" "$TEMP_DIR/"
+        elif [[ -d ".build/x86_64-apple-macosx/release/Cupertino_Resources.bundle" ]]; then
+            cp -R ".build/x86_64-apple-macosx/release/Cupertino_Resources.bundle" "$TEMP_DIR/"
+        fi
         return 0
     fi
     return 1
@@ -158,6 +165,11 @@ sudo mkdir -p /usr/local/bin
 sudo ditto "$TEMP_DIR/cupertino" "$INSTALL_PATH"
 sudo chmod +x "$INSTALL_PATH"
 
+# Install resource bundle if present
+if [[ -d "$TEMP_DIR/Cupertino_Resources.bundle" ]]; then
+    sudo ditto "$TEMP_DIR/Cupertino_Resources.bundle" "/usr/local/bin/Cupertino_Resources.bundle"
+fi
+
 # Verify installation
 if ! command -v cupertino &> /dev/null; then
     warn "/usr/local/bin may not be in your PATH"
@@ -170,7 +182,11 @@ success "Installed: cupertino $VERSION"
 # Download databases
 echo ""
 info "Downloading documentation databases (~230 MB)..."
-cupertino setup
+if [[ "$REINSTALL" == "true" ]]; then
+    cupertino setup --force
+else
+    cupertino setup
+fi
 
 # Done!
 echo ""

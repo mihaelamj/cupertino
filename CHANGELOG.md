@@ -1,3 +1,16 @@
+## 0.3.4
+
+### Added
+- **One-Command Install** - Single curl command installs everything (#82)
+  - `bash <(curl -sSL .../install.sh)` - Downloads binary and databases
+  - Pre-built universal binary (arm64 + x86_64)
+  - Code signed with Developer ID Application certificate
+  - Notarized with Apple for Gatekeeper approval
+  - GitHub Actions workflow for automated releases
+- Closes #79, #82
+
+---
+
 ## 0.3.0
 
 ### Added

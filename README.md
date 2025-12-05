@@ -505,7 +505,7 @@ For development setup, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Project Status
 
-**Version:** 0.3.0
+**Version:** 0.3.4
 **Status:** 🚧 Active Development
 
 - ✅ All core functionality working
