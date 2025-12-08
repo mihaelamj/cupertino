@@ -59,36 +59,31 @@ public actor DocumentationToolProvider: ToolProvider {
     }
 
     public func callTool(name: String, arguments: [String: AnyCodable]?) async throws -> CallToolResult {
+        let args = ArgumentExtractor(arguments)
+
         switch name {
         case Shared.Constants.MCP.toolSearchDocs:
-            return try await handleSearchDocs(arguments: arguments)
+            return try await handleSearchDocs(args: args)
         case Shared.Constants.MCP.toolListFrameworks:
             return try await handleListFrameworks()
         case Shared.Constants.MCP.toolReadDocument:
-            return try await handleReadDocument(arguments: arguments)
+            return try await handleReadDocument(args: args)
         case Shared.Constants.MCP.toolSearchHIG:
-            return try await handleSearchHIG(arguments: arguments)
+            return try await handleSearchHIG(args: args)
         default:
-            throw DocumentationToolError.unknownTool(name)
+            throw ToolError.unknownTool(name)
         }
     }
 
     // MARK: - Tool Handlers
 
-    private func handleSearchDocs(arguments: [String: AnyCodable]?) async throws -> CallToolResult {
-        guard let query = arguments?[Shared.Constants.MCP.schemaParamQuery]?.value as? String else {
-            throw DocumentationToolError.missingArgument(Shared.Constants.MCP.schemaParamQuery)
-        }
-
-        let source = arguments?[Shared.Constants.MCP.schemaParamSource]?.value as? String
-        let framework = arguments?[Shared.Constants.MCP.schemaParamFramework]?.value as? String
-        let language = arguments?[Shared.Constants.MCP.schemaParamLanguage]?.value as? String
-        let defaultLimit = Shared.Constants.Limit.defaultSearchLimit
-        let requestedLimit = (arguments?[Shared.Constants.MCP.schemaParamLimit]?.value as? Int) ?? defaultLimit
-        let limit = min(requestedLimit, Shared.Constants.Limit.maxSearchLimit)
-
-        // Include archive only if explicitly requested via parameter or source=apple-archive
-        let includeArchive = (arguments?[Shared.Constants.MCP.schemaParamIncludeArchive]?.value as? Bool) ?? false
+    private func handleSearchDocs(args: ArgumentExtractor) async throws -> CallToolResult {
+        let query: String = try args.require(Shared.Constants.MCP.schemaParamQuery)
+        let source = args.optional(Shared.Constants.MCP.schemaParamSource)
+        let framework = args.optional(Shared.Constants.MCP.schemaParamFramework)
+        let language = args.optional(Shared.Constants.MCP.schemaParamLanguage)
+        let limit = args.limit()
+        let includeArchive = args.includeArchive()
 
         // Perform search
         // Archive documentation is excluded by default unless include_archive=true or source=apple-archive
@@ -179,20 +174,15 @@ public actor DocumentationToolProvider: ToolProvider {
         return CallToolResult(content: [content])
     }
 
-    private func handleReadDocument(arguments: [String: AnyCodable]?) async throws -> CallToolResult {
-        guard let uri = arguments?[Shared.Constants.MCP.schemaParamURI]?.value as? String else {
-            throw DocumentationToolError.missingArgument(Shared.Constants.MCP.schemaParamURI)
-        }
-
-        // Parse format parameter (default: json)
-        let formatString = (arguments?[Shared.Constants.MCP.schemaParamFormat]?.value as? String)
-            ?? Shared.Constants.MCP.formatValueJSON
+    private func handleReadDocument(args: ArgumentExtractor) async throws -> CallToolResult {
+        let uri: String = try args.require(Shared.Constants.MCP.schemaParamURI)
+        let formatString = args.format()
         let format: Search.Index.DocumentFormat = formatString == Shared.Constants.MCP.formatValueMarkdown
             ? .markdown : .json
 
         // Get document content from search index
         guard let documentContent = try await searchIndex.getDocumentContent(uri: uri, format: format) else {
-            throw DocumentationToolError.invalidArgument(
+            throw ToolError.invalidArgument(
                 Shared.Constants.MCP.schemaParamURI,
                 "Document not found: \(uri)"
             )
@@ -205,17 +195,11 @@ public actor DocumentationToolProvider: ToolProvider {
         return CallToolResult(content: [content])
     }
 
-    private func handleSearchHIG(arguments: [String: AnyCodable]?) async throws -> CallToolResult {
-        guard let query = arguments?[Shared.Constants.MCP.schemaParamQuery]?.value as? String else {
-            throw DocumentationToolError.missingArgument(Shared.Constants.MCP.schemaParamQuery)
-        }
-
-        // Optional HIG-specific filters
-        let platform = arguments?[Shared.Constants.MCP.schemaParamPlatform]?.value as? String
-        let category = arguments?[Shared.Constants.MCP.schemaParamCategory]?.value as? String
-        let defaultLimit = Shared.Constants.Limit.defaultSearchLimit
-        let requestedLimit = (arguments?[Shared.Constants.MCP.schemaParamLimit]?.value as? Int) ?? defaultLimit
-        let limit = min(requestedLimit, Shared.Constants.Limit.maxSearchLimit)
+    private func handleSearchHIG(args: ArgumentExtractor) async throws -> CallToolResult {
+        let query: String = try args.require(Shared.Constants.MCP.schemaParamQuery)
+        let platform = args.optional(Shared.Constants.MCP.schemaParamPlatform)
+        let category = args.optional(Shared.Constants.MCP.schemaParamCategory)
+        let limit = args.limit()
 
         // Build HIG-specific query with optional platform/category filters
         var effectiveQuery = query
@@ -280,24 +264,5 @@ public actor DocumentationToolProvider: ToolProvider {
         )
 
         return CallToolResult(content: [content])
-    }
-}
-
-// MARK: - Tool Errors
-
-enum DocumentationToolError: Error, LocalizedError {
-    case unknownTool(String)
-    case missingArgument(String)
-    case invalidArgument(String, String) // argument name, reason
-
-    var errorDescription: String? {
-        switch self {
-        case .unknownTool(let name):
-            return "Unknown tool: \(name)"
-        case .missingArgument(let arg):
-            return "Missing required argument: \(arg)"
-        case .invalidArgument(let arg, let reason):
-            return "Invalid argument '\(arg)': \(reason)"
-        }
     }
 }

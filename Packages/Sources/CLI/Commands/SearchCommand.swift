@@ -1,7 +1,7 @@
 import ArgumentParser
 import Foundation
 import Logging
-import Search
+import Services
 import Shared
 
 // MARK: - Search Command
@@ -63,117 +63,33 @@ struct SearchCommand: AsyncParsableCommand {
     var format: OutputFormat = .text
 
     mutating func run() async throws {
-        // Resolve database path
-        let dbPath = resolveSearchDbPath()
-
-        guard FileManager.default.fileExists(atPath: dbPath.path) else {
-            Log.error("Search database not found at \(dbPath.path)")
-            Log.output("Run 'cupertino save' to build the search index first.")
-            throw ExitCode.failure
+        // Use ServiceContainer for managed lifecycle
+        let results = try await ServiceContainer.withDocsService(dbPath: searchDb) { service in
+            try await service.search(SearchQuery(
+                text: query,
+                source: source,
+                framework: framework,
+                language: language,
+                limit: limit,
+                includeArchive: includeArchive
+            ))
         }
 
-        // Initialize search index
-        let searchIndex = try await Search.Index(dbPath: dbPath)
-        defer {
-            Task {
-                await searchIndex.disconnect()
-            }
-        }
-
-        // Perform search
-        // Archive is excluded by default unless --include-archive or --source apple-archive
-        let results = try await searchIndex.search(
-            query: query,
-            source: source,
-            framework: framework,
-            language: language,
-            limit: limit,
-            includeArchive: includeArchive
-        )
-
-        // Output results
+        // Output results using formatters
         switch format {
         case .text:
-            outputText(results)
+            let formatter = TextSearchResultFormatter(query: query)
+            Log.output(formatter.format(results))
         case .json:
-            outputJSON(results)
+            let formatter = JSONSearchResultFormatter()
+            Log.output(formatter.format(results))
         case .markdown:
-            outputMarkdown(results)
-        }
-    }
-
-    // MARK: - Path Resolution
-
-    private func resolveSearchDbPath() -> URL {
-        if let searchDb {
-            return URL(fileURLWithPath: searchDb).expandingTildeInPath
-        }
-        return Shared.Constants.defaultSearchDatabase
-    }
-
-    // MARK: - Output Formatting
-
-    private func outputText(_ results: [Search.Result]) {
-        if results.isEmpty {
-            Log.output("No results found for '\(query)'")
-            return
-        }
-
-        Log.output("Found \(results.count) result(s) for '\(query)':\n")
-
-        for (index, result) in results.enumerated() {
-            Log.output("[\(index + 1)] \(result.title)")
-            Log.output("    Source: \(result.source) | Framework: \(result.framework)")
-            Log.output("    URI: \(result.uri)")
-
-            // Show summary
-            if !result.summary.isEmpty {
-                Log.output("    \(result.summary)")
-                if result.summaryTruncated {
-                    Log.output("    ...")
-                    let wordCount = result.summary.split(separator: " ").count
-                    Log.output("    [truncated at ~\(wordCount) words] Full document: \(result.uri)")
-                }
-            }
-
-            Log.output("")
-        }
-    }
-
-    private func outputJSON(_ results: [Search.Result]) {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-
-        do {
-            let data = try encoder.encode(results)
-            if let jsonString = String(data: data, encoding: .utf8) {
-                Log.output(jsonString)
-            }
-        } catch {
-            Log.error("Error encoding JSON: \(error)")
-        }
-    }
-
-    private func outputMarkdown(_ results: [Search.Result]) {
-        if results.isEmpty {
-            Log.output("# Search Results\n\nNo results found for '\(query)'")
-            return
-        }
-
-        Log.output("# Search Results for '\(query)'\n")
-        Log.output("Found \(results.count) result(s).\n")
-
-        for (index, result) in results.enumerated() {
-            Log.output("## \(index + 1). \(result.title)\n")
-            Log.output("- **Source:** \(result.source)")
-            Log.output("- **Framework:** \(result.framework)")
-            Log.output("- **URI:** `\(result.uri)`")
-
-            if !result.summary.isEmpty {
-                Log.output("\n> \(result.summary)")
-            }
-
-            Log.output("")
+            let formatter = MarkdownSearchResultFormatter(
+                query: query,
+                filters: SearchFilters(source: source, framework: framework, language: language),
+                config: .cliDefault
+            )
+            Log.output(formatter.format(results))
         }
     }
 }
@@ -185,17 +101,5 @@ extension SearchCommand {
         case text
         case json
         case markdown
-    }
-}
-
-// MARK: - URL Extension
-
-private extension URL {
-    var expandingTildeInPath: URL {
-        if path.hasPrefix("~") {
-            let expandedPath = NSString(string: path).expandingTildeInPath
-            return URL(fileURLWithPath: expandedPath)
-        }
-        return self
     }
 }

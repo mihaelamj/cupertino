@@ -352,15 +352,3 @@ enum ReleaseError: Error, CustomStringConvertible {
         }
     }
 }
-
-// MARK: - URL Extension
-
-private extension URL {
-    var expandingTildeInPath: URL {
-        if path.hasPrefix("~") {
-            let expandedPath = NSString(string: path).expandingTildeInPath
-            return URL(fileURLWithPath: expandedPath)
-        }
-        return self
-    }
-}

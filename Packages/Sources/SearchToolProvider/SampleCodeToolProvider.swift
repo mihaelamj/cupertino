@@ -62,32 +62,29 @@ public actor SampleCodeToolProvider: ToolProvider {
     }
 
     public func callTool(name: String, arguments: [String: AnyCodable]?) async throws -> CallToolResult {
+        let args = ArgumentExtractor(arguments)
+
         switch name {
         case Shared.Constants.MCP.toolSearchSamples:
-            return try await handleSearchSamples(arguments: arguments)
+            return try await handleSearchSamples(args: args)
         case Shared.Constants.MCP.toolListSamples:
-            return try await handleListSamples(arguments: arguments)
+            return try await handleListSamples(args: args)
         case Shared.Constants.MCP.toolReadSample:
-            return try await handleReadSample(arguments: arguments)
+            return try await handleReadSample(args: args)
         case Shared.Constants.MCP.toolReadSampleFile:
-            return try await handleReadSampleFile(arguments: arguments)
+            return try await handleReadSampleFile(args: args)
         default:
-            throw SampleToolError.unknownTool(name)
+            throw ToolError.unknownTool(name)
         }
     }
 
     // MARK: - Tool Handlers
 
-    private func handleSearchSamples(arguments: [String: AnyCodable]?) async throws -> CallToolResult {
-        guard let query = arguments?[Shared.Constants.MCP.schemaParamQuery]?.value as? String else {
-            throw SampleToolError.missingArgument(Shared.Constants.MCP.schemaParamQuery)
-        }
-
-        let framework = arguments?[Shared.Constants.MCP.schemaParamFramework]?.value as? String
-        let defaultLimit = Shared.Constants.Limit.defaultSearchLimit
-        let requestedLimit = (arguments?[Shared.Constants.MCP.schemaParamLimit]?.value as? Int) ?? defaultLimit
-        let limit = min(requestedLimit, Shared.Constants.Limit.maxSearchLimit)
-        let searchFiles = (arguments?[Shared.Constants.MCP.schemaParamSearchFiles]?.value as? Bool) ?? true
+    private func handleSearchSamples(args: ArgumentExtractor) async throws -> CallToolResult {
+        let query: String = try args.require(Shared.Constants.MCP.schemaParamQuery)
+        let framework = args.optional(Shared.Constants.MCP.schemaParamFramework)
+        let limit = args.limit()
+        let searchFiles = args.optional(Shared.Constants.MCP.schemaParamSearchFiles, default: true)
 
         // Search projects
         let projects = try await database.searchProjects(query: query, framework: framework, limit: limit)
@@ -156,11 +153,9 @@ public actor SampleCodeToolProvider: ToolProvider {
         return CallToolResult(content: [content])
     }
 
-    private func handleListSamples(arguments: [String: AnyCodable]?) async throws -> CallToolResult {
-        let framework = arguments?[Shared.Constants.MCP.schemaParamFramework]?.value as? String
-        let defaultLimit = 50
-        let requestedLimit = (arguments?[Shared.Constants.MCP.schemaParamLimit]?.value as? Int) ?? defaultLimit
-        let limit = min(requestedLimit, 100)
+    private func handleListSamples(args: ArgumentExtractor) async throws -> CallToolResult {
+        let framework = args.optional(Shared.Constants.MCP.schemaParamFramework)
+        let limit = args.limit(default: 50)
 
         let projects = try await database.listProjects(framework: framework, limit: limit)
         let totalProjects = try await database.projectCount()
@@ -194,13 +189,11 @@ public actor SampleCodeToolProvider: ToolProvider {
         return CallToolResult(content: [content])
     }
 
-    private func handleReadSample(arguments: [String: AnyCodable]?) async throws -> CallToolResult {
-        guard let projectId = arguments?[Shared.Constants.MCP.schemaParamProjectId]?.value as? String else {
-            throw SampleToolError.missingArgument(Shared.Constants.MCP.schemaParamProjectId)
-        }
+    private func handleReadSample(args: ArgumentExtractor) async throws -> CallToolResult {
+        let projectId: String = try args.require(Shared.Constants.MCP.schemaParamProjectId)
 
         guard let project = try await database.getProject(id: projectId) else {
-            throw SampleToolError.invalidArgument(
+            throw ToolError.invalidArgument(
                 Shared.Constants.MCP.schemaParamProjectId,
                 "Project not found: \(projectId)"
             )
@@ -247,17 +240,12 @@ public actor SampleCodeToolProvider: ToolProvider {
         return CallToolResult(content: [content])
     }
 
-    private func handleReadSampleFile(arguments: [String: AnyCodable]?) async throws -> CallToolResult {
-        guard let projectId = arguments?[Shared.Constants.MCP.schemaParamProjectId]?.value as? String else {
-            throw SampleToolError.missingArgument(Shared.Constants.MCP.schemaParamProjectId)
-        }
-
-        guard let filePath = arguments?[Shared.Constants.MCP.schemaParamFilePath]?.value as? String else {
-            throw SampleToolError.missingArgument(Shared.Constants.MCP.schemaParamFilePath)
-        }
+    private func handleReadSampleFile(args: ArgumentExtractor) async throws -> CallToolResult {
+        let projectId: String = try args.require(Shared.Constants.MCP.schemaParamProjectId)
+        let filePath: String = try args.require(Shared.Constants.MCP.schemaParamFilePath)
 
         guard let file = try await database.getFile(projectId: projectId, path: filePath) else {
-            throw SampleToolError.invalidArgument(
+            throw ToolError.invalidArgument(
                 Shared.Constants.MCP.schemaParamFilePath,
                 "File not found: \(filePath) in project \(projectId)"
             )
@@ -302,25 +290,6 @@ public actor SampleCodeToolProvider: ToolProvider {
         case "md": return "markdown"
         case "strings": return "properties"
         default: return ext
-        }
-    }
-}
-
-// MARK: - Sample Tool Errors
-
-enum SampleToolError: Error, LocalizedError {
-    case unknownTool(String)
-    case missingArgument(String)
-    case invalidArgument(String, String)
-
-    var errorDescription: String? {
-        switch self {
-        case .unknownTool(let name):
-            return "Unknown tool: \(name)"
-        case .missingArgument(let arg):
-            return "Missing required argument: \(arg)"
-        case .invalidArgument(let arg, let reason):
-            return "Invalid argument '\(arg)': \(reason)"
         }
     }
 }

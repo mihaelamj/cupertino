@@ -74,9 +74,11 @@ struct MCPCommandTests {
 
         #expect(!resources.isEmpty, "Should have at least one resource")
 
-        if let firstResource = resources.first {
-            #expect(firstResource.uri.contains("swift"), "Resource URI should contain framework name")
-            print("   ✅ Found resource: \(firstResource.uri)")
+        // Check if any resource contains "swift" (test data may not be first in list)
+        let hasSwiftResource = resources.contains { $0.uri.contains("swift") }
+        #expect(hasSwiftResource, "Should have at least one resource with 'swift' in URI")
+        if let swiftResource = resources.first(where: { $0.uri.contains("swift") }) {
+            print("   ✅ Found resource: \(swiftResource.uri)")
         }
 
         print("   ✅ Docs provider test passed!")
@@ -244,8 +246,10 @@ struct MCPCommandTests {
 
         #expect(!resources.isEmpty, "Should have evolution proposals")
 
-        if let proposal = resources.first {
-            #expect(proposal.uri.contains("SE-"), "URI should contain SE- number")
+        // Check if any resource contains "SE-" (test data may not be first in list)
+        let hasProposal = resources.contains { $0.uri.contains("SE-") }
+        #expect(hasProposal, "Should have at least one resource with 'SE-' in URI")
+        if let proposal = resources.first(where: { $0.uri.contains("SE-") }) {
             print("   ✅ Found proposal: \(proposal.uri)")
         }
 
@@ -277,7 +281,7 @@ struct MCPCommandTests {
         let provider = DocsResourceProvider(configuration: config)
 
         // Try to read non-existent resource
-        await #expect(throws: ResourceError.self) {
+        await #expect(throws: ToolError.self) {
             _ = try await provider.readResource(uri: "apple-docs://nonexistent/file")
         }
 

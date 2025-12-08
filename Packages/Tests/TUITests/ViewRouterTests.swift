@@ -29,14 +29,25 @@ func viewRouterHomeToLibraryNumber() {
 }
 
 @MainActor
-@Test("ViewRouter handles home to settings transition via number key")
-func viewRouterHomeToSettingsNumber() {
+@Test("ViewRouter handles home to archive transition via number key")
+func viewRouterHomeToArchiveNumber() {
     let state = AppState()
     state.viewMode = .home
 
     let result = ViewRouter.handleViewTransition(key: .char("3"), state: state, homeCursor: 0)
 
-    #expect(result == .settings, "Pressing '3' from home should navigate to settings")
+    #expect(result == .archive, "Pressing '3' from home should navigate to archive")
+}
+
+@MainActor
+@Test("ViewRouter handles home to settings transition via number key")
+func viewRouterHomeToSettingsNumber() {
+    let state = AppState()
+    state.viewMode = .home
+
+    let result = ViewRouter.handleViewTransition(key: .char("4"), state: state, homeCursor: 0)
+
+    #expect(result == .settings, "Pressing '4' from home should navigate to settings")
 }
 
 @MainActor
@@ -53,9 +64,13 @@ func viewRouterHomeEnterNavigation() {
     result = ViewRouter.handleViewTransition(key: .enter, state: state, homeCursor: 1)
     #expect(result == .library, "Enter with cursor at 1 should go to library")
 
-    // Cursor at 2 -> settings
+    // Cursor at 2 -> archive
     result = ViewRouter.handleViewTransition(key: .enter, state: state, homeCursor: 2)
-    #expect(result == .settings, "Enter with cursor at 2 should go to settings")
+    #expect(result == .archive, "Enter with cursor at 2 should go to archive")
+
+    // Cursor at 3 -> settings
+    result = ViewRouter.handleViewTransition(key: .enter, state: state, homeCursor: 3)
+    #expect(result == .settings, "Enter with cursor at 3 should go to settings")
 }
 
 @MainActor

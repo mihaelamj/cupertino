@@ -15,14 +15,22 @@ struct CommandRegistrationTests {
     func subcommandsRegistered() {
         let config = Cupertino.configuration
 
-        #expect(config.subcommands.count == 7)
+        #expect(config.subcommands.count == 15)
+        #expect(config.subcommands.contains { $0 == SetupCommand.self })
         #expect(config.subcommands.contains { $0 == FetchCommand.self })
         #expect(config.subcommands.contains { $0 == SaveCommand.self })
+        #expect(config.subcommands.contains { $0 == IndexCommand.self })
         #expect(config.subcommands.contains { $0 == ServeCommand.self })
         #expect(config.subcommands.contains { $0 == SearchCommand.self })
         #expect(config.subcommands.contains { $0 == ReadCommand.self })
+        #expect(config.subcommands.contains { $0 == ListFrameworksCommand.self })
+        #expect(config.subcommands.contains { $0 == ListSamplesCommand.self })
+        #expect(config.subcommands.contains { $0 == SearchSamplesCommand.self })
+        #expect(config.subcommands.contains { $0 == ReadSampleCommand.self })
+        #expect(config.subcommands.contains { $0 == ReadSampleFileCommand.self })
         #expect(config.subcommands.contains { $0 == DoctorCommand.self })
         #expect(config.subcommands.contains { $0 == CleanupCommand.self })
+        #expect(config.subcommands.contains { $0 == ReleaseCommand.self })
     }
 
     @Test("Default subcommand is ServeCommand")
@@ -64,6 +72,9 @@ struct FetchTypeTests {
             .packages,
             .packageDocs,
             .code,
+            .samples,
+            .archive,
+            .hig,
             .all,
         ]
 
@@ -85,6 +96,9 @@ struct FetchTypeTests {
             .packages,
             .packageDocs,
             .code,
+            .samples,
+            .archive,
+            .hig,
             .all,
         ]
 
@@ -106,6 +120,9 @@ struct FetchTypeTests {
             .packages,
             .packageDocs,
             .code,
+            .samples,
+            .archive,
+            .hig,
             .all,
         ]
 
@@ -132,10 +149,13 @@ struct FetchTypeTests {
     func directFetchTypes() {
         let directFetch = Cupertino.FetchType.directFetchTypes
 
-        #expect(directFetch.count == 3)
+        #expect(directFetch.count == 6)
         #expect(directFetch.contains(.packages))
         #expect(directFetch.contains(.packageDocs))
         #expect(directFetch.contains(.code))
+        #expect(directFetch.contains(.samples))
+        #expect(directFetch.contains(.archive))
+        #expect(directFetch.contains(.hig))
     }
 
     @Test("Type categorization is mutually exclusive")
@@ -148,20 +168,23 @@ struct FetchTypeTests {
 
         // All types except .all should be categorized
         let allCategorized = webCrawl.union(directFetch)
-        #expect(allCategorized.count == 6) // 3 web + 3 direct
+        #expect(allCategorized.count == 9) // 3 web + 6 direct
     }
 
     @Test("All types includes all categorized types")
     func allTypesComplete() {
         let allTypes = Cupertino.FetchType.allTypes
 
-        #expect(allTypes.count == 6)
+        #expect(allTypes.count == 9)
         #expect(allTypes.contains(.docs))
         #expect(allTypes.contains(.swift))
         #expect(allTypes.contains(.evolution))
         #expect(allTypes.contains(.packages))
         #expect(allTypes.contains(.packageDocs))
         #expect(allTypes.contains(.code))
+        #expect(allTypes.contains(.samples))
+        #expect(allTypes.contains(.archive))
+        #expect(allTypes.contains(.hig))
     }
 
     @Test("Package-docs raw value has hyphen")

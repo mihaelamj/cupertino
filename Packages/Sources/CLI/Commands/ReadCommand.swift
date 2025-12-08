@@ -2,6 +2,7 @@ import ArgumentParser
 import Foundation
 import Logging
 import Search
+import Services
 import Shared
 
 // MARK: - Read Command
@@ -31,41 +32,19 @@ struct ReadCommand: AsyncParsableCommand {
     var searchDb: String?
 
     mutating func run() async throws {
-        // Resolve database path
-        let dbPath = resolveSearchDbPath()
-
-        guard FileManager.default.fileExists(atPath: dbPath.path) else {
-            Log.error("Search database not found at \(dbPath.path)")
-            Log.output("Run 'cupertino save' to build the search index first.")
-            throw ExitCode.failure
-        }
-
-        // Initialize search index
-        let searchIndex = try await Search.Index(dbPath: dbPath)
-        defer {
-            Task {
-                await searchIndex.disconnect()
-            }
-        }
-
-        // Get document content
+        // Use ServiceContainer for managed lifecycle
         let documentFormat: Search.Index.DocumentFormat = format == .markdown ? .markdown : .json
 
-        guard let content = try await searchIndex.getDocumentContent(uri: uri, format: documentFormat) else {
+        let content = try await ServiceContainer.withDocsService(dbPath: searchDb) { service in
+            try await service.read(uri: uri, format: documentFormat)
+        }
+
+        guard let content else {
             Log.error("Document not found: \(uri)")
             throw ExitCode.failure
         }
 
         Log.output(content)
-    }
-
-    // MARK: - Path Resolution
-
-    private func resolveSearchDbPath() -> URL {
-        if let searchDb {
-            return URL(fileURLWithPath: searchDb).expandingTildeInPath
-        }
-        return Shared.Constants.defaultSearchDatabase
     }
 }
 
@@ -75,17 +54,5 @@ extension ReadCommand {
     enum OutputFormat: String, ExpressibleByArgument, CaseIterable {
         case json
         case markdown
-    }
-}
-
-// MARK: - URL Extension
-
-private extension URL {
-    var expandingTildeInPath: URL {
-        if path.hasPrefix("~") {
-            let expandedPath = NSString(string: path).expandingTildeInPath
-            return URL(fileURLWithPath: expandedPath)
-        }
-        return self
     }
 }

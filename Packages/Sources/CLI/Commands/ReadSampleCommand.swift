@@ -2,6 +2,7 @@ import ArgumentParser
 import Foundation
 import Logging
 import SampleIndex
+import Services
 import Shared
 
 // MARK: - Read Sample Command
@@ -33,29 +34,17 @@ struct ReadSampleCommand: AsyncParsableCommand {
         // Resolve database path
         let dbPath = resolveSampleDbPath()
 
-        guard FileManager.default.fileExists(atPath: dbPath.path) else {
-            Log.error("Sample index not found at \(dbPath.path)")
-            Log.output("Run 'cupertino index' to build the sample index first.")
-            throw ExitCode.failure
-        }
-
-        // Initialize database
-        let database = try await SampleIndex.Database(dbPath: dbPath)
-        defer {
-            Task {
-                await database.disconnect()
+        // Use ServiceContainer for managed lifecycle
+        let (project, files) = try await ServiceContainer.withSampleService(dbPath: dbPath) { service in
+            guard let project = try await service.getProject(id: projectId) else {
+                Log.error("Project not found: \(projectId)")
+                Log.output("Use 'cupertino list-samples' or 'cupertino search-samples' to find valid project IDs.")
+                throw ExitCode.failure
             }
-        }
 
-        // Get project
-        guard let project = try await database.getProject(id: projectId) else {
-            Log.error("Project not found: \(projectId)")
-            Log.output("Use 'cupertino list-samples' or 'cupertino search-samples' to find valid project IDs.")
-            throw ExitCode.failure
+            let files = try await service.listFiles(projectId: projectId)
+            return (project, files)
         }
-
-        // Get files
-        let files = try await database.listFiles(projectId: projectId)
 
         // Output results
         switch format {
@@ -211,17 +200,5 @@ extension ReadSampleCommand {
         case text
         case json
         case markdown
-    }
-}
-
-// MARK: - URL Extension
-
-private extension URL {
-    var expandingTildeInPath: URL {
-        if path.hasPrefix("~") {
-            let expandedPath = NSString(string: path).expandingTildeInPath
-            return URL(fileURLWithPath: expandedPath)
-        }
-        return self
     }
 }

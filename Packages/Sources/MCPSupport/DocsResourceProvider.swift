@@ -113,7 +113,7 @@ public actor DocsResourceProvider: ResourceProvider {
         if uri.hasPrefix(Shared.Constants.MCP.appleDocsScheme) {
             // Parse URI: apple-docs://framework/filename
             guard let components = parseAppleDocsURI(uri) else {
-                throw ResourceError.invalidURI(uri)
+                throw ToolError.invalidURI(uri)
             }
 
             let baseDir = configuration.crawler.outputDirectory
@@ -129,20 +129,20 @@ public actor DocsResourceProvider: ResourceProvider {
                 let jsonData = try Data(contentsOf: jsonPath)
                 let page = try JSONCoding.decode(StructuredDocumentationPage.self, from: jsonData)
                 guard let rawMarkdown = page.rawMarkdown else {
-                    throw ResourceError.notFound(uri)
+                    throw ToolError.notFound(uri)
                 }
                 markdown = rawMarkdown
             } else if FileManager.default.fileExists(atPath: mdPath.path) {
                 // Fall back to markdown file
                 markdown = try String(contentsOf: mdPath, encoding: .utf8)
             } else {
-                throw ResourceError.notFound(uri)
+                throw ToolError.notFound(uri)
             }
 
         } else if uri.hasPrefix(Shared.Constants.MCP.swiftEvolutionScheme) {
             // Parse URI: swift-evolution://SE-NNNN
             guard let proposalID = parseEvolutionURI(uri) else {
-                throw ResourceError.invalidURI(uri)
+                throw ToolError.invalidURI(uri)
             }
 
             // Find the proposal file
@@ -152,7 +152,7 @@ public actor DocsResourceProvider: ResourceProvider {
             )
 
             guard let file = files.first(where: { $0.lastPathComponent.hasPrefix(proposalID) }) else {
-                throw ResourceError.notFound(uri)
+                throw ToolError.notFound(uri)
             }
 
             // Read markdown content from filesystem
@@ -161,7 +161,7 @@ public actor DocsResourceProvider: ResourceProvider {
         } else if uri.hasPrefix(Shared.Constants.MCP.appleArchiveScheme) {
             // Parse URI: apple-archive://guideUID/filename
             guard let components = parseArchiveURI(uri) else {
-                throw ResourceError.invalidURI(uri)
+                throw ToolError.invalidURI(uri)
             }
 
             // Construct file path: archive/{guideUID}/{filename}.md
@@ -170,13 +170,13 @@ public actor DocsResourceProvider: ResourceProvider {
                 .appendingPathComponent("\(components.filename).md")
 
             guard FileManager.default.fileExists(atPath: filePath.path) else {
-                throw ResourceError.notFound(uri)
+                throw ToolError.notFound(uri)
             }
 
             markdown = try String(contentsOf: filePath, encoding: .utf8)
 
         } else {
-            throw ResourceError.invalidURI(uri)
+            throw ToolError.invalidURI(uri)
         }
 
         // Create resource contents
@@ -235,7 +235,7 @@ public actor DocsResourceProvider: ResourceProvider {
         loadMetadata()
 
         guard let metadata else {
-            throw ResourceError.noDocumentation
+            throw ToolError.noData("No documentation has been crawled yet. Run '\(Shared.Constants.App.commandName) \(Shared.Constants.Command.crawl)' first.")
         }
 
         return metadata
@@ -325,25 +325,5 @@ public actor DocsResourceProvider: ResourceProvider {
         }
 
         return (guideUID: String(components[0]), filename: String(components[1]))
-    }
-}
-
-// MARK: - Resource Errors
-
-enum ResourceError: Error, LocalizedError {
-    case invalidURI(String)
-    case notFound(String)
-    case noDocumentation
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidURI(let uri):
-            return "Invalid resource URI: \(uri)"
-        case .notFound(let uri):
-            return "Resource not found: \(uri)"
-        case .noDocumentation:
-            return "No documentation has been crawled yet. "
-                + "Run '\(Shared.Constants.App.commandName) \(Shared.Constants.Command.crawl)' first."
-        }
     }
 }

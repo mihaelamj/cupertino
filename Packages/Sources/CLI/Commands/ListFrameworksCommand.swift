@@ -1,7 +1,7 @@
 import ArgumentParser
 import Foundation
 import Logging
-import Search
+import Services
 import Shared
 
 // MARK: - List Frameworks Command
@@ -27,117 +27,24 @@ struct ListFrameworksCommand: AsyncParsableCommand {
     var searchDb: String?
 
     mutating func run() async throws {
-        // Resolve database path
-        let dbPath = resolveSearchDbPath()
-
-        guard FileManager.default.fileExists(atPath: dbPath.path) else {
-            Log.error("Search database not found at \(dbPath.path)")
-            Log.output("Run 'cupertino save' to build the search index first.")
-            throw ExitCode.failure
+        // Use ServiceContainer for managed lifecycle
+        let (frameworks, totalDocs) = try await ServiceContainer.withDocsService(dbPath: searchDb) { service in
+            let frameworks = try await service.listFrameworks()
+            let totalDocs = try await service.documentCount()
+            return (frameworks, totalDocs)
         }
 
-        // Initialize search index
-        let searchIndex = try await Search.Index(dbPath: dbPath)
-        defer {
-            Task {
-                await searchIndex.disconnect()
-            }
-        }
-
-        // Get frameworks
-        let frameworks = try await searchIndex.listFrameworks()
-
-        // Output results
+        // Output results using formatters
         switch format {
         case .text:
-            outputText(frameworks)
+            let formatter = FrameworksTextFormatter(totalDocs: totalDocs)
+            Log.output(formatter.format(frameworks))
         case .json:
-            outputJSON(frameworks)
+            let formatter = FrameworksJSONFormatter()
+            Log.output(formatter.format(frameworks))
         case .markdown:
-            outputMarkdown(frameworks)
-        }
-    }
-
-    // MARK: - Path Resolution
-
-    private func resolveSearchDbPath() -> URL {
-        if let searchDb {
-            return URL(fileURLWithPath: searchDb).expandingTildeInPath
-        }
-        return Shared.Constants.defaultSearchDatabase
-    }
-
-    // MARK: - Output Formatting
-
-    private func outputText(_ frameworks: [String: Int]) {
-        let total = frameworks.values.reduce(0, +)
-        let sorted = frameworks.sorted { $0.value > $1.value }
-
-        Log.output("Available Frameworks")
-        Log.output("Total: \(frameworks.count) frameworks, \(total) documents")
-        Log.output("")
-
-        if frameworks.isEmpty {
-            Log.output("No frameworks found. Run 'cupertino save' to build the search index.")
-            return
-        }
-
-        for (framework, count) in sorted {
-            Log.output("  \(framework): \(count) documents")
-        }
-    }
-
-    private func outputJSON(_ frameworks: [String: Int]) {
-        struct Output: Encodable {
-            let totalFrameworks: Int
-            let totalDocuments: Int
-            let frameworks: [FrameworkOutput]
-        }
-
-        struct FrameworkOutput: Encodable {
-            let name: String
-            let documentCount: Int
-        }
-
-        let total = frameworks.values.reduce(0, +)
-        let sorted = frameworks.sorted { $0.value > $1.value }
-
-        let output = Output(
-            totalFrameworks: frameworks.count,
-            totalDocuments: total,
-            frameworks: sorted.map { FrameworkOutput(name: $0.key, documentCount: $0.value) }
-        )
-
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-
-        do {
-            let data = try encoder.encode(output)
-            if let jsonString = String(data: data, encoding: .utf8) {
-                Log.output(jsonString)
-            }
-        } catch {
-            Log.error("Error encoding JSON: \(error)")
-        }
-    }
-
-    private func outputMarkdown(_ frameworks: [String: Int]) {
-        let total = frameworks.values.reduce(0, +)
-        let sorted = frameworks.sorted { $0.value > $1.value }
-
-        Log.output("# Available Frameworks\n")
-        Log.output("Total: **\(frameworks.count)** frameworks, **\(total)** documents\n")
-
-        if frameworks.isEmpty {
-            Log.output("_No frameworks found. Run `cupertino save` to build the search index._")
-            return
-        }
-
-        Log.output("| Framework | Documents |")
-        Log.output("|-----------|----------:|")
-
-        for (framework, count) in sorted {
-            Log.output("| \(framework) | \(count) |")
+            let formatter = FrameworksMarkdownFormatter(totalDocs: totalDocs)
+            Log.output(formatter.format(frameworks))
         }
     }
 }
@@ -149,17 +56,5 @@ extension ListFrameworksCommand {
         case text
         case json
         case markdown
-    }
-}
-
-// MARK: - URL Extension
-
-private extension URL {
-    var expandingTildeInPath: URL {
-        if path.hasPrefix("~") {
-            let expandedPath = NSString(string: path).expandingTildeInPath
-            return URL(fileURLWithPath: expandedPath)
-        }
-        return self
     }
 }

@@ -12,8 +12,8 @@ public actor CompositeToolProvider: ToolProvider {
     private let sampleCodeTools: SampleCodeToolProvider?
 
     public init(searchIndex: Search.Index?, sampleDatabase: SampleIndex.Database?) {
-        self.documentationTools = searchIndex.map { DocumentationToolProvider(searchIndex: $0) }
-        self.sampleCodeTools = sampleDatabase.map { SampleCodeToolProvider(database: $0) }
+        documentationTools = searchIndex.map { DocumentationToolProvider(searchIndex: $0) }
+        sampleCodeTools = sampleDatabase.map { SampleCodeToolProvider(database: $0) }
     }
 
     // MARK: - ToolProvider
@@ -54,25 +54,6 @@ public actor CompositeToolProvider: ToolProvider {
         }
 
         // Tool not found in any provider
-        throw UnifiedToolError.unknownTool(name)
-    }
-}
-
-// MARK: - Tool Errors
-
-enum UnifiedToolError: Error, LocalizedError {
-    case unknownTool(String)
-    case missingArgument(String)
-    case invalidArgument(String, String)
-
-    var errorDescription: String? {
-        switch self {
-        case .unknownTool(let name):
-            return "Unknown tool: \(name)"
-        case .missingArgument(let arg):
-            return "Missing required argument: \(arg)"
-        case .invalidArgument(let arg, let reason):
-            return "Invalid argument '\(arg)': \(reason)"
-        }
+        throw ToolError.unknownTool(name)
     }
 }

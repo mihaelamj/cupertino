@@ -137,8 +137,8 @@ func inputHandlerHomeCursorBoundaries() {
     )
     #expect(homeCursor == 0, "Cursor should stay at 0")
 
-    // Move to max (2)
-    homeCursor = 2
+    // Move to max (3) - packages, library, archive, settings = 4 items
+    homeCursor = 3
     _ = InputHandler.handleInput(
         .arrowDown,
         state: state,
@@ -148,7 +148,7 @@ func inputHandlerHomeCursorBoundaries() {
         artifacts: [],
         pageSize: 10
     )
-    #expect(homeCursor == 2, "Cursor should stay at max (2)")
+    #expect(homeCursor == 3, "Cursor should stay at max (3)")
 }
 
 @MainActor
