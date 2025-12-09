@@ -1,6 +1,6 @@
 # Cupertino Deployment Guide
 
-**Version:** 4.0.0
+**Version:** 0.4.0
 **Last Updated:** 2025-12-09
 
 This guide covers the complete release process for Cupertino.
