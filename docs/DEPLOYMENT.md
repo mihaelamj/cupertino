@@ -73,7 +73,21 @@ git commit -m "chore: bump version to X.Y.Z"
 git push origin main
 ```
 
-### Step 3: Create GitHub Release Tag
+### Step 3: Verify Version Before Tagging
+
+**IMPORTANT:** Always verify version is correct before creating tag:
+
+```bash
+# Check version in source
+grep 'version = ' Packages/Sources/Shared/Constants.swift | head -1
+
+# Build and verify binary reports correct version
+make build && ./Packages/.build/release/cupertino --version
+```
+
+Both must show `X.Y.Z`. If not, fix before tagging.
+
+### Step 4: Create GitHub Release Tag
 
 ```bash
 git tag -a vX.Y.Z -m "vX.Y.Z - Brief description"
@@ -85,7 +99,7 @@ This triggers GitHub Actions which:
 - Signs and notarizes the binary
 - Creates release with `cupertino-vX.Y.Z-macos-universal.tar.gz`
 
-### Step 4: Create GitHub Release
+### Step 5: Create GitHub Release
 
 Go to [GitHub Releases](https://github.com/mihaelamj/cupertino/releases) and create a release:
 
@@ -109,7 +123,7 @@ vX.Y.Z - Brief Feature Summary
 #issue1, #issue2
 ```
 
-### Step 5: Build and Install Locally
+### Step 6: Build and Install Locally
 
 ```bash
 make build
@@ -117,7 +131,7 @@ sudo make install
 cupertino --version  # Verify
 ```
 
-### Step 6: Upload Databases
+### Step 7: Upload Databases
 
 Upload pre-built databases to `mihaelamj/cupertino-docs`:
 
@@ -131,7 +145,7 @@ This:
 - Creates release tag `vX.Y.Z` in cupertino-docs
 - Uploads zip with SHA256 checksum
 
-### Step 7: Update Homebrew Tap
+### Step 8: Update Homebrew Tap
 
 Get the SHA256 of the CLI binary:
 
@@ -184,7 +198,7 @@ git commit -m "chore: bump cupertino to X.Y.Z"
 git push
 ```
 
-### Step 8: Verify
+### Step 9: Verify
 
 Test installation on a fresh machine:
 
