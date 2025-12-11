@@ -99,11 +99,13 @@ build-release:
 	@if [ -n "$$CUPERTINO_DOCS_TOKEN" ]; then \
 		echo "$(BOLD)$(GREEN)Building cupertino-rel (maintainer detected)...$(RESET)"; \
 		$(SWIFT) build $(SWIFT_BUILD_FLAGS) --product $(PRODUCT_NAME_REL); \
-		echo "  REL: $(BUILD_DIR)/release/$(PRODUCT_NAME_REL)"; \
 	fi
 	@echo "$(GREEN)✓ Build complete$(RESET)"
 	@echo "  CLI: $(BUILD_DIR)/release/$(PRODUCT_NAME_CLI)"
 	@echo "  TUI: $(BUILD_DIR)/release/$(PRODUCT_NAME_TUI)"
+	@if [ -f "$(BUILD_DIR)/release/$(PRODUCT_NAME_REL)" ]; then \
+		echo "  REL: $(BUILD_DIR)/release/$(PRODUCT_NAME_REL)"; \
+	fi
 
 ## install: Install executables to PREFIX/bin (copy)
 install:
