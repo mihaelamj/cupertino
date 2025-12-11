@@ -20,7 +20,7 @@ struct ReleaseCLI: AsyncParsableCommand {
 
         Requires GITHUB_TOKEN environment variable with repo scope.
         """,
-        version: Constants.version,
+        version: Shared.Constants.App.version,
         subcommands: [
             BumpCommand.self,
             TagCommand.self,

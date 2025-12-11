@@ -10,7 +10,7 @@ struct PackageCuratorApp {
         // Handle --version flag
         let args = CommandLine.arguments
         if args.contains("--version") || args.contains("-v") {
-            print(Constants.version)
+            print(Shared.Constants.App.version)
             return
         }
 
