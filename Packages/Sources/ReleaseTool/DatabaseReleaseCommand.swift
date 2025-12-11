@@ -76,8 +76,13 @@ struct DatabaseReleaseCommand: AsyncParsableCommand {
             return
         }
 
-        // Check for GitHub token
-        guard let token = ProcessInfo.processInfo.environment["GITHUB_TOKEN"] else {
+        // Check for GitHub token (try CUPERTINO_DOCS_TOKEN first, fall back to GITHUB_TOKEN)
+        let token: String
+        if let docsToken = ProcessInfo.processInfo.environment["CUPERTINO_DOCS_TOKEN"] {
+            token = docsToken
+        } else if let ghToken = ProcessInfo.processInfo.environment["GITHUB_TOKEN"] {
+            token = ghToken
+        } else {
             throw DatabaseReleaseError.missingToken
         }
 
@@ -371,10 +376,11 @@ enum DatabaseReleaseError: Error, CustomStringConvertible {
             return "Failed to calculate SHA256"
         case .missingToken:
             return """
-            GITHUB_TOKEN environment variable not set.
+            No GitHub token found.
 
+            Set CUPERTINO_DOCS_TOKEN (preferred) or GITHUB_TOKEN:
             Create a token at: https://github.com/settings/tokens
-            Then: export GITHUB_TOKEN=your_token
+            Then: export CUPERTINO_DOCS_TOKEN=your_token
             """
         case .versionNotFound:
             return "Could not find version in Constants.swift"
