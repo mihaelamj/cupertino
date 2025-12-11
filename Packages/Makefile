@@ -133,6 +133,9 @@ install:
 	@echo "$(YELLOW)Verify installation:$(RESET)"
 	@echo "  $(PRODUCT_NAME_CLI) --version"
 	@echo "  $(PRODUCT_NAME_TUI) --version"
+	@if [ -f "$(BINDIR)/$(PRODUCT_NAME_REL)" ]; then \
+		echo "  $(PRODUCT_NAME_REL) --version"; \
+	fi
 
 ## install-symlinks: Install with symlinks (advanced - requires full paths)
 install-symlinks:
