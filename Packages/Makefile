@@ -5,7 +5,8 @@
 PREFIX ?= /usr/local
 BINDIR = $(PREFIX)/bin
 BUILD_DIR = .build
-SWIFT = swift
+# Use xcrun to avoid swiftly wrapper issues with sudo
+SWIFT = xcrun swift
 INSTALL = install
 
 # Get the absolute path to this Makefile's directory
@@ -96,16 +97,11 @@ build-release:
 	@echo "$(BOLD)$(GREEN)Building Cupertino (release)...$(RESET)"
 	$(SWIFT) build $(SWIFT_BUILD_FLAGS) --product $(PRODUCT_NAME_CLI)
 	$(SWIFT) build $(SWIFT_BUILD_FLAGS) --product $(PRODUCT_NAME_TUI)
-	@if [ -n "$$CUPERTINO_DOCS_TOKEN" ]; then \
-		echo "$(BOLD)$(GREEN)Building cupertino-rel (maintainer detected)...$(RESET)"; \
-		$(SWIFT) build $(SWIFT_BUILD_FLAGS) --product $(PRODUCT_NAME_REL); \
-	fi
+	$(SWIFT) build $(SWIFT_BUILD_FLAGS) --product $(PRODUCT_NAME_REL)
 	@echo "$(GREEN)✓ Build complete$(RESET)"
 	@echo "  CLI: $(BUILD_DIR)/release/$(PRODUCT_NAME_CLI)"
 	@echo "  TUI: $(BUILD_DIR)/release/$(PRODUCT_NAME_TUI)"
-	@if [ -f "$(BUILD_DIR)/release/$(PRODUCT_NAME_REL)" ]; then \
-		echo "  REL: $(BUILD_DIR)/release/$(PRODUCT_NAME_REL)"; \
-	fi
+	@echo "  REL: $(BUILD_DIR)/release/$(PRODUCT_NAME_REL)"
 
 ## install: Install executables to PREFIX/bin (copy)
 install:
