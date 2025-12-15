@@ -17,6 +17,9 @@ public struct SampleSearchMarkdownFormatter: ResultFormatter {
     public func format(_ result: SampleSearchResult) -> String {
         var output = "# Sample Code Search: \"\(query)\"\n\n"
 
+        // Tell the AI what source this is
+        output += "_Source: **\(Shared.Constants.SourcePrefix.samples)**_\n\n"
+
         if let framework {
             output += "_Filtered to framework: **\(framework)**_\n\n"
         }
@@ -50,6 +53,11 @@ public struct SampleSearchMarkdownFormatter: ResultFormatter {
                 output += "> \(file.snippet)\n\n"
             }
         }
+
+        // Always remind AI about other sources
+        output += "\n\n---\n\n"
+        output += Shared.Constants.MCP.tipOtherSources(excluding: Shared.Constants.SourcePrefix.samples)
+        output += "\n"
 
         return output
     }
@@ -92,6 +100,10 @@ public struct SampleListMarkdownFormatter: ResultFormatter {
             }
         }
 
+        // Always remind AI about other sources
+        output += "\n---\n\n"
+        output += Shared.Constants.MCP.tipOtherSources(excluding: Shared.Constants.SourcePrefix.samples)
+
         return output
     }
 }
@@ -111,6 +123,10 @@ public struct SampleProjectMarkdownFormatter: ResultFormatter {
         if !project.description.isEmpty {
             output += "## Description\n\n\(project.description)\n"
         }
+
+        // Always remind AI about other sources
+        output += "\n---\n\n"
+        output += Shared.Constants.MCP.tipOtherSources(excluding: Shared.Constants.SourcePrefix.samples)
 
         return output
     }
@@ -134,6 +150,10 @@ public struct SampleFileMarkdownFormatter: ResultFormatter {
         output += "- **Project:** `\(file.projectId)`\n"
         output += "- **Path:** `\(file.path)`\n\n"
         output += "```\(language)\n\(file.content)\n```\n"
+
+        // Always remind AI about other sources
+        output += "\n---\n\n"
+        output += Shared.Constants.MCP.tipOtherSources(excluding: Shared.Constants.SourcePrefix.samples)
 
         return output
     }

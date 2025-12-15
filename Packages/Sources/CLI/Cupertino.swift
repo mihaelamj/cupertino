@@ -20,7 +20,6 @@ struct Cupertino: AsyncParsableCommand {
             ReadCommand.self,
             ListFrameworksCommand.self,
             ListSamplesCommand.self,
-            SearchSamplesCommand.self,
             ReadSampleCommand.self,
             ReadSampleFileCommand.self,
             DoctorCommand.self,

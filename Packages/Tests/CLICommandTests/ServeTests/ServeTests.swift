@@ -153,7 +153,7 @@ struct MCPCommandTests {
         )
 
         let server = MCPServer(name: "test-server", version: "1.0.0")
-        let provider = DocumentationToolProvider(searchIndex: searchIndex)
+        let provider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: nil)
 
         await server.registerToolProvider(provider)
 
@@ -163,8 +163,8 @@ struct MCPCommandTests {
 
         #expect(!tools.isEmpty, "Should have search tools")
 
-        if let searchTool = tools.first(where: { $0.name == "search_docs" }) {
-            #expect(searchTool.name == "search_docs", "Should have search_docs tool")
+        if let searchTool = tools.first(where: { $0.name == "search" }) {
+            #expect(searchTool.name == "search", "Should have search tool")
             print("   ✅ Found tool: \(searchTool.name)")
         }
 
@@ -197,7 +197,7 @@ struct MCPCommandTests {
             lastCrawled: Date()
         )
 
-        let provider = DocumentationToolProvider(searchIndex: searchIndex)
+        let provider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: nil)
 
         // Execute search
         let arguments: [String: AnyCodable] = [
@@ -205,7 +205,7 @@ struct MCPCommandTests {
             "limit": AnyCodable(5),
         ]
 
-        let result = try await provider.callTool(name: "search_docs", arguments: arguments)
+        let result = try await provider.callTool(name: "search", arguments: arguments)
 
         #expect(!result.content.isEmpty, "Search should return results")
 
@@ -354,7 +354,7 @@ struct MCPServerIntegrationTests {
             output: Shared.OutputConfiguration()
         )
         let docsProvider = DocsResourceProvider(configuration: mcpConfig)
-        let searchProvider = DocumentationToolProvider(searchIndex: searchIndex)
+        let searchProvider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: nil)
 
         await server.registerResourceProvider(docsProvider)
         await server.registerToolProvider(searchProvider)
@@ -366,7 +366,7 @@ struct MCPServerIntegrationTests {
             "query": AnyCodable("swift"),
             "limit": AnyCodable(5),
         ]
-        let searchResults = try await searchProvider.callTool(name: "search_docs", arguments: searchArgs)
+        let searchResults = try await searchProvider.callTool(name: "search", arguments: searchArgs)
         #expect(!searchResults.content.isEmpty, "Search should return results")
         print("   ✅ Search returned results")
 

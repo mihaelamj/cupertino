@@ -154,7 +154,7 @@ let targets: [Target] = {
 
     let searchToolProviderTarget = Target.target(
         name: "SearchToolProvider",
-        dependencies: ["MCP", "Search", "SampleIndex"]
+        dependencies: ["MCP", "Search", "SampleIndex", "Services", "Shared"]
     )
     let searchToolProviderTestsTarget = Target.testTarget(
         name: "SearchToolProviderTests",

@@ -96,15 +96,21 @@ func archiveGuideCatalogUserSelectionsFileURLCorrect() throws {
 
 @Test("ArchiveGuideCatalog created file contains only required guides")
 func archiveGuideCatalogCreatedFileContainsOnlyRequiredGuides() throws {
-    // Verify required guides are returned
+    // This test verifies that the bundled catalog has required guides
+    // NOTE: essentialGuides reads from user file (~/.cupertino/selected-archive-guides.json)
+    // which may be modified by TUI, so we only test bundled catalog requirements
     let requiredPaths = ArchiveGuideCatalog.getRequiredGuidePaths()
-    let guides = ArchiveGuideCatalog.essentialGuides
 
-    #expect(!requiredPaths.isEmpty, "Should have required guide paths")
-    #expect(!guides.isEmpty, "Should have essential guides")
-    #expect(guides.count == requiredPaths.count, "Essential guides should match required paths count")
+    #expect(!requiredPaths.isEmpty, "Should have required guide paths from bundled catalog")
 
-    print("   ✅ Created file contains exactly \(guides.count) required guides")
+    // Verify core framework guides are in the required list
+    let hasQuartz2D = requiredPaths.contains { $0.contains("drawingwithquartz2d") }
+    let hasCoreAnimation = requiredPaths.contains { $0.contains("CoreAnimation") }
+
+    #expect(hasQuartz2D, "Required guides should include Quartz 2D")
+    #expect(hasCoreAnimation, "Required guides should include Core Animation")
+
+    print("   ✅ Bundled catalog has \(requiredPaths.count) required guides")
 }
 
 // MARK: - Test Support Types

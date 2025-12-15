@@ -19,7 +19,7 @@ Cupertino is a local, structured, AI-ready documentation system for Apple platfo
 - **Crawls** Apple Developer documentation, Swift.org, Swift Evolution proposals, Human Interface Guidelines, Apple Archive legacy guides, and Swift package metadata
 - **Indexes** everything into a fast, searchable SQLite FTS5 database with BM25 ranking
 - **Serves** documentation to AI agents like Claude via the Model Context Protocol
-- **Provides** offline access to 234,331+ documentation pages across 287 frameworks
+- **Provides** offline access to 302,424+ documentation pages across 307 frameworks
 
 ### Why Build This?
 
@@ -133,7 +133,7 @@ cupertino serve
 ### Manual Setup (Advanced)
 
 ```bash
-# Download Apple documentation (~20-24 hours for 234,000+ pages)
+# Download Apple documentation (~12+ days for 301,000+ pages)
 # Takes time due to 0.5s default delay between requests to respect Apple's servers
 cupertino fetch --type docs --max-pages 15000
 
@@ -209,21 +209,22 @@ A UIKit view controller that manages a SwiftUI view hierarchy.
 **Framework Statistics:**
 | Framework | Documents |
 |-----------|----------:|
-| Kernel | 24,747 |
-| Matter | 22,013 |
+| Kernel | 39,396 |
+| Matter | 24,320 |
 | Swift | 17,466 |
-| AppKit | 14,066 |
-| Foundation | 10,988 |
-| Accelerate | 9,859 |
-| UIKit | 9,613 |
+| AppKit | 12,443 |
+| Foundation | 12,423 |
+| UIKit | 11,158 |
+| Accelerate | 9,114 |
+| SwiftUI | 7,062 |
 | ... | ... |
-| **287 Frameworks** | **234,331** |
+| **307 Frameworks** | **302,424** |
 
 ## Core Features
 
 ### 1. Multi-Source Documentation Fetching
 
-- **Apple Developer Documentation** (234,000+ pages)
+- **Apple Developer Documentation** (301,000+ pages)
   - JavaScript-aware rendering via WKWebView
   - HTML to Markdown conversion
   - Smart change detection
@@ -285,7 +286,7 @@ These catalogs are indexed during `cupertino save` and enable instant search wit
   - Platform availability filtering (iOS/macOS version)
   - Snippet generation
   - Sub-100ms query performance
-- **Size**: ~1.9GB index for full documentation (234,000+ documents across 287 frameworks)
+- **Size**: ~2.4GB index for full documentation (302,000+ documents across 307 frameworks)
 - **Storage**: Database must be on local filesystem - SQLite does not work reliably on network drives (NFS/SMB)
 
 ### 4. Model Context Protocol Server
@@ -445,18 +446,19 @@ log stream --predicate 'subsystem == "com.cupertino"'
 | Operation | Time | Size |
 |-----------|------|------|
 | Build CLI | 10-15s | 4.3MB |
-| Crawl 234,000+ pages | 32-48 hours | 2-3GB |
+| Crawl 301,000+ pages | 12+ days | 2-3GB |
 | Swift Evolution | 2-5 min | 429 proposals |
 | Swift.org docs | 5-10 min | 501 pages |
 | Build search index | 2-5 min | ~160MB |
 | Search query | <100ms | - |
 
-### Why Crawling Takes 30+ Hours
+### Why Crawling Takes 12+ Days
 
 The crawler respects Apple's servers with a **0.5 second default delay between each request** (configurable):
-- 234,000 pages × 0.5s = 117,000 seconds (~32 hours minimum)
+- 301,000 pages × 0.5s = 150,500 seconds (~42 hours minimum)
 - Plus page rendering, parsing, and saving time
-- **Total: ~32-48 hours for initial full crawl**
+- Crawl must reach depth 21+ to get all documentation
+- **Total: ~12+ days for initial full crawl**
 
 Use `cupertino setup` to download pre-built databases instead (~30 seconds).
 
