@@ -30,6 +30,17 @@
 
 ---
 
+## 0.7.0 (2025-12-15)
+
+### Added
+-
+
+### Changed
+-
+
+### Fixed
+-
+
 ## 0.5.0 (2025-12-11)
 
 **Why minor bump?** The `cupertino release` command was removed from the public CLI. Users who had scripts calling `cupertino release` will need to update them. This is a breaking change for maintainer workflows.
