@@ -211,11 +211,20 @@ struct DatabaseReleaseCommand: AsyncParsableCommand {
 
     // MARK: - GitHub API
 
+    /// Creates a URLRequest with proper GitHub API authentication
+    private func githubRequest(url: URL, token: String, method: String = "GET") -> URLRequest {
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        // Fine-grained tokens start with github_pat_, classic tokens start with ghp_
+        let authValue = token.hasPrefix("ghp_") ? "token \(token)" : "Bearer \(token)"
+        request.setValue(authValue, forHTTPHeaderField: "Authorization")
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        return request
+    }
+
     private func checkReleaseExists(repo: String, tag: String, token: String) async throws -> Bool {
         let url = URL(string: "https://api.github.com/repos/\(repo)/releases/tags/\(tag)")!
-        var request = URLRequest(url: url)
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        let request = githubRequest(url: url, token: token)
 
         let (_, response) = try await URLSession.shared.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -227,9 +236,7 @@ struct DatabaseReleaseCommand: AsyncParsableCommand {
     private func deleteRelease(repo: String, tag: String, token: String) async throws {
         // Get release ID
         let getURL = URL(string: "https://api.github.com/repos/\(repo)/releases/tags/\(tag)")!
-        var getRequest = URLRequest(url: getURL)
-        getRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        getRequest.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        let getRequest = githubRequest(url: getURL, token: token)
 
         let (data, _) = try await URLSession.shared.data(for: getRequest)
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -239,9 +246,7 @@ struct DatabaseReleaseCommand: AsyncParsableCommand {
 
         // Delete release
         let deleteURL = URL(string: "https://api.github.com/repos/\(repo)/releases/\(releaseId)")!
-        var deleteRequest = URLRequest(url: deleteURL)
-        deleteRequest.httpMethod = "DELETE"
-        deleteRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let deleteRequest = githubRequest(url: deleteURL, token: token, method: "DELETE")
 
         let (_, response) = try await URLSession.shared.data(for: deleteRequest)
         guard let httpResponse = response as? HTTPURLResponse,
@@ -251,9 +256,7 @@ struct DatabaseReleaseCommand: AsyncParsableCommand {
 
         // Delete tag
         let tagURL = URL(string: "https://api.github.com/repos/\(repo)/git/refs/tags/\(tag)")!
-        var tagRequest = URLRequest(url: tagURL)
-        tagRequest.httpMethod = "DELETE"
-        tagRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let tagRequest = githubRequest(url: tagURL, token: token, method: "DELETE")
 
         _ = try? await URLSession.shared.data(for: tagRequest)
     }
@@ -266,10 +269,7 @@ struct DatabaseReleaseCommand: AsyncParsableCommand {
         zipFilename: String
     ) async throws -> String {
         let url = URL(string: "https://api.github.com/repos/\(repo)/releases")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        var request = githubRequest(url: url, token: token, method: "POST")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let body: [String: Any] = [
@@ -323,10 +323,7 @@ struct DatabaseReleaseCommand: AsyncParsableCommand {
             throw DatabaseReleaseError.apiError("Invalid upload URL")
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        var request = githubRequest(url: url, token: token, method: "POST")
         request.setValue("application/zip", forHTTPHeaderField: "Content-Type")
 
         let fileData = try Data(contentsOf: file)
