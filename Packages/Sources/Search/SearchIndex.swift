@@ -23,7 +23,9 @@ extension Search {
         /// - 4: Added source field to docs_fts and docs_metadata for source-based filtering
         /// - 5: Added language field to docs_fts and docs_metadata (BREAKING: requires database rebuild)
         /// - 6: Added availability columns (min_ios, min_macos, etc.) for efficient filtering
-        public static let schemaVersion: Int32 = 7
+        /// - 7: Previous version
+        /// - 8: Added attributes column to docs_structured for @attribute indexing
+        public static let schemaVersion: Int32 = 8
 
         private var database: OpaquePointer?
         private let dbPath: URL
@@ -319,11 +321,13 @@ extension Search {
                 conforms_to TEXT,
                 inherited_by TEXT,
                 conforming_types TEXT,
+                attributes TEXT,  -- @MainActor, @Sendable, @available, etc. (comma-separated)
                 FOREIGN KEY (uri) REFERENCES docs_metadata(uri) ON DELETE CASCADE
             );
 
             CREATE INDEX IF NOT EXISTS idx_docs_kind ON docs_structured(kind);
             CREATE INDEX IF NOT EXISTS idx_docs_module ON docs_structured(module);
+            CREATE INDEX IF NOT EXISTS idx_docs_attributes ON docs_structured(attributes);
 
             -- Framework aliases: maps identifier, import name, and display name
             -- identifier: appintents (lowercase, URL path, folder name)
@@ -1040,7 +1044,15 @@ extension Search {
 
             // First, index the basic document (FTS + metadata with json_data)
             // Extract optimized content based on document kind to improve BM25 ranking
-            let content = extractOptimizedContent(from: page)
+            var content = extractOptimizedContent(from: page)
+
+            // Append @attributes to content for FTS searchability
+            // This allows searching for @MainActor, @Sendable, @available etc.
+            let attributes = page.extractedAttributes
+            if !attributes.isEmpty {
+                content += "\n\n" + attributes.joined(separator: " ")
+            }
+
             let summary = extractSummary(from: content)
             let wordCount = content.split(separator: " ").count
 
@@ -1129,7 +1141,7 @@ extension Search {
 
             // Insert structured fields for querying
             // swiftlint:disable:next line_length
-            let structSql = "INSERT OR REPLACE INTO docs_structured (uri, url, title, kind, abstract, declaration, overview, module, platforms, conforms_to, inherited_by, conforming_types) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"
+            let structSql = "INSERT OR REPLACE INTO docs_structured (uri, url, title, kind, abstract, declaration, overview, module, platforms, conforms_to, inherited_by, conforming_types, attributes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"
 
             var structStatement: OpaquePointer?
             defer { sqlite3_finalize(structStatement) }
@@ -1195,6 +1207,14 @@ extension Search {
                 sqlite3_bind_text(structStatement, 12, value, -1, nil)
             } else {
                 sqlite3_bind_null(structStatement, 12)
+            }
+
+            // Store @attributes for filtering (reuse variable from FTS content extraction above)
+            if !attributes.isEmpty {
+                let value = (attributes.joined(separator: ",") as NSString).utf8String
+                sqlite3_bind_text(structStatement, 13, value, -1, nil)
+            } else {
+                sqlite3_bind_null(structStatement, 13)
             }
 
             guard sqlite3_step(structStatement) == SQLITE_DONE else {
@@ -1687,6 +1707,74 @@ extension Search {
             return (nil, query)
         }
 
+        /// Known Swift attributes that can be searched with or without @ prefix
+        /// Based on attributes actually present in Apple documentation declarations
+        /// TODO(#81): When SwiftSyntax AST indexing is implemented, this list should be
+        /// replaced with attributes extracted directly from parsed declarations
+        private static let knownAttributes: Set<String> = [
+            // Concurrency
+            "MainActor", "Sendable", "preconcurrency",
+            // Memory/copying
+            "NSCopying", "frozen",
+            // Objective-C interop
+            "objc", "objcMembers", "nonobjc", "IBAction", "IBOutlet",
+            // Function attributes
+            "discardableResult", "warn_unqualified_access", "inlinable", "usableFromInline",
+            // Type attributes
+            "dynamicMemberLookup", "dynamicCallable", "propertyWrapper", "resultBuilder",
+            // SwiftUI builders
+            "ViewBuilder", "ToolbarContentBuilder", "CommandsBuilder", "SceneBuilder",
+            // Macros
+            "freestanding", "attached",
+            // Availability
+            "backDeployed", "available",
+            // SwiftUI property wrappers (for future use)
+            "State", "Binding", "Environment", "Published",
+            "ObservedObject", "StateObject", "EnvironmentObject",
+            "AppStorage", "SceneStorage", "FocusState",
+            // SwiftData
+            "Model", "Query", "Attribute", "Relationship",
+        ]
+
+        /// Extract @attribute patterns from query for filtering
+        /// - Parameter query: User's search query (e.g., "@MainActor View" or "MainActor View")
+        /// - Returns: Tuple of (attributes to filter, query for FTS with @ stripped)
+        /// - Example: "@MainActor View" -> (["@MainActor"], "MainActor View")
+        /// - Example: "MainActor View" -> (["@MainActor"], "MainActor View")
+        private func extractAttributeFilters(_ query: String) -> (attributes: [String], ftsQuery: String) {
+            var attributes: [String] = []
+            var ftsQuery = query
+
+            // First, handle explicit @Attribute patterns (including those with arguments)
+            let explicitPattern = #"@[A-Z][a-zA-Z0-9]*(?:\([^)]*\))?"#
+            if let regex = try? NSRegularExpression(pattern: explicitPattern) {
+                let range = NSRange(query.startIndex..., in: query)
+                let matches = regex.matches(in: query, range: range)
+
+                for match in matches.reversed() {
+                    if let matchRange = Range(match.range, in: query) {
+                        let attribute = String(query[matchRange])
+                        attributes.insert(attribute, at: 0)
+
+                        // Strip @ from FTS query but keep the name for searchability
+                        let withoutAt = attribute.dropFirst()
+                        ftsQuery.replaceSubrange(matchRange, with: withoutAt)
+                    }
+                }
+            }
+
+            // Then, check for known attribute names without @ prefix
+            let words = ftsQuery.components(separatedBy: .whitespaces)
+            for word in words {
+                let trimmed = word.trimmingCharacters(in: .punctuationCharacters)
+                if Self.knownAttributes.contains(trimmed), !attributes.contains("@\(trimmed)") {
+                    attributes.append("@\(trimmed)")
+                }
+            }
+
+            return (attributes, ftsQuery)
+        }
+
         /// Sanitize a search query for FTS5
         /// - Splits on whitespace and hyphens (except for known framework prefixes)
         /// - Quotes each term to avoid FTS5 operator interpretation
@@ -1747,7 +1835,10 @@ extension Search {
 
             // Use remaining query after extracting source prefix
             let queryToSearch = remainingQuery.isEmpty ? query : remainingQuery
-            let sanitizedQuery = sanitizeFTS5Query(queryToSearch)
+
+            // Extract @attribute patterns for filtering (handles "@MainActor" and "MainActor")
+            let (attributeFilters, queryForFTS) = extractAttributeFilters(queryToSearch)
+            let sanitizedQuery = sanitizeFTS5Query(queryForFTS)
 
             var sql = """
             SELECT
@@ -1784,6 +1875,11 @@ extension Search {
                 sql += " AND f.language = ?"
             }
 
+            // Add attribute filters (e.g., "@MainActor" filters to docs with that attribute)
+            for _ in attributeFilters {
+                sql += " AND s.attributes LIKE ?"
+            }
+
             // Fetch significantly more results so title/kind boosts can surface buried gems
             // View protocol has poor BM25 but exact title match should bring it to top
             let fetchLimit = min(limit * 20, 1000) // Fetch 20x more, max 1000
@@ -1812,6 +1908,12 @@ extension Search {
             }
             if let language {
                 sqlite3_bind_text(statement, paramIndex, (language as NSString).utf8String, -1, nil)
+                paramIndex += 1
+            }
+            // Bind attribute filters (LIKE patterns for each attribute)
+            for attribute in attributeFilters {
+                let likePattern = "%\(attribute)%"
+                sqlite3_bind_text(statement, paramIndex, (likePattern as NSString).utf8String, -1, nil)
                 paramIndex += 1
             }
             sqlite3_bind_int(statement, paramIndex, Int32(fetchLimit))
