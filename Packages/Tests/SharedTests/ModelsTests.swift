@@ -262,3 +262,167 @@ func crawlStatisticsNoDuration() {
 
 // Note: CrawlSessionState, SwiftPackageEntry, SampleCodeEntry, and PriorityPackageCatalogData
 // have more complex tests in Core module
+
+// MARK: - StructuredDocumentationPage Declaration and Kind Tests
+
+// Helper type alias for brevity
+private typealias Page = StructuredDocumentationPage
+private typealias Kind = StructuredDocumentationPage.Kind
+
+@Test("StructuredDocumentationPage extracts @attributes from declaration")
+func structuredPageExtractsAttributes() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "Test",
+        kind: .unknown,
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "@MainActor @preconcurrency struct MyView"
+        )
+    )
+
+    let attrs = page.extractedAttributes
+    #expect(attrs.contains("@MainActor"))
+    #expect(attrs.contains("@preconcurrency"))
+    #expect(attrs.count == 2)
+}
+
+@Test("StructuredDocumentationPage extracts @attributes with arguments")
+func structuredPageExtractsAttributesWithArgs() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "Test",
+        kind: .unknown,
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "@backDeployed(before: iOS 18.0, macOS 15.0) static var monthly: Period { get }"
+        )
+    )
+
+    let attrs = page.extractedAttributes
+    #expect(attrs.count == 1)
+    #expect(attrs[0] == "@backDeployed(before: iOS 18.0, macOS 15.0)")
+}
+
+@Test("StructuredDocumentationPage normalizes declaration by stripping attributes")
+func structuredPageNormalizesDeclaration() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "Test",
+        kind: .unknown,
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "@MainActor @preconcurrency struct MyView"
+        )
+    )
+
+    let normalized = page.normalizedDeclaration
+    #expect(normalized == "struct MyView")
+}
+
+@Test("StructuredDocumentationPage normalizes multi-line declaration")
+func structuredPageNormalizesMultilineDeclaration() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "Test",
+        kind: .unknown,
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "@MainActor @preconcurrency\nstruct MyView"
+        )
+    )
+
+    let normalized = page.normalizedDeclaration
+    #expect(normalized == "struct MyView")
+}
+
+@Test("StructuredDocumentationPage inferredKind detects struct with @attributes")
+func structuredPageInferredKindStructWithAttributes() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "MyView",
+        kind: .unknown,
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "@MainActor @preconcurrency struct MyView"
+        )
+    )
+
+    #expect(page.inferredKind == Kind.struct)
+}
+
+@Test("StructuredDocumentationPage inferredKind detects static var with @backDeployed")
+func structuredPageInferredKindStaticVarWithBackDeployed() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "monthly",
+        kind: .unknown,
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "@backDeployed(before: iOS 18.0, macOS 15.0) static var monthly: Period { get }"
+        )
+    )
+
+    #expect(page.inferredKind == Kind.property)
+}
+
+@Test("StructuredDocumentationPage inferredKind detects subscript")
+func structuredPageInferredKindSubscript() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "subscript",
+        kind: .unknown,
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "subscript<T>(dynamicMember keyPath: KeyPath<Product, T?>) -> T? { get }"
+        )
+    )
+
+    #expect(page.inferredKind == Kind.method)
+}
+
+@Test("StructuredDocumentationPage inferredKind detects actor")
+func structuredPageInferredKindActor() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "DataStore",
+        kind: .unknown,
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "actor DataStore"
+        )
+    )
+
+    #expect(page.inferredKind == Kind.class)
+}
+
+@Test("StructuredDocumentationPage inferredKind detects associatedtype")
+func structuredPageInferredKindAssociatedtype() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "Element",
+        kind: .unknown,
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "associatedtype Element"
+        )
+    )
+
+    #expect(page.inferredKind == Kind.typeAlias)
+}
+
+@Test("StructuredDocumentationPage inferredKind preserves non-unknown kinds")
+func structuredPageInferredKindPreservesExisting() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "Test",
+        kind: .method, // Already classified
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "struct SomethingElse" // Declaration suggests struct
+        )
+    )
+
+    // Should preserve original .method, not infer .struct
+    #expect(page.inferredKind == Kind.method)
+}

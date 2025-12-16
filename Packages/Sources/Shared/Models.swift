@@ -278,47 +278,161 @@ public struct StructuredDocumentationPage: Codable, Sendable, Identifiable, Hash
         return result
     }
 
+    // MARK: - Declaration Parsing Helpers
+
+    /// Extracts @attributes from a declaration string
+    /// Returns array of attributes like ["@MainActor", "@Sendable", "@available(iOS 15.0, *)"]
+    public var extractedAttributes: [String] {
+        guard let decl = declaration?.code else { return [] }
+
+        var attributes: [String] = []
+        var index = decl.startIndex
+
+        while index < decl.endIndex {
+            // Skip whitespace and newlines
+            while index < decl.endIndex, decl[index].isWhitespace || decl[index].isNewline {
+                index = decl.index(after: index)
+            }
+
+            guard index < decl.endIndex, decl[index] == "@" else { break }
+
+            // Found an attribute, extract it
+            let attrStart = index
+            index = decl.index(after: index)
+
+            // Read attribute name
+            while index < decl.endIndex, decl[index].isLetter || decl[index].isNumber || decl[index] == "_" {
+                index = decl.index(after: index)
+            }
+
+            // Handle parenthesized arguments like @available(iOS 15.0, *)
+            if index < decl.endIndex, decl[index] == "(" {
+                var parenDepth = 1
+                index = decl.index(after: index)
+                while index < decl.endIndex, parenDepth > 0 {
+                    if decl[index] == "(" { parenDepth += 1 }
+                    else if decl[index] == ")" { parenDepth -= 1 }
+                    index = decl.index(after: index)
+                }
+            }
+
+            let attr = String(decl[attrStart..<index])
+            if !attr.isEmpty {
+                attributes.append(attr)
+            }
+        }
+
+        return attributes
+    }
+
+    /// Returns the declaration with @attributes stripped and collapsed to single line
+    /// Used for kind inference pattern matching
+    public var normalizedDeclaration: String? {
+        guard let decl = declaration?.code.trimmingCharacters(in: .whitespacesAndNewlines),
+              !decl.isEmpty else {
+            return nil
+        }
+
+        // Collapse multi-line to single line
+        var normalized = decl
+            .replacingOccurrences(of: "\r\n", with: " ")
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\r", with: " ")
+
+        // Strip leading @attributes
+        while true {
+            normalized = normalized.trimmingCharacters(in: .whitespaces)
+            guard normalized.hasPrefix("@") else { break }
+
+            // Find end of attribute (including parenthesized args)
+            var index = normalized.index(after: normalized.startIndex)
+
+            // Skip attribute name
+            while index < normalized.endIndex,
+                  normalized[index].isLetter || normalized[index].isNumber || normalized[index] == "_" {
+                index = normalized.index(after: index)
+            }
+
+            // Skip parenthesized arguments
+            if index < normalized.endIndex, normalized[index] == "(" {
+                var parenDepth = 1
+                index = normalized.index(after: index)
+                while index < normalized.endIndex, parenDepth > 0 {
+                    if normalized[index] == "(" { parenDepth += 1 }
+                    else if normalized[index] == ")" { parenDepth -= 1 }
+                    index = normalized.index(after: index)
+                }
+            }
+
+            normalized = String(normalized[index...])
+        }
+
+        // Collapse multiple spaces to single space
+        while normalized.contains("  ") {
+            normalized = normalized.replacingOccurrences(of: "  ", with: " ")
+        }
+
+        return normalized.trimmingCharacters(in: .whitespaces)
+    }
+
     // MARK: - Heuristic Kind Inference
 
     /// Infers the correct kind from declaration code when Apple's API returns "unknown"
-    /// This heuristic improves search ranking by correctly classifying ~16,500 docs (72% of "unknown" docs)
+    /// This heuristic improves search ranking by correctly classifying docs marked as "unknown"
     public var inferredKind: Kind {
         // Stage 1: Trust Apple's kind if not unknown
         guard kind == .unknown else { return kind }
 
         // Stage 2: No declaration = article (guides, tutorials, conceptual docs)
-        guard let decl = declaration?.code.trimmingCharacters(in: .whitespaces), !decl.isEmpty else {
+        guard let decl = normalizedDeclaration, !decl.isEmpty else {
             return .article
         }
 
-        // Stage 3: Pattern matching on declaration
+        // Stage 3: Pattern matching on normalized declaration
         // Order matters: check most specific patterns first
+
+        // Macros (Swift 5.9+) - check before stripping @ since these ARE the declaration
+        if let rawDecl = declaration?.code,
+           rawDecl.contains("@freestanding") || rawDecl.contains("@attached") {
+            return .macro
+        }
 
         // Type declarations
         if decl.hasPrefix("protocol ") { return .protocol }
         if decl.hasPrefix("struct ") { return .struct }
         if decl.hasPrefix("class ") { return .class }
         if decl.hasPrefix("enum ") { return .enum }
+        if decl.hasPrefix("actor ") { return .class } // actors are class-like
 
         // Enum cases (often appear as separate docs)
         if decl.hasPrefix("case ") { return .enum }
 
-        // Properties (var/let)
+        // Associated types (protocol requirements)
+        if decl.hasPrefix("associatedtype ") { return .typeAlias }
+
+        // Properties (var/let) - including static
         if decl.hasPrefix("var ") || decl.hasPrefix("let ") { return .property }
+        if decl.hasPrefix("static var ") || decl.hasPrefix("static let ") { return .property }
+        if decl.hasPrefix("class var ") || decl.hasPrefix("class let ") { return .property }
+        if decl.contains(" var ") || decl.contains(" let ") { return .property }
+
+        // Subscripts
+        if decl.hasPrefix("subscript") || decl.contains(" subscript") { return .method }
 
         // Methods and initializers
-        // Note: Use contains() for func because decorators may appear inline
-        if decl.hasPrefix("func ") || decl.contains("func ") { return .method }
-        if decl.hasPrefix("init(") || decl.contains("init(") { return .method }
+        if decl.hasPrefix("func ") || decl.contains(" func ") { return .method }
+        if decl.hasPrefix("init(") || decl.contains(" init(") || decl.contains(" init<") { return .method }
+        if decl.hasPrefix("deinit") { return .method }
+        if decl.hasPrefix("static func ") || decl.hasPrefix("class func ") { return .method }
 
         // Type aliases
         if decl.hasPrefix("typealias ") { return .typeAlias }
 
         // Operators
-        if decl.hasPrefix("operator ") || decl.contains("operator") { return .operator }
-
-        // Macros (Swift 5.9+)
-        if decl.hasPrefix("@freestanding") || decl.hasPrefix("@attached") { return .macro }
+        if decl.hasPrefix("operator ") || decl.contains(" operator ") { return .operator }
+        if decl.hasPrefix("prefix ") || decl.hasPrefix("postfix ") || decl.hasPrefix("infix ") {
+            return .operator
+        }
 
         // Still unknown after all heuristics
         return .unknown
