@@ -426,3 +426,189 @@ func structuredPageInferredKindPreservesExisting() {
     // Should preserve original .method, not infer .struct
     #expect(page.inferredKind == Kind.method)
 }
+
+// MARK: - Modifier Prefix Handling Tests
+
+@Test("StructuredDocumentationPage inferredKind detects public struct")
+func structuredPageInferredKindPublicStruct() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "MyStruct",
+        kind: .unknown,
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "public struct MyStruct"
+        )
+    )
+
+    #expect(page.inferredKind == Kind.struct)
+}
+
+@Test("StructuredDocumentationPage inferredKind detects final class")
+func structuredPageInferredKindFinalClass() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "FinalClass",
+        kind: .unknown,
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "final class FinalClass"
+        )
+    )
+
+    #expect(page.inferredKind == Kind.class)
+}
+
+@Test("StructuredDocumentationPage inferredKind detects open class")
+func structuredPageInferredKindOpenClass() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "OpenClass",
+        kind: .unknown,
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "open class OpenClass"
+        )
+    )
+
+    #expect(page.inferredKind == Kind.class)
+}
+
+@Test("StructuredDocumentationPage inferredKind detects nonisolated func")
+func structuredPageInferredKindNonisolatedFunc() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "doWork",
+        kind: .unknown,
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "nonisolated func doWork()"
+        )
+    )
+
+    #expect(page.inferredKind == Kind.method)
+}
+
+@Test("StructuredDocumentationPage inferredKind detects public actor")
+func structuredPageInferredKindPublicActor() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "MyActor",
+        kind: .unknown,
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "public actor MyActor"
+        )
+    )
+
+    #expect(page.inferredKind == Kind.class)
+}
+
+@Test("StructuredDocumentationPage inferredKind detects public typealias")
+func structuredPageInferredKindPublicTypealias() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "Handler",
+        kind: .unknown,
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "public typealias Handler = () -> Void"
+        )
+    )
+
+    #expect(page.inferredKind == Kind.typeAlias)
+}
+
+@Test("StructuredDocumentationPage inferredKind detects indirect enum")
+func structuredPageInferredKindIndirectEnum() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "Tree",
+        kind: .unknown,
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "indirect enum Tree<T>"
+        )
+    )
+
+    #expect(page.inferredKind == Kind.enum)
+}
+
+// MARK: - Failable/Generic Initializer Tests
+
+@Test("StructuredDocumentationPage inferredKind detects failable init?")
+func structuredPageInferredKindFailableInit() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "init(mimeType:conformingTo:)",
+        kind: .unknown,
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "init?(mimeType: String, conformingTo supertype: UTType = .data)"
+        )
+    )
+
+    #expect(page.inferredKind == Kind.method)
+}
+
+@Test("StructuredDocumentationPage inferredKind detects implicitly unwrapped init!")
+func structuredPageInferredKindIUOInit() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "init(contentURL:)",
+        kind: .unknown,
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "init!(contentURL url: URL!)"
+        )
+    )
+
+    #expect(page.inferredKind == Kind.method)
+}
+
+@Test("StructuredDocumentationPage inferredKind detects generic init<T>")
+func structuredPageInferredKindGenericInit() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "init(controlPoints:creationDate:)",
+        kind: .unknown,
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "init<T>(controlPoints: T, creationDate: Date) where T : Sequence"
+        )
+    )
+
+    #expect(page.inferredKind == Kind.method)
+}
+
+@Test("StructuredDocumentationPage inferredKind detects convenience init?")
+func structuredPageInferredKindConvenienceFailableInit() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "init(mimeType:)",
+        kind: .unknown,
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "convenience init?(mimeType: String)"
+        )
+    )
+
+    #expect(page.inferredKind == Kind.method)
+}
+
+// MARK: - REST API Types
+
+@Test("StructuredDocumentationPage inferredKind detects object as struct")
+func structuredPageInferredKindObject() {
+    let page = Page(
+        url: URL(string: "https://example.com")!,
+        title: "ErrorResponse",
+        kind: .unknown,
+        source: .appleJSON,
+        declaration: Page.Declaration(
+            code: "object ErrorResponse"
+        )
+    )
+
+    #expect(page.inferredKind == Kind.struct)
+}
