@@ -395,18 +395,18 @@ public struct StructuredDocumentationPage: Codable, Sendable, Identifiable, Hash
             return .macro
         }
 
-        // Type declarations
-        if decl.hasPrefix("protocol ") { return .protocol }
-        if decl.hasPrefix("struct ") { return .struct }
-        if decl.hasPrefix("class ") { return .class }
-        if decl.hasPrefix("enum ") { return .enum }
-        if decl.hasPrefix("actor ") { return .class } // actors are class-like
+        // Type declarations (handle modifiers like public, final, open, etc.)
+        if decl.hasPrefix("protocol ") || decl.contains(" protocol ") { return .protocol }
+        if decl.hasPrefix("struct ") || decl.contains(" struct ") { return .struct }
+        if decl.hasPrefix("class ") || decl.contains(" class ") { return .class }
+        if decl.hasPrefix("enum ") || decl.contains(" enum ") { return .enum }
+        if decl.hasPrefix("actor ") || decl.contains(" actor ") { return .class } // actors are class-like
 
         // Enum cases (often appear as separate docs)
-        if decl.hasPrefix("case ") { return .enum }
+        if decl.hasPrefix("case ") || decl.contains(" case ") { return .enum }
 
         // Associated types (protocol requirements)
-        if decl.hasPrefix("associatedtype ") { return .typeAlias }
+        if decl.hasPrefix("associatedtype ") || decl.contains(" associatedtype ") { return .typeAlias }
 
         // Properties (var/let) - including static
         if decl.hasPrefix("var ") || decl.hasPrefix("let ") { return .property }
@@ -419,18 +419,23 @@ public struct StructuredDocumentationPage: Codable, Sendable, Identifiable, Hash
 
         // Methods and initializers
         if decl.hasPrefix("func ") || decl.contains(" func ") { return .method }
-        if decl.hasPrefix("init(") || decl.contains(" init(") || decl.contains(" init<") { return .method }
+        // Initializers: init(, init?(, init!(, init<T>
+        if decl.hasPrefix("init(") || decl.hasPrefix("init?") || decl.hasPrefix("init!") || decl.hasPrefix("init<") { return .method }
+        if decl.contains(" init(") || decl.contains(" init?") || decl.contains(" init!") || decl.contains(" init<") { return .method }
         if decl.hasPrefix("deinit") { return .method }
         if decl.hasPrefix("static func ") || decl.hasPrefix("class func ") { return .method }
 
-        // Type aliases
-        if decl.hasPrefix("typealias ") { return .typeAlias }
+        // REST API types (OpenAPI object declarations)
+        if decl.hasPrefix("object ") { return .struct }
+
+        // Type aliases (can have public/internal modifiers)
+        if decl.hasPrefix("typealias ") || decl.contains(" typealias ") { return .typeAlias }
 
         // Operators
         if decl.hasPrefix("operator ") || decl.contains(" operator ") { return .operator }
-        if decl.hasPrefix("prefix ") || decl.hasPrefix("postfix ") || decl.hasPrefix("infix ") {
-            return .operator
-        }
+        if decl.hasPrefix("prefix ") || decl.contains(" prefix ") { return .operator }
+        if decl.hasPrefix("postfix ") || decl.contains(" postfix ") { return .operator }
+        if decl.hasPrefix("infix ") || decl.contains(" infix ") { return .operator }
 
         // Still unknown after all heuristics
         return .unknown
