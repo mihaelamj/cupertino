@@ -1017,6 +1017,120 @@ extension Search {
             }
         }
 
+        // MARK: - Protocol-Based Indexing
+
+        /// Index a source item using the appropriate SourceIndexer
+        /// This provides a unified interface for indexing content from any source.
+        /// - Parameters:
+        ///   - item: The source item to index
+        ///   - extractSymbols: Whether to extract and index AST symbols (default: true)
+        /// - Throws: SearchError if indexing fails
+        public func indexItem(_ item: SourceItem, extractSymbols: Bool = true) async throws {
+            // Get the indexer for this source
+            guard let indexer = IndexerRegistry.indexer(for: item.source) else {
+                // Fall back to generic indexing if no specific indexer
+                try await indexDocument(
+                    uri: item.uri,
+                    source: item.source,
+                    framework: item.framework,
+                    language: item.language,
+                    title: item.title,
+                    content: item.content,
+                    filePath: item.filePath,
+                    contentHash: item.contentHash,
+                    lastCrawled: item.lastCrawled,
+                    sourceType: item.sourceType,
+                    packageId: item.packageId,
+                    jsonData: item.jsonData,
+                    minIOS: item.minIOS,
+                    minMacOS: item.minMacOS,
+                    minTvOS: item.minTvOS,
+                    minWatchOS: item.minWatchOS,
+                    minVisionOS: item.minVisionOS,
+                    availabilitySource: item.availabilitySource
+                )
+                return
+            }
+
+            // Validate the item
+            guard indexer.validate(item) else {
+                throw SearchError.invalidQuery("Item failed validation for source: \(item.source)")
+            }
+
+            // Preprocess the item
+            let processedItem = indexer.preprocess(item)
+
+            // Index the document
+            try await indexDocument(
+                uri: processedItem.uri,
+                source: processedItem.source,
+                framework: processedItem.framework,
+                language: processedItem.language,
+                title: processedItem.title,
+                content: processedItem.content,
+                filePath: processedItem.filePath,
+                contentHash: processedItem.contentHash,
+                lastCrawled: processedItem.lastCrawled,
+                sourceType: processedItem.sourceType,
+                packageId: processedItem.packageId,
+                jsonData: processedItem.jsonData,
+                minIOS: processedItem.minIOS,
+                minMacOS: processedItem.minMacOS,
+                minTvOS: processedItem.minTvOS,
+                minWatchOS: processedItem.minWatchOS,
+                minVisionOS: processedItem.minVisionOS,
+                availabilitySource: processedItem.availabilitySource
+            )
+
+            // Extract and index AST symbols if enabled
+            if extractSymbols {
+                let extracted = indexer.extractCode(from: processedItem)
+                if !extracted.symbols.isEmpty {
+                    try await indexDocSymbols(
+                        docUri: processedItem.uri,
+                        symbols: extracted.symbols
+                    )
+                }
+                if !extracted.imports.isEmpty {
+                    try await indexDocImports(
+                        docUri: processedItem.uri,
+                        imports: extracted.imports
+                    )
+                }
+            }
+
+            // Postprocess
+            indexer.postprocess(processedItem)
+        }
+
+        /// Batch index multiple source items
+        /// - Parameters:
+        ///   - items: Array of source items to index
+        ///   - extractSymbols: Whether to extract AST symbols
+        ///   - progress: Optional progress callback (itemIndex, totalItems)
+        /// - Returns: Number of successfully indexed items
+        @discardableResult
+        public func indexItems(
+            _ items: [SourceItem],
+            extractSymbols: Bool = true,
+            progress: ((Int, Int) -> Void)? = nil
+        ) async throws -> Int {
+            var successCount = 0
+
+            for (index, item) in items.enumerated() {
+                do {
+                    try await indexItem(item, extractSymbols: extractSymbols)
+                    successCount += 1
+                } catch {
+                    // Log error but continue with other items
+                    // In production, could collect errors and report at end
+                }
+                progress?(index + 1, items.count)
+            }
+
+            return successCount
+        }
+
         /// Extract optimized FTS content based on document kind
         /// Core types get focused content (title, abstract, overview) without member noise
         /// Members get title + abstract + declaration for quick matching
@@ -2347,8 +2461,8 @@ extension Search {
                     let isIntentBoosted = searchSource.map { queryIntent.boostedSources.contains($0) } ?? false
 
                     // Get SourceProperties for quality-based scoring (#81)
-                    // Uses empirical data: searchQuality (0.0-1.0) from source profiling
-                    let sourceProps = searchSource.flatMap { SourcePropertiesRegistry.properties[$0] }
+                    // Uses empirical data from SourceRegistry (single source of truth)
+                    let sourceProps = searchSource.flatMap { SourceRegistry.properties(for: $0.rawValue) }
 
                     // Calculate base multiplier from SourceProperties or fallback to static values
                     let baseMultiplier: Double = {

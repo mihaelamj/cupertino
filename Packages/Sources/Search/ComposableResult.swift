@@ -502,27 +502,10 @@ public enum QueryIntent: String, Codable, Sendable {
     case legacy // "Objective-C", "NSObject", older frameworks → archive, apple-docs
 
     /// Sources boosted for this intent (in priority order)
+    /// Now data-driven via SourceRegistry instead of hardcoded
     public var boostedSources: [SearchSource] {
-        switch self {
-        case .apiReference:
-            return [.appleDocs, .swiftBook]
-        case .howTo:
-            return [.samples, .appleDocs, .swiftOrg]
-        case .designGuidance:
-            return [.hig, .appleDocs]
-        case .languageFeature:
-            return [.swiftEvolution, .swiftBook, .swiftOrg]
-        case .conceptual:
-            return [.appleDocs, .swiftBook, .swiftOrg]
-        case .troubleshooting:
-            return [.samples, .appleArchive, .appleDocs]
-        case .migration:
-            return [.appleArchive, .swiftEvolution, .appleDocs]
-        case .packageDiscovery:
-            return [.packages, .swiftOrg]
-        case .legacy:
-            return [.appleArchive, .appleDocs] // Archive first for legacy content
-        }
+        // Use registry-based lookup (data-driven)
+        registryBoostedSources
     }
 
     /// Boost multiplier for boosted sources (1.0 = no boost)
@@ -737,93 +720,24 @@ public struct SourceProperties: Codable, Sendable {
 }
 
 /// Source properties for each source
-/// Values determined empirically by testing 10 queries per source (Issue #81)
+/// @deprecated Use `SourceRegistry` instead - this is kept for backward compatibility
+/// Values now consolidated in `SourceDefinition.swift`
+@available(*, deprecated, message: "Use SourceRegistry.properties(for:) instead")
 public enum SourcePropertiesRegistry {
-    public static let properties: [SearchSource: SourceProperties] = [
-        .appleDocs: SourceProperties(
-            authority: 1.0, // Official Apple source
-            freshness: 0.9, // Updated with each release
-            comprehensiveness: 1.0, // Covers all APIs
-            codeExamples: 0.3, // Mostly signatures only (empirical)
-            hasAvailability: 1.0, // Full availability data
-            designFocus: 0.2, // Some in overviews
-            languageFocus: 0.2, // API-focused, not language
-            searchQuality: 0.5 // BM25 ranking issues! (empirical)
-        ),
-        .samples: SourceProperties(
-            authority: 1.0, // Official Apple samples
-            freshness: 0.8, // Updated periodically
-            comprehensiveness: 0.4, // Selective topics
-            codeExamples: 1.0, // Pure working code! (empirical)
-            hasAvailability: 0.5, // Implicit from project
-            designFocus: 0.4, // Shows UI patterns
-            languageFocus: 0.3, // Shows Swift usage
-            searchQuality: 0.9 // Excellent results! (empirical)
-        ),
-        .hig: SourceProperties(
-            authority: 1.0, // Official Apple HIG
-            freshness: 0.9, // Updated regularly
-            comprehensiveness: 0.7, // Design topics only
-            codeExamples: 0.0, // No code! (empirical)
-            hasAvailability: 0.3, // Platform sections
-            designFocus: 1.0, // Pure design guidance (empirical)
-            languageFocus: 0.0, // Not language-related
-            searchQuality: 0.9 // Excellent results! (empirical)
-        ),
-        .appleArchive: SourceProperties(
-            authority: 0.6, // May be outdated (empirical)
-            freshness: 0.2, // Legacy 2013-2016 content (empirical)
-            comprehensiveness: 0.9, // Historical coverage
-            codeExamples: 0.7, // Objective-C/Swift examples
-            hasAvailability: 0.3, // Old versions
-            designFocus: 0.3, // Some design info
-            languageFocus: 0.4, // Objective-C/Swift
-            searchQuality: 0.6 // Mixed quality (empirical)
-        ),
-        .swiftEvolution: SourceProperties(
-            authority: 0.9, // Official Swift process
-            freshness: 1.0, // Latest proposals! (empirical)
-            comprehensiveness: 0.5, // Language features only
-            codeExamples: 0.8, // Proposal examples
-            hasAvailability: 0.9, // Swift version info! (empirical)
-            designFocus: 0.0, // Not design
-            languageFocus: 1.0, // Pure language! (empirical)
-            searchQuality: 0.9 // SE-XXXX format helps (empirical)
-        ),
-        .swiftOrg: SourceProperties(
-            authority: 0.9, // Official Swift.org
-            freshness: 0.9, // Kept current
-            comprehensiveness: 0.6, // Core topics
-            codeExamples: 0.7, // Has examples
-            hasAvailability: 0.4, // Swift version info
-            designFocus: 0.0, // No design
-            languageFocus: 0.9, // Language-focused
-            searchQuality: 0.7 // Good content
-        ),
-        .swiftBook: SourceProperties(
-            authority: 1.0, // Official Swift book
-            freshness: 0.9, // Updated with Swift
-            comprehensiveness: 0.8, // Language coverage
-            codeExamples: 0.9, // Many examples! (empirical)
-            hasAvailability: 0.6, // Swift version
-            designFocus: 0.0, // No design
-            languageFocus: 1.0, // Pure language! (empirical)
-            searchQuality: 0.9 // Well-structured (empirical)
-        ),
-        .packages: SourceProperties(
-            authority: 0.5, // Community packages
-            freshness: 0.9, // Active development
-            comprehensiveness: 0.3, // Specific features
-            codeExamples: 0.8, // Code packages
-            hasAvailability: 0.2, // Package manifest
-            designFocus: 0.0, // No design
-            languageFocus: 0.4, // Swift packages
-            searchQuality: 0.6 // Varies
-        ),
-    ]
+    /// @deprecated Use `SourceRegistry.properties(for:)` instead
+    public static var properties: [SearchSource: SourceProperties] {
+        var result: [SearchSource: SourceProperties] = [:]
+        for source in SearchSource.allCases {
+            if let props = SourceRegistry.properties(for: source.rawValue) {
+                result[source] = props
+            }
+        }
+        return result
+    }
 
+    /// @deprecated Use `SourceRegistry.properties(for:)` instead
     public static func properties(for source: SearchSource) -> SourceProperties {
-        properties[source] ?? SourceProperties(
+        SourceRegistry.properties(for: source.rawValue) ?? SourceProperties(
             authority: 0.5, freshness: 0.5, comprehensiveness: 0.5, codeExamples: 0.5,
             hasAvailability: 0.5, designFocus: 0.5, languageFocus: 0.5, searchQuality: 0.5
         )
