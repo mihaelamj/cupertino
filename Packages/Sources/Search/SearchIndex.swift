@@ -2027,6 +2027,10 @@ extension Search {
                 throw SearchError.invalidQuery("Query cannot be empty")
             }
 
+            // Detect query intent for source boosting (#81)
+            // This analyzes the query to determine what kind of content the user wants
+            let queryIntent = detectQueryIntent(query)
+
             // Extract source prefix from query if no explicit source provided
             let (detectedSource, remainingQuery) = source == nil
                 ? extractSourcePrefix(query)
@@ -2325,8 +2329,8 @@ extension Search {
                     }
                 }()
 
-                // Apply source-based ranking multiplier
-                // Prefer modern Apple docs over archived guides (but archives still valuable)
+                // Apply source-based ranking multiplier with intent-aware boosting (#81)
+                // Uses queryIntent to determine which sources should be prioritized
                 // swiftlint:disable:next nesting
                 // Justification: typealias used inline to reference long constant path concisely
                 typealias SourcePrefix = Shared.Constants.SourcePrefix
@@ -2336,18 +2340,54 @@ extension Search {
                         return 2.5 // Strong penalty - release notes pollute general searches
                     }
 
-                    // Use if-else to allow constant comparisons
-                    if source == SourcePrefix.appleDocs {
-                        return 1.0 // Baseline - modern docs
-                    } else if source == SourcePrefix.appleArchive {
-                        return 1.5 // Slight penalty - archived guides (older but foundational)
-                    } else if source == SourcePrefix.swiftEvolution {
-                        return 1.3 // Slight penalty - proposals (reference, not tutorials)
-                    } else if source == SourcePrefix.swiftBook || source == SourcePrefix.swiftOrg {
-                        return 0.9 // Slight boost - official Swift docs
-                    } else {
-                        return 1.0
+                    // Convert source string to SearchSource for intent matching
+                    let searchSource = SearchSource(rawValue: source)
+
+                    // Check if this source is boosted for the detected intent
+                    let isIntentBoosted = searchSource.map { queryIntent.boostedSources.contains($0) } ?? false
+
+                    // Get SourceProperties for quality-based scoring (#81)
+                    // Uses empirical data: searchQuality (0.0-1.0) from source profiling
+                    let sourceProps = searchSource.flatMap { SourcePropertiesRegistry.properties[$0] }
+
+                    // Calculate base multiplier from SourceProperties or fallback to static values
+                    let baseMultiplier: Double = {
+                        if let props = sourceProps {
+                            // Use searchQuality to create multiplier
+                            // searchQuality 1.0 → multiplier 0.5 (2x boost)
+                            // searchQuality 0.5 → multiplier 1.0 (no boost)
+                            // searchQuality 0.0 → multiplier 1.5 (penalty)
+                            return 1.5 - (props.searchQuality * 1.0)
+                        }
+                        // Fallback for unknown sources
+                        if source == SourcePrefix.appleDocs {
+                            return 1.0 // Baseline - modern docs
+                        } else if source == SourcePrefix.appleArchive {
+                            return 1.5 // Slight penalty - archived guides
+                        } else if source == SourcePrefix.swiftEvolution {
+                            return 1.3 // Slight penalty - proposals
+                        } else if source == SourcePrefix.swiftBook || source == SourcePrefix.swiftOrg {
+                            return 0.9 // Slight boost - official Swift docs
+                        } else {
+                            return 1.0
+                        }
+                    }()
+
+                    // Apply intent-aware scoring using SourceProperties.scoreFor(intent:)
+                    // This gives a weighted score based on how well the source fits the intent
+                    let intentScore: Double = {
+                        guard let props = sourceProps else { return 1.0 }
+                        // scoreFor returns 0.0-1.0, higher = better fit
+                        // Convert to multiplier: 1.0 → 0.6 (boost), 0.5 → 0.8, 0.0 → 1.0
+                        return 1.0 - (props.scoreFor(intent: queryIntent) * 0.4)
+                    }()
+
+                    // Combine: base quality * intent fit * intent boost
+                    var multiplier = baseMultiplier * intentScore
+                    if isIntentBoosted {
+                        multiplier *= 0.5 // Additional 2x boost for intent-matched sources
                     }
+                    return multiplier
                 }()
 
                 // Apply intelligent title and query matching heuristics
@@ -2362,6 +2402,39 @@ extension Search {
                         .filter { !$0.isEmpty }
 
                     var boost = 1.0
+
+                    // FRAMEWORK ROOT BOOST: Framework root page match (#81)
+                    // If user types "SwiftUI" and this is the SwiftUI framework page = definitely what they want
+                    // Framework roots often have title "X | Apple Developer Documentation" and kind "article"
+                    // Detect by: URI pattern "apple-docs://X/documentation_X" where X matches query
+                    let queryLowerJoined = queryWords.joined(separator: " ")
+
+                    // Extract framework from URI: apple-docs://swiftui/documentation_swiftui → swiftui
+                    let uriLower = uri.lowercased()
+                    let isFrameworkRoot: Bool = {
+                        // Pattern: apple-docs://FRAMEWORK/documentation_FRAMEWORK
+                        if uriLower.hasPrefix("apple-docs://") {
+                            let parts = uriLower
+                                .replacingOccurrences(of: "apple-docs://", with: "")
+                                .components(separatedBy: "/")
+                            if parts.count == 2,
+                               parts[1] == "documentation_\(parts[0])" {
+                                // This is a framework root page, check if query matches
+                                return parts[0] == queryLowerJoined
+                            }
+                        }
+                        return false
+                    }()
+
+                    let titleWithoutSuffix = titleLower
+                        .replacingOccurrences(of: " | apple developer documentation", with: "")
+                        .trimmingCharacters(in: .whitespaces)
+
+                    if isFrameworkRoot {
+                        boost *= 0.01 // 100x boost for framework root page match
+                    } else if kind == "framework", titleWithoutSuffix == queryLowerJoined {
+                        boost *= 0.05 // 20x boost for explicit framework kind match
+                    }
 
                     // HEURISTIC 1: Short query exact title match (user knows what they want)
                     // "View" searching for "View" protocol = almost certainly what they want
@@ -2508,6 +2581,19 @@ extension Search {
                 }
             }
 
+            // (#81) Ensure framework root page appears at top for single-word framework queries
+            // This bypasses BM25 limitations for framework names like "SwiftUI", "Foundation", etc.
+            // Only apply for apple-docs source or when no source filter is specified
+            let shouldFetchFrameworkRoot = effectiveSource == nil ||
+                effectiveSource == Shared.Constants.SourcePrefix.appleDocs
+            if shouldFetchFrameworkRoot,
+               let frameworkRoot = try await fetchFrameworkRoot(query: query) {
+                // Remove duplicate if it exists in results
+                results.removeAll { $0.uri == frameworkRoot.uri }
+                // Insert at top
+                results.insert(frameworkRoot, at: 0)
+            }
+
             // Trim to requested limit after applying boosts
             return Array(results.prefix(limit))
         }
@@ -2555,6 +2641,84 @@ extension Search {
             }
 
             return uris
+        }
+
+        /// Fetch framework root page by exact query match (#81)
+        /// If user searches "SwiftUI", directly fetch apple-docs://swiftui/documentation_swiftui
+        /// This ensures framework roots always appear regardless of BM25 score
+        private func fetchFrameworkRoot(query: String) async throws -> Search.Result? {
+            guard let database else { return nil }
+
+            // Only for single-word queries that could be framework names
+            let queryLower = query.lowercased().trimmingCharacters(in: .whitespaces)
+            guard !queryLower.contains(" "), queryLower.count >= 2 else { return nil }
+
+            // Construct expected framework root URI
+            let frameworkRootURI = "apple-docs://\(queryLower)/documentation_\(queryLower)"
+
+            // Direct lookup by URI - join FTS for title/summary, metadata for availability
+            let sql = """
+            SELECT
+                f.uri, f.source, f.framework, f.title, f.summary, m.file_path, m.word_count,
+                m.min_ios, m.min_macos, m.min_tvos, m.min_watchos, m.min_visionos
+            FROM docs_fts f
+            JOIN docs_metadata m ON f.uri = m.uri
+            WHERE f.uri = ?
+            LIMIT 1;
+            """
+
+            var statement: OpaquePointer?
+            defer { sqlite3_finalize(statement) }
+
+            guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
+                return nil
+            }
+
+            sqlite3_bind_text(statement, 1, (frameworkRootURI as NSString).utf8String, -1, nil)
+
+            guard sqlite3_step(statement) == SQLITE_ROW else {
+                return nil // Framework root not found
+            }
+
+            // Extract result
+            let uri = sqlite3_column_text(statement, 0).map { String(cString: $0) } ?? ""
+            let source = sqlite3_column_text(statement, 1).map { String(cString: $0) } ?? ""
+            let framework = sqlite3_column_text(statement, 2).map { String(cString: $0) } ?? ""
+            let title = sqlite3_column_text(statement, 3).map { String(cString: $0) } ?? ""
+            let summary = sqlite3_column_text(statement, 4).map { String(cString: $0) } ?? ""
+            let filePath = sqlite3_column_text(statement, 5).map { String(cString: $0) } ?? ""
+            let wordCount = Int(sqlite3_column_int(statement, 6))
+
+            // Build availability array from platform versions
+            var availabilityArray: [SearchPlatformAvailability] = []
+            if let ios = sqlite3_column_text(statement, 7).map({ String(cString: $0) }) {
+                availabilityArray.append(SearchPlatformAvailability(name: "iOS", introducedAt: ios))
+            }
+            if let macos = sqlite3_column_text(statement, 8).map({ String(cString: $0) }) {
+                availabilityArray.append(SearchPlatformAvailability(name: "macOS", introducedAt: macos))
+            }
+            if let tvos = sqlite3_column_text(statement, 9).map({ String(cString: $0) }) {
+                availabilityArray.append(SearchPlatformAvailability(name: "tvOS", introducedAt: tvos))
+            }
+            if let watchos = sqlite3_column_text(statement, 10).map({ String(cString: $0) }) {
+                availabilityArray.append(SearchPlatformAvailability(name: "watchOS", introducedAt: watchos))
+            }
+            if let visionos = sqlite3_column_text(statement, 11).map({ String(cString: $0) }) {
+                availabilityArray.append(SearchPlatformAvailability(name: "visionOS", introducedAt: visionos))
+            }
+
+            // Return with best possible rank (most negative)
+            return Search.Result(
+                uri: uri,
+                source: source,
+                framework: framework.isEmpty ? queryLower : framework,
+                title: title,
+                summary: summary,
+                filePath: filePath,
+                wordCount: wordCount,
+                rank: -1000.0, // Guaranteed top rank
+                availability: availabilityArray.isEmpty ? nil : availabilityArray
+            )
         }
 
         /// Compare semantic version strings (e.g., "10.13" vs "10.2")
