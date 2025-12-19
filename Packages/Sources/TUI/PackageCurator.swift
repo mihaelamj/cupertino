@@ -296,7 +296,7 @@ struct PackageCuratorApp {
     /// Check which packages are downloaded in the docs directory
     /// Check downloaded packages using a string path
     static func checkDownloadedPackages(in basePath: String) -> Set<String> {
-        let packagesDir = URL(fileURLWithPath: basePath).appendingPathComponent("packages")
+        let packagesDir = URL(fileURLWithPath: basePath).appendingPathComponent(Shared.Constants.Directory.packages)
         return checkDownloadedPackages(in: packagesDir)
     }
 
@@ -387,7 +387,7 @@ struct PackageCuratorApp {
         let artifacts = scanLibraryArtifactsInDirectory(baseDirURL)
 
         // Re-check downloaded packages
-        let docsDirectory = baseDirURL.appendingPathComponent("docs")
+        let docsDirectory = baseDirURL.appendingPathComponent(Shared.Constants.Directory.docs)
         let downloadedPackages = checkDownloadedPackages(in: docsDirectory)
 
         // Update package download status

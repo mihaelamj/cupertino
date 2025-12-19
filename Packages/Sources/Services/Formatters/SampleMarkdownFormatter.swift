@@ -98,8 +98,7 @@ public struct SampleListMarkdownFormatter: ResultFormatter {
                 output += "- **Files:** \(project.fileCount)\n\n"
 
                 if !project.description.isEmpty {
-                    let shortDesc = String(project.description.prefix(200))
-                    output += "\(shortDesc)...\n\n"
+                    output += "\(project.description.truncated(to: 200))\n\n"
                 }
             }
         }

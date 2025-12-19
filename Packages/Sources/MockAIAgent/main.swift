@@ -207,7 +207,7 @@ actor MCPClient {
             id: .int(nextMessageID()),
             method: "initialize",
             params: InitializeParams(
-                protocolVersion: "2024-11-05",
+                protocolVersion: MCPProtocolVersion,
                 capabilities: ClientCapabilities(
                     experimental: nil,
                     sampling: nil,

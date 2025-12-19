@@ -1,9 +1,10 @@
 // This file loads the Priority Packages catalog from JSON
-// Last updated: 2025-11-17
-// JSON file: CupertinoResources/priority-packages.json
+// Supports user-selected packages from ~/.cupertino/selected-packages.json
+// Falls back to bundled priority-packages.json if user file doesn't exist
 
 import Foundation
 import Resources
+import Shared
 
 /// Represents a priority package entry
 public struct PriorityPackage: Codable, Sendable {
@@ -33,9 +34,9 @@ public struct PriorityTier: Codable, Sendable {
     }
 }
 
-/// Tiers structure
+/// Tiers structure (apple_official is optional to support TUI-generated files)
 public struct PriorityTiers: Codable, Sendable {
-    public let appleOfficial: PriorityTier
+    public let appleOfficial: PriorityTier?
     public let ecosystem: PriorityTier
 
     enum CodingKeys: String, CodingKey {
@@ -44,10 +45,10 @@ public struct PriorityTiers: Codable, Sendable {
     }
 }
 
-/// Statistics for priority packages
+/// Statistics for priority packages (some fields optional to support TUI-generated files)
 public struct PriorityPackageStats: Codable, Sendable {
-    public let totalCriticalApplePackages: Int
-    public let totalEcosystemPackages: Int
+    public let totalCriticalApplePackages: Int?
+    public let totalEcosystemPackages: Int?
     public let totalPriorityPackages: Int
 }
 
@@ -62,6 +63,12 @@ struct PriorityPackagesCatalogJSON: Codable {
 
 /// Complete catalog of curated high-priority Swift packages
 public enum PriorityPackagesCatalog {
+    /// User-writable location for selected packages: ~/.cupertino/selected-packages.json
+    private static var userSelectionsURL: URL {
+        Shared.Constants.defaultBaseDirectory
+            .appendingPathComponent(Shared.Constants.FileName.selectedPackages)
+    }
+
     /// Cached catalog data (thread-safe via actor isolation)
     private actor Cache {
         var catalog: PriorityPackagesCatalogJSON?
@@ -73,16 +80,32 @@ public enum PriorityPackagesCatalog {
         func set(_ newCatalog: PriorityPackagesCatalogJSON) {
             catalog = newCatalog
         }
+
+        func clear() {
+            catalog = nil
+        }
     }
 
     private static let cache = Cache()
 
-    /// Load catalog from JSON resource
+    /// Clear the cache (useful when user file changes)
+    public static func clearCache() async {
+        await cache.clear()
+    }
+
+    /// Load catalog - checks user file first, falls back to bundled resource
     private static func loadCatalog() async -> PriorityPackagesCatalogJSON {
         if let cached = await cache.get() {
             return cached
         }
 
+        // Try user selections file first
+        if let userCatalog = loadUserCatalog() {
+            await cache.set(userCatalog)
+            return userCatalog
+        }
+
+        // Fall back to bundled resource
         guard let url = CupertinoResources.bundle.url(forResource: "priority-packages", withExtension: "json") else {
             fatalError("❌ priority-packages.json not found in Resources")
         }
@@ -95,6 +118,24 @@ public enum PriorityPackagesCatalog {
             return catalog
         } catch {
             fatalError("❌ Failed to load priority-packages.json: \(error)")
+        }
+    }
+
+    /// Load catalog from user selections file if it exists
+    private static func loadUserCatalog() -> PriorityPackagesCatalogJSON? {
+        let fileURL = userSelectionsURL
+
+        guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            return nil
+        }
+
+        do {
+            let data = try Data(contentsOf: fileURL)
+            let catalog = try JSONDecoder().decode(PriorityPackagesCatalogJSON.self, from: data)
+            return catalog
+        } catch {
+            // User file exists but is invalid - fall back to bundled
+            return nil
         }
     }
 
@@ -136,7 +177,7 @@ public enum PriorityPackagesCatalog {
     /// All Apple official packages
     public static var applePackages: [PriorityPackage] {
         get async {
-            await loadCatalog().tiers.appleOfficial.packages
+            await loadCatalog().tiers.appleOfficial?.packages ?? []
         }
     }
 
@@ -151,7 +192,8 @@ public enum PriorityPackagesCatalog {
     public static var allPackages: [PriorityPackage] {
         get async {
             let catalog = await loadCatalog()
-            return catalog.tiers.appleOfficial.packages + catalog.tiers.ecosystem.packages
+            let applePackages = catalog.tiers.appleOfficial?.packages ?? []
+            return applePackages + catalog.tiers.ecosystem.packages
         }
     }
 

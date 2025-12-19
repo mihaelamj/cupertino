@@ -547,7 +547,7 @@ public actor CompositeToolProvider: ToolProvider {
         markdown += "## Metadata\n\n"
         markdown += "- **Frameworks:** \(project.frameworks.joined(separator: ", "))\n"
         markdown += "- **Files:** \(project.fileCount)\n"
-        markdown += "- **Size:** \(formatBytes(project.totalSize))\n"
+        markdown += "- **Size:** \(Shared.Formatting.formatBytes(project.totalSize))\n"
         if !project.webURL.isEmpty {
             markdown += "- **Apple Developer:** \(project.webURL)\n"
         }
@@ -594,7 +594,7 @@ public actor CompositeToolProvider: ToolProvider {
         var markdown = "# \(file.filename)\n\n"
         markdown += "**Project:** `\(file.projectId)`\n"
         markdown += "**Path:** `\(file.path)`\n"
-        markdown += "**Size:** \(formatBytes(file.size))\n\n"
+        markdown += "**Size:** \(Shared.Formatting.formatBytes(file.size))\n\n"
 
         let language = languageForExtension(file.fileExtension)
 
@@ -781,12 +781,6 @@ public actor CompositeToolProvider: ToolProvider {
     }
 
     // MARK: - Helpers
-
-    private func formatBytes(_ bytes: Int) -> String {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: Int64(bytes))
-    }
 
     private func languageForExtension(_ ext: String) -> String {
         switch ext.lowercased() {

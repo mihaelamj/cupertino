@@ -1,4 +1,5 @@
 import Foundation
+import Shared
 
 // MARK: - GitHub Fetcher
 
@@ -26,7 +27,7 @@ public actor GitHubFetcher {
         repository: String = RemoteSync.defaultRepository,
         branch: String = RemoteSync.defaultBranch,
         session: URLSession = .shared,
-        token: String? = ProcessInfo.processInfo.environment["GITHUB_TOKEN"]
+        token: String? = ProcessInfo.processInfo.environment[Shared.Constants.EnvVar.githubToken]
     ) {
         self.repository = repository
         self.branch = branch

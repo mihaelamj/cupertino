@@ -254,8 +254,8 @@ public actor UnifiedLogger {
     private func defaultLogFileURL() -> URL {
         let homeDir = FileManager.default.homeDirectoryForCurrentUser
         return homeDir
-            .appendingPathComponent(".cupertino")
-            .appendingPathComponent("cupertino.log")
+            .appendingPathComponent(Shared.Constants.baseDirectoryName)
+            .appendingPathComponent(Shared.Constants.FileName.logFile)
     }
 
     // MARK: - Logging Methods
@@ -465,8 +465,8 @@ public enum Log {
 
     private static func defaultLogFileURL() -> URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".cupertino")
-            .appendingPathComponent("cupertino.log")
+            .appendingPathComponent(Shared.Constants.baseDirectoryName)
+            .appendingPathComponent(Shared.Constants.FileName.logFile)
     }
 
     /// Log a debug message

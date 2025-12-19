@@ -25,13 +25,10 @@ public actor CrawlerState {
                     metadata = loadedMetadata
                     Logging.Logger.crawler.info("✅ Loaded existing metadata: \(metadata.pages.count) pages")
                 } else {
-                    Logging.Logger.crawler.warning("⚠️  Not trusting lying metadata - file counts don't match")
-                    print("⚠️  Not trusting lying metadata - starting fresh")
+                    Logging.Logger.crawler.warning("⚠️  Not trusting lying metadata - file counts don't match, starting fresh")
                 }
             } catch {
-                Logging.Logger.crawler.warning("⚠️  Failed to load metadata: \(error.localizedDescription)")
-                print("⚠️  Failed to load metadata: \(error.localizedDescription)")
-                print("   Starting with fresh metadata")
+                Logging.Logger.crawler.warning("⚠️  Failed to load metadata: \(error.localizedDescription), starting with fresh metadata")
             }
         }
     }

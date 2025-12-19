@@ -55,10 +55,10 @@ extension Core {
             )
 
             #if canImport(WebKit)
-            // Initialize content fetcher with longer wait time for HIG SPA
+            // Initialize content fetcher with HIG-specific wait time
             fetcher = WKWebCrawler.WKWebContentFetcher(
-                pageLoadTimeout: .seconds(30),
-                javascriptWaitTime: .seconds(3)
+                pageLoadTimeout: Shared.Constants.Timeout.pageLoad,
+                javascriptWaitTime: Shared.Constants.Timeout.higJavascriptWait
             )
 
             // Start from HIG root
@@ -86,10 +86,10 @@ extension Core {
                     }
 
                     // Rate limiting
-                    try await Task.sleep(for: .milliseconds(500))
+                    try await Task.sleep(for: Shared.Constants.Delay.archivePage)
 
-                    // Recycle WKWebView every 50 pages to prevent memory buildup
-                    if (index + 1) % 50 == 0 {
+                    // Recycle WKWebView every N pages to prevent memory buildup
+                    if (index + 1) % Shared.Constants.Interval.webViewRecycleEvery == 0 {
                         fetcher?.recycle()
                         logInfo("♻️ Recycled WKWebView at page \(index + 1)")
                     }

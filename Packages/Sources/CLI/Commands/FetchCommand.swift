@@ -430,7 +430,9 @@ struct FetchCommand: AsyncParsableCommand {
                 owner = pathComponents[0]
             }
 
-            let isApple = owner == "apple" || owner == "swiftlang" || owner == "swift-server"
+            let isApple = owner == Shared.Constants.GitHubOrg.apple
+                || owner == Shared.Constants.GitHubOrg.swiftlang
+                || owner == Shared.Constants.GitHubOrg.swiftServer
             return PackageReference(
                 owner: owner,
                 repo: pkg.repo,

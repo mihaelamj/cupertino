@@ -904,7 +904,7 @@ extension Search {
             filePath: String,
             contentHash: String,
             lastCrawled: Date,
-            sourceType: String = "apple",
+            sourceType: String = Shared.Constants.Database.defaultSourceTypeApple,
             packageId: Int? = nil,
             jsonData: String? = nil,
             minIOS: String? = nil,

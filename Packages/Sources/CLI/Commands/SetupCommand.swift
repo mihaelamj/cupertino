@@ -21,8 +21,8 @@ struct SetupCommand: AsyncParsableCommand {
     // MARK: - Constants
 
     private static let releaseBaseURL = "https://github.com/mihaelamj/cupertino-docs/releases/download"
-    private static let searchDBFilename = "search.db"
-    private static let samplesDBFilename = "samples.db"
+    private static let searchDBFilename = Shared.Constants.FileName.searchDatabase
+    private static let samplesDBFilename = Shared.Constants.FileName.samplesDatabase
 
     /// Release tag matches CLI version for database schema compatibility
     private static var releaseTag: String {
@@ -151,7 +151,7 @@ struct SetupCommand: AsyncParsableCommand {
 
         // Get file size for display
         let fileSize = try FileManager.default.attributesOfItem(atPath: tempURL.path)[.size] as? Int64 ?? 0
-        let sizeStr = formatBytes(fileSize)
+        let sizeStr = Shared.Formatting.formatBytes(fileSize)
 
         // Move to destination
         if FileManager.default.fileExists(atPath: destination.path) {
@@ -164,14 +164,6 @@ struct SetupCommand: AsyncParsableCommand {
 
     private func printProgress(_ string: String) {
         FileHandle.standardOutput.write(Data(string.utf8))
-    }
-
-    private func formatBytes(_ bytes: Int64) -> String {
-        let megabytes = Double(bytes) / 1000000
-        if megabytes >= 1000 {
-            return String(format: "%.1f GB", megabytes / 1000)
-        }
-        return String(format: "%.1f MB", megabytes)
     }
 }
 
@@ -231,7 +223,7 @@ private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate, @unc
 
         // If size unknown, show indeterminate progress
         guard totalBytesExpectedToWrite > 0 else {
-            let downloaded = formatBytes(totalBytesWritten)
+            let downloaded = Shared.Formatting.formatBytes(totalBytesWritten)
             let output = "\r   \(currentSpinner) Downloading... \(downloaded)"
             FileHandle.standardOutput.write(Data(output.utf8))
             fflush(stdout)
@@ -244,8 +236,8 @@ private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate, @unc
 
         let bar = String(repeating: "█", count: filled) + String(repeating: "░", count: empty)
         let percent = String(format: "%3.0f%%", progress * 100)
-        let downloaded = formatBytes(totalBytesWritten)
-        let total = formatBytes(totalBytesExpectedToWrite)
+        let downloaded = Shared.Formatting.formatBytes(totalBytesWritten)
+        let total = Shared.Formatting.formatBytes(totalBytesExpectedToWrite)
 
         let output = "\r   \(currentSpinner) [\(bar)] \(percent) (\(downloaded)/\(total))"
         FileHandle.standardOutput.write(Data(output.utf8))
@@ -254,13 +246,5 @@ private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate, @unc
 
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
         // Required delegate method - actual file handling done in downloadFile
-    }
-
-    private func formatBytes(_ bytes: Int64) -> String {
-        let megabytes = Double(bytes) / 1000000
-        if megabytes >= 1000 {
-            return String(format: "%.1f GB", megabytes / 1000)
-        }
-        return String(format: "%.1f MB", megabytes)
     }
 }

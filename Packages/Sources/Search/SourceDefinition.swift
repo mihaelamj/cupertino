@@ -1,4 +1,5 @@
 import Foundation
+import Shared
 
 // MARK: - Source Definition
 
@@ -106,7 +107,7 @@ public enum SourceRegistry {
                 .howTo: 60,
                 .troubleshooting: 50,
             ],
-            baseURL: URL(string: "https://developer.apple.com/documentation")
+            baseURL: URL(string: Shared.Constants.BaseURL.appleDeveloper + "/documentation")
         ),
 
         // Sample Code
@@ -130,7 +131,7 @@ public enum SourceRegistry {
                 .troubleshooting: 80,
                 .conceptual: 40,
             ],
-            baseURL: URL(string: "https://developer.apple.com/sample-code")
+            baseURL: URL(string: Shared.Constants.BaseURL.appleDeveloper + "/sample-code")
         ),
 
         // Human Interface Guidelines
@@ -152,7 +153,7 @@ public enum SourceRegistry {
             intentPriority: [
                 .designGuidance: 100,
             ],
-            baseURL: URL(string: "https://developer.apple.com/design/human-interface-guidelines")
+            baseURL: URL(string: Shared.Constants.BaseURL.appleDeveloper + "/design/human-interface-guidelines")
         ),
 
         // Apple Archive (legacy)
@@ -176,7 +177,7 @@ public enum SourceRegistry {
                 .migration: 80,
                 .troubleshooting: 60,
             ],
-            baseURL: URL(string: "https://developer.apple.com/library/archive")
+            baseURL: URL(string: Shared.Constants.BaseURL.appleDeveloper + "/library/archive")
         ),
 
         // Swift Evolution
@@ -200,7 +201,7 @@ public enum SourceRegistry {
                 .migration: 70,
                 .conceptual: 50,
             ],
-            baseURL: URL(string: "https://github.com/swiftlang/swift-evolution")
+            baseURL: URL(string: Shared.Constants.BaseURL.swiftEvolution)
         ),
 
         // Swift.org
@@ -224,7 +225,7 @@ public enum SourceRegistry {
                 .conceptual: 70,
                 .howTo: 50,
             ],
-            baseURL: URL(string: "https://swift.org")
+            baseURL: URL(string: Shared.Constants.BaseURL.swiftOrgBase)
         ),
 
         // The Swift Programming Language (book)
@@ -248,7 +249,7 @@ public enum SourceRegistry {
                 .conceptual: 90,
                 .howTo: 60,
             ],
-            baseURL: URL(string: "https://docs.swift.org/swift-book")
+            baseURL: URL(string: Shared.Constants.BaseURL.swiftBookBase)
         ),
 
         // Swift Packages
@@ -270,7 +271,7 @@ public enum SourceRegistry {
             intentPriority: [
                 .packageDiscovery: 100,
             ],
-            baseURL: URL(string: "https://swiftpackageindex.com")
+            baseURL: URL(string: Shared.Constants.BaseURL.swiftPackageIndex)
         ),
     ]
 

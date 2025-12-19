@@ -40,7 +40,7 @@ public struct SampleSearchTextFormatter: ResultFormatter {
                 output += "    Files: \(project.fileCount)\n"
 
                 if !project.description.isEmpty {
-                    output += "    \(project.description.prefix(200))...\n"
+                    output += "    \(project.description.truncated(to: 200))\n"
                 }
 
                 output += "\n"

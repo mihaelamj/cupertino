@@ -75,7 +75,7 @@ struct ReadSampleCommand: AsyncParsableCommand {
         Log.output("Project ID: \(project.id)")
         Log.output("Frameworks: \(project.frameworks.joined(separator: ", "))")
         Log.output("Files: \(project.fileCount)")
-        Log.output("Size: \(formatBytes(project.totalSize))")
+        Log.output("Size: \(Shared.Formatting.formatBytes(project.totalSize))")
 
         if !project.webURL.isEmpty {
             Log.output("Apple Developer: \(project.webURL)")
@@ -159,7 +159,7 @@ struct ReadSampleCommand: AsyncParsableCommand {
         Log.output("## Metadata\n")
         Log.output("- **Frameworks:** \(project.frameworks.joined(separator: ", "))")
         Log.output("- **Files:** \(project.fileCount)")
-        Log.output("- **Size:** \(formatBytes(project.totalSize))")
+        Log.output("- **Size:** \(Shared.Formatting.formatBytes(project.totalSize))")
 
         if !project.webURL.isEmpty {
             Log.output("- **Apple Developer:** \(project.webURL)")
@@ -182,14 +182,6 @@ struct ReadSampleCommand: AsyncParsableCommand {
                 Log.output("- _... and \(files.count - 30) more files_")
             }
         }
-    }
-
-    // MARK: - Helpers
-
-    private func formatBytes(_ bytes: Int) -> String {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: Int64(bytes))
     }
 }
 

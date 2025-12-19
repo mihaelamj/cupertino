@@ -3,19 +3,14 @@ import Shared
 
 /// Manages TUI configuration persistence
 enum ConfigManager {
-    private static let configFile = FileManager.default
-        .homeDirectoryForCurrentUser
-        .appendingPathComponent(".cupertino")
-        .appendingPathComponent("tui-config.json")
+    private static let configFile = Shared.Constants.defaultBaseDirectory
+        .appendingPathComponent(Shared.Constants.FileName.tuiConfig)
 
     struct TUIConfig: Codable {
         var baseDirectory: String
 
         static let `default` = TUIConfig(
-            baseDirectory: FileManager.default
-                .homeDirectoryForCurrentUser
-                .appendingPathComponent(".cupertino")
-                .path
+            baseDirectory: Shared.Constants.defaultBaseDirectory.path
         )
     }
 

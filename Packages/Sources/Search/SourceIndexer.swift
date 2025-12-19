@@ -1,5 +1,6 @@
 import ASTIndexer
 import Foundation
+import Shared
 
 // MARK: - Source Item
 
@@ -86,7 +87,7 @@ public struct SourceItem: Sendable {
         lastCrawled: Date = Date(),
         framework: String? = nil,
         language: String? = nil,
-        sourceType: String = "apple",
+        sourceType: String = Shared.Constants.Database.defaultSourceTypeApple,
         packageId: Int? = nil,
         jsonData: String? = nil,
         minIOS: String? = nil,

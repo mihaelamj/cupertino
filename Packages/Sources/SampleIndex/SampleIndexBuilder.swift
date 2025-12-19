@@ -1,6 +1,7 @@
 import ASTIndexer
 import Foundation
 import OSLog
+import Shared
 
 // MARK: - Sample Index Builder
 
@@ -556,9 +557,9 @@ extension SampleIndex {
                     continue
                 }
 
-                // Skip very large files (> 1MB)
+                // Skip very large files (> 1 MiB)
                 let fileSize = (try? fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-                guard fileSize < 1000000 else {
+                guard fileSize < Shared.Constants.Limit.maxIndexableFileSize else {
                     logger.debug("Skipping large file: \(relativePath) (\(fileSize) bytes)")
                     continue
                 }

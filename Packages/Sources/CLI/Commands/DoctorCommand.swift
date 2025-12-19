@@ -68,7 +68,7 @@ struct DoctorCommand: AsyncParsableCommand {
         Log.output("✅ MCP Server")
         Log.output("   ✓ Server can initialize")
         Log.output("   ✓ Transport: stdio")
-        Log.output("   ✓ Protocol version: 2024-11-05")
+        Log.output("   ✓ Protocol version: \(MCPProtocolVersion)")
         Log.output("")
         return true
     }
@@ -146,10 +146,9 @@ struct DoctorCommand: AsyncParsableCommand {
             let searchIndex = try await Search.Index(dbPath: searchDBURL)
             let frameworks = try await searchIndex.listFrameworks()
             let fileSize = try FileManager.default.attributesOfItem(atPath: searchDBURL.path)[.size] as? UInt64 ?? 0
-            let sizeMB = Double(fileSize) / 1048576.0
 
             Log.output("   ✓ Database: \(searchDBURL.path)")
-            Log.output("   ✓ Size: \(String(format: "%.1f", sizeMB)) MB")
+            Log.output("   ✓ Size: \(Shared.Formatting.formatBytes(Int64(fileSize)))")
             Log.output("   ✓ Frameworks: \(frameworks.count)")
             Log.output("")
             return true

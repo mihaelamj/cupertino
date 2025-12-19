@@ -1,4 +1,5 @@
 import Foundation
+import Shared
 
 struct MenuItem {
     let key: String
@@ -31,7 +32,7 @@ struct HomeView {
         result += renderPaddedLine("Quick Stats", width: width)
         let selected = " \(stats.selectedPackages) pkgs"
         let downloaded = " \(stats.downloadedPackages) dl"
-        let totalSize = " \(formatBytes(stats.totalSize))"
+        let totalSize = " \(Shared.Formatting.formatBytes(stats.totalSize))"
         let statsLine = "•\(selected) •\(downloaded) •\(totalSize)"
         result += renderPaddedLine(statsLine, width: width)
         result += Box.teeRight + String(repeating: Box.horizontal, count: width - 2) + Box.teeLeft + "\r\n"
@@ -111,22 +112,6 @@ struct HomeView {
         }
 
         return result
-    }
-
-    private func formatBytes(_ bytes: Int64) -> String {
-        let kilobytes = Double(bytes) / 1024
-        let megabytes = kilobytes / 1024
-        let gigabytes = megabytes / 1024
-
-        if gigabytes >= 1 {
-            return String(format: "%.1f GB", gigabytes)
-        } else if megabytes >= 1 {
-            return String(format: "%.1f MB", megabytes)
-        } else if kilobytes >= 1 {
-            return String(format: "%.0f KB", kilobytes)
-        } else {
-            return "\(bytes) B"
-        }
     }
 }
 

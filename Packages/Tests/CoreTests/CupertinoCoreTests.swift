@@ -160,9 +160,16 @@ func priorityPackagesCatalogLoadsFromJSON() async throws {
     let stats = await PriorityPackagesCatalog.stats
     #expect(stats.totalPriorityPackages > 30, "Should have 30+ priority packages")
     #expect(stats.totalPriorityPackages < 50, "Priority package count should be reasonable")
-    #expect(stats.totalCriticalApplePackages > 25, "Should have 25+ Apple packages")
-    #expect(stats.totalEcosystemPackages > 0, "Should have ecosystem packages")
-    let expectedTotal = stats.totalCriticalApplePackages + stats.totalEcosystemPackages
+    // These fields are optional to support TUI-generated files (which may not have them)
+    if let appleCount = stats.totalCriticalApplePackages {
+        #expect(appleCount > 25, "Should have 25+ Apple packages")
+    }
+    if let ecosystemCount = stats.totalEcosystemPackages {
+        #expect(ecosystemCount > 0, "Should have ecosystem packages")
+    }
+    let applePackages = stats.totalCriticalApplePackages ?? 0
+    let ecosystemPackages = stats.totalEcosystemPackages ?? 0
+    let expectedTotal = applePackages + ecosystemPackages
     #expect(stats.totalPriorityPackages == expectedTotal, "Total should equal sum")
     print("   ✅ Loaded \(stats.totalPriorityPackages) priority packages")
 }

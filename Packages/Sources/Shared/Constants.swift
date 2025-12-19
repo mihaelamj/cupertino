@@ -39,16 +39,28 @@ extension Shared {
             /// Configuration file
             public static let config = "config.json"
 
+            /// TUI configuration file
+            public static let tuiConfig = "tui-config.json"
+
+            /// Application log file
+            public static let logFile = "cupertino.log"
+
             /// Search database file
             public static let searchDatabase = "search.db"
+
+            /// Samples database file
+            public static let samplesDatabase = "samples.db"
 
             // MARK: Package Data Files
 
             /// Swift packages with GitHub stars data
             public static let packagesWithStars = "swift-packages-with-stars.json"
 
-            /// Priority packages list
+            /// Priority packages list (bundled)
             public static let priorityPackages = "priority-packages.json"
+
+            /// User-selected packages file
+            public static let selectedPackages = "selected-packages.json"
 
             /// Package fetch checkpoint file
             public static let checkpoint = "checkpoint.json"
@@ -321,6 +333,22 @@ extension Shared {
             /// Swift Book Documentation (hosted at docs.swift.org)
             public static let swiftBook = "https://docs.swift.org/swift-book/documentation/the-swift-programming-language/"
 
+            /// Swift Book base URL (without specific path)
+            public static let swiftBookBase = "https://docs.swift.org/swift-book"
+
+            /// Swift.org base URL (without path)
+            public static let swiftOrgBase = "https://swift.org"
+
+            // MARK: Swift Evolution
+
+            /// Swift Evolution Proposals on GitHub
+            public static let swiftEvolution = "https://github.com/swiftlang/swift-evolution"
+
+            // MARK: Swift Package Index
+
+            /// Swift Package Index
+            public static let swiftPackageIndex = "https://swiftpackageindex.com"
+
             // MARK: GitHub
 
             /// GitHub base URL
@@ -403,6 +431,9 @@ extension Shared {
         public enum EnvVar {
             /// GitHub token environment variable
             public static let githubToken = "GITHUB_TOKEN"
+
+            /// Cupertino docs token environment variable (for database releases)
+            public static let cupertinoDocsToken = "CUPERTINO_DOCS_TOKEN"
         }
 
         // MARK: - MCP Server
@@ -878,6 +909,10 @@ extension Shared {
             /// Delay between archive page fetches
             /// Rationale: Respectful crawling of Apple's archive servers
             public static let archivePage: Duration = .milliseconds(500)
+
+            /// Pause before retry after failure
+            /// Rationale: Allow transient issues to resolve
+            public static let retryPause: Duration = .seconds(1)
         }
 
         /// Timeout values for operations
@@ -889,6 +924,14 @@ extension Shared {
             /// Maximum time to wait for WKWebView navigation
             /// Rationale: Matches page load timeout for consistency
             public static let webViewNavigation: Duration = .seconds(30)
+
+            /// Time to wait for JavaScript execution
+            /// Rationale: Allow JS to populate dynamic content
+            public static let javascriptWait: Duration = .seconds(5)
+
+            /// Time to wait for JavaScript in HIG SPA
+            /// Rationale: HIG pages are simpler, 3s is sufficient
+            public static let higJavascriptWait: Duration = .seconds(3)
         }
 
         // MARK: - Intervals
@@ -902,6 +945,10 @@ extension Shared {
             /// Log progress every N items
             /// Rationale: Enough to show progress without spamming logs
             public static let progressLogEvery: Int = 50
+
+            /// Recycle WKWebView every N pages to prevent memory buildup
+            /// Rationale: Prevents WebKit memory leaks during long crawl sessions
+            public static let webViewRecycleEvery: Int = 50
         }
 
         // MARK: - Content Limits
@@ -1076,10 +1123,18 @@ extension Shared {
             /// Default maximum number of pages to crawl
             public static let defaultMaxPages = 15000
 
+            // MARK: File Size Limits
+
+            /// Maximum file size for indexing (1 MiB)
+            public static let maxIndexableFileSize = 1048576
+
             // MARK: Search Limits
 
             /// Default search result limit
             public static let defaultSearchLimit = 20
+
+            /// Default list result limit (for listing samples, etc.)
+            public static let defaultListLimit = 50
 
             /// Maximum search result limit
             public static let maxSearchLimit = 100
