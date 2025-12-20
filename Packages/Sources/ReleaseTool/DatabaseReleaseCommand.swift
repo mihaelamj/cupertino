@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import Shared
 
 // MARK: - Database Release Command
 
@@ -23,8 +24,8 @@ struct DatabaseReleaseCommand: AsyncParsableCommand {
 
     // MARK: - Constants
 
-    private static let searchDBFilename = "search.db"
-    private static let samplesDBFilename = "samples.db"
+    private static let searchDBFilename = Shared.Constants.FileName.searchDatabase
+    private static let samplesDBFilename = Shared.Constants.FileName.samplesDatabase
 
     // MARK: - Run
 
@@ -52,8 +53,8 @@ struct DatabaseReleaseCommand: AsyncParsableCommand {
         let searchSize = try fileSize(at: searchDBURL)
         let samplesSize = try fileSize(at: samplesDBURL)
         Console.info("📊 Database sizes:")
-        Console.substep("search.db:  \(formatBytes(searchSize))")
-        Console.substep("samples.db: \(formatBytes(samplesSize))")
+        Console.substep("search.db:  \(Shared.Formatting.formatBytes(searchSize))")
+        Console.substep("samples.db: \(Shared.Formatting.formatBytes(samplesSize))")
 
         // Create zip
         let zipFilename = "cupertino-databases-\(version.tag).zip"
@@ -63,7 +64,7 @@ struct DatabaseReleaseCommand: AsyncParsableCommand {
         try createZip(containing: [searchDBURL, samplesDBURL], at: zipURL)
 
         let zipSize = try fileSize(at: zipURL)
-        Console.substep("✓ Created (\(formatBytes(zipSize)))")
+        Console.substep("✓ Created (\(Shared.Formatting.formatBytes(zipSize)))")
 
         // Calculate SHA256
         Console.info("\n🔐 Calculating SHA256...")
@@ -78,9 +79,9 @@ struct DatabaseReleaseCommand: AsyncParsableCommand {
 
         // Check for GitHub token (try CUPERTINO_DOCS_TOKEN first, fall back to GITHUB_TOKEN)
         let token: String
-        if let docsToken = ProcessInfo.processInfo.environment["CUPERTINO_DOCS_TOKEN"] {
+        if let docsToken = ProcessInfo.processInfo.environment[Shared.Constants.EnvVar.cupertinoDocsToken] {
             token = docsToken
-        } else if let ghToken = ProcessInfo.processInfo.environment["GITHUB_TOKEN"] {
+        } else if let ghToken = ProcessInfo.processInfo.environment[Shared.Constants.EnvVar.githubToken] {
             token = ghToken
         } else {
             throw DatabaseReleaseError.missingToken
@@ -126,7 +127,7 @@ struct DatabaseReleaseCommand: AsyncParsableCommand {
     // MARK: - Helpers
 
     private var defaultBaseDirectory: URL {
-        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".cupertino")
+        Shared.Constants.defaultBaseDirectory
     }
 
     private func findRepoRoot() throws -> URL {
@@ -199,14 +200,6 @@ struct DatabaseReleaseCommand: AsyncParsableCommand {
     private func fileSize(at url: URL) throws -> Int64 {
         let attrs = try FileManager.default.attributesOfItem(atPath: url.path)
         return attrs[.size] as? Int64 ?? 0
-    }
-
-    private func formatBytes(_ bytes: Int64) -> String {
-        let megabytes = Double(bytes) / 1000000
-        if megabytes >= 1000 {
-            return String(format: "%.1f GB", megabytes / 1000)
-        }
-        return String(format: "%.1f MB", megabytes)
     }
 
     // MARK: - GitHub API
@@ -338,18 +331,6 @@ struct DatabaseReleaseCommand: AsyncParsableCommand {
             }
             throw DatabaseReleaseError.apiError("Failed to upload asset")
         }
-    }
-}
-
-// MARK: - URL Extension
-
-extension URL {
-    var expandingTildeInPath: URL {
-        if path.hasPrefix("~") {
-            let expanded = NSString(string: path).expandingTildeInPath
-            return URL(fileURLWithPath: expanded)
-        }
-        return self
     }
 }
 

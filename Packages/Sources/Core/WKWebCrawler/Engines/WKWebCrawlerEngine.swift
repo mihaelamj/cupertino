@@ -1,4 +1,5 @@
 import Foundation
+import Shared
 #if canImport(WebKit)
 import WebKit
 #endif
@@ -14,8 +15,8 @@ extension WKWebCrawler {
         private let fetcher: WKWebContentFetcher
 
         public init(
-            pageLoadTimeout: Duration = .seconds(30),
-            javascriptWaitTime: Duration = .seconds(5)
+            pageLoadTimeout: Duration = Shared.Constants.Timeout.pageLoad,
+            javascriptWaitTime: Duration = Shared.Constants.Timeout.javascriptWait
         ) {
             fetcher = WKWebContentFetcher(
                 pageLoadTimeout: pageLoadTimeout,

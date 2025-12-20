@@ -86,10 +86,17 @@ struct IndexCommand: AsyncParsableCommand {
         Log.output("   Database: \(databaseURL.path)")
         Log.output("")
 
-        // Initialize database
+        // If database exists and we have samples, delete it for fresh index
+        // This ensures schema updates and clean symbol extraction
+        if FileManager.default.fileExists(atPath: databaseURL.path) {
+            Log.output("🗑️  Removing existing database for fresh index...")
+            try FileManager.default.removeItem(at: databaseURL)
+        }
+
+        // Initialize database (creates fresh with latest schema)
         let db = try await SampleIndex.Database(dbPath: databaseURL)
 
-        // Clear if requested
+        // Clear if requested (redundant now but kept for explicit --clear flag)
         if clear {
             Log.output("🗑️  Clearing existing index...")
             try await db.clearAll()
@@ -166,6 +173,8 @@ struct IndexCommand: AsyncParsableCommand {
         // Final statistics
         let finalProjects = try await db.projectCount()
         let finalFiles = try await db.fileCount()
+        let finalSymbols = try await db.symbolCount()
+        let finalImports = try await db.importCount()
 
         Log.output("")
         Log.output("✅ Indexing complete!")
@@ -173,6 +182,8 @@ struct IndexCommand: AsyncParsableCommand {
         Log.output("   Projects indexed: \(indexed)")
         Log.output("   Total projects: \(finalProjects)")
         Log.output("   Total files: \(finalFiles)")
+        Log.output("   Symbols extracted: \(finalSymbols)")
+        Log.output("   Imports captured: \(finalImports)")
         Log.output("   Duration: \(Int(duration))s")
         Log.output("   Database: \(formatFileSize(databaseURL))")
         Log.output("")

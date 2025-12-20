@@ -37,13 +37,13 @@ public actor DocsResourceProvider: ResourceProvider {
             let metadata = try await getMetadata()
 
             for (url, pageMetadata) in metadata.pages {
-                let uri = "\(Shared.Constants.MCP.appleDocsScheme)\(pageMetadata.framework)/"
+                let uri = "\(Shared.Constants.Search.appleDocsScheme)\(pageMetadata.framework)/"
                     + "\(URLUtilities.filename(from: URL(string: url)!))"
                 let resource = Resource(
                     uri: uri,
                     name: extractTitle(from: url),
-                    description: "\(Shared.Constants.MCP.appleDocsDescriptionPrefix) \(pageMetadata.framework)",
-                    mimeType: Shared.Constants.MCP.mimeTypeMarkdown
+                    description: "\(Shared.Constants.Search.appleDocsDescriptionPrefix) \(pageMetadata.framework)",
+                    mimeType: Shared.Constants.Search.mimeTypeMarkdown
                 )
                 resources.append(resource)
             }
@@ -60,13 +60,13 @@ public actor DocsResourceProvider: ResourceProvider {
                 )
 
                 for file in files where file.pathExtension == "md"
-                    && file.lastPathComponent.hasPrefix(Shared.Constants.MCP.sePrefix) {
+                    && file.lastPathComponent.hasPrefix(Shared.Constants.Search.sePrefix) {
                     let proposalID = file.deletingPathExtension().lastPathComponent
                     let resource = Resource(
-                        uri: "\(Shared.Constants.MCP.swiftEvolutionScheme)\(proposalID)",
+                        uri: "\(Shared.Constants.Search.swiftEvolutionScheme)\(proposalID)",
                         name: proposalID,
-                        description: Shared.Constants.MCP.swiftEvolutionDescription,
-                        mimeType: Shared.Constants.MCP.mimeTypeMarkdown
+                        description: Shared.Constants.Search.swiftEvolutionDescription,
+                        mimeType: Shared.Constants.Search.mimeTypeMarkdown
                     )
                     resources.append(resource)
                 }
@@ -101,7 +101,7 @@ public actor DocsResourceProvider: ResourceProvider {
                 let contents = ResourceContents.text(
                     TextResourceContents(
                         uri: uri,
-                        mimeType: Shared.Constants.MCP.mimeTypeMarkdown,
+                        mimeType: Shared.Constants.Search.mimeTypeMarkdown,
                         text: dbContent
                     )
                 )
@@ -110,7 +110,7 @@ public actor DocsResourceProvider: ResourceProvider {
         }
 
         // Database lookup failed or no index - fall back to filesystem
-        if uri.hasPrefix(Shared.Constants.MCP.appleDocsScheme) {
+        if uri.hasPrefix(Shared.Constants.Search.appleDocsScheme) {
             // Parse URI: apple-docs://framework/filename
             guard let components = parseAppleDocsURI(uri) else {
                 throw ToolError.invalidURI(uri)
@@ -139,7 +139,7 @@ public actor DocsResourceProvider: ResourceProvider {
                 throw ToolError.notFound(uri)
             }
 
-        } else if uri.hasPrefix(Shared.Constants.MCP.swiftEvolutionScheme) {
+        } else if uri.hasPrefix(Shared.Constants.Search.swiftEvolutionScheme) {
             // Parse URI: swift-evolution://SE-NNNN
             guard let proposalID = parseEvolutionURI(uri) else {
                 throw ToolError.invalidURI(uri)
@@ -158,7 +158,7 @@ public actor DocsResourceProvider: ResourceProvider {
             // Read markdown content from filesystem
             markdown = try String(contentsOf: file, encoding: .utf8)
 
-        } else if uri.hasPrefix(Shared.Constants.MCP.appleArchiveScheme) {
+        } else if uri.hasPrefix(Shared.Constants.Search.appleArchiveScheme) {
             // Parse URI: apple-archive://guideUID/filename
             guard let components = parseArchiveURI(uri) else {
                 throw ToolError.invalidURI(uri)
@@ -183,7 +183,7 @@ public actor DocsResourceProvider: ResourceProvider {
         let contents = ResourceContents.text(
             TextResourceContents(
                 uri: uri,
-                mimeType: Shared.Constants.MCP.mimeTypeMarkdown,
+                mimeType: Shared.Constants.Search.mimeTypeMarkdown,
                 text: markdown
             )
         )
@@ -194,16 +194,16 @@ public actor DocsResourceProvider: ResourceProvider {
     public func listResourceTemplates(cursor: String?) async throws -> ListResourceTemplatesResult? {
         let templates = [
             ResourceTemplate(
-                uriTemplate: Shared.Constants.MCP.templateAppleDocs,
-                name: Shared.Constants.MCP.appleDocsTemplateName,
-                description: Shared.Constants.MCP.appleDocsTemplateDescription,
-                mimeType: Shared.Constants.MCP.mimeTypeMarkdown
+                uriTemplate: Shared.Constants.Search.templateAppleDocs,
+                name: Shared.Constants.Search.appleDocsTemplateName,
+                description: Shared.Constants.Search.appleDocsTemplateDescription,
+                mimeType: Shared.Constants.Search.mimeTypeMarkdown
             ),
             ResourceTemplate(
-                uriTemplate: Shared.Constants.MCP.templateSwiftEvolution,
-                name: Shared.Constants.MCP.swiftEvolutionDescription,
-                description: Shared.Constants.MCP.swiftEvolutionTemplateDescription,
-                mimeType: Shared.Constants.MCP.mimeTypeMarkdown
+                uriTemplate: Shared.Constants.Search.templateSwiftEvolution,
+                name: Shared.Constants.Search.swiftEvolutionDescription,
+                description: Shared.Constants.Search.swiftEvolutionTemplateDescription,
+                mimeType: Shared.Constants.Search.mimeTypeMarkdown
             ),
         ]
 
@@ -235,7 +235,8 @@ public actor DocsResourceProvider: ResourceProvider {
         loadMetadata()
 
         guard let metadata else {
-            throw ToolError.noData("No documentation has been crawled yet. Run '\(Shared.Constants.App.commandName) \(Shared.Constants.Command.crawl)' first.")
+            let cmd = "\(Shared.Constants.App.commandName) \(Shared.Constants.Command.crawl)"
+            throw ToolError.noData("No documentation has been crawled yet. Run '\(cmd)' first.")
         }
 
         return metadata
@@ -243,11 +244,11 @@ public actor DocsResourceProvider: ResourceProvider {
 
     private func parseAppleDocsURI(_ uri: String) -> (framework: String, filename: String)? {
         // Expected format: apple-docs://framework/filename
-        guard uri.hasPrefix(Shared.Constants.MCP.appleDocsScheme) else {
+        guard uri.hasPrefix(Shared.Constants.Search.appleDocsScheme) else {
             return nil
         }
 
-        let path = uri.replacingOccurrences(of: Shared.Constants.MCP.appleDocsScheme, with: "")
+        let path = uri.replacingOccurrences(of: Shared.Constants.Search.appleDocsScheme, with: "")
         let components = path.split(separator: "/", maxSplits: 1)
 
         guard components.count == 2 else {
@@ -259,11 +260,11 @@ public actor DocsResourceProvider: ResourceProvider {
 
     private func parseEvolutionURI(_ uri: String) -> String? {
         // Expected format: swift-evolution://SE-NNNN
-        guard uri.hasPrefix(Shared.Constants.MCP.swiftEvolutionScheme) else {
+        guard uri.hasPrefix(Shared.Constants.Search.swiftEvolutionScheme) else {
             return nil
         }
 
-        let proposalID = uri.replacingOccurrences(of: Shared.Constants.MCP.swiftEvolutionScheme, with: "")
+        let proposalID = uri.replacingOccurrences(of: Shared.Constants.Search.swiftEvolutionScheme, with: "")
         return proposalID.isEmpty ? nil : proposalID
     }
 
@@ -297,12 +298,12 @@ public actor DocsResourceProvider: ResourceProvider {
 
             for file in files where file.pathExtension == "md" {
                 let filename = file.deletingPathExtension().lastPathComponent
-                let uri = "\(Shared.Constants.MCP.appleArchiveScheme)\(guideUID)/\(filename)"
+                let uri = "\(Shared.Constants.Search.appleArchiveScheme)\(guideUID)/\(filename)"
                 let resource = Resource(
                     uri: uri,
                     name: filename.replacingOccurrences(of: "-", with: " ").capitalized,
                     description: "Apple Archive documentation",
-                    mimeType: Shared.Constants.MCP.mimeTypeMarkdown
+                    mimeType: Shared.Constants.Search.mimeTypeMarkdown
                 )
                 resources.append(resource)
             }
@@ -313,11 +314,11 @@ public actor DocsResourceProvider: ResourceProvider {
 
     private func parseArchiveURI(_ uri: String) -> (guideUID: String, filename: String)? {
         // Expected format: apple-archive://guideUID/filename
-        guard uri.hasPrefix(Shared.Constants.MCP.appleArchiveScheme) else {
+        guard uri.hasPrefix(Shared.Constants.Search.appleArchiveScheme) else {
             return nil
         }
 
-        let path = uri.replacingOccurrences(of: Shared.Constants.MCP.appleArchiveScheme, with: "")
+        let path = uri.replacingOccurrences(of: Shared.Constants.Search.appleArchiveScheme, with: "")
         let components = path.split(separator: "/", maxSplits: 1)
 
         guard components.count == 2 else {

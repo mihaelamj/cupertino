@@ -128,8 +128,8 @@ extension Core {
                         await logProgressUpdate()
                     }
 
-                    // Recycle WKWebView every 50 pages to prevent memory buildup (#25)
-                    if visited.count % 50 == 0 {
+                    // Recycle WKWebView every N pages to prevent memory buildup (#25)
+                    if visited.count % Shared.Constants.Interval.webViewRecycleEvery == 0 {
                         await recycleWebView()
                     }
                 } catch {
@@ -171,7 +171,7 @@ extension Core {
                     logInfo("🔄 Retry \(attempt)/\(maxRetries) for \(url.lastPathComponent) - recycling WebView")
                     await recycleWebView()
                     // Brief pause before retry
-                    try await Task.sleep(for: .seconds(1))
+                    try await Task.sleep(for: Shared.Constants.Delay.retryPause)
                 }
 
                 do {
@@ -422,8 +422,8 @@ extension Core {
                 "   New: \(stats.newPages) | Updated: \(stats.updatedPages) | Skipped: \(stats.skippedPages)",
                 "   Errors: \(stats.errors)",
                 "   Speed: \(String(format: "%.2f", pagesPerSecond)) pages/sec",
-                "   Elapsed: \(formatDuration(elapsed))",
-                "   ETA: \(formatDuration(etaSeconds))",
+                "   Elapsed: \(Shared.Formatting.formatDurationVerbose(elapsed))",
+                "   ETA: \(Shared.Formatting.formatDurationVerbose(etaSeconds))",
                 "",
             ]
 
@@ -441,27 +441,13 @@ extension Core {
                 "   Updated pages: \(stats.updatedPages)",
                 "   Skipped (unchanged): \(stats.skippedPages)",
                 "   Errors: \(stats.errors)",
-                stats.duration.map { "   Duration: \(formatDuration($0))" } ?? "",
+                stats.duration.map { "   Duration: \(Shared.Formatting.formatDurationVerbose($0))" } ?? "",
                 "",
                 "📁 Output: \(configuration.outputDirectory.path)",
             ]
 
             for message in messages where !message.isEmpty {
                 Log.info(message, category: .crawler)
-            }
-        }
-
-        private func formatDuration(_ seconds: TimeInterval) -> String {
-            let hours = Int(seconds) / 3600
-            let minutes = (Int(seconds) % 3600) / 60
-            let secs = Int(seconds) % 60
-
-            if hours > 0 {
-                return "\(hours)h \(minutes)m \(secs)s"
-            } else if minutes > 0 {
-                return "\(minutes)m \(secs)s"
-            } else {
-                return "\(secs)s"
             }
         }
 

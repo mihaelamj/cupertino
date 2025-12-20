@@ -84,7 +84,7 @@ struct CleanupCommand: AsyncParsableCommand {
 
         let stats = try await cleaner.cleanup { progress in
             let percent = String(format: "%.1f", progress.percentage)
-            let saved = Self.formatBytes(progress.originalSize - progress.cleanedSize)
+            let saved = Shared.Formatting.formatBytes(progress.originalSize - progress.cleanedSize)
             Log.output("   [\(percent)%] \(progress.currentFile) (saved \(saved))")
         }
 
@@ -102,11 +102,11 @@ struct CleanupCommand: AsyncParsableCommand {
         Log.output("   Errors: \(stats.errors)")
         Log.output("   Items to remove: \(stats.totalItemsRemoved)")
         Log.output("")
-        Log.output("   Original size: \(Self.formatBytes(stats.originalTotalSize))")
+        Log.output("   Original size: \(Shared.Formatting.formatBytes(stats.originalTotalSize))")
         if !dryRun {
-            Log.output("   Cleaned size: \(Self.formatBytes(stats.cleanedTotalSize))")
+            Log.output("   Cleaned size: \(Shared.Formatting.formatBytes(stats.cleanedTotalSize))")
             Log.output(
-                "   Space saved: \(Self.formatBytes(stats.spaceSaved)) " +
+                "   Space saved: \(Shared.Formatting.formatBytes(stats.spaceSaved)) " +
                     "(\(String(format: "%.1f", stats.spaceSavedPercentage))%)"
             )
         }
@@ -114,12 +114,5 @@ struct CleanupCommand: AsyncParsableCommand {
         if let duration = stats.duration {
             Log.output("   Duration: \(Int(duration))s")
         }
-    }
-
-    /// Format bytes to human-readable string
-    private static func formatBytes(_ bytes: Int64) -> String {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: bytes)
     }
 }

@@ -115,23 +115,29 @@ struct ServicesTests {
 
 @Suite("Format Configuration Tests")
 struct FormatConfigTests {
-    @Test("CLI default config has expected values")
-    func cliDefaultConfig() {
-        let config = SearchResultFormatConfig.cliDefault
+    @Test("CLI and MCP configs are identical")
+    func configsAreIdentical() {
+        let cli = SearchResultFormatConfig.cliDefault
+        let mcp = SearchResultFormatConfig.mcpDefault
 
-        #expect(config.showScore == false)
-        #expect(config.showWordCount == false)
-        #expect(config.showSource == true)
-        #expect(config.showSeparators == false)
+        // CLI and MCP must produce identical output
+        #expect(cli.showScore == mcp.showScore)
+        #expect(cli.showWordCount == mcp.showWordCount)
+        #expect(cli.showSource == mcp.showSource)
+        #expect(cli.showAvailability == mcp.showAvailability)
+        #expect(cli.showSeparators == mcp.showSeparators)
+        #expect(cli.emptyMessage == mcp.emptyMessage)
     }
 
-    @Test("MCP default config has expected values")
-    func mcpDefaultConfig() {
-        let config = SearchResultFormatConfig.mcpDefault
+    @Test("Shared config has expected values")
+    func sharedConfigValues() {
+        let config = SearchResultFormatConfig.shared
 
         #expect(config.showScore == true)
         #expect(config.showWordCount == true)
         #expect(config.showSource == false)
+        #expect(config.showAvailability == true)
         #expect(config.showSeparators == true)
+        #expect(config.emptyMessage == "_No results found. Try broader search terms._")
     }
 }

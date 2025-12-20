@@ -1,4 +1,5 @@
 import Foundation
+import Shared
 #if canImport(WebKit)
 import WebKit
 #endif
@@ -22,8 +23,8 @@ extension WKWebCrawler {
         ///   - pageLoadTimeout: Maximum time to wait for page load
         ///   - javascriptWaitTime: Time to wait for JavaScript to render content
         public init(
-            pageLoadTimeout: Duration = .seconds(30),
-            javascriptWaitTime: Duration = .seconds(5)
+            pageLoadTimeout: Duration = Shared.Constants.Timeout.pageLoad,
+            javascriptWaitTime: Duration = Shared.Constants.Timeout.javascriptWait
         ) {
             self.pageLoadTimeout = pageLoadTimeout
             self.javascriptWaitTime = javascriptWaitTime

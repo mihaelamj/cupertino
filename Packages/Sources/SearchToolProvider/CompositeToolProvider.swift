@@ -10,12 +10,30 @@ import Shared
 /// Composite tool provider that provides unified search across all documentation sources.
 /// Handles `search_docs` with `source` parameter to search docs, samples, HIG, archive, etc.
 public actor CompositeToolProvider: ToolProvider {
+    // Use service layer for consistency with CLI
+    private let docsService: DocsSearchService?
+    private let sampleService: SampleSearchService?
+
+    // Keep direct access for low-level operations (list frameworks, read document)
     private let searchIndex: Search.Index?
     private let sampleDatabase: SampleIndex.Database?
 
     public init(searchIndex: Search.Index?, sampleDatabase: SampleIndex.Database?) {
         self.searchIndex = searchIndex
         self.sampleDatabase = sampleDatabase
+
+        // Wrap databases with services for search operations
+        if let searchIndex {
+            docsService = DocsSearchService(index: searchIndex)
+        } else {
+            docsService = nil
+        }
+
+        if let sampleDatabase {
+            sampleService = SampleSearchService(database: sampleDatabase)
+        } else {
+            sampleService = nil
+        }
     }
 
     // MARK: - ToolProvider
@@ -26,12 +44,12 @@ public actor CompositeToolProvider: ToolProvider {
         // Unified search tool (replaces search_docs, search_hig, search_all, search_samples)
         if searchIndex != nil || sampleDatabase != nil {
             allTools.append(Tool(
-                name: Shared.Constants.MCP.toolSearch,
-                description: Shared.Constants.MCP.toolSearchDescription,
+                name: Shared.Constants.Search.toolSearch,
+                description: Shared.Constants.Search.toolSearchDescription,
                 inputSchema: JSONSchema(
-                    type: Shared.Constants.MCP.schemaTypeObject,
+                    type: Shared.Constants.Search.schemaTypeObject,
                     properties: nil,
-                    required: [Shared.Constants.MCP.schemaParamQuery]
+                    required: [Shared.Constants.Search.schemaParamQuery]
                 )
             ))
         }
@@ -39,22 +57,22 @@ public actor CompositeToolProvider: ToolProvider {
         // List frameworks tool
         if searchIndex != nil {
             allTools.append(Tool(
-                name: Shared.Constants.MCP.toolListFrameworks,
-                description: Shared.Constants.MCP.toolListFrameworksDescription,
+                name: Shared.Constants.Search.toolListFrameworks,
+                description: Shared.Constants.Search.toolListFrameworksDescription,
                 inputSchema: JSONSchema(
-                    type: Shared.Constants.MCP.schemaTypeObject,
+                    type: Shared.Constants.Search.schemaTypeObject,
                     properties: [:],
                     required: []
                 )
             ))
 
             allTools.append(Tool(
-                name: Shared.Constants.MCP.toolReadDocument,
-                description: Shared.Constants.MCP.toolReadDocumentDescription,
+                name: Shared.Constants.Search.toolReadDocument,
+                description: Shared.Constants.Search.toolReadDocumentDescription,
                 inputSchema: JSONSchema(
-                    type: Shared.Constants.MCP.schemaTypeObject,
+                    type: Shared.Constants.Search.schemaTypeObject,
                     properties: nil,
-                    required: [Shared.Constants.MCP.schemaParamURI]
+                    required: [Shared.Constants.Search.schemaParamURI]
                 )
             ))
         }
@@ -62,35 +80,78 @@ public actor CompositeToolProvider: ToolProvider {
         // Sample code tools
         if sampleDatabase != nil {
             allTools.append(Tool(
-                name: Shared.Constants.MCP.toolListSamples,
-                description: Shared.Constants.MCP.toolListSamplesDescription,
+                name: Shared.Constants.Search.toolListSamples,
+                description: Shared.Constants.Search.toolListSamplesDescription,
                 inputSchema: JSONSchema(
-                    type: Shared.Constants.MCP.schemaTypeObject,
+                    type: Shared.Constants.Search.schemaTypeObject,
                     properties: [:],
                     required: []
                 )
             ))
 
             allTools.append(Tool(
-                name: Shared.Constants.MCP.toolReadSample,
-                description: Shared.Constants.MCP.toolReadSampleDescription,
+                name: Shared.Constants.Search.toolReadSample,
+                description: Shared.Constants.Search.toolReadSampleDescription,
                 inputSchema: JSONSchema(
-                    type: Shared.Constants.MCP.schemaTypeObject,
+                    type: Shared.Constants.Search.schemaTypeObject,
                     properties: nil,
-                    required: [Shared.Constants.MCP.schemaParamProjectId]
+                    required: [Shared.Constants.Search.schemaParamProjectId]
                 )
             ))
 
             allTools.append(Tool(
-                name: Shared.Constants.MCP.toolReadSampleFile,
-                description: Shared.Constants.MCP.toolReadSampleFileDescription,
+                name: Shared.Constants.Search.toolReadSampleFile,
+                description: Shared.Constants.Search.toolReadSampleFileDescription,
                 inputSchema: JSONSchema(
-                    type: Shared.Constants.MCP.schemaTypeObject,
+                    type: Shared.Constants.Search.schemaTypeObject,
                     properties: nil,
                     required: [
-                        Shared.Constants.MCP.schemaParamProjectId,
-                        Shared.Constants.MCP.schemaParamFilePath,
+                        Shared.Constants.Search.schemaParamProjectId,
+                        Shared.Constants.Search.schemaParamFilePath,
                     ]
+                )
+            ))
+        }
+
+        // Semantic search tools (#81)
+        if searchIndex != nil {
+            allTools.append(Tool(
+                name: Shared.Constants.Search.toolSearchSymbols,
+                description: Shared.Constants.Search.toolSearchSymbolsDescription,
+                inputSchema: JSONSchema(
+                    type: Shared.Constants.Search.schemaTypeObject,
+                    properties: nil,
+                    required: []
+                )
+            ))
+
+            allTools.append(Tool(
+                name: Shared.Constants.Search.toolSearchPropertyWrappers,
+                description: Shared.Constants.Search.toolSearchPropertyWrappersDescription,
+                inputSchema: JSONSchema(
+                    type: Shared.Constants.Search.schemaTypeObject,
+                    properties: nil,
+                    required: [Shared.Constants.Search.schemaParamWrapper]
+                )
+            ))
+
+            allTools.append(Tool(
+                name: Shared.Constants.Search.toolSearchConcurrency,
+                description: Shared.Constants.Search.toolSearchConcurrencyDescription,
+                inputSchema: JSONSchema(
+                    type: Shared.Constants.Search.schemaTypeObject,
+                    properties: nil,
+                    required: [Shared.Constants.Search.schemaParamPattern]
+                )
+            ))
+
+            allTools.append(Tool(
+                name: Shared.Constants.Search.toolSearchConformances,
+                description: Shared.Constants.Search.toolSearchConformancesDescription,
+                inputSchema: JSONSchema(
+                    type: Shared.Constants.Search.schemaTypeObject,
+                    properties: nil,
+                    required: [Shared.Constants.Search.schemaParamProtocol]
                 )
             ))
         }
@@ -102,18 +163,26 @@ public actor CompositeToolProvider: ToolProvider {
         let args = ArgumentExtractor(arguments)
 
         switch name {
-        case Shared.Constants.MCP.toolSearch:
+        case Shared.Constants.Search.toolSearch:
             return try await handleSearch(args: args)
-        case Shared.Constants.MCP.toolListFrameworks:
+        case Shared.Constants.Search.toolListFrameworks:
             return try await handleListFrameworks()
-        case Shared.Constants.MCP.toolReadDocument:
+        case Shared.Constants.Search.toolReadDocument:
             return try await handleReadDocument(args: args)
-        case Shared.Constants.MCP.toolListSamples:
+        case Shared.Constants.Search.toolListSamples:
             return try await handleListSamples(args: args)
-        case Shared.Constants.MCP.toolReadSample:
+        case Shared.Constants.Search.toolReadSample:
             return try await handleReadSample(args: args)
-        case Shared.Constants.MCP.toolReadSampleFile:
+        case Shared.Constants.Search.toolReadSampleFile:
             return try await handleReadSampleFile(args: args)
+        case Shared.Constants.Search.toolSearchSymbols:
+            return try await handleSearchSymbols(args: args)
+        case Shared.Constants.Search.toolSearchPropertyWrappers:
+            return try await handleSearchPropertyWrappers(args: args)
+        case Shared.Constants.Search.toolSearchConcurrency:
+            return try await handleSearchConcurrency(args: args)
+        case Shared.Constants.Search.toolSearchConformances:
+            return try await handleSearchConformances(args: args)
         default:
             throw ToolError.unknownTool(name)
         }
@@ -122,10 +191,10 @@ public actor CompositeToolProvider: ToolProvider {
     // MARK: - Unified Search Handler
 
     private func handleSearch(args: ArgumentExtractor) async throws -> CallToolResult {
-        let query: String = try args.require(Shared.Constants.MCP.schemaParamQuery)
-        let source = args.optional(Shared.Constants.MCP.schemaParamSource)
-        let framework = args.optional(Shared.Constants.MCP.schemaParamFramework)
-        let language = args.optional(Shared.Constants.MCP.schemaParamLanguage)
+        let query: String = try args.require(Shared.Constants.Search.schemaParamQuery)
+        let source = args.optional(Shared.Constants.Search.schemaParamSource)
+        let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
+        let language = args.optional(Shared.Constants.Search.schemaParamLanguage)
         let limit = args.limit()
         let includeArchive = args.includeArchive()
         let minIOS = args.minIOS()
@@ -135,15 +204,10 @@ public actor CompositeToolProvider: ToolProvider {
         let minVisionOS = args.minVisionOS()
 
         // Route based on source parameter
+        // Default (nil) now searches ALL sources for better results (#81)
         switch source {
         case Shared.Constants.SourcePrefix.samples, Shared.Constants.SourcePrefix.appleSampleCode:
             return try await handleSearchSamples(
-                query: query,
-                framework: framework,
-                limit: limit
-            )
-        case Shared.Constants.SourcePrefix.all:
-            return try await handleSearchAll(
                 query: query,
                 framework: framework,
                 limit: limit
@@ -154,8 +218,13 @@ public actor CompositeToolProvider: ToolProvider {
                 framework: framework,
                 limit: limit
             )
-        default:
-            // Default: search documentation index
+        case Shared.Constants.SourcePrefix.appleDocs,
+             Shared.Constants.SourcePrefix.appleArchive,
+             Shared.Constants.SourcePrefix.swiftEvolution,
+             Shared.Constants.SourcePrefix.swiftOrg,
+             Shared.Constants.SourcePrefix.swiftBook,
+             Shared.Constants.SourcePrefix.packages:
+            // Specific source requested: search only that source
             return try await handleSearchDocs(
                 query: query,
                 source: source,
@@ -168,6 +237,13 @@ public actor CompositeToolProvider: ToolProvider {
                 minTvOS: minTvOS,
                 minWatchOS: minWatchOS,
                 minVisionOS: minVisionOS
+            )
+        default:
+            // Default (nil or "all"): search ALL sources for comprehensive results
+            return try await handleSearchAll(
+                query: query,
+                framework: framework,
+                limit: limit
             )
         }
     }
@@ -187,65 +263,24 @@ public actor CompositeToolProvider: ToolProvider {
         minWatchOS: String?,
         minVisionOS: String?
     ) async throws -> CallToolResult {
-        guard let searchIndex else {
+        guard let docsService else {
             throw ToolError.invalidArgument("source", "Documentation index not available")
         }
 
-        // Fetch more results if filtering by version (to account for filtering)
-        let hasVersionFilter = minIOS != nil || minMacOS != nil || minTvOS != nil ||
-            minWatchOS != nil || minVisionOS != nil
-        let fetchLimit = hasVersionFilter
-            ? min(limit * 3, Shared.Constants.Limit.maxSearchLimit)
-            : limit
-
-        // Perform search
-        var results = try await searchIndex.search(
-            query: query,
+        // Use service layer (same as CLI)
+        let results = try await docsService.search(SearchQuery(
+            text: query,
             source: source,
             framework: framework,
             language: language,
-            limit: fetchLimit,
-            includeArchive: includeArchive
-        )
-
-        // Apply version filters if specified
-        if let minIOS {
-            results = results.filter { result in
-                guard let resultVersion = result.minimumiOS else { return false }
-                return Self.isVersion(resultVersion, lessThanOrEqualTo: minIOS)
-            }
-        }
-
-        if let minMacOS {
-            results = results.filter { result in
-                guard let resultVersion = result.minimumMacOS else { return false }
-                return Self.isVersion(resultVersion, lessThanOrEqualTo: minMacOS)
-            }
-        }
-
-        if let minTvOS {
-            results = results.filter { result in
-                guard let resultVersion = result.minimumTvOS else { return false }
-                return Self.isVersion(resultVersion, lessThanOrEqualTo: minTvOS)
-            }
-        }
-
-        if let minWatchOS {
-            results = results.filter { result in
-                guard let resultVersion = result.minimumWatchOS else { return false }
-                return Self.isVersion(resultVersion, lessThanOrEqualTo: minWatchOS)
-            }
-        }
-
-        if let minVisionOS {
-            results = results.filter { result in
-                guard let resultVersion = result.minimumVisionOS else { return false }
-                return Self.isVersion(resultVersion, lessThanOrEqualTo: minVisionOS)
-            }
-        }
-
-        // Trim to requested limit after filtering
-        results = Array(results.prefix(limit))
+            limit: limit,
+            includeArchive: includeArchive,
+            minimumiOS: minIOS,
+            minimumMacOS: minMacOS,
+            minimumTvOS: minTvOS,
+            minimumWatchOS: minWatchOS,
+            minimumVisionOS: minVisionOS
+        ))
 
         // Fetch teaser results from all sources user didn't search
         let teasers = await fetchAllTeasers(
@@ -276,27 +311,24 @@ public actor CompositeToolProvider: ToolProvider {
                 showSource: false,
                 showAvailability: true,
                 showSeparators: true,
-                emptyMessage: Shared.Constants.MCP.messageNoResults + "\n\n" + Shared.Constants.MCP.tipTryArchive
+                emptyMessage: Shared.Constants.Search.messageNoResults + "\n\n" + Shared.Constants.Search.tipTryArchive
             )
         }
 
         let formatter = MarkdownSearchResultFormatter(
             query: query,
             filters: filters,
-            config: config
+            config: config,
+            teasers: teasers
         )
-        var markdown = formatter.format(results)
-
-        // Append teaser sections if available (using shared formatter)
-        let teaserFormatter = TeaserMarkdownFormatter()
-        markdown += teaserFormatter.format(teasers)
+        let markdown = formatter.format(results)
 
         return CallToolResult(content: [.text(TextContent(text: markdown))])
     }
 
     // MARK: - Teaser Results
 
-    // Uses shared TeaserResults from Services module
+    // Uses shared TeaserService from Services module
 
     /// Fetch teaser results from all sources the user didn't search
     private func fetchAllTeasers(
@@ -305,86 +337,13 @@ public actor CompositeToolProvider: ToolProvider {
         currentSource: String?,
         includeArchive: Bool
     ) async -> Services.TeaserResults {
-        var teasers = Services.TeaserResults()
-        let source = currentSource ?? Shared.Constants.SourcePrefix.appleDocs
-
-        // Samples teaser (unless searching samples)
-        if source != Shared.Constants.SourcePrefix.samples,
-           source != Shared.Constants.SourcePrefix.appleSampleCode {
-            teasers.samples = await fetchTeaserSamples(query: query, framework: framework)
-        }
-
-        // Archive teaser (unless searching archive or include_archive is set)
-        if !includeArchive, source != Shared.Constants.SourcePrefix.appleArchive {
-            teasers.archive = await fetchTeaserFromSource(
-                query: query,
-                sourceType: Shared.Constants.SourcePrefix.appleArchive
-            )
-        }
-
-        // HIG teaser (unless searching HIG)
-        if source != Shared.Constants.SourcePrefix.hig {
-            teasers.hig = await fetchTeaserFromSource(query: query, sourceType: Shared.Constants.SourcePrefix.hig)
-        }
-
-        // Swift Evolution teaser (unless searching swift-evolution)
-        if source != Shared.Constants.SourcePrefix.swiftEvolution {
-            teasers.swiftEvolution = await fetchTeaserFromSource(
-                query: query,
-                sourceType: Shared.Constants.SourcePrefix.swiftEvolution
-            )
-        }
-
-        // Swift.org teaser (unless searching swift-org)
-        if source != Shared.Constants.SourcePrefix.swiftOrg {
-            teasers.swiftOrg = await fetchTeaserFromSource(query: query, sourceType: Shared.Constants.SourcePrefix.swiftOrg)
-        }
-
-        // Swift Book teaser (unless searching swift-book)
-        if source != Shared.Constants.SourcePrefix.swiftBook {
-            teasers.swiftBook = await fetchTeaserFromSource(
-                query: query,
-                sourceType: Shared.Constants.SourcePrefix.swiftBook
-            )
-        }
-
-        // Packages teaser (unless searching packages)
-        if source != Shared.Constants.SourcePrefix.packages {
-            teasers.packages = await fetchTeaserFromSource(query: query, sourceType: Shared.Constants.SourcePrefix.packages)
-        }
-
-        return teasers
-    }
-
-    /// Fetch a few sample projects as teaser (returns empty if unavailable)
-    private func fetchTeaserSamples(query: String, framework: String?) async -> [SampleIndex.Project] {
-        guard let sampleDatabase else { return [] }
-        do {
-            return try await sampleDatabase.searchProjects(
-                query: query,
-                framework: framework,
-                limit: Shared.Constants.Limit.teaserLimit
-            )
-        } catch {
-            return []
-        }
-    }
-
-    /// Fetch teaser results from a specific source
-    private func fetchTeaserFromSource(query: String, sourceType: String) async -> [Search.Result] {
-        guard let searchIndex else { return [] }
-        do {
-            return try await searchIndex.search(
-                query: query,
-                source: sourceType,
-                framework: nil,
-                language: nil,
-                limit: Shared.Constants.Limit.teaserLimit,
-                includeArchive: sourceType == Shared.Constants.SourcePrefix.appleArchive
-            )
-        } catch {
-            return []
-        }
+        let teaserService = TeaserService(searchIndex: searchIndex, sampleDatabase: sampleDatabase)
+        return await teaserService.fetchAllTeasers(
+            query: query,
+            framework: framework,
+            currentSource: currentSource,
+            includeArchive: includeArchive
+        )
     }
 
     // MARK: - Sample Code Search
@@ -394,21 +353,28 @@ public actor CompositeToolProvider: ToolProvider {
         framework: String?,
         limit: Int
     ) async throws -> CallToolResult {
-        guard let sampleDatabase else {
+        guard let sampleService else {
             throw ToolError.invalidArgument("source", "Sample code database not available")
         }
 
-        // Search projects
-        let projects = try await sampleDatabase.searchProjects(query: query, framework: framework, limit: limit)
+        // Use service layer (same as CLI)
+        let result = try await sampleService.search(SampleQuery(
+            text: query,
+            framework: framework,
+            searchFiles: true,
+            limit: limit
+        ))
 
-        // Also search files
-        let files = try await sampleDatabase.searchFiles(query: query, projectId: nil, limit: limit)
-
-        // Build result
-        let result = SampleSearchResult(projects: projects, files: files)
+        // Fetch teaser results from other sources
+        let teasers = await fetchAllTeasers(
+            query: query,
+            framework: framework,
+            currentSource: Shared.Constants.SourcePrefix.samples,
+            includeArchive: false
+        )
 
         // Use shared formatter
-        let formatter = SampleSearchMarkdownFormatter(query: query, framework: framework)
+        let formatter = SampleSearchMarkdownFormatter(query: query, framework: framework, teasers: teasers)
         let markdown = formatter.format(result)
 
         return CallToolResult(content: [.text(TextContent(text: markdown))])
@@ -421,23 +387,31 @@ public actor CompositeToolProvider: ToolProvider {
         framework: String?,
         limit: Int
     ) async throws -> CallToolResult {
-        guard let searchIndex else {
+        guard let docsService else {
             throw ToolError.invalidArgument("source", "Documentation index not available")
         }
 
-        // Search HIG content only
-        let results = try await searchIndex.search(
-            query: query,
+        // Use service layer (same as CLI)
+        let results = try await docsService.search(SearchQuery(
+            text: query,
             source: Shared.Constants.SourcePrefix.hig,
             framework: framework,
             language: nil,
             limit: limit,
             includeArchive: false
+        ))
+
+        // Fetch teaser results from other sources
+        let teasers = await fetchAllTeasers(
+            query: query,
+            framework: framework,
+            currentSource: Shared.Constants.SourcePrefix.hig,
+            includeArchive: false
         )
 
         // Use shared formatter
         let higQuery = HIGQuery(text: query, platform: nil, category: nil)
-        let formatter = HIGMarkdownFormatter(query: higQuery, config: .mcpDefault)
+        let formatter = HIGMarkdownFormatter(query: higQuery, config: .mcpDefault, teasers: teasers)
         let markdown = formatter.format(results)
 
         return CallToolResult(content: [.text(TextContent(text: markdown))])
@@ -450,130 +424,21 @@ public actor CompositeToolProvider: ToolProvider {
         framework: String?,
         limit: Int
     ) async throws -> CallToolResult {
-        // Search ALL 8 sources
-        var docResults: [Search.Result] = []
-        var archiveResults: [Search.Result] = []
-        var sampleResults: [SampleIndex.Project] = []
-        var higResults: [Search.Result] = []
-        var swiftEvolutionResults: [Search.Result] = []
-        var swiftOrgResults: [Search.Result] = []
-        var swiftBookResults: [Search.Result] = []
-        var packagesResults: [Search.Result] = []
+        // Use UnifiedSearchService to search all 8 sources
+        let unifiedService = UnifiedSearchService(searchIndex: searchIndex, sampleDatabase: sampleDatabase)
+        let input = await unifiedService.searchAll(
+            query: query,
+            framework: framework,
+            limit: limit
+        )
 
-        // Apple Documentation (modern)
-        if let searchIndex {
-            docResults = await (try? searchIndex.search(
-                query: query,
-                source: Shared.Constants.SourcePrefix.appleDocs,
-                framework: framework,
-                language: nil,
-                limit: limit,
-                includeArchive: false
-            )) ?? []
-        }
-
-        // Apple Archive (legacy guides)
-        if let searchIndex {
-            archiveResults = await (try? searchIndex.search(
-                query: query,
-                source: Shared.Constants.SourcePrefix.appleArchive,
-                framework: framework,
-                language: nil,
-                limit: limit,
-                includeArchive: true
-            )) ?? []
-        }
-
-        // Sample Code Projects
-        if let sampleDatabase {
-            sampleResults = await (try? sampleDatabase.searchProjects(
-                query: query,
-                framework: framework,
-                limit: limit
-            )) ?? []
-        }
-
-        // Human Interface Guidelines
-        if let searchIndex {
-            higResults = await (try? searchIndex.search(
-                query: query,
-                source: Shared.Constants.SourcePrefix.hig,
-                framework: nil,
-                language: nil,
-                limit: limit,
-                includeArchive: false
-            )) ?? []
-        }
-
-        // Swift Evolution
-        if let searchIndex {
-            swiftEvolutionResults = await (try? searchIndex.search(
-                query: query,
-                source: Shared.Constants.SourcePrefix.swiftEvolution,
-                framework: nil,
-                language: nil,
-                limit: limit,
-                includeArchive: false
-            )) ?? []
-        }
-
-        // Swift.org
-        if let searchIndex {
-            swiftOrgResults = await (try? searchIndex.search(
-                query: query,
-                source: Shared.Constants.SourcePrefix.swiftOrg,
-                framework: nil,
-                language: nil,
-                limit: limit,
-                includeArchive: false
-            )) ?? []
-        }
-
-        // Swift Book
-        if let searchIndex {
-            swiftBookResults = await (try? searchIndex.search(
-                query: query,
-                source: Shared.Constants.SourcePrefix.swiftBook,
-                framework: nil,
-                language: nil,
-                limit: limit,
-                includeArchive: false
-            )) ?? []
-        }
-
-        // Swift Packages
-        if let searchIndex {
-            packagesResults = await (try? searchIndex.search(
-                query: query,
-                source: Shared.Constants.SourcePrefix.packages,
-                framework: nil,
-                language: nil,
-                limit: limit,
-                includeArchive: false
-            )) ?? []
-        }
-
-        // Use shared formatter
+        // Use shared formatter (identical to CLI --format markdown output)
         let formatter = UnifiedSearchMarkdownFormatter(
             query: query,
             framework: framework,
             config: .mcpDefault
         )
-        let input = UnifiedSearchInput(
-            docResults: docResults,
-            archiveResults: archiveResults,
-            sampleResults: sampleResults,
-            higResults: higResults,
-            swiftEvolutionResults: swiftEvolutionResults,
-            swiftOrgResults: swiftOrgResults,
-            swiftBookResults: swiftBookResults,
-            packagesResults: packagesResults
-        )
-        var markdown = formatter.format(input)
-
-        // Tip for AI about narrowing/expanding search
-        markdown += "\n\n---\n\n"
-        markdown += "_To narrow results, use `source` parameter: apple-docs, samples, hig, apple-archive, swift-evolution, swift-org, swift-book, packages_"
+        let markdown = formatter.format(input)
 
         return CallToolResult(content: [.text(TextContent(text: markdown))])
     }
@@ -601,14 +466,14 @@ public actor CompositeToolProvider: ToolProvider {
             throw ToolError.invalidArgument("index", "Documentation index not available")
         }
 
-        let uri: String = try args.require(Shared.Constants.MCP.schemaParamURI)
+        let uri: String = try args.require(Shared.Constants.Search.schemaParamURI)
         let formatString = args.format()
-        let format: Search.Index.DocumentFormat = formatString == Shared.Constants.MCP.formatValueMarkdown
+        let format: Search.Index.DocumentFormat = formatString == Shared.Constants.Search.formatValueMarkdown
             ? .markdown : .json
 
         guard let documentContent = try await searchIndex.getDocumentContent(uri: uri, format: format) else {
             throw ToolError.invalidArgument(
-                Shared.Constants.MCP.schemaParamURI,
+                Shared.Constants.Search.schemaParamURI,
                 "Document not found: \(uri)"
             )
         }
@@ -623,7 +488,7 @@ public actor CompositeToolProvider: ToolProvider {
             throw ToolError.invalidArgument("database", "Sample code database not available")
         }
 
-        let framework = args.optional(Shared.Constants.MCP.schemaParamFramework)
+        let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
         let limit = args.limit(default: 50)
 
         let projects = try await sampleDatabase.listProjects(framework: framework, limit: limit)
@@ -662,11 +527,11 @@ public actor CompositeToolProvider: ToolProvider {
             throw ToolError.invalidArgument("database", "Sample code database not available")
         }
 
-        let projectId: String = try args.require(Shared.Constants.MCP.schemaParamProjectId)
+        let projectId: String = try args.require(Shared.Constants.Search.schemaParamProjectId)
 
         guard let project = try await sampleDatabase.getProject(id: projectId) else {
             throw ToolError.invalidArgument(
-                Shared.Constants.MCP.schemaParamProjectId,
+                Shared.Constants.Search.schemaParamProjectId,
                 "Project not found: \(projectId)"
             )
         }
@@ -682,7 +547,7 @@ public actor CompositeToolProvider: ToolProvider {
         markdown += "## Metadata\n\n"
         markdown += "- **Frameworks:** \(project.frameworks.joined(separator: ", "))\n"
         markdown += "- **Files:** \(project.fileCount)\n"
-        markdown += "- **Size:** \(formatBytes(project.totalSize))\n"
+        markdown += "- **Size:** \(Shared.Formatting.formatBytes(project.totalSize))\n"
         if !project.webURL.isEmpty {
             markdown += "- **Apple Developer:** \(project.webURL)\n"
         }
@@ -716,12 +581,12 @@ public actor CompositeToolProvider: ToolProvider {
             throw ToolError.invalidArgument("database", "Sample code database not available")
         }
 
-        let projectId: String = try args.require(Shared.Constants.MCP.schemaParamProjectId)
-        let filePath: String = try args.require(Shared.Constants.MCP.schemaParamFilePath)
+        let projectId: String = try args.require(Shared.Constants.Search.schemaParamProjectId)
+        let filePath: String = try args.require(Shared.Constants.Search.schemaParamFilePath)
 
         guard let file = try await sampleDatabase.getFile(projectId: projectId, path: filePath) else {
             throw ToolError.invalidArgument(
-                Shared.Constants.MCP.schemaParamFilePath,
+                Shared.Constants.Search.schemaParamFilePath,
                 "File not found: \(filePath) in project \(projectId)"
             )
         }
@@ -729,7 +594,7 @@ public actor CompositeToolProvider: ToolProvider {
         var markdown = "# \(file.filename)\n\n"
         markdown += "**Project:** `\(file.projectId)`\n"
         markdown += "**Path:** `\(file.path)`\n"
-        markdown += "**Size:** \(formatBytes(file.size))\n\n"
+        markdown += "**Size:** \(Shared.Formatting.formatBytes(file.size))\n\n"
 
         let language = languageForExtension(file.fileExtension)
 
@@ -743,31 +608,179 @@ public actor CompositeToolProvider: ToolProvider {
         return CallToolResult(content: [.text(TextContent(text: markdown))])
     }
 
-    // MARK: - Version Comparison
+    // MARK: - Semantic Search Handlers (#81)
 
-    /// Compare version strings (e.g., "13.0" vs "15.0")
-    /// Returns true if lhs <= rhs (API was introduced before or at target version)
-    private static func isVersion(_ lhs: String, lessThanOrEqualTo rhs: String) -> Bool {
-        let lhsComponents = lhs.split(separator: ".").compactMap { Int($0) }
-        let rhsComponents = rhs.split(separator: ".").compactMap { Int($0) }
-
-        for idx in 0..<max(lhsComponents.count, rhsComponents.count) {
-            let lhsValue = idx < lhsComponents.count ? lhsComponents[idx] : 0
-            let rhsValue = idx < rhsComponents.count ? rhsComponents[idx] : 0
-
-            if lhsValue < rhsValue { return true }
-            if lhsValue > rhsValue { return false }
+    private func handleSearchSymbols(args: ArgumentExtractor) async throws -> CallToolResult {
+        guard let searchIndex else {
+            throw ToolError.invalidArgument("index", "Documentation index not available")
         }
-        return true // Equal versions
+
+        let query = args.optional(Shared.Constants.Search.schemaParamQuery)
+        let kind = args.optional(Shared.Constants.Search.schemaParamKind)
+        let isAsync = args.optionalBool(Shared.Constants.Search.schemaParamIsAsync)
+        let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
+        let limit = args.limit()
+
+        let results = try await searchIndex.searchSymbols(
+            query: query,
+            kind: kind,
+            isAsync: isAsync,
+            framework: framework,
+            limit: limit
+        )
+
+        let markdown = formatSymbolResults(
+            results: results,
+            title: "Symbol Search Results",
+            query: query,
+            filters: ["kind": kind, "is_async": isAsync.map { String($0) }, "framework": framework]
+        )
+
+        return CallToolResult(content: [.text(TextContent(text: markdown))])
+    }
+
+    private func handleSearchPropertyWrappers(args: ArgumentExtractor) async throws -> CallToolResult {
+        guard let searchIndex else {
+            throw ToolError.invalidArgument("index", "Documentation index not available")
+        }
+
+        let wrapper: String = try args.require(Shared.Constants.Search.schemaParamWrapper)
+        let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
+        let limit = args.limit()
+
+        let results = try await searchIndex.searchPropertyWrappers(
+            wrapper: wrapper,
+            framework: framework,
+            limit: limit
+        )
+
+        let normalizedWrapper = wrapper.hasPrefix("@") ? wrapper : "@\(wrapper)"
+        let markdown = formatSymbolResults(
+            results: results,
+            title: "Property Wrapper: \(normalizedWrapper)",
+            query: wrapper,
+            filters: ["wrapper": wrapper, "framework": framework]
+        )
+
+        return CallToolResult(content: [.text(TextContent(text: markdown))])
+    }
+
+    private func handleSearchConcurrency(args: ArgumentExtractor) async throws -> CallToolResult {
+        guard let searchIndex else {
+            throw ToolError.invalidArgument("index", "Documentation index not available")
+        }
+
+        let pattern: String = try args.require(Shared.Constants.Search.schemaParamPattern)
+        let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
+        let limit = args.limit()
+
+        let results = try await searchIndex.searchConcurrencyPatterns(
+            pattern: pattern,
+            framework: framework,
+            limit: limit
+        )
+
+        let markdown = formatSymbolResults(
+            results: results,
+            title: "Concurrency Pattern: \(pattern)",
+            query: pattern,
+            filters: ["pattern": pattern, "framework": framework]
+        )
+
+        return CallToolResult(content: [.text(TextContent(text: markdown))])
+    }
+
+    private func handleSearchConformances(args: ArgumentExtractor) async throws -> CallToolResult {
+        guard let searchIndex else {
+            throw ToolError.invalidArgument("index", "Documentation index not available")
+        }
+
+        let protocolName: String = try args.require(Shared.Constants.Search.schemaParamProtocol)
+        let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
+        let limit = args.limit()
+
+        let results = try await searchIndex.searchConformances(
+            protocolName: protocolName,
+            framework: framework,
+            limit: limit
+        )
+
+        let markdown = formatSymbolResults(
+            results: results,
+            title: "Protocol Conformance: \(protocolName)",
+            query: protocolName,
+            filters: ["protocol": protocolName, "framework": framework]
+        )
+
+        return CallToolResult(content: [.text(TextContent(text: markdown))])
+    }
+
+    /// Format symbol search results as markdown
+    private func formatSymbolResults(
+        results: [Search.Index.SymbolSearchResult],
+        title: String,
+        query: String?,
+        filters: [String: String?]
+    ) -> String {
+        var markdown = "# \(title)\n\n"
+
+        // Show active filters
+        let activeFilters = filters.compactMapValues { $0 }
+        if !activeFilters.isEmpty {
+            markdown += "**Filters:** "
+            markdown += activeFilters.map { "\($0.key)=\($0.value)" }.joined(separator: ", ")
+            markdown += "\n\n"
+        }
+
+        if results.isEmpty {
+            markdown += "_No symbols found matching your criteria._\n\n"
+            markdown += "💡 **Tips:**\n"
+            markdown += "- Try a broader search pattern\n"
+            markdown += "- Check available symbol kinds: struct, class, actor, enum, protocol, function, property\n"
+            return markdown
+        }
+
+        markdown += "Found **\(results.count)** symbols:\n\n"
+
+        // Group by document for better organization
+        var byDocument: [String: [(Search.Index.SymbolSearchResult, Int)]] = [:]
+        for (index, result) in results.enumerated() {
+            byDocument[result.docUri, default: []].append((result, index))
+        }
+
+        for (docUri, symbols) in byDocument.sorted(by: { $0.key < $1.key }) {
+            let firstSymbol = symbols[0].0
+            markdown += "### \(firstSymbol.docTitle)\n"
+            markdown += "_Framework: \(firstSymbol.framework.isEmpty ? "unknown" : firstSymbol.framework)_ "
+            markdown += "| URI: `\(docUri)`\n\n"
+
+            for (symbol, _) in symbols {
+                markdown += "- **\(symbol.symbolKind)** `\(symbol.symbolName)`"
+                if symbol.isAsync {
+                    markdown += " `async`"
+                }
+                if let sig = symbol.signature, !sig.isEmpty {
+                    let truncatedSig = sig.count > 60 ? String(sig.prefix(60)) + "..." : sig
+                    markdown += "\n  - Signature: `\(truncatedSig)`"
+                }
+                if let attrs = symbol.attributes, !attrs.isEmpty {
+                    markdown += "\n  - Attributes: \(attrs)"
+                }
+                if let conforms = symbol.conformances, !conforms.isEmpty {
+                    markdown += "\n  - Conforms to: \(conforms)"
+                }
+                markdown += "\n"
+            }
+            markdown += "\n"
+        }
+
+        markdown += "---\n"
+        markdown += "💡 Use `read_document` with the URI to get the full documentation.\n"
+
+        return markdown
     }
 
     // MARK: - Helpers
-
-    private func formatBytes(_ bytes: Int) -> String {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: Int64(bytes))
-    }
 
     private func languageForExtension(_ ext: String) -> String {
         switch ext.lowercased() {

@@ -1,4 +1,5 @@
 import Foundation
+import Shared
 
 // MARK: - Animated Progress Display
 
@@ -40,7 +41,7 @@ public struct AnimatedProgress: Sendable {
         }
 
         // Time info
-        let elapsedStr = formatDuration(progress.elapsed)
+        let elapsedStr = Shared.Formatting.formatDuration(progress.elapsed)
         line += " | \(elapsedStr)"
 
         return line
@@ -67,19 +68,6 @@ public struct AnimatedProgress: Sendable {
         let emptyStr = String(repeating: "░", count: empty)
 
         return "[\(filledStr)\(emptyStr)]"
-    }
-
-    private func formatDuration(_ interval: TimeInterval) -> String {
-        let totalSeconds = Int(interval)
-        let hours = totalSeconds / 3600
-        let minutes = (totalSeconds % 3600) / 60
-        let seconds = totalSeconds % 60
-
-        if hours > 0 {
-            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
-        } else {
-            return String(format: "%02d:%02d", minutes, seconds)
-        }
     }
 
     private func phaseEmoji(_ phase: RemoteIndexState.Phase) -> String {

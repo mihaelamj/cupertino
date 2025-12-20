@@ -1,5 +1,6 @@
 import Foundation
 import MCP
+import Shared
 
 // MARK: - Mock AI Agent
 
@@ -76,8 +77,7 @@ actor MCPClient {
         // List available tools
         try await listTools()
 
-        // Call search tool (try search_docs for cupertino, search_nodes for memory server)
-        // For now, assume cupertino and call search_docs
+        // Call unified search tool
         try await callSearchTool(query: "SwiftUI")
 
         // List available resources
@@ -85,7 +85,8 @@ actor MCPClient {
 
         // Read one of the search results
         // Use a known URI from the indexed documentation
-        try await readResource(uri: "apple-docs://swiftui/documentation_swiftui_view")
+        let testURI = Shared.Constants.Search.appleDocsScheme + "swiftui/documentation_swiftui_view"
+        try await readResource(uri: testURI)
 
         // Shutdown
         try await shutdown()
@@ -164,19 +165,25 @@ actor MCPClient {
     }
 
     private func findCupertinoExecutable() -> String {
-        // Try common locations
-        let locations = [
+        // ONLY use local build - never fall back to installed version
+        // This ensures we're testing the current code, not an installed version
+        let buildLocations = [
             ".build/debug/cupertino",
             ".build/release/cupertino",
-            "/usr/local/bin/cupertino",
         ]
 
-        for location in locations where FileManager.default.fileExists(atPath: location) {
+        for location in buildLocations where FileManager.default.fileExists(atPath: location) {
             return location
         }
 
-        // Default to debug build
-        return ".build/debug/cupertino"
+        // Fail with clear error if not built
+        print("❌ ERROR: No local build found!")
+        print("   MockAIAgent requires a local build to test current code.")
+        print("   Run: swift build")
+        print("   Then: swift run mock-ai-agent")
+        print()
+        print("   (Not using /usr/local/bin/cupertino to avoid testing installed version)")
+        fatalError("Build cupertino first: swift build")
     }
 
     private func cleanup() {
@@ -200,7 +207,7 @@ actor MCPClient {
             id: .int(nextMessageID()),
             method: "initialize",
             params: InitializeParams(
-                protocolVersion: "2024-11-05",
+                protocolVersion: MCPProtocolVersion,
                 capabilities: ClientCapabilities(
                     experimental: nil,
                     sampling: nil,
@@ -313,7 +320,8 @@ actor MCPClient {
     }
 
     private func callSearchTool(query: String) async throws {
-        print("📨 CLIENT → SERVER: tools/call (search_docs)")
+        typealias MCP = Shared.Constants.Search
+        print("📨 CLIENT → SERVER: tools/call (\(MCP.toolSearch))")
         print("-".repeating(80))
         print("   Query: \"\(query)\"")
         print()
@@ -327,7 +335,7 @@ actor MCPClient {
             jsonrpc: "2.0",
             id: .int(nextMessageID()),
             method: "tools/call",
-            params: CallToolParams(name: "search_docs", arguments: arguments)
+            params: CallToolParams(name: MCP.toolSearch, arguments: arguments)
         )
 
         logRequestJSON(request)

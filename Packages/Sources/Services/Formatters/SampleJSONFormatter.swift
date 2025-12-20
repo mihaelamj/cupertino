@@ -2,6 +2,57 @@ import Foundation
 import SampleIndex
 import Shared
 
+// MARK: - Shared JSON Output Types
+
+/// Shared project output for JSON encoding
+private struct ProjectJSONOutput: Encodable {
+    let id: String
+    let title: String
+    let description: String
+    let frameworks: [String]
+    let fileCount: Int
+
+    init(from project: SampleIndex.Project) {
+        id = project.id
+        title = project.title
+        description = project.description
+        frameworks = project.frameworks
+        fileCount = project.fileCount
+    }
+}
+
+/// File output for JSON encoding (from SampleIndex.File)
+private struct FileJSONOutput: Encodable {
+    let projectId: String
+    let path: String
+    let filename: String
+    let content: String
+
+    init(from file: SampleIndex.File) {
+        projectId = file.projectId
+        path = file.path
+        filename = file.filename
+        content = file.content
+    }
+}
+
+/// File search result output for JSON encoding (from FileSearchResult)
+private struct FileSearchJSONOutput: Encodable {
+    let projectId: String
+    let path: String
+    let filename: String
+    let snippet: String
+    let rank: Double
+
+    init(from result: SampleIndex.Database.FileSearchResult) {
+        projectId = result.projectId
+        path = result.path
+        filename = result.filename
+        snippet = result.snippet
+        rank = result.rank
+    }
+}
+
 // MARK: - Sample Search JSON Formatter
 
 /// Formats sample search results as JSON
@@ -18,58 +69,18 @@ public struct SampleSearchJSONFormatter: ResultFormatter {
         struct Output: Encodable {
             let query: String
             let framework: String?
-            let projects: [ProjectOutput]
-            let files: [FileOutput]
-        }
-
-        struct ProjectOutput: Encodable {
-            let id: String
-            let title: String
-            let description: String
-            let frameworks: [String]
-            let fileCount: Int
-        }
-
-        struct FileOutput: Encodable {
-            let projectId: String
-            let path: String
-            let filename: String
-            let snippet: String
-            let rank: Double
+            let projects: [ProjectJSONOutput]
+            let files: [FileSearchJSONOutput]
         }
 
         let output = Output(
             query: query,
             framework: framework,
-            projects: result.projects.map {
-                ProjectOutput(
-                    id: $0.id,
-                    title: $0.title,
-                    description: $0.description,
-                    frameworks: $0.frameworks,
-                    fileCount: $0.fileCount
-                )
-            },
-            files: result.files.map {
-                FileOutput(
-                    projectId: $0.projectId,
-                    path: $0.path,
-                    filename: $0.filename,
-                    snippet: $0.snippet,
-                    rank: $0.rank
-                )
-            }
+            projects: result.projects.map { ProjectJSONOutput(from: $0) },
+            files: result.files.map { FileSearchJSONOutput(from: $0) }
         )
 
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-
-        do {
-            let data = try encoder.encode(output)
-            return String(data: data, encoding: .utf8) ?? "{}"
-        } catch {
-            return "{ \"error\": \"Failed to encode JSON: \(error.localizedDescription)\" }"
-        }
+        return encodeJSON(output)
     }
 }
 
@@ -80,33 +91,8 @@ public struct SampleListJSONFormatter: ResultFormatter {
     public init() {}
 
     public func format(_ projects: [SampleIndex.Project]) -> String {
-        struct ProjectOutput: Encodable {
-            let id: String
-            let title: String
-            let description: String
-            let frameworks: [String]
-            let fileCount: Int
-        }
-
-        let output = projects.map {
-            ProjectOutput(
-                id: $0.id,
-                title: $0.title,
-                description: $0.description,
-                frameworks: $0.frameworks,
-                fileCount: $0.fileCount
-            )
-        }
-
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-
-        do {
-            let data = try encoder.encode(output)
-            return String(data: data, encoding: .utf8) ?? "[]"
-        } catch {
-            return "{ \"error\": \"Failed to encode JSON: \(error.localizedDescription)\" }"
-        }
+        let output = projects.map { ProjectJSONOutput(from: $0) }
+        return encodeJSON(output)
     }
 }
 
@@ -117,31 +103,7 @@ public struct SampleProjectJSONFormatter: ResultFormatter {
     public init() {}
 
     public func format(_ project: SampleIndex.Project) -> String {
-        struct ProjectOutput: Encodable {
-            let id: String
-            let title: String
-            let description: String
-            let frameworks: [String]
-            let fileCount: Int
-        }
-
-        let output = ProjectOutput(
-            id: project.id,
-            title: project.title,
-            description: project.description,
-            frameworks: project.frameworks,
-            fileCount: project.fileCount
-        )
-
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-
-        do {
-            let data = try encoder.encode(output)
-            return String(data: data, encoding: .utf8) ?? "{}"
-        } catch {
-            return "{ \"error\": \"Failed to encode JSON: \(error.localizedDescription)\" }"
-        }
+        encodeJSON(ProjectJSONOutput(from: project))
     }
 }
 
@@ -152,28 +114,21 @@ public struct SampleFileJSONFormatter: ResultFormatter {
     public init() {}
 
     public func format(_ file: SampleIndex.File) -> String {
-        struct FileOutput: Encodable {
-            let projectId: String
-            let path: String
-            let filename: String
-            let content: String
-        }
+        encodeJSON(FileJSONOutput(from: file))
+    }
+}
 
-        let output = FileOutput(
-            projectId: file.projectId,
-            path: file.path,
-            filename: file.filename,
-            content: file.content
-        )
+// MARK: - JSON Encoding Helper
 
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+/// Encodes any Encodable value to pretty-printed JSON string
+private func encodeJSON(_ value: some Encodable, fallback: String = "{}") -> String {
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
 
-        do {
-            let data = try encoder.encode(output)
-            return String(data: data, encoding: .utf8) ?? "{}"
-        } catch {
-            return "{ \"error\": \"Failed to encode JSON: \(error.localizedDescription)\" }"
-        }
+    do {
+        let data = try encoder.encode(value)
+        return String(data: data, encoding: .utf8) ?? fallback
+    } catch {
+        return "{ \"error\": \"Failed to encode JSON: \(error.localizedDescription)\" }"
     }
 }

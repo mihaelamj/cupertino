@@ -25,6 +25,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Services"),
     .singleTargetLibrary("Resources"),
     .singleTargetLibrary("Availability"),
+    .singleTargetLibrary("ASTIndexer"),
     .singleTargetLibrary("MCPSupport"),
     .singleTargetLibrary("SearchToolProvider"),
     .singleTargetLibrary("MCPClient"),
@@ -49,6 +50,8 @@ let allProducts = baseProducts + macOSOnlyProducts
 let deps: [Package.Dependency] = [
     // Swift Argument Parser (cross-platform CLI tool)
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
+    // SwiftSyntax for AST parsing (#81)
+    .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0"),
 ]
 
 // -------------------------------------------------------------
@@ -118,7 +121,7 @@ let targets: [Target] = {
 
     let searchTarget = Target.target(
         name: "Search",
-        dependencies: ["Shared", "Logging", "Core"]
+        dependencies: ["Shared", "Logging", "Core", "ASTIndexer"]
     )
     let searchTestsTarget = Target.testTarget(
         name: "SearchTests",
@@ -127,7 +130,7 @@ let targets: [Target] = {
 
     let sampleIndexTarget = Target.target(
         name: "SampleIndex",
-        dependencies: ["Shared", "Logging"]
+        dependencies: ["Shared", "Logging", "ASTIndexer"]
     )
     let sampleIndexTestsTarget = Target.testTarget(
         name: "SampleIndexTests",
@@ -186,6 +189,20 @@ let targets: [Target] = {
     let availabilityTestsTarget = Target.testTarget(
         name: "AvailabilityTests",
         dependencies: ["Availability", "TestSupport"]
+    )
+
+    let astIndexerTarget = Target.target(
+        name: "ASTIndexer",
+        dependencies: [
+            "Shared",
+            "Logging",
+            .product(name: "SwiftSyntax", package: "swift-syntax"),
+            .product(name: "SwiftParser", package: "swift-syntax"),
+        ]
+    )
+    let astIndexerTestsTarget = Target.testTarget(
+        name: "ASTIndexerTests",
+        dependencies: ["ASTIndexer", "Search", "SampleIndex", "TestSupport"]
     )
 
     let cliTarget = Target.executableTarget(
@@ -309,6 +326,8 @@ let targets: [Target] = {
         remoteSyncTestsTarget,
         availabilityTarget,
         availabilityTestsTarget,
+        astIndexerTarget,
+        astIndexerTestsTarget,
         testSupportTarget,
         cliTarget,
         tuiTarget,

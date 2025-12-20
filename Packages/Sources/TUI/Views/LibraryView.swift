@@ -59,7 +59,7 @@ struct LibraryView {
         let icon = "*"
         let name = artifact.name
         let itemsText = "\(artifact.itemCount) items"
-        let sizeText = formatBytes(artifact.sizeBytes)
+        let sizeText = Shared.Formatting.formatBytes(artifact.sizeBytes)
 
         // Calculate widths (no emojis)
         let iconWidth = icon.count
@@ -87,21 +87,5 @@ struct LibraryView {
         }
 
         return line
-    }
-
-    private func formatBytes(_ bytes: Int64) -> String {
-        let kilobytes = Double(bytes) / 1024
-        let megabytes = kilobytes / 1024
-        let gigabytes = megabytes / 1024
-
-        if gigabytes >= 1 {
-            return String(format: "%.1f GB", gigabytes)
-        } else if megabytes >= 1 {
-            return String(format: "%.1f MB", megabytes)
-        } else if kilobytes >= 1 {
-            return String(format: "%.0f KB", kilobytes)
-        } else {
-            return "\(bytes) B"
-        }
     }
 }

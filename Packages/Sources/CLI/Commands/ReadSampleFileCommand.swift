@@ -74,17 +74,9 @@ struct ReadSampleFileCommand: AsyncParsableCommand {
     private func outputText(_ file: SampleIndex.File) {
         Log.output("// File: \(file.path)")
         Log.output("// Project: \(file.projectId)")
-        Log.output("// Size: \(formatBytes(file.size))")
+        Log.output("// Size: \(Shared.Formatting.formatBytes(file.size))")
         Log.output("")
         Log.output(file.content)
-    }
-
-    // MARK: - Helpers
-
-    private func formatBytes(_ bytes: Int) -> String {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: Int64(bytes))
     }
 }
 

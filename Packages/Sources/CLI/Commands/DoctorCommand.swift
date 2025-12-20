@@ -48,6 +48,9 @@ struct DoctorCommand: AsyncParsableCommand {
         // Check documentation directories
         allChecks = checkDocumentationDirectories() && allChecks
 
+        // Check packages
+        await checkPackages()
+
         // Check search database
         allChecks = await checkSearchDatabase() && allChecks
 
@@ -68,7 +71,7 @@ struct DoctorCommand: AsyncParsableCommand {
         Log.output("✅ MCP Server")
         Log.output("   ✓ Server can initialize")
         Log.output("   ✓ Transport: stdio")
-        Log.output("   ✓ Protocol version: 2024-11-05")
+        Log.output("   ✓ Protocol version: \(MCPProtocolVersion)")
         Log.output("")
         return true
     }
@@ -146,10 +149,9 @@ struct DoctorCommand: AsyncParsableCommand {
             let searchIndex = try await Search.Index(dbPath: searchDBURL)
             let frameworks = try await searchIndex.listFrameworks()
             let fileSize = try FileManager.default.attributesOfItem(atPath: searchDBURL.path)[.size] as? UInt64 ?? 0
-            let sizeMB = Double(fileSize) / 1048576.0
 
             Log.output("   ✓ Database: \(searchDBURL.path)")
-            Log.output("   ✓ Size: \(String(format: "%.1f", sizeMB)) MB")
+            Log.output("   ✓ Size: \(Shared.Formatting.formatBytes(Int64(fileSize)))")
             Log.output("   ✓ Frameworks: \(frameworks.count)")
             Log.output("")
             return true
@@ -159,6 +161,96 @@ struct DoctorCommand: AsyncParsableCommand {
             Log.output("")
             return false
         }
+    }
+
+    private func checkPackages() async {
+        let packagesDir = Shared.Constants.defaultPackagesDirectory
+        let userSelectionsURL = Shared.Constants.defaultBaseDirectory
+            .appendingPathComponent(Shared.Constants.FileName.selectedPackages)
+
+        Log.output("📦 Swift Packages")
+
+        // Check user selections file
+        if FileManager.default.fileExists(atPath: userSelectionsURL.path) {
+            let selectedURLs = loadUserSelectedPackageURLs(from: userSelectionsURL)
+            Log.output("   ✓ User selections: \(userSelectionsURL.path)")
+            Log.output("     \(selectedURLs.count) packages selected")
+        } else {
+            Log.output("   ⚠  User selections: not configured")
+            Log.output("     → Use TUI to select packages, or will use bundled defaults")
+        }
+
+        // Check downloaded READMEs
+        let selectedCount = FileManager.default.fileExists(atPath: userSelectionsURL.path)
+            ? loadUserSelectedPackageURLs(from: userSelectionsURL).count
+            : 0
+
+        if FileManager.default.fileExists(atPath: packagesDir.path) {
+            let readmeCount = countPackageREADMEs(in: packagesDir)
+            if readmeCount > 0 {
+                Log.output("   ✓ Downloaded READMEs: \(readmeCount) packages")
+                Log.output("     \(packagesDir.path)")
+                // Warn about orphaned READMEs
+                if selectedCount > 0, readmeCount > selectedCount {
+                    let orphanCount = readmeCount - selectedCount
+                    Log.output("   ⚠  Orphaned READMEs: \(orphanCount) (no longer selected)")
+                }
+            } else {
+                Log.output("   ⚠  Package docs: directory exists but no READMEs")
+                Log.output("     → Run: cupertino fetch --type package-docs")
+            }
+        } else {
+            Log.output("   ⚠  Package docs: not downloaded")
+            Log.output("     → Run: cupertino fetch --type package-docs")
+        }
+
+        // Show priority packages source
+        let allPackages = await PriorityPackagesCatalog.allPackages
+        let appleCount = await PriorityPackagesCatalog.applePackages.count
+        let ecosystemCount = await PriorityPackagesCatalog.ecosystemPackages.count
+        Log.output("   ℹ  Priority packages: \(allPackages.count) total")
+        Log.output("     Apple: \(appleCount), Ecosystem: \(ecosystemCount)")
+
+        Log.output("")
+    }
+
+    private func loadUserSelectedPackageURLs(from fileURL: URL) -> Set<String> {
+        guard let data = try? Data(contentsOf: fileURL),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let tiers = json["tiers"] as? [String: Any] else {
+            return []
+        }
+
+        var urls = Set<String>()
+        for (_, tierValue) in tiers {
+            if let tier = tierValue as? [String: Any],
+               let packages = tier["packages"] as? [[String: Any]] {
+                for pkg in packages {
+                    if let url = pkg["url"] as? String {
+                        urls.insert(url)
+                    }
+                }
+            }
+        }
+        return urls
+    }
+
+    private func countPackageREADMEs(in directory: URL) -> Int {
+        guard let enumerator = FileManager.default.enumerator(
+            at: directory,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) else {
+            return 0
+        }
+
+        var count = 0
+        for case let fileURL as URL in enumerator {
+            if fileURL.lastPathComponent.lowercased() == "readme.md" {
+                count += 1
+            }
+        }
+        return count
     }
 
     private func checkResourceProviders() -> Bool {

@@ -39,16 +39,28 @@ extension Shared {
             /// Configuration file
             public static let config = "config.json"
 
+            /// TUI configuration file
+            public static let tuiConfig = "tui-config.json"
+
+            /// Application log file
+            public static let logFile = "cupertino.log"
+
             /// Search database file
             public static let searchDatabase = "search.db"
+
+            /// Samples database file
+            public static let samplesDatabase = "samples.db"
 
             // MARK: Package Data Files
 
             /// Swift packages with GitHub stars data
             public static let packagesWithStars = "swift-packages-with-stars.json"
 
-            /// Priority packages list
+            /// Priority packages list (bundled)
             public static let priorityPackages = "priority-packages.json"
+
+            /// User-selected packages file
+            public static let selectedPackages = "selected-packages.json"
 
             /// Package fetch checkpoint file
             public static let checkpoint = "checkpoint.json"
@@ -144,7 +156,7 @@ extension Shared {
             public static let userAgent = "CupertinoCrawler/1.0"
 
             /// Current version
-            public static let version = "0.7.0"
+            public static let version = "0.8.0"
         }
 
         // MARK: - Display Names
@@ -269,6 +281,127 @@ extension Shared {
                 hig,
                 all,
             ]
+
+            // MARK: - Source Display Names
+
+            /// Display name for Apple Documentation
+            public static let nameAppleDocs = "Apple Documentation"
+            /// Display name for Sample Code
+            public static let nameSamples = "Sample Code"
+            /// Display name for Human Interface Guidelines
+            public static let nameHIG = "Human Interface Guidelines"
+            /// Display name for Apple Archive
+            public static let nameArchive = "Apple Archive"
+            /// Display name for Swift Evolution
+            public static let nameSwiftEvolution = "Swift Evolution"
+            /// Display name for Swift.org
+            public static let nameSwiftOrg = "Swift.org"
+            /// Display name for Swift Book
+            public static let nameSwiftBook = "Swift Book"
+            /// Display name for Swift Packages
+            public static let namePackages = "Swift Packages"
+
+            // MARK: - Source Emojis
+
+            /// Emoji for Apple Documentation
+            public static let emojiAppleDocs = "📚"
+            /// Emoji for Sample Code
+            public static let emojiSamples = "📦"
+            /// Emoji for Human Interface Guidelines
+            public static let emojiHIG = "🎨"
+            /// Emoji for Apple Archive
+            public static let emojiArchive = "📜"
+            /// Emoji for Swift Evolution
+            public static let emojiSwiftEvolution = "🔄"
+            /// Emoji for Swift.org
+            public static let emojiSwiftOrg = "🦅"
+            /// Emoji for Swift Book
+            public static let emojiSwiftBook = "📖"
+            /// Emoji for Swift Packages
+            public static let emojiPackages = "📦"
+
+            // MARK: - Source Info (Unified Metadata)
+
+            /// Complete metadata for a search source
+            public struct SourceInfo: Sendable {
+                public let key: String
+                public let name: String
+                public let emoji: String
+
+                public init(key: String, name: String, emoji: String) {
+                    self.key = key
+                    self.name = name
+                    self.emoji = emoji
+                }
+            }
+
+            /// Apple Documentation source info
+            public static let infoAppleDocs = SourceInfo(
+                key: appleDocs,
+                name: nameAppleDocs,
+                emoji: emojiAppleDocs
+            )
+
+            /// Apple Archive source info
+            public static let infoArchive = SourceInfo(
+                key: appleArchive,
+                name: nameArchive,
+                emoji: emojiArchive
+            )
+
+            /// Sample Code source info
+            public static let infoSamples = SourceInfo(
+                key: samples,
+                name: nameSamples,
+                emoji: emojiSamples
+            )
+
+            /// Human Interface Guidelines source info
+            public static let infoHIG = SourceInfo(
+                key: hig,
+                name: nameHIG,
+                emoji: emojiHIG
+            )
+
+            /// Swift Evolution source info
+            public static let infoSwiftEvolution = SourceInfo(
+                key: swiftEvolution,
+                name: nameSwiftEvolution,
+                emoji: emojiSwiftEvolution
+            )
+
+            /// Swift.org source info
+            public static let infoSwiftOrg = SourceInfo(
+                key: swiftOrg,
+                name: nameSwiftOrg,
+                emoji: emojiSwiftOrg
+            )
+
+            /// Swift Book source info
+            public static let infoSwiftBook = SourceInfo(
+                key: swiftBook,
+                name: nameSwiftBook,
+                emoji: emojiSwiftBook
+            )
+
+            /// Swift Packages source info
+            public static let infoPackages = SourceInfo(
+                key: packages,
+                name: namePackages,
+                emoji: emojiPackages
+            )
+
+            /// All source infos in display order
+            public static let allSourceInfos: [SourceInfo] = [
+                infoAppleDocs,
+                infoArchive,
+                infoSamples,
+                infoHIG,
+                infoSwiftEvolution,
+                infoSwiftOrg,
+                infoSwiftBook,
+                infoPackages,
+            ]
         }
 
         // MARK: - URLs
@@ -301,6 +434,22 @@ extension Shared {
 
             /// Swift Book Documentation (hosted at docs.swift.org)
             public static let swiftBook = "https://docs.swift.org/swift-book/documentation/the-swift-programming-language/"
+
+            /// Swift Book base URL (without specific path)
+            public static let swiftBookBase = "https://docs.swift.org/swift-book"
+
+            /// Swift.org base URL (without path)
+            public static let swiftOrgBase = "https://swift.org"
+
+            // MARK: Swift Evolution
+
+            /// Swift Evolution Proposals on GitHub
+            public static let swiftEvolution = "https://github.com/swiftlang/swift-evolution"
+
+            // MARK: Swift Package Index
+
+            /// Swift Package Index
+            public static let swiftPackageIndex = "https://swiftpackageindex.com"
 
             // MARK: GitHub
 
@@ -384,11 +533,15 @@ extension Shared {
         public enum EnvVar {
             /// GitHub token environment variable
             public static let githubToken = "GITHUB_TOKEN"
+
+            /// Cupertino docs token environment variable (for database releases)
+            public static let cupertinoDocsToken = "CUPERTINO_DOCS_TOKEN"
         }
 
-        // MARK: - MCP Server
+        // MARK: - Search Constants
 
-        public enum MCP {
+        /// Search-related constants shared by CLI and MCP
+        public enum Search {
             // MARK: Resource URI Schemes
 
             /// Apple documentation resource URI scheme
@@ -424,6 +577,20 @@ extension Shared {
 
             /// Read sample file tool name
             public static let toolReadSampleFile = "read_sample_file"
+
+            // MARK: Semantic Search Tool Names (#81)
+
+            /// Search symbols tool name (semantic code search)
+            public static let toolSearchSymbols = "search_symbols"
+
+            /// Search property wrappers tool name
+            public static let toolSearchPropertyWrappers = "search_property_wrappers"
+
+            /// Search concurrency patterns tool name
+            public static let toolSearchConcurrency = "search_concurrency"
+
+            /// Search protocol conformances tool name
+            public static let toolSearchConformances = "search_conformances"
 
             // MARK: Resource Template URIs
 
@@ -468,8 +635,16 @@ extension Shared {
             Search Apple documentation and Swift Evolution proposals by keywords. \
             Returns a ranked list of relevant documents with URIs that can be read using resources/read.
 
-            **Source options** (use `source` parameter):
-            - apple-docs: Modern Apple API documentation (default)
+            **By default, searches ALL sources** (docs, samples, HIG, etc.) for comprehensive results. \
+            Use `source` parameter to narrow to a specific source.
+
+            **Semantic search:** Includes AST-extracted symbols from Swift source code. \
+            Find @Observable classes, async functions, View conformances, protocol conformances, etc. \
+            Works across both documentation and sample code.
+
+            **Source options** (use `source` parameter to narrow scope):
+            - (default): Search ALL sources at once
+            - apple-docs: Modern Apple API documentation only
             - samples: Sample code projects with working examples
             - hig: Human Interface Guidelines
             - apple-archive: Legacy guides (Core Animation, Quartz 2D, KVO/KVC)
@@ -477,7 +652,6 @@ extension Shared {
             - swift-org: Swift.org documentation
             - swift-book: The Swift Programming Language book
             - packages: Swift package documentation
-            - all: Search ALL sources in one call (recommended for comprehensive results)
 
             **IMPORTANT:** For foundational topics (Core Animation, Quartz 2D, KVO/KVC, threading), \
             use source=apple-archive. For working code examples, use source=samples.
@@ -520,6 +694,82 @@ extension Shared {
             public static let toolReadSampleFileDescription = """
             Read a specific source file from a sample code project. \
             Requires project_id and file_path parameters. File paths are relative to project root.
+            """
+
+            // MARK: Semantic Search Tool Descriptions (#81)
+
+            /// Search symbols tool description
+            public static let toolSearchSymbolsDescription = """
+            Search Swift symbols by type and name pattern. Uses SwiftSyntax AST extraction. \
+            Find structs, classes, actors, protocols, functions, properties by kind and name.
+
+            **Symbol kinds:** struct, class, actor, enum, protocol, extension, function, property, typealias
+
+            **Parameters:**
+            - query: Symbol name pattern (partial match supported)
+            - kind: Filter by symbol kind (optional)
+            - is_async: Filter async functions only (optional)
+            - framework: Filter by framework (optional)
+            - limit: Maximum results (default 20)
+
+            **Examples:**
+            - Find all actors: kind=actor
+            - Find async functions: is_async=true
+            - Find View structs: query=View, kind=struct
+            """
+
+            /// Search property wrappers tool description
+            public static let toolSearchPropertyWrappersDescription = """
+            Find Swift property wrapper usage patterns across documentation and samples. \
+            Essential for discovering SwiftUI state management patterns.
+
+            **Common wrappers:** @State, @Binding, @StateObject, @ObservedObject, @Observable, \
+            @Environment, @EnvironmentObject, @Published, @AppStorage, @MainActor, @Sendable
+
+            **Parameters:**
+            - wrapper: Property wrapper name (with or without @)
+            - framework: Filter by framework (optional)
+            - limit: Maximum results (default 20)
+
+            **Examples:**
+            - Find @Observable usage: wrapper=Observable
+            - Find @MainActor usage: wrapper=MainActor
+            """
+
+            /// Search concurrency patterns tool description
+            public static let toolSearchConcurrencyDescription = """
+            Find Swift concurrency patterns: async/await, actors, Sendable conformances. \
+            Discover real-world concurrency usage in Apple documentation and samples.
+
+            **Pattern options:** async, actor, sendable, mainactor, task, asyncsequence
+
+            **Parameters:**
+            - pattern: Concurrency pattern to search for
+            - framework: Filter by framework (optional)
+            - limit: Maximum results (default 20)
+
+            **Examples:**
+            - Find async functions: pattern=async
+            - Find actor declarations: pattern=actor
+            - Find Sendable types: pattern=sendable
+            """
+
+            /// Search conformances tool description
+            public static let toolSearchConformancesDescription = """
+            Find types by protocol conformance. Discover how protocols are implemented \
+            across Apple documentation and sample code.
+
+            **Common protocols:** View, Codable, Hashable, Equatable, Identifiable, \
+            ObservableObject, Sendable, AsyncSequence, Error
+
+            **Parameters:**
+            - protocol: Protocol name to search for
+            - framework: Filter by framework (optional)
+            - limit: Maximum results (default 20)
+
+            **Examples:**
+            - Find View conformances: protocol=View
+            - Find Sendable types: protocol=Sendable
             """
 
             // MARK: JSON Schema
@@ -581,6 +831,23 @@ extension Shared {
             /// JSON Schema parameter: min_visionos
             public static let schemaParamMinVisionOS = "min_visionos"
 
+            // MARK: Semantic Search Parameters (#81)
+
+            /// JSON Schema parameter: kind (symbol kind)
+            public static let schemaParamKind = "kind"
+
+            /// JSON Schema parameter: is_async (async functions filter)
+            public static let schemaParamIsAsync = "is_async"
+
+            /// JSON Schema parameter: wrapper (property wrapper name)
+            public static let schemaParamWrapper = "wrapper"
+
+            /// JSON Schema parameter: pattern (concurrency pattern)
+            public static let schemaParamPattern = "pattern"
+
+            /// JSON Schema parameter: protocol (protocol conformance)
+            public static let schemaParamProtocol = "protocol"
+
             /// Format value: json
             public static let formatValueJSON = "json"
 
@@ -599,9 +866,11 @@ extension Shared {
 
             /// No results found message
             public static let messageNoResults = """
-            _No results found. Try different keywords or check available frameworks using `list_frameworks`._
+            _No results found. Try different keywords or check available frameworks \
+            using `list_frameworks`._
 
-            💡 **Try other sources:** Use `source` parameter: samples, hig, apple-archive, swift-evolution, swift-org, swift-book, packages, or `all`.
+            💡 **Try other sources:** Use `source` parameter: samples, hig, apple-archive, \
+            swift-evolution, swift-org, swift-book, packages, or `all`.
             """
 
             /// No frameworks found message
@@ -627,8 +896,10 @@ extension Shared {
             """
 
             /// Tip for platform availability filters
-            public static let tipPlatformFilters =
-                "💡 **Tip:** Filter by platform: `min_ios`, `min_macos`, `min_tvos`, `min_watchos`, `min_visionos`"
+            public static let tipPlatformFilters = """
+            💡 **Tip:** Filter by platform: `\(schemaParamMinIOS)`, `\(schemaParamMinMacOS)`, \
+            `\(schemaParamMinTvOS)`, `\(schemaParamMinWatchOS)`, `\(schemaParamMinVisionOS)`
+            """
 
             /// All available source values (excluding 'all')
             public static let availableSources: [String] = [
@@ -651,6 +922,13 @@ extension Shared {
             /// Comprehensive tips showing all available search capabilities
             public static let tipSearchCapabilities = """
             💡 **Dig deeper:** Use `source` parameter to search: \(availableSources.joined(separator: ", ")), or `all`.
+            """
+
+            /// Tip for semantic code search tools (#81)
+            public static let tipSemanticSearch = """
+            🔍 **AST search:** Use `\(toolSearchSymbols)`, `\(toolSearchPropertyWrappers)`, \
+            `\(toolSearchConcurrency)`, or `\(toolSearchConformances)` for semantic code \
+            discovery via AST extraction.
             """
 
             /// Generate tip showing other sources for a specific search
@@ -739,6 +1017,10 @@ extension Shared {
             /// Delay between archive page fetches
             /// Rationale: Respectful crawling of Apple's archive servers
             public static let archivePage: Duration = .milliseconds(500)
+
+            /// Pause before retry after failure
+            /// Rationale: Allow transient issues to resolve
+            public static let retryPause: Duration = .seconds(1)
         }
 
         /// Timeout values for operations
@@ -750,6 +1032,14 @@ extension Shared {
             /// Maximum time to wait for WKWebView navigation
             /// Rationale: Matches page load timeout for consistency
             public static let webViewNavigation: Duration = .seconds(30)
+
+            /// Time to wait for JavaScript execution
+            /// Rationale: Allow JS to populate dynamic content
+            public static let javascriptWait: Duration = .seconds(5)
+
+            /// Time to wait for JavaScript in HIG SPA
+            /// Rationale: HIG pages are simpler, 3s is sufficient
+            public static let higJavascriptWait: Duration = .seconds(3)
         }
 
         // MARK: - Intervals
@@ -763,6 +1053,10 @@ extension Shared {
             /// Log progress every N items
             /// Rationale: Enough to show progress without spamming logs
             public static let progressLogEvery: Int = 50
+
+            /// Recycle WKWebView every N pages to prevent memory buildup
+            /// Rationale: Prevents WebKit memory leaks during long crawl sessions
+            public static let webViewRecycleEvery: Int = 50
         }
 
         // MARK: - Content Limits
@@ -937,10 +1231,18 @@ extension Shared {
             /// Default maximum number of pages to crawl
             public static let defaultMaxPages = 15000
 
+            // MARK: File Size Limits
+
+            /// Maximum file size for indexing (1 MiB)
+            public static let maxIndexableFileSize = 1048576
+
             // MARK: Search Limits
 
             /// Default search result limit
             public static let defaultSearchLimit = 20
+
+            /// Default list result limit (for listing samples, etc.)
+            public static let defaultListLimit = 50
 
             /// Maximum search result limit
             public static let maxSearchLimit = 100
@@ -952,6 +1254,9 @@ extension Shared {
 
             /// Number of top packages to display
             public static let topPackagesDisplay = 20
+
+            /// Maximum length for summary text in search results
+            public static let summaryTruncationLength = 800
         }
 
         // MARK: - Database Schema

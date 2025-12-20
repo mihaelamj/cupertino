@@ -77,7 +77,7 @@ public struct ArgumentExtractor: Sendable {
 
     /// Extract a limit argument, clamped to the max search limit
     public func limit(
-        key: String = Shared.Constants.MCP.schemaParamLimit,
+        key: String = Shared.Constants.Search.schemaParamLimit,
         default defaultLimit: Int = Shared.Constants.Limit.defaultSearchLimit
     ) -> Int {
         let requested = optional(key, default: defaultLimit)
@@ -86,50 +86,50 @@ public struct ArgumentExtractor: Sendable {
 
     /// Extract a format argument for document output
     public func format(
-        key: String = Shared.Constants.MCP.schemaParamFormat,
-        default defaultFormat: String = Shared.Constants.MCP.formatValueJSON
+        key: String = Shared.Constants.Search.schemaParamFormat,
+        default defaultFormat: String = Shared.Constants.Search.formatValueJSON
     ) -> String {
         optional(key, default: defaultFormat)
     }
 
     /// Check if include_archive flag is set
     public func includeArchive(
-        key: String = Shared.Constants.MCP.schemaParamIncludeArchive
+        key: String = Shared.Constants.Search.schemaParamIncludeArchive
     ) -> Bool {
         optional(key, default: false)
     }
 
     /// Extract min_ios version filter
     public func minIOS(
-        key: String = Shared.Constants.MCP.schemaParamMinIOS
+        key: String = Shared.Constants.Search.schemaParamMinIOS
     ) -> String? {
         optional(key)
     }
 
     /// Extract min_macos version filter
     public func minMacOS(
-        key: String = Shared.Constants.MCP.schemaParamMinMacOS
+        key: String = Shared.Constants.Search.schemaParamMinMacOS
     ) -> String? {
         optional(key)
     }
 
     /// Extract min_tvos version filter
     public func minTvOS(
-        key: String = Shared.Constants.MCP.schemaParamMinTvOS
+        key: String = Shared.Constants.Search.schemaParamMinTvOS
     ) -> String? {
         optional(key)
     }
 
     /// Extract min_watchos version filter
     public func minWatchOS(
-        key: String = Shared.Constants.MCP.schemaParamMinWatchOS
+        key: String = Shared.Constants.Search.schemaParamMinWatchOS
     ) -> String? {
         optional(key)
     }
 
     /// Extract min_visionos version filter
     public func minVisionOS(
-        key: String = Shared.Constants.MCP.schemaParamMinVisionOS
+        key: String = Shared.Constants.Search.schemaParamMinVisionOS
     ) -> String? {
         optional(key)
     }

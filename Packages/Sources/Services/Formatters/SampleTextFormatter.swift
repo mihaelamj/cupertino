@@ -8,10 +8,12 @@ import Shared
 public struct SampleSearchTextFormatter: ResultFormatter {
     private let query: String
     private let framework: String?
+    private let teasers: TeaserResults?
 
-    public init(query: String, framework: String? = nil) {
+    public init(query: String, framework: String? = nil, teasers: TeaserResults? = nil) {
         self.query = query
         self.framework = framework
+        self.teasers = teasers
     }
 
     public func format(_ result: SampleSearchResult) -> String {
@@ -38,7 +40,8 @@ public struct SampleSearchTextFormatter: ResultFormatter {
                 output += "    Files: \(project.fileCount)\n"
 
                 if !project.description.isEmpty {
-                    output += "    \(project.description.prefix(200))...\n"
+                    let maxLen = Shared.Constants.Limit.summaryTruncationLength
+                    output += "    \(project.description.truncated(to: maxLen))\n"
                 }
 
                 output += "\n"
@@ -58,7 +61,9 @@ public struct SampleSearchTextFormatter: ResultFormatter {
             }
         }
 
-        output += "Tip: Use 'cupertino read-sample <project_id>' to view project details"
+        // Footer: teasers, tips, and guidance
+        let footer = SearchFooter.singleSource(Shared.Constants.SourcePrefix.samples, teasers: teasers)
+        output += footer.formatText()
 
         return output
     }
@@ -88,6 +93,10 @@ public struct SampleListTextFormatter: ResultFormatter {
             output += "    Files: \(project.fileCount)\n\n"
         }
 
+        // Footer: tips and guidance
+        let footer = SearchFooter.singleSource(Shared.Constants.SourcePrefix.samples)
+        output += footer.formatText()
+
         return output
     }
 }
@@ -107,6 +116,10 @@ public struct SampleProjectTextFormatter: ResultFormatter {
         if !project.description.isEmpty {
             output += "Description:\n\(project.description)\n"
         }
+
+        // Footer: tips and guidance
+        let footer = SearchFooter.singleSource(Shared.Constants.SourcePrefix.samples)
+        output += footer.formatText()
 
         return output
     }

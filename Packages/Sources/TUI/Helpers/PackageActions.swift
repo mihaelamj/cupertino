@@ -26,7 +26,8 @@ func openCurrentPackageInBrowser(state: AppState) {
 
 /// User-writable location for selected packages: ~/.cupertino/selected-packages.json
 private var userPackageSelectionsURL: URL {
-    Shared.Constants.defaultBaseDirectory.appendingPathComponent("selected-packages.json")
+    Shared.Constants.defaultBaseDirectory
+        .appendingPathComponent(Shared.Constants.FileName.selectedPackages)
 }
 
 /// Load selected package URLs from user file (~/.cupertino/selected-packages.json)
@@ -72,12 +73,18 @@ func saveSelections(state: AppState) throws {
         PriorityPackage(owner: pkg.owner, repo: pkg.repo, url: pkg.url)
     }
 
-    // Create catalog JSON structure
+    // Create catalog JSON structure matching PriorityPackagesCatalogJSON format
     let catalogJSON: [String: Any] = [
         "version": "1.0",
         "lastUpdated": ISO8601DateFormatter().string(from: Date()),
         "description": "Curated list of high-priority Swift packages (TUI generated)",
         "tiers": [
+            "apple_official": [
+                "description": "Apple official packages",
+                "owner": "apple",
+                "count": 0,
+                "packages": [] as [[String: Any]],
+            ],
             "ecosystem": [
                 "description": "Essential ecosystem packages",
                 "count": priorityPackages.count,
@@ -89,6 +96,8 @@ func saveSelections(state: AppState) throws {
             ],
         ],
         "stats": [
+            "totalCriticalApplePackages": 0,
+            "totalEcosystemPackages": priorityPackages.count,
             "totalPriorityPackages": priorityPackages.count,
         ],
     ]

@@ -10,90 +10,108 @@ public struct MarkdownSearchResultFormatter: ResultFormatter {
     private let query: String
     private let filters: SearchFilters?
     private let config: SearchResultFormatConfig
+    private let teasers: TeaserResults?
+    private let showPlatformTip: Bool
 
     public init(
         query: String,
         filters: SearchFilters? = nil,
-        config: SearchResultFormatConfig = .mcpDefault
+        config: SearchResultFormatConfig = .mcpDefault,
+        teasers: TeaserResults? = nil,
+        showPlatformTip: Bool = true
     ) {
         self.query = query
         self.filters = filters
         self.config = config
+        self.teasers = teasers
+        self.showPlatformTip = showPlatformTip
     }
 
     public func format(_ results: [Search.Result]) -> String {
-        var md = "# Search Results for \"\(query)\"\n\n"
+        var output = "# Search Results for \"\(query)\"\n\n"
 
         // Always tell the AI what source was searched
         let searchedSource = filters?.source ?? Shared.Constants.SourcePrefix.appleDocs
-        md += "_Source: **\(searchedSource)**_\n\n"
+        output += "_Source: **\(searchedSource)**_\n\n"
 
         // Show other filters (not source since we just showed it)
         if let filters, filters.hasActiveFilters {
             if let framework = filters.framework {
-                md += "_Filtered to framework: **\(framework)**_\n\n"
+                output += "_Filtered to framework: **\(framework)**_\n\n"
             }
             if let language = filters.language {
-                md += "_Filtered to language: **\(language)**_\n\n"
+                output += "_Filtered to language: **\(language)**_\n\n"
             }
             if let minimumiOS = filters.minimumiOS {
-                md += "_Filtered to iOS: **\(minimumiOS)+**_\n\n"
+                output += "_Filtered to iOS: **\(minimumiOS)+**_\n\n"
             }
             if let minimumMacOS = filters.minimumMacOS {
-                md += "_Filtered to macOS: **\(minimumMacOS)+**_\n\n"
+                output += "_Filtered to macOS: **\(minimumMacOS)+**_\n\n"
             }
             if let minimumTvOS = filters.minimumTvOS {
-                md += "_Filtered to tvOS: **\(minimumTvOS)+**_\n\n"
+                output += "_Filtered to tvOS: **\(minimumTvOS)+**_\n\n"
             }
             if let minimumWatchOS = filters.minimumWatchOS {
-                md += "_Filtered to watchOS: **\(minimumWatchOS)+**_\n\n"
+                output += "_Filtered to watchOS: **\(minimumWatchOS)+**_\n\n"
             }
             if let minimumVisionOS = filters.minimumVisionOS {
-                md += "_Filtered to visionOS: **\(minimumVisionOS)+**_\n\n"
+                output += "_Filtered to visionOS: **\(minimumVisionOS)+**_\n\n"
             }
         }
 
-        md += "Found **\(results.count)** result\(results.count == 1 ? "" : "s"):\n\n"
+        output += "Found **\(results.count)** result\(results.count == 1 ? "" : "s"):\n\n"
 
         if results.isEmpty {
-            md += config.emptyMessage
-            md += "\n\n"
-            md += Shared.Constants.MCP.tipSearchCapabilities
-            return md
+            output += config.emptyMessage
+            output += "\n\n"
+            output += Shared.Constants.Search.tipSearchCapabilities
+            return output
         }
 
         for (index, result) in results.enumerated() {
-            md += "## \(index + 1). \(result.title)\n\n"
-            md += "- **Framework:** `\(result.framework)`\n"
-            md += "- **URI:** `\(result.uri)`\n"
+            output += "## \(index + 1). \(result.title)\n\n"
+            output += "- **Framework:** `\(result.framework)`\n"
+            output += "- **URI:** `\(result.uri)`\n"
 
             if config.showAvailability,
                let availability = result.availabilityString, !availability.isEmpty {
-                md += "- **Availability:** \(availability)\n"
+                output += "- **Availability:** \(availability)\n"
             }
             if config.showScore {
-                md += "- **Score:** \(String(format: "%.2f", result.score))\n"
+                output += "- **Score:** \(String(format: "%.2f", result.score))\n"
             }
             if config.showWordCount {
-                md += "- **Words:** \(result.wordCount)\n"
+                output += "- **Words:** \(result.wordCount)\n"
             }
             if config.showSource {
-                md += "- **Source:** \(result.source)\n"
+                output += "- **Source:** \(result.source)\n"
+            }
+            // (#81) Show matched symbols from AST extraction
+            if let symbols = result.matchedSymbols, !symbols.isEmpty {
+                let symbolStr = symbols.map { "`\($0.displayString)`" }.joined(separator: ", ")
+                output += "- **Symbols:** \(symbolStr)\n"
             }
 
-            md += "\n\(result.summary)\n\n"
+            if !result.cleanedSummary.isEmpty {
+                output += "\n\(result.cleanedSummary)\n\n"
+            } else {
+                output += "\n"
+            }
 
             if config.showSeparators, index < results.count - 1 {
-                md += "---\n\n"
+                output += "---\n\n"
             }
         }
 
-        // Always remind AI about other sources (use same source we showed at top)
-        md += "\n\n---\n\n"
-        md += Shared.Constants.MCP.tipOtherSources(excluding: searchedSource)
-        md += "\n"
+        // Footer: teasers, tips, and guidance
+        let footer = SearchFooter.singleSource(
+            searchedSource,
+            teasers: teasers,
+            showPlatformTip: showPlatformTip
+        )
+        output += footer.formatMarkdown()
 
-        return md
+        return output
     }
 }
 
@@ -103,62 +121,74 @@ public struct MarkdownSearchResultFormatter: ResultFormatter {
 public struct HIGMarkdownFormatter: ResultFormatter {
     private let query: HIGQuery
     private let config: SearchResultFormatConfig
+    private let teasers: TeaserResults?
 
-    public init(query: HIGQuery, config: SearchResultFormatConfig = .mcpDefault) {
+    public init(
+        query: HIGQuery,
+        config: SearchResultFormatConfig = .mcpDefault,
+        teasers: TeaserResults? = nil
+    ) {
         self.query = query
         self.config = config
+        self.teasers = teasers
     }
 
     public func format(_ results: [Search.Result]) -> String {
-        var md = "# HIG Search Results for \"\(query.text)\"\n\n"
+        var output = "# HIG Search Results for \"\(query.text)\"\n\n"
 
         // Tell the AI what source this is
-        md += "_Source: **\(Shared.Constants.SourcePrefix.hig)**_\n\n"
+        output += "_Source: **\(Shared.Constants.SourcePrefix.hig)**_\n\n"
 
         if let platform = query.platform {
-            md += "_Platform: **\(platform)**_\n\n"
+            output += "_Platform: **\(platform)**_\n\n"
         }
         if let category = query.category {
-            md += "_Category: **\(category)**_\n\n"
+            output += "_Category: **\(category)**_\n\n"
         }
 
-        md += "Found **\(results.count)** guideline\(results.count == 1 ? "" : "s"):\n\n"
+        output += "Found **\(results.count)** guideline\(results.count == 1 ? "" : "s"):\n\n"
 
         if results.isEmpty {
-            md += "_No Human Interface Guidelines found matching your query._\n\n"
-            md += "**Tips:**\n"
-            md += "- Try broader design terms (e.g., 'buttons', 'typography', 'navigation')\n"
-            md += "- Specify a platform: iOS, macOS, watchOS, visionOS, tvOS\n"
-            md += "- Specify a category: foundations, patterns, components, technologies, inputs\n\n"
-            md += Shared.Constants.MCP.tipSearchCapabilities
-            return md
+            output += "_No Human Interface Guidelines found matching your query._\n\n"
+            output += "**Tips:**\n"
+            output += "- Try broader design terms (e.g., 'buttons', 'typography', 'navigation')\n"
+            output += "- Specify a platform: iOS, macOS, watchOS, visionOS, tvOS\n"
+            output += "- Specify a category: foundations, patterns, components, technologies, inputs\n\n"
+            output += Shared.Constants.Search.tipSearchCapabilities
+            return output
         }
 
         for (index, result) in results.enumerated() {
-            md += "## \(index + 1). \(result.title)\n\n"
-            md += "- **URI:** `\(result.uri)`\n"
+            output += "## \(index + 1). \(result.title)\n\n"
+            output += "- **URI:** `\(result.uri)`\n"
 
             if config.showAvailability,
                let availability = result.availabilityString, !availability.isEmpty {
-                md += "- **Availability:** \(availability)\n"
+                output += "- **Availability:** \(availability)\n"
             }
             if config.showScore {
-                md += "- **Score:** \(String(format: "%.2f", result.score))\n"
+                output += "- **Score:** \(String(format: "%.2f", result.score))\n"
             }
 
-            md += "\n\(result.summary)\n\n"
+            if !result.cleanedSummary.isEmpty {
+                output += "\n\(result.cleanedSummary)\n\n"
+            } else {
+                output += "\n"
+            }
 
             if config.showSeparators, index < results.count - 1 {
-                md += "---\n\n"
+                output += "---\n\n"
             }
         }
 
-        // Always remind AI about other sources
-        md += "\n\n---\n\n"
-        md += Shared.Constants.MCP.tipOtherSources(excluding: Shared.Constants.SourcePrefix.hig)
-        md += "\n"
+        // Footer: tips and guidance
+        let footer = SearchFooter.singleSource(
+            Shared.Constants.SourcePrefix.hig,
+            teasers: teasers
+        )
+        output += footer.formatMarkdown()
 
-        return md
+        return output
     }
 }
 
@@ -173,28 +203,28 @@ public struct FrameworksMarkdownFormatter: ResultFormatter {
     }
 
     public func format(_ frameworks: [String: Int]) -> String {
-        var md = "# Available Frameworks\n\n"
-        md += "Total documents: **\(totalDocs)**\n\n"
+        var output = "# Available Frameworks\n\n"
+        output += "Total documents: **\(totalDocs)**\n\n"
 
         if frameworks.isEmpty {
             let cmd = "\(Shared.Constants.App.commandName) \(Shared.Constants.Command.buildIndex)"
-            md += Shared.Constants.MCP.messageNoFrameworks(buildIndexCommand: cmd)
-            return md
+            output += Shared.Constants.Search.messageNoFrameworks(buildIndexCommand: cmd)
+            return output
         }
 
-        md += "| Framework | Documents |\n"
-        md += "|-----------|----------:|\n"
+        output += "| Framework | Documents |\n"
+        output += "|-----------|----------:|\n"
 
         // Sort by document count (descending)
         for (framework, count) in frameworks.sorted(by: { $0.value > $1.value }) {
-            md += "| `\(framework)` | \(count) |\n"
+            output += "| `\(framework)` | \(count) |\n"
         }
 
-        md += "\n"
-        md += Shared.Constants.MCP.tipFilterByFramework
-        md += "\n"
+        // Footer: tips and guidance
+        let footer = SearchFooter.singleSource(Shared.Constants.SourcePrefix.appleDocs)
+        output += footer.formatMarkdown()
 
-        return md
+        return output
     }
 }
 
@@ -210,6 +240,7 @@ public struct UnifiedSearchInput: Sendable {
     public let swiftOrgResults: [Search.Result]
     public let swiftBookResults: [Search.Result]
     public let packagesResults: [Search.Result]
+    public let limit: Int // The limit used per source, for teaser calculation
 
     public init(
         docResults: [Search.Result] = [],
@@ -219,7 +250,8 @@ public struct UnifiedSearchInput: Sendable {
         swiftEvolutionResults: [Search.Result] = [],
         swiftOrgResults: [Search.Result] = [],
         swiftBookResults: [Search.Result] = [],
-        packagesResults: [Search.Result] = []
+        packagesResults: [Search.Result] = [],
+        limit: Int = 10
     ) {
         self.docResults = docResults
         self.archiveResults = archiveResults
@@ -229,6 +261,7 @@ public struct UnifiedSearchInput: Sendable {
         self.swiftOrgResults = swiftOrgResults
         self.swiftBookResults = swiftBookResults
         self.packagesResults = packagesResults
+        self.limit = limit
     }
 
     /// Total number of results across all sources
@@ -236,6 +269,94 @@ public struct UnifiedSearchInput: Sendable {
         docResults.count + archiveResults.count + sampleResults.count +
             higResults.count + swiftEvolutionResults.count + swiftOrgResults.count +
             swiftBookResults.count + packagesResults.count
+    }
+
+    /// Number of sources that returned results
+    public var nonEmptySourceCount: Int {
+        allSources.count
+    }
+
+    /// Represents a source section for iteration
+    public struct SourceSection: Sendable {
+        public let info: Shared.Constants.SourcePrefix.SourceInfo
+        public let docResults: [Search.Result]
+        public let sampleResults: [SampleIndex.Project]
+
+        public var isEmpty: Bool { docResults.isEmpty && sampleResults.isEmpty }
+        public var count: Int { docResults.count + sampleResults.count }
+        public var isSampleSource: Bool { !sampleResults.isEmpty }
+
+        /// Create from doc results if not empty, nil otherwise
+        public static func fromDocs(
+            _ info: Shared.Constants.SourcePrefix.SourceInfo,
+            _ results: [Search.Result]
+        ) -> SourceSection? {
+            guard !results.isEmpty else { return nil }
+            return SourceSection(info: info, docResults: results, sampleResults: [])
+        }
+
+        /// Create from sample results if not empty, nil otherwise
+        public static func fromSamples(
+            _ info: Shared.Constants.SourcePrefix.SourceInfo,
+            _ results: [SampleIndex.Project]
+        ) -> SourceSection? {
+            guard !results.isEmpty else { return nil }
+            return SourceSection(info: info, docResults: [], sampleResults: results)
+        }
+    }
+
+    /// Returns all non-empty sources in display order
+    public var allSources: [SourceSection] {
+        typealias Info = Shared.Constants.SourcePrefix
+        typealias Section = SourceSection
+
+        // Order: Apple Docs, Archive, Samples, HIG, Swift Evolution, Swift.org, Swift Book, Packages
+        return [
+            Section.fromDocs(Info.infoAppleDocs, docResults),
+            Section.fromDocs(Info.infoArchive, archiveResults),
+            Section.fromSamples(Info.infoSamples, sampleResults),
+            Section.fromDocs(Info.infoHIG, higResults),
+            Section.fromDocs(Info.infoSwiftEvolution, swiftEvolutionResults),
+            Section.fromDocs(Info.infoSwiftOrg, swiftOrgResults),
+            Section.fromDocs(Info.infoSwiftBook, swiftBookResults),
+            Section.fromDocs(Info.infoPackages, packagesResults),
+        ].compactMap { $0 }
+    }
+
+    /// Teaser info for sources that hit the limit (likely have more results)
+    public struct SourceTeaserInfo: Sendable {
+        public let info: Shared.Constants.SourcePrefix.SourceInfo
+        public let shownCount: Int
+        public let hasMore: Bool // True if count == limit (likely more available)
+
+        // Convenience accessors
+        public var displayName: String { info.name }
+        public var sourcePrefix: String { info.key }
+        public var emoji: String { info.emoji }
+    }
+
+    /// Returns teaser info for all sources that hit the limit (nil if none)
+    public var sourceTeasers: [SourceTeaserInfo]? {
+        typealias Info = Shared.Constants.SourcePrefix
+
+        // Check each source in display order
+        let sourcesWithCounts: [(info: Info.SourceInfo, count: Int)] = [
+            (Info.infoAppleDocs, docResults.count),
+            (Info.infoArchive, archiveResults.count),
+            (Info.infoSamples, sampleResults.count),
+            (Info.infoHIG, higResults.count),
+            (Info.infoSwiftEvolution, swiftEvolutionResults.count),
+            (Info.infoSwiftOrg, swiftOrgResults.count),
+            (Info.infoSwiftBook, swiftBookResults.count),
+            (Info.infoPackages, packagesResults.count),
+        ]
+
+        let teasers = sourcesWithCounts.compactMap { info, count -> SourceTeaserInfo? in
+            guard count == limit else { return nil }
+            return SourceTeaserInfo(info: info, shownCount: count, hasMore: true)
+        }
+
+        return teasers.isEmpty ? nil : teasers
     }
 }
 
@@ -256,100 +377,93 @@ public struct UnifiedSearchMarkdownFormatter: ResultFormatter {
     }
 
     public func format(_ input: UnifiedSearchInput) -> String {
-        var md = "# Unified Search: \"\(query)\"\n\n"
+        var output = "# Unified Search: \"\(query)\"\n\n"
 
         if let framework {
-            md += "_Filtered to framework: **\(framework)**_\n\n"
+            output += "_Filtered to framework: **\(framework)**_\n\n"
         }
 
         // Tell the AI exactly what sources were searched
-        md += "_Searched ALL sources: \(Shared.Constants.MCP.availableSources.joined(separator: ", "))_\n\n"
+        let allSources = Shared.Constants.Search.availableSources.joined(separator: ", ")
+        output += "_Searched ALL sources: \(allSources)_\n\n"
 
-        md += "**Total: \(input.totalCount) results across all sources**\n\n"
+        let sourceCount = input.nonEmptySourceCount
+        let plural = sourceCount == 1 ? "" : "s"
+        output += "**Total: \(input.totalCount) results** found in \(sourceCount) source\(plural)\n\n"
 
-        // Section 1: Modern Apple Documentation
-        if !input.docResults.isEmpty {
-            md += "## 📚 Apple Documentation (\(input.docResults.count))\n\n"
-            md += formatDocResults(input.docResults)
-        }
-
-        // Section 2: Sample Code Projects
-        if !input.sampleResults.isEmpty {
-            md += "## 💻 Sample Code (\(input.sampleResults.count))\n\n"
-            md += formatSampleResults(input.sampleResults)
-        }
-
-        // Section 3: Human Interface Guidelines
-        if !input.higResults.isEmpty {
-            md += "## 🎨 Human Interface Guidelines (\(input.higResults.count))\n\n"
-            md += formatDocResults(input.higResults)
-        }
-
-        // Section 4: Apple Archive (Legacy Guides)
-        if !input.archiveResults.isEmpty {
-            md += "## 📜 Apple Archive (\(input.archiveResults.count))\n\n"
-            md += formatDocResults(input.archiveResults)
-        }
-
-        // Section 5: Swift Evolution
-        if !input.swiftEvolutionResults.isEmpty {
-            md += "## 📝 Swift Evolution (\(input.swiftEvolutionResults.count))\n\n"
-            md += formatDocResults(input.swiftEvolutionResults)
-        }
-
-        // Section 6: Swift.org
-        if !input.swiftOrgResults.isEmpty {
-            md += "## 🔶 Swift.org (\(input.swiftOrgResults.count))\n\n"
-            md += formatDocResults(input.swiftOrgResults)
-        }
-
-        // Section 7: Swift Book
-        if !input.swiftBookResults.isEmpty {
-            md += "## 📖 Swift Book (\(input.swiftBookResults.count))\n\n"
-            md += formatDocResults(input.swiftBookResults)
-        }
-
-        // Section 8: Swift Packages
-        if !input.packagesResults.isEmpty {
-            md += "## 📦 Swift Packages (\(input.packagesResults.count))\n\n"
-            md += formatDocResults(input.packagesResults)
+        // Iterate all sources in unified order
+        for section in input.allSources {
+            output += "## \(section.info.emoji) \(section.info.name) (\(section.count))\n\n"
+            if section.isSampleSource {
+                output += formatSampleResults(section.sampleResults)
+            } else {
+                output += formatDocResults(section.docResults)
+            }
         }
 
         // Show message if no results at all
         if input.totalCount == 0 {
-            md += "_No results found across any source._\n\n"
+            output += "_No results found across any source._\n\n"
         }
 
-        // Remind AI what it searched and how to dig deeper
-        md += "---\n\n"
-        md += "_You searched **all** sources. To focus on a specific source, "
-        md += "use `source` parameter with: \(Shared.Constants.MCP.availableSources.joined(separator: ", "))._\n"
+        // Footer: teasers for sources with more results, tips and guidance
+        output += "\n---\n\n"
 
-        return md
+        // Show teasers for sources that hit the limit
+        if let teasers = input.sourceTeasers {
+            output += "**More results available:**\n"
+            for teaser in teasers {
+                output += "- \(teaser.emoji) \(teaser.displayName): _use `source: \(teaser.sourcePrefix)` for more_\n"
+            }
+            output += "\n"
+        }
+
+        // Standard tips
+        let sources = Shared.Constants.Search.availableSources.joined(separator: ", ")
+        output += "_To narrow results, use `source` parameter: \(sources)_\n\n"
+        output += Shared.Constants.Search.tipSemanticSearch + "\n\n"
+        output += Shared.Constants.Search.tipPlatformFilters + "\n"
+
+        return output
     }
 
     private func formatDocResults(_ results: [Search.Result]) -> String {
-        var md = ""
+        var output = ""
+        let maxLen = Shared.Constants.Limit.summaryTruncationLength
         for result in results {
-            md += "- **\(result.title)**\n"
-            md += "  - URI: `\(result.uri)`\n"
+            output += "- **\(result.title.cleanedForDisplay)**\n"
+            let summary = result.cleanedSummary.cleanedForDisplay.truncated(to: maxLen)
+            if !summary.isEmpty {
+                output += "  - \(summary)\n"
+            }
+            output += "  - URI: `\(result.uri)`\n"
             if config.showAvailability,
                let availability = result.availabilityString, !availability.isEmpty {
-                md += "  - Availability: \(availability)\n"
+                output += "  - Availability: \(availability)\n"
+            }
+            // (#81) Show matched symbols from AST extraction
+            if let symbols = result.matchedSymbols, !symbols.isEmpty {
+                let symbolStr = symbols.map { "`\($0.displayString)`" }.joined(separator: ", ")
+                output += "  - Symbols: \(symbolStr)\n"
             }
         }
-        md += "\n"
-        return md
+        output += "\n"
+        return output
     }
 
     private func formatSampleResults(_ projects: [SampleIndex.Project]) -> String {
-        var md = ""
+        var output = ""
+        let maxLen = Shared.Constants.Limit.summaryTruncationLength
         for project in projects {
-            md += "- **\(project.title)**\n"
-            md += "  - ID: `\(project.id)`\n"
-            md += "  - Frameworks: \(project.frameworks.joined(separator: ", "))\n"
+            output += "- **\(project.title)**\n"
+            let desc = project.description.cleanedForDisplay.truncated(to: maxLen)
+            if !desc.isEmpty {
+                output += "  - \(desc)\n"
+            }
+            output += "  - ID: `\(project.id)`\n"
+            output += "  - Frameworks: \(project.frameworks.joined(separator: ", "))\n"
         }
-        md += "\n"
-        return md
+        output += "\n"
+        return output
     }
 }

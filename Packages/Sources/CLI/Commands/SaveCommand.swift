@@ -300,23 +300,10 @@ struct SaveCommand: AsyncParsableCommand {
         Logging.ConsoleLogger.info("   Total documents: \(docCount)")
         Logging.ConsoleLogger.info("   Frameworks: \(frameworks.count)")
         Logging.ConsoleLogger.info("   Indexed: \(stats.successCount) | Errors: \(stats.errorCount)")
-        Logging.ConsoleLogger.info("   Time: \(formatDuration(elapsed))")
+        Logging.ConsoleLogger.info("   Time: \(Shared.Formatting.formatDuration(elapsed))")
         Logging.ConsoleLogger.info("   Database: \(searchDBURL.path)")
         Logging.ConsoleLogger.info("   Size: \(formatFileSize(searchDBURL))")
         Logging.ConsoleLogger.info("\n💡 Tip: Start the MCP server with '\(Shared.Constants.App.commandName) serve' to enable search")
-    }
-
-    private func formatDuration(_ interval: TimeInterval) -> String {
-        let totalSeconds = Int(interval)
-        let hours = totalSeconds / 3600
-        let minutes = (totalSeconds % 3600) / 60
-        let seconds = totalSeconds % 60
-
-        if hours > 0 {
-            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
-        } else {
-            return String(format: "%02d:%02d", minutes, seconds)
-        }
     }
 
     /// Check if docs directory has availability data by sampling a few JSON files

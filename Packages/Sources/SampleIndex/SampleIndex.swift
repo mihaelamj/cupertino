@@ -1,4 +1,5 @@
 import Foundation
+import Shared
 
 // MARK: - SampleIndex Namespace
 
@@ -8,15 +9,13 @@ import Foundation
 public enum SampleIndex {
     /// Default database path for source code search index
     public static var defaultDatabasePath: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".cupertino")
-            .appendingPathComponent("samples.db")
+        Shared.Constants.defaultBaseDirectory
+            .appendingPathComponent(Shared.Constants.FileName.samplesDatabase)
     }
 
     /// Default sample code directory
     public static var defaultSampleCodeDirectory: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".cupertino")
-            .appendingPathComponent("sample-code")
+        Shared.Constants.defaultBaseDirectory
+            .appendingPathComponent(Shared.Constants.Directory.sampleCode)
     }
 }

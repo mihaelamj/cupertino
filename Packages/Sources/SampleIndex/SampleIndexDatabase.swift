@@ -1,3 +1,4 @@
+import ASTIndexer
 import Foundation
 import SQLite3
 
@@ -9,7 +10,10 @@ extension SampleIndex {
     /// SQLite FTS5-based database for sample code indexing and search
     public actor Database {
         /// Current schema version
-        public static let schemaVersion: Int32 = 1
+        /// Version history:
+        /// - 1: Initial schema (projects, files, projects_fts, files_fts)
+        /// - 2: Added file_symbols, file_imports tables for SwiftSyntax AST indexing (#81)
+        public static let schemaVersion: Int32 = 2
 
         private var database: OpaquePointer?
         private let dbPath: URL
@@ -126,6 +130,52 @@ extension SampleIndex {
                 content,
                 tokenize='unicode61'
             );
+
+            -- Symbols extracted from Swift files via SwiftSyntax AST (#81)
+            CREATE TABLE IF NOT EXISTS file_symbols (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                line INTEGER NOT NULL,
+                column INTEGER NOT NULL,
+                signature TEXT,
+                is_async INTEGER NOT NULL DEFAULT 0,
+                is_throws INTEGER NOT NULL DEFAULT 0,
+                is_public INTEGER NOT NULL DEFAULT 0,
+                is_static INTEGER NOT NULL DEFAULT 0,
+                attributes TEXT,
+                conformances TEXT,
+                generic_params TEXT,
+                FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_file_symbols_file ON file_symbols(file_id);
+            CREATE INDEX IF NOT EXISTS idx_file_symbols_kind ON file_symbols(kind);
+            CREATE INDEX IF NOT EXISTS idx_file_symbols_name ON file_symbols(name);
+            CREATE INDEX IF NOT EXISTS idx_file_symbols_async ON file_symbols(is_async);
+
+            -- FTS for symbol name search
+            CREATE VIRTUAL TABLE IF NOT EXISTS file_symbols_fts USING fts5(
+                name,
+                signature,
+                attributes,
+                conformances,
+                tokenize='unicode61'
+            );
+
+            -- Imports extracted from Swift files (#81)
+            CREATE TABLE IF NOT EXISTS file_imports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_id INTEGER NOT NULL,
+                module_name TEXT NOT NULL,
+                line INTEGER NOT NULL,
+                is_exported INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_file_imports_file ON file_imports(file_id);
+            CREATE INDEX IF NOT EXISTS idx_file_imports_module ON file_imports(module_name);
             """
 
             var errorPointer: UnsafeMutablePointer<CChar>?
@@ -267,6 +317,167 @@ extension SampleIndex {
             sqlite3_bind_text(ftsStatement, 4, (file.content as NSString).utf8String, -1, nil)
 
             _ = sqlite3_step(ftsStatement)
+        }
+
+        /// Get the file ID for a project/path combination
+        public func getFileId(projectId: String, path: String) async throws -> Int64? {
+            guard let database else {
+                throw SampleIndex.Error.databaseNotInitialized
+            }
+
+            let sql = "SELECT id FROM files WHERE project_id = ? AND path = ?;"
+
+            var statement: OpaquePointer?
+            defer { sqlite3_finalize(statement) }
+
+            guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
+                return nil
+            }
+
+            sqlite3_bind_text(statement, 1, (projectId as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 2, (path as NSString).utf8String, -1, nil)
+
+            guard sqlite3_step(statement) == SQLITE_ROW else {
+                return nil
+            }
+
+            return sqlite3_column_int64(statement, 0)
+        }
+
+        // MARK: - Symbol Indexing (#81)
+
+        /// Index symbols extracted from a Swift file
+        public func indexSymbols(
+            fileId: Int64,
+            symbols: [ASTIndexer.ExtractedSymbol]
+        ) async throws {
+            guard let database else {
+                throw SampleIndex.Error.databaseNotInitialized
+            }
+
+            let sql = """
+            INSERT INTO file_symbols
+            (file_id, name, kind, line, column, signature, is_async, is_throws,
+             is_public, is_static, attributes, conformances, generic_params)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            """
+
+            for symbol in symbols {
+                var statement: OpaquePointer?
+                defer { sqlite3_finalize(statement) }
+
+                guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
+                    continue // Skip failed symbols, don't fail entire indexing
+                }
+
+                sqlite3_bind_int64(statement, 1, fileId)
+                sqlite3_bind_text(statement, 2, (symbol.name as NSString).utf8String, -1, nil)
+                sqlite3_bind_text(statement, 3, (symbol.kind.rawValue as NSString).utf8String, -1, nil)
+                sqlite3_bind_int(statement, 4, Int32(symbol.line))
+                sqlite3_bind_int(statement, 5, Int32(symbol.column))
+
+                if let signature = symbol.signature {
+                    sqlite3_bind_text(statement, 6, (signature as NSString).utf8String, -1, nil)
+                } else {
+                    sqlite3_bind_null(statement, 6)
+                }
+
+                sqlite3_bind_int(statement, 7, symbol.isAsync ? 1 : 0)
+                sqlite3_bind_int(statement, 8, symbol.isThrows ? 1 : 0)
+                sqlite3_bind_int(statement, 9, symbol.isPublic ? 1 : 0)
+                sqlite3_bind_int(statement, 10, symbol.isStatic ? 1 : 0)
+
+                let attributesStr = symbol.attributes.isEmpty ? nil : symbol.attributes.joined(separator: ",")
+                let conformancesStr = symbol.conformances.isEmpty ? nil : symbol.conformances.joined(separator: ",")
+                let genericParamsStr = symbol.genericParameters.isEmpty ? nil : symbol.genericParameters.joined(separator: ",")
+
+                if let attrs = attributesStr {
+                    sqlite3_bind_text(statement, 11, (attrs as NSString).utf8String, -1, nil)
+                } else {
+                    sqlite3_bind_null(statement, 11)
+                }
+
+                if let confs = conformancesStr {
+                    sqlite3_bind_text(statement, 12, (confs as NSString).utf8String, -1, nil)
+                } else {
+                    sqlite3_bind_null(statement, 12)
+                }
+
+                if let generics = genericParamsStr {
+                    sqlite3_bind_text(statement, 13, (generics as NSString).utf8String, -1, nil)
+                } else {
+                    sqlite3_bind_null(statement, 13)
+                }
+
+                _ = sqlite3_step(statement)
+
+                // Insert into FTS
+                try await indexSymbolFTS(symbol: symbol)
+            }
+        }
+
+        /// Index symbol into FTS table
+        private func indexSymbolFTS(symbol: ASTIndexer.ExtractedSymbol) async throws {
+            guard let database else { return }
+
+            let sql = """
+            INSERT INTO file_symbols_fts (name, signature, attributes, conformances)
+            VALUES (?, ?, ?, ?);
+            """
+
+            var statement: OpaquePointer?
+            defer { sqlite3_finalize(statement) }
+
+            guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
+                return
+            }
+
+            sqlite3_bind_text(statement, 1, (symbol.name as NSString).utf8String, -1, nil)
+
+            if let signature = symbol.signature {
+                sqlite3_bind_text(statement, 2, (signature as NSString).utf8String, -1, nil)
+            } else {
+                sqlite3_bind_null(statement, 2)
+            }
+
+            let attributesStr = symbol.attributes.joined(separator: " ")
+            let conformancesStr = symbol.conformances.joined(separator: " ")
+
+            sqlite3_bind_text(statement, 3, (attributesStr as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 4, (conformancesStr as NSString).utf8String, -1, nil)
+
+            _ = sqlite3_step(statement)
+        }
+
+        /// Index imports extracted from a Swift file
+        public func indexImports(
+            fileId: Int64,
+            imports: [ASTIndexer.ExtractedImport]
+        ) async throws {
+            guard let database else {
+                throw SampleIndex.Error.databaseNotInitialized
+            }
+
+            let sql = """
+            INSERT INTO file_imports (file_id, module_name, line, is_exported)
+            VALUES (?, ?, ?, ?);
+            """
+
+            for imp in imports {
+                var statement: OpaquePointer?
+                defer { sqlite3_finalize(statement) }
+
+                guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
+                    continue
+                }
+
+                sqlite3_bind_int64(statement, 1, fileId)
+                sqlite3_bind_text(statement, 2, (imp.moduleName as NSString).utf8String, -1, nil)
+                sqlite3_bind_int(statement, 3, Int32(imp.line))
+                sqlite3_bind_int(statement, 4, imp.isExported ? 1 : 0)
+
+                _ = sqlite3_step(statement)
+            }
         }
 
         // MARK: - Search Projects
@@ -707,6 +918,44 @@ extension SampleIndex {
             }
 
             let sql = "SELECT COUNT(*) FROM files;"
+
+            var statement: OpaquePointer?
+            defer { sqlite3_finalize(statement) }
+
+            guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK,
+                  sqlite3_step(statement) == SQLITE_ROW else {
+                return 0
+            }
+
+            return Int(sqlite3_column_int(statement, 0))
+        }
+
+        /// Get total symbol count (#81)
+        public func symbolCount() async throws -> Int {
+            guard let database else {
+                throw SampleIndex.Error.databaseNotInitialized
+            }
+
+            let sql = "SELECT COUNT(*) FROM file_symbols;"
+
+            var statement: OpaquePointer?
+            defer { sqlite3_finalize(statement) }
+
+            guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK,
+                  sqlite3_step(statement) == SQLITE_ROW else {
+                return 0
+            }
+
+            return Int(sqlite3_column_int(statement, 0))
+        }
+
+        /// Get total import count (#81)
+        public func importCount() async throws -> Int {
+            guard let database else {
+                throw SampleIndex.Error.databaseNotInitialized
+            }
+
+            let sql = "SELECT COUNT(*) FROM file_imports;"
 
             var statement: OpaquePointer?
             defer { sqlite3_finalize(statement) }
