@@ -1,3 +1,12 @@
+## 0.8.1 (2025-12-28)
+
+### Fixed
+- **Installer ANSI escape sequences** - Fix raw `\033[...]` text in summary (#124)
+  - Two `echo` statements missing `-e` flag for color output
+  - Affects `bash <(curl ...)` install method
+
+---
+
 ## 0.8.0 (2025-12-20)
 
 ### Added
