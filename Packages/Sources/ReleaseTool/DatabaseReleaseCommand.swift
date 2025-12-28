@@ -166,7 +166,23 @@ struct DatabaseReleaseCommand: AsyncParsableCommand {
         process.standardError = FileHandle.nullDevice
 
         try process.run()
-        process.waitUntilExit()
+
+        // Show spinner while zip is running
+        let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        let clearLine = "\r\u{1B}[K"
+        var spinnerIndex = 0
+
+        while process.isRunning {
+            let s = spinner[spinnerIndex % spinner.count]
+            let output = "\(clearLine)   \(s) Compressing databases..."
+            FileHandle.standardOutput.write(Data(output.utf8))
+            fflush(stdout)
+            spinnerIndex += 1
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+
+        // Clear the spinner line
+        printProgress("\(clearLine)")
 
         guard process.terminationStatus == 0 else {
             throw DatabaseReleaseError.zipFailed
@@ -319,10 +335,16 @@ struct DatabaseReleaseCommand: AsyncParsableCommand {
         var request = githubRequest(url: url, token: token, method: "POST")
         request.setValue("application/zip", forHTTPHeaderField: "Content-Type")
 
-        let fileData = try Data(contentsOf: file)
-        request.httpBody = fileData
+        // Use delegate for upload progress tracking
+        let fileSize = try fileSize(at: file)
+        let delegate = UploadDelegate(filename: filename, totalSize: fileSize)
+        let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.upload(for: request, fromFile: file)
+
+        // Move to new line after progress
+        printProgress("\n")
+
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 201 else {
             if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -331,6 +353,63 @@ struct DatabaseReleaseCommand: AsyncParsableCommand {
             }
             throw DatabaseReleaseError.apiError("Failed to upload asset")
         }
+    }
+
+    private func printProgress(_ string: String) {
+        FileHandle.standardOutput.write(Data(string.utf8))
+        fflush(stdout)
+    }
+}
+
+// MARK: - Upload Delegate
+
+private final class UploadDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    let filename: String
+    let totalSize: Int64
+    private let barWidth = 30
+    private let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+    private var spinnerIndex = 0
+
+    init(filename: String, totalSize: Int64) {
+        self.filename = filename
+        self.totalSize = totalSize
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        didSendBodyData bytesSent: Int64,
+        totalBytesSent: Int64,
+        totalBytesExpectedToSend: Int64
+    ) {
+        let currentSpinner = spinner[spinnerIndex % spinner.count]
+        spinnerIndex += 1
+
+        // ANSI escape: \r = carriage return, \u{1B}[K = clear to end of line
+        let clearLine = "\r\u{1B}[K"
+
+        let expectedSize = totalBytesExpectedToSend > 0 ? totalBytesExpectedToSend : totalSize
+
+        guard expectedSize > 0 else {
+            let uploaded = Shared.Formatting.formatBytes(totalBytesSent)
+            let output = "\(clearLine)   \(currentSpinner) Uploading... \(uploaded)"
+            FileHandle.standardOutput.write(Data(output.utf8))
+            fflush(stdout)
+            return
+        }
+
+        let progress = Double(totalBytesSent) / Double(expectedSize)
+        let filled = Int(progress * Double(barWidth))
+        let empty = barWidth - filled
+
+        let bar = String(repeating: "█", count: filled) + String(repeating: "░", count: empty)
+        let percent = String(format: "%3.0f%%", progress * 100)
+        let uploaded = Shared.Formatting.formatBytes(totalBytesSent)
+        let total = Shared.Formatting.formatBytes(expectedSize)
+
+        let output = "\(clearLine)   \(currentSpinner) [\(bar)] \(percent) (\(uploaded)/\(total))"
+        FileHandle.standardOutput.write(Data(output.utf8))
+        fflush(stdout)
     }
 }
 

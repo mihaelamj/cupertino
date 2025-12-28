@@ -157,6 +157,10 @@ extension Shared {
 
             /// Current version
             public static let version = "0.8.1"
+
+            /// Approximate database zip file size for progress display when Content-Length is unknown.
+            /// NOTE: Update this after each database release (current: v0.8.1 ~400MB)
+            public static let approximateZipSize: Int64 = 400 * 1024 * 1024
         }
 
         // MARK: - Display Names

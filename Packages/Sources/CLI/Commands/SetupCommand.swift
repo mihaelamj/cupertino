@@ -109,10 +109,31 @@ struct SetupCommand: AsyncParsableCommand {
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
 
-        try process.run()
-        process.waitUntilExit()
+        // Wait for process using termination handler
+        let status = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Int32, Error>) in
+            process.terminationHandler = { process in
+                continuation.resume(returning: process.terminationStatus)
+            }
 
-        guard process.terminationStatus == 0 else {
+            do {
+                try process.run()
+            } catch {
+                continuation.resume(throwing: error)
+                return
+            }
+
+            // Animate spinner while waiting
+            let spinner = ExtractionSpinner()
+            spinner.start()
+
+            // Store spinner reference to stop it when process ends
+            objc_setAssociatedObject(process, "spinner", spinner, .OBJC_ASSOCIATION_RETAIN)
+        }
+
+        // Clear the spinner line
+        printProgress("\r\u{1B}[K")
+
+        guard status == 0 else {
             throw SetupError.extractionFailed
         }
         Logging.ConsoleLogger.info("   ✓ Extracted")
@@ -126,28 +147,35 @@ struct SetupCommand: AsyncParsableCommand {
         }
 
         Logging.ConsoleLogger.info("⬇️  Downloading \(name)...")
-        printProgress("   ⠋ Starting download...\r")
-        fflush(stdout)
 
-        // Use delegate for progress tracking
-        let delegate = DownloadDelegate(name: name)
-        let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+        // Use downloadTask with delegate for progress - wrap in continuation
+        let tempURL = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<URL, Error>) in
+            let delegate = DownloadProgressDelegate(
+                name: name,
+                expectedSize: Shared.Constants.App.approximateZipSize,
+                onComplete: { result in
+                    continuation.resume(with: result)
+                }
+            )
 
-        let (tempURL, response) = try await session.download(from: url)
+            // Create session with delegate to receive progress callbacks
+            // Use extended timeout for large database downloads (~400MB)
+            let config = URLSessionConfiguration.default
+            config.timeoutIntervalForRequest = 300  // 5 minutes for request
+            config.timeoutIntervalForResource = 600 // 10 minutes for entire download
+
+            let session = URLSession(
+                configuration: config,
+                delegate: delegate,
+                delegateQueue: nil
+            )
+
+            let task = session.downloadTask(with: url)
+            task.resume()
+        }
 
         // Move to new line after progress
         printProgress("\n")
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw SetupError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            if httpResponse.statusCode == 404 {
-                throw SetupError.notFound(url)
-            }
-            throw SetupError.httpError(httpResponse.statusCode)
-        }
 
         // Get file size for display
         let fileSize = try FileManager.default.attributesOfItem(atPath: tempURL.path)[.size] as? Int64 ?? 0
@@ -164,6 +192,123 @@ struct SetupCommand: AsyncParsableCommand {
 
     private func printProgress(_ string: String) {
         FileHandle.standardOutput.write(Data(string.utf8))
+        fflush(stdout)
+    }
+}
+
+// MARK: - Extraction Spinner
+
+private final class ExtractionSpinner: @unchecked Sendable {
+    private let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+    private let clearLine = "\r\u{1B}[K"
+    private var timer: DispatchSourceTimer?
+    private var index = 0
+
+    func start() {
+        let timer = DispatchSource.makeTimerSource(queue: .global())
+        timer.schedule(deadline: .now(), repeating: .milliseconds(100))
+        timer.setEventHandler { [weak self] in
+            self?.tick()
+        }
+        self.timer = timer
+        timer.resume()
+    }
+
+    private func tick() {
+        let s = spinner[index % spinner.count]
+        let output = "\(clearLine)   \(s) Extracting databases..."
+        FileHandle.standardOutput.write(Data(output.utf8))
+        fflush(stdout)
+        index += 1
+    }
+
+    deinit {
+        timer?.cancel()
+    }
+}
+
+// MARK: - Download Progress Delegate
+
+private final class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
+    private let name: String
+    private let expectedSize: Int64
+    private let onComplete: (Result<URL, Error>) -> Void
+
+    private let barWidth = 30
+    private let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+    private var spinnerIndex = 0
+
+    init(name: String, expectedSize: Int64, onComplete: @escaping (Result<URL, Error>) -> Void) {
+        self.name = name
+        self.expectedSize = expectedSize
+        self.onComplete = onComplete
+    }
+
+    // MARK: - URLSessionDownloadDelegate
+
+    func urlSession(
+        _ session: URLSession,
+        downloadTask: URLSessionDownloadTask,
+        didWriteData bytesWritten: Int64,
+        totalBytesWritten: Int64,
+        totalBytesExpectedToWrite: Int64
+    ) {
+        let currentSpinner = spinner[spinnerIndex % spinner.count]
+        spinnerIndex += 1
+
+        // ANSI escape: \r = carriage return, \u{1B}[K = clear to end of line
+        let clearLine = "\r\u{1B}[K"
+
+        // Use expected size from server, fall back to approximate size
+        let totalSize = totalBytesExpectedToWrite > 0 ? totalBytesExpectedToWrite : expectedSize
+
+        guard totalSize > 0 else {
+            let downloaded = Shared.Formatting.formatBytes(totalBytesWritten)
+            let output = "\(clearLine)   \(currentSpinner) Downloading... \(downloaded)"
+            FileHandle.standardOutput.write(Data(output.utf8))
+            fflush(stdout)
+            return
+        }
+
+        let progress = Double(totalBytesWritten) / Double(totalSize)
+        let filled = Int(progress * Double(barWidth))
+        let empty = barWidth - filled
+
+        let bar = String(repeating: "█", count: filled) + String(repeating: "░", count: empty)
+        let percent = String(format: "%3.0f%%", progress * 100)
+        let downloaded = Shared.Formatting.formatBytes(totalBytesWritten)
+        let total = Shared.Formatting.formatBytes(totalSize)
+
+        let output = "\(clearLine)   \(currentSpinner) [\(bar)] \(percent) (\(downloaded)/\(total))"
+        FileHandle.standardOutput.write(Data(output.utf8))
+        fflush(stdout)
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        downloadTask: URLSessionDownloadTask,
+        didFinishDownloadingTo location: URL
+    ) {
+        // Copy to a temp location that won't be deleted when session invalidates
+        let tempDir = FileManager.default.temporaryDirectory
+        let tempFile = tempDir.appendingPathComponent(UUID().uuidString + ".zip")
+
+        do {
+            try FileManager.default.copyItem(at: location, to: tempFile)
+            onComplete(.success(tempFile))
+        } catch {
+            onComplete(.failure(error))
+        }
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        didCompleteWithError error: Error?
+    ) {
+        if let error = error {
+            onComplete(.failure(error))
+        }
     }
 }
 
@@ -196,55 +341,5 @@ enum SetupError: Error, CustomStringConvertible {
         case .missingFile(let filename):
             return "Expected file not found after extraction: \(filename)"
         }
-    }
-}
-
-// MARK: - Download Delegate
-
-private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
-    let name: String
-    private let barWidth = 30
-    private let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-    private var spinnerIndex = 0
-
-    init(name: String) {
-        self.name = name
-    }
-
-    func urlSession(
-        _ session: URLSession,
-        downloadTask: URLSessionDownloadTask,
-        didWriteData bytesWritten: Int64,
-        totalBytesWritten: Int64,
-        totalBytesExpectedToWrite: Int64
-    ) {
-        let currentSpinner = spinner[spinnerIndex % spinner.count]
-        spinnerIndex += 1
-
-        // If size unknown, show indeterminate progress
-        guard totalBytesExpectedToWrite > 0 else {
-            let downloaded = Shared.Formatting.formatBytes(totalBytesWritten)
-            let output = "\r   \(currentSpinner) Downloading... \(downloaded)"
-            FileHandle.standardOutput.write(Data(output.utf8))
-            fflush(stdout)
-            return
-        }
-
-        let progress = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
-        let filled = Int(progress * Double(barWidth))
-        let empty = barWidth - filled
-
-        let bar = String(repeating: "█", count: filled) + String(repeating: "░", count: empty)
-        let percent = String(format: "%3.0f%%", progress * 100)
-        let downloaded = Shared.Formatting.formatBytes(totalBytesWritten)
-        let total = Shared.Formatting.formatBytes(totalBytesExpectedToWrite)
-
-        let output = "\r   \(currentSpinner) [\(bar)] \(percent) (\(downloaded)/\(total))"
-        FileHandle.standardOutput.write(Data(output.utf8))
-        fflush(stdout)
-    }
-
-    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-        // Required delegate method - actual file handling done in downloadFile
     }
 }

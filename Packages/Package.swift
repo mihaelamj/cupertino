@@ -287,6 +287,12 @@ let targets: [Target] = {
         path: "Tests/CLICommandTests/SaveTests"
     )
 
+    let setupTestsTarget = Target.testTarget(
+        name: "SetupTests",
+        dependencies: ["CLI", "Shared", "TestSupport"],
+        path: "Tests/CLICommandTests/SetupTests"
+    )
+
     let tuiTestsTarget = Target.testTarget(
         name: "TUITests",
         dependencies: ["TUI", "Core", "Shared", "TestSupport"]
@@ -339,6 +345,7 @@ let targets: [Target] = {
         doctorTestsTarget,
         fetchTestsTarget,
         saveTestsTarget,
+        setupTestsTarget,
         // CLI Tests
         cliTestsTarget,
         // MockAIAgent Tests
