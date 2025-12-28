@@ -53,3 +53,4 @@ Build/
 # Ignore local AI rule system
 .ai-agent-rules
 AGENTS.md
+.ai-agent-rule
