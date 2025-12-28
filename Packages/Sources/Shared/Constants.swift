@@ -156,7 +156,7 @@ extension Shared {
             public static let userAgent = "CupertinoCrawler/1.0"
 
             /// Current version
-            public static let version = "0.8.1"
+            public static let version = "0.8.2"
 
             /// Approximate database zip file size for progress display when Content-Length is unknown.
             /// NOTE: Update this after each database release (current: v0.8.1 ~400MB)

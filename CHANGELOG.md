@@ -1,3 +1,16 @@
+## 0.8.2 (2025-12-28)
+
+### Fixed
+- **Setup command progress animation** - Fix non-animated download/extract progress (#96)
+  - Download progress bar now animates with spinner during ~400MB database download
+  - Extraction spinner animates while unzipping databases
+  - Uses `URLSessionDownloadDelegate` for proper progress callbacks
+  - Uses `DispatchSourceTimer` for non-blocking extraction animation
+  - Added 10-minute timeout for large downloads
+  - Added `approximateZipSize` constant for fallback progress calculation
+
+---
+
 ## 0.8.1 (2025-12-28)
 
 ### Fixed
