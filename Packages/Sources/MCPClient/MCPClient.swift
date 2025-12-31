@@ -121,26 +121,60 @@ public actor MCPClient {
 
     /// Initialize the MCP connection
     private func initialize() async throws {
-        let request = MCPRequest(
-            jsonrpc: "2.0",
-            id: .int(nextMessageID()),
-            method: "initialize",
-            params: InitializeParams(
-                protocolVersion: MCPProtocolVersion,
-                capabilities: ClientCapabilities(
-                    experimental: nil,
-                    sampling: nil,
-                    roots: RootsCapability(listChanged: true)
-                ),
-                clientInfo: Implementation(name: "MCPClient", version: "1.0.0")
+        let versions = preferredProtocolVersions()
+        var lastError: Error?
+
+        for version in versions {
+            let request = MCPRequest(
+                jsonrpc: "2.0",
+                id: .int(nextMessageID()),
+                method: "initialize",
+                params: InitializeParams(
+                    protocolVersion: version,
+                    capabilities: ClientCapabilities(
+                        experimental: nil,
+                        sampling: nil,
+                        roots: RootsCapability(listChanged: true)
+                    ),
+                    clientInfo: Implementation(name: "MCPClient", version: "1.0.0")
+                )
             )
-        )
 
-        let response: InitializeResult = try await sendRequest(request)
+            do {
+                let response: InitializeResult = try await sendRequest(request)
+                serverInfo = response.serverInfo
+                serverCapabilities = response.capabilities
+                protocolVersion = response.protocolVersion
+                return
+            } catch let error as MCPClientError {
+                lastError = error
+                if shouldRetryInitialize(error: error) {
+                    continue
+                }
+                throw error
+            } catch {
+                throw error
+            }
+        }
 
-        serverInfo = response.serverInfo
-        serverCapabilities = response.capabilities
-        protocolVersion = response.protocolVersion
+        throw lastError ?? MCPClientError.serverError("Unsupported protocol version")
+    }
+
+    private func preferredProtocolVersions() -> [String] {
+        var ordered = [MCPProtocolVersion]
+        for version in MCPProtocolVersionsSupported where !ordered.contains(version) {
+            ordered.append(version)
+        }
+        return ordered
+    }
+
+    private func shouldRetryInitialize(error: MCPClientError) -> Bool {
+        guard case let .serverError(message) = error else {
+            return false
+        }
+
+        let lower = message.lowercased()
+        return lower.contains("protocol") || lower.contains("version")
     }
 
     /// List available tools from the server
