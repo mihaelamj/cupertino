@@ -141,7 +141,8 @@ struct DatabaseReleaseCommand: AsyncParsableCommand {
     private func readCurrentVersion(from root: URL) throws -> Version {
         let constantsPath = root.appendingPathComponent("Packages/Sources/Shared/Constants.swift")
         let content = try String(contentsOf: constantsPath, encoding: .utf8)
-        let pattern = #"public\s+static\s+let\s+version\s*=\s*"(\d+\.\d+\.\d+)""#
+        // Read databaseVersion, not CLI version - they are decoupled
+        let pattern = #"public\s+static\s+let\s+databaseVersion\s*=\s*"(\d+\.\d+\.\d+)""#
         guard let regex = try? NSRegularExpression(pattern: pattern),
               let match = regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)),
               let versionRange = Range(match.range(at: 1), in: content),

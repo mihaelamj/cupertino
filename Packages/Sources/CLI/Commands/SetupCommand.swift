@@ -24,9 +24,10 @@ struct SetupCommand: AsyncParsableCommand {
     private static let searchDBFilename = Shared.Constants.FileName.searchDatabase
     private static let samplesDBFilename = Shared.Constants.FileName.samplesDatabase
 
-    /// Release tag matches CLI version for database schema compatibility
+    /// Release tag for database downloads - decoupled from CLI version
+    /// Only changes when database schema or content is updated
     private static var releaseTag: String {
-        "v\(Shared.Constants.App.version)"
+        "v\(Shared.Constants.App.databaseVersion)"
     }
 
     private static var zipFilename: String {
