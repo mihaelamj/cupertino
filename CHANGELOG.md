@@ -1,3 +1,14 @@
+## 0.9.0 (2025-12-31)
+
+### Changed
+- **MCP Protocol Upgrade** - Support 2025-06-18 with backward compatibility (#130)
+  - Upgraded default protocol version from 2024-11-05 to 2025-06-18
+  - Server negotiates compatible version with clients
+  - MCPClient and MockAIAgent support version fallback
+  - Thanks to @erikmackinnon for the contribution
+
+---
+
 ## 0.8.3 (2025-12-31)
 
 ### Changed
