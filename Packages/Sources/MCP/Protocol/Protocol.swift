@@ -2,7 +2,11 @@ import Foundation
 
 // MARK: - MCP Protocol Version
 
-public let MCPProtocolVersion = "2024-11-05"
+public let MCPProtocolVersion = "2025-06-18"
+public let MCPProtocolVersionsSupported = [
+    MCPProtocolVersion,
+    "2024-11-05",
+]
 
 // MARK: - Implementation Info
 

@@ -1,5 +1,6 @@
 import ArgumentParser
 import Core
+import Darwin
 import Foundation
 import Logging
 import MCP
@@ -37,6 +38,10 @@ struct ServeCommand: AsyncParsableCommand {
     )
 
     mutating func run() async throws {
+        if isatty(STDOUT_FILENO) == 0 {
+            Log.disableConsole()
+        }
+
         let config = Shared.Configuration(
             crawler: Shared.CrawlerConfiguration(
                 outputDirectory: Shared.Constants.defaultDocsDirectory

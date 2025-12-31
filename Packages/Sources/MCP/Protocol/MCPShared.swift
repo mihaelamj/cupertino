@@ -3,7 +3,7 @@
 //
 // Core Model Context Protocol types and JSON-RPC 2.0 implementation.
 // This package contains all protocol messages, types, and structures
-// defined by the MCP specification (2024-11-05).
+// defined by the MCP specification (2025-06-18).
 //
 // Zero dependencies - Foundation layer package.
 

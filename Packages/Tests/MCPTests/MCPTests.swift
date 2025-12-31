@@ -458,7 +458,7 @@ struct ContentBlockTests {
 struct MCPProtocolTypesTests {
     @Test("MCP protocol version is defined")
     func protocolVersionDefined() {
-        #expect(MCPProtocolVersion == "2024-11-05")
+        #expect(MCPProtocolVersion == "2025-06-18")
     }
 
     @Test("Implementation type works correctly")

@@ -96,7 +96,7 @@ cupertino serve
 ✅ MCP Server
    ✓ Server can initialize
    ✓ Transport: stdio
-   ✓ Protocol version: 2024-11-05
+   ✓ Protocol version: 2025-06-18
 
 📚 Documentation Directories
    ✓ Apple docs: /Users/username/.cupertino/docs (1234 files)
@@ -122,7 +122,7 @@ cupertino serve
 ✅ MCP Server
    ✓ Server can initialize
    ✓ Transport: stdio
-   ✓ Protocol version: 2024-11-05
+   ✓ Protocol version: 2025-06-18
 
 📚 Documentation Directories
    ✗ Apple docs: /Users/username/.cupertino/docs (not found)
@@ -148,7 +148,7 @@ cupertino serve
 Verifies that:
 - MCP server can be initialized
 - Stdio transport is available
-- Protocol version is correct (2024-11-05)
+- Protocol version is correct (2025-06-18)
 
 **Always passes** - checks basic server functionality.
 

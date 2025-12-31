@@ -41,14 +41,143 @@ public actor CompositeToolProvider: ToolProvider {
     public func listTools(cursor: String?) async throws -> ListToolsResult {
         var allTools: [Tool] = []
 
+        let searchProperties: [String: AnyCodable] = [
+            Shared.Constants.Search.schemaParamQuery: stringSchema(
+                description: "Search query string."
+            ),
+            Shared.Constants.Search.schemaParamSource: stringSchema(
+                description: "Optional source filter.",
+                enumValues: [
+                    "all",
+                    Shared.Constants.SourcePrefix.appleDocs,
+                    Shared.Constants.SourcePrefix.samples,
+                    Shared.Constants.SourcePrefix.appleSampleCode,
+                    Shared.Constants.SourcePrefix.hig,
+                    Shared.Constants.SourcePrefix.appleArchive,
+                    Shared.Constants.SourcePrefix.swiftEvolution,
+                    Shared.Constants.SourcePrefix.swiftOrg,
+                    Shared.Constants.SourcePrefix.swiftBook,
+                    Shared.Constants.SourcePrefix.packages,
+                ]
+            ),
+            Shared.Constants.Search.schemaParamFramework: stringSchema(
+                description: "Framework filter (e.g. swiftui, foundation)."
+            ),
+            Shared.Constants.Search.schemaParamLanguage: stringSchema(
+                description: "Language filter for Swift.org sources."
+            ),
+            Shared.Constants.Search.schemaParamIncludeArchive: boolSchema(
+                description: "Include Apple Archive results when source is not specified."
+            ),
+            Shared.Constants.Search.schemaParamLimit: intSchema(
+                description: "Maximum results to return (default 20)."
+            ),
+            Shared.Constants.Search.schemaParamMinIOS: stringSchema(
+                description: "Minimum iOS version filter (e.g. 17.0)."
+            ),
+            Shared.Constants.Search.schemaParamMinMacOS: stringSchema(
+                description: "Minimum macOS version filter (e.g. 14.0)."
+            ),
+            Shared.Constants.Search.schemaParamMinTvOS: stringSchema(
+                description: "Minimum tvOS version filter (e.g. 17.0)."
+            ),
+            Shared.Constants.Search.schemaParamMinWatchOS: stringSchema(
+                description: "Minimum watchOS version filter (e.g. 10.0)."
+            ),
+            Shared.Constants.Search.schemaParamMinVisionOS: stringSchema(
+                description: "Minimum visionOS version filter (e.g. 1.0)."
+            ),
+        ]
+
+        let readDocumentProperties: [String: AnyCodable] = [
+            Shared.Constants.Search.schemaParamURI: stringSchema(
+                description: "Document URI to read."
+            ),
+            Shared.Constants.Search.schemaParamFormat: stringSchema(
+                description: "Output format (json or markdown).",
+                enumValues: [
+                    Shared.Constants.Search.formatValueJSON,
+                    Shared.Constants.Search.formatValueMarkdown,
+                ]
+            ),
+        ]
+
+        let readSampleProperties: [String: AnyCodable] = [
+            Shared.Constants.Search.schemaParamProjectId: stringSchema(
+                description: "Sample project identifier."
+            ),
+        ]
+
+        let readSampleFileProperties: [String: AnyCodable] = [
+            Shared.Constants.Search.schemaParamProjectId: stringSchema(
+                description: "Sample project identifier."
+            ),
+            Shared.Constants.Search.schemaParamFilePath: stringSchema(
+                description: "File path relative to the sample project root."
+            ),
+        ]
+
+        let searchSymbolsProperties: [String: AnyCodable] = [
+            Shared.Constants.Search.schemaParamQuery: stringSchema(
+                description: "Symbol name pattern (partial match)."
+            ),
+            Shared.Constants.Search.schemaParamKind: stringSchema(
+                description: "Symbol kind filter (struct, class, actor, enum, protocol, function, property)."
+            ),
+            Shared.Constants.Search.schemaParamIsAsync: boolSchema(
+                description: "Filter async functions only."
+            ),
+            Shared.Constants.Search.schemaParamFramework: stringSchema(
+                description: "Framework filter (e.g. swiftui, foundation)."
+            ),
+            Shared.Constants.Search.schemaParamLimit: intSchema(
+                description: "Maximum results to return (default 20)."
+            ),
+        ]
+
+        let searchPropertyWrappersProperties: [String: AnyCodable] = [
+            Shared.Constants.Search.schemaParamWrapper: stringSchema(
+                description: "Property wrapper name (with or without @)."
+            ),
+            Shared.Constants.Search.schemaParamFramework: stringSchema(
+                description: "Framework filter (e.g. swiftui, foundation)."
+            ),
+            Shared.Constants.Search.schemaParamLimit: intSchema(
+                description: "Maximum results to return (default 20)."
+            ),
+        ]
+
+        let searchConcurrencyProperties: [String: AnyCodable] = [
+            Shared.Constants.Search.schemaParamPattern: stringSchema(
+                description: "Concurrency pattern (async, actor, sendable, mainactor, task, asyncsequence)."
+            ),
+            Shared.Constants.Search.schemaParamFramework: stringSchema(
+                description: "Framework filter (e.g. swiftui, foundation)."
+            ),
+            Shared.Constants.Search.schemaParamLimit: intSchema(
+                description: "Maximum results to return (default 20)."
+            ),
+        ]
+
+        let searchConformancesProperties: [String: AnyCodable] = [
+            Shared.Constants.Search.schemaParamProtocol: stringSchema(
+                description: "Protocol name to search for (e.g. View, Codable)."
+            ),
+            Shared.Constants.Search.schemaParamFramework: stringSchema(
+                description: "Framework filter (e.g. swiftui, foundation)."
+            ),
+            Shared.Constants.Search.schemaParamLimit: intSchema(
+                description: "Maximum results to return (default 20)."
+            ),
+        ]
+
         // Unified search tool (replaces search_docs, search_hig, search_all, search_samples)
         if searchIndex != nil || sampleDatabase != nil {
             allTools.append(Tool(
                 name: Shared.Constants.Search.toolSearch,
                 description: Shared.Constants.Search.toolSearchDescription,
-                inputSchema: JSONSchema(
-                    type: Shared.Constants.Search.schemaTypeObject,
-                    properties: nil,
+                inputSchema: objectSchema(
+                    properties: searchProperties,
                     required: [Shared.Constants.Search.schemaParamQuery]
                 )
             ))
@@ -59,19 +188,14 @@ public actor CompositeToolProvider: ToolProvider {
             allTools.append(Tool(
                 name: Shared.Constants.Search.toolListFrameworks,
                 description: Shared.Constants.Search.toolListFrameworksDescription,
-                inputSchema: JSONSchema(
-                    type: Shared.Constants.Search.schemaTypeObject,
-                    properties: [:],
-                    required: []
-                )
+                inputSchema: objectSchema(properties: [:])
             ))
 
             allTools.append(Tool(
                 name: Shared.Constants.Search.toolReadDocument,
                 description: Shared.Constants.Search.toolReadDocumentDescription,
-                inputSchema: JSONSchema(
-                    type: Shared.Constants.Search.schemaTypeObject,
-                    properties: nil,
+                inputSchema: objectSchema(
+                    properties: readDocumentProperties,
                     required: [Shared.Constants.Search.schemaParamURI]
                 )
             ))
@@ -82,19 +206,14 @@ public actor CompositeToolProvider: ToolProvider {
             allTools.append(Tool(
                 name: Shared.Constants.Search.toolListSamples,
                 description: Shared.Constants.Search.toolListSamplesDescription,
-                inputSchema: JSONSchema(
-                    type: Shared.Constants.Search.schemaTypeObject,
-                    properties: [:],
-                    required: []
-                )
+                inputSchema: objectSchema(properties: [:])
             ))
 
             allTools.append(Tool(
                 name: Shared.Constants.Search.toolReadSample,
                 description: Shared.Constants.Search.toolReadSampleDescription,
-                inputSchema: JSONSchema(
-                    type: Shared.Constants.Search.schemaTypeObject,
-                    properties: nil,
+                inputSchema: objectSchema(
+                    properties: readSampleProperties,
                     required: [Shared.Constants.Search.schemaParamProjectId]
                 )
             ))
@@ -102,9 +221,8 @@ public actor CompositeToolProvider: ToolProvider {
             allTools.append(Tool(
                 name: Shared.Constants.Search.toolReadSampleFile,
                 description: Shared.Constants.Search.toolReadSampleFileDescription,
-                inputSchema: JSONSchema(
-                    type: Shared.Constants.Search.schemaTypeObject,
-                    properties: nil,
+                inputSchema: objectSchema(
+                    properties: readSampleFileProperties,
                     required: [
                         Shared.Constants.Search.schemaParamProjectId,
                         Shared.Constants.Search.schemaParamFilePath,
@@ -118,19 +236,14 @@ public actor CompositeToolProvider: ToolProvider {
             allTools.append(Tool(
                 name: Shared.Constants.Search.toolSearchSymbols,
                 description: Shared.Constants.Search.toolSearchSymbolsDescription,
-                inputSchema: JSONSchema(
-                    type: Shared.Constants.Search.schemaTypeObject,
-                    properties: nil,
-                    required: []
-                )
+                inputSchema: objectSchema(properties: searchSymbolsProperties)
             ))
 
             allTools.append(Tool(
                 name: Shared.Constants.Search.toolSearchPropertyWrappers,
                 description: Shared.Constants.Search.toolSearchPropertyWrappersDescription,
-                inputSchema: JSONSchema(
-                    type: Shared.Constants.Search.schemaTypeObject,
-                    properties: nil,
+                inputSchema: objectSchema(
+                    properties: searchPropertyWrappersProperties,
                     required: [Shared.Constants.Search.schemaParamWrapper]
                 )
             ))
@@ -138,9 +251,8 @@ public actor CompositeToolProvider: ToolProvider {
             allTools.append(Tool(
                 name: Shared.Constants.Search.toolSearchConcurrency,
                 description: Shared.Constants.Search.toolSearchConcurrencyDescription,
-                inputSchema: JSONSchema(
-                    type: Shared.Constants.Search.schemaTypeObject,
-                    properties: nil,
+                inputSchema: objectSchema(
+                    properties: searchConcurrencyProperties,
                     required: [Shared.Constants.Search.schemaParamPattern]
                 )
             ))
@@ -148,9 +260,8 @@ public actor CompositeToolProvider: ToolProvider {
             allTools.append(Tool(
                 name: Shared.Constants.Search.toolSearchConformances,
                 description: Shared.Constants.Search.toolSearchConformancesDescription,
-                inputSchema: JSONSchema(
-                    type: Shared.Constants.Search.schemaTypeObject,
-                    properties: nil,
+                inputSchema: objectSchema(
+                    properties: searchConformancesProperties,
                     required: [Shared.Constants.Search.schemaParamProtocol]
                 )
             ))
@@ -186,6 +297,45 @@ public actor CompositeToolProvider: ToolProvider {
         default:
             throw ToolError.unknownTool(name)
         }
+    }
+
+    private func objectSchema(
+        properties: [String: AnyCodable]?,
+        required: [String] = []
+    ) -> JSONSchema {
+        JSONSchema(
+            type: Shared.Constants.Search.schemaTypeObject,
+            properties: properties,
+            required: required
+        )
+    }
+
+    private func stringSchema(description: String? = nil, enumValues: [String]? = nil) -> AnyCodable {
+        var schema: [String: AnyCodable] = ["type": AnyCodable("string")]
+        if let description {
+            schema["description"] = AnyCodable(description)
+        }
+        if let enumValues {
+            let values = enumValues.map { AnyCodable($0) }
+            schema["enum"] = AnyCodable(values)
+        }
+        return AnyCodable(schema)
+    }
+
+    private func boolSchema(description: String? = nil) -> AnyCodable {
+        var schema: [String: AnyCodable] = ["type": AnyCodable("boolean")]
+        if let description {
+            schema["description"] = AnyCodable(description)
+        }
+        return AnyCodable(schema)
+    }
+
+    private func intSchema(description: String? = nil) -> AnyCodable {
+        var schema: [String: AnyCodable] = ["type": AnyCodable("integer")]
+        if let description {
+            schema["description"] = AnyCodable(description)
+        }
+        return AnyCodable(schema)
     }
 
     // MARK: - Unified Search Handler

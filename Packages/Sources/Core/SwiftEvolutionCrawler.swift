@@ -54,7 +54,7 @@ extension Core {
                 proposals
             }
 
-            if let limit, proposalsToDownload.count < proposals.count {
+            if limit != nil && proposalsToDownload.count < proposals.count {
                 logInfo("   Limiting to first \(proposalsToDownload.count) proposals")
             }
 

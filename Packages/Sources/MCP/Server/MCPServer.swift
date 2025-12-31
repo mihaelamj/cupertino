@@ -201,17 +201,18 @@ public actor MCPServer {
             throw ServerError.alreadyInitialized
         }
 
-        // Parse initialize params (we accept but don't validate client capabilities)
-        // let params = try decodeParams(InitializeRequest.Params.self, from: request.params)
+        // Parse initialize params and negotiate protocol version
+        let params = try decodeParams(InitializeRequest.Params.self, from: request.params)
+        let negotiatedVersion = try negotiateProtocolVersion(clientVersion: params.protocolVersion)
 
         let result = InitializeResult(
-            protocolVersion: MCPProtocolVersion,
+            protocolVersion: negotiatedVersion,
             capabilities: capabilities,
             serverInfo: serverInfo
         )
 
         isInitialized = true
-        logInfo("Server initialized")
+        logInfo("Server initialized (protocol \(negotiatedVersion))")
 
         return try encodeResult(result)
     }
@@ -312,6 +313,41 @@ public actor MCPServer {
         let data = try encoder.encode(value)
         let decoder = JSONDecoder()
         return try decoder.decode([String: AnyCodable].self, from: data)
+    }
+
+    private func decodeParams<T: Decodable>(
+        _ type: T.Type,
+        from params: [String: AnyCodable]?
+    ) throws -> T {
+        guard let params else {
+            throw ServerError.invalidParams("Missing params")
+        }
+
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(params)
+
+        do {
+            return try JSONDecoder().decode(T.self, from: data)
+        } catch {
+            throw ServerError.invalidParams("Invalid params: \(error.localizedDescription)")
+        }
+    }
+
+    private func negotiateProtocolVersion(clientVersion: String) throws -> String {
+        if MCPProtocolVersionsSupported.contains(clientVersion) {
+            return clientVersion
+        }
+
+        // Version strings are in YYYY-MM-DD format, so lexicographic order works.
+        let compatibleVersions = MCPProtocolVersionsSupported.filter { $0 <= clientVersion }
+        if let best = compatibleVersions.sorted().last {
+            return best
+        }
+
+        let supported = MCPProtocolVersionsSupported.joined(separator: ", ")
+        throw ServerError.invalidParams(
+            "Unsupported protocol version \(clientVersion). Supported: \(supported)"
+        )
     }
 
     // MARK: - Logging

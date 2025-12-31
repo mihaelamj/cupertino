@@ -36,7 +36,7 @@ The doctor command performs these checks using default paths:
 ✅ MCP Server
    ✓ Server can initialize
    ✓ Transport: stdio
-   ✓ Protocol version: 2024-11-05
+   ✓ Protocol version: 2025-06-18
 ```
 
 Always passes (verifies code is working).
@@ -144,7 +144,7 @@ cupertino doctor \
 ✅ MCP Server
    ✓ Server can initialize
    ✓ Transport: stdio
-   ✓ Protocol version: 2024-11-05
+   ✓ Protocol version: 2025-06-18
 
 📚 Documentation Directories
    ✓ Apple docs: ~/.cupertino/docs (13,842 files)
@@ -169,7 +169,7 @@ cupertino doctor \
 ✅ MCP Server
    ✓ Server can initialize
    ✓ Transport: stdio
-   ✓ Protocol version: 2024-11-05
+   ✓ Protocol version: 2025-06-18
 
 📚 Documentation Directories
    ✗ Apple docs: ~/.cupertino/docs (not found)

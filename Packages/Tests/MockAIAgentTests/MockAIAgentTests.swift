@@ -19,7 +19,7 @@ struct MCPMessageEncodingTests {
             id: .int(1),
             method: "initialize",
             params: InitializeParams(
-                protocolVersion: "2024-11-05",
+                protocolVersion: MCPProtocolVersion,
                 capabilities: ClientCapabilities(
                     experimental: nil,
                     sampling: nil,
@@ -47,7 +47,7 @@ struct MCPMessageEncodingTests {
             id: .int(1),
             method: "initialize",
             params: InitializeParams(
-                protocolVersion: "2024-11-05",
+                protocolVersion: MCPProtocolVersion,
                 capabilities: ClientCapabilities(
                     experimental: nil,
                     sampling: nil,
@@ -166,7 +166,7 @@ struct MCPResponseParsingTests {
     @Test("Parses single-line JSON response")
     func singleLineResponse() throws {
         let responseJSON = """
-        {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05"}}
+        {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"\(MCPProtocolVersion)"}}
         """
 
         let data = Data(responseJSON.utf8)
@@ -194,7 +194,7 @@ struct MCPResponseParsingTests {
     @Test("Decodes initialize response")
     func initializeResponse() throws {
         let responseJSON = """
-        {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"test-server","version":"1.0.0"}}}
+        {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"\(MCPProtocolVersion)","capabilities":{"tools":{}},"serverInfo":{"name":"test-server","version":"1.0.0"}}}
         """
 
         let data = Data(responseJSON.utf8)
@@ -204,7 +204,7 @@ struct MCPResponseParsingTests {
         let resultData = try JSONEncoder().encode(response.result)
         let initResult = try JSONDecoder().decode(InitializeResult.self, from: resultData)
 
-        #expect(initResult.protocolVersion == "2024-11-05")
+        #expect(initResult.protocolVersion == MCPProtocolVersion)
         #expect(initResult.serverInfo.name == "test-server")
         #expect(initResult.serverInfo.version == "1.0.0")
     }

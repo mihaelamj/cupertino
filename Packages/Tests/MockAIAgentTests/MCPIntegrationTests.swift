@@ -36,8 +36,9 @@ struct MCPIntegrationTests {
         try await Task.sleep(for: .seconds(1))
 
         // Send initialize request (compact JSON + newline)
+        let protocolVersion = MCPProtocolVersionsSupported.sorted().first ?? MCPProtocolVersion
         let initRequest = """
-        {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true}},"clientInfo":{"name":"Test","version":"1.0.0"}}}\n
+        {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"\(protocolVersion)","capabilities":{"roots":{"listChanged":true}},"clientInfo":{"name":"Test","version":"1.0.0"}}}\n
         """
 
         stdinPipe.fileHandleForWriting.write(Data(initRequest.utf8))
@@ -76,7 +77,7 @@ struct MCPIntegrationTests {
         let resultData = try JSONEncoder().encode(responseJSON.result)
         let initResult = try JSONDecoder().decode(InitializeResult.self, from: resultData)
 
-        #expect(initResult.protocolVersion == "2024-11-05")
+        #expect(MCPProtocolVersionsSupported.contains(initResult.protocolVersion))
         #expect(initResult.serverInfo.name == "memory-server")
 
         // Cleanup
@@ -104,8 +105,9 @@ struct MCPIntegrationTests {
         try await Task.sleep(for: .seconds(1))
 
         // Initialize first
+        let protocolVersion = MCPProtocolVersionsSupported.sorted().first ?? MCPProtocolVersion
         let initRequest = """
-        {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"Test","version":"1.0.0"}}}\n
+        {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"\(protocolVersion)","capabilities":{},"clientInfo":{"name":"Test","version":"1.0.0"}}}\n
         """
         stdinPipe.fileHandleForWriting.write(Data(initRequest.utf8))
 
