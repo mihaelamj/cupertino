@@ -13,14 +13,14 @@ import Testing
 
 @Suite("MCP Integration Tests", .tags(.integration, .slow))
 struct MCPIntegrationTests {
-    // MARK: - Memory Server Tests
+    // MARK: - Cupertino Server Tests (Swift-only, no Node.js)
 
-    @Test("Initialize handshake with memory server")
-    func memoryServerInitialize() async throws {
+    @Test("Initialize handshake with cupertino server")
+    func cupertinoServerInitialize() async throws {
         #if os(macOS)
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = ["npx", "-y", "@modelcontextprotocol/server-memory"]
+        process.executableURL = URL(fileURLWithPath: ".build/debug/cupertino")
+        process.arguments = ["serve"]
 
         let stdinPipe = Pipe()
         let stdoutPipe = Pipe()
@@ -33,7 +33,7 @@ struct MCPIntegrationTests {
         try process.run()
 
         // Give server time to start
-        try await Task.sleep(for: .seconds(1))
+        try await Task.sleep(for: .milliseconds(500))
 
         // Send initialize request (compact JSON + newline)
         let initRequest = """
@@ -77,7 +77,7 @@ struct MCPIntegrationTests {
         let initResult = try JSONDecoder().decode(InitializeResult.self, from: resultData)
 
         #expect(initResult.protocolVersion == "2024-11-05")
-        #expect(initResult.serverInfo.name == "memory-server")
+        #expect(initResult.serverInfo.name == "cupertino")
 
         // Cleanup
         process.terminate()
@@ -87,12 +87,12 @@ struct MCPIntegrationTests {
         #endif
     }
 
-    @Test("List tools from memory server")
-    func memoryServerListTools() async throws {
+    @Test("List tools from cupertino server")
+    func cupertinoServerListTools() async throws {
         #if os(macOS)
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = ["npx", "-y", "@modelcontextprotocol/server-memory"]
+        process.executableURL = URL(fileURLWithPath: ".build/debug/cupertino")
+        process.arguments = ["serve"]
 
         let stdinPipe = Pipe()
         let stdoutPipe = Pipe()
@@ -101,7 +101,7 @@ struct MCPIntegrationTests {
         process.standardOutput = stdoutPipe
 
         try process.run()
-        try await Task.sleep(for: .seconds(1))
+        try await Task.sleep(for: .milliseconds(500))
 
         // Initialize first
         let initRequest = """
@@ -110,7 +110,7 @@ struct MCPIntegrationTests {
         stdinPipe.fileHandleForWriting.write(Data(initRequest.utf8))
 
         // Wait for init response
-        try await Task.sleep(for: .seconds(1))
+        try await Task.sleep(for: .milliseconds(500))
 
         // List tools
         let toolsRequest = """
@@ -118,7 +118,7 @@ struct MCPIntegrationTests {
         """
         stdinPipe.fileHandleForWriting.write(Data(toolsRequest.utf8))
 
-        try await Task.sleep(for: .seconds(1))
+        try await Task.sleep(for: .milliseconds(500))
 
         let responseData = stdoutPipe.fileHandleForReading.availableData
         let responseString = String(data: responseData, encoding: .utf8) ?? ""
@@ -135,10 +135,10 @@ struct MCPIntegrationTests {
             let resultData = try JSONEncoder().encode(toolsResponse.result)
             let toolsResult = try JSONDecoder().decode(ListToolsResult.self, from: resultData)
 
-            // Memory server has 9 tools
-            #expect(toolsResult.tools.count == 9)
-            #expect(toolsResult.tools.contains { $0.name == "search_nodes" })
-            #expect(toolsResult.tools.contains { $0.name == "create_entities" })
+            // Cupertino has 10 tools
+            #expect(toolsResult.tools.count == 10)
+            #expect(toolsResult.tools.contains { $0.name == "search" })
+            #expect(toolsResult.tools.contains { $0.name == "read_document" })
         }
 
         process.terminate()
