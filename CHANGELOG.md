@@ -1,3 +1,24 @@
+## 0.8.3 (2025-12-31)
+
+### Changed
+- **Swift-only MCP integration tests** - Rewrote tests and removed Node.js dependency (#131)
+  - New integration tests use `cupertino serve` instead of npm packages
+  - Tests verify MCP initialize handshake and tools/list responses
+  - Validates protocol version, server info, and tool registration
+  - Added Language Policy to AGENTS.md: no Node.js/npm in codebase
+
+---
+
+## 0.8.2 (2025-12-31)
+
+### Fixed
+- **Setup progress animation** - Show download and extraction progress (#96)
+  - Added `DownloadProgressDelegate` for real-time download progress
+  - Added `ExtractionSpinner` for extraction feedback
+  - Extended download timeout to 10 minutes for large database files
+
+---
+
 ## 0.8.1 (2025-12-28)
 
 ### Fixed
@@ -6,17 +27,6 @@
   - Affects `bash <(curl ...)` install method
 
 ---
-
-## 0.8.2 (2025-12-28)
-
-### Added
--
-
-### Changed
--
-
-### Fixed
--
 
 ## 0.8.0 (2025-12-20)
 
