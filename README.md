@@ -173,7 +173,7 @@ cupertino save
 
 ### Use with Claude Code
 
-If you're using [Claude Code](https://docs.anthropic.com/en/docs/claude-code), you can add Cupertino as an MCP server with a single command:
+If you're using [Claude Code](https://code.claude.com/docs/en/overview), you can add Cupertino as an MCP server with a single command:
 
 ```bash
 claude mcp add cupertino --scope user -- $(which cupertino)
