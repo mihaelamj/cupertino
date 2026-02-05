@@ -85,6 +85,35 @@ extension Logger {
     }
 }
 
+// MARK: - ANSI Color Support
+
+/// ANSI escape codes for terminal colors
+public enum ANSIColor: String {
+    case reset = "\u{001B}[0m"
+    case red = "\u{001B}[31m"
+    case green = "\u{001B}[32m"
+    case yellow = "\u{001B}[33m"
+    case blue = "\u{001B}[34m"
+    case magenta = "\u{001B}[35m"
+    case cyan = "\u{001B}[36m"
+    case white = "\u{001B}[37m"
+    case brightRed = "\u{001B}[91m"
+    case brightGreen = "\u{001B}[92m"
+    case brightYellow = "\u{001B}[93m"
+    case brightBlue = "\u{001B}[94m"
+
+    /// Apply color to a string, resetting at the end
+    public func apply(to string: String) -> String {
+        guard ANSIColor.isColorEnabled else { return string }
+        return "\(rawValue)\(string)\(ANSIColor.reset.rawValue)"
+    }
+
+    /// Whether color output is enabled (checks if stdout is a TTY)
+    public static var isColorEnabled: Bool = {
+        isatty(STDOUT_FILENO) != 0
+    }()
+}
+
 // MARK: - Console Output Helpers
 
 /// Helper for outputting to console while also logging
@@ -99,13 +128,35 @@ extension Logging {
 
         /// Print to stderr and log as error
         public static func error(_ message: String, logger: os.Logger = Logging.Logger.cli) {
-            fputs("\(message)\n", stderr)
+            let coloredMessage = ANSIColor.red.apply(to: message)
+            fputs("\(coloredMessage)\n", stderr)
             logger.error(message)
         }
 
         /// Print to stdout only (no logging) - for interactive output
         public static func output(_ message: String) {
             print(message)
+        }
+
+        /// Print success message in green
+        public static func success(_ message: String, logger: os.Logger = Logging.Logger.cli) {
+            let coloredMessage = ANSIColor.green.apply(to: message)
+            print(coloredMessage)
+            logger.info(message)
+        }
+
+        /// Print warning message in yellow
+        public static func warning(_ message: String, logger: os.Logger = Logging.Logger.cli) {
+            let coloredMessage = ANSIColor.yellow.apply(to: message)
+            print(coloredMessage)
+            logger.warning(message)
+        }
+
+        /// Print info message in blue
+        public static func infoColored(_ message: String, logger: os.Logger = Logging.Logger.cli) {
+            let coloredMessage = ANSIColor.blue.apply(to: message)
+            print(coloredMessage)
+            logger.info(message)
         }
     }
 }
