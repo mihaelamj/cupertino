@@ -80,6 +80,7 @@ struct DoctorCommand: AsyncParsableCommand {
         let docsURL = URL(fileURLWithPath: docsDir).expandingTildeInPath
         let evolutionURL = URL(fileURLWithPath: evolutionDir).expandingTildeInPath
         let higURL = Shared.Constants.defaultHIGDirectory
+        let searchDBURL = URL(fileURLWithPath: searchDB).expandingTildeInPath
 
         var hasIssues = false
 
@@ -88,7 +89,18 @@ struct DoctorCommand: AsyncParsableCommand {
         // Check docs directory
         if FileManager.default.fileExists(atPath: docsURL.path) {
             let count = countMarkdownFiles(in: docsURL)
-            Log.output("   ✓ Apple docs: \(docsURL.path) (\(count) files)")
+            if count == 0 && FileManager.default.fileExists(atPath: searchDBURL.path) {
+                // Docs folder exists but is empty, and we have a database - likely using setup command
+                Log.output("   ✓ Apple docs: using pre-built database")
+            } else if count > 0 {
+                Log.output("   ✓ Apple docs: \(docsURL.path) (\(count) files)")
+            } else {
+                Log.output("   ⚠  Apple docs: \(docsURL.path) (0 files)")
+                Log.output("     → Run: cupertino fetch --type docs")
+            }
+        } else if FileManager.default.fileExists(atPath: searchDBURL.path) {
+            // No docs folder but database exists - using pre-built database from setup
+            Log.output("   ✓ Apple docs: using pre-built database")
         } else {
             Log.output("   ✗ Apple docs: \(docsURL.path) (not found)")
             Log.output("     → Run: cupertino fetch --type docs")
