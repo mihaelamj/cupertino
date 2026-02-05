@@ -91,6 +91,9 @@ extension Logger {
 /// Useful for CLI tools that need both user-facing output and logging
 extension Logging {
     public enum ConsoleLogger {
+        /// Global flag to enable verbose output
+        public static var isVerbose: Bool = false
+
         /// Print to stdout and log as info
         public static func info(_ message: String, logger: os.Logger = Logging.Logger.cli) {
             print(message)
@@ -105,6 +108,21 @@ extension Logging {
 
         /// Print to stdout only (no logging) - for interactive output
         public static func output(_ message: String) {
+            print(message)
+        }
+
+        /// Print verbose message to stdout only when verbose mode is enabled
+        /// Use for detailed progress information that may clutter normal output
+        public static func verbose(_ message: String, logger: os.Logger = Logging.Logger.cli) {
+            guard isVerbose else { return }
+            print("[verbose] \(message)")
+            logger.debug(message)
+        }
+
+        /// Print verbose message to stdout only when verbose mode is enabled (no prefix)
+        /// Use for detailed progress information that may clutter normal output
+        public static func verboseOutput(_ message: String) {
+            guard isVerbose else { return }
             print(message)
         }
     }

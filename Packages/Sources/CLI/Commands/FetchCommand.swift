@@ -21,6 +21,8 @@ struct FetchCommand: AsyncParsableCommand {
         abstract: "Fetch documentation and resources"
     )
 
+    @OptionGroup var globalOptions: GlobalOptions
+
     @Option(
         name: .long,
         help: """
@@ -78,6 +80,7 @@ struct FetchCommand: AsyncParsableCommand {
     var fast: Bool = false
 
     mutating func run() async throws {
+        globalOptions.configureLogging()
         logStartMessage()
 
         if type == .all {

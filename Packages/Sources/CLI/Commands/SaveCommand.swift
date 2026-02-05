@@ -14,6 +14,8 @@ struct SaveCommand: AsyncParsableCommand {
         abstract: "Save documentation to database and build search indexes"
     )
 
+    @OptionGroup var globalOptions: GlobalOptions
+
     @Option(name: .long, help: "Base directory (auto-fills all directories from standard structure)")
     var baseDir: String?
 
@@ -45,6 +47,8 @@ struct SaveCommand: AsyncParsableCommand {
     var remote: Bool = false
 
     mutating func run() async throws {
+        globalOptions.configureLogging()
+
         // Handle remote mode separately
         if remote {
             try await runRemote()
@@ -52,6 +56,7 @@ struct SaveCommand: AsyncParsableCommand {
         }
 
         Logging.ConsoleLogger.info("🔨 Building Search Index\n")
+        Logging.ConsoleLogger.verbose("Using base directory: \(baseDir ?? "default")")
 
         // Determine effective base directory
         let effectiveBase = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
