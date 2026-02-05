@@ -12,6 +12,8 @@ struct SetupCommand: AsyncParsableCommand {
         abstract: "Download pre-built search databases from GitHub"
     )
 
+    @OptionGroup var globalOptions: GlobalOptions
+
     @Option(name: .long, help: "Base directory for databases")
     var baseDir: String?
 
@@ -41,10 +43,13 @@ struct SetupCommand: AsyncParsableCommand {
     // MARK: - Run
 
     mutating func run() async throws {
+        globalOptions.configureLogging()
         Logging.ConsoleLogger.info("📦 Cupertino Setup\n")
+        Logging.ConsoleLogger.verbose("Release tag: \(Self.releaseTag)")
 
         let baseURL = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? Shared.Constants.defaultBaseDirectory
+        Logging.ConsoleLogger.verbose("Base directory: \(baseURL.path)")
 
         // Create directory if needed
         try FileManager.default.createDirectory(at: baseURL, withIntermediateDirectories: true)

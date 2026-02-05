@@ -1,6 +1,20 @@
 import ArgumentParser
 import Foundation
+import Logging
 import Shared
+
+// MARK: - Global Options
+
+/// Options shared across all commands
+struct GlobalOptions: ParsableArguments {
+    @Flag(name: [.short, .long], help: "Enable verbose output with detailed progress information")
+    var verbose: Bool = false
+
+    /// Configure logging based on verbose flag
+    func configureLogging() {
+        Logging.ConsoleLogger.isVerbose = verbose
+    }
+}
 
 // MARK: - Supporting Types
 

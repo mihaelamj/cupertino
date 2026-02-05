@@ -44,6 +44,8 @@ struct SearchCommand: AsyncParsableCommand {
         """
     )
 
+    @OptionGroup var globalOptions: GlobalOptions
+
     @Argument(help: "Search query")
     var query: String
 
@@ -128,6 +130,10 @@ struct SearchCommand: AsyncParsableCommand {
     var format: OutputFormat = .text
 
     mutating func run() async throws {
+        globalOptions.configureLogging()
+        Logging.ConsoleLogger.verbose("Searching for: \(query)")
+        Logging.ConsoleLogger.verbose("Source filter: \(source ?? "all")")
+
         // Route based on source parameter
         // Default (nil) now searches ALL sources for better results (#81)
         switch source {
