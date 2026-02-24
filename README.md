@@ -278,6 +278,90 @@ Add to `opencode.jsonc`:
 
 > **Note:** All examples use `/opt/homebrew/bin/cupertino` (Homebrew on Apple Silicon). Use `/usr/local/bin/cupertino` for Intel Macs or manual installs. Run `which cupertino` to find your path.
 
+### Use as an Agent Skill (No Server Required)
+
+Cupertino can also be used as a stateless CLI skill without running an MCP server. This is useful for agents that support the [Agent Skills](https://agentskills.io) specification.
+
+**Prerequisites:**
+
+Install cupertino and download the databases first:
+```bash
+# Install via Homebrew or from source (see Installation above)
+cupertino setup
+```
+
+**Option A: Install with OpenSkills (Recommended)**
+
+[OpenSkills](https://github.com/numman-ali/openskills) is a universal skills loader that works with Claude Code, Cursor, Windsurf, Aider, and other AI coding agents.
+
+```bash
+# Install the cupertino skill from GitHub
+npx openskills install mihaelamj/cupertino
+
+# Sync to update AGENTS.md
+npx openskills sync
+```
+
+For global installation (available in all projects):
+```bash
+npx openskills install mihaelamj/cupertino --global
+```
+
+For multi-agent setups (installs to `.agent/skills/` instead of `.claude/skills/`):
+```bash
+npx openskills install mihaelamj/cupertino --universal
+```
+
+**Option B: Manual Installation**
+
+Copy the skill definition to your project or global skills directory:
+```bash
+# Clone this repo
+git clone https://github.com/mihaelamj/cupertino.git
+
+# For a single project
+mkdir -p .claude/skills/cupertino
+cp cupertino/.claude/skills/cupertino/SKILL.md .claude/skills/cupertino/
+
+# Or for global use with Claude Code
+mkdir -p ~/.claude/skills/cupertino
+cp cupertino/.claude/skills/cupertino/SKILL.md ~/.claude/skills/cupertino/
+```
+
+**How It Works:**
+
+The skill uses the CLI directly with JSON output, no server process needed:
+
+```bash
+# Search documentation
+cupertino search "SwiftUI View" --format json
+
+# Filter by source
+cupertino search "NavigationStack" --source apple-docs --format json
+cupertino search "button styles" --source samples --format json
+
+# Read a document
+cupertino read "apple-docs://swiftui/documentation_swiftui_view" --format json
+
+# List frameworks
+cupertino list-frameworks --format json
+
+# List sample projects
+cupertino list-samples --framework swiftui --format json
+```
+
+All commands support `--format json` for structured output that agents can parse.
+
+**Available Sources:**
+- `apple-docs` - Official Apple documentation (301,000+ pages)
+- `samples` - Apple sample code projects
+- `hig` - Human Interface Guidelines
+- `swift-evolution` - Swift Evolution proposals
+- `swift-org` - Swift.org documentation
+- `swift-book` - The Swift Programming Language book
+- `apple-archive` - Legacy programming guides
+- `packages` - Swift package documentation
+
 ### What You Get
 
 Once configured, Claude Desktop can search your local documentation:
