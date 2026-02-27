@@ -1,0 +1,12 @@
+{
+  "name": "cupertino",
+  "version": "1.0.0",
+  "description": "Search and read Apple developer documentation offline, including SwiftUI, UIKit, Foundation, and 300+ frameworks.",
+  "author": {
+    "name": "mihaelamj",
+    "url": "https://github.com/mihaelamj"
+  },
+  "repository": "https://github.com/mihaelamj/cupertino",
+  "license": "MIT",
+  "keywords": ["apple", "documentation", "swiftui", "uikit", "ios", "macos", "swift"]
+}
