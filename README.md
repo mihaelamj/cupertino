@@ -312,7 +312,16 @@ For multi-agent setups (installs to `.agent/skills/` instead of `.claude/skills/
 npx openskills install mihaelamj/cupertino --universal
 ```
 
-**Option B: Manual Installation**
+**Option B: Install as a Claude Code Plugin**
+
+Add the cupertino marketplace to Claude Code:
+```bash
+claude /plugin marketplace add https://github.com/mihaelamj/cupertino.git
+```
+
+Then enable the plugin from the marketplace.
+
+**Option C: Manual Installation**
 
 Copy the skill definition to your project or global skills directory:
 ```bash
@@ -321,11 +330,11 @@ git clone https://github.com/mihaelamj/cupertino.git
 
 # For a single project
 mkdir -p .claude/skills/cupertino
-cp cupertino/.claude/skills/cupertino/SKILL.md .claude/skills/cupertino/
+cp cupertino/skills/cupertino/SKILL.md .claude/skills/cupertino/
 
 # Or for global use with Claude Code
 mkdir -p ~/.claude/skills/cupertino
-cp cupertino/.claude/skills/cupertino/SKILL.md ~/.claude/skills/cupertino/
+cp cupertino/skills/cupertino/SKILL.md ~/.claude/skills/cupertino/
 ```
 
 **How It Works:**

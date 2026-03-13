@@ -1,12 +1,7 @@
 ---
 name: cupertino
-description: Search and read Apple developer documentation including SwiftUI, UIKit, Foundation, and 300+ frameworks. Use when the user asks about Apple APIs, iOS/macOS development, Swift syntax, or needs to look up Apple documentation.
-license: MIT
-compatibility: Requires macOS 13+, pre-built database via 'cupertino setup'
-metadata:
-  author: mihaelamj
-  version: "1.0"
-allowed-tools: Bash(cupertino:*)
+description: This skill should be used when working with Apple APIs, iOS/macOS/visionOS development, or Swift language questions. Covers searching Apple developer documentation, looking up SwiftUI views, finding UIKit APIs, reading Apple docs, browsing Swift Evolution proposals, checking Human Interface Guidelines, and exploring Apple sample code. Supports 300+ frameworks including SwiftUI, UIKit, Foundation, and Combine via offline search of 300,000+ documentation pages.
+allowed-tools: Bash(cupertino *)
 ---
 
 # Cupertino - Apple Documentation Search
@@ -20,12 +15,22 @@ First-time setup (downloads ~2.4GB database):
 cupertino setup
 ```
 
+## Workflow
+
+To answer questions about Apple APIs, first search for relevant documents, then read the most relevant result:
+
+1. Search: `cupertino search "NavigationStack" --source apple-docs --format json`
+2. Read: `cupertino read "<uri-from-results>" --format markdown`
+
+If the database is not set up, run `cupertino setup` first.
+
 ## Commands
 
 ### Search Documentation
 Search across all sources (apple-docs, samples, hig, swift-evolution, swift-org, swift-book, packages):
 ```bash
 cupertino search "SwiftUI View" --format json
+cupertino search "SwiftUI View" --format json --limit 5
 ```
 
 Filter by source:
@@ -112,3 +117,4 @@ All commands support `--format` with these options:
 - Use `--framework` to filter by framework (e.g., swiftui, foundation, uikit)
 - Use `--limit` to control the number of results returned
 - URIs from search results can be used directly with `cupertino read`
+- Legacy archive guides are excluded from search by default; add `--include-archive` to include them

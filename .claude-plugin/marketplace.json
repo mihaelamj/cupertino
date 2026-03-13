@@ -1,0 +1,23 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "cupertino-marketplace",
+  "description": "Apple developer documentation search plugin for Claude Code",
+  "owner": {
+    "name": "mihaelamj",
+    "email": "mihaela.mj@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "cupertino",
+      "description": "Search and read Apple developer documentation offline, including SwiftUI, UIKit, Foundation, and 300+ frameworks.",
+      "version": "1.0.0",
+      "author": {
+        "name": "mihaelamj",
+        "url": "https://github.com/mihaelamj"
+      },
+      "source": ".",
+      "category": "development",
+      "homepage": "https://github.com/mihaelamj/cupertino"
+    }
+  ]
+}
