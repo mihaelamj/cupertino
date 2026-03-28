@@ -128,8 +128,8 @@ extension Core {
 
             if httpResponse.statusCode != 200 {
                 // Only treat 404 as "directory not found" for the testing subdirectory
-                if httpResponse.statusCode == 404, prefix == Shared.Constants.SwiftEvolution.stIDPrefix {
-                    logInfo("   Testing proposals directory not found, skipping")
+                if httpResponse.statusCode == 404, path == Shared.Constants.SwiftEvolution.testingSubdirectory {
+                    logInfo("   Testing proposals directory (\(path)) not found, skipping")
                     return []
                 }
                 throw EvolutionCrawlerError.invalidResponse

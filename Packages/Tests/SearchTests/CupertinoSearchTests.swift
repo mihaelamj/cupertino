@@ -712,6 +712,34 @@ func indexBuilderExtractProposalStatusMissing() async throws {
     await index.disconnect()
 }
 
+@Test("IndexBuilder extractProposalStatus and isAcceptedProposal handle hyphen-style ST status")
+func indexBuilderExtractProposalStatusHyphenStyleST() async throws {
+    let (index, cleanup) = try await createTestSearchIndex()
+    defer { try? cleanup() }
+
+    let builder = Search.IndexBuilder(
+        searchIndex: index,
+        metadata: nil,
+        docsDirectory: FileManager.default.temporaryDirectory
+    )
+
+    let markdown = """
+    # Some Swift Testing Proposal
+
+    - Status: **Accepted**
+    - Proposal: [ST-0001](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0001-some-proposal.md)
+
+    ## Introduction
+    This is an example ST proposal using hyphen-style status.
+    """
+
+    let status = await builder.extractProposalStatus(from: markdown)
+    #expect(status == "Accepted")
+    #expect(await builder.isAcceptedProposal(status) == true)
+
+    await index.disconnect()
+}
+
 @Test("Evolution reference pattern matches both SE and ST proposal IDs")
 func evolutionReferencePatternMatchesBothPrefixes() throws {
     let pattern = Shared.Constants.Pattern.evolutionReference

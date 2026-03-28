@@ -423,6 +423,29 @@ struct SwiftEvolutionCrawlerTests {
         // - isAcceptedStatus(nil) == false → proposals would be skipped
     }
 
+    @Test("Crawler extractStatus parses hyphen-style status (ST format)")
+    @MainActor
+    func crawlerExtractStatusHyphenStyle() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let crawler = Core.EvolutionCrawler(outputDirectory: tempDir)
+
+        let markdown = """
+        # Some ST Proposal
+
+        - Status: **Implemented (Swift 6.3)**
+        - Authors: Someone
+
+        ## Introduction
+        This proposal does something.
+        """
+
+        let status = crawler.extractStatus(from: markdown)
+        #expect(status == "Implemented (Swift 6.3)")
+        #expect(crawler.isAcceptedStatus(status) == true)
+    }
+
     // MARK: - Integration Tests
 
     @Test("Crawler creates output directory", .tags(.integration))
