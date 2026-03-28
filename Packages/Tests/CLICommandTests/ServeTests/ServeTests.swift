@@ -265,6 +265,54 @@ struct MCPCommandTests {
         print("   ✅ Evolution provider test passed!")
     }
 
+    @Test("Swift Testing (ST) resource provider lists and reads ST proposals")
+    func stResourceProvider() async throws {
+        print("🧪 Test: Swift Testing (ST) provider")
+
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cupertino-st-provider-test-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        // Create test SE proposal
+        let seProposal = "# SE-0255: Implicit returns\n\n* Status: **Implemented (Swift 5.1)**\n\nTest content."
+        let seFile = tempDir.appendingPathComponent("SE-0255-omit-return.md")
+        try seProposal.write(to: seFile, atomically: true, encoding: .utf8)
+
+        // Create test ST proposal
+        let stProposal = "# Refactor Bug Inits\n\nSwift Testing proposal about refactoring bug initializers."
+        let stFile = tempDir.appendingPathComponent("ST-0001-refactor-bug-inits.md")
+        try stProposal.write(to: stFile, atomically: true, encoding: .utf8)
+
+        let config = Shared.Configuration(
+            crawler: Shared.CrawlerConfiguration(outputDirectory: tempDir),
+            changeDetection: Shared.ChangeDetectionConfiguration(),
+            output: Shared.OutputConfiguration()
+        )
+        let provider = DocsResourceProvider(configuration: config, evolutionDirectory: tempDir)
+
+        // List resources — should include both SE and ST
+        let listResult = try await provider.listResources(cursor: nil as String?)
+        let resources = listResult.resources
+
+        let hasSEProposal = resources.contains { $0.uri.contains("SE-") }
+        let hasSTProposal = resources.contains { $0.uri.contains("ST-") }
+        #expect(hasSEProposal, "Should list SE proposals")
+        #expect(hasSTProposal, "Should list ST proposals")
+
+        // Read ST resource
+        let readResult = try await provider.readResource(uri: "swift-evolution://ST-0001")
+
+        if let firstContent = readResult.contents.first,
+           case let .text(textContent) = firstContent {
+            #expect(textContent.text.contains("Refactor Bug Inits"), "Content should contain ST proposal title")
+            print("   ✅ Read ST proposal content")
+        }
+
+        print("   ✅ ST provider test passed!")
+    }
+
     @Test("MCP server handles invalid requests gracefully")
     func serverErrorHandling() async throws {
         print("🧪 Test: Server error handling")

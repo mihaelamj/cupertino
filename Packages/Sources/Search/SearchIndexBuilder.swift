@@ -457,7 +457,7 @@ extension Search {
             logInfo("   Swift Evolution: \(indexed) indexed, \(skipped) skipped")
         }
 
-        private func getProposalFiles(from directory: URL) throws -> [URL] {
+        func getProposalFiles(from directory: URL) throws -> [URL] {
             let files = try FileManager.default.contentsOfDirectory(
                 at: directory,
                 includingPropertiesForKeys: [.contentModificationDateKey],
@@ -466,7 +466,8 @@ extension Search {
 
             return files.filter {
                 $0.pathExtension == "md" &&
-                    $0.lastPathComponent.hasPrefix("SE-")
+                    ($0.lastPathComponent.hasPrefix(Shared.Constants.Search.sePrefix) ||
+                     $0.lastPathComponent.hasPrefix(Shared.Constants.Search.stPrefix))
             }
         }
 
@@ -562,7 +563,7 @@ extension Search {
         }
 
         /// Extract status from Swift Evolution proposal markdown
-        private func extractProposalStatus(from markdown: String) -> String? {
+        func extractProposalStatus(from markdown: String) -> String? {
             // Format: "* Status: **Implemented (Swift 2.2)**" or "* Status: **Accepted**"
             guard let regex = try? NSRegularExpression(pattern: Shared.Constants.Pattern.seStatus),
                   let match = regex.firstMatch(
@@ -578,7 +579,7 @@ extension Search {
         }
 
         /// Check if proposal status indicates it was accepted/implemented
-        private func isAcceptedProposal(_ status: String?) -> Bool {
+        func isAcceptedProposal(_ status: String?) -> Bool {
             guard let status = status?.lowercased() else {
                 return false
             }
@@ -1002,8 +1003,8 @@ extension Search {
         }
 
         private func extractProposalID(from filename: String) -> String? {
-            // Extract SE-NNNN from filenames like "SE-0001-optional-binding.md"
-            if let regex = try? NSRegularExpression(pattern: Shared.Constants.Pattern.seReference, options: []),
+            // Extract SE-NNNN or ST-NNNN from filenames like "SE-0001-optional-binding.md" or "ST-0001-foo.md"
+            if let regex = try? NSRegularExpression(pattern: Shared.Constants.Pattern.evolutionReference, options: []),
                let match = regex.firstMatch(in: filename, range: NSRange(filename.startIndex..., in: filename)),
                let range = Range(match.range(at: 1), in: filename) {
                 return String(filename[range])

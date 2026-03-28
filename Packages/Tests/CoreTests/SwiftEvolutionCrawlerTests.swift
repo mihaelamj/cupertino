@@ -297,6 +297,132 @@ struct SwiftEvolutionCrawlerTests {
         #expect(proposals[1].id == "SE-0002")
     }
 
+    // MARK: - Swift Testing (ST) Proposal Tests
+
+    @Test("Proposal number pattern matches bare-numbered filenames for ST prefix")
+    func extractProposalNumberForSTPrefix() throws {
+        // Testing proposals use bare-numbered filenames like "0001-refactor-bug-inits.md"
+        let filename = "0001-refactor-bug-inits.md"
+        let pattern = Shared.Constants.Pattern.seProposalNumber
+        let regex = try NSRegularExpression(pattern: pattern)
+        let range = NSRange(filename.startIndex..., in: filename)
+
+        let match = regex.firstMatch(in: filename, range: range)
+        #expect(match != nil)
+
+        if let match, match.numberOfRanges > 1,
+           let numberRange = Range(match.range(at: 1), in: filename) {
+            let number = String(filename[numberRange])
+            #expect(number == "0001")
+            // With ST prefix, this becomes ST-0001
+            #expect("ST-\(number)" == "ST-0001")
+        }
+    }
+
+    @Test("ProposalMetadata stores ST proposal info")
+    func stProposalMetadataStoresInfo() throws {
+        let metadata = ProposalMetadata(
+            id: "ST-0001",
+            filename: "0001-refactor-bug-inits.md",
+            downloadURL: "https://raw.githubusercontent.com/swiftlang/swift-evolution/main/proposals/testing/0001-refactor-bug-inits.md"
+        )
+
+        #expect(metadata.id == "ST-0001")
+        #expect(metadata.filename == "0001-refactor-bug-inits.md")
+        #expect(metadata.downloadURL.contains("proposals/testing"))
+    }
+
+    @Test("Mixed SE and ST proposals sort correctly")
+    func mixedSEAndSTProposalsSortCorrectly() throws {
+        let proposals = [
+            ProposalMetadata(id: "ST-0001", filename: "0001-test.md", downloadURL: "https://example.com/st1"),
+            ProposalMetadata(id: "SE-0002", filename: "0002-test.md", downloadURL: "https://example.com/se2"),
+            ProposalMetadata(id: "SE-0001", filename: "0001-test.md", downloadURL: "https://example.com/se1"),
+            ProposalMetadata(id: "ST-0002", filename: "0002-test.md", downloadURL: "https://example.com/st2"),
+        ]
+
+        let sorted = proposals.sorted { $0.id < $1.id }
+        #expect(sorted[0].id == "SE-0001")
+        #expect(sorted[1].id == "SE-0002")
+        #expect(sorted[2].id == "ST-0001")
+        #expect(sorted[3].id == "ST-0002")
+    }
+
+    @Test("EvolutionProgress works with ST proposal ID")
+    func progressWithSTProposalID() throws {
+        let stats = EvolutionStatistics()
+        let progress = EvolutionProgress(
+            current: 1,
+            total: 10,
+            proposalID: "ST-0001",
+            stats: stats
+        )
+
+        #expect(progress.proposalID == "ST-0001")
+        #expect(progress.percentage == 10.0)
+    }
+
+    // MARK: - Crawler ST Status Filtering (exercises actual EvolutionCrawler methods)
+
+    @Test("Crawler extractProposalID produces ST prefix when requested")
+    @MainActor
+    func crawlerExtractProposalIDWithSTPrefix() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let crawler = Core.EvolutionCrawler(outputDirectory: tempDir)
+
+        // Bare-numbered filename with ST prefix
+        let stID = crawler.extractProposalID(from: "0001-refactor-bug-inits.md", prefix: "ST")
+        #expect(stID == "ST-0001")
+
+        // Same filename with default SE prefix
+        let seID = crawler.extractProposalID(from: "0001-refactor-bug-inits.md")
+        #expect(seID == "SE-0001")
+
+        // SE-prefixed filename
+        let seID2 = crawler.extractProposalID(from: "SE-0255-omit-return.md")
+        #expect(seID2 == "SE-0255")
+    }
+
+    @Test("Crawler isAcceptedStatus returns false for missing status")
+    @MainActor
+    func crawlerIsAcceptedStatusMissing() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let crawler = Core.EvolutionCrawler(outputDirectory: tempDir)
+
+        // Missing status is NOT accepted (proposals rely on this to skip)
+        #expect(crawler.isAcceptedStatus(nil) == false)
+    }
+
+    @Test("Crawler extractStatus returns nil for markdown without status header")
+    @MainActor
+    func crawlerExtractStatusMissing() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let crawler = Core.EvolutionCrawler(outputDirectory: tempDir)
+
+        // ST-style markdown with no status header
+        let markdown = """
+        # Refactor Bug Inits
+
+        * Authors: Someone
+        * Implementation: [swiftlang/swift-testing#999](link)
+
+        ## Introduction
+        This proposal refactors bug initializers.
+        """
+
+        let status = crawler.extractStatus(from: markdown)
+        #expect(status == nil)
+
+        // With this nil status:
+        // - isAcceptedStatus(nil) == false → proposals would be skipped
+    }
+
     // MARK: - Integration Tests
 
     @Test("Crawler creates output directory", .tags(.integration))
