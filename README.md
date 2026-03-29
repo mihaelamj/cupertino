@@ -29,6 +29,10 @@ Cupertino is a local, structured, AI-ready documentation system for Apple platfo
 - **Local control**: Own your documentation, inspect the database, script workflows
 - **AI-first design**: Built specifically for AI agent integration via MCP
 
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/mihaelamj-cupertino).
+
 ## Quick Start
 
 > **Note:** When building from source, commands must be run from the `Packages` directory. The one-command install works from anywhere.
