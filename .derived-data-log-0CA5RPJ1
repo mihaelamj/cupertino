@@ -2485,6 +2485,28 @@
         "systemVersion" : "25E246",
         "xcodeVersion" : "17E192"
       }
+    },
+    {
+      "accessDate" : "2026-04-08T20:55:52Z",
+      "appBundlePath" : "\/Applications\/Xcode.app",
+      "versionInfo" : {
+        "roots" : [
+
+        ],
+        "sdkVersions" : {
+          "appletvos26.4" : "23L236",
+          "appletvsimulator26.4" : "23L236",
+          "iphoneos26.4" : "23E237",
+          "iphonesimulator26.4" : "23E237",
+          "macosx26.4" : "25E236",
+          "watchos26.4" : "23T238",
+          "watchsimulator26.4" : "23T238",
+          "xros26.4" : "23O238",
+          "xrsimulator26.4" : "23O238"
+        },
+        "systemVersion" : "25E246",
+        "xcodeVersion" : "17E192"
+      }
     }
   ]
 }
