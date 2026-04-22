@@ -1,5 +1,6 @@
 import Foundation
 @testable import Search
+@testable import Shared
 import Testing
 import TestSupport
 
@@ -547,6 +548,218 @@ func getDocumentContentJSON() async throws {
     #expect(content?.contains("\"title\":\"String\"") == true)
 
     await index.disconnect()
+}
+
+// MARK: - Swift Testing (ST) Proposal Indexing Tests
+
+@Test("ST proposal is indexed and searchable under swift-evolution source")
+func stProposalIndexedAndSearchable() async throws {
+    let (index, cleanup) = try await createTestSearchIndex()
+    defer { try? cleanup() }
+
+    // Index an ST proposal
+    try await index.indexDocument(
+        uri: "swift-evolution://ST-0001",
+        source: "swift-evolution",
+        framework: nil,
+        title: "Refactor Bug Inits",
+        content: "Refactor initializers for Bug and related types in Swift Testing",
+        filePath: "/test/ST-0001.md",
+        contentHash: "st-hash",
+        lastCrawled: Date(),
+        sourceType: "swift-evolution"
+    )
+
+    // Search should find it
+    let results = try await index.search(query: "refactor bug", source: "swift-evolution", framework: nil, limit: 10)
+    #expect(results.count == 1)
+    #expect(results[0].uri == "swift-evolution://ST-0001")
+    #expect(results[0].source == "swift-evolution")
+    #expect(results[0].title == "Refactor Bug Inits")
+
+    await index.disconnect()
+}
+
+@Test("Both SE and ST accepted proposals are indexed and searchable")
+func bothSEAndSTAcceptedProposalsIndexed() async throws {
+    let (index, cleanup) = try await createTestSearchIndex()
+    defer { try? cleanup() }
+
+    // Index an SE proposal (accepted)
+    try await index.indexDocument(
+        uri: "swift-evolution://SE-0302",
+        source: "swift-evolution",
+        framework: nil,
+        title: "SE-0302 Sendable",
+        content: "Swift proposal for Sendable protocol concurrency safety",
+        filePath: "/test/SE-0302.md",
+        contentHash: "se-hash",
+        lastCrawled: Date(),
+        sourceType: "swift-evolution"
+    )
+
+    // Index an ST proposal (accepted)
+    try await index.indexDocument(
+        uri: "swift-evolution://ST-0001",
+        source: "swift-evolution",
+        framework: nil,
+        title: "Refactor Bug Inits",
+        content: "Refactor initializers for Bug and related types in Swift Testing",
+        filePath: "/test/ST-0001.md",
+        contentHash: "st-hash",
+        lastCrawled: Date(),
+        sourceType: "swift-evolution"
+    )
+
+    // Both should be findable under swift-evolution source
+    let allResults = try await index.search(query: "swift", source: "swift-evolution", framework: nil, limit: 10)
+    #expect(allResults.count == 2)
+
+    let uris = Set(allResults.map(\.uri))
+    #expect(uris.contains("swift-evolution://SE-0302"))
+    #expect(uris.contains("swift-evolution://ST-0001"))
+
+    await index.disconnect()
+}
+
+// MARK: - IndexBuilder ST File Discovery and Filtering Tests
+
+@Test("IndexBuilder getProposalFiles discovers both SE and ST files")
+func indexBuilderGetProposalFilesDiscoversBothPrefixes() async throws {
+    let tempDir = FileManager.default.temporaryDirectory
+        .appendingPathComponent("cupertino-st-discovery-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+    // Create SE and ST proposal files
+    try "# SE-0302 Sendable\n\n* Status: **Implemented (Swift 5.5)**".write(
+        to: tempDir.appendingPathComponent("SE-0302.md"), atomically: true, encoding: .utf8
+    )
+    try "# Refactor Bug Inits\n\nNo status header.".write(
+        to: tempDir.appendingPathComponent("ST-0001.md"), atomically: true, encoding: .utf8
+    )
+    // Non-proposal file should be excluded
+    try "# README".write(
+        to: tempDir.appendingPathComponent("README.md"), atomically: true, encoding: .utf8
+    )
+
+    let (index, cleanup) = try await createTestSearchIndex()
+    defer { try? cleanup() }
+
+    let builder = Search.IndexBuilder(
+        searchIndex: index,
+        metadata: nil,
+        docsDirectory: tempDir,
+        evolutionDirectory: tempDir
+    )
+
+    let files = try await builder.getProposalFiles(from: tempDir)
+    let filenames = Set(files.map(\.lastPathComponent))
+
+    #expect(filenames.contains("SE-0302.md"), "Should discover SE proposal")
+    #expect(filenames.contains("ST-0001.md"), "Should discover ST proposal")
+    #expect(!filenames.contains("README.md"), "Should exclude non-proposal files")
+    #expect(filenames.count == 2)
+
+    await index.disconnect()
+}
+
+@Test("IndexBuilder isAcceptedProposal returns false for missing status")
+func indexBuilderIsAcceptedProposalMissing() async throws {
+    let (index, cleanup) = try await createTestSearchIndex()
+    defer { try? cleanup() }
+
+    let builder = Search.IndexBuilder(
+        searchIndex: index,
+        metadata: nil,
+        docsDirectory: FileManager.default.temporaryDirectory
+    )
+
+    // Missing status is NOT accepted — proposals rely on this to skip
+    let result = await builder.isAcceptedProposal(nil)
+    #expect(result == false)
+
+    await index.disconnect()
+}
+
+@Test("IndexBuilder extractProposalStatus returns nil for markdown without status header")
+func indexBuilderExtractProposalStatusMissing() async throws {
+    let (index, cleanup) = try await createTestSearchIndex()
+    defer { try? cleanup() }
+
+    let builder = Search.IndexBuilder(
+        searchIndex: index,
+        metadata: nil,
+        docsDirectory: FileManager.default.temporaryDirectory
+    )
+
+    let markdown = """
+    # Refactor Bug Inits
+
+    * Authors: Someone
+
+    ## Introduction
+    This proposal refactors bug initializers.
+    """
+
+    let status = await builder.extractProposalStatus(from: markdown)
+    #expect(status == nil)
+
+    // With nil status: isAcceptedProposal(nil) == false → proposals would be skipped
+    #expect(await builder.isAcceptedProposal(status) == false)
+
+    await index.disconnect()
+}
+
+@Test("IndexBuilder extractProposalStatus and isAcceptedProposal handle hyphen-style ST status")
+func indexBuilderExtractProposalStatusHyphenStyleST() async throws {
+    let (index, cleanup) = try await createTestSearchIndex()
+    defer { try? cleanup() }
+
+    let builder = Search.IndexBuilder(
+        searchIndex: index,
+        metadata: nil,
+        docsDirectory: FileManager.default.temporaryDirectory
+    )
+
+    let markdown = """
+    # Some Swift Testing Proposal
+
+    - Status: **Accepted**
+    - Proposal: [ST-0001](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0001-some-proposal.md)
+
+    ## Introduction
+    This is an example ST proposal using hyphen-style status.
+    """
+
+    let status = await builder.extractProposalStatus(from: markdown)
+    #expect(status == "Accepted")
+    #expect(await builder.isAcceptedProposal(status) == true)
+
+    await index.disconnect()
+}
+
+@Test("Evolution reference pattern matches both SE and ST proposal IDs")
+func evolutionReferencePatternMatchesBothPrefixes() throws {
+    let pattern = Shared.Constants.Pattern.evolutionReference
+    let regex = try NSRegularExpression(pattern: pattern)
+
+    // SE-NNNN
+    let seFilename = "SE-0302"
+    let seRange = NSRange(seFilename.startIndex..., in: seFilename)
+    let seMatch = regex.firstMatch(in: seFilename, range: seRange)
+    #expect(seMatch != nil)
+
+    // ST-NNNN
+    let stFilename = "ST-0001"
+    let stRange = NSRange(stFilename.startIndex..., in: stFilename)
+    let stMatch = regex.firstMatch(in: stFilename, range: stRange)
+    #expect(stMatch != nil)
+
+    // Should not match random text
+    let noMatch = regex.firstMatch(in: "foo-0001", range: NSRange(0..<8))
+    #expect(noMatch == nil)
 }
 
 @Test("getDocumentContent FTS fallback wraps content in JSON for JSON format")

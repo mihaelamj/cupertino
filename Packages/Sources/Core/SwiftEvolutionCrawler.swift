@@ -93,8 +93,26 @@ extension Core {
         // MARK: - Private Methods
 
         private func fetchProposalsList() async throws -> [ProposalMetadata] {
-            // Fetch proposals directory listing from GitHub API
-            let url = URL(string: "\(githubAPI)/repos/\(repo)/contents/proposals?ref=\(branch)")!
+            // Fetch SE proposals from proposals/ directory
+            let seProposals = try await fetchProposalsFromDirectory(
+                path: Shared.Constants.SwiftEvolution.proposalsSubdirectory,
+                prefix: Shared.Constants.SwiftEvolution.seIDPrefix
+            )
+
+            // Fetch ST proposals from proposals/testing/ directory
+            let stProposals = try await fetchProposalsFromDirectory(
+                path: Shared.Constants.SwiftEvolution.testingSubdirectory,
+                prefix: Shared.Constants.SwiftEvolution.stIDPrefix
+            )
+
+            return (seProposals + stProposals).sorted { $0.id < $1.id }
+        }
+
+        private func fetchProposalsFromDirectory(
+            path: String,
+            prefix: String
+        ) async throws -> [ProposalMetadata] {
+            let url = URL(string: "\(githubAPI)/repos/\(repo)/contents/\(path)?ref=\(branch)")!
 
             var request = URLRequest(url: url)
             request.setValue(
@@ -104,39 +122,27 @@ extension Core {
 
             let (data, response) = try await URLSession.shared.data(for: request)
 
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200
-            else {
+            guard let httpResponse = response as? HTTPURLResponse else {
                 throw EvolutionCrawlerError.invalidResponse
             }
 
-            // Parse JSON response
+            if httpResponse.statusCode != 200 {
+                // Only treat 404 as "directory not found" for the testing subdirectory
+                if httpResponse.statusCode == 404, path == Shared.Constants.SwiftEvolution.testingSubdirectory {
+                    logInfo("   Testing proposals directory (\(path)) not found, skipping")
+                    return []
+                }
+                throw EvolutionCrawlerError.invalidResponse
+            }
+
             let files = try JSONDecoder().decode([GitHubFile].self, from: data)
 
-            // Filter for .md files and extract proposal metadata
-            let proposals = files
-                .compactMap { file -> ProposalMetadata? in
-                    // Skip if no downloadURL (e.g., directories)
-                    guard let downloadURL = file.downloadURL else {
-                        return nil
-                    }
-                    // Only process .md files
-                    guard file.name.hasSuffix(Shared.Constants.FileName.markdownExtension) else {
-                        return nil
-                    }
-                    // Extract proposal ID (handles both "0001-..." and "SE-0001-..." formats)
-                    guard let id = extractProposalID(from: file.name) else {
-                        return nil
-                    }
-                    return ProposalMetadata(
-                        id: id,
-                        filename: file.name,
-                        downloadURL: downloadURL
-                    )
-                }
-                .sorted { $0.id < $1.id }
-
-            return proposals
+            return files.compactMap { file -> ProposalMetadata? in
+                guard let downloadURL = file.downloadURL else { return nil }
+                guard file.name.hasSuffix(Shared.Constants.FileName.markdownExtension) else { return nil }
+                guard let id = extractProposalID(from: file.name, prefix: prefix) else { return nil }
+                return ProposalMetadata(id: id, filename: file.name, downloadURL: downloadURL)
+            }
         }
 
         private func downloadProposal(_ proposal: ProposalMetadata, stats: inout EvolutionStatistics) async throws {
@@ -165,8 +171,8 @@ extension Core {
             // Compute hash for change detection
             _ = HashUtilities.sha256(of: markdown)
 
-            // Save to file with SE- prefix
-            let filename = "\(proposal.id)\(Shared.Constants.FileName.markdownExtension)" // e.g., "SE-0001.md"
+            // Save to file with proposal ID prefix (e.g., "SE-0001.md" or "ST-0001.md")
+            let filename = "\(proposal.id)\(Shared.Constants.FileName.markdownExtension)"
             let outputPath = outputDirectory.appendingPathComponent(filename)
             let isNew = !FileManager.default.fileExists(atPath: outputPath.path)
 
@@ -183,9 +189,9 @@ extension Core {
             stats.totalProposals += 1
         }
 
-        private func extractProposalID(from filename: String) -> String? {
+        func extractProposalID(from filename: String, prefix: String = "SE") -> String? {
             // Extract proposal number from filename
-            // Handles: "0001-keywords-as-argument-labels.md" -> "SE-0001"
+            // Handles: "0001-keywords-as-argument-labels.md" -> "SE-0001" (or "ST-0001" for testing)
             // Also handles: "SE-0001-keywords-as-argument-labels.md" -> "SE-0001"
             guard let regex = try? NSRegularExpression(pattern: Shared.Constants.Pattern.seProposalNumber),
                   let match = regex.firstMatch(
@@ -198,10 +204,10 @@ extension Core {
                 return nil
             }
             let number = String(filename[numberRange])
-            return "SE-\(number)"
+            return "\(prefix)-\(number)"
         }
 
-        private func extractStatus(from markdown: String) -> String? {
+        func extractStatus(from markdown: String) -> String? {
             // Extract status from markdown content
             // Format: "* Status: **Implemented (Swift 2.2)**" or "* Status: **Accepted**"
             guard let regex = try? NSRegularExpression(pattern: Shared.Constants.Pattern.seStatus),
@@ -217,7 +223,7 @@ extension Core {
             return String(markdown[statusRange])
         }
 
-        private func isAcceptedStatus(_ status: String?) -> Bool {
+        func isAcceptedStatus(_ status: String?) -> Bool {
             guard let status = status?.lowercased() else {
                 return false
             }

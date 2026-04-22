@@ -508,8 +508,8 @@ extension Shared {
             /// Swift Evolution proposal number
             public static let seProposalNumber = #"^(?:SE-)?(\d{4})"#
 
-            /// Swift Evolution status in markdown
-            public static let seStatus = #"\* Status: \*\*([^\*]+)\*\*"#
+            /// Swift Evolution status in markdown (supports both "* Status:" and "- Status:")
+            public static let seStatus = #"[\*\-] Status:\s*\*\*([^\*]+)\*\*"#
 
             /// HTML pre/code block with language
             public static let htmlCodeBlockWithLanguage =
@@ -517,6 +517,9 @@ extension Shared {
 
             /// Swift Evolution reference (SE-NNNN)
             public static let seReference = #"(SE-\d+)"#
+
+            /// Swift Evolution or Swift Testing reference (SE-NNNN or ST-NNNN)
+            public static let evolutionReference = #"((?:SE|ST)-\d+)"#
         }
 
         // MARK: - HTTP Headers
@@ -623,7 +626,7 @@ extension Shared {
 
             /// Swift Evolution template description
             public static let swiftEvolutionTemplateDescription =
-                "Access Swift Evolution proposals by ID (e.g., SE-0001)"
+                "Access Swift Evolution proposals by ID (e.g., SE-0001 or ST-0001)"
 
             // MARK: MIME Types
 
@@ -634,6 +637,9 @@ extension Shared {
 
             /// Swift Evolution proposal ID prefix
             public static let sePrefix = "SE-"
+
+            /// Swift Testing proposal ID prefix
+            public static let stPrefix = "ST-"
 
             // MARK: Tool Descriptions
 
@@ -1094,6 +1100,18 @@ extension Shared {
 
             /// Repository name
             public static let repo = "swift-evolution"
+
+            /// Subdirectory path for Swift Evolution proposals
+            public static let proposalsSubdirectory = "proposals"
+
+            /// Subdirectory path for Swift Testing proposals
+            public static let testingSubdirectory = "proposals/testing"
+
+            /// Proposal ID prefix for Swift Evolution
+            public static let seIDPrefix = "SE"
+
+            /// Proposal ID prefix for Swift Testing
+            public static let stIDPrefix = "ST"
         }
 
         // MARK: - Priority Packages

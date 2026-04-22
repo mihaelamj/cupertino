@@ -60,7 +60,8 @@ public actor DocsResourceProvider: ResourceProvider {
                 )
 
                 for file in files where file.pathExtension == "md"
-                    && file.lastPathComponent.hasPrefix(Shared.Constants.Search.sePrefix) {
+                    && (file.lastPathComponent.hasPrefix(Shared.Constants.Search.sePrefix) ||
+                        file.lastPathComponent.hasPrefix(Shared.Constants.Search.stPrefix)) {
                     let proposalID = file.deletingPathExtension().lastPathComponent
                     let resource = Resource(
                         uri: "\(Shared.Constants.Search.swiftEvolutionScheme)\(proposalID)",
