@@ -3,12 +3,13 @@ import Logging
 import Shared
 
 extension Core {
-    /// Walks Package.resolved for each seed repo, fetches it via raw.githubusercontent.com,
-    /// and returns the transitive closure of GitHub-hosted Swift package references.
+    /// Walks each seed repo's dependency graph via raw.githubusercontent.com and returns
+    /// the transitive closure of GitHub-hosted Swift package references.
     ///
-    /// Non-GitHub URLs (e.g. hosted on GitLab, self-hosted) are skipped — we can only
-    /// reach raw Package.resolved files on GitHub. Repos without Package.resolved are
-    /// terminal: they still appear in the output, but we can't expand past them.
+    /// Primary source: `Package.swift` (libraries always commit it, and the `.package(url:)`
+    /// declarations are trivial to regex-extract). Fallback: `Package.resolved` (committed
+    /// by apps, not libraries). Non-GitHub URLs (GitLab, self-hosted, SPM registry) are
+    /// counted and skipped.
     public actor PackageDependencyResolver {
         public struct Statistics: Sendable {
             public let seedCount: Int
@@ -62,7 +63,7 @@ extension Core {
                 onProgress?("\(next.owner)/\(next.repo)", processed, processed + frontier.count)
 
                 let resolvedURLs: [String]
-                switch await fetchResolvedLocations(owner: next.owner, repo: next.repo) {
+                switch await fetchDependencyURLs(owner: next.owner, repo: next.repo) {
                 case .success(let urls):
                     resolvedURLs = urls
                 case .missing:
@@ -118,27 +119,69 @@ extension Core {
             case malformed
         }
 
-        private func fetchResolvedLocations(owner: String, repo: String) async -> FetchResult {
+        /// Try Package.swift first (libraries always commit it), then Package.resolved
+        /// (apps commit this; libraries typically don't). Stops at the first branch +
+        /// manifest-type combination that yields parseable content.
+        private func fetchDependencyURLs(owner: String, repo: String) async -> FetchResult {
+            var sawMalformed = false
+
             for branch in candidateBranches {
-                let url = URL(string: "https://raw.githubusercontent.com/\(owner)/\(repo)/\(branch)/Package.resolved")!
-                do {
-                    let (data, response) = try await session.data(from: url)
-                    guard let http = response as? HTTPURLResponse else { continue }
-                    if http.statusCode == 404 { continue }
-                    if http.statusCode != 200 {
-                        logDebug("Package.resolved lookup for \(owner)/\(repo) on \(branch) got HTTP \(http.statusCode)")
-                        continue
+                // 1. Package.swift — covers libraries.
+                switch await fetch(owner: owner, repo: repo, branch: branch, file: "Package.swift") {
+                case .hit(let data):
+                    let urls = Self.parsePackageSwiftURLs(data)
+                    if !urls.isEmpty {
+                        return .success(urls)
                     }
-                    if let locations = Self.parsePackageResolvedLocations(data) {
-                        return .success(locations)
+                    // Empty result from a parseable file just means no deps — that's
+                    // terminal but not an error. Fall through to Package.resolved in
+                    // case the repo also commits that (rare but possible).
+                case .notFound:
+                    break
+                case .transientError:
+                    break
+                }
+
+                // 2. Package.resolved — covers apps / repos that commit the lockfile.
+                switch await fetch(owner: owner, repo: repo, branch: branch, file: "Package.resolved") {
+                case .hit(let data):
+                    if let urls = Self.parsePackageResolvedLocations(data) {
+                        return .success(urls)
                     }
-                    return .malformed
-                } catch {
-                    logDebug("Package.resolved fetch failed for \(owner)/\(repo) on \(branch): \(error)")
+                    sawMalformed = true
+                case .notFound:
+                    continue
+                case .transientError:
                     continue
                 }
             }
-            return .missing
+
+            return sawMalformed ? .malformed : .missing
+        }
+
+        private enum HTTPResult {
+            case hit(Data)
+            case notFound
+            case transientError
+        }
+
+        private func fetch(owner: String, repo: String, branch: String, file: String) async -> HTTPResult {
+            let url = URL(string: "https://raw.githubusercontent.com/\(owner)/\(repo)/\(branch)/\(file)")!
+            do {
+                let (data, response) = try await session.data(from: url)
+                guard let http = response as? HTTPURLResponse else {
+                    return .transientError
+                }
+                if http.statusCode == 200 {
+                    return .hit(data)
+                }
+                if http.statusCode == 404 {
+                    return .notFound
+                }
+                return .transientError
+            } catch {
+                return .transientError
+            }
         }
 
         /// Parse both v1 (`pins[].repositoryURL` or nested `pins[].object.repositoryURL`)
@@ -171,6 +214,73 @@ extension Core {
                 }
             }
             return out
+        }
+
+        /// Extract dependency URLs from a Package.swift manifest by regex-matching
+        /// `.package(...url: "..."...)` declarations. Handles single-line and multi-line
+        /// calls (`.dotMatchesLineSeparators`), both `.package(url: "…", …)` and the
+        /// legacy `.package(name: "…", url: "…", …)` form. Ignores `.package(path: "…")`
+        /// since those are local deps. Commented-out lines (`// .package(…)`) are
+        /// filtered before matching. Always returns an array — empty means the file was
+        /// readable but had no GitHub-style URL declarations (or wasn't a manifest at
+        /// all, which is indistinguishable for our purposes).
+        internal static func parsePackageSwiftURLs(_ data: Data) -> [String] {
+            guard let source = String(data: data, encoding: .utf8) else {
+                return []
+            }
+            let uncommented = source
+                .split(separator: "\n", omittingEmptySubsequences: false)
+                .map(Self.stripLineComment)
+                .joined(separator: "\n")
+
+            // `[^)]*?` is enough in practice: `url:` always appears before any nested
+            // `)` (version predicates like `.upToNextMajor(from: "…")` come after the
+            // URL in every standard SPM manifest). Captures the URL string literal.
+            let pattern = #"\.package\s*\(\s*[^)]*?\burl\s*:\s*"([^"]+)""#
+            guard let regex = try? NSRegularExpression(
+                pattern: pattern,
+                options: [.dotMatchesLineSeparators]
+            ) else {
+                return []
+            }
+            let nsRange = NSRange(uncommented.startIndex..<uncommented.endIndex, in: uncommented)
+            var urls: [String] = []
+            regex.enumerateMatches(in: uncommented, options: [], range: nsRange) { match, _, _ in
+                guard let match, match.numberOfRanges >= 2,
+                      let range = Range(match.range(at: 1), in: uncommented)
+                else {
+                    return
+                }
+                urls.append(String(uncommented[range]))
+            }
+            return urls
+        }
+
+        /// Strip a `//` line comment from a single line, respecting string literals so
+        /// `https://github.com/...` inside a `"…"` string is NOT treated as a comment.
+        /// Naive `"…"` string tracking — doesn't need to handle escaped quotes because
+        /// SwiftPM manifests almost never embed them in URLs or package names.
+        internal static func stripLineComment(_ line: Substring) -> String {
+            var result = ""
+            var inString = false
+            var i = line.startIndex
+            while i < line.endIndex {
+                let ch = line[i]
+                if ch == "\"" {
+                    inString.toggle()
+                    result.append(ch)
+                } else if !inString, ch == "/" {
+                    let next = line.index(after: i)
+                    if next < line.endIndex, line[next] == "/" {
+                        break
+                    }
+                    result.append(ch)
+                } else {
+                    result.append(ch)
+                }
+                i = line.index(after: i)
+            }
+            return result
         }
 
         /// Test hook: expose the GitHub URL parser without leaking the fileprivate struct.
