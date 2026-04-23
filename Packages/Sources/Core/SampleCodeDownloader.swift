@@ -27,6 +27,18 @@ import AppKit
 /// Downloads Apple sample code projects (zip/tar files)
 @MainActor
 public final class SampleCodeDownloader {
+
+    #if os(macOS)
+    /// Activation policy required to make the authentication window appear (#6).
+    /// A bare CLI process defaults to `.prohibited`, which silently drops
+    /// `NSWindow.makeKeyAndOrderFront` calls. `.regular` lets the window server
+    /// display the auth window; a transient Dock icon is acceptable.
+    /// `nonisolated` because it's a constant that doesn't read `NSApp` state.
+    /// Exposed for direct test coverage — any regression to `.prohibited` or
+    /// `.accessory` will fail `SampleCodeAuthPolicyTests`.
+    nonisolated static var authFlowActivationPolicy: NSApplication.ActivationPolicy { .regular }
+    #endif
+
     private let outputDirectory: URL
     private let maxSamples: Int?
     private let forceDownload: Bool
@@ -388,10 +400,14 @@ public final class SampleCodeDownloader {
             // Fix for #6: a bare CLI process is created with activation policy
             // `.prohibited`, which makes `NSWindow.makeKeyAndOrderFront` a silent
             // no-op — the user sees no window and the flag appears to do nothing.
-            // Flipping to `.regular` attaches the process to the window server so
-            // the auth window actually appears (and puts a temporary icon in the
-            // Dock, which is acceptable for a short auth flow).
-            NSApp.setActivationPolicy(.regular)
+            // Flip the process so the auth window actually appears (transient
+            // Dock icon for the duration of the flow is acceptable).
+            //
+            // Use `NSApplication.shared` directly rather than `NSApp`: in a bare
+            // Swift CLI tool, `NSApp` is an implicitly-unwrapped nil until
+            // something first accesses `NSApplication.shared`, so the old
+            // `NSApp.setActivationPolicy(...)` crashed before it could help.
+            NSApplication.shared.setActivationPolicy(Self.authFlowActivationPolicy)
 
             // Create webview with proper frame
             let webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 1024, height: 768))
@@ -418,8 +434,9 @@ public final class SampleCodeDownloader {
             // Show window
             window.makeKeyAndOrderFront(nil)
 
-            // Activate app to bring window to front
-            NSApp.activate(ignoringOtherApps: true)
+            // Activate app to bring window to front. Safe now that the shared
+            // app was materialized above.
+            NSApplication.shared.activate(ignoringOtherApps: true)
 
             logInfo("✅ Browser window opened")
             logInfo("   Sign in to your Apple Developer account")
