@@ -117,9 +117,12 @@ public enum PriorityPackagesCatalog {
 
         // Try user selections file first (unless testing with bundled only)
         let skipUserFile = await cache.shouldSkipUserFile()
-        if !skipUserFile, let userCatalog = loadUserCatalog() {
-            await cache.set(userCatalog)
-            return userCatalog
+        if !skipUserFile {
+            ensureUserSelectionsFileExists()
+            if let userCatalog = loadUserCatalog() {
+                await cache.set(userCatalog)
+                return userCatalog
+            }
         }
 
         // Fall back to bundled resource
@@ -153,6 +156,36 @@ public enum PriorityPackagesCatalog {
         } catch {
             // User file exists but is invalid - fall back to bundled
             return nil
+        }
+    }
+
+    /// Ensure user selections file exists, copying the bundled catalog as the
+    /// initial selection on first run. Mirrors ArchiveGuideCatalog so
+    /// `fetch --type package-docs` honours user customisation out of the box.
+    private static func ensureUserSelectionsFileExists() {
+        let selectedURL = userSelectionsURL
+
+        if FileManager.default.fileExists(atPath: selectedURL.path) {
+            return
+        }
+
+        guard let bundleURL = CupertinoResources.bundle.url(
+            forResource: "priority-packages",
+            withExtension: "json"
+        ) else {
+            return
+        }
+
+        do {
+            let baseDir = Shared.Constants.defaultBaseDirectory
+            if !FileManager.default.fileExists(atPath: baseDir.path) {
+                try FileManager.default.createDirectory(at: baseDir, withIntermediateDirectories: true)
+            }
+
+            let data = try Data(contentsOf: bundleURL)
+            try data.write(to: selectedURL)
+        } catch {
+            // Silently fail - fall back to bundled resource in loadCatalog
         }
     }
 

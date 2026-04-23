@@ -51,6 +51,9 @@ extension Shared {
             /// Samples database file
             public static let samplesDatabase = "samples.db"
 
+            /// Package source + docs FTS index (separate from search.db; hidden feature)
+            public static let packagesIndexDatabase = "packages.db"
+
             // MARK: Package Data Files
 
             /// Swift packages with GitHub stars data
@@ -61,6 +64,15 @@ extension Shared {
 
             /// User-selected packages file
             public static let selectedPackages = "selected-packages.json"
+
+            /// User-maintained exclusion list (flat array of "owner/repo" strings)
+            public static let excludedPackages = "excluded-packages.json"
+
+            /// Machine-written transitive closure of seeds+exclusions (cache)
+            public static let resolvedPackages = "resolved-packages.json"
+
+            /// Per-repo GitHub canonical-name cache (owner/repo → redirect target)
+            public static let canonicalOwnersCache = "canonical-owners.json"
 
             /// Package fetch checkpoint file
             public static let checkpoint = "checkpoint.json"
@@ -140,6 +152,11 @@ extension Shared {
             defaultBaseDirectory.appendingPathComponent(FileName.searchDatabase)
         }
 
+        /// Default package-index database: ~/.cupertino/packages.db
+        public static var defaultPackagesDatabase: URL {
+            defaultBaseDirectory.appendingPathComponent(FileName.packagesIndexDatabase)
+        }
+
         // MARK: - Application Info
 
         public enum App {
@@ -156,7 +173,7 @@ extension Shared {
             public static let userAgent = "CupertinoCrawler/1.0"
 
             /// Current version
-            public static let version = "0.10.0"
+            public static let version = "0.11.0"
 
             /// Database version - separate from CLI version, only bump when schema/content changes
             public static let databaseVersion = "0.9.0"

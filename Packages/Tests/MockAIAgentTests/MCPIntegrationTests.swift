@@ -97,36 +97,50 @@ struct MCPIntegrationTests {
 
         let stdinPipe = Pipe()
         let stdoutPipe = Pipe()
-
         process.standardInput = stdinPipe
         process.standardOutput = stdoutPipe
 
         try process.run()
-        try await Task.sleep(for: .milliseconds(500))
+        defer {
+            process.terminate()
+            process.waitUntilExit()
+        }
 
-        // Initialize first
+        // Pipeline both requests up front; the server reads them sequentially
+        // and writes one response per request to stdout.
         let protocolVersion = MCPProtocolVersionsSupported.sorted().first ?? MCPProtocolVersion
         let initRequest = """
         {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"\(protocolVersion)","capabilities":{},"clientInfo":{"name":"Test","version":"1.0.0"}}}\n
         """
-        stdinPipe.fileHandleForWriting.write(Data(initRequest.utf8))
-
-        // Wait for init response
-        try await Task.sleep(for: .milliseconds(500))
-
-        // List tools
         let toolsRequest = """
         {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}\n
         """
+        stdinPipe.fileHandleForWriting.write(Data(initRequest.utf8))
         stdinPipe.fileHandleForWriting.write(Data(toolsRequest.utf8))
 
-        try await Task.sleep(for: .milliseconds(500))
+        // Poll stdout until we've seen BOTH responses (id:1 + id:2) or the
+        // deadline expires. This replaces three fixed 500 ms sleeps that
+        // flaked under full-suite CPU load — the server can take >500 ms to
+        // emit the tools list when the machine is busy indexing in parallel,
+        // but invariably finishes within a handful of seconds.
+        let deadline = Date().addingTimeInterval(10)
+        var buffer = ""
+        while Date() < deadline {
+            let chunk = stdoutPipe.fileHandleForReading.availableData
+            if chunk.isEmpty {
+                try await Task.sleep(for: .milliseconds(50))
+                continue
+            }
+            if let piece = String(data: chunk, encoding: .utf8) {
+                buffer += piece
+            }
+            if buffer.contains("\"id\":1") && buffer.contains("\"id\":2") {
+                break
+            }
+        }
 
-        let responseData = stdoutPipe.fileHandleForReading.availableData
-        let responseString = String(data: responseData, encoding: .utf8) ?? ""
-
-        let lines = responseString.split(separator: "\n", omittingEmptySubsequences: true)
-        #expect(lines.count >= 2, "Should receive init + tools responses")
+        let lines = buffer.split(separator: "\n", omittingEmptySubsequences: true)
+        #expect(lines.count >= 2, "Should receive init + tools responses before the 10s deadline")
 
         // Find the tools/list response (id: 2)
         let toolsLine = lines.first { $0.contains("\"id\":2") }
@@ -144,9 +158,6 @@ struct MCPIntegrationTests {
             #expect(toolsResult.tools.contains { $0.name == "search" })
             #expect(toolsResult.tools.contains { $0.name == "list_samples" })
         }
-
-        process.terminate()
-        process.waitUntilExit()
         #else
         // Skip on non-macOS platforms
         #endif

@@ -15,7 +15,8 @@ struct CommandRegistrationTests {
     func subcommandsRegistered() {
         let config = Cupertino.configuration
 
-        #expect(config.subcommands.count == 13)
+        // 13 visible + 1 hidden (package-search), see PackageSearchCommand.
+        #expect(config.subcommands.count == 14)
         #expect(config.subcommands.contains { $0 == SetupCommand.self })
         #expect(config.subcommands.contains { $0 == FetchCommand.self })
         #expect(config.subcommands.contains { $0 == SaveCommand.self })

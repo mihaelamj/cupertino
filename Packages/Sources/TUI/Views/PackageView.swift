@@ -163,8 +163,21 @@ struct PackageView {
     }
 
     private func renderPackageLine(entry: PackageEntry, width: Int, highlight: Bool, searchQuery: String) -> String {
-        // Selection indicator: [*] or [ ]
-        let checkbox = entry.isSelected ? "[*]" : "[ ]"
+        // Selection / exclusion / discovery indicator in the checkbox slot:
+        //   [*] explicitly selected (seed)
+        //   [X] explicitly excluded — resolver will drop it from future closures
+        //   [+] discovered via dep walk but never promoted to a seed
+        //   [ ] neither
+        let checkbox: String
+        if entry.isExcluded {
+            checkbox = "[X]"
+        } else if entry.isSelected {
+            checkbox = "[*]"
+        } else if entry.isDiscovered {
+            checkbox = "[+]"
+        } else {
+            checkbox = "[ ]"
+        }
         // Download indicator: [D] for downloaded packages
         let downloadIndicator = entry.isDownloaded ? "[D]" : "   "
         let name = "\(entry.package.owner)/\(entry.package.repo)"

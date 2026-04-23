@@ -919,8 +919,10 @@ public struct PackageDownloadProgress: Sendable {
 /// Statistics for package documentation downloads
 public struct PackageDownloadStatistics: Sendable {
     public var totalPackages: Int
-    public var newREADMEs: Int
-    public var updatedREADMEs: Int
+    public var newPackages: Int
+    public var updatedPackages: Int
+    public var totalFilesSaved: Int
+    public var totalBytesSaved: Int64
     public var successfulDocs: Int
     public var errors: Int
     public var startTime: Date?
@@ -928,25 +930,29 @@ public struct PackageDownloadStatistics: Sendable {
 
     public init(
         totalPackages: Int = 0,
-        newREADMEs: Int = 0,
-        updatedREADMEs: Int = 0,
+        newPackages: Int = 0,
+        updatedPackages: Int = 0,
+        totalFilesSaved: Int = 0,
+        totalBytesSaved: Int64 = 0,
         successfulDocs: Int = 0,
         errors: Int = 0,
         startTime: Date? = nil,
         endTime: Date? = nil
     ) {
         self.totalPackages = totalPackages
-        self.newREADMEs = newREADMEs
-        self.updatedREADMEs = updatedREADMEs
+        self.newPackages = newPackages
+        self.updatedPackages = updatedPackages
+        self.totalFilesSaved = totalFilesSaved
+        self.totalBytesSaved = totalBytesSaved
         self.successfulDocs = successfulDocs
         self.errors = errors
         self.startTime = startTime
         self.endTime = endTime
     }
 
-    /// Total successful READMEs (new + updated)
-    public var successfulREADMEs: Int {
-        newREADMEs + updatedREADMEs
+    /// Total successful packages (new + updated)
+    public var successfulPackages: Int {
+        newPackages + updatedPackages
     }
 
     /// Duration of the download in seconds

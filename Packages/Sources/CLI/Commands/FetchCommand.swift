@@ -3,6 +3,7 @@ import Availability
 import Core
 import Foundation
 import Logging
+import Search
 import Shared
 
 // MARK: - Fetch Command
@@ -26,7 +27,7 @@ struct FetchCommand: AsyncParsableCommand {
         help: """
         Type of documentation to fetch: docs (Apple), swift (Swift.org), \
         evolution (Swift Evolution), packages (Swift package metadata), \
-        package-docs (Swift package READMEs), code (Sample code from Apple), \
+        code (Sample code from Apple), \
         samples (Sample code from GitHub - recommended), \
         archive (Apple Archive guides), hig (Human Interface Guidelines), \
         availability (API version info for existing docs), \
@@ -76,6 +77,19 @@ struct FetchCommand: AsyncParsableCommand {
 
     @Flag(name: .long, help: "Use fast mode (higher concurrency, shorter timeout) for availability fetch")
     var fast: Bool = false
+
+    @Flag(
+        name: .long,
+        inversion: .prefixedNo,
+        help: .hidden
+    )
+    var recurse: Bool = true
+
+    @Flag(
+        name: .long,
+        help: .hidden
+    )
+    var refresh: Bool = false
 
     mutating func run() async throws {
         logStartMessage()
@@ -413,7 +427,7 @@ struct FetchCommand: AsyncParsableCommand {
         }
 
         // Convert to PackageReference format
-        let packageRefs = priorityPackages.compactMap { pkg -> PackageReference? in
+        let seedRefs = priorityPackages.compactMap { pkg -> PackageReference? in
             // Extract owner from URL if not provided
             let owner: String
             if let explicitOwner = pkg.owner, !explicitOwner.isEmpty {
@@ -441,26 +455,179 @@ struct FetchCommand: AsyncParsableCommand {
             )
         }
 
-        Logging.ConsoleLogger.info("📦 Downloading documentation for \(packageRefs.count) priority packages...")
-        Logging.ConsoleLogger.info("   Output: \(outputURL.path)\n")
+        let exclusions = Core.ExclusionList.load()
+        let seedChecksum = Core.ResolvedPackagesStore.checksum(seeds: seedRefs, exclusions: exclusions)
+        let resolvedStoreURL = Shared.Constants.defaultBaseDirectory
+            .appendingPathComponent(Shared.Constants.FileName.resolvedPackages)
+        let canonicalCacheURL = Shared.Constants.defaultBaseDirectory
+            .appendingPathComponent(".cache")
+            .appendingPathComponent(Shared.Constants.FileName.canonicalOwnersCache)
 
-        let downloader = Core.PackageDocumentationDownloader(outputDirectory: outputURL)
+        let resolvedPackages: [Core.ResolvedPackage]
+        if recurse {
+            if !refresh,
+               let cached = Core.ResolvedPackagesStore.load(from: resolvedStoreURL),
+               cached.seedChecksum == seedChecksum
+            {
+                Logging.ConsoleLogger.info("🔗 Using cached closure from resolved-packages.json (\(cached.packages.count) packages, generated \(cached.generatedAt))")
+                resolvedPackages = cached.packages
+            } else {
+                if refresh {
+                    Logging.ConsoleLogger.info("🔗 --refresh: discarding cached closure, re-walking dependency graphs...")
+                } else {
+                    Logging.ConsoleLogger.info("🔗 Resolving transitive dependencies for \(seedRefs.count) seed packages...")
+                }
+                if !exclusions.isEmpty {
+                    Logging.ConsoleLogger.info("   Exclusion list in effect: \(exclusions.count) entries")
+                }
+                let canonicalizer = Core.GitHubCanonicalizer(cacheURL: canonicalCacheURL)
+                let manifestCache = Core.ManifestCache(
+                    rootDirectory: Shared.Constants.defaultBaseDirectory
+                        .appendingPathComponent(".cache")
+                        .appendingPathComponent("manifests")
+                )
+                let resolver = Core.PackageDependencyResolver(
+                    canonicalizer: canonicalizer,
+                    exclusions: exclusions,
+                    manifestCache: manifestCache
+                )
+                let (resolved, resolverStats) = await resolver.resolve(seeds: seedRefs) { name, done, total in
+                    if done == 1 || done % 10 == 0 || done == total {
+                        Logging.ConsoleLogger.output("   Resolving: \(done)/\(total) (\(name))")
+                    }
+                }
+                resolvedPackages = resolved
+                Logging.ConsoleLogger.info("   Seeds: \(resolverStats.seedCount)")
+                Logging.ConsoleLogger.info("   Discovered via dependencies: \(resolverStats.discoveredCount)")
+                Logging.ConsoleLogger.info("   Excluded: \(resolverStats.excludedCount)")
+                Logging.ConsoleLogger.info("   Skipped (non-GitHub): \(resolverStats.skippedNonGitHub)")
+                Logging.ConsoleLogger.info("   Skipped (SPM registry id): \(resolverStats.skippedRegistry)")
+                Logging.ConsoleLogger.info("   Missing manifest: \(resolverStats.missingManifest)")
+                Logging.ConsoleLogger.info("   Malformed manifest: \(resolverStats.malformedManifest)")
+                Logging.ConsoleLogger.info("   Resolver duration: \(Int(resolverStats.duration))s")
 
-        let stats = try await downloader.download(packages: packageRefs) { progress in
-            let percent = String(format: "%.1f", progress.percentage)
-            Logging.ConsoleLogger.output("   Progress: \(percent)% - \(progress.currentPackage)")
+                let store = Core.ResolvedPackagesStore(
+                    cupertinoVersion: Shared.Constants.App.version,
+                    seedChecksum: seedChecksum,
+                    packages: resolved
+                )
+                do {
+                    try store.write(to: resolvedStoreURL)
+                    Logging.ConsoleLogger.info("   Saved closure to \(resolvedStoreURL.path)")
+                } catch {
+                    Logging.ConsoleLogger.error("   ⚠️  Could not persist resolved-packages.json: \(error)")
+                }
+            }
+        } else {
+            resolvedPackages = seedRefs.map { ref in
+                Core.ResolvedPackage(
+                    owner: ref.owner,
+                    repo: ref.repo,
+                    url: ref.url,
+                    priority: ref.priority,
+                    parents: ["\(ref.owner.lowercased())/\(ref.repo.lowercased())"]
+                )
+            }
+            Logging.ConsoleLogger.info("🔗 Skipping dependency resolution (--no-recurse)")
+            if !exclusions.isEmpty {
+                Logging.ConsoleLogger.info("   Exclusion list ignored while --no-recurse is set")
+            }
         }
 
+        Logging.ConsoleLogger.info("📦 Fetching \(resolvedPackages.count) archives into \(outputURL.path)...")
+
+        let extractor = Core.PackageArchiveExtractor()
+        let startedAt = Date()
+        var stats = PackageDownloadStatistics(
+            totalPackages: resolvedPackages.count,
+            startTime: startedAt
+        )
+        for (i, pkg) in resolvedPackages.enumerated() {
+            let label = "\(pkg.owner)/\(pkg.repo)"
+            let pkgDir = outputURL
+                .appendingPathComponent(pkg.owner)
+                .appendingPathComponent(pkg.repo)
+            do {
+                let extraction = try await extractor.fetchAndExtract(
+                    owner: pkg.owner,
+                    repo: pkg.repo,
+                    destination: pkgDir
+                )
+                try writePackageManifest(
+                    resolved: pkg,
+                    extraction: extraction,
+                    destination: pkgDir
+                )
+                stats.newPackages += 1
+                stats.totalFilesSaved += extraction.files.count
+                stats.totalBytesSaved += extraction.totalBytes
+                let kb = extraction.totalBytes / 1024
+                Logging.ConsoleLogger.info("  ✅ \(label) — \(extraction.files.count) files, \(kb) KB")
+            } catch Core.PackageArchiveExtractor.ExtractError.tarballNotFound {
+                stats.errors += 1
+                Logging.ConsoleLogger.error("  ✗ \(label) — archive not found on any ref")
+            } catch Core.PackageArchiveExtractor.ExtractError.tarballTooLarge(let bytes) {
+                stats.errors += 1
+                Logging.ConsoleLogger.error("  ✗ \(label) — archive too large (\(bytes / 1024 / 1024) MB)")
+            } catch {
+                stats.errors += 1
+                Logging.ConsoleLogger.error("  ✗ \(label) — \(error.localizedDescription)")
+            }
+
+            if (i + 1) % Shared.Constants.Interval.progressLogEvery == 0 || i + 1 == resolvedPackages.count {
+                let percent = Double(i + 1) / Double(resolvedPackages.count) * 100
+                Logging.ConsoleLogger.output(String(format: "📊 Progress: %.1f%% (%d/%d)", percent, i + 1, resolvedPackages.count))
+            }
+        }
+        stats.endTime = Date()
+
         Logging.ConsoleLogger.output("")
-        Logging.ConsoleLogger.info("✅ Download completed!")
-        Logging.ConsoleLogger.info("   Total packages: \(stats.totalPackages)")
-        Logging.ConsoleLogger.info("   New READMEs: \(stats.newREADMEs)")
-        Logging.ConsoleLogger.info("   Updated READMEs: \(stats.updatedREADMEs)")
+        Logging.ConsoleLogger.info("✅ Fetch completed!")
+        Logging.ConsoleLogger.info("   New packages: \(stats.newPackages)")
+        Logging.ConsoleLogger.info("   Files saved: \(stats.totalFilesSaved)")
+        Logging.ConsoleLogger.info("   Bytes saved: \(stats.totalBytesSaved / 1024) KB")
         Logging.ConsoleLogger.info("   Errors: \(stats.errors)")
         if let duration = stats.duration {
             Logging.ConsoleLogger.info("   Duration: \(Int(duration))s")
         }
-        Logging.ConsoleLogger.info("\n📁 Output: \(outputURL.path)/")
+        Logging.ConsoleLogger.info("\n📁 Packages: \(outputURL.path)")
+        Logging.ConsoleLogger.info("   Next: index them into \(Shared.Constants.defaultPackagesDatabase.path) via `save --type packages`")
+    }
+
+    private func writePackageManifest(
+        resolved: Core.ResolvedPackage,
+        extraction: Core.PackageArchiveExtractor.Result,
+        destination: URL
+    ) throws {
+        struct Manifest: Encodable {
+            let owner: String
+            let repo: String
+            let url: String
+            let fetchedAt: Date
+            let cupertinoVersion: String
+            let branch: String
+            let parents: [String]
+            let savedFileCount: Int
+            let totalBytes: Int64
+            let tarballBytes: Int
+        }
+        let manifest = Manifest(
+            owner: resolved.owner,
+            repo: resolved.repo,
+            url: resolved.url,
+            fetchedAt: Date(),
+            cupertinoVersion: Shared.Constants.App.version,
+            branch: extraction.branch,
+            parents: resolved.parents,
+            savedFileCount: extraction.files.count,
+            totalBytes: extraction.totalBytes,
+            tarballBytes: extraction.tarballBytes
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(manifest)
+        try data.write(to: destination.appendingPathComponent("manifest.json"))
     }
 
     private func runCodeFetch() async throws {

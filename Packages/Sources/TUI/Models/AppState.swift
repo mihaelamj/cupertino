@@ -86,6 +86,33 @@ final class AppState {
 
         if let index = packages.firstIndex(where: { $0.package.url == visible[cursor].package.url }) {
             packages[index].isSelected.toggle()
+            if packages[index].isSelected { packages[index].isExcluded = false }
+        }
+    }
+
+    /// Toggle the exclusion flag. Excluding a package implicitly removes it from the
+    /// seed list — the two are mutually exclusive signals ("I want this" vs "never
+    /// index this").
+    func toggleExcluded() {
+        let visible = visiblePackages
+        guard cursor < visible.count else { return }
+
+        if let index = packages.firstIndex(where: { $0.package.url == visible[cursor].package.url }) {
+            packages[index].isExcluded.toggle()
+            if packages[index].isExcluded {
+                packages[index].isSelected = false
+            }
+        }
+    }
+
+    /// Promote a discovered-via-dep package into the seed list. Idempotent.
+    func promoteCurrentToSeed() {
+        let visible = visiblePackages
+        guard cursor < visible.count else { return }
+
+        if let index = packages.firstIndex(where: { $0.package.url == visible[cursor].package.url }) {
+            packages[index].isSelected = true
+            packages[index].isExcluded = false
         }
     }
 

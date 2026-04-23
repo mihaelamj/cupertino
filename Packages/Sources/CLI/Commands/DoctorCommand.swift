@@ -196,12 +196,10 @@ struct DoctorCommand: AsyncParsableCommand {
                     Log.output("   ⚠  Orphaned READMEs: \(orphanCount) (no longer selected)")
                 }
             } else {
-                Log.output("   ⚠  Package docs: directory exists but no READMEs")
-                Log.output("     → Run: cupertino fetch --type package-docs")
+                Log.output("   ⚠  Package docs: directory exists but no package files")
             }
         } else {
             Log.output("   ⚠  Package docs: not downloaded")
-            Log.output("     → Run: cupertino fetch --type package-docs")
         }
 
         // Show priority packages source

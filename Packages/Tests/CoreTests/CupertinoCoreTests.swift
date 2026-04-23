@@ -161,8 +161,8 @@ func priorityPackagesCatalogLoadsFromJSON() async throws {
     await PriorityPackagesCatalog.setUseBundledOnly(true)
 
     let stats = await PriorityPackagesCatalog.stats
-    #expect(stats.totalPriorityPackages > 30, "Should have 30+ priority packages")
-    #expect(stats.totalPriorityPackages < 50, "Priority package count should be reasonable")
+    #expect(stats.totalPriorityPackages > 100, "Should have 100+ priority packages after the catalog expansion")
+    #expect(stats.totalPriorityPackages < 500, "Priority package count should still be bounded")
     // These fields are optional to support TUI-generated files (which may not have them)
     if let appleCount = stats.totalCriticalApplePackages {
         #expect(appleCount > 25, "Should have 25+ Apple packages")
@@ -202,8 +202,8 @@ func priorityPackagesCatalogApplePackages() async throws {
     await PriorityPackagesCatalog.setUseBundledOnly(true)
 
     let applePackages = await PriorityPackagesCatalog.applePackages
-    #expect(applePackages.count > 25, "Should have 25+ Apple packages")
-    #expect(applePackages.count < 50, "Apple package count should be reasonable")
+    #expect(applePackages.count > 40, "Should have 40+ Apple packages after expansion")
+    #expect(applePackages.count < 100, "Apple package count should still be bounded")
 
     // Verify known critical packages exist
     let repos = applePackages.map(\.repo)
@@ -223,7 +223,8 @@ func priorityPackagesCatalogEcosystemPackages() async throws {
 
     let ecosystemPackages = await PriorityPackagesCatalog.ecosystemPackages
     #expect(!ecosystemPackages.isEmpty, "Should have ecosystem packages")
-    #expect(ecosystemPackages.count < 20, "Ecosystem package count should be reasonable")
+    #expect(ecosystemPackages.count > 50, "Ecosystem package count should reflect the expansion")
+    #expect(ecosystemPackages.count < 500, "Ecosystem package count should still be bounded")
 
     // Verify known ecosystem packages exist
     let fullNames = ecosystemPackages.map { "\($0.owner ?? "")/\($0.repo)" }
