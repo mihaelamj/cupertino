@@ -30,24 +30,50 @@ struct PackagesSetupCommand: AsyncParsableCommand {
 
     // MARK: - Constants
 
-    private var resolvedVersion: String {
+    /// The release version to use, honoring `--release-version` first and falling back
+    /// to the pinned `Shared.Constants.App.packagesIndexVersion`. Internal for tests.
+    var resolvedVersion: String {
         releaseVersion ?? Shared.Constants.App.packagesIndexVersion
     }
 
     private var releaseTag: String {
-        "v\(resolvedVersion)"
+        Self.makeReleaseTag(version: resolvedVersion)
     }
 
     private var zipFilename: String {
-        "cupertino-packages-\(releaseTag).zip"
+        Self.makeZipFilename(version: resolvedVersion)
     }
 
     private var releaseURL: String {
-        "\(Shared.Constants.App.packagesReleaseBaseURL)/\(releaseTag)"
+        Self.makeReleaseURL(version: resolvedVersion)
     }
 
     private var downloadURL: String {
-        "\(releaseURL)/\(zipFilename)"
+        Self.makeDownloadURL(version: resolvedVersion)
+    }
+
+    // MARK: - URL helpers (internal for testability)
+
+    static func makeReleaseTag(version: String) -> String {
+        "v\(version)"
+    }
+
+    static func makeZipFilename(version: String) -> String {
+        "cupertino-packages-\(makeReleaseTag(version: version)).zip"
+    }
+
+    static func makeReleaseURL(
+        version: String,
+        baseURL: String = Shared.Constants.App.packagesReleaseBaseURL
+    ) -> String {
+        "\(baseURL)/\(makeReleaseTag(version: version))"
+    }
+
+    static func makeDownloadURL(
+        version: String,
+        baseURL: String = Shared.Constants.App.packagesReleaseBaseURL
+    ) -> String {
+        "\(makeReleaseURL(version: version, baseURL: baseURL))/\(makeZipFilename(version: version))"
     }
 
     // MARK: - Run
