@@ -16,6 +16,18 @@ extension Core {
             public let files: [ExtractedFile]
             public let totalBytes: Int64
             public let tarballBytes: Int
+
+            public init(
+                branch: String,
+                files: [ExtractedFile],
+                totalBytes: Int64,
+                tarballBytes: Int
+            ) {
+                self.branch = branch
+                self.files = files
+                self.totalBytes = totalBytes
+                self.tarballBytes = tarballBytes
+            }
         }
 
         public enum ExtractError: Error {
@@ -40,12 +52,19 @@ extension Core {
             self.maxTarballBytes = maxTarballBytes
         }
 
-        /// Download + extract a package archive and return its classified text
-        /// files. Nothing is written to the user's long-lived filesystem — the
-        /// extraction is into a temp scratch dir that's deleted before returning.
+        /// Download + extract a package archive into `destination`. Writes the
+        /// filtered extracted tree to `destination/` AND retains the original
+        /// tarball as `destination/.archive.tar.gz` for later re-extraction or
+        /// diffing. Also returns the classified files in-memory as a
+        /// convenience for callers that want to index immediately without
+        /// re-walking the tree.
+        ///
+        /// Wipes `destination` before extraction so re-runs produce a clean
+        /// state.
         public func fetchAndExtract(
             owner: String,
-            repo: String
+            repo: String,
+            destination: URL
         ) async throws -> Result {
             for ref in candidateRefs {
                 switch await downloadTarball(owner: owner, repo: repo, ref: ref) {
@@ -53,7 +72,11 @@ extension Core {
                     if data.count > maxTarballBytes {
                         throw ExtractError.tarballTooLarge(data.count)
                     }
-                    return try extractIntoMemory(data: data, branch: ref)
+                    return try extractToDisk(
+                        data: data,
+                        branch: ref,
+                        destination: destination
+                    )
                 case .notFound:
                     continue
                 case .transient:
@@ -90,33 +113,38 @@ extension Core {
 
         // MARK: - Extraction
 
-        private func extractIntoMemory(
+        private func extractToDisk(
             data: Data,
-            branch: String
+            branch: String,
+            destination: URL
         ) throws -> Result {
-            let scratch = FileManager.default.temporaryDirectory
-                .appendingPathComponent("cupertino-pkg-\(UUID().uuidString)")
-            try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
-            defer { try? FileManager.default.removeItem(at: scratch) }
+            // Clean destination for a predictable re-extract. Hidden `.archive.tar.gz`
+            // will be rewritten below.
+            if FileManager.default.fileExists(atPath: destination.path) {
+                try FileManager.default.removeItem(at: destination)
+            }
+            try FileManager.default.createDirectory(
+                at: destination,
+                withIntermediateDirectories: true
+            )
 
-            let tarballURL = scratch.appendingPathComponent("archive.tar.gz")
+            // Retain the tarball alongside the extracted tree so later re-indexes
+            // or future indexers (e.g. vector embeddings) never need to re-fetch.
+            let tarballURL = destination.appendingPathComponent(".archive.tar.gz")
             try data.write(to: tarballURL)
 
-            let extractDir = scratch.appendingPathComponent("extracted")
-            try FileManager.default.createDirectory(at: extractDir, withIntermediateDirectories: true)
-
-            try runTar(tarballURL: tarballURL, outputDir: extractDir)
-            try prune(rootURL: extractDir)
+            try runTar(tarballURL: tarballURL, outputDir: destination)
+            try prune(rootURL: destination)
 
             var files: [ExtractedFile] = []
             var totalBytes: Int64 = 0
             // Resolve symlinks on the root so the path comparison works even when
             // /var/folders/... resolves to /private/var/folders/... at enumeration
             // time — /var is a symlink on macOS.
-            let rootComponents = extractDir.resolvingSymlinksInPath().pathComponents
+            let rootComponents = destination.resolvingSymlinksInPath().pathComponents
 
             guard let enumerator = FileManager.default.enumerator(
-                at: extractDir,
+                at: destination,
                 includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey]
             ) else {
                 return Result(branch: branch, files: [], totalBytes: 0, tarballBytes: data.count)
@@ -129,6 +157,9 @@ extension Core {
                     let size = values.fileSize
                 else { continue }
 
+                // Skip our own tarball artifact.
+                if candidate.lastPathComponent == ".archive.tar.gz" { continue }
+
                 let candidateComponents = candidate.resolvingSymlinksInPath().pathComponents
                 guard candidateComponents.count > rootComponents.count else { continue }
                 let relpath = candidateComponents
@@ -137,7 +168,6 @@ extension Core {
 
                 guard let classified = PackageFileKindClassifier.classify(relpath: relpath) else { continue }
 
-                // Read as UTF-8; silently skip files we can't decode (non-text leakage).
                 guard let content = try? String(contentsOf: candidate, encoding: .utf8) else { continue }
 
                 files.append(ExtractedFile(

@@ -44,7 +44,16 @@ struct SaveCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Stream documentation from GitHub (instant setup, no local files needed)")
     var remote: Bool = false
 
+    @Flag(name: .long, help: .hidden)
+    var packages: Bool = false
+
     mutating func run() async throws {
+        // Hidden: save --packages indexes the downloaded package trees into packages.db.
+        if packages {
+            try await runPackagesIndexer()
+            return
+        }
+
         // Handle remote mode separately
         if remote {
             try await runRemote()
@@ -180,6 +189,50 @@ struct SaveCommand: AsyncParsableCommand {
         formatter.allowedUnits = [.useKB, .useMB, .useGB]
         formatter.countStyle = .file
         return formatter.string(fromByteCount: size)
+    }
+
+    // MARK: - Packages Mode (hidden)
+
+    private func runPackagesIndexer() async throws {
+        let effectiveBase = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+            ?? Shared.Constants.defaultBaseDirectory
+        let packagesRoot = packagesDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+            ?? effectiveBase.appendingPathComponent(Shared.Constants.Directory.packages)
+
+        Logging.ConsoleLogger.info("🔨 Indexing packages from \(packagesRoot.path) into \(Shared.Constants.defaultPackagesDatabase.path)")
+
+        // Drop the existing DB so FTS5 doesn't accumulate duplicate rows on
+        // re-runs. `PackageIndex.index(...)` deletes-then-inserts per package,
+        // but a stale schema from an earlier version of cupertino would confuse
+        // things; starting fresh keeps it predictable.
+        if clear, FileManager.default.fileExists(atPath: Shared.Constants.defaultPackagesDatabase.path) {
+            Logging.ConsoleLogger.info("🗑️  --clear: removing existing packages.db")
+            try FileManager.default.removeItem(at: Shared.Constants.defaultPackagesDatabase)
+        }
+
+        let index = try await Search.PackageIndex()
+        let indexer = Search.PackageIndexer(rootDirectory: packagesRoot, index: index)
+
+        let stats = try await indexer.indexAll { name, done, total in
+            if done == 1 || done % 10 == 0 || done == total {
+                Logging.ConsoleLogger.output(String(format: "📊 %d/%d — %@", done, total, name as NSString))
+            }
+        }
+
+        let summary = try await index.summary()
+        await index.disconnect()
+
+        Logging.ConsoleLogger.output("")
+        Logging.ConsoleLogger.info("✅ Package indexing completed")
+        Logging.ConsoleLogger.info("   Packages indexed this run: \(stats.packagesIndexed)")
+        Logging.ConsoleLogger.info("   Packages failed: \(stats.packagesFailed)")
+        Logging.ConsoleLogger.info("   Files this run: \(stats.totalFiles)")
+        Logging.ConsoleLogger.info("   Bytes this run: \(stats.totalBytes / 1024) KB")
+        Logging.ConsoleLogger.info("   Duration: \(Int(stats.durationSeconds))s")
+        Logging.ConsoleLogger.info("")
+        Logging.ConsoleLogger.info("   Total packages in DB: \(summary.packageCount)")
+        Logging.ConsoleLogger.info("   Total files in DB: \(summary.fileCount)")
+        Logging.ConsoleLogger.info("   Total bytes in DB: \(summary.bytesIndexed / 1024) KB")
     }
 
     // MARK: - Remote Mode

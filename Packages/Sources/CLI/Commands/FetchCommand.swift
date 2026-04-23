@@ -534,14 +534,9 @@ struct FetchCommand: AsyncParsableCommand {
             }
         }
 
-        Logging.ConsoleLogger.info("📦 Fetching archives + indexing \(resolvedPackages.count) packages into \(Shared.Constants.defaultPackagesDatabase.path)...")
+        Logging.ConsoleLogger.info("📦 Fetching \(resolvedPackages.count) archives into \(outputURL.path)...")
 
         let extractor = Core.PackageArchiveExtractor()
-        let index = try await Search.PackageIndex()
-        defer {
-            Task { await index.disconnect() }
-        }
-
         let startedAt = Date()
         var stats = PackageDownloadStatistics(
             totalPackages: resolvedPackages.count,
@@ -549,14 +544,25 @@ struct FetchCommand: AsyncParsableCommand {
         )
         for (i, pkg) in resolvedPackages.enumerated() {
             let label = "\(pkg.owner)/\(pkg.repo)"
+            let pkgDir = outputURL
+                .appendingPathComponent(pkg.owner)
+                .appendingPathComponent(pkg.repo)
             do {
-                let extraction = try await extractor.fetchAndExtract(owner: pkg.owner, repo: pkg.repo)
-                let result = try await index.index(resolved: pkg, extraction: extraction)
+                let extraction = try await extractor.fetchAndExtract(
+                    owner: pkg.owner,
+                    repo: pkg.repo,
+                    destination: pkgDir
+                )
+                try writePackageManifest(
+                    resolved: pkg,
+                    extraction: extraction,
+                    destination: pkgDir
+                )
                 stats.newPackages += 1
-                stats.totalFilesSaved += result.filesIndexed
-                stats.totalBytesSaved += result.bytesIndexed
-                let kb = result.bytesIndexed / 1024
-                Logging.ConsoleLogger.info("  ✅ \(label) — \(result.filesIndexed) files, \(kb) KB")
+                stats.totalFilesSaved += extraction.files.count
+                stats.totalBytesSaved += extraction.totalBytes
+                let kb = extraction.totalBytes / 1024
+                Logging.ConsoleLogger.info("  ✅ \(label) — \(extraction.files.count) files, \(kb) KB")
             } catch Core.PackageArchiveExtractor.ExtractError.tarballNotFound {
                 stats.errors += 1
                 Logging.ConsoleLogger.error("  ✗ \(label) — archive not found on any ref")
@@ -575,18 +581,53 @@ struct FetchCommand: AsyncParsableCommand {
         }
         stats.endTime = Date()
 
-        let summary = try await index.summary()
         Logging.ConsoleLogger.output("")
-        Logging.ConsoleLogger.info("✅ Indexing completed!")
-        Logging.ConsoleLogger.info("   Packages in index: \(summary.packageCount)")
-        Logging.ConsoleLogger.info("   Files in index: \(summary.fileCount)")
-        Logging.ConsoleLogger.info("   Bytes in index: \(summary.bytesIndexed / 1024) KB")
-        Logging.ConsoleLogger.info("   Errors during this run: \(stats.errors)")
+        Logging.ConsoleLogger.info("✅ Fetch completed!")
+        Logging.ConsoleLogger.info("   New packages: \(stats.newPackages)")
+        Logging.ConsoleLogger.info("   Files saved: \(stats.totalFilesSaved)")
+        Logging.ConsoleLogger.info("   Bytes saved: \(stats.totalBytesSaved / 1024) KB")
+        Logging.ConsoleLogger.info("   Errors: \(stats.errors)")
         if let duration = stats.duration {
             Logging.ConsoleLogger.info("   Duration: \(Int(duration))s")
         }
-        Logging.ConsoleLogger.info("\n📁 Index: \(Shared.Constants.defaultPackagesDatabase.path)")
-        _ = outputURL
+        Logging.ConsoleLogger.info("\n📁 Packages: \(outputURL.path)")
+        Logging.ConsoleLogger.info("   Next: index them into \(Shared.Constants.defaultPackagesDatabase.path) via `save --type packages`")
+    }
+
+    private func writePackageManifest(
+        resolved: Core.ResolvedPackage,
+        extraction: Core.PackageArchiveExtractor.Result,
+        destination: URL
+    ) throws {
+        struct Manifest: Encodable {
+            let owner: String
+            let repo: String
+            let url: String
+            let fetchedAt: Date
+            let cupertinoVersion: String
+            let branch: String
+            let parents: [String]
+            let savedFileCount: Int
+            let totalBytes: Int64
+            let tarballBytes: Int
+        }
+        let manifest = Manifest(
+            owner: resolved.owner,
+            repo: resolved.repo,
+            url: resolved.url,
+            fetchedAt: Date(),
+            cupertinoVersion: Shared.Constants.App.version,
+            branch: extraction.branch,
+            parents: resolved.parents,
+            savedFileCount: extraction.files.count,
+            totalBytes: extraction.totalBytes,
+            tarballBytes: extraction.tarballBytes
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(manifest)
+        try data.write(to: destination.appendingPathComponent("manifest.json"))
     }
 
     private func runCodeFetch() async throws {
