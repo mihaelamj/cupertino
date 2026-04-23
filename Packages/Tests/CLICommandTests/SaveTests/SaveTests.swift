@@ -400,9 +400,14 @@ struct SaveCommandTests {
         // Search for ARKit samples
         let arkitSamples = try await searchIndex.searchSampleCode(query: "tracking", framework: "ARKit", limit: 10)
 
-        // All results should be ARKit
+        // All results should be ARKit (compared case-insensitively: SearchIndex
+        // stores frameworks lowercased for case-insensitive matching; the test
+        // asserts intent, not the exact stored casing).
         for sample in arkitSamples {
-            #expect(sample.framework == "ARKit", "Filtered results should match framework")
+            #expect(
+                sample.framework.lowercased() == "arkit",
+                "Filtered results should match framework (case-insensitive)"
+            )
         }
 
         print("   ✅ Sample code framework filter working")
