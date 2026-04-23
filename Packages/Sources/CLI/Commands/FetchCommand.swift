@@ -482,9 +482,15 @@ struct FetchCommand: AsyncParsableCommand {
                     Logging.ConsoleLogger.info("   Exclusion list in effect: \(exclusions.count) entries")
                 }
                 let canonicalizer = Core.GitHubCanonicalizer(cacheURL: canonicalCacheURL)
+                let manifestCache = Core.ManifestCache(
+                    rootDirectory: Shared.Constants.defaultBaseDirectory
+                        .appendingPathComponent(".cache")
+                        .appendingPathComponent("manifests")
+                )
                 let resolver = Core.PackageDependencyResolver(
                     canonicalizer: canonicalizer,
-                    exclusions: exclusions
+                    exclusions: exclusions,
+                    manifestCache: manifestCache
                 )
                 let (resolved, resolverStats) = await resolver.resolve(seeds: seedRefs) { name, done, total in
                     if done == 1 || done % 10 == 0 || done == total {
@@ -498,6 +504,7 @@ struct FetchCommand: AsyncParsableCommand {
                 Logging.ConsoleLogger.info("   Discovered via dependencies: \(resolverStats.discoveredCount)")
                 Logging.ConsoleLogger.info("   Excluded: \(resolverStats.excludedCount)")
                 Logging.ConsoleLogger.info("   Skipped (non-GitHub): \(resolverStats.skippedNonGitHub)")
+                Logging.ConsoleLogger.info("   Skipped (SPM registry id): \(resolverStats.skippedRegistry)")
                 Logging.ConsoleLogger.info("   Missing manifest: \(resolverStats.missingManifest)")
                 Logging.ConsoleLogger.info("   Malformed manifest: \(resolverStats.malformedManifest)")
                 Logging.ConsoleLogger.info("   Resolver duration: \(Int(resolverStats.duration))s")

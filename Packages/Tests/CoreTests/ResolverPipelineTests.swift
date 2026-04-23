@@ -257,6 +257,114 @@ func resolverExcludesSeed() async throws {
     #expect(stats.seedCount == 0)
 }
 
+// MARK: - SPM registry id parsing
+
+@Test("parsePackageSwiftRegistryIdCount: counts single .package(id:) call")
+func parseRegistryIdSingle() throws {
+    let source = """
+    dependencies: [
+        .package(id: "apple.swift-nio", from: "2.0.0"),
+    ]
+    """.data(using: .utf8)!
+    #expect(Core.PackageDependencyResolver.parsePackageSwiftRegistryIdCount(source) == 1)
+}
+
+@Test("parsePackageSwiftRegistryIdCount: counts multiple .package(id:) calls")
+func parseRegistryIdMultiple() throws {
+    let source = """
+    dependencies: [
+        .package(id: "apple.swift-nio", from: "2.0.0"),
+        .package(id: "apple.swift-log", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-crypto", from: "3.0.0"),
+    ]
+    """.data(using: .utf8)!
+    #expect(Core.PackageDependencyResolver.parsePackageSwiftRegistryIdCount(source) == 2)
+}
+
+@Test("parsePackageSwiftRegistryIdCount: ignores commented-out registry id")
+func parseRegistryIdCommented() throws {
+    let source = """
+    dependencies: [
+        // .package(id: "apple.swift-atomics", from: "1.0.0"),
+        .package(id: "apple.swift-nio", from: "2.0.0"),
+    ]
+    """.data(using: .utf8)!
+    #expect(Core.PackageDependencyResolver.parsePackageSwiftRegistryIdCount(source) == 1)
+}
+
+@Test("parsePackageSwiftRegistryIdCount: no registry ids in url-only manifest")
+func parseRegistryIdNoneWhenUrlOnly() throws {
+    let source = """
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-nio", from: "2.0.0"),
+    ]
+    """.data(using: .utf8)!
+    #expect(Core.PackageDependencyResolver.parsePackageSwiftRegistryIdCount(source) == 0)
+}
+
+// MARK: - ManifestCache
+
+@Test("ManifestCache: fresh write returns bytes on read")
+func manifestCacheWriteRead() async throws {
+    let tempDir = FileManager.default.temporaryDirectory
+        .appendingPathComponent("cupertino-cache-test-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    let cache = Core.ManifestCache(rootDirectory: tempDir, ttl: 60)
+    let payload = "hello".data(using: .utf8)!
+    await cache.write(payload, owner: "apple", repo: "swift-nio", branch: "main", file: "Package.swift")
+
+    let cached = await cache.read(owner: "apple", repo: "swift-nio", branch: "main", file: "Package.swift")
+    #expect(cached == payload)
+}
+
+@Test("ManifestCache: missing entry returns nil")
+func manifestCacheMiss() async throws {
+    let tempDir = FileManager.default.temporaryDirectory
+        .appendingPathComponent("cupertino-cache-test-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    let cache = Core.ManifestCache(rootDirectory: tempDir, ttl: 60)
+    let cached = await cache.read(owner: "apple", repo: "swift-nio", branch: "main", file: "Package.swift")
+    #expect(cached == nil)
+}
+
+@Test("ManifestCache: expired entry returns nil")
+func manifestCacheExpired() async throws {
+    let tempDir = FileManager.default.temporaryDirectory
+        .appendingPathComponent("cupertino-cache-test-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    let cache = Core.ManifestCache(rootDirectory: tempDir, ttl: 0.001)
+    let payload = "hello".data(using: .utf8)!
+    await cache.write(payload, owner: "apple", repo: "swift-nio", branch: "main", file: "Package.swift")
+
+    // Wait long enough to age past the 1ms TTL.
+    try await Task.sleep(nanoseconds: 50_000_000) // 50ms
+
+    let cached = await cache.read(owner: "apple", repo: "swift-nio", branch: "main", file: "Package.swift")
+    #expect(cached == nil)
+}
+
+@Test("ManifestCache: writeMiss sentinel is not surfaced as a hit")
+func manifestCacheMissSentinel() async throws {
+    let tempDir = FileManager.default.temporaryDirectory
+        .appendingPathComponent("cupertino-cache-test-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    let cache = Core.ManifestCache(rootDirectory: tempDir, ttl: 60)
+    await cache.writeMiss(owner: "apple", repo: "not-exist", branch: "main", file: "Package.swift")
+
+    let cached = await cache.read(owner: "apple", repo: "not-exist", branch: "main", file: "Package.swift")
+    #expect(cached == nil)
+}
+
+// MARK: - Canonical dedupe
+
 @Test("Resolver: seeds that canonicalize to the same repo dedupe into one entry")
 func resolverCanonicalizeDedupes() async throws {
     let tempDir = FileManager.default.temporaryDirectory

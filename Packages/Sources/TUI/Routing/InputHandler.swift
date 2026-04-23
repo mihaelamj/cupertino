@@ -375,6 +375,12 @@ enum InputHandler {
         case .char("s"):
             state.cycleSortMode()
             return true
+        case .char("x"):
+            state.toggleExcluded()
+            return true
+        case .char("p"):
+            state.promoteCurrentToSeed()
+            return true
         case .char("w"):
             do {
                 try saveSelections(state: state)

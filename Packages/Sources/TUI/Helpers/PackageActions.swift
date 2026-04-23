@@ -112,7 +112,61 @@ func saveSelections(state: AppState) throws {
     let data = try JSONSerialization.data(withJSONObject: catalogJSON, options: [.prettyPrinted, .sortedKeys])
     try data.write(to: userPackageSelectionsURL)
 
-    state.statusMessage = "✅ Saved \(selected.count) packages to ~/.cupertino/"
+    // Also persist the exclusion list so `x` toggles survive across sessions.
+    try saveExclusions(state: state)
+
+    state.statusMessage = "✅ Saved \(selected.count) selected, \(state.packages.filter(\.isExcluded).count) excluded"
+}
+
+/// Location of the user exclusion list.
+private var userExclusionsURL: URL {
+    Shared.Constants.defaultBaseDirectory
+        .appendingPathComponent(Shared.Constants.FileName.excludedPackages)
+}
+
+/// Load excluded "owner/repo" entries from disk; empty set if absent/malformed.
+@MainActor
+func loadExcludedPackages() -> Set<String> {
+    Core.ExclusionList.load()
+}
+
+/// Load the resolved closure's non-seed entries so the TUI can flag them as
+/// "discovered via dependency walking" in the package list. Missing file → empty set.
+@MainActor
+func loadDiscoveredPackages() -> Set<String> {
+    let fileURL = Shared.Constants.defaultBaseDirectory
+        .appendingPathComponent(Shared.Constants.FileName.resolvedPackages)
+    guard let store = Core.ResolvedPackagesStore.load(from: fileURL) else {
+        return []
+    }
+    var out = Set<String>()
+    for pkg in store.packages {
+        // Seeds list themselves as their sole parent; discovered packages list a
+        // different seed or multiple parents. If there's any parent that isn't the
+        // package itself, treat it as discovered.
+        let selfKey = "\(pkg.owner.lowercased())/\(pkg.repo.lowercased())"
+        if pkg.parents.contains(where: { $0.lowercased() != selfKey }) {
+            out.insert(selfKey)
+        }
+    }
+    return out
+}
+
+/// Persist the exclusion list as a flat JSON array of "owner/repo" strings.
+@MainActor
+func saveExclusions(state: AppState) throws {
+    let excluded = state.packages.filter(\.isExcluded).map {
+        "\($0.package.owner)/\($0.package.repo)"
+    }.sorted()
+
+    let baseDir = Shared.Constants.defaultBaseDirectory
+    if !FileManager.default.fileExists(atPath: baseDir.path) {
+        try FileManager.default.createDirectory(at: baseDir, withIntermediateDirectories: true)
+    }
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+    let data = try encoder.encode(excluded)
+    try data.write(to: userExclusionsURL)
 }
 
 /// Open a URL (file or directory) in Finder

@@ -15,6 +15,7 @@ extension Core {
             public let seedCount: Int
             public let resolvedCount: Int
             public let skippedNonGitHub: Int
+            public let skippedRegistry: Int
             public let missingManifest: Int
             public let malformedManifest: Int
             public let excludedCount: Int
@@ -25,13 +26,17 @@ extension Core {
 
         private let session: URLSession
         private let requestDelay: TimeInterval
+        private let concurrency: Int
         private let candidateBranches = ["HEAD", "main", "master"]
         private let canonicalizer: GitHubCanonicalizer?
         private let exclusions: Set<String>
+        private let manifestCache: ManifestCache?
 
         public init(
             canonicalizer: GitHubCanonicalizer? = nil,
             exclusions: Set<String> = [],
+            manifestCache: ManifestCache? = nil,
+            concurrency: Int = 10,
             requestDelay: TimeInterval = 0.05
         ) {
             let config = URLSessionConfiguration.ephemeral
@@ -40,6 +45,8 @@ extension Core {
             session = URLSession(configuration: config)
             self.canonicalizer = canonicalizer
             self.exclusions = exclusions
+            self.manifestCache = manifestCache
+            self.concurrency = max(1, concurrency)
             self.requestDelay = requestDelay
         }
 
@@ -81,57 +88,83 @@ extension Core {
             let seedCount = visited.count
 
             var processed = 0
+            var skippedRegistry = 0
             while !frontier.isEmpty {
-                let next = frontier.removeFirst()
-                processed += 1
-                onProgress?("\(next.owner)/\(next.repo)", processed, processed + frontier.count)
+                let batchSize = min(concurrency, frontier.count)
+                let batch = Array(frontier.prefix(batchSize))
+                frontier.removeFirst(batchSize)
 
-                let resolvedURLs: [String]
-                switch await fetchDependencyURLs(owner: next.owner, repo: next.repo) {
-                case .success(let urls):
-                    resolvedURLs = urls
-                case .missing:
-                    missingManifest += 1
-                    continue
-                case .malformed:
-                    malformedManifest += 1
-                    continue
+                let results: [(String, String, String, FetchResult)] = await withTaskGroup(
+                    of: (String, String, String, FetchResult).self
+                ) { [session, candidateBranches, manifestCache] group in
+                    for item in batch {
+                        group.addTask {
+                            let result = await Self.fetchDependencyURLs(
+                                session: session,
+                                candidateBranches: candidateBranches,
+                                cache: manifestCache,
+                                owner: item.owner,
+                                repo: item.repo
+                            )
+                            return (item.owner, item.repo, item.seedOrigin, result)
+                        }
+                    }
+                    var collected: [(String, String, String, FetchResult)] = []
+                    for await r in group { collected.append(r) }
+                    return collected
                 }
 
-                for location in resolvedURLs {
-                    guard let github = GitHubRepo(location: location) else {
-                        skippedNonGitHub += 1
+                for (ownerIn, repoIn, seedOrigin, result) in results {
+                    processed += 1
+                    onProgress?("\(ownerIn)/\(repoIn)", processed, processed + frontier.count)
+
+                    let resolved: FetchSuccess
+                    switch result {
+                    case .success(let success):
+                        resolved = success
+                    case .missing:
+                        missingManifest += 1
+                        continue
+                    case .malformed:
+                        malformedManifest += 1
                         continue
                     }
-                    let canonical = await canonicalize(owner: github.owner, repo: github.repo)
-                    let key = Self.dedupeKey(owner: canonical.owner, repo: canonical.repo)
-                    if exclusions.contains(key) {
-                        excludedCount += 1
-                        continue
-                    }
-                    if var existing = visited[key] {
-                        // Record additional provenance so a user can tell why a package
-                        // survives even after dropping one of its seed sources.
-                        if !existing.parents.contains(next.seedOrigin) {
-                            existing = ResolvedPackage(
-                                owner: existing.owner,
-                                repo: existing.repo,
-                                url: existing.url,
-                                priority: existing.priority,
-                                parents: existing.parents + [next.seedOrigin]
-                            )
-                            visited[key] = existing
+
+                    skippedRegistry += resolved.registryIdentifierCount
+
+                    for location in resolved.dependencyURLs {
+                        guard let github = GitHubRepo(location: location) else {
+                            skippedNonGitHub += 1
+                            continue
                         }
-                        continue
+                        let canonical = await canonicalize(owner: github.owner, repo: github.repo)
+                        let key = Self.dedupeKey(owner: canonical.owner, repo: canonical.repo)
+                        if exclusions.contains(key) {
+                            excludedCount += 1
+                            continue
+                        }
+                        if var existing = visited[key] {
+                            if !existing.parents.contains(seedOrigin) {
+                                existing = ResolvedPackage(
+                                    owner: existing.owner,
+                                    repo: existing.repo,
+                                    url: existing.url,
+                                    priority: existing.priority,
+                                    parents: existing.parents + [seedOrigin]
+                                )
+                                visited[key] = existing
+                            }
+                            continue
+                        }
+                        visited[key] = ResolvedPackage(
+                            owner: canonical.owner,
+                            repo: canonical.repo,
+                            url: "https://github.com/\(canonical.owner)/\(canonical.repo)",
+                            priority: classify(owner: canonical.owner),
+                            parents: [seedOrigin]
+                        )
+                        frontier.append((canonical.owner, canonical.repo, seedOrigin))
                     }
-                    visited[key] = ResolvedPackage(
-                        owner: canonical.owner,
-                        repo: canonical.repo,
-                        url: "https://github.com/\(canonical.owner)/\(canonical.repo)",
-                        priority: classify(owner: canonical.owner),
-                        parents: [next.seedOrigin]
-                    )
-                    frontier.append((canonical.owner, canonical.repo, next.seedOrigin))
                 }
 
                 if requestDelay > 0 {
@@ -149,6 +182,7 @@ extension Core {
                 seedCount: seedCount,
                 resolvedCount: packages.count,
                 skippedNonGitHub: skippedNonGitHub,
+                skippedRegistry: skippedRegistry,
                 missingManifest: missingManifest,
                 malformedManifest: malformedManifest,
                 excludedCount: excludedCount,
@@ -171,50 +205,15 @@ extension Core {
 
         // MARK: - Manifest fetch
 
-        private enum FetchResult {
-            case success([String])
-            case missing
-            case malformed
+        internal struct FetchSuccess: Sendable {
+            let dependencyURLs: [String]
+            let registryIdentifierCount: Int
         }
 
-        /// Try Package.swift first (libraries always commit it), then Package.resolved
-        /// (apps commit this; libraries typically don't). Stops at the first branch +
-        /// manifest-type combination that yields parseable content.
-        private func fetchDependencyURLs(owner: String, repo: String) async -> FetchResult {
-            var sawMalformed = false
-
-            for branch in candidateBranches {
-                // 1. Package.swift — covers libraries.
-                switch await fetch(owner: owner, repo: repo, branch: branch, file: "Package.swift") {
-                case .hit(let data):
-                    let urls = Self.parsePackageSwiftURLs(data)
-                    if !urls.isEmpty {
-                        return .success(urls)
-                    }
-                    // Empty result from a parseable file just means no deps — that's
-                    // terminal but not an error. Fall through to Package.resolved in
-                    // case the repo also commits that (rare but possible).
-                case .notFound:
-                    break
-                case .transientError:
-                    break
-                }
-
-                // 2. Package.resolved — covers apps / repos that commit the lockfile.
-                switch await fetch(owner: owner, repo: repo, branch: branch, file: "Package.resolved") {
-                case .hit(let data):
-                    if let urls = Self.parsePackageResolvedLocations(data) {
-                        return .success(urls)
-                    }
-                    sawMalformed = true
-                case .notFound:
-                    continue
-                case .transientError:
-                    continue
-                }
-            }
-
-            return sawMalformed ? .malformed : .missing
+        internal enum FetchResult: Sendable {
+            case success(FetchSuccess)
+            case missing
+            case malformed
         }
 
         private enum HTTPResult {
@@ -223,7 +222,77 @@ extension Core {
             case transientError
         }
 
-        private func fetch(owner: String, repo: String, branch: String, file: String) async -> HTTPResult {
+        /// Static so batches of tasks in a TaskGroup can run in parallel without
+        /// serialising through the actor. Walks Package.swift first (libraries commit
+        /// it, so most seeds are covered here), then Package.resolved as a fallback
+        /// (apps commit the lockfile, libraries don't).
+        static func fetchDependencyURLs(
+            session: URLSession,
+            candidateBranches: [String],
+            cache: ManifestCache?,
+            owner: String,
+            repo: String
+        ) async -> FetchResult {
+            var sawMalformed = false
+
+            for branch in candidateBranches {
+                switch await fetchManifest(
+                    session: session,
+                    cache: cache,
+                    owner: owner,
+                    repo: repo,
+                    branch: branch,
+                    file: "Package.swift"
+                ) {
+                case .hit(let data):
+                    // Successful fetch is terminal even if the package declares no
+                    // dependencies or only registry-id deps: we know the manifest
+                    // exists, so don't count it as missing.
+                    let urls = parsePackageSwiftURLs(data)
+                    let registryCount = parsePackageSwiftRegistryIdCount(data)
+                    return .success(FetchSuccess(
+                        dependencyURLs: urls,
+                        registryIdentifierCount: registryCount
+                    ))
+                case .notFound, .transientError:
+                    break
+                }
+
+                switch await fetchManifest(
+                    session: session,
+                    cache: cache,
+                    owner: owner,
+                    repo: repo,
+                    branch: branch,
+                    file: "Package.resolved"
+                ) {
+                case .hit(let data):
+                    if let urls = parsePackageResolvedLocations(data) {
+                        return .success(FetchSuccess(
+                            dependencyURLs: urls,
+                            registryIdentifierCount: 0
+                        ))
+                    }
+                    sawMalformed = true
+                case .notFound, .transientError:
+                    continue
+                }
+            }
+
+            return sawMalformed ? .malformed : .missing
+        }
+
+        private static func fetchManifest(
+            session: URLSession,
+            cache: ManifestCache?,
+            owner: String,
+            repo: String,
+            branch: String,
+            file: String
+        ) async -> HTTPResult {
+            if let cache, let cached = await cache.read(owner: owner, repo: repo, branch: branch, file: file) {
+                return .hit(cached)
+            }
             let url = URL(string: "https://raw.githubusercontent.com/\(owner)/\(repo)/\(branch)/\(file)")!
             do {
                 let (data, response) = try await session.data(from: url)
@@ -231,9 +300,11 @@ extension Core {
                     return .transientError
                 }
                 if http.statusCode == 200 {
+                    await cache?.write(data, owner: owner, repo: repo, branch: branch, file: file)
                     return .hit(data)
                 }
                 if http.statusCode == 404 {
+                    await cache?.writeMiss(owner: owner, repo: repo, branch: branch, file: file)
                     return .notFound
                 }
                 return .transientError
@@ -339,6 +410,25 @@ extension Core {
                 i = line.index(after: i)
             }
             return result
+        }
+
+        /// Count `.package(id: "scope.name", ...)` registry-identifier dependencies in a
+        /// Package.swift. We don't resolve them to source URLs (the SwiftPM registry
+        /// protocol is scope-specific and out of scope for this resolver); we just count
+        /// them so stats can surface that some deps exist but weren't walked.
+        internal static func parsePackageSwiftRegistryIdCount(_ data: Data) -> Int {
+            guard let source = String(data: data, encoding: .utf8) else { return 0 }
+            let uncommented = source
+                .split(separator: "\n", omittingEmptySubsequences: false)
+                .map(stripLineComment)
+                .joined(separator: "\n")
+            let pattern = #"\.package\s*\(\s*[^)]*?\bid\s*:\s*"([^"]+)""#
+            guard let regex = try? NSRegularExpression(
+                pattern: pattern,
+                options: [.dotMatchesLineSeparators]
+            ) else { return 0 }
+            let range = NSRange(uncommented.startIndex..<uncommented.endIndex, in: uncommented)
+            return regex.numberOfMatches(in: uncommented, options: [], range: range)
         }
 
         /// Test hook: expose the GitHub URL parser without leaking the fileprivate struct.

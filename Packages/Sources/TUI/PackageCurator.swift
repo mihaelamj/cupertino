@@ -37,13 +37,27 @@ struct PackageCuratorApp {
         // Check which packages are downloaded using configured base directory
         let downloadedPackages = checkDownloadedPackages(in: config.baseDirectory)
 
+        // Pick up any resolver output and exclusion list from previous fetches so the
+        // TUI can reflect the actual state of the user's index.
+        let discoveredKeys = loadDiscoveredPackages()
+        let excludedKeys = loadExcludedPackages()
+
         // Initialize state
         let state = AppState()
         state.baseDirectory = config.baseDirectory
         state.packages = packages.map { pkg in
+            let key = "\(pkg.owner)/\(pkg.repo)".lowercased()
             let isSelected = priorityURLs.contains(pkg.url)
-            let isDownloaded = downloadedPackages.contains("\(pkg.owner)/\(pkg.repo)".lowercased())
-            return PackageEntry(package: pkg, isSelected: isSelected, isDownloaded: isDownloaded)
+            let isDownloaded = downloadedPackages.contains(key)
+            let isDiscovered = discoveredKeys.contains(key)
+            let isExcluded = excludedKeys.contains(key)
+            return PackageEntry(
+                package: pkg,
+                isSelected: isSelected,
+                isDownloaded: isDownloaded,
+                isDiscovered: isDiscovered,
+                isExcluded: isExcluded
+            )
         }
 
         // Scan library artifacts
