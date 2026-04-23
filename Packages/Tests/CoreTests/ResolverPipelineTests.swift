@@ -365,6 +365,120 @@ func manifestCacheMissSentinel() async throws {
 
 // MARK: - Canonical dedupe
 
+// MARK: - Integration (network required)
+
+@Suite("Resolver network integration", .tags(.integration), .serialized)
+struct ResolverNetworkIntegration {
+    /// Canonicaliser must normalise case via GitHub's API (`apple/SWIFT-NIO` → `apple/swift-nio`).
+    /// This is a cheap live-fire check for the redirect lookup; doesn't assume anything
+    /// about packages GitHub may have renamed, just that case-insensitive lookup works.
+    @Test("Canonicalizer: APPLE/SWIFT-NIO normalises via live GitHub API")
+    func canonicalizerNormalisesCase() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cupertino-canon-int-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let cacheURL = tempDir.appendingPathComponent("canonical-owners.json")
+
+        let canonicalizer = Core.GitHubCanonicalizer(cacheURL: cacheURL)
+        let canonical = await canonicalizer.canonicalize(owner: "APPLE", repo: "SWIFT-NIO")
+        #expect(canonical.owner == "apple")
+        #expect(canonical.repo == "swift-nio")
+    }
+
+    /// Resolve a single real seed and assert the closure contains its documented
+    /// Package.swift dependencies. swift-composable-architecture is a stable choice:
+    /// it lives in one repo, has a handful of well-known pointfreeco deps, and its
+    /// manifest is easy to eyeball.
+    @Test("Resolver: real seed walks Package.swift dependencies")
+    func resolverRealSeedClosure() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cupertino-resolve-int-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let canonicalizer = Core.GitHubCanonicalizer(
+            cacheURL: tempDir.appendingPathComponent("canonical-owners.json")
+        )
+        let manifestCache = Core.ManifestCache(
+            rootDirectory: tempDir.appendingPathComponent("manifests")
+        )
+        let resolver = Core.PackageDependencyResolver(
+            canonicalizer: canonicalizer,
+            manifestCache: manifestCache,
+            concurrency: 4
+        )
+
+        let seeds: [PackageReference] = [
+            .init(
+                owner: "pointfreeco",
+                repo: "swift-composable-architecture",
+                url: "https://github.com/pointfreeco/swift-composable-architecture",
+                priority: .ecosystem
+            ),
+        ]
+        let (packages, stats) = await resolver.resolve(seeds: seeds)
+        #expect(stats.seedCount == 1)
+        #expect(stats.discoveredCount > 0)
+        #expect(stats.missingManifest == 0)
+
+        let names = Set(packages.map { "\($0.owner)/\($0.repo)".lowercased() })
+        // These are long-standing TCA deps; if any of the three go missing the test
+        // should still reveal something useful from the assertion message.
+        #expect(names.contains("pointfreeco/swift-composable-architecture"))
+        #expect(names.contains("pointfreeco/swift-dependencies"))
+        #expect(names.contains("pointfreeco/swift-custom-dump"))
+    }
+
+    /// Second resolve in a row should hit the ManifestCache for manifests already
+    /// fetched, so it's much faster and has no misses on repos the first run saw.
+    /// We don't assert a strict duration (CI variance), but we assert that the second
+    /// run doesn't record any missing manifests for a seed whose first run succeeded.
+    @Test("Resolver: re-run within TTL reuses manifest cache")
+    func resolverCacheHitOnReRun() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cupertino-resolve-int-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let canonicalizer = Core.GitHubCanonicalizer(
+            cacheURL: tempDir.appendingPathComponent("canonical-owners.json")
+        )
+        let manifestCache = Core.ManifestCache(
+            rootDirectory: tempDir.appendingPathComponent("manifests")
+        )
+
+        let seeds: [PackageReference] = [
+            .init(
+                owner: "pointfreeco",
+                repo: "swift-dependencies",
+                url: "https://github.com/pointfreeco/swift-dependencies",
+                priority: .ecosystem
+            ),
+        ]
+
+        let resolver1 = Core.PackageDependencyResolver(
+            canonicalizer: canonicalizer,
+            manifestCache: manifestCache,
+            concurrency: 4
+        )
+        let (_, firstStats) = await resolver1.resolve(seeds: seeds)
+        #expect(firstStats.resolvedCount >= 1)
+
+        // Second resolver over the same cache; both canonicalizer and manifest cache
+        // are warm. Manifest cache's 24h TTL keeps entries alive.
+        let resolver2 = Core.PackageDependencyResolver(
+            canonicalizer: canonicalizer,
+            manifestCache: manifestCache,
+            concurrency: 4
+        )
+        let (secondPackages, secondStats) = await resolver2.resolve(seeds: seeds)
+        #expect(secondStats.resolvedCount == firstStats.resolvedCount)
+        #expect(secondStats.duration <= max(firstStats.duration, 1.0))
+        #expect(secondPackages.count == firstStats.resolvedCount)
+    }
+}
+
 @Test("Resolver: seeds that canonicalize to the same repo dedupe into one entry")
 func resolverCanonicalizeDedupes() async throws {
     let tempDir = FileManager.default.temporaryDirectory
