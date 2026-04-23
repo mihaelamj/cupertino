@@ -408,17 +408,13 @@ public final class SampleCodeDownloader {
         NSApplication.shared.setActivationPolicy(Self.authFlowActivationPolicy)
         defer { NSApplication.shared.setActivationPolicy(.prohibited) }
 
-        // Explicit config so the auth WebView behaves like the rest of the
-        // downloader's browser automation (#6 follow-up: the previous plain
-        // `WKWebView(frame:)` got a fresh data store and no UA, which led
-        // Apple's login page to serve blank content).
+        // Explicit config so the auth WebView uses the persistent cookie jar.
+        // We do NOT set `customUserAgent` here: idmsa.apple.com returns 403 to
+        // our spoofed Safari UA (verified with curl during #6 deep-dive). Let
+        // WebKit send its native Safari-compatible UA, which idmsa accepts.
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()
         let webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 1024, height: 768), configuration: config)
-        webView.customUserAgent = """
-        Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) \
-        AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15
-        """
         await loadCookies(into: webView)
 
         let window = NSWindow(
@@ -433,21 +429,29 @@ public final class SampleCodeDownloader {
         window.isReleasedWhenClosed = false
 
         let loginURL = URL(string: Shared.Constants.BaseURL.appleDeveloperAccount)!
-        webView.load(URLRequest(url: loginURL))
+
+        // NOTE: show the window BEFORE load()+delegate wiring so the user
+        // immediately sees something; but do NOT call webView.load() here —
+        // the delegate must be attached first, otherwise the initial
+        // navigation's success/failure is invisible (cause of #6's empty-
+        // window diagnosis: didFailProvisionalNavigation couldn't log because
+        // the delegate wasn't attached yet).
         window.makeKeyAndOrderFront(nil)
         NSApplication.shared.activate(ignoringOtherApps: true)
 
-        logInfo("✅ Browser window opened")
-        logInfo("   Sign in to your Apple Developer account")
+        // Surface progress on stdout (bypasses Log.info's category router
+        // which in --authenticate invocations wasn't reaching stdout).
+        Logging.ConsoleLogger.info("✅ Browser window opened")
+        Logging.ConsoleLogger.info("   Sign in to your Apple Developer account")
         if Self.isInteractiveStdin() {
-            logInfo("   The window closes automatically when sign-in is detected.")
-            logInfo("   (Or close the window / press Enter here to finish.)")
+            Logging.ConsoleLogger.info("   The window closes automatically when sign-in is detected.")
+            Logging.ConsoleLogger.info("   (Or close the window / press Enter here to finish.)")
         } else {
-            logInfo("   The window closes automatically when sign-in is detected.")
-            logInfo("   (Or close the window to finish — stdin is not a TTY.)")
+            Logging.ConsoleLogger.info("   The window closes automatically when sign-in is detected.")
+            Logging.ConsoleLogger.info("   (Or close the window to finish — stdin is not a TTY.)")
         }
 
-        let outcome = await Self.awaitAuthOutcome(webView: webView, window: window)
+        let outcome = await Self.awaitAuthOutcome(webView: webView, window: window, initialURL: loginURL)
 
         await saveCookies(from: webView)
         window.close()
@@ -500,8 +504,18 @@ public final class SampleCodeDownloader {
     /// Races three signals: (1) WebView navigation reports an Apple session
     /// cookie present, (2) the user presses Enter at the prompt, (3) the user
     /// closes the auth window. Returns whichever fires first.
+    ///
+    /// Takes the URL it will load so the delegate is wired up BEFORE
+    /// `webView.load(...)` fires. Without that ordering, the initial
+    /// navigation's success/failure is invisible to the delegate (#6
+    /// deep-dive: that's why an empty window couldn't surface any
+    /// diagnostic).
     @MainActor
-    private static func awaitAuthOutcome(webView: WKWebView, window: NSWindow) async -> AuthOutcome {
+    private static func awaitAuthOutcome(
+        webView: WKWebView,
+        window: NSWindow,
+        initialURL: URL
+    ) async -> AuthOutcome {
         await withCheckedContinuation { (continuation: CheckedContinuation<AuthOutcome, Never>) in
             let coordinator = AuthFlowCoordinator { outcome in
                 continuation.resume(returning: outcome)
@@ -532,6 +546,9 @@ public final class SampleCodeDownloader {
                 webView.navigationDelegate = nil
                 _ = coordinator  // silence warning
             }
+
+            // (1) Kick off the initial navigation AFTER the delegate is wired.
+            webView.load(URLRequest(url: initialURL))
         }
     }
     #endif
