@@ -180,7 +180,7 @@ struct SetupCommand: AsyncParsableCommand {
             } else {
                 Logging.ConsoleLogger.info("   Version:       v\(installed) — stale (this cupertino expects v\(current))")
                 Logging.ConsoleLogger.info("\n⚠️  Databases are stale. Drop --keep-existing and rerun `cupertino setup` to upgrade.")
-                Logging.ConsoleLogger.info("💡 Start the server with: cupertino serve (will use stale DBs until upgraded)")
+                Logging.ConsoleLogger.info("   (Serving from stale DBs still works but will miss newer documentation.)")
             }
         case .unknown(let current):
             if isDownloading {
@@ -189,7 +189,6 @@ struct SetupCommand: AsyncParsableCommand {
             } else {
                 Logging.ConsoleLogger.info("   Version:       unknown (legacy install, no version stamp)")
                 Logging.ConsoleLogger.info("\n💡 Drop --keep-existing and rerun `cupertino setup` to refresh and stamp the version.")
-                Logging.ConsoleLogger.info("💡 Start the server with: cupertino serve")
             }
         }
     }
