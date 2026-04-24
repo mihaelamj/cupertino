@@ -60,4 +60,57 @@ struct MCPDoctorCommandTests {
 
         print("   ✅ Search database verification tested")
     }
+
+    // MARK: - #192 F1 / F2 schema-version & row-count helpers
+
+    @Test("Doctor reads PRAGMA user_version from a fresh search.db")
+    func doctorReadsSchemaVersion() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("doctor-schema-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        let dbPath = tempDir.appendingPathComponent("search.db")
+        let idx = try await Search.Index(dbPath: dbPath)
+        await idx.disconnect()
+
+        // A fresh DB stamps user_version to the current schema version.
+        let read = DoctorCommand.readUserVersion(at: dbPath)
+        #expect(read == Search.Index.schemaVersion)
+    }
+
+    @Test("Doctor returns nil user_version for a missing file")
+    func doctorUserVersionMissing() {
+        let missingPath = FileManager.default.temporaryDirectory
+            .appendingPathComponent("definitely-not-here-\(UUID().uuidString).db")
+        #expect(DoctorCommand.readUserVersion(at: missingPath) == nil)
+    }
+
+    @Test("Doctor returns nil rowCount for a missing table")
+    func doctorRowCountMissingTable() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("doctor-rowcount-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        let dbPath = tempDir.appendingPathComponent("search.db")
+        let idx = try await Search.Index(dbPath: dbPath)
+        await idx.disconnect()
+
+        // `packages` is a packages.db table, not present in search.db.
+        let count = DoctorCommand.rowCount(dbPath: dbPath, sql: "SELECT COUNT(*) FROM packages_that_do_not_exist;")
+        #expect(count == nil)
+    }
+
+    @Test("Doctor returns zero rowCount for an empty existing table")
+    func doctorRowCountEmpty() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("doctor-rowcount-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        let dbPath = tempDir.appendingPathComponent("search.db")
+        let idx = try await Search.Index(dbPath: dbPath)
+        await idx.disconnect()
+
+        let count = DoctorCommand.rowCount(dbPath: dbPath, sql: "SELECT COUNT(*) FROM docs_metadata;")
+        #expect(count == 0)
+    }
 }

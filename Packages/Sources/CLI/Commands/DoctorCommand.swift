@@ -7,6 +7,7 @@ import MCPSupport
 import Search
 import SearchToolProvider
 import Shared
+import SQLite3
 
 // MARK: - Doctor Command
 
@@ -48,10 +49,13 @@ struct DoctorCommand: AsyncParsableCommand {
         // Check documentation directories
         allChecks = checkDocumentationDirectories() && allChecks
 
-        // Check packages
+        // Check packages (filesystem state)
         await checkPackages()
 
-        // Check search database
+        // Check packages.db (#192 F1)
+        allChecks = checkPackagesDatabase() && allChecks
+
+        // Check search database + schema version (#192 F2)
         allChecks = await checkSearchDatabase() && allChecks
 
         // Check resource providers
@@ -140,27 +144,120 @@ struct DoctorCommand: AsyncParsableCommand {
 
         guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
             Log.output("   ✗ Database: \(searchDBURL.path) (not found)")
-            Log.output("     → Run: cupertino save")
+            Log.output("     → Run: cupertino setup  (or `cupertino save` if building locally)")
             Log.output("")
             return false
+        }
+
+        // Read PRAGMA user_version BEFORE opening via Search.Index — migrating
+        // from an incompatible version throws during init, and we want to tell
+        // the user *which* version they're stuck on.
+        let onDiskVersion = Self.readUserVersion(at: searchDBURL)
+        let expected = Search.Index.schemaVersion
+        let fileSize = (try? FileManager.default.attributesOfItem(atPath: searchDBURL.path)[.size] as? UInt64) ?? 0
+
+        Log.output("   ✓ Database: \(searchDBURL.path)")
+        Log.output("   ✓ Size: \(Shared.Formatting.formatBytes(Int64(fileSize)))")
+
+        if let onDiskVersion {
+            if onDiskVersion == expected {
+                Log.output("   ✓ Schema version: \(onDiskVersion) (matches installed binary)")
+            } else if onDiskVersion < expected {
+                Log.output("   ✗ Schema version: \(onDiskVersion) (binary expects \(expected), rebuild required)")
+                Log.output("     → rm \(searchDBURL.path) && cupertino save")
+                Log.output("")
+                return false
+            } else {
+                Log.output("   ✗ Schema version: \(onDiskVersion) (newer than binary — expected \(expected))")
+                Log.output("     → Upgrade cupertino: brew upgrade cupertino")
+                Log.output("")
+                return false
+            }
+        } else {
+            Log.output("   ⚠  Schema version: could not read PRAGMA user_version")
         }
 
         do {
             let searchIndex = try await Search.Index(dbPath: searchDBURL)
             let frameworks = try await searchIndex.listFrameworks()
-            let fileSize = try FileManager.default.attributesOfItem(atPath: searchDBURL.path)[.size] as? UInt64 ?? 0
-
-            Log.output("   ✓ Database: \(searchDBURL.path)")
-            Log.output("   ✓ Size: \(Shared.Formatting.formatBytes(Int64(fileSize)))")
             Log.output("   ✓ Frameworks: \(frameworks.count)")
+            await searchIndex.disconnect()
             Log.output("")
             return true
         } catch {
             Log.output("   ✗ Database error: \(error)")
-            Log.output("     → Run: cupertino save")
+            Log.output("     → rm \(searchDBURL.path) && cupertino save")
             Log.output("")
             return false
         }
+    }
+
+    /// #192 F1. Report `packages.db` presence, size, and row counts (packages,
+    /// files). Schema version tracked via the `Shared.Constants.App.packagesIndexVersion`
+    /// constant rather than a PRAGMA (packages.db is downloaded, not migrated).
+    private func checkPackagesDatabase() -> Bool {
+        let packagesDBURL = Shared.Constants.defaultPackagesDatabase
+
+        Log.output("📦 Packages Index (packages.db)")
+
+        guard FileManager.default.fileExists(atPath: packagesDBURL.path) else {
+            Log.output("   ⚠  Database: \(packagesDBURL.path) (not found)")
+            Log.output("     → Run: cupertino setup  (downloads the pre-built packages index)")
+            Log.output("     Expected version: \(Shared.Constants.App.packagesIndexVersion)")
+            Log.output("")
+            // Missing packages.db is a warning, not a failure — server still
+            // runs, just without the packages tool. Doctor summary stays green.
+            return true
+        }
+
+        let fileSize = (try? FileManager.default.attributesOfItem(atPath: packagesDBURL.path)[.size] as? UInt64) ?? 0
+        Log.output("   ✓ Database: \(packagesDBURL.path)")
+        Log.output("   ✓ Size: \(Shared.Formatting.formatBytes(Int64(fileSize)))")
+
+        let packageCount = Self.rowCount(dbPath: packagesDBURL, sql: "SELECT COUNT(*) FROM packages;")
+        let fileCount = Self.rowCount(dbPath: packagesDBURL, sql: "SELECT COUNT(*) FROM package_files;")
+        if let packageCount { Log.output("   ✓ Packages: \(packageCount)") }
+        if let fileCount { Log.output("   ✓ Indexed files: \(fileCount)") }
+        Log.output("   ℹ  Bundled version: \(Shared.Constants.App.packagesIndexVersion)")
+        Log.output("")
+        return true
+    }
+
+    /// Read `PRAGMA user_version` directly without opening the DB through
+    /// `Search.Index` (whose init will throw on incompatible versions).
+    static func readUserVersion(at dbPath: URL) -> Int32? {
+        var db: OpaquePointer?
+        guard sqlite3_open_v2(dbPath.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+            return nil
+        }
+        defer { sqlite3_close(db) }
+
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_prepare_v2(db, "PRAGMA user_version;", -1, &stmt, nil) == SQLITE_OK,
+              sqlite3_step(stmt) == SQLITE_ROW else {
+            return nil
+        }
+        return sqlite3_column_int(stmt, 0)
+    }
+
+    /// Run a `SELECT COUNT(*) ...` read-only against any sqlite DB. Returns
+    /// nil if the query fails (most commonly because the table doesn't
+    /// exist — which is information worth surfacing blank rather than crashing).
+    static func rowCount(dbPath: URL, sql: String) -> Int? {
+        var db: OpaquePointer?
+        guard sqlite3_open_v2(dbPath.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+            return nil
+        }
+        defer { sqlite3_close(db) }
+
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK,
+              sqlite3_step(stmt) == SQLITE_ROW else {
+            return nil
+        }
+        return Int(sqlite3_column_int(stmt, 0))
     }
 
     private func checkPackages() async {
