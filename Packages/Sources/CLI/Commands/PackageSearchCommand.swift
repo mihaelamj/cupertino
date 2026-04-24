@@ -6,15 +6,19 @@ import Shared
 
 // MARK: - Package Search Command (hidden)
 
-/// Hidden smart query over `~/.cupertino/packages.db`. Invoked as:
+/// Hidden packages-only smart query. Invoked as:
 ///     cupertino package-search "how do I write a log handler in swift-log"
-/// Prints plain-text ranked chunks. Not advertised in `--help`; use by
-/// explicitly invoking the command.
+///
+/// Thin wrapper over `Search.SmartQuery` configured with a single
+/// `PackageFTSCandidateFetcher` (#192 E6). Output format is identical to the
+/// public `cupertino ask` command, so a user who learned `ask` can
+/// substitute `package-search` whenever they specifically want
+/// packages-only results without typing `--skip-docs`.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
 struct PackageSearchCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "package-search",
-        abstract: "Smart query over the packages index",
+        abstract: "Smart query over the packages index (packages source only)",
         shouldDisplay: false
     )
 
@@ -37,25 +41,42 @@ struct PackageSearchCommand: AsyncParsableCommand {
             throw ExitCode.failure
         }
 
-        let query = try await Search.PackageQuery(dbPath: dbURL)
-        let results = try await query.answer(question, maxResults: limit)
-        await query.disconnect()
+        let trimmed = question.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            Logging.ConsoleLogger.error("❌ Question cannot be empty.")
+            throw ExitCode.failure
+        }
 
-        if results.isEmpty {
-            Logging.ConsoleLogger.info("No matches for: \(question)")
+        // E6: single-fetcher SmartQuery. RRF over one input degenerates to
+        // "preserve the fetcher's own ordering", so behaviour is equivalent
+        // to calling `PackageQuery.answer` directly — but it goes through the
+        // exact same code path as `cupertino ask`, which means future ranking
+        // tweaks land in one place.
+        let fetcher = Search.PackageFTSCandidateFetcher(dbPath: dbURL)
+        let smart = Search.SmartQuery(fetchers: [fetcher])
+        let result = await smart.answer(question: trimmed, limit: limit, perFetcherLimit: max(20, limit))
+
+        if result.candidates.isEmpty {
+            Logging.ConsoleLogger.info("No matches for: \(trimmed)")
             return
         }
 
-        for (i, result) in results.enumerated() {
+        for (i, fused) in result.candidates.enumerated() {
+            let c = fused.candidate
+            let owner = c.metadata["owner"] ?? ""
+            let repo = c.metadata["repo"] ?? ""
+            let relpath = c.metadata["relpath"] ?? c.identifier
+            let module = c.metadata["module"] ?? ""
             print("══════════════════════════════════════════════════════════════════════")
-            print("[\(i + 1)] \(result.owner)/\(result.repo) — \(result.relpath)")
-            if let module = result.module {
-                print("    module: \(module)  •  kind: \(result.kind)  •  score: \(String(format: "%.2f", result.score))")
+            print("[\(i + 1)] \(owner)/\(repo) — \(relpath)")
+            let kindLabel = c.kind ?? "?"
+            if !module.isEmpty {
+                print("    module: \(module)  •  kind: \(kindLabel)  •  score: \(String(format: "%.4f", fused.score))")
             } else {
-                print("    kind: \(result.kind)  •  score: \(String(format: "%.2f", result.score))")
+                print("    kind: \(kindLabel)  •  score: \(String(format: "%.4f", fused.score))")
             }
             print("──────────────────────────────────────────────────────────────────────")
-            print(result.chunk)
+            print(c.chunk)
             print("")
         }
     }

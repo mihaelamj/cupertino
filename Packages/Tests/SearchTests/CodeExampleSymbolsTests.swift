@@ -1,4 +1,5 @@
 import Foundation
+import Shared
 import SQLite3
 import Testing
 
@@ -178,6 +179,44 @@ struct CodeExampleSymbolsTests {
         #expect(try countSymbolRows(at: dbPath, uri: uri) == 0)
         #expect(try countImportRows(at: dbPath, uri: uri) == 0)
         #expect(try readSymbolsBlob(at: dbPath, uri: uri) == nil)
+    }
+
+    @Test("Declaration symbols (no code blocks) populate the symbols blob (#192 D Fix B)")
+    func declarationOnlyPopulatesBlob() async throws {
+        // Symbol pages typically have a `declaration.code` and zero code
+        // examples. Before Fix B, the blob stayed NULL on these pages —
+        // bm25 lost the symbol-name boost. After: declaration AST symbols
+        // flow into doc_symbols and into the blob via recomputeSymbolsBlob.
+        let dbPath = makeTempDB()
+        defer { try? FileManager.default.removeItem(at: dbPath) }
+
+        let uri = "apple-docs://swiftui/observable"
+        let index = try await Search.Index(dbPath: dbPath)
+
+        let page = StructuredDocumentationPage(
+            url: URL(string: "https://developer.apple.com/documentation/swiftui/observable")!,
+            title: "Observable",
+            kind: .protocol,
+            source: .appleJSON,
+            abstract: "An object that announces changes to its properties.",
+            declaration: StructuredDocumentationPage.Declaration(code: "@MainActor public protocol Observable {}"),
+            language: "swift",
+            crawledAt: Date(),
+            contentHash: "test"
+        )
+
+        try await index.indexStructuredDocument(
+            uri: uri,
+            source: "apple-docs",
+            framework: "swiftui",
+            page: page,
+            jsonData: "{}"
+        )
+        await index.disconnect()
+
+        let blob = try #require(try readSymbolsBlob(at: dbPath, uri: uri))
+        #expect(blob.contains("Observable"), "declaration-derived symbol must land in the blob")
+        #expect(try countSymbolRows(at: dbPath, uri: uri) > 0)
     }
 
     @Test("Blocks without recognised symbols do not touch the blob")

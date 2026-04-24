@@ -813,36 +813,24 @@ extension Search {
             let extractor = ASTIndexer.SwiftSourceExtractor()
             var collectedSymbols: [ASTIndexer.ExtractedSymbol] = []
             var collectedImports: [ASTIndexer.ExtractedImport] = []
-            var uniqueNames: Set<String> = []
 
             for example in codeExamples where Self.isSwiftLanguage(example.language) {
                 let result = extractor.extract(from: example.code)
                 collectedSymbols.append(contentsOf: result.symbols)
                 collectedImports.append(contentsOf: result.imports)
-                for symbol in result.symbols {
-                    uniqueNames.insert(symbol.name)
-                }
             }
 
-            // Idempotent re-index: clear any existing rows for this doc_uri so
-            // running the indexer twice over the same page doesn't double the
-            // symbol / import counts. The `symbols` blob is overwritten below.
-            try await clearDocSymbols(docUri: docUri)
-            try await clearDocImports(docUri: docUri)
-
+            // Append (do NOT clear) so declaration-derived symbols inserted by
+            // `indexStructuredDocument` survive. The structured-doc indexer
+            // owns the clear; this method only adds code-example findings on
+            // top.
             if !collectedSymbols.isEmpty {
                 try await indexDocSymbols(docUri: docUri, symbols: collectedSymbols)
             }
             if !collectedImports.isEmpty {
                 try await indexDocImports(docUri: docUri, imports: collectedImports)
             }
-            if !uniqueNames.isEmpty {
-                try await updateDocSymbolsBlob(docUri: docUri, names: uniqueNames)
-            } else {
-                // Explicitly clear when a re-index finds no symbols (e.g. code
-                // blocks were removed from the page between crawls).
-                try await updateDocSymbolsBlob(docUri: docUri, names: [])
-            }
+            try await recomputeSymbolsBlob(docUri: docUri)
         }
 
         private func clearDocSymbols(docUri: String) async throws {
@@ -868,16 +856,39 @@ extension Search {
         /// Update the denormalised `symbols` column on `docs_metadata` with a
         /// tab-separated, sorted list of unique symbol names. Silent no-op if
         /// the `docs_metadata` row does not yet exist for `docUri`.
-        private func updateDocSymbolsBlob(docUri: String, names: Set<String>) async throws {
+        /// Recompute the denormalised `docs_metadata.symbols` and the
+        /// `docs_fts.symbols` columns from whatever is currently in
+        /// `doc_symbols` for `docUri`. Idempotent — produces the same output
+        /// regardless of how many `indexDocSymbols` calls landed first, and
+        /// regardless of duplicate rows in `doc_symbols`.
+        ///
+        /// Single source of truth: `doc_symbols.name`. Declaration-derived
+        /// names and code-example-derived names both flow into the same
+        /// table, so this method picks them up uniformly.
+        private func recomputeSymbolsBlob(docUri: String) async throws {
             guard let database else {
                 throw SearchError.databaseNotInitialized
             }
 
-            let blob = names.isEmpty ? "" : names.sorted().joined(separator: " ")
+            // Read all symbol names for this doc, dedupe, sort.
+            var names: Set<String> = []
+            do {
+                let sql = "SELECT name FROM doc_symbols WHERE doc_uri = ?;"
+                var stmt: OpaquePointer?
+                defer { sqlite3_finalize(stmt) }
+                guard sqlite3_prepare_v2(database, sql, -1, &stmt, nil) == SQLITE_OK else {
+                    return
+                }
+                sqlite3_bind_text(stmt, 1, (docUri as NSString).utf8String, -1, nil)
+                while sqlite3_step(stmt) == SQLITE_ROW {
+                    if let ptr = sqlite3_column_text(stmt, 0) {
+                        names.insert(String(cString: ptr))
+                    }
+                }
+            }
 
-            // Update the denormalised column on docs_metadata (tab-separated,
-            // human-readable) so external SQL consumers can read a parseable list.
-            let metaBlob = names.isEmpty ? "" : names.sorted().joined(separator: "\t")
+            // Update denormalised column on docs_metadata (tab-separated,
+            // human-readable for SQL consumers).
             let metaSql = "UPDATE docs_metadata SET symbols = ? WHERE uri = ?;"
             var metaStmt: OpaquePointer?
             defer { sqlite3_finalize(metaStmt) }
@@ -885,21 +896,21 @@ extension Search {
                 if names.isEmpty {
                     sqlite3_bind_null(metaStmt, 1)
                 } else {
-                    sqlite3_bind_text(metaStmt, 1, (metaBlob as NSString).utf8String, -1, nil)
+                    let blob = names.sorted().joined(separator: "\t")
+                    sqlite3_bind_text(metaStmt, 1, (blob as NSString).utf8String, -1, nil)
                 }
                 sqlite3_bind_text(metaStmt, 2, (docUri as NSString).utf8String, -1, nil)
                 _ = sqlite3_step(metaStmt)
             }
 
-            // Update the FTS index column with a space-separated form so each
-            // name becomes its own token. The unicode61 tokenizer splits on
-            // non-alphanumerics, so tabs also tokenize, but spaces are more
-            // conventional and keep the FTS column diff-friendly for debugging.
+            // Update FTS index column with a space-separated form so each
+            // name becomes its own token under unicode61 + porter.
             let ftsSql = "UPDATE docs_fts SET symbols = ? WHERE uri = ?;"
             var ftsStmt: OpaquePointer?
             defer { sqlite3_finalize(ftsStmt) }
             if sqlite3_prepare_v2(database, ftsSql, -1, &ftsStmt, nil) == SQLITE_OK {
-                sqlite3_bind_text(ftsStmt, 1, (blob as NSString).utf8String, -1, nil)
+                let ftsBlob = names.isEmpty ? "" : names.sorted().joined(separator: " ")
+                sqlite3_bind_text(ftsStmt, 1, (ftsBlob as NSString).utf8String, -1, nil)
                 sqlite3_bind_text(ftsStmt, 2, (docUri as NSString).utf8String, -1, nil)
                 _ = sqlite3_step(ftsStmt)
             }
@@ -1615,10 +1626,13 @@ extension Search {
                 throw SearchError.insertFailed("Structured insert: \(errorMessage)")
             }
 
-            // Extract symbols from declaration using SwiftSyntax (#81)
+            // Extract symbols from declaration using SwiftSyntax (#81). Re-running
+            // the indexer over the same uri must not double rows, so clear first.
             if let declaration = page.declaration?.code {
                 let extractor = ASTIndexer.SwiftSourceExtractor()
                 let result = extractor.extract(from: declaration)
+                try await clearDocSymbols(docUri: uri)
+                try await clearDocImports(docUri: uri)
                 if !result.symbols.isEmpty {
                     try await indexDocSymbols(docUri: uri, symbols: result.symbols)
                 }
@@ -1626,6 +1640,14 @@ extension Search {
                     try await indexDocImports(docUri: uri, imports: result.imports)
                 }
             }
+
+            // #192 D extension: keep `docs_metadata.symbols` + `docs_fts.symbols`
+            // in sync with whatever is in `doc_symbols` for this uri, regardless
+            // of whether the names came from the declaration line or a code
+            // example block. Earlier this pass only fired for code blocks, so
+            // declaration-only symbol pages (the common case) missed the bm25
+            // boost on type names.
+            try await recomputeSymbolsBlob(docUri: uri)
         }
 
         // MARK: - Symbol Indexing (#81)
