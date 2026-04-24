@@ -103,6 +103,10 @@ let targets: [Target] = {
     let resourcesTarget = Target.target(
         name: "Resources"
     )
+    let resourcesTestsTarget = Target.testTarget(
+        name: "ResourcesTests",
+        dependencies: ["Resources"]
+    )
 
     let coreTarget = Target.target(
         name: "Core",
@@ -315,6 +319,7 @@ let targets: [Target] = {
         sharedTarget,
         sharedTestsTarget,
         resourcesTarget,
+        resourcesTestsTarget,
         coreTarget,
         coreTestsTarget,
         cleanupTarget,
