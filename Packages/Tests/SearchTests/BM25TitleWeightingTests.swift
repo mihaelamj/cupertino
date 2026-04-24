@@ -5,7 +5,7 @@ import Testing
 @testable import Search
 
 // Per-column bm25 weighting (#181). `Search.Index.search` applies
-// `bm25(docs_fts, 1.0, 1.0, 2.0, 1.0, 10.0, 1.0, 3.0)` so that title matches
+// `bm25(docs_fts, 1.0, 1.0, 2.0, 1.0, 10.0, 1.0, 3.0, 5.0)` so that title matches
 // dominate body matches for type-name queries like "Task" or "View". These
 // tests exercise the raw bm25 expression against a fresh index so the
 // coefficients themselves are guarded against accidental change.
@@ -34,7 +34,7 @@ private func rankedHits(
     defer { sqlite3_close(db) }
 
     let sql = """
-    SELECT uri, bm25(docs_fts, 1.0, 1.0, 2.0, 1.0, 10.0, 1.0, 3.0) AS rank
+    SELECT uri, bm25(docs_fts, 1.0, 1.0, 2.0, 1.0, 10.0, 1.0, 3.0, 5.0) AS rank
     FROM docs_fts
     WHERE docs_fts MATCH ?
     ORDER BY rank;

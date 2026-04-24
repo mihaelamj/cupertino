@@ -31,9 +31,11 @@ extension Search {
         /// - 11: Added kind + symbols columns to docs_metadata (#192 section C). `kind` is
         ///       the C1 taxonomy (`symbolPage`, `article`, ...) populated by
         ///       `Search.Classify.kind(...)`. `symbols` is a denormalized text blob of
-        ///       symbol names extracted by the AST pass (section D), held here so bm25
-        ///       can weight on it without a JOIN.
-        public static let schemaVersion: Int32 = 11
+        ///       symbol names written for SQL consumers.
+        /// - 12: Added `symbols` column to docs_fts (#192 section D) so bm25 can weight
+        ///       directly on AST-derived symbol names. BREAKING — FTS5 does not support
+        ///       ALTER TABLE ADD COLUMN, so existing DBs must be rebuilt.
+        public static let schemaVersion: Int32 = 12
 
         private var database: OpaquePointer?
         private let dbPath: URL
@@ -183,6 +185,19 @@ extension Search {
                 // ('unknown' for kind, NULL for symbols). A subsequent re-crawl
                 // repopulates via Classify.kind(...) and the AST pass.
                 try await migrateToVersion11()
+            }
+
+            if currentVersion < 12 {
+                // Version 11 -> 12: Added `symbols` column to docs_fts (#192 D) so
+                // bm25 can weight directly on AST-extracted symbol names. FTS5
+                // does not support ALTER TABLE ADD COLUMN on virtual tables, so
+                // this is a BREAKING change — existing DBs must be rebuilt.
+                throw SearchError.sqliteError(
+                    "Database schema version \(currentVersion) requires migration to version 12. " +
+                        "This is a breaking change that adds AST-derived symbols to the FTS index. " +
+                        "Please delete the database and run 'cupertino save' to rebuild: " +
+                        "rm ~/.cupertino/search.db && cupertino save"
+                )
             }
         }
 
@@ -336,6 +351,7 @@ extension Search {
                 title,
                 content,
                 summary,
+                symbols,            -- #192 D: AST-extracted Swift symbol names; enables bm25 boost for type-name queries
                 tokenize='porter unicode61'
             );
 
@@ -808,6 +824,12 @@ extension Search {
                 }
             }
 
+            // Idempotent re-index: clear any existing rows for this doc_uri so
+            // running the indexer twice over the same page doesn't double the
+            // symbol / import counts. The `symbols` blob is overwritten below.
+            try await clearDocSymbols(docUri: docUri)
+            try await clearDocImports(docUri: docUri)
+
             if !collectedSymbols.isEmpty {
                 try await indexDocSymbols(docUri: docUri, symbols: collectedSymbols)
             }
@@ -816,7 +838,31 @@ extension Search {
             }
             if !uniqueNames.isEmpty {
                 try await updateDocSymbolsBlob(docUri: docUri, names: uniqueNames)
+            } else {
+                // Explicitly clear when a re-index finds no symbols (e.g. code
+                // blocks were removed from the page between crawls).
+                try await updateDocSymbolsBlob(docUri: docUri, names: [])
             }
+        }
+
+        private func clearDocSymbols(docUri: String) async throws {
+            guard let database else { return }
+            let sql = "DELETE FROM doc_symbols WHERE doc_uri = ?;"
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            guard sqlite3_prepare_v2(database, sql, -1, &stmt, nil) == SQLITE_OK else { return }
+            sqlite3_bind_text(stmt, 1, (docUri as NSString).utf8String, -1, nil)
+            _ = sqlite3_step(stmt)
+        }
+
+        private func clearDocImports(docUri: String) async throws {
+            guard let database else { return }
+            let sql = "DELETE FROM doc_imports WHERE doc_uri = ?;"
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            guard sqlite3_prepare_v2(database, sql, -1, &stmt, nil) == SQLITE_OK else { return }
+            sqlite3_bind_text(stmt, 1, (docUri as NSString).utf8String, -1, nil)
+            _ = sqlite3_step(stmt)
         }
 
         /// Update the denormalised `symbols` column on `docs_metadata` with a
@@ -826,17 +872,37 @@ extension Search {
             guard let database else {
                 throw SearchError.databaseNotInitialized
             }
-            let blob = names.sorted().joined(separator: "\t")
 
-            let sql = "UPDATE docs_metadata SET symbols = ? WHERE uri = ?;"
-            var stmt: OpaquePointer?
-            defer { sqlite3_finalize(stmt) }
-            guard sqlite3_prepare_v2(database, sql, -1, &stmt, nil) == SQLITE_OK else {
-                return
+            let blob = names.isEmpty ? "" : names.sorted().joined(separator: " ")
+
+            // Update the denormalised column on docs_metadata (tab-separated,
+            // human-readable) so external SQL consumers can read a parseable list.
+            let metaBlob = names.isEmpty ? "" : names.sorted().joined(separator: "\t")
+            let metaSql = "UPDATE docs_metadata SET symbols = ? WHERE uri = ?;"
+            var metaStmt: OpaquePointer?
+            defer { sqlite3_finalize(metaStmt) }
+            if sqlite3_prepare_v2(database, metaSql, -1, &metaStmt, nil) == SQLITE_OK {
+                if names.isEmpty {
+                    sqlite3_bind_null(metaStmt, 1)
+                } else {
+                    sqlite3_bind_text(metaStmt, 1, (metaBlob as NSString).utf8String, -1, nil)
+                }
+                sqlite3_bind_text(metaStmt, 2, (docUri as NSString).utf8String, -1, nil)
+                _ = sqlite3_step(metaStmt)
             }
-            sqlite3_bind_text(stmt, 1, (blob as NSString).utf8String, -1, nil)
-            sqlite3_bind_text(stmt, 2, (docUri as NSString).utf8String, -1, nil)
-            _ = sqlite3_step(stmt)
+
+            // Update the FTS index column with a space-separated form so each
+            // name becomes its own token. The unicode61 tokenizer splits on
+            // non-alphanumerics, so tabs also tokenize, but spaces are more
+            // conventional and keep the FTS column diff-friendly for debugging.
+            let ftsSql = "UPDATE docs_fts SET symbols = ? WHERE uri = ?;"
+            var ftsStmt: OpaquePointer?
+            defer { sqlite3_finalize(ftsStmt) }
+            if sqlite3_prepare_v2(database, ftsSql, -1, &ftsStmt, nil) == SQLITE_OK {
+                sqlite3_bind_text(ftsStmt, 1, (blob as NSString).utf8String, -1, nil)
+                sqlite3_bind_text(ftsStmt, 2, (docUri as NSString).utf8String, -1, nil)
+                _ = sqlite3_step(ftsStmt)
+            }
         }
 
         /// Classify a code-block language tag as Swift. Accepts the variants
@@ -1061,10 +1127,12 @@ extension Search {
             // Determine language with heuristics fallback
             let effectiveLanguage = language ?? detectLanguage(from: content)
 
-            // Insert into FTS5 table (db should be deleted before full re-index)
+            // Insert into FTS5 table (db should be deleted before full re-index).
+            // `symbols` starts empty; the AST pass (#192 section D) UPDATEs it
+            // after doc_code_examples has been populated.
             let ftsSql = """
-            INSERT INTO docs_fts (uri, source, framework, language, title, content, summary)
-            VALUES (?, ?, ?, ?, ?, ?, ?);
+            INSERT INTO docs_fts (uri, source, framework, language, title, content, summary, symbols)
+            VALUES (?, ?, ?, ?, ?, ?, ?, '');
             """
 
             var statement: OpaquePointer?
@@ -1376,10 +1444,12 @@ extension Search {
                 throw SearchError.databaseNotInitialized
             }
 
-            // Insert into FTS5 table (db should be deleted before full re-index)
+            // Insert into FTS5 table (db should be deleted before full re-index).
+            // `symbols` starts empty; the AST pass (#192 section D) UPDATEs it
+            // after doc_code_examples has been populated.
             let ftsSql = """
-            INSERT INTO docs_fts (uri, source, framework, language, title, content, summary)
-            VALUES (?, ?, ?, ?, ?, ?, ?);
+            INSERT INTO docs_fts (uri, source, framework, language, title, content, summary, symbols)
+            VALUES (?, ?, ?, ?, ?, ?, ?, '');
             """
 
             var statement: OpaquePointer?
@@ -2324,12 +2394,19 @@ extension Search {
             let (_, queryForFTS) = extractAttributeFilters(queryToSearch)
             let sanitizedQuery = sanitizeFTS5Query(queryForFTS)
 
-            // Per-column bm25 weights (#181): title dominates, summary next, framework
-            // modest bonus. Body matches are common and easily dilute ranking; title
-            // matches are the user's clearest intent signal. Column order matches the
-            // docs_fts declaration: uri, source, framework, language, title, content, summary.
-            // Prevents e.g. `task_info` (Mach kernel) outranking `Task` (Swift) for the
-            // query "Task", because the Swift Task struct has a title-level match.
+            // Per-column bm25 weights (#181, #192 D): title dominates, symbols next,
+            // summary third, framework modest bonus. Body matches are common and
+            // easily dilute ranking; title and AST-derived symbols are the user's
+            // clearest intent signal. Column order matches the docs_fts
+            // declaration: uri, source, framework, language, title, content,
+            // summary, symbols.
+            //
+            // Rationale for symbols=5.0: code-derived names ("Observable", "Task",
+            // "@MainActor") are strong signals but slightly below a title-level
+            // match. Placed above summary (3.0) since semantic queries target
+            // type names directly; below title (10.0) since a user typing
+            // "Task" still wants the Swift Task struct first, not any doc that
+            // mentions it in a code block.
             var sql = """
             SELECT
                 f.uri,
@@ -2339,7 +2416,7 @@ extension Search {
                 f.summary,
                 m.file_path,
                 m.word_count,
-                bm25(docs_fts, 1.0, 1.0, 2.0, 1.0, 10.0, 1.0, 3.0) as rank,
+                bm25(docs_fts, 1.0, 1.0, 2.0, 1.0, 10.0, 1.0, 3.0, 5.0) as rank,
                 COALESCE(s.kind, 'unknown') as kind,
                 m.min_ios,
                 m.min_macos,

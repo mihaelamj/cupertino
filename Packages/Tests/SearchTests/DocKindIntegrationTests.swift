@@ -100,19 +100,19 @@ enum TestError: Error {
 @Suite("Search.Index schema shape (#192 C2)")
 struct SchemaShapeTests {
 
-    @Test("Schema version constant is 11")
-    func schemaVersionIs11() {
-        #expect(Search.Index.schemaVersion == 11)
+    @Test("Schema version constant is 12")
+    func schemaVersionIs12() {
+        #expect(Search.Index.schemaVersion == 12)
     }
 
-    @Test("Fresh DB has PRAGMA user_version = 11")
+    @Test("Fresh DB has PRAGMA user_version = 12")
     func freshDBStampedVersion() async throws {
         let dbPath = makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
         let idx = try await Search.Index(dbPath: dbPath)
         await idx.disconnect()
 
-        #expect(try readSchemaVersion(at: dbPath) == 11)
+        #expect(try readSchemaVersion(at: dbPath) == 12)
     }
 
     @Test("Fresh DB has idx_kind index on docs_metadata")
