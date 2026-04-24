@@ -1,5 +1,7 @@
 # 🍎📚 Cupertino
 
+> 🕯️ *v1.0.0 'First Light' is in the making.* A proper 1.0, not a point release. The current version stands steadfast in the meantime — [follow the roadmap →](https://github.com/mihaelamj/cupertino/issues/183).
+
 **Apple Documentation Crawler & MCP Server**
 
 A Swift-based tool to crawl, index, and serve Apple's developer documentation to AI agents via the Model Context Protocol (MCP).
