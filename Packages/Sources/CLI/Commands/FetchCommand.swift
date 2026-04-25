@@ -266,7 +266,7 @@ struct FetchCommand: AsyncParsableCommand {
         ]
 
         for candidate in candidates {
-            if let sessionDir = checkForSession(at: candidate, matching: url) {
+            if let sessionDir = Self.checkForSession(at: candidate, matching: url) {
                 return sessionDir
             }
         }
@@ -274,7 +274,9 @@ struct FetchCommand: AsyncParsableCommand {
         return try await scanCupertinoDirectory(for: url)
     }
 
-    private func checkForSession(at directory: URL, matching url: URL) -> URL? {
+    /// `internal static` so tests can hit this without parsing a full
+    /// `FetchCommand` from args. Pure function on its inputs.
+    static func checkForSession(at directory: URL, matching url: URL) -> URL? {
         let metadataFile = directory.appendingPathComponent(Shared.Constants.FileName.metadata)
         guard FileManager.default.fileExists(atPath: metadataFile.path),
               let data = try? Data(contentsOf: metadataFile),
@@ -285,11 +287,17 @@ struct FetchCommand: AsyncParsableCommand {
         else {
             return nil
         }
-        let outputDir = URL(fileURLWithPath: session.outputDirectory)
+        // Return the directory where we *found* metadata.json, not the path
+        // stored inside it. The saved `session.outputDirectory` is an absolute
+        // path captured on the machine that originally ran the crawl — when
+        // the directory is rsynced to another host (different home dir, mounted
+        // volume, container), that string points at nothing. The directory we
+        // just opened a file from is, by definition, the live output dir. The
+        // saved path is preserved in the JSON for diagnostic purposes only.
         Logging.ConsoleLogger.info(
-            "📂 Found existing session, resuming to: \(session.outputDirectory)"
+            "📂 Found existing session, resuming to: \(directory.path)"
         )
-        return outputDir
+        return directory
     }
 
     private func scanCupertinoDirectory(for url: URL) async throws -> URL? {
@@ -308,7 +316,7 @@ struct FetchCommand: AsyncParsableCommand {
             guard isDirectory == true else {
                 continue
             }
-            if let sessionDir = checkForSession(at: dir, matching: url) {
+            if let sessionDir = Self.checkForSession(at: dir, matching: url) {
                 return sessionDir
             }
         }

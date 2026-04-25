@@ -231,6 +231,137 @@ struct ResumeAndStartCleanTests {
         #expect(!hasSession, "--start-clean must leave no resumable session")
     }
 
+    // MARK: - Cross-machine portability (checkForSession)
+    //
+    // Regression for the path-resolution bug: `metadata.json.crawlState.outputDirectory`
+    // stores an absolute path captured on the machine that ran the original
+    // crawl. When the directory is rsynced to a second host (different home
+    // dir, mounted volume), that saved path points at nothing on the new host.
+    // `checkForSession` must return the directory where it *found* the
+    // metadata.json — that's the live output directory by definition.
+
+    @Test("checkForSession returns the directory where metadata.json was found, not the saved path")
+    func checkForSessionReturnsFoundDirectoryNotSavedPath() async throws {
+        let foundDir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: foundDir) }
+
+        // Simulate a metadata.json that was rsynced from a different machine —
+        // the saved `outputDirectory` is some path that doesn't exist locally.
+        let foreignPath = "/Users/some-other-user/.cupertino/docs"
+        #expect(!FileManager.default.fileExists(atPath: foreignPath),
+                "test premise: foreign path must not exist locally")
+
+        try Self.writeFixtureMetadata(
+            at: Self.metadataFile(in: foundDir),
+            startURL: "https://developer.apple.com/documentation/",
+            outputDirectory: foreignPath, // ← saved path from the other machine
+            visited: ["https://developer.apple.com/documentation/swift"],
+            queue: [(url: "https://developer.apple.com/documentation/foundation", depth: 0)]
+        )
+
+        let resolved = FetchCommand.checkForSession(
+            at: foundDir,
+            matching: URL(string: "https://developer.apple.com/documentation/")!
+        )
+
+        // BUG (pre-fix): would return URL(fileURLWithPath: foreignPath) —
+        //   a path that doesn't exist on this host, so the crawler would then
+        //   try to write into a phantom directory under the wrong home.
+        // FIX: return foundDir — the live, on-disk location of the metadata.
+        #expect(resolved == foundDir,
+                "checkForSession must return the dir it inspected, not the saved path")
+        #expect(resolved?.path != foreignPath,
+                "must NOT return the foreign saved path")
+        #expect(FileManager.default.fileExists(atPath: resolved?.path ?? "/__missing__"),
+                "the returned dir must actually exist on this host")
+    }
+
+    @Test("checkForSession returns nil when start URL doesn't match")
+    func checkForSessionReturnsNilOnStartURLMismatch() async throws {
+        let dir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        try Self.writeFixtureMetadata(
+            at: Self.metadataFile(in: dir),
+            startURL: "https://developer.apple.com/documentation/",
+            outputDirectory: dir.path,
+            visited: ["https://developer.apple.com/documentation/swift"],
+            queue: []
+        )
+
+        // A different start URL (different framework crawl) — should not be
+        // confused for a resumable session.
+        let resolved = FetchCommand.checkForSession(
+            at: dir,
+            matching: URL(string: "https://docs.swift.org/swift-book")!
+        )
+        #expect(resolved == nil)
+    }
+
+    @Test("checkForSession returns nil when crawlState.isActive is false")
+    func checkForSessionReturnsNilWhenInactive() async throws {
+        let dir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        try Self.writeFixtureMetadata(
+            at: Self.metadataFile(in: dir),
+            startURL: "https://developer.apple.com/documentation/",
+            outputDirectory: dir.path,
+            visited: ["https://developer.apple.com/documentation/swift"],
+            queue: [],
+            isActive: false // ← finished cleanly, no active session to resume
+        )
+
+        let resolved = FetchCommand.checkForSession(
+            at: dir,
+            matching: URL(string: "https://developer.apple.com/documentation/")!
+        )
+        #expect(resolved == nil)
+    }
+
+    @Test("checkForSession returns nil when no metadata.json exists")
+    func checkForSessionReturnsNilWhenMissing() async throws {
+        let dir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let resolved = FetchCommand.checkForSession(
+            at: dir,
+            matching: URL(string: "https://developer.apple.com/documentation/")!
+        )
+        #expect(resolved == nil)
+    }
+
+    @Test("checkForSession is the right answer even when foreign path coincidentally exists")
+    func checkForSessionStillReturnsFoundDirEvenIfForeignPathExists() async throws {
+        // Belt-and-suspenders: even if a directory happens to exist at the
+        // saved foreign path, `checkForSession` must still return the dir
+        // where the metadata was actually located. Otherwise a stale
+        // ~/.cupertino/docs left over from a previous install could swallow
+        // a fresh crawl-data dir on a new mount point.
+        let realFoundDir = try Self.makeTempDir()
+        let coincidentalForeignDir = try Self.makeTempDir()
+        defer {
+            try? FileManager.default.removeItem(at: realFoundDir)
+            try? FileManager.default.removeItem(at: coincidentalForeignDir)
+        }
+
+        try Self.writeFixtureMetadata(
+            at: Self.metadataFile(in: realFoundDir),
+            startURL: "https://developer.apple.com/documentation/",
+            outputDirectory: coincidentalForeignDir.path, // exists, but wrong
+            visited: ["https://developer.apple.com/documentation/swift"],
+            queue: []
+        )
+
+        let resolved = FetchCommand.checkForSession(
+            at: realFoundDir,
+            matching: URL(string: "https://developer.apple.com/documentation/")!
+        )
+        #expect(resolved == realFoundDir,
+                "must return where we found metadata, not where the saved path happens to point")
+        #expect(resolved != coincidentalForeignDir)
+    }
+
     @Test("CrawlerState round-trip: save → reload via fresh instance restores all fields")
     func crawlerStateSaveReloadRoundTrip() async throws {
         let tempDir = try Self.makeTempDir()
