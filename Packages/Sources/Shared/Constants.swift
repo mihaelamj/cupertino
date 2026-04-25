@@ -177,16 +177,16 @@ extension Shared {
             public static let userAgent = "CupertinoCrawler/1.0"
 
             /// Current version
-            public static let version = "0.11.0"
+            public static let version = "1.0.0"
 
             /// Database version - separate from CLI version, only bump when schema/content changes.
             /// Controls the cupertino-docs release tag that `cupertino setup` downloads from.
-            public static let databaseVersion = "0.9.0"
+            public static let databaseVersion = "1.0.0"
 
             /// Packages-index version — separate from `databaseVersion` because the package DB
             /// is sourced from a different repo (`mihaelamj/cupertino-packages`) with its own
             /// re-crawl cadence. Bump when `packages.db` content or schema changes.
-            public static let packagesIndexVersion = "0.1.0"
+            public static let packagesIndexVersion = "1.0.0"
 
             /// Base URL for cupertino-docs release downloads (search.db + samples.db).
             public static let docsReleaseBaseURL = "https://github.com/mihaelamj/cupertino-docs/releases/download"
@@ -1286,8 +1286,13 @@ extension Shared {
         public enum Limit {
             // MARK: Crawler Limits
 
-            /// Default maximum number of pages to crawl
-            public static let defaultMaxPages = 15000
+            /// Default maximum number of pages to crawl. Effectively uncapped —
+            /// 1 million is well above Apple's full developer docs (~70k pages),
+            /// Swift Evolution (~500), Swift.org, HIG, and the archive combined,
+            /// so a default crawl runs to queue exhaustion rather than hitting
+            /// an artificial limit. Override with `--max-pages` if you need a
+            /// smaller bounded crawl for testing.
+            public static let defaultMaxPages = 1_000_000
 
             // MARK: File Size Limits
 

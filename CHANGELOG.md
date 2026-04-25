@@ -1,68 +1,100 @@
 ## 1.0.0 "First Light" — unreleased
 
-_Consolidates what was originally scoped as v0.11.0 (packages-overhaul) + v0.12.0 (docs-overhaul) into a single release. Release plan: [#192](https://github.com/mihaelamj/cupertino/issues/192). Canonical roadmap: [#183](https://github.com/mihaelamj/cupertino/issues/183). **Not yet tagged** — some sections (D: AST over code blocks, E: smart-query wrapper, G: MCP protocol 2025-11-25, I: release mechanics) still to land._
+_The first release we'd call properly stable. Consolidates what was originally scoped as v0.11.0 (packages-overhaul) + v0.12.0 (docs-overhaul) into a single cut. Release plan: [#192](https://github.com/mihaelamj/cupertino/issues/192). Canonical roadmap: [#183](https://github.com/mihaelamj/cupertino/issues/183). **Code-side complete on `packages-overhaul`; awaiting full re-crawl + companion-repo artifact publishing (#192 section I) before tag.**_
 
 ### Added
 
-**Schema + classification (#192 section C)**
-- `docs_metadata.kind` column (#192 C1): new `TEXT NOT NULL DEFAULT 'unknown'` column classifying every row into one of nine production kinds — `symbolPage`, `article`, `tutorial`, `sampleCode`, `evolutionProposal`, `swiftBook`, `swiftOrgDoc`, `hig`, `archive` — plus `unknown` fallback. Populated at index time by `Search.Classify.kind(source:structuredKind:uriPath:)`, a pure deterministic function. Reserved future kinds documented for WWDC transcripts (#58), Swift Forums (#89), and external-library docs (#116).
-- `docs_metadata.symbols` column (#192 D, awaiting AST pass): nullable `TEXT` for a denormalized symbol-name blob. Stays NULL until section D runs `SwiftSourceExtractor` over every stored `doc_code_examples` row.
-- `idx_kind` index on `docs_metadata(kind)` for per-kind routing queries.
-- Schema version bumped 10 → 11 with an idempotent `ALTER TABLE ADD COLUMN` migration for existing v10 DBs.
+**Search quality — symbol-aware FTS (#192 sections C + D, subsumes #176)**
+- `Search.DocKind` taxonomy: 10-case enum (`symbolPage`, `article`, `tutorial`, `sampleCode`, `evolutionProposal`, `swiftBook`, `swiftOrgDoc`, `hig`, `archive`, `unknown`) populated at index time by `Search.Classify.kind(source:structuredKind:uriPath:)` — a pure deterministic function. Stored in new `docs_metadata.kind` column.
+- `docs_metadata.symbols` denormalized blob + `docs_fts.symbols` FTS column. Both populated by an AST pass (`SwiftSourceExtractor` over both code-block content AND declaration lines) so a query like `Task` ranks the Swift `Task` struct page above prose mentions of the word "task". `bm25(docs_fts, 1.0, 1.0, 2.0, 1.0, 10.0, 1.0, 3.0, 5.0)` — title dominates (10×), symbols next (5×), summary (3×), framework (2×).
+- `idx_kind` index for per-kind routing queries.
+- `Search.Index.extractCodeExampleSymbols` + `recomputeSymbolsBlob` (private) — a single source of truth that reads `doc_symbols` and writes both denormalized columns, so declaration-derived and code-block-derived symbols flow into ranking uniformly.
+
+**Smart query wrapper — `cupertino ask` (#192 section E)**
+- Public-facing CLI: `cupertino ask "<question>"` runs the question across every available source (apple-docs, apple-archive, hig, swift-evolution, swift-org, swift-book, packages) in parallel and returns a fused top-N. No `--source` flag needed.
+- `Search.SmartCandidate` source-agnostic result struct. `Search.CandidateFetcher` protocol with one method, `fetch(question:limit:)`, per source. Concrete impls: `PackageFTSCandidateFetcher` (wraps `Search.PackageQuery.answer`), `DocsSourceCandidateFetcher` (wraps `Search.Index.search` for any apple-docs-style source).
+- `Search.SmartQuery` fans fetchers out via `TaskGroup`, fuses per-source rankings via reciprocal rank fusion (k=60, the Cormack/Clarke/Büttcher default). Failing fetchers collapse to empty — one dead DB never takes the whole query down. Per-fetcher limit caps noisy sources before fusion so a verbose source can't drown out a strong single hit.
+- `cupertino package-search` (hidden) is now a thin wrapper on `SmartQuery` with a single `PackageFTSCandidateFetcher`, so ranking tweaks land in one place.
+
+**MCP protocol bump — 2025-11-25 (#192 section G, subsumes #139)**
+- `MCPProtocolVersion` 2025-06-18 → **2025-11-25**. `MCPProtocolVersionsSupported` widened to `[2025-11-25, 2025-06-18, 2024-11-05]` for backward-compat across three negotiation hops.
+- New `Icon` struct (`src` / `mimeType` / `sizes`) Codable + Hashable + Sendable.
+- `Implementation` gains optional `icons: [Icon]?`. Nil by default; legacy 2025-06-18 / 2024-11-05 handshakes decode legacy payloads unchanged.
+- `MCPServer.init(name:version:icons:)` accepts an optional icons array. `cupertino serve` now advertises a 64×64 PNG via `data:image/png;base64,...` URI, embedded in `CupertinoIconEmbedded.swift` following the same Swift-literal pattern as #161 (no asset bundle, no symlink resolution).
+- `assets/cupertino-icon-64.png` ships in the repo as the source-of-truth (1671 bytes, systemBlue rounded square with a white "C"). Placeholder; a designer can replace.
+
+**Doctor diagnostics (#192 section F)**
+- `cupertino doctor` reports both `search.db` and `packages.db` presence, file size, row counts. Reads `PRAGMA user_version` directly (without going through `Search.Index`, whose init throws on incompatible versions) so the user sees the actual on-disk version even when it's incompatible.
+- Schema-mismatch path: `older` → "rm + cupertino save" hint, `newer` → "brew upgrade cupertino" hint. Exits non-zero so CI / smoke tests fail loudly.
+- `packages.db` row counts (packages, package_files) + bundled `packagesIndexVersion` for at-a-glance install verification.
 
 **Distribution + packaging (#192 section B)**
-- Hidden `cupertino packages-setup` CLI subcommand: downloads pre-built `packages.db` from the new `mihaelamj/cupertino-packages` companion repo. Visible-gated to v1.0 tag.
+- Companion repo [mihaelamj/cupertino-packages](https://github.com/mihaelamj/cupertino-packages) ships `packages.db` artifacts. First release lands with v1.0.0.
+- `cupertino setup` is now the **single command** that owns every database. Downloads search.db + samples.db from `cupertino-docs`, then packages.db from `cupertino-packages`. No granularity flag — the previous `cupertino packages-setup` is removed; URL helpers preserved as `PackagesReleaseURL` for tests. Best-effort on the packages download: if the cupertino-packages release isn't tagged yet, setup logs a warning and still completes (cupertino can serve docs without packages.db).
 - `Shared.Constants.App.packagesIndexVersion` + `packagesReleaseBaseURL` + `docsReleaseBaseURL` constants.
-- Companion distribution repo [mihaelamj/cupertino-packages](https://github.com/mihaelamj/cupertino-packages) created; first release artifact lands with v1.0.0.
 
-**From the original v0.11.0 scope (pre-consolidation):**
-- **Transitive dependency resolution for `fetch --type package-docs`** (#184): each seed in `priority-packages.json` is now walked through its `Package.swift` first (libraries commit this; most lockfiles are `.gitignored`), then `Package.resolved` as a fallback for apps. Fetched from `raw.githubusercontent.com`; GitHub-hosted dependencies are added to the fetch queue. Non-GitHub URLs, missing manifests, and malformed manifests are counted and reported, then skipped. Opt out with `--no-recurse`. Terminates via canonical-name dedupe, so a seed like `vapor` naturally pulls in `swift-nio`, `async-http-client`, `swift-log`, etc. without manual curation.
-- **GitHub redirect canonicalisation**: seeds and discovered URLs are canonicalised via `api.github.com/repos/<owner>/<repo>` before the resolver's dedupe set, so aliases like `apple/swift-docc` and `swiftlang/swift-docc` collapse into one entry instead of double-indexing. Results are cached at `~/.cupertino/.cache/canonical-owners.json`; one API call per unique repo, lifetime.
-- **Persisted resolved closure** at `~/.cupertino/resolved-packages.json`: records the full closure, timestamp, cupertino version, per-package parentage (which seed(s) pulled each package in), and a checksum of the seed + exclusion inputs. Next fetch reuses this cache unless the checksum changed or `--refresh` is passed. Answers "why is this package in my index?" by inspection.
-- **User exclusion list** at `~/.cupertino/excluded-packages.json`: a flat JSON array of `"owner/repo"` strings that the resolver drops from its closure even when transitively discovered. Absent by default; hand-edit to use.
-- **`--refresh` flag** on `fetch --type package-docs`: discards the cached closure and re-walks every dependency graph. Use when upstream packages have added new dependencies since the last fetch.
-- **Parallel resolver**: the BFS now dispatches manifest fetches in batches of 10 concurrent requests instead of sequential one-by-one. A 200-package closure shrinks from roughly 3 minutes of wall time to a few tens of seconds on a typical connection.
-- **Per-branch manifest cache** at `~/.cupertino/.cache/manifests/<owner>/<repo>/<branch>/Package.swift` with 24h TTL. 404s cached as zero-byte sentinels so known-missing files aren't re-requested. Complements the seed-checksum cache: when the checksum misses (seeds changed or `--refresh` passed), repeat runs reuse manifests whose upstream hasn't changed in the last day.
-- **SPM registry id counting**: `.package(id: "scope.name", …)` identifier-based dependencies (SPM 5.8+) are detected in `Package.swift` and surfaced as `Skipped (SPM registry id)` in the resolver summary. Source URLs for registry ids are out of scope for this resolver — registry protocol resolution needs per-registry handling — but we don't silently lose track of them.
-- **TUI promote / exclude actions** in the package view:
-  - `x`: toggle exclusion. Excluded packages persist to `~/.cupertino/excluded-packages.json` on the next `w` (save) and drop from future resolver closures.
-  - `p`: promote the current entry (typically a discovered-via-dep package) to a seed. Equivalent to selecting with space, but explicit in the keybinding for users navigating the closure.
-  - Visual indicators: `[*]` seed, `[X]` excluded, `[+]` discovered-via-dep-only, `[ ]` none. Loaded from `resolved-packages.json` + `excluded-packages.json` at TUI startup.
-- **Expanded bundled `priority-packages.json`**: 36 seeds grew to 135. Breakdown: 43 Apple (12 additions including `swift-syntax` moved to the swiftlang namespace, `swift-foundation`, `swift-markdown`, `swift-http-types`, `swift-nio-extras`, `swift-configuration`, `swift-distributed-tracing`); 92 ecosystem covering the full Vapor and Hummingbird ecosystems, an expanded Point-Free set (18 additions), swiftlang (`swift-syntax`, `swift-docc-plugin`, `swift-docc-symbolkit`), SSWG (`async-http-client`, `swift-service-lifecycle`, `swift-openapi-async-http-client`, `swift-openapi-vapor`), tooling (`SwiftFormat`, `SwiftLint`, `XcodeGen`), Soto, SwiftUI Introspect, Tuist, and project-specific seeds derived from a real `Package.resolved` (`Inject`, `KZFileWatchers`, `OpenAPIKit`, `Playbook`, `Roadmap`, `Yams`).
+**Two-pass docs crawl as default (`fetch --type docs`)**
+- `cupertino fetch --type docs` (no flags) now performs a JSON-API pass (fast, ~90% coverage) followed by a WKWebView pass that auto-resumes from pass 1's `metadata.json`, picking up only the URLs JSON-API couldn't reach. **One of cupertino's coverage advantages over single-pass JSON-only MCPs.**
+- Bypass conditions (single-pass): `--use-json-api` (legacy JSON-only), `--resume` (continue an existing session), `--start-url …` (custom crawl).
+- `defaultMaxPages` constant raised 15,000 → **1,000,000**. Effectively uncapped for full Apple-corpus crawls (~50–80k pages); previous 15k default would silently truncate at ~15–30% coverage.
+
+**Reproducible re-crawl pipeline (#192 section I scaffolding)**
+- `scripts/recrawl.sh` orchestrates the full v1.0 re-crawl: wipes stale DBs + crawl manifests + per-source raw output dirs (true clean slate for schema bumps), then runs phases 1–10 sequentially with named markers (`=== Phase N/10: <name> — START HH:MM:SS ===`) so a tail-following watcher can spot stage transitions and per-phase wall clock at a glance.
+- Phase order: docs → evolution → swift → hig → archive → packages → package-docs → code → save → doctor. `code` (sample-code with WKWebView sign-in) is intentionally last so the long automated phases run unattended.
+- `make test-clean` Makefile target wraps `clean + test` for the SwiftPM stale-build SIGTRAP escape hatch.
+
+**From the original v0.11.0 scope (pre-consolidation)**
+- **Transitive dependency resolution for `fetch --type package-docs`** (#184): each seed is walked through its `Package.swift` (libraries commit this; most lockfiles are `.gitignored`), then `Package.resolved` as a fallback for apps. Dependencies on `github.com` are added to the fetch queue. Non-GitHub URLs, missing manifests, and malformed manifests are counted and skipped. Opt out with `--no-recurse`. Terminates via canonical-name dedupe.
+- **GitHub redirect canonicalisation**: aliases like `apple/swift-docc` and `swiftlang/swift-docc` collapse into one entry instead of double-indexing. Cached at `~/.cupertino/.cache/canonical-owners.json`; one API call per unique repo, lifetime.
+- **Persisted resolved closure** at `~/.cupertino/resolved-packages.json` with parentage + checksum. Re-fetch reuses the cache unless seeds changed or `--refresh` is passed. Answers "why is this package in my index?".
+- **User exclusion list** at `~/.cupertino/excluded-packages.json`. Hand-edit to drop discovered-via-dep packages from future closures.
+- **Parallel resolver** dispatches manifest fetches in batches of 10. A 200-package closure shrinks from ~3 min wall time to a few tens of seconds.
+- **Per-branch manifest cache** at `~/.cupertino/.cache/manifests/<owner>/<repo>/<branch>/Package.swift` with 24h TTL. 404s cached as zero-byte sentinels.
+- **SPM registry id counting** (`.package(id: …)`, SPM 5.8+) — surfaces in the resolver summary as `Skipped (SPM registry id)` rather than silently dropped.
+- **TUI promote / exclude actions** (`x` toggle exclusion, `p` promote discovered-via-dep to seed). Visual indicators: `[*]` seed, `[X]` excluded, `[+]` discovered, `[ ]` none.
+- **Expanded bundled `priority-packages.json`** from 36 to 135 seeds: 43 Apple (incl. `swift-syntax` swiftlang move, `swift-foundation`, `swift-markdown`, `swift-http-types`, `swift-nio-extras`, `swift-configuration`, `swift-distributed-tracing`); 92 ecosystem covering full Vapor + Hummingbird, expanded Point-Free, swiftlang, SSWG, tooling (SwiftFormat, SwiftLint, XcodeGen), Soto, SwiftUI Introspect, Tuist, plus project-specific seeds.
 
 ### Changed
 
-- **`cupertino setup` default now re-downloads** (#168). The previous short-circuit-if-databases-present behaviour is opt-in via `--keep-existing`. Each successful download stamps `~/.cupertino/.setup-version` so subsequent runs can report `current` / `stale` / `unknown` / `missing` and tailor the output accordingly. Motivation: users were stranded on stale DBs after `brew upgrade cupertino` because `setup` without `--force` silently kept the old files.
-- **Resource catalogs now compiled into the binary** (#161, new approach). The four JSON catalogs (`priority-packages`, `archive-guides-catalog`, `sample-code-catalog`, `swift-packages-catalog`) are embedded as Swift raw-string literals under `Packages/Sources/Resources/Embedded/` instead of shipped as a `Cupertino_Resources.bundle` next to the binary. The bundle-missing-on-Homebrew failure mode no longer exists because there is no bundle. Obsoletes the `b9bc70a` symlink-resolution fix in the process. See `Scripts/generate-embedded-catalogs.sh` for PR-gated catalog refreshes.
-- **`swift-packages-catalog` slimmed to URL list only**: the embedded catalog now carries just the 9,699 package URLs (~530 KB), not the previous rich metadata blob (~3.4 MB). Metadata (stars, description, license) returns via `packages.db` distribution in v1.0.0+. Tracked in [#194](https://github.com/mihaelamj/cupertino/issues/194) for full removal in v1.1.0 once `packages.db` is the canonical source.
-- **bm25 per-column weights for docs search** (#181 partial): the main FTS query now uses `bm25(docs_fts, 1.0, 1.0, 2.0, 1.0, 10.0, 1.0, 3.0)` — title dominates, summary 3×, framework 2×, body uniform. Helps mildly-ambiguous capitalized-type queries (e.g. `Task`, `View`). Full case-sensitive fix rides the upcoming re-crawl's schema work.
+- **`cupertino setup` default now re-downloads** (#168). The previous short-circuit-if-databases-present behaviour is opt-in via `--keep-existing`. Each successful download stamps `~/.cupertino/.setup-version` so subsequent runs report `current` / `stale` / `unknown` / `missing`. Motivation: users were stranded on stale DBs after `brew upgrade cupertino`.
+- **Resource catalogs compiled into the binary** (#161): the four JSON catalogs are embedded as Swift raw-string literals under `Packages/Sources/Resources/Embedded/` instead of shipped as a `Cupertino_Resources.bundle`. The bundle-missing-on-Homebrew failure mode is fundamentally gone — there is no bundle. Obsoletes the `b9bc70a` symlink-resolution fix.
+- **`swift-packages-catalog` slimmed to URL list only**: the embedded catalog carries just the 9,699 package URLs (~530 KB), not the previous metadata blob (~3.4 MB). Metadata returns via `packages.db` distribution. Tracked in [#194](https://github.com/mihaelamj/cupertino/issues/194) for full removal in v1.1.0 once `packages.db` is the canonical source.
+- **Schema bump 10 → 12** (single user-visible jump, but two intermediate steps internally). v11 added `kind` + `symbols` to docs_metadata via ALTER TABLE. v12 added `symbols` to `docs_fts` (BREAKING — FTS5 can't ALTER columns). Existing v10/v11 DBs throw on open with a clear `rm + cupertino save` rebuild hint. Aligned with the v1.0 full re-crawl plan, so end users only see one transition.
+- **`make test-clean` Makefile target** — `clean + test` in one command. Escape hatch for the Swift 6.2 / macOS 26 SwiftPM incremental-build bug where adding a method to an actor leaves stale `.o` files and async dispatch lands in the wrong slot. Documented in `CONTRIBUTING.md` Troubleshooting + `mihaela-agents/Rules/ai-agent-rules/testing.md`.
+- **stdout line-buffered when piped**: `Cupertino.main()` calls `setvbuf(stdout, nil, _IOLBF, 0)` so `cupertino fetch ... | tee` flushes per-line instead of every 4–8 KB. No more "appears hung for 5 minutes then dumps a chunk" surprise on long crawls.
 
 ### Fixed
 
-- **Homebrew resource bundle lookup** (#161): now fundamentally solved because there is no bundle. Users on `brew install mihaelamj/tap/cupertino` no longer hit `Fatal error: could not load resource bundle`. The earlier `b9bc70a` symlink-resolution fix is superseded by the embed approach above.
-- **`fetch --type package-docs` honours user selections** (#107): `PriorityPackagesCatalog` read `~/.cupertino/selected-packages.json` when present but never created it, so the bundled catalog was used even when the TUI had been run. First access now copies the bundled `priority-packages.json` to the user location so subsequent edits (TUI or manual) take effect immediately, matching the `ArchiveGuideCatalog` pattern.
-- **Swift.org indexing drops valid pages** (#110): `metadata.json` was being picked up by the doc-file scan and failing to decode as a `StructuredDocumentationPage` (missing `url` key), inflating the skipped-file count. `findDocFiles` now filters `metadata.json` out. Separately, `is404Page` was over-aggressive — any page with the phrase "page not found" was misclassified, including the Swift Book's "The Basics" pages discussing error handling. The heuristic now only flips the verdict on short pages (<500 chars) for that ambiguous phrase. Drive-by: `findDocFiles`' JSON-over-MD preference no longer depends on `FileManager.enumerator` iteration order.
-- **Sample-code auth WebKit window** (#6, partial fix). The window now appears and navigates. Root cause chain fixed: `NSApp.setActivationPolicy(.regular)` was a nil-crash (used `NSApplication.shared` instead); delegate was attached after `webView.load()` (swapped order); spoofed Safari User-Agent was being 403'd by `idmsa.apple.com` (dropped UA override). Added `AuthFlowCoordinator` that auto-detects sign-in via the `myacinfo` cookie, races against user Enter / window close, and resets activation policy on exit. Fresh interactive sign-in still has CoreAnimation rendering quirks in a bare Swift CLI host; full replacement ([#193](https://github.com/mihaelamj/cupertino/issues/193)) moves sample-code downloads to public JSON endpoints and is scoped to v1.1.0.
+- **Homebrew resource bundle lookup** (#161): now fundamentally solved because there is no bundle.
+- **`fetch --type package-docs` honours user selections** (#107): `PriorityPackagesCatalog` first access copies the bundled `priority-packages.json` to `~/.cupertino/selected-packages.json` so TUI / manual edits take effect immediately.
+- **Swift.org indexing drops valid pages** (#110): `metadata.json` was being decoded as a `StructuredDocumentationPage` and failing on the missing `url` key. `findDocFiles` now filters it out. Separately, `is404Page` was over-aggressive — only flips the verdict on short pages (<500 chars) for the ambiguous "page not found" phrase, so the Swift Book's "The Basics" pages discussing error handling are no longer misclassified.
+- **Sample-code auth WebKit window** (#6, partial). Window now appears and navigates: `NSApp.setActivationPolicy(.regular)` nil-crash fixed (`NSApplication.shared` instead); delegate attached before `webView.load()`; spoofed Safari UA dropped (`idmsa.apple.com` was 403'ing it). `AuthFlowCoordinator` auto-detects sign-in via `myacinfo` cookie. Fresh interactive sign-in still has CoreAnimation quirks in a bare Swift CLI host; full replacement ([#193](https://github.com/mihaelamj/cupertino/issues/193), public JSON endpoints) is scoped to v1.1.
+- **bm25 single-word capitalized type queries** (#181): title weight 10×, symbols weight 5× now make `Task` rank the Swift Task struct above Mach `task_info`, and `View` rank the SwiftUI View protocol above generic prose. Full case-sensitivity comes with the v1.0 re-crawl.
 
 ### Removed
 
-- `cupertino setup --force` flag — use `--keep-existing` or rely on the new default-downloads behaviour.
+- `cupertino setup --force` flag — use `--keep-existing` or the new default-downloads behaviour.
+- `cupertino packages-setup` (hidden) subcommand — collapsed into the unified `cupertino setup`.
 - `Cupertino_Resources.bundle` shipped artifact — no longer generated, no longer copied by `install.sh` / `release.yml` / the Homebrew formula.
-- `SwiftPackagesCatalog.topPackages(limit:)`, `.activePackages(minStars:)`, `.packages(license:)` — relied on metadata fields no longer present on the slimmed URL-only catalog. Metadata-driven queries will come back via `packages.db` in v1.0.0+.
+- `SwiftPackagesCatalog.topPackages(limit:)`, `.activePackages(minStars:)`, `.packages(license:)` — relied on metadata fields no longer present on the slimmed URL-only catalog. Metadata-driven queries will come back via `packages.db`.
 
 ### Internal
 
-- New `Search.DocKind` enum + `Search.Classify` namespace under `Packages/Sources/Search/DocKind.swift`.
-- 35 new C-specific tests across `DocKindTests`, `DocKindIntegrationTests`, and the existing `CommandRegistration` suite (subcommand count bumped to 15 after `PackagesSetupCommand` was added).
-- `Scripts/generate-embedded-catalogs.sh` added for regenerating the embedded catalog Swift files from source JSON.
-- CLI subcommand registration test updated to expect 15 subcommands (was 14 before `packages-setup` landed).
+- `Search.DocKind`, `Search.Classify`, `Search.SmartCandidate`, `Search.CandidateFetcher`, `Search.SmartQuery`, `Search.PackageFTSCandidateFetcher`, `Search.DocsSourceCandidateFetcher`, `Search.FusedCandidate`, `Search.SmartResult` — new public surfaces under `Packages/Sources/Search/`.
+- `MCP.Icon` + `Implementation.icons` — protocol-level additions for 2025-11-25.
+- `CupertinoIconEmbedded.dataURI` for serverInfo advertising.
+- `CLI.Commands.AskCommand`, `CLI.Commands.PackagesReleaseURL`, `CLI.Commands.SetupCommand.SetupStatus` — new CLI internals.
+- **Test count: 947** in 95 suites, 0 failures, ~39s on clean build. New suites: `DocKindTests` (19), `DocKindIntegrationTests` (13), `BM25TitleWeightingTests`, `CodeExampleSymbolsTests`, `IndexBuilderSymbolsIntegrationTests`, `SmartQueryTests`, `DocsSourceCandidateFetcherTests`, `CupertinoResourcesTests`, `PackagesReleaseURLTests`. Updated: MCP protocol tests for 2025-11-25 + Icon + Implementation icons + legacy decode, schema-version assertions to 12, BM25 tests to 8-weight vector, doctor schema-version helpers, CLI subcommand count.
+- `scripts/generate-embedded-catalogs.sh` — regenerates embedded catalog Swift files.
+- `scripts/recrawl.sh` — full re-crawl orchestration, named phases, idempotent wipe.
+- 6 GitHub issues closed (`#18` colors, `#20` E2E MCP tests, `#109` search-all/search-hig — all already done or superseded). 3 v1.0-deliverable labels (`v1.0: distribution`, `v1.0: symbols`, `v1.0: mcp`) + `wishlist` label applied to ~20 speculative pre-v1.0 issues.
 
-### Known issues / deferred to later v1.x
+### Known issues / deferred
 
-- `cupertino ask` natural-language smart-query wrapper (#192 section E) not yet implemented.
-- AST extraction over `doc_code_examples` (#176, #192 section D) not yet implemented — `docs_metadata.symbols` column is ready but empty.
-- MCP protocol upgrade from `2025-06-18` to `2025-11-25` (#139, #192 section G) not yet implemented.
-- Full re-crawl (#192 section I) — the last step before tagging; will produce fresh `search.db` and `packages.db` artifacts for distribution.
+- **Sample-code auth WebKit** (#6 partial; full replacement #193) — fresh interactive sign-in still has CA rendering quirks in the bare Swift CLI host. v1.1 swaps to public JSON endpoints; for v1.0 use the existing macOS user session if it has signed in via Safari recently.
+- **MCP `search` tool sectioned-vs-blended split** — MCP clients still get the per-source `UnifiedSearchService` shape (good for human-readable chat); only the new `cupertino ask` CLI uses cross-source rank fusion. Unifying these two presentations behind `SmartQuery` is a v1.1 polish.
+- **G6 Tasks abstraction** for long-running operations not wired — re-crawl + full-index run synchronously without MCP Tasks-protocol progress reporting. Defaults are fine; v1.1 polish.
+- **#177 low-signal AST symbol filtering** — operators, boilerplate names show up in symbol search. Quality-of-life cleanup post-1.0.
 
 ---
 
