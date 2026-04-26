@@ -509,13 +509,14 @@ extension AppleJSONToMarkdown {
         // Extract module name
         let module = doc.metadata.modules?.first?.name
 
-        // Compute content hash
-        let contentHash = HashUtilities.sha256(of: json)
-
-        // Also generate markdown representation
+        // Generate markdown representation (derived from structured fields)
         let markdown = convert(json, url: url)
 
-        return StructuredDocumentationPage(
+        // Hash canonical structured fields, not raw `json` — Apple's response
+        // includes volatile cache/build metadata that doesn't reach our parsed
+        // output, so `sha256(of: json)` is non-deterministic across runs (#199).
+        let page = StructuredDocumentationPage(
+            id: StructuredDocumentationPage.deterministicID(for: url),
             url: url,
             title: doc.metadata.title,
             kind: kind,
@@ -533,8 +534,9 @@ extension AppleJSONToMarkdown {
             conformingTypes: conformingTypes,
             rawMarkdown: markdown,
             crawledAt: Date(),
-            contentHash: contentHash
+            contentHash: ""
         )
+        return page.with(contentHash: page.canonicalContentHash)
     }
 
     // MARK: - Private Helpers for Structured Page

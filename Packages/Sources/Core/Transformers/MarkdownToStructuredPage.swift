@@ -62,9 +62,6 @@ public enum MarkdownToStructuredPage {
         // Extract conformance
         let conformsTo = extractConformsTo(from: content)
 
-        // Compute content hash
-        let contentHash = HashUtilities.sha256(of: markdown)
-
         // Get crawled date from frontmatter
         let crawledAt: Date
         if let crawledString = frontmatter["crawled"],
@@ -74,7 +71,11 @@ public enum MarkdownToStructuredPage {
             crawledAt = Date()
         }
 
-        return StructuredDocumentationPage(
+        // Hash canonical structured fields, not raw `markdown` — the markdown
+        // body embeds the `crawled:` timestamp in its frontmatter, so
+        // `sha256(of: markdown)` was non-deterministic across runs (#199).
+        let page = StructuredDocumentationPage(
+            id: StructuredDocumentationPage.deterministicID(for: pageURL),
             url: pageURL,
             title: title,
             kind: kind,
@@ -89,8 +90,9 @@ public enum MarkdownToStructuredPage {
             conformsTo: conformsTo,
             rawMarkdown: markdown,
             crawledAt: crawledAt,
-            contentHash: contentHash
+            contentHash: ""
         )
+        return page.with(contentHash: page.canonicalContentHash)
     }
 
     // MARK: - Frontmatter Parsing

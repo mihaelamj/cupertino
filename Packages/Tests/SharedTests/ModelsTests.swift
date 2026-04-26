@@ -612,3 +612,74 @@ func structuredPageInferredKindObject() {
 
     #expect(page.inferredKind == Kind.struct)
 }
+
+// MARK: - Deterministic identity & content hashing (#199)
+
+@Test("deterministicID returns the same UUID for the same URL")
+func deterministicIDIsStable() {
+    let url = URL(string: "https://developer.apple.com/documentation/spatial/rotation3d")!
+    #expect(Page.deterministicID(for: url) == Page.deterministicID(for: url))
+}
+
+@Test("deterministicID differs across distinct URLs")
+func deterministicIDDiffersAcrossURLs() {
+    let a = Page.deterministicID(for: URL(string: "https://developer.apple.com/documentation/spatial/rotation3d")!)
+    let b = Page.deterministicID(for: URL(string: "https://developer.apple.com/documentation/spatial/pose3d")!)
+    #expect(a != b)
+}
+
+@Test("canonicalContentHash is stable across crawledAt and id")
+func canonicalContentHashIgnoresVolatileFields() {
+    let url = URL(string: "https://developer.apple.com/documentation/spatial/rotation3d")!
+    let make: (UUID, Date) -> Page = { id, date in
+        Page(
+            id: id,
+            url: url,
+            title: "Rotation3D",
+            kind: .struct,
+            source: .appleJSON,
+            abstract: "A rotation in three dimensions.",
+            declaration: Page.Declaration(code: "struct Rotation3D"),
+            sections: [Page.Section(title: "Overview")],
+            language: "swift",
+            module: "Spatial",
+            rawMarkdown: "stub with crawled: \(date)",
+            crawledAt: date,
+            contentHash: ""
+        )
+    }
+    let earlier = make(UUID(), Date(timeIntervalSince1970: 1_700_000_000))
+    let later = make(UUID(), Date(timeIntervalSince1970: 1_800_000_000))
+    #expect(earlier.canonicalContentHash == later.canonicalContentHash)
+    #expect(!earlier.canonicalContentHash.isEmpty)
+}
+
+@Test("canonicalContentHash changes when title changes")
+func canonicalContentHashTracksRealEdits() {
+    let url = URL(string: "https://developer.apple.com/documentation/spatial/rotation3d")!
+    let original = Page(url: url, title: "Rotation3D", kind: .struct, source: .appleJSON)
+    let edited = Page(url: url, title: "Rotation3D (renamed)", kind: .struct, source: .appleJSON)
+    #expect(original.canonicalContentHash != edited.canonicalContentHash)
+}
+
+@Test("with(contentHash:) preserves all other fields")
+func withContentHashPreservesFields() {
+    let url = URL(string: "https://developer.apple.com/documentation/spatial/rotation3d")!
+    let original = Page(
+        id: Page.deterministicID(for: url),
+        url: url,
+        title: "Rotation3D",
+        kind: .struct,
+        source: .appleJSON,
+        abstract: "abstract",
+        crawledAt: Date(timeIntervalSince1970: 1_700_000_000),
+        contentHash: ""
+    )
+    let stamped = original.with(contentHash: "deadbeef")
+    #expect(stamped.contentHash == "deadbeef")
+    #expect(stamped.id == original.id)
+    #expect(stamped.url == original.url)
+    #expect(stamped.title == original.title)
+    #expect(stamped.crawledAt == original.crawledAt)
+    #expect(stamped.abstract == original.abstract)
+}

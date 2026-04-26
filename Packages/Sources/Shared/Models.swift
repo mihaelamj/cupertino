@@ -83,9 +83,9 @@ public struct StructuredDocumentationPage: Codable, Sendable, Identifiable, Hash
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        // Generate UUID if id is missing (for backwards compatibility)
-        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
         url = try container.decode(URL.self, forKey: .url)
+        // Derive a deterministic id if missing (older records lack this field).
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? Self.deterministicID(for: url)
         title = try container.decode(String.self, forKey: .title)
         kind = try container.decode(Kind.self, forKey: .kind)
         source = try container.decode(Source.self, forKey: .source)
@@ -439,6 +439,96 @@ public struct StructuredDocumentationPage: Codable, Sendable, Identifiable, Hash
 
         // Still unknown after all heuristics
         return .unknown
+    }
+
+    // MARK: - Deterministic Identity & Content Hashing
+
+    /// Derive a stable UUID from the page URL.
+    /// Same URL → same UUID across runs and machines. Use this anywhere a
+    /// `StructuredDocumentationPage` is constructed so persisted records are
+    /// reproducible.
+    public static func deterministicID(for url: URL) -> UUID {
+        let digest = SHA256.hash(data: Data(url.absoluteString.utf8))
+        let bytes = Array(digest.prefix(16))
+        let hex = bytes.map { String(format: "%02x", $0) }.joined()
+        var s = hex
+        s.insert("-", at: s.index(s.startIndex, offsetBy: 8))
+        s.insert("-", at: s.index(s.startIndex, offsetBy: 13))
+        s.insert("-", at: s.index(s.startIndex, offsetBy: 18))
+        s.insert("-", at: s.index(s.startIndex, offsetBy: 23))
+        return UUID(uuidString: s) ?? UUID()
+    }
+
+    /// SHA-256 over the page's semantic content fields, in a stable encoding.
+    /// Excludes `id`, `crawledAt`, `contentHash`, and `rawMarkdown` (the last
+    /// is derived from the structured fields and embeds `crawledAt`).
+    /// Two crawls of the same Apple-side content produce the same hash.
+    public var canonicalContentHash: String {
+        let payload = CanonicalPayload(
+            url: url,
+            title: title,
+            kind: kind,
+            source: source,
+            abstract: abstract,
+            declaration: declaration,
+            overview: overview,
+            sections: sections,
+            codeExamples: codeExamples,
+            language: language,
+            platforms: platforms,
+            module: module,
+            conformsTo: conformsTo,
+            inheritedBy: inheritedBy,
+            conformingTypes: conformingTypes
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        guard let data = try? encoder.encode(payload) else { return "" }
+        return HashUtilities.sha256(of: data)
+    }
+
+    private struct CanonicalPayload: Encodable {
+        let url: URL
+        let title: String
+        let kind: Kind
+        let source: Source
+        let abstract: String?
+        let declaration: Declaration?
+        let overview: String?
+        let sections: [Section]
+        let codeExamples: [CodeExample]
+        let language: String?
+        let platforms: [String]?
+        let module: String?
+        let conformsTo: [String]?
+        let inheritedBy: [String]?
+        let conformingTypes: [String]?
+    }
+
+    /// Return a copy with `contentHash` replaced. Use after constructing a
+    /// page with `contentHash: ""` to stamp `canonicalContentHash` in one step.
+    public func with(contentHash newHash: String) -> StructuredDocumentationPage {
+        StructuredDocumentationPage(
+            id: id,
+            url: url,
+            title: title,
+            kind: kind,
+            source: source,
+            abstract: abstract,
+            declaration: declaration,
+            overview: overview,
+            sections: sections,
+            codeExamples: codeExamples,
+            language: language,
+            platforms: platforms,
+            module: module,
+            conformsTo: conformsTo,
+            inheritedBy: inheritedBy,
+            conformingTypes: conformingTypes,
+            rawMarkdown: rawMarkdown,
+            crawledAt: crawledAt,
+            contentHash: newHash
+        )
     }
 }
 
