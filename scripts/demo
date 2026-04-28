@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+#
+# demo — single-run live demo for Cupertino. Three short acts back-to-back so
+# the presenter can talk over the output. Follow up by showing the same kind
+# of query in Claude Desktop with cupertino registered as MCP.
+#
+# Acts:
+#   1. cupertino doctor          — what's in the local index (≈1 s)
+#   2. cupertino search "<q>"    — direct ranked answer (≈1 s)
+#   3. mock-ai-agent --quiet     — same query over the MCP wire (≈10 s)
+#
+# Acts 1 and 2 use the installed (Homebrew) cupertino because it matches the
+# `~/.cupertino/search.db` schema currently on disk. Act 3 uses the locally-
+# built `mock-ai-agent` which spawns the in-tree `cupertino` over MCP; any
+# schema-mismatch warning that emits is suppressed by `--quiet`.
+#
+# Usage from repo root:
+#   ./scripts/demo
+#   QUERY="ImmersiveSpace foveated streaming" ./scripts/demo
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$REPO_ROOT"
+
+CUPERTINO_BIN="${CUPERTINO_BIN:-$(command -v cupertino || echo /opt/homebrew/bin/cupertino)}"
+MOCK_AGENT_BIN="$REPO_ROOT/Packages/.build/release/mock-ai-agent"
+QUERY="${QUERY:-NSToolbar customization}"
+
+if [[ ! -x "$CUPERTINO_BIN" ]]; then
+    printf '❌ cupertino not found on PATH. Install via Homebrew or set CUPERTINO_BIN.\n' >&2
+    exit 1
+fi
+
+# Always run `swift build` (incremental, near-instant when up to date).
+# A stale release binary that pre-dates a source fix is a frequent hazard
+# during an active dev cycle — incremental rebuild avoids it.
+printf '🔨 Ensuring mock-ai-agent (release) is current...\n'
+(cd Packages && swift build -c release --product mock-ai-agent) >/dev/null 2>&1
+printf '   done.\n'
+
+heading() {
+    printf '\n'
+    printf '═%.0s' {1..72}
+    printf '\n  %s\n' "$1"
+    printf '═%.0s' {1..72}
+    printf '\n\n'
+    sleep 1
+}
+
+heading "Act 1 — what's in the local index?"
+"$CUPERTINO_BIN" doctor || true
+sleep 2
+
+heading "Act 2 — direct ranked answer (no LLM in the loop)"
+printf '  $ cupertino search "%s"\n\n' "$QUERY"
+"$CUPERTINO_BIN" search "$QUERY" | head -60
+printf '\n  …trimmed for time. Run the command directly to see all results.\n'
+sleep 2
+
+heading "Act 3 — what an AI agent sees over MCP"
+printf '  Spawning cupertino as an MCP server, mock client drives the conversation.\n'
+printf '  --quiet keeps just the pretty-printed responses; full wire trace is\n'
+printf '  one flag away.\n\n'
+sleep 1
+
+# mock-ai-agent expects to run from Packages/ so it can find the local
+# cupertino build at .build/debug/cupertino.
+(cd "$REPO_ROOT/Packages" && "$MOCK_AGENT_BIN" --quiet) || true
+
+printf '\n'
+printf '═%.0s' {1..72}
+printf '\n  ✅ Demo complete. Open Claude Desktop next.\n'
+printf '═%.0s' {1..72}
+printf '\n'
