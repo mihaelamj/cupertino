@@ -747,6 +747,15 @@ public enum URLUtilities {
         var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
         components?.fragment = nil
         components?.query = nil
+
+        if components?.host == "developer.apple.com",
+           let path = components?.path,
+           path.hasPrefix("/documentation/") {
+            components?.path = path
+                .lowercased()
+                .replacingOccurrences(of: "_", with: "-")
+        }
+
         return components?.url
     }
 

@@ -69,6 +69,31 @@ struct CrawlerTests {
         #expect(!normalized!.absoluteString.contains("?"))
     }
 
+    @Test("URLUtilities normalize lowercases Apple documentation paths")
+    func urlNormalizeLowercasesAppleDocumentationPaths() throws {
+        let uppercase = URL(string: "https://developer.apple.com/documentation/Cinematic/CNAssetInfo-2ata2")!
+        let lowercase = URL(string: "https://developer.apple.com/documentation/cinematic/cnassetinfo-2ata2")!
+
+        #expect(URLUtilities.normalize(uppercase) == URLUtilities.normalize(lowercase))
+        #expect(URLUtilities.normalize(uppercase)?.path == "/documentation/cinematic/cnassetinfo-2ata2")
+    }
+
+    @Test("URLUtilities normalize canonicalizes Apple documentation underscores")
+    func urlNormalizeCanonicalizesAppleDocumentationUnderscores() throws {
+        let dashed = URL(string: "https://developer.apple.com/documentation/professional-video-applications/fxplug")!
+        let underscored = URL(string: "https://developer.apple.com/documentation/professional_video_applications/fxplug")!
+
+        #expect(URLUtilities.normalize(dashed) == URLUtilities.normalize(underscored))
+        #expect(URLUtilities.normalize(underscored)?.path == "/documentation/professional-video-applications/fxplug")
+    }
+
+    @Test("URLUtilities normalize preserves method disambiguator dashes")
+    func urlNormalizePreservesMethodDisambiguatorDashes() throws {
+        let url = URL(string: "https://developer.apple.com/documentation/Cinematic/CNAssetInfo-2ata2")!
+
+        #expect(URLUtilities.normalize(url)?.lastPathComponent == "cnassetinfo-2ata2")
+    }
+
     // MARK: - Framework Extraction Tests
 
     @Test("URLUtilities extracts framework from Apple docs URL")

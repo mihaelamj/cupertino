@@ -213,7 +213,7 @@ extension Search {
             logInfo("📂 Scanning directory for documentation (no metadata.json)...")
 
             // Recursively find all .json and .md files (JSON preferred over MD)
-            let docFiles = try findDocFiles(in: docsDirectory)
+            let docFiles = try deduplicateDocFilesByCanonicalURL(findDocFiles(in: docsDirectory))
 
             guard !docFiles.isEmpty else {
                 logInfo("⚠️  No documentation files found in \(docsDirectory.path)")
@@ -227,11 +227,12 @@ extension Search {
 
             for (index, file) in docFiles.enumerated() {
                 // Extract framework from path: docs/{framework}/...
-                guard let framework = extractFrameworkFromPath(file, relativeTo: docsDirectory) else {
+                guard let rawFramework = extractFrameworkFromPath(file, relativeTo: docsDirectory) else {
                     logError("Could not extract framework from path: \(file.path) (relative to \(docsDirectory.path))")
                     skipped += 1
                     continue
                 }
+                let framework = canonicalPathComponent(rawFramework)
 
                 // Always work with StructuredDocumentationPage
                 let structuredPage: StructuredDocumentationPage
@@ -278,7 +279,8 @@ extension Search {
                 }
 
                 // Generate URI: apple-docs://{framework}/{filename}
-                let filename = file.deletingPathExtension().lastPathComponent
+                let filename = URLUtilities.normalize(structuredPage.url)?.lastPathComponent
+                    ?? canonicalPathComponent(file.deletingPathExtension().lastPathComponent)
                 let uri = "apple-docs://\(framework)/\(filename)"
 
                 // Index using indexStructuredDocument (Apple docs from /docs folder)
@@ -361,6 +363,56 @@ extension Search {
             }
 
             return docFiles
+        }
+
+        private func deduplicateDocFilesByCanonicalURL(_ files: [URL]) throws -> [URL] {
+            var newestByURL: [String: (file: URL, crawledAt: Date)] = [:]
+
+            for file in files {
+                guard let canonicalURL = canonicalDocumentationURL(for: file) else {
+                    continue
+                }
+
+                let crawledAt = documentationCrawledAt(for: file) ?? .distantPast
+                if let existing = newestByURL[canonicalURL], existing.crawledAt >= crawledAt {
+                    continue
+                }
+
+                newestByURL[canonicalURL] = (file, crawledAt)
+            }
+
+            let keptFiles = Set(newestByURL.values.map(\.file))
+            return files.filter { keptFiles.contains($0) }
+        }
+
+        private func canonicalDocumentationURL(for file: URL) -> String? {
+            if file.pathExtension.lowercased() == "json",
+               let data = try? Data(contentsOf: file),
+               let page = try? JSONDecoder().decode(StructuredDocumentationPage.self, from: data) {
+                return URLUtilities.normalize(page.url)?.absoluteString
+            }
+
+            guard let rawFramework = extractFrameworkFromPath(file, relativeTo: docsDirectory) else {
+                return nil
+            }
+
+            let framework = canonicalPathComponent(rawFramework)
+            let filename = canonicalPathComponent(file.deletingPathExtension().lastPathComponent)
+            return "https://developer.apple.com/documentation/\(framework)/\(filename)"
+        }
+
+        private func documentationCrawledAt(for file: URL) -> Date? {
+            if file.pathExtension.lowercased() == "json",
+               let data = try? Data(contentsOf: file),
+               let page = try? JSONDecoder().decode(StructuredDocumentationPage.self, from: data) {
+                return page.crawledAt
+            }
+
+            return try? file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+        }
+
+        private func canonicalPathComponent(_ component: String) -> String {
+            component.lowercased().replacingOccurrences(of: "_", with: "-")
         }
 
         private func findMarkdownFiles(in directory: URL) throws -> [URL] {
