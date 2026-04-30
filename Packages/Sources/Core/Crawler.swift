@@ -252,10 +252,23 @@ extension Core {
             // multi-day crawls (e.g. v1.0 320k corpus on Claw Mini) where
             // the implicit Task-scoped pool would otherwise hoard megabytes
             // of pool buffers per thousand pages.
-            if hasJSONEndpoint {
+            // Discovery mode controls which path the crawler uses for content
+            // and link extraction. See `Shared.DiscoveryMode` for semantics.
+            // The webview-only mode skips JSON entirely so we can produce a
+            // clean WKWebView-discovered corpus alongside a JSON-only corpus
+            // in a separate output directory, then diff the two metadata.json
+            // files to measure the discovery gap. (#203 methodology)
+            let mode = configuration.discoveryMode
+            let useJSON = hasJSONEndpoint && mode != .webViewOnly
+
+            if useJSON {
                 do {
                     (structuredPage, markdown, links) = try await loadPageViaJSON(url: url)
                 } catch {
+                    if mode == .jsonOnly {
+                        // No fallback in pure JSON-only mode — propagate.
+                        throw error
+                    }
                     // JSON API failed, fall back to HTML
                     logInfo("   ⚠️ JSON API unavailable, using HTML fallback")
                     let html = try await loadPage(url: url)

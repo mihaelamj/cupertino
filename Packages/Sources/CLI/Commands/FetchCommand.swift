@@ -6,6 +6,11 @@ import Logging
 import Search
 import Shared
 
+// Lets ArgumentParser parse `--discovery-mode <mode>` directly into the
+// shared enum. The conformance lives here (not in Shared) so the Shared
+// module doesn't take on an ArgumentParser dependency.
+extension Shared.DiscoveryMode: ExpressibleByArgument {}
+
 // MARK: - Fetch Command
 
 // swiftlint:disable type_body_length
@@ -85,6 +90,18 @@ struct FetchCommand: AsyncParsableCommand {
         """
     )
     var baseline: String?
+
+    @Option(
+        name: .long,
+        help: """
+        Discovery mode: \
+        auto (default — JSON API primary, WKWebView fallback when JSON 404s), \
+        json-only (JSON only, no WKWebView fallback — fastest, narrowest), \
+        webview-only (WKWebView for everything — slowest, broadest discovery, \
+        matches pre-2025-11-30 behavior).
+        """
+    )
+    var discoveryMode: Shared.DiscoveryMode = .auto
 
     @Flag(name: .long, inversion: .prefixedNo, help: "Only download accepted/implemented proposals (evolution type only)")
     var onlyAccepted: Bool = true
@@ -527,7 +544,8 @@ struct FetchCommand: AsyncParsableCommand {
                 allowedPrefixes: prefixes,
                 maxPages: maxPages,
                 maxDepth: maxDepth,
-                outputDirectory: outputDirectory
+                outputDirectory: outputDirectory,
+                discoveryMode: discoveryMode
             ),
             changeDetection: Shared.ChangeDetectionConfiguration(
                 forceRecrawl: force,
