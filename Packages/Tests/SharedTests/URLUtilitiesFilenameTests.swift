@@ -135,7 +135,8 @@ struct URLUtilitiesFilenameTests {
         let parts = name.split(separator: "_")
         let last = parts.last.map(String.init) ?? ""
         #expect(last.count == 8, "expected 8-hex-char hash suffix, got: \(last)")
-        #expect(last.allSatisfy(\.isHexDigit), "hash suffix not all hex: \(last)")
+        let isAllHex = last.allSatisfy(\.isHexDigit)
+        #expect(isAllHex, "hash suffix not all hex: \(last)")
     }
 
     @Test("Filename never returns empty string")
