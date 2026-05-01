@@ -21,7 +21,18 @@ public struct RefResolver {
         public var pagesRewritten: Int = 0
         public var markersFound: Int = 0
         public var markersResolvedFromHarvest: Int = 0
+        public var markersResolvedFromNetwork: Int = 0
         public var markersStillUnresolved: Int = 0
+    }
+
+    /// Looks up the readable title for a documentation URL when the
+    /// in-corpus harvest can't (the marker points to a page nothing
+    /// else references). Implementations: JSON API hit, WKWebView hit,
+    /// or a composite that tries one then the other.
+    public protocol TitleFetcher: Sendable {
+        /// Return the resolved page title, or `nil` if the page is
+        /// unreachable / has no usable title.
+        func resolveTitle(for documentationURL: URL) async -> String?
     }
 
     private let inputDirectory: URL
@@ -46,6 +57,71 @@ public struct RefResolver {
 
         let map = try harvest(from: pageFiles, stats: &stats)
         let unresolved = try rewrite(pageFiles: pageFiles, with: map, stats: &stats)
+        return (stats, unresolved)
+    }
+
+    /// Run the full pipeline: harvest, rewrite, then for every still-
+    /// unresolved marker ask `fetcher` for a title and re-rewrite the
+    /// affected pages with the augmented map. Stops early if `fetcher`
+    /// is nil (equivalent to plain `run()`).
+    public func runWithFetcher(
+        _ fetcher: (any TitleFetcher)?,
+        onNetworkProgress: ((Int, Int) -> Void)? = nil
+    ) async throws -> (stats: Stats, unresolvedMarkers: Set<String>) {
+        var stats = Stats()
+        let pageFiles = try collectPageFiles()
+
+        var map = try harvest(from: pageFiles, stats: &stats)
+        var unresolved = try rewrite(pageFiles: pageFiles, with: map, stats: &stats)
+
+        guard let fetcher, !unresolved.isEmpty else {
+            return (stats, unresolved)
+        }
+
+        // Ask the network resolver for titles for every distinct unresolved marker.
+        let markers = unresolved.sorted()
+        var newlyResolved: [String: String] = [:]
+        for (index, marker) in markers.enumerated() {
+            onNetworkProgress?(index, markers.count)
+            guard let httpsURL = Self.documentationURL(forDocURI: marker) else { continue }
+            guard let key = Self.canonicalPath(forDocURI: marker) else { continue }
+            if let title = await fetcher.resolveTitle(for: httpsURL) {
+                newlyResolved[key] = title
+            }
+        }
+        onNetworkProgress?(markers.count, markers.count)
+
+        if newlyResolved.isEmpty {
+            return (stats, unresolved)
+        }
+
+        // Augment the map and re-run the rewrite pass.
+        for (key, title) in newlyResolved {
+            map[key] = title
+        }
+        // Reset rewrite-pass stats so the second pass does not double-count
+        // markers found during the harvest pass; we only want to record the
+        // new resolutions from the network and the final unresolved tail.
+        stats.markersFound = 0
+        stats.markersResolvedFromHarvest = 0
+        stats.markersStillUnresolved = 0
+        stats.pagesRewritten = 0
+        unresolved = try rewrite(pageFiles: pageFiles, with: map, stats: &stats)
+
+        // Account: of the originally-unresolved markers, count how many the
+        // augmented map now resolved (== count of newlyResolved entries that
+        // actually appeared in any rawMarkdown).
+        var resolvedFromNetwork = 0
+        for (key, _) in newlyResolved where map[key] != nil {
+            // Each newlyResolved key reduces unresolved count by one if it was a
+            // marker that any page actually contains. Cheap heuristic: a key in
+            // newlyResolved counts as a network-resolution if the original
+            // unresolved set (passed in) referenced it.
+            let stillUnresolvedKey = unresolved.contains { Self.canonicalPath(forDocURI: $0) == key }
+            if !stillUnresolvedKey { resolvedFromNetwork += 1 }
+        }
+        stats.markersResolvedFromNetwork = resolvedFromNetwork
+
         return (stats, unresolved)
     }
 
@@ -176,6 +252,16 @@ public struct RefResolver {
         let path = url.path
         guard !path.isEmpty else { return nil }
         return path.lowercased()
+    }
+
+    /// Convert a `doc://com.apple.<bundle>/<path>` URI to the equivalent
+    /// `https://developer.apple.com/<path>` URL Apple's docs server
+    /// would respond to. Strips the fragment (the docs server doesn't
+    /// distinguish anchor variants for the title we want).
+    public static func documentationURL(forDocURI uri: String) -> URL? {
+        guard let path = canonicalPath(forDocURI: uri) else { return nil }
+        let base = Shared.Constants.BaseURL.appleDeveloper
+        return URL(string: base + path)
     }
 
     // MARK: - Markdown rewrite (static for testability)

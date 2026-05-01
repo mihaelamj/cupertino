@@ -230,3 +230,102 @@ struct RefResolverEndToEnd {
         #expect(pages.allSatisfy { $0.lastPathComponent != "metadata.json" })
     }
 }
+
+// MARK: - Network fetcher integration
+
+/// Test double for `RefResolver.TitleFetcher`: returns canned titles
+/// for specific URL paths, nil for everything else. Records call count.
+private final class MockTitleFetcher: RefResolver.TitleFetcher, @unchecked Sendable {
+    let map: [String: String]
+    private let queue = DispatchQueue(label: "mock-title-fetcher")
+    private var _callCount = 0
+    var callCount: Int { queue.sync { _callCount } }
+
+    init(_ map: [String: String]) { self.map = map }
+
+    func resolveTitle(for documentationURL: URL) async -> String? {
+        queue.sync { _callCount += 1 }
+        return map[documentationURL.path.lowercased()]
+    }
+}
+
+@Suite("RefResolver with network fallback")
+struct RefResolverNetwork {
+    @Test("network fetcher fills in unresolved markers")
+    func networkFetcherFillsTheGap() async throws {
+        let tmp = try RefResolverEndToEnd.makeFixture()
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        let phantomPath = "/documentation/storekit/phantom"
+        let fetcher = MockTitleFetcher([phantomPath: "Phantom"])
+        let resolver = RefResolver(inputDirectory: tmp)
+
+        let (stats, unresolved) = try await resolver.runWithFetcher(fetcher)
+
+        #expect(unresolved.isEmpty, "fetcher should resolve every previously-unresolved marker")
+        #expect(stats.markersResolvedFromNetwork == 1)
+        #expect(fetcher.callCount == 1)
+
+        // Verify rewrite landed for the phantom marker
+        let pageA = try Self.loadPageA(in: tmp)
+        #expect(pageA.rawMarkdown?.contains("[Phantom]") == true)
+        #expect(pageA.rawMarkdown?.contains("Phantom]") == true)
+        #expect(pageA.rawMarkdown?.contains("[doc://com.apple.storekit/documentation/StoreKit/Phantom]") == false)
+    }
+
+    @Test("network fetcher returning nil leaves marker unresolved")
+    func networkFetcherNilFallthrough() async throws {
+        let tmp = try RefResolverEndToEnd.makeFixture()
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        let fetcher = MockTitleFetcher([:]) // never finds anything
+        let resolver = RefResolver(inputDirectory: tmp)
+
+        let (stats, unresolved) = try await resolver.runWithFetcher(fetcher)
+
+        #expect(unresolved.count == 1, "unresolved marker should remain")
+        #expect(stats.markersResolvedFromNetwork == 0)
+        #expect(fetcher.callCount == 1)
+    }
+
+    @Test("CompositeTitleFetcher tries fallback when primary returns nil")
+    func compositeChainsFallback() async {
+        let primary = MockTitleFetcher([:])
+        let fallback = MockTitleFetcher(["/documentation/x/y": "Y"])
+        let composite = CompositeTitleFetcher(primary: primary, fallback: fallback)
+        let url = URL(string: "https://developer.apple.com/documentation/X/Y")!
+
+        let title = await composite.resolveTitle(for: url)
+        #expect(title == "Y")
+        #expect(primary.callCount == 1)
+        #expect(fallback.callCount == 1)
+    }
+
+    @Test("CompositeTitleFetcher does not call fallback when primary succeeds")
+    func compositeShortCircuits() async {
+        let primary = MockTitleFetcher(["/documentation/x/y": "Y"])
+        let fallback = MockTitleFetcher([:])
+        let composite = CompositeTitleFetcher(primary: primary, fallback: fallback)
+        let url = URL(string: "https://developer.apple.com/documentation/X/Y")!
+
+        let title = await composite.resolveTitle(for: url)
+        #expect(title == "Y")
+        #expect(primary.callCount == 1)
+        #expect(fallback.callCount == 0)
+    }
+
+    @Test("documentationURL(forDocURI:) builds the canonical https URL")
+    func documentationURLBuilder() {
+        let url = RefResolver.documentationURL(
+            forDocURI: "doc://com.apple.storekit/documentation/StoreKit/AnyTransaction"
+        )
+        #expect(url?.absoluteString == "https://developer.apple.com/documentation/storekit/anytransaction")
+    }
+
+    private static func loadPageA(in tmp: URL) throws -> StructuredDocumentationPage {
+        let data = try Data(contentsOf: tmp.appendingPathComponent("storekit_a.json"))
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(StructuredDocumentationPage.self, from: data)
+    }
+}

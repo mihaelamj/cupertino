@@ -3,6 +3,12 @@ import Core
 import Foundation
 import Logging
 import Shared
+#if canImport(AppKit)
+import AppKit
+#endif
+#if canImport(WebKit)
+import WebKit
+#endif
 
 // MARK: - Resolve-Refs Command
 
@@ -33,6 +39,18 @@ struct ResolveRefsCommand: AsyncParsableCommand {
 
     @Flag(
         name: .long,
+        help: "After harvest+rewrite, fetch titles for the still-unresolved markers via Apple's JSON API."
+    )
+    var useNetwork: Bool = false
+
+    @Flag(
+        name: .long,
+        help: "When --use-network is set, also fall back to WKWebView for markers that the JSON API can't serve. Slow; macOS only."
+    )
+    var useWebview: Bool = false
+
+    @Flag(
+        name: .long,
         help: "Print unresolved doc:// markers (sorted, deduped) to stdout."
     )
     var printUnresolved: Bool = false
@@ -46,13 +64,25 @@ struct ResolveRefsCommand: AsyncParsableCommand {
 
         Log.info("Resolving doc:// markers in \(dir.path)")
         let resolver = RefResolver(inputDirectory: dir)
-        let (stats, unresolved) = try resolver.run()
+
+        let fetcher = try await makeFetcher()
+        let (stats, unresolved): (RefResolver.Stats, Set<String>)
+        if let fetcher {
+            (stats, unresolved) = try await resolver.runWithFetcher(fetcher) { done, total in
+                if done % 50 == 0 || done == total {
+                    Log.info("  network resolve: \(done)/\(total)")
+                }
+            }
+        } else {
+            (stats, unresolved) = try resolver.run()
+        }
 
         Log.info("Pages scanned:                  \(stats.pagesScanned)")
         Log.info("Refs harvested:                 \(stats.refsHarvested)")
         Log.info("Pages rewritten:                \(stats.pagesRewritten)")
         Log.info("doc:// markers found:           \(stats.markersFound)")
         Log.info("Resolved from harvest:          \(stats.markersResolvedFromHarvest)")
+        Log.info("Resolved from network:          \(stats.markersResolvedFromNetwork)")
         Log.info("Unresolved (unique):            \(unresolved.count)")
 
         // Persist a report next to the corpus.
@@ -81,5 +111,39 @@ struct ResolveRefsCommand: AsyncParsableCommand {
         let inputDirectory: String
         let stats: RefResolver.Stats
         let unresolvedMarkers: [String]
+    }
+
+    /// Build the title-fetcher chain based on `--use-network` /
+    /// `--use-webview` flags. Returns nil when no network resolution
+    /// should happen (default behaviour).
+    private func makeFetcher() async throws -> (any RefResolver.TitleFetcher)? {
+        guard useNetwork else {
+            if useWebview {
+                Log.error("--use-webview requires --use-network")
+                throw ExitCode.failure
+            }
+            return nil
+        }
+
+        let json = AppleJSONAPITitleFetcher()
+        guard useWebview else {
+            return json
+        }
+
+        #if canImport(AppKit) && canImport(WebKit)
+        // WKWebView needs the AppKit runloop attached (otherwise its
+        // navigation observer never fires). The same bootstrap the auth
+        // flow in SampleCodeDownloader uses, but headless — we don't
+        // surface a Dock icon for a background resolve pass.
+        let webView = await MainActor.run { () -> any RefResolver.TitleFetcher in
+            NSApplication.shared.setActivationPolicy(.prohibited)
+            NSApplication.shared.finishLaunching()
+            return WKWebViewTitleFetcher()
+        }
+        return CompositeTitleFetcher(primary: json, fallback: webView)
+        #else
+        Log.error("--use-webview is only supported on macOS")
+        throw ExitCode.failure
+        #endif
     }
 }
