@@ -6,6 +6,7 @@ import Testing
 import TestSupport
 
 // MARK: - Auto-Resume + --start-clean Tests
+
 //
 // Regression tests for the v1.0 simplification of the fetch resume model.
 //
@@ -50,8 +51,8 @@ struct ResumeAndStartCleanTests {
             queue: queued,
             startURL: startURL,
             outputDirectory: outputDirectory,
-            sessionStartTime: Date(timeIntervalSince1970: 1_700_000_000),
-            lastSaveTime: Date(timeIntervalSince1970: 1_700_000_500),
+            sessionStartTime: Date(timeIntervalSince1970: 1700000000),
+            lastSaveTime: Date(timeIntervalSince1970: 1700000500),
             isActive: isActive
         )
         var metadata = CrawlMetadata()
@@ -138,6 +139,346 @@ struct ResumeAndStartCleanTests {
         try FetchCommand.clearSavedSession(at: tempDir)
         let twiceCleaned = try CrawlMetadata.load(from: file)
         #expect(twiceCleaned.crawlState == nil)
+    }
+
+    // MARK: - --retry-errors
+
+    /// Build a fixture where some visited URLs lack a corresponding `pages` entry.
+    /// These represent crawl-time errors (e.g. filename-too-long save failures)
+    /// that need re-queueing for the resumed crawl to retry.
+    private static func writeFixtureWithErroredPages(
+        at file: URL,
+        outputDirectory: String,
+        savedURLs: [String],
+        erroredURLs: [String]
+    ) throws {
+        var pages: [String: PageMetadata] = [:]
+        for url in savedURLs {
+            pages[url] = PageMetadata(
+                url: url,
+                framework: "test",
+                filePath: "/tmp/foo.json",
+                contentHash: "deadbeef",
+                depth: 0
+            )
+        }
+        let visited = Set(savedURLs + erroredURLs)
+        let crawlState = CrawlSessionState(
+            visited: visited,
+            queue: [],
+            startURL: "https://example.com/",
+            outputDirectory: outputDirectory
+        )
+        var metadata = CrawlMetadata()
+        metadata.crawlState = crawlState
+        metadata.pages = pages
+        try metadata.save(to: file)
+    }
+
+    @Test("--retry-errors is a no-op when no metadata.json exists")
+    func retryErrorsNoMetadataIsNoOp() async throws {
+        let tempDir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        try FetchCommand.requeueErroredURLs(at: tempDir, maxDepth: 15)
+        #expect(!FileManager.default.fileExists(atPath: Self.metadataFile(in: tempDir).path))
+    }
+
+    @Test("--retry-errors does nothing when every visited URL is already in pages dict")
+    func retryErrorsNoOpWhenAllSaved() async throws {
+        let tempDir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let file = Self.metadataFile(in: tempDir)
+        try Self.writeFixtureWithErroredPages(
+            at: file,
+            outputDirectory: tempDir.path,
+            savedURLs: [
+                "https://example.com/a",
+                "https://example.com/b",
+                "https://example.com/c",
+            ],
+            erroredURLs: []
+        )
+
+        try FetchCommand.requeueErroredURLs(at: tempDir, maxDepth: 15)
+
+        let after = try CrawlMetadata.load(from: file)
+        #expect(after.crawlState?.queue.isEmpty == true, "queue should remain empty")
+        #expect(after.crawlState?.visited.count == 3)
+    }
+
+    @Test("--retry-errors re-queues visited URLs that aren't in pages dict")
+    func retryErrorsRequeuesUnsavedURLs() async throws {
+        let tempDir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let file = Self.metadataFile(in: tempDir)
+
+        // Two long URLs from the actual 2026-04-30 error log — exactly the
+        // shape the filename-too-long bug would have produced.
+        let erroredA = "https://developer.apple.com/documentation/metalperformanceshaders/mpssvgf/encodereprojection"
+            + "(to:sourcetexture:previoustexture:destinationtexture:previousluminancemomentstexture:"
+            + "destinationluminancemomentstexture:previousframecount:destinationframecount:"
+            + "motionvectortexture:depthnormaltexture:previousdepthnormaltex-3k6zp"
+        let erroredB = "https://developer.apple.com/documentation/accelerate/bnns/fusedconvolutionnormalizationlayer/"
+            + "init(input:output:convolutionweights:convolutionbias:convolutionstride:"
+            + "convolutiondilationstride:convolutionpadding:normalization:normalizationbeta:"
+            + "normalizationgamma:normalizationmomentum:normalizationepsilon:normalizationactivation:filter-30cwy"
+
+        try Self.writeFixtureWithErroredPages(
+            at: file,
+            outputDirectory: tempDir.path,
+            savedURLs: [
+                "https://developer.apple.com/documentation/swift/array",
+                "https://developer.apple.com/documentation/swiftui/view",
+            ],
+            erroredURLs: [erroredA, erroredB]
+        )
+
+        try FetchCommand.requeueErroredURLs(at: tempDir, maxDepth: 15)
+
+        let after = try CrawlMetadata.load(from: file)
+        let queueURLs = Set(after.crawlState?.queue.map(\.url) ?? [])
+        #expect(queueURLs == [erroredA, erroredB])
+        #expect(
+            after.crawlState?.queue.allSatisfy { $0.depth == 15 } == true,
+            "errored URLs should re-enter at maxDepth so children aren't re-crawled"
+        )
+
+        // Retries must be prepended (processed first), not appended after a
+        // potentially huge existing queue.
+        let firstTwo = Set((after.crawlState?.queue.prefix(2) ?? []).map(\.url))
+        #expect(firstTwo == [erroredA, erroredB], "errored URLs must be at the front of the queue")
+
+        // The errored URLs must come out of the visited set so the crawler
+        // doesn't immediately skip them on dequeue.
+        #expect(after.crawlState?.visited.contains(erroredA) == false)
+        #expect(after.crawlState?.visited.contains(erroredB) == false)
+
+        // Already-saved URLs stay in visited so they get skipped (no double-fetch).
+        #expect(after.crawlState?.visited.contains("https://developer.apple.com/documentation/swift/array") == true)
+        #expect(after.crawlState?.visited.contains("https://developer.apple.com/documentation/swiftui/view") == true)
+    }
+
+    // MARK: - --baseline
+
+    /// Write a fake baseline file with a `url` field at <dir>/<framework>/<slug>.json.
+    private static func writeBaselineFile(
+        in dir: URL,
+        framework: String,
+        slug: String,
+        url: String
+    ) throws {
+        let frameworkDir = dir.appendingPathComponent(framework)
+        try FileManager.default.createDirectory(at: frameworkDir, withIntermediateDirectories: true)
+        let file = frameworkDir.appendingPathComponent("\(slug).json")
+        let payload = "{ \"url\": \"\(url)\" }"
+        try payload.write(to: file, atomically: true, encoding: .utf8)
+    }
+
+    @Test("--baseline injects URLs that exist in baseline but not in claw's known set")
+    func baselineInjectsMissingURLs() async throws {
+        let tempDir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let baselineDir = tempDir.appendingPathComponent("baseline")
+        try FileManager.default.createDirectory(at: baselineDir, withIntermediateDirectories: true)
+        try Self.writeBaselineFile(
+            in: baselineDir,
+            framework: "swift",
+            slug: "array",
+            url: "https://developer.apple.com/documentation/swift/array"
+        )
+        try Self.writeBaselineFile(
+            in: baselineDir,
+            framework: "swift",
+            slug: "dictionary",
+            url: "https://developer.apple.com/documentation/swift/dictionary"
+        )
+        try Self.writeBaselineFile(
+            in: baselineDir,
+            framework: "uikit",
+            slug: "view",
+            url: "https://developer.apple.com/documentation/uikit/view"
+        )
+
+        // Claw already has /swift/array; the other 2 should get injected.
+        try Self.writeFixtureWithErroredPages(
+            at: Self.metadataFile(in: tempDir),
+            outputDirectory: tempDir.path,
+            savedURLs: ["https://developer.apple.com/documentation/swift/array"],
+            erroredURLs: []
+        )
+
+        try FetchCommand.requeueFromBaseline(at: tempDir, baselineDir: baselineDir, maxDepth: 15)
+
+        let after = try CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
+        let queueURLs = Set(after.crawlState?.queue.map(\.url) ?? [])
+        #expect(queueURLs.count == 2)
+        #expect(queueURLs.contains("https://developer.apple.com/documentation/swift/dictionary"))
+        #expect(queueURLs.contains("https://developer.apple.com/documentation/uikit/view"))
+        #expect(after.crawlState?.queue.allSatisfy { $0.depth == 15 } == true)
+    }
+
+    @Test("--baseline matching is case-insensitive on the documentation path")
+    func baselineCaseInsensitiveMatching() async throws {
+        let tempDir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let baselineDir = tempDir.appendingPathComponent("baseline")
+        try FileManager.default.createDirectory(at: baselineDir, withIntermediateDirectories: true)
+        // Baseline has the capitalized form (HTML-extractor output)
+        try Self.writeBaselineFile(
+            in: baselineDir,
+            framework: "swift",
+            slug: "array",
+            url: "https://developer.apple.com/documentation/Swift/Array"
+        )
+
+        // Claw has the lowercase form (JSON-extractor output)
+        try Self.writeFixtureWithErroredPages(
+            at: Self.metadataFile(in: tempDir),
+            outputDirectory: tempDir.path,
+            savedURLs: ["https://developer.apple.com/documentation/swift/array"],
+            erroredURLs: []
+        )
+
+        try FetchCommand.requeueFromBaseline(at: tempDir, baselineDir: baselineDir, maxDepth: 15)
+
+        let after = try CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
+        // Already known case-insensitively → should NOT be injected.
+        #expect(
+            after.crawlState?.queue.isEmpty == true,
+            "case-insensitive match should treat /Swift/Array == /swift/array as the same URL"
+        )
+    }
+
+    @Test("--baseline is a no-op when baseline directory doesn't exist")
+    func baselineMissingDirectoryIsNoOp() async throws {
+        let tempDir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        try Self.writeFixtureWithErroredPages(
+            at: Self.metadataFile(in: tempDir),
+            outputDirectory: tempDir.path,
+            savedURLs: ["https://developer.apple.com/documentation/swift/array"],
+            erroredURLs: []
+        )
+
+        let nonExistent = tempDir.appendingPathComponent("nope")
+        try FetchCommand.requeueFromBaseline(at: tempDir, baselineDir: nonExistent, maxDepth: 15)
+
+        let after = try CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
+        #expect(after.crawlState?.queue.isEmpty == true)
+    }
+
+    @Test("--baseline is a no-op when baseline is empty")
+    func baselineEmptyDirectoryIsNoOp() async throws {
+        let tempDir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let baselineDir = tempDir.appendingPathComponent("baseline")
+        try FileManager.default.createDirectory(at: baselineDir, withIntermediateDirectories: true)
+        try Self.writeFixtureWithErroredPages(
+            at: Self.metadataFile(in: tempDir),
+            outputDirectory: tempDir.path,
+            savedURLs: ["https://developer.apple.com/documentation/swift/array"],
+            erroredURLs: []
+        )
+
+        try FetchCommand.requeueFromBaseline(at: tempDir, baselineDir: baselineDir, maxDepth: 15)
+        let after = try CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
+        #expect(after.crawlState?.queue.isEmpty == true)
+    }
+
+    @Test("--baseline skips files without a url field and non-JSON files")
+    func baselineSkipsMalformedFiles() async throws {
+        let tempDir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let baselineDir = tempDir.appendingPathComponent("baseline")
+        let frameworkDir = baselineDir.appendingPathComponent("swift")
+        try FileManager.default.createDirectory(at: frameworkDir, withIntermediateDirectories: true)
+        // Valid file
+        try Self.writeBaselineFile(
+            in: baselineDir,
+            framework: "swift",
+            slug: "array",
+            url: "https://developer.apple.com/documentation/swift/array"
+        )
+        // No-url JSON
+        try "{ \"title\": \"no url here\" }".write(
+            to: frameworkDir.appendingPathComponent("nourl.json"),
+            atomically: true, encoding: .utf8
+        )
+        // Non-JSON file
+        try "<html></html>".write(
+            to: frameworkDir.appendingPathComponent("page.html"),
+            atomically: true, encoding: .utf8
+        )
+
+        try Self.writeFixtureWithErroredPages(
+            at: Self.metadataFile(in: tempDir),
+            outputDirectory: tempDir.path,
+            savedURLs: [],
+            erroredURLs: []
+        )
+
+        try FetchCommand.requeueFromBaseline(at: tempDir, baselineDir: baselineDir, maxDepth: 15)
+
+        let after = try CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
+        let queueURLs = (after.crawlState?.queue ?? []).map(\.url)
+        #expect(queueURLs == ["https://developer.apple.com/documentation/swift/array"])
+    }
+
+    @Test("--baseline injected items are prepended (queue front), not appended")
+    func baselinePrependsToQueueFront() async throws {
+        let tempDir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let baselineDir = tempDir.appendingPathComponent("baseline")
+        try FileManager.default.createDirectory(at: baselineDir, withIntermediateDirectories: true)
+        try Self.writeBaselineFile(
+            in: baselineDir,
+            framework: "swift",
+            slug: "array",
+            url: "https://developer.apple.com/documentation/swift/array"
+        )
+
+        // Pre-populate queue with an existing item
+        try Self.writeFixtureMetadata(
+            at: Self.metadataFile(in: tempDir),
+            startURL: "https://example.com/seed",
+            outputDirectory: tempDir.path,
+            visited: [],
+            queue: [(url: "https://developer.apple.com/documentation/uikit/already-queued", depth: 0)]
+        )
+
+        try FetchCommand.requeueFromBaseline(at: tempDir, baselineDir: baselineDir, maxDepth: 15)
+
+        let after = try CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
+        let queue = after.crawlState?.queue ?? []
+        #expect(queue.count == 2)
+        #expect(
+            queue.first?.url == "https://developer.apple.com/documentation/swift/array",
+            "baseline-injected URLs must be at the FRONT of the queue, not the back"
+        )
+    }
+
+    @Test("--retry-errors gracefully handles missing crawlState")
+    func retryErrorsHandlesMissingCrawlState() async throws {
+        let tempDir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        // Write a metadata.json with no crawlState (e.g. cleared by --start-clean).
+        var metadata = CrawlMetadata()
+        try metadata.save(to: Self.metadataFile(in: tempDir))
+
+        // Should not throw and should not synthesize a crawlState.
+        try FetchCommand.requeueErroredURLs(at: tempDir, maxDepth: 15)
+        let after = try CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
+        #expect(after.crawlState == nil)
     }
 
     // MARK: - Auto-resume (CrawlerState)
@@ -232,6 +573,7 @@ struct ResumeAndStartCleanTests {
     }
 
     // MARK: - Cross-machine portability (checkForSession)
+
     //
     // Regression for the path-resolution bug: `metadata.json.crawlState.outputDirectory`
     // stores an absolute path captured on the machine that ran the original
@@ -248,8 +590,10 @@ struct ResumeAndStartCleanTests {
         // Simulate a metadata.json that was rsynced from a different machine —
         // the saved `outputDirectory` is some path that doesn't exist locally.
         let foreignPath = "/Users/some-other-user/.cupertino/docs"
-        #expect(!FileManager.default.fileExists(atPath: foreignPath),
-                "test premise: foreign path must not exist locally")
+        #expect(
+            !FileManager.default.fileExists(atPath: foreignPath),
+            "test premise: foreign path must not exist locally"
+        )
 
         try Self.writeFixtureMetadata(
             at: Self.metadataFile(in: foundDir),
@@ -268,12 +612,18 @@ struct ResumeAndStartCleanTests {
         //   a path that doesn't exist on this host, so the crawler would then
         //   try to write into a phantom directory under the wrong home.
         // FIX: return foundDir — the live, on-disk location of the metadata.
-        #expect(resolved == foundDir,
-                "checkForSession must return the dir it inspected, not the saved path")
-        #expect(resolved?.path != foreignPath,
-                "must NOT return the foreign saved path")
-        #expect(FileManager.default.fileExists(atPath: resolved?.path ?? "/__missing__"),
-                "the returned dir must actually exist on this host")
+        #expect(
+            resolved == foundDir,
+            "checkForSession must return the dir it inspected, not the saved path"
+        )
+        #expect(
+            resolved?.path != foreignPath,
+            "must NOT return the foreign saved path"
+        )
+        #expect(
+            FileManager.default.fileExists(atPath: resolved?.path ?? "/__missing__"),
+            "the returned dir must actually exist on this host"
+        )
     }
 
     @Test("checkForSession returns nil when start URL doesn't match")
@@ -357,12 +707,15 @@ struct ResumeAndStartCleanTests {
             at: realFoundDir,
             matching: URL(string: "https://developer.apple.com/documentation/")!
         )
-        #expect(resolved == realFoundDir,
-                "must return where we found metadata, not where the saved path happens to point")
+        #expect(
+            resolved == realFoundDir,
+            "must return where we found metadata, not where the saved path happens to point"
+        )
         #expect(resolved != coincidentalForeignDir)
     }
 
     // MARK: - Cross-machine page path rebasing
+
     //
     // `PageMetadata.filePath` is an absolute string captured on the writing
     // host. After rsync to a machine with a different home dir, those strings
@@ -525,8 +878,10 @@ struct ResumeAndStartCleanTests {
             metadata.pages[page.url] = page
         }
         metadata.crawlState = CrawlSessionState(
-            visited: ["https://developer.apple.com/documentation/accessibility",
-                      "https://developer.apple.com/documentation/swiftui"],
+            visited: [
+                "https://developer.apple.com/documentation/accessibility",
+                "https://developer.apple.com/documentation/swiftui",
+            ],
             queue: [QueuedURL(url: "https://developer.apple.com/documentation/foundation", depth: 0)],
             startURL: "https://developer.apple.com/documentation/",
             outputDirectory: "/Users/foreign/.cupertino/docs",

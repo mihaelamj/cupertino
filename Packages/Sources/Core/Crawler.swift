@@ -23,6 +23,13 @@ extension Core {
         private var webPageFetcher: WKWebCrawler.WKWebContentFetcher!
         private var visited = Set<String>()
         private var queue: [(url: URL, depth: Int)] = []
+        // Tracks URLs currently in `queue` so the same URL discovered from
+        // multiple parents is only enqueued once. Was an O(N) duplicate queue
+        // before — measured at 72 % duplicates on the 2026-04-30 v1.0 recrawl
+        // (629k entries / 176k unique). Persistence-free: rebuilt from `queue`
+        // on resume so the existing CrawlSessionState schema doesn't need a
+        // migration. (#206)
+        private var enqueued = Set<String>()
         private var stats: CrawlStatistics
 
         private var onProgress: (@Sendable (CrawlProgress) -> Void)?
@@ -69,6 +76,10 @@ extension Core {
                     guard let url = URL(string: queued.url) else { return nil }
                     return (url: url, depth: queued.depth)
                 }
+                // Rebuild the enqueued-URL set from the restored queue so the
+                // dedup at enqueue is correct after resume. Schema-compatible:
+                // we don't persist `enqueued` separately.
+                enqueued = Set(queue.map(\.url.absoluteString))
 
                 // Restore or initialize stats
                 await state.updateStatistics { stats in
@@ -93,7 +104,7 @@ extension Core {
                 let isDocsRoot = configuration.startURL.path == "/documentation"
                     || configuration.startURL.path == "/documentation/"
 
-                if isAppleDocs && isDocsRoot {
+                if isAppleDocs, isDocsRoot {
                     do {
                         logInfo("📋 Fetching technology index for complete framework coverage...")
                         let frameworkURLs = try await TechnologiesIndexFetcher.fetchFrameworkURLs()
@@ -126,6 +137,10 @@ extension Core {
             // Crawl loop
             while !queue.isEmpty, visited.count < configuration.maxPages {
                 let (url, depth) = queue.removeFirst()
+                // No longer in the queue — clear from the enqueued set so a
+                // re-enqueue (e.g. via --retry-errors) is allowed. Use the
+                // raw URL string since enqueue keys on `link.absoluteString`.
+                enqueued.remove(url.absoluteString)
 
                 guard let normalizedURL = URLUtilities.normalize(url),
                       !visited.contains(normalizedURL.absoluteString)
@@ -237,10 +252,23 @@ extension Core {
             // multi-day crawls (e.g. v1.0 320k corpus on Claw Mini) where
             // the implicit Task-scoped pool would otherwise hoard megabytes
             // of pool buffers per thousand pages.
-            if hasJSONEndpoint {
+            // Discovery mode controls which path the crawler uses for content
+            // and link extraction. See `Shared.DiscoveryMode` for semantics.
+            // The webview-only mode skips JSON entirely so we can produce a
+            // clean WKWebView-discovered corpus alongside a JSON-only corpus
+            // in a separate output directory, then diff the two metadata.json
+            // files to measure the discovery gap. (#203 methodology)
+            let mode = configuration.discoveryMode
+            let useJSON = hasJSONEndpoint && mode != .webViewOnly
+
+            if useJSON {
                 do {
                     (structuredPage, markdown, links) = try await loadPageViaJSON(url: url)
                 } catch {
+                    if mode == .jsonOnly {
+                        // No fallback in pure JSON-only mode — propagate.
+                        throw error
+                    }
                     // JSON API failed, fall back to HTML
                     logInfo("   ⚠️ JSON API unavailable, using HTML fallback")
                     let html = try await loadPage(url: url)
@@ -294,9 +322,15 @@ extension Core {
             )
 
             // Enqueue discovered links before any early returns
-            // so child pages are always discovered even when content is unchanged
+            // so child pages are always discovered even when content is unchanged.
+            //
+            // Dedup at enqueue time (#206): skip links already visited or
+            // already queued so the same URL discovered from multiple parents
+            // is only enqueued once. Pre-#206 the queue ran ~72 % duplicates.
             if depth < configuration.maxDepth {
                 for link in links where shouldVisit(url: link) {
+                    let key = link.absoluteString
+                    if visited.contains(key) || !enqueued.insert(key).inserted { continue }
                     queue.append((url: link, depth: depth + 1))
                 }
             }

@@ -420,8 +420,10 @@ public struct StructuredDocumentationPage: Codable, Sendable, Identifiable, Hash
         // Methods and initializers
         if decl.hasPrefix("func ") || decl.contains(" func ") { return .method }
         // Initializers: init(, init?(, init!(, init<T>
-        if decl.hasPrefix("init(") || decl.hasPrefix("init?") || decl.hasPrefix("init!") || decl.hasPrefix("init<") { return .method }
-        if decl.contains(" init(") || decl.contains(" init?") || decl.contains(" init!") || decl.contains(" init<") { return .method }
+        if decl.hasPrefix("init(") || decl.hasPrefix("init?")
+            || decl.hasPrefix("init!") || decl.hasPrefix("init<") { return .method }
+        if decl.contains(" init(") || decl.contains(" init?")
+            || decl.contains(" init!") || decl.contains(" init<") { return .method }
         if decl.hasPrefix("deinit") { return .method }
         if decl.hasPrefix("static func ") || decl.hasPrefix("class func ") { return .method }
 
@@ -451,12 +453,12 @@ public struct StructuredDocumentationPage: Codable, Sendable, Identifiable, Hash
         let digest = SHA256.hash(data: Data(url.absoluteString.utf8))
         let bytes = Array(digest.prefix(16))
         let hex = bytes.map { String(format: "%02x", $0) }.joined()
-        var s = hex
-        s.insert("-", at: s.index(s.startIndex, offsetBy: 8))
-        s.insert("-", at: s.index(s.startIndex, offsetBy: 13))
-        s.insert("-", at: s.index(s.startIndex, offsetBy: 18))
-        s.insert("-", at: s.index(s.startIndex, offsetBy: 23))
-        return UUID(uuidString: s) ?? UUID()
+        var formatted = hex
+        formatted.insert("-", at: formatted.index(formatted.startIndex, offsetBy: 8))
+        formatted.insert("-", at: formatted.index(formatted.startIndex, offsetBy: 13))
+        formatted.insert("-", at: formatted.index(formatted.startIndex, offsetBy: 18))
+        formatted.insert("-", at: formatted.index(formatted.startIndex, offsetBy: 23))
+        return UUID(uuidString: formatted) ?? UUID()
     }
 
     /// SHA-256 over the page's semantic content fields, in a stable encoding.
@@ -872,7 +874,14 @@ public enum URLUtilities {
         return "root"
     }
 
-    /// Generate filename from URL
+    /// Generate filename from URL.
+    ///
+    /// Output is the basename only (no `.json` extension, no framework dir).
+    /// Length is capped at `maxFilenameBytes` so that `<filename>.json` fits
+    /// within the 255-byte filesystem limit on macOS HFS+/APFS. Long
+    /// auto-generated DocC slugs (e.g. Metal shader encoders with dozens of
+    /// named parameters) get truncated and appended with an 8-char SHA-1
+    /// suffix to keep collision-resistant uniqueness.
     public static func filename(from url: URL) -> String {
         var cleaned = url.absoluteString
         let originalCleaned = cleaned
@@ -905,6 +914,38 @@ public enum URLUtilities {
             let hash = HashUtilities.sha256(of: originalCleaned)
             let shortHash = String(hash.prefix(8))
             cleaned = "\(cleaned)_\(shortHash)"
+        }
+
+        // Cap length so that `<filename>.json` (5-byte extension) fits within
+        // the 255-byte filesystem basename limit. Without this, deeply-named
+        // Apple symbols (e.g. MPSSVGF.encodeReprojection(...) with 12+ named
+        // parameters) generate 280+ char filenames that fail to save with
+        // POSIX errno 63 "File name too long".
+        let maxFilenameBytes = 240
+        if cleaned.utf8.count > maxFilenameBytes {
+            let hash = HashUtilities.sha256(of: originalCleaned)
+            let shortHash = String(hash.prefix(8))
+            let suffix = "_\(shortHash)"
+
+            // Strip any prior hash suffix so we don't end up with two
+            let withoutPriorSuffix: String = if hasSpecialChars, cleaned.hasSuffix(suffix) {
+                String(cleaned.dropLast(suffix.count))
+            } else {
+                cleaned
+            }
+
+            // Slugs are ASCII-only after the regex normalization above, so
+            // String.prefix on character count == byte count.
+            let availableBytes = maxFilenameBytes - suffix.utf8.count
+            var truncated = String(withoutPriorSuffix.prefix(availableBytes))
+
+            // Don't end on a trailing underscore — looks ugly, complicates
+            // collision behavior with the suffix separator.
+            while truncated.hasSuffix("_") {
+                truncated = String(truncated.dropLast())
+            }
+
+            cleaned = truncated + suffix
         }
 
         return cleaned.isEmpty ? "index" : cleaned

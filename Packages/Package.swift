@@ -114,7 +114,8 @@ let targets: [Target] = {
     )
     let coreTestsTarget = Target.testTarget(
         name: "CoreTests",
-        dependencies: ["Core", "Search", "TestSupport"]
+        dependencies: ["Core", "Search", "TestSupport"],
+        resources: [.copy("Resources/AppleJSON")]
     )
 
     let cleanupTarget = Target.target(

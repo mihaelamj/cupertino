@@ -6,6 +6,11 @@ import Logging
 import Search
 import Shared
 
+// Lets ArgumentParser parse `--discovery-mode <mode>` directly into the
+// shared enum. The conformance lives here (not in Shared) so the Shared
+// module doesn't take on an ArgumentParser dependency.
+extension Shared.DiscoveryMode: ExpressibleByArgument {}
+
 // MARK: - Fetch Command
 
 // swiftlint:disable type_body_length
@@ -62,6 +67,41 @@ struct FetchCommand: AsyncParsableCommand {
 
     @Flag(name: .long, help: "Ignore any saved session and start fresh from the seed URL")
     var startClean: Bool = false
+
+    @Flag(
+        name: .long,
+        help: """
+        Re-queue URLs that errored before save (visited but missing from \
+        the pages dict). Use after a filename or save bug is fixed to \
+        retry the affected pages without re-crawling the whole corpus.
+        """
+    )
+    var retryErrors: Bool = false
+
+    @Option(
+        name: .long,
+        help: """
+        Path to a known-good baseline corpus directory (e.g. a prior \
+        cupertino-docs/docs snapshot). On startup, URLs present in the \
+        baseline but not in the current crawl's known set (queue / visited \
+        / pages) are prepended to the queue so the resumed crawl recovers \
+        gaps without re-crawling the whole corpus. Comparison is \
+        case-insensitive on the path.
+        """
+    )
+    var baseline: String?
+
+    @Option(
+        name: .long,
+        help: """
+        Discovery mode: \
+        auto (default — JSON API primary, WKWebView fallback when JSON 404s), \
+        json-only (JSON only, no WKWebView fallback — fastest, narrowest), \
+        webview-only (WKWebView for everything — slowest, broadest discovery, \
+        matches pre-2025-11-30 behavior).
+        """
+    )
+    var discoveryMode: Shared.DiscoveryMode = .auto
 
     @Flag(name: .long, inversion: .prefixedNo, help: "Only download accepted/implemented proposals (evolution type only)")
     var onlyAccepted: Bool = true
@@ -219,6 +259,13 @@ struct FetchCommand: AsyncParsableCommand {
         if startClean {
             try Self.clearSavedSession(at: outputDirectory)
         }
+        if retryErrors {
+            try Self.requeueErroredURLs(at: outputDirectory, maxDepth: maxDepth)
+        }
+        if let baselinePath = baseline {
+            let baselineURL = URL(fileURLWithPath: baselinePath).expandingTildeInPath
+            try Self.requeueFromBaseline(at: outputDirectory, baselineDir: baselineURL, maxDepth: maxDepth)
+        }
         let config = createConfiguration(url: url, outputDirectory: outputDirectory)
         try await executeCrawl(with: config)
     }
@@ -240,6 +287,163 @@ struct FetchCommand: AsyncParsableCommand {
         metadata.crawlState = nil
         try metadata.save(to: metadataFile)
         Logging.ConsoleLogger.info("🧹 --start-clean: cleared saved session at \(metadataFile.path)")
+    }
+
+    /// Re-queue URLs that the crawler visited but never saved to the pages
+    /// dict — typically pages whose save failed (filename too long, write
+    /// errors, etc.). They get removed from the visited set and appended to
+    /// the queue at the configured `maxDepth`, so the resumed crawl retries
+    /// them without re-discovering their children (already in the queue).
+    ///
+    /// `internal static` so tests can exercise it directly.
+    static func requeueErroredURLs(at outputDirectory: URL, maxDepth: Int) throws {
+        let metadataFile = outputDirectory.appendingPathComponent(Shared.Constants.FileName.metadata)
+        guard FileManager.default.fileExists(atPath: metadataFile.path) else {
+            Logging.ConsoleLogger.info("🔁 --retry-errors: no metadata.json at \(outputDirectory.path)")
+            return
+        }
+        var metadata = try CrawlMetadata.load(from: metadataFile)
+        guard var crawlState = metadata.crawlState else {
+            Logging.ConsoleLogger.info("🔁 --retry-errors: no saved crawlState — nothing to retry")
+            return
+        }
+
+        let savedURLs = Set(metadata.pages.keys)
+        let errored = crawlState.visited.subtracting(savedURLs)
+        guard !errored.isEmpty else {
+            Logging.ConsoleLogger.info("🔁 --retry-errors: no errored URLs to retry (every visited URL is in the pages dict)")
+            return
+        }
+
+        // Prepend so retries happen before the existing queue tail —
+        // semantically "retry errors first" matches user expectation when
+        // running `--retry-errors` after a save-bug fix.
+        let erroredItems = errored.map { QueuedURL(url: $0, depth: maxDepth) }
+        crawlState.queue = erroredItems + crawlState.queue
+        for url in errored {
+            crawlState.visited.remove(url)
+        }
+        crawlState.lastSaveTime = Date()
+        metadata.crawlState = crawlState
+        try metadata.save(to: metadataFile)
+
+        Logging.ConsoleLogger.info("🔁 --retry-errors: re-queued \(errored.count) errored URL(s) at depth \(maxDepth) (front of queue)")
+    }
+
+    /// Inject URLs from a known-good baseline corpus that aren't in the
+    /// current crawl's known set (queue ∪ visited ∪ pages keys). Comparison
+    /// is case-insensitive on the URL path so the broken-extractor's
+    /// case-mixed output still matches the baseline's casing.
+    ///
+    /// `baselineDir` should point at the `docs/` subtree of a prior corpus
+    /// (e.g. `~/Developer/.../cupertino-docs/docs`). Each file's `.url` field
+    /// is read; URLs not in the current set are prepended to the queue at
+    /// `maxDepth` so the resumed crawl doesn't re-discover their children
+    /// (which the baseline already crawled).
+    ///
+    /// `internal static` so tests can exercise it directly.
+    static func requeueFromBaseline(at outputDirectory: URL, baselineDir: URL, maxDepth: Int) throws {
+        let metadataFile = outputDirectory.appendingPathComponent(Shared.Constants.FileName.metadata)
+        guard FileManager.default.fileExists(atPath: metadataFile.path) else {
+            Logging.ConsoleLogger.info("🩹 --baseline: no metadata.json at \(outputDirectory.path)")
+            return
+        }
+        guard FileManager.default.fileExists(atPath: baselineDir.path) else {
+            Logging.ConsoleLogger.info("🩹 --baseline: directory not found at \(baselineDir.path)")
+            return
+        }
+
+        var metadata = try CrawlMetadata.load(from: metadataFile)
+        guard var crawlState = metadata.crawlState else {
+            Logging.ConsoleLogger.info("🩹 --baseline: no saved crawlState — run with auto-resume or --start-clean first")
+            return
+        }
+
+        // Collect baseline URLs by reading each .json file's `url` field.
+        let baselineURLs = collectBaselineURLs(in: baselineDir)
+        guard !baselineURLs.isEmpty else {
+            Logging.ConsoleLogger.info("🩹 --baseline: no URLs found in baseline at \(baselineDir.path)")
+            return
+        }
+
+        // Build the case-insensitive known-set from queue ∪ visited ∪ pages.
+        var knownLowercased = Set<String>()
+        knownLowercased.reserveCapacity(crawlState.visited.count + crawlState.queue.count + metadata.pages.count)
+        for url in crawlState.visited {
+            knownLowercased.insert(lowercaseDocPath(url))
+        }
+        for queued in crawlState.queue {
+            knownLowercased.insert(lowercaseDocPath(queued.url))
+        }
+        for url in metadata.pages.keys {
+            knownLowercased.insert(lowercaseDocPath(url))
+        }
+
+        // Find baseline URLs not in the known set (case-insensitive).
+        var missing: [String] = []
+        var seenLowercased = Set<String>()
+        for url in baselineURLs {
+            let key = lowercaseDocPath(url)
+            if !knownLowercased.contains(key), seenLowercased.insert(key).inserted {
+                missing.append(url)
+            }
+        }
+        guard !missing.isEmpty else {
+            Logging.ConsoleLogger.info("🩹 --baseline: every baseline URL already known (\(baselineURLs.count) URLs checked)")
+            return
+        }
+
+        // Prepend at maxDepth — same approach as --retry-errors so children
+        // aren't re-discovered (baseline already crawled them).
+        let injected = missing.map { QueuedURL(url: $0, depth: maxDepth) }
+        crawlState.queue = injected + crawlState.queue
+        crawlState.lastSaveTime = Date()
+        metadata.crawlState = crawlState
+        try metadata.save(to: metadataFile)
+
+        Logging.ConsoleLogger.info(
+            "🩹 --baseline: prepended \(missing.count) missing URL(s) "
+                + "from \(baselineURLs.count)-URL baseline at depth \(maxDepth)"
+        )
+    }
+
+    /// Walk the baseline directory and return every URL recorded in any
+    /// JSON page file's top-level `url` field. Skips files that fail to
+    /// parse — corrupt baselines shouldn't block a recrawl.
+    private static func collectBaselineURLs(in baselineDir: URL) -> [String] {
+        let fileManager = FileManager.default
+        guard let enumerator = fileManager.enumerator(
+            at: baselineDir,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return []
+        }
+
+        var urls: [String] = []
+        for case let fileURL as URL in enumerator {
+            guard fileURL.pathExtension.lowercased() == "json" else { continue }
+            guard let data = try? Data(contentsOf: fileURL),
+                  let object = try? JSONSerialization.jsonObject(with: data),
+                  let dict = object as? [String: Any],
+                  let url = dict["url"] as? String,
+                  !url.isEmpty
+            else { continue }
+            urls.append(url)
+        }
+        return urls
+    }
+
+    /// Lowercase the `/documentation/...` path portion of an Apple docs URL
+    /// so case differences (HTML extractor's lowercase vs JSON extractor's
+    /// case-preserving output) don't produce false-positive gaps.
+    private static func lowercaseDocPath(_ urlString: String) -> String {
+        guard let docMarkerRange = urlString.range(of: "/documentation/") else {
+            return urlString.lowercased()
+        }
+        let prefix = urlString[..<docMarkerRange.upperBound]
+        let path = urlString[docMarkerRange.upperBound...].lowercased()
+        return prefix + path
     }
 
     private func validateStartURL() throws -> URL {
@@ -340,7 +544,8 @@ struct FetchCommand: AsyncParsableCommand {
                 allowedPrefixes: prefixes,
                 maxPages: maxPages,
                 maxDepth: maxDepth,
-                outputDirectory: outputDirectory
+                outputDirectory: outputDirectory,
+                discoveryMode: discoveryMode
             ),
             changeDetection: Shared.ChangeDetectionConfiguration(
                 forceRecrawl: force,
@@ -493,8 +698,7 @@ struct FetchCommand: AsyncParsableCommand {
         if recurse {
             if !refresh,
                let cached = Core.ResolvedPackagesStore.load(from: resolvedStoreURL),
-               cached.seedChecksum == seedChecksum
-            {
+               cached.seedChecksum == seedChecksum {
                 Logging.ConsoleLogger.info("🔗 Using cached closure from resolved-packages.json (\(cached.packages.count) packages, generated \(cached.generatedAt))")
                 resolvedPackages = cached.packages
             } else {
@@ -568,7 +772,7 @@ struct FetchCommand: AsyncParsableCommand {
             totalPackages: resolvedPackages.count,
             startTime: startedAt
         )
-        for (i, pkg) in resolvedPackages.enumerated() {
+        for (idx, pkg) in resolvedPackages.enumerated() {
             let label = "\(pkg.owner)/\(pkg.repo)"
             let pkgDir = outputURL
                 .appendingPathComponent(pkg.owner)
@@ -600,9 +804,11 @@ struct FetchCommand: AsyncParsableCommand {
                 Logging.ConsoleLogger.error("  ✗ \(label) — \(error.localizedDescription)")
             }
 
-            if (i + 1) % Shared.Constants.Interval.progressLogEvery == 0 || i + 1 == resolvedPackages.count {
-                let percent = Double(i + 1) / Double(resolvedPackages.count) * 100
-                Logging.ConsoleLogger.output(String(format: "📊 Progress: %.1f%% (%d/%d)", percent, i + 1, resolvedPackages.count))
+            if (idx + 1) % Shared.Constants.Interval.progressLogEvery == 0 || idx + 1 == resolvedPackages.count {
+                let percent = Double(idx + 1) / Double(resolvedPackages.count) * 100
+                Logging.ConsoleLogger.output(
+                    String(format: "📊 Progress: %.1f%% (%d/%d)", percent, idx + 1, resolvedPackages.count)
+                )
             }
         }
         stats.endTime = Date()

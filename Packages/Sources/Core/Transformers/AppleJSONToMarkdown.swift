@@ -48,8 +48,8 @@ public struct AppleJSONToMarkdown: ContentTransformer, @unchecked Sendable {
         }
 
         // Abstract
-        if !doc.abstract.isEmpty {
-            markdown += renderInlineContent(doc.abstract)
+        if let abstract = doc.abstract, !abstract.isEmpty {
+            markdown += renderInlineContent(abstract)
             markdown += "\n\n"
         }
 
@@ -101,48 +101,119 @@ public struct AppleJSONToMarkdown: ContentTransformer, @unchecked Sendable {
         return doc.interfaceLanguage
     }
 
-    /// Extract linked documentation URLs from the JSON response
+    /// Extract linked documentation URLs from the JSON response.
+    ///
+    /// Primary source is `doc.references`, the canonical link table that DocC
+    /// populates with the URL of every identifier the page mentions in any
+    /// section, prose, hierarchy, or disambiguator variant. The per-section
+    /// walks (topic / seeAlso / relationships / defaultImplementations) act
+    /// as belt-and-braces for partial responses where `references` is absent
+    /// or truncated, and they fall back to `documentationURLFromIdentifier`
+    /// when an identifier is missing from `references`.
     public static func extractLinks(from json: Data) -> [URL] {
         guard let doc = try? JSONDecoder().decode(AppleDocumentation.self, from: json) else {
             return []
         }
 
+        var seen = Set<String>()
         var urls: [URL] = []
 
-        // Extract from topic sections
-        if let topics = doc.topicSections {
-            for topic in topics {
-                for identifier in topic.identifiers {
-                    if let url = documentationURLFromIdentifier(identifier) {
-                        urls.append(url)
-                    }
-                }
+        func appendIfNew(_ url: URL) {
+            if seen.insert(url.absoluteString).inserted {
+                urls.append(url)
             }
         }
 
-        // Extract from see also sections
-        if let seeAlso = doc.seeAlsoSections {
-            for section in seeAlso {
-                for identifier in section.identifiers {
-                    if let url = documentationURLFromIdentifier(identifier) {
-                        urls.append(url)
-                    }
-                }
+        // Primary: every reference on the page.
+        if let refs = doc.references {
+            for ref in refs.values {
+                guard let url = absoluteDocumentationURL(from: ref.url) else { continue }
+                appendIfNew(url)
             }
         }
 
-        // Extract from relationships
-        if let relationships = doc.relationshipsSections {
-            for section in relationships {
-                for identifier in section.identifiers {
-                    if let url = documentationURLFromIdentifier(identifier) {
-                        urls.append(url)
+        // Belt-and-braces walks. Each section's identifiers resolve via the
+        // references dict when possible, else fall back to identifier parsing.
+        let allIdentifierSources: [[String]] = [
+            (doc.topicSections ?? []).flatMap(\.identifiers),
+            (doc.seeAlsoSections ?? []).flatMap(\.identifiers),
+            (doc.defaultImplementationsSections ?? []).flatMap(\.identifiers),
+            (doc.relationshipsSections ?? []).flatMap(\.identifiers),
+        ]
+        for ids in allIdentifierSources {
+            for identifier in ids {
+                guard let url = url(for: identifier, references: doc.references) else { continue }
+                appendIfNew(url)
+            }
+        }
+
+        // Inline cross-references inside primary content prose. These are
+        // `{ "type": "reference", "identifier": "..." }` items embedded in
+        // paragraph text and are otherwise invisible to section walks.
+        if let primary = doc.primaryContentSections {
+            for section in primary {
+                if let blocks = section.content {
+                    for block in blocks {
+                        for identifier in inlineReferenceIdentifiers(in: block) {
+                            guard let url = url(for: identifier, references: doc.references) else { continue }
+                            appendIfNew(url)
+                        }
                     }
                 }
             }
         }
 
         return urls
+    }
+
+    /// Resolve an identifier to a URL, preferring the canonical URL stored in
+    /// the `references` dict, falling back to deriving from the `doc://` URI.
+    private static func url(for identifier: String, references: [String: Reference]?) -> URL? {
+        if let path = references?[identifier]?.url,
+           let url = absoluteDocumentationURL(from: path) {
+            return url
+        }
+        return documentationURLFromIdentifier(identifier)
+    }
+
+    /// Build an absolute developer.apple.com URL from a relative DocC path.
+    /// Filters out asset / archive references (images, .html guides, etc.)
+    /// to keep `extractLinks` results focused on documentation pages.
+    private static func absoluteDocumentationURL(from relativePath: String?) -> URL? {
+        guard let path = relativePath, path.hasPrefix("/documentation/") else { return nil }
+        return URL(string: "https://developer.apple.com\(path)")
+    }
+
+    /// Recursively collect identifiers from inline `type: "reference"` items
+    /// embedded in paragraph content. Walks nested `inlineContent` and lists.
+    private static func inlineReferenceIdentifiers(in block: ContentBlock) -> [String] {
+        var ids: [String] = []
+        if let inline = block.inlineContent {
+            collectInlineReferences(inline, into: &ids)
+        }
+        if let items = block.items {
+            for item in items {
+                guard let nested = item.content else { continue }
+                for child in nested {
+                    ids.append(contentsOf: inlineReferenceIdentifiers(in: child))
+                }
+            }
+        }
+        return ids
+    }
+
+    private static func collectInlineReferences(
+        _ items: [InlineContent],
+        into ids: inout [String]
+    ) {
+        for item in items {
+            if item.type == "reference", let id = item.identifier {
+                ids.append(id)
+            }
+            if let nested = item.inlineContent {
+                collectInlineReferences(nested, into: &ids)
+            }
+        }
     }
 
     // MARK: - Private Rendering Methods
@@ -341,10 +412,11 @@ public struct AppleJSONToMarkdown: ContentTransformer, @unchecked Sendable {
 struct AppleDocumentation: Codable {
     let identifier: Identifier?
     let metadata: Metadata
-    let abstract: [InlineContent]
+    let abstract: [InlineContent]?
     let primaryContentSections: [PrimaryContentSection]?
     let topicSections: [TopicSection]?
     let seeAlsoSections: [TopicSection]?
+    let defaultImplementationsSections: [TopicSection]?
     let relationshipsSections: [RelationshipSection]?
     let references: [String: Reference]?
 
@@ -446,7 +518,12 @@ extension AppleJSONToMarkdown {
         let kind = parseKind(from: doc.metadata.roleHeading, role: doc.metadata.role)
 
         // Extract abstract
-        let abstract = doc.abstract.isEmpty ? nil : renderInlineContent(doc.abstract)
+        let abstract: String?
+        if let absInline = doc.abstract, !absInline.isEmpty {
+            abstract = renderInlineContent(absInline)
+        } else {
+            abstract = nil
+        }
 
         // Extract declaration
         let declaration = extractDeclaration(from: doc.primaryContentSections)
