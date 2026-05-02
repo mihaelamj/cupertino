@@ -19,3 +19,7 @@ See #183. Do not start Phase 2 until Phase 1 ships.
 ## Conventions
 
 See `AGENTS.md` for code style, commit format, and the "ask when unsure" workflow.
+
+## Imported Rules
+
+@../../private/mihaela-agents/Rules/AGENTS.md
