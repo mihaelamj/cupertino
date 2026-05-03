@@ -214,10 +214,14 @@ struct AskCommand: AsyncParsableCommand {
             }
             if !unfilteredContributing.isEmpty {
                 print(
-                    "ℹ️  --platform \(platform) --min-version \(minVersion) only filters the "
-                        + "packages source. Results from "
+                    "ℹ️  --platform \(platform) --min-version \(minVersion) currently only "
+                        + "filters the packages source. Results from "
                         + unfilteredContributing.joined(separator: ", ")
-                        + " are unfiltered (different availability axes per source — see #220 / #225)."
+                        + " are unfiltered — apple-docs and apple-archive carry the same "
+                        + "min_ios / min_macos columns in search.db, but the filter isn't "
+                        + "wired through to those fetchers yet (#220 follow-up). "
+                        + "swift-evolution / swift-org / swift-book use a different axis "
+                        + "(Swift language version — #225)."
                 )
             }
         }
