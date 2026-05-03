@@ -227,17 +227,31 @@ struct SearchCommand: AsyncParsableCommand {
             ))
         }
 
-        // Fetch teaser results from other sources
-        let teasers = try await ServiceContainer.withTeaserService(
-            searchDbPath: searchDb,
-            sampleDbPath: resolveSampleDbPath()
-        ) { service in
-            await service.fetchAllTeasers(
-                query: query,
-                framework: framework,
-                currentSource: Shared.Constants.SourcePrefix.samples,
-                includeArchive: false
+        // Fetch teaser results from other sources. Best-effort: when
+        // search.db is locked (e.g. another process running `cupertino
+        // save --docs`) or missing, we still return the samples results
+        // and skip teasers rather than failing the whole command.
+        // Mirrors `ask --skip-docs` resilience.
+        let teasers: TeaserResults
+        do {
+            teasers = try await ServiceContainer.withTeaserService(
+                searchDbPath: searchDb,
+                sampleDbPath: resolveSampleDbPath()
+            ) { service in
+                await service.fetchAllTeasers(
+                    query: query,
+                    framework: framework,
+                    currentSource: Shared.Constants.SourcePrefix.samples,
+                    includeArchive: false
+                )
+            }
+        } catch {
+            Log.info(
+                "ℹ️  Teaser results from other sources unavailable: \(error.localizedDescription) "
+                    + "(common when another process is writing search.db). "
+                    + "Continuing with samples results only."
             )
+            teasers = TeaserResults()
         }
 
         // Output results using formatters
