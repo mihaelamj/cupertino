@@ -21,7 +21,15 @@ extension Search {
     /// - `kind` is stored `UNINDEXED` so it survives in SELECTs but doesn't bloat
     ///   the FTS index. Callers filter on it via the plain-column path.
     public actor PackageIndex {
-        public static let schemaVersion: Int32 = 1
+        // Bumped 1 → 2 in the #219 follow-up: added six availability
+        // columns to `package_metadata` (`min_ios`, `min_macos`,
+        // `min_tvos`, `min_watchos`, `min_visionos`,
+        // `availability_source`) and one column to `package_files`
+        // (`available_attrs_json`). Mirrors the SearchIndex docs_metadata
+        // pattern (#192 sec. C). Existing v1 DBs migrate via
+        // `ALTER TABLE ADD COLUMN`; fresh installs land them inline via
+        // `createTables`. No destructive migration.
+        public static let schemaVersion: Int32 = 2
 
         private var database: OpaquePointer?
         private let dbPath: URL
@@ -37,6 +45,7 @@ extension Search {
                 withIntermediateDirectories: true
             )
             try openDatabase()
+            try migrateSchema()
             try createTables()
             try setSchemaVersion()
             isInitialized = true
@@ -56,6 +65,42 @@ extension Search {
             public let bytesIndexed: Int64
         }
 
+        /// Per-package availability payload from `availability.json` (#219).
+        /// Optional — when nil, the deployment-target columns and the
+        /// per-file `available_attrs_json` column stay NULL so callers can
+        /// still distinguish "not annotated" from "annotated with no
+        /// availability info".
+        public struct AvailabilityPayload: Sendable {
+            public let deploymentTargets: [String: String]
+            /// File-keyed list of @available attribute occurrences.
+            public let attributesByRelpath: [String: [FileAttribute]]
+            /// Free-form tag describing where this came from. Currently only
+            /// `"package-swift"` (parsed from Package.swift + .swift sources
+            /// by `PackageAvailabilityAnnotator`).
+            public let source: String
+
+            public struct FileAttribute: Sendable {
+                public let line: Int
+                public let raw: String
+                public let platforms: [String]
+                public init(line: Int, raw: String, platforms: [String]) {
+                    self.line = line
+                    self.raw = raw
+                    self.platforms = platforms
+                }
+            }
+
+            public init(
+                deploymentTargets: [String: String],
+                attributesByRelpath: [String: [FileAttribute]],
+                source: String
+            ) {
+                self.deploymentTargets = deploymentTargets
+                self.attributesByRelpath = attributesByRelpath
+                self.source = source
+            }
+        }
+
         /// Index a single package end-to-end. Wipes any prior rows for the same
         /// (owner, repo) first so re-indexes converge cleanly without FTS5
         /// duplicate-row issues. All SQL runs in one transaction per package.
@@ -63,7 +108,8 @@ extension Search {
             resolved: Core.ResolvedPackage,
             extraction: Core.PackageArchiveExtractor.Result,
             stars: Int? = nil,
-            hostedDocumentationURL: URL? = nil
+            hostedDocumentationURL: URL? = nil,
+            availability: AvailabilityPayload? = nil
         ) throws -> IndexResult {
             guard let database else {
                 throw PackageIndexError.databaseNotInitialized
@@ -76,11 +122,17 @@ extension Search {
                     resolved: resolved,
                     extraction: extraction,
                     stars: stars,
-                    hostedDocumentationURL: hostedDocumentationURL
+                    hostedDocumentationURL: hostedDocumentationURL,
+                    availability: availability
                 )
                 var bytes: Int64 = 0
                 for file in extraction.files {
-                    try insertFile(packageId: packageId, resolved: resolved, file: file)
+                    try insertFile(
+                        packageId: packageId,
+                        resolved: resolved,
+                        file: file,
+                        availability: availability
+                    )
                     bytes += Int64(file.byteSize)
                 }
                 try execute("COMMIT")
@@ -127,11 +179,23 @@ extension Search {
                 cupertino_version TEXT,
                 hosted_doc_url TEXT,
                 parents_json TEXT,
+                -- Availability columns (#219, mirrors docs_metadata pattern)
+                min_ios TEXT,
+                min_macos TEXT,
+                min_tvos TEXT,
+                min_watchos TEXT,
+                min_visionos TEXT,
+                availability_source TEXT,
                 UNIQUE(owner, repo)
             );
 
             CREATE INDEX IF NOT EXISTS idx_pkg_owner ON package_metadata(owner);
             CREATE INDEX IF NOT EXISTS idx_pkg_apple ON package_metadata(is_apple_official);
+            CREATE INDEX IF NOT EXISTS idx_pkg_min_ios ON package_metadata(min_ios);
+            CREATE INDEX IF NOT EXISTS idx_pkg_min_macos ON package_metadata(min_macos);
+            CREATE INDEX IF NOT EXISTS idx_pkg_min_tvos ON package_metadata(min_tvos);
+            CREATE INDEX IF NOT EXISTS idx_pkg_min_watchos ON package_metadata(min_watchos);
+            CREATE INDEX IF NOT EXISTS idx_pkg_min_visionos ON package_metadata(min_visionos);
 
             CREATE TABLE IF NOT EXISTS package_files (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -141,6 +205,9 @@ extension Search {
                 module TEXT,
                 size_bytes INTEGER NOT NULL,
                 indexed_at INTEGER NOT NULL,
+                -- Per-file @available occurrences (#219). JSON array of
+                -- {line, raw, platforms[]}. NULL = file wasn't annotated.
+                available_attrs_json TEXT,
                 FOREIGN KEY(package_id) REFERENCES package_metadata(id) ON DELETE CASCADE,
                 UNIQUE(package_id, relpath)
             );
@@ -167,6 +234,65 @@ extension Search {
 
         private func setSchemaVersion() throws {
             try execute("PRAGMA user_version = \(Self.schemaVersion)")
+        }
+
+        /// Read the on-disk schema version and run any incremental
+        /// `ALTER TABLE` migrations needed to reach `schemaVersion`.
+        /// Mirrors `Search.Index.checkAndMigrateSchema` (SearchIndex.swift)
+        /// — fresh databases (user_version = 0) skip the migrations because
+        /// `createTables()` runs immediately after with the latest schema.
+        private func migrateSchema() throws {
+            guard let database else { throw PackageIndexError.databaseNotInitialized }
+            var statement: OpaquePointer?
+            defer { sqlite3_finalize(statement) }
+            guard sqlite3_prepare_v2(database, "PRAGMA user_version", -1, &statement, nil) == SQLITE_OK,
+                  sqlite3_step(statement) == SQLITE_ROW
+            else { return }
+            let currentVersion = sqlite3_column_int(statement, 0)
+            sqlite3_finalize(statement)
+            statement = nil
+
+            guard currentVersion > 0 else { return } // fresh DB
+            guard currentVersion < Self.schemaVersion else { return } // already current
+
+            if currentVersion < 2 {
+                try migrateToVersion2()
+            }
+        }
+
+        /// Version 1 → 2 (#219 follow-up): add availability columns to
+        /// `package_metadata` and a `available_attrs_json` column to
+        /// `package_files`. Indexes match the docs_metadata pattern in
+        /// SearchIndex. ALTER statements ignore "duplicate column" errors
+        /// so re-running the migration is harmless.
+        private func migrateToVersion2() throws {
+            guard let database else { throw PackageIndexError.databaseNotInitialized }
+
+            let alters = [
+                "ALTER TABLE package_metadata ADD COLUMN min_ios TEXT;",
+                "ALTER TABLE package_metadata ADD COLUMN min_macos TEXT;",
+                "ALTER TABLE package_metadata ADD COLUMN min_tvos TEXT;",
+                "ALTER TABLE package_metadata ADD COLUMN min_watchos TEXT;",
+                "ALTER TABLE package_metadata ADD COLUMN min_visionos TEXT;",
+                "ALTER TABLE package_metadata ADD COLUMN availability_source TEXT;",
+                "ALTER TABLE package_files ADD COLUMN available_attrs_json TEXT;",
+            ]
+            for sql in alters {
+                var errPtr: UnsafeMutablePointer<CChar>?
+                _ = sqlite3_exec(database, sql, nil, nil, &errPtr)
+                sqlite3_free(errPtr)
+            }
+
+            let indexes = [
+                "CREATE INDEX IF NOT EXISTS idx_pkg_min_ios ON package_metadata(min_ios);",
+                "CREATE INDEX IF NOT EXISTS idx_pkg_min_macos ON package_metadata(min_macos);",
+                "CREATE INDEX IF NOT EXISTS idx_pkg_min_tvos ON package_metadata(min_tvos);",
+                "CREATE INDEX IF NOT EXISTS idx_pkg_min_watchos ON package_metadata(min_watchos);",
+                "CREATE INDEX IF NOT EXISTS idx_pkg_min_visionos ON package_metadata(min_visionos);",
+            ]
+            for sql in indexes {
+                try execute(sql)
+            }
         }
 
         // MARK: - Inserts
@@ -207,15 +333,17 @@ extension Search {
             resolved: Core.ResolvedPackage,
             extraction: Core.PackageArchiveExtractor.Result,
             stars: Int?,
-            hostedDocumentationURL: URL?
+            hostedDocumentationURL: URL?,
+            availability: AvailabilityPayload?
         ) throws -> Int64 {
             guard let database else { throw PackageIndexError.databaseNotInitialized }
             let sql = """
             INSERT INTO package_metadata (
                 owner, repo, url, branch_used, stars, is_apple_official,
                 tarball_bytes, total_bytes, fetched_at, cupertino_version,
-                hosted_doc_url, parents_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                hosted_doc_url, parents_json,
+                min_ios, min_macos, min_tvos, min_watchos, min_visionos, availability_source
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             var statement: OpaquePointer?
             defer { sqlite3_finalize(statement) }
@@ -243,6 +371,25 @@ extension Search {
             }
             sqlite3_bind_text(statement, 12, parentsJSON, -1, SQLITE_TRANSIENT)
 
+            // Availability columns 13-18 (#219)
+            func bindMin(_ pos: Int32, _ key: String) {
+                if let value = availability?.deploymentTargets[key] {
+                    sqlite3_bind_text(statement, pos, value, -1, SQLITE_TRANSIENT)
+                } else {
+                    sqlite3_bind_null(statement, pos)
+                }
+            }
+            bindMin(13, "iOS")
+            bindMin(14, "macOS")
+            bindMin(15, "tvOS")
+            bindMin(16, "watchOS")
+            bindMin(17, "visionOS")
+            if let source = availability?.source {
+                sqlite3_bind_text(statement, 18, source, -1, SQLITE_TRANSIENT)
+            } else {
+                sqlite3_bind_null(statement, 18)
+            }
+
             guard sqlite3_step(statement) == SQLITE_DONE else {
                 throw PackageIndexError.sqliteError(lastError(database))
             }
@@ -252,13 +399,32 @@ extension Search {
         private func insertFile(
             packageId: Int64,
             resolved: Core.ResolvedPackage,
-            file: Core.ExtractedFile
+            file: Core.ExtractedFile,
+            availability: AvailabilityPayload?
         ) throws {
             guard database != nil else { throw PackageIndexError.databaseNotInitialized }
 
+            // Pre-compute the per-file availability JSON (NULL when no
+            // attrs were recorded for this relpath).
+            let attrsJSON: String?
+            if let attrs = availability?.attributesByRelpath[file.relpath], !attrs.isEmpty {
+                struct Encoded: Encodable {
+                    let line: Int
+                    let raw: String
+                    let platforms: [String]
+                }
+                let encoded = attrs.map { Encoded(line: $0.line, raw: $0.raw, platforms: $0.platforms) }
+                attrsJSON = (try? JSONEncoder().encode(encoded)).flatMap { String(data: $0, encoding: .utf8) }
+            } else {
+                attrsJSON = nil
+            }
+
             let insertPackageFileSQL = """
-            INSERT INTO package_files (package_id, relpath, kind, module, size_bytes, indexed_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO package_files (
+                package_id, relpath, kind, module, size_bytes, indexed_at,
+                available_attrs_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """
             try executeBinding(insertPackageFileSQL, binders: [
                 { stmt in sqlite3_bind_int64(stmt, 1, packageId) },
@@ -273,6 +439,13 @@ extension Search {
                 },
                 { stmt in sqlite3_bind_int64(stmt, 5, Int64(file.byteSize)) },
                 { stmt in sqlite3_bind_int64(stmt, 6, Int64(Date().timeIntervalSince1970)) },
+                { stmt in
+                    if let attrsJSON {
+                        sqlite3_bind_text(stmt, 7, attrsJSON, -1, SQLITE_TRANSIENT)
+                    } else {
+                        sqlite3_bind_null(stmt, 7)
+                    }
+                },
             ])
 
             let title = Self.extractTitle(relpath: file.relpath, content: file.content)

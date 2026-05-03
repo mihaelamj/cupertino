@@ -56,9 +56,9 @@ extension Search {
                 throw IndexerError.noPackagesFound(rootDirectory)
             }
 
-            for (i, dir) in packageDirs.enumerated() {
+            for (idx, dir) in packageDirs.enumerated() {
                 let label = "\(dir.deletingLastPathComponent().lastPathComponent)/\(dir.lastPathComponent)"
-                onProgress?(label, i + 1, packageDirs.count)
+                onProgress?(label, idx + 1, packageDirs.count)
                 do {
                     let (resolved, files, tarballBytes) = try loadPackage(at: dir)
                     let result = Core.PackageArchiveExtractor.Result(
@@ -67,9 +67,11 @@ extension Search {
                         totalBytes: files.reduce(Int64(0)) { $0 + Int64($1.byteSize) },
                         tarballBytes: tarballBytes ?? 0
                     )
+                    let availability = Self.loadAvailability(at: dir)
                     let outcome = try await index.index(
                         resolved: resolved.resolvedPackage,
-                        extraction: result
+                        extraction: result,
+                        availability: availability
                     )
                     stats.packagesIndexed += 1
                     stats.totalFiles += outcome.filesIndexed
@@ -142,8 +144,7 @@ extension Search {
             let priority: PackagePriority
             if manifest.owner == Shared.Constants.GitHubOrg.apple
                 || manifest.owner == Shared.Constants.GitHubOrg.swiftlang
-                || manifest.owner == Shared.Constants.GitHubOrg.swiftServer
-            {
+                || manifest.owner == Shared.Constants.GitHubOrg.swiftServer {
                 priority = .appleOfficial
             } else {
                 priority = .ecosystem
@@ -165,6 +166,39 @@ extension Search {
             )
         }
 
+        /// Load `<dir>/availability.json` if present and decode it into the
+        /// `PackageIndex.AvailabilityPayload` shape #219 stage 3 produces.
+        /// Returns nil when the file is missing or unparseable so callers
+        /// pass `availability: nil` and the new columns stay NULL — caller
+        /// can still distinguish "not annotated" from "annotated but empty".
+        nonisolated static func loadAvailability(at dir: URL) -> PackageIndex.AvailabilityPayload? {
+            let url = dir.appendingPathComponent(Core.PackageAvailabilityAnnotator.outputFilename)
+            guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+            guard let data = try? Data(contentsOf: url) else { return nil }
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            guard let result = try? decoder.decode(
+                Core.PackageAvailabilityAnnotator.AnnotationResult.self,
+                from: data
+            ) else { return nil }
+
+            var attrsByRelpath: [String: [PackageIndex.AvailabilityPayload.FileAttribute]] = [:]
+            for fileAvail in result.fileAvailability {
+                attrsByRelpath[fileAvail.relpath] = fileAvail.attributes.map {
+                    PackageIndex.AvailabilityPayload.FileAttribute(
+                        line: $0.line,
+                        raw: $0.raw,
+                        platforms: $0.platforms
+                    )
+                }
+            }
+            return PackageIndex.AvailabilityPayload(
+                deploymentTargets: result.deploymentTargets,
+                attributesByRelpath: attrsByRelpath,
+                source: "package-swift"
+            )
+        }
+
         private nonisolated func walkDirectoryForFiles(dir: URL) -> [Core.ExtractedFile] {
             var files: [Core.ExtractedFile] = []
             let rootComponents = dir.resolvingSymlinksInPath().pathComponents
@@ -178,8 +212,14 @@ extension Search {
 
             while let candidate = enumerator.nextObject() as? URL {
                 let name = candidate.lastPathComponent
-                // Skip the retained tarball and the manifest (not user content).
-                if name == ".archive.tar.gz" || name == "manifest.json" { continue }
+                // Skip the retained tarball, the manifest, and the
+                // sidecar availability annotation file (#219) — none are
+                // user-authored content.
+                if name == ".archive.tar.gz"
+                    || name == "manifest.json"
+                    || name == Core.PackageAvailabilityAnnotator.outputFilename {
+                    continue
+                }
 
                 guard
                     let values = try? candidate.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]),
