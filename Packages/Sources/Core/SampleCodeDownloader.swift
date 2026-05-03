@@ -27,7 +27,6 @@ import AppKit
 /// Downloads Apple sample code projects (zip/tar files)
 @MainActor
 public final class SampleCodeDownloader {
-
     #if os(macOS)
     /// Activation policy required to make the authentication window appear (#6).
     /// A bare CLI process defaults to `.prohibited`, which silently drops
@@ -445,7 +444,7 @@ public final class SampleCodeDownloader {
         NSApplication.shared.activate(ignoringOtherApps: true)
 
         // Surface progress on stdout (bypasses Log.info's category router
-        // which in --authenticate invocations wasn't reaching stdout).
+        // which in visible-browser invocations wasn't reaching stdout).
         Logging.ConsoleLogger.info("✅ Browser window opened")
         Logging.ConsoleLogger.info("   Sign in to your Apple Developer account")
         if Self.isInteractiveStdin() {
@@ -503,6 +502,7 @@ public final class SampleCodeDownloader {
     }
 
     /// Test seam for forcing the TTY check result.
+    // swiftlint:disable:next identifier_name
     nonisolated(unsafe) static var _isInteractiveStdinOverride: Bool?
 
     #if os(macOS)

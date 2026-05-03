@@ -13,7 +13,7 @@ Downloaded Apple sample code projects - either as ZIP files or extracted folders
 cupertino fetch --type samples
 
 # Option 2: Apple Website (slower, requires Apple ID)
-cupertino fetch --type code --authenticate
+cupertino fetch --type code
 ```
 
 ## Structure
@@ -119,11 +119,11 @@ git lfs install
 
 ### Apple Website (code type) - Apple ID required
 ```bash
-cupertino fetch --type code --authenticate
+cupertino fetch --type code
 ```
-Must use `--authenticate` flag. Requires:
+Requires:
 - Valid Apple ID
-- Safari browser for authentication
+- Active Safari sign-in to `https://developer.apple.com/` (the fetcher reuses the `myacinfo` cookie from the system cookie store)
 - macOS system
 
 ## Indexing for Search
@@ -152,7 +152,7 @@ After indexing, these MCP tools become available:
 cupertino fetch --type samples --output-dir ./samples
 
 # Apple download to custom directory
-cupertino fetch --type code --authenticate --output-dir ./samples
+cupertino fetch --type code --output-dir ./samples
 ```
 
 ## Notes

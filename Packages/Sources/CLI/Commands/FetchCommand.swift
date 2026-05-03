@@ -123,9 +123,6 @@ struct FetchCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Maximum number of items to fetch (packages/code types only)")
     var limit: Int?
 
-    @Flag(name: .long, help: "Launch visible browser for authentication (code type only)")
-    var authenticate: Bool = false
-
     @Flag(name: .long, help: "Use fast mode (higher concurrency, shorter timeout) for availability fetch")
     var fast: Bool = false
 
@@ -972,8 +969,7 @@ struct FetchCommand: AsyncParsableCommand {
         let crawler = await SampleCodeDownloader(
             outputDirectory: outputURL,
             maxSamples: limit,
-            forceDownload: force,
-            visibleBrowser: authenticate
+            forceDownload: force
         )
 
         let stats = try await crawler.download { progress in

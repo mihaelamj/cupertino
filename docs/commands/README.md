@@ -105,7 +105,7 @@ cupertino fetch --type samples
 cupertino index
 
 # Option 2: From Apple (slower, requires Apple ID)
-cupertino fetch --type code --authenticate
+cupertino fetch --type code
 cupertino cleanup
 cupertino index
 ```

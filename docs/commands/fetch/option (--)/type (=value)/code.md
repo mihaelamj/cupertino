@@ -5,7 +5,7 @@ Fetch Apple Sample Code Projects
 ## Synopsis
 
 ```bash
-cupertino fetch --type code --authenticate
+cupertino fetch --type code
 ```
 
 ## Description
@@ -14,8 +14,7 @@ Downloads Apple's official sample code projects as ZIP files. These are complete
 
 ## Requirements
 
-- `--authenticate` flag (required)
-- Valid Apple ID
+- Valid Apple ID, signed into `https://developer.apple.com/` in Safari (the fetcher reuses Safari's `myacinfo` cookie from the system cookie store)
 - macOS with Safari
 - Internet connection
 
@@ -31,35 +30,35 @@ Creates individual ZIP files:
 | Setting | Value |
 |---------|-------|
 | Output Directory | `~/.cupertino/sample-code` |
-| Authentication | **Required** (`--authenticate`) |
+| Authentication | **Required** (Safari sign-in to `developer.apple.com`) |
 | Estimated Count | ~600 sample projects |
 
 ## Examples
 
 ### Fetch All Sample Code
 ```bash
-cupertino fetch --type code --authenticate
+cupertino fetch --type code
 ```
 
 ### Fetch Limited Number
 ```bash
-cupertino fetch --type code --authenticate --limit 50
+cupertino fetch --type code --limit 50
 ```
 
 ### Custom Output Directory
 ```bash
-cupertino fetch --type code --authenticate --output-dir ./samples
+cupertino fetch --type code --output-dir ./samples
 ```
 
 ### Resume Interrupted Download (automatic)
 ```bash
 # Auto-resumes from checkpoint.json — no flag needed
-cupertino fetch --type code --authenticate
+cupertino fetch --type code
 ```
 
 ### Discard the Saved Session and Start Over
 ```bash
-cupertino fetch --type code --authenticate --start-clean
+cupertino fetch --type code --start-clean
 ```
 
 ## Authentication Process

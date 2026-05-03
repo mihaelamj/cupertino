@@ -34,7 +34,6 @@ cupertino fetch \
 | `--start-clean` | `false` | Auto-resume any saved session |
 | `--only-accepted` | `true` | Accepted/implemented proposals only (evolution only) |
 | `--limit` | (unlimited) | No limit (packages/code) |
-| `--authenticate` | `false` | No authentication |
 
 ## Auto-Detection Features
 

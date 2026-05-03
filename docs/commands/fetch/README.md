@@ -53,7 +53,6 @@ The `fetch` command is the unified fetching command that handles both web crawli
 
 - [--output-dir](output-dir.md) - Output directory for downloaded resources
 - [--limit](limit.md) - Maximum number of items to fetch (packages/code types only)
-- [--authenticate](authenticate.md) - Launch visible browser for authentication (code type only)
 - `--fast` - Use higher concurrency and shorter timeouts for `--type availability` (faster but more aggressive)
 
 ## Examples
@@ -87,10 +86,13 @@ cupertino fetch --type samples
 # 606 projects, ~10GB with Git LFS, ~4 minutes
 ```
 
-### Fetch Apple Sample Code from Apple (with Authentication)
+### Fetch Apple Sample Code from Apple
+
 ```bash
-cupertino fetch --type code --authenticate
-# Slower, requires Apple ID login
+cupertino fetch --type code
+# Reuses Apple Developer cookies from your Safari session.
+# Sign in to https://developer.apple.com/ via Safari first; the
+# fetcher detects the `myacinfo` cookie automatically.
 ```
 
 ### Fetch Apple Archive Guides (Legacy Documentation)
@@ -192,11 +194,12 @@ cupertino fetch --type all
 
 ### Authentication
 
-**Sample Code (`--type code`)** requires Apple ID authentication:
-- Use `--authenticate` to launch visible browser
-- Sign in with your Apple Developer account
-- Cookies are saved for future runs
-- No authentication needed for docs, swift, evolution, or packages
+**Sample Code (`--type code`)** requires Apple ID authentication, but the in-process auth window is currently broken (#6 partial; full replacement #193). The supported path is:
+
+- Sign in to `https://developer.apple.com/` in Safari
+- Run `cupertino fetch --type code` (no extra flags)
+- The fetcher reuses Safari's `myacinfo` cookie from the system cookie store
+- No authentication is needed for `docs`, `swift`, `evolution`, `packages`, `samples` (GitHub mirror), `archive`, `hig`, `availability`
 
 ### GitHub Token (Optional)
 

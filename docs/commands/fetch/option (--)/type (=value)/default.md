@@ -50,7 +50,7 @@ cupertino fetch --type evolution
 cupertino fetch --type packages
 
 # Apple sample code
-cupertino fetch --type code --authenticate
+cupertino fetch --type code
 
 # Everything
 cupertino fetch --type all

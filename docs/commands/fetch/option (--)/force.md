@@ -34,7 +34,7 @@ cupertino fetch --type packages --force
 
 ### Force Re-download Sample Code
 ```bash
-cupertino fetch --type code --authenticate --force
+cupertino fetch --type code --force
 ```
 
 ### Force with Limit

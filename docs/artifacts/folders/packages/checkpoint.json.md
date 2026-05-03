@@ -15,7 +15,7 @@ Created in the output directory of fetch operations:
 cupertino fetch --type packages
 
 # For sample code
-cupertino fetch --type code --authenticate
+cupertino fetch --type code
 ```
 
 ## Purpose
@@ -90,13 +90,13 @@ jq '{total: .totalCount, downloaded: .downloadedCount}' ~/.cupertino/sample-code
 ```bash
 # Auto-resumes from checkpoint.json — no flag needed
 cupertino fetch --type packages
-cupertino fetch --type code --authenticate
+cupertino fetch --type code
 ```
 
 ### Discard the Checkpoint and Start Over
 ```bash
 cupertino fetch --type packages --start-clean
-cupertino fetch --type code --authenticate --start-clean
+cupertino fetch --type code --start-clean
 ```
 
 ### Query Package Data

@@ -25,7 +25,7 @@ cupertino fetch --type packages --limit 50
 
 ### Fetch First 10 Sample Code Projects
 ```bash
-cupertino fetch --type code --authenticate --limit 10
+cupertino fetch --type code --limit 10
 ```
 
 ### Fetch 100 Packages to Custom Directory

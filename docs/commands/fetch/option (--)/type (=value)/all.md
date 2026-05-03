@@ -20,7 +20,7 @@ Runs these fetch types **in parallel**:
 2. **swift** - Swift.org Documentation
 3. **evolution** - Swift Evolution Proposals
 4. **packages** - Swift Package Metadata
-5. **code** - Apple Sample Code (requires `--authenticate`)
+5. **code** - Apple Sample Code (requires Safari sign-in to `developer.apple.com` for cookie reuse)
 
 ## Default Settings
 
@@ -40,7 +40,7 @@ cupertino fetch --type all
 
 ### Fetch Everything Including Sample Code
 ```bash
-cupertino fetch --type all --authenticate
+cupertino fetch --type all
 ```
 
 ### Fetch Everything with Custom Settings
@@ -152,16 +152,18 @@ Resume is automatic across all types — interrupted fetches pick up where they 
 
 ## Sample Code Authentication
 
-To include sample code, add `--authenticate`:
+To include `--type code`, sign in to `https://developer.apple.com/` in Safari first. The fetcher reuses Safari's `myacinfo` cookie from the system cookie store:
 
 ```bash
-cupertino fetch --type all --authenticate
+cupertino fetch --type all
 ```
 
-Without this flag:
+Without a valid Safari sign-in:
 - Sample code fetch will fail
 - Other types will complete successfully
-- Warning displayed about missing authentication
+- Warning displayed about missing cookie
+
+Alternative: drop `code` and use `samples` (GitHub mirror, no auth required) for sample-code coverage.
 
 ## Use Cases
 
@@ -185,7 +187,7 @@ Without this flag:
 
 1. **Initial fetch** (one-time):
    ```bash
-   cupertino fetch --type all --authenticate
+   cupertino fetch --type all
    ```
 
 2. **Build search index**:

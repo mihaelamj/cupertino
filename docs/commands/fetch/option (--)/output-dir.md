@@ -27,7 +27,7 @@ cupertino fetch --type packages --output-dir ./my-packages
 
 ### Custom Output for Sample Code
 ```bash
-cupertino fetch --type code --authenticate --output-dir ./sample-code
+cupertino fetch --type code --output-dir ./sample-code
 ```
 
 ### Absolute Path
