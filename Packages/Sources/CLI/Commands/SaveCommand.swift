@@ -93,6 +93,12 @@ struct SaveCommand: AsyncParsableCommand {
     )
     var force: Bool = false
 
+    @Flag(
+        name: [.short, .long],
+        help: "Skip the preflight summary + confirmation prompt (#232). Auto-skipped when stdin isn't a TTY."
+    )
+    var yes: Bool = false
+
     mutating func run() async throws {
         // Handle remote mode separately — it's an entirely different
         // pipeline (streams docs from GitHub) and shouldn't combine with
@@ -109,6 +115,18 @@ struct SaveCommand: AsyncParsableCommand {
         let buildDocs = !scopeFlagsSet || docs
         let buildPackages = !scopeFlagsSet || packages
         let buildSamples = !scopeFlagsSet || samples
+
+        // #232: preflight summary + confirmation prompt. Surfaces missing
+        // sources and un-annotated corpora so the user can bail out before
+        // a half-populated save run.
+        if !runPreflightAndConfirm(
+            buildDocs: buildDocs,
+            buildPackages: buildPackages,
+            buildSamples: buildSamples
+        ) {
+            Logging.ConsoleLogger.info("Aborted by user.")
+            return
+        }
 
         if buildDocs {
             try await runDocsIndexer()
@@ -225,7 +243,7 @@ struct SaveCommand: AsyncParsableCommand {
         }
 
         // Check if docs have availability data
-        let hasAvailability = checkDocsHaveAvailability(docsDir: docsURL)
+        let hasAvailability = Self.checkDocsHaveAvailability(docsDir: docsURL)
         if !hasAvailability {
             Logging.ConsoleLogger.info("")
             Logging.ConsoleLogger.info("⚠️  Docs don't have availability data yet")
@@ -583,54 +601,228 @@ struct SaveCommand: AsyncParsableCommand {
         Logging.ConsoleLogger.info("\n💡 Tip: Start the MCP server with '\(Shared.Constants.App.commandName) serve' to enable search")
     }
 
-    /// Check if docs directory has availability data by sampling a few JSON files
-    private func checkDocsHaveAvailability(docsDir: URL) -> Bool {
-        guard FileManager.default.fileExists(atPath: docsDir.path) else {
-            return false
-        }
+    /// Heuristic: does the docs corpus on disk carry availability
+    /// annotations from `cupertino fetch --type availability`? Sampled —
+    /// we don't read every page. Good enough for preflight + the inline
+    /// docs-mode warning. True when at least half of the sampled JSONs
+    /// carry an `availability` key.
+    ///
+    /// Sampling shape: walk up to `maxFrameworks` framework dirs, look
+    /// at the first `.json` in each, peek at the top-level keys.
+    /// Tunables live as constants so tests can pin behaviour.
+    static func checkDocsHaveAvailability(docsDir: URL) -> Bool {
+        let report = sampleDocsAvailability(docsDir: docsDir)
+        return report.checked > 0 && report.withAvailability >= (report.checked / 2)
+    }
 
-        // Sample a few framework directories
+    /// Pure inspection — counts how many sampled docs JSON files carry
+    /// an `availability` field. `internal` so tests can pin both the
+    /// sampling shape and the threshold logic separately.
+    static func sampleDocsAvailability(
+        docsDir: URL,
+        maxFrameworks: Int = 5,
+        maxSamples: Int = 3
+    ) -> (checked: Int, withAvailability: Int) {
+        guard FileManager.default.fileExists(atPath: docsDir.path) else {
+            return (0, 0)
+        }
         guard let frameworks = try? FileManager.default.contentsOfDirectory(
             at: docsDir,
-            includingPropertiesForKeys: nil,
+            includingPropertiesForKeys: [.isDirectoryKey],
             options: [.skipsHiddenFiles]
         ) else {
+            return (0, 0)
+        }
+
+        var checked = 0
+        var withAvailability = 0
+        for frameworkDir in frameworks.prefix(maxFrameworks) {
+            guard checked < maxSamples else { break }
+            guard isDirectory(frameworkDir) else { continue }
+            guard let firstJSON = firstJSONFile(in: frameworkDir) else { continue }
+            checked += 1
+            if jsonContainsAvailability(at: firstJSON) {
+                withAvailability += 1
+            }
+        }
+        return (checked, withAvailability)
+    }
+
+    private static func isDirectory(_ url: URL) -> Bool {
+        (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true
+    }
+
+    private static func firstJSONFile(in directory: URL) -> URL? {
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) else { return nil }
+        return files.first { $0.pathExtension == "json" }
+    }
+
+    private static func jsonContainsAvailability(at url: URL) -> Bool {
+        guard let data = try? Data(contentsOf: url) else { return false }
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return false
         }
+        return json["availability"] != nil
+    }
 
-        // Check first 3 frameworks for availability
-        var checkedCount = 0
-        var hasAvailabilityCount = 0
+    // MARK: - Preflight (#232)
 
-        for frameworkDir in frameworks.prefix(5) {
-            guard frameworkDir.hasDirectoryPath else { continue }
+    /// Inspect the on-disk corpus state for the chosen scope and surface
+    /// missing or un-annotated sources before any DB write. Returns
+    /// `false` when the user opts to abort. Auto-confirms (returns
+    /// `true` without prompting) when stdin isn't a TTY or `--yes` was
+    /// passed.
+    private func runPreflightAndConfirm(
+        buildDocs: Bool,
+        buildPackages: Bool,
+        buildSamples: Bool
+    ) -> Bool {
+        let lines = Self.preflightLines(
+            buildDocs: buildDocs,
+            buildPackages: buildPackages,
+            buildSamples: buildSamples,
+            baseDir: baseDir,
+            docsDir: docsDir,
+            samplesDir: samplesDir
+        )
+        Logging.ConsoleLogger.info("🔍 Preflight check for `cupertino save`\n")
+        for line in lines {
+            Logging.ConsoleLogger.info(line)
+        }
+        Logging.ConsoleLogger.info("")
 
-            // Find first JSON file in framework
-            if let files = try? FileManager.default.contentsOfDirectory(
-                at: frameworkDir,
-                includingPropertiesForKeys: nil,
-                options: [.skipsHiddenFiles]
-            ) {
-                for file in files where file.pathExtension == "json" {
-                    checkedCount += 1
-
-                    // Check if file has availability key
-                    if let data = try? Data(contentsOf: file),
-                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       json["availability"] != nil {
-                        hasAvailabilityCount += 1
-                    }
-
-                    break // Only check one file per framework
-                }
-            }
-
-            if checkedCount >= 3 {
-                break
-            }
+        if yes {
+            Logging.ConsoleLogger.info("--yes: skipping confirmation, continuing.\n")
+            return true
+        }
+        guard isatty(fileno(stdin)) != 0 else {
+            // Not a TTY (piped, scripted, CI) — proceed without prompting
+            // so automation doesn't hang.
+            return true
         }
 
-        // Consider "has availability" if at least 2 out of 3 sampled files have it
-        return checkedCount > 0 && hasAvailabilityCount >= (checkedCount / 2)
+        Logging.ConsoleLogger.info("Continue? [Y/n] ")
+        guard let response = readLine() else { return true }
+        let normalized = response.trimmingCharacters(in: .whitespaces).lowercased()
+        return normalized.isEmpty || normalized == "y" || normalized == "yes"
+    }
+
+    /// Pure inspection helper — assembled into the printable preflight
+    /// summary by `runPreflightAndConfirm`. Lifted out so tests and
+    /// `cupertino doctor --save` (#232) can reuse without driving
+    /// stdin/stdout. Takes the same path overrides as the SaveCommand
+    /// flags so the helper produces the same numbers a real save would.
+    static func preflightLines(
+        buildDocs: Bool,
+        buildPackages: Bool,
+        buildSamples: Bool,
+        baseDir: String? = nil,
+        docsDir: String? = nil,
+        samplesDir: String? = nil
+    ) -> [String] {
+        var lines: [String] = []
+        let fm = FileManager.default
+        let effectiveBase = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+            ?? Shared.Constants.defaultBaseDirectory
+
+        if buildDocs {
+            lines.append("  Docs (search.db)")
+            let docsURL = docsDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+                ?? effectiveBase.appendingPathComponent(Shared.Constants.Directory.docs)
+            if fm.fileExists(atPath: docsURL.path) {
+                let count = (try? fm.subpathsOfDirectory(atPath: docsURL.path).count) ?? 0
+                lines.append("    ✓  \(docsURL.path)  (\(count) entries)")
+                if Self.checkDocsHaveAvailability(docsDir: docsURL) {
+                    lines.append("    ✓  Availability annotation present")
+                } else {
+                    lines.append("    ⚠  Availability annotation NOT detected")
+                    lines.append("       min_ios / min_macos / etc. columns will be NULL.")
+                    lines.append("       Run `cupertino fetch --type availability` first for platform filtering.")
+                }
+            } else {
+                lines.append("    ✗  \(docsURL.path)  (missing — docs scope will be skipped)")
+            }
+            lines.append("")
+        }
+
+        if buildPackages {
+            lines.append("  Packages (packages.db)")
+            let packagesURL = effectiveBase.appendingPathComponent(Shared.Constants.Directory.packages)
+            if fm.fileExists(atPath: packagesURL.path) {
+                let stats = Self.countPackagesAndSidecars(at: packagesURL)
+                lines.append("    ✓  \(packagesURL.path)  (\(stats.packages) packages)")
+                if stats.packages == 0 {
+                    lines.append("    ⚠  No <owner>/<repo>/ subdirs — nothing to index.")
+                } else if stats.sidecars == stats.packages {
+                    lines.append("    ✓  availability.json sidecars  (\(stats.sidecars)/\(stats.packages))")
+                } else {
+                    lines.append("    ⚠  availability.json sidecars  (\(stats.sidecars)/\(stats.packages))")
+                    lines.append(
+                        "       Missing \(stats.packages - stats.sidecars) — run "
+                            + "`cupertino fetch --type packages --skip-metadata --skip-archives "
+                            + "--annotate-availability` to backfill."
+                    )
+                }
+            } else {
+                lines.append("    ✗  \(packagesURL.path)  (missing — packages scope will be skipped)")
+            }
+            lines.append("")
+        }
+
+        if buildSamples {
+            lines.append("  Samples (samples.db)")
+            let samplesURL = samplesDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+                ?? SampleIndex.defaultSampleCodeDirectory
+            if fm.fileExists(atPath: samplesURL.path) {
+                let zipCount = (try? fm.contentsOfDirectory(atPath: samplesURL.path))?
+                    .filter { $0.hasSuffix(".zip") }.count ?? 0
+                lines.append("    ✓  \(samplesURL.path)  (\(zipCount) zips)")
+                if zipCount == 0 {
+                    lines.append("    ⚠  No zips — nothing to index.")
+                } else {
+                    lines.append("    (annotation runs inline during save — no preflight check needed)")
+                }
+            } else {
+                lines.append("    ✗  \(samplesURL.path)  (missing — samples scope will be skipped)")
+            }
+            lines.append("")
+        }
+
+        return lines
+    }
+
+    /// Count `<owner>/<repo>/` directories under `packagesURL` and how
+    /// many of them carry an `availability.json` sidecar (#219 stage 3).
+    static func countPackagesAndSidecars(at packagesURL: URL) -> (packages: Int, sidecars: Int) {
+        let fm = FileManager.default
+        guard let owners = try? fm.contentsOfDirectory(
+            at: packagesURL,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) else { return (0, 0) }
+
+        var packageCount = 0
+        var sidecarCount = 0
+        for ownerURL in owners {
+            guard (try? ownerURL.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true else { continue }
+            guard let repos = try? fm.contentsOfDirectory(
+                at: ownerURL,
+                includingPropertiesForKeys: [.isDirectoryKey],
+                options: [.skipsHiddenFiles]
+            ) else { continue }
+            for repoURL in repos {
+                guard (try? repoURL.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true else { continue }
+                packageCount += 1
+                let sidecarURL = repoURL.appendingPathComponent("availability.json")
+                if fm.fileExists(atPath: sidecarURL.path) {
+                    sidecarCount += 1
+                }
+            }
+        }
+        return (packageCount, sidecarCount)
     }
 }

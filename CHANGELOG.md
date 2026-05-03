@@ -2,6 +2,10 @@
 
 _Post-1.0 fixes accumulating on the `develop` branch, off `packages-overhaul`. Will roll into a future patch release after 1.0.0 ships. Out of scope for the 1.0.0 cut so the release theme stays clean._
 
+### Added
+
+- **`cupertino save` preflight + `cupertino doctor --save`** ([#232](https://github.com/mihaelamj/cupertino/issues/232)): `save` now prints a per-scope summary before any DB write — which source dirs are present, how many packages have `availability.json` sidecars, whether the docs corpus has been annotated by `fetch --type availability` — then prompts `Continue? [Y/n]` and lets the user bail. Auto-skips the prompt when stdin isn't a TTY (CI / pipes) and via `--yes`. The same summary is reachable read-only as `cupertino doctor --save` for users who want to know "is save ready?" without committing to a run. `checkDocsHaveAvailability` was refactored into pure helpers (`sampleDocsAvailability`, `firstJSONFile`, `jsonContainsAvailability`) with named-constant tunables so tests can pin behavior.
+
 ### Changed
 
 - **`cupertino save` now builds all three databases by default; `cupertino index` removed** ([#231](https://github.com/mihaelamj/cupertino/issues/231)): scope flags `--docs` / `--packages` / `--samples` select a subset; with no scope flag passed `save` builds search.db, packages.db, and samples.db in that order, skipping any source directory that's missing with an info log. The standalone `cupertino index` command is gone — its body lives under `save --samples` (with `--samples-dir`, `--samples-db`, `--force` options renamed for symmetry). Pre-1.0 clean break, no alias. Subcommand count drops 16 → 15.

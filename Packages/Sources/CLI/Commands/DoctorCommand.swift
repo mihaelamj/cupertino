@@ -47,7 +47,35 @@ struct DoctorCommand: AsyncParsableCommand {
     @Option(name: .long, help: ArgumentHelp(Shared.Constants.HelpText.searchDB))
     var searchDB: String = Shared.Constants.defaultSearchDatabase.path
 
+    @Flag(
+        name: .long,
+        help: """
+        Run the `cupertino save` preflight check only — print which \
+        sources are present, which lack availability annotations, what \
+        would be skipped — without running the regular doctor health \
+        suite. Read-only, no DB writes. (#232)
+        """
+    )
+    var save: Bool = false
+
     mutating func run() async throws {
+        // #232: --save flag short-circuits to the SaveCommand preflight,
+        // so users can ask `is save ready?` without committing to running
+        // it. Identical output to what `cupertino save` would print as
+        // its preflight summary.
+        if save {
+            Log.output("🔍 `cupertino save` preflight check\n")
+            let lines = SaveCommand.preflightLines(
+                buildDocs: true,
+                buildPackages: true,
+                buildSamples: true
+            )
+            for line in lines {
+                Log.output(line)
+            }
+            return
+        }
+
         Log.output("🏥 MCP Server Health Check")
         Log.output("")
 
