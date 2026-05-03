@@ -13,7 +13,7 @@ extension Shared.DiscoveryMode: ExpressibleByArgument {}
 
 // MARK: - Fetch Command
 
-// swiftlint:disable type_body_length
+// swiftlint:disable type_body_length file_length function_body_length
 // Justification: FetchCommand handles 10+ different fetch types (docs, evolution, packages, code, etc.)
 // Each type has distinct configuration, progress reporting, and error handling.
 // Splitting into separate commands would duplicate shared options and break the unified fetch interface.
@@ -197,7 +197,12 @@ struct FetchCommand: AsyncParsableCommand {
         // and matches the start URL — no flag needed. We log "Fetching" here
         // unconditionally; the Crawler itself prints "🔄 Found resumable session"
         // when it actually loads saved state.
-        Logging.ConsoleLogger.info("🚀 Cupertino - Fetching \(type.displayName)\n")
+        Logging.ConsoleLogger.info("🚀 Cupertino - Fetching \(type.displayName)")
+        // Print the resolved output directory at startup so #212-style
+        // BinaryConfig misrouting is immediately visible.
+        let resolvedOutputDir = outputDir.flatMap { URL(fileURLWithPath: $0).expandingTildeInPath.path }
+            ?? type.defaultOutputDir
+        Logging.ConsoleLogger.info("   Output: \(resolvedOutputDir)\n")
     }
 
     private mutating func runAllFetches() async throws {

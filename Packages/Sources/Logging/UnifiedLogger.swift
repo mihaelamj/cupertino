@@ -252,9 +252,12 @@ public actor UnifiedLogger {
     }
 
     private func defaultLogFileURL() -> URL {
-        let homeDir = FileManager.default.homeDirectoryForCurrentUser
-        return homeDir
-            .appendingPathComponent(Shared.Constants.baseDirectoryName)
+        // Route through Shared.Constants.defaultBaseDirectory so BinaryConfig
+        // (#211) redirects the log file along with every other default path.
+        // The previous manual construction silently wrote to ~/.cupertino/...
+        // even when the binary was configured to use a different base — the
+        // bug reported in #212.
+        Shared.Constants.defaultBaseDirectory
             .appendingPathComponent(Shared.Constants.FileName.logFile)
     }
 
@@ -464,8 +467,10 @@ public enum Log {
     }
 
     private static func defaultLogFileURL() -> URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(Shared.Constants.baseDirectoryName)
+        // Route through Shared.Constants.defaultBaseDirectory so BinaryConfig
+        // (#211) redirects the log file along with every other default path
+        // (#212).
+        Shared.Constants.defaultBaseDirectory
             .appendingPathComponent(Shared.Constants.FileName.logFile)
     }
 
