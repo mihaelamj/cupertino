@@ -10,10 +10,11 @@ import Shared
 ///     cupertino package-search "how do I write a log handler in swift-log"
 ///
 /// Thin wrapper over `Search.SmartQuery` configured with a single
-/// `PackageFTSCandidateFetcher` (#192 E6). Output format is identical to the
-/// public `cupertino ask` command, so a user who learned `ask` can
-/// substitute `package-search` whenever they specifically want
-/// packages-only results without typing `--skip-docs`.
+/// `PackageFTSCandidateFetcher` (#192 E6). Output format is identical to
+/// `cupertino search` (default fan-out mode, #239), so a user already
+/// fluent with `search` can substitute `package-search` whenever they
+/// specifically want packages-only results without typing `--skip-docs
+/// --skip-samples`.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
 struct PackageSearchCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(

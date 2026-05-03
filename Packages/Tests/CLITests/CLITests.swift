@@ -15,11 +15,13 @@ struct CommandRegistrationTests {
     func subcommandsRegistered() {
         let config = Cupertino.configuration
 
-        // 14 visible + 1 hidden (package-search). `setup` now owns every
+        // 13 visible + 1 hidden (package-search). `setup` now owns every
         // database — packages-setup was collapsed into it. `resolve-refs`
         // post-processes saved pages against #208. `index` removed in
-        // #231 (samples now build via `save --samples`).
-        #expect(config.subcommands.count == 15)
+        // #231 (samples now build via `save --samples`). `ask` absorbed
+        // into `search` in #239 (default fan-out path produces the same
+        // chunked output as `ask` did).
+        #expect(config.subcommands.count == 14)
         #expect(config.subcommands.contains { $0 == SetupCommand.self })
         #expect(config.subcommands.contains { $0 == FetchCommand.self })
         #expect(config.subcommands.contains { $0 == SaveCommand.self })
@@ -33,7 +35,6 @@ struct CommandRegistrationTests {
         #expect(config.subcommands.contains { $0 == DoctorCommand.self })
         #expect(config.subcommands.contains { $0 == CleanupCommand.self })
         #expect(config.subcommands.contains { $0 == PackageSearchCommand.self })
-        #expect(config.subcommands.contains { $0 == AskCommand.self })
         #expect(config.subcommands.contains { $0 == ResolveRefsCommand.self })
     }
 

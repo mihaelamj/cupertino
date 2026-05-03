@@ -10,6 +10,12 @@ import Shared
 
 /// CLI command for unified search across all documentation sources.
 /// Mirrors MCP `search` tool functionality with `--source` parameter routing.
+///
+/// After #239 the default (no `--source`) path runs `Search.SmartQuery` —
+/// a fan-out across every available DB with reciprocal-rank-fusion ranking
+/// and chunked output, replacing what `cupertino ask` used to do. The
+/// single-source `--source <name>` path still runs the source-specific
+/// list-style formatters.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
 struct SearchCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -17,10 +23,12 @@ struct SearchCommand: AsyncParsableCommand {
         abstract: "Search Apple documentation, samples, HIG, and more",
         discussion: """
         Unified search across all documentation sources. By default, searches ALL sources
-        for comprehensive results. Use --source to narrow to a specific source.
+        in parallel and returns chunked excerpts ranked by reciprocal-rank fusion (#239:
+        absorbed from the removed `cupertino ask`). Use --source to narrow to one source
+        and get the source-specific list view instead.
 
         SOURCES:
-          (default)       Search ALL sources at once (docs, samples, HIG, etc.)
+          (default)       Fan out across every available DB (chunked, RRF-fused)
           apple-docs      Modern Apple API documentation only
           samples         Sample code projects with working examples
           hig             Human Interface Guidelines
@@ -36,11 +44,12 @@ struct SearchCommand: AsyncParsableCommand {
           Works across both documentation and sample code.
 
         EXAMPLES:
-          cupertino search "SwiftUI view lifecycle"
+          cupertino search "how do I make a SwiftUI view observable"
           cupertino search "@Observable" --source samples
           cupertino search "Core Animation" --source apple-archive
           cupertino search "button styles" --source samples
           cupertino search "async throws" --source apple-docs
+          cupertino search "actor reentrancy" --skip-docs
         """
     )
 
@@ -111,15 +120,67 @@ struct SearchCommand: AsyncParsableCommand {
 
     @Option(
         name: .long,
-        help: "Path to search database"
+        help: "Path to search database (search.db)"
     )
     var searchDb: String?
 
     @Option(
         name: .long,
-        help: "Path to sample index database"
+        help: "Path to packages database (packages.db). Used in fan-out mode and `--source packages`."
+    )
+    var packagesDb: String?
+
+    @Option(
+        name: .long,
+        help: "Path to sample index database (samples.db)"
     )
     var sampleDb: String?
+
+    @Option(
+        name: .long,
+        help: """
+        Per-source candidate cap before reciprocal-rank fusion. \
+        Only applies in fan-out mode (no --source). Default 10. (#239)
+        """
+    )
+    var perSource: Int = 10
+
+    @Flag(
+        name: .long,
+        help: "Skip every apple-docs-backed source. Fan-out mode only. (#239)"
+    )
+    var skipDocs: Bool = false
+
+    @Flag(
+        name: .long,
+        help: "Skip the packages source. Fan-out mode only. (#239)"
+    )
+    var skipPackages: Bool = false
+
+    @Flag(
+        name: .long,
+        help: "Skip the samples source. Fan-out mode only. (#239)"
+    )
+    var skipSamples: Bool = false
+
+    @Option(
+        name: .long,
+        help: """
+        Restrict packages + samples + apple-docs results to the named platform's \
+        deployment target (#220, #233). Values: iOS, macOS, tvOS, watchOS, visionOS \
+        (case-insensitive). Requires --min-version. Fan-out mode only.
+        """
+    )
+    var platform: String?
+
+    @Option(
+        name: .long,
+        help: """
+        Minimum version for --platform, e.g. 16.0 / 13.0 / 10.15. Lex compare \
+        in SQL; correct for current Apple platforms. (#220)
+        """
+    )
+    var minVersion: String?
 
     @Option(
         name: .long,
@@ -128,8 +189,6 @@ struct SearchCommand: AsyncParsableCommand {
     var format: OutputFormat = .text
 
     mutating func run() async throws {
-        // Route based on source parameter
-        // Default (nil) now searches ALL sources for better results (#81)
         switch source {
         case Shared.Constants.SourcePrefix.samples, Shared.Constants.SourcePrefix.appleSampleCode:
             try await runSampleSearch()
@@ -141,212 +200,63 @@ struct SearchCommand: AsyncParsableCommand {
              Shared.Constants.SourcePrefix.swiftOrg,
              Shared.Constants.SourcePrefix.swiftBook,
              Shared.Constants.SourcePrefix.packages:
-            // Specific source requested: search only that source
             try await runDocsSearch()
         default:
-            // Default (nil or "all"): search ALL sources for comprehensive results
+            // Default (nil or "all") triggers the SmartQuery fan-out.
             try await runUnifiedSearch()
         }
     }
 
-    // MARK: - Documentation Search
+    // MARK: - Per-source runners moved to SearchCommand+SourceRunners.swift
 
-    private func runDocsSearch() async throws {
-        let results = try await ServiceContainer.withDocsService(dbPath: searchDb) { service in
-            try await service.search(SearchQuery(
-                text: query,
-                source: source,
-                framework: framework,
-                language: language,
-                limit: limit,
-                includeArchive: includeArchive,
-                minimumiOS: minIos,
-                minimumMacOS: minMacos,
-                minimumTvOS: minTvos,
-                minimumWatchOS: minWatchos,
-                minimumVisionOS: minVisionos
-            ))
-        }
+    // MARK: - Unified Search (All Sources, fan-out + RRF) (#239)
 
-        // Fetch teaser results from all sources user didn't search
-        let teasers = try await ServiceContainer.withTeaserService(
-            searchDbPath: searchDb,
-            sampleDbPath: resolveSampleDbPath()
-        ) { service in
-            await service.fetchAllTeasers(
-                query: query,
-                framework: framework,
-                currentSource: source,
-                includeArchive: includeArchive
-            )
-        }
-
-        // Output results using formatters
-        switch format {
-        case .text:
-            let formatter = TextSearchResultFormatter(
-                query: query,
-                source: source,
-                teasers: teasers
-            )
-            Log.output(formatter.format(results))
-        case .json:
-            let formatter = JSONSearchResultFormatter()
-            Log.output(formatter.format(results))
-        case .markdown:
-            let formatter = MarkdownSearchResultFormatter(
-                query: query,
-                filters: SearchFilters(
-                    source: source,
-                    framework: framework,
-                    language: language,
-                    minimumiOS: minIos,
-                    minimumMacOS: minMacos,
-                    minimumTvOS: minTvos,
-                    minimumWatchOS: minWatchos,
-                    minimumVisionOS: minVisionos
-                ),
-                config: .cliDefault,
-                teasers: teasers
-            )
-            Log.output(formatter.format(results))
-        }
-    }
-
-    // MARK: - Sample Search
-
-    private func runSampleSearch() async throws {
-        let dbPath = resolveSampleDbPath()
-
-        let result = try await ServiceContainer.withSampleService(dbPath: dbPath) { service in
-            try await service.search(SampleQuery(
-                text: query,
-                framework: framework,
-                searchFiles: true,
-                limit: limit
-            ))
-        }
-
-        // Fetch teaser results from other sources. Best-effort: when
-        // search.db is locked (e.g. another process running `cupertino
-        // save --docs`) or missing, we still return the samples results
-        // and skip teasers rather than failing the whole command.
-        // Mirrors `ask --skip-docs` resilience.
-        let teasers: TeaserResults
-        do {
-            teasers = try await ServiceContainer.withTeaserService(
-                searchDbPath: searchDb,
-                sampleDbPath: resolveSampleDbPath()
-            ) { service in
-                await service.fetchAllTeasers(
-                    query: query,
-                    framework: framework,
-                    currentSource: Shared.Constants.SourcePrefix.samples,
-                    includeArchive: false
-                )
-            }
-        } catch {
-            Log.info(
-                "ℹ️  Teaser results from other sources unavailable: \(error.localizedDescription) "
-                    + "(common when another process is writing search.db). "
-                    + "Continuing with samples results only."
-            )
-            teasers = TeaserResults()
-        }
-
-        // Output results using formatters
-        switch format {
-        case .text:
-            let formatter = SampleSearchTextFormatter(query: query, framework: framework, teasers: teasers)
-            Log.output(formatter.format(result))
-        case .json:
-            let formatter = SampleSearchJSONFormatter(query: query, framework: framework)
-            Log.output(formatter.format(result))
-        case .markdown:
-            let formatter = SampleSearchMarkdownFormatter(query: query, framework: framework, teasers: teasers)
-            Log.output(formatter.format(result))
-        }
-    }
-
-    // MARK: - HIG Search
-
-    private func runHIGSearch() async throws {
-        let results = try await ServiceContainer.withDocsService(dbPath: searchDb) { service in
-            try await service.search(SearchQuery(
-                text: query,
-                source: Shared.Constants.SourcePrefix.hig,
-                framework: nil,
-                language: nil,
-                limit: limit,
-                includeArchive: false
-            ))
-        }
-
-        // Fetch teaser results from other sources
-        let teasers = try await ServiceContainer.withTeaserService(
-            searchDbPath: searchDb,
-            sampleDbPath: resolveSampleDbPath()
-        ) { service in
-            await service.fetchAllTeasers(
-                query: query,
-                framework: framework,
-                currentSource: Shared.Constants.SourcePrefix.hig,
-                includeArchive: false
-            )
-        }
-
-        let higQuery = HIGQuery(text: query, platform: nil, category: nil)
-
-        switch format {
-        case .text:
-            let formatter = HIGTextFormatter(query: higQuery, teasers: teasers)
-            Log.output(formatter.format(results))
-        case .json:
-            let formatter = HIGJSONFormatter(query: higQuery)
-            Log.output(formatter.format(results))
-        case .markdown:
-            let formatter = HIGMarkdownFormatter(query: higQuery, config: .cliDefault, teasers: teasers)
-            Log.output(formatter.format(results))
-        }
-    }
-
-    // MARK: - Unified Search (All Sources)
-
+    /// Replaces the previous `UnifiedSearchService` path with the SmartQuery
+    /// fan-out absorbed from `cupertino ask`. Default behaviour when no
+    /// `--source` is passed.
     private func runUnifiedSearch() async throws {
-        // Use UnifiedSearchService to search all 8 sources
-        let input = try await ServiceContainer.withUnifiedSearchService(
-            searchDbPath: searchDb,
-            sampleDbPath: resolveSampleDbPath()
-        ) { service in
-            await service.searchAll(
-                query: query,
-                framework: framework,
-                limit: limit
-            )
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            Logging.ConsoleLogger.error("❌ Query cannot be empty.")
+            throw ExitCode.failure
         }
 
-        switch format {
-        case .text:
-            // Formatter already includes tip about narrowing scope
-            let formatter = UnifiedSearchTextFormatter(query: query, framework: framework)
-            Log.output(formatter.format(input))
-        case .json:
-            let formatter = UnifiedSearchJSONFormatter(query: query, framework: framework)
-            Log.output(formatter.format(input))
-        case .markdown:
-            // Use shared formatter (identical to MCP output)
-            let formatter = UnifiedSearchMarkdownFormatter(
-                query: query,
-                framework: framework,
-                config: .cliDefault
+        let availabilityFilter = try resolveAvailabilityFilter()
+        let plan = await buildFetchers(availabilityFilter: availabilityFilter)
+        guard !plan.fetchers.isEmpty else {
+            Logging.ConsoleLogger.error(
+                "❌ No data sources available. Run `cupertino setup` to populate them."
             )
-            Log.output(formatter.format(input))
+            throw ExitCode.failure
         }
+
+        let smartQuery = Search.SmartQuery(fetchers: plan.fetchers)
+        let result = await smartQuery.answer(
+            question: trimmed,
+            limit: limit,
+            perFetcherLimit: perSource
+        )
+
+        if let index = plan.searchIndex {
+            await index.disconnect()
+        }
+        if let service = plan.sampleService {
+            await service.disconnect()
+        }
+
+        Self.printSmartReport(
+            result: result,
+            question: trimmed,
+            availabilityFilterActive: availabilityFilter != nil,
+            platform: platform,
+            minVersion: minVersion,
+            format: format
+        )
     }
 
     // MARK: - Path Resolution
 
-    private func resolveSampleDbPath() -> URL {
+    func resolveSampleDbPath() -> URL {
         if let sampleDb {
             return URL(fileURLWithPath: sampleDb).expandingTildeInPath
         }
