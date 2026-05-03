@@ -80,6 +80,25 @@ struct AskCommand: AsyncParsableCommand {
             throw ExitCode.failure
         }
 
+        // Validate the availability flags up front so every fetcher
+        // (#233 wired docs + samples in addition to packages) sees the
+        // same source of truth.
+        let availabilityFilter: Search.PackageQuery.AvailabilityFilter?
+        switch (platform, minVersion) {
+        case let (platform?, minVersion?):
+            availabilityFilter = Search.PackageQuery.AvailabilityFilter(
+                platform: platform,
+                minVersion: minVersion
+            )
+        case (.some, nil), (nil, .some):
+            Logging.ConsoleLogger.error(
+                "❌ --platform and --min-version must be used together (#220)."
+            )
+            throw ExitCode.failure
+        case (nil, nil):
+            availabilityFilter = nil
+        }
+
         var fetchers: [any Search.CandidateFetcher] = []
         var searchIndex: Search.Index?
 
@@ -95,7 +114,8 @@ struct AskCommand: AsyncParsableCommand {
                         fetchers.append(Search.DocsSourceCandidateFetcher(
                             searchIndex: index,
                             source: source.prefix,
-                            includeArchive: source.includeArchive
+                            includeArchive: source.includeArchive,
+                            availability: availabilityFilter
                         ))
                     }
                 } catch {
@@ -104,25 +124,6 @@ struct AskCommand: AsyncParsableCommand {
             } else {
                 Logging.ConsoleLogger.info("ℹ️  search.db not found at \(searchDBURL.path) — skipping doc sources.")
             }
-        }
-
-        // Validate the availability flags up front so the warning shown
-        // before results (#220 follow-up) sees the same source of truth as
-        // the packages fetcher.
-        let availabilityFilter: Search.PackageQuery.AvailabilityFilter?
-        switch (platform, minVersion) {
-        case let (platform?, minVersion?):
-            availabilityFilter = Search.PackageQuery.AvailabilityFilter(
-                platform: platform,
-                minVersion: minVersion
-            )
-        case (.some, nil), (nil, .some):
-            Logging.ConsoleLogger.error(
-                "❌ --platform and --min-version must be used together (#220)."
-            )
-            throw ExitCode.failure
-        case (nil, nil):
-            availabilityFilter = nil
         }
 
         if !skipPackages {
@@ -151,7 +152,10 @@ struct AskCommand: AsyncParsableCommand {
                 do {
                     let service = try await Services.SampleSearchService(dbPath: samplesDBURL)
                     sampleService = service
-                    fetchers.append(Services.SampleCandidateFetcher(service: service))
+                    fetchers.append(Services.SampleCandidateFetcher(
+                        service: service,
+                        availability: availabilityFilter
+                    ))
                 } catch {
                     Logging.ConsoleLogger.error(
                         "⚠️  Could not open samples.db: \(error.localizedDescription)"
@@ -204,15 +208,13 @@ struct AskCommand: AsyncParsableCommand {
         (Shared.Constants.SourcePrefix.swiftBook, false),
     ]
 
-    /// Sources whose results are NOT scoped by `--platform` / `--min-version`
-    /// (#220 follow-up). The packages source IS the only one that honours
-    /// the filter today; everything else returns its normal ranked list.
-    /// Used by `printReport` to emit a one-line notice so users can tell
-    /// which results were filtered and which weren't.
+    /// Sources whose results aren't scoped by `--platform` / `--min-version`.
+    /// After #233 wired docs + samples through the filter, only the
+    /// Swift-language-version-axis sources remain unfiltered (their pages
+    /// don't carry `min_<platform>` columns at all — see #225 for the
+    /// matching `--swift` flag). Used by `printReport` to emit a one-line
+    /// notice so users know which contributing source was scoped vs not.
     private static let unfilteredSourcesUnderPlatformFlag: [String] = [
-        Shared.Constants.SourcePrefix.appleDocs,
-        Shared.Constants.SourcePrefix.appleArchive,
-        Shared.Constants.SourcePrefix.hig,
         Shared.Constants.SourcePrefix.swiftEvolution,
         Shared.Constants.SourcePrefix.swiftOrg,
         Shared.Constants.SourcePrefix.swiftBook,
@@ -249,14 +251,11 @@ struct AskCommand: AsyncParsableCommand {
             }
             if !unfilteredContributing.isEmpty {
                 print(
-                    "ℹ️  --platform \(platform) --min-version \(minVersion) currently only "
-                        + "filters the packages source. Results from "
+                    "ℹ️  --platform \(platform) --min-version \(minVersion) doesn't apply to "
                         + unfilteredContributing.joined(separator: ", ")
-                        + " are unfiltered — apple-docs and apple-archive carry the same "
-                        + "min_ios / min_macos columns in search.db, but the filter isn't "
-                        + "wired through to those fetchers yet (#220 follow-up). "
-                        + "swift-evolution / swift-org / swift-book use a different axis "
-                        + "(Swift language version — #225)."
+                        + " — those sources use a different availability axis "
+                        + "(Swift language version, see #225). apple-docs / apple-archive / hig / "
+                        + "packages / samples results ARE filtered."
                 )
             }
         }

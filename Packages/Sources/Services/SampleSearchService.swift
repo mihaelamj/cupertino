@@ -10,17 +10,27 @@ public struct SampleQuery: Sendable {
     public let framework: String?
     public let searchFiles: Bool
     public let limit: Int
+    /// Optional platform filter (#233). When set together with
+    /// `minVersion`, restricts results to projects whose
+    /// `min_<platform>` column is non-NULL and lex-≤ the requested
+    /// version. nil on either disables the filter.
+    public let platform: String?
+    public let minVersion: String?
 
     public init(
         text: String,
         framework: String? = nil,
         searchFiles: Bool = true,
-        limit: Int = Shared.Constants.Limit.defaultSearchLimit
+        limit: Int = Shared.Constants.Limit.defaultSearchLimit,
+        platform: String? = nil,
+        minVersion: String? = nil
     ) {
         self.text = text
         self.framework = framework
         self.searchFiles = searchFiles
         self.limit = min(limit, Shared.Constants.Limit.maxSearchLimit)
+        self.platform = platform
+        self.minVersion = minVersion
     }
 }
 
@@ -79,7 +89,9 @@ public actor SampleSearchService {
             files = try await database.searchFiles(
                 query: query.text,
                 projectId: nil,
-                limit: query.limit
+                limit: query.limit,
+                platform: query.platform,
+                minVersion: query.minVersion
             )
         }
 

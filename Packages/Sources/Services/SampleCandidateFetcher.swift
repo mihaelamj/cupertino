@@ -23,13 +23,24 @@ public struct SampleCandidateFetcher: Search.CandidateFetcher {
     public let sourceName: String = Shared.Constants.SourcePrefix.samples
 
     private let service: SampleSearchService
+    private let availability: Search.PackageQuery.AvailabilityFilter?
 
-    public init(service: SampleSearchService) {
+    public init(
+        service: SampleSearchService,
+        availability: Search.PackageQuery.AvailabilityFilter? = nil
+    ) {
         self.service = service
+        self.availability = availability
     }
 
     public func fetch(question: String, limit: Int) async throws -> [Search.SmartCandidate] {
-        let result = try await service.search(text: question, limit: limit)
+        let query = SampleQuery(
+            text: question,
+            limit: limit,
+            platform: availability?.platform,
+            minVersion: availability?.minVersion
+        )
+        let result = try await service.search(query)
 
         return result.files.enumerated().map { idx, file in
             // Higher rawScore = better. samples.db FTS5 returns its

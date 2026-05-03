@@ -138,6 +138,19 @@ extension Search {
 
         private let searchIndex: Search.Index
         private let includeArchive: Bool
+        private let availability: Search.PackageQuery.AvailabilityFilter?
+
+        /// Sources whose content uses a different availability axis from
+        /// iOS / macOS / etc. — Swift language version (#225). When the
+        /// fetcher is constructed for one of these, the availability
+        /// filter is silently dropped at fetch time so a query like
+        /// `--platform iOS --min-version 16` doesn't accidentally
+        /// nuke the entire swift-evolution result set.
+        private static let swiftVersionSources: Set<String> = [
+            Shared.Constants.SourcePrefix.swiftEvolution,
+            Shared.Constants.SourcePrefix.swiftOrg,
+            Shared.Constants.SourcePrefix.swiftBook,
+        ]
 
         /// - Parameters:
         ///   - searchIndex: shared Search.Index instance (fetchers inherit
@@ -145,24 +158,40 @@ extension Search {
         ///   - source: the `Shared.Constants.SourcePrefix.*` value to scope to.
         ///   - includeArchive: pass `true` when `source` is `apple-archive`.
         ///     Default `false` matches `search()`'s archive-exclusion behaviour.
+        ///   - availability: optional `--platform` / `--min-version` filter
+        ///     (#233). Honoured for apple-docs / apple-archive / hig — the
+        ///     sources whose pages actually carry `min_*` columns.
+        ///     Silently dropped for swift-evolution / swift-org / swift-book
+        ///     because those use the Swift-language-version axis (see #225).
         public init(
             searchIndex: Search.Index,
             source: String,
-            includeArchive: Bool = false
+            includeArchive: Bool = false,
+            availability: Search.PackageQuery.AvailabilityFilter? = nil
         ) {
             self.searchIndex = searchIndex
             sourceName = source
             self.includeArchive = includeArchive
+            self.availability = availability
         }
 
         public func fetch(question: String, limit: Int) async throws -> [SmartCandidate] {
+            // Apply availability params only for OS-versioned sources.
+            let effective = Self.swiftVersionSources.contains(sourceName)
+                ? nil
+                : availability
             let rows = try await searchIndex.search(
                 query: question,
                 source: sourceName,
                 framework: nil,
                 language: nil,
                 limit: limit,
-                includeArchive: includeArchive
+                includeArchive: includeArchive,
+                minIOS: effective?.platform.lowercased() == "ios" ? effective?.minVersion : nil,
+                minMacOS: ["macos", "osx", "mac"].contains(effective?.platform.lowercased() ?? "") ? effective?.minVersion : nil,
+                minTvOS: effective?.platform.lowercased() == "tvos" ? effective?.minVersion : nil,
+                minWatchOS: effective?.platform.lowercased() == "watchos" ? effective?.minVersion : nil,
+                minVisionOS: effective?.platform.lowercased() == "visionos" ? effective?.minVersion : nil
             )
 
             return rows.map { row in

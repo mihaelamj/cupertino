@@ -642,7 +642,9 @@ extension SampleIndex {
             query: String,
             projectId: String? = nil,
             fileExtension: String? = nil,
-            limit: Int = 20
+            limit: Int = 20,
+            platform: String? = nil,
+            minVersion: String? = nil
         ) async throws -> [FileSearchResult] {
             guard let database else {
                 throw SampleIndex.Error.databaseNotInitialized
@@ -659,12 +661,30 @@ extension SampleIndex {
                 .map { "\"\($0)\"" }
                 .joined(separator: " ")
 
+            // #233: optional platform filter — JOIN projects table when
+            // both `platform` and `minVersion` are set, restrict to rows
+            // whose `min_<platform>` column is non-NULL and lex-≤
+            // the requested version. Lex compare matches the convention
+            // used in #220's PackageQuery.
+            let platformColumn: String?
+            if platform != nil, minVersion != nil {
+                platformColumn = SampleIndex.minColumn(for: platform ?? "")
+            } else {
+                platformColumn = nil
+            }
+
             var sql = """
             SELECT f.project_id, f.path, f.filename, snippet(files_fts, 3, '<b>', '</b>', '...', 50), bm25(files_fts)
             FROM files f
             JOIN files_fts fts ON f.project_id = fts.project_id AND f.path = fts.path
-            WHERE files_fts MATCH ?
             """
+
+            if let platformColumn {
+                sql += " JOIN projects p ON p.id = f.project_id"
+                _ = platformColumn
+            }
+
+            sql += " WHERE files_fts MATCH ?"
 
             if projectId != nil {
                 sql += " AND f.project_id = ?"
@@ -672,6 +692,10 @@ extension SampleIndex {
 
             if fileExtension != nil {
                 sql += " AND f.extension = ?"
+            }
+
+            if let platformColumn {
+                sql += " AND p.\(platformColumn) IS NOT NULL AND p.\(platformColumn) <= ?"
             }
 
             sql += " ORDER BY bm25(files_fts) LIMIT ?;"
@@ -695,6 +719,11 @@ extension SampleIndex {
 
             if let fileExtension {
                 sqlite3_bind_text(statement, paramIndex, (fileExtension.lowercased() as NSString).utf8String, -1, nil)
+                paramIndex += 1
+            }
+
+            if platformColumn != nil, let minVersion {
+                sqlite3_bind_text(statement, paramIndex, (minVersion as NSString).utf8String, -1, nil)
                 paramIndex += 1
             }
 
