@@ -35,10 +35,36 @@ extension SampleIndex {
                 withIntermediateDirectories: true
             )
 
+            // #228 phase 2: samples.db is wipe-and-rebuild on schema
+            // change (no ALTER migrations). If the file on disk is from
+            // an older schema version, delete it and start clean — the
+            // alternative is letting `createTables`'s index-creation
+            // step fail with "no such column" on every server boot
+            // until the user runs `save --samples`. The DB has no
+            // user-authoritative content (it's all derivable from the
+            // sample-code zips), so the wipe is safe.
             try await openDatabase()
+            if FileManager.default.fileExists(atPath: dbPath.path),
+               try await readUserVersion() != Self.schemaVersion {
+                disconnect()
+                try? FileManager.default.removeItem(at: dbPath)
+                try await openDatabase()
+            }
             try await createTables()
             try await setSchemaVersion()
             isInitialized = true
+        }
+
+        /// Read `PRAGMA user_version` from the open DB. Returns `0`
+        /// when the DB is freshly created (SQLite's default).
+        private func readUserVersion() async throws -> Int32 {
+            guard let database else { return 0 }
+            var statement: OpaquePointer?
+            defer { sqlite3_finalize(statement) }
+            guard sqlite3_prepare_v2(database, "PRAGMA user_version", -1, &statement, nil) == SQLITE_OK,
+                  sqlite3_step(statement) == SQLITE_ROW
+            else { return 0 }
+            return sqlite3_column_int(statement, 0)
         }
 
         /// Close database connection

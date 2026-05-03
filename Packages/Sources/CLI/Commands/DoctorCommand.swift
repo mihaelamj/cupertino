@@ -102,6 +102,9 @@ struct DoctorCommand: AsyncParsableCommand {
         // Check resource providers
         allChecks = checkResourceProviders() && allChecks
 
+        // Schema versions across all three DBs (#234)
+        printSchemaVersions()
+
         // Summary
         Log.output("")
         if allChecks {
@@ -110,6 +113,69 @@ struct DoctorCommand: AsyncParsableCommand {
             Log.output("⚠️  Some checks failed - see above for details")
             throw ExitCode(1)
         }
+    }
+
+    /// Read and print `PRAGMA user_version` for each of cupertino's
+    /// three local databases (#234). Each DB stores the version in the
+    /// SQLite header, so reading is cheap and works without
+    /// instantiating any actor. Missing files are reported but don't
+    /// fail the check — they're already covered by the per-DB sections
+    /// above.
+    private func printSchemaVersions() {
+        Log.output("")
+        Log.output("8. Schema versions (#234)")
+        Log.output("")
+        let entries: [(String, URL)] = [
+            ("search.db", URL(fileURLWithPath: searchDB).expandingTildeInPath),
+            ("packages.db", Shared.Constants.defaultPackagesDatabase),
+            ("samples.db", SampleIndex.defaultDatabasePath),
+        ]
+        for (label, url) in entries {
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                Log.output("   ⚠ \(label): not built")
+                continue
+            }
+            let version = readSchemaVersion(at: url)
+            let formatted = formatSchemaVersion(version)
+            Log.output("   ✓ \(label): \(formatted)")
+        }
+    }
+
+    /// Open the SQLite file read-only, query `PRAGMA user_version`,
+    /// close. Returns `0` on any failure (matches SQLite's "no version
+    /// set" default).
+    private func readSchemaVersion(at url: URL) -> Int32 {
+        var database: OpaquePointer?
+        defer { sqlite3_close(database) }
+        guard sqlite3_open_v2(url.path, &database, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+            return 0
+        }
+        var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
+        guard sqlite3_prepare_v2(database, "PRAGMA user_version", -1, &statement, nil) == SQLITE_OK,
+              sqlite3_step(statement) == SQLITE_ROW
+        else {
+            return 0
+        }
+        return sqlite3_column_int(statement, 0)
+    }
+
+    /// Render the `Int32` user_version as either a date-style string
+    /// (when the value parses as `YYYYMMDD` ≥ 1970-01-01) or a plain
+    /// integer (legacy sequential int). Mirrors the dual-format
+    /// transition #234 anticipates.
+    private func formatSchemaVersion(_ version: Int32) -> String {
+        guard version > 0 else { return "(unset)" }
+        let intValue = Int(version)
+        let day = intValue % 100
+        let month = (intValue / 100) % 100
+        let year = intValue / 10000
+        if year >= 1970, year <= 9999,
+           (1...12).contains(month),
+           (1...31).contains(day) {
+            return String(format: "%d (%04d-%02d-%02d, date-style)", version, year, month, day)
+        }
+        return "\(version) (sequential)"
     }
 
     private func checkServerInitialization() -> Bool {

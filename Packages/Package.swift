@@ -319,7 +319,7 @@ let targets: [Target] = {
     )
     let mockAIAgentTestsTarget = Target.testTarget(
         name: "MockAIAgentTests",
-        dependencies: ["MCP", "TestSupport"]
+        dependencies: ["MCP", "SampleIndex", "Shared", "TestSupport"]
     )
 
     let cupertinoTargets: [Target] = [
