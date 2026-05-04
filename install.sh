@@ -24,6 +24,7 @@ REPO="mihaelamj/cupertino"
 INSTALL_PATH="/usr/local/bin/cupertino"
 FORCE_BUILD=false
 SKIP_PROMPT=false
+INSECURE_SKIP_VERIFY=false
 
 # Parse arguments
 for arg in "$@"; do
@@ -34,6 +35,10 @@ for arg in "$@"; do
             ;;
         -y|--yes)
             SKIP_PROMPT=true
+            shift
+            ;;
+        --insecure-skip-verify)
+            INSECURE_SKIP_VERIFY=true
             shift
             ;;
     esac
@@ -104,14 +109,58 @@ else
     info "Latest version: $LATEST_VERSION"
 fi
 
+# Verify SHA256 checksum
+verify_checksum() {
+    local tarball="$1"
+    local checksum_file="$2"
+
+    if [[ "$INSECURE_SKIP_VERIFY" == "true" ]]; then
+        warn "Skipping SHA256 verification (--insecure-skip-verify flag)"
+        warn "WARNING: This mode bypasses integrity checks. Use only in trusted environments."
+        return 0
+    fi
+
+    if [[ ! -f "$checksum_file" ]]; then
+        error "SHA256 checksum file not found at $checksum_file"
+    fi
+
+    info "Verifying SHA256 checksum..."
+    if ! (cd "$TEMP_DIR" && shasum -a 256 -c "$(basename "$checksum_file")" > /dev/null 2>&1); then
+        local expected=$(cat "$checksum_file" | awk '{print $1}')
+        local actual=$(shasum -a 256 "$tarball" | awk '{print $1}')
+        error "SHA256 verification failed
+Expected: $expected
+Actual:   $actual
+File may be corrupted or compromised. Installation aborted."
+    fi
+}
+
 # Try to download pre-built binary
 download_binary() {
-    local BINARY_URL="https://github.com/${REPO}/releases/download/${LATEST_VERSION}/cupertino-${LATEST_VERSION}-macos-universal.tar.gz"
+    local BINARY_FILENAME="cupertino-${LATEST_VERSION}-macos-universal.tar.gz"
+    local BINARY_URL="https://github.com/${REPO}/releases/download/${LATEST_VERSION}/${BINARY_FILENAME}"
+    local CHECKSUM_URL="${BINARY_URL}.sha256"
+    local BINARY_PATH="$TEMP_DIR/${BINARY_FILENAME}"
+    local CHECKSUM_PATH="$TEMP_DIR/${BINARY_FILENAME}.sha256"
 
     info "Downloading pre-built binary..."
-    if curl -sL --fail -o "$TEMP_DIR/cupertino.tar.gz" "$BINARY_URL" 2>/dev/null; then
-        info "Extracting..."
-        tar -xzf "$TEMP_DIR/cupertino.tar.gz" -C "$TEMP_DIR"
+    if ! curl -sL --fail -o "$BINARY_PATH" "$BINARY_URL" 2>/dev/null; then
+        return 1
+    fi
+
+    info "Downloading SHA256 checksum..."
+    if ! curl -sL --fail -o "$CHECKSUM_PATH" "$CHECKSUM_URL" 2>/dev/null; then
+        if [[ "$INSECURE_SKIP_VERIFY" != "true" ]]; then
+            warn "Could not download SHA256 checksum file"
+            error "Use --insecure-skip-verify to bypass (not recommended)"
+        fi
+        warn "Proceeding without verification"
+    else
+        verify_checksum "$BINARY_PATH" "$CHECKSUM_PATH"
+    fi
+
+    info "Extracting..."
+    if tar -xzf "$BINARY_PATH" -C "$TEMP_DIR"; then
         if [[ -f "$TEMP_DIR/cupertino" ]]; then
             return 0
         fi
@@ -131,8 +180,16 @@ build_from_source() {
     info "Cloning repository..."
     git clone --depth 1 "https://github.com/${REPO}.git" "$TEMP_DIR/cupertino-src" 2>&1 | tail -1
 
+    if [[ -n "$LATEST_VERSION" ]]; then
+        info "Checking out release tag: $LATEST_VERSION"
+        cd "$TEMP_DIR/cupertino-src"
+        git checkout "$LATEST_VERSION" 2>&1 | tail -1
+        cd "Packages"
+    else
+        cd "$TEMP_DIR/cupertino-src/Packages"
+    fi
+
     info "Building from source (this may take 1-2 minutes)..."
-    cd "$TEMP_DIR/cupertino-src/Packages"
     swift build -c release 2>&1 | grep -E "(Build complete|Compiling|Linking|error:)" | tail -5
 
     if [[ -f ".build/release/cupertino" ]]; then

@@ -50,7 +50,25 @@ Cupertino is a local, structured, AI-ready documentation system for Apple platfo
 bash <(curl -sSL https://raw.githubusercontent.com/mihaelamj/cupertino/main/install.sh)
 ```
 
-This downloads a pre-built, signed, and notarized universal binary, installs it to `/usr/local/bin`, and downloads the documentation databases.
+This downloads a pre-built, signed, and notarized universal binary, installs it to `/usr/local/bin`, and downloads the documentation databases. The installer automatically verifies the SHA256 checksum of the downloaded binary.
+
+**Safer manual install (with explicit integrity verification):**
+
+For environments where you prefer to verify the installer script before execution:
+
+```bash
+# Download installer and checksum
+curl -o install.sh https://raw.githubusercontent.com/mihaelamj/cupertino/main/install.sh
+curl -o install.sh.sha256 https://raw.githubusercontent.com/mihaelamj/cupertino/main/install.sh.sha256
+
+# Verify script integrity (if checksum available)
+shasum -a 256 -c install.sh.sha256
+
+# Run installer
+bash install.sh
+```
+
+The install script downloads a pre-built binary and automatically verifies its SHA256 checksum against the published artifact. If verification fails, the installation is aborted.
 
 **Or with Homebrew:**
 
