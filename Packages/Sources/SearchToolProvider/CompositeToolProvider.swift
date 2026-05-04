@@ -270,7 +270,28 @@ public actor CompositeToolProvider: ToolProvider {
         return ListToolsResult(tools: allTools)
     }
 
+    // why: catches dictionary-bomb shapes before unmarshalling; current schemas have
+    // ~12 keys per tool, 50 leaves ample headroom for legitimate clients.
+    private static let maxArgumentKeys = 50
+
+    // why: 30 seconds is generous enough for the slowest legitimate FTS query while
+    // still bounding worst-case CPU/memory impact from pathological inputs.
+    private static let toolExecutionTimeoutSeconds: TimeInterval = 30
+
     public func callTool(name: String, arguments: [String: AnyCodable]?) async throws -> CallToolResult {
+        if let arguments, arguments.count > Self.maxArgumentKeys {
+            throw ToolError.invalidArgument(
+                "arguments",
+                "exceeds maximum key count of \(Self.maxArgumentKeys)"
+            )
+        }
+
+        return try await withTimeout(seconds: Self.toolExecutionTimeoutSeconds) {
+            try await self.dispatch(name: name, arguments: arguments)
+        }
+    }
+
+    private func dispatch(name: String, arguments: [String: AnyCodable]?) async throws -> CallToolResult {
         let args = ArgumentExtractor(arguments)
 
         switch name {
@@ -296,6 +317,27 @@ public actor CompositeToolProvider: ToolProvider {
             return try await handleSearchConformances(args: args)
         default:
             throw ToolError.unknownTool(name)
+        }
+    }
+
+    /// Race the operation against a timeout; whichever finishes first wins, the other is cancelled.
+    private func withTimeout<T: Sendable>(
+        seconds: TimeInterval,
+        operation: @Sendable @escaping () async throws -> T
+    ) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                try await operation()
+            }
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                throw ToolError.timeout(seconds: seconds)
+            }
+            guard let result = try await group.next() else {
+                throw ToolError.timeout(seconds: seconds)
+            }
+            group.cancelAll()
+            return result
         }
     }
 
@@ -342,16 +384,16 @@ public actor CompositeToolProvider: ToolProvider {
 
     private func handleSearch(args: ArgumentExtractor) async throws -> CallToolResult {
         let query: String = try args.require(Shared.Constants.Search.schemaParamQuery)
-        let source = args.optional(Shared.Constants.Search.schemaParamSource)
-        let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
-        let language = args.optional(Shared.Constants.Search.schemaParamLanguage)
+        let source = try args.optional(Shared.Constants.Search.schemaParamSource)
+        let framework = try args.optional(Shared.Constants.Search.schemaParamFramework)
+        let language = try args.optional(Shared.Constants.Search.schemaParamLanguage)
         let limit = args.limit()
         let includeArchive = args.includeArchive()
-        let minIOS = args.minIOS()
-        let minMacOS = args.minMacOS()
-        let minTvOS = args.minTvOS()
-        let minWatchOS = args.minWatchOS()
-        let minVisionOS = args.minVisionOS()
+        let minIOS = try args.minIOS()
+        let minMacOS = try args.minMacOS()
+        let minTvOS = try args.minTvOS()
+        let minWatchOS = try args.minWatchOS()
+        let minVisionOS = try args.minVisionOS()
 
         // Route based on source parameter
         // Default (nil) now searches ALL sources for better results (#81)
@@ -617,7 +659,7 @@ public actor CompositeToolProvider: ToolProvider {
         }
 
         let uri: String = try args.require(Shared.Constants.Search.schemaParamURI)
-        let formatString = args.format()
+        let formatString = try args.format()
         let format: Search.Index.DocumentFormat = formatString == Shared.Constants.Search.formatValueMarkdown
             ? .markdown : .json
 
@@ -638,7 +680,7 @@ public actor CompositeToolProvider: ToolProvider {
             throw ToolError.invalidArgument("database", "Sample code database not available")
         }
 
-        let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
+        let framework = try args.optional(Shared.Constants.Search.schemaParamFramework)
         let limit = args.limit(default: 50)
 
         let projects = try await sampleDatabase.listProjects(framework: framework, limit: limit)
@@ -765,10 +807,10 @@ public actor CompositeToolProvider: ToolProvider {
             throw ToolError.invalidArgument("index", "Documentation index not available")
         }
 
-        let query = args.optional(Shared.Constants.Search.schemaParamQuery)
-        let kind = args.optional(Shared.Constants.Search.schemaParamKind)
+        let query = try args.optional(Shared.Constants.Search.schemaParamQuery)
+        let kind = try args.optional(Shared.Constants.Search.schemaParamKind)
         let isAsync = args.optionalBool(Shared.Constants.Search.schemaParamIsAsync)
-        let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
+        let framework = try args.optional(Shared.Constants.Search.schemaParamFramework)
         let limit = args.limit()
 
         let results = try await searchIndex.searchSymbols(
@@ -795,7 +837,7 @@ public actor CompositeToolProvider: ToolProvider {
         }
 
         let wrapper: String = try args.require(Shared.Constants.Search.schemaParamWrapper)
-        let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
+        let framework = try args.optional(Shared.Constants.Search.schemaParamFramework)
         let limit = args.limit()
 
         let results = try await searchIndex.searchPropertyWrappers(
@@ -821,7 +863,7 @@ public actor CompositeToolProvider: ToolProvider {
         }
 
         let pattern: String = try args.require(Shared.Constants.Search.schemaParamPattern)
-        let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
+        let framework = try args.optional(Shared.Constants.Search.schemaParamFramework)
         let limit = args.limit()
 
         let results = try await searchIndex.searchConcurrencyPatterns(
@@ -846,7 +888,7 @@ public actor CompositeToolProvider: ToolProvider {
         }
 
         let protocolName: String = try args.require(Shared.Constants.Search.schemaParamProtocol)
-        let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
+        let framework = try args.optional(Shared.Constants.Search.schemaParamFramework)
         let limit = args.limit()
 
         let results = try await searchIndex.searchConformances(

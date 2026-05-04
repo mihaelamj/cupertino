@@ -24,6 +24,9 @@ public enum ToolError: Error, LocalizedError, Sendable {
     /// No data available (e.g., no documentation crawled)
     case noData(String)
 
+    /// Tool execution exceeded the configured timeout
+    case timeout(seconds: TimeInterval)
+
     // MARK: - LocalizedError
 
     public var errorDescription: String? {
@@ -40,6 +43,8 @@ public enum ToolError: Error, LocalizedError, Sendable {
             return "Invalid resource URI: \(uri)"
         case .noData(let message):
             return message
+        case .timeout(let seconds):
+            return "Tool execution timed out after \(seconds) seconds"
         }
     }
 }

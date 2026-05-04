@@ -6,11 +6,29 @@ import MCP
 /// Helper for extracting and validating MCP tool arguments.
 /// Reduces boilerplate in tool providers by providing type-safe access to arguments.
 public struct ArgumentExtractor: Sendable {
+    // why: search queries / URIs should never exceed this; defense against malformed
+    // or hostile input from the host LLM (indirect prompt injection / payload DoS).
+    public static let maxStringLength = 16 * 1024
+
     private let arguments: [String: AnyCodable]?
 
     /// Initialize with MCP tool arguments
     public init(_ arguments: [String: AnyCodable]?) {
         self.arguments = arguments
+    }
+
+    // MARK: - Validation
+
+    private static func validate(_ key: String, _ value: String) throws -> String {
+        // utf8.count is more conservative than .count because a single Character
+        // can be many bytes; we cap on the wire size, not the grapheme count.
+        if value.utf8.count > maxStringLength {
+            throw ToolError.invalidArgument(
+                key,
+                "value exceeds maximum length of \(maxStringLength) bytes"
+            )
+        }
+        return value
     }
 
     // MARK: - Required Arguments
@@ -20,7 +38,7 @@ public struct ArgumentExtractor: Sendable {
         guard let value = arguments?[key]?.value as? String else {
             throw ToolError.missingArgument(key)
         }
-        return value
+        return try Self.validate(key, value)
     }
 
     /// Extract a required integer argument, throwing if missing
@@ -42,8 +60,11 @@ public struct ArgumentExtractor: Sendable {
     // MARK: - Optional Arguments
 
     /// Extract an optional string argument
-    public func optional(_ key: String) -> String? {
-        arguments?[key]?.value as? String
+    public func optional(_ key: String) throws -> String? {
+        guard let value = arguments?[key]?.value as? String else {
+            return nil
+        }
+        return try Self.validate(key, value)
     }
 
     /// Extract an optional integer argument
@@ -59,8 +80,11 @@ public struct ArgumentExtractor: Sendable {
     // MARK: - Arguments with Defaults
 
     /// Extract a string argument with a default value
-    public func optional(_ key: String, default defaultValue: String) -> String {
-        (arguments?[key]?.value as? String) ?? defaultValue
+    public func optional(_ key: String, default defaultValue: String) throws -> String {
+        guard let value = arguments?[key]?.value as? String else {
+            return defaultValue
+        }
+        return try Self.validate(key, value)
     }
 
     /// Extract an integer argument with a default value
@@ -88,8 +112,8 @@ public struct ArgumentExtractor: Sendable {
     public func format(
         key: String = Shared.Constants.Search.schemaParamFormat,
         default defaultFormat: String = Shared.Constants.Search.formatValueJSON
-    ) -> String {
-        optional(key, default: defaultFormat)
+    ) throws -> String {
+        try optional(key, default: defaultFormat)
     }
 
     /// Check if include_archive flag is set
@@ -102,35 +126,35 @@ public struct ArgumentExtractor: Sendable {
     /// Extract min_ios version filter
     public func minIOS(
         key: String = Shared.Constants.Search.schemaParamMinIOS
-    ) -> String? {
-        optional(key)
+    ) throws -> String? {
+        try optional(key)
     }
 
     /// Extract min_macos version filter
     public func minMacOS(
         key: String = Shared.Constants.Search.schemaParamMinMacOS
-    ) -> String? {
-        optional(key)
+    ) throws -> String? {
+        try optional(key)
     }
 
     /// Extract min_tvos version filter
     public func minTvOS(
         key: String = Shared.Constants.Search.schemaParamMinTvOS
-    ) -> String? {
-        optional(key)
+    ) throws -> String? {
+        try optional(key)
     }
 
     /// Extract min_watchos version filter
     public func minWatchOS(
         key: String = Shared.Constants.Search.schemaParamMinWatchOS
-    ) -> String? {
-        optional(key)
+    ) throws -> String? {
+        try optional(key)
     }
 
     /// Extract min_visionos version filter
     public func minVisionOS(
         key: String = Shared.Constants.Search.schemaParamMinVisionOS
-    ) -> String? {
-        optional(key)
+    ) throws -> String? {
+        try optional(key)
     }
 }
