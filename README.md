@@ -42,7 +42,17 @@ Cupertino is a local, structured, AI-ready documentation system for Apple platfo
 
 *Building from source additionally requires Swift 6.2+ and Xcode 16.0+*
 
-### Installation
+#### Use with Xcode (GitHub Copilot for Xcode)
+
+If you use [GitHub Copilot for Xcode](https://github.com/github/CopilotForXcode), you can point it at your local Cupertino MCP server for Apple documentation-aware code completions:
+
+1. Install and configure [GitHub Copilot for Xcode](https://github.com/github/CopilotForXcode)
+2. In Copilot for Xcode settings, add a new MCP server pointing to your local Cupertino instance
+3. Copilot will now have access to Apple's developer documentation when suggesting code
+
+This gives you context-aware suggestions for Apple frameworks, APIs, and best practices directly in Xcode.
+
+## Installation
 
 **One-command install (recommended):**
 
