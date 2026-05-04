@@ -2,6 +2,26 @@ import Foundation
 import OSLog
 import Shared
 
+// MARK: - Privacy policy
+//
+// Unified-log entries persist in /var/db/diagnostics. Anything interpolated
+// without an explicit privacy level used to default to `.public` here, leaking
+// user-supplied paths, URIs, query strings, and third-party error payloads.
+//
+// Policy now applied across this module:
+//   .public    — static identifiers only: log levels, MCP method literals,
+//                build constants, fixed enum case descriptions.
+//   .private   — DEFAULT for every wrapper. Covers paths, URIs, search
+//                queries, tool arguments, error messages, and any value the
+//                caller passed in at runtime. Redacted to `<private>` in
+//                release; readable on a developer device with the right
+//                entitlement.
+//   .sensitive — tokens, credentials, env-var values; never readable from
+//                the unified log even with debug entitlements.
+//
+// Callers that genuinely need a literal raised back to `.public` must pass
+// `privacy: .public` explicitly.
+
 // MARK: - Logger Infrastructure
 
 /// Centralized logging infrastructure for Cupertino using os.log
@@ -47,41 +67,75 @@ extension Logging {
 
 // MARK: - Convenience Extensions
 
+/// Discrete privacy levels for the convenience wrappers. We cannot pass an
+/// `OSLogPrivacy` value at runtime — the os_log interpolation requires it to
+/// be a literal at the call site — so we dispatch to fixed branches.
+public enum LogPrivacy: Sendable {
+    case `public`
+    case `private`
+    case sensitive
+}
+
 extension Logger {
-    /// Log informational message (default level)
+    /// Log informational message. Defaults to `.private`; pass `.public` only
+    /// for static identifiers (see file-level privacy policy).
     @inlinable
-    public func info(_ message: String) {
-        info("\(message, privacy: .public)")
+    public func info(_ message: String, privacy: LogPrivacy = .private) {
+        switch privacy {
+        case .public: info("\(message, privacy: .public)")
+        case .private: info("\(message, privacy: .private)")
+        case .sensitive: info("\(message, privacy: .sensitive)")
+        }
     }
 
-    /// Log debug message (for development)
+    /// Log debug message. Defaults to `.private`.
     @inlinable
-    public func debug(_ message: String) {
-        debug("\(message, privacy: .public)")
+    public func debug(_ message: String, privacy: LogPrivacy = .private) {
+        switch privacy {
+        case .public: debug("\(message, privacy: .public)")
+        case .private: debug("\(message, privacy: .private)")
+        case .sensitive: debug("\(message, privacy: .sensitive)")
+        }
     }
 
-    /// Log warning message
+    /// Log warning message. Defaults to `.private`.
     @inlinable
-    public func warning(_ message: String) {
-        warning("\(message, privacy: .public)")
+    public func warning(_ message: String, privacy: LogPrivacy = .private) {
+        switch privacy {
+        case .public: warning("\(message, privacy: .public)")
+        case .private: warning("\(message, privacy: .private)")
+        case .sensitive: warning("\(message, privacy: .sensitive)")
+        }
     }
 
-    /// Log error message
+    /// Log error message. Defaults to `.private`.
     @inlinable
-    public func error(_ message: String) {
-        error("\(message, privacy: .public)")
+    public func error(_ message: String, privacy: LogPrivacy = .private) {
+        switch privacy {
+        case .public: error("\(message, privacy: .public)")
+        case .private: error("\(message, privacy: .private)")
+        case .sensitive: error("\(message, privacy: .sensitive)")
+        }
     }
 
-    /// Log critical error message
+    /// Log critical error message. Defaults to `.private`.
     @inlinable
-    public func critical(_ message: String) {
-        critical("\(message, privacy: .public)")
+    public func critical(_ message: String, privacy: LogPrivacy = .private) {
+        switch privacy {
+        case .public: critical("\(message, privacy: .public)")
+        case .private: critical("\(message, privacy: .private)")
+        case .sensitive: critical("\(message, privacy: .sensitive)")
+        }
     }
 
-    /// Log fault message (for serious errors)
+    /// Log fault message. Defaults to `.private`.
     @inlinable
-    public func fault(_ message: String) {
-        fault("\(message, privacy: .public)")
+    public func fault(_ message: String, privacy: LogPrivacy = .private) {
+        switch privacy {
+        case .public: fault("\(message, privacy: .public)")
+        case .private: fault("\(message, privacy: .private)")
+        case .sensitive: fault("\(message, privacy: .sensitive)")
+        }
     }
 }
 
@@ -91,16 +145,26 @@ extension Logger {
 /// Useful for CLI tools that need both user-facing output and logging
 extension Logging {
     public enum ConsoleLogger {
-        /// Print to stdout and log as info
-        public static func info(_ message: String, logger: os.Logger = Logging.Logger.cli) {
+        /// Print to stdout and log as info. The unified-log entry defaults
+        /// to `.private`; raise to `.public` only for static identifiers.
+        public static func info(
+            _ message: String,
+            logger: os.Logger = Logging.Logger.cli,
+            privacy: LogPrivacy = .private
+        ) {
             print(message)
-            logger.info(message)
+            logger.info(message, privacy: privacy)
         }
 
-        /// Print to stderr and log as error
-        public static func error(_ message: String, logger: os.Logger = Logging.Logger.cli) {
+        /// Print to stderr and log as error. The unified-log entry defaults
+        /// to `.private`.
+        public static func error(
+            _ message: String,
+            logger: os.Logger = Logging.Logger.cli,
+            privacy: LogPrivacy = .private
+        ) {
             fputs("\(message)\n", stderr)
-            logger.error(message)
+            logger.error(message, privacy: privacy)
         }
 
         /// Print to stdout only (no logging) - for interactive output

@@ -260,48 +260,52 @@ public actor UnifiedLogger {
 
     // MARK: - Logging Methods
 
-    /// Log a debug message
+    /// Log a debug message. Unified-log privacy defaults to `.private`.
     public func debug(
         _ message: String,
         category: Category = .cli,
+        privacy: LogPrivacy = .private,
         file: String = #file,
         function: String = #function,
         line: Int = #line
     ) {
-        log(message, level: .debug, category: category, file: file, function: function, line: line)
+        log(message, level: .debug, category: category, privacy: privacy, file: file, function: function, line: line)
     }
 
-    /// Log an info message
+    /// Log an info message. Unified-log privacy defaults to `.private`.
     public func info(
         _ message: String,
         category: Category = .cli,
+        privacy: LogPrivacy = .private,
         file: String = #file,
         function: String = #function,
         line: Int = #line
     ) {
-        log(message, level: .info, category: category, file: file, function: function, line: line)
+        log(message, level: .info, category: category, privacy: privacy, file: file, function: function, line: line)
     }
 
-    /// Log a warning message
+    /// Log a warning message. Unified-log privacy defaults to `.private`.
     public func warning(
         _ message: String,
         category: Category = .cli,
+        privacy: LogPrivacy = .private,
         file: String = #file,
         function: String = #function,
         line: Int = #line
     ) {
-        log(message, level: .warning, category: category, file: file, function: function, line: line)
+        log(message, level: .warning, category: category, privacy: privacy, file: file, function: function, line: line)
     }
 
-    /// Log an error message
+    /// Log an error message. Unified-log privacy defaults to `.private`.
     public func error(
         _ message: String,
         category: Category = .cli,
+        privacy: LogPrivacy = .private,
         file: String = #file,
         function: String = #function,
         line: Int = #line
     ) {
-        log(message, level: .error, category: category, file: file, function: function, line: line)
+        log(message, level: .error, category: category, privacy: privacy, file: file, function: function, line: line)
     }
 
     // MARK: - Core Logging
@@ -310,6 +314,7 @@ public actor UnifiedLogger {
         _ message: String,
         level: Level,
         category: Category,
+        privacy: LogPrivacy,
         file: String,
         function: String,
         line: Int
@@ -321,7 +326,7 @@ public actor UnifiedLogger {
         guard level >= options.minLevel else { return }
 
         // 1. Always log to os.log
-        logToOSLog(message, level: level, category: category)
+        logToOSLog(message, level: level, category: category, privacy: privacy)
 
         // 2. Log to console if enabled
         if options.consoleEnabled {
@@ -334,17 +339,17 @@ public actor UnifiedLogger {
         }
     }
 
-    private func logToOSLog(_ message: String, level: Level, category: Category) {
+    private func logToOSLog(_ message: String, level: Level, category: Category, privacy: LogPrivacy) {
         let logger = category.osLogger
         switch level {
         case .debug:
-            logger.debug("\(message, privacy: .public)")
+            logger.debug(message, privacy: privacy)
         case .info:
-            logger.info("\(message, privacy: .public)")
+            logger.info(message, privacy: privacy)
         case .warning:
-            logger.warning("\(message, privacy: .public)")
+            logger.warning(message, privacy: privacy)
         case .error:
-            logger.error("\(message, privacy: .public)")
+            logger.error(message, privacy: privacy)
         }
     }
 
@@ -469,36 +474,40 @@ public enum Log {
             .appendingPathComponent(Shared.Constants.FileName.logFile)
     }
 
-    /// Log a debug message
+    /// Log a debug message. Unified-log privacy defaults to `.private`.
     public static func debug(
         _ message: String,
-        category: UnifiedLogger.Category = .cli
+        category: UnifiedLogger.Category = .cli,
+        privacy: LogPrivacy = .private
     ) {
-        log(message, level: .debug, category: category)
+        log(message, level: .debug, category: category, privacy: privacy)
     }
 
-    /// Log an info message
+    /// Log an info message. Unified-log privacy defaults to `.private`.
     public static func info(
         _ message: String,
-        category: UnifiedLogger.Category = .cli
+        category: UnifiedLogger.Category = .cli,
+        privacy: LogPrivacy = .private
     ) {
-        log(message, level: .info, category: category)
+        log(message, level: .info, category: category, privacy: privacy)
     }
 
-    /// Log a warning message
+    /// Log a warning message. Unified-log privacy defaults to `.private`.
     public static func warning(
         _ message: String,
-        category: UnifiedLogger.Category = .cli
+        category: UnifiedLogger.Category = .cli,
+        privacy: LogPrivacy = .private
     ) {
-        log(message, level: .warning, category: category)
+        log(message, level: .warning, category: category, privacy: privacy)
     }
 
-    /// Log an error message
+    /// Log an error message. Unified-log privacy defaults to `.private`.
     public static func error(
         _ message: String,
-        category: UnifiedLogger.Category = .cli
+        category: UnifiedLogger.Category = .cli,
+        privacy: LogPrivacy = .private
     ) {
-        log(message, level: .error, category: category)
+        log(message, level: .error, category: category, privacy: privacy)
     }
 
     /// Output to console only (no logging) - for user-facing output like search results
@@ -509,7 +518,8 @@ public enum Log {
     private static func log(
         _ message: String,
         level: UnifiedLogger.Level,
-        category: UnifiedLogger.Category
+        category: UnifiedLogger.Category,
+        privacy: LogPrivacy
     ) {
         ensureInitialized()
 
@@ -519,13 +529,13 @@ public enum Log {
         let logger = category.osLogger
         switch level {
         case .debug:
-            logger.debug("\(message, privacy: .public)")
+            logger.debug(message, privacy: privacy)
         case .info:
-            logger.info("\(message, privacy: .public)")
+            logger.info(message, privacy: privacy)
         case .warning:
-            logger.warning("\(message, privacy: .public)")
+            logger.warning(message, privacy: privacy)
         case .error:
-            logger.error("\(message, privacy: .public)")
+            logger.error(message, privacy: privacy)
         }
 
         // 2. Log to console if enabled
@@ -559,46 +569,50 @@ public enum Log {
 
 // MARK: - Convenience Global Functions (Async)
 
-/// Log a debug message (async)
+/// Log a debug message (async). Unified-log privacy defaults to `.private`.
 public func logDebug(
     _ message: String,
     category: UnifiedLogger.Category = .cli,
+    privacy: LogPrivacy = .private,
     file: String = #file,
     function: String = #function,
     line: Int = #line
 ) async {
-    await UnifiedLogger.shared.debug(message, category: category, file: file, function: function, line: line)
+    await UnifiedLogger.shared.debug(message, category: category, privacy: privacy, file: file, function: function, line: line)
 }
 
-/// Log an info message (async)
+/// Log an info message (async). Unified-log privacy defaults to `.private`.
 public func logInfo(
     _ message: String,
     category: UnifiedLogger.Category = .cli,
+    privacy: LogPrivacy = .private,
     file: String = #file,
     function: String = #function,
     line: Int = #line
 ) async {
-    await UnifiedLogger.shared.info(message, category: category, file: file, function: function, line: line)
+    await UnifiedLogger.shared.info(message, category: category, privacy: privacy, file: file, function: function, line: line)
 }
 
-/// Log a warning message (async)
+/// Log a warning message (async). Unified-log privacy defaults to `.private`.
 public func logWarning(
     _ message: String,
     category: UnifiedLogger.Category = .cli,
+    privacy: LogPrivacy = .private,
     file: String = #file,
     function: String = #function,
     line: Int = #line
 ) async {
-    await UnifiedLogger.shared.warning(message, category: category, file: file, function: function, line: line)
+    await UnifiedLogger.shared.warning(message, category: category, privacy: privacy, file: file, function: function, line: line)
 }
 
-/// Log an error message (async)
+/// Log an error message (async). Unified-log privacy defaults to `.private`.
 public func logError(
     _ message: String,
     category: UnifiedLogger.Category = .cli,
+    privacy: LogPrivacy = .private,
     file: String = #file,
     function: String = #function,
     line: Int = #line
 ) async {
-    await UnifiedLogger.shared.error(message, category: category, file: file, function: function, line: line)
+    await UnifiedLogger.shared.error(message, category: category, privacy: privacy, file: file, function: function, line: line)
 }

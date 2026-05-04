@@ -107,14 +107,15 @@ struct ServeCommand: AsyncParsableCommand {
         let toolProvider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: sampleIndex)
         await server.registerToolProvider(toolProvider)
 
-        // Log availability of each index
+        // Log availability of each index. Pure literals — `.public` keeps
+        // these readable in release as a startup-health signal.
         if searchIndex != nil {
             let message = "✅ Documentation search enabled (index found)"
-            Log.info(message, category: .mcp)
+            Log.info(message, category: .mcp, privacy: .public)
         }
         if sampleIndex != nil {
             let message = "✅ Sample code search enabled (index found)"
-            Log.info(message, category: .mcp)
+            Log.info(message, category: .mcp, privacy: .public)
         }
     }
 
