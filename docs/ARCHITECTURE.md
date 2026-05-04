@@ -1,7 +1,7 @@
 # Cupertino Architecture
 
-**Version:** v0.3.5
-**Last Updated:** 2025-12-03
+**Version:** v1.0.0 "First Light" (in flight)
+**Last Updated:** 2026-05-04
 **Swift Version:** 6.2
 **Language Mode:** Swift 6 with Strict Concurrency Checking
 
@@ -23,78 +23,106 @@
 
 Cupertino is a Swift-based Apple documentation crawler and MCP (Model Context Protocol) server. The project uses **ExtremePackaging** architecture to organize code into focused, reusable modules.
 
-### Package Structure (v0.3.5)
+### Package Structure (v1.0.0)
 
-Cupertino uses **ExtremePackaging** architecture with 11 consolidated packages:
-
-```
-Foundation Layer:
-  ├─ MCP                    # Consolidated MCP framework (Protocol + Transport + Server)
-  ├─ Logging                # os.log infrastructure
-  └─ Shared                 # Configuration, models & utilities (ToolError, PathResolver, etc.)
-
-Infrastructure Layer:
-  ├─ Core                   # Crawler & downloaders
-  ├─ Search                 # SQLite FTS5 search for documentation
-  └─ SampleIndex            # SQLite FTS5 search for sample code
-
-Service Layer:
-  └─ Services               # Unified search services & formatters (see below)
-
-Application Layer:
-  ├─ MCPSupport             # Resource providers
-  ├─ SearchToolProvider     # Search tool implementations
-  └─ Resources              # Embedded resources
-
-Executables:
-  ├─ CLI                    # Unified cupertino binary
-  ├─ TUI                    # Terminal UI (cupertino-tui)
-  └─ MockAIAgent            # Testing tool (mock-ai-agent)
-```
-
-### Services Layer Architecture
-
-The Services module provides a unified service layer for search operations, allowing both CLI commands and MCP tool providers to share the same business logic:
+Cupertino uses **ExtremePackaging** with ~24 single-responsibility SPM targets, organized by role:
 
 ```
-                     ┌─────────────────────┐
-                     │  ServiceContainer   │
-                     │  (Lifecycle Mgmt)   │
-                     └─────────┬───────────┘
-                               │
-       ┌───────────────────────┼───────────────────────┐
-       │                       │                       │
-       ▼                       ▼                       ▼
-┌──────────────┐      ┌──────────────┐      ┌──────────────┐
-│DocsSearchSvc │      │ HIGSearchSvc │      │SampleSearchSvc│
-│ (Search.Index)│      │  (delegates) │      │ (SampleIndex) │
-└──────────────┘      └──────────────┘      └──────────────┘
-       │                       │                       │
-       └───────────────────────┼───────────────────────┘
-                               │
-                               ▼
-                     ┌─────────────────────┐
-                     │     Formatters      │
-                     │ (Text/JSON/Markdown)│
-                     └─────────────────────┘
+Foundation:
+  ├─ MCP                  # MCP framework (Protocol + Transport + Server)
+  ├─ Logging              # os.log infrastructure
+  └─ Shared               # Configuration, models, BinaryConfig, FTSQuery, SchemaVersion
+
+Infrastructure:
+  ├─ Core                 # Crawler, downloaders, package fetcher, AST annotation
+  ├─ ASTIndexer           # SwiftSyntax-driven symbol extraction
+  ├─ Search               # search.db schema, IndexBuilder, PackageIndex, PackageQuery, SmartQuery
+  ├─ SampleIndex          # samples.db schema + SampleIndex.Builder
+  ├─ Resources            # Embedded catalogs (apple sample-code, swift-packages, archive guides)
+  ├─ Availability         # Availability data types
+  └─ Cleanup              # Sample-code archive cleanup
+
+Operation packages (per CLI verb — Tuist-style):
+  ├─ Distribution         # cupertino setup        (#246) — download + extract DB zips
+  ├─ Diagnostics          # cupertino doctor probes (#245) — read-only DB + filesystem inspection
+  ├─ Indexer              # cupertino save         (#244) — build search.db / packages.db / samples.db + preflight
+  └─ Ingest               # cupertino fetch        (#247) — currently just session helpers; pipeline lifts in 4b–4f
+
+Read-side services (cross-CLI + MCP):
+  └─ Services             # Read services (Read, DocsSearch, HIGSearch, SampleSearch, UnifiedSearch, Teaser),
+                          # ServiceContainer, SearchService protocol, Formatters/, SampleCandidateFetcher
+
+MCP layer:
+  ├─ MCPSupport           # Resource providers
+  ├─ MCPClient            # Client side helpers
+  └─ SearchToolProvider   # Search tool implementations
+
+Front doors:
+  ├─ CLI                  # `cupertino` binary — thin: parse flags → call into operation packages
+  └─ TUI                  # `cupertino-tui` (alt UI)
+
+Auxiliary executables / utilities:
+  ├─ MockAIAgent          # `mock-ai-agent` (testing harness)
+  ├─ ReleaseTool          # `cupertino-rel` (release scripts)
+  ├─ RemoteSync           # GitHub-streamed indexing helper
+  └─ TestSupport          # Shared test fixtures
 ```
 
-**Services:**
-- `DocsSearchService` - Wraps Search.Index for documentation searches
-- `HIGSearchService` - Specialized HIG search with platform/category filters
-- `SampleSearchService` - Wraps SampleIndex.Database for sample code
+### Operation packages (#244–#247)
 
-**Formatters:**
-- `MarkdownFormatter` - For MCP tools and CLI `--format markdown`
-- `TextFormatter` - For CLI default output
-- `JSONFormatter` - For CLI `--format json`
+Per-CLI-verb packages contain the substantive logic that drives one user-facing command. CLI is then a thin front-door: parse flags → call into the operation package → render progress events. Mirrors Tuist's `<Verb>Command` precedent.
 
-See [Sources/Services/README.md](../Packages/Sources/Services/README.md) for detailed usage.
+| Package | CLI verb | Owns |
+|---|---|---|
+| `Distribution` | `cupertino setup` | `SetupService`, `ArtifactDownloader`, `ArtifactExtractor`, `InstalledVersion`, `PackagesReleaseURL` |
+| `Diagnostics` | `cupertino doctor` | `Probes` (DB + filesystem read-only inspection), `SchemaVersion` |
+| `Indexer` | `cupertino save` | `DocsService` (build search.db), `PackagesService` (build packages.db), `SamplesService` (build samples.db), `Preflight` |
+| `Ingest` | `cupertino fetch` | `Session` (clearSavedSession, requeueErroredURLs, requeueFromBaseline, enqueueURLsFromFile, checkForSession). Pipeline orchestrators (per fetch type) lift in follow-up sub-PRs. |
 
-**v0.2 Package Changes:**
-- **Consolidated MCP:** MCPShared + MCPTransport + MCPServer → MCP
-- **Namespaced Types:** CupertinoLogging → Logging, CupertinoShared → Shared, etc.
-- **Unified Binary:** Single `cupertino` binary (no separate `cupertino-mcp`)
+Each operation package emits progress via callback events (`Distribution.SetupService.Event`, `Indexer.DocsService.Event`, etc.) so consumers (CLI, MCP, future agent shell) can render whatever they want without the package taking on UI dependencies.
+
+### Read-side services layer
+
+The Services package provides shared read services used by **both** CLI commands and MCP tool providers:
+
+```mermaid
+flowchart TD
+    SC[ServiceContainer<br/>lifecycle mgmt: with*Service { … }]
+
+    R[ReadService<br/>3-DB dispatch]
+    DS[DocsSearchService<br/>search.db]
+    HS[HIGSearchService<br/>HIG-only, delegates]
+    SS[SampleSearchService<br/>samples.db]
+    US[UnifiedSearchService<br/>multi-DB]
+    TS[TeaserService<br/>cross-source teasers]
+
+    F[Formatters/<br/>Text · JSON · Markdown]
+
+    SC --> R
+    SC --> DS
+    SC --> HS
+    SC --> SS
+    SC --> US
+    SC --> TS
+
+    DS --> F
+    HS --> F
+    SS --> F
+    US --> F
+```
+
+**Top-level Services/:** infrastructure (`ServiceContainer`, `SearchService` protocol, `SampleCandidateFetcher` adapter, `Services.swift` namespace, `Formatters/`).
+
+**Cross-CLI consumers:** `cupertino read`, `cupertino search`, `cupertino list-frameworks`, `cupertino list-samples`, `cupertino read-sample`, `cupertino read-sample-file`. The MCP `SearchToolProvider` consumes the same services.
+
+### Recent architectural changes (1.0)
+
+- **Per-verb operation packages** (#244, #245, #246, #247): SetupCommand 478→177 LoC, DoctorCommand 596→400 LoC, SaveCommand 828→312 LoC + 229 LoC, FetchCommand 1279→1022 LoC. CLI front-doors are now thin.
+- **Unified `cupertino read`** (#239 follow-up): single command dispatches across docs / samples / packages via `--source`. `Services.ReadService` + `Search.PackageQuery.fileContent` (reads from `package_files_fts.content`, no on-disk packages tree required).
+- **Default `cupertino search` is fan-out** (#239): merges what was `cupertino ask` — RRF (k=60) across every available DB, chunked excerpts, per-result `▶ Read full:` hints. `--brief`, `--per-source`, `--platform`, `--min-version`, `--skip-{docs,packages,samples}`, `--packages-db`.
+- **MCP read tools split** today by source: `read_document` / `read_sample` / `read_sample_file` (separate). The CLI's unified `cupertino read` is the single front-door for all three.
+
+**v0.2 Package Changes** (historical): MCPShared + MCPTransport + MCPServer → MCP; namespaced types (CupertinoLogging → Logging, etc.); unified `cupertino` binary (no separate `cupertino-mcp`).
 
 ### Key Features
 
