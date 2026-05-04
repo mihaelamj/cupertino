@@ -1,4 +1,5 @@
 import Foundation
+import Shared
 
 // MARK: - Smart cross-source query (#192 section E)
 
@@ -12,6 +13,14 @@ import Foundation
 // fetcher locally, then fusing on 1/(k + rank), gives a robust combined
 // order without per-source coefficient tuning. k=60 is the widely-used
 // default from the Cormack / Clarke / Büttcher paper.
+//
+// Intent routing (#254): RRF treats every source equally, which buries
+// canonical apple-docs hits for symbol-name queries (e.g. `Task`,
+// `URLSession`) under prose-heavy sources whose rank-1 result fuses to
+// the same 1/(k+1) score. For queries that look like a Swift identifier
+// we prune the fetcher set to the sources where a symbol is the canonical
+// answer (apple-docs, swift-evolution, packages) before fan-out. Prose
+// queries keep the full all-source path.
 
 extension Search {
     /// Cross-source smart query. Runs every configured `CandidateFetcher`
@@ -22,12 +31,61 @@ extension Search {
         /// orderings. Exposed for experimentation / tests.
         public static let defaultRRFK: Double = 60
 
+        /// Sources where a symbol-name query has a canonical answer. Used
+        /// by intent routing (#254) to prune the fetcher set when the
+        /// question looks like a Swift identifier.
+        public static let symbolPreferredSources: Set<String> = [
+            Shared.Constants.SourcePrefix.appleDocs,
+            Shared.Constants.SourcePrefix.swiftEvolution,
+            Shared.Constants.SourcePrefix.packages,
+        ]
+
         private let fetchers: [any CandidateFetcher]
         private let rrfK: Double
 
         public init(fetchers: [any CandidateFetcher], rrfK: Double = Self.defaultRRFK) {
             self.fetchers = fetchers
             self.rrfK = rrfK
+        }
+
+        /// Returns true when `query` looks like a single Swift identifier:
+        /// one whitespace-free token, ASCII letters / digits / underscore,
+        /// starting with an uppercase letter, length >= 2.
+        ///
+        /// Designed to fire on canonical type-name lookups (`Task`, `View`,
+        /// `URLSession`, `Result`) and stay quiet on prose questions
+        /// ("how do I cancel an async operation"). Lowercase single tokens
+        /// like `view` are intentionally excluded — they are ambiguous
+        /// between symbol and prose intent and prose fan-out is the safer
+        /// default.
+        public static func isLikelySymbolQuery(_ query: String) -> Bool {
+            let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmed.count >= 2 else { return false }
+            guard let first = trimmed.unicodeScalars.first,
+                  CharacterSet.uppercaseLetters.contains(first) else { return false }
+            let allowed = CharacterSet(
+                charactersIn:
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_"
+            )
+            return trimmed.unicodeScalars.allSatisfy { allowed.contains($0) }
+        }
+
+        /// Apply intent routing to a fetcher list. Symbol-name questions
+        /// keep only the sources where a symbol is the canonical answer
+        /// (apple-docs / swift-evolution / packages); prose questions
+        /// pass through untouched. Falls back to the original list when
+        /// pruning would empty it, so callers that scope to a single
+        /// non-allowlisted source (e.g. `--source apple-archive`) still
+        /// get results.
+        static func routeFetchers(
+            _ fetchers: [any CandidateFetcher],
+            for question: String
+        ) -> [any CandidateFetcher] {
+            guard isLikelySymbolQuery(question) else { return fetchers }
+            let filtered = fetchers.filter {
+                symbolPreferredSources.contains($0.sourceName)
+            }
+            return filtered.isEmpty ? fetchers : filtered
         }
 
         /// Run `question` against every fetcher and return the top-N fused
@@ -45,10 +103,10 @@ extension Search {
         ) async -> SmartResult {
             // Snapshot into locals so the closures don't capture `self` (which
             // would also require unnecessary marker imports).
-            let fetchers = fetchers
             let rrfK = rrfK
             let perFetcherLimit = perFetcherLimit
             let question = question
+            let fetchers = Self.routeFetchers(fetchers, for: question)
 
             // Fan out: one task per fetcher. Failures collapse to empty lists.
             let contributions: [(name: String, candidates: [SmartCandidate])] = await withTaskGroup(
