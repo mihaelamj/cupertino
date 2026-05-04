@@ -60,6 +60,35 @@ Path to the search database file.
 cupertino doctor --search-db ~/my-search.db
 ```
 
+### --save
+
+Run the `cupertino save` preflight check only — print which sources are present, which lack availability annotations, what would be skipped — without running the regular doctor health suite. Read-only, no DB writes. Same output `cupertino save` would print as its preflight summary, so you can ask "is save ready?" before committing to a run. ([#232](https://github.com/mihaelamj/cupertino/issues/232))
+
+**Type:** Flag
+**Default:** false
+
+**Example:**
+```bash
+cupertino doctor --save
+```
+
+**Sample output:**
+```
+🔍 `cupertino save` preflight check
+
+  Docs (search.db)
+    ✓  /Users/me/.cupertino/docs  (404969 entries)
+    ✓  Availability annotation present
+
+  Packages (packages.db)
+    ✓  /Users/me/.cupertino/packages  (183 packages)
+    ✓  availability.json sidecars  (183/183)
+
+  Samples (samples.db)
+    ✓  /Users/me/.cupertino/sample-code  (627 zips)
+    (annotation runs inline during save — no preflight check needed)
+```
+
 ## Examples
 
 ### Check Default Configuration

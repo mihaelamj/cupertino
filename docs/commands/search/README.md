@@ -250,6 +250,20 @@ Skip the samples source. Fan-out mode only.
 **Type:** Flag
 **Default:** false
 
+### --brief
+
+Trim each result's excerpt to its first ~12 non-blank lines for triage. The `Read full:` hint, `See also` footer, and tips still print. Fan-out mode + text/markdown only — JSON keeps full chunks for programmatic consumers. ([#239](https://github.com/mihaelamj/cupertino/issues/239) follow-up)
+
+**Type:** Flag
+**Default:** false (full chunks)
+
+**When to use**: skim a list of candidates without burning token budget on full READMEs/code excerpts. The full content is one `cupertino read <id>` away via the per-result hint.
+
+**Example:**
+```bash
+cupertino search "swiftui list animation" --brief --limit 5
+```
+
 ### --platform
 
 Restrict packages, samples, and apple-docs results to the named platform's deployment target. Fan-out mode only. Requires `--min-version`. ([#220](https://github.com/mihaelamj/cupertino/issues/220), [#233](https://github.com/mihaelamj/cupertino/issues/233))
