@@ -1,8 +1,7 @@
 import Foundation
+@testable import Search
 import SQLite3
 import Testing
-
-@testable import Search
 
 // Per-column bm25 weighting (#181). `Search.Index.search` applies
 // `bm25(docs_fts, 1.0, 1.0, 2.0, 1.0, 10.0, 1.0, 3.0, 5.0)` so that title matches
@@ -20,9 +19,9 @@ private struct RankedHit {
     let rank: Double
 }
 
-// Run the exact bm25 expression used by `Search.Index.search`. We hit
-// docs_fts directly so this test fails if the weight vector drifts, not if
-// some upstream boost heuristic changes.
+/// Run the exact bm25 expression used by `Search.Index.search`. We hit
+/// docs_fts directly so this test fails if the weight vector drifts, not if
+/// some upstream boost heuristic changes.
 private func rankedHits(
     at dbPath: URL,
     matching query: String
@@ -63,7 +62,6 @@ private enum BM25TestError: Error {
 
 @Suite("Search.Index bm25 title-weight boost (#181)")
 struct BM25TitleWeightingTests {
-
     @Test("Title match outranks body match for a single term")
     func titleBeatsBody() async throws {
         let dbPath = makeTempDB()

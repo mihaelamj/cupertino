@@ -1,7 +1,6 @@
 import Foundation
-import Testing
-
 @testable import Search
+import Testing
 
 // Reciprocal rank fusion (#192 section E4). Covered with a deterministic
 // in-memory `MockFetcher` so the fusion math is guarded independently of
@@ -39,7 +38,6 @@ private func candidate(source: String, id: String, title: String = "t", rawScore
 
 @Suite("Search.SmartQuery (#192 E4)")
 struct SmartQueryTests {
-
     @Test("Single fetcher: order preserved, scores descend, fetcher listed as contributing")
     func singleFetcher() async {
         let fetcher = MockFetcher(

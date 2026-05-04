@@ -1,3 +1,4 @@
+// swiftlint:disable function_body_length
 import Foundation
 
 // MARK: - Composable Search Result (LEGO Model)
@@ -213,9 +214,17 @@ public struct ResultSection<Atom: ResultAtom>: Sendable {
         self.totalAvailable = totalAvailable ?? atoms.count
     }
 
-    public var isEmpty: Bool { atoms.isEmpty }
-    public var count: Int { atoms.count }
-    public var hasMore: Bool { totalAvailable > atoms.count }
+    public var isEmpty: Bool {
+        atoms.isEmpty
+    }
+
+    public var count: Int {
+        atoms.count
+    }
+
+    public var hasMore: Bool {
+        totalAvailable > atoms.count
+    }
 }
 
 // MARK: - Hint & Tip Types
@@ -287,7 +296,7 @@ public struct ComposedSearchResult: Sendable {
     public let framework: String?
     public let timestamp: Date
 
-    // Primary results (what user asked for)
+    /// Primary results (what user asked for)
     public let primarySection: ResultSection<DocAtom>?
 
     // Supporting sections (related sources)
@@ -299,13 +308,13 @@ public struct ComposedSearchResult: Sendable {
     public let swiftBookSection: ResultSection<DocAtom>?
     public let packageSection: ResultSection<PackageAtom>?
 
-    // Hints about other sources (teasers)
+    /// Hints about other sources (teasers)
     public let hints: [SourceHint]
 
-    // Contextual tips
+    /// Contextual tips
     public let tips: [SearchTip]
 
-    // Quick links
+    /// Quick links
     public let quickLinks: [QuickLink]
 
     public init(

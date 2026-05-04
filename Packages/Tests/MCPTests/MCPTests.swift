@@ -1,11 +1,12 @@
+// swiftlint:disable use_data_constructor_over_string_member non_optional_string_data_conversion
 import Foundation
 @testable import MCP
 import Testing
 
 // MARK: - MCP Framework Tests
 
-/// Tests for the core MCP (Model Context Protocol) framework
-/// This is the base cross-platform framework for MCP communication
+// Tests for the core MCP (Model Context Protocol) framework
+// This is the base cross-platform framework for MCP communication
 
 // MARK: - JSON-RPC 2.0 Protocol Tests
 
@@ -106,7 +107,7 @@ struct JSONRPCProtocolTests {
     }
 
     @Test("AnyCodable preserves dictionary type")
-    func anyCodableDictionaryPreservation() throws {
+    func anyCodableDictionaryPreservation() {
         // Create a nested dictionary structure like tools/call request
         let innerDict: [String: AnyCodable] = [
             "query": AnyCodable("SwiftUI"),
@@ -615,7 +616,7 @@ struct MCPProtocolTypesTests {
 @Suite("MCP Server")
 struct MCPServerTests {
     @Test("Server initializes with correct info")
-    func serverInitialization() async {
+    func serverInitialization() {
         let server = MCPServer(name: "test-server", version: "1.0.0")
         // Server should be created successfully (if this compiles, it worked)
         _ = server

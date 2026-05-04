@@ -5,9 +5,9 @@ import Testing
 // MARK: - DocumentationPage Tests
 
 @Test("DocumentationPage initializes with all required fields")
-func documentationPageInitialization() {
-    let page = DocumentationPage(
-        url: URL(string: "https://developer.apple.com/documentation/swift")!,
+func documentationPageInitialization() throws {
+    let page = try DocumentationPage(
+        url: #require(URL(string: "https://developer.apple.com/documentation/swift")),
         framework: "Swift",
         title: "Swift Documentation",
         filePath: URL(fileURLWithPath: "/docs/swift.md"),
@@ -24,8 +24,8 @@ func documentationPageInitialization() {
 
 @Test("DocumentationPage is Codable")
 func documentationPageCodable() throws {
-    let originalPage = DocumentationPage(
-        url: URL(string: "https://developer.apple.com/documentation/swift/array")!,
+    let originalPage = try DocumentationPage(
+        url: #require(URL(string: "https://developer.apple.com/documentation/swift/array")),
         framework: "Swift",
         title: "Array",
         filePath: URL(fileURLWithPath: "/docs/array.md"),
@@ -49,9 +49,9 @@ func documentationPageCodable() throws {
 }
 
 @Test("DocumentationPage generates unique IDs")
-func documentationPageUniqueIDs() {
-    let page1 = DocumentationPage(
-        url: URL(string: "https://example.com/doc1")!,
+func documentationPageUniqueIDs() throws {
+    let page1 = try DocumentationPage(
+        url: #require(URL(string: "https://example.com/doc1")),
         framework: "Test",
         title: "Doc 1",
         filePath: URL(fileURLWithPath: "/test.md"),
@@ -59,8 +59,8 @@ func documentationPageUniqueIDs() {
         depth: 0
     )
 
-    let page2 = DocumentationPage(
-        url: URL(string: "https://example.com/doc2")!,
+    let page2 = try DocumentationPage(
+        url: #require(URL(string: "https://example.com/doc2")),
         framework: "Test",
         title: "Doc 2",
         filePath: URL(fileURLWithPath: "/test.md"),
@@ -270,9 +270,9 @@ private typealias Page = StructuredDocumentationPage
 private typealias Kind = StructuredDocumentationPage.Kind
 
 @Test("StructuredDocumentationPage extracts @attributes from declaration")
-func structuredPageExtractsAttributes() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageExtractsAttributes() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "Test",
         kind: .unknown,
         source: .appleJSON,
@@ -288,9 +288,9 @@ func structuredPageExtractsAttributes() {
 }
 
 @Test("StructuredDocumentationPage extracts @attributes with arguments")
-func structuredPageExtractsAttributesWithArgs() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageExtractsAttributesWithArgs() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "Test",
         kind: .unknown,
         source: .appleJSON,
@@ -305,9 +305,9 @@ func structuredPageExtractsAttributesWithArgs() {
 }
 
 @Test("StructuredDocumentationPage normalizes declaration by stripping attributes")
-func structuredPageNormalizesDeclaration() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageNormalizesDeclaration() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "Test",
         kind: .unknown,
         source: .appleJSON,
@@ -321,9 +321,9 @@ func structuredPageNormalizesDeclaration() {
 }
 
 @Test("StructuredDocumentationPage normalizes multi-line declaration")
-func structuredPageNormalizesMultilineDeclaration() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageNormalizesMultilineDeclaration() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "Test",
         kind: .unknown,
         source: .appleJSON,
@@ -337,9 +337,9 @@ func structuredPageNormalizesMultilineDeclaration() {
 }
 
 @Test("StructuredDocumentationPage inferredKind detects struct with @attributes")
-func structuredPageInferredKindStructWithAttributes() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageInferredKindStructWithAttributes() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "MyView",
         kind: .unknown,
         source: .appleJSON,
@@ -352,9 +352,9 @@ func structuredPageInferredKindStructWithAttributes() {
 }
 
 @Test("StructuredDocumentationPage inferredKind detects static var with @backDeployed")
-func structuredPageInferredKindStaticVarWithBackDeployed() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageInferredKindStaticVarWithBackDeployed() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "monthly",
         kind: .unknown,
         source: .appleJSON,
@@ -367,9 +367,9 @@ func structuredPageInferredKindStaticVarWithBackDeployed() {
 }
 
 @Test("StructuredDocumentationPage inferredKind detects subscript")
-func structuredPageInferredKindSubscript() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageInferredKindSubscript() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "subscript",
         kind: .unknown,
         source: .appleJSON,
@@ -382,9 +382,9 @@ func structuredPageInferredKindSubscript() {
 }
 
 @Test("StructuredDocumentationPage inferredKind detects actor")
-func structuredPageInferredKindActor() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageInferredKindActor() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "DataStore",
         kind: .unknown,
         source: .appleJSON,
@@ -397,9 +397,9 @@ func structuredPageInferredKindActor() {
 }
 
 @Test("StructuredDocumentationPage inferredKind detects associatedtype")
-func structuredPageInferredKindAssociatedtype() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageInferredKindAssociatedtype() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "Element",
         kind: .unknown,
         source: .appleJSON,
@@ -412,9 +412,9 @@ func structuredPageInferredKindAssociatedtype() {
 }
 
 @Test("StructuredDocumentationPage inferredKind preserves non-unknown kinds")
-func structuredPageInferredKindPreservesExisting() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageInferredKindPreservesExisting() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "Test",
         kind: .method, // Already classified
         source: .appleJSON,
@@ -430,9 +430,9 @@ func structuredPageInferredKindPreservesExisting() {
 // MARK: - Modifier Prefix Handling Tests
 
 @Test("StructuredDocumentationPage inferredKind detects public struct")
-func structuredPageInferredKindPublicStruct() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageInferredKindPublicStruct() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "MyStruct",
         kind: .unknown,
         source: .appleJSON,
@@ -445,9 +445,9 @@ func structuredPageInferredKindPublicStruct() {
 }
 
 @Test("StructuredDocumentationPage inferredKind detects final class")
-func structuredPageInferredKindFinalClass() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageInferredKindFinalClass() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "FinalClass",
         kind: .unknown,
         source: .appleJSON,
@@ -460,9 +460,9 @@ func structuredPageInferredKindFinalClass() {
 }
 
 @Test("StructuredDocumentationPage inferredKind detects open class")
-func structuredPageInferredKindOpenClass() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageInferredKindOpenClass() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "OpenClass",
         kind: .unknown,
         source: .appleJSON,
@@ -475,9 +475,9 @@ func structuredPageInferredKindOpenClass() {
 }
 
 @Test("StructuredDocumentationPage inferredKind detects nonisolated func")
-func structuredPageInferredKindNonisolatedFunc() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageInferredKindNonisolatedFunc() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "doWork",
         kind: .unknown,
         source: .appleJSON,
@@ -490,9 +490,9 @@ func structuredPageInferredKindNonisolatedFunc() {
 }
 
 @Test("StructuredDocumentationPage inferredKind detects public actor")
-func structuredPageInferredKindPublicActor() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageInferredKindPublicActor() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "MyActor",
         kind: .unknown,
         source: .appleJSON,
@@ -505,9 +505,9 @@ func structuredPageInferredKindPublicActor() {
 }
 
 @Test("StructuredDocumentationPage inferredKind detects public typealias")
-func structuredPageInferredKindPublicTypealias() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageInferredKindPublicTypealias() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "Handler",
         kind: .unknown,
         source: .appleJSON,
@@ -520,9 +520,9 @@ func structuredPageInferredKindPublicTypealias() {
 }
 
 @Test("StructuredDocumentationPage inferredKind detects indirect enum")
-func structuredPageInferredKindIndirectEnum() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageInferredKindIndirectEnum() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "Tree",
         kind: .unknown,
         source: .appleJSON,
@@ -537,9 +537,9 @@ func structuredPageInferredKindIndirectEnum() {
 // MARK: - Failable/Generic Initializer Tests
 
 @Test("StructuredDocumentationPage inferredKind detects failable init?")
-func structuredPageInferredKindFailableInit() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageInferredKindFailableInit() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "init(mimeType:conformingTo:)",
         kind: .unknown,
         source: .appleJSON,
@@ -552,9 +552,9 @@ func structuredPageInferredKindFailableInit() {
 }
 
 @Test("StructuredDocumentationPage inferredKind detects implicitly unwrapped init!")
-func structuredPageInferredKindIUOInit() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageInferredKindIUOInit() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "init(contentURL:)",
         kind: .unknown,
         source: .appleJSON,
@@ -567,9 +567,9 @@ func structuredPageInferredKindIUOInit() {
 }
 
 @Test("StructuredDocumentationPage inferredKind detects generic init<T>")
-func structuredPageInferredKindGenericInit() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageInferredKindGenericInit() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "init(controlPoints:creationDate:)",
         kind: .unknown,
         source: .appleJSON,
@@ -582,9 +582,9 @@ func structuredPageInferredKindGenericInit() {
 }
 
 @Test("StructuredDocumentationPage inferredKind detects convenience init?")
-func structuredPageInferredKindConvenienceFailableInit() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageInferredKindConvenienceFailableInit() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "init(mimeType:)",
         kind: .unknown,
         source: .appleJSON,
@@ -599,9 +599,9 @@ func structuredPageInferredKindConvenienceFailableInit() {
 // MARK: - REST API Types
 
 @Test("StructuredDocumentationPage inferredKind detects object as struct")
-func structuredPageInferredKindObject() {
-    let page = Page(
-        url: URL(string: "https://example.com")!,
+func structuredPageInferredKindObject() throws {
+    let page = try Page(
+        url: #require(URL(string: "https://example.com")),
         title: "ErrorResponse",
         kind: .unknown,
         source: .appleJSON,
@@ -616,21 +616,21 @@ func structuredPageInferredKindObject() {
 // MARK: - Deterministic identity & content hashing (#199)
 
 @Test("deterministicID returns the same UUID for the same URL")
-func deterministicIDIsStable() {
-    let url = URL(string: "https://developer.apple.com/documentation/spatial/rotation3d")!
+func deterministicIDIsStable() throws {
+    let url = try #require(URL(string: "https://developer.apple.com/documentation/spatial/rotation3d"))
     #expect(Page.deterministicID(for: url) == Page.deterministicID(for: url))
 }
 
 @Test("deterministicID differs across distinct URLs")
-func deterministicIDDiffersAcrossURLs() {
-    let rotationID = Page.deterministicID(for: URL(string: "https://developer.apple.com/documentation/spatial/rotation3d")!)
-    let poseID = Page.deterministicID(for: URL(string: "https://developer.apple.com/documentation/spatial/pose3d")!)
+func deterministicIDDiffersAcrossURLs() throws {
+    let rotationID = try Page.deterministicID(for: #require(URL(string: "https://developer.apple.com/documentation/spatial/rotation3d")))
+    let poseID = try Page.deterministicID(for: #require(URL(string: "https://developer.apple.com/documentation/spatial/pose3d")))
     #expect(rotationID != poseID)
 }
 
 @Test("canonicalContentHash is stable across crawledAt and id")
-func canonicalContentHashIgnoresVolatileFields() {
-    let url = URL(string: "https://developer.apple.com/documentation/spatial/rotation3d")!
+func canonicalContentHashIgnoresVolatileFields() throws {
+    let url = try #require(URL(string: "https://developer.apple.com/documentation/spatial/rotation3d"))
     let make: (UUID, Date) -> Page = { id, date in
         Page(
             id: id,
@@ -655,16 +655,16 @@ func canonicalContentHashIgnoresVolatileFields() {
 }
 
 @Test("canonicalContentHash changes when title changes")
-func canonicalContentHashTracksRealEdits() {
-    let url = URL(string: "https://developer.apple.com/documentation/spatial/rotation3d")!
+func canonicalContentHashTracksRealEdits() throws {
+    let url = try #require(URL(string: "https://developer.apple.com/documentation/spatial/rotation3d"))
     let original = Page(url: url, title: "Rotation3D", kind: .struct, source: .appleJSON)
     let edited = Page(url: url, title: "Rotation3D (renamed)", kind: .struct, source: .appleJSON)
     #expect(original.canonicalContentHash != edited.canonicalContentHash)
 }
 
 @Test("with(contentHash:) preserves all other fields")
-func withContentHashPreservesFields() {
-    let url = URL(string: "https://developer.apple.com/documentation/spatial/rotation3d")!
+func withContentHashPreservesFields() throws {
+    let url = try #require(URL(string: "https://developer.apple.com/documentation/spatial/rotation3d"))
     let original = Page(
         id: Page.deterministicID(for: url),
         url: url,
@@ -687,9 +687,9 @@ func withContentHashPreservesFields() {
 // MARK: - URL canonicalization (#200)
 
 @Test("URLUtilities.normalize lowercases the path, strips fragment and query")
-func normalizeLowercasesPathAndStripsFragmentQuery() {
-    let mixed = URL(string: "https://developer.apple.com/documentation/Cinematic/CNAssetInfo-2ata2?lang=en#topic")!
-    let lower = URL(string: "https://developer.apple.com/documentation/cinematic/cnassetinfo-2ata2")!
+func normalizeLowercasesPathAndStripsFragmentQuery() throws {
+    let mixed = try #require(URL(string: "https://developer.apple.com/documentation/Cinematic/CNAssetInfo-2ata2?lang=en#topic"))
+    let lower = try #require(URL(string: "https://developer.apple.com/documentation/cinematic/cnassetinfo-2ata2"))
     #expect(URLUtilities.normalize(mixed) == URLUtilities.normalize(lower))
     #expect(
         URLUtilities.normalize(mixed)?.absoluteString
@@ -698,18 +698,18 @@ func normalizeLowercasesPathAndStripsFragmentQuery() {
 }
 
 @Test("URLUtilities.normalize is idempotent")
-func normalizeIsIdempotent() {
-    let url = URL(string: "https://developer.apple.com/documentation/SwiftUI/View")!
-    let once = URLUtilities.normalize(url)!
-    let twice = URLUtilities.normalize(once)!
+func normalizeIsIdempotent() throws {
+    let url = try #require(URL(string: "https://developer.apple.com/documentation/SwiftUI/View"))
+    let once = try #require(URLUtilities.normalize(url))
+    let twice = try #require(URLUtilities.normalize(once))
     #expect(once == twice)
 }
 
 @Test("URLUtilities.normalize preserves underscores in legitimate Apple framework names")
-func normalizePreservesUnderscoresInPath() {
+func normalizePreservesUnderscoresInPath() throws {
     // installer_js is a real Apple framework that uses underscore in its
     // canonical URL path. Normalize must not collapse it.
-    let url = URL(string: "https://developer.apple.com/documentation/installer_js/system")!
+    let url = try #require(URL(string: "https://developer.apple.com/documentation/installer_js/system"))
     let normalized = URLUtilities.normalize(url)
     #expect(normalized?.absoluteString == "https://developer.apple.com/documentation/installer_js/system")
 }
@@ -718,16 +718,16 @@ func normalizePreservesUnderscoresInPath() {
 
 @Test("StructuredDocumentationPage.crawlDepth defaults to nil and round-trips through Codable")
 func crawlDepthDefaultsToNilAndRoundTrips() throws {
-    let withoutDepth = Page(
-        url: URL(string: "https://developer.apple.com/documentation/swift/array")!,
+    let withoutDepth = try Page(
+        url: #require(URL(string: "https://developer.apple.com/documentation/swift/array")),
         title: "Array",
         kind: .struct,
         source: .appleJSON
     )
     #expect(withoutDepth.crawlDepth == nil)
 
-    let withDepth = Page(
-        url: URL(string: "https://developer.apple.com/documentation/swift/array/append(_:)")!,
+    let withDepth = try Page(
+        url: #require(URL(string: "https://developer.apple.com/documentation/swift/array/append(_:)")),
         title: "append",
         kind: .method,
         source: .appleJSON,
@@ -776,8 +776,8 @@ func crawlDepthLegacyJSONDecodesAsNil() throws {
 }
 
 @Test("StructuredDocumentationPage.crawlDepth does not affect canonicalContentHash")
-func crawlDepthDoesNotPerturbCanonicalHash() {
-    let url = URL(string: "https://developer.apple.com/documentation/swift/array")!
+func crawlDepthDoesNotPerturbCanonicalHash() throws {
+    let url = try #require(URL(string: "https://developer.apple.com/documentation/swift/array"))
     let depthA = Page(url: url, title: "Array", kind: .struct, source: .appleJSON, crawlDepth: 2)
     let depthB = Page(url: url, title: "Array", kind: .struct, source: .appleJSON, crawlDepth: 5)
     let depthNil = Page(url: url, title: "Array", kind: .struct, source: .appleJSON)

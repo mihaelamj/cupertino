@@ -4,9 +4,9 @@ import Testing
 
 // MARK: - Mock AI Agent Tests
 
-/// Tests for the MockAIAgent MCP client
-/// Focuses on MCP stdio protocol compliance, JSON encoding, and message framing
-/// These tests verify the bug fix for pretty-printed JSON violating the MCP spec
+// Tests for the MockAIAgent MCP client
+// Focuses on MCP stdio protocol compliance, JSON encoding, and message framing
+// These tests verify the bug fix for pretty-printed JSON violating the MCP spec
 
 // MARK: - JSON Encoding Tests
 
@@ -33,7 +33,7 @@ struct MCPMessageEncodingTests {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         let data = try encoder.encode(request)
-        let json = String(data: data, encoding: .utf8)!
+        let json = try #require(String(data: data, encoding: .utf8))
 
         // CRITICAL: Must not contain embedded newlines (MCP spec violation)
         #expect(!json.contains("\n"))
@@ -61,7 +61,7 @@ struct MCPMessageEncodingTests {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(request)
-        let json = String(data: data, encoding: .utf8)!
+        let json = try #require(String(data: data, encoding: .utf8))
 
         // This SHOULD contain newlines (demonstrating the bug we fixed)
         #expect(json.contains("\n"))
@@ -79,7 +79,7 @@ struct MCPMessageEncodingTests {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         let data = try encoder.encode(request)
-        let json = String(data: data, encoding: .utf8)!
+        let json = try #require(String(data: data, encoding: .utf8))
 
         // Decode back to verify it's valid
         let decoded = try JSONDecoder().decode(JSONRPCRequest.self, from: Data(json.utf8))
@@ -97,12 +97,12 @@ struct MCPMessageEncodingTests {
         encoder.outputFormatting = [.sortedKeys]
 
         let intData = try encoder.encode(intID)
-        let intJSON = String(data: intData, encoding: .utf8)!
+        let intJSON = try #require(String(data: intData, encoding: .utf8))
         #expect(!intJSON.contains("\n"))
         #expect(intJSON == "123")
 
         let stringData = try encoder.encode(stringID)
-        let stringJSON = String(data: stringData, encoding: .utf8)!
+        let stringJSON = try #require(String(data: stringData, encoding: .utf8))
         #expect(!stringJSON.contains("\n"))
         #expect(stringJSON == "\"test-456\"")
     }
@@ -328,7 +328,7 @@ struct MCPToolCallTests {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         let data = try encoder.encode(request)
-        let json = String(data: data, encoding: .utf8)!
+        let json = try #require(String(data: data, encoding: .utf8))
 
         // Should be single-line
         #expect(!json.contains("\n"))
@@ -369,7 +369,7 @@ struct MCPToolCallTests {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         let data = try encoder.encode(notification)
-        let json = String(data: data, encoding: .utf8)!
+        let json = try #require(String(data: data, encoding: .utf8))
 
         // Should be single-line
         #expect(!json.contains("\n"))

@@ -4,21 +4,21 @@ import Testing
 @Suite("MCPClient Tests")
 struct MCPClientTests {
     @Test("Initialize with server command")
-    func initWithCommand() async throws {
+    func initWithCommand() async {
         let client = MCPClient(serverCommand: "cupertino", serverArguments: ["serve"])
         let connected = await client.isConnected
         #expect(connected == false)
     }
 
     @Test("Initialize with full command array")
-    func initWithCommandArray() async throws {
+    func initWithCommandArray() async {
         let client = MCPClient(command: ["npx", "-y", "@modelcontextprotocol/server-memory"])
         let connected = await client.isConnected
         #expect(connected == false)
     }
 
     @Test("Create cupertino client")
-    func createCupertinoClient() async throws {
+    func createCupertinoClient() async {
         let client = MCPClient.cupertino()
         let connected = await client.isConnected
         #expect(connected == false)

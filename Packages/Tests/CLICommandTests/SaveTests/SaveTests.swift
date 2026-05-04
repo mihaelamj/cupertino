@@ -9,8 +9,8 @@ import TestSupport
 
 // MARK: - Save Command Tests
 
-/// Tests for the `cupertino save` command
-/// Verifies search index building, framework filtering, and empty directory handling
+// Tests for the `cupertino save` command
+// Verifies search index building, framework filtering, and empty directory handling
 
 @Suite("Save Command Tests", .serialized)
 struct SaveCommandTests {
@@ -26,9 +26,9 @@ struct SaveCommandTests {
         print("🧪 Test: Build search index")
 
         // First, fetch a page to have data
-        let config = Shared.Configuration(
+        let config = try Shared.Configuration(
             crawler: Shared.CrawlerConfiguration(
-                startURL: URL(string: "https://developer.apple.com/documentation/swift")!,
+                startURL: #require(URL(string: "https://developer.apple.com/documentation/swift")),
                 maxPages: 1,
                 maxDepth: 0,
                 outputDirectory: tempDir
@@ -81,9 +81,9 @@ struct SaveCommandTests {
         print("🧪 Test: Search with framework filter")
 
         // Fetch and save
-        let config = Shared.Configuration(
+        let config = try Shared.Configuration(
             crawler: Shared.CrawlerConfiguration(
-                startURL: URL(string: "https://developer.apple.com/documentation/swift")!,
+                startURL: #require(URL(string: "https://developer.apple.com/documentation/swift")),
                 maxPages: 1,
                 maxDepth: 0,
                 outputDirectory: tempDir
@@ -229,8 +229,8 @@ struct SaveCommandTests {
         try FileManager.default.createDirectory(at: swiftDir, withIntermediateDirectories: true)
 
         // Create test JSON files (StructuredDocumentationPage format)
-        let arrayPage = StructuredDocumentationPage(
-            url: URL(string: "https://developer.apple.com/documentation/swift/array")!,
+        let arrayPage = try StructuredDocumentationPage(
+            url: #require(URL(string: "https://developer.apple.com/documentation/swift/array")),
             title: "Array",
             kind: .struct,
             source: .appleWebKit,
@@ -240,8 +240,8 @@ struct SaveCommandTests {
         let arrayDoc = swiftDir.appendingPathComponent("array.json")
         try JSONCoding.encode(arrayPage, to: arrayDoc)
 
-        let dictPage = StructuredDocumentationPage(
-            url: URL(string: "https://developer.apple.com/documentation/swift/dictionary")!,
+        let dictPage = try StructuredDocumentationPage(
+            url: #require(URL(string: "https://developer.apple.com/documentation/swift/dictionary")),
             title: "Dictionary",
             kind: .struct,
             source: .appleWebKit,
@@ -255,8 +255,8 @@ struct SaveCommandTests {
         let swiftuiDir = tempDir.appendingPathComponent("docs/swiftui")
         try FileManager.default.createDirectory(at: swiftuiDir, withIntermediateDirectories: true)
 
-        let viewPage = StructuredDocumentationPage(
-            url: URL(string: "https://developer.apple.com/documentation/swiftui/view")!,
+        let viewPage = try StructuredDocumentationPage(
+            url: #require(URL(string: "https://developer.apple.com/documentation/swiftui/view")),
             title: "View",
             kind: .protocol,
             source: .appleWebKit,
@@ -309,8 +309,8 @@ struct SaveCommandTests {
         let nestedDir = tempDir.appendingPathComponent("docs/foundation/collections")
         try FileManager.default.createDirectory(at: nestedDir, withIntermediateDirectories: true)
 
-        let nestedPage = StructuredDocumentationPage(
-            url: URL(string: "https://developer.apple.com/documentation/foundation/nsarray")!,
+        let nestedPage = try StructuredDocumentationPage(
+            url: #require(URL(string: "https://developer.apple.com/documentation/foundation/nsarray")),
             title: "NSArray",
             kind: .class,
             source: .appleWebKit,

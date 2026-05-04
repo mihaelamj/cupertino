@@ -1,14 +1,13 @@
+// swiftlint:disable identifier_name
 import Foundation
-import Testing
-
 @testable import Search
 @testable import Shared
+import Testing
 
 // MARK: - DocKind taxonomy (#192 section C1)
 
 @Suite("Search.Classify.kind")
 struct DocKindClassifyTests {
-
     // MARK: Single-source branches
 
     @Test("swift-evolution → evolutionProposal")
@@ -162,7 +161,6 @@ struct DocKindClassifyTests {
 
 @Suite("Search.DocKind enum")
 struct DocKindEnumTests {
-
     @Test("Every case has the expected raw string")
     func rawValues() {
         let expected: [Search.DocKind: String] = [

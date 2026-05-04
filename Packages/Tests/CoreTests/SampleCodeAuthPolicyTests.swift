@@ -1,16 +1,14 @@
 #if os(macOS)
 import AppKit
+@testable import Core
 import Foundation
 import Testing
-
-@testable import Core
 
 /// Regression guard for #6. The authentication window only renders when the
 /// CLI process runs with `.regular` activation policy; `.prohibited` (the
 /// default for bare CLI tools) silently drops `NSWindow.makeKeyAndOrderFront`.
 @Suite("SampleCodeDownloader auth flow activation policy")
 struct SampleCodeAuthPolicyTests {
-
     @Test("Auth flow requires .regular activation policy (fix for #6)")
     func authFlowPolicyIsRegular() {
         #expect(SampleCodeDownloader.authFlowActivationPolicy == .regular)
@@ -31,7 +29,6 @@ struct SampleCodeAuthPolicyTests {
 
 @Suite("SampleCodeDownloader.containsAppleSessionCookie")
 struct AppleSessionCookieDetectionTests {
-
     private static func cookie(name: String, domain: String) -> HTTPCookie {
         HTTPCookie(properties: [
             .name: name,
@@ -96,7 +93,6 @@ struct AppleSessionCookieDetectionTests {
 
 @Suite("SampleCodeDownloader.isInteractiveStdin")
 struct IsInteractiveStdinTests {
-
     @Test("Override seam returns whatever was forced")
     func overrideIsRespected() {
         let previous = SampleCodeDownloader._isInteractiveStdinOverride
@@ -126,7 +122,6 @@ struct IsInteractiveStdinTests {
 
 @Suite("SampleCodeDownloader.AuthOutcome")
 struct AuthOutcomeTests {
-
     @Test("AuthOutcome exposes exactly the three expected cases")
     func outcomeCases() {
         // Exhaustive switch pins the case list at compile time.

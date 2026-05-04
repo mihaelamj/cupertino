@@ -9,8 +9,8 @@ import TestSupport
 
 // MARK: - Web Crawl Tests
 
-/// Tests for the `cupertino fetch` command (web crawling)
-/// Verifies web crawling functionality, resume capability, and Evolution proposals
+// Tests for the `cupertino fetch` command (web crawling)
+// Verifies web crawling functionality, resume capability, and Evolution proposals
 
 @Suite("Web Crawl Tests")
 struct WebCrawlTests {
@@ -24,9 +24,9 @@ struct WebCrawlTests {
             .appendingPathComponent("cupertino-fetch-test-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let config = Shared.Configuration(
+        let config = try Shared.Configuration(
             crawler: Shared.CrawlerConfiguration(
-                startURL: URL(string: "https://developer.apple.com/documentation/swift")!,
+                startURL: #require(URL(string: "https://developer.apple.com/documentation/swift")),
                 maxPages: 1,
                 maxDepth: 0,
                 outputDirectory: tempDir
@@ -82,9 +82,9 @@ struct WebCrawlTests {
             .appendingPathComponent("cupertino-resume-test-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let config = Shared.Configuration(
+        let config = try Shared.Configuration(
             crawler: Shared.CrawlerConfiguration(
-                startURL: URL(string: "https://developer.apple.com/documentation/swift")!,
+                startURL: #require(URL(string: "https://developer.apple.com/documentation/swift")),
                 maxPages: 1,
                 maxDepth: 0,
                 outputDirectory: tempDir

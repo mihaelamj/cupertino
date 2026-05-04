@@ -1,11 +1,10 @@
 import Core
 import Foundation
 import Logging
+@testable import Search
 import Shared
 import SQLite3
 import Testing
-
-@testable import Search
 
 // End-to-end test that a real `Search.IndexBuilder` run on a fixture
 // directory of structured JSON docs produces populated `doc_symbols` rows,
@@ -114,7 +113,6 @@ private func writeFixtureDoc(framework: String, name: String, into directory: UR
 
 @Suite("Search.IndexBuilder wires AST extraction (#192 D)", .serialized)
 struct IndexBuilderSymbolsIntegrationTests {
-
     @Test("buildIndex populates doc_symbols + docs_fts.symbols from fixture docs")
     func buildIndexPopulatesSymbols() async throws {
         let tempRoot = FileManager.default.temporaryDirectory

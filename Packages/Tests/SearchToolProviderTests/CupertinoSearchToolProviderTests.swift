@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Foundation
 import MCP
 @testable import SampleIndex
@@ -976,7 +977,7 @@ struct UnifiedSearchFormatterTests {
         #expect(!output.contains("Human Interface Guidelines (0)"))
     }
 
-    // Helper functions
+    /// Helper functions
     private func makeResult(title: String) -> Search.Result {
         Search.Result(
             uri: "test://\(title.lowercased().replacingOccurrences(of: " ", with: "-"))",

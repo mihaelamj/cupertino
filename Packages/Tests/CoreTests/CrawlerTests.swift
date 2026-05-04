@@ -5,8 +5,8 @@ import Testing
 
 // MARK: - Crawler Tests
 
-/// Tests for the Core.Crawler web crawling engine
-/// Note: These are integration tests that use real WKWebView
+// Tests for the Core.Crawler web crawling engine
+// Note: These are integration tests that use real WKWebView
 
 @Suite("Crawler")
 struct CrawlerTests {
@@ -18,9 +18,9 @@ struct CrawlerTests {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 
-        let config = Shared.Configuration(
+        let config = try Shared.Configuration(
             crawler: Shared.CrawlerConfiguration(
-                startURL: URL(string: "https://developer.apple.com")!,
+                startURL: #require(URL(string: "https://developer.apple.com")),
                 maxPages: 5,
                 outputDirectory: tempDir
             ),
@@ -44,7 +44,7 @@ struct CrawlerTests {
 
     @Test("URLUtilities normalize preserves path but removes trailing slash")
     func urlNormalizePreservesPath() throws {
-        let url = URL(string: "https://example.com/path/")!
+        let url = try #require(URL(string: "https://example.com/path/"))
         let normalized = URLUtilities.normalize(url)
 
         // Normalization removes fragments, query params, and trailing slashes
@@ -53,27 +53,27 @@ struct CrawlerTests {
 
     @Test("URLUtilities normalize removes fragments")
     func urlNormalizeRemovesFragments() throws {
-        let url = URL(string: "https://example.com/path#section")!
+        let url = try #require(URL(string: "https://example.com/path#section"))
         let normalized = URLUtilities.normalize(url)
 
         #expect(normalized?.fragment == nil)
-        #expect(!normalized!.absoluteString.contains("#"))
+        #expect(try !#require(normalized?.absoluteString.contains("#")))
     }
 
     @Test("URLUtilities normalize removes query parameters")
     func urlNormalizeRemovesQueryParams() throws {
-        let url = URL(string: "https://example.com/path?param=value")!
+        let url = try #require(URL(string: "https://example.com/path?param=value"))
         let normalized = URLUtilities.normalize(url)
 
         #expect(normalized?.query == nil)
-        #expect(!normalized!.absoluteString.contains("?"))
+        #expect(try !#require(normalized?.absoluteString.contains("?")))
     }
 
     // MARK: - Framework Extraction Tests
 
     @Test("URLUtilities extracts framework from Apple docs URL")
     func extractFrameworkFromAppleDocs() throws {
-        let url = URL(string: "https://developer.apple.com/documentation/swift/array")!
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/swift/array"))
         let framework = URLUtilities.extractFramework(from: url)
 
         #expect(framework == "swift")
@@ -81,7 +81,7 @@ struct CrawlerTests {
 
     @Test("URLUtilities extracts framework from nested path")
     func extractFrameworkFromNestedPath() throws {
-        let url = URL(string: "https://developer.apple.com/documentation/uikit/uiview/animator")!
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/uikit/uiview/animator"))
         let framework = URLUtilities.extractFramework(from: url)
 
         #expect(framework == "uikit")
@@ -89,7 +89,7 @@ struct CrawlerTests {
 
     @Test("URLUtilities returns root for non-documentation URLs")
     func extractFrameworkReturnsRootForNonDocs() throws {
-        let url = URL(string: "https://example.com/some/path")!
+        let url = try #require(URL(string: "https://example.com/some/path"))
         let framework = URLUtilities.extractFramework(from: url)
 
         #expect(framework == "root")
@@ -99,7 +99,7 @@ struct CrawlerTests {
 
     @Test("URLUtilities generates filename from URL")
     func generateFilenameFromURL() throws {
-        let url = URL(string: "https://developer.apple.com/documentation/swift/array")!
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/swift/array"))
         let filename = URLUtilities.filename(from: url)
 
         #expect(filename.contains("array"))
@@ -108,7 +108,7 @@ struct CrawlerTests {
 
     @Test("URLUtilities handles complex paths in filename")
     func generateFilenameFromComplexPath() throws {
-        let url = URL(string: "https://developer.apple.com/documentation/uikit/uiview/1622417-addsubview")!
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/uikit/uiview/1622417-addsubview"))
         let filename = URLUtilities.filename(from: url)
 
         #expect(!filename.isEmpty)
@@ -118,7 +118,7 @@ struct CrawlerTests {
     // MARK: - Hash Utilities Tests
 
     @Test("HashUtilities SHA256 generates consistent hashes")
-    func hashUtilitiesConsistentHash() throws {
+    func hashUtilitiesConsistentHash() {
         let content = "Test content for hashing"
 
         let hash1 = HashUtilities.sha256(of: content)
@@ -129,7 +129,7 @@ struct CrawlerTests {
     }
 
     @Test("HashUtilities SHA256 produces different hashes for different content")
-    func hashUtilitiesDifferentContentDifferentHash() throws {
+    func hashUtilitiesDifferentContentDifferentHash() {
         let content1 = "Content A"
         let content2 = "Content B"
 
@@ -140,7 +140,7 @@ struct CrawlerTests {
     }
 
     @Test("HashUtilities SHA256 handles empty string")
-    func hashUtilitiesEmptyString() throws {
+    func hashUtilitiesEmptyString() {
         let hash = HashUtilities.sha256(of: "")
 
         #expect(!hash.isEmpty)
@@ -150,7 +150,7 @@ struct CrawlerTests {
     // MARK: - CrawlStatistics Tests
 
     @Test("CrawlStatistics initializes with zeros")
-    func statisticsInitializesWithZeros() throws {
+    func statisticsInitializesWithZeros() {
         let stats = CrawlStatistics()
 
         #expect(stats.totalPages == 0)
@@ -189,8 +189,8 @@ struct CrawlerTests {
     @Test("CrawlProgress calculates percentage")
     func progressCalculatesPercentage() throws {
         let stats = CrawlStatistics()
-        let progress = CrawlProgress(
-            currentURL: URL(string: "https://example.com")!,
+        let progress = try CrawlProgress(
+            currentURL: #require(URL(string: "https://example.com")),
             visitedCount: 10,
             totalPages: 100,
             stats: stats
@@ -209,9 +209,9 @@ struct CrawlerTests {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 
-        let config = Shared.Configuration(
+        let config = try Shared.Configuration(
             crawler: Shared.CrawlerConfiguration(
-                startURL: URL(string: "https://example.com")!,
+                startURL: #require(URL(string: "https://example.com")),
                 maxPages: 1, // Limit to 1 page
                 outputDirectory: tempDir,
                 requestDelay: 0.1
@@ -249,9 +249,9 @@ struct CrawlerTests {
         try? FileManager.default.removeItem(at: tempDir)
         #expect(!FileManager.default.fileExists(atPath: tempDir.path))
 
-        let config = Shared.Configuration(
+        let config = try Shared.Configuration(
             crawler: Shared.CrawlerConfiguration(
-                startURL: URL(string: "https://example.com")!,
+                startURL: #require(URL(string: "https://example.com")),
                 maxPages: 1,
                 outputDirectory: tempDir,
                 requestDelay: 0.1
@@ -287,7 +287,7 @@ struct CrawlerTests {
         // The JSON API alternative: https://developer.apple.com/tutorials/data/documentation/accelerate/lapack-functions.json
         // returns 7.2MB of structured data vs trying to render a massive DOM
 
-        let lapackURL = URL(string: "https://developer.apple.com/documentation/accelerate/lapack-functions")!
+        let lapackURL = try #require(URL(string: "https://developer.apple.com/documentation/accelerate/lapack-functions"))
 
         // The URL should normalize correctly
         let normalized = URLUtilities.normalize(lapackURL)
@@ -309,7 +309,7 @@ struct CrawlerTests {
         // Web: https://developer.apple.com/documentation/accelerate/lapack-functions
         // JSON: https://developer.apple.com/tutorials/data/documentation/accelerate/lapack-functions.json
 
-        let docURL = URL(string: "https://developer.apple.com/documentation/accelerate/lapack-functions")!
+        let docURL = try #require(URL(string: "https://developer.apple.com/documentation/accelerate/lapack-functions"))
 
         // Derive JSON API URL from documentation URL
         let path = docURL.path // "/documentation/accelerate/lapack-functions"

@@ -5,8 +5,8 @@ import Testing
 
 // MARK: - Sample Code Downloader Tests
 
-/// Tests for the SampleCodeDownloader
-/// Tests initialization, metadata handling, and statistics tracking
+// Tests for the SampleCodeDownloader
+// Tests initialization, metadata handling, and statistics tracking
 
 @Suite("Sample Code Downloader")
 struct SampleCodeDownloaderTests {
@@ -14,7 +14,7 @@ struct SampleCodeDownloaderTests {
 
     @Test("SampleCodeDownloader initializes with output directory")
     @MainActor
-    func downloaderInitialization() async throws {
+    func downloaderInitialization() {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 
@@ -29,7 +29,7 @@ struct SampleCodeDownloaderTests {
 
     @Test("SampleCodeDownloader initializes with maxSamples limit")
     @MainActor
-    func downloaderInitializationWithLimit() async throws {
+    func downloaderInitializationWithLimit() {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 
@@ -46,7 +46,7 @@ struct SampleCodeDownloaderTests {
 
     @Test("SampleCodeDownloader initializes with forceDownload flag")
     @MainActor
-    func downloaderInitializationWithForceDownload() async throws {
+    func downloaderInitializationWithForceDownload() {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 
@@ -63,7 +63,7 @@ struct SampleCodeDownloaderTests {
 
     @Test("SampleCodeDownloader initializes with visible browser flag")
     @MainActor
-    func downloaderInitializationWithVisibleBrowser() async throws {
+    func downloaderInitializationWithVisibleBrowser() {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 
@@ -81,7 +81,7 @@ struct SampleCodeDownloaderTests {
     // MARK: - SampleMetadata Tests
 
     @Test("SampleMetadata stores sample info")
-    func sampleMetadataStoresInfo() throws {
+    func sampleMetadataStoresInfo() {
         let metadata = SampleMetadata(
             name: "Building a Document-Based App",
             url: "https://developer.apple.com/documentation/swiftui/building_a_document_based_app",
@@ -94,7 +94,7 @@ struct SampleCodeDownloaderTests {
     }
 
     @Test("SampleMetadata slug is extracted from URL")
-    func sampleMetadataSlugFromURL() throws {
+    func sampleMetadataSlugFromURL() {
         let url = "https://developer.apple.com/documentation/swiftui/fruta_building_a_feature_rich_app"
         let components = url.components(separatedBy: "/")
         let slug = components.last ?? ""
@@ -105,7 +105,7 @@ struct SampleCodeDownloaderTests {
     // MARK: - SampleStatistics Tests
 
     @Test("SampleStatistics initializes with zeros")
-    func statisticsInitializesWithZeros() throws {
+    func statisticsInitializesWithZeros() {
         let stats = SampleStatistics()
 
         #expect(stats.totalSamples == 0)
@@ -115,7 +115,7 @@ struct SampleCodeDownloaderTests {
     }
 
     @Test("SampleStatistics tracks counts")
-    func statisticsTracksCounts() throws {
+    func statisticsTracksCounts() {
         var stats = SampleStatistics(startTime: Date())
         stats.totalSamples = 606
         stats.downloadedSamples = 500
@@ -129,7 +129,7 @@ struct SampleCodeDownloaderTests {
     }
 
     @Test("SampleStatistics calculates duration")
-    func statisticsCalculatesDuration() throws {
+    func statisticsCalculatesDuration() {
         var stats = SampleStatistics(startTime: Date())
         stats.endTime = stats.startTime?.addingTimeInterval(7200) // 2 hours
 
@@ -138,7 +138,7 @@ struct SampleCodeDownloaderTests {
     }
 
     @Test("SampleStatistics duration is nil without end time")
-    func statisticsDurationNilWithoutEndTime() throws {
+    func statisticsDurationNilWithoutEndTime() {
         let stats = SampleStatistics(startTime: Date())
 
         #expect(stats.duration == nil)
@@ -147,7 +147,7 @@ struct SampleCodeDownloaderTests {
     // MARK: - SampleProgress Tests
 
     @Test("SampleProgress tracks download progress")
-    func progressTracksProgress() throws {
+    func progressTracksProgress() {
         let stats = SampleStatistics()
         let progress = SampleProgress(
             current: 100,
@@ -163,7 +163,7 @@ struct SampleCodeDownloaderTests {
     }
 
     @Test("SampleProgress calculates percentage correctly")
-    func progressCalculatesPercentage() throws {
+    func progressCalculatesPercentage() {
         let stats = SampleStatistics()
         let progress = SampleProgress(
             current: 303,
@@ -178,7 +178,7 @@ struct SampleCodeDownloaderTests {
     // MARK: - Archive Format Detection Tests
 
     @Test("Detects ZIP archive format")
-    func detectsZIPFormat() throws {
+    func detectsZIPFormat() {
         let filename = "sample-project.zip"
 
         let isZip = filename.hasSuffix(".zip")
@@ -186,7 +186,7 @@ struct SampleCodeDownloaderTests {
     }
 
     @Test("Detects TAR.GZ archive format")
-    func detectsTarGzFormat() throws {
+    func detectsTarGzFormat() {
         let filename = "sample-project.tar.gz"
 
         let isTarGz = filename.hasSuffix(".tar.gz")
@@ -194,7 +194,7 @@ struct SampleCodeDownloaderTests {
     }
 
     @Test("Detects TGZ archive format")
-    func detectsTgzFormat() throws {
+    func detectsTgzFormat() {
         let filename = "sample-project.tgz"
 
         let isTgz = filename.hasSuffix(".tgz")
@@ -204,7 +204,7 @@ struct SampleCodeDownloaderTests {
     // MARK: - File Path Tests
 
     @Test("Generates output path from slug")
-    func generatesOutputPathFromSlug() throws {
+    func generatesOutputPathFromSlug() {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
         let slug = "building_a_document_based_app"
@@ -239,7 +239,7 @@ struct SampleCodeDownloaderTests {
 
     @Test("Cookies path is in output directory")
     @MainActor
-    func cookiesPathInOutputDirectory() async throws {
+    func cookiesPathInOutputDirectory() {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 
@@ -259,7 +259,7 @@ struct SampleCodeDownloaderTests {
     // MARK: - URL Validation Tests
 
     @Test("Sample code list URL is valid")
-    func sampleCodeListURLIsValid() throws {
+    func sampleCodeListURLIsValid() {
         let urlString = Shared.Constants.BaseURL.appleSampleCode
 
         #expect(URL(string: urlString) != nil)
@@ -267,7 +267,7 @@ struct SampleCodeDownloaderTests {
     }
 
     @Test("Sample URLs are valid HTTPS URLs")
-    func sampleURLsAreHTTPS() throws {
+    func sampleURLsAreHTTPS() {
         let sampleURL = "https://developer.apple.com/documentation/swiftui/fruta_building_a_feature_rich_app"
 
         #expect(sampleURL.hasPrefix("https://"))
@@ -278,7 +278,7 @@ struct SampleCodeDownloaderTests {
 
     @Test("Downloader creates output directory", .tags(.integration))
     @MainActor
-    func downloaderCreatesOutputDirectory() async throws {
+    func downloaderCreatesOutputDirectory() {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 

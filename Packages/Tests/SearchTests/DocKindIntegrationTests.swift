@@ -1,10 +1,10 @@
 import Foundation
+@testable import Search
 import SQLite3
 import Testing
 
-@testable import Search
-
 // MARK: - C2 integration coverage
+
 //
 // Each change introduced by #192 section C2 lives under its own suite here:
 //   - Schema version lock
@@ -22,7 +22,7 @@ private func makeTempDB() -> URL {
         .appendingPathComponent("dockind-\(UUID().uuidString).db")
 }
 
-// Raw-SQL helper: read a single column value for a given URI from the temp DB.
+/// Raw-SQL helper: read a single column value for a given URI from the temp DB.
 private func readColumn(
     at dbPath: URL,
     column: String,
@@ -53,7 +53,7 @@ private func readColumn(
     return String(cString: sqlite3_column_text(stmt, 0))
 }
 
-// Raw-SQL helper: check whether an index with the given name exists.
+/// Raw-SQL helper: check whether an index with the given name exists.
 private func indexExists(at dbPath: URL, name: String) throws -> Bool {
     var db: OpaquePointer?
     guard sqlite3_open(dbPath.path, &db) == SQLITE_OK else {
@@ -71,7 +71,7 @@ private func indexExists(at dbPath: URL, name: String) throws -> Bool {
     return sqlite3_step(stmt) == SQLITE_ROW
 }
 
-// Raw-SQL helper: read PRAGMA user_version.
+/// Raw-SQL helper: read PRAGMA user_version.
 private func readSchemaVersion(at dbPath: URL) throws -> Int32 {
     var db: OpaquePointer?
     guard sqlite3_open(dbPath.path, &db) == SQLITE_OK else {
@@ -99,7 +99,6 @@ enum TestError: Error {
 
 @Suite("Search.Index schema shape (#192 C2)")
 struct SchemaShapeTests {
-
     @Test("Schema version constant is 12")
     func schemaVersionIs12() {
         #expect(Search.Index.schemaVersion == 12)
@@ -130,7 +129,6 @@ struct SchemaShapeTests {
 
 @Suite("Search.Index.indexDocument → docs_metadata.kind (#192 C2)")
 struct IndexDocumentKindTests {
-
     private func insertAndReadKind(
         source: String,
         uri: String,
@@ -202,7 +200,6 @@ struct IndexDocumentKindTests {
 
 @Suite("Search.Index docs_metadata.symbols column (#192 C2)")
 struct SymbolsColumnTests {
-
     @Test("symbols column is NULL by default after indexDocument")
     func symbolsDefaultsToNull() async throws {
         let dbPath = makeTempDB()

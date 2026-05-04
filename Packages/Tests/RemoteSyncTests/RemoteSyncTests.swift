@@ -1,7 +1,6 @@
 import Foundation
-import Testing
-
 @testable import RemoteSync
+import Testing
 
 // MARK: - RemoteIndexState Tests
 
@@ -143,7 +142,7 @@ struct RemoteIndexStateTests {
 @Suite("RemoteSyncProgress Tests")
 struct RemoteSyncProgressTests {
     @Test("Progress ETA calculation")
-    func progressETA() {
+    func progressETA() throws {
         // 50% done in 60 seconds = ~60 seconds remaining
         let progress = RemoteSyncProgress(
             phase: .docs,
@@ -158,8 +157,8 @@ struct RemoteSyncProgressTests {
 
         let eta = progress.estimatedTimeRemaining
         #expect(eta != nil)
-        #expect(eta! > 55.0)
-        #expect(eta! < 65.0)
+        #expect(try #require(eta) > 55.0)
+        #expect(try #require(eta) < 65.0)
     }
 
     @Test("Progress ETA nil for early progress")
@@ -260,8 +259,8 @@ struct GitHubFetcherTests {
     }
 
     @Test("Error descriptions")
-    func errorDescriptions() {
-        let url = URL(string: "https://example.com/test")!
+    func errorDescriptions() throws {
+        let url = try #require(URL(string: "https://example.com/test"))
 
         let notFound = GitHubFetcherError.notFound(url: url)
         #expect(notFound.description.contains("Not found"))

@@ -1,3 +1,4 @@
+// swiftlint:disable type_body_length
 @testable import Core
 import Foundation
 @testable import Shared
@@ -5,8 +6,8 @@ import Testing
 
 // MARK: - Swift Evolution Crawler Tests
 
-/// Tests for the Core.EvolutionCrawler
-/// Tests proposal ID extraction, status parsing, and filtering logic
+// Tests for the Core.EvolutionCrawler
+// Tests proposal ID extraction, status parsing, and filtering logic
 
 @Suite("Swift Evolution Crawler")
 struct SwiftEvolutionCrawlerTests {
@@ -14,7 +15,7 @@ struct SwiftEvolutionCrawlerTests {
 
     @Test("EvolutionCrawler initializes with output directory")
     @MainActor
-    func crawlerInitialization() async throws {
+    func crawlerInitialization() {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 
@@ -29,7 +30,7 @@ struct SwiftEvolutionCrawlerTests {
 
     @Test("EvolutionCrawler initializes with onlyAccepted flag")
     @MainActor
-    func crawlerInitializationWithFlag() async throws {
+    func crawlerInitializationWithFlag() {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 
@@ -90,7 +91,7 @@ struct SwiftEvolutionCrawlerTests {
 
     @Test("Recognizes Implemented status")
     @MainActor
-    func recognizesImplementedStatus() async throws {
+    func recognizesImplementedStatus() throws {
         let markdown = """
         # Some Proposal
         * Status: **Implemented (Swift 5.0)**
@@ -114,7 +115,7 @@ struct SwiftEvolutionCrawlerTests {
 
     @Test("Recognizes Accepted status")
     @MainActor
-    func recognizesAcceptedStatus() async throws {
+    func recognizesAcceptedStatus() throws {
         let markdown = """
         # Some Proposal
         * Status: **Accepted**
@@ -137,7 +138,7 @@ struct SwiftEvolutionCrawlerTests {
 
     @Test("Recognizes Rejected status")
     @MainActor
-    func recognizesRejectedStatus() async throws {
+    func recognizesRejectedStatus() throws {
         let markdown = """
         # Some Proposal
         * Status: **Rejected**
@@ -162,7 +163,7 @@ struct SwiftEvolutionCrawlerTests {
 
     @Test("Implemented status is considered accepted")
     @MainActor
-    func implementedIsAccepted() async throws {
+    func implementedIsAccepted() {
         let status = "Implemented (Swift 5.0)"
         let isAccepted = status.lowercased().contains("implemented") ||
             status.lowercased().contains("accepted")
@@ -172,7 +173,7 @@ struct SwiftEvolutionCrawlerTests {
 
     @Test("Accepted status is considered accepted")
     @MainActor
-    func acceptedIsAccepted() async throws {
+    func acceptedIsAccepted() {
         let status = "Accepted"
         let isAccepted = status.lowercased().contains("implemented") ||
             status.lowercased().contains("accepted")
@@ -182,7 +183,7 @@ struct SwiftEvolutionCrawlerTests {
 
     @Test("Accepted with revisions is considered accepted")
     @MainActor
-    func acceptedWithRevisionsIsAccepted() async throws {
+    func acceptedWithRevisionsIsAccepted() {
         let status = "Accepted with revisions"
         let isAccepted = status.lowercased().contains("implemented") ||
             status.lowercased().contains("accepted")
@@ -192,7 +193,7 @@ struct SwiftEvolutionCrawlerTests {
 
     @Test("Rejected status is not accepted")
     @MainActor
-    func rejectedIsNotAccepted() async throws {
+    func rejectedIsNotAccepted() {
         let status = "Rejected"
         let isAccepted = status.lowercased().contains("implemented") ||
             status.lowercased().contains("accepted")
@@ -202,7 +203,7 @@ struct SwiftEvolutionCrawlerTests {
 
     @Test("Withdrawn status is not accepted")
     @MainActor
-    func withdrawnIsNotAccepted() async throws {
+    func withdrawnIsNotAccepted() {
         let status = "Withdrawn"
         let isAccepted = status.lowercased().contains("implemented") ||
             status.lowercased().contains("accepted")
@@ -213,7 +214,7 @@ struct SwiftEvolutionCrawlerTests {
     // MARK: - EvolutionStatistics Tests
 
     @Test("EvolutionStatistics initializes with zeros")
-    func statisticsInitializesWithZeros() throws {
+    func statisticsInitializesWithZeros() {
         let stats = EvolutionStatistics()
 
         #expect(stats.totalProposals == 0)
@@ -223,7 +224,7 @@ struct SwiftEvolutionCrawlerTests {
     }
 
     @Test("EvolutionStatistics tracks counts")
-    func statisticsTracksCounts() throws {
+    func statisticsTracksCounts() {
         var stats = EvolutionStatistics(startTime: Date())
         stats.totalProposals = 400
         stats.newProposals = 350
@@ -237,7 +238,7 @@ struct SwiftEvolutionCrawlerTests {
     }
 
     @Test("EvolutionStatistics calculates duration")
-    func statisticsCalculatesDuration() throws {
+    func statisticsCalculatesDuration() {
         var stats = EvolutionStatistics(startTime: Date())
         stats.endTime = stats.startTime?.addingTimeInterval(3600) // 1 hour
 
@@ -248,7 +249,7 @@ struct SwiftEvolutionCrawlerTests {
     // MARK: - EvolutionProgress Tests
 
     @Test("EvolutionProgress tracks progress")
-    func progressTracksProgress() throws {
+    func progressTracksProgress() {
         let stats = EvolutionStatistics()
         let progress = EvolutionProgress(
             current: 100,
@@ -266,7 +267,7 @@ struct SwiftEvolutionCrawlerTests {
     // MARK: - ProposalMetadata Tests
 
     @Test("ProposalMetadata stores proposal info")
-    func proposalMetadataStoresInfo() throws {
+    func proposalMetadataStoresInfo() {
         let metadata = ProposalMetadata(
             id: "SE-0001",
             filename: "0001-keywords-as-argument-labels.md",
@@ -279,7 +280,7 @@ struct SwiftEvolutionCrawlerTests {
     }
 
     @Test("ProposalMetadata can be sorted by ID")
-    func proposalMetadataCanBeSorted() throws {
+    func proposalMetadataCanBeSorted() {
         let proposal1 = ProposalMetadata(
             id: "SE-0001",
             filename: "0001-test.md",
@@ -320,7 +321,7 @@ struct SwiftEvolutionCrawlerTests {
     }
 
     @Test("ProposalMetadata stores ST proposal info")
-    func stProposalMetadataStoresInfo() throws {
+    func stProposalMetadataStoresInfo() {
         let metadata = ProposalMetadata(
             id: "ST-0001",
             filename: "0001-refactor-bug-inits.md",
@@ -333,7 +334,7 @@ struct SwiftEvolutionCrawlerTests {
     }
 
     @Test("Mixed SE and ST proposals sort correctly")
-    func mixedSEAndSTProposalsSortCorrectly() throws {
+    func mixedSEAndSTProposalsSortCorrectly() {
         let proposals = [
             ProposalMetadata(id: "ST-0001", filename: "0001-test.md", downloadURL: "https://example.com/st1"),
             ProposalMetadata(id: "SE-0002", filename: "0002-test.md", downloadURL: "https://example.com/se2"),
@@ -349,7 +350,7 @@ struct SwiftEvolutionCrawlerTests {
     }
 
     @Test("EvolutionProgress works with ST proposal ID")
-    func progressWithSTProposalID() throws {
+    func progressWithSTProposalID() {
         let stats = EvolutionStatistics()
         let progress = EvolutionProgress(
             current: 1,
@@ -366,7 +367,7 @@ struct SwiftEvolutionCrawlerTests {
 
     @Test("Crawler extractProposalID produces ST prefix when requested")
     @MainActor
-    func crawlerExtractProposalIDWithSTPrefix() async throws {
+    func crawlerExtractProposalIDWithSTPrefix() {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -387,7 +388,7 @@ struct SwiftEvolutionCrawlerTests {
 
     @Test("Crawler isAcceptedStatus returns false for missing status")
     @MainActor
-    func crawlerIsAcceptedStatusMissing() async throws {
+    func crawlerIsAcceptedStatusMissing() {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -399,7 +400,7 @@ struct SwiftEvolutionCrawlerTests {
 
     @Test("Crawler extractStatus returns nil for markdown without status header")
     @MainActor
-    func crawlerExtractStatusMissing() async throws {
+    func crawlerExtractStatusMissing() {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -425,7 +426,7 @@ struct SwiftEvolutionCrawlerTests {
 
     @Test("Crawler extractStatus parses hyphen-style status (ST format)")
     @MainActor
-    func crawlerExtractStatusHyphenStyle() async throws {
+    func crawlerExtractStatusHyphenStyle() {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -450,7 +451,7 @@ struct SwiftEvolutionCrawlerTests {
 
     @Test("Crawler creates output directory", .tags(.integration))
     @MainActor
-    func crawlerCreatesOutputDirectory() async throws {
+    func crawlerCreatesOutputDirectory() {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 

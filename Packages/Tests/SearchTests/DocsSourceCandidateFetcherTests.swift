@@ -1,7 +1,6 @@
 import Foundation
-import Testing
-
 @testable import Search
+import Testing
 
 // Covers H5 from #192: `DocsSourceCandidateFetcher` against a fixture
 // search.db. Verifies that the fetcher scopes to its source, adapts
@@ -50,7 +49,6 @@ private func seedIndex() async throws -> (Search.Index, URL) {
 
 @Suite("Search.DocsSourceCandidateFetcher (#192 H5)")
 struct DocsSourceCandidateFetcherTests {
-
     @Test("Source scoping: fetcher for apple-docs never surfaces swift-evolution rows")
     func scopesToDeclaredSource() async throws {
         let (index, dbPath) = try await seedIndex()

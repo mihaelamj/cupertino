@@ -215,7 +215,7 @@ extension Core {
         /// Remove everything in the extracted tree that matches the exclusion rules.
         /// Runs post-extract so the logic is all Swift (easier to test than tar glob
         /// patterns, which vary subtly between bsdtar and gnutar).
-        internal func prune(rootURL: URL) throws {
+        func prune(rootURL: URL) throws {
             try pruneTopLevelDirectories(at: rootURL)
             try pruneByPatterns(rootURL: rootURL)
         }
@@ -264,7 +264,7 @@ extension Core {
 
         // MARK: - Exclusion rules (visible for testing)
 
-        internal static let excludedTopLevelDirectories: Set<String> = [
+        static let excludedTopLevelDirectories: Set<String> = [
             ".github",
             ".build",
             "DerivedData",
@@ -273,7 +273,7 @@ extension Core {
             "Benchmarks",
         ]
 
-        internal static let excludedExtensions: Set<String> = [
+        static let excludedExtensions: Set<String> = [
             "png",
             "jpg",
             "jpeg",
@@ -289,7 +289,7 @@ extension Core {
             "pdf",
         ]
 
-        internal static let excludedHiddenFiles: Set<String> = [
+        static let excludedHiddenFiles: Set<String> = [
             ".editorconfig",
             ".gitignore",
             ".gitattributes",

@@ -1,3 +1,5 @@
+// swiftlint:disable identifier_name
+// swiftlint:disable function_body_length type_body_length
 import Foundation
 import Logging
 import Shared
@@ -21,7 +23,9 @@ extension Core {
             public let excludedCount: Int
             public let duration: TimeInterval
 
-            public var discoveredCount: Int { resolvedCount - seedCount }
+            public var discoveredCount: Int {
+                resolvedCount - seedCount
+            }
         }
 
         private let session: URLSession
@@ -110,7 +114,9 @@ extension Core {
                         }
                     }
                     var collected: [(String, String, String, FetchResult)] = []
-                    for await r in group { collected.append(r) }
+                    for await r in group {
+                        collected.append(r)
+                    }
                     return collected
                 }
 
@@ -168,7 +174,7 @@ extension Core {
                 }
 
                 if requestDelay > 0 {
-                    try? await Task.sleep(nanoseconds: UInt64(requestDelay * 1_000_000_000))
+                    try? await Task.sleep(nanoseconds: UInt64(requestDelay * 1000000000))
                 }
             }
 
@@ -199,18 +205,18 @@ extension Core {
             return (canonical.owner, canonical.repo)
         }
 
-        internal static func dedupeKey(owner: String, repo: String) -> String {
+        static func dedupeKey(owner: String, repo: String) -> String {
             "\(owner.lowercased())/\(repo.lowercased())"
         }
 
         // MARK: - Manifest fetch
 
-        internal struct FetchSuccess: Sendable {
+        struct FetchSuccess: Sendable {
             let dependencyURLs: [String]
             let registryIdentifierCount: Int
         }
 
-        internal enum FetchResult: Sendable {
+        enum FetchResult: Sendable {
             case success(FetchSuccess)
             case missing
             case malformed
@@ -317,7 +323,7 @@ extension Core {
         /// and v2/v3 (`pins[].location`) formats. Returns nil when the JSON root isn't a
         /// dict or the `pins` key is missing / wrong-typed; returns an empty array when
         /// `pins` is present but empty.
-        internal static func parsePackageResolvedLocations(_ data: Data) -> [String]? {
+        static func parsePackageResolvedLocations(_ data: Data) -> [String]? {
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
                 return nil
             }
@@ -325,8 +331,7 @@ extension Core {
             if let rootPins = json["pins"] as? [[String: Any]] {
                 pins = rootPins
             } else if let object = json["object"] as? [String: Any],
-                      let nestedPins = object["pins"] as? [[String: Any]]
-            {
+                      let nestedPins = object["pins"] as? [[String: Any]] {
                 pins = nestedPins
             } else {
                 return nil
@@ -353,7 +358,7 @@ extension Core {
         /// filtered before matching. Always returns an array — empty means the file was
         /// readable but had no GitHub-style URL declarations (or wasn't a manifest at
         /// all, which is indistinguishable for our purposes).
-        internal static func parsePackageSwiftURLs(_ data: Data) -> [String] {
+        static func parsePackageSwiftURLs(_ data: Data) -> [String] {
             guard let source = String(data: data, encoding: .utf8) else {
                 return []
             }
@@ -389,7 +394,7 @@ extension Core {
         /// `https://github.com/...` inside a `"…"` string is NOT treated as a comment.
         /// Naive `"…"` string tracking — doesn't need to handle escaped quotes because
         /// SwiftPM manifests almost never embed them in URLs or package names.
-        internal static func stripLineComment(_ line: Substring) -> String {
+        static func stripLineComment(_ line: Substring) -> String {
             var result = ""
             var inString = false
             var i = line.startIndex
@@ -416,7 +421,7 @@ extension Core {
         /// Package.swift. We don't resolve them to source URLs (the SwiftPM registry
         /// protocol is scope-specific and out of scope for this resolver); we just count
         /// them so stats can surface that some deps exist but weren't walked.
-        internal static func parsePackageSwiftRegistryIdCount(_ data: Data) -> Int {
+        static func parsePackageSwiftRegistryIdCount(_ data: Data) -> Int {
             guard let source = String(data: data, encoding: .utf8) else { return 0 }
             let uncommented = source
                 .split(separator: "\n", omittingEmptySubsequences: false)
@@ -432,7 +437,7 @@ extension Core {
         }
 
         /// Test hook: expose the GitHub URL parser without leaking the fileprivate struct.
-        internal static func parseGitHubRepo(_ location: String) -> (owner: String, repo: String)? {
+        static func parseGitHubRepo(_ location: String) -> (owner: String, repo: String)? {
             guard let repo = GitHubRepo(location: location) else { return nil }
             return (repo.owner, repo.repo)
         }
@@ -442,13 +447,11 @@ extension Core {
         private func classify(owner: String) -> PackagePriority {
             if owner == Shared.Constants.GitHubOrg.apple
                 || owner == Shared.Constants.GitHubOrg.swiftlang
-                || owner == Shared.Constants.GitHubOrg.swiftServer
-            {
+                || owner == Shared.Constants.GitHubOrg.swiftServer {
                 return .appleOfficial
             }
             return .ecosystem
         }
-
     }
 }
 
@@ -457,7 +460,9 @@ extension Core {
 private struct GitHubRepo {
     let owner: String
     let repo: String
-    var canonicalURL: String { "https://github.com/\(owner)/\(repo)" }
+    var canonicalURL: String {
+        "https://github.com/\(owner)/\(repo)"
+    }
 
     /// Accepts common GitHub URL shapes:
     ///   https://github.com/owner/repo(.git)?

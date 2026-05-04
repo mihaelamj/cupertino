@@ -87,13 +87,13 @@ struct URLUtilitiesFilenameTests {
     }
 
     @Test("Different URLs always produce different filenames (no truncation collisions)")
-    func differentURLsAreUnique() {
-        let urls = [
+    func differentURLsAreUnique() throws {
+        let urls = try [
             Self.mpssvgfReprojection12,
             Self.mpssvgfReprojection14,
             Self.mpsRayIntersectorEncode,
-            URL(string: "https://developer.apple.com/documentation/swift/array")!,
-            URL(string: "https://developer.apple.com/documentation/swiftui/view")!,
+            #require(URL(string: "https://developer.apple.com/documentation/swift/array")),
+            #require(URL(string: "https://developer.apple.com/documentation/swiftui/view")),
         ]
         let names = urls.map(URLUtilities.filename)
         #expect(Set(names).count == names.count, "duplicate filenames: \(names)")
@@ -109,15 +109,15 @@ struct URLUtilitiesFilenameTests {
     // MARK: - Truncation only triggers for over-long URLs
 
     @Test("Short URLs are not truncated and preserve their natural form")
-    func shortURLsUntruncated() {
-        let url = URL(string: "https://developer.apple.com/documentation/swift/array")!
+    func shortURLsUntruncated() throws {
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/swift/array"))
         let name = URLUtilities.filename(from: url)
         #expect(name == "documentation_swift_array")
     }
 
     @Test("Operator URLs at moderate length keep their hash disambiguator and are not double-suffixed")
-    func operatorURLKeepsSingleHash() {
-        let url = URL(string: "https://developer.apple.com/documentation/swift/int/+(_:_:)")!
+    func operatorURLKeepsSingleHash() throws {
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/swift/int/+(_:_:)"))
         let name = URLUtilities.filename(from: url)
         let underscoreCount = name.filter { $0 == "_" }.count
         #expect(name.contains("documentation_swift_int"))
@@ -140,8 +140,8 @@ struct URLUtilitiesFilenameTests {
     }
 
     @Test("Filename never returns empty string")
-    func filenameNeverEmpty() {
-        let name = URLUtilities.filename(from: URL(string: "https://developer.apple.com/")!)
+    func filenameNeverEmpty() throws {
+        let name = try URLUtilities.filename(from: #require(URL(string: "https://developer.apple.com/")))
         #expect(!name.isEmpty)
     }
 }

@@ -1,11 +1,12 @@
+// swiftlint:disable type_body_length
 @testable import Core
 import Foundation
 import Testing
 
 // MARK: - HTML to Markdown Converter Tests
 
-/// Comprehensive tests for HTMLToMarkdown conversion
-/// Tests code blocks, tables, links, formatting, and edge cases
+// Comprehensive tests for HTMLToMarkdown conversion
+// Tests code blocks, tables, links, formatting, and edge cases
 
 @Suite("HTML to Markdown Converter")
 struct HTMLToMarkdownTests {
@@ -14,7 +15,7 @@ struct HTMLToMarkdownTests {
     @Test("Converts simple HTML to Markdown")
     func convertsSimpleHTML() throws {
         let html = "<h1>Title</h1><p>Content</p>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("# Title"))
         #expect(markdown.contains("Content"))
@@ -22,7 +23,7 @@ struct HTMLToMarkdownTests {
 
     @Test("Adds front matter with metadata")
     func addsFrontMatter() throws {
-        let url = URL(string: "https://developer.apple.com/documentation/swift/array")!
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/swift/array"))
         let html = "<h1>Array</h1>"
         let markdown = HTMLToMarkdown.convert(html, url: url)
 
@@ -36,7 +37,7 @@ struct HTMLToMarkdownTests {
     @Test("Converts H1 headers")
     func convertsH1Headers() throws {
         let html = "<h1>Main Title</h1>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("# Main Title"))
     }
@@ -44,7 +45,7 @@ struct HTMLToMarkdownTests {
     @Test("Converts H2 headers")
     func convertsH2Headers() throws {
         let html = "<h2>Subtitle</h2>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("## Subtitle"))
     }
@@ -52,7 +53,7 @@ struct HTMLToMarkdownTests {
     @Test("Converts H3 headers")
     func convertsH3Headers() throws {
         let html = "<h3>Section</h3>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("### Section"))
     }
@@ -64,7 +65,7 @@ struct HTMLToMarkdownTests {
         <h2>Subtitle</h2>
         <h3>Section</h3>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("# Title"))
         #expect(markdown.contains("## Subtitle"))
@@ -74,7 +75,7 @@ struct HTMLToMarkdownTests {
     @Test("Converts H4 headers")
     func convertsH4Headers() throws {
         let html = "<h4>Subsection</h4>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("#### Subsection"))
     }
@@ -82,7 +83,7 @@ struct HTMLToMarkdownTests {
     @Test("Converts H5 headers")
     func convertsH5Headers() throws {
         let html = "<h5>Minor Section</h5>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("##### Minor Section"))
     }
@@ -90,7 +91,7 @@ struct HTMLToMarkdownTests {
     @Test("Converts H6 headers")
     func convertsH6Headers() throws {
         let html = "<h6>Smallest Header</h6>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("###### Smallest Header"))
     }
@@ -105,7 +106,7 @@ struct HTMLToMarkdownTests {
         <h5>H5</h5>
         <h6>H6</h6>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("# H1"))
         #expect(markdown.contains("## H2"))
@@ -126,7 +127,7 @@ struct HTMLToMarkdownTests {
         }
         </code></pre>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("```swift"))
         #expect(markdown.contains("func hello()"))
@@ -140,7 +141,7 @@ struct HTMLToMarkdownTests {
         let x = 42
         </code></pre>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("```"))
         #expect(markdown.contains("let x = 42"))
@@ -153,7 +154,7 @@ struct HTMLToMarkdownTests {
         <p>Text between</p>
         <pre><code class="language-swift">let b = 2</code></pre>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("let a = 1"))
         #expect(markdown.contains("let b = 2"))
@@ -171,7 +172,7 @@ struct HTMLToMarkdownTests {
         }
         </code></pre>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("func nested()"))
         #expect(markdown.contains("print(\"indented\")"))
@@ -182,7 +183,7 @@ struct HTMLToMarkdownTests {
     @Test("Converts simple links")
     func convertsSimpleLinks() throws {
         let html = "<a href='https://example.com'>Link Text</a>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("[Link Text]"))
         #expect(markdown.contains("(https://example.com)"))
@@ -191,7 +192,7 @@ struct HTMLToMarkdownTests {
     @Test("Converts relative links")
     func convertsRelativeLinks() throws {
         let html = "<a href='/documentation/swift'>Swift</a>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("[Swift]"))
         #expect(markdown.contains("/documentation/swift"))
@@ -200,7 +201,7 @@ struct HTMLToMarkdownTests {
     @Test("Handles links with nested formatting")
     func handlesLinksWithFormatting() throws {
         let html = "<a href='https://example.com'><strong>Bold Link</strong></a>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("["))
         #expect(markdown.contains("Bold Link"))
@@ -212,7 +213,7 @@ struct HTMLToMarkdownTests {
     @Test("Converts bold text")
     func convertsBoldText() throws {
         let html = "<strong>Bold Text</strong>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("**Bold Text**") || markdown.contains("Bold Text"))
     }
@@ -220,7 +221,7 @@ struct HTMLToMarkdownTests {
     @Test("Converts italic text")
     func convertsItalicText() throws {
         let html = "<em>Italic Text</em>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("*Italic Text*") || markdown.contains("Italic Text"))
     }
@@ -228,7 +229,7 @@ struct HTMLToMarkdownTests {
     @Test("Converts inline code")
     func convertsInlineCode() throws {
         let html = "<code>inline code</code>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("`inline code`") || markdown.contains("inline code"))
     }
@@ -249,7 +250,7 @@ struct HTMLToMarkdownTests {
             </tr>
         </table>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Header 1"))
         #expect(markdown.contains("Header 2"))
@@ -275,7 +276,7 @@ struct HTMLToMarkdownTests {
             </tbody>
         </table>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Name"))
         #expect(markdown.contains("Description"))
@@ -288,7 +289,7 @@ struct HTMLToMarkdownTests {
     @Test("Handles blockquotes")
     func handlesBlockquotes() throws {
         let html = "<blockquote>This is a quote</blockquote>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("This is a quote"))
     }
@@ -303,7 +304,7 @@ struct HTMLToMarkdownTests {
             </blockquote>
         </blockquote>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("First level quote"))
         #expect(markdown.contains("Nested quote"))
@@ -320,7 +321,7 @@ struct HTMLToMarkdownTests {
             <li>Item 3</li>
         </ul>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Item 1"))
         #expect(markdown.contains("Item 2"))
@@ -336,7 +337,7 @@ struct HTMLToMarkdownTests {
             <li>Third</li>
         </ol>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("First"))
         #expect(markdown.contains("Second"))
@@ -351,7 +352,7 @@ struct HTMLToMarkdownTests {
         <p>First paragraph.</p>
         <p>Second paragraph.</p>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("First paragraph"))
         #expect(markdown.contains("Second paragraph"))
@@ -362,7 +363,7 @@ struct HTMLToMarkdownTests {
     @Test("Decodes HTML entities")
     func decodesHTMLEntities() throws {
         let html = "<p>&lt;html&gt; &amp; &quot;quotes&quot;</p>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("<html>") || markdown.contains("&lt;"))
         #expect(markdown.contains("&") || markdown.contains("&amp;"))
@@ -371,7 +372,7 @@ struct HTMLToMarkdownTests {
     @Test("Decodes numeric entities")
     func decodesNumericEntities() throws {
         let html = "<p>&#60;tag&#62;</p>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("tag"))
     }
@@ -379,7 +380,7 @@ struct HTMLToMarkdownTests {
     @Test("Decodes apostrophe entities")
     func decodesApostropheEntities() throws {
         let html = "<p>It&#39;s working &apos; also &#x27; works</p>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("It's working"))
         #expect(markdown.contains("'"))
@@ -388,7 +389,7 @@ struct HTMLToMarkdownTests {
     @Test("Decodes nbsp entities")
     func decodesNbspEntities() throws {
         let html = "<p>Word&nbsp;break&nbsp;here</p>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Word"))
         #expect(markdown.contains("break"))
@@ -398,7 +399,7 @@ struct HTMLToMarkdownTests {
     @Test("Decodes mixed entity types")
     func decodesMixedEntityTypes() throws {
         let html = "<p>&lt;tag&gt; &#60;numeric&#62; &amp; &quot;quotes&quot; &#39;apostrophe&#39;</p>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("<") || markdown.contains("&lt;"))
         #expect(markdown.contains(">") || markdown.contains("&gt;"))
@@ -415,7 +416,7 @@ struct HTMLToMarkdownTests {
         let y = &#60;Type&#62;()
         </code></pre>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("```swift"))
         #expect(markdown.contains("let x"))
@@ -425,7 +426,7 @@ struct HTMLToMarkdownTests {
     @Test("Handles multiple consecutive entities")
     func handlesMultipleConsecutiveEntities() throws {
         let html = "<p>&lt;&lt;&lt;test&gt;&gt;&gt;</p>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("test"))
     }
@@ -441,7 +442,7 @@ struct HTMLToMarkdownTests {
             </ul>
         </div>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Text with"))
         #expect(markdown.contains("item"))
@@ -466,7 +467,7 @@ struct HTMLToMarkdownTests {
         </body>
         </html>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(!markdown.contains("Home"))
         #expect(!markdown.contains("About"))
@@ -489,7 +490,7 @@ struct HTMLToMarkdownTests {
         </body>
         </html>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(!markdown.contains("Site Logo"))
         #expect(!markdown.contains("Navigation"))
@@ -511,7 +512,7 @@ struct HTMLToMarkdownTests {
         </body>
         </html>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Main content"))
         #expect(!markdown.contains("Copyright"))
@@ -531,7 +532,7 @@ struct HTMLToMarkdownTests {
         </body>
         </html>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Title"))
         #expect(markdown.contains("Text content"))
@@ -554,7 +555,7 @@ struct HTMLToMarkdownTests {
         </body>
         </html>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Before SVG"))
         #expect(markdown.contains("After SVG"))
@@ -577,7 +578,7 @@ struct HTMLToMarkdownTests {
         </body>
         </html>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Content"))
         #expect(!markdown.contains("console.log"))
@@ -599,7 +600,7 @@ struct HTMLToMarkdownTests {
         </body>
         </html>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Text"))
         #expect(!markdown.contains("color: red"))
@@ -620,7 +621,7 @@ struct HTMLToMarkdownTests {
         </body>
         </html>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Real content"))
         #expect(!markdown.contains("Please enable JavaScript"))
@@ -641,7 +642,7 @@ struct HTMLToMarkdownTests {
         </body>
         </html>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Documentation"))
         #expect(markdown.contains("Content here"))
@@ -663,7 +664,7 @@ struct HTMLToMarkdownTests {
         </body>
         </html>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("MyClass"))
         #expect(markdown.contains("Documentation"))
@@ -683,7 +684,7 @@ struct HTMLToMarkdownTests {
         </body>
         </html>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Content"))
         #expect(!markdown.contains("Skip Navigation"))
@@ -698,7 +699,7 @@ struct HTMLToMarkdownTests {
         </body>
         </html>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Text before"))
         #expect(markdown.contains("text after"))
@@ -714,7 +715,7 @@ struct HTMLToMarkdownTests {
         </body>
         </html>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Content"))
         #expect(!markdown.contains("data-v-"))
@@ -731,7 +732,7 @@ struct HTMLToMarkdownTests {
         </body>
         </html>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Normal text"))
         #expect(markdown.contains("More text"))
@@ -750,7 +751,7 @@ struct HTMLToMarkdownTests {
         </body>
         </html>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Documentation"))
         #expect(!markdown.contains("Navigator is ready"))
@@ -768,7 +769,7 @@ struct HTMLToMarkdownTests {
         </body>
         </html>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Search Results"))
         #expect(!markdown.contains("items were found"))
@@ -780,7 +781,7 @@ struct HTMLToMarkdownTests {
     @Test("Handles empty HTML")
     func handlesEmptyHTML() throws {
         let html = ""
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("---")) // At least has front matter
     }
@@ -788,7 +789,7 @@ struct HTMLToMarkdownTests {
     @Test("Handles HTML with only whitespace")
     func handlesWhitespaceHTML() throws {
         let html = "   \n\n   "
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("---"))
     }
@@ -799,7 +800,7 @@ struct HTMLToMarkdownTests {
         <h1>This page requires JavaScript</h1>
         <p>Real content</p>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Real content"))
         // JavaScript warning should be filtered out as title
@@ -808,7 +809,7 @@ struct HTMLToMarkdownTests {
     @Test("Extracts title from h1")
     func extractsTitleFromH1() throws {
         let html = "<h1>Page Title</h1><p>Content</p>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("# Page Title"))
     }
@@ -816,7 +817,7 @@ struct HTMLToMarkdownTests {
     @Test("Extracts title from title tag")
     func extractsTitleFromTitleTag() throws {
         let html = "<title>Page Title</title><body><p>Content</p></body>"
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Page Title"))
     }
@@ -834,7 +835,7 @@ struct HTMLToMarkdownTests {
         </body>
         </html>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Main Content"))
     }
@@ -851,7 +852,7 @@ struct HTMLToMarkdownTests {
         </body>
         </html>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("Article Content"))
     }
@@ -877,7 +878,7 @@ struct HTMLToMarkdownTests {
         </body>
         </html>
         """
-        let markdown = HTMLToMarkdown.convert(html, url: URL(string: "https://example.com")!)
+        let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
 
         #expect(markdown.contains("# Title"))
         #expect(markdown.contains("## Code Example"))

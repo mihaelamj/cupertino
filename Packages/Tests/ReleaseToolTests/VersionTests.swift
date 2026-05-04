@@ -1,6 +1,5 @@
-import Testing
-
 @testable import ReleaseTool
+import Testing
 
 // MARK: - Version Parsing Tests
 

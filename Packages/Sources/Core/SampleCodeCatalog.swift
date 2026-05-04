@@ -125,8 +125,13 @@ public enum SampleCodeCatalog {
     /// Production code must never set this.
     private actor TestOverride {
         var directory: URL?
-        func get() -> URL? { directory }
-        func set(_ url: URL?) { directory = url }
+        func get() -> URL? {
+            directory
+        }
+
+        func set(_ url: URL?) {
+            directory = url
+        }
     }
 
     private static let testOverride = TestOverride()

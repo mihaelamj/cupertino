@@ -20,7 +20,7 @@ import WebKit
 // File length: 580+ lines | Type body length: 400+ lines
 // Disabling: file_length (400 line limit), type_body_length (250 line limit)
 
-// Converts HTML documentation to clean Markdown
+/// Converts HTML documentation to clean Markdown
 public struct HTMLToMarkdown: ContentTransformer, @unchecked Sendable {
     public typealias RawContent = String
 

@@ -14,7 +14,7 @@ public protocol ResourceProvider: Sendable {
     func listResourceTemplates(cursor: String?) async throws -> ListResourceTemplatesResult?
 }
 
-// Default implementation for templates (returns nil if not implemented)
+/// Default implementation for templates (returns nil if not implemented)
 extension ResourceProvider {
     public func listResourceTemplates(cursor: String?) async throws -> ListResourceTemplatesResult? {
         nil

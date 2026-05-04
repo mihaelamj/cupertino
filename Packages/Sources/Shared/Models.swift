@@ -1,3 +1,4 @@
+// swiftlint:disable file_length type_body_length
 import CryptoKit
 import Foundation
 
@@ -28,7 +29,7 @@ public struct StructuredDocumentationPage: Codable, Sendable, Identifiable, Hash
     public let inheritedBy: [String]? // Types that inherit from this
     public let conformingTypes: [String]? // Types that conform to this protocol
 
-    // Raw markdown from original source (HTML conversion)
+    /// Raw markdown from original source (HTML conversion)
     public let rawMarkdown: String?
 
     // Crawl metadata

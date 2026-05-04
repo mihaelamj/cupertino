@@ -3,7 +3,7 @@ import Foundation
 import Testing
 import TestSupport
 
-@Test func configuration() throws {
+@Test func configuration() {
     let config = Shared.CrawlerConfiguration()
     #expect(config.maxPages > 0)
 }

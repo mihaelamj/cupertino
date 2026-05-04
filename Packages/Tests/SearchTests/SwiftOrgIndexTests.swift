@@ -1,13 +1,11 @@
 import Foundation
-import Testing
-
 @testable import Search
+import Testing
 
 // MARK: - is404Page heuristic (fix for #110)
 
 @Suite("Search.IndexBuilder.is404Page")
 struct Is404PageTests {
-
     @Test("Exact 'not found' title flags the page as 404")
     func titleExactNotFound() {
         #expect(Search.IndexBuilder.is404Page(title: "Not Found", content: "anything"))
@@ -33,7 +31,7 @@ struct Is404PageTests {
 
     @Test("Short page with 'page not found' flags as 404")
     func shortPageWithPageNotFound() {
-        let shortContent = "Page not found. Please check the URL."  // < 500 chars
+        let shortContent = "Page not found. Please check the URL." // < 500 chars
         #expect(Search.IndexBuilder.is404Page(title: "Error", content: shortContent))
     }
 
@@ -65,7 +63,6 @@ struct Is404PageTests {
 
 @Suite("Search.IndexBuilder.findDocFiles")
 struct FindDocFilesTests {
-
     private static func makeTempDir() throws -> URL {
         let base = FileManager.default.temporaryDirectory
             .appendingPathComponent("cupertino-findDocFiles-\(UUID().uuidString)")

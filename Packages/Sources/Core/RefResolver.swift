@@ -270,7 +270,9 @@ public struct RefResolver {
         public let rewritten: String
         public let resolvedCount: Int
         public let unresolvedMarkers: [String]
-        public var totalMarkers: Int { resolvedCount + unresolvedMarkers.count }
+        public var totalMarkers: Int {
+            resolvedCount + unresolvedMarkers.count
+        }
     }
 
     /// Replace every `doc://...` marker in `markdown` with the readable

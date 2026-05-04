@@ -9,8 +9,8 @@ import Shared
 // It handles: process management, JSON-RPC communication, request/response formatting, and demo flows.
 // The actor maintains state across multiple async operations for the test session.
 
-/// A mock AI agent that demonstrates how to send MCP requests to an MCP server
-/// This helps visualize the complete MCP request/response cycle with full JSON logging
+// A mock AI agent that demonstrates how to send MCP requests to an MCP server
+// This helps visualize the complete MCP request/response cycle with full JSON logging
 
 @main
 struct MockAIAgent {
@@ -268,8 +268,7 @@ actor MCPClient {
                 lastError = error
                 // Retry with older version if protocol/version error
                 if case let .serverError(message) = error,
-                   message.lowercased().contains("protocol") || message.lowercased().contains("version")
-                {
+                   message.lowercased().contains("protocol") || message.lowercased().contains("version") {
                     print("⚠️  Version \(version) not supported, trying fallback...")
                     continue
                 }
@@ -565,9 +564,7 @@ actor MCPClient {
 
         // Convert result dictionary to our specific type
         let resultData = try JSONEncoder().encode(response.result)
-        let result = try JSONDecoder().decode(R.self, from: resultData)
-
-        return result
+        return try JSONDecoder().decode(R.self, from: resultData)
     }
 
     private func sendNotification(_ notification: JSONRPCNotification) throws {

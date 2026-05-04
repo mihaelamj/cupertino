@@ -5,8 +5,8 @@ import Testing
 
 // MARK: - Priority Package Generator Tests
 
-/// Comprehensive tests for PriorityPackageGenerator
-/// Tests URL extraction, package categorization, tier selection, and output generation
+// Comprehensive tests for PriorityPackageGenerator
+// Tests URL extraction, package categorization, tier selection, and output generation
 
 @Suite("Priority Package Generator")
 struct PriorityPackageGeneratorTests {
@@ -74,7 +74,7 @@ struct PriorityPackageGeneratorTests {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
         let data = try encoder.encode(stats)
-        let json = String(data: data, encoding: .utf8)!
+        let json = try #require(String(data: data, encoding: .utf8))
 
         #expect(json.contains("total_apple_packages_in_swiftorg"))
         #expect(json.contains("total_swiftlang_packages_in_swiftorg"))
@@ -96,7 +96,7 @@ struct PriorityPackageGeneratorTests {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
         let data = try encoder.encode(levels)
-        let json = String(data: data, encoding: .utf8)!
+        let json = try #require(String(data: data, encoding: .utf8))
 
         #expect(json.contains("tier1_apple_official"))
         #expect(json.contains("tier2_swiftlang"))

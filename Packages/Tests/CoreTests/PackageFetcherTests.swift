@@ -5,8 +5,8 @@ import Testing
 
 // MARK: - Package Fetcher Tests
 
-/// Comprehensive tests for PackageFetcher
-/// Tests URL parsing, GitHub metadata fetching, sorting, checkpointing, and statistics
+// Comprehensive tests for PackageFetcher
+// Tests URL parsing, GitHub metadata fetching, sorting, checkpointing, and statistics
 
 @Suite("Package Fetcher")
 struct PackageFetcherTests {

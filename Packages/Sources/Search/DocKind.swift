@@ -18,7 +18,6 @@ import Foundation
 import Shared
 
 extension Search {
-
     /// High-level document-shape taxonomy stored per row in `docs_metadata`.
     public enum DocKind: String, Codable, Sendable, CaseIterable {
         /// API reference with a declaration (struct/class/protocol/enum/func/etc.).
@@ -45,7 +44,6 @@ extension Search {
 
     /// Deterministic classifier for `DocKind`. Pure; safe to call from any context.
     public enum Classify {
-
         /// Classify a document given its source prefix, optional structured-doc kind,
         /// and URI path. See #192 section C1 for the full spec.
         ///

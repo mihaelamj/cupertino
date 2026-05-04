@@ -7,7 +7,7 @@ import TestSupport
 // MARK: - SampleCodeCleaner Tests
 
 @Test("CleanupProgress percentage calculation")
-func cleanupProgressPercentage() throws {
+func cleanupProgressPercentage() {
     let progress = CleanupProgress(
         current: 50,
         total: 100,
@@ -21,7 +21,7 @@ func cleanupProgressPercentage() throws {
 }
 
 @Test("CleanupProgress handles zero total")
-func cleanupProgressZeroTotal() throws {
+func cleanupProgressZeroTotal() {
     let progress = CleanupProgress(
         current: 0,
         total: 0,
@@ -35,7 +35,7 @@ func cleanupProgressZeroTotal() throws {
 }
 
 @Test("CleanupStatistics space saved calculation")
-func cleanupStatisticsSpaceSaved() throws {
+func cleanupStatisticsSpaceSaved() {
     let stats = CleanupStatistics(
         totalArchives: 10,
         cleanedArchives: 8,
@@ -51,7 +51,7 @@ func cleanupStatisticsSpaceSaved() throws {
 }
 
 @Test("CleanupStatistics handles zero original size")
-func cleanupStatisticsZeroSize() throws {
+func cleanupStatisticsZeroSize() {
     let stats = CleanupStatistics(
         totalArchives: 0,
         cleanedArchives: 0,
@@ -67,7 +67,7 @@ func cleanupStatisticsZeroSize() throws {
 }
 
 @Test("CleanupResult initialization")
-func cleanupResultInit() throws {
+func cleanupResultInit() {
     let result = CleanupResult(
         filename: "test.zip",
         originalSize: 1000,
@@ -86,7 +86,7 @@ func cleanupResultInit() throws {
 }
 
 @Test("CleanupResult with error")
-func cleanupResultWithError() throws {
+func cleanupResultWithError() {
     let result = CleanupResult(
         filename: "test.zip",
         originalSize: 1000,

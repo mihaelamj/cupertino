@@ -6,14 +6,14 @@ import Testing
 // MARK: - ArchiveGuideCatalog Tests
 
 @Test("ArchiveGuideCatalog loads bundled catalog")
-func archiveGuideCatalogLoadsBundledCatalog() throws {
+func archiveGuideCatalogLoadsBundledCatalog() {
     let requiredPaths = ArchiveGuideCatalog.getRequiredGuidePaths()
     #expect(!requiredPaths.isEmpty, "Should have required guide paths from bundled catalog")
     print("   ✅ Found \(requiredPaths.count) required guides in bundled catalog")
 }
 
 @Test("ArchiveGuideCatalog required guides include Core frameworks")
-func archiveGuideCatalogRequiredGuidesIncludeCoreFrameworks() throws {
+func archiveGuideCatalogRequiredGuidesIncludeCoreFrameworks() {
     let requiredPaths = ArchiveGuideCatalog.getRequiredGuidePaths()
 
     // Check for expected Core framework guides
@@ -48,7 +48,7 @@ func archiveGuideCatalogCreatesUserFileIfMissing() throws {
 }
 
 @Test("ArchiveGuideCatalog does not overwrite existing user file")
-func archiveGuideCatalogDoesNotOverwriteExistingFile() throws {
+func archiveGuideCatalogDoesNotOverwriteExistingFile() {
     // This test verifies that essentialGuides returns data even when file exists
     // The actual file preservation is handled by the ArchiveGuideCatalog implementation
     let guides = ArchiveGuideCatalog.essentialGuides
@@ -57,7 +57,7 @@ func archiveGuideCatalogDoesNotOverwriteExistingFile() throws {
 }
 
 @Test("ArchiveGuideCatalog essentialGuides returns valid URLs")
-func archiveGuideCatalogEssentialGuidesReturnsValidURLs() throws {
+func archiveGuideCatalogEssentialGuidesReturnsValidURLs() {
     let guides = ArchiveGuideCatalog.essentialGuides
     #expect(!guides.isEmpty, "Should have essential guides")
 
@@ -73,7 +73,7 @@ func archiveGuideCatalogEssentialGuidesReturnsValidURLs() throws {
 }
 
 @Test("ArchiveGuideCatalog testGuides returns minimal set")
-func archiveGuideCatalogTestGuidesReturnsMinimalSet() throws {
+func archiveGuideCatalogTestGuidesReturnsMinimalSet() {
     let testGuides = ArchiveGuideCatalog.testGuides
     #expect(!testGuides.isEmpty, "Should have at least one test guide")
     #expect(testGuides.count <= 3, "Test guides should be a minimal set for testing")
@@ -85,7 +85,7 @@ func archiveGuideCatalogTestGuidesReturnsMinimalSet() throws {
 }
 
 @Test("ArchiveGuideCatalog userSelectionsFileURL points to correct location")
-func archiveGuideCatalogUserSelectionsFileURLCorrect() throws {
+func archiveGuideCatalogUserSelectionsFileURLCorrect() {
     let fileURL = ArchiveGuideCatalog.userSelectionsFileURL
     let expectedPath = Shared.Constants.defaultBaseDirectory.appendingPathComponent("selected-archive-guides.json")
 
@@ -95,7 +95,7 @@ func archiveGuideCatalogUserSelectionsFileURLCorrect() throws {
 }
 
 @Test("ArchiveGuideCatalog created file contains only required guides")
-func archiveGuideCatalogCreatedFileContainsOnlyRequiredGuides() throws {
+func archiveGuideCatalogCreatedFileContainsOnlyRequiredGuides() {
     // This test verifies that the bundled catalog has required guides
     // NOTE: essentialGuides reads from user file (~/.cupertino/selected-archive-guides.json)
     // which may be modified by TUI, so we only test bundled catalog requirements

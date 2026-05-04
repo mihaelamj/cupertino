@@ -37,8 +37,8 @@ func canonicalPathRejectsNonDocURI() {
 }
 
 @Test("canonicalPath(forURL:) lowercases the URL path")
-func canonicalPathFromURL() {
-    let url = URL(string: "https://developer.apple.com/documentation/StoreKit/AnyTransaction")!
+func canonicalPathFromURL() throws {
+    let url = try #require(URL(string: "https://developer.apple.com/documentation/StoreKit/AnyTransaction"))
     #expect(RefResolver.canonicalPath(forURL: url) == "/documentation/storekit/anytransaction")
 }
 
@@ -239,9 +239,13 @@ private final class MockTitleFetcher: RefResolver.TitleFetcher, @unchecked Senda
     let map: [String: String]
     private let queue = DispatchQueue(label: "mock-title-fetcher")
     private var _callCount = 0
-    var callCount: Int { queue.sync { _callCount } }
+    var callCount: Int {
+        queue.sync { _callCount }
+    }
 
-    init(_ map: [String: String]) { self.map = map }
+    init(_ map: [String: String]) {
+        self.map = map
+    }
 
     func resolveTitle(for documentationURL: URL) async -> String? {
         queue.sync { _callCount += 1 }
@@ -289,11 +293,11 @@ struct RefResolverNetwork {
     }
 
     @Test("CompositeTitleFetcher tries fallback when primary returns nil")
-    func compositeChainsFallback() async {
+    func compositeChainsFallback() async throws {
         let primary = MockTitleFetcher([:])
         let fallback = MockTitleFetcher(["/documentation/x/y": "Y"])
         let composite = CompositeTitleFetcher(primary: primary, fallback: fallback)
-        let url = URL(string: "https://developer.apple.com/documentation/X/Y")!
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/X/Y"))
 
         let title = await composite.resolveTitle(for: url)
         #expect(title == "Y")
@@ -302,11 +306,11 @@ struct RefResolverNetwork {
     }
 
     @Test("CompositeTitleFetcher does not call fallback when primary succeeds")
-    func compositeShortCircuits() async {
+    func compositeShortCircuits() async throws {
         let primary = MockTitleFetcher(["/documentation/x/y": "Y"])
         let fallback = MockTitleFetcher([:])
         let composite = CompositeTitleFetcher(primary: primary, fallback: fallback)
-        let url = URL(string: "https://developer.apple.com/documentation/X/Y")!
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/X/Y"))
 
         let title = await composite.resolveTitle(for: url)
         #expect(title == "Y")

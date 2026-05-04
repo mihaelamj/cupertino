@@ -1,6 +1,7 @@
 import Foundation
 
 // MARK: - Smart cross-source query (#192 section E)
+
 //
 // Fans a natural-language question across every configured `CandidateFetcher`
 // in parallel, then merges the per-source rankings into a single top-N list
@@ -13,11 +14,9 @@ import Foundation
 // default from the Cormack / Clarke / Büttcher paper.
 
 extension Search {
-
     /// Cross-source smart query. Runs every configured `CandidateFetcher`
     /// concurrently, then fuses their ranked outputs.
     public struct SmartQuery: Sendable {
-
         /// Rank fusion constant. 60 is the Cormack et al. default and is not
         /// especially sensitive — anything in [10, 100] produces similar
         /// orderings. Exposed for experimentation / tests.
@@ -46,8 +45,8 @@ extension Search {
         ) async -> SmartResult {
             // Snapshot into locals so the closures don't capture `self` (which
             // would also require unnecessary marker imports).
-            let fetchers = self.fetchers
-            let rrfK = self.rrfK
+            let fetchers = fetchers
+            let rrfK = rrfK
             let perFetcherLimit = perFetcherLimit
             let question = question
 

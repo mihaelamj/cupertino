@@ -1,7 +1,6 @@
 import Foundation
-import Testing
-
 @testable import Resources
+import Testing
 
 // Embed-only resource access (#161). After the bundle was dropped, the only
 // public surface is `CupertinoResources.jsonData(named:)` and
@@ -11,10 +10,10 @@ import Testing
 
 @Suite("CupertinoResources embedded accessors (#161)")
 struct CupertinoResourcesTests {
-    // sample-code-catalog removed in #215 — auto-discovery via
-    // `cupertino fetch --type code` is the source of truth for sample-code
-    // metadata, materialized at `<sample-code-dir>/catalog.json` rather
-    // than in the binary.
+    /// sample-code-catalog removed in #215 — auto-discovery via
+    /// `cupertino fetch --type code` is the source of truth for sample-code
+    /// metadata, materialized at `<sample-code-dir>/catalog.json` rather
+    /// than in the binary.
     private static let knownNames = [
         "priority-packages",
         "archive-guides-catalog",

@@ -1,3 +1,4 @@
+// swiftlint:disable identifier_name use_data_constructor_over_string_member non_optional_string_data_conversion
 @testable import Core
 import Foundation
 import Shared
@@ -83,7 +84,7 @@ func storeRoundTrip() throws {
     defer { try? FileManager.default.removeItem(at: tempDir) }
 
     let fileURL = tempDir.appendingPathComponent("resolved-packages.json")
-    let generatedAt = Date(timeIntervalSince1970: 1_700_000_000)
+    let generatedAt = Date(timeIntervalSince1970: 1700000000)
     let store = Core.ResolvedPackagesStore(
         generatedAt: generatedAt,
         cupertinoVersion: "0.11.0",
@@ -169,7 +170,7 @@ func canonicalizerCacheHit() async throws {
     let cacheURL = tempDir.appendingPathComponent("canonical-owners.json")
 
     // Seed the cache file directly so the canonicalizer should NOT hit the network.
-    let seed: [String: String] = ["apple/swift-docc": "swiftlang/swift-docc"]
+    let seed = ["apple/swift-docc": "swiftlang/swift-docc"]
     let data = try JSONEncoder().encode(seed)
     try data.write(to: cacheURL)
 
@@ -343,7 +344,7 @@ func manifestCacheExpired() async throws {
     await cache.write(payload, owner: "apple", repo: "swift-nio", branch: "main", file: "Package.swift")
 
     // Wait long enough to age past the 1ms TTL.
-    try await Task.sleep(nanoseconds: 50_000_000) // 50ms
+    try await Task.sleep(nanoseconds: 50000000) // 50ms
 
     let cached = await cache.read(owner: "apple", repo: "swift-nio", branch: "main", file: "Package.swift")
     #expect(cached == nil)

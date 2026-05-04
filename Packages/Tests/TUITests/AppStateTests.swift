@@ -24,7 +24,7 @@ func appStateInitialization() {
 
 @MainActor
 @Test("AppState visible packages filters correctly")
-func appStateVisiblePackagesFilter() async {
+func appStateVisiblePackagesFilter() {
     let state = AppState()
 
     // Create test packages
@@ -88,7 +88,7 @@ func appStateVisiblePackagesFilter() async {
 
 @MainActor
 @Test("AppState search query filters packages")
-func appStateSearchFilter() async {
+func appStateSearchFilter() {
     let state = AppState()
 
     let pkg1 = SwiftPackageEntry(
@@ -147,7 +147,7 @@ func appStateSearchFilter() async {
 
 @MainActor
 @Test("AppState sort modes work correctly")
-func appStateSortModes() async {
+func appStateSortModes() {
     let state = AppState()
 
     let pkg1 = SwiftPackageEntry(
@@ -216,7 +216,7 @@ func appStateSortModes() async {
 
 @MainActor
 @Test("AppState toggleCurrent changes selection")
-func appStateToggleCurrent() async {
+func appStateToggleCurrent() {
     let state = AppState()
 
     let pkg = SwiftPackageEntry(
@@ -249,7 +249,7 @@ func appStateToggleCurrent() async {
 
 @MainActor
 @Test("AppState moveCursor handles boundaries")
-func appStateMoveCursor() async {
+func appStateMoveCursor() {
     let state = AppState()
 
     // Create 10 test packages

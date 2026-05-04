@@ -22,8 +22,7 @@ enum ConfigManager {
 
         do {
             let data = try Data(contentsOf: configFile)
-            let config = try JSONDecoder().decode(TUIConfig.self, from: data)
-            return config
+            return try JSONDecoder().decode(TUIConfig.self, from: data)
         } catch {
             // If loading fails, return default
             return .default

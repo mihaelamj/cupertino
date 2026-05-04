@@ -71,8 +71,8 @@ extension Shared {
             self.discoveryMode = discoveryMode
         }
 
-        // Custom decoder so legacy config JSON without `discoveryMode` still
-        // loads cleanly — defaults to `.auto`. Encode is auto-synthesized.
+        /// Custom decoder so legacy config JSON without `discoveryMode` still
+        /// loads cleanly — defaults to `.auto`. Encode is auto-synthesized.
         private enum CodingKeys: String, CodingKey {
             case startURL, allowedPrefixes, maxPages, maxDepth, outputDirectory
             case logFile, requestDelay, retryAttempts, discoveryMode

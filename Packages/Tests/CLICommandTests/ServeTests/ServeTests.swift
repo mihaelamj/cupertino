@@ -11,13 +11,13 @@ import TestSupport
 
 // MARK: - MCP Command Tests
 
-/// Tests for the `cupertino serve` command
-/// Verifies server initialization, resource providers, and tool providers
+// Tests for the `cupertino serve` command
+// Verifies server initialization, resource providers, and tool providers
 
 @Suite("MCP Command Tests", .serialized)
 struct MCPCommandTests {
     @Test("MCP server initializes successfully")
-    func serverInitialization() async throws {
+    func serverInitialization() {
         print("🧪 Test: MCP server initialization")
 
         _ = MCPServer(name: "test-server", version: "1.0.0")
@@ -360,9 +360,9 @@ struct MCPServerIntegrationTests {
 
         // Step 1: Crawl
         print("\n   📥 Step 1: Crawling documentation...")
-        let config = Shared.Configuration(
+        let config = try Shared.Configuration(
             crawler: Shared.CrawlerConfiguration(
-                startURL: URL(string: "https://developer.apple.com/documentation/swift")!,
+                startURL: #require(URL(string: "https://developer.apple.com/documentation/swift")),
                 maxPages: 1,
                 maxDepth: 0,
                 outputDirectory: tempDir

@@ -1,3 +1,4 @@
+// swiftlint:disable identifier_name
 // SwiftPackagesCatalog.swift
 //
 // Seed list of Swift package URLs, slimmed (#161 follow-up) from the original
@@ -75,8 +76,13 @@ public enum SwiftPackagesCatalog {
     private actor Cache {
         var entries: [SwiftPackageEntry]?
 
-        func get() -> [SwiftPackageEntry]? { entries }
-        func set(_ newEntries: [SwiftPackageEntry]) { entries = newEntries }
+        func get() -> [SwiftPackageEntry]? {
+            entries
+        }
+
+        func set(_ newEntries: [SwiftPackageEntry]) {
+            entries = newEntries
+        }
     }
 
     private static let cache = Cache()

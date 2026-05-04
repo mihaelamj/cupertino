@@ -91,9 +91,13 @@ extension Core {
             let exclusionEntries = exclusions.sorted()
             var hasher = SimpleHasher()
             hasher.combine("seeds")
-            for entry in seedEntries { hasher.combine(entry) }
+            for entry in seedEntries {
+                hasher.combine(entry)
+            }
             hasher.combine("exclusions")
-            for entry in exclusionEntries { hasher.combine(entry) }
+            for entry in exclusionEntries {
+                hasher.combine(entry)
+            }
             return hasher.finalize()
         }
 

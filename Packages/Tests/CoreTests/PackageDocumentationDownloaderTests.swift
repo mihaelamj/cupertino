@@ -1,8 +1,7 @@
+@testable import Core
 import Foundation
 import Shared
 import Testing
-
-@testable import Core
 
 // MARK: - Package Documentation Downloader Tests
 

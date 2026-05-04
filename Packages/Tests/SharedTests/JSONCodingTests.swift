@@ -1,3 +1,4 @@
+// swiftlint:disable type_body_length
 import Foundation
 @testable import Shared
 import Testing
@@ -38,7 +39,7 @@ struct JSONCodingTests {
 
         let encoder = JSONCoding.encoder()
         let data = try encoder.encode(model)
-        let jsonString = String(data: data, encoding: .utf8)!
+        let jsonString = try #require(String(data: data, encoding: .utf8))
 
         // ISO8601 format: YYYY-MM-DDTHH:MM:SSZ
         #expect(jsonString.contains("2023-11-14T22:13:20Z"), "Should use ISO8601 date format")
@@ -51,7 +52,7 @@ struct JSONCodingTests {
 
         let encoder = JSONCoding.prettyEncoder()
         let data = try encoder.encode(model)
-        let jsonString = String(data: data, encoding: .utf8)!
+        let jsonString = try #require(String(data: data, encoding: .utf8))
 
         // Check for pretty formatting
         #expect(jsonString.contains("\n"), "Should contain newlines")
@@ -64,11 +65,11 @@ struct JSONCodingTests {
 
         let encoder = JSONCoding.prettyEncoder()
         let data = try encoder.encode(model)
-        let jsonString = String(data: data, encoding: .utf8)!
+        let jsonString = try #require(String(data: data, encoding: .utf8))
 
         // Keys should appear in sorted order: name before value
-        let nameIndex = jsonString.range(of: "\"name\"")!.lowerBound
-        let valueIndex = jsonString.range(of: "\"value\"")!.lowerBound
+        let nameIndex = try #require(jsonString.range(of: "\"name\"")?.lowerBound)
+        let valueIndex = try #require(jsonString.range(of: "\"value\"")?.lowerBound)
         #expect(nameIndex < valueIndex, "Keys should be sorted alphabetically")
     }
 
@@ -121,7 +122,7 @@ struct JSONCodingTests {
         let model = ModelWithDate(name: "Test", createdAt: date, count: 42)
 
         let data = try JSONCoding.encode(model)
-        let jsonString = String(data: data, encoding: .utf8)!
+        let jsonString = try #require(String(data: data, encoding: .utf8))
 
         #expect(jsonString.contains("Test"))
         #expect(jsonString.contains("2023-11-14T22:13:20Z"))
@@ -133,7 +134,7 @@ struct JSONCodingTests {
         let model = ModelWithoutDate(name: "Test", value: 123)
 
         let data = try JSONCoding.encodePretty(model)
-        let jsonString = String(data: data, encoding: .utf8)!
+        let jsonString = try #require(String(data: data, encoding: .utf8))
 
         #expect(jsonString.contains("\n"), "Should be pretty-printed")
         #expect(jsonString.contains("Test"))
@@ -160,7 +161,7 @@ struct JSONCodingTests {
     // MARK: - File I/O Tests
 
     @Test("Encode to file creates directory and saves data")
-    func encodeToFileCreatesDirAndSaves() async throws {
+    func encodeToFileCreatesDirAndSaves() throws {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("jsoncodingtest-\(UUID().uuidString)")
         let subdirPath = tempDir.appendingPathComponent("subdir")
@@ -184,7 +185,7 @@ struct JSONCodingTests {
 
         // Verify content
         let savedData = try Data(contentsOf: filePath)
-        let jsonString = String(data: savedData, encoding: .utf8)!
+        let jsonString = try #require(String(data: savedData, encoding: .utf8))
         #expect(jsonString.contains("Test"))
         #expect(jsonString.contains("2023-11-14T22:13:20Z"))
     }
@@ -339,8 +340,8 @@ struct JSONCodingTests {
         let decoded = try JSONCoding.decode([String: Date].self, from: data)
 
         #expect(decoded.count == 2)
-        #expect(abs(decoded["created"]!.timeIntervalSince1970 - 1700000000) < 1.0)
-        #expect(abs(decoded["modified"]!.timeIntervalSince1970 - 1700001000) < 1.0)
+        #expect(try abs(#require(decoded["created"]?.timeIntervalSince1970) - 1700000000) < 1.0)
+        #expect(try abs(#require(decoded["modified"]?.timeIntervalSince1970) - 1700001000) < 1.0)
     }
 
     // MARK: - Consistency Tests
@@ -422,6 +423,7 @@ struct JSONCodingTests {
     }
 
     // MARK: - Atomic Write Tests
+
     //
     // Regression test for the v1.0 atomic-write fix in `JSONCoding.encode(_:to:)`.
     // A multi-day Apple-docs crawl saves `metadata.json` (often several MB) every
@@ -449,7 +451,7 @@ struct JSONCodingTests {
             let blob: String
         }
 
-        static func make(version: Int, count: Int = 2_000) -> LargePayload {
+        static func make(version: Int, count: Int = 2000) -> LargePayload {
             // ~64 chars * 2_000 entries ≈ 128 KB before pretty-printing —
             // pretty + sortedKeys typically pushes the on-disk file past 256 KB,
             // well beyond a single page-cache write.
@@ -479,7 +481,9 @@ struct JSONCodingTests {
         // benign "file vanished between stat and open" error is a bug.
         actor CorruptionLog {
             private(set) var torn: [String] = []
-            func record(_ description: String) { torn.append(description) }
+            func record(_ description: String) {
+                torn.append(description)
+            }
         }
         let corruption = CorruptionLog()
 
@@ -505,7 +509,7 @@ struct JSONCodingTests {
                         do {
                             let loaded = try JSONCoding.decode(LargePayload.self, from: tempFile)
                             // Sanity: payload made by `.make()` always has `count` entries.
-                            if loaded.entries.count != 2_000 {
+                            if loaded.entries.count != 2000 {
                                 await corruption.record(
                                     "reader \(readerID) saw entries.count=\(loaded.entries.count)"
                                 )

@@ -26,8 +26,7 @@ extension Core {
             self.cacheURL = cacheURL
             self.session = session
             if let data = try? Data(contentsOf: cacheURL),
-               let decoded = try? JSONDecoder().decode([String: String].self, from: data)
-            {
+               let decoded = try? JSONDecoder().decode([String: String].self, from: data) {
                 cache = decoded
             }
         }
@@ -83,8 +82,8 @@ extension Core {
 
         private enum FetchOutcome {
             case success(CanonicalName)
-            case notFound        // 404 — confirmed-missing; safe to cache as identity
-            case transient       // timeout / 5xx / network error; do not cache
+            case notFound // 404 — confirmed-missing; safe to cache as identity
+            case transient // timeout / 5xx / network error; do not cache
         }
 
         /// Resolve the canonical owner/repo by following GitHub's HTTP redirects on the
@@ -109,8 +108,7 @@ extension Core {
                     return .transient
                 }
                 if http.statusCode == 200, let finalURL = response.url,
-                   let parsed = Self.parseGitHubURL(finalURL)
-                {
+                   let parsed = Self.parseGitHubURL(finalURL) {
                     return .success(parsed)
                 }
                 if http.statusCode == 404 {
@@ -122,7 +120,7 @@ extension Core {
             }
         }
 
-        internal static func parseGitHubURL(_ url: URL) -> CanonicalName? {
+        static func parseGitHubURL(_ url: URL) -> CanonicalName? {
             guard url.host?.lowercased() == "github.com" else { return nil }
             let parts = url.path
                 .split(separator: "/", omittingEmptySubsequences: true)
@@ -144,15 +142,17 @@ extension Core {
         }
 
         /// Snapshot of the current in-memory cache for tests.
-        public func cacheSnapshot() -> [String: String] { cache }
+        public func cacheSnapshot() -> [String: String] {
+            cache
+        }
 
         // MARK: - Helpers
 
-        internal static func key(owner: String, repo: String) -> String {
+        static func key(owner: String, repo: String) -> String {
             "\(owner.lowercased())/\(repo.lowercased())"
         }
 
-        internal static func parse(_ full: String) -> CanonicalName? {
+        static func parse(_ full: String) -> CanonicalName? {
             let parts = full.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
             guard parts.count == 2, !parts[0].isEmpty, !parts[1].isEmpty else { return nil }
             return CanonicalName(owner: parts[0], repo: parts[1])

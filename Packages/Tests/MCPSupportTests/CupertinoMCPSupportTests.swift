@@ -2,6 +2,6 @@
 import Testing
 import TestSupport
 
-@Test func cupertinoMCPSupport() async throws {
+@Test func cupertinoMCPSupport() {
     // Test placeholder
 }

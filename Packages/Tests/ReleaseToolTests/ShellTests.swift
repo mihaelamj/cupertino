@@ -1,6 +1,5 @@
-import Testing
-
 @testable import ReleaseTool
+import Testing
 
 // MARK: - Shell Tests
 

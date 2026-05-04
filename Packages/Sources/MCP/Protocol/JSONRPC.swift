@@ -64,7 +64,7 @@ public struct JSONRPCNotification: Codable, Sendable {
 }
 
 /// Generic MCP Request wrapper for type-safe requests
-public struct MCPRequest<Params: Codable>: Codable, Sendable where Params: Sendable {
+public struct MCPRequest<Params: Codable & Sendable>: Codable, Sendable {
     public let jsonrpc: String
     public let id: RequestID
     public let method: String

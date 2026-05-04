@@ -35,7 +35,9 @@ public final class SampleCodeDownloader {
     /// `nonisolated` because it's a constant that doesn't read `NSApp` state.
     /// Exposed for direct test coverage — any regression to `.prohibited` or
     /// `.accessory` will fail `SampleCodeAuthPolicyTests`.
-    nonisolated static var authFlowActivationPolicy: NSApplication.ActivationPolicy { .regular }
+    nonisolated static var authFlowActivationPolicy: NSApplication.ActivationPolicy {
+        .regular
+    }
     #endif
 
     private let outputDirectory: URL
@@ -243,9 +245,7 @@ public final class SampleCodeDownloader {
         try await Task.sleep(for: Shared.Constants.Delay.sampleCodePageLoad)
 
         // Extract samples using JavaScript
-        let samples = try await extractSamplesWithJavaScript(webView)
-
-        return samples
+        return try await extractSamplesWithJavaScript(webView)
     }
 
     private func extractSamplesWithJavaScript(_ webView: WKWebView) async throws -> [SampleMetadata] {
@@ -725,9 +725,7 @@ public final class SampleCodeDownloader {
         try await Task.sleep(for: Shared.Constants.Delay.sampleCodeDownload)
 
         // Get HTML content
-        let html = try await webView.evaluateJavaScript(Shared.Constants.JavaScript.getDocumentHTML) as? String ?? ""
-
-        return html
+        return try await webView.evaluateJavaScript(Shared.Constants.JavaScript.getDocumentHTML) as? String ?? ""
     }
 
     // MARK: - Logging
@@ -884,8 +882,13 @@ private final class AuthFlowCoordinator: NSObject, WKNavigationDelegate {
 
     // MARK: Explicit signals
 
-    func userPressedEnter() { complete(.userConfirmed) }
-    func userClosedWindow() { complete(.userClosedWindow) }
+    func userPressedEnter() {
+        complete(.userConfirmed)
+    }
+
+    func userClosedWindow() {
+        complete(.userClosedWindow)
+    }
 
     private func complete(_ outcome: SampleCodeDownloader.AuthOutcome) {
         guard !completed else { return }

@@ -8,23 +8,23 @@ extension Core {
         case readme
         case changelog
         case license
-        case packageManifest     // Package.swift
-        case packageResolved     // Package.resolved (apps commit this)
-        case doccArticle         // Sources/**/*.docc/**/*.md
-        case doccTutorial        // Sources/**/*.docc/**/*.tutorial
-        case source              // Sources/**/*.swift
-        case test                // Tests/**/*.swift
-        case example             // Examples|Example|Demo|Demos/**
-        case projectDoc          // Top-level MIGRATING.md, CONTRIBUTING.md, ARCHITECTURE.md, etc.
+        case packageManifest // Package.swift
+        case packageResolved // Package.resolved (apps commit this)
+        case doccArticle // Sources/**/*.docc/**/*.md
+        case doccTutorial // Sources/**/*.docc/**/*.tutorial
+        case source // Sources/**/*.swift
+        case test // Tests/**/*.swift
+        case example // Examples|Example|Demo|Demos/**
+        case projectDoc // Top-level MIGRATING.md, CONTRIBUTING.md, ARCHITECTURE.md, etc.
     }
 
     /// In-memory representation of a file pulled out of a package tarball after
     /// exclusion-rule pruning. Consumed directly by the indexer; never hits the
     /// user's filesystem as a standalone file.
     public struct ExtractedFile: Sendable {
-        public let relpath: String       // path inside the repo, e.g. Sources/Logging/Logger.swift
+        public let relpath: String // path inside the repo, e.g. Sources/Logging/Logger.swift
         public let kind: PackageFileKind
-        public let module: String?       // inferred from Sources/<module>/... or Tests/<module>Tests/...
+        public let module: String? // inferred from Sources/<module>/... or Tests/<module>Tests/...
         public let content: String
         public let byteSize: Int
 

@@ -1,9 +1,8 @@
 import Foundation
+@testable import Search
 import Shared
 import SQLite3
 import Testing
-
-@testable import Search
 
 // AST extraction over stored `doc_code_examples` (#192 section D).
 //
@@ -88,7 +87,6 @@ private func seedDoc(index: Search.Index, uri: String) async throws {
 
 @Suite("Search.Index.extractCodeExampleSymbols (#192 D)")
 struct CodeExampleSymbolsTests {
-
     @Test("Swift code block: symbols land in doc_symbols, names in docs_metadata.symbols")
     func swiftBlockPopulatesAll() async throws {
         let dbPath = makeTempDB()
@@ -193,8 +191,8 @@ struct CodeExampleSymbolsTests {
         let uri = "apple-docs://swiftui/observable"
         let index = try await Search.Index(dbPath: dbPath)
 
-        let page = StructuredDocumentationPage(
-            url: URL(string: "https://developer.apple.com/documentation/swiftui/observable")!,
+        let page = try StructuredDocumentationPage(
+            url: #require(URL(string: "https://developer.apple.com/documentation/swiftui/observable")),
             title: "Observable",
             kind: .protocol,
             source: .appleJSON,

@@ -1,6 +1,7 @@
+// swiftlint:disable identifier_name
 @testable import Core
-@testable import Search
 import Foundation
+@testable import Search
 import Shared
 import SQLite3
 import Testing
@@ -117,10 +118,20 @@ private func seedTempIndex() async throws -> (URL, () -> Void) {
         parents: ["apple/swift-log"]
     )
     let files: [Core.ExtractedFile] = [
-        .init(relpath: "README.md", kind: .readme, module: nil,
-              content: "# swift-log\n\nUnified logging API for Swift.", byteSize: 50),
-        .init(relpath: "Sources/Logging/Logger.swift", kind: .source, module: "Logging",
-              content: "public struct Logger { public var logLevel = LogLevel.info; public let label: String }", byteSize: 100),
+        .init(
+            relpath: "README.md",
+            kind: .readme,
+            module: nil,
+            content: "# swift-log\n\nUnified logging API for Swift.",
+            byteSize: 50
+        ),
+        .init(
+            relpath: "Sources/Logging/Logger.swift",
+            kind: .source,
+            module: "Logging",
+            content: "public struct Logger { public var logLevel = LogLevel.info; public let label: String }",
+            byteSize: 100
+        ),
     ]
     _ = try await index.index(
         resolved: resolved,
