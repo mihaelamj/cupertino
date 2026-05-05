@@ -126,8 +126,60 @@ extension Search {
             )
 
             let queryTokens = Self.tokens(from: question)
+
+            // Force-include canonical-repo hits when the query contains a
+            // token (or its dash-joined form) that is the exact `repo` name
+            // of an indexed package. Mirrors `Search.Index.fetchCanonicalTypePages`
+            // (#256 follow-on): plain BM25F over `package_files_fts` buries
+            // the canonical repo's hits when other packages have a longer
+            // mention of the query terms (e.g. `vapor middleware` lands
+            // swift-openapi-generator above vapor/vapor's own pages on the
+            // v1.0 corpus). Probe by exact repo-name match — when there's
+            // no canonical (Alamofire isn't indexed; "actor isolation" isn't
+            // a repo) the probe returns nothing and BM25 ranking stands.
+            let canonicalCandidates = try fetchCanonicalRepoCandidates(
+                queryTokens: queryTokens,
+                ftsQuery: ftsQuery,
+                weights: config.columnWeights,
+                kinds: config.kindFilter,
+                availability: availability
+            )
+
             var scored: [(score: Double, result: PackageSearchResult)] = []
             var seenPaths = Set<String>()
+
+            // Score canonicals first with a guaranteed-top score so they
+            // outrank everything from the regular fetch when present.
+            // Score is `bestRegularScore + 1000` floor so the rank order
+            // stays stable across queries. Multiple canonicals (rare)
+            // preserve relative BM25 order via the `-cand.bm25` term.
+            let canonicalFloor = (candidates.map { -$0.bm25 }.max() ?? 0) + 1000
+            for cand in canonicalCandidates {
+                let key = "\(cand.owner)/\(cand.repo)/\(cand.relpath)"
+                if seenPaths.contains(key) { continue }
+                seenPaths.insert(key)
+
+                let chunk = ChunkExtractor.extract(
+                    relpath: cand.relpath,
+                    content: cand.content,
+                    queryTokens: queryTokens,
+                    maxChunkLines: 60
+                )
+                let canonicalScore = canonicalFloor + (-cand.bm25)
+                scored.append((
+                    canonicalScore,
+                    PackageSearchResult(
+                        owner: cand.owner,
+                        repo: cand.repo,
+                        relpath: cand.relpath,
+                        kind: cand.kind,
+                        module: cand.module,
+                        title: cand.title,
+                        score: canonicalScore,
+                        chunk: chunk
+                    )
+                ))
+            }
 
             for cand in candidates {
                 let key = "\(cand.owner)/\(cand.repo)/\(cand.relpath)"
@@ -164,6 +216,177 @@ extension Search {
                 .sorted { $0.score > $1.score }
                 .prefix(maxResults)
                 .map(\.result)
+        }
+
+        // MARK: - Canonical-repo force-include (parallel to Search.Index #256 follow-on)
+
+        /// Resolves repo-name candidates from the query tokens and, for each
+        /// indexed package whose `repo` matches one, fetches its top
+        /// `package_files_fts` hit for the same FTS query. Returned hits are
+        /// merged into the scored list with a guaranteed-top score so plain
+        /// BM25F can't bury the canonical repo on its own queries.
+        private func fetchCanonicalRepoCandidates(
+            queryTokens: [String],
+            ftsQuery: String,
+            weights: IntentConfig.Weights,
+            kinds: Set<String>,
+            availability: AvailabilityFilter?
+        ) throws -> [Candidate] {
+            // Two priority tiers:
+            //
+            //   1. Dashed/underscored joins of all query tokens
+            //      ("swift testing" → "swift-testing"). Strongest signal —
+            //      the query names a specific repo verbatim.
+            //   2. Individual tokens. Fallback when no dashed match landed.
+            //      Only fires if the dashed pass returned nothing, so a
+            //      multi-token query that has a dashed canonical
+            //      ("swift testing" → swift-testing) doesn't *also* pull
+            //      in swiftlang/swift via the bare "swift" token.
+            //
+            // The single-token fallback is what catches "vapor middleware":
+            // no `vapor-middleware` repo exists, but `vapor` alone is the
+            // canonical repo name and force-including it lands vapor/vapor's
+            // README at the top.
+            guard !queryTokens.isEmpty, queryTokens.count <= 4 else { return [] }
+            let lowered = queryTokens.map { $0.lowercased() }
+
+            var dashedCandidates: Set<String> = []
+            if lowered.count >= 2 {
+                dashedCandidates.insert(lowered.joined(separator: "-"))
+                dashedCandidates.insert(lowered.joined(separator: "_"))
+                dashedCandidates = dashedCandidates.filter { $0.count >= 3 }
+            }
+
+            var resolved: [(owner: String, repo: String)] = []
+            if !dashedCandidates.isEmpty {
+                resolved = try resolveCanonicalRepos(repoNames: dashedCandidates)
+            }
+
+            // Single-token fallback — only when the dashed pass found
+            // nothing, regardless of how many tokens the query has.
+            if resolved.isEmpty {
+                let singles = Set(lowered.filter { $0.count >= 3 })
+                if !singles.isEmpty {
+                    resolved = try resolveCanonicalRepos(repoNames: singles)
+                }
+            }
+
+            guard !resolved.isEmpty else { return [] }
+
+            var hits: [Candidate] = []
+            for (owner, repo) in resolved {
+                if let candidate = try fetchTopFile(
+                    owner: owner,
+                    repo: repo,
+                    ftsQuery: ftsQuery,
+                    weights: weights,
+                    kinds: kinds,
+                    availability: availability
+                ) {
+                    hits.append(candidate)
+                }
+            }
+            return hits
+        }
+
+        /// Look up indexed packages whose `repo` exactly matches any of the
+        /// supplied names. Cheap PK-ish lookup against `package_metadata`.
+        private func resolveCanonicalRepos(repoNames: Set<String>) throws -> [(owner: String, repo: String)] {
+            guard let database else { throw PackageQueryError.databaseNotOpen }
+
+            let placeholders = Array(repeating: "?", count: repoNames.count).joined(separator: ",")
+            let sql = """
+            SELECT owner, repo
+            FROM package_metadata
+            WHERE LOWER(repo) IN (\(placeholders))
+            """
+
+            var statement: OpaquePointer?
+            defer { sqlite3_finalize(statement) }
+            guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
+                throw PackageQueryError.sqliteError(String(cString: sqlite3_errmsg(database)))
+            }
+            for (i, name) in repoNames.enumerated() {
+                sqlite3_bind_text(statement, Int32(i + 1), name, -1, SQLITE_TRANSIENT_QUERY)
+            }
+
+            var results: [(String, String)] = []
+            while sqlite3_step(statement) == SQLITE_ROW {
+                let owner = String(cString: sqlite3_column_text(statement, 0))
+                let repo = String(cString: sqlite3_column_text(statement, 1))
+                results.append((owner, repo))
+            }
+            return results
+        }
+
+        /// Fetch the single best FTS hit inside a specific (owner, repo).
+        /// Used only for canonical-repo force-include — caller already knows
+        /// the (owner, repo) is the canonical match for the query.
+        private func fetchTopFile(
+            owner: String,
+            repo: String,
+            ftsQuery: String,
+            weights: IntentConfig.Weights,
+            kinds: Set<String>,
+            availability: AvailabilityFilter?
+        ) throws -> Candidate? {
+            guard let database else { throw PackageQueryError.databaseNotOpen }
+
+            let kindList = kinds.map { "'\($0)'" }.joined(separator: ",")
+            var availabilityClause = ""
+            if let availability,
+               let column = Self.minColumn(for: availability.platform) {
+                availabilityClause = """
+                  AND m.\(column) IS NOT NULL
+                  AND m.\(column) <= ?
+                """
+            }
+
+            let sql = """
+            SELECT f.owner, f.repo, f.module, f.relpath, f.kind, f.title, f.content,
+                   bm25(package_files_fts, \(weights.title), \(weights.content), \(weights.symbols)) AS score
+            FROM package_files_fts f
+            JOIN package_metadata m ON m.owner = f.owner AND m.repo = f.repo
+            WHERE package_files_fts MATCH ?
+              AND f.owner = ?
+              AND f.repo = ?
+              AND f.kind IN (\(kindList))
+              \(availabilityClause)
+            ORDER BY score
+            LIMIT 1
+            """
+
+            var statement: OpaquePointer?
+            defer { sqlite3_finalize(statement) }
+            guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
+                throw PackageQueryError.sqliteError(String(cString: sqlite3_errmsg(database)))
+            }
+            sqlite3_bind_text(statement, 1, ftsQuery, -1, SQLITE_TRANSIENT_QUERY)
+            sqlite3_bind_text(statement, 2, owner, -1, SQLITE_TRANSIENT_QUERY)
+            sqlite3_bind_text(statement, 3, repo, -1, SQLITE_TRANSIENT_QUERY)
+            if let availability,
+               Self.minColumn(for: availability.platform) != nil {
+                sqlite3_bind_text(statement, 4, availability.minVersion, -1, SQLITE_TRANSIENT_QUERY)
+            }
+
+            guard sqlite3_step(statement) == SQLITE_ROW else { return nil }
+            let resolvedOwner = String(cString: sqlite3_column_text(statement, 0))
+            let resolvedRepo = String(cString: sqlite3_column_text(statement, 1))
+            let module: String?
+            if sqlite3_column_type(statement, 2) == SQLITE_NULL {
+                module = nil
+            } else {
+                module = String(cString: sqlite3_column_text(statement, 2))
+            }
+            let relpath = String(cString: sqlite3_column_text(statement, 3))
+            let kind = String(cString: sqlite3_column_text(statement, 4))
+            let title = String(cString: sqlite3_column_text(statement, 5))
+            let content = String(cString: sqlite3_column_text(statement, 6))
+            let bm25 = sqlite3_column_double(statement, 7)
+            return Candidate(
+                owner: resolvedOwner, repo: resolvedRepo, module: module,
+                relpath: relpath, kind: kind, title: title, content: content, bm25: bm25
+            )
         }
 
         /// Map a user-facing platform name (case-insensitive) to the
@@ -284,7 +507,7 @@ extension Search {
         }
 
         static func tokens(from question: String) -> [String] {
-            let stopwords: Set<String> = [
+            let stopwords: Set = [
                 "how", "to", "do", "i", "can", "you", "please", "show", "me", "give",
                 "a", "an", "the", "is", "are", "of", "for", "in", "on", "with", "and",
                 "or", "what", "where", "who", "why", "when", "does", "using", "use",
