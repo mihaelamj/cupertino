@@ -76,16 +76,34 @@ Apple keeps deprecated symbols indexed. Lead with the current canonical:
 
 When you mention a deprecated symbol in your answer, flag it.
 
-### 5. Recovery when results are weak
+### 5. Bare-name ambiguity: use specific function signatures when needed
+
+Bare-name queries can collide with namespaced symbols elsewhere in the index. Common collisions:
+
+- `searchable` → returns CoreSpotlight `CSSearchableIndex`, not the SwiftUI modifier. Use `searchable(text:` to find the modifier directly.
+- `View` → returns hits across many frameworks; prefer `View` with `--framework swiftui` and check the `metadata.framework` field on each candidate.
+- Common protocol names (`Identifiable`, `Codable`) hit the protocol page only when paired with a more specific term.
+
+When a bare-name query returns the wrong thing, try the function-signature form (`name(arg1:arg2:`) or pair the query with a distinguishing keyword.
+
+### 6. Recovery when results are weak
 
 If a search returns nothing useful:
 
 1. **Try a paradigm bridge**: if a UIKit name returned nothing in a SwiftUI context, search the SwiftUI canonical (and vice versa).
-2. **Try conceptual phrasing**: if `tableview` returns weak results, try `cupertino search "building list interfaces"` or `cupertino search "displaying a list of items" --source apple-docs` to find Apple's conceptual pages.
-3. **Try samples**: descriptive queries often hit better in the samples corpus. `cupertino search "search interface" --source samples`.
-4. **Always tell the user what you tried**: "No direct hit for `searchbar`. Retried as `searchable` (SwiftUI), found 12 results."
+2. **Try conceptual phrasing**: if `tableview` returns weak results, try `cupertino search "building list interfaces"` or `cupertino search "displaying a list of items"` to find Apple's conceptual pages. Descriptive queries often surface the right concept page.
+3. **Try the function-signature form**: `searchable(text:` instead of `searchable`.
+4. **Always tell the user what you tried**: "No direct hit for `searchbar`. Retried as `searchable(text:` (SwiftUI modifier), found 5 results."
 
 Never silently rewrite without telling the user what you did.
+
+### Known limitations as of v1.0.0
+
+These are gotchas worth knowing so you can route around them:
+
+- **`--source hig` and `--source samples` may return no results** in some installs even when the underlying data is indexed. Workaround: query without the source filter and inspect the `source` field on each candidate. (Bug tracked separately.)
+- **Cross-paradigm bridge queries** like "swiftui equivalent of UITableView" may return release notes instead of migration guides. Workaround: search both frameworks separately and present the comparison yourself.
+- **Some descriptive queries fail** when phrasing doesn't match Apple's wording. If `"how to display loading spinner"` misses, try `"ProgressView"` directly or `"loading interface"`.
 
 ### 6. Migration / cross-paradigm queries
 
@@ -197,21 +215,54 @@ All commands support `--format` with these options:
 
 ## Example JSON Output
 
+`cupertino search` returns:
+
 ```json
 {
-  "results": [
+  "candidates": [
     {
-      "uri": "apple-docs://swiftui/documentation_swiftui_vstack",
-      "title": "VStack",
-      "framework": "SwiftUI",
-      "summary": "A view that arranges its children vertically",
-      "source": "apple-docs"
+      "rank": 1,
+      "score": 0.91,
+      "title": "VStack | Apple Developer Documentation",
+      "identifier": "apple-docs://swiftui/documentation_swiftui_vstack",
+      "source": "apple-docs",
+      "metadata": {
+        "filePath": "https://developer.apple.com/documentation/SwiftUI/VStack",
+        "framework": "swiftui"
+      },
+      "chunk": "VStack | Apple Developer Documentation\n\nA view that arranges...",
+      "readFullCommand": "cupertino read apple-docs://swiftui/documentation_swiftui_vstack --source apple-docs"
     }
   ],
-  "count": 1,
-  "query": "VStack"
+  "contributingSources": ["packages", "samples", "apple-docs", "hig", "swift-evolution"],
+  "question": "VStack"
 }
 ```
+
+Use `identifier` (not `uri`) with `cupertino read`. Each candidate carries a `readFullCommand` field with the exact command pre-built.
+
+`cupertino read` returns:
+
+```json
+{
+  "id": "...",
+  "title": "VStack | Apple Developer Documentation",
+  "url": "https://developer.apple.com/documentation/swiftui/vstack",
+  "abstract": "A view that arranges its children vertically.",
+  "overview": "...",
+  "rawMarkdown": "---\nsource: ...\n...",
+  "declaration": {"code": "...", "language": "swift"},
+  "availability": [...],
+  "codeExamples": [...],
+  "sections": [...],
+  "kind": "structure",
+  "source": "appleWebKit",
+  "contentHash": "...",
+  "crawledAt": "2026-05-01T20:50:48Z"
+}
+```
+
+Note `framework` is encoded in the `url` path, not as a top-level field. The `source` field on `read` returns the crawler identifier (`appleWebKit`), not the cupertino source taxonomy from search.
 
 ## Tips
 
