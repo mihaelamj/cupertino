@@ -232,22 +232,6 @@ Add to `.vscode/mcp.json` in your workspace:
 }
 ```
 
-### Use with GitHub Copilot for Xcode
-
-[GitHub Copilot for Xcode](https://github.com/github/CopilotForXcode) supports MCP servers via Agent Mode. In the app, go to the **Tools** tab → **MCP** sub-tab → **MCP Configuration** → **Edit Config**, or edit `~/.config/github-copilot/xcode/mcp.json` directly:
-
-```json
-{
-  "servers": {
-    "cupertino": {
-      "type": "stdio",
-      "command": "/opt/homebrew/bin/cupertino",
-      "args": ["serve"]
-    }
-  }
-}
-```
-
 ### Use with Zed
 
 Add to your Zed `settings.json`:
@@ -486,9 +470,7 @@ These catalogs are indexed during `cupertino save` and enable instant search wit
 
 ### 3. Full-Text Search Engine
 
-- **Technology**: SQLite FTS5 with field-weighted BM25 (BM25F, Robertson/Zaragoza/Taylor 2004) over a structured 8-column index (`uri`, `source`, `framework`, `language`, `title`, `content`, `summary`, `symbols`). Title 10×, AST-extracted symbols 5×, summary 3×, framework 2×.
-- **AST-aware**: a Swift source extractor pulls identifiers out of every embedded code block and the page declaration, denormalizes them into a `symbols` column, and feeds them into BM25F so a query like `Task` ranks the Swift `Task` struct above prose mentions of the word "task".
-- **smart-query**: `cupertino search` (and the underlying `Search.SmartQuery` API) fans the question across every source in parallel and fuses per-source rankings via reciprocal rank fusion (RRF, k=60, Cormack/Clarke/Büttcher 2009). One dead source never takes the whole query down.
+- **Technology**: SQLite FTS5 with BM25 ranking
 - **Features**:
   - Porter stemming (e.g., "running" matches "run")
   - Framework filtering
