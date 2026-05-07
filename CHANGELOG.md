@@ -1,3 +1,11 @@
+## Unreleased: v1.0.1
+
+### Fixed
+
+- **`cupertino search --source packages` returns 0 results** ([#261](https://github.com/mihaelamj/cupertino/issues/261)): the `--source` dispatch in `SearchCommand.run()` lumped `packages` together with the doc-shaped sources (`apple-docs`, `apple-archive`, `swift-evolution`, `swift-org`, `swift-book`) and routed them all to `runDocsSearch`, which queries `search.db` only. Packages live in their own DB (`packages.db`) with their own fetcher (`PackageFTSCandidateFetcher`); querying `search.db` for `source = 'packages'` rows always returned empty. The unified fan-out path correctly opened `packages.db` via `openPackagesFetcher`, so default search returned package results, masking the bug. `--source packages` now routes to a new `runPackageSearch` runner that wraps `Search.PackageFTSCandidateFetcher` in a single-fetcher `Search.SmartQuery` and renders through the same `printSmartReport` formatter as the default fan-out. Output JSON shape is `{candidates, contributingSources: ["packages"], question}`, consistent with the unified search rather than the per-source list views. Honors `--platform` / `--min-version` filters and `--packages-db` override. Verified: `cupertino search "alamofire" --source packages` was returning 5 bytes (`[]\n`); now returns SourceKitten / SWXMLHash / package-collection results.
+
+---
+
 ## 1.0.0 "First Light" — 2026-05-05
 
 _The first release we'd call properly stable. Consolidates what was originally scoped as v0.11.0 (packages-overhaul) + v0.12.0 (docs-overhaul) into a single cut. Release plan: [#192](https://github.com/mihaelamj/cupertino/issues/192). Canonical roadmap: [#183](https://github.com/mihaelamj/cupertino/issues/183)._

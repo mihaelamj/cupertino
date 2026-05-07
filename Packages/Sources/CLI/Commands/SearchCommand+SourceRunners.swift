@@ -123,6 +123,53 @@ extension SearchCommand {
         }
     }
 
+    /// Single-source view for `--source packages`. Packages live in their
+    /// own DB (`packages.db`), so this can't share `runDocsSearch`'s code
+    /// path against `search.db`. Mirrors the unified-search shape exactly:
+    /// a SmartQuery wrapped around one `PackageFTSCandidateFetcher`,
+    /// rendered through the same `printSmartReport` formatter the default
+    /// path uses. Output JSON is therefore the unified
+    /// `{candidates, contributingSources, question}` shape with
+    /// `contributingSources: ["packages"]`. (#261)
+    func runPackageSearch() async throws {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            Logging.ConsoleLogger.error("❌ Query cannot be empty.")
+            throw ExitCode.failure
+        }
+
+        let dbURL = packagesDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+            ?? Shared.Constants.defaultPackagesDatabase
+
+        guard FileManager.default.fileExists(atPath: dbURL.path) else {
+            Logging.ConsoleLogger.error("❌ packages.db not found at \(dbURL.path)")
+            Logging.ConsoleLogger.error("   Run `cupertino setup` to download it, or `cupertino save --packages` to build locally.")
+            throw ExitCode.failure
+        }
+
+        let availabilityFilter = try resolveAvailabilityFilter()
+        let fetcher = Search.PackageFTSCandidateFetcher(
+            dbPath: dbURL,
+            availability: availabilityFilter
+        )
+        let smartQuery = Search.SmartQuery(fetchers: [fetcher])
+        let result = await smartQuery.answer(
+            question: trimmed,
+            limit: limit,
+            perFetcherLimit: max(20, perSource)
+        )
+
+        Self.printSmartReport(
+            result: result,
+            question: trimmed,
+            availabilityFilterActive: availabilityFilter != nil,
+            platform: platform,
+            minVersion: minVersion,
+            format: format,
+            brief: brief
+        )
+    }
+
     func runHIGSearch() async throws {
         let results = try await ServiceContainer.withDocsService(dbPath: searchDb) { service in
             try await service.search(SearchQuery(
