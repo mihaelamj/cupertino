@@ -205,12 +205,17 @@ struct SearchCommand: AsyncParsableCommand {
             try await runSampleSearch()
         case Shared.Constants.SourcePrefix.hig:
             try await runHIGSearch()
+        case Shared.Constants.SourcePrefix.packages:
+            // packages live in their own DB (packages.db), not search.db.
+            // The docs runner queries search.db only and would silently
+            // return [] here. Use the dedicated single-fetcher SmartQuery
+            // path instead so packages.db is actually consulted (#261).
+            try await runPackageSearch()
         case Shared.Constants.SourcePrefix.appleDocs,
              Shared.Constants.SourcePrefix.appleArchive,
              Shared.Constants.SourcePrefix.swiftEvolution,
              Shared.Constants.SourcePrefix.swiftOrg,
-             Shared.Constants.SourcePrefix.swiftBook,
-             Shared.Constants.SourcePrefix.packages:
+             Shared.Constants.SourcePrefix.swiftBook:
             try await runDocsSearch()
         default:
             // Default (nil or "all") triggers the SmartQuery fan-out.
