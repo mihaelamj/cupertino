@@ -160,4 +160,4 @@ Find types that conform to Sendable.
 - [search_symbols](../search_symbols/) - Search by symbol type and name
 - [search_property_wrappers](../search_property_wrappers/) - Search by property wrapper
 - [search_conformances](../search_conformances/) - Search by protocol conformance
-- [search_docs](../search_docs/) - Full-text documentation search
+- `search` - Full-text documentation search

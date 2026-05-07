@@ -50,6 +50,6 @@ Found **606** projects:
 
 ## See Also
 
-- [search_samples](../search_samples/) - Search sample code
+- `search` (with `source: samples`) - Search sample code
 - [read_sample](../read_sample/) - Read sample README
 - [read_sample_file](../read_sample_file/) - Read specific source file

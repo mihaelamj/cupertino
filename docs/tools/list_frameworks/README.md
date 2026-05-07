@@ -13,7 +13,7 @@ List all available frameworks in the documentation index with document counts.
 
 ## Description
 
-Returns a list of all frameworks that have been indexed, along with the number of documents in each framework. Useful for discovering what documentation is available and for filtering `search_docs` queries.
+Returns a list of all frameworks that have been indexed, along with the number of documents in each framework. Useful for discovering what documentation is available and for filtering `search` queries.
 
 ## Parameters
 
@@ -60,11 +60,11 @@ Total documents: **22,044**
 
 ### Response Usage
 
-Use the framework names from the response to filter `search_docs` queries:
+Use the framework names from the response to filter `search` queries:
 
 ```json
 {
-  "name": "search_docs",
+  "name": "search",
   "arguments": {
     "query": "View",
     "framework": "swiftui"
@@ -94,7 +94,7 @@ Use the framework names from the response to filter `search_docs` queries:
 Before searching, check what frameworks are indexed:
 
 1. Call `list_frameworks` to see available frameworks
-2. Use framework names to filter `search_docs` queries
+2. Use framework names to filter `search` queries
 3. Get more relevant results by narrowing scope
 
 ### Verify Index Status
@@ -109,6 +109,6 @@ If total documents is 0, run `cupertino save` to build the index.
 
 ## See Also
 
-- [search_docs](../search_docs/) - Search documentation
-- [search_hig](../search_hig/) - Search Human Interface Guidelines
+- `search` - Search documentation
+- `search` (with `source: hig`) - Search Human Interface Guidelines
 - [read_document](../read_document/) - Read document content

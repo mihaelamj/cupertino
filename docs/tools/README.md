@@ -8,8 +8,7 @@ Cupertino provides these MCP tools for AI agents to search and read documentatio
 
 | Tool | Description |
 |------|-------------|
-| [search_docs](search_docs/) | Full-text search across all indexed documentation |
-| [search_hig](search_hig/) | Search Human Interface Guidelines with platform/category filters |
+| `search` | Unified full-text search across every indexed source (apple-docs, samples, HIG, apple-archive, swift-evolution, swift-org, swift-book, packages). Use the `source` parameter to scope to one source. Replaces the pre-#239 per-source `search_docs` / `search_hig` / `search_samples` tools, which were collapsed into this one. See the [search command docs](../commands/search/) for the same fan-out behavior on the CLI side. |
 | [list_frameworks](list_frameworks/) | List available frameworks with document counts |
 | [read_document](read_document/) | Read a document by URI in JSON or Markdown format |
 
@@ -17,10 +16,11 @@ Cupertino provides these MCP tools for AI agents to search and read documentatio
 
 | Tool | Description |
 |------|-------------|
-| [search_samples](search_samples/) | Search sample code projects and files |
 | [list_samples](list_samples/) | List all indexed sample projects |
 | [read_sample](read_sample/) | Read sample project README |
 | [read_sample_file](read_sample_file/) | Read specific source file from a sample |
+
+(For sample-code search, use the unified `search` tool above with `source: samples`.)
 
 ### Semantic Search Tools (AST-powered)
 
@@ -39,7 +39,7 @@ MCP tools are invoked by AI agents (like Claude) through the Model Context Proto
 
 ### Typical Workflow
 
-1. **Search** - Use `search_docs` to find relevant documentation
+1. **Search** - Use `search` to find relevant documentation (optionally pass `source` to narrow the fan-out to one corpus)
 2. **List** - Use `list_frameworks` to discover available frameworks
 3. **Read** - Use `read_document` with a URI from search results to get full content
 
@@ -47,7 +47,7 @@ MCP tools are invoked by AI agents (like Claude) through the Model Context Proto
 
 **User:** "How do actors work in Swift?"
 
-**Claude:** *calls `search_docs` with query "Actors Swift concurrency"*
+**Claude:** *calls `search` with query "Actors Swift concurrency"*
 
 **Claude:** "I found several results. Let me read the main documentation..."
 
@@ -65,7 +65,7 @@ Tools are called via JSON-RPC over stdio. Example request:
   "id": 1,
   "method": "tools/call",
   "params": {
-    "name": "search_docs",
+    "name": "search",
     "arguments": {
       "query": "Actors Swift concurrency"
     }

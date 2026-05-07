@@ -174,4 +174,4 @@ Find pre-Observation ObservableObject implementations.
 - [search_symbols](../search_symbols/) - Search by symbol type and name
 - [search_property_wrappers](../search_property_wrappers/) - Search by property wrapper
 - [search_concurrency](../search_concurrency/) - Search concurrency patterns
-- [search_samples](../search_samples/) - Full-text sample code search
+- `search` (with `source: samples`) - Full-text sample code search

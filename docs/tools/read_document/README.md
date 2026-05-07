@@ -16,7 +16,7 @@ Read a document by URI in JSON or Markdown format.
 
 ## Description
 
-Retrieves the full content of a document from the search index. Use URIs from `search_docs` results. Documents can be returned in JSON (structured) or Markdown (rendered) format.
+Retrieves the full content of a document from the search index. Use URIs from `search` results. Documents can be returned in JSON (structured) or Markdown (rendered) format.
 
 ## Parameters
 
@@ -172,7 +172,7 @@ protocol View
 
 1. **Search for documentation:**
    ```json
-   {"name": "search_docs", "arguments": {"query": "Actors Swift concurrency"}}
+   {"name": "search", "arguments": {"query": "Actors Swift concurrency"}}
    ```
 
 2. **Extract URI from results:**
@@ -200,7 +200,7 @@ If the URI doesn't exist in the index:
 }
 ```
 
-**Solution:** Verify the URI from `search_docs` results.
+**Solution:** Verify the URI from `search` results.
 
 ### Invalid URI Format
 
@@ -215,10 +215,10 @@ If the URI format is incorrect:
 }
 ```
 
-**Solution:** Use URIs exactly as returned by `search_docs`.
+**Solution:** Use URIs exactly as returned by `search`.
 
 ## See Also
 
-- [search_docs](../search_docs/) - Search for documents
-- [search_hig](../search_hig/) - Search Human Interface Guidelines
+- `search` - Search for documents
+- `search` (with `source: hig`) - Search Human Interface Guidelines
 - [list_frameworks](../list_frameworks/) - List available frameworks

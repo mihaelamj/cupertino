@@ -37,7 +37,7 @@ The relative path to the file within the project.
 - `"Sources/App/AppDelegate.swift"`
 - `"Shared/Models/DataModel.swift"`
 
-Use `search_samples` to find files within projects.
+Use `search` (with `source: samples`) to find files within projects.
 
 ## Response
 
@@ -65,6 +65,6 @@ Returns the source file content.
 
 ## See Also
 
-- [search_samples](../search_samples/) - Search sample code
+- `search` (with `source: samples`) - Search sample code
 - [list_samples](../list_samples/) - List all projects
 - [read_sample](../read_sample/) - Read project README

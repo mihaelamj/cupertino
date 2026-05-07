@@ -158,4 +158,4 @@ Found **12** symbols matching "Manager":
 - [search_property_wrappers](../search_property_wrappers/) - Search by property wrapper usage
 - [search_conformances](../search_conformances/) - Search by protocol conformance
 - [search_concurrency](../search_concurrency/) - Search concurrency patterns
-- [search_docs](../search_docs/) - Full-text documentation search
+- `search` - Full-text documentation search

@@ -30,7 +30,7 @@ The project identifier (folder name) of the sample.
 - `"fruta-building-a-feature-rich-app-with-swiftui"`
 - `"implementing-modern-collection-views"`
 
-Use `list_samples` or `search_samples` to find project IDs.
+Use `list_samples` or `search` (with `source: samples`) to find project IDs.
 
 ## Response
 
@@ -48,6 +48,6 @@ Returns the README content in markdown format.
 
 ## See Also
 
-- [search_samples](../search_samples/) - Search sample code
+- `search` (with `source: samples`) - Search sample code
 - [list_samples](../list_samples/) - List all projects
 - [read_sample_file](../read_sample_file/) - Read specific source file
