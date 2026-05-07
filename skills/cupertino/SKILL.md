@@ -97,13 +97,26 @@ If a search returns nothing useful:
 
 Never silently rewrite without telling the user what you did.
 
+### Per-source response shapes differ
+
+Filtered searches (`--source X`) return a **per-source dedicated view**, not the unified `candidates` shape. The unified search exists for cross-source ranking; the per-source views are for browsing one source's structured data.
+
+Shapes in v1.0.0:
+- **default** (no `--source`): `{candidates, contributingSources, question}`
+- **`--source apple-docs`**: top-level list of doc objects with `availability`, `framework`, `id`, `rank`
+- **`--source samples`**: `{files: [{filename, path, projectId, rank, snippet}]}`
+- **`--source hig`**: `{count, query, results: [{title, uri, summary, availability}]}`
+- **`--source apple-archive` / `swift-evolution` / `swift-org` / `swift-book`**: source-specific shapes
+
+If you parse JSON, expect different keys per source. The default unified search is the most consistent option when you don't need source-specific fields.
+
 ### Known limitations as of v1.0.0
 
 These are gotchas worth knowing so you can route around them:
 
-- **`--source hig` and `--source samples` may return no results** in some installs even when the underlying data is indexed. Workaround: query without the source filter and inspect the `source` field on each candidate. (Bug tracked separately.)
+- **`--source packages` returns 0 results** for every query, despite packages.db being 988 MB with 20186 indexed files. Workaround: use the default search (no `--source` filter); package docs ARE in `contributingSources` for the unified search. (Bug tracked separately.)
 - **Cross-paradigm bridge queries** like "swiftui equivalent of UITableView" may return release notes instead of migration guides. Workaround: search both frameworks separately and present the comparison yourself.
-- **Some descriptive queries fail** when phrasing doesn't match Apple's wording. If `"how to display loading spinner"` misses, try `"ProgressView"` directly or `"loading interface"`.
+- **Some descriptive queries miss** when phrasing diverges from Apple's wording. If `"how to display loading spinner"` misses, try `"ProgressView"` directly or `"loading interface"`.
 
 ### 6. Migration / cross-paradigm queries
 
