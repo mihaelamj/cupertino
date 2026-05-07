@@ -385,7 +385,7 @@ extension Search {
             return docFiles
         }
 
-        private func deduplicateDocFilesByCanonicalURL(_ files: [URL]) throws -> [URL] {
+        internal func deduplicateDocFilesByCanonicalURL(_ files: [URL]) throws -> [URL] {
             var newestByURL: [String: (file: URL, crawledAt: Date)] = [:]
 
             for file in files {
@@ -405,10 +405,23 @@ extension Search {
             return files.filter { keptFiles.contains($0) }
         }
 
-        private func canonicalDocumentationURL(for file: URL) -> String? {
-            if file.pathExtension.lowercased() == "json",
-               let data = try? Data(contentsOf: file),
-               let page = try? JSONDecoder().decode(StructuredDocumentationPage.self, from: data) {
+        /// Read and decode a saved StructuredDocumentationPage. Configures the
+        /// decoder with `.iso8601` to match how `cupertino fetch` writes
+        /// `crawledAt`; without this the decode silently fails on every real
+        /// Apple-doc JSON file and the dedup primary path becomes dead code.
+        /// See `indexStructuredDocument` for the canonical decoder config.
+        internal func loadStructuredPage(from file: URL) -> StructuredDocumentationPage? {
+            guard file.pathExtension.lowercased() == "json",
+                  let data = try? Data(contentsOf: file) else {
+                return nil
+            }
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            return try? decoder.decode(StructuredDocumentationPage.self, from: data)
+        }
+
+        internal func canonicalDocumentationURL(for file: URL) -> String? {
+            if let page = loadStructuredPage(from: file) {
                 return URLUtilities.normalize(page.url)?.absoluteString
             }
 
@@ -421,10 +434,8 @@ extension Search {
             return "https://developer.apple.com/documentation/\(framework)/\(filename)"
         }
 
-        private func documentationCrawledAt(for file: URL) -> Date? {
-            if file.pathExtension.lowercased() == "json",
-               let data = try? Data(contentsOf: file),
-               let page = try? JSONDecoder().decode(StructuredDocumentationPage.self, from: data) {
+        internal func documentationCrawledAt(for file: URL) -> Date? {
+            if let page = loadStructuredPage(from: file) {
                 return page.crawledAt
             }
 
