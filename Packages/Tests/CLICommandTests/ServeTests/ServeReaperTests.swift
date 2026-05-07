@@ -89,4 +89,29 @@ struct ServeReaperTests {
         #expect(!ServeReaper.isServeSubcommand("/usr/local/bin/cupertino"))
         #expect(!ServeReaper.isServeSubcommand(""))
     }
+
+    // MARK: - Path-with-spaces edge cases (codex review on #267)
+
+    @Test("handles binary paths that contain spaces")
+    func binaryPathWithSpaces() {
+        // Real-world cases the previous implementation got wrong:
+        #expect(ServeReaper.isServeSubcommand("/Applications/My Tools/cupertino serve"))
+        #expect(ServeReaper.isServeSubcommand("/tmp/My Tools/cupertino serve"))
+        #expect(ServeReaper.isServeSubcommand("/Users/me/Dev Builds/cupertino serve"))
+        #expect(ServeReaper.isServeSubcommand("/Applications/My App/bin/cupertino serve --x"))
+        // Negative: serve missing
+        #expect(!ServeReaper.isServeSubcommand("/Applications/My Tools/cupertino save"))
+        #expect(!ServeReaper.isServeSubcommand("/Applications/My Tools/cupertino"))
+    }
+
+    @Test("handles outer directories named like the binary (cupertino-build / cupertino-suffix)")
+    func directoryNameContainsBinaryName() {
+        // Anchoring on the LAST occurrence of `cupertino` so a directory
+        // earlier in the path that happens to contain the substring does
+        // not throw the parser off.
+        #expect(ServeReaper.isServeSubcommand("/Volumes/cupertino-build/cupertino serve"))
+        #expect(ServeReaper.isServeSubcommand("/Apps/cupertino-suffix/cupertino serve"))
+        #expect(ServeReaper.isServeSubcommand("/path/cupertino/cupertino serve"))
+        #expect(!ServeReaper.isServeSubcommand("/Volumes/cupertino-build/cupertino save"))
+    }
 }

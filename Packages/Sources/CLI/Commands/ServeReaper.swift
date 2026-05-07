@@ -96,21 +96,26 @@ enum ServeReaper {
         let commandLine: String
     }
 
-    /// Detects whether a command line's first subcommand (token after the
-    /// binary path) is `serve`. Word-boundary check, so a command like
-    /// `cupertino server-something` would NOT match (defensive against
-    /// future subcommands containing the substring "serve").
+    /// Detects whether a command line's first subcommand (argv[1]) is
+    /// `serve`. Robust against binary paths that contain spaces
+    /// (`/Applications/My Tools/cupertino serve` and similar) by anchoring
+    /// on the last occurrence of `cupertino` in the command line — the
+    /// binary basename always ends in that token, so whatever follows is
+    /// argv[1]. Word-boundary check at the end, so `server-foo` and
+    /// `serves` do NOT match.
     static func isServeSubcommand(_ commandLine: String) -> Bool {
-        // Skip past the binary token. Use Substring slicing rather than
-        // .split() so we don't lose argv-with-spaces edge cases.
         let trimmed = commandLine.trimmingCharacters(in: .whitespaces)
-        guard let firstSpace = trimmed.firstIndex(of: " ") else {
-            return false // no subcommand at all
+        // Anchor on the LAST `cupertino` in the line. Using `.backwards`
+        // ensures we don't get fooled when an outer directory in the path
+        // happens to contain `cupertino` (e.g.
+        // `/Volumes/cupertino-build/cupertino serve`).
+        guard let cupertinoRange = trimmed.range(of: "cupertino", options: .backwards) else {
+            return false
         }
-        let afterBinary = trimmed[trimmed.index(after: firstSpace)...]
-            .trimmingCharacters(in: .whitespaces)
-        // First token after binary must be exactly `serve`.
-        let firstToken = afterBinary.split(separator: " ", maxSplits: 1).first ?? ""
+        let afterBinary = trimmed[cupertinoRange.upperBound...]
+            .drop(while: { $0 == " " })
+        guard !afterBinary.isEmpty else { return false }
+        let firstToken = afterBinary.prefix(while: { $0 != " " })
         return firstToken == "serve"
     }
 
