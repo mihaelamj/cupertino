@@ -212,8 +212,9 @@ extension Search {
 
             logInfo("📂 Scanning directory for documentation (no metadata.json)...")
 
-            // Recursively find all .json and .md files (JSON preferred over MD)
-            let docFiles = try Self.findDocFiles(in: docsDirectory)
+            // Recursively find all .json and .md files (JSON preferred over MD).
+            // The dedup helper collapses case-axis duplicates by canonical URL.
+            let docFiles = try deduplicateDocFilesByCanonicalURL(Self.findDocFiles(in: docsDirectory))
 
             guard !docFiles.isEmpty else {
                 logInfo("⚠️  No documentation files found in \(docsDirectory.path)")
@@ -227,11 +228,12 @@ extension Search {
 
             for (index, file) in docFiles.enumerated() {
                 // Extract framework from path: docs/{framework}/...
-                guard let framework = extractFrameworkFromPath(file, relativeTo: docsDirectory) else {
+                guard let rawFramework = extractFrameworkFromPath(file, relativeTo: docsDirectory) else {
                     logError("Could not extract framework from path: \(file.path) (relative to \(docsDirectory.path))")
                     skipped += 1
                     continue
                 }
+                let framework = canonicalPathComponent(rawFramework)
 
                 // Always work with StructuredDocumentationPage
                 let structuredPage: StructuredDocumentationPage
@@ -278,7 +280,8 @@ extension Search {
                 }
 
                 // Generate URI: apple-docs://{framework}/{filename}
-                let filename = file.deletingPathExtension().lastPathComponent
+                let filename = URLUtilities.normalize(structuredPage.url)?.lastPathComponent
+                    ?? canonicalPathComponent(file.deletingPathExtension().lastPathComponent)
                 let uri = "apple-docs://\(framework)/\(filename)"
 
                 // Index using indexStructuredDocument (Apple docs from /docs folder)
@@ -380,6 +383,72 @@ extension Search {
             }
 
             return docFiles
+        }
+
+        internal func deduplicateDocFilesByCanonicalURL(_ files: [URL]) throws -> [URL] {
+            var newestByURL: [String: (file: URL, crawledAt: Date)] = [:]
+
+            for file in files {
+                guard let canonicalURL = canonicalDocumentationURL(for: file) else {
+                    continue
+                }
+
+                let crawledAt = documentationCrawledAt(for: file) ?? .distantPast
+                if let existing = newestByURL[canonicalURL], existing.crawledAt >= crawledAt {
+                    continue
+                }
+
+                newestByURL[canonicalURL] = (file, crawledAt)
+            }
+
+            let keptFiles = Set(newestByURL.values.map(\.file))
+            return files.filter { keptFiles.contains($0) }
+        }
+
+        /// Read and decode a saved StructuredDocumentationPage. Configures the
+        /// decoder with `.iso8601` to match how `cupertino fetch` writes
+        /// `crawledAt`; without this the decode silently fails on every real
+        /// Apple-doc JSON file and the dedup primary path becomes dead code.
+        /// See `indexStructuredDocument` for the canonical decoder config.
+        internal func loadStructuredPage(from file: URL) -> StructuredDocumentationPage? {
+            guard file.pathExtension.lowercased() == "json",
+                  let data = try? Data(contentsOf: file) else {
+                return nil
+            }
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            return try? decoder.decode(StructuredDocumentationPage.self, from: data)
+        }
+
+        internal func canonicalDocumentationURL(for file: URL) -> String? {
+            if let page = loadStructuredPage(from: file) {
+                return URLUtilities.normalize(page.url)?.absoluteString
+            }
+
+            guard let rawFramework = extractFrameworkFromPath(file, relativeTo: docsDirectory) else {
+                return nil
+            }
+
+            let framework = canonicalPathComponent(rawFramework)
+            let filename = canonicalPathComponent(file.deletingPathExtension().lastPathComponent)
+            return "https://developer.apple.com/documentation/\(framework)/\(filename)"
+        }
+
+        internal func documentationCrawledAt(for file: URL) -> Date? {
+            if let page = loadStructuredPage(from: file) {
+                return page.crawledAt
+            }
+
+            return try? file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+        }
+
+        /// Lowercase-only canonicalization. Mirrors `URLUtilities.normalize`
+        /// which deliberately does NOT collapse underscore→dash because
+        /// at least one Apple framework (`installer_js`) legitimately uses
+        /// underscore in its path and Apple does not redirect from the dash
+        /// form (verified: `documentation/installer-js` returns 404).
+        private func canonicalPathComponent(_ component: String) -> String {
+            component.lowercased()
         }
 
         private func findMarkdownFiles(in directory: URL) throws -> [URL] {

@@ -73,8 +73,9 @@ extension Core {
                 // Restore state
                 visited = savedSession.visited
                 queue = savedSession.queue.compactMap { queued in
-                    guard let url = URL(string: queued.url) else { return nil }
-                    return (url: url, depth: queued.depth)
+                    guard let url = URL(string: queued.url),
+                          let normalized = URLUtilities.normalize(url) else { return nil }
+                    return (url: normalized, depth: queued.depth)
                 }
                 // Rebuild the enqueued-URL set from the restored queue so the
                 // dedup at enqueue is correct after resume. Schema-compatible:
@@ -108,15 +109,19 @@ extension Core {
                     do {
                         logInfo("📋 Fetching technology index for complete framework coverage...")
                         let frameworkURLs = try await TechnologiesIndexFetcher.fetchFrameworkURLs()
-                        queue = frameworkURLs.map { (url: $0, depth: 0) }
+                        queue = frameworkURLs.compactMap { url in
+                            URLUtilities.normalize(url).map { (url: $0, depth: 0) }
+                        }
                         logInfo("   ✅ Seeded queue with \(frameworkURLs.count) framework root URLs")
                     } catch {
                         logInfo("   ⚠️ Failed to fetch technology index: \(error.localizedDescription)")
                         logInfo("   ⚠️ Falling back to start URL only")
-                        queue = [(url: configuration.startURL, depth: 0)]
+                        let startURL = URLUtilities.normalize(configuration.startURL) ?? configuration.startURL
+                        queue = [(url: startURL, depth: 0)]
                     }
                 } else {
-                    queue = [(url: configuration.startURL, depth: 0)]
+                    let startURL = URLUtilities.normalize(configuration.startURL) ?? configuration.startURL
+                    queue = [(url: startURL, depth: 0)]
                 }
 
                 logInfo("🚀 Starting new crawl")
@@ -480,7 +485,14 @@ extension Core {
                 return false
             }
 
-            return !visited.contains(normalized.absoluteString)
+            let normalizedString = normalized.absoluteString
+            guard !visited.contains(normalizedString) else {
+                return false
+            }
+
+            return !queue.contains { queuedURL, _ in
+                URLUtilities.normalize(queuedURL)?.absoluteString == normalizedString
+            }
         }
 
         // MARK: - Logging

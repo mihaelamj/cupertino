@@ -69,6 +69,36 @@ struct CrawlerTests {
         #expect(try !#require(normalized?.absoluteString.contains("?")))
     }
 
+    @Test("URLUtilities normalize lowercases Apple documentation paths")
+    func urlNormalizeLowercasesAppleDocumentationPaths() throws {
+        let uppercase = URL(string: "https://developer.apple.com/documentation/Cinematic/CNAssetInfo-2ata2")!
+        let lowercase = URL(string: "https://developer.apple.com/documentation/cinematic/cnassetinfo-2ata2")!
+
+        #expect(URLUtilities.normalize(uppercase) == URLUtilities.normalize(lowercase))
+        #expect(URLUtilities.normalize(uppercase)?.path == "/documentation/cinematic/cnassetinfo-2ata2")
+    }
+
+    @Test("URLUtilities normalize preserves method disambiguator dashes")
+    func urlNormalizePreservesMethodDisambiguatorDashes() throws {
+        let url = URL(string: "https://developer.apple.com/documentation/Cinematic/CNAssetInfo-2ata2")!
+
+        #expect(URLUtilities.normalize(url)?.lastPathComponent == "cnassetinfo-2ata2")
+    }
+
+    @Test("URLUtilities normalize keeps underscores intact (installer_js safety)")
+    func urlNormalizePreservesUnderscoresInPath() throws {
+        // Apple does not redirect /documentation/installer-js to
+        // /documentation/installer_js — the dash form returns 404. A naive
+        // underscore→dash collapse in URLUtilities would silently break the
+        // entire installer_js framework on every crawl. Verify we never make
+        // that change.
+        let url = URL(string: "https://developer.apple.com/documentation/installer_js/license")!
+        let normalized = URLUtilities.normalize(url)
+
+        #expect(normalized?.path == "/documentation/installer_js/license")
+        #expect(try !#require(normalized?.absoluteString.contains("installer-js")))
+    }
+
     // MARK: - Framework Extraction Tests
 
     @Test("URLUtilities extracts framework from Apple docs URL")
