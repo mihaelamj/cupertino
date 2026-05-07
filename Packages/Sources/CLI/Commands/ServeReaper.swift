@@ -30,7 +30,16 @@ enum ServeReaper {
 
         for entry in listProcesses() {
             guard entry.pid != ownPID else { continue }
-            guard isServeSubcommand(entry.commandLine) else { continue }
+            // Subcommand check uses the real argv from the kernel
+            // (sysctl KERN_PROCARGS2). The joined command line that ps
+            // outputs is fundamentally ambiguous when paths or args
+            // contain spaces or the substring 'cupertino' (--base-dir
+            // /Users/me/.cupertino-dev, --search-db /tmp/cupertino.db,
+            // /Applications/My Tools/cupertino, …).
+            guard let argv = argvOf(pid: entry.pid),
+                  argv.count >= 2,
+                  argv[1] == "serve"
+            else { continue }
             guard let entryPath = pathOf(pid: entry.pid),
                   entryPath == ownPath
             else { continue }
@@ -96,27 +105,87 @@ enum ServeReaper {
         let commandLine: String
     }
 
-    /// Detects whether a command line's first subcommand (argv[1]) is
-    /// `serve`. Robust against binary paths that contain spaces
-    /// (`/Applications/My Tools/cupertino serve` and similar) by anchoring
-    /// on the last occurrence of `cupertino` in the command line — the
-    /// binary basename always ends in that token, so whatever follows is
-    /// argv[1]. Word-boundary check at the end, so `server-foo` and
-    /// `serves` do NOT match.
-    static func isServeSubcommand(_ commandLine: String) -> Bool {
-        let trimmed = commandLine.trimmingCharacters(in: .whitespaces)
-        // Anchor on the LAST `cupertino` in the line. Using `.backwards`
-        // ensures we don't get fooled when an outer directory in the path
-        // happens to contain `cupertino` (e.g.
-        // `/Volumes/cupertino-build/cupertino serve`).
-        guard let cupertinoRange = trimmed.range(of: "cupertino", options: .backwards) else {
-            return false
+    /// Read argv of `pid` via `sysctl(KERN_PROCARGS2)`. Returns nil if the
+    /// process has exited or we lack permission to query it.
+    ///
+    /// Earlier revisions tried to parse the joined command line that
+    /// `ps -o command=` produces, but that loses argv boundaries
+    /// irrecoverably: paths with spaces, args whose values contain the
+    /// substring `cupertino` (`--search-db /tmp/cupertino.db`,
+    /// `--base-dir ~/.cupertino-dev`), and combinations of both all
+    /// defeat any heuristic. The kernel knows the actual argv vector;
+    /// asking for it directly is the only correct answer.
+    private static func argvOf(pid: pid_t) -> [String]? {
+        var mib: [Int32] = [CTL_KERN, KERN_PROCARGS2, pid]
+        var size: Int = 0
+
+        // Probe for the buffer size first.
+        guard mib.withUnsafeMutableBufferPointer({ ptr in
+            sysctl(ptr.baseAddress, 3, nil, &size, nil, 0)
+        }) == 0, size > 0 else { return nil }
+
+        var buffer = [UInt8](repeating: 0, count: size)
+        guard mib.withUnsafeMutableBufferPointer({ mibPtr in
+            buffer.withUnsafeMutableBufferPointer { bufPtr in
+                sysctl(mibPtr.baseAddress, 3, bufPtr.baseAddress, &size, nil, 0)
+            }
+        }) == 0 else { return nil }
+
+        // sysctl may have written less than the probed size; trim.
+        return parseProcargs2(Array(buffer.prefix(size)))
+    }
+
+    /// Pure parser for the `KERN_PROCARGS2` byte layout. xnu format:
+    ///
+    ///     [argc: int32 host-endian]
+    ///     [exec_path: null-terminated string]
+    ///     [zero or more NUL bytes for alignment]
+    ///     [argv[0]: null-terminated]
+    ///     [argv[1]: null-terminated]
+    ///     ...
+    ///     [argv[argc-1]: null-terminated]
+    ///     [envp[0]: null-terminated]   (ignored)
+    ///     ...
+    ///
+    /// Internal so unit tests can build synthetic buffers.
+    static func parseProcargs2(_ buffer: [UInt8]) -> [String]? {
+        guard buffer.count >= 4 else { return nil }
+
+        var argc: Int32 = 0
+        withUnsafeMutableBytes(of: &argc) { argcBytes in
+            for i in 0..<4 {
+                argcBytes[i] = buffer[i]
+            }
         }
-        let afterBinary = trimmed[cupertinoRange.upperBound...]
-            .drop(while: { $0 == " " })
-        guard !afterBinary.isEmpty else { return false }
-        let firstToken = afterBinary.prefix(while: { $0 != " " })
-        return firstToken == "serve"
+        guard argc > 0 else { return nil }
+
+        var offset = 4
+
+        // Skip the canonical exec_path string.
+        while offset < buffer.count && buffer[offset] != 0 {
+            offset += 1
+        }
+        // Skip the NUL terminator + any alignment padding NULs.
+        while offset < buffer.count && buffer[offset] == 0 {
+            offset += 1
+        }
+
+        // Read `argc` null-terminated strings starting from here.
+        var argv: [String] = []
+        var stringStart = offset
+        while offset < buffer.count && argv.count < Int(argc) {
+            if buffer[offset] == 0 {
+                let bytes = Array(buffer[stringStart..<offset])
+                guard let s = String(bytes: bytes, encoding: .utf8) else {
+                    return nil
+                }
+                argv.append(s)
+                stringStart = offset + 1
+            }
+            offset += 1
+        }
+
+        return argv.count == Int(argc) ? argv : nil
     }
 
     /// Parses `ps -ax -o pid=,etime=,command=` output into Entry records.

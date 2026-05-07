@@ -3,9 +3,20 @@ import Foundation
 import Testing
 
 // Unit coverage for the testable surface of `ServeReaper` (#242).
-// The runtime reap loop (kill / proc_pidpath / spawning ps) is exercised
-// only by manual / staging verification — this suite covers the pure
-// string parsing that decides which processes are reap candidates.
+// The runtime reap loop (kill / proc_pidpath / spawning ps / sysctl)
+// is exercised only by manual / staging verification — this suite
+// covers the pure parsing layers that decide which processes get
+// reaped:
+//
+//   - `parsePsOutput` (PID + elapsed-time extraction from ps output)
+//   - `parseProcargs2` (argv extraction from the kernel-format byte
+//     buffer that `sysctl(KERN_PROCARGS2)` returns)
+//
+// Earlier revisions tried to detect the `serve` subcommand by parsing
+// the joined command line that `ps -o command=` outputs. That layer
+// got patched twice and still missed real-world failures because the
+// joined string loses argv boundaries irrecoverably. The kernel knows
+// the truth; we now ask it.
 
 @Suite("ServeReaper parsing")
 struct ServeReaperTests {
@@ -62,56 +73,145 @@ struct ServeReaperTests {
         #expect(entries.isEmpty)
     }
 
-    // MARK: - isServeSubcommand
+    // MARK: - parseProcargs2 (kernel argv buffer)
 
-    @Test("identifies serve as the subcommand")
-    func recognizesServe() {
-        #expect(ServeReaper.isServeSubcommand("/usr/local/bin/cupertino serve"))
-        #expect(ServeReaper.isServeSubcommand("/usr/local/bin/cupertino serve --search-db /tmp/x"))
-        #expect(ServeReaper.isServeSubcommand("cupertino serve"))
+    @Test("parses a typical KERN_PROCARGS2 buffer")
+    func parsesTypicalProcargs2() {
+        let buf = buildProcargs2(
+            execPath: "/usr/local/bin/cupertino",
+            argv: ["/usr/local/bin/cupertino", "serve"]
+        )
+        #expect(ServeReaper.parseProcargs2(buf) == [
+            "/usr/local/bin/cupertino",
+            "serve",
+        ])
     }
 
-    @Test("rejects non-serve subcommands so save/fetch survive (#242 acceptance)")
-    func rejectsOthers() {
-        #expect(!ServeReaper.isServeSubcommand("/usr/local/bin/cupertino save"))
-        #expect(!ServeReaper.isServeSubcommand("/usr/local/bin/cupertino fetch --type docs"))
-        #expect(!ServeReaper.isServeSubcommand("/usr/local/bin/cupertino doctor"))
+    @Test("preserves argument values containing 'cupertino' (regression for codex review on #267)")
+    func argValuesContainCupertino() {
+        // The realistic case codex flagged: --search-db /tmp/cupertino.db
+        // The previous string-anchored matcher resolved to `.db` and missed
+        // the process. Argv-based parsing returns the actual vector so
+        // argv[1] is unambiguously `serve` regardless of what later args
+        // contain.
+        let cases: [[String]] = [
+            ["/usr/local/bin/cupertino", "serve", "--search-db", "/tmp/cupertino.db"],
+            ["/usr/local/bin/cupertino", "serve", "--base-dir", "/Users/me/.cupertino-dev"],
+            [
+                "/Applications/My Tools/cupertino", "serve",
+                "--search-db", "/tmp/cupertino-search.db",
+            ],
+        ]
+        for argv in cases {
+            let buf = buildProcargs2(execPath: argv[0], argv: argv)
+            #expect(ServeReaper.parseProcargs2(buf) == argv)
+        }
     }
 
-    @Test("does not match word-prefix collisions (server-foo / serves)")
-    func wordBoundary() {
-        #expect(!ServeReaper.isServeSubcommand("/usr/local/bin/cupertino server-something"))
-        #expect(!ServeReaper.isServeSubcommand("/usr/local/bin/cupertino serves"))
-    }
-
-    @Test("rejects bare commands with no subcommand")
-    func bareBinary() {
-        #expect(!ServeReaper.isServeSubcommand("/usr/local/bin/cupertino"))
-        #expect(!ServeReaper.isServeSubcommand(""))
-    }
-
-    // MARK: - Path-with-spaces edge cases (codex review on #267)
-
-    @Test("handles binary paths that contain spaces")
+    @Test("handles binary paths that contain spaces (regression for first codex review on #267)")
     func binaryPathWithSpaces() {
-        // Real-world cases the previous implementation got wrong:
-        #expect(ServeReaper.isServeSubcommand("/Applications/My Tools/cupertino serve"))
-        #expect(ServeReaper.isServeSubcommand("/tmp/My Tools/cupertino serve"))
-        #expect(ServeReaper.isServeSubcommand("/Users/me/Dev Builds/cupertino serve"))
-        #expect(ServeReaper.isServeSubcommand("/Applications/My App/bin/cupertino serve --x"))
-        // Negative: serve missing
-        #expect(!ServeReaper.isServeSubcommand("/Applications/My Tools/cupertino save"))
-        #expect(!ServeReaper.isServeSubcommand("/Applications/My Tools/cupertino"))
+        let buf = buildProcargs2(
+            execPath: "/Applications/My Tools/cupertino",
+            argv: ["/Applications/My Tools/cupertino", "serve"]
+        )
+        let argv = ServeReaper.parseProcargs2(buf)
+        #expect(argv == ["/Applications/My Tools/cupertino", "serve"])
     }
 
-    @Test("handles outer directories named like the binary (cupertino-build / cupertino-suffix)")
-    func directoryNameContainsBinaryName() {
-        // Anchoring on the LAST occurrence of `cupertino` so a directory
-        // earlier in the path that happens to contain the substring does
-        // not throw the parser off.
-        #expect(ServeReaper.isServeSubcommand("/Volumes/cupertino-build/cupertino serve"))
-        #expect(ServeReaper.isServeSubcommand("/Apps/cupertino-suffix/cupertino serve"))
-        #expect(ServeReaper.isServeSubcommand("/path/cupertino/cupertino serve"))
-        #expect(!ServeReaper.isServeSubcommand("/Volumes/cupertino-build/cupertino save"))
+    @Test("handles arbitrary alignment padding between exec_path and argv[0]")
+    func alignmentPadding() {
+        // xnu pads exec_path's NUL terminator out to an alignment boundary.
+        // We don't know the exact alignment ahead of time; the parser
+        // should tolerate any number of trailing NULs before argv[0].
+        for padding in [0, 1, 3, 7, 15] {
+            let buf = buildProcargs2(
+                execPath: "/usr/local/bin/cupertino",
+                argv: ["cupertino", "serve"],
+                padding: padding
+            )
+            let argv = ServeReaper.parseProcargs2(buf)
+            #expect(argv == ["cupertino", "serve"], "padding=\(padding)")
+        }
     }
+
+    @Test("ignores envp following argv (does not read past argc strings)")
+    func ignoresEnvironment() {
+        let buf = buildProcargs2(
+            execPath: "/usr/local/bin/cupertino",
+            argv: ["cupertino", "serve"],
+            envp: ["HOME=/Users/me", "PATH=/usr/bin:/bin"]
+        )
+        let argv = ServeReaper.parseProcargs2(buf)
+        #expect(argv == ["cupertino", "serve"])
+    }
+
+    @Test("rejects buffers that are too short")
+    func rejectsTooShort() {
+        #expect(ServeReaper.parseProcargs2([]) == nil)
+        #expect(ServeReaper.parseProcargs2([0, 0, 0]) == nil)
+    }
+
+    @Test("rejects argc=0 buffers (no argv to inspect)")
+    func rejectsZeroArgc() {
+        let buf: [UInt8] = [0, 0, 0, 0] + Array("/usr/local/bin/cupertino\0".utf8)
+        #expect(ServeReaper.parseProcargs2(buf) == nil)
+    }
+
+    @Test("returns nil when buffer truncates mid-argv")
+    func truncatedBuffer() {
+        // Build a buffer claiming argc=3 but supplying only 2 strings.
+        var buf: [UInt8] = []
+        var argc = Int32(3)
+        withUnsafeBytes(of: &argc) { buf.append(contentsOf: $0) }
+        buf.append(contentsOf: "/usr/local/bin/cupertino\0".utf8)
+        buf.append(contentsOf: "cupertino\0".utf8)
+        buf.append(contentsOf: "serve\0".utf8)
+        // Only 2 strings provided; parser should return nil.
+        #expect(ServeReaper.parseProcargs2(buf) == nil)
+    }
+}
+
+// MARK: - Test fixture helpers
+
+/// Builds a synthetic `KERN_PROCARGS2` byte buffer in the xnu format the
+/// real `sysctl` returns. Layout per xnu `bsd/kern/kern_sysctl.c`:
+///
+///     [argc: int32 host-endian]
+///     [exec_path: null-terminated]
+///     [`padding` extra NUL bytes for alignment]
+///     [argv[0]: null-terminated]
+///     ...
+///     [argv[argc-1]: null-terminated]
+///     [envp[0]: null-terminated]
+///     ...
+private func buildProcargs2(
+    execPath: String,
+    argv: [String],
+    padding: Int = 0,
+    envp: [String] = []
+) -> [UInt8] {
+    var buffer: [UInt8] = []
+    var argc = Int32(argv.count)
+
+    withUnsafeBytes(of: &argc) { bytes in
+        buffer.append(contentsOf: bytes)
+    }
+
+    buffer.append(contentsOf: execPath.utf8)
+    buffer.append(0)
+    for _ in 0..<padding {
+        buffer.append(0)
+    }
+
+    for arg in argv {
+        buffer.append(contentsOf: arg.utf8)
+        buffer.append(0)
+    }
+
+    for env in envp {
+        buffer.append(contentsOf: env.utf8)
+        buffer.append(0)
+    }
+
+    return buffer
 }
