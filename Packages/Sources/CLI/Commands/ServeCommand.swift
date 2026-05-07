@@ -38,6 +38,12 @@ struct ServeCommand: AsyncParsableCommand {
     )
 
     mutating func run() async throws {
+        // Reap any sibling `cupertino serve` processes of the same binary
+        // before we bind stdio. MCP host config reloads (Claude Desktop,
+        // Cursor, etc.) leave orphan servers behind otherwise — they pin
+        // SQLite read locks and stack RAM usage. (#242)
+        ServeReaper.reapSiblings()
+
         if isatty(STDOUT_FILENO) == 0 {
             Log.disableConsole()
         }
