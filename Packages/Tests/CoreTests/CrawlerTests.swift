@@ -349,4 +349,64 @@ struct CrawlerTests {
         #expect(jsonURL != nil)
         #expect(jsonURL?.absoluteString == "https://developer.apple.com/tutorials/data/documentation/accelerate/lapack-functions.json")
     }
+
+    // MARK: - htmlLinkAugmentation Configuration Tests (#203)
+
+    @Test("CrawlerConfiguration htmlLinkAugmentation defaults to true")
+    func htmlLinkAugmentationDefaultsToTrue() throws {
+        let config = Shared.CrawlerConfiguration(
+            startURL: try #require(URL(string: "https://developer.apple.com/documentation")),
+            outputDirectory: FileManager.default.temporaryDirectory
+        )
+        #expect(config.htmlLinkAugmentation == true)
+    }
+
+    @Test("CrawlerConfiguration htmlLinkAugmentation can be set to false")
+    func htmlLinkAugmentationCanBeDisabled() throws {
+        let config = Shared.CrawlerConfiguration(
+            startURL: try #require(URL(string: "https://developer.apple.com/documentation")),
+            outputDirectory: FileManager.default.temporaryDirectory,
+            htmlLinkAugmentation: false
+        )
+        #expect(config.htmlLinkAugmentation == false)
+    }
+
+    @Test("CrawlerConfiguration decodes legacy JSON without htmlLinkAugmentation as true")
+    func htmlLinkAugmentationDecodesLegacyJSON() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+        let json = """
+        {
+            "startURL": "https://developer.apple.com/documentation",
+            "allowedPrefixes": ["https://developer.apple.com/documentation"],
+            "maxPages": 100,
+            "maxDepth": 15,
+            "outputDirectory": "\(tempDir.path)",
+            "requestDelay": 0.05,
+            "retryAttempts": 3
+        }
+        """
+        let data = try #require(json.data(using: .utf8))
+        let config = try JSONDecoder().decode(Shared.CrawlerConfiguration.self, from: data)
+        #expect(config.htmlLinkAugmentation == true)
+    }
+
+    @Test("CrawlerConfiguration decodes htmlLinkAugmentation false from JSON")
+    func htmlLinkAugmentationDecodesExplicitFalse() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+        let json = """
+        {
+            "startURL": "https://developer.apple.com/documentation",
+            "allowedPrefixes": ["https://developer.apple.com/documentation"],
+            "maxPages": 100,
+            "maxDepth": 15,
+            "outputDirectory": "\(tempDir.path)",
+            "requestDelay": 0.05,
+            "retryAttempts": 3,
+            "htmlLinkAugmentation": false
+        }
+        """
+        let data = try #require(json.data(using: .utf8))
+        let config = try JSONDecoder().decode(Shared.CrawlerConfiguration.self, from: data)
+        #expect(config.htmlLinkAugmentation == false)
+    }
 }

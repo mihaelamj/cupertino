@@ -282,6 +282,20 @@ extension Core {
             if useJSON {
                 do {
                     (structuredPage, markdown, links) = try await loadPageViaJSON(url: url, depth: depth)
+                    // Augment JSON-extracted links with HTML anchor tags when enabled. (#203)
+                    // Catches ~9,600 URLs that Apple's DocC JSON references dict omits.
+                    // Skipped in .jsonOnly mode (speed-critical) and when explicitly disabled.
+                    if configuration.htmlLinkAugmentation, mode == .auto {
+                        if let html = try? await loadPage(url: url) {
+                            let htmlLinks = autoreleasepool { extractLinks(from: html, baseURL: url) }
+                            let seen = Set(links.map(\.absoluteString))
+                            let added = htmlLinks.filter { !seen.contains($0.absoluteString) }
+                            if !added.isEmpty {
+                                logInfo("   🔗 HTML augmentation: +\(added.count) links")
+                                links += added
+                            }
+                        }
+                    }
                 } catch {
                     if mode == .jsonOnly {
                         // No fallback in pure JSON-only mode — propagate.

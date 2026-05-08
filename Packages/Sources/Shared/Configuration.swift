@@ -24,6 +24,11 @@ extension Shared {
         public let requestDelay: TimeInterval
         public let retryAttempts: Int
         public let discoveryMode: DiscoveryMode
+        /// When true, the crawler fetches page HTML after a successful JSON API call and
+        /// unions the HTML anchor-tag links with the JSON-extracted links. Catches ~9,600
+        /// URLs that Apple's DocC JSON references dict omits. No-op in `.jsonOnly` mode.
+        /// Defaults to true; set to false for speed-critical crawls. (#203)
+        public let htmlLinkAugmentation: Bool
 
         public init(
             startURL: URL = URL(string: Shared.Constants.BaseURL.appleDeveloperDocs)!,
@@ -34,7 +39,8 @@ extension Shared {
             logFile: URL? = nil,
             requestDelay: TimeInterval = 0.05,
             retryAttempts: Int = 3,
-            discoveryMode: DiscoveryMode = .auto
+            discoveryMode: DiscoveryMode = .auto,
+            htmlLinkAugmentation: Bool = true
         ) {
             self.startURL = startURL
 
@@ -69,13 +75,14 @@ extension Shared {
             self.requestDelay = requestDelay
             self.retryAttempts = retryAttempts
             self.discoveryMode = discoveryMode
+            self.htmlLinkAugmentation = htmlLinkAugmentation
         }
 
         /// Custom decoder so legacy config JSON without `discoveryMode` still
         /// loads cleanly — defaults to `.auto`. Encode is auto-synthesized.
         private enum CodingKeys: String, CodingKey {
             case startURL, allowedPrefixes, maxPages, maxDepth, outputDirectory
-            case logFile, requestDelay, retryAttempts, discoveryMode
+            case logFile, requestDelay, retryAttempts, discoveryMode, htmlLinkAugmentation
         }
 
         public init(from decoder: any Decoder) throws {
@@ -89,6 +96,7 @@ extension Shared {
             requestDelay = try container.decode(TimeInterval.self, forKey: .requestDelay)
             retryAttempts = try container.decode(Int.self, forKey: .retryAttempts)
             discoveryMode = try container.decodeIfPresent(DiscoveryMode.self, forKey: .discoveryMode) ?? .auto
+            htmlLinkAugmentation = try container.decodeIfPresent(Bool.self, forKey: .htmlLinkAugmentation) ?? true
         }
 
         /// Load configuration from JSON file
