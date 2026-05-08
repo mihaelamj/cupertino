@@ -19,7 +19,7 @@ extension JSONCrawler {
             session = URLSession(configuration: config)
         }
 
-        public func fetch(url: URL) async throws -> Data {
+        public func fetch(url: URL) async throws -> FetchResult<Data> {
             let (data, response) = try await session.data(from: url)
 
             guard let httpResponse = response as? HTTPURLResponse else {
@@ -30,7 +30,8 @@ extension JSONCrawler {
                 throw JSONFetcherError.httpError(statusCode: httpResponse.statusCode)
             }
 
-            return data
+            let finalURL = response.url ?? url
+            return FetchResult(content: data, url: finalURL)
         }
     }
 }

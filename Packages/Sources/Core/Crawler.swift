@@ -258,6 +258,9 @@ extension Core {
             var structuredPage: StructuredDocumentationPage?
             var markdown: String
             var links: [URL]
+            // storageURL is the post-redirect canonical URL used for all on-disk paths.
+            // For HTML-only paths we have no redirect info, so we fall back to the request URL.
+            var storageURL = url
 
             // Check if this URL could have a JSON API endpoint (Apple docs)
             let hasJSONEndpoint = AppleJSONToMarkdown.jsonAPIURL(from: url) != nil
@@ -281,7 +284,7 @@ extension Core {
 
             if useJSON {
                 do {
-                    (structuredPage, markdown, links) = try await loadPageViaJSON(url: url, depth: depth)
+                    (structuredPage, markdown, links, storageURL) = try await loadPageViaJSON(url: url, depth: depth)
                 } catch {
                     if mode == .jsonOnly {
                         // No fallback in pure JSON-only mode — propagate.
@@ -313,14 +316,16 @@ extension Core {
             // Compute content hash from structured page or markdown
             let contentHash = structuredPage?.contentHash ?? HashUtilities.sha256(of: markdown)
 
-            // Determine output path
-            let frameworkDir = configuration.outputDirectory.appendingPathComponent(framework)
+            // Derive output path from the canonical post-redirect URL so the on-disk
+            // structure always reflects the final URL, not the stale request URL.
+            let storageFramework = URLUtilities.extractFramework(from: storageURL)
+            let frameworkDir = configuration.outputDirectory.appendingPathComponent(storageFramework)
             try FileManager.default.createDirectory(
                 at: frameworkDir,
                 withIntermediateDirectories: true
             )
 
-            let filename = URLUtilities.filename(from: url)
+            let filename = URLUtilities.filename(from: storageURL)
 
             // JSON file path (primary output format)
             let jsonFilePath = frameworkDir.appendingPathComponent(
@@ -332,9 +337,9 @@ extension Core {
                 "\(filename)\(Shared.Constants.FileName.markdownExtension)"
             )
 
-            // Check if we should recrawl
+            // Check if we should recrawl (keyed on canonical URL)
             let shouldRecrawl = await state.shouldRecrawl(
-                url: url.absoluteString,
+                url: storageURL.absoluteString,
                 contentHash: contentHash,
                 filePath: jsonFilePath
             )
@@ -376,10 +381,10 @@ extension Core {
                 try markdown.write(to: markdownFilePath, atomically: true, encoding: .utf8)
             }
 
-            // Update metadata with framework tracking
+            // Update metadata with framework tracking (keyed on canonical URL)
             await state.updatePage(
-                url: url.absoluteString,
-                framework: framework,
+                url: storageURL.absoluteString,
+                framework: storageFramework,
                 filePath: jsonFilePath.path,
                 contentHash: contentHash,
                 depth: depth,
@@ -410,11 +415,12 @@ extension Core {
         }
 
         /// Load page via Apple's JSON API - avoids WKWebView memory issues
-        /// Returns structured page data for JSON output and links for crawling
+        /// Returns structured page data for JSON output, links for crawling, and the post-redirect canonical URL
         private func loadPageViaJSON(url: URL, depth: Int) async throws -> (
             structuredPage: StructuredDocumentationPage?,
             markdown: String,
-            links: [URL]
+            links: [URL],
+            canonicalURL: URL
         ) {
             guard let jsonURL = AppleJSONToMarkdown.jsonAPIURL(from: url) else {
                 throw CrawlerError.invalidState
@@ -430,24 +436,35 @@ extension Core {
                 throw CrawlerError.invalidHTML
             }
 
+            // Derive the canonical documentation URL from the post-redirect JSON API response URL.
+            // When Apple redirects a framework slug (e.g. professional_video_applications →
+            // professional-video-applications), response.url reflects the final JSON API URL;
+            // reversing it gives us the storage key that matches the canonical doc URL.
+            let responseJSONURL = response.url ?? jsonURL
+            let canonicalURL = AppleJSONToMarkdown.documentationURL(from: responseJSONURL) ?? url
+
+            if canonicalURL.absoluteString != url.absoluteString {
+                logInfo("   🔀 Redirect detected: storing under \(canonicalURL.lastPathComponent)")
+            }
+
             // Wrap the synchronous JSON parsing in `autoreleasepool` so the
             // NSData / NSDictionary / NSString buffers Foundation allocates
             // during decode get released at the end of this page instead of
             // accumulating in the implicit Task-scoped pool. See the comment
             // in the main crawl loop for the multi-day-crawl rationale.
             return try autoreleasepool {
-                let structuredPage = AppleJSONToMarkdown.toStructuredPage(data, url: url, depth: depth)
-                guard let markdown = AppleJSONToMarkdown.convert(data, url: url) else {
+                let structuredPage = AppleJSONToMarkdown.toStructuredPage(data, url: canonicalURL, depth: depth)
+                guard let markdown = AppleJSONToMarkdown.convert(data, url: canonicalURL) else {
                     throw CrawlerError.invalidHTML
                 }
                 let links = AppleJSONToMarkdown.extractLinks(from: data)
-                return (structuredPage, markdown, links)
+                return (structuredPage, markdown, links, canonicalURL)
             }
         }
 
         private func loadPage(url: URL) async throws -> String {
             // Delegate to WKWebCrawler's WKWebContentFetcher
-            try await webPageFetcher.fetch(url: url)
+            try await webPageFetcher.fetch(url: url).content
         }
 
         private func extractLinks(from html: String, baseURL: URL) -> [URL] {

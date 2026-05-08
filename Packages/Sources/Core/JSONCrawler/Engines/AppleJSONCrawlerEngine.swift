@@ -19,14 +19,18 @@ extension JSONCrawler {
                 throw JSONCrawlerError.invalidURL
             }
 
-            // Fetch JSON content
-            let data = try await fetcher.fetch(url: jsonURL)
+            // Fetch JSON content; result.url is the post-redirect JSON API URL
+            let result = try await fetcher.fetch(url: jsonURL)
+            let data = result.content
+
+            // Derive the canonical documentation URL from the post-redirect JSON API URL
+            let canonicalURL = AppleJSONToMarkdown.documentationURL(from: result.url) ?? url
 
             // Create structured page (includes full content)
-            let structuredPage = AppleJSONToMarkdown.toStructuredPage(data, url: url)
+            let structuredPage = AppleJSONToMarkdown.toStructuredPage(data, url: canonicalURL)
 
             // Also generate markdown (optional output format)
-            guard let markdown = AppleJSONToMarkdown.convert(data, url: url) else {
+            guard let markdown = AppleJSONToMarkdown.convert(data, url: canonicalURL) else {
                 throw JSONCrawlerError.transformFailed
             }
 

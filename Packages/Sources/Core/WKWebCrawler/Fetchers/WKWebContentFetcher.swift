@@ -37,11 +37,11 @@ extension WKWebCrawler {
 
         /// Fetch HTML content from a URL using WKWebView
         /// - Parameter url: The URL to fetch
-        /// - Returns: The rendered HTML content
-        public func fetch(url: URL) async throws -> String {
+        /// - Returns: A FetchResult containing the rendered HTML and the post-redirect final URL
+        public func fetch(url: URL) async throws -> FetchResult<String> {
             webView.load(URLRequest(url: url))
 
-            return try await withThrowingTaskGroup(of: String?.self) { group in
+            let html = try await withThrowingTaskGroup(of: String?.self) { group in
                 // Task 1: Timeout
                 group.addTask {
                     try await Task.sleep(for: self.pageLoadTimeout)
@@ -63,6 +63,9 @@ extension WKWebCrawler {
                 group.cancelAll()
                 throw WebKitFetcherError.timeout
             }
+
+            let finalURL = webView.url ?? url
+            return FetchResult(content: html, url: finalURL)
         }
 
         /// Recycle the WKWebView to free memory
