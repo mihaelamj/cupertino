@@ -21,7 +21,6 @@ Removes unnecessary files from sample code ZIP archives to reduce disk space. Th
 - Build artifacts
 - `Pods` folders
 - `.swiftpm` folders
-- `__MACOSX` folders
 
 ## Options
 

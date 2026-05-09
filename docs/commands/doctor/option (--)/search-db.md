@@ -53,8 +53,9 @@ Example output:
 ```
 🔍 Search Index
    ✓ Database: ~/.cupertino/search.db
-   ✓ Size: 52.3 MB
-   ✓ Frameworks: 287
+   ✓ Size: 2.5 GB
+   ✓ Frameworks: 261
+   ✓ Schema version: 12 (matches binary)
 ```
 
 If not found:
@@ -80,11 +81,15 @@ The search database contains:
 
 ## Database Size Examples
 
+Approximate, snapshot of the v1.0 corpus — your local DB will vary:
+
 | Documentation Size | Index Size |
 |-------------------|------------|
-| 13,000 pages (Apple) | ~50 MB |
-| 400 proposals (Evolution) | ~2 MB |
-| Combined | ~52 MB |
+| ~405,000 pages (Apple docs + HIG + archive + Swift Book + swift.org) | ~2.5 GB |
+| ~500 proposals (Swift Evolution) | ~2-3 MB |
+| Combined `search.db` | ~2.5 GB |
+
+(`packages.db` and `samples.db` are separate from `search.db` and aren't sized in by `--search-db`.)
 
 ## Notes
 

@@ -16,9 +16,9 @@ Controls how the framework list is rendered. Different formats suit different co
 
 | Format | Description |
 |--------|-------------|
-| `text` | Human-readable list with framework names + document counts (default) |
-| `json` | Structured JSON array, one object per framework |
-| `markdown` | Markdown table with framework / count columns |
+| `text` | Human-readable list — `Available Frameworks (N total, M documents):` header followed by `  framework: count documents` rows (default) |
+| `json` | Bare array `[ { "name": "...", "documentCount": N }, ... ]`, sorted by `documentCount` descending |
+| `markdown` | Markdown table with `Framework | Documents` columns |
 
 ## Default
 
@@ -29,15 +29,24 @@ Controls how the framework list is rendered. Different formats suit different co
 ### Default text output
 ```bash
 cupertino list-frameworks
-# SwiftUI    1234
-# UIKit       890
-# ...
+```
+
+Output:
+```
+Available Frameworks (261 total, 405000 documents):
+
+  swiftui: 6500 documents
+  foundation: 4200 documents
+  uikit: 3800 documents
+  ...
 ```
 
 ### JSON for programmatic consumers
 ```bash
-cupertino list-frameworks --format json | jq '.[] | select(.count > 100)'
+cupertino list-frameworks --format json | jq '.[] | select(.documentCount > 100)'
 ```
+
+(Top-level is a bare array; per-entry key is `documentCount`, not `count`.)
 
 ### Markdown for embedding in docs
 ```bash
@@ -47,4 +56,5 @@ cupertino list-frameworks --format markdown
 ## Notes
 
 - All three formats list the same frameworks in the same order (descending document count).
-- JSON output is single-array for consistency with `cupertino search --format json`.
+- JSON top-level is a bare array — iterate as `.[]`.
+- Per-entry JSON fields: `name` (string), `documentCount` (int).

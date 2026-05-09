@@ -33,10 +33,11 @@ cupertino package-search "swift-collections deque API"
 cupertino package-search "vapor middleware composition" --limit 5
 cupertino package-search "swift-syntax visitor pattern" --db /tmp/packages.db
 
-# Only return packages that support iOS 16 or earlier (i.e. usable on iOS 16 today).
+# Packages whose declared iOS deployment target is at or below 16.0
+# (i.e. they install and run on iOS 16).
 cupertino package-search "websocket" --platform iOS --min-version 16.0
 
-# Same shape, broader floor: any package supporting iOS 13 or earlier.
+# Broader: packages whose declared iOS deployment target is at or below 13.0.
 cupertino package-search "json codable" --platform iOS --min-version 13.0
 ```
 
@@ -53,4 +54,4 @@ cupertino package-search "json codable" --platform iOS --min-version 13.0
 ## See Also
 
 - [search](../search/) — unified fan-out across all sources (default mode), or single-source FTS with `--source` filter
-- [setup](../setup/) — provisions `packages.db` (bundled in the `cupertino-docs` release zip alongside `search.db` and `samples.db`)
+- [setup](../setup/) — provisions `packages.db` (bundled in the `cupertino-databases-v<version>.zip` release artifact alongside `search.db` and `samples.db`)

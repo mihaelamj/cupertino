@@ -16,9 +16,9 @@ Controls how the project README and metadata block are rendered.
 
 | Format | Description |
 |--------|-------------|
-| `text` | Human-readable plain text — README body + a footer of project facts (default) |
-| `json` | Structured JSON object: id, title, framework, deployment targets, README, file count |
-| `markdown` | Markdown rendering of the README with a YAML front-matter block of metadata |
+| `text` | Human-readable plain text — title underline, project facts, README body, file listing (default) |
+| `json` | Structured JSON object: `{ id, title, description, frameworks, readme, webURL, fileCount, totalSize, files }` |
+| `markdown` | Markdown rendering with H1 title, `## Description`, `## Metadata` bullet block, `## README`, `## Files` |
 
 ## Default
 
@@ -33,8 +33,10 @@ cupertino read-sample building-a-document-based-app-with-swiftui
 
 ### JSON for programmatic consumers
 ```bash
-cupertino read-sample building-a-document-based-app-with-swiftui --format json | jq '.deploymentTargets'
+cupertino read-sample building-a-document-based-app-with-swiftui --format json | jq '.frameworks'
 ```
+
+(Per-project JSON fields: `id`, `title`, `description`, `frameworks` (string array), `readme` (string?), `webURL` (string), `fileCount` (int), `totalSize` (bytes int), `files` (array of relative paths). There is no `deploymentTargets` field.)
 
 ### Markdown to a file
 ```bash
@@ -43,5 +45,6 @@ cupertino read-sample building-a-document-based-app-with-swiftui --format markdo
 
 ## Notes
 
-- `--format` controls only the output rendering; the data is the same in all three formats.
-- Use `cupertino list-samples` first to find valid `<project-id>` values.
+- Markdown uses an H1 title plus `## Metadata` bullet list (frameworks / files / size / Apple Developer URL); not YAML front matter.
+- `--format` controls only the rendering; the data is the same in all three formats.
+- Use `cupertino list-samples` to find valid `<project-id>` values.

@@ -38,8 +38,7 @@ cupertino list-frameworks --format markdown
 ## Sample Output
 
 ```
-Available Frameworks
-Total: 261 frameworks, 405000+ documents
+Available Frameworks (261 total, 405000 documents):
 
   swiftui: 6500 documents
   foundation: 4200 documents

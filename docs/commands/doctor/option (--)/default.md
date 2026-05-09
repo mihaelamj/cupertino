@@ -36,7 +36,7 @@ The doctor command performs these checks using default paths:
 ✅ MCP Server
    ✓ Server can initialize
    ✓ Transport: stdio
-   ✓ Protocol version: 2025-06-18
+   ✓ Protocol version: 2025-11-25
 ```
 
 Always passes (verifies code is working).
@@ -144,16 +144,33 @@ cupertino doctor \
 ✅ MCP Server
    ✓ Server can initialize
    ✓ Transport: stdio
-   ✓ Protocol version: 2025-06-18
+   ✓ Protocol version: 2025-11-25
 
-📚 Documentation Directories
-   ✓ Apple docs: ~/.cupertino/docs (13,842 files)
-   ✓ Swift Evolution: ~/.cupertino/swift-evolution (414 proposals)
+📂 Raw corpus directories (input for `cupertino save`)
+   ✓ Apple docs: ~/.cupertino/docs
+   ✓ Swift Evolution: ~/.cupertino/swift-evolution
+   ✓ HIG: ~/.cupertino/hig
+   ✓ Apple Archive: ~/.cupertino/archive
+
+📦 Swift Packages
+   ✓ User selections: ~/.cupertino/user-package-selections.json
+   ✓ Package docs: 9,699 packages indexed
+   ℹ  Priority packages: 135 total (Apple: 43, Ecosystem: 92)
+
+📦 Packages Index (packages.db)
+   ✓ Database: ~/.cupertino/packages.db (~150 MB)
+   ✓ Schema version: 2 (matches binary)
+   ✓ Bundled version: 1.0.0
+
+🧪 Sample Code Index (samples.db)
+   ✓ Database: ~/.cupertino/samples.db
+   ✓ Indexed projects: hundreds
 
 🔍 Search Index
    ✓ Database: ~/.cupertino/search.db
-   ✓ Size: 52.3 MB
-   ✓ Frameworks: 287
+   ✓ Size: 2.5 GB
+   ✓ Frameworks: 261
+   ✓ Schema version: 12 (matches binary)
 
 🔧 Providers
    ✓ DocsResourceProvider: available
@@ -162,6 +179,8 @@ cupertino doctor \
 ✅ All checks passed - MCP server ready
 ```
 
+(Output snapshots the v1.0 corpus; sizes / counts vary with your local DB.)
+
 ### Fresh Installation
 ```
 🏥 MCP Server Health Check
@@ -169,7 +188,7 @@ cupertino doctor \
 ✅ MCP Server
    ✓ Server can initialize
    ✓ Transport: stdio
-   ✓ Protocol version: 2025-06-18
+   ✓ Protocol version: 2025-11-25
 
 📚 Documentation Directories
    ✗ Apple docs: ~/.cupertino/docs (not found)

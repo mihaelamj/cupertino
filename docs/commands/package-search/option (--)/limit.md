@@ -35,5 +35,5 @@ cupertino package-search "Vapor request middleware" --limit 1
 
 ## Notes
 
-- Chunks come from `package_files_fts` rows — typically a function or a few-line snippet of source / README.
+- Chunks come from the packages FTS index — typically a function or a few-line snippet of source / README.
 - Each chunk includes the package, file path, and a `▶ Read full:` hint.
