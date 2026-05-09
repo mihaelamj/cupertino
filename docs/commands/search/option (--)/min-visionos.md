@@ -37,7 +37,7 @@ When using via MCP, use the `min_visionos` parameter:
 
 ```json
 {
-  "name": "search_docs",
+  "name": "search",
   "arguments": {
     "query": "immersive",
     "min_visionos": "1.0"

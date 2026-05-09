@@ -462,7 +462,7 @@ sqlite3 ~/.cupertino/search.db \
 cupertino
 ```
 
-The MCP server provides `search_docs` and `search_hig` tools to AI assistants.
+The MCP server provides the unified `search` tool (with `source` filter), plus `list_frameworks`, `read_document`, and the four AST-powered semantic-search tools (`search_symbols`, `search_property_wrappers`, `search_concurrency`, `search_conformances`). The pre-#239 per-source tools (`search_docs`, `search_hig`, `search_samples`, `search_all`) were collapsed into the unified `search`.
 
 ## Search Features
 

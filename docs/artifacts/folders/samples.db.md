@@ -213,8 +213,8 @@ sqlite3 ~/.cupertino/samples.db "SELECT title FROM projects WHERE frameworks LIK
 cupertino serve
 ```
 
-The MCP server provides sample code search tools:
-- `search_samples` - Search projects and code
+The MCP server provides sample-code-related tools:
+- `search` (with `source: samples`) - Search projects and code; the pre-#239 standalone `search_samples` tool was collapsed into the unified `search`
 - `list_samples` - List all indexed projects
 - `read_sample` - Read project README
 - `read_sample_file` - Read specific source file
@@ -267,7 +267,7 @@ cupertino save --samples --samples-dir ~/my-samples
 ## Used By
 
 - `cupertino serve` - MCP server for AI integration
-- MCP tools: `search_samples`, `list_samples`, `read_sample`, `read_sample_file`
+- MCP tools: `search` (with `source: samples`), `list_samples`, `read_sample`, `read_sample_file`
 - Direct SQL queries
 - Custom search applications
 

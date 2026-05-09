@@ -86,7 +86,7 @@ cupertino-tui
 │   * 3. Archive - 46 classic Apple guides                                     │
 │   * 4. Settings - Configure Cupertino                                        │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│ ↑↓/jk:Navigate  Enter/1-3:Select  q:Quit                                     │
+│ ↑↓/jk:Navigate  Enter/1-4:Select  q:Quit                                     │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 

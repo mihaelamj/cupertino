@@ -37,7 +37,7 @@ When using via MCP, use the `min_watchos` parameter:
 
 ```json
 {
-  "name": "search_docs",
+  "name": "search",
   "arguments": {
     "query": "health",
     "min_watchos": "6.0"

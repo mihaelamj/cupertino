@@ -98,5 +98,5 @@ cupertino save
 - Fetched from developer.apple.com/design/human-interface-guidelines
 - Requires WKWebView crawling (JavaScript-rendered content)
 - Always included in default search (not excluded like archive)
-- Also available via dedicated `search_hig` MCP tool
+- Also available via the unified `search` MCP tool with `source: hig`
 - Great for design decisions and App Store preparation
