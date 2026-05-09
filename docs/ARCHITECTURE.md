@@ -312,9 +312,9 @@ MCP (Model Context Protocol) is a standardized protocol for providing context to
 - Search through documentation collections
 - Access up-to-date information from your local documentation cache
 
-### v0.2 Architecture
+### Single-binary MCP architecture
 
-In v0.2, the MCP server is integrated into the main `cupertino` binary. The binary defaults to starting the MCP server when run without arguments, making configuration simpler.
+The MCP server is integrated into the main `cupertino` binary (since v0.2). The binary defaults to starting the MCP server when run without arguments, making configuration simpler — no separate `cupertino-mcp` install or path to manage.
 
 ### Features
 
