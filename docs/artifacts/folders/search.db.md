@@ -34,14 +34,16 @@ CREATE VIRTUAL TABLE docs_fts USING fts5(
     title,      -- Page title
     content,    -- Full page content (searchable)
     summary,    -- First paragraph or description
+    symbols,    -- AST-extracted Swift symbol names (schema v12, #192 section D)
     tokenize='porter unicode61'
 );
 ```
 
 BM25 weights are passed per-column at query time, not stamped into the FTS
 schema. The main docs-search call uses
-`bm25(docs_fts, 1.0, 1.0, 2.0, 1.0, 10.0, 1.0, 3.0)` — title dominates,
-summary modest, body uniform (#181). See `SearchIndex.swift` query builder.
+`bm25(docs_fts, 1.0, 1.0, 2.0, 1.0, 10.0, 1.0, 3.0, 5.0)` — `title` 10×,
+`symbols` 5×, `summary` 3×, `framework` 2×, everything else 1× (#181).
+See `SearchIndex.swift` query builder.
 
 ### Metadata Table
 

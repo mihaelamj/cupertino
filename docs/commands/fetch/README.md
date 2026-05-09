@@ -35,7 +35,7 @@ The `fetch` command is the unified fetching command that handles both web crawli
 ### Web Crawl Options
 
 - `--start-url` - Start URL to crawl from (overrides --type default)
-- `--max-pages` - Maximum number of pages to crawl (default: 100000)
+- `--max-pages` - Maximum number of pages to crawl (default: 1,000,000)
 - `--max-depth` - Maximum crawl depth (default: 15)
 - `--allowed-prefixes` - Comma-separated URL prefixes to allow (auto-detected if not specified)
 - [--force](force.md) - Force recrawl of all pages (ignore change detection)

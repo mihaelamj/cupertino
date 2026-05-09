@@ -16,7 +16,7 @@ Reads the README and metadata for a sample code project. Shows project title, de
 
 ### project-id (required)
 
-The project identifier (folder name). Use `list-samples` or `search-samples` to find valid project IDs.
+The project identifier (folder name). Use [`list-samples`](../list-samples/) or `cupertino search --source samples` to find valid project IDs.
 
 ## Options
 
@@ -70,6 +70,6 @@ Tip: Use 'cupertino read-sample-file building-a-document-based-app-with-swiftui 
 
 ## See Also
 
-- [list-samples](../list-samples/) - List all projects
-- [search-samples](../search-samples/) - Search projects
-- [read-sample-file](../read-sample-file/) - Read source file
+- [list-samples](../list-samples/) — list all projects
+- [search](../search/) — search projects with `cupertino search "<query>" --source samples`
+- [read-sample-file](../read-sample-file/) — read source file

@@ -16,7 +16,7 @@ Reads the content of a specific source file from a sample code project. Use this
 
 ### project-id (required)
 
-The project identifier (folder name). Use `list-samples` or `search-samples` to find valid project IDs.
+The project identifier (folder name). Use [`list-samples`](../list-samples/) or `cupertino search --source samples` to find valid project IDs.
 
 ### file-path (required)
 
@@ -65,6 +65,6 @@ struct ContentView: View {
 
 ## See Also
 
-- [read-sample](../read-sample/) - Read project README and file list
-- [search-samples](../search-samples/) - Search for files
-- [list-samples](../list-samples/) - List all projects
+- [read-sample](../read-sample/) — read project README and file list
+- [search](../search/) — search for files with `cupertino search "<query>" --source samples`
+- [list-samples](../list-samples/) — list all projects

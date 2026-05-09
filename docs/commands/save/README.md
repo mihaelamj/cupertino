@@ -10,7 +10,7 @@ cupertino save [options]
 
 ## Description
 
-The `save` command builds the local SQLite databases that back `cupertino`'s search and `ask` commands. As of [#231](https://github.com/mihaelamj/cupertino/issues/231) it covers all three databases via scope flags:
+The `save` command builds the local SQLite databases that back `cupertino search` (both the default fan-out mode and `--source`-filtered queries). As of [#231](https://github.com/mihaelamj/cupertino/issues/231) it covers all three databases via scope flags:
 
 | Flag | Builds | Source |
 |---|---|---|

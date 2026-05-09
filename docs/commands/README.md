@@ -8,11 +8,9 @@ CLI commands for the Cupertino documentation server.
 |---------|-------------|
 | [setup](setup/) | **Download pre-built databases from GitHub (fastest)** |
 | [fetch](fetch/) | Download documentation from Apple, Swift Evolution, Swift.org, HIG, and Apple Archive |
-| [save](save/) | Build FTS5 search index from downloaded documentation |
-| [index](index/) | Index sample code for full-text search |
+| [save](save/) | Build FTS5 search indexes from downloaded documentation (search.db, samples.db, packages.db) |
 | [serve](serve/) | Start MCP server for AI agent access |
-| [ask](ask/) | Ask a natural-language question across all indexed sources |
-| [search](search/) | Search documentation from the command line (all sources by default) |
+| [search](search/) | Search documentation from the command line. Default fan-out across every source (replaces former `ask`); `--source <name>` filters to a single source |
 | [package-search](package-search/) | Hidden: smart query scoped to packages.db only |
 | [read](read/) | Read full document content by URI |
 | [list-frameworks](list-frameworks/) | List available frameworks with document counts |

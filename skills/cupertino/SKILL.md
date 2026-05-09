@@ -1,6 +1,6 @@
 ---
 name: cupertino
-description: This skill should be used when working with Apple APIs, iOS/macOS/visionOS development, or Swift language questions. Covers searching Apple developer documentation, looking up SwiftUI views, finding UIKit APIs, reading Apple docs, browsing Swift Evolution proposals, checking Human Interface Guidelines, and exploring Apple sample code. Supports 300+ frameworks including SwiftUI, UIKit, Foundation, and Combine via offline search of 405,000+ documentation pages.
+description: This skill should be used when working with Apple APIs, iOS/macOS/visionOS development, or Swift language questions. Covers searching Apple developer documentation, looking up SwiftUI views, finding UIKit APIs, reading Apple docs, browsing Swift Evolution proposals, checking Human Interface Guidelines, and exploring Apple sample code. Supports 422 frameworks including SwiftUI, UIKit, Foundation, and Combine via offline search of 405,000+ documentation pages.
 allowed-tools: Bash(cupertino *)
 ---
 
@@ -101,20 +101,20 @@ Never silently rewrite without telling the user what you did.
 
 Filtered searches (`--source X`) return a **per-source dedicated view**, not the unified `candidates` shape. The unified search exists for cross-source ranking; the per-source views are for browsing one source's structured data.
 
-Shapes in v1.0.0:
+Shapes (stable across v1.0.x):
 - **default** (no `--source`): `{candidates, contributingSources, question}`
 - **`--source apple-docs`**: top-level list of doc objects with `availability`, `framework`, `id`, `rank`
 - **`--source samples`**: `{files: [{filename, path, projectId, rank, snippet}]}`
 - **`--source hig`**: `{count, query, results: [{title, uri, summary, availability}]}`
+- **`--source packages`**: `{candidates, contributingSources: ["packages"], question}` (matches the unified shape; routes to packages.db)
 - **`--source apple-archive` / `swift-evolution` / `swift-org` / `swift-book`**: source-specific shapes
 
 If you parse JSON, expect different keys per source. The default unified search is the most consistent option when you don't need source-specific fields.
 
-### Known limitations as of v1.0.0
+### Known limitations
 
 These are gotchas worth knowing so you can route around them:
 
-- **`--source packages` returns 0 results** for every query, despite packages.db being 988 MB with 20186 indexed files. Workaround: use the default search (no `--source` filter); package docs ARE in `contributingSources` for the unified search. (Bug tracked separately.)
 - **Cross-paradigm bridge queries** like "swiftui equivalent of UITableView" may return release notes instead of migration guides. Workaround: search both frameworks separately and present the comparison yourself.
 - **Some descriptive queries miss** when phrasing diverges from Apple's wording. If `"how to display loading spinner"` misses, try `"ProgressView"` directly or `"loading interface"`.
 

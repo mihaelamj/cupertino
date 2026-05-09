@@ -2,7 +2,7 @@
 
 Smart query over the packages index (packages source only).
 
-> **Hidden command.** `package-search` is functional but does **not** show up in `cupertino --help`. It exists as a focused entry point against `packages.db` only. For a unified surface across docs + samples + HIG + packages + Swift Evolution / Swift.org / Swift Book, use [`ask`](../ask/) instead.
+> **Hidden command.** `package-search` is functional but does **not** show up in `cupertino --help`. It exists as a focused entry point against `packages.db` only. For a unified surface across docs + samples + HIG + packages + Swift Evolution / Swift.org / Swift Book, use [`search`](../search/) (the default fan-out mode replaces what was `cupertino ask` pre-1.0; see [#239](https://github.com/mihaelamj/cupertino/issues/239)).
 
 ## Synopsis
 
@@ -12,9 +12,9 @@ cupertino package-search "<question>" [--limit <n>] [--db <path>] [--platform <n
 
 ## Description
 
-`package-search` is a thin wrapper on `Search.SmartQuery` configured with a single fetcher: the packages-FTS candidate fetcher. Same ranking infrastructure as `cupertino ask` (reciprocal-rank fusion, k=60), just scoped to one source.
+`package-search` is a thin wrapper on `Search.SmartQuery` configured with a single fetcher: the packages-FTS candidate fetcher. Same ranking infrastructure as `cupertino search`'s default fan-out mode (reciprocal-rank fusion, k=60), just scoped to one source.
 
-Use it when you want results from `packages.db` only and want to bypass the multi-source fan-out cost of `ask`. For everything else, prefer `ask`.
+Use it when you want results from `packages.db` only and want to bypass the multi-source fan-out cost of the default `cupertino search`. For everything else, prefer `cupertino search` (the default no-`--source` invocation runs the fan-out).
 
 ## Options
 
@@ -46,12 +46,11 @@ cupertino package-search "json codable" --platform iOS --min-version 13.0
 - Packages with no annotation source are dropped from results when the filter is active. To populate annotation, run `cupertino fetch --type packages --annotate-availability` followed by `cupertino save --packages` (#219).
 - Comparison is lexicographic on the dotted-decimal `min_<platform>` column — correct for current Apple platforms (iOS 13+, macOS 11+, tvOS 13+, watchOS 6+, visionOS 1+). macOS 10.x with multi-digit minors (`10.15` vs `10.5`) would mis-order; not currently a concern for the priority package set.
 
-## Relationship to `ask`
+## Relationship to `search`
 
-`ask` and `package-search` share the `SmartQuery` core. `ask` runs every available `CandidateFetcher` in parallel and fuses the rankings; `package-search` runs only `PackageFTSCandidateFetcher`. Ranking tweaks land in one place because both go through `SmartQuery`.
+`search` (in its default fan-out mode) and `package-search` share the `SmartQuery` core. The default `cupertino search "<question>"` runs every available `CandidateFetcher` in parallel and fuses the rankings; `package-search` runs only `PackageFTSCandidateFetcher`. Ranking tweaks land in one place because both go through `SmartQuery`. Pre-1.0, the fan-out was a separate `cupertino ask` command; it was absorbed into `search` in [#239](https://github.com/mihaelamj/cupertino/issues/239).
 
 ## See Also
 
-- [ask](../ask/) — unified surface across all sources
-- [search](../search/) — single-source FTS with `MATCH` syntax
+- [search](../search/) — unified fan-out across all sources (default mode), or single-source FTS with `--source` filter
 - [setup](../setup/) — provisions `packages.db` (bundled in the `cupertino-docs` release zip alongside `search.db` and `samples.db`)
