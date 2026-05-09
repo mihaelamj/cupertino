@@ -54,7 +54,11 @@ func createTestSearchIndexWithDocument(
 
 // MARK: - CupertinoSearchTests
 
+/// Justification for the next disable: 26 cohesive end-to-end Search.Index
+/// tests sharing the same fixture pattern. Splitting by sub-concern would
+/// scatter helpers across files without making any single test clearer.
 @Suite("CupertinoSearchTests — index lifecycle, indexing, query basics")
+// swiftlint:disable:next type_body_length
 struct CupertinoSearchTests {
     @Test("Search result model is Codable")
     func searchResultCodable() throws {

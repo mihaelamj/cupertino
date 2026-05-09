@@ -5,14 +5,6 @@ import SQLite3
 
 // MARK: - Search Index
 
-// swiftlint:disable type_body_length function_body_length function_parameter_count file_length
-// Justification: This actor implements a complete SQLite FTS5 full-text search engine.
-// It manages: database initialization, schema creation, document indexing with metadata,
-// search query processing, statistics aggregation, and transaction management. The functions
-// require multiple parameters to properly index documents with all metadata (id, title,
-// framework, url, type, summary, content). Splitting would separate tightly-coupled SQL operations.
-//            function_parameter_count (5 param limit, need 7 for complete document metadata)
-
 /// SQLite FTS5-based full-text search index for documentation
 extension Search {
     public actor Index {

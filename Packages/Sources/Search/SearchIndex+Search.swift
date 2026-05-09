@@ -2,12 +2,21 @@ import Foundation
 import Shared
 import SQLite3
 
-// swiftlint:disable type_body_length function_body_length function_parameter_count file_length
+// swiftlint:disable function_body_length file_length
 // Justification: extracted from SearchIndex.swift; the original 4598-line
 // file's class_body_length / function_body_length / function_parameter_count
 // rationale carries forward to the per-concern slices.
 
 extension Search.Index {
+    /// Search documents by query with optional source, framework, and language filters.
+    /// If query starts with a known source prefix (e.g., "swift-book"), it's extracted as a filter.
+    /// - Parameters:
+    ///   - query: Search query (may include source prefix like "swift-evolution actors")
+    ///   - source: Optional source filter (apple-docs, swift-evolution, etc.)
+    ///   - framework: Optional framework filter (swiftui, foundation, etc. - only for apple-docs)
+    ///   - language: Optional language filter (swift, objc)
+    ///   - limit: Maximum number of results
+    // swiftlint:disable:next cyclomatic_complexity
     public func search(
         query: String,
         source: String? = nil,
