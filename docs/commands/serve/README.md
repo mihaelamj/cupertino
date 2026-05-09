@@ -57,7 +57,8 @@ cupertino
 
 The server will use default database paths:
 - Search DB: `~/.cupertino/search.db`
-- Samples DB: `~/.cupertino/sample-code/samples.db`
+- Samples DB: `~/.cupertino/samples.db`
+- Packages DB: `~/.cupertino/packages.db`
 
 ## MCP Client Configuration
 
