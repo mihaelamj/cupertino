@@ -30,28 +30,29 @@ The `--remote` flag enables **instant setup** by streaming pre-crawled documenta
 
 ### Phases
 
+`--remote` only feeds the **docs scope** — the search.db that `cupertino save --docs` builds. The `--packages` and `--samples` scopes still require local extracted archives (run `cupertino fetch --type packages` / `cupertino fetch --type samples` first).
+
 | Phase | Source | Description |
 |-------|--------|-------------|
-| docs | `docs/` | 248 Apple framework documentation folders |
+| docs | `docs/` | Apple framework documentation folders |
 | evolution | `swift-evolution/` | Swift Evolution proposals |
 | archive | `archive/` | Legacy Apple programming guides |
 | swiftOrg | `swift-org/` | Swift.org documentation |
 | hig | `hig/` | Human Interface Guidelines |
-| packages | `packages/` | Package READMEs |
 
 ### State File
 
-Progress is saved to `~/.cupertino/remote-save-state.json` for resume support:
+Progress is saved to `~/.cupertino/remote-save-state.json` for resume support. Schema (illustrative — exact field set may evolve across releases):
 
 ```json
 {
-  "version": "0.3.5",
-  "started": "2025-12-04T12:00:00Z",
+  "version": "<binary-version>",
+  "started": "2026-05-09T12:00:00Z",
   "phase": "docs",
   "phasesCompleted": [],
   "currentFramework": "swiftui",
   "frameworksCompleted": ["accelerate", "accessibility"],
-  "frameworksTotal": 248,
+  "frameworksTotal": 261,
   "currentFileIndex": 456,
   "filesTotal": 1000
 }
@@ -91,10 +92,11 @@ When using `--remote`, these options change behavior:
 
 ## Comparison
 
-| Method | Time | Disk Space | Requirements |
-|--------|------|------------|--------------|
-| `cupertino fetch` + `save` | ~20+ hours | ~50GB docs + DB | Apple account (for samples) |
-| `cupertino save --remote` | ~30 minutes | DB only (~500MB) | Internet connection |
+| Method | What it produces | Notes |
+|--------|------------------|-------|
+| `cupertino setup` | All three databases (search.db + packages.db + samples.db) | Fastest — single zip download |
+| `cupertino save --remote` | search.db only (docs scope) | Streams from cupertino-docs repo, no local crawl needed |
+| `cupertino fetch && cupertino save` | Whichever scopes you fetched | Multi-hour fresh crawl + local index build |
 
 ## Related
 

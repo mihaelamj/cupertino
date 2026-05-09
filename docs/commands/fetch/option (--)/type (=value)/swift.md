@@ -29,11 +29,11 @@ Creates Markdown files for each documentation page:
 |---------|-------|
 | Output Directory | `~/.cupertino/swift-book` |
 | Start URL | `https://docs.swift.org/swift-book/...` |
-| Max Pages | 13,000 |
+| Max Pages | 1,000,000 (effectively uncapped — same as `--type docs`) |
 | Max Depth | 15 |
 | Crawl Method | Web crawl via WKWebView |
 | Authentication | Not required |
-| Estimated Count | ~200-300 pages |
+| Estimated Count | ~200-300 pages on a full crawl |
 
 ## Examples
 

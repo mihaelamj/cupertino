@@ -23,7 +23,7 @@ Pulls the full Swift Package Index listing and decorates each entry with GitHub 
 
 ### Stage 2 — Priority archive download
 
-Reads the priority-packages list (`PriorityPackagesCatalog`), resolves the transitive dependency closure of each seed via `Package.swift` (and `Package.resolved` as fallback for apps), then downloads + extracts a tarball per package via `PackageArchiveExtractor`. The extractor pulls `https://codeload.github.com/<owner>/<repo>/tar.gz/<ref>` (HEAD → main → master fallback) and keeps a filtered subset: `README*`, `CHANGELOG*`, `LICENSE*`, `Package.swift`, all of `Sources/` + `Tests/`, every `.docc` article and tutorial, plus `Examples/` / `Demo/` directories. Each package gets a `manifest.json`. Closure walking can be turned off with the hidden `--no-recurse` flag.
+Reads the priority-packages list (`PriorityPackagesCatalog`), resolves the transitive dependency closure of each seed via `Package.swift` (and `Package.resolved` as fallback for apps), then downloads + extracts a tarball per package via `PackageArchiveExtractor`. The extractor pulls `https://codeload.github.com/<owner>/<repo>/tar.gz/<ref>` (HEAD → main → master fallback) and keeps a filtered subset: `README*`, `CHANGELOG*`, `LICENSE*`, `Package.swift`, all of `Sources/` + `Tests/`, every `.docc` article and tutorial, plus `Examples/` / `Demo/` directories. Each package gets a `manifest.json`.
 
 ### Stage 3 — Availability annotation ([#219](https://github.com/mihaelamj/cupertino/issues/219), opt-in via `--annotate-availability`)
 

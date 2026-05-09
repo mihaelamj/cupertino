@@ -102,16 +102,6 @@ Found 2 result(s).
 - Report creation
 - README updates
 
-## Combining with Verbose
-
-The `--verbose` flag adds extra fields to all formats:
-
-```bash
-cupertino search "View" --format json --verbose
-```
-
-Adds: `summary`, `score`, `wordCount` to output.
-
 ## Notes
 
 - JSON output is always valid JSON (array of objects)

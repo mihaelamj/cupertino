@@ -10,7 +10,9 @@ cupertino search <query> [options]
 
 ## Description
 
-Searches the local indexes using full-text search with BM25 ranking. This command provides the same search functionality as the MCP `search` tool, allowing AI agents and users to search from the command line. (The pre-#239 per-source MCP tools `search_docs`, `search_hig`, `search_samples`, `search_all` were unified into the single `search` tool — `--source` here mirrors its `source` parameter.)
+Searches the local indexes. By default fans the query out across every available source and merges the results with reciprocal-rank fusion (`k = 60`, source-weighted); with `--source <name>` it pins the query to one source and returns that source's native list view. BM25F is the per-source ranker inside `apple-docs`; the top-level user-facing rank in fan-out mode is RRF-fused, not BM25.
+
+This command provides the same search functionality as the MCP `search` tool, allowing AI agents and users to search from the command line. (The pre-#239 per-source MCP tools `search_docs`, `search_hig`, `search_samples`, `search_all` were unified into the single `search` tool — `--source` here mirrors its `source` parameter.)
 
 `search` operates in two modes:
 

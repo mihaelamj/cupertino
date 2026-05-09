@@ -1,4 +1,4 @@
-command# --framework, -f
+# --framework, -f
 
 Filter search results by Apple framework
 
@@ -65,9 +65,9 @@ cupertino search "animation" --framework swiftui --source apple-docs
 cupertino search "View" --framework swiftui --limit 10
 ```
 
-### Framework + Verbose
+### Framework + Format
 ```bash
-cupertino search "Text" --framework swiftui --verbose
+cupertino search "Text" --framework swiftui --format json
 ```
 
 ## Use Cases
