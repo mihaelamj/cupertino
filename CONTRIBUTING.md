@@ -74,6 +74,27 @@ make test-clean    # wipes .build, then runs the suite
 
 CI is unaffected (always a fresh build). This only bites local dev after method-surface changes on actors. Don't waste time adding debug prints, swapping `Int32()` for `Int32(clamping:)`, or bisecting — those are documented dead ends.
 
+## Documentation
+
+`docs/commands/` is hand-curated and mirrors the CLI surface. When you add, remove, or rename a flag, subcommand, or enum value, update the matching files **in the same change**:
+
+- new flag `--foo` → author `docs/commands/<cmd>/option (--)/foo.md`
+- removed flag → `git rm` its `.md`
+- new enum value (`--type` / `--source` / …) → author `docs/commands/<cmd>/option (--)/<opt> (=value)/<value>.md` and update the hardcoded list inside `scripts/check-docs-commands-drift.sh`
+- renamed flag or value → `git mv` then rewrite the body
+
+A drift detector lives at `scripts/check-docs-commands-drift.sh`. Run it before opening a PR:
+
+```bash
+cd Packages && swift build         # builds the binary the script reads
+cd ..
+scripts/check-docs-commands-drift.sh
+```
+
+It diffs `cupertino <cmd> --help` against `docs/commands/<cmd>/option (--)/*.md` for every command (visible + hidden) and reports any structural drift (CLI flag without `.md`, `.md` without flag, enum value missing). Exit code 0 = clean, 1 = drift, 2 = invocation error.
+
+The script doesn't validate prose inside the `.md` files — claims like default values, JSON output shapes, or sample output formatting need eyes. If you change a flag's default, an option's behavior, or a JSON encoder's struct, also re-read the corresponding doc.
+
 ## Questions?
 
 Open an issue if you have questions or need guidance.
