@@ -551,27 +551,18 @@ See [docs/commands/](docs/commands/) for detailed usage and options.
 
 ## Architecture
 
-Cupertino uses an **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** architecture with 9 consolidated packages:
+Cupertino uses an **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** architecture: 24 single-responsibility SPM targets organized by role. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full breakdown and the per-verb operation-package details added in v1.0.
 
 ```
-Foundation Layer:
-  ├─ MCP                    # Consolidated MCP framework (Protocol + Transport + Server)
-  ├─ Logging                # os.log infrastructure
-  └─ Shared                 # Configuration & models
-
-Infrastructure Layer:
-  ├─ Core                   # Crawler & downloaders
-  └─ Search                 # SQLite FTS5 search
-
-Application Layer:
-  ├─ MCPSupport             # Resource providers
-  ├─ SearchToolProvider     # Search tool implementations
-  └─ Resources              # Embedded resources
-
-Executables:
-  ├─ CLI                    # Unified cupertino binary
-  ├─ TUI                    # Terminal UI (cupertino-tui)
-  └─ MockAIAgent            # Testing tool (mock-ai-agent)
+Foundation:        MCP, Logging, Shared
+Infrastructure:    Core, ASTIndexer, Search, SampleIndex,
+                   Resources, Availability, Cleanup
+Operation packs:   Distribution (setup), Diagnostics (doctor),
+                   Indexer (save), Ingest (fetch)
+Read-side:         Services
+MCP layer:         MCPSupport, MCPClient, SearchToolProvider
+Front doors:       CLI (cupertino), TUI (cupertino-tui)
+Auxiliary:         MockAIAgent, ReleaseTool, RemoteSync, TestSupport
 ```
 
 ### Data Flow

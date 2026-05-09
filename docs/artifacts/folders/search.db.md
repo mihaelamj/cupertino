@@ -23,7 +23,7 @@ cupertino save
 
 ## Database Schema
 
-Schema version `12` (per `PRAGMA user_version`). Defined end-to-end in [`Packages/Sources/Search/SearchIndex.swift`](../../../Packages/Sources/Search/SearchIndex.swift); the version constant is `SearchIndex.schemaVersion`. Migrations are incremental — fresh DBs created by `cupertino save` write directly at v12; older DBs run `ALTER TABLE` migrations on open.
+Schema version `12` (per `PRAGMA user_version`). The version constant `Search.Index.schemaVersion` lives in [`Packages/Sources/Search/SearchIndex.swift`](../../../Packages/Sources/Search/SearchIndex.swift); `createTables` lives in [`SearchIndex+Schema.swift`](../../../Packages/Sources/Search/SearchIndex+Schema.swift); migrations (`migrateToVersion3..11`) live in [`SearchIndex+Migrations.swift`](../../../Packages/Sources/Search/SearchIndex+Migrations.swift). Migrations are incremental — fresh DBs created by `cupertino save` write directly at v12; older DBs run `ALTER TABLE` migrations on open.
 
 `search.db` holds **13 tables** grouped by purpose:
 
@@ -53,7 +53,7 @@ CREATE VIRTUAL TABLE docs_fts USING fts5(
 );
 ```
 
-BM25 weights are passed per-column at query time, not stamped into the FTS schema. The main docs-search call uses `bm25(docs_fts, 1.0, 1.0, 2.0, 1.0, 10.0, 1.0, 3.0, 5.0)` — `title` 10×, `symbols` 5×, `summary` 3×, `framework` 2×, everything else 1× (#181). Heuristic boosts on top (exact title match 50× / 20×, framework-authority tiebreak, force-include canonical type pages) live in `SearchIndex.swift` query builder.
+BM25 weights are passed per-column at query time, not stamped into the FTS schema. The main docs-search call uses `bm25(docs_fts, 1.0, 1.0, 2.0, 1.0, 10.0, 1.0, 3.0, 5.0)` — `title` 10×, `symbols` 5×, `summary` 3×, `framework` 2×, everything else 1× (#181). Heuristic boosts on top (exact title match 50× / 20×, framework-authority tiebreak, force-include canonical type pages) live in [`SearchIndex+Search.swift`](../../../Packages/Sources/Search/SearchIndex+Search.swift) — the multi-pass `search()` function and its supporting `fetchCanonicalTypePages` / `fetchFrameworkRoot` / `fetchMatchingSymbols` helpers.
 
 ### `docs_metadata` — per-document relational mirror
 
@@ -285,7 +285,7 @@ CREATE VIRTUAL TABLE doc_symbols_fts USING fts5(
 );
 ```
 
-Used by the docs-search ranker (`SearchIndex.swift`) to boost canonical Swift type pages — when a query exactly matches a symbol name with an indexed `kind`, the corresponding doc page gets a 3× post-rank boost. Pre-1.0 a sign error in the multiplier was demoting these instead; fixed in v1.0.0 (#254).
+Used by the docs-search ranker (`SearchIndex+Search.swift`) to boost canonical Swift type pages — when a query exactly matches a symbol name with an indexed `kind`, the corresponding doc page gets a 3× post-rank boost. Pre-1.0 a sign error in the multiplier was demoting these instead; fixed in v1.0.0 (#254).
 
 ### `doc_imports` — `import` statements in code examples
 
