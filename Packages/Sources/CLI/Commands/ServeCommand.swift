@@ -22,16 +22,26 @@ struct ServeCommand: AsyncParsableCommand {
 
         The server communicates via stdio using JSON-RPC and provides:
 
+        Unified Search (requires 'cupertino save' or 'cupertino save --samples'):
+        • search - Smart query fanned out across every available source
+                   (apple-docs, samples, swift-evolution, swift-org, swift-book,
+                   packages, hig, apple-archive), reciprocal-rank fused. Replaces
+                   the pre-#239 per-source search_docs / search_samples tools.
+
         Documentation Tools (requires 'cupertino save'):
-        • search_docs - Full-text search across all documentation
         • list_frameworks - List available frameworks with document counts
-        • read_document - Read full document content by URI
+        • read_document   - Read full document content by URI
 
         Sample Code Tools (requires 'cupertino save --samples'):
-        • search_samples - Search sample code projects and files
-        • list_samples - List all indexed sample projects
-        • read_sample - Read sample project README
-        • read_sample_file - Read specific source file from a sample
+        • list_samples     - List all indexed sample projects
+        • read_sample      - Read sample project README and metadata
+        • read_sample_file - Read a specific source file from a sample
+
+        Semantic Search Tools (requires 'cupertino save', AST-indexed, #81):
+        • search_symbols          - Find Swift symbols by name + kind
+        • search_property_wrappers - Find @PropertyWrapper usage in indexed sources
+        • search_concurrency       - Find concurrency patterns (@MainActor, async, …)
+        • search_conformances      - Find protocol conformances by protocol name
 
         The server runs indefinitely until terminated.
         """
