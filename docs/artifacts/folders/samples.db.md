@@ -91,6 +91,65 @@ CREATE VIRTUAL TABLE files_fts USING fts5(
 );
 ```
 
+### `file_symbols` table — AST-extracted symbols (#81)
+
+```sql
+CREATE TABLE file_symbols (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_id INTEGER NOT NULL,               -- FK → files.id
+    name TEXT NOT NULL,                     -- symbol name (e.g. "ContentView", "withTaskGroup")
+    kind TEXT NOT NULL,                     -- "class" | "struct" | "actor" | "func" | ...
+    line INTEGER NOT NULL,
+    column INTEGER NOT NULL,
+    signature TEXT,
+    is_async INTEGER NOT NULL DEFAULT 0,
+    is_throws INTEGER NOT NULL DEFAULT 0,
+    is_public INTEGER NOT NULL DEFAULT 0,
+    is_static INTEGER NOT NULL DEFAULT 0,
+    attributes TEXT,                        -- comma-separated @MainActor, @Sendable, ...
+    conformances TEXT,                      -- comma-separated protocol names
+    generic_params TEXT,                    -- comma-separated generic constraints
+    FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_file_symbols_file   ON file_symbols(file_id);
+CREATE INDEX idx_file_symbols_kind   ON file_symbols(kind);
+CREATE INDEX idx_file_symbols_name   ON file_symbols(name);
+CREATE INDEX idx_file_symbols_async  ON file_symbols(is_async);
+```
+
+Populated by SwiftSyntax during `cupertino save --samples`. Schema mirrors `doc_symbols` in `search.db` (same column shapes; different parent FK — `file_id` here vs `doc_uri` there).
+
+### `file_symbols_fts` (FTS5)
+
+```sql
+CREATE VIRTUAL TABLE file_symbols_fts USING fts5(
+    name,
+    signature,
+    attributes,
+    conformances,
+    tokenize='unicode61'
+);
+```
+
+`unicode61` (no Porter stemming) preserves identifier exactness.
+
+### `file_imports` table
+
+```sql
+CREATE TABLE file_imports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_id INTEGER NOT NULL,               -- FK → files.id
+    module_name TEXT NOT NULL,              -- "SwiftUI", "Combine", ...
+    line INTEGER NOT NULL,
+    is_exported INTEGER NOT NULL DEFAULT 0, -- @_exported import
+    FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_file_imports_file    ON file_imports(file_id);
+CREATE INDEX idx_file_imports_module  ON file_imports(module_name);
+```
+
 ## Indexed Content
 
 ### Projects
