@@ -64,7 +64,7 @@ Quick preview:
 }
 ```
 
-See [swift-packages-with-stars.json documentation](swift-packages-with-stars.json.md) for complete details.
+See the [swift-packages-with-stars.json documentation](./swift-packages-with-stars.json.md) for complete details.
 
 ### [checkpoint.json](checkpoint.json.md) - Progress Tracking
 

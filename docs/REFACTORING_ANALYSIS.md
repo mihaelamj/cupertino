@@ -1,7 +1,9 @@
 # Search & Tool Provider Refactoring Analysis
 
 **Date:** 2025-12-08
-**Purpose:** Deep analysis of code duplication between CLI commands, MCP tools, and resource providers. Design protocol-based refactoring for perfect separation of concerns.
+**Status (as of v1.0.2):** Historical planning document. The unification this analysis proposed shipped in v1.0.0 First Light. The per-source MCP tools (`search_docs`, `search_hig`, `search_samples`, `search_all`) named throughout this document were collapsed into a single unified `search` tool with a `source` parameter ([#239](https://github.com/mihaelamj/cupertino/issues/239)). The `SearchSamplesCommand` listed in the functionality-mapping table below was likewise absorbed into `SearchCommand` (its default fan-out mode replaces what was `cupertino ask`). Read this document as a snapshot of the pre-1.0 plan; cross-check the current state in [docs/tools/search/](tools/search/), [docs/commands/search/](commands/search/), and [`Packages/Sources/SearchToolProvider/CompositeToolProvider.swift`](../Packages/Sources/SearchToolProvider/CompositeToolProvider.swift).
+
+**Purpose (original):** Deep analysis of code duplication between CLI commands, MCP tools, and resource providers. Design protocol-based refactoring for perfect separation of concerns.
 
 ---
 
