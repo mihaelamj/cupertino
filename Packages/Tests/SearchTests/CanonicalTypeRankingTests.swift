@@ -41,6 +41,7 @@ private func indexPage(
     )
 }
 
+@Suite("Canonical type ranking (#254 + #256)")
 struct CanonicalTypeRankingTests {
     // MARK: - #254 acceptance set
 
