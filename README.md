@@ -622,9 +622,9 @@ make lint                   # Lint with SwiftLint
 ### Testing
 
 **Test Suite:**
-- 698 tests across 73 test suites
-- ~35 seconds duration
-- Includes unit tests, integration tests, and formatter tests
+- 1,231 tests across 126 test suites in 80 test files
+- Swift Testing framework (`@Test`, `@Suite`, `#expect`) with `withDependencies` for injection
+- Includes unit tests, integration tests (real WKWebView + real Apple docs), and formatter tests
 
 **Test Categories:**
 - Web Crawl Tests - Real Apple documentation fetching
@@ -748,7 +748,7 @@ For development setup, see [DEVELOPMENT.md](DEVELOPMENT.md).
 **Status:** ✅ Released 2026-05-08 (binary fixes on v1.0.0 "First Light")
 
 - ✅ All core functionality working
-- ✅ 93 tests passing (100% pass rate)
+- ✅ 1,231 tests across 126 suites passing (100% pass rate)
 - ✅ 0 lint violations
 - ✅ Swift 6.2 compliant with 100% strict concurrency checking
 - ✅ All production bugs resolved

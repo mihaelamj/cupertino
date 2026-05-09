@@ -1,7 +1,7 @@
 # Cupertino Architecture
 
-**Version:** v1.0.0 "First Light" (in flight)
-**Last Updated:** 2026-05-04
+**Version:** v1.0.2 (in development; v1.0.1 released 2026-05-08)
+**Last Updated:** 2026-05-09
 **Swift Version:** 6.2
 **Language Mode:** Swift 6 with Strict Concurrency Checking
 

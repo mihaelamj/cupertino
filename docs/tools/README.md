@@ -8,7 +8,7 @@ Cupertino provides these MCP tools for AI agents to search and read documentatio
 
 | Tool | Description |
 |------|-------------|
-| `search` | Unified full-text search across every indexed source (apple-docs, samples, HIG, apple-archive, swift-evolution, swift-org, swift-book, packages). Use the `source` parameter to scope to one source. Replaces the pre-#239 per-source `search_docs` / `search_hig` / `search_samples` tools, which were collapsed into this one. See the [search command docs](../commands/search/) for the same fan-out behavior on the CLI side. |
+| [search](search/) | Unified full-text search across every indexed source (apple-docs, samples, HIG, apple-archive, swift-evolution, swift-org, swift-book, packages). Use the `source` parameter to scope to one source. Replaces the pre-#239 per-source `search_docs` / `search_hig` / `search_samples` tools, which were collapsed into this one. See the [search command docs](../commands/search/) for the same fan-out behavior on the CLI side. |
 | [list_frameworks](list_frameworks/) | List available frameworks with document counts |
 | [read_document](read_document/) | Read a document by URI in JSON or Markdown format |
 

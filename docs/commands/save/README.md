@@ -49,6 +49,10 @@ The `--samples` form replaces the old `cupertino index` command (removed in #231
 - `--samples-db <path>` — `samples.db` output path
 - `--force` — re-index every sample even if already in the DB
 
+### Common options
+
+- [--yes](option%20%28--%29/yes.md) — skip the preflight summary + confirmation prompt ([#232](https://github.com/mihaelamj/cupertino/issues/232)). Auto-skipped when stdin isn't a TTY (so cron jobs, CI runs, and pipelines don't hang waiting for input).
+
 ## Examples
 
 ### Build everything (default)
