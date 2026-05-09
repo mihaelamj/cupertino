@@ -46,6 +46,7 @@ private func indexPage(
     )
 }
 
+@Suite("Exact title peer tiebreak (#256)")
 struct ExactTitlePeerTiebreakTests {
     /// Canonical Swift `Result` enum should outrank a sub-symbol named
     /// "Result" on a different framework's parent type. Sub-symbol is

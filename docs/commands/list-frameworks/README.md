@@ -20,7 +20,7 @@ Output format: `text` (default), `json`, or `markdown`.
 
 ### --search-db
 
-Path to search database. Defaults to `~/.cupertino/search-index.sqlite`.
+Path to search database. Defaults to `~/.cupertino/search.db`.
 
 ## Examples
 
@@ -38,14 +38,15 @@ cupertino list-frameworks --format markdown
 ## Sample Output
 
 ```
-Available Frameworks
-Total: 156 frameworks, 23456 documents
+Available Frameworks (261 total, 405000 documents):
 
-  swiftui: 1234 documents
-  foundation: 987 documents
-  uikit: 876 documents
+  swiftui: 6500 documents
+  foundation: 4200 documents
+  uikit: 3800 documents
   ...
 ```
+
+Counts depend on which corpus has been saved to `search.db`. Numbers above snapshot the v1.0 bundle; your local DB will vary.
 
 ## See Also
 

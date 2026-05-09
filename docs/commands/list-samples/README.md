@@ -28,7 +28,7 @@ Output format: `text` (default), `json`, or `markdown`.
 
 ### --sample-db
 
-Path to sample index database. Defaults to `~/.cupertino/sample-index.sqlite`.
+Path to sample index database. Defaults to `~/.cupertino/samples.db`.
 
 ## Examples
 

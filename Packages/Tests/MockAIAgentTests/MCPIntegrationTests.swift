@@ -20,6 +20,12 @@ struct MCPIntegrationTests {
     @Test("Initialize handshake with cupertino server")
     func cupertinoServerInitialize() async throws {
         #if os(macOS)
+        // Side-step the debug build's `cupertino.config.json` redirect to
+        // `~/.cupertino-dev/` and ensure the server has a samples.db so it
+        // doesn't exit with the welcome guide. See helper docs.
+        let fixture = try CupertinoServerFixture()
+        defer { fixture.cleanup() }
+
         let process = Process()
         process.executableURL = URL(fileURLWithPath: ".build/debug/cupertino")
         process.arguments = ["serve"]
@@ -33,60 +39,54 @@ struct MCPIntegrationTests {
         process.standardError = stderrPipe
 
         try process.run()
+        defer {
+            process.terminate()
+            process.waitUntilExit()
+        }
 
-        // Give server time to start
+        // Give server time to start (binary fork + DB open takes a few hundred ms)
         try await Task.sleep(for: .milliseconds(500))
 
-        // Send initialize request (compact JSON + newline)
+        // If the server died during startup (e.g., the welcome-guide exit
+        // path), the write below would otherwise SIGPIPE the test process.
+        guard process.isRunning else {
+            let stderr = String(data: stderrPipe.fileHandleForReading.availableData, encoding: .utf8) ?? ""
+            Issue.record("cupertino serve exited before initialize could be sent. stderr:\n\(stderr)")
+            return
+        }
+
+        // Send initialize request (compact JSON + newline). Use the throwing
+        // write API so a broken pipe surfaces as a Swift error instead of
+        // SIGPIPE'ing the test bundle.
         let protocolVersion = MCPProtocolVersionsSupported.sorted().first ?? MCPProtocolVersion
         let initRequest = """
         {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"\(
             protocolVersion
         )","capabilities":{"roots":{"listChanged":true}},"clientInfo":{"name":"Test","version":"1.0.0"}}}\n
         """
+        try stdinPipe.fileHandleForWriting.write(contentsOf: Data(initRequest.utf8))
 
-        stdinPipe.fileHandleForWriting.write(Data(initRequest.utf8))
+        // Poll stdout until we see the id:1 response or the deadline expires.
+        // Replaces an earlier TaskGroup-with-timeout pattern that could hang
+        // because synchronous `availableData` ignores Task cancellation.
+        let buffer = try await readUntil(
+            stdout: stdoutPipe,
+            stderr: stderrPipe,
+            until: { $0.contains("\"id\":1") },
+            deadline: 30
+        )
 
-        // Read response with timeout
-        let responseData = try await withThrowingTaskGroup(of: Data.self) { group in
-            group.addTask {
-                try await Task.sleep(for: .seconds(5))
-                throw TimeoutError()
-            }
-
-            group.addTask {
-                stdoutPipe.fileHandleForReading.availableData
-            }
-
-            guard let result = try await group.next() else {
-                throw TimeoutError()
-            }
-
-            group.cancelAll()
-            return result
-        }
-
-        let responseString = String(data: responseData, encoding: .utf8) ?? ""
-
-        // Parse response
-        let lines = responseString.split(separator: "\n", omittingEmptySubsequences: true)
-        #expect(lines.count >= 1, "Should receive at least one response line")
-
-        let firstLine = String(lines[0])
+        let lines = buffer.split(separator: "\n", omittingEmptySubsequences: true)
+        let firstLine = try #require(lines.first.map(String.init), "Should receive at least one response line")
         let responseJSON = try JSONDecoder().decode(JSONRPCResponse.self, from: Data(firstLine.utf8))
 
         #expect(responseJSON.id == .int(1))
 
-        // Decode result as InitializeResult
         let resultData = try JSONEncoder().encode(responseJSON.result)
         let initResult = try JSONDecoder().decode(InitializeResult.self, from: resultData)
 
         #expect(MCPProtocolVersionsSupported.contains(initResult.protocolVersion))
         #expect(initResult.serverInfo.name == "cupertino")
-
-        // Cleanup
-        process.terminate()
-        process.waitUntilExit()
         #else
         // Skip on non-macOS platforms
         #endif
@@ -95,18 +95,8 @@ struct MCPIntegrationTests {
     @Test("List tools from cupertino server")
     func cupertinoServerListTools() async throws {
         #if os(macOS)
-        // Ensure samples.db exists at the default path so the spawned
-        // server registers `list_samples` etc. The server's tool list
-        // is conditional on `sampleDatabase != nil` (CompositeToolProvider
-        // line 205); without a pre-existing DB the assertion below would
-        // fail purely from local-machine state. We initialise an empty
-        // v3 schema using the public Database init — same code path as
-        // `cupertino save --samples` would use, just empty.
-        let sampleDBPath = SampleIndex.defaultDatabasePath
-        if !FileManager.default.fileExists(atPath: sampleDBPath.path) {
-            let db = try await SampleIndex.Database(dbPath: sampleDBPath)
-            await db.disconnect()
-        }
+        let fixture = try CupertinoServerFixture()
+        defer { fixture.cleanup() }
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: ".build/debug/cupertino")
@@ -114,13 +104,23 @@ struct MCPIntegrationTests {
 
         let stdinPipe = Pipe()
         let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
         process.standardInput = stdinPipe
         process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
 
         try process.run()
         defer {
             process.terminate()
             process.waitUntilExit()
+        }
+
+        try await Task.sleep(for: .milliseconds(500))
+
+        guard process.isRunning else {
+            let stderr = String(data: stderrPipe.fileHandleForReading.availableData, encoding: .utf8) ?? ""
+            Issue.record("cupertino serve exited before requests could be sent. stderr:\n\(stderr)")
+            return
         }
 
         // Pipeline both requests up front; the server reads them sequentially
@@ -132,54 +132,38 @@ struct MCPIntegrationTests {
         let toolsRequest = """
         {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}\n
         """
-        stdinPipe.fileHandleForWriting.write(Data(initRequest.utf8))
-        stdinPipe.fileHandleForWriting.write(Data(toolsRequest.utf8))
+        try stdinPipe.fileHandleForWriting.write(contentsOf: Data(initRequest.utf8))
+        try stdinPipe.fileHandleForWriting.write(contentsOf: Data(toolsRequest.utf8))
 
-        // Poll stdout until we've seen BOTH responses (id:1 + id:2) or the
-        // deadline expires. This replaces three fixed 500 ms sleeps that
-        // flaked under full-suite CPU load — the server can take >500 ms to
-        // emit the tools list when the machine is busy indexing in parallel,
-        // but invariably finishes within a handful of seconds.
-        // 30s deadline: the server has to read ~/.cupertino/search.db
-        // (potentially triggering the v12 migration throw) and initialise
-        // a few MB of indexed state before emitting tools/list. On a busy
-        // CI box the process-fork + read can exceed 10s. 30s is still a
-        // tight bound on a healthy machine.
-        let deadline = Date().addingTimeInterval(30)
-        var buffer = ""
-        while Date() < deadline {
-            let chunk = stdoutPipe.fileHandleForReading.availableData
-            if chunk.isEmpty {
-                try await Task.sleep(for: .milliseconds(50))
-                continue
-            }
-            if let piece = String(data: chunk, encoding: .utf8) {
-                buffer += piece
-            }
-            if buffer.contains("\"id\":1"), buffer.contains("\"id\":2") {
-                break
-            }
-        }
+        // 30s deadline: the server has to read its DBs and initialise a few
+        // MB of indexed state before emitting tools/list. On a busy box the
+        // process-fork + read can exceed 10s; 30s is a tight upper bound on
+        // a healthy machine.
+        let buffer = try await readUntil(
+            stdout: stdoutPipe,
+            stderr: stderrPipe,
+            until: { $0.contains("\"id\":1") && $0.contains("\"id\":2") },
+            deadline: 30
+        )
 
         let lines = buffer.split(separator: "\n", omittingEmptySubsequences: true)
-        #expect(lines.count >= 2, "Should receive init + tools responses before the 10s deadline")
+        #expect(lines.count >= 2, "Should receive init + tools responses before the 30s deadline")
 
-        // Find the tools/list response (id: 2)
-        let toolsLine = lines.first { $0.contains("\"id\":2") }
-        #expect(toolsLine != nil, "Should find tools/list response")
+        let toolsLine = try #require(
+            lines.first { $0.contains("\"id\":2") },
+            "Should find tools/list response"
+        )
 
-        if let toolsLine {
-            let toolsResponse = try JSONDecoder().decode(JSONRPCResponse.self, from: Data(String(toolsLine).utf8))
-            let resultData = try JSONEncoder().encode(toolsResponse.result)
-            let toolsResult = try JSONDecoder().decode(ListToolsResult.self, from: resultData)
+        let toolsResponse = try JSONDecoder().decode(JSONRPCResponse.self, from: Data(String(toolsLine).utf8))
+        let resultData = try JSONEncoder().encode(toolsResponse.result)
+        let toolsResult = try JSONDecoder().decode(ListToolsResult.self, from: resultData)
 
-            // Cupertino exposes tools based on available databases:
-            // - Without search DB: 4 tools (search, list_samples, read_sample, read_sample_file)
-            // - With search DB: 10 tools (adds read_document, list_frameworks, search_symbols, etc.)
-            #expect(toolsResult.tools.count >= 4, "Should have at least sample code tools")
-            #expect(toolsResult.tools.contains { $0.name == "search" })
-            #expect(toolsResult.tools.contains { $0.name == "list_samples" })
-        }
+        // Cupertino exposes tools based on available databases:
+        // - Without search DB: 4 tools (search, list_samples, read_sample, read_sample_file)
+        // - With search DB: 10 tools (adds read_document, list_frameworks, search_symbols, etc.)
+        #expect(toolsResult.tools.count >= 4, "Should have at least sample code tools")
+        #expect(toolsResult.tools.contains { $0.name == "search" })
+        #expect(toolsResult.tools.contains { $0.name == "list_samples" })
         #else
         // Skip on non-macOS platforms
         #endif
@@ -340,3 +324,114 @@ struct MCPIntegrationTests {
 // MARK: - Helper Types
 
 struct TimeoutError: Error {}
+
+// MARK: - Integration Test Fixture
+
+/// Sets up the local environment so the spawned `cupertino serve` binary
+/// finds enough state to start without bailing out with the welcome guide.
+///
+/// Two pieces of background:
+///
+/// 1. The debug-build binary at `.build/debug/cupertino` ships with a
+///    sibling `cupertino.config.json` that overrides `baseDirectory` to
+///    `~/.cupertino-dev/`. That keeps day-to-day development data away
+///    from the production `~/.cupertino/`. Integration tests run inside a
+///    test bundle where `Bundle.main.executableURL` is the test runner
+///    (not cupertino), so `Shared.BinaryConfig.shared` resolves to
+///    `~/.cupertino/`. The path mismatch makes the test create a
+///    fixture DB at `~/.cupertino/samples.db` while the spawned cupertino
+///    looks for `~/.cupertino-dev/samples.db`. This fixture moves the
+///    config aside for the duration of the test so both processes agree
+///    on `~/.cupertino/`.
+///
+/// 2. `ServeCommand.checkForData` exits with the welcome-guide message
+///    if neither `~/.cupertino/samples.db` nor `~/.cupertino/search.db`
+///    exists. Creating an empty samples.db (the same code path
+///    `cupertino save --samples` uses) is enough to make
+///    `checkForData()` return `true`. We don't need a populated DB for
+///    these protocol-framing tests.
+///
+/// Cleanup happens via `defer { fixture.cleanup() }` in each test. We
+/// avoid `deinit` because the suite's `.serialized` trait combined with
+/// Swift Testing's per-test struct re-instantiation makes explicit
+/// teardown clearer than relying on ARC timing.
+struct CupertinoServerFixture {
+    private let configURL: URL
+    private let savedConfig: Data?
+
+    init() throws {
+        configURL = URL(fileURLWithPath: ".build/debug/cupertino.config.json")
+        savedConfig = try? Data(contentsOf: configURL)
+        if savedConfig != nil {
+            try? FileManager.default.removeItem(at: configURL)
+        }
+
+        // Ensure samples.db exists at the production path so
+        // `ServeCommand.checkForData()` sees data. Empty schema is fine —
+        // these tests check MCP framing, not query results.
+        let sampleDBPath = SampleIndex.defaultDatabasePath
+        if !FileManager.default.fileExists(atPath: sampleDBPath.path) {
+            // Synchronous setup of the schema via a blocking task hop.
+            // Swift Testing's @Test functions are async, so we can spin up
+            // a Task here, but we need the DB written before the spawned
+            // cupertino reads it. Use a dispatch semaphore.
+            let sem = DispatchSemaphore(value: 0)
+            Task {
+                if let db = try? await SampleIndex.Database(dbPath: sampleDBPath) {
+                    await db.disconnect()
+                }
+                sem.signal()
+            }
+            sem.wait()
+        }
+    }
+
+    func cleanup() {
+        // Restore the dev config so subsequent non-test invocations of
+        // cupertino keep using `~/.cupertino-dev/` like the developer
+        // expects.
+        if let savedConfig {
+            try? savedConfig.write(to: configURL)
+        }
+    }
+}
+
+/// Polls `stdout` (and surfaces any concurrent `stderr` content if the
+/// deadline expires) until `predicate(buffer)` becomes true or the deadline
+/// is reached. Returns the accumulated buffer.
+///
+/// Why polling rather than `withThrowingTaskGroup` + `availableData`:
+/// `FileHandle.availableData` is a synchronous call that blocks when no
+/// data is available. Wrapping it in a Task and racing against a sleep
+/// works for the happy path, but if the sleep wins the race the
+/// `availableData` task can't be cancelled (cancellation requires a
+/// Swift-Concurrency suspension point, which the synchronous read doesn't
+/// provide). The test bundle then hangs in the implicit "wait for all
+/// child tasks" at the end of the TaskGroup. Polling with a 50 ms sleep
+/// in between reads side-steps the hang — every iteration is a real
+/// suspension point that respects cancellation and timeouts.
+func readUntil(
+    stdout: Pipe,
+    stderr: Pipe,
+    until predicate: (String) -> Bool,
+    deadline seconds: TimeInterval
+) async throws -> String {
+    let deadline = Date().addingTimeInterval(seconds)
+    var buffer = ""
+    while Date() < deadline {
+        let chunk = stdout.fileHandleForReading.availableData
+        if chunk.isEmpty {
+            try await Task.sleep(for: .milliseconds(50))
+            continue
+        }
+        if let piece = String(data: chunk, encoding: .utf8) {
+            buffer += piece
+        }
+        if predicate(buffer) {
+            return buffer
+        }
+    }
+    let stderrText = String(data: stderr.fileHandleForReading.availableData, encoding: .utf8) ?? ""
+    Issue.record("Read deadline (\(seconds)s) expired waiting for predicate. stdout:\n\(buffer)\nstderr:\n\(stderrText)")
+    return buffer
+}

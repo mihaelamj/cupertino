@@ -121,8 +121,57 @@ flowchart TD
 - **Unified `cupertino read`** (#239 follow-up): single command dispatches across docs / samples / packages via `--source`. `Services.ReadService` + `Search.PackageQuery.fileContent` (reads from `package_files_fts.content`, no on-disk packages tree required).
 - **Default `cupertino search` is fan-out** (#239): merges what was `cupertino ask` — RRF (k=60) across every available DB, chunked excerpts, per-result `▶ Read full:` hints. `--brief`, `--per-source`, `--platform`, `--min-version`, `--skip-{docs,packages,samples}`, `--packages-db`.
 - **MCP read tools split** today by source: `read_document` / `read_sample` / `read_sample_file` (separate). The CLI's unified `cupertino read` is the single front-door for all three.
+- **`Search.Index` actor split by concern** (v1.0.2): `Sources/Search/SearchIndex.swift` was a 4598-line actor handling schema + migrations + indexing + search + ranking + counts + helpers. Split mechanically into a 97-line core file (declaration, properties, lifecycle) plus 12 `SearchIndex+<Concern>.swift` extension files. Public API unchanged; 40 declarations widened from `private` to package-internal so cross-file extension methods can share state. See diagrams below.
 
 **v0.2 Package Changes** (historical): MCPShared + MCPTransport + MCPServer → MCP; namespaced types (CupertinoLogging → Logging, etc.); unified `cupertino` binary (no separate `cupertino-mcp`).
+
+### Search.Index file map
+
+The `Search.Index` actor is the on-disk search engine — one SQLite FTS5 database (`search.db`), one actor that owns it. After the v1.0.2 split, every concern lives in its own file:
+
+```mermaid
+flowchart LR
+    Idx["Search.Index<br/>actor (97 LoC core)"]
+
+    Idx --> Schema["+Schema.swift<br/>createTables, full v12 SQL"]
+    Idx --> Migr["+Migrations.swift<br/>migrate3..11, version r/w"]
+    Idx --> IxP["+Indexing.swift<br/>indexPackage, indexSampleCode,<br/>code examples, AST clear/recompute"]
+    Idx --> IxD["+IndexingDocs.swift<br/>indexDocument, indexItem,<br/>indexStructuredDocument,<br/>indexDocSymbols/Imports"]
+    Idx --> Sch["+Search.swift<br/>search() + multi-pass ranker,<br/>fetchCanonicalTypePages,<br/>fetchFrameworkRoot"]
+    Idx --> Sem["+SemanticSearch.swift<br/>searchSymbols, propertyWrappers,<br/>concurrencyPatterns, conformances"]
+    Idx --> Attr["+SearchByAttribute.swift<br/>byKind, conformsTo, byModule,<br/>inheritedBy, byDeclaration,<br/>byPlatform, getDocumentJSON"]
+    Idx --> QP["+QueryParsing.swift<br/>extractSourcePrefix,<br/>extractAttributeFilters,<br/>sanitizeFTS5Query"]
+    Idx --> Code["+CodeExamples.swift<br/>searchCodeExamples,<br/>searchSampleCode"]
+    Idx --> Cont["+ContentAndPackages.swift<br/>searchPackages,<br/>getDocumentContent, clearIndex"]
+    Idx --> Cnt["+CountsAndAliases.swift<br/>symbolCount, listFrameworks,<br/>frameworkAlias r/w"]
+    Idx --> Hlp["+Helpers.swift<br/>extractAvailability,<br/>detectLanguage, extractSummary"]
+```
+
+Each extension file imports only the dependencies its concern needs (Foundation + Shared + SQLite3 always; ASTIndexer only on the two files that touch `ExtractedSymbol` / `ExtractedImport`). Function bodies, schema SQL, BM25 weights, and migration logic moved byte-for-byte. The single 1089-LoC outlier is `+Search.swift`, dominated by the 730-line `search()` function whose pipeline is below.
+
+### `search()` ranker pipeline
+
+The default `cupertino search <query>` against apple-docs is a multi-pass ranker, not a plain FTS5 query. Stages from input to results:
+
+```mermaid
+flowchart TD
+    Q[query: String]
+    Q --> EP["extractSourcePrefix<br/>strips 'swift-evolution', 'apple-archive', …"]
+    EP --> EA["extractAttributeFilters<br/>strips @attribute filters → SQL WHERE"]
+    EA --> SQ["sanitizeFTS5Query<br/>quotes terms, splits on hyphens"]
+
+    SQ --> SS["searchSymbolsForURIs<br/>(AST symbol → URI set, fast path)"]
+    SQ --> FTS["docs_fts MATCH<br/>bm25(1, 1, 2, 1, 10, 1, 3, 5)<br/>title 10× · symbols 5× · summary 3× · framework 2×"]
+
+    SS --> H1["HEURISTIC 1<br/>exact-title boost<br/>50× clean / 20× suffixed"]
+    FTS --> H1
+    H1 --> H15["HEURISTIC 1.5<br/>URI simplicity<br/>+ frameworkAuthority tiebreak<br/>(swift / swiftui / foundation ↑;<br/>installer_js / webkitjs ↓)"]
+    H15 --> CTP["fetchCanonicalTypePages<br/>force-include canonical Swift /<br/>SwiftUI / Foundation type pages"]
+    CTP --> RRF["RRF fusion (k=60)<br/>weighted by source<br/>apple-docs 3.0 · evolution/packages 1.5"]
+    RRF --> R[Search.Result array]
+```
+
+Heuristic 1 (#254) flattens BM25 ties between pages whose title exactly matches the query — Swift's `Task` struct vs Mach kernel `task_*` C functions. Heuristic 1.5 (#256) breaks the resulting tie by preferring shorter URIs (canonical type pages) and authoritative frameworks. Force-include (#254) guarantees the canonical apple-docs page lands in the result set even if BM25 misses it. RRF (#192 E4) fuses across the multi-source fan-out (`Search.SmartQuery`) when the query isn't `--source`-pinned.
 
 ### Key Features
 

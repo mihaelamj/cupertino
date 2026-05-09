@@ -14,13 +14,17 @@ Fetches all documentation types in parallel: Apple docs, Swift.org docs, Swift E
 
 ## Fetched Types
 
-Runs these fetch types **in parallel**:
+Runs every non-`all` fetch type **in parallel**:
 
-1. **docs** - Apple Developer Documentation
-2. **swift** - Swift.org Documentation
-3. **evolution** - Swift Evolution Proposals
-4. **packages** - Swift Package Index metadata + GitHub source archives ([#217](https://github.com/mihaelamj/cupertino/issues/217))
-5. **code** - Apple Sample Code (requires Safari sign-in to `developer.apple.com` for cookie reuse)
+1. **docs** — Apple Developer Documentation
+2. **swift** — Swift.org Documentation
+3. **evolution** — Swift Evolution Proposals
+4. **packages** — Swift Package Index metadata + GitHub source archives ([#217](https://github.com/mihaelamj/cupertino/issues/217))
+5. **code** — Apple Sample Code from `developer.apple.com/sample-code` (requires Safari sign-in for cookie reuse)
+6. **samples** — Sample code projects from GitHub (the recommended path for sample data)
+7. **archive** — Apple Archive legacy programming guides
+8. **hig** — Human Interface Guidelines
+9. **availability** — API version-info pass over an existing docs corpus
 
 ## Default Settings
 

@@ -29,11 +29,11 @@ Creates Markdown files for each documentation page:
 |---------|-------|
 | Output Directory | `~/.cupertino/docs` |
 | Start URL | `https://developer.apple.com/documentation/` |
-| Max Pages | 13,000 |
+| Max Pages | 1,000,000 (effectively uncapped) |
 | Max Depth | 15 |
-| Crawl Method | Web crawl via WKWebView |
+| Crawl Method | JSON API + WKWebView fallback (`--discovery-mode auto`) |
 | Authentication | Not required |
-| Estimated Count | ~13,000-15,000 pages |
+| Estimated Count | ~400,000+ pages on a full crawl (snapshot of v1.0 corpus) |
 
 ## Examples
 

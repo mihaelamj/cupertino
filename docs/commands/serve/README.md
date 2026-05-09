@@ -57,7 +57,8 @@ cupertino
 
 The server will use default database paths:
 - Search DB: `~/.cupertino/search.db`
-- Samples DB: `~/.cupertino/sample-code/samples.db`
+- Samples DB: `~/.cupertino/samples.db`
+- Packages DB: `~/.cupertino/packages.db`
 
 ## MCP Client Configuration
 
@@ -190,7 +191,7 @@ When the server starts successfully:
 ```
 🚀 Cupertino MCP Server starting...
    Search DB: /Users/username/.cupertino/search.db
-   Samples DB: /Users/username/.cupertino/sample-code/samples.db
+   Samples DB: /Users/username/.cupertino/samples.db
    Waiting for client connection...
 ```
 
@@ -250,16 +251,6 @@ Full-text search across all documentation.
 - `source` (optional): Filter by source (apple-docs, swift-book, swift-org, swift-evolution, packages, hig, apple-archive)
 - `framework` (optional): Filter by framework name
 - `language` (optional): Filter by language (swift, objc)
-- `limit` (optional): Max results (default: 20, max: 100)
-
-### search_hig
-
-Search Human Interface Guidelines with platform and category filters.
-
-**Parameters:**
-- `query` (required): Search keywords
-- `platform` (optional): Filter by platform (iOS, macOS, watchOS, visionOS, tvOS)
-- `category` (optional): Filter by category (foundations, patterns, components, inputs, technologies)
 - `limit` (optional): Max results (default: 20, max: 100)
 
 ### list_frameworks

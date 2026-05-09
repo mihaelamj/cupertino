@@ -204,7 +204,7 @@ All types resume interrupted operations automatically — just re-run the same c
 The `all` type fetches everything concurrently:
 ```bash
 cupertino fetch --type all
-# Runs: docs, swift, evolution, packages, code in parallel
+# Runs: docs, swift, evolution, packages, code, samples, archive, hig, availability in parallel
 ```
 
 ### Rate Limiting

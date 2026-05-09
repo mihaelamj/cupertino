@@ -10,60 +10,61 @@ cupertino save --clear
 
 ## Description
 
-Deletes the existing search database and rebuilds from scratch.
+Wipes the existing index for the in-scope database(s) and rebuilds from scratch. Without `--clear`, `cupertino save` runs incrementally: it walks the corpus, computes content hashes, and only re-indexes documents whose hash differs from the row already in the DB.
 
 ## Default
 
-`true` (clears by default)
+Off (`--clear` not set → incremental). The flag is a plain `@Flag` without an inversion pair, so `--no-clear` is **not** a valid invocation; just omit `--clear`.
 
 ## Behavior
 
-### With --clear (Default)
-- Deletes existing search.db file
-- Creates fresh database
-- Rebuilds entire index
-- All previous search data is lost
+### With `--clear`
+- Drops or wipes the rows for the in-scope database (search.db / packages.db / samples.db depending on which scope flags are set).
+- Recreates schema from the current SchemaVersion.
+- Rebuilds the entire index.
+- Previous index data is lost.
 
-### Without --clear
-- Keeps existing index
-- Adds new/updated documents
-- Incremental update
-- Faster for small changes
+### Without `--clear` (default)
+- Keeps existing index rows.
+- Adds new documents and replaces rows whose content hash changed.
+- Drops rows for files that no longer exist on disk.
+- Faster for partial recrawls.
+
+Note: `--samples` always wipes-and-rebuilds inside its scope independent of `--clear` (the samples-side schema doesn't yet support partial updates). `--clear` is meaningful for `--docs` (search.db) and `--packages` (packages.db).
 
 ## Examples
 
-### Rebuild Index (Default)
+### Rebuild from scratch (force full re-index of search.db)
 ```bash
 cupertino save --clear
 ```
 
-### Incremental Update
+### Default incremental update
 ```bash
-cupertino save --no-clear
+cupertino save
 ```
 
-### Clear with Custom Database
+### Clear targeted at a custom DB path
 ```bash
 cupertino save --clear --search-db ./my-search.db
 ```
 
 ## Use Cases
 
-### Use --clear when:
-- First time indexing
+### Use `--clear` when:
+- Schema has changed (post-migration cleanup)
 - Documentation structure changed significantly
-- Index is corrupted
-- Want fresh start
+- Index is suspected corrupted
+- You want a known-clean baseline
 
-### Use --no-clear when:
-- Adding new documentation to existing index
-- Small updates to documentation
-- Want to preserve existing index data
-- Faster incremental updates
+### Skip `--clear` (default) when:
+- Adding to an existing index
+- Re-indexing after a partial recrawl
+- Day-to-day rebuilds where most pages haven't changed
+- You want the fastest cycle
 
 ## Notes
 
-- Default is to clear (rebuild from scratch)
-- Use `--no-clear` for incremental updates
-- Clearing is safer but slower
-- Incremental updates are faster but may have edge cases
+- Default is incremental (no clear). `--no-clear` is not a valid flag — there's no inversion pair.
+- Clearing scope depends on which scope flags are passed (`--docs` / `--packages` / `--samples`); when none are passed, `--clear` applies to whichever scopes the default run touches.
+- For `--samples` the scope is always wiped-and-rebuilt regardless of `--clear`.

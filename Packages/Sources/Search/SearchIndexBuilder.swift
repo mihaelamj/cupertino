@@ -385,7 +385,7 @@ extension Search {
             return docFiles
         }
 
-        internal func deduplicateDocFilesByCanonicalURL(_ files: [URL]) throws -> [URL] {
+        func deduplicateDocFilesByCanonicalURL(_ files: [URL]) throws -> [URL] {
             var newestByURL: [String: (file: URL, crawledAt: Date)] = [:]
 
             for file in files {
@@ -410,7 +410,7 @@ extension Search {
         /// `crawledAt`; without this the decode silently fails on every real
         /// Apple-doc JSON file and the dedup primary path becomes dead code.
         /// See `indexStructuredDocument` for the canonical decoder config.
-        internal func loadStructuredPage(from file: URL) -> StructuredDocumentationPage? {
+        func loadStructuredPage(from file: URL) -> StructuredDocumentationPage? {
             guard file.pathExtension.lowercased() == "json",
                   let data = try? Data(contentsOf: file) else {
                 return nil
@@ -420,7 +420,7 @@ extension Search {
             return try? decoder.decode(StructuredDocumentationPage.self, from: data)
         }
 
-        internal func canonicalDocumentationURL(for file: URL) -> String? {
+        func canonicalDocumentationURL(for file: URL) -> String? {
             if let page = loadStructuredPage(from: file) {
                 return URLUtilities.normalize(page.url)?.absoluteString
             }
@@ -434,7 +434,7 @@ extension Search {
             return "https://developer.apple.com/documentation/\(framework)/\(filename)"
         }
 
-        internal func documentationCrawledAt(for file: URL) -> Date? {
+        func documentationCrawledAt(for file: URL) -> Date? {
             if let page = loadStructuredPage(from: file) {
                 return page.crawledAt
             }

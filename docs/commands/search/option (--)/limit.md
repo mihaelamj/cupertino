@@ -1,4 +1,4 @@
-# --limit, -l
+# --limit
 
 Maximum number of search results to return
 
@@ -6,12 +6,11 @@ Maximum number of search results to return
 
 ```bash
 cupertino search <query> --limit <number>
-cupertino search <query> -l <number>
 ```
 
 ## Description
 
-Controls the maximum number of search results returned. Results are ranked by BM25 relevance score, so limiting returns the most relevant matches.
+Controls the maximum number of search results returned. In fan-out mode (no `--source`) the cap applies to the post-RRF fused list; in single-source mode it caps the underlying source's result list directly.
 
 ## Default
 
@@ -31,7 +30,7 @@ cupertino search "SwiftUI" --limit 50
 
 ### Single Best Match
 ```bash
-cupertino search "URLSession" -l 1
+cupertino search "URLSession" --limit 1
 ```
 
 ### Large Result Set
@@ -51,9 +50,9 @@ cupertino search "animation" --framework swiftui --limit 10
 cupertino search "Observable" --limit 3 --format json
 ```
 
-### Limit + Verbose
+### Limit + Per-Source Cap
 ```bash
-cupertino search "async" --limit 5 --verbose
+cupertino search "async" --limit 5 --per-source 3
 ```
 
 ## Use Cases
@@ -65,7 +64,8 @@ cupertino search "async" --limit 5 --verbose
 
 ## Notes
 
-- Results are always sorted by relevance (highest first)
-- Higher limits may impact output size, especially with `--verbose`
-- The search engine processes all matches but only returns up to the limit
-- Combine with filters (`--source`, `--framework`) for more targeted results
+- Results are sorted by relevance (highest first).
+- The search engine processes all matches but only returns up to the limit.
+- In fan-out mode, also see `--per-source` (caps each source's contribution before RRF) — `--limit` is the final cap, `--per-source` is the per-source cap.
+- Combine with filters (`--source`, `--framework`) for more targeted results.
+- `--limit` has no short alias. (`-l` is the short alias for `--language`.)

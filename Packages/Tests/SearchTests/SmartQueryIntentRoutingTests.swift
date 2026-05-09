@@ -60,6 +60,7 @@ private func makeFetchers(
     }
 }
 
+@Suite("Smart query intent routing (#254)")
 struct SmartQueryIntentRoutingTests {
     private static let allSources: [String] = [
         Shared.Constants.SourcePrefix.appleDocs,

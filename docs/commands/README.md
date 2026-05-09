@@ -79,7 +79,7 @@ cupertino serve
 
 ```bash
 # 1. Download documentation (takes time)
-cupertino fetch --type docs      # Apple developer docs (full corpus, ~50–80k pages, hours)
+cupertino fetch --type docs      # Apple developer docs (full corpus, ~400k+ pages, multi-hour)
 cupertino fetch --type evolution
 cupertino fetch --type hig       # Human Interface Guidelines
 cupertino fetch --type archive   # Legacy programming guides
