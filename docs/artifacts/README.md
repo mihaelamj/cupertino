@@ -17,15 +17,16 @@ All Cupertino artifacts are stored under:
 
 | Artifact | Description | Documentation |
 |----------|-------------|---------------|
-| [docs/](folders/docs/) | Crawled Apple documentation | [README](folders/docs/) + [metadata.json](folders/docs/metadata.json.md) |
-| [swift-org/](folders/swift-org/) | Crawled Swift.org documentation | [README](folders/swift-org/) + [metadata.json](folders/docs/metadata.json.md) |
-| [swift-evolution/](folders/swift-evolution/) | Swift Evolution proposals | [README](folders/swift-evolution/) + [metadata.json](folders/docs/metadata.json.md) |
+| [docs/](folders/docs/) | Crawled Apple documentation | [README](folders/docs/) + [metadata.json](folders/docs/metadata.json.md) (the per-corpus crawl state, same format used by every per-source `metadata.json`) |
+| [swift-org/](folders/swift-org/) | Crawled Swift.org documentation | [README](folders/swift-org/) |
+| [swift-evolution/](folders/swift-evolution/) | Swift Evolution proposals | [README](folders/swift-evolution/) |
 | [archive/](folders/archive/) | Apple Archive programming guides | [README](folders/archive/) |
 | [hig/](folders/hig/) | Human Interface Guidelines | [README](folders/hig/) |
 | [sample-code/](folders/sample-code/) | Apple sample code ZIP files | [README](folders/sample-code/) + [.auth-cookies.json](folders/sample-code/.auth-cookies.json.md) |
 | [packages/](folders/packages/) | Swift package metadata + extracted source archives | [README](folders/packages/) + [swift-packages-with-stars.json](folders/packages/swift-packages-with-stars.json.md) + [checkpoint.json](folders/packages/checkpoint.json.md) + per-package `<owner>/<repo>/` source trees |
 | [search.db](folders/search.db.md) | FTS5 search index for documentation | File documentation |
 | [samples.db](folders/samples.db.md) | FTS5 search index for sample code | File documentation |
+| [packages.db](folders/packages.db.md) | FTS5 search index for Swift packages | File documentation |
 | [config.json](folders/config.json.md) | Application configuration | File documentation |
 
 ## Quick Reference

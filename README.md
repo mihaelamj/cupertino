@@ -506,20 +506,23 @@ These catalogs are indexed during `cupertino save` and enable instant search wit
   - `hig://{category}/{page}`
 - **Tools**: Search and read capabilities for AI agents
   - **Documentation Tools** (requires `cupertino save`):
-    - `search_docs` - Full-text search across all documentation
-      - Parameters: `query` (required), `source`, `framework`, `min_ios`, `min_macos`, `include_archive`, `limit` (all optional)
-    - `search_hig` - Search Human Interface Guidelines
-      - Parameters: `query` (required), `platform` (optional), `category` (optional), `limit` (optional)
-    - `list_frameworks` - List available frameworks
+    - `search` - **Unified full-text search** across every indexed source: Apple Developer Documentation, sample code, Human Interface Guidelines, Apple Archive, Swift Evolution, swift.org, the Swift Book, and Swift package metadata. Replaces the pre-[#239](https://github.com/mihaelamj/cupertino/issues/239) per-source tools (`search_docs`, `search_hig`, `search_samples`, `search_all`).
+      - Parameters: `query` (required), `source` (optional: `all`, `apple-docs`, `samples`, `hig`, `apple-archive`, `swift-evolution`, `swift-org`, `swift-book`, `packages`), `framework`, `language`, `include_archive`, `limit`, `min_ios`, `min_macos`, `min_tvos`, `min_watchos`, `min_visionos` (all optional)
+    - `list_frameworks` - List indexed frameworks with document counts
     - `read_document` - Read document by URI with format option
       - Parameters: `uri` (required), `format` (optional: `json` or `markdown`, default: `json`)
       - JSON format returns the full structured document data (recommended for AI)
       - Markdown format returns rendered content for human reading
   - **Sample Code Tools** (requires `cupertino save --samples`):
-    - `search_samples` - Search sample code projects and files
-    - `list_samples` - List all indexed sample projects
+    - `list_samples` - List indexed sample projects
     - `read_sample` - Read sample project README and metadata
-    - `read_sample_file` - Read specific source file from a sample
+    - `read_sample_file` - Read source file from a sample project
+    - (For sample-code search, use the unified `search` tool above with `source: samples`.)
+  - **Semantic Search Tools** (AST-powered, [#81](https://github.com/mihaelamj/cupertino/issues/81)):
+    - `search_symbols` - Search by symbol kind (class, struct, actor, function) and name
+    - `search_property_wrappers` - Find `@State`, `@Observable`, `@MainActor` usage patterns
+    - `search_concurrency` - Find `async`/`await`, actor, `Sendable` patterns
+    - `search_conformances` - Find types by protocol conformance (`View`, `Codable`, etc.)
 
 ### 5. Intelligent Crawling
 
