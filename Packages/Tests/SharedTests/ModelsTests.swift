@@ -662,6 +662,50 @@ func canonicalContentHashTracksRealEdits() throws {
     #expect(original.canonicalContentHash != edited.canonicalContentHash)
 }
 
+@Test("canonicalContentHash survives JSON round-trip (#199 follow-up)")
+func canonicalContentHashRoundTripStable() throws {
+    let url = try #require(URL(string: "https://developer.apple.com/documentation/spatial/rotation3d"))
+    let original = Page(
+        id: UUID(),
+        url: url,
+        title: "Rotation3D",
+        kind: .struct,
+        source: .appleJSON,
+        abstract: "A rotation in three dimensions.",
+        declaration: Page.Declaration(code: "struct Rotation3D"),
+        overview: "Some overview prose with a link to documentation/spatial/pose3d.",
+        sections: [
+            Page.Section(
+                title: "Topics",
+                items: [
+                    Page.Section.Item(
+                        name: "init(eulerAngles:)",
+                        description: "Init from euler",
+                        url: URL(string: "https://developer.apple.com/documentation/spatial/rotation3d/init(eulerAngles:)")
+                    ),
+                ]
+            ),
+        ],
+        codeExamples: [Page.CodeExample(code: "let r = Rotation3D()", language: "swift", caption: "Default init")],
+        language: "swift",
+        platforms: ["iOS 17.0+", "macOS 14.0+"],
+        module: "Spatial",
+        conformsTo: ["Hashable", "Sendable"],
+        rawMarkdown: "# Rotation3D\n\nProse content.",
+        crawledAt: Date(),
+        contentHash: ""
+    )
+    let originalHash = original.canonicalContentHash
+    #expect(!originalHash.isEmpty)
+
+    // Round-trip via JSONCoding (the same encoder/decoder cupertino uses for save/load)
+    let data = try JSONCoding.encodePretty(original)
+    let decoded = try JSONCoding.decode(Page.self, from: data)
+    let decodedHash = decoded.canonicalContentHash
+
+    #expect(originalHash == decodedHash, "canonicalContentHash must survive save+load round-trip; mismatch indicates JSON serialization is non-deterministic for this schema")
+}
+
 @Test("with(contentHash:) preserves all other fields")
 func withContentHashPreservesFields() throws {
     let url = try #require(URL(string: "https://developer.apple.com/documentation/spatial/rotation3d"))
