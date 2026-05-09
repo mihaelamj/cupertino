@@ -420,6 +420,102 @@ struct CrawlerTests {
         // The session follows the redirect; response.url must reflect the final URL.
         #expect(capturedURL.absoluteString == finalURL.absoluteString)
     }
+
+    // MARK: - htmlLinkAugmentation Configuration Tests (#203)
+
+    @Test("CrawlerConfiguration htmlLinkAugmentation defaults to true")
+    func htmlLinkAugmentationDefaultsToTrue() throws {
+        let config = try Shared.CrawlerConfiguration(
+            startURL: #require(URL(string: "https://developer.apple.com/documentation")),
+            outputDirectory: FileManager.default.temporaryDirectory
+        )
+        #expect(config.htmlLinkAugmentation == true)
+    }
+
+    @Test("CrawlerConfiguration htmlLinkAugmentationMaxRefs defaults to 10")
+    func htmlLinkAugmentationMaxRefsDefaultsToTen() throws {
+        let config = try Shared.CrawlerConfiguration(
+            startURL: #require(URL(string: "https://developer.apple.com/documentation")),
+            outputDirectory: FileManager.default.temporaryDirectory
+        )
+        #expect(config.htmlLinkAugmentationMaxRefs == 10)
+    }
+
+    @Test("CrawlerConfiguration htmlLinkAugmentation can be disabled explicitly")
+    func htmlLinkAugmentationCanBeDisabled() throws {
+        let config = try Shared.CrawlerConfiguration(
+            startURL: #require(URL(string: "https://developer.apple.com/documentation")),
+            outputDirectory: FileManager.default.temporaryDirectory,
+            htmlLinkAugmentation: false
+        )
+        #expect(config.htmlLinkAugmentation == false)
+    }
+
+    @Test("CrawlerConfiguration htmlLinkAugmentationMaxRefs can be raised to disable the heuristic")
+    func htmlLinkAugmentationMaxRefsCanBeRaised() throws {
+        let config = try Shared.CrawlerConfiguration(
+            startURL: #require(URL(string: "https://developer.apple.com/documentation")),
+            outputDirectory: FileManager.default.temporaryDirectory,
+            htmlLinkAugmentationMaxRefs: .max
+        )
+        #expect(config.htmlLinkAugmentationMaxRefs == .max)
+    }
+
+    @Test("CrawlerConfiguration decodes legacy JSON without augmentation fields with defaults")
+    func htmlLinkAugmentationDecodesLegacyJSON() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+        let json = """
+        {
+            "startURL": "https://developer.apple.com/documentation",
+            "allowedPrefixes": ["https://developer.apple.com/documentation"],
+            "maxPages": 100,
+            "maxDepth": 15,
+            "outputDirectory": "\(tempDir.path)",
+            "requestDelay": 0.05,
+            "retryAttempts": 3
+        }
+        """
+        let data = try #require(Data(json.utf8))
+        let config = try JSONDecoder().decode(Shared.CrawlerConfiguration.self, from: data)
+        #expect(config.htmlLinkAugmentation == true)
+        #expect(config.htmlLinkAugmentationMaxRefs == 10)
+    }
+
+    @Test("CrawlerConfiguration decodes explicit augmentation fields from JSON")
+    func htmlLinkAugmentationDecodesExplicitValues() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+        let json = """
+        {
+            "startURL": "https://developer.apple.com/documentation",
+            "allowedPrefixes": ["https://developer.apple.com/documentation"],
+            "maxPages": 100,
+            "maxDepth": 15,
+            "outputDirectory": "\(tempDir.path)",
+            "requestDelay": 0.05,
+            "retryAttempts": 3,
+            "htmlLinkAugmentation": false,
+            "htmlLinkAugmentationMaxRefs": 25
+        }
+        """
+        let data = try #require(Data(json.utf8))
+        let config = try JSONDecoder().decode(Shared.CrawlerConfiguration.self, from: data)
+        #expect(config.htmlLinkAugmentation == false)
+        #expect(config.htmlLinkAugmentationMaxRefs == 25)
+    }
+
+    @Test("CrawlerConfiguration encode + decode round-trips the augmentation fields")
+    func htmlLinkAugmentationRoundTripsThroughEncode() throws {
+        let original = try Shared.CrawlerConfiguration(
+            startURL: #require(URL(string: "https://developer.apple.com/documentation")),
+            outputDirectory: FileManager.default.temporaryDirectory,
+            htmlLinkAugmentation: false,
+            htmlLinkAugmentationMaxRefs: 5
+        )
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(Shared.CrawlerConfiguration.self, from: data)
+        #expect(decoded.htmlLinkAugmentation == false)
+        #expect(decoded.htmlLinkAugmentationMaxRefs == 5)
+    }
 }
 
 // MARK: - Mock URLProtocol for redirect test
