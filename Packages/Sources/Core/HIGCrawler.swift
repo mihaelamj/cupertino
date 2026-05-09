@@ -181,7 +181,7 @@ extension Core {
                 throw HIGCrawlerError.webViewNotInitialized
             }
 
-            return try await fetcher.fetch(url: url)
+            return try await fetcher.fetch(url: url).content
         }
 
         private func crawlPage(_ page: HIGPage, stats: inout HIGStatistics) async throws {

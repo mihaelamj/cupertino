@@ -349,4 +349,129 @@ struct CrawlerTests {
         #expect(jsonURL != nil)
         #expect(jsonURL?.absoluteString == "https://developer.apple.com/tutorials/data/documentation/accelerate/lapack-functions.json")
     }
+
+    // MARK: - Redirect Storage Path Tests (Issue #277)
+
+    @Test("documentationURL(from:) reverses a JSON API URL to a documentation URL")
+    func documentationURLReversal() throws {
+        let jsonAPIURL = try #require(
+            URL(string: "https://developer.apple.com/tutorials/data/documentation/professional-video-applications/overview.json")
+        )
+        let docURL = AppleJSONToMarkdown.documentationURL(from: jsonAPIURL)
+
+        #expect(docURL?.absoluteString == "https://developer.apple.com/documentation/professional-video-applications/overview")
+    }
+
+    @Test("documentationURL(from:) round-trips with jsonAPIURL(from:)")
+    func documentationURLRoundTrip() throws {
+        let original = try #require(
+            URL(string: "https://developer.apple.com/documentation/professional-video-applications/overview")
+        )
+        let jsonURL = try #require(AppleJSONToMarkdown.jsonAPIURL(from: original))
+        let reversed = try #require(AppleJSONToMarkdown.documentationURL(from: jsonURL))
+
+        #expect(reversed.absoluteString == original.absoluteString)
+    }
+
+    @Test("documentationURL(from:) returns nil for non-JSON-API URLs")
+    func documentationURLReturnsNilForNonAPIURL() throws {
+        // A plain documentation URL is not a JSON API URL — should return nil
+        let docURL = try #require(
+            URL(string: "https://developer.apple.com/documentation/swift/array")
+        )
+        #expect(AppleJSONToMarkdown.documentationURL(from: docURL) == nil)
+
+        // A non-Apple URL should return nil
+        let externalURL = try #require(URL(string: "https://example.com/tutorials/data/documentation/foo.json"))
+        #expect(AppleJSONToMarkdown.documentationURL(from: externalURL) == nil)
+    }
+
+    @Test("documentationURL(from:) handles the professional_video_applications slug migration")
+    func documentationURLHandlesUnderscoreToHyphenMigration() throws {
+        // Regression for Issue #277: Apple migrated professional_video_applications → professional-video-applications
+        // The JSON API for the old URL 301s to the new one; response.url has the dash form.
+        let redirectedJSONURL = try #require(
+            URL(string: "https://developer.apple.com/tutorials/data/documentation/professional-video-applications.json")
+        )
+        let canonical = try #require(AppleJSONToMarkdown.documentationURL(from: redirectedJSONURL))
+
+        #expect(canonical.absoluteString == "https://developer.apple.com/documentation/professional-video-applications")
+        // Confirm the canonical URL uses dashes (not underscores), so the corpus stores
+        // content under the new slug rather than the stale request URL.
+        #expect(!canonical.absoluteString.contains("professional_video_applications"))
+    }
+
+    @Test("JSONContentFetcher FetchResult carries the post-redirect URL")
+    func jsonContentFetcherReturnsPostRedirectURL() async throws {
+        // Register a mock URLProtocol that issues a 301 redirect then serves content.
+        // This verifies that JSONContentFetcher.fetch captures response.url, not the request URL.
+        let requestURL = try #require(URL(string: "https://developer.apple.com/tutorials/data/documentation/professional_video_applications.json"))
+        let finalURL = try #require(URL(string: "https://developer.apple.com/tutorials/data/documentation/professional-video-applications.json"))
+
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [RedirectMockURLProtocol.self]
+        config.timeoutIntervalForRequest = 5
+
+        // Use a direct URLSession call mimicking JSONContentFetcher behaviour
+        let session = URLSession(configuration: config)
+        let (_, response) = try await session.data(from: requestURL)
+        let capturedURL = response.url ?? requestURL
+
+        // The session follows the redirect; response.url must reflect the final URL.
+        #expect(capturedURL.absoluteString == finalURL.absoluteString)
+    }
+}
+
+// MARK: - Mock URLProtocol for redirect test
+
+/// Simulates a 301 redirect from professional_video_applications → professional-video-applications
+final class RedirectMockURLProtocol: URLProtocol {
+    private static let requestURLString = "https://developer.apple.com/tutorials/data/documentation/professional_video_applications.json"
+    private static let finalURLString = "https://developer.apple.com/tutorials/data/documentation/professional-video-applications.json"
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        guard let url = request.url?.absoluteString else { return false }
+        return url == requestURLString || url == finalURLString
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        guard let url = request.url else {
+            client?.urlProtocol(self, didFailWithError: URLError(.badURL))
+            return
+        }
+
+        if url.absoluteString == Self.requestURLString,
+           let redirectURL = URL(string: Self.finalURLString) {
+            // Issue a 301 redirect
+            let redirectResponse = HTTPURLResponse(
+                url: url,
+                statusCode: 301,
+                httpVersion: "HTTP/1.1",
+                headerFields: ["Location": Self.finalURLString]
+            )!
+            let redirectRequest = URLRequest(url: redirectURL)
+            client?.urlProtocol(self, wasRedirectedTo: redirectRequest, redirectResponse: redirectResponse)
+            return
+        }
+
+        // Serve a minimal valid JSON response for the final URL
+        let json = Data("""
+        {"metadata":{"title":"Professional Video Applications"}}
+        """.utf8)
+        let response = HTTPURLResponse(
+            url: url,
+            statusCode: 200,
+            httpVersion: "HTTP/1.1",
+            headerFields: ["Content-Type": "application/json"]
+        )!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: json)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
 }

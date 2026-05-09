@@ -10,8 +10,8 @@ public protocol ContentFetcher: Sendable {
 
     /// Fetch raw content from the given URL
     /// - Parameter url: The URL to fetch content from
-    /// - Returns: The raw content (HTML string, JSON Data, XML Data, etc.)
-    func fetch(url: URL) async throws -> RawContent
+    /// - Returns: A FetchResult containing the raw content and the post-redirect final URL
+    func fetch(url: URL) async throws -> FetchResult<RawContent>
 
     /// Optional: Recycle resources to free memory
     /// Default implementation does nothing

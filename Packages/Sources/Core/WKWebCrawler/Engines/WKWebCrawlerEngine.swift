@@ -25,14 +25,16 @@ extension WKWebCrawler {
         }
 
         public func crawl(url: URL) async throws -> TransformResult {
-            // Fetch HTML content via WKWebView
-            let html = try await fetcher.fetch(url: url)
+            // Fetch HTML content via WKWebView; result.url is the post-redirect final URL
+            let result = try await fetcher.fetch(url: url)
+            let html = result.content
+            let finalURL = result.url
 
             // Transform to markdown using HTMLToMarkdown
-            let markdown = HTMLToMarkdown.convert(html, url: url)
+            let markdown = HTMLToMarkdown.convert(html, url: finalURL)
 
             // Extract links from HTML
-            let links = extractLinks(from: html, baseURL: url)
+            let links = extractLinks(from: html, baseURL: finalURL)
 
             // Extract metadata from HTML
             let metadata = extractMetadata(from: html)

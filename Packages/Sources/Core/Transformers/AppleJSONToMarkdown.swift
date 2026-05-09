@@ -102,6 +102,19 @@ public struct AppleJSONToMarkdown: ContentTransformer, @unchecked Sendable {
         return URL(string: "https://developer.apple.com/tutorials/data\(path).json")
     }
 
+    /// Reverse of `jsonAPIURL(from:)`: derives the canonical documentation URL from a JSON API URL.
+    /// Returns nil if the input is not a JSON API URL for developer.apple.com.
+    public static func documentationURL(from jsonAPIURL: URL) -> URL? {
+        guard jsonAPIURL.host == "developer.apple.com" else { return nil }
+        var path = jsonAPIURL.path // e.g. /tutorials/data/documentation/foo.json
+        guard path.hasPrefix("/tutorials/data/documentation") else { return nil }
+        path = String(path.dropFirst("/tutorials/data".count)) // /documentation/foo.json
+        if path.hasSuffix(".json") {
+            path = String(path.dropLast(5))
+        }
+        return URL(string: "https://developer.apple.com\(path)")
+    }
+
     /// Extract the interface language from the JSON response (swift, objc, etc.)
     public static func extractLanguage(from json: Data) -> String {
         guard let doc = try? JSONDecoder().decode(AppleDocumentation.self, from: json) else {
