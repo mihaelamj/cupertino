@@ -149,6 +149,16 @@ struct CrawlerTests {
         #expect(normalized?.path == "/documentation/swiftui/some-method")
     }
 
+    @Test("URLUtilities normalize does not crash on /documentation with no framework slug")
+    func urlNormalizeHandlesDocumentationOnlyPath() throws {
+        // Regression: normalizeDocPath used to trap with "Range requires lowerBound <= upperBound"
+        // when documentation was found but had fewer than 2 following path segments.
+        let url = URL(string: "https://developer.apple.com/documentation")!
+        let normalized = URLUtilities.normalize(url)
+
+        #expect(normalized?.path == "/documentation")
+    }
+
     // MARK: - Framework Extraction Tests
 
     @Test("URLUtilities extracts framework from Apple docs URL")

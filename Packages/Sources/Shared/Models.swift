@@ -872,14 +872,16 @@ public enum URLUtilities {
     // be left untouched.
     private static func normalizeDocPath(_ path: String) -> String {
         var parts = path.components(separatedBy: "/")
-        guard let docIdx = parts.firstIndex(of: "documentation") else {
-            return path
-        }
-        let normalizeFromIdx = docIdx + 2  // skip "documentation" + framework slug
-        for i in normalizeFromIdx..<parts.count {
-            parts[i] = String(parts[i].map { $0 == "_" ? "-" : $0 })
-        }
-        return parts.joined(separator: "/")
+        guard let docIdx = parts.firstIndex(of: "documentation"),
+              docIdx + 2 < parts.count else { return path }
+
+        let normalizeFromIdx = docIdx + 2
+        return parts
+            .enumerated()
+            .map { index, part in
+                index >= normalizeFromIdx ? String(part.map { $0 == "_" ? "-" : $0 }) : part
+            }
+            .joined(separator: "/")
     }
 
     /// Extract framework name from documentation URL (Apple or Swift.org)
