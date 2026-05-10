@@ -842,16 +842,20 @@ public enum HashUtilities {
 
 /// Utilities for URL manipulation
 public enum URLUtilities {
-    /// Normalize a URL: strip fragment and query, lowercase the path, and
-    /// collapse underscore → dash in sub-page path segments within
-    /// /documentation/ paths (depth ≥ 3, i.e. everything after the framework
-    /// slug). Framework-level slugs at depth 2 are intentionally preserved
-    /// because at least two Apple frameworks (`installer_js`,
+    /// Returns a normalized copy of `url` with fragment and query stripped,
+    /// path lowercased, and underscores replaced with dashes in sub-page
+    /// segments within `/documentation/` paths.
+    ///
+    /// Applies underscore-to-dash replacement only to path segments at depth
+    /// ≥ 3 (sub-page level). Framework slugs at depth 2 are preserved because
+    /// at least two Apple frameworks (`installer_js`,
     /// `professional_video_applications`) use underscores canonically and
-    /// their dash forms return 404. The sub-page axis is safe to normalize
-    /// because Apple's docs server 301-redirects all underscore sub-page
-    /// slugs to their dash equivalents, resolving the 31 duplicate URI
+    /// their dash forms return 404. This resolves the 31 duplicate URI
     /// clusters in search.db (#285).
+    ///
+    /// - Parameter url: The URL to normalize.
+    /// - Returns: The normalized URL, or `nil` if `url` cannot be decomposed
+    ///   into URL components.
     public static func normalize(_ url: URL) -> URL? {
         var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
         components?.fragment = nil
