@@ -185,7 +185,7 @@ extension Search.Index {
     // MARK: - v13 helpers (URI canonicalization)
 
     /// One row of pre-migration metadata used to compute the v13 rename plan.
-    struct V13MetadataRow: Sendable, Hashable {
+    struct V13MetadataRow: Hashable {
         let uri: String
         let framework: String
         let url: String
@@ -195,7 +195,7 @@ extension Search.Index {
     /// The set of URI rewrites + deletions implied by recomputing filenames
     /// for every row in `docs_metadata`. Built before the transaction starts so
     /// the actual SQL phase is short.
-    struct V13RenamePlan: Sendable {
+    struct V13RenamePlan {
         /// Survivors whose URI changes. Old URI -> new URI. Each new URI is
         /// guaranteed to be unique within `renames` and to not collide with any
         /// pre-existing untouched row in `docs_metadata`.

@@ -146,7 +146,7 @@ struct V13PlannerTests {
     }
 
     @Test("Already-canonical rows produce no work")
-    func alreadyCanonical() throws {
+    func alreadyCanonical() {
         let url = "https://developer.apple.com/documentation/foundation/urlsession"
         let canonical = canonicalURI(framework: "foundation", url: url)
         let row = Row(uri: canonical, framework: "foundation", url: url, lastCrawled: 100)
