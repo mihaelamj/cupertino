@@ -873,7 +873,7 @@ public enum URLUtilities {
         }
         let normalizeFromIdx = docIdx + 2  // skip "documentation" + framework slug
         for i in normalizeFromIdx..<parts.count {
-            parts[i] = parts[i].replacingOccurrences(of: "_", with: "-")
+            parts[i] = String(parts[i].map { $0 == "_" ? "-" : $0 })
         }
         return parts.joined(separator: "/")
     }
