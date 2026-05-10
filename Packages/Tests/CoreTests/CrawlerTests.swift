@@ -99,6 +99,56 @@ struct CrawlerTests {
         #expect(try !#require(normalized?.absoluteString.contains("installer-js")))
     }
 
+    @Test("URLUtilities normalize converts underscore sub-page slug to dash")
+    func urlNormalizeConvertsUnderscoreSubpageToDash() throws {
+        let url = URL(string: "https://developer.apple.com/documentation/corelocation/getting_heading_and_course_information")!
+        let normalized = URLUtilities.normalize(url)
+
+        #expect(normalized?.path == "/documentation/corelocation/getting-heading-and-course-information")
+    }
+
+    @Test("URLUtilities normalize preserves installer_js framework slug but normalizes sub-page underscore")
+    func urlNormalizePreservesFrameworkSlugNormalizesSubpage() throws {
+        let url = URL(string: "https://developer.apple.com/documentation/installer_js/some_class")!
+        let normalized = URLUtilities.normalize(url)
+
+        #expect(normalized?.path == "/documentation/installer_js/some-class")
+    }
+
+    @Test("URLUtilities normalize converts underscores at multiple sub-page depths")
+    func urlNormalizeConvertsUnderscoresAtMultipleDepths() throws {
+        let url = URL(string: "https://developer.apple.com/documentation/swiftui/some_class/some_method")!
+        let normalized = URLUtilities.normalize(url)
+
+        #expect(normalized?.path == "/documentation/swiftui/some-class/some-method")
+    }
+
+    @Test("URLUtilities normalize does not touch non-documentation URL underscores")
+    func urlNormalizeDoesNotTouchNonDocsPaths() throws {
+        let url = URL(string: "https://developer.apple.com/videos/play/wwdc2023/10_video")!
+        let normalized = URLUtilities.normalize(url)
+
+        #expect(normalized?.path == "/videos/play/wwdc2023/10_video")
+    }
+
+    @Test("URLUtilities normalize strips fragment and query and collapses sub-page underscore")
+    func urlNormalizeStripsFragmentQueryAndNormalizesUnderscore() throws {
+        let url = URL(string: "https://developer.apple.com/documentation/swiftui/some_method?foo=1#bar")!
+        let normalized = URLUtilities.normalize(url)
+
+        #expect(normalized?.path == "/documentation/swiftui/some-method")
+        #expect(normalized?.query == nil)
+        #expect(normalized?.fragment == nil)
+    }
+
+    @Test("URLUtilities normalize lowercases before collapsing underscore to dash")
+    func urlNormalizeLowercasesBeforeCollapsingUnderscore() throws {
+        let url = URL(string: "https://developer.apple.com/documentation/SwiftUI/Some_Method")!
+        let normalized = URLUtilities.normalize(url)
+
+        #expect(normalized?.path == "/documentation/swiftui/some-method")
+    }
+
     // MARK: - Framework Extraction Tests
 
     @Test("URLUtilities extracts framework from Apple docs URL")

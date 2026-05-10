@@ -842,23 +842,40 @@ public enum HashUtilities {
 
 /// Utilities for URL manipulation
 public enum URLUtilities {
-    /// Normalize a URL: strip fragment and query, lowercase the path.
-    /// Apple's docs server is case-insensitive on the path
-    /// (`/documentation/Cinematic/CNAssetInfo-2ata2` and the all-lowercase
-    /// form return the same content), so dedup logic must treat them as one
-    /// page (#200). Dash-vs-underscore framework variants
-    /// (`professional-video-applications` ↔ `professional_video_applications`)
-    /// are NOT collapsed here because at least one Apple framework
-    /// (`installer_js`) legitimately uses underscore in its path; that axis
-    /// is handled at the search-index save layer instead.
+    /// Normalize a URL: strip fragment and query, lowercase the path, and
+    /// collapse underscore → dash in sub-page path segments within
+    /// /documentation/ paths (depth ≥ 3, i.e. everything after the framework
+    /// slug). Framework-level slugs at depth 2 are intentionally preserved
+    /// because at least two Apple frameworks (`installer_js`,
+    /// `professional_video_applications`) use underscores canonically and
+    /// their dash forms return 404. The sub-page axis is safe to normalize
+    /// because Apple's docs server 301-redirects all underscore sub-page
+    /// slugs to their dash equivalents, resolving the 31 duplicate URI
+    /// clusters in search.db (#285).
     public static func normalize(_ url: URL) -> URL? {
         var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
         components?.fragment = nil
         components?.query = nil
         if let path = components?.path {
-            components?.path = path.lowercased()
+            components?.path = normalizeDocPath(path.lowercased())
         }
         return components?.url
+    }
+
+    // Replace underscores with dashes in sub-page path segments only.
+    // Framework slugs at depth 2 after /documentation/ use underscores
+    // canonically (installer_js, professional_video_applications) and must
+    // be left untouched.
+    private static func normalizeDocPath(_ path: String) -> String {
+        var parts = path.components(separatedBy: "/")
+        guard let docIdx = parts.firstIndex(of: "documentation") else {
+            return path
+        }
+        let normalizeFromIdx = docIdx + 2  // skip "documentation" + framework slug
+        for i in normalizeFromIdx..<parts.count {
+            parts[i] = parts[i].replacingOccurrences(of: "_", with: "-")
+        }
+        return parts.joined(separator: "/")
     }
 
     /// Extract framework name from documentation URL (Apple or Swift.org)
