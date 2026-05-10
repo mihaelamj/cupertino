@@ -891,7 +891,13 @@ public enum URLUtilities {
     /// named parameters) get truncated and appended with an 8-char SHA-1
     /// suffix to keep collision-resistant uniqueness.
     public static func filename(from url: URL) -> String {
-        var cleaned = url.absoluteString
+        // Canonicalize first so case-variant URLs collapse to identical filenames.
+        // Without this, the disambiguator hash below (computed from
+        // `originalCleaned`) diverges for case-variants like
+        // `/documentation/Swift/withTaskGroup(...)` vs the all-lowercase form,
+        // producing two distinct URIs in the index for the same Apple page (#283).
+        let canonical = URLUtilities.normalize(url) ?? url
+        var cleaned = canonical.absoluteString
         let originalCleaned = cleaned
 
         // Remove known domain prefixes
