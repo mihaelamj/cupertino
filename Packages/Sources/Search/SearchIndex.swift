@@ -27,7 +27,13 @@ extension Search {
         /// - 12: Added `symbols` column to docs_fts (#192 section D) so bm25 can weight
         ///       directly on AST-derived symbol names. BREAKING — FTS5 does not support
         ///       ALTER TABLE ADD COLUMN, so existing DBs must be rebuilt.
-        public static let schemaVersion: Int32 = 12
+        /// - 13: URL case canonicalization (#283). v12 DBs carry case-axis URI duplicates
+        ///       (~30% of rows in shipped v1.0.0/v1.0.1). The migration recomputes each
+        ///       URI through the post-#283 `URLUtilities.filename(...)`, merges case-variant
+        ///       collisions by latest `last_crawled` (loser rows dropped, dependent FTS +
+        ///       symbols + imports + code-examples cleaned in the same transaction), and
+        ///       renames survivors. In-place data fix; no schema shape change.
+        public static let schemaVersion: Int32 = 13
 
         // Properties are package-internal (default visibility) so the
         // SearchIndex+<Concern>.swift extension files can access them. Public

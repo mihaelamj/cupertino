@@ -120,12 +120,13 @@ struct MCPDoctorCommandTests {
 
     @Test("Doctor flags a v11 DB as stale relative to the current binary (#192 I6)")
     func doctorDetectsStaleSchemaVersion() async throws {
-        // Simulates the production scenario after the v1.0 schema bump:
-        // a user upgrades the cupertino binary (now expects schemaVersion 12),
-        // but their on-disk search.db is still at 11. Doctor must read the
-        // on-disk PRAGMA WITHOUT going through `Search.Index` (whose init
-        // throws on incompatible versions and would otherwise hide the
-        // version number from the diagnostic output).
+        // Simulates the production scenario after a schema bump:
+        // a user upgrades the cupertino binary (now expects a newer
+        // `Search.Index.schemaVersion`), but their on-disk search.db is
+        // still at 11. Doctor must read the on-disk PRAGMA WITHOUT going
+        // through `Search.Index` (whose init throws on incompatible
+        // versions and would otherwise hide the version number from the
+        // diagnostic output).
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("doctor-stale-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -134,9 +135,10 @@ struct MCPDoctorCommandTests {
         let dbPath = tempDir.appendingPathComponent("search.db")
 
         // Create a sqlite file directly with PRAGMA user_version = 11. We
-        // can't go through `Search.Index(dbPath:)` to set this — its init
-        // either fresh-stamps to schemaVersion (12) or throws. Use the
-        // sqlite3 C API directly so the file lands at the prior version.
+        // can't go through `Search.Index(dbPath:)` to set this: its init
+        // either fresh-stamps to the current `schemaVersion` or throws.
+        // Use the sqlite3 C API directly so the file lands at the prior
+        // version.
         var db: OpaquePointer?
         guard sqlite3_open(dbPath.path, &db) == SQLITE_OK else {
             #expect(Bool(false), "Could not create stale-version sqlite file")
