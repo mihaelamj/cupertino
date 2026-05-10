@@ -107,12 +107,15 @@ struct CrawlerTests {
         #expect(normalized?.path == "/documentation/corelocation/getting-heading-and-course-information")
     }
 
-    @Test("URLUtilities normalize preserves installer_js framework slug but normalizes sub-page underscore")
+    @Test("URLUtilities normalize preserves framework slug at depth 2 and normalizes sub-page underscore")
     func urlNormalizePreservesFrameworkSlugNormalizesSubpage() throws {
-        let url = URL(string: "https://developer.apple.com/documentation/installer_js/some_class")!
+        // driverkit/driverkit_constants is one of the 31 duplicate-cluster pairs from #285.
+        // The framework slug "driverkit" at depth 2 must be left untouched;
+        // only "driverkit_constants" at depth 3 is collapsed to dashes.
+        let url = URL(string: "https://developer.apple.com/documentation/driverkit/driverkit_constants")!
         let normalized = URLUtilities.normalize(url)
 
-        #expect(normalized?.path == "/documentation/installer_js/some-class")
+        #expect(normalized?.path == "/documentation/driverkit/driverkit-constants")
     }
 
     @Test("URLUtilities normalize converts underscores at multiple sub-page depths")
