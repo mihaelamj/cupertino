@@ -1,6 +1,6 @@
 # 🍎📚 Cupertino
 
-> 🕯️ *v1.0.1 released on 2026-05-08.* Three priority-high bug fixes on top of v1.0.0 'First Light'. See the [release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.0.1).
+> 🕯️ *v1.0.3 released on 2026-05-11.* Ships a re-indexed bundle with the URL case-canonicalization fix from [#283](https://github.com/mihaelamj/cupertino/issues/283). The v1.0.0 / v1.0.1 bundles carried 61,257 case-axis duplicate clusters (~30% of `docs_metadata`); v1.0.3 has zero. See the [release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.0.3).
 
 **Apple Documentation Crawler & MCP Server**
 
@@ -21,7 +21,7 @@ Cupertino is a local, structured, AI-ready documentation system for Apple platfo
 - **Crawls** Apple Developer documentation, Swift.org, Swift Evolution proposals, Human Interface Guidelines, Apple Archive legacy guides, and Swift package metadata
 - **Indexes** everything into a fast, searchable SQLite FTS5 database with field-weighted BM25 (BM25F) ranking and AST-extracted symbol columns
 - **Serves** documentation to AI agents like Claude via the Model Context Protocol
-- **Provides** offline access to 405,000+ documentation pages across 422 frameworks
+- **Provides** offline access to 277,000+ documentation pages across 402 frameworks (v1.0.3 bundle, post-dedup)
 
 ### Why Build This?
 
@@ -425,7 +425,7 @@ A UIKit view controller that manages a SwiftUI view hierarchy.
 | Accelerate | 9,114 |
 | SwiftUI | 7,062 |
 | ... | ... |
-| **422 Frameworks** | **405,782** |
+| **402 Frameworks** | **277,640** |
 
 ## Core Features
 
@@ -495,7 +495,7 @@ These catalogs are indexed during `cupertino save` and enable instant search wit
   - Platform availability filtering (iOS/macOS version)
   - Snippet generation
   - Sub-100ms query performance
-- **Size**: ~3.4 GB search.db + ~990 MB packages.db + ~185 MB samples.db for full documentation (405,000+ documents across 422 frameworks)
+- **Size**: ~2.4 GB search.db + ~990 MB packages.db + ~185 MB samples.db for full documentation (277,000+ documents across 402 frameworks, v1.0.3 bundle)
 - **Storage**: Database must be on local filesystem - SQLite does not work reliably on network drives (NFS/SMB)
 
 ### 4. Model Context Protocol Server
@@ -616,7 +616,7 @@ make lint                   # Lint with SwiftLint
 ### Testing
 
 **Test Suite:**
-- 1,231 tests across 126 test suites in 80 test files
+- 1,224 tests across 134 test suites in 80 test files
 - Swift Testing framework (`@Test`, `@Suite`, `#expect`) with `withDependencies` for injection
 - Includes unit tests, integration tests (real WKWebView + real Apple docs), and formatter tests
 
@@ -738,11 +738,11 @@ For development setup, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Project Status
 
-**Version:** 1.0.1
-**Status:** ✅ Released 2026-05-08 (binary fixes on v1.0.0 "First Light")
+**Version:** 1.0.3
+**Status:** ✅ Released 2026-05-11 (re-indexed bundle on top of v1.0.0 "First Light", v1.0.1 fixes folded in, v1.0.2 tag skipped)
 
 - ✅ All core functionality working
-- ✅ 1,231 tests across 126 suites passing (100% pass rate)
+- ✅ 1,224 tests across 134 suites passing (100% pass rate)
 - ✅ 0 lint violations
 - ✅ Swift 6.2 compliant with 100% strict concurrency checking
 - ✅ All production bugs resolved

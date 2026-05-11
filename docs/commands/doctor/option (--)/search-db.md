@@ -81,13 +81,13 @@ The search database contains:
 
 ## Database Size Examples
 
-Approximate, snapshot of the v1.0 corpus — your local DB will vary:
+Approximate, snapshot of the v1.0.3 corpus (your local DB will vary):
 
 | Documentation Size | Index Size |
 |-------------------|------------|
-| ~405,000 pages (Apple docs + HIG + archive + Swift Book + swift.org) | ~2.5 GB |
+| ~277,000 pages (Apple docs + HIG + archive + Swift Book + swift.org), post-#283 dedup | ~2.4 GB |
 | ~500 proposals (Swift Evolution) | ~2-3 MB |
-| Combined `search.db` | ~2.5 GB |
+| Combined `search.db` | ~2.4 GB |
 
 (`packages.db` and `samples.db` are separate from `search.db` and aren't sized in by `--search-db`.)
 

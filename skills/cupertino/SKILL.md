@@ -1,14 +1,21 @@
 ---
 name: cupertino
-description: This skill should be used when working with Apple APIs, iOS/macOS/visionOS development, or Swift language questions. Covers searching Apple developer documentation, looking up SwiftUI views, finding UIKit APIs, reading Apple docs, browsing Swift Evolution proposals, checking Human Interface Guidelines, and exploring Apple sample code. Supports 422 frameworks including SwiftUI, UIKit, Foundation, and Combine via offline search of 405,000+ documentation pages.
+description: This skill should be used when working with Apple APIs, iOS/macOS/visionOS development, or Swift language questions. Covers searching Apple developer documentation, looking up SwiftUI views, finding UIKit APIs, reading Apple docs, browsing Swift Evolution proposals, checking Human Interface Guidelines, and exploring Apple sample code. Supports 402 frameworks including SwiftUI, UIKit, Foundation, and Combine via offline search of 277,000+ documentation pages.
 allowed-tools: Bash(cupertino *)
 ---
 
 # Cupertino: Apple Documentation Search
 
-Search 405,000+ Apple developer documentation pages offline. Cupertino is a lexical search engine over Apple's docs, samples, HIG, Swift Evolution, Swift.org, the Swift book, and Swift package metadata. It returns deterministic, citable results, never hallucinations.
+Search 277,000+ Apple developer documentation pages offline. Cupertino is a lexical search engine over Apple's docs, samples, HIG, Swift Evolution, Swift.org, the Swift book, and Swift package metadata. It returns deterministic, citable results, never hallucinations.
 
-**Your job (the LLM) is to translate the user's question into the right cupertino query, cite results in your answer, and verify everything you say traces back to a real Apple doc.**
+## Two rules
+
+1. **Any Apple-related question goes through cupertino first.** SwiftUI, UIKit, AppKit, Foundation, Swift language, iOS / macOS / visionOS / tvOS / watchOS APIs, HIG, sample code, Swift Evolution, Swift packages: ask cupertino before answering. Don't reach for training-data memory of Apple APIs; reach for `cupertino search`. If the user's question doesn't obviously involve Apple, but mentions a symbol that *might* be Apple's (e.g., `NavigationStack`, `URLSession`, `@Observable`), query cupertino to confirm before assuming.
+2. **After you draft an answer, verify the code actually exists on Apple AND that it's the right pattern for the job.** Two checks, both run against cupertino:
+   - **Existence:** for every symbol, method, initializer, modifier, property, or framework name in your code/answer, re-search cupertino to confirm Apple actually ships that exact thing. Check its signature (parameter names, parameter types, return type), availability (which OS versions / which platforms), and deprecation status against the doc cupertino returns. If a name doesn't trace back to a cupertino hit, **the API doesn't exist**: you hallucinated it. Fix it (find the real name) or remove it.
+   - **Appropriateness:** confirm the pattern / tech you used is the canonical / current Apple recommendation for the task. Cupertino indexes both current and deprecated symbols. Don't recommend `UIWebView` when `WKWebView` exists, `URLConnection` when `URLSession` exists, `Combine` when modern Swift Concurrency fits, or UIKit list patterns when SwiftUI `List` is what the user asked for. Search for the conceptual area ("loading a web view", "displaying a list of items", "background URL session") and read what Apple's doc actually steers people toward. If the user's context is iOS 17+ or Swift 6, prefer the API Apple ships for that era.
+
+Don't ship code that names APIs cupertino can't find, and don't ship patterns Apple's current docs actively steer away from. This "verify before sending" pass is cheap (millisecond search, few-hundred-token cost), catches most hallucinations, and runs in seconds.
 
 ## Setup
 
