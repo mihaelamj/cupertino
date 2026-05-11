@@ -112,6 +112,69 @@ public struct HTMLToMarkdown: ContentTransformer, @unchecked Sendable {
             lowercased.contains("javascript is required")
     }
 
+    // MARK: - Error-page detection (#284)
+
+    /// Returns true if `html` looks like an HTTP error response template
+    /// (Apple's CDN sometimes serves a styled 403/404/502 page with HTTP
+    /// 200 status, which then gets indexed as if it were documentation).
+    /// Used by the crawler's WebView fallback as a defense-in-depth check
+    /// before saving the page. The JSON API path already filters by
+    /// HTTP status code, so this gate fires only on rendered-HTML inputs.
+    public static func looksLikeHTTPErrorPage(html: String) -> Bool {
+        guard let title = extractTitle(from: html) else {
+            // No title means we'll skip via the existing nil-title gate; let
+            // that path handle it rather than double-counting.
+            return false
+        }
+        return looksLikeHTTPErrorPage(title: title, html: html)
+    }
+
+    /// Pure decision over a pre-extracted `title` + the surrounding `html`.
+    /// Split out so unit tests can exercise the rule against synthetic
+    /// inputs without round-tripping through the full HTML title-extractor.
+    static func looksLikeHTTPErrorPage(title: String, html: String) -> Bool {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Direct prefix: "403 Forbidden", "502 Bad Gateway", etc.
+        // The space/end-anchor matches the issue spec so a real Apple page
+        // titled "404 Not Found · Apple Developer Documentation" still trips
+        // it, while "Routing404" or "Error404Type" do not.
+        if trimmed.range(of: #"^(403|404|429|500|502|503|504)(\s|$)"#, options: .regularExpression) != nil {
+            return true
+        }
+
+        // Defense-in-depth: a very short rendered body whose title contains
+        // a known error phrase. The issue spec calls for a content-body
+        // word-count (not the converted-markdown word-count, which would
+        // include the front-matter overhead `convert()` always emits).
+        let errorPhrases = ["Forbidden", "Bad Gateway", "Not Found", "Service Unavailable", "Gateway Timeout"]
+        let containsErrorPhrase = errorPhrases.contains { trimmed.contains($0) }
+        if containsErrorPhrase, countBodyWords(in: html) < 10 {
+            return true
+        }
+
+        return false
+    }
+
+    /// Approximate body word-count for the error-page heuristic. Strips
+    /// HTML tags + entities from the `<body>` region (or the whole input
+    /// if no body tag), then counts whitespace-separated tokens. Cheap
+    /// enough to run on every WebView fallback page; the only consumer is
+    /// `looksLikeHTTPErrorPage`.
+    private static func countBodyWords(in html: String) -> Int {
+        let body: String
+        let bodyOptions: NSString.CompareOptions = [.regularExpression, .caseInsensitive]
+        if let range = html.range(of: #"<body[^>]*>(.*?)</body>"#, options: bodyOptions) {
+            body = String(html[range])
+        } else {
+            body = html
+        }
+        let stripped = body
+            .replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
+            .replacingOccurrences(of: "&[a-z0-9#]+;", with: " ", options: bodyOptions)
+        return stripped.split(whereSeparator: { $0.isWhitespace }).count
+    }
+
     private static func extractMainContent(from html: String) -> String {
         // Try to extract main content area - need dotMatchesLineSeparators for multiline content
         let options: NSRegularExpression.Options = [.caseInsensitive, .dotMatchesLineSeparators]

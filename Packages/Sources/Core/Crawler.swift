@@ -313,6 +313,12 @@ extension Core {
                     // JSON API failed, fall back to HTML
                     logInfo("   ⚠️ JSON API unavailable, using HTML fallback")
                     let html = try await loadPage(url: url)
+                    if HTMLToMarkdown.looksLikeHTTPErrorPage(html: html) {
+                        logInfo("   ⛔ HTTP error template detected, skipping (#284)")
+                        await state.updateStatistics { $0.errors += 1 }
+                        await state.updateStatistics { $0.totalPages += 1 }
+                        return
+                    }
                     (markdown, links, structuredPage) = autoreleasepool {
                         (
                             HTMLToMarkdown.convert(html, url: url),
@@ -324,6 +330,12 @@ extension Core {
             } else {
                 // No JSON endpoint available, use HTML directly
                 let html = try await loadPage(url: url)
+                if HTMLToMarkdown.looksLikeHTTPErrorPage(html: html) {
+                    logInfo("   ⛔ HTTP error template detected, skipping (#284)")
+                    await state.updateStatistics { $0.errors += 1 }
+                    await state.updateStatistics { $0.totalPages += 1 }
+                    return
+                }
                 (markdown, links, structuredPage) = autoreleasepool {
                     (
                         HTMLToMarkdown.convert(html, url: url),
