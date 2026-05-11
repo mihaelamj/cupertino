@@ -50,7 +50,7 @@ cupertino list-samples --format json
 
 ```
 Sample Code Projects
-Total: 606 projects, 18497 files
+Total: 619 projects, 18928 files
 
 [1] Building a great Mac app with SwiftUI
     ID: swiftui-building-a-great-mac-app-with-swiftui

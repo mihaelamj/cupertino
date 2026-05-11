@@ -104,8 +104,8 @@ cupertino fetch --type docs --output-dir ./my-docs
     "isActive": true,
     "startURL": "https://developer.apple.com/documentation/",
     "outputDirectory": "~/.cupertino/docs",
-    "totalPages": 13842,
-    "processedPages": 13842,
+    "totalPages": 404726,
+    "processedPages": 404726,
     "lastCrawled": "2025-11-19T10:30:00Z"
   },
   "pages": {
@@ -146,7 +146,7 @@ cupertino fetch --type docs --output-dir ./my-docs
 
 | Metric | Value |
 |--------|-------|
-| Initial crawl time | 20-24 hours (13,000 pages) |
+| Initial crawl time | 12+ days (~404,000+ pages) |
 | Incremental update | Minutes to hours (only changed) |
 | Average page size | 10-50 KB (markdown) |
 | Total storage | ~200-300 MB |

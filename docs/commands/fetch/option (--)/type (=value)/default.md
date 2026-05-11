@@ -21,7 +21,7 @@ This fetches **Apple Developer Documentation** from developer.apple.com.
 ## Why `docs` is the Default
 
 - **Most commonly used** - Apple's documentation is the primary use case
-- **Largest dataset** - ~13,000 pages of comprehensive API docs
+- **Largest dataset** - ~404,000+ pages of comprehensive API docs
 - **Foundation for MCP server** - Core documentation for AI assistants
 - **Best starting point** - Recommended for first-time setup
 

@@ -128,31 +128,41 @@ cupertino serve
    ✓ Transport: stdio
    ✓ Protocol version: 2025-11-25
 
-📚 Documentation Directories
-   ✓ Apple docs: /Users/you/.cupertino/docs (22341 files)
-   ✓ Swift Evolution: /Users/you/.cupertino/swift-evolution (500 proposals)
-   ✓ HIG: /Users/you/.cupertino/hig (612 pages)
+📂 Raw corpus directories (input for `cupertino save`)
+   ✓ Apple docs: /Users/you/.cupertino/docs (404726 files)
+   ✓ Swift Evolution: /Users/you/.cupertino/swift-evolution (480 proposals)
+   ✓ Swift.org: /Users/you/.cupertino/swift-org (202 pages)
+   ✓ HIG: /Users/you/.cupertino/hig (173 pages)
+   ✓ Apple Archive: /Users/you/.cupertino/archive (406 guides)
 
 📦 Swift Packages
    ✓ User selections: /Users/you/.cupertino/selected-packages.json
-     128 packages selected
-   ✓ Downloaded READMEs: 128 packages
+     135 packages selected
+   ✓ Downloaded READMEs: 448 packages
      /Users/you/.cupertino/packages
    ℹ  Priority packages: 135 total
      Apple: 43, Ecosystem: 92
 
 📦 Packages Index (packages.db)
    ✓ Database: /Users/you/.cupertino/packages.db
-   ✓ Size: 38.4 MB
-   ✓ Packages: 9699
-   ✓ Indexed files: 124508
-   ℹ  Bundled version: 1.0.0
+   ✓ Size: ~940 MB
+   ✓ Indexed files: 20186
+   ℹ  Bundled version: 1.0.2
+
+🧪 Sample Code Index (samples.db)
+   ✓ Database: /Users/you/.cupertino/samples.db
+   ✓ Size: ~180 MB
+   ✓ Projects: 619
+   ✓ Indexed files: 18928
+   ✓ Indexed symbols: 108536
 
 🔍 Search Index
    ✓ Database: /Users/you/.cupertino/search.db
-   ✓ Size: 2.5 GB
-   ✓ Schema version: 12 (matches installed binary)
-   ✓ Frameworks: 261
+   ✓ Size: 2.4 GB
+   ✓ Schema version: 13 (matches installed binary)
+   ✓ Frameworks: 402
+   📚 Indexed sources:
+     ✓ apple-docs: 277640 entries
 
 🔧 Providers
    ✓ DocsResourceProvider: available
@@ -167,7 +177,7 @@ cupertino serve
 🔍 Search Index
    ✓ Database: /Users/you/.cupertino/search.db
    ✓ Size: 2.1 GB
-   ✗ Schema version: 10 (binary expects 12, rebuild required)
+   ✗ Schema version: 10 (binary expects 13, rebuild required)
      → rm /Users/you/.cupertino/search.db && cupertino save
 
 ⚠️  Some checks failed - see above for details
@@ -179,7 +189,7 @@ cupertino serve
 🔍 Search Index
    ✓ Database: /Users/you/.cupertino/search.db
    ✓ Size: 2.5 GB
-   ✗ Schema version: 13 (newer than binary — expected 12)
+   ✗ Schema version: 14 (newer than binary, expected 13)
      → Upgrade cupertino: brew upgrade cupertino
 
 ⚠️  Some checks failed - see above for details
@@ -213,7 +223,7 @@ cupertino serve
 📦 Packages Index (packages.db)
    ⚠  Database: /Users/you/.cupertino/packages.db (not found)
      → Run: cupertino setup  (downloads the pre-built packages index)
-     Expected version: 1.0.0
+     Expected version: 1.0.2
 
 🔍 Search Index
    ✗ Database: /Users/you/.cupertino/search.db (not found)
@@ -392,7 +402,7 @@ cupertino save
 
 **Problem:**
 ```
-✗ Schema version: 10 (binary expects 12, rebuild required)
+✗ Schema version: 10 (binary expects 13, rebuild required)
   → rm /Users/you/.cupertino/search.db && cupertino save
 ```
 

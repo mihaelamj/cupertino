@@ -1,7 +1,7 @@
 # Cupertino Architecture
 
-**Version:** v1.0.2 (in development; v1.0.1 released 2026-05-08)
-**Last Updated:** 2026-05-09
+**Version:** v1.0.2 (released 2026-05-11)
+**Last Updated:** 2026-05-11
 **Swift Version:** 6.2
 **Language Mode:** Swift 6 with Strict Concurrency Checking
 
@@ -23,7 +23,7 @@
 
 Cupertino is a Swift-based Apple documentation crawler and MCP (Model Context Protocol) server. The project uses **ExtremePackaging** architecture to organize code into focused, reusable modules.
 
-### Package Structure (v1.0.0)
+### Package Structure (v1.0.2)
 
 Cupertino uses **ExtremePackaging** with ~24 single-responsibility SPM targets, organized by role:
 
@@ -133,7 +133,7 @@ The `Search.Index` actor is the on-disk search engine — one SQLite FTS5 databa
 flowchart LR
     Idx["Search.Index<br/>actor (97 LoC core)"]
 
-    Idx --> Schema["+Schema.swift<br/>createTables, full v12 SQL"]
+    Idx --> Schema["+Schema.swift<br/>createTables, full v13 SQL"]
     Idx --> Migr["+Migrations.swift<br/>migrate3..11, version r/w"]
     Idx --> IxP["+Indexing.swift<br/>indexPackage, indexSampleCode,<br/>code examples, AST clear/recompute"]
     Idx --> IxD["+IndexingDocs.swift<br/>indexDocument, indexItem,<br/>indexStructuredDocument,<br/>indexDocSymbols/Imports"]

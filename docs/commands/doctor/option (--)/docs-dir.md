@@ -49,7 +49,7 @@ The doctor command checks:
 Example output:
 ```
 📚 Documentation Directories
-   ✓ Apple docs: ~/.cupertino/docs (13,842 files)
+   ✓ Apple docs: ~/.cupertino/docs (404726 files)
 ```
 
 If not found:

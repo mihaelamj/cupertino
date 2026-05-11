@@ -1,6 +1,6 @@
 # 🍎📚 Cupertino
 
-> 🕯️ *v1.0.1 released on 2026-05-08.* Three priority-high bug fixes on top of v1.0.0 'First Light'. See the [release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.0.1).
+> 🕯️ *v1.0.2 released on 2026-05-11.* Ships a re-indexed bundle with the URL case-canonicalization fix from [#283](https://github.com/mihaelamj/cupertino/issues/283). The v1.0.0 / v1.0.1 bundles carried 61,257 case-axis duplicate clusters (~30% of `docs_metadata`); v1.0.2 has zero. See the [release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.0.2).
 
 **Apple Documentation Crawler & MCP Server**
 
@@ -21,7 +21,7 @@ Cupertino is a local, structured, AI-ready documentation system for Apple platfo
 - **Crawls** Apple Developer documentation, Swift.org, Swift Evolution proposals, Human Interface Guidelines, Apple Archive legacy guides, and Swift package metadata
 - **Indexes** everything into a fast, searchable SQLite FTS5 database with field-weighted BM25 (BM25F) ranking and AST-extracted symbol columns
 - **Serves** documentation to AI agents like Claude via the Model Context Protocol
-- **Provides** offline access to 405,000+ documentation pages across 422 frameworks
+- **Provides** offline access to 277,000+ documentation pages across 402 frameworks (v1.0.2 bundle, post-dedup)
 
 ### Why Build This?
 
@@ -38,7 +38,7 @@ Cupertino is a local, structured, AI-ready documentation system for Apple platfo
 ### Requirements
 
 - macOS 15+ (Sequoia)
-- ~5 GB disk space for the full v1.0 bundle (search.db ~3.4 GB, packages.db ~990 MB, samples.db ~185 MB; ~833 MB compressed for download)
+- ~3.3 GB disk space for the full v1.0.2 bundle (search.db ~2.4 GB, packages.db ~940 MB, samples.db ~180 MB; compressed download is smaller)
 
 *Building from source additionally requires Swift 6.2+ and Xcode 16.0+*
 
@@ -134,14 +134,14 @@ cupertino serve
 ### Manual Setup (Advanced)
 
 ```bash
-# Download Apple documentation (~12+ days for 301,000+ pages)
+# Download Apple documentation (~12+ days for ~404,000+ raw pages, indexed down to ~277,640)
 # Takes time due to 0.05s default delay between requests
 cupertino fetch --type docs --max-pages 15000
 
 # Download Swift Evolution proposals (~2-5 minutes)
 cupertino fetch --type evolution
 
-# Download sample code from GitHub (~4 minutes, 606 projects)
+# Download sample code from GitHub (~4 minutes, 619 projects)
 cupertino fetch --type samples
 
 # Build search index (~2-5 minutes)
@@ -379,7 +379,7 @@ cupertino list-samples --framework swiftui --format json
 All commands support `--format json` for structured output that agents can parse.
 
 **Available Sources:**
-- `apple-docs` - Official Apple documentation (301,000+ pages)
+- `apple-docs` - Official Apple documentation (~277,000+ pages indexed in v1.0.2)
 - `samples` - Apple sample code projects
 - `hig` - Human Interface Guidelines
 - `swift-evolution` - Swift Evolution proposals
@@ -425,13 +425,13 @@ A UIKit view controller that manages a SwiftUI view hierarchy.
 | Accelerate | 9,114 |
 | SwiftUI | 7,062 |
 | ... | ... |
-| **422 Frameworks** | **405,782** |
+| **402 Frameworks** | **277,640** |
 
 ## Core Features
 
 ### 1. Multi-Source Documentation Fetching
 
-- **Apple Developer Documentation** (301,000+ pages)
+- **Apple Developer Documentation** (~277,000+ indexed pages)
   - JavaScript-aware rendering via WKWebView
   - HTML to Markdown conversion
   - Smart change detection
@@ -449,7 +449,7 @@ A UIKit view controller that manages a SwiftUI view hierarchy.
   - Priority package catalogs
   - README files
 
-- **Apple Sample Code** (606 projects)
+- **Apple Sample Code** (619 projects)
   - Two fetch methods: GitHub (recommended) or Apple website
   - Full-text search across all source files
   - 18,000+ indexed Swift files
@@ -468,12 +468,12 @@ A UIKit view controller that manages a SwiftUI view hierarchy.
 
 Cupertino includes pre-indexed catalog data bundled directly into the application:
 
-- **Swift Packages Catalog** (9,699 packages)
+- **Swift Packages Catalog** (~9,700 entries in the embedded SPI catalog; 183 Apple-official packages with full source in packages.db)
   - Manually curated from Swift Package Index + GitHub API
   - Includes package metadata, stars, licenses, descriptions
   - Updated periodically by maintainers
 
-- **Sample Code Catalog** (606 entries)
+- **Sample Code Catalog** (619 entries)
   - Apple's official sample code projects
   - Includes titles, descriptions, frameworks, download URLs
   - Bundled because Apple's catalog doesn't change frequently
@@ -495,7 +495,7 @@ These catalogs are indexed during `cupertino save` and enable instant search wit
   - Platform availability filtering (iOS/macOS version)
   - Snippet generation
   - Sub-100ms query performance
-- **Size**: ~3.4 GB search.db + ~990 MB packages.db + ~185 MB samples.db for full documentation (405,000+ documents across 422 frameworks)
+- **Size**: ~2.4 GB search.db + ~990 MB packages.db + ~185 MB samples.db for full documentation (277,000+ documents across 402 frameworks, v1.0.2 bundle)
 - **Storage**: Database must be on local filesystem - SQLite does not work reliably on network drives (NFS/SMB)
 
 ### 4. Model Context Protocol Server
@@ -616,7 +616,7 @@ make lint                   # Lint with SwiftLint
 ### Testing
 
 **Test Suite:**
-- 1,231 tests across 126 test suites in 80 test files
+- 1,234 tests across 135 test suites in 80 test files
 - Swift Testing framework (`@Test`, `@Suite`, `#expect`) with `withDependencies` for injection
 - Includes unit tests, integration tests (real WKWebView + real Apple docs), and formatter tests
 
@@ -649,7 +649,7 @@ log stream --predicate 'subsystem == "com.cupertino"'
 | Operation | Time | Size |
 |-----------|------|------|
 | Build CLI | 10-15s | 4.3MB |
-| Crawl 301,000+ pages | 12+ days | 2-3GB |
+| Crawl ~404,000+ raw pages (post-dedup ~277,640 indexed) | 12+ days | 2-3GB |
 | Swift Evolution | 2-5 min | 429 proposals |
 | Swift.org docs | 5-10 min | 501 pages |
 | Build search index | 2-5 min | ~160MB |
@@ -658,7 +658,7 @@ log stream --predicate 'subsystem == "com.cupertino"'
 ### Why Crawling Takes 12+ Days
 
 The crawler uses a **0.05 second default delay between each request** (configurable):
-- 301,000 pages × 0.05s = ~4.2 hours minimum
+- 404,000 raw pages × 0.05s = ~5.6 hours minimum
 - Plus page rendering, parsing, and saving time
 - Crawl must reach depth 21+ to get all documentation
 - **Total: ~12+ days for initial full crawl**
@@ -738,11 +738,11 @@ For development setup, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Project Status
 
-**Version:** 1.0.1
-**Status:** ✅ Released 2026-05-08 (binary fixes on v1.0.0 "First Light")
+**Version:** 1.0.2
+**Status:** ✅ Released 2026-05-11 (re-indexed bundle on top of v1.0.0 "First Light")
 
 - ✅ All core functionality working
-- ✅ 1,231 tests across 126 suites passing (100% pass rate)
+- ✅ 1,234 tests across 135 suites passing (100% pass rate)
 - ✅ 0 lint violations
 - ✅ Swift 6.2 compliant with 100% strict concurrency checking
 - ✅ All production bugs resolved

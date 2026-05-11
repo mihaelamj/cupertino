@@ -144,4 +144,44 @@ struct URLUtilitiesFilenameTests {
         let name = try URLUtilities.filename(from: #require(URL(string: "https://developer.apple.com/")))
         #expect(!name.isEmpty)
     }
+
+    // MARK: - Case-axis canonicalization (#283)
+
+    /// Two URLs differing only in the case of `/documentation/<framework>/`
+    /// or its subpath must collapse to the SAME filename. The disambiguator
+    /// hash on operator/special-char paths used to be computed from the raw
+    /// URL string, so the capital and lowercase variants produced two distinct
+    /// `..._<8hex>` filenames for the same Apple page (#283).
+    @Test("Case-variant operator URL pair: filename is identical (Swift/withTaskGroup vs swift/withtaskgroup)")
+    func caseVariantWithTaskGroupCollapses() throws {
+        let capital = try #require(
+            URL(string: "https://developer.apple.com/documentation/Swift/withTaskGroup(of:returning:isolation:body:)")
+        )
+        let lower = try #require(
+            URL(string: "https://developer.apple.com/documentation/swift/withtaskgroup(of:returning:isolation:body:)")
+        )
+        #expect(URLUtilities.filename(from: capital) == URLUtilities.filename(from: lower))
+    }
+
+    @Test("Case-variant operator URL pair: filename is identical (Observation/Observable() vs lowercase)")
+    func caseVariantObservableMacroCollapses() throws {
+        let capital = try #require(
+            URL(string: "https://developer.apple.com/documentation/Observation/Observable()")
+        )
+        let lower = try #require(
+            URL(string: "https://developer.apple.com/documentation/observation/observable()")
+        )
+        #expect(URLUtilities.filename(from: capital) == URLUtilities.filename(from: lower))
+    }
+
+    @Test("Case-variant plain URL pair: filename is identical")
+    func caseVariantPlainURLCollapses() throws {
+        let capital = try #require(
+            URL(string: "https://developer.apple.com/documentation/Cinematic/CNAssetInfo-2ata2")
+        )
+        let lower = try #require(
+            URL(string: "https://developer.apple.com/documentation/cinematic/cnassetinfo-2ata2")
+        )
+        #expect(URLUtilities.filename(from: capital) == URLUtilities.filename(from: lower))
+    }
 }

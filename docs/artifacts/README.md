@@ -57,7 +57,7 @@ All Cupertino artifacts are stored under:
 │   └── *.zip              # 600+ ZIP files
 └── packages/              # Swift Packages
     ├── checkpoint.json                    # Progress tracking
-    └── swift-packages-with-stars.json    # Final output (9,699 packages)
+    └── swift-packages-with-stars.json    # Final output (~9,700 packages)
 ```
 
 ### Index Artifacts
@@ -79,7 +79,7 @@ All Cupertino artifacts are stored under:
 | `cupertino fetch --type archive` | Markdown files | `~/.cupertino/archive/` |
 | `cupertino fetch --type hig` | Markdown files | `~/.cupertino/hig/` |
 | `cupertino fetch --type code` | ZIP files + checkpoint | `~/.cupertino/sample-code/` |
-| `cupertino fetch --type samples` | Git clone (606 projects) | `~/.cupertino/sample-code/cupertino-sample-code/` |
+| `cupertino fetch --type samples` | Git clone (619 projects) | `~/.cupertino/sample-code/cupertino-sample-code/` |
 | `cupertino fetch --type packages` | Package data + checkpoint | `~/.cupertino/packages/` |
 | `cupertino fetch --type availability` | Updates JSON with availability | `~/.cupertino/docs/*.json` |
 | `cupertino save` | Documentation search database | `~/.cupertino/search.db` |

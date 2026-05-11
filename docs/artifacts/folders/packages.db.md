@@ -145,7 +145,7 @@ cupertino save --packages --packages-dir ~/my-packages
 - **Tokenizer**: Porter stemming + Unicode61
 - **Format**: Standard SQLite database file
 - **Compatibility**: Any SQLite 3.9.0+ client
-- **Size**: ~990 MB at v1.0.0 corpus state (~1,587 packages)
+- **Size**: ~940 MB at v1.0.2 corpus state (183 Apple-official packages with full source files; the 9,700 figure that appeared in earlier drafts counted the embedded Swift packages catalog indexed INTO search.db, not packages.db rows)
 
 ## Used By
 

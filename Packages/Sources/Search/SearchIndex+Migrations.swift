@@ -127,6 +127,22 @@ extension Search.Index {
                     "rm \(dbPath.path) && cupertino save"
             )
         }
+
+        if currentVersion < 13 {
+            // Version 12 -> 13: URL case canonicalization (#283). v12 DBs
+            // carry case-axis duplicate URIs (61,257 clusters / 122,522 rows
+            // in the shipped v1.0.0 bundle, ~30% of the corpus). The fix in
+            // `URLUtilities.filename(_:)` makes new crawls produce canonical
+            // URIs. The v1.0.2 bundle ships pre-built at v13, so `cupertino
+            // setup` is the production upgrade path.
+            throw SearchError.sqliteError(
+                "Database schema version \(currentVersion) requires migration to version 13. " +
+                    "This is a breaking change that drops case-axis duplicate URIs (#283). " +
+                    "Please delete the database and run 'cupertino setup' to download the " +
+                    "pre-built v1.0.2 bundle: " +
+                    "rm \(dbPath.path) && cupertino setup"
+            )
+        }
     }
 
     func migrateToVersion11() async throws {

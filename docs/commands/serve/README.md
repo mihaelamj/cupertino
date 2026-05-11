@@ -242,13 +242,13 @@ swift-evolution://{proposalID}
 
 If a search index is available, the server provides these tools:
 
-### search_docs
+### search
 
-Full-text search across all documentation.
+Unified full-text search across every available source. Returns chunked excerpts ranked by reciprocal-rank fusion (RRF, k=60). Replaces the pre-#239 per-source tools (`search_docs`, `search_samples`, `search_all`, `search_hig`).
 
 **Parameters:**
 - `query` (required): Search keywords
-- `source` (optional): Filter by source (apple-docs, swift-book, swift-org, swift-evolution, packages, hig, apple-archive)
+- `source` (optional): Filter to a single source. Values: `apple-docs`, `samples`, `hig`, `apple-archive`, `swift-evolution`, `swift-org`, `swift-book`, `packages`, `all`. Omit for cross-source fan-out (default).
 - `framework` (optional): Filter by framework name
 - `language` (optional): Filter by language (swift, objc)
 - `limit` (optional): Max results (default: 20, max: 100)
@@ -269,17 +269,7 @@ Read a document by URI. Returns the full document content in the requested forma
 
 ## Sample Code Tools
 
-If sample code is indexed (via `cupertino save --samples`), the server provides these additional tools:
-
-### search_samples
-
-Search sample code projects and source files.
-
-**Parameters:**
-- `query` (required): Search keywords
-- `framework` (optional): Filter by framework name
-- `limit` (optional): Max results (default: 20, max: 100)
-- `search_files` (optional): Also search file contents (default: true)
+If sample code is indexed (via `cupertino save --samples`), the server provides these additional tools (and the unified `search` tool above accepts `source: "samples"`):
 
 ### list_samples
 

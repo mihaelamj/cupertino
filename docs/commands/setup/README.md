@@ -18,15 +18,15 @@ All three databases ship in a single bundle from the [`cupertino-docs`](https://
 
 ## What Gets Downloaded
 
-A single zip from the [`cupertino-docs`](https://github.com/mihaelamj/cupertino-docs) GitHub Releases — `cupertino-databases-vX.zip` — containing all three databases. Exact contents vary by release; the v1.0.0 / v1.0.1 bundles ship roughly:
+A single zip from the [`cupertino-docs`](https://github.com/mihaelamj/cupertino-docs) GitHub Releases (`cupertino-databases-vX.zip`) containing all three databases. Exact contents vary by release; the v1.0.2 bundle ships roughly:
 
 | Database | Contents | Size |
 |----------|----------|------|
-| `search.db` | ~405,000 documentation pages across Apple frameworks + Swift Evolution + Swift.org + HIG + Apple Archive + Swift Book | ~1.5 GB |
+| `search.db` | ~277,000 documentation pages across Apple frameworks + Swift Evolution + Swift.org + HIG + Apple Archive + Swift Book (post-#283 dedup; was ~405k in v1.0.0 / v1.0.1 with case-axis duplicates) | ~2.4 GB |
 | `samples.db` | Indexed Apple sample-code catalog and crawled GitHub sample projects (READMEs + source files + AST symbols) | ~150-200 MB |
-| `packages.db` | ~9,700 Swift packages with README, Package.swift, Sources/, Tests/, .docc/ extracted | ~150 MB |
+| `packages.db` | 183 Apple-official Swift packages with README, Package.swift, Sources/, Tests/, .docc/ extracted | ~940 MB |
 
-Numbers above are approximate and snapshot the v1.0 bundle; check the corresponding GitHub Release for the per-release totals.
+Numbers above are approximate and snapshot the v1.0.2 bundle; check the corresponding GitHub Release for the per-release totals.
 
 ## Options
 
