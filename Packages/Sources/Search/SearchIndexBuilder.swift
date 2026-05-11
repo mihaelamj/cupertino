@@ -137,7 +137,11 @@ extension Search {
             try await indexAppleDocsFromDirectory(onProgress: onProgress)
         }
 
-        private func indexAppleDocsFromMetadata(
+        // `internal` rather than `private` so SearchTests can exercise the
+        // metadata-driven indexing path (including the malformed-URL skip
+        // branch added in PR #288) without needing to bootstrap the whole
+        // `buildIndex()` orchestration.
+        func indexAppleDocsFromMetadata(
             metadata: CrawlMetadata,
             onProgress: (@Sendable (Int, Int) -> Void)?
         ) async throws {

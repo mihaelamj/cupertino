@@ -314,7 +314,7 @@ public final class SampleCodeDownloader {
         return samples
     }
 
-    private func downloadSample(
+    func downloadSample(
         _ sample: SampleMetadata,
         stats: inout SampleStatistics
     ) async throws {
@@ -333,14 +333,17 @@ public final class SampleCodeDownloader {
             return
         }
 
-        // Load sample page to find download link
-        let webView = await createWebView()
+        // Validate sample.url before allocating an expensive WKWebView so a
+        // malformed catalog row short-circuits without WebKit work.
         guard let samplePageURL = URL(string: sample.url) else {
             logInfo("   ⚠️  Malformed sample.url, skipping: \(sample.url)")
             stats.errors += 1
             stats.totalSamples += 1
             return
         }
+
+        // Load sample page to find download link
+        let webView = await createWebView()
         _ = try await loadPage(webView, url: samplePageURL)
 
         // Wait for page to fully load

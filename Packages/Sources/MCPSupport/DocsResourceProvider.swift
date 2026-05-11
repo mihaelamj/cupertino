@@ -230,6 +230,18 @@ public actor DocsResourceProvider: ResourceProvider {
         }
     }
 
+    // MARK: - Test Support
+
+    /// Seed the cached metadata directly. Test-only path so MCPSupportTests
+    /// can exercise `listResources` against a hand-crafted `CrawlMetadata`
+    /// (including malformed-URL rows) without bootstrapping a real
+    /// crawl + metadata.json fixture on disk.
+    func injectMetadataForTesting(_ metadata: CrawlMetadata) {
+        self.metadata = metadata
+    }
+
+    // MARK: - Metadata
+
     private func getMetadata() async throws -> CrawlMetadata {
         if let metadata {
             return metadata
