@@ -106,7 +106,7 @@ cupertino fetch --type packages --limit 100
 ```bash
 cupertino fetch --type samples
 # Clones https://github.com/mihaelamj/cupertino-sample-code
-# 606 projects, ~10GB with Git LFS, ~4 minutes
+# 619 projects, ~10GB with Git LFS, ~4 minutes
 ```
 
 ### Fetch Apple Sample Code from Apple

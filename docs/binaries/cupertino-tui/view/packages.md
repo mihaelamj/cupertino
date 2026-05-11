@@ -4,7 +4,7 @@ Browse and search Swift packages.
 
 ## Description
 
-Browse the catalog of 9,699+ Swift packages. Search, view details, and mark packages for download.
+Browse the Swift packages catalog (9,700+ entries indexed). Search, view details, and mark packages for download.
 
 ## Features
 

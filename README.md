@@ -134,14 +134,14 @@ cupertino serve
 ### Manual Setup (Advanced)
 
 ```bash
-# Download Apple documentation (~12+ days for 301,000+ pages)
+# Download Apple documentation (~12+ days for ~404,000+ raw pages, indexed down to ~277,640)
 # Takes time due to 0.05s default delay between requests
 cupertino fetch --type docs --max-pages 15000
 
 # Download Swift Evolution proposals (~2-5 minutes)
 cupertino fetch --type evolution
 
-# Download sample code from GitHub (~4 minutes, 606 projects)
+# Download sample code from GitHub (~4 minutes, 619 projects)
 cupertino fetch --type samples
 
 # Build search index (~2-5 minutes)
@@ -379,7 +379,7 @@ cupertino list-samples --framework swiftui --format json
 All commands support `--format json` for structured output that agents can parse.
 
 **Available Sources:**
-- `apple-docs` - Official Apple documentation (301,000+ pages)
+- `apple-docs` - Official Apple documentation (~277,000+ pages indexed in v1.0.2)
 - `samples` - Apple sample code projects
 - `hig` - Human Interface Guidelines
 - `swift-evolution` - Swift Evolution proposals
@@ -431,7 +431,7 @@ A UIKit view controller that manages a SwiftUI view hierarchy.
 
 ### 1. Multi-Source Documentation Fetching
 
-- **Apple Developer Documentation** (301,000+ pages)
+- **Apple Developer Documentation** (~277,000+ indexed pages)
   - JavaScript-aware rendering via WKWebView
   - HTML to Markdown conversion
   - Smart change detection
@@ -449,7 +449,7 @@ A UIKit view controller that manages a SwiftUI view hierarchy.
   - Priority package catalogs
   - README files
 
-- **Apple Sample Code** (606 projects)
+- **Apple Sample Code** (619 projects)
   - Two fetch methods: GitHub (recommended) or Apple website
   - Full-text search across all source files
   - 18,000+ indexed Swift files
@@ -468,12 +468,12 @@ A UIKit view controller that manages a SwiftUI view hierarchy.
 
 Cupertino includes pre-indexed catalog data bundled directly into the application:
 
-- **Swift Packages Catalog** (9,699 packages)
+- **Swift Packages Catalog** (~9,700 entries in the embedded SPI catalog; 183 Apple-official packages with full source in packages.db)
   - Manually curated from Swift Package Index + GitHub API
   - Includes package metadata, stars, licenses, descriptions
   - Updated periodically by maintainers
 
-- **Sample Code Catalog** (606 entries)
+- **Sample Code Catalog** (619 entries)
   - Apple's official sample code projects
   - Includes titles, descriptions, frameworks, download URLs
   - Bundled because Apple's catalog doesn't change frequently
@@ -649,7 +649,7 @@ log stream --predicate 'subsystem == "com.cupertino"'
 | Operation | Time | Size |
 |-----------|------|------|
 | Build CLI | 10-15s | 4.3MB |
-| Crawl 301,000+ pages | 12+ days | 2-3GB |
+| Crawl ~404,000+ raw pages (post-dedup ~277,640 indexed) | 12+ days | 2-3GB |
 | Swift Evolution | 2-5 min | 429 proposals |
 | Swift.org docs | 5-10 min | 501 pages |
 | Build search index | 2-5 min | ~160MB |
@@ -658,7 +658,7 @@ log stream --predicate 'subsystem == "com.cupertino"'
 ### Why Crawling Takes 12+ Days
 
 The crawler uses a **0.05 second default delay between each request** (configurable):
-- 301,000 pages × 0.05s = ~4.2 hours minimum
+- 404,000 raw pages × 0.05s = ~5.6 hours minimum
 - Plus page rendering, parsing, and saving time
 - Crawl must reach depth 21+ to get all documentation
 - **Total: ~12+ days for initial full crawl**

@@ -217,7 +217,7 @@ cupertino read-sample-file "foodtrucksampleapp" "FoodTruckApp.swift" --format js
 
 | Source | Description |
 |--------|-------------|
-| `apple-docs` | Official Apple documentation (301,000+ pages) |
+| `apple-docs` | Official Apple documentation (~277,000+ pages indexed in v1.0.2) |
 | `swift-evolution` | Swift Evolution proposals |
 | `hig` | Human Interface Guidelines |
 | `samples` | Apple sample code projects |

@@ -33,7 +33,7 @@ cupertino list-frameworks
 
 Output:
 ```
-Available Frameworks (261 total, 405000 documents):
+Available Frameworks (402 total, 277640 documents):
 
   swiftui: 6500 documents
   foundation: 4200 documents

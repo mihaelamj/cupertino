@@ -26,7 +26,7 @@ Returns a list of sample projects with metadata:
 ```markdown
 # Sample Code Projects
 
-Found **606** projects:
+Found **619** projects:
 
 ## 1. Building a Document-Based App with SwiftUI
 - **Project ID:** building-a-document-based-app-with-swiftui

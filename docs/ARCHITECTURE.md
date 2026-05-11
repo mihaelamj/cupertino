@@ -133,7 +133,7 @@ The `Search.Index` actor is the on-disk search engine — one SQLite FTS5 databa
 flowchart LR
     Idx["Search.Index<br/>actor (97 LoC core)"]
 
-    Idx --> Schema["+Schema.swift<br/>createTables, full v12 SQL"]
+    Idx --> Schema["+Schema.swift<br/>createTables, full v13 SQL"]
     Idx --> Migr["+Migrations.swift<br/>migrate3..11, version r/w"]
     Idx --> IxP["+Indexing.swift<br/>indexPackage, indexSampleCode,<br/>code examples, AST clear/recompute"]
     Idx --> IxD["+IndexingDocs.swift<br/>indexDocument, indexItem,<br/>indexStructuredDocument,<br/>indexDocSymbols/Imports"]

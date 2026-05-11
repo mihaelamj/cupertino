@@ -33,7 +33,7 @@ Runs every non-`all` fetch type **in parallel**:
 | Output Directory | `~/.cupertino/` (base directory) |
 | Execution Mode | Parallel (all types simultaneously) |
 | Authentication | Required for sample code only |
-| Estimated Total Pages | ~14,000+ items |
+| Estimated Total Pages | ~404,000+ items |
 
 ## Examples
 
@@ -60,7 +60,7 @@ cupertino fetch --type all --max-pages 5000 --limit 100
 │   ├── metadata.json
 │   ├── Foundation/
 │   ├── SwiftUI/
-│   └── ... (~13,000 pages)
+│   └── ... (~404,000+ pages)
 │
 ├── swift-book/               # Swift.org Documentation
 │   ├── metadata.json
@@ -112,7 +112,7 @@ All fetch types run **simultaneously** in separate tasks:
 
 | Type | Estimated Time | Item Count |
 |------|----------------|------------|
-| docs | 20-24 hours | ~13,000 pages |
+| docs | 12+ days | ~404,000+ pages |
 | swift | 15-30 minutes | ~200 pages |
 | evolution | 5-15 minutes | ~400 proposals |
 | packages | 10-30 minutes | ~10,000 packages |

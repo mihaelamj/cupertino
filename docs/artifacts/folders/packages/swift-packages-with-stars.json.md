@@ -144,7 +144,7 @@ cupertino fetch --type packages
 
 | File | Purpose | Contains |
 |------|---------|----------|
-| `swift-packages-with-stars.json` | **Fetch output** | All 9,699 packages (clean, sorted) |
+| `swift-packages-with-stars.json` | **Fetch output** | All ~9,700 packages (clean, sorted; current count varies with SPI updates) |
 | `checkpoint.json` | **Resume state** | Progress tracking (may include errors) |
 | `priority-packages.json` (resources) | **Priority list** | Curated subset for processing first |
 | `swift-packages-catalog.json` (resources) | **Embedded catalog** | Final curated packages with READMEs |

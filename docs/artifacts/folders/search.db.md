@@ -23,7 +23,7 @@ cupertino save
 
 ## Database Schema
 
-Schema version `13` (per `PRAGMA user_version`). The version constant `Search.Index.schemaVersion` lives in [`Packages/Sources/Search/SearchIndex.swift`](../../../Packages/Sources/Search/SearchIndex.swift); `createTables` lives in [`SearchIndex+Schema.swift`](../../../Packages/Sources/Search/SearchIndex+Schema.swift); migrations (`migrateToVersion3..11`) live in [`SearchIndex+Migrations.swift`](../../../Packages/Sources/Search/SearchIndex+Migrations.swift). Migrations are incremental — fresh DBs created by `cupertino save` write directly at v12; older DBs run `ALTER TABLE` migrations on open.
+Schema version `13` (per `PRAGMA user_version`). The version constant `Search.Index.schemaVersion` lives in [`Packages/Sources/Search/SearchIndex.swift`](../../../Packages/Sources/Search/SearchIndex.swift); `createTables` lives in [`SearchIndex+Schema.swift`](../../../Packages/Sources/Search/SearchIndex+Schema.swift); migrations (`migrateToVersion3..11`) live in [`SearchIndex+Migrations.swift`](../../../Packages/Sources/Search/SearchIndex+Migrations.swift). Fresh DBs created by `cupertino save` write directly at v13. Older DBs at v12 and below are rejected at open with a "rebuild required" error pointing at `cupertino setup`. There is no in-place v12 to v13 migration: the v1.0.2 data shape is identical to v12 but with canonical-cased URIs (#283), and the upgrade path is the pre-built bundle.
 
 `search.db` holds **13 tables** grouped by purpose:
 

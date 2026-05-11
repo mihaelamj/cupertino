@@ -45,7 +45,7 @@ Always passes (verifies code is working).
 
 **Apple Docs Check:**
 ```
-✓ Apple docs: ~/.cupertino/docs (13,842 files)
+✓ Apple docs: ~/.cupertino/docs (404726 files)
 ```
 
 or
@@ -57,7 +57,7 @@ or
 
 **Swift Evolution Check:**
 ```
-✓ Swift Evolution: ~/.cupertino/swift-evolution (414 proposals)
+✓ Swift Evolution: ~/.cupertino/swift-evolution (480 proposals)
 ```
 
 or
@@ -72,7 +72,7 @@ or
 **Database exists:**
 ```
 ✓ Database: ~/.cupertino/search.db
-✓ Size: 52.3 MB
+✓ Size: 2.4 GB
 ✓ Frameworks: 402
 ```
 
@@ -147,30 +147,37 @@ cupertino doctor \
    ✓ Protocol version: 2025-11-25
 
 📂 Raw corpus directories (input for `cupertino save`)
-   ✓ Apple docs: ~/.cupertino/docs
-   ✓ Swift Evolution: ~/.cupertino/swift-evolution
-   ✓ HIG: ~/.cupertino/hig
-   ✓ Apple Archive: ~/.cupertino/archive
+   ✓ Apple docs: ~/.cupertino/docs (404726 files)
+   ✓ Swift Evolution: ~/.cupertino/swift-evolution (480 proposals)
+   ✓ Swift.org: ~/.cupertino/swift-org (202 pages)
+   ✓ HIG: ~/.cupertino/hig (173 pages)
+   ✓ Apple Archive: ~/.cupertino/archive (406 guides)
 
 📦 Swift Packages
-   ✓ User selections: ~/.cupertino/user-package-selections.json
-   ✓ Package docs: 9,699 packages indexed
+   ✓ User selections: ~/.cupertino/selected-packages.json
+     135 packages selected
+   ✓ Downloaded READMEs: 448 packages
    ℹ  Priority packages: 135 total (Apple: 43, Ecosystem: 92)
 
 📦 Packages Index (packages.db)
    ✓ Database: ~/.cupertino/packages.db (~940 MB)
    ✓ Schema version: 2 (matches binary)
+   ✓ Indexed files: 20186
    ✓ Bundled version: 1.0.2
 
 🧪 Sample Code Index (samples.db)
-   ✓ Database: ~/.cupertino/samples.db
-   ✓ Indexed projects: hundreds
+   ✓ Database: ~/.cupertino/samples.db (~180 MB)
+   ✓ Projects: 619
+   ✓ Indexed files: 18928
+   ✓ Indexed symbols: 108536
 
 🔍 Search Index
    ✓ Database: ~/.cupertino/search.db
-   ✓ Size: 2.5 GB
-   ✓ Frameworks: 402
+   ✓ Size: 2.4 GB
    ✓ Schema version: 13 (matches binary)
+   ✓ Frameworks: 402
+   📚 Indexed sources:
+     ✓ apple-docs: 277640 entries
 
 🔧 Providers
    ✓ DocsResourceProvider: available

@@ -26,7 +26,7 @@ cupertino fetch --type code
 │   ├── accelerate-adding-a-bokeh-effect-to-images/
 │   ├── arkit-creating-a-collaborative-session/
 │   ├── swiftui-building-lists-and-navigation/
-│   └── ...                                                  # 606 extracted projects
+│   └── ...                                                  # 619 extracted projects
 ├── accelerate-adding-a-bokeh-effect-to-images.zip           # ZIP files (code type)
 ├── arkit-creating-a-collaborative-session.zip
 └── ...                                                      # 600+ ZIP files
@@ -35,7 +35,7 @@ cupertino fetch --type code
 ## Contents
 
 ### GitHub Clone (samples type)
-- **606 sample code projects** as extracted folders
+- **619 sample code projects** as extracted folders
 - Cloned from https://github.com/mihaelamj/cupertino-sample-code
 - Uses Git LFS for large binary files (~10GB total)
 - Ready to open in Xcode immediately
