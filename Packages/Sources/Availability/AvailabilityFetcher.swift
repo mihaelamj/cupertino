@@ -382,12 +382,12 @@ public actor AvailabilityFetcher {
         var derivedFromRefs = false
 
         // Fallback 1: If API failed or returned empty, try parsing @available from local content
-        if availability == nil || availability!.isEmpty {
+        if availability?.isEmpty ?? true {
             availability = AvailabilityInfo.extractFromJSONContent(data)
         }
 
         // Fallback 2: For articles, derive from referenced APIs
-        if isArticle, availability == nil || availability!.isEmpty {
+        if isArticle, availability?.isEmpty ?? true {
             if let derived = deriveAvailabilityFromReferences(json: json) {
                 availability = derived
                 derivedFromRefs = true
@@ -395,7 +395,7 @@ public actor AvailabilityFetcher {
         }
 
         // Fallback 3: If still no availability, try inheriting from framework
-        if availability == nil || availability!.isEmpty,
+        if availability?.isEmpty ?? true,
            let frameworkPlatforms = frameworkAvailabilityCache[framework] {
             availability = AvailabilityInfo(platforms: frameworkPlatforms)
             inherited = true

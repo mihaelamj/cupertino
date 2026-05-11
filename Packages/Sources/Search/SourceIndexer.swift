@@ -230,11 +230,10 @@ public struct AppleDocsIndexer: SourceIndexer {
     public init() {}
 
     public func validate(_ item: SourceItem) -> Bool {
-        // Apple docs must have a framework
+        // Apple docs must have a non-empty framework
         !item.uri.isEmpty &&
             !item.title.isEmpty &&
-            item.framework != nil &&
-            !item.framework!.isEmpty
+            item.framework?.isEmpty == false
     }
 
     public func extractCode(from item: SourceItem) -> ExtractedContent {
