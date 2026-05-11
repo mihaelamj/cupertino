@@ -616,7 +616,7 @@ make lint                   # Lint with SwiftLint
 ### Testing
 
 **Test Suite:**
-- 1,224 tests across 134 test suites in 80 test files
+- 1,234 tests across 135 test suites in 80 test files
 - Swift Testing framework (`@Test`, `@Suite`, `#expect`) with `withDependencies` for injection
 - Includes unit tests, integration tests (real WKWebView + real Apple docs), and formatter tests
 
@@ -742,7 +742,7 @@ For development setup, see [DEVELOPMENT.md](DEVELOPMENT.md).
 **Status:** ✅ Released 2026-05-11 (re-indexed bundle on top of v1.0.0 "First Light")
 
 - ✅ All core functionality working
-- ✅ 1,224 tests across 134 suites passing (100% pass rate)
+- ✅ 1,234 tests across 135 suites passing (100% pass rate)
 - ✅ 0 lint violations
 - ✅ Swift 6.2 compliant with 100% strict concurrency checking
 - ✅ All production bugs resolved
