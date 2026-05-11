@@ -182,18 +182,18 @@ extension Shared {
             public static let userAgent = "CupertinoCrawler/1.0"
 
             /// Current version
-            public static let version = "1.0.3"
+            public static let version = "1.0.2"
 
             /// Database version - separate from CLI version, only bump when schema/content changes.
             /// Controls the cupertino-docs release tag that `cupertino setup` downloads from.
-            /// v1.0.3 bumps from v1.0.0 to ship a re-indexed bundle: the v1.0.0 search.db
+            /// v1.0.2 bumps from v1.0.0 to ship a re-indexed bundle: the v1.0.0 search.db
             /// carried 61,257 case-axis duplicate clusters covering 122,522 rows (#283), and
             /// the prior v1.0.1 "verified clean" claim used the wrong query column. The new
-            /// v1.0.3 bundle was built with the post-#283 `URLUtilities.filename(_:)` against
+            /// v1.0.2 bundle was built with the post-#283 `URLUtilities.filename(_:)` against
             /// the full 404,729-page corpus (Studio v1.0.0 base + Claw fresh overlay) and
             /// verified: 277,640 documents, `GROUP BY LOWER(url) HAVING COUNT > 1` returns
             /// zero, schema `user_version` stamped 13.
-            public static let databaseVersion = "1.0.3"
+            public static let databaseVersion = "1.0.2"
 
             /// Base URL for cupertino-docs release downloads. As of v1.0.0 the
             /// single `cupertino-databases-vX.zip` artifact bundles search.db,

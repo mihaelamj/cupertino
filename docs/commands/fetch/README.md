@@ -46,7 +46,7 @@ The `fetch` command is the unified fetching command that handles both web crawli
 - `--discovery-mode <mode>` - Discovery mode for the docs crawler. Values: `auto` (default; JSON API primary, WKWebView fallback when JSON returns 404), `json-only` (JSON API only, no fallback. Fastest, narrowest), `webview-only` (WKWebView for everything. Slowest, broadest discovery, matches pre-2025-11-30 behavior). ([#208](https://github.com/mihaelamj/cupertino/issues/208))
 - `--only-accepted` / `--no-only-accepted` - Only download accepted/implemented proposals (evolution type only). On by default; use `--no-only-accepted` to include drafts and rejected proposals.
 
-#### HTML link augmentation in `--discovery-mode auto` (v1.0.3+)
+#### HTML link augmentation in `--discovery-mode auto` (v1.0.2+)
 
 In `auto` mode, after a successful JSON API fetch, the crawler additionally fetches the rendered HTML and unions its `<a href>` links with the JSON `references`-walker output. Catches URL patterns Apple's DocC JSON omits — operator overloads (`Int.&` slugified as `int_amp_<hash>`), legacy numeric-ID symbols (`1418511-iskindofclass`), `data.dictionary` REST sub-paths, and entire framework dirs Apple serves only as HTML (`apple_pay_on_the_web`, `applepencil`, `docc`, `samplecode`, `sign_in_with_apple`). ([#203](https://github.com/mihaelamj/cupertino/issues/203))
 

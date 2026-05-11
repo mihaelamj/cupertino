@@ -160,7 +160,7 @@ cupertino doctor \
 📦 Packages Index (packages.db)
    ✓ Database: ~/.cupertino/packages.db (~150 MB)
    ✓ Schema version: 2 (matches binary)
-   ✓ Bundled version: 1.0.3
+   ✓ Bundled version: 1.0.2
 
 🧪 Sample Code Index (samples.db)
    ✓ Database: ~/.cupertino/samples.db

@@ -81,7 +81,7 @@ The search database contains:
 
 ## Database Size Examples
 
-Approximate, snapshot of the v1.0.3 corpus (your local DB will vary):
+Approximate, snapshot of the v1.0.2 corpus (your local DB will vary):
 
 | Documentation Size | Index Size |
 |-------------------|------------|

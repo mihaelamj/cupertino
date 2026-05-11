@@ -31,7 +31,7 @@ extension Search {
         ///       (~30% of rows in shipped v1.0.0/v1.0.1) because the pre-#283
         ///       `URLUtilities.filename(_:)` hashed the raw case-preserving URL.
         ///       BREAKING: existing v12 DBs are rejected at open. Upgrade path is
-        ///       `cupertino setup` to download the v1.0.3 bundle, which ships
+        ///       `cupertino setup` to download the v1.0.2 bundle, which ships
         ///       pre-built at v13 with zero case-axis duplicate clusters.
         public static let schemaVersion: Int32 = 13
 

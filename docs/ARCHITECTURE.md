@@ -1,6 +1,6 @@
 # Cupertino Architecture
 
-**Version:** v1.0.3 (released 2026-05-11; v1.0.2 tag skipped, folded into v1.0.3)
+**Version:** v1.0.2 (released 2026-05-11)
 **Last Updated:** 2026-05-11
 **Swift Version:** 6.2
 **Language Mode:** Swift 6 with Strict Concurrency Checking
@@ -121,13 +121,13 @@ flowchart TD
 - **Unified `cupertino read`** (#239 follow-up): single command dispatches across docs / samples / packages via `--source`. `Services.ReadService` + `Search.PackageQuery.fileContent` (reads from `package_files_fts.content`, no on-disk packages tree required).
 - **Default `cupertino search` is fan-out** (#239): merges what was `cupertino ask` — RRF (k=60) across every available DB, chunked excerpts, per-result `▶ Read full:` hints. `--brief`, `--per-source`, `--platform`, `--min-version`, `--skip-{docs,packages,samples}`, `--packages-db`.
 - **MCP read tools split** today by source: `read_document` / `read_sample` / `read_sample_file` (separate). The CLI's unified `cupertino read` is the single front-door for all three.
-- **`Search.Index` actor split by concern** (v1.0.3): `Sources/Search/SearchIndex.swift` was a 4598-line actor handling schema + migrations + indexing + search + ranking + counts + helpers. Split mechanically into a 97-line core file (declaration, properties, lifecycle) plus 12 `SearchIndex+<Concern>.swift` extension files. Public API unchanged; 40 declarations widened from `private` to package-internal so cross-file extension methods can share state. See diagrams below.
+- **`Search.Index` actor split by concern** (v1.0.2): `Sources/Search/SearchIndex.swift` was a 4598-line actor handling schema + migrations + indexing + search + ranking + counts + helpers. Split mechanically into a 97-line core file (declaration, properties, lifecycle) plus 12 `SearchIndex+<Concern>.swift` extension files. Public API unchanged; 40 declarations widened from `private` to package-internal so cross-file extension methods can share state. See diagrams below.
 
 **v0.2 Package Changes** (historical): MCPShared + MCPTransport + MCPServer → MCP; namespaced types (CupertinoLogging → Logging, etc.); unified `cupertino` binary (no separate `cupertino-mcp`).
 
 ### Search.Index file map
 
-The `Search.Index` actor is the on-disk search engine — one SQLite FTS5 database (`search.db`), one actor that owns it. After the v1.0.3 split, every concern lives in its own file:
+The `Search.Index` actor is the on-disk search engine — one SQLite FTS5 database (`search.db`), one actor that owns it. After the v1.0.2 split, every concern lives in its own file:
 
 ```mermaid
 flowchart LR

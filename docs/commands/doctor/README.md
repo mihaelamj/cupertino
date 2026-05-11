@@ -146,7 +146,7 @@ cupertino serve
    ✓ Size: 38.4 MB
    ✓ Packages: 9699
    ✓ Indexed files: 124508
-   ℹ  Bundled version: 1.0.3
+   ℹ  Bundled version: 1.0.2
 
 🔍 Search Index
    ✓ Database: /Users/you/.cupertino/search.db
@@ -213,7 +213,7 @@ cupertino serve
 📦 Packages Index (packages.db)
    ⚠  Database: /Users/you/.cupertino/packages.db (not found)
      → Run: cupertino setup  (downloads the pre-built packages index)
-     Expected version: 1.0.3
+     Expected version: 1.0.2
 
 🔍 Search Index
    ✗ Database: /Users/you/.cupertino/search.db (not found)
