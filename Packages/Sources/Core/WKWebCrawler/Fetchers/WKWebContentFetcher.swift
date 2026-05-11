@@ -14,7 +14,7 @@ extension WKWebCrawler {
     public final class WKWebContentFetcher: NSObject, @preconcurrency ContentFetcher {
         public typealias RawContent = String
 
-        private var webView: WKWebView!
+        private var webView: WKWebView
         private let pageLoadTimeout: Duration
         private let javascriptWaitTime: Duration
 
@@ -28,10 +28,11 @@ extension WKWebCrawler {
         ) {
             self.pageLoadTimeout = pageLoadTimeout
             self.javascriptWaitTime = javascriptWaitTime
+            // Pre-`super.init()` construction so `webView` is non-optional.
+            // `navigationDelegate` reassignment has to happen after super.init
+            // because it touches `self`.
+            webView = Self.makeWebView()
             super.init()
-
-            let config = WKWebViewConfiguration()
-            webView = WKWebView(frame: .zero, configuration: config)
             webView.navigationDelegate = self
         }
 
@@ -69,12 +70,19 @@ extension WKWebCrawler {
         }
 
         /// Recycle the WKWebView to free memory
-        /// Call this periodically during long crawls to prevent memory buildup
+        /// Call this periodically during long crawls to prevent memory buildup.
+        ///
+        /// The reassignment releases the previous `WKWebView` (no other strong
+        /// refs once the local var is overwritten), so peak memory during the
+        /// transition is briefly two WKWebViews instead of zero, but the
+        /// average post-recycle footprint is identical to the old IUO form.
         public func recycle() {
-            webView = nil
-            let config = WKWebViewConfiguration()
-            webView = WKWebView(frame: .zero, configuration: config)
+            webView = Self.makeWebView()
             webView.navigationDelegate = self
+        }
+
+        private static func makeWebView() -> WKWebView {
+            WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
         }
 
         /// Get current memory usage in MB
