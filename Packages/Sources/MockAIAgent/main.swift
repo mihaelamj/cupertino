@@ -42,9 +42,10 @@ struct MockAIAgent {
 
         if args.count > 1 {
             // External server mode: mock-ai-agent npx -y @modelcontextprotocol/server-memory
-            serverCommand = Array(args.dropFirst())
+            let cmd = Array(args.dropFirst())
+            serverCommand = cmd
             print("📡 Using external MCP server:")
-            print("   Command: \(serverCommand!.joined(separator: " "))")
+            print("   Command: \(cmd.joined(separator: " "))")
             print()
         }
 

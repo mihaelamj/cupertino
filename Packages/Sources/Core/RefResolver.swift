@@ -348,7 +348,7 @@ public struct RefResolver {
         func replacement(label: String?, title: String) -> String {
             switch self {
             case .markdownLink:
-                let visible = (label?.isEmpty == false) ? label! : title
+                let visible: String = if let label, !label.isEmpty { label } else { title }
                 return "[\(visible)]"
             case .bareBracket:
                 return "[\(title)]"

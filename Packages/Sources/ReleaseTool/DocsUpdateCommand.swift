@@ -190,8 +190,8 @@ struct DocsUpdateCommand: AsyncParsableCommand {
         let replacement = "\(formattedDocs)+ documentation pages across \(frameworks) frameworks"
 
         // Find and replace the pattern
-        if let match = regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)) {
-            let range = Range(match.range, in: content)!
+        if let match = regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)),
+           let range = Range(match.range, in: content) {
             content.replaceSubrange(range, with: replacement)
         } else {
             throw DocsUpdateError.readmeUpdateFailed

@@ -62,9 +62,9 @@ extension Core {
 
             // Check for resumable session (must match current start URL)
             let savedSession = await state.getSavedSession()
-            let canResume = savedSession != nil
-                && savedSession!.isActive
-                && savedSession!.startURL == configuration.startURL.absoluteString
+            let canResume = savedSession.map {
+                $0.isActive && $0.startURL == configuration.startURL.absoluteString
+            } ?? false
             if canResume, let savedSession {
                 logInfo("🔄 Found resumable session!")
                 logInfo("   Resuming from \(savedSession.visited.count) visited URLs")
