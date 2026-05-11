@@ -75,7 +75,13 @@ extension Search.Index {
 
             switch name.lowercased() {
             case "ios", "ipados":
-                if result.iOS == nil || isVersionGreater(introducedAt, than: result.iOS!) {
+                // iOS and iPadOS share a column; keep whichever introducedAt is newer
+                // so a later iPadOS row doesn't clobber a newer iOS value (or vice-versa).
+                if let existing = result.iOS {
+                    if isVersionGreater(introducedAt, than: existing) {
+                        result.iOS = introducedAt
+                    }
+                } else {
                     result.iOS = introducedAt
                 }
             case "macos":

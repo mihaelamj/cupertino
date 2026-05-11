@@ -112,7 +112,7 @@ extension Core {
             path: String,
             prefix: String
         ) async throws -> [ProposalMetadata] {
-            let url = URL(string: "\(githubAPI)/repos/\(repo)/contents/\(path)?ref=\(branch)")!
+            let url = URL.knownGood("\(githubAPI)/repos/\(repo)/contents/\(path)?ref=\(branch)")
 
             var request = URLRequest(url: url)
             request.setValue(

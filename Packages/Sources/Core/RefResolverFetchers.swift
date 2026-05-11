@@ -68,14 +68,17 @@ public final class WKWebViewTitleFetcher: NSObject, RefResolver.TitleFetcher {
         await fetchTitleSync(documentationURL)
     }
 
-    private var webView: WKWebView!
+    private let webView: WKWebView
     private let pageLoadTimeout: Duration
 
     public init(pageLoadTimeout: Duration = .seconds(20)) {
         self.pageLoadTimeout = pageLoadTimeout
+        // Construct the WKWebView before `super.init()` so the property is
+        // a non-optional `let`. WKWebViewConfiguration's init doesn't touch
+        // `self`, so this is safe pre-super, and the class is `@MainActor`
+        // so we're on the WebKit-required main thread either way.
+        webView = WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
         super.init()
-        let config = WKWebViewConfiguration()
-        webView = WKWebView(frame: .zero, configuration: config)
     }
 
     private func fetchTitleSync(_ url: URL) async -> String? {

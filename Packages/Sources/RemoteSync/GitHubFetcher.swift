@@ -41,7 +41,7 @@ public actor GitHubFetcher {
     private func ensureTreeLoaded() async throws {
         if cachedTree != nil { return }
 
-        let url = URL(string: "\(RemoteSync.gitHubAPIBaseURL)/repos/\(repository)/git/trees/\(branch)?recursive=1")!
+        let url = URL.knownGood("\(RemoteSync.gitHubAPIBaseURL)/repos/\(repository)/git/trees/\(branch)?recursive=1")
         var request = URLRequest(url: url)
 
         // Add auth header if token available
@@ -133,7 +133,7 @@ public actor GitHubFetcher {
     private func buildRawURL(path: String) -> URL {
         let cleanPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
         let urlString = "\(RemoteSync.rawGitHubBaseURL)/\(repository)/\(branch)/\(cleanPath)"
-        return URL(string: urlString)!
+        return URL.knownGood(urlString)
     }
 
     // MARK: - Response Validation

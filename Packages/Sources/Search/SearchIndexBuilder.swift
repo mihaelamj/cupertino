@@ -137,7 +137,11 @@ extension Search {
             try await indexAppleDocsFromDirectory(onProgress: onProgress)
         }
 
-        private func indexAppleDocsFromMetadata(
+        // `internal` rather than `private` so SearchTests can exercise the
+        // metadata-driven indexing path (including the malformed-URL skip
+        // branch added in PR #288) without needing to bootstrap the whole
+        // `buildIndex()` orchestration.
+        func indexAppleDocsFromMetadata(
             metadata: CrawlMetadata,
             onProgress: (@Sendable (Int, Int) -> Void)?
         ) async throws {
@@ -169,11 +173,20 @@ extension Search {
                     continue
                 }
 
+                // `url` comes from indexed page metadata; if a row's key
+                // doesn't parse as a URL we skip the doc instead of crashing
+                // the whole index build.
+                guard let parsedURL = URL(string: url) else {
+                    skipped += 1
+                    processed += 1
+                    continue
+                }
+
                 // Extract title from front matter or first heading
-                let title = extractTitle(from: content) ?? URLUtilities.filename(from: URL(string: url)!)
+                let title = extractTitle(from: content) ?? URLUtilities.filename(from: parsedURL)
 
                 // Build URI
-                let uri = "apple-docs://\(pageMetadata.framework)/\(URLUtilities.filename(from: URL(string: url)!))"
+                let uri = "apple-docs://\(pageMetadata.framework)/\(URLUtilities.filename(from: parsedURL))"
 
                 // Index document (Apple docs from /docs folder)
                 do {

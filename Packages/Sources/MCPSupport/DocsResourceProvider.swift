@@ -37,8 +37,21 @@ public actor DocsResourceProvider: ResourceProvider {
             let metadata = try await getMetadata()
 
             for (url, pageMetadata) in metadata.pages {
+                // `url` comes from indexed page metadata; skip rows whose key
+                // doesn't parse rather than crashing the resource listing.
+                // The other two skip sites (SearchIndexBuilder,
+                // SampleCodeDownloader) log the skip; matching that here so
+                // a degraded listing doesn't go unnoticed.
+                guard let parsedURL = URL(string: url) else {
+                    Log.warning(
+                        "Skipping malformed URL key in CrawlMetadata.pages: '\(url)' "
+                            + "(framework: \(pageMetadata.framework))",
+                        category: .mcp
+                    )
+                    continue
+                }
                 let uri = "\(Shared.Constants.Search.appleDocsScheme)\(pageMetadata.framework)/"
-                    + "\(URLUtilities.filename(from: URL(string: url)!))"
+                    + "\(URLUtilities.filename(from: parsedURL))"
                 let resource = Resource(
                     uri: uri,
                     name: extractTitle(from: url),
@@ -226,6 +239,18 @@ public actor DocsResourceProvider: ResourceProvider {
             Log.warning("Failed to load metadata: \(error)", category: .mcp)
         }
     }
+
+    // MARK: - Test Support
+
+    /// Seed the cached metadata directly. Test-only path so MCPSupportTests
+    /// can exercise `listResources` against a hand-crafted `CrawlMetadata`
+    /// (including malformed-URL rows) without bootstrapping a real
+    /// crawl + metadata.json fixture on disk.
+    func injectMetadataForTesting(_ metadata: CrawlMetadata) {
+        self.metadata = metadata
+    }
+
+    // MARK: - Metadata
 
     private func getMetadata() async throws -> CrawlMetadata {
         if let metadata {
