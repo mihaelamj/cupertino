@@ -14,7 +14,16 @@ extension WKWebCrawler {
     public final class WKWebContentFetcher: NSObject, @preconcurrency ContentFetcher {
         public typealias RawContent = String
 
-        private var webView: WKWebView
+        // `webView` is an IUO on purpose: `recycle()` (below) is called
+        // specifically to free WebKit memory during long crawls, and it does
+        // that by setting `webView = nil` *before* allocating the replacement.
+        // A non-optional `var` would force the RHS to be evaluated (allocating
+        // a second WKWebView) before the assignment releases the old one,
+        // doubling peak memory exactly when we're trying to relieve pressure.
+        // The IUO form preserves release-first ordering; every read inside
+        // this class is on the same MainActor as the init/recycle writes, so
+        // an accidental nil-read is structurally impossible.
+        private var webView: WKWebView!
         private let pageLoadTimeout: Duration
         private let javascriptWaitTime: Duration
 
@@ -28,11 +37,8 @@ extension WKWebCrawler {
         ) {
             self.pageLoadTimeout = pageLoadTimeout
             self.javascriptWaitTime = javascriptWaitTime
-            // Pre-`super.init()` construction so `webView` is non-optional.
-            // `navigationDelegate` reassignment has to happen after super.init
-            // because it touches `self`.
-            webView = Self.makeWebView()
             super.init()
+            webView = Self.makeWebView()
             webView.navigationDelegate = self
         }
 
@@ -69,14 +75,16 @@ extension WKWebCrawler {
             return FetchResult(content: html, url: finalURL)
         }
 
-        /// Recycle the WKWebView to free memory
-        /// Call this periodically during long crawls to prevent memory buildup.
+        /// Recycle the WKWebView to free memory.
         ///
-        /// The reassignment releases the previous `WKWebView` (no other strong
-        /// refs once the local var is overwritten), so peak memory during the
-        /// transition is briefly two WKWebViews instead of zero, but the
-        /// average post-recycle footprint is identical to the old IUO form.
+        /// Called periodically during long crawls to bound WebKit's resident
+        /// footprint. Order matters here: the IUO-typed property is set to
+        /// `nil` *first* so ARC releases the previous WKWebView (and its
+        /// caches, navigation state, JS heap, etc.) before we allocate the
+        /// replacement. A non-optional var would double peak memory during
+        /// the swap; see the IUO comment on the property above.
         public func recycle() {
+            webView = nil
             webView = Self.makeWebView()
             webView.navigationDelegate = self
         }

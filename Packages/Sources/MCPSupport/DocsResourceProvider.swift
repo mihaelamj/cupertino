@@ -39,7 +39,17 @@ public actor DocsResourceProvider: ResourceProvider {
             for (url, pageMetadata) in metadata.pages {
                 // `url` comes from indexed page metadata; skip rows whose key
                 // doesn't parse rather than crashing the resource listing.
-                guard let parsedURL = URL(string: url) else { continue }
+                // The other two skip sites (SearchIndexBuilder,
+                // SampleCodeDownloader) log the skip; matching that here so
+                // a degraded listing doesn't go unnoticed.
+                guard let parsedURL = URL(string: url) else {
+                    Log.warning(
+                        "Skipping malformed URL key in CrawlMetadata.pages: '\(url)' "
+                            + "(framework: \(pageMetadata.framework))",
+                        category: .mcp
+                    )
+                    continue
+                }
                 let uri = "\(Shared.Constants.Search.appleDocsScheme)\(pageMetadata.framework)/"
                     + "\(URLUtilities.filename(from: parsedURL))"
                 let resource = Resource(
