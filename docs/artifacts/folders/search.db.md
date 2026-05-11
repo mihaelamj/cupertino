@@ -23,7 +23,7 @@ cupertino save
 
 ## Database Schema
 
-Schema version `12` (per `PRAGMA user_version`). The version constant `Search.Index.schemaVersion` lives in [`Packages/Sources/Search/SearchIndex.swift`](../../../Packages/Sources/Search/SearchIndex.swift); `createTables` lives in [`SearchIndex+Schema.swift`](../../../Packages/Sources/Search/SearchIndex+Schema.swift); migrations (`migrateToVersion3..11`) live in [`SearchIndex+Migrations.swift`](../../../Packages/Sources/Search/SearchIndex+Migrations.swift). Migrations are incremental — fresh DBs created by `cupertino save` write directly at v12; older DBs run `ALTER TABLE` migrations on open.
+Schema version `13` (per `PRAGMA user_version`). The version constant `Search.Index.schemaVersion` lives in [`Packages/Sources/Search/SearchIndex.swift`](../../../Packages/Sources/Search/SearchIndex.swift); `createTables` lives in [`SearchIndex+Schema.swift`](../../../Packages/Sources/Search/SearchIndex+Schema.swift); migrations (`migrateToVersion3..11`) live in [`SearchIndex+Migrations.swift`](../../../Packages/Sources/Search/SearchIndex+Migrations.swift). Migrations are incremental — fresh DBs created by `cupertino save` write directly at v12; older DBs run `ALTER TABLE` migrations on open.
 
 `search.db` holds **13 tables** grouped by purpose:
 

@@ -145,7 +145,7 @@ cupertino save --packages --packages-dir ~/my-packages
 - **Tokenizer**: Porter stemming + Unicode61
 - **Format**: Standard SQLite database file
 - **Compatibility**: Any SQLite 3.9.0+ client
-- **Size**: ~990 MB at v1.0.0 corpus state (~1,587 packages)
+- **Size**: ~150 MB at v1.0.2 corpus state (~9,700 packages)
 
 ## Used By
 

@@ -22,7 +22,7 @@ Filters search results to only include Apple Developer Documentation. This is th
 ## Typical Size
 
 - **13,000+ pages** when fully crawled
-- **261 frameworks** indexed
+- **402 frameworks** indexed
 - **~2-3 GB** on disk
 
 ## Examples

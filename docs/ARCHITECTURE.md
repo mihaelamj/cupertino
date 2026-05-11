@@ -23,7 +23,7 @@
 
 Cupertino is a Swift-based Apple documentation crawler and MCP (Model Context Protocol) server. The project uses **ExtremePackaging** architecture to organize code into focused, reusable modules.
 
-### Package Structure (v1.0.0)
+### Package Structure (v1.0.2)
 
 Cupertino uses **ExtremePackaging** with ~24 single-responsibility SPM targets, organized by role:
 

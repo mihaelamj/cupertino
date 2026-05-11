@@ -73,7 +73,7 @@ or
 ```
 ✓ Database: ~/.cupertino/search.db
 ✓ Size: 52.3 MB
-✓ Frameworks: 287
+✓ Frameworks: 402
 ```
 
 **Database missing:**
@@ -169,8 +169,8 @@ cupertino doctor \
 🔍 Search Index
    ✓ Database: ~/.cupertino/search.db
    ✓ Size: 2.5 GB
-   ✓ Frameworks: 261
-   ✓ Schema version: 12 (matches binary)
+   ✓ Frameworks: 402
+   ✓ Schema version: 13 (matches binary)
 
 🔧 Providers
    ✓ DocsResourceProvider: available
@@ -179,7 +179,7 @@ cupertino doctor \
 ✅ All checks passed - MCP server ready
 ```
 
-(Output snapshots the v1.0 corpus; sizes / counts vary with your local DB.)
+(Output snapshots the v1.0.2 corpus; sizes / counts vary with your local DB.)
 
 ### Fresh Installation
 ```

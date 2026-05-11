@@ -150,9 +150,9 @@ cupertino serve
 
 🔍 Search Index
    ✓ Database: /Users/you/.cupertino/search.db
-   ✓ Size: 2.5 GB
-   ✓ Schema version: 12 (matches installed binary)
-   ✓ Frameworks: 261
+   ✓ Size: 2.4 GB
+   ✓ Schema version: 13 (matches installed binary)
+   ✓ Frameworks: 402
 
 🔧 Providers
    ✓ DocsResourceProvider: available
@@ -167,7 +167,7 @@ cupertino serve
 🔍 Search Index
    ✓ Database: /Users/you/.cupertino/search.db
    ✓ Size: 2.1 GB
-   ✗ Schema version: 10 (binary expects 12, rebuild required)
+   ✗ Schema version: 10 (binary expects 13, rebuild required)
      → rm /Users/you/.cupertino/search.db && cupertino save
 
 ⚠️  Some checks failed - see above for details
@@ -179,7 +179,7 @@ cupertino serve
 🔍 Search Index
    ✓ Database: /Users/you/.cupertino/search.db
    ✓ Size: 2.5 GB
-   ✗ Schema version: 13 (newer than binary — expected 12)
+   ✗ Schema version: 14 (newer than binary, expected 13)
      → Upgrade cupertino: brew upgrade cupertino
 
 ⚠️  Some checks failed - see above for details
@@ -392,7 +392,7 @@ cupertino save
 
 **Problem:**
 ```
-✗ Schema version: 10 (binary expects 12, rebuild required)
+✗ Schema version: 10 (binary expects 13, rebuild required)
   → rm /Users/you/.cupertino/search.db && cupertino save
 ```
 

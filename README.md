@@ -38,7 +38,7 @@ Cupertino is a local, structured, AI-ready documentation system for Apple platfo
 ### Requirements
 
 - macOS 15+ (Sequoia)
-- ~5 GB disk space for the full v1.0 bundle (search.db ~3.4 GB, packages.db ~990 MB, samples.db ~185 MB; ~833 MB compressed for download)
+- ~2.8 GB disk space for the full v1.0.2 bundle (search.db ~2.4 GB, packages.db ~150 MB, samples.db ~150-200 MB; ~833 MB compressed for download)
 
 *Building from source additionally requires Swift 6.2+ and Xcode 16.0+*
 

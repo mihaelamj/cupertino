@@ -54,8 +54,8 @@ Example output:
 🔍 Search Index
    ✓ Database: ~/.cupertino/search.db
    ✓ Size: 2.5 GB
-   ✓ Frameworks: 261
-   ✓ Schema version: 12 (matches binary)
+   ✓ Frameworks: 402
+   ✓ Schema version: 13 (matches binary)
 ```
 
 If not found:
