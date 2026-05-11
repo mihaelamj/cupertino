@@ -158,7 +158,7 @@ cupertino doctor \
    ℹ  Priority packages: 135 total (Apple: 43, Ecosystem: 92)
 
 📦 Packages Index (packages.db)
-   ✓ Database: ~/.cupertino/packages.db (~150 MB)
+   ✓ Database: ~/.cupertino/packages.db (~940 MB)
    ✓ Schema version: 2 (matches binary)
    ✓ Bundled version: 1.0.2
 

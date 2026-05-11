@@ -24,7 +24,7 @@ A single zip from the [`cupertino-docs`](https://github.com/mihaelamj/cupertino-
 |----------|----------|------|
 | `search.db` | ~277,000 documentation pages across Apple frameworks + Swift Evolution + Swift.org + HIG + Apple Archive + Swift Book (post-#283 dedup; was ~405k in v1.0.0 / v1.0.1 with case-axis duplicates) | ~2.4 GB |
 | `samples.db` | Indexed Apple sample-code catalog and crawled GitHub sample projects (READMEs + source files + AST symbols) | ~150-200 MB |
-| `packages.db` | ~9,700 Swift packages with README, Package.swift, Sources/, Tests/, .docc/ extracted | ~150 MB |
+| `packages.db` | 183 Apple-official Swift packages with README, Package.swift, Sources/, Tests/, .docc/ extracted | ~940 MB |
 
 Numbers above are approximate and snapshot the v1.0.2 bundle; check the corresponding GitHub Release for the per-release totals.
 
