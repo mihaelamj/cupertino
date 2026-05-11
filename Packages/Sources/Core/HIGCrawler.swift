@@ -62,7 +62,7 @@ extension Core {
             )
 
             // Start from HIG root
-            let rootURL = URL(string: Shared.Constants.BaseURL.appleHIG)!
+            let rootURL = URL.knownGood(Shared.Constants.BaseURL.appleHIG)
 
             // Discover all HIG pages
             logInfo("Discovering HIG pages...")

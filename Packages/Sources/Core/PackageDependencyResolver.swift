@@ -299,7 +299,7 @@ extension Core {
             if let cache, let cached = await cache.read(owner: owner, repo: repo, branch: branch, file: file) {
                 return .hit(cached)
             }
-            let url = URL(string: "https://raw.githubusercontent.com/\(owner)/\(repo)/\(branch)/\(file)")!
+            let url = URL.knownGood("https://raw.githubusercontent.com/\(owner)/\(repo)/\(branch)/\(file)")
             do {
                 let (data, response) = try await session.data(from: url)
                 guard let http = response as? HTTPURLResponse else {

@@ -239,7 +239,7 @@ public final class SampleCodeDownloader {
     private func fetchSampleList() async throws -> [SampleMetadata] {
         // Load the sample code listing page
         let webView = await createWebView()
-        _ = try await loadPage(webView, url: URL(string: sampleCodeListURL)!)
+        _ = try await loadPage(webView, url: URL.knownGood(sampleCodeListURL))
 
         // Wait extra time for dynamic content to load
         try await Task.sleep(for: Shared.Constants.Delay.sampleCodePageLoad)
@@ -335,7 +335,13 @@ public final class SampleCodeDownloader {
 
         // Load sample page to find download link
         let webView = await createWebView()
-        _ = try await loadPage(webView, url: URL(string: sample.url)!)
+        guard let samplePageURL = URL(string: sample.url) else {
+            logInfo("   ⚠️  Malformed sample.url, skipping: \(sample.url)")
+            stats.errors += 1
+            stats.totalSamples += 1
+            return
+        }
+        _ = try await loadPage(webView, url: samplePageURL)
 
         // Wait for page to fully load
         try await Task.sleep(for: Shared.Constants.Delay.sampleCodeInteraction)
@@ -534,7 +540,7 @@ public final class SampleCodeDownloader {
         window.center()
         window.isReleasedWhenClosed = false
 
-        let loginURL = URL(string: Shared.Constants.BaseURL.appleDeveloperAccount)!
+        let loginURL = URL.knownGood(Shared.Constants.BaseURL.appleDeveloperAccount)
 
         // NOTE: show the window BEFORE load()+delegate wiring so the user
         // immediately sees something; but do NOT call webView.load() here —

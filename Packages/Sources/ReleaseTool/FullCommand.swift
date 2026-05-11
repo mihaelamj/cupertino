@@ -156,9 +156,9 @@ struct FullCommand: AsyncParsableCommand {
 
         for attempt in 1...maxAttempts {
             // Check if release asset exists
-            let assetURL = URL(
-                string: "https://github.com/mihaelamj/cupertino/releases/download/\(version.tag)/cupertino-\(version.tag)-macos-universal.tar.gz"
-            )!
+            let assetURL = URL.knownGood(
+                "https://github.com/mihaelamj/cupertino/releases/download/\(version.tag)/cupertino-\(version.tag)-macos-universal.tar.gz"
+            )
 
             var request = URLRequest(url: assetURL)
             request.httpMethod = "HEAD"

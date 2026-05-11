@@ -563,6 +563,12 @@ public actor AvailabilityFetcher {
             apiPath = path
         }
 
+        // Availability target deliberately has no `Shared` dependency, so the
+        // `URL.knownGood` helper used elsewhere in the codebase isn't
+        // available here. The single site, with a known-good base + sanitized
+        // path, gets a localized swiftlint exemption rather than dragging a
+        // whole package dependency in just for one URL constructor.
+        // swiftlint:disable:next force_unwrapping
         return URL(string: "\(configuration.apiBaseURL)/\(apiPath).json")!
     }
 

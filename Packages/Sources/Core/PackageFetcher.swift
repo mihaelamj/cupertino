@@ -14,7 +14,7 @@ import Shared
 /// Fetches Swift packages from SwiftPackageIndex and enriches with GitHub metadata
 extension Core {
     public actor PackageFetcher {
-        private let packageListURL = URL(string: Shared.Constants.BaseURL.swiftPackageList)!
+        private let packageListURL = URL.knownGood(Shared.Constants.BaseURL.swiftPackageList)
         private let outputDirectory: URL
         private let limit: Int?
         private let resumeFromCheckpoint: Bool
@@ -305,7 +305,7 @@ extension Core {
         }
 
         private func fetchStarCount(owner: String, repo: String) async throws -> Int {
-            let url = URL(string: "\(Shared.Constants.BaseURL.githubAPIRepos)/\(owner)/\(repo)")!
+            let url = URL.knownGood("\(Shared.Constants.BaseURL.githubAPIRepos)/\(owner)/\(repo)")
 
             var request = URLRequest(url: url)
             request.setValue(Shared.Constants.HTTPHeader.githubAccept, forHTTPHeaderField: "Accept")
@@ -369,7 +369,7 @@ extension Core {
         }
 
         private func createGitHubRequest(owner: String, repo: String) -> URLRequest {
-            let url = URL(string: "\(Shared.Constants.BaseURL.githubAPIRepos)/\(owner)/\(repo)")!
+            let url = URL.knownGood("\(Shared.Constants.BaseURL.githubAPIRepos)/\(owner)/\(repo)")
             var request = URLRequest(url: url)
             request.setValue(Shared.Constants.HTTPHeader.githubAccept, forHTTPHeaderField: "Accept")
             request.setValue(Shared.Constants.App.userAgent, forHTTPHeaderField: "User-Agent")

@@ -37,8 +37,11 @@ public actor DocsResourceProvider: ResourceProvider {
             let metadata = try await getMetadata()
 
             for (url, pageMetadata) in metadata.pages {
+                // `url` comes from indexed page metadata; skip rows whose key
+                // doesn't parse rather than crashing the resource listing.
+                guard let parsedURL = URL(string: url) else { continue }
                 let uri = "\(Shared.Constants.Search.appleDocsScheme)\(pageMetadata.framework)/"
-                    + "\(URLUtilities.filename(from: URL(string: url)!))"
+                    + "\(URLUtilities.filename(from: parsedURL))"
                 let resource = Resource(
                     uri: uri,
                     name: extractTitle(from: url),

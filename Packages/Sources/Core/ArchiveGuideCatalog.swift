@@ -300,7 +300,7 @@ public enum ArchiveGuideCatalog {
     public static var testGuides: [URL] {
         [
             // Just the Objective-C Runtime Guide - well-structured, moderate size
-            URL(string: "\(baseURL)/Cocoa/Conceptual/ObjCRuntimeGuide")!,
+            URL.knownGood("\(baseURL)/Cocoa/Conceptual/ObjCRuntimeGuide"),
         ]
     }
 

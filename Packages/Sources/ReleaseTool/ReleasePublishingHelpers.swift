@@ -63,8 +63,8 @@ extension ReleasePublishing {
         var spinnerIndex = 0
 
         while process.isRunning {
-            let s = spinner[spinnerIndex % spinner.count]
-            let output = "\(clearLine)   \(s) Compressing databases..."
+            let glyph = spinner[spinnerIndex % spinner.count]
+            let output = "\(clearLine)   \(glyph) Compressing databases..."
             FileHandle.standardOutput.write(Data(output.utf8))
             fflush(stdout)
             spinnerIndex += 1
@@ -136,7 +136,7 @@ extension ReleasePublishing {
     }
 
     static func checkReleaseExists(repo: String, tag: String, token: String) async throws -> Bool {
-        let url = URL(string: "https://api.github.com/repos/\(repo)/releases/tags/\(tag)")!
+        let url = URL.knownGood("https://api.github.com/repos/\(repo)/releases/tags/\(tag)")
         let request = githubRequest(url: url, token: token)
 
         let (_, response) = try await URLSession.shared.data(for: request)
@@ -147,7 +147,7 @@ extension ReleasePublishing {
     }
 
     static func deleteRelease(repo: String, tag: String, token: String) async throws {
-        let getURL = URL(string: "https://api.github.com/repos/\(repo)/releases/tags/\(tag)")!
+        let getURL = URL.knownGood("https://api.github.com/repos/\(repo)/releases/tags/\(tag)")
         let getRequest = githubRequest(url: getURL, token: token)
 
         let (data, _) = try await URLSession.shared.data(for: getRequest)
@@ -156,7 +156,7 @@ extension ReleasePublishing {
             throw ReleasePublishingError.apiError("Failed to get release ID")
         }
 
-        let deleteURL = URL(string: "https://api.github.com/repos/\(repo)/releases/\(releaseId)")!
+        let deleteURL = URL.knownGood("https://api.github.com/repos/\(repo)/releases/\(releaseId)")
         let deleteRequest = githubRequest(url: deleteURL, token: token, method: "DELETE")
 
         let (_, response) = try await URLSession.shared.data(for: deleteRequest)
@@ -166,7 +166,7 @@ extension ReleasePublishing {
         }
 
         // Best-effort tag cleanup; missing tag is fine.
-        let tagURL = URL(string: "https://api.github.com/repos/\(repo)/git/refs/tags/\(tag)")!
+        let tagURL = URL.knownGood("https://api.github.com/repos/\(repo)/git/refs/tags/\(tag)")
         let tagRequest = githubRequest(url: tagURL, token: token, method: "DELETE")
         _ = try? await URLSession.shared.data(for: tagRequest)
     }
@@ -179,7 +179,7 @@ extension ReleasePublishing {
         name: String,
         body: String
     ) async throws -> String {
-        let url = URL(string: "https://api.github.com/repos/\(repo)/releases")!
+        let url = URL.knownGood("https://api.github.com/repos/\(repo)/releases")
         var request = githubRequest(url: url, token: token, method: "POST")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
