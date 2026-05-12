@@ -15,7 +15,7 @@ extension Core {
     /// Regex-based; multi-line `@available` attrs aren't recognised and the
     /// scanner doesn't associate hits with specific declarations (would need
     /// AST). Good enough for first-cut ranking signals per #219; an AST upgrade
-    /// is a follow-up that can extend `ASTIndexer.SwiftSourceExtractor`.
+    /// is a follow-up that can extend `ASTIndexer.Extractor`.
     public actor PackageAvailabilityAnnotator {
         public init() {}
 

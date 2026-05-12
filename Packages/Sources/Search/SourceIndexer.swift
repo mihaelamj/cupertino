@@ -126,17 +126,17 @@ public struct SourceItem: Sendable {
 /// Results from AST extraction on source content
 public struct ExtractedContent: Sendable {
     /// Extracted symbols (functions, types, properties, etc.)
-    public let symbols: [ASTIndexer.ExtractedSymbol]
+    public let symbols: [ASTIndexer.Symbol]
 
     /// Extracted imports
-    public let imports: [ASTIndexer.ExtractedImport]
+    public let imports: [ASTIndexer.Import]
 
     /// Whether parsing encountered errors
     public let hasErrors: Bool
 
     public init(
-        symbols: [ASTIndexer.ExtractedSymbol] = [],
-        imports: [ASTIndexer.ExtractedImport] = [],
+        symbols: [ASTIndexer.Symbol] = [],
+        imports: [ASTIndexer.Import] = [],
         hasErrors: Bool = false
     ) {
         self.symbols = symbols
@@ -188,7 +188,7 @@ public extension SourceIndexer {
             !item.title.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    /// Default extraction: use SwiftSourceExtractor on content
+    /// Default extraction: use ASTIndexer.Extractor on content
     func extractCode(from item: SourceItem) -> ExtractedContent {
         // Skip extraction for non-Swift content
         guard item.language == "swift" || item.language == nil else {
@@ -200,7 +200,7 @@ public extension SourceIndexer {
             return .empty
         }
 
-        let extractor = ASTIndexer.SwiftSourceExtractor()
+        let extractor = ASTIndexer.Extractor()
         let result = extractor.extract(from: item.content)
 
         return ExtractedContent(
@@ -240,7 +240,7 @@ public struct AppleDocsIndexer: SourceIndexer {
     public func extractCode(from item: SourceItem) -> ExtractedContent {
         // Apple docs have declaration code in specific patterns
         // Extract from code blocks and declaration sections
-        let extractor = ASTIndexer.SwiftSourceExtractor()
+        let extractor = ASTIndexer.Extractor()
 
         // Try to extract from the content directly
         let result = extractor.extract(from: item.content)
@@ -322,7 +322,7 @@ public struct SwiftEvolutionIndexer: SourceIndexer {
 
     public func extractCode(from item: SourceItem) -> ExtractedContent {
         // Swift Evolution proposals have lots of code examples
-        let extractor = ASTIndexer.SwiftSourceExtractor()
+        let extractor = ASTIndexer.Extractor()
 
         // Extract all code blocks from the proposal markdown
         let codeBlocks = extractAllCodeBlocks(from: item.content)
@@ -376,7 +376,7 @@ public struct SampleCodeIndexer: SourceIndexer {
 
     public func extractCode(from item: SourceItem) -> ExtractedContent {
         // Sample code is full Swift files - extract everything
-        let extractor = ASTIndexer.SwiftSourceExtractor()
+        let extractor = ASTIndexer.Extractor()
         let result = extractor.extract(from: item.content)
 
         return ExtractedContent(
@@ -407,7 +407,7 @@ public struct AppleArchiveIndexer: SourceIndexer {
             return .empty
         }
 
-        let extractor = ASTIndexer.SwiftSourceExtractor()
+        let extractor = ASTIndexer.Extractor()
         let result = extractor.extract(from: item.content)
 
         return ExtractedContent(
@@ -429,7 +429,7 @@ public struct SwiftBookIndexer: SourceIndexer {
 
     public func extractCode(from item: SourceItem) -> ExtractedContent {
         // Swift book has extensive code examples
-        let extractor = ASTIndexer.SwiftSourceExtractor()
+        let extractor = ASTIndexer.Extractor()
 
         // Extract code blocks from markdown
         let codeBlocks = extractCodeBlocks(from: item.content)
@@ -493,7 +493,7 @@ public struct PackagesIndexer: SourceIndexer {
 
     public func extractCode(from item: SourceItem) -> ExtractedContent {
         // Package docs have API documentation with declarations
-        let extractor = ASTIndexer.SwiftSourceExtractor()
+        let extractor = ASTIndexer.Extractor()
         let result = extractor.extract(from: item.content)
 
         return ExtractedContent(

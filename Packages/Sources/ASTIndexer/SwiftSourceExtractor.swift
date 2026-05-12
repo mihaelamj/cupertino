@@ -7,13 +7,13 @@ import SwiftSyntax
 
 extension ASTIndexer {
     /// Extracts symbols and imports from Swift source code using SwiftSyntax
-    public struct SwiftSourceExtractor: Sendable {
+    public struct Extractor: Sendable {
         public init() {}
 
         /// Extract symbols and imports from Swift source code
         /// - Parameter source: Swift source code string
         /// - Returns: Extraction result containing symbols, imports, and error status
-        public func extract(from source: String) -> ExtractionResult {
+        public func extract(from source: String) -> Result {
             // Parse source into syntax tree
             let tree = Parser.parse(source: source)
 
@@ -21,7 +21,7 @@ extension ASTIndexer {
             let visitor = DeclarationVisitor(source: source)
             visitor.walk(tree)
 
-            return ExtractionResult(
+            return Result(
                 symbols: visitor.symbols,
                 imports: visitor.imports,
                 hasErrors: tree.hasError
@@ -31,12 +31,12 @@ extension ASTIndexer {
         /// Extract symbols from a file URL
         /// - Parameter url: File URL to parse
         /// - Returns: Extraction result, or empty result with error if file cannot be read
-        public func extract(from url: URL) -> ExtractionResult {
+        public func extract(from url: URL) -> Result {
             do {
                 let source = try String(contentsOf: url, encoding: .utf8)
                 return extract(from: source)
             } catch {
-                return ExtractionResult(
+                return Result(
                     symbols: [],
                     imports: [],
                     hasErrors: true,
@@ -54,8 +54,8 @@ private final class DeclarationVisitor: SyntaxVisitor {
     private let source: String
     private let sourceLocationConverter: SourceLocationConverter
 
-    private(set) var symbols: [ASTIndexer.ExtractedSymbol] = []
-    private(set) var imports: [ASTIndexer.ExtractedImport] = []
+    private(set) var symbols: [ASTIndexer.Symbol] = []
+    private(set) var imports: [ASTIndexer.Import] = []
 
     init(source: String) {
         self.source = source
@@ -73,7 +73,7 @@ private final class DeclarationVisitor: SyntaxVisitor {
             attr.as(AttributeSyntax.self)?.attributeName.trimmedDescription == "_exported"
         }
 
-        imports.append(ASTIndexer.ExtractedImport(
+        imports.append(ASTIndexer.Import(
             moduleName: moduleName,
             line: location.line,
             isExported: isExported
@@ -160,7 +160,7 @@ private final class DeclarationVisitor: SyntaxVisitor {
         let conformances = extractConformances(from: node.inheritanceClause)
         let attributes = extractAttributes(from: node.attributes)
 
-        symbols.append(ASTIndexer.ExtractedSymbol(
+        symbols.append(ASTIndexer.Symbol(
             name: name,
             kind: .extension,
             line: location.line,
@@ -190,7 +190,7 @@ private final class DeclarationVisitor: SyntaxVisitor {
 
         let genericParams = extractGenericParameters(from: node.genericParameterClause)
 
-        symbols.append(ASTIndexer.ExtractedSymbol(
+        symbols.append(ASTIndexer.Symbol(
             name: node.name.text,
             kind: kind,
             line: location.line,
@@ -216,7 +216,7 @@ private final class DeclarationVisitor: SyntaxVisitor {
 
         let signature = "init\(node.signature.trimmedDescription)"
 
-        symbols.append(ASTIndexer.ExtractedSymbol(
+        symbols.append(ASTIndexer.Symbol(
             name: "init",
             kind: .initializer,
             line: location.line,
@@ -241,7 +241,7 @@ private final class DeclarationVisitor: SyntaxVisitor {
 
         for binding in node.bindings {
             if let pattern = binding.pattern.as(IdentifierPatternSyntax.self) {
-                symbols.append(ASTIndexer.ExtractedSymbol(
+                symbols.append(ASTIndexer.Symbol(
                     name: pattern.identifier.text,
                     kind: .property,
                     line: location.line,
@@ -263,7 +263,7 @@ private final class DeclarationVisitor: SyntaxVisitor {
         let attributes = extractAttributes(from: node.attributes)
 
         for element in node.elements {
-            symbols.append(ASTIndexer.ExtractedSymbol(
+            symbols.append(ASTIndexer.Symbol(
                 name: element.name.text,
                 kind: .case,
                 line: location.line,
@@ -283,7 +283,7 @@ private final class DeclarationVisitor: SyntaxVisitor {
         let isPublic = hasPublicModifier(node.modifiers)
         let genericParams = extractGenericParameters(from: node.genericParameterClause)
 
-        symbols.append(ASTIndexer.ExtractedSymbol(
+        symbols.append(ASTIndexer.Symbol(
             name: node.name.text,
             kind: .typealias,
             line: location.line,
@@ -300,7 +300,7 @@ private final class DeclarationVisitor: SyntaxVisitor {
         let location = sourceLocationConverter.location(for: node.positionAfterSkippingLeadingTrivia)
         let attributes = extractAttributes(from: node.attributes)
 
-        symbols.append(ASTIndexer.ExtractedSymbol(
+        symbols.append(ASTIndexer.Symbol(
             name: node.name.text,
             kind: .associatedtype,
             line: location.line,
@@ -321,7 +321,7 @@ private final class DeclarationVisitor: SyntaxVisitor {
 
         let signature = "subscript\(node.parameterClause.trimmedDescription) -> \(node.returnClause.type.trimmedDescription)"
 
-        symbols.append(ASTIndexer.ExtractedSymbol(
+        symbols.append(ASTIndexer.Symbol(
             name: "subscript",
             kind: .subscript,
             line: location.line,
@@ -342,7 +342,7 @@ private final class DeclarationVisitor: SyntaxVisitor {
         let attributes = extractAttributes(from: node.attributes)
         let isPublic = hasPublicModifier(node.modifiers)
 
-        symbols.append(ASTIndexer.ExtractedSymbol(
+        symbols.append(ASTIndexer.Symbol(
             name: node.name.text,
             kind: .macro,
             line: location.line,
@@ -364,14 +364,14 @@ private final class DeclarationVisitor: SyntaxVisitor {
         inheritanceClause: InheritanceClauseSyntax?,
         genericParameterClause: GenericParameterClauseSyntax?,
         startPosition: AbsolutePosition
-    ) -> ASTIndexer.ExtractedSymbol {
+    ) -> ASTIndexer.Symbol {
         let location = sourceLocationConverter.location(for: startPosition)
         let extractedAttributes = extractAttributes(from: attributes)
         let conformances = extractConformances(from: inheritanceClause)
         let isPublic = hasPublicModifier(modifiers)
         let genericParams = extractGenericParameters(from: genericParameterClause)
 
-        return ASTIndexer.ExtractedSymbol(
+        return ASTIndexer.Symbol(
             name: name,
             kind: kind,
             line: location.line,

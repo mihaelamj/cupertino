@@ -433,7 +433,7 @@ extension SampleIndex {
         /// Index symbols extracted from a Swift file
         public func indexSymbols(
             fileId: Int64,
-            symbols: [ASTIndexer.ExtractedSymbol]
+            symbols: [ASTIndexer.Symbol]
         ) async throws {
             guard let database else {
                 throw SampleIndex.Error.databaseNotInitialized
@@ -501,7 +501,7 @@ extension SampleIndex {
         }
 
         /// Index symbol into FTS table
-        private func indexSymbolFTS(symbol: ASTIndexer.ExtractedSymbol) async throws {
+        private func indexSymbolFTS(symbol: ASTIndexer.Symbol) async throws {
             guard let database else { return }
 
             let sql = """
@@ -536,7 +536,7 @@ extension SampleIndex {
         /// Index imports extracted from a Swift file
         public func indexImports(
             fileId: Int64,
-            imports: [ASTIndexer.ExtractedImport]
+            imports: [ASTIndexer.Import]
         ) async throws {
             guard let database else {
                 throw SampleIndex.Error.databaseNotInitialized

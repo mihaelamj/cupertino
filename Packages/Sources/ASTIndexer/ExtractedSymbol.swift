@@ -25,7 +25,7 @@ extension ASTIndexer {
     }
 
     /// A symbol extracted from Swift source code
-    public struct ExtractedSymbol: Codable, Sendable, Hashable {
+    public struct Symbol: Codable, Sendable, Hashable {
         /// Symbol name (e.g., "AppState", "fetchItems", "count")
         public let name: String
 
@@ -92,7 +92,7 @@ extension ASTIndexer {
     }
 
     /// An import statement extracted from Swift source
-    public struct ExtractedImport: Codable, Sendable, Hashable {
+    public struct Import: Codable, Sendable, Hashable {
         /// Module name (e.g., "SwiftUI", "Foundation")
         public let moduleName: String
 
@@ -110,12 +110,12 @@ extension ASTIndexer {
     }
 
     /// Result of parsing a Swift source file
-    public struct ExtractionResult: Codable, Sendable {
+    public struct Result: Codable, Sendable {
         /// All symbols found in the source
-        public let symbols: [ExtractedSymbol]
+        public let symbols: [Symbol]
 
         /// All imports found in the source
-        public let imports: [ExtractedImport]
+        public let imports: [Import]
 
         /// Whether the source had syntax errors
         public let hasErrors: Bool
@@ -124,8 +124,8 @@ extension ASTIndexer {
         public let errorMessage: String?
 
         public init(
-            symbols: [ExtractedSymbol],
-            imports: [ExtractedImport],
+            symbols: [Symbol],
+            imports: [Import],
             hasErrors: Bool = false,
             errorMessage: String? = nil
         ) {
@@ -136,6 +136,6 @@ extension ASTIndexer {
         }
 
         /// Empty result (for failed parsing)
-        public static let empty = ExtractionResult(symbols: [], imports: [], hasErrors: true)
+        public static let empty = Result(symbols: [], imports: [], hasErrors: true)
     }
 }
