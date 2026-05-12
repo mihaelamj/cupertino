@@ -1,9 +1,10 @@
 import Foundation
 @testable import Search
+import SharedConstants
 import SharedCore
+import SharedModels
 import SQLite3
 import Testing
-import SharedModels
 
 // AST extraction over stored `doc_code_examples` (#192 section D).
 //
@@ -192,13 +193,13 @@ struct CodeExampleSymbolsTests {
         let uri = "apple-docs://swiftui/observable"
         let index = try await Search.Index(dbPath: dbPath)
 
-        let page = try StructuredDocumentationPage(
+        let page = try Shared.Models.StructuredDocumentationPage(
             url: #require(URL(string: "https://developer.apple.com/documentation/swiftui/observable")),
             title: "Observable",
             kind: .protocol,
             source: .appleJSON,
             abstract: "An object that announces changes to its properties.",
-            declaration: StructuredDocumentationPage.Declaration(code: "@MainActor public protocol Observable {}"),
+            declaration: Shared.Models.StructuredDocumentationPage.Declaration(code: "@MainActor public protocol Observable {}"),
             language: "swift",
             crawledAt: Date(),
             contentHash: "test"

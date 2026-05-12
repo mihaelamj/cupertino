@@ -108,7 +108,7 @@ let targets: [Target] = {
         path: "Sources/Shared/Constants"
     )
 
-    // ---------- SharedUtils (v1.1 refactor 1.4: extracts JSONCoding, PathResolver, Formatting, FTSQuery, SchemaVersion) ----------
+    // ---------- SharedUtils (v1.1 refactor 1.4: extracts Shared.Utils.JSONCoding, Shared.Utils.PathResolver, Formatting, FTSQuery, SchemaVersion) ----------
     let sharedUtilsTarget = Target.target(
         name: "SharedUtils",
         dependencies: ["SharedConstants"],

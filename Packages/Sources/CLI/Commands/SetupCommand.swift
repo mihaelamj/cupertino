@@ -83,7 +83,7 @@ private final class SetupRenderer: @unchecked Sendable {
 
         case .downloadComplete(let label, let bytes):
             printRaw("\n")
-            let size = Shared.Formatting.formatBytes(bytes)
+            let size = Shared.Utils.Formatting.formatBytes(bytes)
             Logging.ConsoleLogger.info("   ✓ \(label) (\(size))")
 
         case .extractStart(let label):
@@ -123,7 +123,7 @@ private final class SetupRenderer: @unchecked Sendable {
         spinnerIndex += 1
         lock.unlock()
 
-        let written = Shared.Formatting.formatBytes(progress.bytesWritten)
+        let written = Shared.Utils.Formatting.formatBytes(progress.bytesWritten)
 
         if let total = progress.totalBytes, total > 0 {
             let frac = Double(progress.bytesWritten) / Double(total)
@@ -131,7 +131,7 @@ private final class SetupRenderer: @unchecked Sendable {
             let empty = barWidth - filled
             let bar = String(repeating: "█", count: filled) + String(repeating: "░", count: empty)
             let percent = String(format: "%3.0f%%", frac * 100)
-            let totalStr = Shared.Formatting.formatBytes(total)
+            let totalStr = Shared.Utils.Formatting.formatBytes(total)
             printRaw("\(clearLine)   \(frame) [\(bar)] \(percent) (\(written)/\(totalStr))")
         } else {
             printRaw("\(clearLine)   \(frame) Downloading... \(written)")

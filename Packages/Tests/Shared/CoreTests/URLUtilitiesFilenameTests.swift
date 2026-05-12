@@ -1,4 +1,5 @@
 import Foundation
+import SharedConstants
 @testable import SharedCore
 import SharedModels
 import Testing
@@ -19,7 +20,7 @@ struct URLUtilitiesFilenameTests {
     private let jsonExtensionBytes = ".json".utf8.count
 
     private func filenameWithExtension(for url: URL) -> String {
-        URLUtilities.filename(from: url) + ".json"
+        Shared.Models.URLUtilities.filename(from: url) + ".json"
     }
 
     // MARK: - Exact failing URLs from the 2026-04-30 error log
@@ -79,8 +80,8 @@ struct URLUtilitiesFilenameTests {
 
     @Test("Two near-identical overloads still produce different filenames")
     func nearIdenticalOverloadsAreUnique() {
-        let firstName = URLUtilities.filename(from: Self.mpssvgfReprojection12)
-        let secondName = URLUtilities.filename(from: Self.mpssvgfReprojection14)
+        let firstName = Shared.Models.URLUtilities.filename(from: Self.mpssvgfReprojection12)
+        let secondName = Shared.Models.URLUtilities.filename(from: Self.mpssvgfReprojection14)
         #expect(
             firstName != secondName,
             "filename collision between two distinct Apple URLs:\n  \(firstName)\n  \(secondName)"
@@ -96,14 +97,14 @@ struct URLUtilitiesFilenameTests {
             #require(URL(string: "https://developer.apple.com/documentation/swift/array")),
             #require(URL(string: "https://developer.apple.com/documentation/swiftui/view")),
         ]
-        let names = urls.map(URLUtilities.filename)
+        let names = urls.map(Shared.Models.URLUtilities.filename)
         #expect(Set(names).count == names.count, "duplicate filenames: \(names)")
     }
 
     @Test("Same URL produces same filename (deterministic)")
     func filenameIsDeterministic() {
-        let firstCall = URLUtilities.filename(from: Self.mpssvgfReprojection12)
-        let secondCall = URLUtilities.filename(from: Self.mpssvgfReprojection12)
+        let firstCall = Shared.Models.URLUtilities.filename(from: Self.mpssvgfReprojection12)
+        let secondCall = Shared.Models.URLUtilities.filename(from: Self.mpssvgfReprojection12)
         #expect(firstCall == secondCall)
     }
 
@@ -112,14 +113,14 @@ struct URLUtilitiesFilenameTests {
     @Test("Short URLs are not truncated and preserve their natural form")
     func shortURLsUntruncated() throws {
         let url = try #require(URL(string: "https://developer.apple.com/documentation/swift/array"))
-        let name = URLUtilities.filename(from: url)
+        let name = Shared.Models.URLUtilities.filename(from: url)
         #expect(name == "documentation_swift_array")
     }
 
     @Test("Operator URLs at moderate length keep their hash disambiguator and are not double-suffixed")
     func operatorURLKeepsSingleHash() throws {
         let url = try #require(URL(string: "https://developer.apple.com/documentation/swift/int/+(_:_:)"))
-        let name = URLUtilities.filename(from: url)
+        let name = Shared.Models.URLUtilities.filename(from: url)
         let underscoreCount = name.filter { $0 == "_" }.count
         #expect(name.contains("documentation_swift_int"))
         #expect(underscoreCount > 0)
@@ -131,7 +132,7 @@ struct URLUtilitiesFilenameTests {
 
     @Test("Truncated filenames do not end on a trailing underscore before .json")
     func truncatedFilenameNoTrailingUnderscore() {
-        let name = URLUtilities.filename(from: Self.mpssvgfReprojection12)
+        let name = Shared.Models.URLUtilities.filename(from: Self.mpssvgfReprojection12)
         // Should end with `_<8 hex chars>` — not `_` immediately before that.
         let parts = name.split(separator: "_")
         let last = parts.last.map(String.init) ?? ""
@@ -142,7 +143,7 @@ struct URLUtilitiesFilenameTests {
 
     @Test("Filename never returns empty string")
     func filenameNeverEmpty() throws {
-        let name = try URLUtilities.filename(from: #require(URL(string: "https://developer.apple.com/")))
+        let name = try Shared.Models.URLUtilities.filename(from: #require(URL(string: "https://developer.apple.com/")))
         #expect(!name.isEmpty)
     }
 
@@ -161,7 +162,7 @@ struct URLUtilitiesFilenameTests {
         let lower = try #require(
             URL(string: "https://developer.apple.com/documentation/swift/withtaskgroup(of:returning:isolation:body:)")
         )
-        #expect(URLUtilities.filename(from: capital) == URLUtilities.filename(from: lower))
+        #expect(Shared.Models.URLUtilities.filename(from: capital) == Shared.Models.URLUtilities.filename(from: lower))
     }
 
     @Test("Case-variant operator URL pair: filename is identical (Observation/Observable() vs lowercase)")
@@ -172,7 +173,7 @@ struct URLUtilitiesFilenameTests {
         let lower = try #require(
             URL(string: "https://developer.apple.com/documentation/observation/observable()")
         )
-        #expect(URLUtilities.filename(from: capital) == URLUtilities.filename(from: lower))
+        #expect(Shared.Models.URLUtilities.filename(from: capital) == Shared.Models.URLUtilities.filename(from: lower))
     }
 
     @Test("Case-variant plain URL pair: filename is identical")
@@ -183,6 +184,6 @@ struct URLUtilitiesFilenameTests {
         let lower = try #require(
             URL(string: "https://developer.apple.com/documentation/cinematic/cnassetinfo-2ata2")
         )
-        #expect(URLUtilities.filename(from: capital) == URLUtilities.filename(from: lower))
+        #expect(Shared.Models.URLUtilities.filename(from: capital) == Shared.Models.URLUtilities.filename(from: lower))
     }
 }

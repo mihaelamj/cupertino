@@ -1,7 +1,7 @@
 @testable import Core
+import CoreProtocols
 import Foundation
 import Testing
-import CoreProtocols
 @testable import TUI
 
 // MARK: - HomeView Tests

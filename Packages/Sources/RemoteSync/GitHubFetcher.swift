@@ -1,6 +1,6 @@
 import Foundation
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedUtils
 
 // MARK: - GitHub Fetcher

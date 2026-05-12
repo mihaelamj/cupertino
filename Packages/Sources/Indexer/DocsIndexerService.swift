@@ -1,8 +1,8 @@
 import Foundation
 import Logging
 import Search
-import SharedCore
 import SharedConstants
+import SharedCore
 
 extension Indexer {
     /// Build `search.db` from on-disk corpus (apple-docs JSON, swift

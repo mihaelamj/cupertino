@@ -208,7 +208,7 @@ struct DoctorCommand: AsyncParsableCommand {
 
         let fileSize = (try? FileManager.default.attributesOfItem(atPath: searchDBURL.path)[.size] as? UInt64) ?? 0
         Logging.Log.output("   ✓ Database: \(searchDBURL.path)")
-        Logging.Log.output("   ✓ Size: \(Shared.Formatting.formatBytes(Int64(fileSize)))")
+        Logging.Log.output("   ✓ Size: \(Shared.Utils.Formatting.formatBytes(Int64(fileSize)))")
 
         if !reportSchemaVersion(at: searchDBURL) {
             return false
@@ -295,7 +295,7 @@ struct DoctorCommand: AsyncParsableCommand {
 
         let fileSize = (try? FileManager.default.attributesOfItem(atPath: samplesDBURL.path)[.size] as? UInt64) ?? 0
         Logging.Log.output("   ✓ Database: \(samplesDBURL.path)")
-        Logging.Log.output("   ✓ Size: \(Shared.Formatting.formatBytes(Int64(fileSize)))")
+        Logging.Log.output("   ✓ Size: \(Shared.Utils.Formatting.formatBytes(Int64(fileSize)))")
 
         let projectCount = Diagnostics.Probes.rowCount(at: samplesDBURL, sql: "SELECT COUNT(*) FROM projects;")
         let fileCount = Diagnostics.Probes.rowCount(at: samplesDBURL, sql: "SELECT COUNT(*) FROM files;")
@@ -327,7 +327,7 @@ struct DoctorCommand: AsyncParsableCommand {
 
         let fileSize = (try? FileManager.default.attributesOfItem(atPath: packagesDBURL.path)[.size] as? UInt64) ?? 0
         Logging.Log.output("   ✓ Database: \(packagesDBURL.path)")
-        Logging.Log.output("   ✓ Size: \(Shared.Formatting.formatBytes(Int64(fileSize)))")
+        Logging.Log.output("   ✓ Size: \(Shared.Utils.Formatting.formatBytes(Int64(fileSize)))")
 
         let packageCount = Diagnostics.Probes.rowCount(at: packagesDBURL, sql: "SELECT COUNT(*) FROM packages;")
         let fileCount = Diagnostics.Probes.rowCount(at: packagesDBURL, sql: "SELECT COUNT(*) FROM package_files;")

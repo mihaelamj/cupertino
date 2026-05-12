@@ -260,7 +260,7 @@ extension Search.Index {
     /// Extract optimized FTS content based on document kind
     /// Core types get focused content (title, abstract, overview) without member noise
     /// Members get title + abstract + declaration for quick matching
-    func extractOptimizedContent(from page: StructuredDocumentationPage) -> String {
+    func extractOptimizedContent(from page: Shared.Models.StructuredDocumentationPage) -> String {
         let kind = page.inferredKind
         var parts: [String] = []
 
@@ -328,7 +328,7 @@ extension Search.Index {
         uri: String,
         source: String,
         framework: String,
-        page: StructuredDocumentationPage,
+        page: Shared.Models.StructuredDocumentationPage,
         jsonData: String,
         overrideMinIOS: String? = nil,
         overrideMinMacOS: String? = nil,

@@ -1,7 +1,7 @@
 import Foundation
 import SharedConstants
 
-extension Shared {
+extension Shared.Utils {
     /// Pure string helpers for building SQLite FTS5 MATCH queries from
     /// natural-language input. Lifted out of `Search.PackageQuery` (#192 E)
     /// in #238 so `SampleIndex` can reuse the exact same tokenization +

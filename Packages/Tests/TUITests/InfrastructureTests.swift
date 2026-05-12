@@ -1,9 +1,9 @@
 @testable import Core
+import CoreProtocols
 import Foundation
 import Testing
 import TestSupport
 @testable import TUI
-import CoreProtocols
 
 // MARK: - Colors Tests
 

@@ -1,8 +1,8 @@
 @testable import Core
+import CoreProtocols
 import Foundation
 import Testing
 import TestSupport
-import CoreProtocols
 @testable import TUI
 
 // MARK: - PackageEntry Tests

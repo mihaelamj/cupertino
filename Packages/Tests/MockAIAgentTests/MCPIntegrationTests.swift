@@ -338,7 +338,7 @@ struct TimeoutError: Error {}
 ///    `~/.cupertino-dev/`. That keeps day-to-day development data away
 ///    from the production `~/.cupertino/`. Integration tests run inside a
 ///    test bundle where `Bundle.main.executableURL` is the test runner
-///    (not cupertino), so `Shared.BinaryConfig.shared` resolves to
+///    (not cupertino), so `Shared.Constants.BinaryConfig.shared` resolves to
 ///    `~/.cupertino/`. The path mismatch makes the test create a
 ///    fixture DB at `~/.cupertino/samples.db` while the spawned cupertino
 ///    looks for `~/.cupertino-dev/samples.db`. This fixture moves the

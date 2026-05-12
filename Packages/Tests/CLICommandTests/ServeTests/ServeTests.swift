@@ -51,14 +51,14 @@ struct MCPCommandTests {
         try "# Swift\n\nTest content about Swift language.".write(to: testFile, atomically: true, encoding: .utf8)
 
         // Create metadata.json for the test file
-        let pageMetadata = PageMetadata(
+        let pageMetadata = Shared.Models.PageMetadata(
             url: "https://developer.apple.com/documentation/swift",
             framework: "swift",
             filePath: testFile.path,
             contentHash: "test-hash",
             depth: 0
         )
-        let metadata = CrawlMetadata(pages: [pageMetadata.url: pageMetadata])
+        let metadata = Shared.Models.CrawlMetadata(pages: [pageMetadata.url: pageMetadata])
         let metadataFile = tempDir.appendingPathComponent("metadata.json")
         try metadata.save(to: metadataFile)
 
@@ -385,7 +385,7 @@ struct MCPServerIntegrationTests {
         let searchDbPath = tempDir.appendingPathComponent("search.db")
         let searchIndex = try await Search.Index(dbPath: searchDbPath)
 
-        let metadata = try CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
+        let metadata = try Shared.Models.CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
         let builder = Search.IndexBuilder(
             searchIndex: searchIndex,
             metadata: metadata,

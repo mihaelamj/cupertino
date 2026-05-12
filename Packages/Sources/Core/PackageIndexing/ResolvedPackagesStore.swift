@@ -1,5 +1,6 @@
 import CoreProtocols
 import Foundation
+import SharedConstants
 import SharedCore
 import SharedModels
 
@@ -11,14 +12,14 @@ extension Core {
         public let owner: String
         public let repo: String
         public let url: String
-        public let priority: PackagePriority
+        public let priority: Shared.Models.PackagePriority
         public let parents: [String]
 
         public init(
             owner: String,
             repo: String,
             url: String,
-            priority: PackagePriority,
+            priority: Shared.Models.PackagePriority,
             parents: [String]
         ) {
             self.owner = owner
@@ -84,7 +85,7 @@ extension Core {
         /// change here must invalidate the cache. Sort for stability so cosmetic
         /// reorderings in the seed file don't trigger a needless re-resolve.
         public static func checksum(
-            seeds: [PackageReference],
+            seeds: [Shared.Models.PackageReference],
             exclusions: Set<String>
         ) -> String {
             let seedEntries = seeds

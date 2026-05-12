@@ -1,15 +1,16 @@
 // swiftlint:disable type_body_length
 import Foundation
+import SharedConstants
 @testable import SharedCore
 import SharedUtils
 import Testing
 import TestSupport
 
-// MARK: - JSONCoding Tests
+// MARK: - Shared.Utils.JSONCoding Tests
 
-/// Tests for the unified JSONCoding utility
+/// Tests for the unified Shared.Utils.JSONCoding utility
 /// Ensures consistent date encoding/decoding across the codebase
-@Suite("JSONCoding Utility Tests")
+@Suite("Shared.Utils.JSONCoding Utility Tests")
 struct JSONCodingTests {
     // MARK: - Test Models
 
@@ -38,7 +39,7 @@ struct JSONCodingTests {
         let date = Date(timeIntervalSince1970: 1700000000) // 2023-11-14T22:13:20Z
         let model = ModelWithDate(name: "Test", createdAt: date, count: 42)
 
-        let encoder = JSONCoding.encoder()
+        let encoder = Shared.Utils.JSONCoding.encoder()
         let data = try encoder.encode(model)
         let jsonString = try #require(String(data: data, encoding: .utf8))
 
@@ -51,7 +52,7 @@ struct JSONCodingTests {
     func prettyEncoderFormatsOutput() throws {
         let model = ModelWithoutDate(name: "Test", value: 123)
 
-        let encoder = JSONCoding.prettyEncoder()
+        let encoder = Shared.Utils.JSONCoding.prettyEncoder()
         let data = try encoder.encode(model)
         let jsonString = try #require(String(data: data, encoding: .utf8))
 
@@ -64,7 +65,7 @@ struct JSONCodingTests {
     func prettyEncoderUsesSortedKeys() throws {
         let model = ModelWithoutDate(name: "Test", value: 123)
 
-        let encoder = JSONCoding.prettyEncoder()
+        let encoder = Shared.Utils.JSONCoding.prettyEncoder()
         let data = try encoder.encode(model)
         let jsonString = try #require(String(data: data, encoding: .utf8))
 
@@ -87,7 +88,7 @@ struct JSONCodingTests {
         """
         let data = Data(jsonString.utf8)
 
-        let decoder = JSONCoding.decoder()
+        let decoder = Shared.Utils.JSONCoding.decoder()
         let model = try decoder.decode(ModelWithDate.self, from: data)
 
         #expect(model.name == "Test")
@@ -107,7 +108,7 @@ struct JSONCodingTests {
         """
         let data = Data(jsonString.utf8)
 
-        let decoder = JSONCoding.decoder()
+        let decoder = Shared.Utils.JSONCoding.decoder()
 
         // Should throw because we're sending Double timestamp but expecting ISO8601 string
         #expect(throws: (any Error).self) {
@@ -122,7 +123,7 @@ struct JSONCodingTests {
         let date = Date(timeIntervalSince1970: 1700000000)
         let model = ModelWithDate(name: "Test", createdAt: date, count: 42)
 
-        let data = try JSONCoding.encode(model)
+        let data = try Shared.Utils.JSONCoding.encode(model)
         let jsonString = try #require(String(data: data, encoding: .utf8))
 
         #expect(jsonString.contains("Test"))
@@ -134,7 +135,7 @@ struct JSONCodingTests {
     func convenienceEncodePrettyMethodWorks() throws {
         let model = ModelWithoutDate(name: "Test", value: 123)
 
-        let data = try JSONCoding.encodePretty(model)
+        let data = try Shared.Utils.JSONCoding.encodePretty(model)
         let jsonString = try #require(String(data: data, encoding: .utf8))
 
         #expect(jsonString.contains("\n"), "Should be pretty-printed")
@@ -153,7 +154,7 @@ struct JSONCodingTests {
         """
         let data = Data(jsonString.utf8)
 
-        let model = try JSONCoding.decode(ModelWithDate.self, from: data)
+        let model = try Shared.Utils.JSONCoding.decode(ModelWithDate.self, from: data)
 
         #expect(model.name == "Test")
         #expect(model.count == 42)
@@ -176,7 +177,7 @@ struct JSONCodingTests {
         let model = ModelWithDate(name: "Test", createdAt: date, count: 42)
 
         // Encode to file (should create directory automatically)
-        try JSONCoding.encode(model, to: filePath)
+        try Shared.Utils.JSONCoding.encode(model, to: filePath)
 
         // Verify directory was created
         #expect(FileManager.default.fileExists(atPath: subdirPath.path))
@@ -211,7 +212,7 @@ struct JSONCodingTests {
         try Data(jsonString.utf8).write(to: tempFile)
 
         // Decode from file
-        let model = try JSONCoding.decode(ModelWithDate.self, from: tempFile)
+        let model = try Shared.Utils.JSONCoding.decode(ModelWithDate.self, from: tempFile)
 
         #expect(model.name == "FileTest")
         #expect(model.count == 99)
@@ -226,10 +227,10 @@ struct JSONCodingTests {
         let original = ModelWithDate(name: "RoundTrip", createdAt: date, count: 777)
 
         // Encode
-        let data = try JSONCoding.encode(original)
+        let data = try Shared.Utils.JSONCoding.encode(original)
 
         // Decode
-        let decoded = try JSONCoding.decode(ModelWithDate.self, from: data)
+        let decoded = try Shared.Utils.JSONCoding.decode(ModelWithDate.self, from: data)
 
         #expect(decoded == original)
     }
@@ -247,10 +248,10 @@ struct JSONCodingTests {
         let original = ModelWithDate(name: "FileRoundTrip", createdAt: date, count: 888)
 
         // Save to file
-        try JSONCoding.encode(original, to: tempFile)
+        try Shared.Utils.JSONCoding.encode(original, to: tempFile)
 
         // Load from file
-        let loaded = try JSONCoding.decode(ModelWithDate.self, from: tempFile)
+        let loaded = try Shared.Utils.JSONCoding.decode(ModelWithDate.self, from: tempFile)
 
         #expect(loaded == original)
     }
@@ -270,10 +271,10 @@ struct JSONCodingTests {
         )
 
         // Encode
-        let data = try JSONCoding.encode(original)
+        let data = try Shared.Utils.JSONCoding.encode(original)
 
         // Decode
-        let decoded = try JSONCoding.decode(NestedModelWithDates.self, from: data)
+        let decoded = try Shared.Utils.JSONCoding.decode(NestedModelWithDates.self, from: data)
 
         #expect(decoded == original)
         #expect(decoded.metadata.name == "Nested")
@@ -286,8 +287,8 @@ struct JSONCodingTests {
         struct EmptyModel: Codable, Equatable {}
 
         let original = EmptyModel()
-        let data = try JSONCoding.encode(original)
-        let decoded = try JSONCoding.decode(EmptyModel.self, from: data)
+        let data = try Shared.Utils.JSONCoding.encode(original)
+        let decoded = try Shared.Utils.JSONCoding.decode(EmptyModel.self, from: data)
 
         #expect(decoded == original)
     }
@@ -303,13 +304,13 @@ struct JSONCodingTests {
         let withoutDate = ModelWithOptionalDate(name: "NoDate", date: nil)
 
         // Test with date
-        let data1 = try JSONCoding.encode(withDate)
-        let decoded1 = try JSONCoding.decode(ModelWithOptionalDate.self, from: data1)
+        let data1 = try Shared.Utils.JSONCoding.encode(withDate)
+        let decoded1 = try Shared.Utils.JSONCoding.decode(ModelWithOptionalDate.self, from: data1)
         #expect(decoded1 == withDate)
 
         // Test without date
-        let data2 = try JSONCoding.encode(withoutDate)
-        let decoded2 = try JSONCoding.decode(ModelWithOptionalDate.self, from: data2)
+        let data2 = try Shared.Utils.JSONCoding.encode(withoutDate)
+        let decoded2 = try Shared.Utils.JSONCoding.decode(ModelWithOptionalDate.self, from: data2)
         #expect(decoded2 == withoutDate)
     }
 
@@ -321,8 +322,8 @@ struct JSONCodingTests {
             ModelWithDate(name: "Third", createdAt: Date(timeIntervalSince1970: 1700002000), count: 3),
         ]
 
-        let data = try JSONCoding.encode(models)
-        let decoded = try JSONCoding.decode([ModelWithDate].self, from: data)
+        let data = try Shared.Utils.JSONCoding.encode(models)
+        let decoded = try Shared.Utils.JSONCoding.decode([ModelWithDate].self, from: data)
 
         #expect(decoded.count == 3)
         #expect(decoded[0] == models[0])
@@ -337,8 +338,8 @@ struct JSONCodingTests {
             "modified": Date(timeIntervalSince1970: 1700001000),
         ]
 
-        let data = try JSONCoding.encode(dict)
-        let decoded = try JSONCoding.decode([String: Date].self, from: data)
+        let data = try Shared.Utils.JSONCoding.encode(dict)
+        let decoded = try Shared.Utils.JSONCoding.decode([String: Date].self, from: data)
 
         #expect(decoded.count == 2)
         #expect(try abs(#require(decoded["created"]?.timeIntervalSince1970) - 1700000000) < 1.0)
@@ -353,14 +354,14 @@ struct JSONCodingTests {
         let model = ModelWithDate(name: "Test", createdAt: date, count: 42)
 
         // Encode with standard encoder
-        let standardData = try JSONCoding.encode(model)
+        let standardData = try Shared.Utils.JSONCoding.encode(model)
 
         // Encode with pretty encoder
-        let prettyData = try JSONCoding.encodePretty(model)
+        let prettyData = try Shared.Utils.JSONCoding.encodePretty(model)
 
         // Both should decode to the same model
-        let decodedFromStandard = try JSONCoding.decode(ModelWithDate.self, from: standardData)
-        let decodedFromPretty = try JSONCoding.decode(ModelWithDate.self, from: prettyData)
+        let decodedFromStandard = try Shared.Utils.JSONCoding.decode(ModelWithDate.self, from: standardData)
+        let decodedFromPretty = try Shared.Utils.JSONCoding.decode(ModelWithDate.self, from: prettyData)
 
         #expect(decodedFromStandard == model)
         #expect(decodedFromPretty == model)
@@ -372,7 +373,7 @@ struct JSONCodingTests {
         let date = Date(timeIntervalSince1970: 1700000000)
         let model = ModelWithDate(name: "Test", createdAt: date, count: 42)
 
-        let data = try JSONCoding.encode(model)
+        let data = try Shared.Utils.JSONCoding.encode(model)
 
         // Verify it's valid JSON by parsing with standard JSONSerialization
         let jsonObject = try JSONSerialization.jsonObject(with: data)
@@ -394,7 +395,7 @@ struct JSONCodingTests {
         let invalidJSON = Data("{ this is not valid json }".utf8)
 
         #expect(throws: (any Error).self) {
-            _ = try JSONCoding.decode(ModelWithDate.self, from: invalidJSON)
+            _ = try Shared.Utils.JSONCoding.decode(ModelWithDate.self, from: invalidJSON)
         }
     }
 
@@ -409,7 +410,7 @@ struct JSONCodingTests {
         let data = Data(jsonString.utf8)
 
         #expect(throws: (any Error).self) {
-            _ = try JSONCoding.decode(ModelWithoutDate.self, from: data)
+            _ = try Shared.Utils.JSONCoding.decode(ModelWithoutDate.self, from: data)
         }
     }
 
@@ -419,14 +420,14 @@ struct JSONCodingTests {
             .appendingPathComponent("does-not-exist-\(UUID().uuidString).json")
 
         #expect(throws: (any Error).self) {
-            _ = try JSONCoding.decode(ModelWithDate.self, from: nonExistentFile)
+            _ = try Shared.Utils.JSONCoding.decode(ModelWithDate.self, from: nonExistentFile)
         }
     }
 
     // MARK: - Atomic Write Tests
 
     //
-    // Regression test for the v1.0 atomic-write fix in `JSONCoding.encode(_:to:)`.
+    // Regression test for the v1.0 atomic-write fix in `Shared.Utils.JSONCoding.encode(_:to:)`.
     // A multi-day Apple-docs crawl saves `metadata.json` (often several MB) every
     // 30s. Before the fix, that write went via `Data.write(to:)` without `.atomic`,
     // so a kill mid-save could leave a half-written file → resume on next launch
@@ -473,7 +474,7 @@ struct JSONCodingTests {
         defer { try? FileManager.default.removeItem(at: tempFile) }
 
         // Seed v0 so the first reader iteration always finds something.
-        try JSONCoding.encode(LargePayload.make(version: 0), to: tempFile)
+        try Shared.Utils.JSONCoding.encode(LargePayload.make(version: 0), to: tempFile)
 
         let writeIterations = 200
         let readerCount = 8
@@ -493,7 +494,7 @@ struct JSONCodingTests {
             group.addTask {
                 for version in 1...writeIterations {
                     do {
-                        try JSONCoding.encode(LargePayload.make(version: version), to: tempFile)
+                        try Shared.Utils.JSONCoding.encode(LargePayload.make(version: version), to: tempFile)
                     } catch {
                         await corruption.record("writer threw at v=\(version): \(error)")
                         return
@@ -508,7 +509,7 @@ struct JSONCodingTests {
                 group.addTask {
                     for _ in 0..<(writeIterations * 2) {
                         do {
-                            let loaded = try JSONCoding.decode(LargePayload.self, from: tempFile)
+                            let loaded = try Shared.Utils.JSONCoding.decode(LargePayload.self, from: tempFile)
                             // Sanity: payload made by `.make()` always has `count` entries.
                             if loaded.entries.count != 2000 {
                                 await corruption.record(

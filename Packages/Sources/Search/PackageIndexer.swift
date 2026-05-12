@@ -145,7 +145,7 @@ extension Search {
                 throw IndexerError.manifestMalformed(manifestURL, String(describing: error))
             }
 
-            let priority: PackagePriority
+            let priority: Shared.Models.PackagePriority
             if manifest.owner == Shared.Constants.GitHubOrg.apple
                 || manifest.owner == Shared.Constants.GitHubOrg.swiftlang
                 || manifest.owner == Shared.Constants.GitHubOrg.swiftServer {

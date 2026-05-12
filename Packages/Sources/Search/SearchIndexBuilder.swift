@@ -18,7 +18,7 @@ import SharedModels
 extension Search {
     public actor IndexBuilder {
         private let searchIndex: Search.Index
-        private let metadata: CrawlMetadata?
+        private let metadata: Shared.Models.CrawlMetadata?
         private let docsDirectory: URL
         private let evolutionDirectory: URL?
         private let swiftOrgDirectory: URL?
@@ -28,7 +28,7 @@ extension Search {
 
         public init(
             searchIndex: Search.Index,
-            metadata: CrawlMetadata?,
+            metadata: Shared.Models.CrawlMetadata?,
             docsDirectory: URL,
             evolutionDirectory: URL? = nil,
             swiftOrgDirectory: URL? = nil,
@@ -146,7 +146,7 @@ extension Search {
         /// branch added in PR #288) without needing to bootstrap the whole
         /// `buildIndex()` orchestration.
         func indexAppleDocsFromMetadata(
-            metadata: CrawlMetadata,
+            metadata: Shared.Models.CrawlMetadata,
             onProgress: (@Sendable (Int, Int) -> Void)?
         ) async throws {
             let total = metadata.pages.count
@@ -187,10 +187,10 @@ extension Search {
                 }
 
                 // Extract title from front matter or first heading
-                let title = extractTitle(from: content) ?? URLUtilities.filename(from: parsedURL)
+                let title = extractTitle(from: content) ?? Shared.Models.URLUtilities.filename(from: parsedURL)
 
                 // Build URI
-                let uri = "apple-docs://\(pageMetadata.framework)/\(URLUtilities.filename(from: parsedURL))"
+                let uri = "apple-docs://\(pageMetadata.framework)/\(Shared.Models.URLUtilities.filename(from: parsedURL))"
 
                 // Index document (Apple docs from /docs folder)
                 do {
@@ -253,7 +253,7 @@ extension Search {
                 let framework = canonicalPathComponent(rawFramework)
 
                 // Always work with StructuredDocumentationPage
-                let structuredPage: StructuredDocumentationPage
+                let structuredPage: Shared.Models.StructuredDocumentationPage
                 let jsonString: String
 
                 if file.pathExtension == "json" {
@@ -263,7 +263,7 @@ extension Search {
                         jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                         let decoder = JSONDecoder()
                         decoder.dateDecodingStrategy = .iso8601
-                        structuredPage = try decoder.decode(StructuredDocumentationPage.self, from: jsonData)
+                        structuredPage = try decoder.decode(Shared.Models.StructuredDocumentationPage.self, from: jsonData)
                     } catch {
                         logError("Failed to decode \(file.lastPathComponent): \(error)")
                         skipped += 1
@@ -322,7 +322,7 @@ extension Search {
                 }
 
                 // Generate URI: apple-docs://{framework}/{filename}
-                let filename = URLUtilities.normalize(structuredPage.url)?.lastPathComponent
+                let filename = Shared.Models.URLUtilities.normalize(structuredPage.url)?.lastPathComponent
                     ?? canonicalPathComponent(file.deletingPathExtension().lastPathComponent)
                 let uri = "apple-docs://\(framework)/\(filename)"
 
@@ -452,19 +452,19 @@ extension Search {
         /// `crawledAt`; without this the decode silently fails on every real
         /// Apple-doc JSON file and the dedup primary path becomes dead code.
         /// See `indexStructuredDocument` for the canonical decoder config.
-        func loadStructuredPage(from file: URL) -> StructuredDocumentationPage? {
+        func loadStructuredPage(from file: URL) -> Shared.Models.StructuredDocumentationPage? {
             guard file.pathExtension.lowercased() == "json",
                   let data = try? Data(contentsOf: file) else {
                 return nil
             }
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
-            return try? decoder.decode(StructuredDocumentationPage.self, from: data)
+            return try? decoder.decode(Shared.Models.StructuredDocumentationPage.self, from: data)
         }
 
         func canonicalDocumentationURL(for file: URL) -> String? {
             if let page = loadStructuredPage(from: file) {
-                return URLUtilities.normalize(page.url)?.absoluteString
+                return Shared.Models.URLUtilities.normalize(page.url)?.absoluteString
             }
 
             guard let rawFramework = extractFrameworkFromPath(file, relativeTo: docsDirectory) else {
@@ -609,7 +609,7 @@ extension Search {
 
             let attributes = try? FileManager.default.attributesOfItem(atPath: file.path)
             let modDate = attributes?[.modificationDate] as? Date ?? Date()
-            let contentHash = HashUtilities.sha256(of: content)
+            let contentHash = Shared.Models.HashUtilities.sha256(of: content)
 
             // Extract Swift version from status and map to iOS/macOS
             let status = extractProposalStatus(from: content)
@@ -775,7 +775,7 @@ extension Search {
                     ?? Shared.Constants.SourcePrefix.swiftOrg
 
                 // Handle JSON and MD files (same pattern as Apple docs)
-                let structuredPage: StructuredDocumentationPage
+                let structuredPage: Shared.Models.StructuredDocumentationPage
                 let jsonString: String
 
                 if file.pathExtension == "json" {
@@ -785,7 +785,7 @@ extension Search {
                         jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                         let decoder = JSONDecoder()
                         decoder.dateDecodingStrategy = .iso8601
-                        structuredPage = try decoder.decode(StructuredDocumentationPage.self, from: jsonData)
+                        structuredPage = try decoder.decode(Shared.Models.StructuredDocumentationPage.self, from: jsonData)
                     } catch {
                         logError("Failed to decode \(file.lastPathComponent): \(error)")
                         skipped += 1
@@ -928,7 +928,7 @@ extension Search {
                 let uri = "apple-archive://\(guideID)/\(filename)"
 
                 // Calculate content hash
-                let contentHash = HashUtilities.sha256(of: content)
+                let contentHash = Shared.Models.HashUtilities.sha256(of: content)
 
                 // Use file modification date
                 let attributes = try? FileManager.default.attributesOfItem(atPath: file.path)
@@ -1017,7 +1017,7 @@ extension Search {
                 let uri = "hig://\(category)/\(filename)"
 
                 // Calculate content hash
-                let contentHash = HashUtilities.sha256(of: content)
+                let contentHash = Shared.Models.HashUtilities.sha256(of: content)
 
                 // Use file modification date
                 let attributes = try? FileManager.default.attributesOfItem(atPath: file.path)
@@ -1329,7 +1329,7 @@ extension Search {
         /// missed by every prior title-only check.
         ///
         /// `internal` so SearchTests can pin the truth table.
-        static func pageLooksLikeJavaScriptFallback(_ page: StructuredDocumentationPage) -> Bool {
+        static func pageLooksLikeJavaScriptFallback(_ page: Shared.Models.StructuredDocumentationPage) -> Bool {
             // Strongest signal: overview is the literal Apple JS-warning text.
             if let overview = page.overview, overview.contains("Please turn on JavaScript") {
                 return true

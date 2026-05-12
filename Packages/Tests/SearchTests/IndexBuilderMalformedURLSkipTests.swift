@@ -1,8 +1,9 @@
 import Foundation
 @testable import Search
+import SharedConstants
 import SharedCore
-import Testing
 import SharedModels
+import Testing
 
 // Covers the malformed-URL skip path added to
 // `Search.IndexBuilder.indexAppleDocsFromMetadata` in PR #288. The skip
@@ -40,14 +41,14 @@ struct IndexBuilderMalformedURLSkipTests {
         try "# Good page\n\nHello, well-formed.".write(to: goodFile, atomically: true, encoding: .utf8)
         try "# Bad page\n\nHello, malformed-key.".write(to: badFile, atomically: true, encoding: .utf8)
 
-        let goodMetadata = PageMetadata(
+        let goodMetadata = Shared.Models.PageMetadata(
             url: "https://developer.apple.com/documentation/swiftui/list",
             framework: "swiftui",
             filePath: goodFile.path,
             contentHash: "good-hash",
             depth: 0
         )
-        let badMetadata = PageMetadata(
+        let badMetadata = Shared.Models.PageMetadata(
             url: "",
             framework: "swiftui",
             filePath: badFile.path,
@@ -55,7 +56,7 @@ struct IndexBuilderMalformedURLSkipTests {
             depth: 0
         )
 
-        let crawlMetadata = CrawlMetadata(
+        let crawlMetadata = Shared.Models.CrawlMetadata(
             pages: [
                 "https://developer.apple.com/documentation/swiftui/list": goodMetadata,
                 "": badMetadata,
@@ -92,14 +93,14 @@ struct IndexBuilderMalformedURLSkipTests {
         let onlyFile = docsDir.appendingPathComponent("only.md")
         try "# Bad page".write(to: onlyFile, atomically: true, encoding: .utf8)
 
-        let onlyMetadata = PageMetadata(
+        let onlyMetadata = Shared.Models.PageMetadata(
             url: "",
             framework: "swiftui",
             filePath: onlyFile.path,
             contentHash: "h",
             depth: 0
         )
-        let crawlMetadata = CrawlMetadata(pages: ["": onlyMetadata])
+        let crawlMetadata = Shared.Models.CrawlMetadata(pages: ["": onlyMetadata])
 
         let dbPath = tempRoot.appendingPathComponent("search.db")
         let index = try await Search.Index(dbPath: dbPath)

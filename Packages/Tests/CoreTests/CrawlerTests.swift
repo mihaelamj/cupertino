@@ -50,7 +50,7 @@ struct CrawlerTests {
     @Test("URLUtilities normalize preserves path but removes trailing slash")
     func urlNormalizePreservesPath() throws {
         let url = try #require(URL(string: "https://example.com/path/"))
-        let normalized = URLUtilities.normalize(url)
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         // Normalization removes fragments, query params, and trailing slashes
         #expect(normalized?.path == "/path")
@@ -59,7 +59,7 @@ struct CrawlerTests {
     @Test("URLUtilities normalize removes fragments")
     func urlNormalizeRemovesFragments() throws {
         let url = try #require(URL(string: "https://example.com/path#section"))
-        let normalized = URLUtilities.normalize(url)
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         #expect(normalized?.fragment == nil)
         #expect(try !#require(normalized?.absoluteString.contains("#")))
@@ -68,7 +68,7 @@ struct CrawlerTests {
     @Test("URLUtilities normalize removes query parameters")
     func urlNormalizeRemovesQueryParams() throws {
         let url = try #require(URL(string: "https://example.com/path?param=value"))
-        let normalized = URLUtilities.normalize(url)
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         #expect(normalized?.query == nil)
         #expect(try !#require(normalized?.absoluteString.contains("?")))
@@ -79,15 +79,15 @@ struct CrawlerTests {
         let uppercase = try #require(URL(string: "https://developer.apple.com/documentation/Cinematic/CNAssetInfo-2ata2"))
         let lowercase = try #require(URL(string: "https://developer.apple.com/documentation/cinematic/cnassetinfo-2ata2"))
 
-        #expect(URLUtilities.normalize(uppercase) == URLUtilities.normalize(lowercase))
-        #expect(URLUtilities.normalize(uppercase)?.path == "/documentation/cinematic/cnassetinfo-2ata2")
+        #expect(Shared.Models.URLUtilities.normalize(uppercase) == Shared.Models.URLUtilities.normalize(lowercase))
+        #expect(Shared.Models.URLUtilities.normalize(uppercase)?.path == "/documentation/cinematic/cnassetinfo-2ata2")
     }
 
     @Test("URLUtilities normalize preserves method disambiguator dashes")
     func urlNormalizePreservesMethodDisambiguatorDashes() throws {
         let url = try #require(URL(string: "https://developer.apple.com/documentation/Cinematic/CNAssetInfo-2ata2"))
 
-        #expect(URLUtilities.normalize(url)?.lastPathComponent == "cnassetinfo-2ata2")
+        #expect(Shared.Models.URLUtilities.normalize(url)?.lastPathComponent == "cnassetinfo-2ata2")
     }
 
     @Test("URLUtilities normalize keeps underscores intact (installer_js safety)")
@@ -98,7 +98,7 @@ struct CrawlerTests {
         // entire installer_js framework on every crawl. Verify we never make
         // that change.
         let url = try #require(URL(string: "https://developer.apple.com/documentation/installer_js/license"))
-        let normalized = URLUtilities.normalize(url)
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/documentation/installer_js/license")
         #expect(try !#require(normalized?.absoluteString.contains("installer-js")))
@@ -107,7 +107,7 @@ struct CrawlerTests {
     @Test("URLUtilities normalize converts underscore sub-page slug to dash")
     func urlNormalizeConvertsUnderscoreSubpageToDash() throws {
         let url = try #require(URL(string: "https://developer.apple.com/documentation/corelocation/getting_heading_and_course_information"))
-        let normalized = URLUtilities.normalize(url)
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/documentation/corelocation/getting-heading-and-course-information")
     }
@@ -118,7 +118,7 @@ struct CrawlerTests {
         // The framework slug "driverkit" at depth 2 must be left untouched;
         // only "driverkit_constants" at depth 3 is collapsed to dashes.
         let url = try #require(URL(string: "https://developer.apple.com/documentation/driverkit/driverkit_constants"))
-        let normalized = URLUtilities.normalize(url)
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/documentation/driverkit/driverkit-constants")
     }
@@ -126,7 +126,7 @@ struct CrawlerTests {
     @Test("URLUtilities normalize converts underscores at multiple sub-page depths")
     func urlNormalizeConvertsUnderscoresAtMultipleDepths() throws {
         let url = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/some_class/some_method"))
-        let normalized = URLUtilities.normalize(url)
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/documentation/swiftui/some-class/some-method")
     }
@@ -134,7 +134,7 @@ struct CrawlerTests {
     @Test("URLUtilities normalize does not touch non-documentation URL underscores")
     func urlNormalizeDoesNotTouchNonDocsPaths() throws {
         let url = try #require(URL(string: "https://developer.apple.com/videos/play/wwdc2023/10_video"))
-        let normalized = URLUtilities.normalize(url)
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/videos/play/wwdc2023/10_video")
     }
@@ -142,7 +142,7 @@ struct CrawlerTests {
     @Test("URLUtilities normalize strips fragment and query and collapses sub-page underscore")
     func urlNormalizeStripsFragmentQueryAndNormalizesUnderscore() throws {
         let url = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/some_method?foo=1#bar"))
-        let normalized = URLUtilities.normalize(url)
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/documentation/swiftui/some-method")
         #expect(normalized?.query == nil)
@@ -152,7 +152,7 @@ struct CrawlerTests {
     @Test("URLUtilities normalize lowercases before collapsing underscore to dash")
     func urlNormalizeLowercasesBeforeCollapsingUnderscore() throws {
         let url = try #require(URL(string: "https://developer.apple.com/documentation/SwiftUI/Some_Method"))
-        let normalized = URLUtilities.normalize(url)
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/documentation/swiftui/some-method")
     }
@@ -162,7 +162,7 @@ struct CrawlerTests {
         // Regression: normalizeDocPath used to trap with "Range requires lowerBound <= upperBound"
         // when documentation was found but had fewer than 2 following path segments.
         let url = try #require(URL(string: "https://developer.apple.com/documentation"))
-        let normalized = URLUtilities.normalize(url)
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/documentation")
     }
@@ -172,7 +172,7 @@ struct CrawlerTests {
     @Test("URLUtilities extracts framework from Apple docs URL")
     func extractFrameworkFromAppleDocs() throws {
         let url = try #require(URL(string: "https://developer.apple.com/documentation/swift/array"))
-        let framework = URLUtilities.extractFramework(from: url)
+        let framework = Shared.Models.URLUtilities.extractFramework(from: url)
 
         #expect(framework == "swift")
     }
@@ -180,7 +180,7 @@ struct CrawlerTests {
     @Test("URLUtilities extracts framework from nested path")
     func extractFrameworkFromNestedPath() throws {
         let url = try #require(URL(string: "https://developer.apple.com/documentation/uikit/uiview/animator"))
-        let framework = URLUtilities.extractFramework(from: url)
+        let framework = Shared.Models.URLUtilities.extractFramework(from: url)
 
         #expect(framework == "uikit")
     }
@@ -188,7 +188,7 @@ struct CrawlerTests {
     @Test("URLUtilities returns root for non-documentation URLs")
     func extractFrameworkReturnsRootForNonDocs() throws {
         let url = try #require(URL(string: "https://example.com/some/path"))
-        let framework = URLUtilities.extractFramework(from: url)
+        let framework = Shared.Models.URLUtilities.extractFramework(from: url)
 
         #expect(framework == "root")
     }
@@ -198,7 +198,7 @@ struct CrawlerTests {
     @Test("URLUtilities generates filename from URL")
     func generateFilenameFromURL() throws {
         let url = try #require(URL(string: "https://developer.apple.com/documentation/swift/array"))
-        let filename = URLUtilities.filename(from: url)
+        let filename = Shared.Models.URLUtilities.filename(from: url)
 
         #expect(filename.contains("array"))
         #expect(!filename.contains("/")) // No slashes in filename
@@ -207,7 +207,7 @@ struct CrawlerTests {
     @Test("URLUtilities handles complex paths in filename")
     func generateFilenameFromComplexPath() throws {
         let url = try #require(URL(string: "https://developer.apple.com/documentation/uikit/uiview/1622417-addsubview"))
-        let filename = URLUtilities.filename(from: url)
+        let filename = Shared.Models.URLUtilities.filename(from: url)
 
         #expect(!filename.isEmpty)
         #expect(!filename.contains("/"))
@@ -219,8 +219,8 @@ struct CrawlerTests {
     func hashUtilitiesConsistentHash() {
         let content = "Test content for hashing"
 
-        let hash1 = HashUtilities.sha256(of: content)
-        let hash2 = HashUtilities.sha256(of: content)
+        let hash1 = Shared.Models.HashUtilities.sha256(of: content)
+        let hash2 = Shared.Models.HashUtilities.sha256(of: content)
 
         #expect(hash1 == hash2)
         #expect(hash1.count == 64) // SHA256 produces 64 hex characters
@@ -231,15 +231,15 @@ struct CrawlerTests {
         let content1 = "Content A"
         let content2 = "Content B"
 
-        let hash1 = HashUtilities.sha256(of: content1)
-        let hash2 = HashUtilities.sha256(of: content2)
+        let hash1 = Shared.Models.HashUtilities.sha256(of: content1)
+        let hash2 = Shared.Models.HashUtilities.sha256(of: content2)
 
         #expect(hash1 != hash2)
     }
 
     @Test("HashUtilities SHA256 handles empty string")
     func hashUtilitiesEmptyString() {
-        let hash = HashUtilities.sha256(of: "")
+        let hash = Shared.Models.HashUtilities.sha256(of: "")
 
         #expect(!hash.isEmpty)
         #expect(hash.count == 64)
@@ -249,7 +249,7 @@ struct CrawlerTests {
 
     @Test("CrawlStatistics initializes with zeros")
     func statisticsInitializesWithZeros() {
-        let stats = CrawlStatistics()
+        let stats = Shared.Models.CrawlStatistics()
 
         #expect(stats.totalPages == 0)
         #expect(stats.newPages == 0)
@@ -260,7 +260,7 @@ struct CrawlerTests {
 
     @Test("CrawlStatistics is Codable")
     func statisticsIsCodable() throws {
-        var stats = CrawlStatistics()
+        var stats = Shared.Models.CrawlStatistics()
         stats.totalPages = 100
         stats.newPages = 50
         stats.updatedPages = 30
@@ -273,7 +273,7 @@ struct CrawlerTests {
         let data = try encoder.encode(stats)
 
         let decoder = JSONDecoder()
-        let decoded = try decoder.decode(CrawlStatistics.self, from: data)
+        let decoded = try decoder.decode(Shared.Models.CrawlStatistics.self, from: data)
 
         #expect(decoded.totalPages == 100)
         #expect(decoded.newPages == 50)
@@ -286,7 +286,7 @@ struct CrawlerTests {
 
     @Test("CrawlProgress calculates percentage")
     func progressCalculatesPercentage() throws {
-        let stats = CrawlStatistics()
+        let stats = Shared.Models.CrawlStatistics()
         let progress = try CrawlProgress(
             currentURL: #require(URL(string: "https://example.com")),
             visitedCount: 10,
@@ -388,16 +388,16 @@ struct CrawlerTests {
         let lapackURL = try #require(URL(string: "https://developer.apple.com/documentation/accelerate/lapack-functions"))
 
         // The URL should normalize correctly
-        let normalized = URLUtilities.normalize(lapackURL)
+        let normalized = Shared.Models.URLUtilities.normalize(lapackURL)
         #expect(normalized != nil)
         #expect(normalized?.absoluteString == "https://developer.apple.com/documentation/accelerate/lapack-functions")
 
         // Framework extraction should work
-        let framework = URLUtilities.extractFramework(from: lapackURL)
+        let framework = Shared.Models.URLUtilities.extractFramework(from: lapackURL)
         #expect(framework == "accelerate")
 
         // Filename generation should work
-        let filename = URLUtilities.filename(from: lapackURL)
+        let filename = Shared.Models.URLUtilities.filename(from: lapackURL)
         #expect(filename.contains("lapack-functions") || filename.contains("lapack_functions"))
     }
 

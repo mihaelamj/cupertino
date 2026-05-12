@@ -10,18 +10,18 @@ import SharedModels
 /// Manages crawler state including metadata and change detection
 public actor CrawlerState {
     private let configuration: Shared.ChangeDetectionConfiguration
-    private var metadata: CrawlMetadata
+    private var metadata: Shared.Models.CrawlMetadata
     private var autoSaveInterval: TimeInterval = Shared.Constants.Interval.autoSave
     private var lastAutoSave: Date = .init()
 
     public init(configuration: Shared.ChangeDetectionConfiguration) {
         self.configuration = configuration
-        metadata = CrawlMetadata()
+        metadata = Shared.Models.CrawlMetadata()
 
         // Load existing metadata if available
         if FileManager.default.fileExists(atPath: configuration.metadataFile.path) {
             do {
-                var loadedMetadata = try CrawlMetadata.load(from: configuration.metadataFile)
+                var loadedMetadata = try Shared.Models.CrawlMetadata.load(from: configuration.metadataFile)
 
                 // Validate metadata by checking if files actually exist
                 if Self.validateMetadata(loadedMetadata, metadataFile: configuration.metadataFile) {
@@ -53,7 +53,7 @@ public actor CrawlerState {
     /// the absolute path stored in `page.filePath` — that string was captured
     /// on the writing host and may point under the wrong home directory after
     /// the metadata has been rsynced between machines.
-    static func validateMetadata(_ metadata: CrawlMetadata, metadataFile: URL) -> Bool {
+    static func validateMetadata(_ metadata: Shared.Models.CrawlMetadata, metadataFile: URL) -> Bool {
         // If metadata claims many pages, verify some actually exist
         guard !metadata.pages.isEmpty else { return true }
 
@@ -95,7 +95,7 @@ public actor CrawlerState {
     /// Uses `framework` + the basename of the saved `filePath`, so the result
     /// only depends on data captured *within* the metadata, never on the
     /// absolute prefix the writing host happened to use.
-    static func expectedFilePath(for page: PageMetadata, under outputDir: URL) -> String {
+    static func expectedFilePath(for page: Shared.Models.PageMetadata, under outputDir: URL) -> String {
         let filename = (page.filePath as NSString).lastPathComponent
         return outputDir
             .appendingPathComponent(page.framework)
@@ -110,7 +110,7 @@ public actor CrawlerState {
     /// where the saved path is still valid (e.g. tests with non-canonical
     /// fixture paths, or runs against custom output directories).
     /// Idempotent.
-    static func rebasePagePaths(in metadata: inout CrawlMetadata, to outputDir: URL) {
+    static func rebasePagePaths(in metadata: inout Shared.Models.CrawlMetadata, to outputDir: URL) {
         for (url, page) in metadata.pages {
             // Saved path still resolves → leave it alone.
             if FileManager.default.fileExists(atPath: page.filePath) {
@@ -118,7 +118,7 @@ public actor CrawlerState {
             }
             let expected = Self.expectedFilePath(for: page, under: outputDir)
             if expected != page.filePath {
-                metadata.pages[url] = PageMetadata(
+                metadata.pages[url] = Shared.Models.PageMetadata(
                     url: page.url,
                     framework: page.framework,
                     filePath: expected,
@@ -173,7 +173,7 @@ public actor CrawlerState {
         depth: Int,
         isNew: Bool = true
     ) {
-        let pageMetadata = PageMetadata(
+        let pageMetadata = Shared.Models.PageMetadata(
             url: url,
             framework: framework,
             filePath: filePath,
@@ -196,7 +196,7 @@ public actor CrawlerState {
             fwStats.crawlStatus = .inProgress
             metadata.frameworks[fwKey] = fwStats
         } else {
-            metadata.frameworks[fwKey] = FrameworkStats(
+            metadata.frameworks[fwKey] = Shared.Models.FrameworkStats(
                 name: framework,
                 pageCount: 1,
                 newPages: isNew ? 1 : 0,
@@ -214,7 +214,7 @@ public actor CrawlerState {
             fwStats.errors += 1
             metadata.frameworks[fwKey] = fwStats
         } else {
-            metadata.frameworks[fwKey] = FrameworkStats(
+            metadata.frameworks[fwKey] = Shared.Models.FrameworkStats(
                 name: framework,
                 errors: 1,
                 crawlStatus: .inProgress
@@ -233,17 +233,17 @@ public actor CrawlerState {
     }
 
     /// Get stats for a specific framework
-    public func getFrameworkStats(framework: String) -> FrameworkStats? {
+    public func getFrameworkStats(framework: String) -> Shared.Models.FrameworkStats? {
         metadata.frameworks[framework.lowercased()]
     }
 
     /// Get all framework stats
-    public func getAllFrameworkStats() -> [String: FrameworkStats] {
+    public func getAllFrameworkStats() -> [String: Shared.Models.FrameworkStats] {
         metadata.frameworks
     }
 
     /// Finalize crawl and save metadata
-    public func finalizeCrawl(stats: CrawlStatistics) throws {
+    public func finalizeCrawl(stats: Shared.Models.CrawlStatistics) throws {
         metadata.lastCrawl = Date()
         metadata.stats = stats
 
@@ -260,12 +260,12 @@ public actor CrawlerState {
     // MARK: - Statistics
 
     /// Get current crawl statistics
-    public func getStatistics() -> CrawlStatistics {
+    public func getStatistics() -> Shared.Models.CrawlStatistics {
         metadata.stats
     }
 
     /// Update statistics
-    public func updateStatistics(_ update: @Sendable (inout CrawlStatistics) -> Void) {
+    public func updateStatistics(_ update: @Sendable (inout Shared.Models.CrawlStatistics) -> Void) {
         update(&metadata.stats)
     }
 
@@ -288,9 +288,9 @@ public actor CrawlerState {
         startURL: URL,
         outputDirectory: URL
     ) throws {
-        let queuedURLs = queue.map { QueuedURL(url: $0.url.absoluteString, depth: $0.depth) }
+        let queuedURLs = queue.map { Shared.Models.QueuedURL(url: $0.url.absoluteString, depth: $0.depth) }
 
-        metadata.crawlState = CrawlSessionState(
+        metadata.crawlState = Shared.Models.CrawlSessionState(
             visited: visited,
             queue: queuedURLs,
             startURL: startURL.absoluteString,
@@ -320,7 +320,7 @@ public actor CrawlerState {
     }
 
     /// Get saved session state for resuming
-    public func getSavedSession() -> CrawlSessionState? {
+    public func getSavedSession() -> Shared.Models.CrawlSessionState? {
         metadata.crawlState
     }
 

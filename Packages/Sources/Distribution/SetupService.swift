@@ -1,7 +1,7 @@
 import Foundation
 import Logging
-import SharedCore
 import SharedConstants
+import SharedCore
 
 extension Distribution {
     /// High-level orchestrator for `cupertino setup`. Composes

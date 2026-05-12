@@ -76,7 +76,7 @@ struct ReadSampleFileCommand: AsyncParsableCommand {
     private func outputText(_ file: SampleIndex.File) {
         Logging.Log.output("// File: \(file.path)")
         Logging.Log.output("// Project: \(file.projectId)")
-        Logging.Log.output("// Size: \(Shared.Formatting.formatBytes(file.size))")
+        Logging.Log.output("// Size: \(Shared.Utils.Formatting.formatBytes(file.size))")
         Logging.Log.output("")
         Logging.Log.output(file.content)
     }

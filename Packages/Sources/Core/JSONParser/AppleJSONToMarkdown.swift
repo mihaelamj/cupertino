@@ -1,5 +1,6 @@
 import CoreProtocols
 import Foundation
+import SharedConstants
 import SharedCore
 import SharedModels
 
@@ -537,7 +538,7 @@ extension AppleJSONToMarkdown {
         _ json: Data,
         url: URL,
         depth: Int? = nil
-    ) -> StructuredDocumentationPage? {
+    ) -> Shared.Models.StructuredDocumentationPage? {
         guard let doc = try? JSONDecoder().decode(AppleDocumentation.self, from: json) else {
             return nil
         }
@@ -563,7 +564,7 @@ extension AppleJSONToMarkdown {
         let codeExamples = extractCodeExamples(from: doc.primaryContentSections)
 
         // Extract sections (topics, see also)
-        var sections: [StructuredDocumentationPage.Section] = []
+        var sections: [Shared.Models.StructuredDocumentationPage.Section] = []
 
         if let topics = doc.topicSections {
             for topic in topics {
@@ -600,7 +601,7 @@ extension AppleJSONToMarkdown {
                     conformingTypes = types
                 default:
                     // Add as a section
-                    sections.append(StructuredDocumentationPage.Section(
+                    sections.append(Shared.Models.StructuredDocumentationPage.Section(
                         title: section.title,
                         items: types.map { .init(name: $0) }
                     ))
@@ -620,8 +621,8 @@ extension AppleJSONToMarkdown {
         // Hash canonical structured fields, not raw `json` — Apple's response
         // includes volatile cache/build metadata that doesn't reach our parsed
         // output, so `sha256(of: json)` is non-deterministic across runs (#199).
-        let page = StructuredDocumentationPage(
-            id: StructuredDocumentationPage.deterministicID(for: url),
+        let page = Shared.Models.StructuredDocumentationPage(
+            id: Shared.Models.StructuredDocumentationPage.deterministicID(for: url),
             url: url,
             title: doc.metadata.title,
             kind: kind,
@@ -650,7 +651,7 @@ extension AppleJSONToMarkdown {
     private static func parseKind(
         from roleHeading: String?,
         role: String?
-    ) -> StructuredDocumentationPage.Kind {
+    ) -> Shared.Models.StructuredDocumentationPage.Kind {
         let heading = roleHeading?.lowercased() ?? ""
         let roleStr = role?.lowercased() ?? ""
 
@@ -679,7 +680,7 @@ extension AppleJSONToMarkdown {
 
     private static func extractDeclaration(
         from sections: [PrimaryContentSection]?
-    ) -> StructuredDocumentationPage.Declaration? {
+    ) -> Shared.Models.StructuredDocumentationPage.Declaration? {
         guard let sections else { return nil }
 
         for section in sections where section.kind == "declarations" {
@@ -687,7 +688,7 @@ extension AppleJSONToMarkdown {
                let first = declarations.first,
                let tokens = first.tokens {
                 let code = tokens.map(\.text).joined()
-                return StructuredDocumentationPage.Declaration(code: code, language: "swift")
+                return Shared.Models.StructuredDocumentationPage.Declaration(code: code, language: "swift")
             }
         }
         return nil
@@ -727,16 +728,16 @@ extension AppleJSONToMarkdown {
 
     private static func extractCodeExamples(
         from sections: [PrimaryContentSection]?
-    ) -> [StructuredDocumentationPage.CodeExample] {
+    ) -> [Shared.Models.StructuredDocumentationPage.CodeExample] {
         guard let sections else { return [] }
 
-        var examples: [StructuredDocumentationPage.CodeExample] = []
+        var examples: [Shared.Models.StructuredDocumentationPage.CodeExample] = []
 
         for section in sections where section.kind == "content" {
             if let content = section.content {
                 for block in content where block.type == "codeListing" {
                     if let code = block.code {
-                        examples.append(StructuredDocumentationPage.CodeExample(
+                        examples.append(Shared.Models.StructuredDocumentationPage.CodeExample(
                             code: code.joined(separator: "\n"),
                             language: block.syntax
                         ))
@@ -764,18 +765,18 @@ extension AppleJSONToMarkdown {
     private static func convertTopicSection(
         _ section: TopicSection,
         references: [String: Reference]?
-    ) -> StructuredDocumentationPage.Section {
-        let items = section.identifiers.compactMap { identifier -> StructuredDocumentationPage.Section.Item? in
+    ) -> Shared.Models.StructuredDocumentationPage.Section {
+        let items = section.identifiers.compactMap { identifier -> Shared.Models.StructuredDocumentationPage.Section.Item? in
             let ref = references?[identifier]
             let name = ref?.title ?? identifier.components(separatedBy: "/").last ?? identifier
             let description = ref?.abstract.map { renderInlineContent($0) }
             let itemURL = documentationURLFromIdentifier(identifier)
-            return StructuredDocumentationPage.Section.Item(
+            return Shared.Models.StructuredDocumentationPage.Section.Item(
                 name: name,
                 description: description,
                 url: itemURL
             )
         }
-        return StructuredDocumentationPage.Section(title: section.title, items: items)
+        return Shared.Models.StructuredDocumentationPage.Section(title: section.title, items: items)
     }
 }

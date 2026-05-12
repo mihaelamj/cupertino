@@ -2,6 +2,7 @@
 @testable import CoreJSONParser
 import CoreProtocols
 import Foundation
+import SharedConstants
 @testable import SharedCore
 import SharedModels
 import Testing
@@ -143,13 +144,13 @@ struct RefResolverEndToEnd {
         // Page A: lists Page B in its sections (so Page B's title gets harvested
         // from A's items). A's rawMarkdown contains a doc:// marker pointing to B.
         let pageBURL = URL(string: "https://developer.apple.com/documentation/StoreKit/AnyTransaction")!
-        let pageA = StructuredDocumentationPage(
+        let pageA = Shared.Models.StructuredDocumentationPage(
             url: URL(string: "https://developer.apple.com/documentation/StoreKit")!,
             title: "StoreKit",
             kind: .framework,
             source: .appleJSON,
             sections: [
-                StructuredDocumentationPage.Section(
+                Shared.Models.StructuredDocumentationPage.Section(
                     title: "Topics",
                     items: [
                         .init(name: "AnyTransaction", description: nil, url: pageBURL),
@@ -161,7 +162,7 @@ struct RefResolverEndToEnd {
             crawledAt: Date(),
             contentHash: "hashA"
         )
-        let pageB = StructuredDocumentationPage(
+        let pageB = Shared.Models.StructuredDocumentationPage(
             url: pageBURL,
             title: "AnyTransaction",
             kind: .struct,
@@ -201,7 +202,7 @@ struct RefResolverEndToEnd {
         let pageAData = try Data(contentsOf: tmp.appendingPathComponent("storekit_a.json"))
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        let pageA = try decoder.decode(StructuredDocumentationPage.self, from: pageAData)
+        let pageA = try decoder.decode(Shared.Models.StructuredDocumentationPage.self, from: pageAData)
         #expect(pageA.rawMarkdown?.contains("[AnyTransaction]") == true)
         #expect(pageA.rawMarkdown?.contains("Phantom") == true) // still present, unresolved
         #expect(pageA.contentHash == "hashA") // resolve-refs must NOT bump contentHash
@@ -329,10 +330,10 @@ struct RefResolverNetwork {
         #expect(url?.absoluteString == "https://developer.apple.com/documentation/storekit/anytransaction")
     }
 
-    private static func loadPageA(in tmp: URL) throws -> StructuredDocumentationPage {
+    private static func loadPageA(in tmp: URL) throws -> Shared.Models.StructuredDocumentationPage {
         let data = try Data(contentsOf: tmp.appendingPathComponent("storekit_a.json"))
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode(StructuredDocumentationPage.self, from: data)
+        return try decoder.decode(Shared.Models.StructuredDocumentationPage.self, from: data)
     }
 }

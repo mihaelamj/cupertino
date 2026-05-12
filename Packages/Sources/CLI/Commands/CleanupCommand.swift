@@ -86,7 +86,7 @@ struct CleanupCommand: AsyncParsableCommand {
 
         let stats = try await cleaner.cleanup { progress in
             let percent = String(format: "%.1f", progress.percentage)
-            let saved = Shared.Formatting.formatBytes(progress.originalSize - progress.cleanedSize)
+            let saved = Shared.Utils.Formatting.formatBytes(progress.originalSize - progress.cleanedSize)
             Logging.Log.output("   [\(percent)%] \(progress.currentFile) (saved \(saved))")
         }
 
@@ -104,11 +104,11 @@ struct CleanupCommand: AsyncParsableCommand {
         Logging.Log.output("   Errors: \(stats.errors)")
         Logging.Log.output("   Items to remove: \(stats.totalItemsRemoved)")
         Logging.Log.output("")
-        Logging.Log.output("   Original size: \(Shared.Formatting.formatBytes(stats.originalTotalSize))")
+        Logging.Log.output("   Original size: \(Shared.Utils.Formatting.formatBytes(stats.originalTotalSize))")
         if !dryRun {
-            Logging.Log.output("   Cleaned size: \(Shared.Formatting.formatBytes(stats.cleanedTotalSize))")
+            Logging.Log.output("   Cleaned size: \(Shared.Utils.Formatting.formatBytes(stats.cleanedTotalSize))")
             Logging.Log.output(
-                "   Space saved: \(Shared.Formatting.formatBytes(stats.spaceSaved)) " +
+                "   Space saved: \(Shared.Utils.Formatting.formatBytes(stats.spaceSaved)) " +
                     "(\(String(format: "%.1f", stats.spaceSavedPercentage))%)"
             )
         }

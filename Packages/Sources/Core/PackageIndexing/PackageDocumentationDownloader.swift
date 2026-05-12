@@ -1,6 +1,7 @@
 import CoreProtocols
 import Foundation
 import Logging
+import SharedConstants
 import SharedCore
 import SharedModels
 
@@ -60,12 +61,12 @@ extension Core {
         public func detectDocumentationSite(
             owner: String,
             repo: String
-        ) async -> DocumentationSite? {
+        ) async -> Shared.Models.DocumentationSite? {
             struct KnownSite {
                 let owner: String
                 let repo: String
                 let url: String
-                let type: DocumentationSite.DocumentationType
+                let type: Shared.Models.DocumentationSite.DocumentationType
             }
 
             let knownSites = [
@@ -80,13 +81,13 @@ extension Core {
                 if owner.lowercased() == site.owner.lowercased(),
                    repo.lowercased() == site.repo.lowercased(),
                    let url = URL(string: site.url) {
-                    return DocumentationSite(type: site.type, baseURL: url)
+                    return Shared.Models.DocumentationSite(type: site.type, baseURL: url)
                 }
             }
 
             if let githubPagesURL = URL(string: "https://\(owner).github.io/\(repo)/") {
                 if await urlExists(githubPagesURL) {
-                    return DocumentationSite(type: .githubPages, baseURL: githubPagesURL)
+                    return Shared.Models.DocumentationSite(type: .githubPages, baseURL: githubPagesURL)
                 }
             }
 

@@ -61,7 +61,7 @@ struct LibraryView {
         let icon = "*"
         let name = artifact.name
         let itemsText = "\(artifact.itemCount) items"
-        let sizeText = Shared.Formatting.formatBytes(artifact.sizeBytes)
+        let sizeText = Shared.Utils.Formatting.formatBytes(artifact.sizeBytes)
 
         // Calculate widths (no emojis)
         let iconWidth = icon.count

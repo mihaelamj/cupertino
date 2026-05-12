@@ -1,6 +1,6 @@
 import Foundation
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedUtils
 
 // MARK: - Shared publishing helpers
@@ -273,7 +273,7 @@ private final class UploadProgressDelegate: NSObject, URLSessionTaskDelegate, @u
         let expectedSize = totalBytesExpectedToSend > 0 ? totalBytesExpectedToSend : totalSize
 
         guard expectedSize > 0 else {
-            let uploaded = Shared.Formatting.formatBytes(totalBytesSent)
+            let uploaded = Shared.Utils.Formatting.formatBytes(totalBytesSent)
             let output = "\(clearLine)   \(currentSpinner) Uploading... \(uploaded)"
             FileHandle.standardOutput.write(Data(output.utf8))
             fflush(stdout)
@@ -286,8 +286,8 @@ private final class UploadProgressDelegate: NSObject, URLSessionTaskDelegate, @u
 
         let bar = String(repeating: "█", count: filled) + String(repeating: "░", count: empty)
         let percent = String(format: "%3.0f%%", progress * 100)
-        let uploaded = Shared.Formatting.formatBytes(totalBytesSent)
-        let total = Shared.Formatting.formatBytes(expectedSize)
+        let uploaded = Shared.Utils.Formatting.formatBytes(totalBytesSent)
+        let total = Shared.Utils.Formatting.formatBytes(expectedSize)
 
         let output = "\(clearLine)   \(currentSpinner) [\(bar)] \(percent) (\(uploaded)/\(total))"
         FileHandle.standardOutput.write(Data(output.utf8))
