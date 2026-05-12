@@ -9,11 +9,11 @@ import SharedUtils
 
 // MARK: - Per-source runners
 
-/// `--source <name>` paths split out of `SearchCommand` so the struct body
+/// `--source <name>` paths split out of `Command.Search` so the struct body
 /// stays under SwiftLint's `type_body_length` ceiling. The default
 /// (no `--source`) fan-out + chunked report lives in
-/// `SearchCommand+SmartReport.swift` (#239).
-extension SearchCommand {
+/// `Command.Search+SmartReport.swift` (#239).
+extension Command.Search {
     func runDocsSearch() async throws {
         let results = try await ServiceContainer.withDocsService(dbPath: searchDb) { service in
             try await service.search(SearchQuery(
@@ -150,11 +150,11 @@ extension SearchCommand {
         }
 
         let availabilityFilter = try resolveAvailabilityFilter()
-        let fetcher = Search.PackageFTSCandidateFetcher(
+        let fetcher = SearchModule.PackageFTSCandidateFetcher(
             dbPath: dbURL,
             availability: availabilityFilter
         )
-        let smartQuery = Search.SmartQuery(fetchers: [fetcher])
+        let smartQuery = SearchModule.SmartQuery(fetchers: [fetcher])
         let result = await smartQuery.answer(
             question: trimmed,
             limit: limit,

@@ -10,164 +10,166 @@ import SharedUtils
 
 /// CLI command for listing sample code projects - mirrors MCP tool functionality.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-struct ListSamplesCommand: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "list-samples",
-        abstract: "List indexed Apple sample code projects"
-    )
-
-    @Option(
-        name: .shortAndLong,
-        help: "Filter by framework (e.g., swiftui, uikit, appkit)"
-    )
-    var framework: String?
-
-    @Option(
-        name: .long,
-        help: "Maximum number of results to return"
-    )
-    var limit: Int = 50
-
-    @Option(
-        name: .long,
-        help: "Output format: text (default), json, markdown"
-    )
-    var format: OutputFormat = .text
-
-    @Option(
-        name: .long,
-        help: "Path to sample index database"
-    )
-    var sampleDb: String?
-
-    mutating func run() async throws {
-        // Resolve database path
-        let dbPath = resolveSampleDbPath()
-
-        // Use ServiceContainer for managed lifecycle
-        let (projects, totalProjects, totalFiles) = try await ServiceContainer.withSampleService(dbPath: dbPath) { service in
-            let projects = try await service.listProjects(framework: framework, limit: limit)
-            let totalProjects = try await service.projectCount()
-            let totalFiles = try await service.fileCount()
-            return (projects, totalProjects, totalFiles)
-        }
-
-        // Output results
-        switch format {
-        case .text:
-            outputText(projects, totalProjects: totalProjects, totalFiles: totalFiles)
-        case .json:
-            outputJSON(projects, totalProjects: totalProjects, totalFiles: totalFiles)
-        case .markdown:
-            outputMarkdown(projects, totalProjects: totalProjects, totalFiles: totalFiles)
-        }
-    }
-
-    // MARK: - Path Resolution
-
-    private func resolveSampleDbPath() -> URL {
-        if let sampleDb {
-            return URL(fileURLWithPath: sampleDb).expandingTildeInPath
-        }
-        return SampleIndex.defaultDatabasePath
-    }
-
-    // MARK: - Output Formatting
-
-    private func outputText(_ projects: [SampleIndex.Project], totalProjects: Int, totalFiles: Int) {
-        Logging.Log.output("Sample Code Projects")
-        Logging.Log.output("Total: \(totalProjects) projects, \(totalFiles) files")
-
-        if let framework {
-            Logging.Log.output("Filtered by: \(framework)")
-        }
-
-        Logging.Log.output("")
-
-        if projects.isEmpty {
-            Logging.Log.output("No projects found. Run 'cupertino save --samples' to index sample code.")
-            return
-        }
-
-        for (index, project) in projects.enumerated() {
-            Logging.Log.output("[\(index + 1)] \(project.title)")
-            Logging.Log.output("    ID: \(project.id)")
-            Logging.Log.output("    Frameworks: \(project.frameworks.joined(separator: ", "))")
-            Logging.Log.output("    Files: \(project.fileCount)")
-            Logging.Log.output("")
-        }
-    }
-
-    private func outputJSON(_ projects: [SampleIndex.Project], totalProjects: Int, totalFiles: Int) {
-        struct Output: Encodable {
-            let totalProjects: Int
-            let totalFiles: Int
-            let framework: String?
-            let projects: [ProjectOutput]
-        }
-
-        struct ProjectOutput: Encodable {
-            let id: String
-            let title: String
-            let description: String
-            let frameworks: [String]
-            let fileCount: Int
-        }
-
-        let output = Output(
-            totalProjects: totalProjects,
-            totalFiles: totalFiles,
-            framework: framework,
-            projects: projects.map {
-                ProjectOutput(
-                    id: $0.id,
-                    title: $0.title,
-                    description: $0.description,
-                    frameworks: $0.frameworks,
-                    fileCount: $0.fileCount
-                )
-            }
+extension Command {
+    struct ListSamples: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            commandName: "list-samples",
+            abstract: "List indexed Apple sample code projects"
         )
 
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        @Option(
+            name: .shortAndLong,
+            help: "Filter by framework (e.g., swiftui, uikit, appkit)"
+        )
+        var framework: String?
 
-        do {
-            let data = try encoder.encode(output)
-            if let jsonString = String(data: data, encoding: .utf8) {
-                Logging.Log.output(jsonString)
+        @Option(
+            name: .long,
+            help: "Maximum number of results to return"
+        )
+        var limit: Int = 50
+
+        @Option(
+            name: .long,
+            help: "Output format: text (default), json, markdown"
+        )
+        var format: OutputFormat = .text
+
+        @Option(
+            name: .long,
+            help: "Path to sample index database"
+        )
+        var sampleDb: String?
+
+        mutating func run() async throws {
+            // Resolve database path
+            let dbPath = resolveSampleDbPath()
+
+            // Use ServiceContainer for managed lifecycle
+            let (projects, totalProjects, totalFiles) = try await ServiceContainer.withSampleService(dbPath: dbPath) { service in
+                let projects = try await service.listProjects(framework: framework, limit: limit)
+                let totalProjects = try await service.projectCount()
+                let totalFiles = try await service.fileCount()
+                return (projects, totalProjects, totalFiles)
             }
-        } catch {
-            Logging.Log.error("Error encoding JSON: \(error)")
-        }
-    }
 
-    private func outputMarkdown(_ projects: [SampleIndex.Project], totalProjects: Int, totalFiles: Int) {
-        Logging.Log.output("# Sample Code Projects\n")
-        Logging.Log.output("Total: **\(totalProjects)** projects, **\(totalFiles)** files\n")
-
-        if let framework {
-            Logging.Log.output("_Filtered to framework: **\(framework)**_\n")
-        }
-
-        if projects.isEmpty {
-            Logging.Log.output("_No projects found. Run `cupertino save --samples` to index sample code._")
-            return
+            // Output results
+            switch format {
+            case .text:
+                outputText(projects, totalProjects: totalProjects, totalFiles: totalFiles)
+            case .json:
+                outputJSON(projects, totalProjects: totalProjects, totalFiles: totalFiles)
+            case .markdown:
+                outputMarkdown(projects, totalProjects: totalProjects, totalFiles: totalFiles)
+            }
         }
 
-        Logging.Log.output("| Project | Frameworks | Files |")
-        Logging.Log.output("|---------|-----------|------:|")
+        // MARK: - Path Resolution
 
-        for project in projects {
-            let frameworks = project.frameworks.joined(separator: ", ")
-            Logging.Log.output("| `\(project.id)` | \(frameworks) | \(project.fileCount) |")
+        private func resolveSampleDbPath() -> URL {
+            if let sampleDb {
+                return URL(fileURLWithPath: sampleDb).expandingTildeInPath
+            }
+            return SampleIndex.defaultDatabasePath
+        }
+
+        // MARK: - Output Formatting
+
+        private func outputText(_ projects: [SampleIndex.Project], totalProjects: Int, totalFiles: Int) {
+            Logging.Log.output("Sample Code Projects")
+            Logging.Log.output("Total: \(totalProjects) projects, \(totalFiles) files")
+
+            if let framework {
+                Logging.Log.output("Filtered by: \(framework)")
+            }
+
+            Logging.Log.output("")
+
+            if projects.isEmpty {
+                Logging.Log.output("No projects found. Run 'cupertino save --samples' to index sample code.")
+                return
+            }
+
+            for (index, project) in projects.enumerated() {
+                Logging.Log.output("[\(index + 1)] \(project.title)")
+                Logging.Log.output("    ID: \(project.id)")
+                Logging.Log.output("    Frameworks: \(project.frameworks.joined(separator: ", "))")
+                Logging.Log.output("    Files: \(project.fileCount)")
+                Logging.Log.output("")
+            }
+        }
+
+        private func outputJSON(_ projects: [SampleIndex.Project], totalProjects: Int, totalFiles: Int) {
+            struct Output: Encodable {
+                let totalProjects: Int
+                let totalFiles: Int
+                let framework: String?
+                let projects: [ProjectOutput]
+            }
+
+            struct ProjectOutput: Encodable {
+                let id: String
+                let title: String
+                let description: String
+                let frameworks: [String]
+                let fileCount: Int
+            }
+
+            let output = Output(
+                totalProjects: totalProjects,
+                totalFiles: totalFiles,
+                framework: framework,
+                projects: projects.map {
+                    ProjectOutput(
+                        id: $0.id,
+                        title: $0.title,
+                        description: $0.description,
+                        frameworks: $0.frameworks,
+                        fileCount: $0.fileCount
+                    )
+                }
+            )
+
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+
+            do {
+                let data = try encoder.encode(output)
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    Logging.Log.output(jsonString)
+                }
+            } catch {
+                Logging.Log.error("Error encoding JSON: \(error)")
+            }
+        }
+
+        private func outputMarkdown(_ projects: [SampleIndex.Project], totalProjects: Int, totalFiles: Int) {
+            Logging.Log.output("# Sample Code Projects\n")
+            Logging.Log.output("Total: **\(totalProjects)** projects, **\(totalFiles)** files\n")
+
+            if let framework {
+                Logging.Log.output("_Filtered to framework: **\(framework)**_\n")
+            }
+
+            if projects.isEmpty {
+                Logging.Log.output("_No projects found. Run `cupertino save --samples` to index sample code._")
+                return
+            }
+
+            Logging.Log.output("| Project | Frameworks | Files |")
+            Logging.Log.output("|---------|-----------|------:|")
+
+            for project in projects {
+                let frameworks = project.frameworks.joined(separator: ", ")
+                Logging.Log.output("| `\(project.id)` | \(frameworks) | \(project.fileCount) |")
+            }
         }
     }
 }
 
 // MARK: - Output Format
 
-extension ListSamplesCommand {
+extension Command.ListSamples {
     enum OutputFormat: String, ExpressibleByArgument, CaseIterable {
         case text
         case json
