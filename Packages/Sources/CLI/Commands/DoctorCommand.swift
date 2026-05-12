@@ -13,6 +13,7 @@ import SharedCore
 import SharedConstants
 import SharedUtils
 import CoreProtocols
+import CorePackageIndexing
 
 // MARK: - Doctor Command
 

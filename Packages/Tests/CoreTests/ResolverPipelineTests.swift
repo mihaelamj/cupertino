@@ -6,6 +6,7 @@ import Testing
 import SharedConstants
 import SharedModels
 @testable import CoreProtocols
+@testable import CorePackageIndexing
 
 // MARK: - Checksum stability
 

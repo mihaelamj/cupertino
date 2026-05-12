@@ -1,6 +1,6 @@
+import CoreProtocols
 import Foundation
 import SharedCore
-import CoreProtocols
 
 extension Core {
     /// Disk cache for fetched `Package.swift` / `Package.resolved` files, keyed by

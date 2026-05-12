@@ -26,6 +26,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("CoreProtocols"),
     .singleTargetLibrary("CoreHTMLParser"),
     .singleTargetLibrary("CoreJSONParser"),
+    .singleTargetLibrary("CorePackageIndexing"),
     .singleTargetLibrary("Core"),
     .singleTargetLibrary("Cleanup"),
     .singleTargetLibrary("Search"),
@@ -185,12 +186,20 @@ let targets: [Target] = {
         path: "Sources/Core/JSONParser"
     )
 
+    // ---------- CorePackageIndexing (v1.2 refactor 2.4: Resolver + Fetcher + Archive Extractor + Annotator + FileKind + ManifestCache + Store + DocDownloader) ----------
+    let corePackageIndexingTarget = Target.target(
+        name: "CorePackageIndexing",
+        dependencies: ["CoreProtocols", "SharedCore", "SharedModels", "SharedConstants", "SharedUtils", "Logging", "ASTIndexer"],
+        path: "Sources/Core/PackageIndexing"
+    )
+
     let coreTarget = Target.target(
         name: "Core",
         dependencies: [
             "CoreProtocols",
             "CoreHTMLParser",
             "CoreJSONParser",
+            "CorePackageIndexing",
             "SharedCore",
             "SharedConfiguration",
             "SharedConstants",
@@ -200,11 +209,22 @@ let targets: [Target] = {
             "Resources",
             "ASTIndexer",
         ],
-        exclude: ["HTMLParser", "JSONParser"]
+        exclude: ["HTMLParser", "JSONParser", "PackageIndexing"]
     )
     let coreTestsTarget = Target.testTarget(
         name: "CoreTests",
-        dependencies: ["CoreProtocols", "CoreHTMLParser", "CoreJSONParser", "Core", "Search", "SharedCore", "SharedConstants", "SharedModels", "TestSupport"],
+        dependencies: [
+            "CoreProtocols",
+            "CoreHTMLParser",
+            "CoreJSONParser",
+            "CorePackageIndexing",
+            "Core",
+            "Search",
+            "SharedCore",
+            "SharedConstants",
+            "SharedModels",
+            "TestSupport",
+        ],
         resources: [.copy("Resources/AppleJSON")]
     )
 
@@ -219,11 +239,11 @@ let targets: [Target] = {
 
     let searchTarget = Target.target(
         name: "Search",
-        dependencies: ["SharedCore", "SharedConstants", "SharedModels", "Logging", "CoreProtocols", "CoreJSONParser", "Core", "ASTIndexer"]
+        dependencies: ["SharedCore", "SharedConstants", "SharedModels", "Logging", "CoreProtocols", "CoreJSONParser", "CorePackageIndexing", "Core", "ASTIndexer"]
     )
     let searchTestsTarget = Target.testTarget(
         name: "SearchTests",
-        dependencies: ["Search", "SharedCore", "SharedConstants", "SharedModels", "SharedUtils", "TestSupport"]
+        dependencies: ["Search", "SharedCore", "SharedConstants", "SharedModels", "SharedUtils", "TestSupport", "CorePackageIndexing"]
     )
 
     let sampleIndexTarget = Target.target(
@@ -356,7 +376,7 @@ let targets: [Target] = {
             "SharedConstants",
             "SharedModels",
             "SharedUtils",
-            "CoreProtocols", "CoreJSONParser", "Core",
+            "CoreProtocols", "CoreJSONParser", "CorePackageIndexing", "Core",
             "Cleanup",
             "Search",
             "SampleIndex",
@@ -382,7 +402,7 @@ let targets: [Target] = {
             "SharedCore",
             "SharedConstants",
             "SharedUtils",
-            "CoreProtocols", "Core",
+            "CoreProtocols", "CorePackageIndexing", "Core",
             "Search",
             "Resources",
             "Logging",
@@ -435,7 +455,7 @@ let targets: [Target] = {
 
     let fetchTestsTarget = Target.testTarget(
         name: "FetchTests",
-        dependencies: ["CLI", "CoreProtocols", "Core", "Ingest", "SharedCore", "TestSupport"],
+        dependencies: ["CLI", "CoreProtocols", "CorePackageIndexing", "Core", "Ingest", "SharedCore", "TestSupport"],
         path: "Tests/CLICommandTests/FetchTests"
     )
 
@@ -477,6 +497,7 @@ let targets: [Target] = {
         coreProtocolsTarget,
         coreHTMLParserTarget,
         coreJSONParserTarget,
+        corePackageIndexingTarget,
         resourcesTarget,
         resourcesTestsTarget,
         coreTarget,

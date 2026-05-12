@@ -3,6 +3,7 @@
 import Foundation
 import Testing
 import CoreProtocols
+@testable import CorePackageIndexing
 
 // MARK: - GitHub URL parsing
 

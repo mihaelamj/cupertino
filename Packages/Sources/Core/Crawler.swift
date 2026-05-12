@@ -9,6 +9,7 @@ import SharedUtils
 import CoreProtocols
 import CoreHTMLParser
 import CoreJSONParser
+import CorePackageIndexing
 
 // MARK: - Documentation Crawler
 

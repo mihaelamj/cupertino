@@ -6,6 +6,7 @@ import SharedCore
 import SQLite3
 import Testing
 import CoreProtocols
+@testable import CorePackageIndexing
 
 // MARK: - PackageIndexTests
 
