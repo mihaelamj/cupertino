@@ -597,7 +597,7 @@ refactor(<package>): <summary> (#<issue> / refactor-plan §<task-number>)
 ## Context
 
 Closes #<issue>.
-Refactor plan: docs/REFACTOR_PLAN.md §<task-number>
+Refactor plan: docs/plans/2026-05-12-v1-1-package-split.md §<task-number>
 
 ## Changes
 
