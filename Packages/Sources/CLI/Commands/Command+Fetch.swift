@@ -969,7 +969,7 @@ extension Command {
             }
 
             // Otherwise use the curated list of essential archive guides with framework info
-            return ArchiveGuideCatalog.essentialGuidesWithInfo
+            return Core.ArchiveGuideCatalog.essentialGuidesWithInfo
         }
 
         private func runAvailabilityFetch() async throws {

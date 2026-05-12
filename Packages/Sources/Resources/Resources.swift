@@ -1,4 +1,4 @@
-// CupertinoResources.swift
+// Resources.swift
 //
 // Embedded-only resources (#161). Previously this target shipped a
 // `Cupertino_Resources.bundle` alongside the binary and looked up JSON files
