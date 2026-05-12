@@ -39,7 +39,7 @@ extension Core {
         private var enqueued = Set<String>()
         private var stats: Shared.Models.CrawlStatistics
 
-        private var onProgress: (@Sendable (CrawlProgress) -> Void)?
+        private var onProgress: (@Sendable (Progress) -> Void)?
         private var logFileHandle: FileHandle?
 
         public init(configuration: Shared.Configuration) async {
@@ -64,7 +64,7 @@ extension Core {
         // MARK: - Public API
 
         /// Start crawling from the configured start URL
-        public func crawl(onProgress: (@Sendable (CrawlProgress) -> Void)? = nil) async throws -> Shared.Models.CrawlStatistics {
+        public func crawl(onProgress: (@Sendable (Progress) -> Void)? = nil) async throws -> Shared.Models.CrawlStatistics {
             self.onProgress = onProgress
 
             // Check for resumable session (must match current start URL)
@@ -219,7 +219,7 @@ extension Core {
         /// Crawl a page with retry mechanism for difficult pages (#25)
         /// On failure, recycles WKWebView and retries up to maxRetries times
         private func crawlPageWithRetry(url: URL, depth: Int, maxRetries: Int) async throws {
-            var lastError: Error?
+            var lastError: Swift.Error?
 
             for attempt in 0...maxRetries {
                 if attempt > 0 {
@@ -247,7 +247,7 @@ extension Core {
             }
 
             // All retries exhausted
-            throw lastError ?? CrawlerError.invalidState
+            throw lastError ?? Error.invalidState
         }
 
         private func crawlPage(url: URL, depth: Int) async throws {
@@ -443,7 +443,7 @@ extension Core {
 
             // Notify progress
             if let onProgress {
-                let progress = await CrawlProgress(
+                let progress = await Progress(
                     currentURL: url,
                     visitedCount: visited.count,
                     totalPages: configuration.maxPages,
@@ -462,7 +462,7 @@ extension Core {
             canonicalURL: URL
         ) {
             guard let jsonURL = AppleJSONToMarkdown.jsonAPIURL(from: url) else {
-                throw CrawlerError.invalidState
+                throw Error.invalidState
             }
 
             logInfo("   📡 Using JSON API: \(jsonURL.lastPathComponent)")
@@ -472,7 +472,7 @@ extension Core {
             guard let httpResponse = response as? HTTPURLResponse,
                   httpResponse.statusCode == 200
             else {
-                throw CrawlerError.invalidHTML
+                throw Error.invalidHTML
             }
 
             // Derive the canonical documentation URL from the post-redirect JSON API response URL.
@@ -494,7 +494,7 @@ extension Core {
             return try autoreleasepool {
                 let structuredPage = AppleJSONToMarkdown.toStructuredPage(data, url: canonicalURL, depth: depth)
                 guard let markdown = AppleJSONToMarkdown.convert(data, url: canonicalURL) else {
-                    throw CrawlerError.invalidHTML
+                    throw Error.invalidHTML
                 }
                 let links = AppleJSONToMarkdown.extractLinks(from: data)
                 return (structuredPage, markdown, links, canonicalURL)
@@ -667,36 +667,40 @@ extension Core {
 
 // MARK: - Crawler Progress
 
-/// Progress information during crawling
-public struct CrawlProgress: Sendable {
-    public let currentURL: URL
-    public let visitedCount: Int
-    public let totalPages: Int
-    public let stats: Shared.Models.CrawlStatistics
+extension Core.Crawler {
+    /// Progress information during crawling
+    public struct Progress: Sendable {
+        public let currentURL: URL
+        public let visitedCount: Int
+        public let totalPages: Int
+        public let stats: Shared.Models.CrawlStatistics
 
-    public var percentage: Double {
-        Double(visitedCount) / Double(totalPages) * 100
+        public var percentage: Double {
+            Double(visitedCount) / Double(totalPages) * 100
+        }
     }
 }
 
 // MARK: - Crawler Errors
 
-public enum CrawlerError: Error, LocalizedError {
-    case timeout
-    case invalidState
-    case invalidHTML
-    case unsupportedPlatform
+extension Core.Crawler {
+    public enum Error: Swift.Error, LocalizedError, Sendable {
+        case timeout
+        case invalidState
+        case invalidHTML
+        case unsupportedPlatform
 
-    public var errorDescription: String? {
-        switch self {
-        case .timeout:
-            return "Page load timeout"
-        case .invalidState:
-            return "Invalid crawler state"
-        case .invalidHTML:
-            return "Invalid HTML received"
-        case .unsupportedPlatform:
-            return "WKWebView is not available on this platform"
+        public var errorDescription: String? {
+            switch self {
+            case .timeout:
+                return "Page load timeout"
+            case .invalidState:
+                return "Invalid crawler state"
+            case .invalidHTML:
+                return "Invalid HTML received"
+            case .unsupportedPlatform:
+                return "WKWebView is not available on this platform"
+            }
         }
     }
 }

@@ -282,12 +282,12 @@ struct CrawlerTests {
         #expect(decoded.errors == 5)
     }
 
-    // MARK: - CrawlProgress Tests
+    // MARK: - Core.Crawler.Progress Tests
 
-    @Test("CrawlProgress calculates percentage")
+    @Test("Core.Crawler.Progress calculates percentage")
     func progressCalculatesPercentage() throws {
         let stats = Shared.Models.CrawlStatistics()
-        let progress = try CrawlProgress(
+        let progress = try Core.Crawler.Progress(
             currentURL: #require(URL(string: "https://example.com")),
             visitedCount: 10,
             totalPages: 100,
