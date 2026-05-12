@@ -159,7 +159,8 @@ func exclusionListMalformed() throws {
     try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: tempDir) }
     let fileURL = tempDir.appendingPathComponent(Shared.Constants.FileName.excludedPackages)
-    try try #require("not a json array".data(using: .utf8)?.write(to: fileURL))
+    let badPayload = try #require("not a json array".data(using: .utf8))
+    try badPayload.write(to: fileURL)
     #expect(Core.ExclusionList.load(from: tempDir).isEmpty)
 }
 
