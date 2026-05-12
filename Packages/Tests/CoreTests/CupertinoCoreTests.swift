@@ -17,7 +17,7 @@ import TestSupport
     #expect(markdown.contains("# Title"))
 }
 
-// MARK: - SampleCodeCatalog Tests
+// MARK: - Sample.Core.Catalog Tests
 
 //
 // The 5 legacy tests in this section assumed the embedded catalog was

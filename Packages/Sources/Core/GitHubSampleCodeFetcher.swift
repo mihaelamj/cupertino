@@ -1,5 +1,6 @@
 import Foundation
 import Logging
+import SharedConstants
 import SharedCore
 
 // MARK: - GitHub Sample Code Fetcher
@@ -61,14 +62,14 @@ public final class GitHubSampleCodeFetcher {
     }
 
     /// List all available sample code projects
-    public func listProjects() async throws -> [SampleProject] {
+    public func listProjects() async throws -> [Sample.Core.Project] {
         let repoPath = outputDirectory.appendingPathComponent(repoName)
 
         guard FileManager.default.fileExists(atPath: repoPath.path) else {
             throw GitHubFetcherError.repositoryNotCloned
         }
 
-        var projects: [SampleProject] = []
+        var projects: [Sample.Core.Project] = []
         let contents = try FileManager.default.contentsOfDirectory(
             at: repoPath,
             includingPropertiesForKeys: [.isDirectoryKey]
@@ -90,7 +91,7 @@ public final class GitHubSampleCodeFetcher {
             )
 
             if hasXcodeproj || hasPackageSwift {
-                let project = SampleProject(
+                let project = Sample.Core.Project(
                     id: item.lastPathComponent,
                     name: formatProjectName(item.lastPathComponent),
                     path: item
@@ -225,15 +226,17 @@ public final class GitHubSampleCodeFetcher {
 
 // MARK: - Models
 
-public struct SampleProject: Sendable {
-    public let id: String
-    public let name: String
-    public let path: URL
+extension Sample.Core {
+    public struct Project: Sendable {
+        public let id: String
+        public let name: String
+        public let path: URL
 
-    public init(id: String, name: String, path: URL) {
-        self.id = id
-        self.name = name
-        self.path = path
+        public init(id: String, name: String, path: URL) {
+            self.id = id
+            self.name = name
+            self.path = path
+        }
     }
 }
 

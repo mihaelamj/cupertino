@@ -55,7 +55,7 @@ extension SampleIndex {
 
         /// Index all sample code projects from the sample-code directory
         /// - Parameters:
-        ///   - entries: Sample code entries with metadata (from SampleCodeCatalog)
+        ///   - entries: Sample code entries with metadata (from Sample.Core.Catalog)
         ///   - forceReindex: If true, reindex even if project already exists
         ///   - progress: Optional progress callback
         /// - Returns: Number of projects indexed
@@ -207,7 +207,7 @@ extension SampleIndex {
         /// Index a single project from a ZIP file
         /// - Parameters:
         ///   - zipURL: URL to the ZIP file
-        ///   - entry: Optional metadata from SampleCodeCatalog
+        ///   - entry: Optional metadata from Sample.Core.Catalog
         ///   - forceReindex: If true, delete existing and reindex
         /// - Returns: Number of files indexed
         public func indexProject(
@@ -474,7 +474,7 @@ extension SampleIndex {
         /// Index a single project from an extracted directory
         /// - Parameters:
         ///   - directoryURL: URL to the project directory
-        ///   - entry: Optional metadata from SampleCodeCatalog
+        ///   - entry: Optional metadata from Sample.Core.Catalog
         ///   - forceReindex: If true, delete existing and reindex
         /// - Returns: Number of files indexed
         public func indexProjectDirectory(
@@ -674,7 +674,7 @@ extension SampleIndex {
 
     // MARK: - Sample Code Entry Info
 
-    /// Minimal info needed from SampleCodeCatalog for indexing
+    /// Minimal info needed from Sample.Core.Catalog for indexing
     public struct SampleCodeEntryInfo: Sendable {
         public let title: String
         public let description: String

@@ -1164,14 +1164,14 @@ extension Search {
             // (<sample-code-dir>/catalog.json, written by
             // `cupertino fetch --type code`). The previous embedded fallback
             // was deleted in #215 — auto-discovery is the source of truth.
-            let entries = await SampleCodeCatalog.allEntries
-            let source = await SampleCodeCatalog.loadedSource ?? .missing
+            let entries = await Sample.Core.Catalog.allEntries
+            let source = await Sample.Core.Catalog.loadedSource ?? .missing
             switch source {
             case .onDisk:
                 logInfo("📦 Indexing sample code catalog from on-disk catalog.json (#214)...")
             case .missing:
                 let path = Shared.Constants.defaultSampleCodeDirectory
-                    .appendingPathComponent(SampleCodeCatalog.onDiskCatalogFilename)
+                    .appendingPathComponent(Sample.Core.Catalog.onDiskCatalogFilename)
                     .path
                 logInfo("⚠️  No sample-code catalog at \(path) — skipping sample-code indexing.")
                 logInfo("    Run `cupertino fetch --type code` to populate the catalog, then re-run save.")

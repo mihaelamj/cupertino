@@ -263,7 +263,7 @@ func crawlStatisticsNoDuration() {
     #expect(stats.duration == nil)
 }
 
-// Note: CrawlSessionState, SwiftPackageEntry, SampleCodeEntry, and PriorityPackageCatalogData
+// Note: CrawlSessionState, SwiftPackageEntry, Sample.Core.Entry, and PriorityPackageCatalogData
 // have more complex tests in Core module
 
 // MARK: - StructuredDocumentationPage Declaration and Kind Tests

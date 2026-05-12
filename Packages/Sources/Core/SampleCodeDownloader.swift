@@ -69,8 +69,8 @@ public final class SampleCodeDownloader {
     // MARK: - Public API
 
     /// Download sample code projects
-    public func download(onProgress: (@Sendable (SampleProgress) -> Void)? = nil) async throws -> SampleStatistics {
-        var stats = SampleStatistics(startTime: Date())
+    public func download(onProgress: (@Sendable (Sample.Core.Progress) -> Void)? = nil) async throws -> Sample.Core.Statistics {
+        var stats = Sample.Core.Statistics(startTime: Date())
 
         logInfo("🚀 Starting sample code downloader")
         logInfo("   Source: \(sampleCodeListURL)")
@@ -109,7 +109,7 @@ public final class SampleCodeDownloader {
 
                 // Progress callback
                 if let onProgress {
-                    let progress = SampleProgress(
+                    let progress = Sample.Core.Progress(
                         current: index + 1,
                         total: samplesToDownload.count,
                         sampleName: sample.name,
@@ -148,7 +148,7 @@ public final class SampleCodeDownloader {
     /// Exposed `internal` so tests can drive it independently of a full
     /// `download()` run.
     func writeCatalogJSON() async {
-        let catalogURL = outputDirectory.appendingPathComponent(SampleCodeCatalog.onDiskCatalogFilename)
+        let catalogURL = outputDirectory.appendingPathComponent(Sample.Core.Catalog.onDiskCatalogFilename)
         do {
             guard let listingURL = URL(string: Shared.Constants.BaseURL.appleSampleCodeJSON) else {
                 logError("Could not construct Apple sample-code listing URL — skipping catalog.json write.")
@@ -187,7 +187,7 @@ public final class SampleCodeDownloader {
             return nil
         }
 
-        var entries: [SampleCodeEntry] = []
+        var entries: [Sample.Core.Entry] = []
         for (_, ref) in refs {
             guard ref["role"] as? String == "sampleCode",
                   let title = ref["title"] as? String,
@@ -210,7 +210,7 @@ public final class SampleCodeDownloader {
             let zipFilename = "\(framework.lowercased().replacingOccurrences(of: "_", with: "-"))-\(slug).zip"
             let webURL = "https://developer.apple.com\(urlString)"
 
-            entries.append(SampleCodeEntry(
+            entries.append(Sample.Core.Entry(
                 title: title,
                 url: urlString,
                 framework: framework,
@@ -318,7 +318,7 @@ public final class SampleCodeDownloader {
 
     func downloadSample(
         _ sample: SampleMetadata,
-        stats: inout SampleStatistics
+        stats: inout Sample.Core.Statistics
     ) async throws {
         logInfo("📦 [\(stats.totalSamples + 1)] \(sample.name)")
 
@@ -750,7 +750,7 @@ public final class SampleCodeDownloader {
         Logging.Log.error(errorMessage, category: .samples)
     }
 
-    private func logStatistics(_ stats: SampleStatistics) {
+    private func logStatistics(_ stats: Sample.Core.Statistics) {
         let messages = [
             "📊 Statistics:",
             "   Total samples: \(stats.totalSamples)",
@@ -776,46 +776,50 @@ struct SampleMetadata {
     let slug: String
 }
 
-public struct SampleStatistics: Sendable {
-    public var totalSamples: Int = 0
-    public var downloadedSamples: Int = 0
-    public var skippedSamples: Int = 0
-    public var errors: Int = 0
-    public var startTime: Date?
-    public var endTime: Date?
+extension Sample.Core {
+    public struct Statistics: Sendable {
+        public var totalSamples: Int = 0
+        public var downloadedSamples: Int = 0
+        public var skippedSamples: Int = 0
+        public var errors: Int = 0
+        public var startTime: Date?
+        public var endTime: Date?
 
-    public init(
-        totalSamples: Int = 0,
-        downloadedSamples: Int = 0,
-        skippedSamples: Int = 0,
-        errors: Int = 0,
-        startTime: Date? = nil,
-        endTime: Date? = nil
-    ) {
-        self.totalSamples = totalSamples
-        self.downloadedSamples = downloadedSamples
-        self.skippedSamples = skippedSamples
-        self.errors = errors
-        self.startTime = startTime
-        self.endTime = endTime
-    }
-
-    public var duration: TimeInterval? {
-        guard let start = startTime, let end = endTime else {
-            return nil
+        public init(
+            totalSamples: Int = 0,
+            downloadedSamples: Int = 0,
+            skippedSamples: Int = 0,
+            errors: Int = 0,
+            startTime: Date? = nil,
+            endTime: Date? = nil
+        ) {
+            self.totalSamples = totalSamples
+            self.downloadedSamples = downloadedSamples
+            self.skippedSamples = skippedSamples
+            self.errors = errors
+            self.startTime = startTime
+            self.endTime = endTime
         }
-        return end.timeIntervalSince(start)
+
+        public var duration: TimeInterval? {
+            guard let start = startTime, let end = endTime else {
+                return nil
+            }
+            return end.timeIntervalSince(start)
+        }
     }
 }
 
-public struct SampleProgress: Sendable {
-    public let current: Int
-    public let total: Int
-    public let sampleName: String
-    public let stats: SampleStatistics
+extension Sample.Core {
+    public struct Progress: Sendable {
+        public let current: Int
+        public let total: Int
+        public let sampleName: String
+        public let stats: Sample.Core.Statistics
 
-    public var percentage: Double {
-        Double(current) / Double(total) * 100
+        public var percentage: Double {
+            Double(current) / Double(total) * 100
+        }
     }
 }
 

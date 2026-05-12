@@ -1,14 +1,15 @@
 @testable import Core
 import CoreProtocols
 import Foundation
+import SharedConstants
 import Testing
 
-/// Coverage for #214: `SampleCodeCatalog` should prefer the on-disk
+/// Coverage for #214: `Sample.Core.Catalog` should prefer the on-disk
 /// `catalog.json` (written by `cupertino fetch --type code`) over the
 /// embedded snapshot, and gracefully fall back when the on-disk file is
 /// missing or malformed. Also covers
 /// `SampleCodeDownloader.transformAppleListingToCatalog`.
-@Suite("SampleCodeCatalog disk-first loading (#214)")
+@Suite("Sample.Core.Catalog disk-first loading (#214)")
 struct SampleCodeCatalogTests {
     // MARK: - loadFromDisk
 
@@ -16,7 +17,7 @@ struct SampleCodeCatalogTests {
     func diskMissing() throws {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
-        #expect(SampleCodeCatalog.loadFromDisk(at: dir) == nil)
+        #expect(Sample.Core.Catalog.loadFromDisk(at: dir) == nil)
     }
 
     @Test("loadFromDisk returns nil when catalog.json is malformed")
@@ -24,7 +25,7 @@ struct SampleCodeCatalogTests {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         try Self.writeCatalog(in: dir, contents: "{ this is not valid json")
-        #expect(SampleCodeCatalog.loadFromDisk(at: dir) == nil)
+        #expect(Sample.Core.Catalog.loadFromDisk(at: dir) == nil)
     }
 
     @Test("loadFromDisk decodes a valid catalog.json")
@@ -32,7 +33,7 @@ struct SampleCodeCatalogTests {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         try Self.writeCatalog(in: dir, contents: Self.validCatalogJSON(count: 2))
-        let catalog = SampleCodeCatalog.loadFromDisk(at: dir)
+        let catalog = Sample.Core.Catalog.loadFromDisk(at: dir)
         #expect(catalog != nil)
         #expect(catalog?.count == 2)
         #expect(catalog?.entries.count == 2)
@@ -44,7 +45,7 @@ struct SampleCodeCatalogTests {
     func diskDefaultPath() {
         // Just exercise the default-arg overload — no file there in test env,
         // expect nil rather than a crash.
-        _ = SampleCodeCatalog.loadFromDisk()
+        _ = Sample.Core.Catalog.loadFromDisk()
     }
 
     // MARK: - loadCatalog (end-to-end via allEntries)
@@ -55,12 +56,12 @@ struct SampleCodeCatalogTests {
 
     @Test("allEntries returns empty + .missing source when no on-disk catalog")
     func endToEndMissing() async {
-        await SampleCodeCatalog.resetCache()
+        await Sample.Core.Catalog.resetCache()
         // The test machine MAY have ~/.cupertino-dev/sample-code/catalog.json,
         // in which case loadedSource is .onDisk and entries is non-empty.
         // On a fresh CI machine it should be .missing with no entries.
-        let entries = await SampleCodeCatalog.allEntries
-        let source = await SampleCodeCatalog.loadedSource
+        let entries = await Sample.Core.Catalog.allEntries
+        let source = await Sample.Core.Catalog.loadedSource
         switch source {
         case .onDisk:
             #expect(!entries.isEmpty)
@@ -130,7 +131,7 @@ struct SampleCodeCatalogTests {
     func writeCatalogRoundTrip() throws {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let catalogURL = dir.appendingPathComponent(SampleCodeCatalog.onDiskCatalogFilename)
+        let catalogURL = dir.appendingPathComponent(Sample.Core.Catalog.onDiskCatalogFilename)
 
         let original = try #require(
             SampleCodeDownloader.transformAppleListingToCatalog(
@@ -144,8 +145,8 @@ struct SampleCodeCatalogTests {
         let attrs = try FileManager.default.attributesOfItem(atPath: catalogURL.path)
         #expect((attrs[.size] as? Int ?? 0) > 0)
 
-        // Re-load through SampleCodeCatalog.loadFromDisk → byte-equivalent catalog
-        let reloaded = try #require(SampleCodeCatalog.loadFromDisk(at: dir))
+        // Re-load through Sample.Core.Catalog.loadFromDisk → byte-equivalent catalog
+        let reloaded = try #require(Sample.Core.Catalog.loadFromDisk(at: dir))
         #expect(reloaded.count == original.count)
         #expect(reloaded.entries.map(\.title) == original.entries.map(\.title))
         #expect(reloaded.entries.map(\.framework) == original.entries.map(\.framework))
@@ -155,7 +156,7 @@ struct SampleCodeCatalogTests {
     func writeCatalogOverwrite() throws {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let catalogURL = dir.appendingPathComponent(SampleCodeCatalog.onDiskCatalogFilename)
+        let catalogURL = dir.appendingPathComponent(Sample.Core.Catalog.onDiskCatalogFilename)
 
         // Pre-existing junk content at the target path
         try "stale junk".write(to: catalogURL, atomically: true, encoding: .utf8)
@@ -170,7 +171,7 @@ struct SampleCodeCatalogTests {
         try SampleCodeDownloader.writeCatalog(real, to: catalogURL)
 
         // Old content gone, new content parses
-        let reloaded = try #require(SampleCodeCatalog.loadFromDisk(at: dir))
+        let reloaded = try #require(Sample.Core.Catalog.loadFromDisk(at: dir))
         #expect(!reloaded.entries.isEmpty)
     }
 
@@ -182,12 +183,12 @@ struct SampleCodeCatalogTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         try Self.writeCatalog(in: dir, contents: Self.validCatalogJSON(count: 2))
 
-        await SampleCodeCatalog.setTestOverrideDirectory(dir)
-        await SampleCodeCatalog.resetCache()
-        defer { Task { await SampleCodeCatalog.setTestOverrideDirectory(nil); await SampleCodeCatalog.resetCache() } }
+        await Sample.Core.Catalog.setTestOverrideDirectory(dir)
+        await Sample.Core.Catalog.resetCache()
+        defer { Task { await Sample.Core.Catalog.setTestOverrideDirectory(nil); await Sample.Core.Catalog.resetCache() } }
 
-        let entries = await SampleCodeCatalog.allEntries
-        let source = await SampleCodeCatalog.loadedSource
+        let entries = await Sample.Core.Catalog.allEntries
+        let source = await Sample.Core.Catalog.loadedSource
 
         #expect(entries.count == 2)
         #expect(source == .onDisk)
@@ -200,12 +201,12 @@ struct SampleCodeCatalogTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         // Intentionally no catalog.json written
 
-        await SampleCodeCatalog.setTestOverrideDirectory(dir)
-        await SampleCodeCatalog.resetCache()
-        defer { Task { await SampleCodeCatalog.setTestOverrideDirectory(nil); await SampleCodeCatalog.resetCache() } }
+        await Sample.Core.Catalog.setTestOverrideDirectory(dir)
+        await Sample.Core.Catalog.resetCache()
+        defer { Task { await Sample.Core.Catalog.setTestOverrideDirectory(nil); await Sample.Core.Catalog.resetCache() } }
 
-        let entries = await SampleCodeCatalog.allEntries
-        let source = await SampleCodeCatalog.loadedSource
+        let entries = await Sample.Core.Catalog.allEntries
+        let source = await Sample.Core.Catalog.loadedSource
 
         #expect(entries.isEmpty)
         #expect(source == .missing)
@@ -221,7 +222,7 @@ struct SampleCodeCatalogTests {
     }
 
     private static func writeCatalog(in dir: URL, contents: String) throws {
-        let url = dir.appendingPathComponent(SampleCodeCatalog.onDiskCatalogFilename)
+        let url = dir.appendingPathComponent(Sample.Core.Catalog.onDiskCatalogFilename)
         try contents.write(to: url, atomically: true, encoding: .utf8)
     }
 

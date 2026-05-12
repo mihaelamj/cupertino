@@ -350,7 +350,7 @@ struct SaveCommandTests {
 
     // The two sample-code SaveTests cases that lived here previously
     // ("Index sample code catalog from bundled resources" + "Sample code
-    // catalog respects framework filter") assumed `SampleCodeCatalog`
+    // catalog respects framework filter") assumed `Sample.Core.Catalog`
     // always returned ~600 entries from the embedded blob. After #215
     // deleted that blob, the catalog only exists when
     // `<sample-code-dir>/catalog.json` is present, so a CI machine with
@@ -360,7 +360,7 @@ struct SaveCommandTests {
     //  - Disk-fixture loading + format invariants:
     //    `Tests/CoreTests/SampleCodeCatalogTests.swift`
     //  - Save→search-of-sample-code integration: deferred until we have a
-    //    test seam for injecting a sample-code dir into `SampleCodeCatalog`
+    //    test seam for injecting a sample-code dir into `Sample.Core.Catalog`
     //    (the cached load currently reads from
     //    `Shared.Constants.defaultSampleCodeDirectory` directly, so a test
     //    can't sandbox without polluting user data).
