@@ -1,7 +1,7 @@
 import Foundation
 import Logging
-import SharedCore
 import SharedConstants
+import SharedCore
 
 // swiftlint:disable function_body_length
 // Justification: The generate() function orchestrates the complete package analysis workflow:
@@ -214,7 +214,7 @@ public struct PriorityPackageList: Codable, Sendable {
     let sources: [String]
     let updatePolicy: String
     let priorityLevels: PriorityLevels
-    let stats: PackageStats
+    public let stats: PackageStats
     let notes: [String]
 
     enum CodingKeys: String, CodingKey {
@@ -255,11 +255,11 @@ public struct PriorityPackageInfo: Codable, Hashable, Sendable {
 }
 
 public struct PackageStats: Codable, Sendable {
-    let totalApplePackagesInSwiftorg: Int
-    let totalSwiftlangPackagesInSwiftorg: Int
-    let totalEcosystemPackagesInSwiftorg: Int
-    let totalUniqueReposFound: Int
-    let sourceFilesScanned: Int
+    public let totalApplePackagesInSwiftorg: Int
+    public let totalSwiftlangPackagesInSwiftorg: Int
+    public let totalEcosystemPackagesInSwiftorg: Int
+    public let totalUniqueReposFound: Int
+    public let sourceFilesScanned: Int
 
     enum CodingKeys: String, CodingKey {
         case totalApplePackagesInSwiftorg = "total_apple_packages_in_swiftorg"

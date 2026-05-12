@@ -1,9 +1,10 @@
 import Core
+import CorePackageIndexing
+import CoreProtocols
 import Foundation
 import Resources
-import SharedCore
 import SharedConstants
-import CoreProtocols
+import SharedCore
 
 /// Open a package's GitHub page in the default browser
 @MainActor

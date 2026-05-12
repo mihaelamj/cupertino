@@ -4,6 +4,7 @@ import SharedCore
 import SharedConstants
 import SharedModels
 import CoreProtocols
+import CorePackageIndexing
 
 extension Search {
     /// Reads downloaded-and-extracted package trees from

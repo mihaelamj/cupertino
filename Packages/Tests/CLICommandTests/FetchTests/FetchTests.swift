@@ -7,6 +7,7 @@ import Foundation
 import Testing
 import TestSupport
 import CoreProtocols
+@testable import CorePackageIndexing
 
 // MARK: - Fetch Command Tests
 

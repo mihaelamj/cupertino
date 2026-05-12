@@ -1,12 +1,13 @@
+import CoreProtocols
+
 // swiftlint:disable identifier_name
 // swiftlint:disable function_body_length type_body_length
 import Foundation
 import Logging
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedModels
 import SharedUtils
-import CoreProtocols
 
 extension Core {
     /// Walks each seed repo's dependency graph via raw.githubusercontent.com and returns
@@ -215,12 +216,12 @@ extension Core {
 
         // MARK: - Manifest fetch
 
-        struct FetchSuccess: Sendable {
+        struct FetchSuccess {
             let dependencyURLs: [String]
             let registryIdentifierCount: Int
         }
 
-        enum FetchResult: Sendable {
+        enum FetchResult {
             case success(FetchSuccess)
             case missing
             case malformed

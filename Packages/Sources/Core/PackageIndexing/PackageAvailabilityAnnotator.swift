@@ -1,7 +1,7 @@
 import ASTIndexer
+import CoreProtocols
 import Foundation
 import SharedCore
-import CoreProtocols
 
 extension Core {
     /// Walks a downloaded package on disk and writes an `availability.json`

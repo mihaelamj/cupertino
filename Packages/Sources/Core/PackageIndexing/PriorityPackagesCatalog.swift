@@ -4,8 +4,8 @@
 
 import Foundation
 import Resources
-import SharedCore
 import SharedConstants
+import SharedCore
 
 /// Represents a priority package entry
 public struct PriorityPackage: Codable, Sendable {
