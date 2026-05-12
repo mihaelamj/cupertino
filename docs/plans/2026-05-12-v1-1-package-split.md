@@ -192,26 +192,34 @@ The cut therefore moves only **MCP-protocol output strings**, not the search-dom
 
 ### 1.3 — Extract `SharedConstants`
 
-**Why**: `Constants.swift` is 1,270 LOC after 1.1 stripped out the MCP text. Foundation-layer-appropriate constants only.
+**Why**: `Constants.swift` is 1,374 LOC after 1.1 stripped out the MCP text. Foundation-layer-appropriate constants only.
 
-**Files moved**:
+**Files moved** (revised vs the original plan after a dependency-direction audit during implementation):
 - `Packages/Sources/Shared/Constants.swift` → `Packages/Sources/SharedConstants/Constants.swift`
+- `Packages/Sources/Shared/Shared.swift` → `Packages/Sources/SharedConstants/Shared.swift` (the `public enum Shared` namespace itself; `Constants` is declared as `extension Shared`, so the namespace owner has to live in the same target as the extension to avoid a cycle)
+- `Packages/Sources/Shared/BinaryConfig.swift` → `Packages/Sources/SharedConstants/BinaryConfig.swift` (carried because `Constants.Directory.defaultBaseDirectory` calls `Shared.BinaryConfig.shared` at runtime; co-locating is the only way to keep `SharedConstants` self-contained)
+
+**Files added**:
+- `Packages/Sources/Shared/Exports.swift` — single line `@_exported import SharedConstants` so callers that `import Shared` continue to see `Shared.Constants.*` and the `Shared` namespace itself with no source change. Removed in task 1.6 alongside the `Shared` → `SharedCore` rename.
 
 **Package.swift changes**:
 - Add `SharedConstants` target with no internal deps.
 - Add `SharedConstants` product.
-- `Shared` target depends on `SharedConstants` (transitive re-export so existing callers still see `Shared.Constants.*`).
+- `Shared` target gains `SharedConstants` as a dep so the re-export resolves.
 
-**Risk**: low. The re-export keeps `Shared.Constants.*` paths working through Phase 1.6.
+**Public API impact**: none. Every `Shared.Constants.X`, `Shared.BinaryConfig.X`, and `Shared` namespace reference resolves through the `@_exported import` re-export.
+
+**Risk**: low. Re-export is transparent; the only catch is that `swift test` needs a clean rebuild after this PR lands because cached test object files reference symbols at the old module path. CI usually does this; locally run `xcrun swift package clean && xcrun swift test` once after merge.
+
+**Plan §1.4 follow-up**: `BinaryConfig.swift` is removed from the list of files moving to `SharedUtils`, since it has already moved here. `SharedUtils` (1.4) now contains only `JSONCoding.swift`, `PathResolver.swift`, `Formatting.swift`, `FTSQuery.swift`, `SchemaVersion.swift`.
 
 ### 1.4 — Extract `SharedUtils`
 
-**Files moved**:
+**Files moved** (BinaryConfig.swift removed from this list; moved to `SharedConstants` in 1.3 because of the runtime call from `Constants.Directory.defaultBaseDirectory`):
 - `Packages/Sources/Shared/JSONCoding.swift` → `Packages/Sources/SharedUtils/JSONCoding.swift`
 - `Packages/Sources/Shared/PathResolver.swift` → `Packages/Sources/SharedUtils/PathResolver.swift`
 - `Packages/Sources/Shared/Formatting.swift` → `Packages/Sources/SharedUtils/Formatting.swift`
 - `Packages/Sources/Shared/FTSQuery.swift` → `Packages/Sources/SharedUtils/FTSQuery.swift`
-- `Packages/Sources/Shared/BinaryConfig.swift` → `Packages/Sources/SharedUtils/BinaryConfig.swift`
 - `Packages/Sources/Shared/SchemaVersion.swift` → `Packages/Sources/SharedUtils/SchemaVersion.swift`
 
 **Package.swift**: add `SharedUtils` target + product, depends on `SharedConstants` only (PathResolver uses `Constants.Directory`).
