@@ -1,8 +1,8 @@
 @testable import Core
+import CoreProtocols
 import Foundation
 import SharedCore
 import Testing
-import CoreProtocols
 
 // Covers the malformed-URL skip path added to
 // `Core.SampleCodeDownloader.downloadSample` in PR #288. The skip fires

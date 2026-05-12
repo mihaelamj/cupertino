@@ -127,7 +127,7 @@ public enum PriorityPackagesCatalog {
         }
 
         // Fall back to embedded resource (#161: no more runtime bundle lookup)
-        guard let data = CupertinoResources.jsonData(named: "priority-packages") else {
+        guard let data = Resources.jsonData(named: "priority-packages") else {
             fatalError("❌ priority-packages embedded JSON missing — should be impossible")
         }
 
@@ -164,7 +164,7 @@ public enum PriorityPackagesCatalog {
     /// the embedded list but missing from the user file (matched on
     /// `owner.lowercased()/repo.lowercased()`) are appended. User deletions
     /// stick (we never remove), but newly-shipped seeds in
-    /// `PriorityPackagesEmbedded.swift` propagate into existing installs the
+    /// `Resources.Embedded.PriorityPackages.swift` propagate into existing installs the
     /// next time any caller touches `PriorityPackagesCatalog`.
     ///
     /// Fixes the 2026-05-03 staleness bug filed under #218: a Dec 2025
@@ -174,7 +174,7 @@ public enum PriorityPackagesCatalog {
     private static func ensureUserSelectionsFileExists() {
         let selectedURL = userSelectionsURL
 
-        guard let embeddedData = CupertinoResources.jsonData(named: "priority-packages") else {
+        guard let embeddedData = Resources.jsonData(named: "priority-packages") else {
             return
         }
 

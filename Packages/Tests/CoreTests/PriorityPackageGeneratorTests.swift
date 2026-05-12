@@ -1,9 +1,9 @@
 @testable import Core
+@testable import CorePackageIndexing
+import CoreProtocols
 import Foundation
 import SharedCore
 import Testing
-import CoreProtocols
-@testable import CorePackageIndexing
 
 // MARK: - Priority Package Generator Tests
 

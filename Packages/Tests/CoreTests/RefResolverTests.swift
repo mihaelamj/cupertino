@@ -1,10 +1,10 @@
 @testable import Core
+@testable import CoreJSONParser
+import CoreProtocols
 import Foundation
 @testable import SharedCore
-import Testing
 import SharedModels
-import CoreProtocols
-@testable import CoreJSONParser
+import Testing
 
 // MARK: - canonicalPath(forDocURI:)
 

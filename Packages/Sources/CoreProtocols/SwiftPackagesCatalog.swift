@@ -89,7 +89,7 @@ public enum SwiftPackagesCatalog {
 
     private static func loadEntries() async -> [SwiftPackageEntry] {
         if let cached = await cache.get() { return cached }
-        let entries = SwiftPackagesCatalogEmbedded.urls.compactMap(SwiftPackageEntry.fromURL)
+        let entries = Resources.Embedded.SwiftPackagesCatalog.urls.compactMap(SwiftPackageEntry.fromURL)
         await cache.set(entries)
         return entries
     }
@@ -101,7 +101,7 @@ public enum SwiftPackagesCatalog {
 
     /// Last crawled date (stamped at catalog generation time).
     public static var lastCrawled: String {
-        get async { SwiftPackagesCatalogEmbedded.lastCrawled }
+        get async { Resources.Embedded.SwiftPackagesCatalog.lastCrawled }
     }
 
     /// Catalog version marker. Fixed string post-slim; bumped when the URL

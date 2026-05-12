@@ -1,6 +1,6 @@
 import Core
-import Foundation
 import CoreProtocols
+import Foundation
 
 struct PackageEntry {
     let package: SwiftPackageEntry

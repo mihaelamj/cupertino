@@ -1,7 +1,7 @@
 @testable import Core
+import CoreProtocols
 import Foundation
 import Testing
-import CoreProtocols
 
 /// Coverage for #214: `SampleCodeCatalog` should prefer the on-disk
 /// `catalog.json` (written by `cupertino fetch --type code`) over the

@@ -1,10 +1,10 @@
 import Core
+import CorePackageIndexing
+import CoreProtocols
 import Foundation
 import Resources
-import SharedCore
 import SharedConstants
-import CoreProtocols
-import CorePackageIndexing
+import SharedCore
 
 // swiftlint:disable type_body_length function_body_length
 // Justification: PackageCuratorApp is a self-contained CLI tool for curating Swift packages.

@@ -1,9 +1,9 @@
 @testable import Core
+import CoreProtocols
 import Foundation
+import SharedConstants
 @testable import SharedCore
 import Testing
-import SharedConstants
-import CoreProtocols
 
 // MARK: - ArchiveGuideCatalog Tests
 

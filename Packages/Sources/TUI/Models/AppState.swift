@@ -1,6 +1,6 @@
 import Core
-import Foundation
 import CoreProtocols
+import Foundation
 
 enum FilterMode: String {
     case all = "All"

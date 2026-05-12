@@ -941,7 +941,7 @@ func hashUtilitiesSHA256Consistency() {
 
 /// Coverage for #218: an existing user file at
 /// `~/.cupertino/selected-packages.json` should additively pick up new
-/// entries from `PriorityPackagesEmbedded.swift` instead of being frozen at
+/// entries from `Resources.Embedded.PriorityPackages.swift` instead of being frozen at
 /// whichever priority list it was first seeded with.
 @Suite("PriorityPackagesCatalog embedded-entry merge (#218)")
 struct PriorityPackagesMergeTests {
