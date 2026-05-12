@@ -99,6 +99,69 @@ struct CrawlerTests {
         #expect(try !#require(normalized?.absoluteString.contains("installer-js")))
     }
 
+    @Test("URLUtilities normalize converts underscore sub-page slug to dash")
+    func urlNormalizeConvertsUnderscoreSubpageToDash() throws {
+        let url = URL(string: "https://developer.apple.com/documentation/corelocation/getting_heading_and_course_information")!
+        let normalized = URLUtilities.normalize(url)
+
+        #expect(normalized?.path == "/documentation/corelocation/getting-heading-and-course-information")
+    }
+
+    @Test("URLUtilities normalize preserves framework slug at depth 2 and normalizes sub-page underscore")
+    func urlNormalizePreservesFrameworkSlugNormalizesSubpage() throws {
+        // driverkit/driverkit_constants is one of the 31 duplicate-cluster pairs from #285.
+        // The framework slug "driverkit" at depth 2 must be left untouched;
+        // only "driverkit_constants" at depth 3 is collapsed to dashes.
+        let url = URL(string: "https://developer.apple.com/documentation/driverkit/driverkit_constants")!
+        let normalized = URLUtilities.normalize(url)
+
+        #expect(normalized?.path == "/documentation/driverkit/driverkit-constants")
+    }
+
+    @Test("URLUtilities normalize converts underscores at multiple sub-page depths")
+    func urlNormalizeConvertsUnderscoresAtMultipleDepths() throws {
+        let url = URL(string: "https://developer.apple.com/documentation/swiftui/some_class/some_method")!
+        let normalized = URLUtilities.normalize(url)
+
+        #expect(normalized?.path == "/documentation/swiftui/some-class/some-method")
+    }
+
+    @Test("URLUtilities normalize does not touch non-documentation URL underscores")
+    func urlNormalizeDoesNotTouchNonDocsPaths() throws {
+        let url = URL(string: "https://developer.apple.com/videos/play/wwdc2023/10_video")!
+        let normalized = URLUtilities.normalize(url)
+
+        #expect(normalized?.path == "/videos/play/wwdc2023/10_video")
+    }
+
+    @Test("URLUtilities normalize strips fragment and query and collapses sub-page underscore")
+    func urlNormalizeStripsFragmentQueryAndNormalizesUnderscore() throws {
+        let url = URL(string: "https://developer.apple.com/documentation/swiftui/some_method?foo=1#bar")!
+        let normalized = URLUtilities.normalize(url)
+
+        #expect(normalized?.path == "/documentation/swiftui/some-method")
+        #expect(normalized?.query == nil)
+        #expect(normalized?.fragment == nil)
+    }
+
+    @Test("URLUtilities normalize lowercases before collapsing underscore to dash")
+    func urlNormalizeLowercasesBeforeCollapsingUnderscore() throws {
+        let url = URL(string: "https://developer.apple.com/documentation/SwiftUI/Some_Method")!
+        let normalized = URLUtilities.normalize(url)
+
+        #expect(normalized?.path == "/documentation/swiftui/some-method")
+    }
+
+    @Test("URLUtilities normalize does not crash on /documentation with no framework slug")
+    func urlNormalizeHandlesDocumentationOnlyPath() throws {
+        // Regression: normalizeDocPath used to trap with "Range requires lowerBound <= upperBound"
+        // when documentation was found but had fewer than 2 following path segments.
+        let url = URL(string: "https://developer.apple.com/documentation")!
+        let normalized = URLUtilities.normalize(url)
+
+        #expect(normalized?.path == "/documentation")
+    }
+
     // MARK: - Framework Extraction Tests
 
     @Test("URLUtilities extracts framework from Apple docs URL")

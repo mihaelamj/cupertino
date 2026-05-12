@@ -842,23 +842,46 @@ public enum HashUtilities {
 
 /// Utilities for URL manipulation
 public enum URLUtilities {
-    /// Normalize a URL: strip fragment and query, lowercase the path.
-    /// Apple's docs server is case-insensitive on the path
-    /// (`/documentation/Cinematic/CNAssetInfo-2ata2` and the all-lowercase
-    /// form return the same content), so dedup logic must treat them as one
-    /// page (#200). Dash-vs-underscore framework variants
-    /// (`professional-video-applications` ↔ `professional_video_applications`)
-    /// are NOT collapsed here because at least one Apple framework
-    /// (`installer_js`) legitimately uses underscore in its path; that axis
-    /// is handled at the search-index save layer instead.
+    /// Returns a normalized copy of `url` with fragment and query stripped,
+    /// path lowercased, and underscores replaced with dashes in sub-page
+    /// segments within `/documentation/` paths.
+    ///
+    /// Applies underscore-to-dash replacement only to path segments at depth
+    /// ≥ 3 (sub-page level). Framework slugs at depth 2 are preserved because
+    /// at least two Apple frameworks (`installer_js`,
+    /// `professional_video_applications`) use underscores canonically and
+    /// their dash forms return 404. This resolves the 31 duplicate URI
+    /// clusters in search.db (#285).
+    ///
+    /// - Parameter url: The URL to normalize.
+    /// - Returns: The normalized URL, or `nil` if `url` cannot be decomposed
+    ///   into URL components.
     public static func normalize(_ url: URL) -> URL? {
         var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
         components?.fragment = nil
         components?.query = nil
         if let path = components?.path {
-            components?.path = path.lowercased()
+            components?.path = normalizeDocPath(path.lowercased())
         }
         return components?.url
+    }
+
+    // Replace underscores with dashes in sub-page path segments only.
+    // Framework slugs at depth 2 after /documentation/ use underscores
+    // canonically (installer_js, professional_video_applications) and must
+    // be left untouched.
+    private static func normalizeDocPath(_ path: String) -> String {
+        var parts = path.components(separatedBy: "/")
+        guard let docIdx = parts.firstIndex(of: "documentation"),
+              docIdx + 2 < parts.count else { return path }
+
+        let normalizeFromIdx = docIdx + 2
+        return parts
+            .enumerated()
+            .map { index, part in
+                index >= normalizeFromIdx ? String(part.map { $0 == "_" ? "-" : $0 }) : part
+            }
+            .joined(separator: "/")
     }
 
     /// Extract framework name from documentation URL (Apple or Swift.org)
