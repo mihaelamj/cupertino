@@ -6,6 +6,7 @@ import Foundation
 @testable import SharedCore
 import Testing
 import TestSupport
+import CoreProtocols
 
 // MARK: - Fetch Command Tests
 

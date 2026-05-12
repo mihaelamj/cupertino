@@ -1,6 +1,7 @@
 @testable import Core
 import Foundation
 import Testing
+import CoreProtocols
 
 // MARK: - Top-level files
 

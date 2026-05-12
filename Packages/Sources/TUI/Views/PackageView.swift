@@ -1,5 +1,6 @@
 import Core
 import Foundation
+import CoreProtocols
 
 @MainActor
 struct PackageView {

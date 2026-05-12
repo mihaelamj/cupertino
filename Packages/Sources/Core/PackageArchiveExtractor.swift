@@ -1,6 +1,7 @@
 import Foundation
 import SharedCore
 import SharedConstants
+import CoreProtocols
 
 extension Core {
     /// Fetches a repo's source tarball from `codeload.github.com/<owner>/<repo>/tar.gz/<ref>`

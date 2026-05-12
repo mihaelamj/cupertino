@@ -8,6 +8,7 @@ import TestSupport
 import SharedConstants
 import SharedConfiguration
 import SharedModels
+import CoreProtocols
 
 // MARK: - Auto-Resume + --start-clean Tests
 

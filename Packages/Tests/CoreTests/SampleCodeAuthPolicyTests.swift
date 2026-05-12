@@ -3,6 +3,7 @@ import AppKit
 @testable import Core
 import Foundation
 import Testing
+import CoreProtocols
 
 /// Regression guard for #6. The authentication window only renders when the
 /// CLI process runs with `.regular` activation policy; `.prohibited` (the

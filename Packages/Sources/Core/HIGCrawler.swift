@@ -6,6 +6,7 @@ import SharedCore
 import WebKit
 import SharedConstants
 import SharedUtils
+import CoreProtocols
 #endif
 
 // MARK: - HIG Crawler

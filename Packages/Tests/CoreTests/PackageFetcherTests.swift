@@ -2,6 +2,7 @@
 import Foundation
 import SharedCore
 import Testing
+import CoreProtocols
 
 // MARK: - Package Fetcher Tests
 

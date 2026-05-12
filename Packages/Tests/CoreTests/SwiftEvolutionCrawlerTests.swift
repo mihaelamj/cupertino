@@ -4,6 +4,7 @@ import Foundation
 @testable import SharedCore
 import Testing
 import SharedConstants
+import CoreProtocols
 
 // MARK: - Swift Evolution Crawler Tests
 

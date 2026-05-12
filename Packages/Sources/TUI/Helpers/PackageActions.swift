@@ -3,6 +3,7 @@ import Foundation
 import Resources
 import SharedCore
 import SharedConstants
+import CoreProtocols
 
 /// Open a package's GitHub page in the default browser
 @MainActor

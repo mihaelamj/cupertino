@@ -4,6 +4,7 @@ import SharedCore
 import WebKit
 import SharedConstants
 import SharedModels
+import CoreProtocols
 #endif
 
 // MARK: - HTML to Markdown Converter

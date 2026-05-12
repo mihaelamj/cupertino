@@ -9,6 +9,7 @@ import SharedCore
 import SQLite3
 import Testing
 import TestSupport
+import CoreProtocols
 
 // MARK: - MCP Doctor Command Tests
 

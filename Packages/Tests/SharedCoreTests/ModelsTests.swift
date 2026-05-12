@@ -2,6 +2,7 @@ import Foundation
 @testable import SharedCore
 import SharedModels
 import Testing
+import CoreProtocols
 
 // MARK: - DocumentationPage Tests
 

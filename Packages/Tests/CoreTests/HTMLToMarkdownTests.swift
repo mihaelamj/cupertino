@@ -2,6 +2,7 @@
 @testable import Core
 import Foundation
 import Testing
+import CoreProtocols
 
 // MARK: - HTML to Markdown Converter Tests
 

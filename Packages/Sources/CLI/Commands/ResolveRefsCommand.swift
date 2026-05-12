@@ -10,6 +10,7 @@ import AppKit
 import WebKit
 import SharedModels
 import SharedUtils
+import CoreProtocols
 #endif
 
 // MARK: - Resolve-Refs Command

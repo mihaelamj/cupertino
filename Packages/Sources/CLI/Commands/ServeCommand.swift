@@ -11,6 +11,7 @@ import SearchToolProvider
 import SharedCore
 import SharedConfiguration
 import SharedConstants
+import CoreProtocols
 
 // MARK: - Serve Command
 

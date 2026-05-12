@@ -1,6 +1,6 @@
 import Foundation
-import SharedCore
 import SharedConstants
+import SharedCore
 
 extension Core {
     /// User-maintained skip list at `~/.cupertino/excluded-packages.json`: a flat JSON
