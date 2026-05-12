@@ -4,9 +4,9 @@
 import ASTIndexer
 import Testing
 
-@Suite("SwiftSourceExtractor Tests")
+@Suite("ASTIndexer.Extractor Tests")
 struct SwiftSourceExtractorTests {
-    let extractor = ASTIndexer.SwiftSourceExtractor()
+    let extractor = ASTIndexer.Extractor()
 
     @Test("Extract class declaration")
     func extractClass() {

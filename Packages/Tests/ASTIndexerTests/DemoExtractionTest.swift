@@ -53,7 +53,7 @@ struct DemoExtractionTest {
         }
         """
 
-        let extractor = ASTIndexer.SwiftSourceExtractor()
+        let extractor = ASTIndexer.Extractor()
         let result = extractor.extract(from: source)
 
         print("\n")

@@ -1,6 +1,6 @@
 import Foundation
-import SharedCore
 import SharedConstants
+import SharedCore
 
 // MARK: - Framework Availability (Search Module)
 
@@ -34,27 +34,27 @@ public struct FrameworkAvailability: Sendable {
 
 /// Lightweight platform availability for search results
 extension Search {
-public struct PlatformAvailability: Codable, Sendable, Hashable {
-    public let name: String
-    public let introducedAt: String?
-    public let deprecated: Bool
-    public let unavailable: Bool
-    public let beta: Bool
+    public struct PlatformAvailability: Codable, Sendable, Hashable {
+        public let name: String
+        public let introducedAt: String?
+        public let deprecated: Bool
+        public let unavailable: Bool
+        public let beta: Bool
 
-    public init(
-        name: String,
-        introducedAt: String? = nil,
-        deprecated: Bool = false,
-        unavailable: Bool = false,
-        beta: Bool = false
-    ) {
-        self.name = name
-        self.introducedAt = introducedAt
-        self.deprecated = deprecated
-        self.unavailable = unavailable
-        self.beta = beta
+        public init(
+            name: String,
+            introducedAt: String? = nil,
+            deprecated: Bool = false,
+            unavailable: Bool = false,
+            beta: Bool = false
+        ) {
+            self.name = name
+            self.introducedAt = introducedAt
+            self.deprecated = deprecated
+            self.unavailable = unavailable
+            self.beta = beta
+        }
     }
-}
 }
 
 // MARK: - Matched Symbol
@@ -337,29 +337,29 @@ extension Search {
 // MARK: - Search Errors
 
 extension Search {
-public enum Error: Swift.Error, LocalizedError {
-    case databaseNotInitialized
-    case sqliteError(String)
-    case prepareFailed(String)
-    case insertFailed(String)
-    case searchFailed(String)
-    case invalidQuery(String)
+    public enum Error: Swift.Error, LocalizedError {
+        case databaseNotInitialized
+        case sqliteError(String)
+        case prepareFailed(String)
+        case insertFailed(String)
+        case searchFailed(String)
+        case invalidQuery(String)
 
-    public var errorDescription: String? {
-        switch self {
-        case .databaseNotInitialized:
-            return "Search database has not been initialized. Run 'cupertino build-index' first."
-        case .sqliteError(let msg):
-            return "SQLite error: \(msg)"
-        case .prepareFailed(let msg):
-            return "Failed to prepare SQL statement: \(msg)"
-        case .insertFailed(let msg):
-            return "Failed to insert document: \(msg)"
-        case .searchFailed(let msg):
-            return "Search query failed: \(msg)"
-        case .invalidQuery(let msg):
-            return "Invalid search query: \(msg)"
+        public var errorDescription: String? {
+            switch self {
+            case .databaseNotInitialized:
+                return "Search database has not been initialized. Run 'cupertino build-index' first."
+            case .sqliteError(let msg):
+                return "SQLite error: \(msg)"
+            case .prepareFailed(let msg):
+                return "Failed to prepare SQL statement: \(msg)"
+            case .insertFailed(let msg):
+                return "Failed to insert document: \(msg)"
+            case .searchFailed(let msg):
+                return "Search query failed: \(msg)"
+            case .invalidQuery(let msg):
+                return "Invalid search query: \(msg)"
+            }
         }
     }
-}
 }

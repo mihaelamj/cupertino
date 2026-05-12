@@ -4,8 +4,8 @@ import Logging
 import SampleIndex
 import Search
 import Services
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedUtils
 
 // MARK: - Search Command

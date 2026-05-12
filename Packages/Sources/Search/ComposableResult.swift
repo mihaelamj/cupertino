@@ -21,44 +21,44 @@ import Foundation
 
 /// Identifies which documentation source produced a result
 extension Search {
-public enum Source: String, Codable, Sendable, CaseIterable {
-    case appleDocs = "apple-docs"
-    case samples
-    case hig
-    case appleArchive = "apple-archive"
-    case swiftEvolution = "swift-evolution"
-    case swiftOrg = "swift-org"
-    case swiftBook = "swift-book"
-    case packages
+    public enum Source: String, Codable, Sendable, CaseIterable {
+        case appleDocs = "apple-docs"
+        case samples
+        case hig
+        case appleArchive = "apple-archive"
+        case swiftEvolution = "swift-evolution"
+        case swiftOrg = "swift-org"
+        case swiftBook = "swift-book"
+        case packages
 
-    /// Human-readable display name
-    public var displayName: String {
-        switch self {
-        case .appleDocs: return "Apple Documentation"
-        case .samples: return "Sample Code"
-        case .hig: return "Human Interface Guidelines"
-        case .appleArchive: return "Apple Archive (Legacy)"
-        case .swiftEvolution: return "Swift Evolution"
-        case .swiftOrg: return "Swift.org"
-        case .swiftBook: return "The Swift Programming Language"
-        case .packages: return "Swift Packages"
+        /// Human-readable display name
+        public var displayName: String {
+            switch self {
+            case .appleDocs: return "Apple Documentation"
+            case .samples: return "Sample Code"
+            case .hig: return "Human Interface Guidelines"
+            case .appleArchive: return "Apple Archive (Legacy)"
+            case .swiftEvolution: return "Swift Evolution"
+            case .swiftOrg: return "Swift.org"
+            case .swiftBook: return "The Swift Programming Language"
+            case .packages: return "Swift Packages"
+            }
+        }
+
+        /// Emoji prefix for display
+        public var emoji: String {
+            switch self {
+            case .appleDocs: return "📘"
+            case .samples: return "💻"
+            case .hig: return "🎨"
+            case .appleArchive: return "📚"
+            case .swiftEvolution: return "🔮"
+            case .swiftOrg: return "🦅"
+            case .swiftBook: return "📖"
+            case .packages: return "📦"
+            }
         }
     }
-
-    /// Emoji prefix for display
-    public var emoji: String {
-        switch self {
-        case .appleDocs: return "📘"
-        case .samples: return "💻"
-        case .hig: return "🎨"
-        case .appleArchive: return "📚"
-        case .swiftEvolution: return "🔮"
-        case .swiftOrg: return "🦅"
-        case .swiftBook: return "📖"
-        case .packages: return "📦"
-        }
-    }
-}
 }
 
 // MARK: - Result Atom (Single Item)
@@ -248,32 +248,32 @@ public struct SourceHint: Codable, Sendable {
 
 /// A contextual tip for the user/AI
 extension Search {
-public struct Tip: Codable, Sendable, Identifiable {
-    public let id: UUID
-    public let category: TipCategory
-    public let message: String
-    public let actionHint: String? // Optional action to take
+    public struct Tip: Codable, Sendable, Identifiable {
+        public let id: UUID
+        public let category: TipCategory
+        public let message: String
+        public let actionHint: String? // Optional action to take
 
-    public enum TipCategory: String, Codable, Sendable {
-        case refinement // Narrow/broaden search
-        case source // Try different source
-        case availability // Platform-specific tip
-        case bestPractice // Coding/design pattern tip
-        case related // Related topic suggestion
-    }
+        public enum TipCategory: String, Codable, Sendable {
+            case refinement // Narrow/broaden search
+            case source // Try different source
+            case availability // Platform-specific tip
+            case bestPractice // Coding/design pattern tip
+            case related // Related topic suggestion
+        }
 
-    public init(
-        id: UUID = UUID(),
-        category: TipCategory,
-        message: String,
-        actionHint: String? = nil
-    ) {
-        self.id = id
-        self.category = category
-        self.message = message
-        self.actionHint = actionHint
+        public init(
+            id: UUID = UUID(),
+            category: TipCategory,
+            message: String,
+            actionHint: String? = nil
+        ) {
+            self.id = id
+            self.category = category
+            self.message = message
+            self.actionHint = actionHint
+        }
     }
-}
 }
 
 /// Quick link to a relevant resource
@@ -817,61 +817,61 @@ public struct UnifiedSearchSummary: Codable, Sendable {
 
 /// Factory for creating common search tips
 extension Search {
-public enum TipFactory {
-    public static func noResultsTip(query: String) -> Search.Tip {
-        Search.Tip(
-            category: .refinement,
-            message: "No results for '\(query)'. Try broader terms or check spelling.",
-            actionHint: "Remove specific version numbers or use related framework names"
-        )
-    }
+    public enum TipFactory {
+        public static func noResultsTip(query: String) -> Search.Tip {
+            Search.Tip(
+                category: .refinement,
+                message: "No results for '\(query)'. Try broader terms or check spelling.",
+                actionHint: "Remove specific version numbers or use related framework names"
+            )
+        }
 
-    public static func tryOtherSourceTip(current: Search.Source, suggested: Search.Source) -> Search.Tip {
-        Search.Tip(
-            category: .source,
-            message: "Also check \(suggested.displayName) for \(suggested == .hig ? "design guidance" : "more context")",
-            actionHint: "Use source: \(suggested.rawValue)"
-        )
-    }
+        public static func tryOtherSourceTip(current: Search.Source, suggested: Search.Source) -> Search.Tip {
+            Search.Tip(
+                category: .source,
+                message: "Also check \(suggested.displayName) for \(suggested == .hig ? "design guidance" : "more context")",
+                actionHint: "Use source: \(suggested.rawValue)"
+            )
+        }
 
-    public static func availabilityTip(platform: String, minVersion: String) -> Search.Tip {
-        Search.Tip(
-            category: .availability,
-            message: "This API requires \(platform) \(minVersion)+",
-            actionHint: "Check availability before using in production"
-        )
-    }
+        public static func availabilityTip(platform: String, minVersion: String) -> Search.Tip {
+            Search.Tip(
+                category: .availability,
+                message: "This API requires \(platform) \(minVersion)+",
+                actionHint: "Check availability before using in production"
+            )
+        }
 
-    public static func deprecationTip(replacement: String?) -> Search.Tip {
-        Search.Tip(
-            category: .bestPractice,
-            message: "This API is deprecated." + (replacement.map { " Use \($0) instead." } ?? ""),
-            actionHint: replacement.map { "Search for \($0)" }
-        )
-    }
+        public static func deprecationTip(replacement: String?) -> Search.Tip {
+            Search.Tip(
+                category: .bestPractice,
+                message: "This API is deprecated." + (replacement.map { " Use \($0) instead." } ?? ""),
+                actionHint: replacement.map { "Search for \($0)" }
+            )
+        }
 
-    public static func swiftEvolutionTip(proposalID: String) -> Search.Tip {
-        Search.Tip(
-            category: .related,
-            message: "See Swift Evolution proposal \(proposalID) for background",
-            actionHint: "Use source: swift-evolution for full proposal"
-        )
-    }
+        public static func swiftEvolutionTip(proposalID: String) -> Search.Tip {
+            Search.Tip(
+                category: .related,
+                message: "See Swift Evolution proposal \(proposalID) for background",
+                actionHint: "Use source: swift-evolution for full proposal"
+            )
+        }
 
-    public static func sampleCodeAvailableTip(count: Int) -> Search.Tip {
-        Search.Tip(
-            category: .source,
-            message: "\(count) sample project\(count == 1 ? "" : "s") available with working code",
-            actionHint: "Use source: samples to explore"
-        )
-    }
+        public static func sampleCodeAvailableTip(count: Int) -> Search.Tip {
+            Search.Tip(
+                category: .source,
+                message: "\(count) sample project\(count == 1 ? "" : "s") available with working code",
+                actionHint: "Use source: samples to explore"
+            )
+        }
 
-    public static func designGuidelineTip() -> Search.Tip {
-        Search.Tip(
-            category: .source,
-            message: "Check Human Interface Guidelines for design best practices",
-            actionHint: "Use source: hig"
-        )
+        public static func designGuidelineTip() -> Search.Tip {
+            Search.Tip(
+                category: .source,
+                message: "Check Human Interface Guidelines for design best practices",
+                actionHint: "Use source: hig"
+            )
+        }
     }
-}
 }

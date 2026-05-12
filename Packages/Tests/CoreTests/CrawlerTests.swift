@@ -1,12 +1,12 @@
 @testable import Core
-import Foundation
-@testable import SharedCore
-import Testing
-import SharedConstants
-import SharedConfiguration
-import SharedModels
-import CoreProtocols
 @testable import CoreJSONParser
+import CoreProtocols
+import Foundation
+import SharedConfiguration
+import SharedConstants
+@testable import SharedCore
+import SharedModels
+import Testing
 
 // MARK: - Crawler Tests
 
@@ -76,8 +76,8 @@ struct CrawlerTests {
 
     @Test("URLUtilities normalize lowercases Apple documentation paths")
     func urlNormalizeLowercasesAppleDocumentationPaths() throws {
-        let uppercase = URL(string: "https://developer.apple.com/documentation/Cinematic/CNAssetInfo-2ata2")!
-        let lowercase = URL(string: "https://developer.apple.com/documentation/cinematic/cnassetinfo-2ata2")!
+        let uppercase = try #require(URL(string: "https://developer.apple.com/documentation/Cinematic/CNAssetInfo-2ata2"))
+        let lowercase = try #require(URL(string: "https://developer.apple.com/documentation/cinematic/cnassetinfo-2ata2"))
 
         #expect(URLUtilities.normalize(uppercase) == URLUtilities.normalize(lowercase))
         #expect(URLUtilities.normalize(uppercase)?.path == "/documentation/cinematic/cnassetinfo-2ata2")
@@ -85,7 +85,7 @@ struct CrawlerTests {
 
     @Test("URLUtilities normalize preserves method disambiguator dashes")
     func urlNormalizePreservesMethodDisambiguatorDashes() throws {
-        let url = URL(string: "https://developer.apple.com/documentation/Cinematic/CNAssetInfo-2ata2")!
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/Cinematic/CNAssetInfo-2ata2"))
 
         #expect(URLUtilities.normalize(url)?.lastPathComponent == "cnassetinfo-2ata2")
     }
@@ -97,7 +97,7 @@ struct CrawlerTests {
         // underscore→dash collapse in URLUtilities would silently break the
         // entire installer_js framework on every crawl. Verify we never make
         // that change.
-        let url = URL(string: "https://developer.apple.com/documentation/installer_js/license")!
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/installer_js/license"))
         let normalized = URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/documentation/installer_js/license")
@@ -106,7 +106,7 @@ struct CrawlerTests {
 
     @Test("URLUtilities normalize converts underscore sub-page slug to dash")
     func urlNormalizeConvertsUnderscoreSubpageToDash() throws {
-        let url = URL(string: "https://developer.apple.com/documentation/corelocation/getting_heading_and_course_information")!
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/corelocation/getting_heading_and_course_information"))
         let normalized = URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/documentation/corelocation/getting-heading-and-course-information")
@@ -117,7 +117,7 @@ struct CrawlerTests {
         // driverkit/driverkit_constants is one of the 31 duplicate-cluster pairs from #285.
         // The framework slug "driverkit" at depth 2 must be left untouched;
         // only "driverkit_constants" at depth 3 is collapsed to dashes.
-        let url = URL(string: "https://developer.apple.com/documentation/driverkit/driverkit_constants")!
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/driverkit/driverkit_constants"))
         let normalized = URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/documentation/driverkit/driverkit-constants")
@@ -125,7 +125,7 @@ struct CrawlerTests {
 
     @Test("URLUtilities normalize converts underscores at multiple sub-page depths")
     func urlNormalizeConvertsUnderscoresAtMultipleDepths() throws {
-        let url = URL(string: "https://developer.apple.com/documentation/swiftui/some_class/some_method")!
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/some_class/some_method"))
         let normalized = URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/documentation/swiftui/some-class/some-method")
@@ -133,7 +133,7 @@ struct CrawlerTests {
 
     @Test("URLUtilities normalize does not touch non-documentation URL underscores")
     func urlNormalizeDoesNotTouchNonDocsPaths() throws {
-        let url = URL(string: "https://developer.apple.com/videos/play/wwdc2023/10_video")!
+        let url = try #require(URL(string: "https://developer.apple.com/videos/play/wwdc2023/10_video"))
         let normalized = URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/videos/play/wwdc2023/10_video")
@@ -141,7 +141,7 @@ struct CrawlerTests {
 
     @Test("URLUtilities normalize strips fragment and query and collapses sub-page underscore")
     func urlNormalizeStripsFragmentQueryAndNormalizesUnderscore() throws {
-        let url = URL(string: "https://developer.apple.com/documentation/swiftui/some_method?foo=1#bar")!
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/some_method?foo=1#bar"))
         let normalized = URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/documentation/swiftui/some-method")
@@ -151,7 +151,7 @@ struct CrawlerTests {
 
     @Test("URLUtilities normalize lowercases before collapsing underscore to dash")
     func urlNormalizeLowercasesBeforeCollapsingUnderscore() throws {
-        let url = URL(string: "https://developer.apple.com/documentation/SwiftUI/Some_Method")!
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/SwiftUI/Some_Method"))
         let normalized = URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/documentation/swiftui/some-method")
@@ -161,7 +161,7 @@ struct CrawlerTests {
     func urlNormalizeHandlesDocumentationOnlyPath() throws {
         // Regression: normalizeDocPath used to trap with "Range requires lowerBound <= upperBound"
         // when documentation was found but had fewer than 2 following path segments.
-        let url = URL(string: "https://developer.apple.com/documentation")!
+        let url = try #require(URL(string: "https://developer.apple.com/documentation"))
         let normalized = URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/documentation")

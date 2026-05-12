@@ -117,7 +117,7 @@ enum ServeReaper {
     /// asking for it directly is the only correct answer.
     private static func argvOf(pid: pid_t) -> [String]? {
         var mib: [Int32] = [CTL_KERN, KERN_PROCARGS2, pid]
-        var size: Int = 0
+        var size = 0
 
         // Probe for the buffer size first.
         guard mib.withUnsafeMutableBufferPointer({ ptr in

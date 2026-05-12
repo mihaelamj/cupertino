@@ -1,6 +1,6 @@
 import Foundation
-import SharedCore
 import SharedConstants
+import SharedCore
 
 struct SettingItem {
     let label: String

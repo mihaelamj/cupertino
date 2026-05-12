@@ -556,7 +556,7 @@ public final class SampleCodeDownloader {
         window.makeKeyAndOrderFront(nil)
         NSApplication.shared.activate(ignoringOtherApps: true)
 
-        // Surface progress on stdout (bypasses Log.info's category router
+        // Surface progress on stdout (bypasses Logging.Log.info's category router
         // which in visible-browser invocations wasn't reaching stdout).
         Logging.ConsoleLogger.info("✅ Browser window opened")
         Logging.ConsoleLogger.info("   Sign in to your Apple Developer account")
@@ -587,7 +587,7 @@ public final class SampleCodeDownloader {
     // MARK: - Auth flow coordination (#6 follow-up)
 
     /// Terminal state of an interactive auth session.
-    enum AuthOutcome: Sendable {
+    enum AuthOutcome {
         /// Target session cookie appeared without user input.
         case autoDetected
         /// User pressed Enter at the prompt.
@@ -742,12 +742,12 @@ public final class SampleCodeDownloader {
     // MARK: - Logging
 
     private func logInfo(_ message: String) {
-        Log.info(message, category: .samples)
+        Logging.Log.info(message, category: .samples)
     }
 
     private func logError(_ message: String) {
         let errorMessage = "❌ \(message)"
-        Log.error(errorMessage, category: .samples)
+        Logging.Log.error(errorMessage, category: .samples)
     }
 
     private func logStatistics(_ stats: SampleStatistics) {
@@ -763,7 +763,7 @@ public final class SampleCodeDownloader {
         ]
 
         for message in messages where !message.isEmpty {
-            Log.info(message, category: .samples)
+            Logging.Log.info(message, category: .samples)
         }
     }
 }

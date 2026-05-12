@@ -1,9 +1,9 @@
 import ASTIndexer
 import Foundation
-import SharedCore
-import SQLite3
 import SharedConstants
+import SharedCore
 import SharedModels
+import SQLite3
 
 // swiftlint:disable function_body_length function_parameter_count
 // Justification: extracted from SearchIndex.swift; the original 4598-line
@@ -537,7 +537,7 @@ extension Search.Index {
         // Extract symbols from declaration using SwiftSyntax (#81). Re-running
         // the indexer over the same uri must not double rows, so clear first.
         if let declaration = page.declaration?.code {
-            let extractor = ASTIndexer.SwiftSourceExtractor()
+            let extractor = ASTIndexer.Extractor()
             let result = extractor.extract(from: declaration)
             try await clearDocSymbols(docUri: uri)
             try await clearDocImports(docUri: uri)
@@ -563,7 +563,7 @@ extension Search.Index {
     /// Index symbols extracted from Swift code in documentation
     func indexDocSymbols(
         docUri: String,
-        symbols: [ASTIndexer.ExtractedSymbol]
+        symbols: [ASTIndexer.Symbol]
     ) async throws {
         guard let database else {
             throw Search.Error.databaseNotInitialized
@@ -634,7 +634,7 @@ extension Search.Index {
     }
 
     /// Index symbol into FTS table
-    func indexDocSymbolFTS(symbol: ASTIndexer.ExtractedSymbol) async throws {
+    func indexDocSymbolFTS(symbol: ASTIndexer.Symbol) async throws {
         guard let database else { return }
 
         let sql = """
@@ -669,7 +669,7 @@ extension Search.Index {
     /// Index imports extracted from Swift code in documentation
     func indexDocImports(
         docUri: String,
-        imports: [ASTIndexer.ExtractedImport]
+        imports: [ASTIndexer.Import]
     ) async throws {
         guard let database else {
             throw Search.Error.databaseNotInitialized

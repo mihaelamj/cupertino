@@ -1,5 +1,7 @@
 import ArgumentParser
 import Core
+import CorePackageIndexing
+import CoreProtocols
 import Diagnostics
 import Foundation
 import Indexer
@@ -9,11 +11,9 @@ import MCPSupport
 import SampleIndex
 import Search
 import SearchToolProvider
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedUtils
-import CoreProtocols
-import CorePackageIndexing
 
 // MARK: - Doctor Command
 
@@ -69,20 +69,20 @@ struct DoctorCommand: AsyncParsableCommand {
         // it. Identical output to what `cupertino save` would print as
         // its preflight summary.
         if save {
-            Log.output("🔍 `cupertino save` preflight check\n")
+            Logging.Log.output("🔍 `cupertino save` preflight check\n")
             let lines = Indexer.Preflight.preflightLines(
                 buildDocs: true,
                 buildPackages: true,
                 buildSamples: true
             )
             for line in lines {
-                Log.output(line)
+                Logging.Log.output(line)
             }
             return
         }
 
-        Log.output("🏥 MCP Server Health Check")
-        Log.output("")
+        Logging.Log.output("🏥 MCP Server Health Check")
+        Logging.Log.output("")
 
         var allChecks = true
 
@@ -111,11 +111,11 @@ struct DoctorCommand: AsyncParsableCommand {
         printSchemaVersions()
 
         // Summary
-        Log.output("")
+        Logging.Log.output("")
         if allChecks {
-            Log.output("✅ All checks passed - MCP server ready")
+            Logging.Log.output("✅ All checks passed - MCP server ready")
         } else {
-            Log.output("⚠️  Some checks failed - see above for details")
+            Logging.Log.output("⚠️  Some checks failed - see above for details")
             throw ExitCode(1)
         }
     }
@@ -127,9 +127,9 @@ struct DoctorCommand: AsyncParsableCommand {
     /// fail the check — they're already covered by the per-DB sections
     /// above.
     private func printSchemaVersions() {
-        Log.output("")
-        Log.output("8. Schema versions (#234)")
-        Log.output("")
+        Logging.Log.output("")
+        Logging.Log.output("8. Schema versions (#234)")
+        Logging.Log.output("")
         let entries: [(String, URL)] = [
             ("search.db", URL(fileURLWithPath: searchDB).expandingTildeInPath),
             ("packages.db", Shared.Constants.defaultPackagesDatabase),
@@ -137,21 +137,21 @@ struct DoctorCommand: AsyncParsableCommand {
         ]
         for (label, url) in entries {
             guard FileManager.default.fileExists(atPath: url.path) else {
-                Log.output("   ⚠ \(label): not built")
+                Logging.Log.output("   ⚠ \(label): not built")
                 continue
             }
             let version = Diagnostics.Probes.userVersion(at: url) ?? 0
             let formatted = Diagnostics.SchemaVersion.format(version)
-            Log.output("   ✓ \(label): \(formatted)")
+            Logging.Log.output("   ✓ \(label): \(formatted)")
         }
     }
 
     private func checkServerInitialization() -> Bool {
-        Log.output("✅ MCP Server")
-        Log.output("   ✓ Server can initialize")
-        Log.output("   ✓ Transport: stdio")
-        Log.output("   ✓ Protocol version: \(MCPProtocolVersion)")
-        Log.output("")
+        Logging.Log.output("✅ MCP Server")
+        Logging.Log.output("   ✓ Server can initialize")
+        Logging.Log.output("   ✓ Transport: stdio")
+        Logging.Log.output("   ✓ Protocol version: \(MCPProtocolVersion)")
+        Logging.Log.output("")
         return true
     }
 
@@ -168,7 +168,7 @@ struct DoctorCommand: AsyncParsableCommand {
         let swiftOrgURL = Shared.Constants.defaultSwiftOrgDirectory
         let archiveURL = Shared.Constants.defaultArchiveDirectory
 
-        Log.output("📂 Raw corpus directories (input for `cupertino save`)")
+        Logging.Log.output("📂 Raw corpus directories (input for `cupertino save`)")
 
         let entries: [CorpusEntry] = [
             CorpusEntry(label: "Apple docs", url: docsURL, suffix: "files", fetchType: "docs"),
@@ -181,14 +181,14 @@ struct DoctorCommand: AsyncParsableCommand {
         for entry in entries {
             if FileManager.default.fileExists(atPath: entry.url.path) {
                 let count = Diagnostics.Probes.countCorpusFiles(in: entry.url)
-                Log.output("   ✓ \(entry.label): \(entry.url.path) (\(count) \(entry.suffix))")
+                Logging.Log.output("   ✓ \(entry.label): \(entry.url.path) (\(count) \(entry.suffix))")
             } else {
-                Log.output("   ⚠  \(entry.label): \(entry.url.path) (not found)")
-                Log.output("     → Run: cupertino fetch --type \(entry.fetchType)  (only needed to rebuild from scratch)")
+                Logging.Log.output("   ⚠  \(entry.label): \(entry.url.path) (not found)")
+                Logging.Log.output("     → Run: cupertino fetch --type \(entry.fetchType)  (only needed to rebuild from scratch)")
             }
         }
 
-        Log.output("")
+        Logging.Log.output("")
         // Filesystem state is informational. The hard fail is whether
         // search.db has indexed data, which `checkSearchDatabase` enforces.
         return true
@@ -197,18 +197,18 @@ struct DoctorCommand: AsyncParsableCommand {
     private func checkSearchDatabase() async -> Bool {
         let searchDBURL = URL(fileURLWithPath: searchDB).expandingTildeInPath
 
-        Log.output("🔍 Search Index")
+        Logging.Log.output("🔍 Search Index")
 
         guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
-            Log.output("   ✗ Database: \(searchDBURL.path) (not found)")
-            Log.output("     → Run: cupertino setup  (or `cupertino save` if building locally)")
-            Log.output("")
+            Logging.Log.output("   ✗ Database: \(searchDBURL.path) (not found)")
+            Logging.Log.output("     → Run: cupertino setup  (or `cupertino save` if building locally)")
+            Logging.Log.output("")
             return false
         }
 
         let fileSize = (try? FileManager.default.attributesOfItem(atPath: searchDBURL.path)[.size] as? UInt64) ?? 0
-        Log.output("   ✓ Database: \(searchDBURL.path)")
-        Log.output("   ✓ Size: \(Shared.Formatting.formatBytes(Int64(fileSize)))")
+        Logging.Log.output("   ✓ Database: \(searchDBURL.path)")
+        Logging.Log.output("   ✓ Size: \(Shared.Formatting.formatBytes(Int64(fileSize)))")
 
         if !reportSchemaVersion(at: searchDBURL) {
             return false
@@ -217,13 +217,13 @@ struct DoctorCommand: AsyncParsableCommand {
         do {
             let searchIndex = try await Search.Index(dbPath: searchDBURL)
             let frameworks = try await searchIndex.listFrameworks()
-            Log.output("   ✓ Frameworks: \(frameworks.count)")
+            Logging.Log.output("   ✓ Frameworks: \(frameworks.count)")
             await searchIndex.disconnect()
             return reportIndexedSources(at: searchDBURL)
         } catch {
-            Log.output("   ✗ Database error: \(error)")
-            Log.output("     → rm \(searchDBURL.path) && cupertino save")
-            Log.output("")
+            Logging.Log.output("   ✗ Database error: \(error)")
+            Logging.Log.output("     → rm \(searchDBURL.path) && cupertino save")
+            Logging.Log.output("")
             return false
         }
     }
@@ -237,21 +237,21 @@ struct DoctorCommand: AsyncParsableCommand {
         let onDiskVersion = Diagnostics.Probes.userVersion(at: searchDBURL)
         let expected = Search.Index.schemaVersion
         guard let onDiskVersion else {
-            Log.output("   ⚠  Schema version: could not read PRAGMA user_version")
+            Logging.Log.output("   ⚠  Schema version: could not read PRAGMA user_version")
             return true
         }
         if onDiskVersion == expected {
-            Log.output("   ✓ Schema version: \(onDiskVersion) (matches installed binary)")
+            Logging.Log.output("   ✓ Schema version: \(onDiskVersion) (matches installed binary)")
             return true
         }
         if onDiskVersion < expected {
-            Log.output("   ✗ Schema version: \(onDiskVersion) (binary expects \(expected), rebuild required)")
-            Log.output("     → rm \(searchDBURL.path) && cupertino save")
+            Logging.Log.output("   ✗ Schema version: \(onDiskVersion) (binary expects \(expected), rebuild required)")
+            Logging.Log.output("     → rm \(searchDBURL.path) && cupertino save")
         } else {
-            Log.output("   ✗ Schema version: \(onDiskVersion) (newer than binary — expected \(expected))")
-            Log.output("     → Upgrade cupertino: brew upgrade cupertino")
+            Logging.Log.output("   ✗ Schema version: \(onDiskVersion) (newer than binary — expected \(expected))")
+            Logging.Log.output("     → Upgrade cupertino: brew upgrade cupertino")
         }
-        Log.output("")
+        Logging.Log.output("")
         return false
     }
 
@@ -261,17 +261,17 @@ struct DoctorCommand: AsyncParsableCommand {
     private func reportIndexedSources(at searchDBURL: URL) -> Bool {
         let perSource = Diagnostics.Probes.perSourceCounts(at: searchDBURL)
         if !perSource.isEmpty {
-            Log.output("   📚 Indexed sources:")
+            Logging.Log.output("   📚 Indexed sources:")
             for (source, count) in perSource {
-                Log.output("     ✓ \(source): \(count) entries")
+                Logging.Log.output("     ✓ \(source): \(count) entries")
             }
         }
-        Log.output("")
+        Logging.Log.output("")
         let totalIndexed = perSource.reduce(0) { $0 + $1.count }
         if totalIndexed == 0 {
-            Log.output("   ✗ Search index is empty (0 rows in docs_metadata)")
-            Log.output("     → Rebuild: rm \(searchDBURL.path) && cupertino setup")
-            Log.output("")
+            Logging.Log.output("   ✗ Search index is empty (0 rows in docs_metadata)")
+            Logging.Log.output("     → Rebuild: rm \(searchDBURL.path) && cupertino setup")
+            Logging.Log.output("")
             return false
         }
         return true
@@ -284,26 +284,26 @@ struct DoctorCommand: AsyncParsableCommand {
     private func checkSamplesDatabase() {
         let samplesDBURL = SampleIndex.defaultDatabasePath
 
-        Log.output("🧪 Sample Code Index (samples.db)")
+        Logging.Log.output("🧪 Sample Code Index (samples.db)")
 
         guard FileManager.default.fileExists(atPath: samplesDBURL.path) else {
-            Log.output("   ⚠  Database: \(samplesDBURL.path) (not found)")
-            Log.output("     → Run: cupertino fetch --type samples && cupertino cleanup && cupertino save --samples")
-            Log.output("")
+            Logging.Log.output("   ⚠  Database: \(samplesDBURL.path) (not found)")
+            Logging.Log.output("     → Run: cupertino fetch --type samples && cupertino cleanup && cupertino save --samples")
+            Logging.Log.output("")
             return
         }
 
         let fileSize = (try? FileManager.default.attributesOfItem(atPath: samplesDBURL.path)[.size] as? UInt64) ?? 0
-        Log.output("   ✓ Database: \(samplesDBURL.path)")
-        Log.output("   ✓ Size: \(Shared.Formatting.formatBytes(Int64(fileSize)))")
+        Logging.Log.output("   ✓ Database: \(samplesDBURL.path)")
+        Logging.Log.output("   ✓ Size: \(Shared.Formatting.formatBytes(Int64(fileSize)))")
 
         let projectCount = Diagnostics.Probes.rowCount(at: samplesDBURL, sql: "SELECT COUNT(*) FROM projects;")
         let fileCount = Diagnostics.Probes.rowCount(at: samplesDBURL, sql: "SELECT COUNT(*) FROM files;")
         let symbolCount = Diagnostics.Probes.rowCount(at: samplesDBURL, sql: "SELECT COUNT(*) FROM file_symbols;")
-        if let projectCount { Log.output("   ✓ Projects: \(projectCount)") }
-        if let fileCount { Log.output("   ✓ Indexed files: \(fileCount)") }
-        if let symbolCount { Log.output("   ✓ Indexed symbols: \(symbolCount)") }
-        Log.output("")
+        if let projectCount { Logging.Log.output("   ✓ Projects: \(projectCount)") }
+        if let fileCount { Logging.Log.output("   ✓ Indexed files: \(fileCount)") }
+        if let symbolCount { Logging.Log.output("   ✓ Indexed symbols: \(symbolCount)") }
+        Logging.Log.output("")
     }
 
     /// #192 F1. Report `packages.db` presence, size, and row counts (packages,
@@ -313,28 +313,28 @@ struct DoctorCommand: AsyncParsableCommand {
     private func checkPackagesDatabase() -> Bool {
         let packagesDBURL = Shared.Constants.defaultPackagesDatabase
 
-        Log.output("📦 Packages Index (packages.db)")
+        Logging.Log.output("📦 Packages Index (packages.db)")
 
         guard FileManager.default.fileExists(atPath: packagesDBURL.path) else {
-            Log.output("   ⚠  Database: \(packagesDBURL.path) (not found)")
-            Log.output("     → Run: cupertino setup  (downloads the pre-built packages index)")
-            Log.output("     Expected version: \(Shared.Constants.App.databaseVersion)")
-            Log.output("")
+            Logging.Log.output("   ⚠  Database: \(packagesDBURL.path) (not found)")
+            Logging.Log.output("     → Run: cupertino setup  (downloads the pre-built packages index)")
+            Logging.Log.output("     Expected version: \(Shared.Constants.App.databaseVersion)")
+            Logging.Log.output("")
             // Missing packages.db is a warning, not a failure — server still
             // runs, just without the packages tool. Doctor summary stays green.
             return true
         }
 
         let fileSize = (try? FileManager.default.attributesOfItem(atPath: packagesDBURL.path)[.size] as? UInt64) ?? 0
-        Log.output("   ✓ Database: \(packagesDBURL.path)")
-        Log.output("   ✓ Size: \(Shared.Formatting.formatBytes(Int64(fileSize)))")
+        Logging.Log.output("   ✓ Database: \(packagesDBURL.path)")
+        Logging.Log.output("   ✓ Size: \(Shared.Formatting.formatBytes(Int64(fileSize)))")
 
         let packageCount = Diagnostics.Probes.rowCount(at: packagesDBURL, sql: "SELECT COUNT(*) FROM packages;")
         let fileCount = Diagnostics.Probes.rowCount(at: packagesDBURL, sql: "SELECT COUNT(*) FROM package_files;")
-        if let packageCount { Log.output("   ✓ Packages: \(packageCount)") }
-        if let fileCount { Log.output("   ✓ Indexed files: \(fileCount)") }
-        Log.output("   ℹ  Bundled version: \(Shared.Constants.App.databaseVersion)")
-        Log.output("")
+        if let packageCount { Logging.Log.output("   ✓ Packages: \(packageCount)") }
+        if let fileCount { Logging.Log.output("   ✓ Indexed files: \(fileCount)") }
+        Logging.Log.output("   ℹ  Bundled version: \(Shared.Constants.App.databaseVersion)")
+        Logging.Log.output("")
         return true
     }
 
@@ -343,19 +343,19 @@ struct DoctorCommand: AsyncParsableCommand {
         let userSelectionsURL = Shared.Constants.defaultBaseDirectory
             .appendingPathComponent(Shared.Constants.FileName.selectedPackages)
 
-        Log.output("📦 Swift Packages")
+        Logging.Log.output("📦 Swift Packages")
 
         // Load selected URLs once and derive the canonical "owner/repo" key
         // set so we can compare against on-disk READMEs by NAME, not by count.
         let selectedURLs: Set<String>
         if FileManager.default.fileExists(atPath: userSelectionsURL.path) {
             selectedURLs = Diagnostics.Probes.userSelectedPackageURLs(from: userSelectionsURL)
-            Log.output("   ✓ User selections: \(userSelectionsURL.path)")
-            Log.output("     \(selectedURLs.count) packages selected")
+            Logging.Log.output("   ✓ User selections: \(userSelectionsURL.path)")
+            Logging.Log.output("     \(selectedURLs.count) packages selected")
         } else {
             selectedURLs = []
-            Log.output("   ⚠  User selections: not configured")
-            Log.output("     → Use TUI to select packages, or will use bundled defaults")
+            Logging.Log.output("   ⚠  User selections: not configured")
+            Logging.Log.output("     → Use TUI to select packages, or will use bundled defaults")
         }
         let selectedKeys = Set(selectedURLs.compactMap(Diagnostics.Probes.ownerRepoKey(forGitHubURL:)))
 
@@ -365,42 +365,42 @@ struct DoctorCommand: AsyncParsableCommand {
         if FileManager.default.fileExists(atPath: packagesDir.path) {
             let readmeKeys = Diagnostics.Probes.packageREADMEKeys(in: packagesDir)
             if readmeKeys.isEmpty {
-                Log.output("   ⚠  Package docs: directory exists but no package files")
+                Logging.Log.output("   ⚠  Package docs: directory exists but no package files")
             } else {
-                Log.output("   ✓ Downloaded READMEs: \(readmeKeys.count) packages")
-                Log.output("     \(packagesDir.path)")
+                Logging.Log.output("   ✓ Downloaded READMEs: \(readmeKeys.count) packages")
+                Logging.Log.output("     \(packagesDir.path)")
 
                 if !selectedKeys.isEmpty {
                     let orphans = readmeKeys.subtracting(selectedKeys)
                     let missing = selectedKeys.subtracting(readmeKeys)
                     if !orphans.isEmpty {
-                        Log.output("   ⚠  Orphaned READMEs: \(orphans.count) (downloaded but no longer selected)")
+                        Logging.Log.output("   ⚠  Orphaned READMEs: \(orphans.count) (downloaded but no longer selected)")
                     }
                     if !missing.isEmpty {
-                        Log.output("   ⚠  Missing READMEs: \(missing.count) (selected but not yet downloaded)")
-                        Log.output("     → Run: cupertino fetch --type packages")
+                        Logging.Log.output("   ⚠  Missing READMEs: \(missing.count) (selected but not yet downloaded)")
+                        Logging.Log.output("     → Run: cupertino fetch --type packages")
                     }
                 }
             }
         } else {
-            Log.output("   ⚠  Package docs: not downloaded")
+            Logging.Log.output("   ⚠  Package docs: not downloaded")
         }
 
         // Show priority packages source
         let allPackages = await PriorityPackagesCatalog.allPackages
         let appleCount = await PriorityPackagesCatalog.applePackages.count
         let ecosystemCount = await PriorityPackagesCatalog.ecosystemPackages.count
-        Log.output("   ℹ  Priority packages: \(allPackages.count) total")
-        Log.output("     Apple: \(appleCount), Ecosystem: \(ecosystemCount)")
+        Logging.Log.output("   ℹ  Priority packages: \(allPackages.count) total")
+        Logging.Log.output("     Apple: \(appleCount), Ecosystem: \(ecosystemCount)")
 
-        Log.output("")
+        Logging.Log.output("")
     }
 
     private func checkResourceProviders() -> Bool {
-        Log.output("🔧 Providers")
-        Log.output("   ✓ DocsResourceProvider: available")
-        Log.output("   ✓ SearchToolProvider: available")
-        Log.output("")
+        Logging.Log.output("🔧 Providers")
+        Logging.Log.output("   ✓ DocsResourceProvider: available")
+        Logging.Log.output("   ✓ SearchToolProvider: available")
+        Logging.Log.output("")
         return true
     }
 }

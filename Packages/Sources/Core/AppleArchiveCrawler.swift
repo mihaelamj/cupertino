@@ -1,9 +1,9 @@
+import CoreProtocols
 import Foundation
 import Logging
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedUtils
-import CoreProtocols
 
 // MARK: - Apple Archive Crawler
 
@@ -542,11 +542,11 @@ extension Core {
         // MARK: - Logging
 
         private func logInfo(_ message: String) {
-            Log.info(message, category: .archive)
+            Logging.Log.info(message, category: .archive)
         }
 
         private func logError(_ message: String) {
-            Log.error("Error: \(message)", category: .archive)
+            Logging.Log.error("Error: \(message)", category: .archive)
         }
 
         private func logStatistics(_ stats: ArchiveStatistics) {
@@ -564,7 +564,7 @@ extension Core {
             ]
 
             for message in messages where !message.isEmpty {
-                Log.info(message, category: .archive)
+                Logging.Log.info(message, category: .archive)
             }
         }
     }

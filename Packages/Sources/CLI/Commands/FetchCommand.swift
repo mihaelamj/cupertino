@@ -1,17 +1,17 @@
 import ArgumentParser
 import Availability
 import Core
+import CorePackageIndexing
+import CoreProtocols
 import Foundation
 import Ingest
 import Logging
 import Search
-import SharedCore
 import SharedConfiguration
 import SharedConstants
+import SharedCore
 import SharedModels
 import SharedUtils
-import CoreProtocols
-import CorePackageIndexing
 
 /// Lets ArgumentParser parse `--discovery-mode <mode>` directly into the
 /// shared enum. The conformance lives here (not in Shared) so the Shared
@@ -332,27 +332,27 @@ struct FetchCommand: AsyncParsableCommand {
 
     // requeueErroredURLs lifted to Ingest.Session.requeueErroredURLs (#247)
 
-    /// Inject URLs from a known-good baseline corpus that aren't in the
-    /// current crawl's known set (queue ∪ visited ∪ pages keys). Comparison
-    /// is case-insensitive on the URL path so the broken-extractor's
-    /// case-mixed output still matches the baseline's casing.
-    ///
-    /// `baselineDir` should point at the `docs/` subtree of a prior corpus
-    /// (e.g. `~/Developer/.../cupertino-docs/docs`). Each file's `.url` field
-    /// is read; URLs not in the current set are prepended to the queue at
-    /// `maxDepth` so the resumed crawl doesn't re-discover their children
-    /// (which the baseline already crawled).
-    ///
+    // Inject URLs from a known-good baseline corpus that aren't in the
+    // current crawl's known set (queue ∪ visited ∪ pages keys). Comparison
+    // is case-insensitive on the URL path so the broken-extractor's
+    // case-mixed output still matches the baseline's casing.
+    //
+    // `baselineDir` should point at the `docs/` subtree of a prior corpus
+    // (e.g. `~/Developer/.../cupertino-docs/docs`). Each file's `.url` field
+    // is read; URLs not in the current set are prepended to the queue at
+    // `maxDepth` so the resumed crawl doesn't re-discover their children
+    // (which the baseline already crawled).
+    //
     // requeueFromBaseline lifted to Ingest.Session.requeueFromBaseline (#247)
 
-    /// Enqueue every URL listed in `urlsFile` (one URL per line) at
-    /// depth 0. The crawler then follows each URL's outgoing links up
-    /// to `maxDepth`, so the caller can use `--max-depth` to control
-    /// how deep the descent tree goes (`--max-depth 0` = no descent,
-    /// just fetch the listed URLs themselves). Lines starting with `#`
-    /// and blank lines are ignored. Initialises `crawlState` if missing
-    /// so the helper works against a fresh corpus too. (#210)
-    ///
+    // Enqueue every URL listed in `urlsFile` (one URL per line) at
+    // depth 0. The crawler then follows each URL's outgoing links up
+    // to `maxDepth`, so the caller can use `--max-depth` to control
+    // how deep the descent tree goes (`--max-depth 0` = no descent,
+    // just fetch the listed URLs themselves). Lines starting with `#`
+    // and blank lines are ignored. Initialises `crawlState` if missing
+    // so the helper works against a fresh corpus too. (#210)
+    //
     // enqueueURLsFromFile + collectBaselineURLs + lowercaseDocPath all lifted
     // to Ingest.Session in #247.
 

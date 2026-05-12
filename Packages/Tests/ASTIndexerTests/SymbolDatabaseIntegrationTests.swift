@@ -31,7 +31,7 @@ struct SearchDbSymbolIntegrationTests {
 
     @Test("Extraction produces searchable symbol text")
     func extractionProducesSearchableText() {
-        let extractor = ASTIndexer.SwiftSourceExtractor()
+        let extractor = ASTIndexer.Extractor()
 
         let source = """
         @Observable
@@ -67,7 +67,7 @@ struct SearchDbSymbolIntegrationTests {
 
     @Test("FTS text generation includes all searchable content")
     func ftsTextGeneration() {
-        let extractor = ASTIndexer.SwiftSourceExtractor()
+        let extractor = ASTIndexer.Extractor()
 
         let source = """
         import SwiftUI
@@ -190,7 +190,7 @@ struct SamplesDbSymbolIntegrationTests {
         try await database.indexFile(file)
 
         // Extract symbols
-        let extractor = ASTIndexer.SwiftSourceExtractor()
+        let extractor = ASTIndexer.Extractor()
         let result = extractor.extract(from: swiftSource)
 
         // Index symbols if file ID is available
@@ -266,7 +266,7 @@ struct SamplesDbSymbolIntegrationTests {
             """),
         ]
 
-        let extractor = ASTIndexer.SwiftSourceExtractor()
+        let extractor = ASTIndexer.Extractor()
         var totalSymbols = 0
 
         for (path, content) in files {
@@ -301,7 +301,7 @@ struct SamplesDbSymbolIntegrationTests {
 struct SemanticSearchDemoTests {
     @Test("Demonstrate semantic search capabilities")
     func semanticSearchDemo() {
-        let extractor = ASTIndexer.SwiftSourceExtractor()
+        let extractor = ASTIndexer.Extractor()
 
         // Sample representing typical Apple documentation code example
         let sampleCode = """

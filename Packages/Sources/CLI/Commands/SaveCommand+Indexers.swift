@@ -2,8 +2,8 @@ import Foundation
 import Indexer
 import Logging
 import SampleIndex
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedUtils
 
 // MARK: - Indexer dispatch + progress rendering (#244)
@@ -170,30 +170,30 @@ extension SaveCommand {
     ) {
         switch event {
         case .starting(let dir, let db):
-            Log.output("📦 Cupertino - Sample Code Indexer\n")
-            Log.output("   Sample code: \(dir.path)")
-            Log.output("   Database: \(db.path)")
-            Log.output("")
+            Logging.Log.output("📦 Cupertino - Sample Code Indexer\n")
+            Logging.Log.output("   Sample code: \(dir.path)")
+            Logging.Log.output("   Database: \(db.path)")
+            Logging.Log.output("")
         case .removingExistingDB:
-            Log.output("🗑️  Removing existing database for fresh index...")
+            Logging.Log.output("🗑️  Removing existing database for fresh index...")
         case .clearingExistingIndex:
-            Log.output("🗑️  Clearing existing index...")
+            Logging.Log.output("🗑️  Clearing existing index...")
         case .existingIndexNotice(let projects, let files):
-            Log.output("ℹ️  Found existing index with \(projects) projects, \(files) files")
-            Log.output("   Use --force to reindex all, or --clear to start fresh")
-            Log.output("")
+            Logging.Log.output("ℹ️  Found existing index with \(projects) projects, \(files) files")
+            Logging.Log.output("   Use --force to reindex all, or --clear to start fresh")
+            Logging.Log.output("")
         case .loadingCatalog:
-            Log.output("📖 Loading sample code catalog...")
+            Logging.Log.output("📖 Loading sample code catalog...")
         case .catalogLoaded(let count):
-            Log.output("   Found \(count) entries in catalog")
+            Logging.Log.output("   Found \(count) entries in catalog")
         case .indexingStart:
-            Log.output("")
-            Log.output("📇 Indexing sample code...")
-            Log.output("")
+            Logging.Log.output("")
+            Logging.Log.output("📇 Indexing sample code...")
+            Logging.Log.output("")
         case .projectProgress(let name, let percent, let phase):
             if percent - tracker.lastPercent >= 5.0 || phase == .completed {
                 let icon = phaseIcon(phase)
-                Log.output("   [\(String(format: "%3.0f%%", percent))] \(icon) \(name)")
+                Logging.Log.output("   [\(String(format: "%3.0f%%", percent))] \(icon) \(name)")
                 tracker.lastPercent = percent
             }
         case .finished(let outcome):
@@ -211,16 +211,16 @@ extension SaveCommand {
     }
 
     static func printSamplesSummary(outcome: Indexer.SamplesService.Outcome) {
-        Log.output("")
-        Log.output("✅ Indexing complete!")
-        Log.output("")
-        Log.output("   Projects indexed: \(outcome.projectsIndexedThisRun)")
-        Log.output("   Total projects: \(outcome.projectsTotal)")
-        Log.output("   Total files: \(outcome.filesTotal)")
-        Log.output("   Symbols extracted: \(outcome.symbolsTotal)")
-        Log.output("   Imports captured: \(outcome.importsTotal)")
-        Log.output("   Duration: \(Int(outcome.durationSeconds))s")
-        Log.output("   Database: \(SaveCommand.formatFileSize(outcome.samplesDBPath))")
+        Logging.Log.output("")
+        Logging.Log.output("✅ Indexing complete!")
+        Logging.Log.output("")
+        Logging.Log.output("   Projects indexed: \(outcome.projectsIndexedThisRun)")
+        Logging.Log.output("   Total projects: \(outcome.projectsTotal)")
+        Logging.Log.output("   Total files: \(outcome.filesTotal)")
+        Logging.Log.output("   Symbols extracted: \(outcome.symbolsTotal)")
+        Logging.Log.output("   Imports captured: \(outcome.importsTotal)")
+        Logging.Log.output("   Duration: \(Int(outcome.durationSeconds))s")
+        Logging.Log.output("   Database: \(SaveCommand.formatFileSize(outcome.samplesDBPath))")
     }
 
     /// Class wrapper so `@Sendable` callbacks can mutate `lastPercent`.

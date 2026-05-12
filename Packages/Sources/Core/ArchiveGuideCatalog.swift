@@ -1,7 +1,7 @@
 import Foundation
 import Resources
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedUtils
 
 // MARK: - Archive Guide Catalog
@@ -71,7 +71,7 @@ public enum ArchiveGuideCatalog {
         }
 
         // Load embedded catalog and create user file with required guides (#161)
-        guard let data = CupertinoResources.jsonData(named: "archive-guides-catalog") else {
+        guard let data = Resources.jsonData(named: "archive-guides-catalog") else {
             return
         }
 
@@ -129,7 +129,7 @@ public enum ArchiveGuideCatalog {
 
     /// Load guides from embedded catalog JSON (used for fallback).
     private static func loadBundledCatalogPaths() -> [String]? {
-        guard let data = CupertinoResources.jsonData(named: "archive-guides-catalog") else {
+        guard let data = Resources.jsonData(named: "archive-guides-catalog") else {
             return nil
         }
 
@@ -327,7 +327,7 @@ public enum ArchiveGuideCatalog {
 
     /// Load required guide paths from embedded catalog (used by tests).
     public static func getRequiredGuidePaths() -> [String] {
-        guard let data = CupertinoResources.jsonData(named: "archive-guides-catalog") else {
+        guard let data = Resources.jsonData(named: "archive-guides-catalog") else {
             return []
         }
 

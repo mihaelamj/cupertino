@@ -3,10 +3,10 @@ import Logging
 import SharedCore
 
 #if canImport(WebKit)
-import WebKit
+import CoreProtocols
 import SharedConstants
 import SharedUtils
-import CoreProtocols
+import WebKit
 #endif
 
 // MARK: - HIG Crawler
@@ -521,14 +521,14 @@ extension Core {
             #if canImport(WebKit)
             let memoryMB = fetcher?.getMemoryUsageMB() ?? 0
             let memoryMsg = "\(String(format: "%.1f", memoryMB))MB | \(message)"
-            Log.info(memoryMsg, category: .hig)
+            Logging.Log.info(memoryMsg, category: .hig)
             #else
-            Log.info(message, category: .hig)
+            Logging.Log.info(message, category: .hig)
             #endif
         }
 
         private func logError(_ message: String) {
-            Log.error("Error: \(message)", category: .hig)
+            Logging.Log.error("Error: \(message)", category: .hig)
         }
 
         private func logStatistics(_ stats: HIGStatistics) {
@@ -545,7 +545,7 @@ extension Core {
             ]
 
             for message in messages where !message.isEmpty {
-                Log.info(message, category: .hig)
+                Logging.Log.info(message, category: .hig)
             }
         }
     }

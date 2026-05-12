@@ -1,7 +1,7 @@
 import Foundation
 import Resources
-import SharedCore
 import SharedConstants
+import SharedCore
 
 /// Entry representing an archive guide in the TUI
 struct ArchiveEntry {
@@ -29,7 +29,7 @@ enum ArchiveGuidesCatalog {
 
     /// All archive guides from the embedded catalog (#161).
     static var allGuides: [ArchiveEntry] {
-        guard let data = CupertinoResources.jsonData(named: "archive-guides-catalog") else {
+        guard let data = Resources.jsonData(named: "archive-guides-catalog") else {
             return []
         }
 
@@ -77,7 +77,7 @@ enum ArchiveGuidesCatalog {
 
     /// Create default selections file from embedded catalog (required guides only, #161).
     private static func createDefaultSelectionsFile() {
-        guard let data = CupertinoResources.jsonData(named: "archive-guides-catalog") else {
+        guard let data = Resources.jsonData(named: "archive-guides-catalog") else {
             return
         }
 

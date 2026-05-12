@@ -1,7 +1,7 @@
 import Foundation
+import SharedConstants
 import SharedCore
 import SharedUtils
-import SharedConstants
 
 struct ArtifactInfo {
     let name: String

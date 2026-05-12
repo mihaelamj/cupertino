@@ -555,13 +555,13 @@ extension Core {
 
         private func logInfo(_ message: String) {
             let memoryMsg = "\(String(format: "%.1f", getMemoryUsageMB()))MB | \(message)"
-            Log.info(memoryMsg, category: .crawler)
+            Logging.Log.info(memoryMsg, category: .crawler)
             logToFile(memoryMsg)
         }
 
         private func logError(_ message: String) {
             let errorMessage = "❌ \(message)"
-            Log.error(errorMessage, category: .crawler)
+            Logging.Log.error(errorMessage, category: .crawler)
         }
 
         private func logProgressUpdate() async {
@@ -585,7 +585,7 @@ extension Core {
             ]
 
             for message in messages {
-                Log.info(message, category: .crawler)
+                Logging.Log.info(message, category: .crawler)
             }
         }
 
@@ -604,7 +604,7 @@ extension Core {
             ]
 
             for message in messages where !message.isEmpty {
-                Log.info(message, category: .crawler)
+                Logging.Log.info(message, category: .crawler)
             }
         }
 

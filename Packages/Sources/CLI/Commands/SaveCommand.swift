@@ -5,8 +5,8 @@ import Logging
 import RemoteSync
 import SampleIndex
 import Search
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedUtils
 
 // MARK: - Save Command

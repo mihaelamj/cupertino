@@ -2,8 +2,8 @@ import ArgumentParser
 import Cleanup
 import Foundation
 import Logging
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedUtils
 
 // MARK: - Cleanup Command
@@ -55,27 +55,27 @@ struct CleanupCommand: AsyncParsableCommand {
         }
 
         guard FileManager.default.fileExists(atPath: directory.path) else {
-            Log.error("Sample code directory not found: \(directory.path)")
-            Log.error("Run 'cupertino fetch --type code' first to download sample code.")
+            Logging.Log.error("Sample code directory not found: \(directory.path)")
+            Logging.Log.error("Run 'cupertino fetch --type code' first to download sample code.")
             throw ExitCode.failure
         }
 
         if dryRun {
-            Log.output("🔍 Cupertino - Cleanup Dry Run")
-            Log.output("")
-            Log.output("   Directory: \(directory.path)")
-            Log.output("   (No files will be modified)")
-            Log.output("")
+            Logging.Log.output("🔍 Cupertino - Cleanup Dry Run")
+            Logging.Log.output("")
+            Logging.Log.output("   Directory: \(directory.path)")
+            Logging.Log.output("   (No files will be modified)")
+            Logging.Log.output("")
         } else {
-            Log.output("🧹 Cupertino - Cleaning Sample Code Archives")
-            Log.output("")
-            Log.output("   Directory: \(directory.path)")
+            Logging.Log.output("🧹 Cupertino - Cleaning Sample Code Archives")
+            Logging.Log.output("")
+            Logging.Log.output("   Directory: \(directory.path)")
             if keepOriginals {
-                Log.output("   Mode: Keep originals (cleaned files saved as .cleaned.zip)")
+                Logging.Log.output("   Mode: Keep originals (cleaned files saved as .cleaned.zip)")
             } else {
-                Log.output("   Mode: Replace originals")
+                Logging.Log.output("   Mode: Replace originals")
             }
-            Log.output("")
+            Logging.Log.output("")
         }
 
         let cleaner = SampleCodeCleaner(
@@ -87,34 +87,34 @@ struct CleanupCommand: AsyncParsableCommand {
         let stats = try await cleaner.cleanup { progress in
             let percent = String(format: "%.1f", progress.percentage)
             let saved = Shared.Formatting.formatBytes(progress.originalSize - progress.cleanedSize)
-            Log.output("   [\(percent)%] \(progress.currentFile) (saved \(saved))")
+            Logging.Log.output("   [\(percent)%] \(progress.currentFile) (saved \(saved))")
         }
 
-        Log.output("")
+        Logging.Log.output("")
 
         if dryRun {
-            Log.output("📊 Dry Run Summary:")
+            Logging.Log.output("📊 Dry Run Summary:")
         } else {
-            Log.output("✅ Cleanup completed!")
+            Logging.Log.output("✅ Cleanup completed!")
         }
 
-        Log.output("   Total archives: \(stats.totalArchives)")
-        Log.output("   Cleaned: \(stats.cleanedArchives)")
-        Log.output("   Skipped (already clean): \(stats.skippedArchives)")
-        Log.output("   Errors: \(stats.errors)")
-        Log.output("   Items to remove: \(stats.totalItemsRemoved)")
-        Log.output("")
-        Log.output("   Original size: \(Shared.Formatting.formatBytes(stats.originalTotalSize))")
+        Logging.Log.output("   Total archives: \(stats.totalArchives)")
+        Logging.Log.output("   Cleaned: \(stats.cleanedArchives)")
+        Logging.Log.output("   Skipped (already clean): \(stats.skippedArchives)")
+        Logging.Log.output("   Errors: \(stats.errors)")
+        Logging.Log.output("   Items to remove: \(stats.totalItemsRemoved)")
+        Logging.Log.output("")
+        Logging.Log.output("   Original size: \(Shared.Formatting.formatBytes(stats.originalTotalSize))")
         if !dryRun {
-            Log.output("   Cleaned size: \(Shared.Formatting.formatBytes(stats.cleanedTotalSize))")
-            Log.output(
+            Logging.Log.output("   Cleaned size: \(Shared.Formatting.formatBytes(stats.cleanedTotalSize))")
+            Logging.Log.output(
                 "   Space saved: \(Shared.Formatting.formatBytes(stats.spaceSaved)) " +
                     "(\(String(format: "%.1f", stats.spaceSavedPercentage))%)"
             )
         }
 
         if let duration = stats.duration {
-            Log.output("   Duration: \(Int(duration))s")
+            Logging.Log.output("   Duration: \(Int(duration))s")
         }
     }
 }

@@ -203,7 +203,7 @@ public enum JSONValue: Codable, Sendable {
 
 /// Type-erased Codable wrapper for heterogeneous JSON values
 public struct AnyCodable: Codable, Sendable {
-    private enum Storage: Sendable {
+    private enum Storage {
         case bool(Bool)
         case int(Int)
         case double(Double)

@@ -1,9 +1,9 @@
 // swiftlint:disable use_data_constructor_over_string_member non_optional_string_data_conversion
 @testable import Core
+@testable import CorePackageIndexing
+import CoreProtocols
 import Foundation
 import Testing
-import CoreProtocols
-@testable import CorePackageIndexing
 
 // MARK: - GitHub URL parsing
 

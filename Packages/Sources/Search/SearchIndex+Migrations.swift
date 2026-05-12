@@ -1,7 +1,7 @@
 import Foundation
 import SharedCore
-import SQLite3
 import SharedModels
+import SQLite3
 
 extension Search.Index {
     func getSchemaVersion() -> Int32 {

@@ -1,6 +1,6 @@
 import Foundation
-import SharedCore
 import SharedConstants
+import SharedCore
 
 // MARK: - Smart cross-source query (#192 section E)
 

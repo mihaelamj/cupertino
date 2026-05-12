@@ -15,15 +15,27 @@
 
 import Foundation
 
-public enum CupertinoResources {
+// MARK: - Resources Namespace
+
+/// Root namespace for the Resources module. All embedded catalog accessors
+/// live under `Resources.Embedded.*`; high-level lookup helpers live as
+/// static methods directly on `Resources`.
+public enum Resources {
+    /// Sub-namespace for embedded JSON catalogs. Each catalog is its own enum
+    /// (`Resources.Embedded.PriorityPackages`, `.ArchiveGuidesCatalog`,
+    /// `.SwiftPackagesCatalog`) and exposes `data` / `json` static accessors.
+    public enum Embedded {}
+}
+
+extension Resources {
     /// Return the embedded JSON blob for `name` (no extension), or nil if unknown.
     /// Consumers that used `bundle.url(forResource:withExtension:"json")` +
     /// `Data(contentsOf: url)` should switch to `jsonData(named:)`.
     ///
     /// Note: the Swift packages catalog (`swift-packages-catalog`) was slimmed
-    /// to a URL list in `SwiftPackagesCatalogEmbedded.urls` and is no longer
-    /// exposed as a JSON blob. Consumers should use `Core.SwiftPackagesCatalog`
-    /// directly instead of looking up the raw JSON.
+    /// to a URL list in `Resources.Embedded.SwiftPackagesCatalog.urls` and is
+    /// no longer exposed as a JSON blob. Consumers should use
+    /// `Core.SwiftPackagesCatalog` directly instead of looking up the raw JSON.
     ///
     /// Note: `sample-code-catalog` was removed in #215. Auto-discovery via
     /// `cupertino fetch --type code` is the source of truth; the fetched
@@ -32,9 +44,9 @@ public enum CupertinoResources {
     public static func jsonData(named name: String) -> Data? {
         switch name {
         case "priority-packages":
-            return PriorityPackagesEmbedded.data
+            return Embedded.PriorityPackages.data
         case "archive-guides-catalog":
-            return ArchiveGuidesCatalogEmbedded.data
+            return Embedded.ArchiveGuidesCatalog.data
         default:
             return nil
         }
@@ -44,9 +56,9 @@ public enum CupertinoResources {
     public static func jsonString(named name: String) -> String? {
         switch name {
         case "priority-packages":
-            return PriorityPackagesEmbedded.json
+            return Embedded.PriorityPackages.json
         case "archive-guides-catalog":
-            return ArchiveGuidesCatalogEmbedded.json
+            return Embedded.ArchiveGuidesCatalog.json
         default:
             return nil
         }

@@ -1,10 +1,10 @@
 // swiftlint:disable type_body_length
 @testable import Core
+import CoreProtocols
 import Foundation
+import SharedConstants
 @testable import SharedCore
 import Testing
-import SharedConstants
-import CoreProtocols
 
 // MARK: - Swift Evolution Crawler Tests
 

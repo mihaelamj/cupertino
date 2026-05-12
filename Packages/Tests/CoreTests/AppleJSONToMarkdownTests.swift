@@ -1,8 +1,8 @@
 @testable import Core
+@testable import CoreJSONParser
+import CoreProtocols
 import Foundation
 import Testing
-import CoreProtocols
-@testable import CoreJSONParser
 
 @Suite("AppleJSONToMarkdown.extractLinks coverage")
 struct AppleJSONToMarkdownExtractLinksTests {

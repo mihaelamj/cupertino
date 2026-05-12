@@ -1,8 +1,8 @@
 import Foundation
 import Logging
-import SharedCore
 import SharedConfiguration
 import SharedConstants
+import SharedCore
 import SharedModels
 
 // MARK: - Crawler State Manager

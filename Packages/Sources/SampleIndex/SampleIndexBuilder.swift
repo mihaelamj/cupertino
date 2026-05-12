@@ -268,7 +268,7 @@ extension SampleIndex {
             try await database.indexProject(project)
 
             // Index all files (with AST extraction for Swift files)
-            let extractor = ASTIndexer.SwiftSourceExtractor()
+            let extractor = ASTIndexer.Extractor()
             // #228 phase 1: collect per-file `@available(...)` attribute
             // occurrences while we're already walking the swift sources.
             // Same shape as #219's per-package `availability.json`.
@@ -518,7 +518,7 @@ extension SampleIndex {
             try await database.indexProject(project)
 
             // Index all files (with AST extraction for Swift files)
-            let extractor = ASTIndexer.SwiftSourceExtractor()
+            let extractor = ASTIndexer.Extractor()
             for file in files {
                 try await database.indexFile(file)
 

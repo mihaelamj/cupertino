@@ -257,9 +257,9 @@ extension Search.Index {
             throw Search.Error.databaseNotInitialized
         }
 
-        let extractor = ASTIndexer.SwiftSourceExtractor()
-        var collectedSymbols: [ASTIndexer.ExtractedSymbol] = []
-        var collectedImports: [ASTIndexer.ExtractedImport] = []
+        let extractor = ASTIndexer.Extractor()
+        var collectedSymbols: [ASTIndexer.Symbol] = []
+        var collectedImports: [ASTIndexer.Import] = []
 
         for example in codeExamples where Self.isSwiftLanguage(example.language) {
             let result = extractor.extract(from: example.code)
