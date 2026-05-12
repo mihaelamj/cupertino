@@ -6,10 +6,12 @@ import SharedModels
 
 // MARK: - Sample Code Cleaner
 
-extension Cleanup {
+extension Sample.Cleanup {
     /// Actor for cleaning sample code archives by removing unnecessary files
-    /// such as .git folders, .DS_Store, build artifacts, etc.
-    public actor SampleCodeCleaner {
+    /// such as .git folders, .DS_Store, build artifacts, etc. Previously
+    /// `Cleanup.SampleCodeCleaner`; nested under `Sample.Cleanup` per the
+    /// cross-cutting Sample namespace policy.
+    public actor Cleaner {
         private let sampleCodeDirectory: URL
         private let dryRun: Bool
         private let keepOriginals: Bool
