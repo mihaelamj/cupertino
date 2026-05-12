@@ -368,22 +368,24 @@ public struct SwiftEvolutionIndexer: SourceIndexer {
 // MARK: - Sample Code Indexer
 
 /// Indexer for Apple Sample Code projects
-public struct SampleCodeIndexer: SourceIndexer {
-    public let sourceID = "samples"
-    public let displayName = "Sample Code"
+extension Sample {
+    public struct Indexer: SourceIndexer {
+        public let sourceID = "samples"
+        public let displayName = "Sample Code"
 
-    public init() {}
+        public init() {}
 
-    public func extractCode(from item: SourceItem) -> ExtractedContent {
-        // Sample code is full Swift files - extract everything
-        let extractor = ASTIndexer.Extractor()
-        let result = extractor.extract(from: item.content)
+        public func extractCode(from item: SourceItem) -> ExtractedContent {
+            // Sample code is full Swift files - extract everything
+            let extractor = ASTIndexer.Extractor()
+            let result = extractor.extract(from: item.content)
 
-        return ExtractedContent(
-            symbols: result.symbols,
-            imports: result.imports,
-            hasErrors: result.hasErrors
-        )
+            return ExtractedContent(
+                symbols: result.symbols,
+                imports: result.imports,
+                hasErrors: result.hasErrors
+            )
+        }
     }
 }
 
@@ -513,7 +515,7 @@ public enum IndexerRegistry {
         "apple-docs": AppleDocsIndexer(),
         "hig": HIGIndexer(),
         "swift-evolution": SwiftEvolutionIndexer(),
-        "samples": SampleCodeIndexer(),
+        "samples": Sample.Indexer(),
         "apple-archive": AppleArchiveIndexer(),
         "swift-book": SwiftBookIndexer(),
         "swift-org": SwiftOrgIndexer(),

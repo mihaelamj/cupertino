@@ -1,5 +1,11 @@
 // swiftlint:disable function_body_length
 import Foundation
+import SharedConstants
+
+/// Sample.Search (in SharedConstants) shadows the Search SPM target inside any
+/// extension Sample {} scope. Pin the SPM target so Sample.Atom.source can still
+/// reach SearchModule.Source via SearchModule.Source.
+public typealias SearchModule = Search
 
 // MARK: - Composable Search Result (LEGO Model)
 
@@ -65,7 +71,7 @@ extension Search {
 
 /// Protocol for any single search result item
 public protocol ResultAtom: Sendable, Identifiable {
-    var source: Search.Source { get }
+    var source: SearchModule.Source { get }
     var title: String { get }
     var summary: String { get }
     var uri: String { get }
@@ -75,7 +81,7 @@ public protocol ResultAtom: Sendable, Identifiable {
 /// Documentation result atom (Apple Docs, HIG, Archive, Swift Evolution, etc.)
 public struct DocAtom: ResultAtom, Codable, Sendable {
     public let id: UUID
-    public let source: Search.Source
+    public let source: SearchModule.Source
     public let title: String
     public let summary: String
     public let uri: String
@@ -85,7 +91,7 @@ public struct DocAtom: ResultAtom, Codable, Sendable {
 
     public init(
         id: UUID = UUID(),
-        source: Search.Source,
+        source: SearchModule.Source,
         title: String,
         summary: String,
         uri: String,
@@ -104,7 +110,7 @@ public struct DocAtom: ResultAtom, Codable, Sendable {
     }
 
     /// Convert from existing Search.Result
-    public init(from result: Search.Result, source: Search.Source) {
+    public init(from result: Search.Result, source: SearchModule.Source) {
         id = result.id
         self.source = source
         title = result.title
@@ -132,43 +138,45 @@ public struct DocAtom: ResultAtom, Codable, Sendable {
 }
 
 /// Sample code result atom
-public struct SampleAtom: ResultAtom, Codable, Sendable {
-    public let id: UUID
-    public let source: Search.Source
-    public let title: String
-    public let summary: String
-    public let uri: String
-    public let score: Double
-    public let frameworks: [String]
-    public let downloadURL: String?
-    public let hasLocalCopy: Bool
+extension Sample {
+    public struct Atom: ResultAtom, Codable, Sendable {
+        public let id: UUID
+        public let source: SearchModule.Source
+        public let title: String
+        public let summary: String
+        public let uri: String
+        public let score: Double
+        public let frameworks: [String]
+        public let downloadURL: String?
+        public let hasLocalCopy: Bool
 
-    public init(
-        id: UUID = UUID(),
-        title: String,
-        summary: String,
-        uri: String,
-        score: Double,
-        frameworks: [String] = [],
-        downloadURL: String? = nil,
-        hasLocalCopy: Bool = false
-    ) {
-        self.id = id
-        source = .samples
-        self.title = title
-        self.summary = summary
-        self.uri = uri
-        self.score = score
-        self.frameworks = frameworks
-        self.downloadURL = downloadURL
-        self.hasLocalCopy = hasLocalCopy
+        public init(
+            id: UUID = UUID(),
+            title: String,
+            summary: String,
+            uri: String,
+            score: Double,
+            frameworks: [String] = [],
+            downloadURL: String? = nil,
+            hasLocalCopy: Bool = false
+        ) {
+            self.id = id
+            source = .samples
+            self.title = title
+            self.summary = summary
+            self.uri = uri
+            self.score = score
+            self.frameworks = frameworks
+            self.downloadURL = downloadURL
+            self.hasLocalCopy = hasLocalCopy
+        }
     }
 }
 
 /// Swift package result atom
 public struct PackageAtom: ResultAtom, Codable, Sendable {
     public let id: UUID
-    public let source: Search.Source
+    public let source: SearchModule.Source
     public let title: String
     public let summary: String
     public let uri: String
@@ -206,11 +214,11 @@ public struct PackageAtom: ResultAtom, Codable, Sendable {
 
 /// A section containing results from a single source
 public struct ResultSection<Atom: ResultAtom>: Sendable {
-    public let source: Search.Source
+    public let source: SearchModule.Source
     public let atoms: [Atom]
     public let totalAvailable: Int // Total in source (may exceed atoms.count due to limits)
 
-    public init(source: Search.Source, atoms: [Atom], totalAvailable: Int? = nil) {
+    public init(source: SearchModule.Source, atoms: [Atom], totalAvailable: Int? = nil) {
         self.source = source
         self.atoms = atoms
         self.totalAvailable = totalAvailable ?? atoms.count
@@ -233,12 +241,12 @@ public struct ResultSection<Atom: ResultAtom>: Sendable {
 
 /// A hint about additional results in other sources
 public struct SourceHint: Codable, Sendable {
-    public let source: Search.Source
+    public let source: SearchModule.Source
     public let count: Int
     public let topTitles: [String] // Preview of what's available
     public let howToAccess: String // e.g., "Use source: samples"
 
-    public init(source: Search.Source, count: Int, topTitles: [String], howToAccess: String) {
+    public init(source: SearchModule.Source, count: Int, topTitles: [String], howToAccess: String) {
         self.source = source
         self.count = count
         self.topTitles = topTitles
@@ -304,7 +312,7 @@ public struct ComposedSearchResult: Sendable {
     public let primarySection: ResultSection<DocAtom>?
 
     // Supporting sections (related sources)
-    public let sampleSection: ResultSection<SampleAtom>?
+    public let sampleSection: ResultSection<Sample.Atom>?
     public let higSection: ResultSection<DocAtom>?
     public let evolutionSection: ResultSection<DocAtom>?
     public let archiveSection: ResultSection<DocAtom>?
@@ -326,7 +334,7 @@ public struct ComposedSearchResult: Sendable {
         framework: String? = nil,
         timestamp: Date = Date(),
         primarySection: ResultSection<DocAtom>? = nil,
-        sampleSection: ResultSection<SampleAtom>? = nil,
+        sampleSection: ResultSection<Sample.Atom>? = nil,
         higSection: ResultSection<DocAtom>? = nil,
         evolutionSection: ResultSection<DocAtom>? = nil,
         archiveSection: ResultSection<DocAtom>? = nil,
@@ -368,8 +376,8 @@ public struct ComposedSearchResult: Sendable {
     }
 
     /// All non-empty sections for iteration
-    public var allSections: [Search.Source] {
-        var sources: [Search.Source] = []
+    public var allSections: [SearchModule.Source] {
+        var sources: [SearchModule.Source] = []
         if let section = primarySection, !section.isEmpty { sources.append(section.source) }
         if let section = sampleSection, !section.isEmpty { sources.append(section.source) }
         if let section = higSection, !section.isEmpty { sources.append(section.source) }
@@ -389,7 +397,7 @@ public final class ComposedResultBuilder: @unchecked Sendable {
     private var query: String = ""
     private var framework: String?
     private var primarySection: ResultSection<DocAtom>?
-    private var sampleSection: ResultSection<SampleAtom>?
+    private var sampleSection: ResultSection<Sample.Atom>?
     private var higSection: ResultSection<DocAtom>?
     private var evolutionSection: ResultSection<DocAtom>?
     private var archiveSection: ResultSection<DocAtom>?
@@ -421,7 +429,7 @@ public final class ComposedResultBuilder: @unchecked Sendable {
     }
 
     @discardableResult
-    public func samples(_ section: ResultSection<SampleAtom>) -> Self {
+    public func samples(_ section: ResultSection<Sample.Atom>) -> Self {
         sampleSection = section
         return self
     }
@@ -516,7 +524,7 @@ public enum QueryIntent: String, Codable, Sendable {
 
     /// Sources boosted for this intent (in priority order)
     /// Now data-driven via SourceRegistry instead of hardcoded
-    public var boostedSources: [Search.Source] {
+    public var boostedSources: [SearchModule.Source] {
         // Use registry-based lookup (data-driven)
         registryBoostedSources
     }
@@ -738,9 +746,9 @@ public struct SourceProperties: Codable, Sendable {
 @available(*, deprecated, message: "Use SourceRegistry.properties(for:) instead")
 public enum SourcePropertiesRegistry {
     /// @deprecated Use `SourceRegistry.properties(for:)` instead
-    public static var properties: [Search.Source: SourceProperties] {
-        var result: [Search.Source: SourceProperties] = [:]
-        for source in Search.Source.allCases {
+    public static var properties: [SearchModule.Source: SourceProperties] {
+        var result: [SearchModule.Source: SourceProperties] = [:]
+        for source in SearchModule.Source.allCases {
             if let props = SourceRegistry.properties(for: source.rawValue) {
                 result[source] = props
             }
@@ -749,7 +757,7 @@ public enum SourcePropertiesRegistry {
     }
 
     /// @deprecated Use `SourceRegistry.properties(for:)` instead
-    public static func properties(for source: Search.Source) -> SourceProperties {
+    public static func properties(for source: SearchModule.Source) -> SourceProperties {
         SourceRegistry.properties(for: source.rawValue) ?? SourceProperties(
             authority: 0.5, freshness: 0.5, comprehensiveness: 0.5, codeExamples: 0.5,
             hasAvailability: 0.5, designFocus: 0.5, languageFocus: 0.5, searchQuality: 0.5
@@ -786,12 +794,12 @@ public struct UnifiedSearchSummary: Codable, Sendable {
 
     /// Short summary for one source in unified results
     public struct SourceSummary: Codable, Sendable {
-        public let source: Search.Source
+        public let source: SearchModule.Source
         public let count: Int
         public let topResult: TopResultPreview?
         public let hasMore: Bool
 
-        public init(source: Search.Source, count: Int, topResult: TopResultPreview?, hasMore: Bool) {
+        public init(source: SearchModule.Source, count: Int, topResult: TopResultPreview?, hasMore: Bool) {
             self.source = source
             self.count = count
             self.topResult = topResult
@@ -826,7 +834,7 @@ extension Search {
             )
         }
 
-        public static func tryOtherSourceTip(current: Search.Source, suggested: Search.Source) -> Search.Tip {
+        public static func tryOtherSourceTip(current: SearchModule.Source, suggested: SearchModule.Source) -> Search.Tip {
             Search.Tip(
                 category: .source,
                 message: "Also check \(suggested.displayName) for \(suggested == .hig ? "design guidance" : "more context")",
