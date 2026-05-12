@@ -222,9 +222,15 @@ The cut therefore moves only **MCP-protocol output strings**, not the search-dom
 - `Packages/Sources/Shared/FTSQuery.swift` → `Packages/Sources/SharedUtils/FTSQuery.swift`
 - `Packages/Sources/Shared/SchemaVersion.swift` → `Packages/Sources/SharedUtils/SchemaVersion.swift`
 
-**Package.swift**: add `SharedUtils` target + product, depends on `SharedConstants` only (PathResolver uses `Constants.Directory`).
+**Also carried during 1.4** (not in the original plan): the `URL` extensions (`expandingTildeInPath`, `knownGood`) move from `Shared/CupertinoShared.swift` to a new `SharedUtils/URLExtensions.swift`, because `PathResolver` reaches into `URL.expandingTildeInPath` and the alternative is a `SharedUtils → Shared` dep that cycles with `Shared → SharedUtils`. `Shared/CupertinoShared.swift` retains its `@_exported` of Foundation and CryptoKit and a pointer comment to the new location.
 
-**Risk**: low.
+**Files added**:
+- `Packages/Sources/SharedUtils/URLExtensions.swift` (the moved `URL` extension)
+- One-line addition in `Packages/Sources/Shared/Exports.swift`: `@_exported import SharedUtils` so callers that `import Shared` see the moved types with no source change.
+
+**Package.swift**: add `SharedUtils` target + product, depends on `SharedConstants` only. `Shared` target deps gain `"SharedUtils"`.
+
+**Risk**: low. Source-compatible via the re-export.
 
 ### 1.5 — Extract `SharedModels`
 
