@@ -7,12 +7,13 @@ import FoundationNetworking
 // MARK: - Availability Fetcher
 
 // swiftlint:disable type_body_length
-// Justification: AvailabilityFetcher is a self-contained actor that handles availability data fetching.
+// Justification: Availability.Fetcher is a self-contained actor that handles availability data fetching.
 // It manages API calls, caching, fallback strategies, and statistics tracking as a cohesive unit.
 // Splitting would fragment the actor's state management and reduce thread-safety guarantees.
 
 /// Fetches platform availability data from Apple's API and updates existing documentation JSONs
-public actor AvailabilityFetcher {
+extension Availability {
+    public actor Fetcher {
     // MARK: - Configuration
 
     /// Configuration for the availability fetcher
@@ -59,10 +60,10 @@ public actor AvailabilityFetcher {
     private let urlSession: URLSession
 
     /// Cache of framework-level availability for inheritance
-    private var frameworkAvailabilityCache: [String: [PlatformAvailability]] = [:]
+    private var frameworkAvailabilityCache: [String: [Availability.Platform]] = [:]
 
     /// Cache of all document availability (populated in pass 1, used in pass 2 for articles)
-    private var documentAvailabilityCache: [String: [PlatformAvailability]] = [:]
+    private var documentAvailabilityCache: [String: [Availability.Platform]] = [:]
 
     // MARK: - Initialization
 
@@ -85,14 +86,14 @@ public actor AvailabilityFetcher {
 
     /// Fetch availability data and update all documentation JSONs
     public func fetch(
-        onProgress: (@Sendable (AvailabilityProgress) -> Void)? = nil
-    ) async throws -> AvailabilityStatistics {
-        var stats = AvailabilityStatistics(startTime: Date())
+        onProgress: (@Sendable (Availability.Progress) -> Void)? = nil
+    ) async throws -> Availability.Statistics {
+        var stats = Availability.Statistics(startTime: Date())
 
         // Discover all frameworks
         let frameworks = try discoverFrameworks()
         guard !frameworks.isEmpty else {
-            throw AvailabilityError.noDocumentationFound
+            throw Availability.Error.noDocumentationFound
         }
 
         // Collect all JSON files
@@ -149,8 +150,8 @@ public actor AvailabilityFetcher {
 
     private func processFiles(
         _ files: [(framework: String, file: URL)],
-        stats: inout AvailabilityStatistics,
-        onProgress: (@Sendable (AvailabilityProgress) -> Void)?
+        stats: inout Availability.Statistics,
+        onProgress: (@Sendable (Availability.Progress) -> Void)?
     ) async throws {
         // Phase 1: Cache framework root availability
         await cacheFrameworkAvailability(from: files)
@@ -260,7 +261,7 @@ public actor AvailabilityFetcher {
 
     private func updateStats(
         result: ProcessResult,
-        stats: inout AvailabilityStatistics,
+        stats: inout Availability.Statistics,
         successful: inout Int,
         failed: inout Int,
         filesWithNoAvailability: inout [String]
@@ -297,10 +298,10 @@ public actor AvailabilityFetcher {
         total: Int,
         successful: Int,
         failed: Int,
-        onProgress: (@Sendable (AvailabilityProgress) -> Void)?
+        onProgress: (@Sendable (Availability.Progress) -> Void)?
     ) {
         if let onProgress {
-            let progress = AvailabilityProgress(
+            let progress = Availability.Progress(
                 currentDocument: result.filename,
                 completed: completed,
                 total: total,
@@ -325,9 +326,9 @@ public actor AvailabilityFetcher {
             if let data = try? Data(contentsOf: file),
                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let availabilityArray = json["availability"] as? [[String: Any]] {
-                let platforms = availabilityArray.compactMap { dict -> PlatformAvailability? in
+                let platforms = availabilityArray.compactMap { dict -> Availability.Platform? in
                     guard let name = dict["name"] as? String else { return nil }
-                    return PlatformAvailability(
+                    return Availability.Platform(
                         name: name,
                         introducedAt: dict["introducedAt"] as? String,
                         deprecated: dict["deprecated"] as? Bool ?? false,
@@ -383,7 +384,7 @@ public actor AvailabilityFetcher {
 
         // Fallback 1: If API failed or returned empty, try parsing @available from local content
         if availability?.isEmpty ?? true {
-            availability = AvailabilityInfo.extractFromJSONContent(data)
+            availability = Availability.Info.extractFromJSONContent(data)
         }
 
         // Fallback 2: For articles, derive from referenced APIs
@@ -397,7 +398,7 @@ public actor AvailabilityFetcher {
         // Fallback 3: If still no availability, try inheriting from framework
         if availability?.isEmpty ?? true,
            let frameworkPlatforms = frameworkAvailabilityCache[framework] {
-            availability = AvailabilityInfo(platforms: frameworkPlatforms)
+            availability = Availability.Info(platforms: frameworkPlatforms)
             inherited = true
         }
 
@@ -456,12 +457,12 @@ public actor AvailabilityFetcher {
     }
 
     /// Cache document availability for reference lookups
-    private func cacheDocumentAvailability(key: String, platforms: [PlatformAvailability]) {
+    private func cacheDocumentAvailability(key: String, platforms: [Availability.Platform]) {
         documentAvailabilityCache[key] = platforms
     }
 
     /// Derive availability from doc:// references in article content
-    private func deriveAvailabilityFromReferences(json: [String: Any]) -> AvailabilityInfo? {
+    private func deriveAvailabilityFromReferences(json: [String: Any]) -> Availability.Info? {
         guard let rawMarkdown = json["rawMarkdown"] as? String else { return nil }
 
         // Extract doc:// references from markdown
@@ -475,7 +476,7 @@ public actor AvailabilityFetcher {
         let range = NSRange(rawMarkdown.startIndex..., in: rawMarkdown)
         let matches = regex.matches(in: rawMarkdown, options: [], range: range)
 
-        var allPlatforms: [[PlatformAvailability]] = []
+        var allPlatforms: [[Availability.Platform]] = []
 
         for match in matches {
             guard let pathRange = Range(match.range(at: 1), in: rawMarkdown) else { continue }
@@ -498,8 +499,8 @@ public actor AvailabilityFetcher {
     /// Compute the most restrictive availability from multiple sources
     /// Uses the highest minimum version for each platform
     private func computeMostRestrictiveAvailability(
-        from sources: [[PlatformAvailability]]
-    ) -> AvailabilityInfo? {
+        from sources: [[Availability.Platform]]
+    ) -> Availability.Info? {
         var platformVersions: [String: (version: String, deprecated: Bool, beta: Bool)] = [:]
 
         for platforms in sources {
@@ -524,7 +525,7 @@ public actor AvailabilityFetcher {
         guard !platformVersions.isEmpty else { return nil }
 
         let platforms = platformVersions.map { name, info in
-            PlatformAvailability(
+            Availability.Platform(
                 name: name,
                 introducedAt: info.version,
                 deprecated: info.deprecated,
@@ -534,7 +535,7 @@ public actor AvailabilityFetcher {
             )
         }
 
-        return AvailabilityInfo(platforms: platforms)
+        return Availability.Info(platforms: platforms)
     }
 
     /// Compare version strings - returns true if lhs > rhs
@@ -572,7 +573,7 @@ public actor AvailabilityFetcher {
         return URL(string: "\(configuration.apiBaseURL)/\(apiPath).json")!
     }
 
-    private func fetchAvailability(from url: URL) async -> AvailabilityInfo? {
+    private func fetchAvailability(from url: URL) async -> Availability.Info? {
         do {
             let (data, response) = try await urlSession.data(from: url)
 
@@ -591,8 +592,8 @@ public actor AvailabilityFetcher {
                 return nil
             }
 
-            let availability = platforms.map { $0.toPlatformAvailability() }
-            return AvailabilityInfo(platforms: availability)
+            let availability = platforms.map { $0.toPlatform() }
+            return Availability.Info(platforms: availability)
         } catch {
             // Network error or JSON parse error - return nil to mark as failed
             return nil
@@ -616,4 +617,5 @@ private struct ProcessResult: Sendable {
     let status: Status
     let filename: String
     let framework: String
+}
 }

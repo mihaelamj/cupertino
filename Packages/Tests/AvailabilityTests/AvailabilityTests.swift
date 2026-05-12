@@ -4,11 +4,11 @@ import Testing
 
 // MARK: - Platform Availability Tests
 
-@Suite("PlatformAvailability Tests")
+@Suite("Availability.Platform Tests")
 struct PlatformAvailabilityTests {
     @Test("Initialize with all parameters")
     func fullInitialization() {
-        let availability = PlatformAvailability(
+        let availability = Availability.Platform(
             name: "iOS",
             introducedAt: "13.0",
             deprecated: true,
@@ -27,7 +27,7 @@ struct PlatformAvailabilityTests {
 
     @Test("Initialize with minimal parameters")
     func minimalInitialization() {
-        let availability = PlatformAvailability(name: "macOS")
+        let availability = Availability.Platform(name: "macOS")
 
         #expect(availability.name == "macOS")
         #expect(availability.introducedAt == nil)
@@ -39,9 +39,9 @@ struct PlatformAvailabilityTests {
 
     @Test("Hashable conformance")
     func hashable() {
-        let iosAvailability = PlatformAvailability(name: "iOS", introducedAt: "13.0")
-        let iosAvailabilityCopy = PlatformAvailability(name: "iOS", introducedAt: "13.0")
-        let macOSAvailability = PlatformAvailability(name: "macOS", introducedAt: "10.15")
+        let iosAvailability = Availability.Platform(name: "iOS", introducedAt: "13.0")
+        let iosAvailabilityCopy = Availability.Platform(name: "iOS", introducedAt: "13.0")
+        let macOSAvailability = Availability.Platform(name: "macOS", introducedAt: "10.15")
 
         #expect(iosAvailability == iosAvailabilityCopy)
         #expect(iosAvailability != macOSAvailability)
@@ -50,7 +50,7 @@ struct PlatformAvailabilityTests {
 
     @Test("Codable round-trip")
     func codable() throws {
-        let original = PlatformAvailability(
+        let original = Availability.Platform(
             name: "iOS",
             introducedAt: "15.0",
             deprecated: false,
@@ -63,7 +63,7 @@ struct PlatformAvailabilityTests {
         let data = try encoder.encode(original)
 
         let decoder = JSONDecoder()
-        let decoded = try decoder.decode(PlatformAvailability.self, from: data)
+        let decoded = try decoder.decode(Availability.Platform.self, from: data)
 
         #expect(decoded == original)
     }
@@ -71,11 +71,11 @@ struct PlatformAvailabilityTests {
 
 // MARK: - Availability Info Tests
 
-@Suite("AvailabilityInfo Tests")
+@Suite("Availability.Info Tests")
 struct AvailabilityInfoTests {
     @Test("Empty availability")
     func testEmpty() {
-        let empty = AvailabilityInfo.empty
+        let empty = Availability.Info.empty
 
         #expect(empty.isEmpty == true)
         #expect(empty.platforms.isEmpty == true)
@@ -88,10 +88,10 @@ struct AvailabilityInfoTests {
     @Test("Non-empty availability")
     func nonEmpty() {
         let platforms = [
-            PlatformAvailability(name: "iOS", introducedAt: "13.0"),
-            PlatformAvailability(name: "macOS", introducedAt: "10.15"),
+            Availability.Platform(name: "iOS", introducedAt: "13.0"),
+            Availability.Platform(name: "macOS", introducedAt: "10.15"),
         ]
-        let info = AvailabilityInfo(platforms: platforms)
+        let info = Availability.Info(platforms: platforms)
 
         #expect(info.isEmpty == false)
         #expect(info.platforms.count == 2)
@@ -100,10 +100,10 @@ struct AvailabilityInfoTests {
     @Test("Minimum iOS version")
     func testMinimumiOS() {
         let platforms = [
-            PlatformAvailability(name: "iOS", introducedAt: "14.0"),
-            PlatformAvailability(name: "macOS", introducedAt: "11.0"),
+            Availability.Platform(name: "iOS", introducedAt: "14.0"),
+            Availability.Platform(name: "macOS", introducedAt: "11.0"),
         ]
-        let info = AvailabilityInfo(platforms: platforms)
+        let info = Availability.Info(platforms: platforms)
 
         #expect(info.minimumiOS == "14.0")
     }
@@ -111,10 +111,10 @@ struct AvailabilityInfoTests {
     @Test("Minimum macOS version")
     func testMinimumMacOS() {
         let platforms = [
-            PlatformAvailability(name: "iOS", introducedAt: "15.0"),
-            PlatformAvailability(name: "macOS", introducedAt: "12.0"),
+            Availability.Platform(name: "iOS", introducedAt: "15.0"),
+            Availability.Platform(name: "macOS", introducedAt: "12.0"),
         ]
-        let info = AvailabilityInfo(platforms: platforms)
+        let info = Availability.Info(platforms: platforms)
 
         #expect(info.minimumMacOS == "12.0")
     }
@@ -122,10 +122,10 @@ struct AvailabilityInfoTests {
     @Test("iOS unavailable returns nil")
     func unavailableiOS() {
         let platforms = [
-            PlatformAvailability(name: "iOS", introducedAt: "13.0", unavailable: true),
-            PlatformAvailability(name: "macOS", introducedAt: "10.15"),
+            Availability.Platform(name: "iOS", introducedAt: "13.0", unavailable: true),
+            Availability.Platform(name: "macOS", introducedAt: "10.15"),
         ]
-        let info = AvailabilityInfo(platforms: platforms)
+        let info = Availability.Info(platforms: platforms)
 
         #expect(info.minimumiOS == nil)
         #expect(info.minimumMacOS == "10.15")
@@ -134,10 +134,10 @@ struct AvailabilityInfoTests {
     @Test("Deprecation check - deprecated")
     func isDeprecatedTrue() {
         let platforms = [
-            PlatformAvailability(name: "iOS", introducedAt: "10.0", deprecated: true),
-            PlatformAvailability(name: "macOS", introducedAt: "10.12"),
+            Availability.Platform(name: "iOS", introducedAt: "10.0", deprecated: true),
+            Availability.Platform(name: "macOS", introducedAt: "10.12"),
         ]
-        let info = AvailabilityInfo(platforms: platforms)
+        let info = Availability.Info(platforms: platforms)
 
         #expect(info.isDeprecated == true)
     }
@@ -145,10 +145,10 @@ struct AvailabilityInfoTests {
     @Test("Deprecation check - not deprecated")
     func isDeprecatedFalse() {
         let platforms = [
-            PlatformAvailability(name: "iOS", introducedAt: "15.0"),
-            PlatformAvailability(name: "macOS", introducedAt: "12.0"),
+            Availability.Platform(name: "iOS", introducedAt: "15.0"),
+            Availability.Platform(name: "macOS", introducedAt: "12.0"),
         ]
-        let info = AvailabilityInfo(platforms: platforms)
+        let info = Availability.Info(platforms: platforms)
 
         #expect(info.isDeprecated == false)
     }
@@ -156,9 +156,9 @@ struct AvailabilityInfoTests {
     @Test("Beta check - in beta")
     func isBetaTrue() {
         let platforms = [
-            PlatformAvailability(name: "visionOS", introducedAt: "1.0", beta: true),
+            Availability.Platform(name: "visionOS", introducedAt: "1.0", beta: true),
         ]
-        let info = AvailabilityInfo(platforms: platforms)
+        let info = Availability.Info(platforms: platforms)
 
         #expect(info.isBeta == true)
     }
@@ -166,9 +166,9 @@ struct AvailabilityInfoTests {
     @Test("Beta check - not in beta")
     func isBetaFalse() {
         let platforms = [
-            PlatformAvailability(name: "iOS", introducedAt: "17.0"),
+            Availability.Platform(name: "iOS", introducedAt: "17.0"),
         ]
-        let info = AvailabilityInfo(platforms: platforms)
+        let info = Availability.Info(platforms: platforms)
 
         #expect(info.isBeta == false)
     }
@@ -176,16 +176,16 @@ struct AvailabilityInfoTests {
     @Test("Codable round-trip")
     func testCodable() throws {
         let platforms = [
-            PlatformAvailability(name: "iOS", introducedAt: "16.0"),
-            PlatformAvailability(name: "watchOS", introducedAt: "9.0"),
+            Availability.Platform(name: "iOS", introducedAt: "16.0"),
+            Availability.Platform(name: "watchOS", introducedAt: "9.0"),
         ]
-        let original = AvailabilityInfo(platforms: platforms)
+        let original = Availability.Info(platforms: platforms)
 
         let encoder = JSONEncoder()
         let data = try encoder.encode(original)
 
         let decoder = JSONDecoder()
-        let decoded = try decoder.decode(AvailabilityInfo.self, from: data)
+        let decoded = try decoder.decode(Availability.Info.self, from: data)
 
         #expect(decoded.platforms.count == original.platforms.count)
         #expect(decoded.minimumiOS == original.minimumiOS)
@@ -194,11 +194,11 @@ struct AvailabilityInfoTests {
 
 // MARK: - Availability Statistics Tests
 
-@Suite("AvailabilityStatistics Tests")
+@Suite("Availability.Statistics Tests")
 struct AvailabilityStatisticsTests {
     @Test("Default initialization")
     func defaultInit() {
-        let stats = AvailabilityStatistics()
+        let stats = Availability.Statistics()
 
         #expect(stats.totalDocuments == 0)
         #expect(stats.updatedDocuments == 0)
@@ -216,7 +216,7 @@ struct AvailabilityStatisticsTests {
         let start = Date()
         let end = start.addingTimeInterval(120)
 
-        let stats = AvailabilityStatistics(
+        let stats = Availability.Statistics(
             startTime: start,
             endTime: end
         )
@@ -226,21 +226,21 @@ struct AvailabilityStatisticsTests {
 
     @Test("Duration nil when no end time")
     func durationNilNoEnd() {
-        let stats = AvailabilityStatistics(startTime: Date())
+        let stats = Availability.Statistics(startTime: Date())
 
         #expect(stats.duration == nil)
     }
 
     @Test("Duration nil when no start time")
     func durationNilNoStart() {
-        let stats = AvailabilityStatistics(endTime: Date())
+        let stats = Availability.Statistics(endTime: Date())
 
         #expect(stats.duration == nil)
     }
 
     @Test("Success rate calculation - all successful")
     func successRateAllSuccess() {
-        var stats = AvailabilityStatistics()
+        var stats = Availability.Statistics()
         stats.successfulFetches = 100
         stats.failedFetches = 0
 
@@ -249,7 +249,7 @@ struct AvailabilityStatisticsTests {
 
     @Test("Success rate calculation - mixed")
     func successRateMixed() {
-        var stats = AvailabilityStatistics()
+        var stats = Availability.Statistics()
         stats.successfulFetches = 75
         stats.failedFetches = 25
 
@@ -258,7 +258,7 @@ struct AvailabilityStatisticsTests {
 
     @Test("Success rate calculation - all failed")
     func successRateAllFailed() {
-        var stats = AvailabilityStatistics()
+        var stats = Availability.Statistics()
         stats.successfulFetches = 0
         stats.failedFetches = 50
 
@@ -267,7 +267,7 @@ struct AvailabilityStatisticsTests {
 
     @Test("Success rate calculation - no attempts")
     func successRateNoAttempts() {
-        let stats = AvailabilityStatistics()
+        let stats = Availability.Statistics()
 
         #expect(stats.successRate == 0.0)
     }
@@ -275,11 +275,11 @@ struct AvailabilityStatisticsTests {
 
 // MARK: - Availability Progress Tests
 
-@Suite("AvailabilityProgress Tests")
+@Suite("Availability.Progress Tests")
 struct AvailabilityProgressTests {
     @Test("Progress percentage calculation")
     func testPercentage() {
-        let progress = AvailabilityProgress(
+        let progress = Availability.Progress(
             currentDocument: "test.json",
             completed: 50,
             total: 100,
@@ -293,7 +293,7 @@ struct AvailabilityProgressTests {
 
     @Test("Progress percentage - zero total")
     func percentageZeroTotal() {
-        let progress = AvailabilityProgress(
+        let progress = Availability.Progress(
             currentDocument: "test.json",
             completed: 0,
             total: 0,
@@ -307,7 +307,7 @@ struct AvailabilityProgressTests {
 
     @Test("Progress percentage - 100%")
     func percentageFull() {
-        let progress = AvailabilityProgress(
+        let progress = Availability.Progress(
             currentDocument: "last.json",
             completed: 200,
             total: 200,
@@ -321,7 +321,7 @@ struct AvailabilityProgressTests {
 
     @Test("Progress stores all values")
     func allValues() {
-        let progress = AvailabilityProgress(
+        let progress = Availability.Progress(
             currentDocument: "view.json",
             completed: 10,
             total: 50,
@@ -341,13 +341,13 @@ struct AvailabilityProgressTests {
 
 // MARK: - Availability Error Tests
 
-@Suite("AvailabilityError Tests")
+@Suite("Availability.Error Tests")
 struct AvailabilityErrorTests {
     @Test("Network error description")
     func testNetworkError() {
         let userInfo = [NSLocalizedDescriptionKey: "Connection failed"]
         let underlyingError = NSError(domain: "test", code: -1, userInfo: userInfo)
-        let error = AvailabilityError.networkError(underlyingError)
+        let error = Availability.Error.networkError(underlyingError)
 
         #expect(error.errorDescription?.contains("Network error") == true)
         #expect(error.errorDescription?.contains("Connection failed") == true)
@@ -355,14 +355,14 @@ struct AvailabilityErrorTests {
 
     @Test("Timeout error description")
     func timeoutError() {
-        let error = AvailabilityError.timeout
+        let error = Availability.Error.timeout
 
         #expect(error.errorDescription == "Request timed out")
     }
 
     @Test("Not found error description")
     func notFoundError() {
-        let error = AvailabilityError.notFound("SwiftUI/View")
+        let error = Availability.Error.notFound("SwiftUI/View")
 
         #expect(error.errorDescription?.contains("not found") == true)
         #expect(error.errorDescription?.contains("SwiftUI/View") == true)
@@ -370,21 +370,21 @@ struct AvailabilityErrorTests {
 
     @Test("Invalid response error description")
     func invalidResponseError() {
-        let error = AvailabilityError.invalidResponse
+        let error = Availability.Error.invalidResponse
 
         #expect(error.errorDescription == "Invalid response from Apple API")
     }
 
     @Test("Rate limited error description")
     func rateLimitedError() {
-        let error = AvailabilityError.rateLimited
+        let error = Availability.Error.rateLimited
 
         #expect(error.errorDescription == "Rate limited by Apple API")
     }
 
     @Test("No documentation found error description")
     func noDocumentationFoundError() {
-        let error = AvailabilityError.noDocumentationFound
+        let error = Availability.Error.noDocumentationFound
 
         #expect(error.errorDescription == "No documentation directory found")
     }
@@ -392,7 +392,7 @@ struct AvailabilityErrorTests {
     @Test("JSON parse error description")
     func jSONParseError() {
         let underlyingError = NSError(domain: "JSON", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid JSON"])
-        let error = AvailabilityError.jsonParseError(underlyingError)
+        let error = Availability.Error.jsonParseError(underlyingError)
 
         #expect(error.errorDescription?.contains("JSON parse error") == true)
     }
@@ -401,7 +401,7 @@ struct AvailabilityErrorTests {
     func testWriteError() {
         let userInfo = [NSLocalizedDescriptionKey: "Permission denied"]
         let underlyingError = NSError(domain: "File", code: 2, userInfo: userInfo)
-        let error = AvailabilityError.writeError(underlyingError)
+        let error = Availability.Error.writeError(underlyingError)
 
         #expect(error.errorDescription?.contains("Failed to write file") == true)
     }
@@ -409,11 +409,11 @@ struct AvailabilityErrorTests {
 
 // MARK: - Availability Fetcher Configuration Tests
 
-@Suite("AvailabilityFetcher.Configuration Tests")
+@Suite("Availability.Fetcher.Configuration Tests")
 struct AvailabilityFetcherConfigurationTests {
     @Test("Default configuration values")
     func defaultConfig() {
-        let config = AvailabilityFetcher.Configuration.default
+        let config = Availability.Fetcher.Configuration.default
 
         #expect(config.concurrency == 50)
         #expect(config.timeout == 1.0)
@@ -423,7 +423,7 @@ struct AvailabilityFetcherConfigurationTests {
 
     @Test("Fast configuration values")
     func fastConfig() {
-        let config = AvailabilityFetcher.Configuration.fast
+        let config = Availability.Fetcher.Configuration.fast
 
         #expect(config.concurrency == 100)
         #expect(config.timeout == 0.5)
@@ -432,7 +432,7 @@ struct AvailabilityFetcherConfigurationTests {
 
     @Test("Custom configuration")
     func customConfig() {
-        let config = AvailabilityFetcher.Configuration(
+        let config = Availability.Fetcher.Configuration(
             concurrency: 25,
             timeout: 2.0,
             skipExisting: true,
@@ -448,12 +448,12 @@ struct AvailabilityFetcherConfigurationTests {
 
 // MARK: - @available Annotation Parser Tests
 
-@Suite("AvailabilityInfo Annotation Parser Tests")
+@Suite("Availability.Info Annotation Parser Tests")
 struct AvailabilityAnnotationParserTests {
     @Test("Parse simple @available annotation")
     func parseSimpleAnnotation() {
         let code = "@available(iOS 13.0, macOS 10.15, *)"
-        let result = AvailabilityInfo.parseFromAnnotation(code)
+        let result = Availability.Info.parseFromAnnotation(code)
 
         #expect(result != nil)
         #expect(result?.platforms.count == 2)
@@ -464,7 +464,7 @@ struct AvailabilityAnnotationParserTests {
     @Test("Parse multiple platforms")
     func parseMultiplePlatforms() {
         let code = "@available(iOS 18.0, macOS 15.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)"
-        let result = AvailabilityInfo.parseFromAnnotation(code)
+        let result = Availability.Info.parseFromAnnotation(code)
 
         #expect(result != nil)
         #expect(result?.platforms.count == 5)
@@ -475,7 +475,7 @@ struct AvailabilityAnnotationParserTests {
     @Test("Parse annotation with extra whitespace")
     func parseWithWhitespace() {
         let code = "@available(  iOS 16.0 ,  macOS 13.0  , * )"
-        let result = AvailabilityInfo.parseFromAnnotation(code)
+        let result = Availability.Info.parseFromAnnotation(code)
 
         #expect(result != nil)
         #expect(result?.minimumiOS == "16.0")
@@ -494,7 +494,7 @@ struct AvailabilityAnnotationParserTests {
             }
         }
         """
-        let result = AvailabilityInfo.parseFromAnnotation(code)
+        let result = Availability.Info.parseFromAnnotation(code)
 
         #expect(result != nil)
         #expect(result?.minimumiOS == "17.0")
@@ -504,7 +504,7 @@ struct AvailabilityAnnotationParserTests {
     @Test("No annotation returns nil")
     func noAnnotation() {
         let code = "struct MyView: View { }"
-        let result = AvailabilityInfo.parseFromAnnotation(code)
+        let result = Availability.Info.parseFromAnnotation(code)
 
         #expect(result == nil)
     }
@@ -512,7 +512,7 @@ struct AvailabilityAnnotationParserTests {
     @Test("Platform name normalization")
     func platformNormalization() {
         let code = "@available(ios 15.0, MACOS 12.0, watchos 8.0, *)"
-        let result = AvailabilityInfo.parseFromAnnotation(code)
+        let result = Availability.Info.parseFromAnnotation(code)
 
         #expect(result != nil)
         // Check normalized names
@@ -535,7 +535,7 @@ struct AvailabilityAnnotationParserTests {
             """,
         ]
         let data = try JSONSerialization.data(withJSONObject: json)
-        let result = AvailabilityInfo.extractFromJSONContent(data)
+        let result = Availability.Info.extractFromJSONContent(data)
 
         #expect(result != nil)
         #expect(result?.minimumiOS == "16.0")
@@ -551,7 +551,7 @@ struct AvailabilityAnnotationParserTests {
             ],
         ]
         let data = try JSONSerialization.data(withJSONObject: json)
-        let result = AvailabilityInfo.extractFromJSONContent(data)
+        let result = Availability.Info.extractFromJSONContent(data)
 
         #expect(result != nil)
         #expect(result?.minimumiOS == "15.0")
@@ -566,7 +566,7 @@ struct AvailabilityAnnotationParserTests {
             ],
         ]
         let data = try JSONSerialization.data(withJSONObject: json)
-        let result = AvailabilityInfo.extractFromJSONContent(data)
+        let result = Availability.Info.extractFromJSONContent(data)
 
         #expect(result != nil)
         #expect(result?.minimumiOS == "17.0")

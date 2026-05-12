@@ -2,41 +2,43 @@ import Foundation
 
 // MARK: - Platform Availability
 
-/// Represents platform availability information for an API symbol
-/// Matches Apple's /tutorials/data/documentation API response format
-public struct PlatformAvailability: Codable, Sendable, Hashable {
-    /// Platform name (iOS, macOS, watchOS, etc.)
-    public let name: String
+extension Availability {
+    /// Represents platform availability information for an API symbol
+    /// Matches Apple's /tutorials/data/documentation API response format
+    public struct Platform: Codable, Sendable, Hashable {
+        /// Platform name (iOS, macOS, watchOS, etc.)
+        public let name: String
 
-    /// Version when this API was introduced (e.g., "13.0", "10.15")
-    public let introducedAt: String?
+        /// Version when this API was introduced (e.g., "13.0", "10.15")
+        public let introducedAt: String?
 
-    /// Whether this API is deprecated
-    public let deprecated: Bool
+        /// Whether this API is deprecated
+        public let deprecated: Bool
 
-    /// Version when this API was deprecated (if applicable)
-    public let deprecatedAt: String?
+        /// Version when this API was deprecated (if applicable)
+        public let deprecatedAt: String?
 
-    /// Whether this API is unavailable on this platform
-    public let unavailable: Bool
+        /// Whether this API is unavailable on this platform
+        public let unavailable: Bool
 
-    /// Whether this API is in beta
-    public let beta: Bool
+        /// Whether this API is in beta
+        public let beta: Bool
 
-    public init(
-        name: String,
-        introducedAt: String? = nil,
-        deprecated: Bool = false,
-        deprecatedAt: String? = nil,
-        unavailable: Bool = false,
-        beta: Bool = false
-    ) {
-        self.name = name
-        self.introducedAt = introducedAt
-        self.deprecated = deprecated
-        self.deprecatedAt = deprecatedAt
-        self.unavailable = unavailable
-        self.beta = beta
+        public init(
+            name: String,
+            introducedAt: String? = nil,
+            deprecated: Bool = false,
+            deprecatedAt: String? = nil,
+            unavailable: Bool = false,
+            beta: Bool = false
+        ) {
+            self.name = name
+            self.introducedAt = introducedAt
+            self.deprecated = deprecated
+            self.deprecatedAt = deprecatedAt
+            self.unavailable = unavailable
+            self.beta = beta
+        }
     }
 }
 
@@ -59,8 +61,8 @@ extension Availability {
             let unavailable: Bool?
             let beta: Bool?
 
-            func toPlatformAvailability() -> PlatformAvailability {
-                PlatformAvailability(
+            func toPlatform() -> Availability.Platform {
+                Availability.Platform(
                     name: name,
                     introducedAt: introducedAt,
                     deprecated: deprecated ?? false,
@@ -75,54 +77,56 @@ extension Availability {
 
 // MARK: - Availability Info
 
-/// Complete availability information for a documentation page
-public struct AvailabilityInfo: Codable, Sendable, Hashable {
-    /// Platform availability array
-    public let platforms: [PlatformAvailability]
+extension Availability {
+    /// Complete availability information for a documentation page
+    public struct Info: Codable, Sendable, Hashable {
+        /// Platform availability array
+        public let platforms: [Availability.Platform]
 
-    /// When the availability was fetched
-    public let fetchedAt: Date
+        /// When the availability was fetched
+        public let fetchedAt: Date
 
-    public init(platforms: [PlatformAvailability], fetchedAt: Date = Date()) {
-        self.platforms = platforms
-        self.fetchedAt = fetchedAt
-    }
+        public init(platforms: [Availability.Platform], fetchedAt: Date = Date()) {
+            self.platforms = platforms
+            self.fetchedAt = fetchedAt
+        }
 
-    /// Empty availability (no data available)
-    public static let empty = AvailabilityInfo(platforms: [])
+        /// Empty availability (no data available)
+        public static let empty = Availability.Info(platforms: [])
 
-    /// Check if availability data exists
-    public var isEmpty: Bool {
-        platforms.isEmpty
-    }
+        /// Check if availability data exists
+        public var isEmpty: Bool {
+            platforms.isEmpty
+        }
 
-    /// Minimum iOS version required (nil if not available on iOS)
-    public var minimumiOS: String? {
-        platforms.first { $0.name == "iOS" && !$0.unavailable }?.introducedAt
-    }
+        /// Minimum iOS version required (nil if not available on iOS)
+        public var minimumiOS: String? {
+            platforms.first { $0.name == "iOS" && !$0.unavailable }?.introducedAt
+        }
 
-    /// Minimum macOS version required (nil if not available on macOS)
-    public var minimumMacOS: String? {
-        platforms.first { $0.name == "macOS" && !$0.unavailable }?.introducedAt
-    }
+        /// Minimum macOS version required (nil if not available on macOS)
+        public var minimumMacOS: String? {
+            platforms.first { $0.name == "macOS" && !$0.unavailable }?.introducedAt
+        }
 
-    /// Check if deprecated on any platform
-    public var isDeprecated: Bool {
-        platforms.contains { $0.deprecated }
-    }
+        /// Check if deprecated on any platform
+        public var isDeprecated: Bool {
+            platforms.contains { $0.deprecated }
+        }
 
-    /// Check if in beta on any platform
-    public var isBeta: Bool {
-        platforms.contains { $0.beta }
+        /// Check if in beta on any platform
+        public var isBeta: Bool {
+            platforms.contains { $0.beta }
+        }
     }
 }
 
 // MARK: - @available Annotation Parser
 
-extension AvailabilityInfo {
+extension Availability.Info {
     /// Parse availability from @available annotations in Swift code
     /// Example: @available(iOS 18.0, macOS 15.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
-    public static func parseFromAnnotation(_ content: String) -> AvailabilityInfo? {
+    public static func parseFromAnnotation(_ content: String) -> Availability.Info? {
         // Match @available(iOS 13.0, macOS 10.15, *) pattern
         let pattern = #"@available\s*\(\s*([^)]+)\s*\)"#
 
@@ -138,7 +142,7 @@ extension AvailabilityInfo {
         }
 
         let annotationContent = String(content[range])
-        var platforms: [PlatformAvailability] = []
+        var platforms: [Availability.Platform] = []
 
         // Split by comma and parse each platform
         let parts = annotationContent.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
@@ -162,7 +166,7 @@ extension AvailabilityInfo {
                 let isDeprecated = part.lowercased().contains("deprecated")
                 let isUnavailable = part.lowercased().contains("unavailable")
 
-                platforms.append(PlatformAvailability(
+                platforms.append(Availability.Platform(
                     name: platformName,
                     introducedAt: version,
                     deprecated: isDeprecated,
@@ -173,7 +177,7 @@ extension AvailabilityInfo {
             }
         }
 
-        return platforms.isEmpty ? nil : AvailabilityInfo(platforms: platforms)
+        return platforms.isEmpty ? nil : Availability.Info(platforms: platforms)
     }
 
     /// Normalize platform names to match Apple's API format
@@ -191,7 +195,7 @@ extension AvailabilityInfo {
     }
 
     /// Try to extract availability from JSON content (rawMarkdown, codeExamples, declaration)
-    public static func extractFromJSONContent(_ jsonData: Data) -> AvailabilityInfo? {
+    public static func extractFromJSONContent(_ jsonData: Data) -> Availability.Info? {
         // Try to parse as dictionary
         guard let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
             return nil

@@ -2,8 +2,9 @@ import Foundation
 
 // MARK: - Availability Fetch Statistics
 
-/// Statistics for availability fetch operation
-public struct AvailabilityStatistics: Sendable {
+extension Availability {
+    /// Statistics for availability fetch operation
+    public struct Statistics: Sendable {
     /// Total documents scanned
     public var totalDocuments: Int = 0
 
@@ -82,4 +83,5 @@ public struct AvailabilityStatistics: Sendable {
         guard attempted > 0 else { return 0 }
         return (Double(successfulFetches) / Double(attempted)) * 100.0
     }
+}
 }
