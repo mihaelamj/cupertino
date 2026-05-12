@@ -308,6 +308,14 @@ extension Search {
                     skipped += 1
                     continue
                 }
+                if Self.pageLooksLikeJavaScriptFallback(structuredPage) {
+                    logError(
+                        "⛔ Skipping JS-disabled-fallback page (#284 indexer defense): " +
+                            "title=\(structuredPage.title.prefix(60)) file=\(file.lastPathComponent)"
+                    )
+                    skipped += 1
+                    continue
+                }
 
                 // Generate URI: apple-docs://{framework}/{filename}
                 let filename = URLUtilities.normalize(structuredPage.url)?.lastPathComponent
@@ -1304,6 +1312,32 @@ extension Search {
                 "Internal Server Error",
             ]
             return standalone.contains(trimmed)
+        }
+
+        /// Returns true if the page looks like Apple's "JavaScript disabled"
+        /// fallback that the WebView crawler captured when JS didn't render
+        /// in time. The on-disk file has a real-looking title (Apple ships
+        /// it in HTML metadata even when JS is off) but the body content is
+        /// `[ Skip Navigation ](#app-main)# An unknown error occurred.` with
+        /// an `overview` of `Please turn on JavaScript in your browser…`.
+        ///
+        /// Found in 1,327 files of the v1.0.2 corpus when this audit ran;
+        /// missed by every prior title-only check.
+        ///
+        /// `internal` so SearchTests can pin the truth table.
+        static func pageLooksLikeJavaScriptFallback(_ page: StructuredDocumentationPage) -> Bool {
+            // Strongest signal: overview is the literal Apple JS-warning text.
+            if let overview = page.overview, overview.contains("Please turn on JavaScript") {
+                return true
+            }
+            // Body signal: rawMarkdown carries the broken Skip-Navigation +
+            // "An unknown error occurred" pattern that the crawler emitted
+            // when it couldn't extract real content.
+            if let rawmd = page.rawMarkdown {
+                if rawmd.contains("Please turn on JavaScript") { return true }
+                if rawmd.contains("#app-main)# An unknown error occurred") { return true }
+            }
+            return false
         }
     }
 }

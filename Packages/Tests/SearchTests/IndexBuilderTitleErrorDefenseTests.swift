@@ -1,5 +1,6 @@
 import Foundation
 @testable import Search
+import Shared
 import Testing
 
 // Truth-table coverage for `Search.IndexBuilder.titleLooksLikeHTTPErrorTemplate`,
@@ -98,5 +99,94 @@ struct IndexBuilderTitleErrorDefenseTests {
         // future loosening of the regex is a conscious decision.
         #expect(SUT.titleLooksLikeHTTPErrorTemplate("502abc") == false)
         #expect(SUT.titleLooksLikeHTTPErrorTemplate("404Type") == false)
+    }
+}
+
+// MARK: - JS-disabled fallback page detection
+
+// Coverage for `Search.IndexBuilder.pageLooksLikeJavaScriptFallback(_ page:)`,
+// the second indexer-side defense added after the audit found 1,327 such
+// poisoned files in the v1.0.2-era corpus that every prior title-only
+// check missed. The poisoned page has a real-looking title (Apple ships
+// it in HTML metadata even when JS is off) but the body content is
+// `Please turn on JavaScript ...` with rawMarkdown `[ Skip Navigation
+// ](#app-main)# An unknown error occurred.`.
+
+@Suite("Search.IndexBuilder.pageLooksLikeJavaScriptFallback (#284 JS-fallback defense)")
+struct IndexBuilderJavaScriptFallbackDefenseTests {
+    typealias SUT = Search.IndexBuilder
+
+    private static func makePage(
+        title: String = "AVCustomMediaSelectionScheme",
+        kind: StructuredDocumentationPage.Kind = .class,
+        source: StructuredDocumentationPage.Source = .appleJSON,
+        overview: String? = nil,
+        rawMarkdown: String? = nil
+    ) -> StructuredDocumentationPage {
+        StructuredDocumentationPage(
+            url: URL.knownGood("https://developer.apple.com/documentation/test"),
+            title: title,
+            kind: kind,
+            source: source,
+            overview: overview,
+            rawMarkdown: rawMarkdown
+        )
+    }
+
+    @Test("overview containing 'Please turn on JavaScript' trips the gate")
+    func jsFallbackInOverviewIsDetected() {
+        let page = Self.makePage(
+            overview: "Please turn on JavaScript in your browser and refresh the page to view its content."
+        )
+        #expect(SUT.pageLooksLikeJavaScriptFallback(page) == true)
+    }
+
+    @Test("rawMarkdown containing 'Please turn on JavaScript' trips the gate")
+    func jsFallbackInRawMarkdownIsDetected() {
+        let page = Self.makePage(
+            rawMarkdown: "---\nsource: x\n---\n\n# Title\n\nPlease turn on JavaScript and refresh."
+        )
+        #expect(SUT.pageLooksLikeJavaScriptFallback(page) == true)
+    }
+
+    @Test("rawMarkdown containing the broken Skip-Navigation pattern trips the gate")
+    func skipNavigationBrokenBodyIsDetected() {
+        let page = Self.makePage(
+            rawMarkdown: "---\nsource: x\n---\n\n# Title\n\n[ Skip Navigation ](#app-main)# An unknown error occurred."
+        )
+        #expect(SUT.pageLooksLikeJavaScriptFallback(page) == true)
+    }
+
+    @Test("real Apple page with normal overview is NOT flagged")
+    func realPageNotFlagged() {
+        let page = Self.makePage(
+            overview: "## Overview\n\nA media selection scheme provides custom settings for controlling media presentation."
+        )
+        #expect(SUT.pageLooksLikeJavaScriptFallback(page) == false)
+    }
+
+    @Test("real Apple page that mentions 'JavaScript' in normal docs context is NOT flagged")
+    func realPageMentioningJavaScriptNotFlagged() {
+        // Real Apple docs about WebKit / JavaScript APIs legitimately mention
+        // the word JavaScript without being JS-disabled fallbacks. The check
+        // requires the literal phrase "Please turn on JavaScript" — that
+        // exact string is unique to the fallback template.
+        let page = Self.makePage(
+            title: "WKWebView.evaluateJavaScript",
+            overview: "Use this method to execute JavaScript code in the context of the loaded page."
+        )
+        #expect(SUT.pageLooksLikeJavaScriptFallback(page) == false)
+    }
+
+    @Test("page with nil overview AND nil rawMarkdown is NOT flagged")
+    func nilFieldsNotFlagged() {
+        let page = Self.makePage(overview: nil, rawMarkdown: nil)
+        #expect(SUT.pageLooksLikeJavaScriptFallback(page) == false)
+    }
+
+    @Test("page with empty-string overview AND empty rawMarkdown is NOT flagged")
+    func emptyFieldsNotFlagged() {
+        let page = Self.makePage(overview: "", rawMarkdown: "")
+        #expect(SUT.pageLooksLikeJavaScriptFallback(page) == false)
     }
 }
