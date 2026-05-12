@@ -6,7 +6,7 @@ import SharedUtils
 // MARK: - Shared publishing helpers
 
 //
-// Used by `DatabaseReleaseCommand`. Lives in a separate file so future
+// Used by `Release.Command.Database`. Lives in a separate file so future
 // release-tool subcommands (e.g. a separate Homebrew artifact pass, or a
 // per-corpus release that targets a different GitHub repo) can reuse the
 // same zip / sha256 / GitHub-API code without copy-pasting.

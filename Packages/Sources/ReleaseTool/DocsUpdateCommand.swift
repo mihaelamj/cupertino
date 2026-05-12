@@ -3,208 +3,210 @@ import Foundation
 
 // MARK: - Docs Update Command
 
-struct DocsUpdateCommand: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "docs-update",
-        abstract: "Update documentation databases and bump minor version",
-        discussion: """
-        Workflow for documentation-only updates (no code changes):
-        1. Run 'cupertino save' to rebuild search index
-        2. Query database for document/framework counts
-        3. Update README.md with new counts
-        4. Bump minor version (e.g., 0.4.0 → 0.5.0)
-        5. Optionally continue with tag and database upload
+extension Release.Command {
+    struct DocsUpdate: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            commandName: "docs-update",
+            abstract: "Update documentation databases and bump minor version",
+            discussion: """
+            Workflow for documentation-only updates (no code changes):
+            1. Run 'cupertino save' to rebuild search index
+            2. Query database for document/framework counts
+            3. Update README.md with new counts
+            4. Bump minor version (e.g., 0.4.0 → 0.5.0)
+            5. Optionally continue with tag and database upload
 
-        Use this after updating crawled documentation (fetch or manual copy).
-        """
-    )
+            Use this after updating crawled documentation (fetch or manual copy).
+            """
+        )
 
-    @Flag(name: .long, help: "Preview changes without executing")
-    var dryRun: Bool = false
+        @Flag(name: .long, help: "Preview changes without executing")
+        var dryRun: Bool = false
 
-    @Flag(name: .long, help: "Skip running 'cupertino save'")
-    var skipSave: Bool = false
+        @Flag(name: .long, help: "Skip running 'cupertino save'")
+        var skipSave: Bool = false
 
-    @Flag(name: .long, help: "Continue with tag and upload after bump")
-    var release: Bool = false
+        @Flag(name: .long, help: "Continue with tag and upload after bump")
+        var release: Bool = false
 
-    @Option(name: .long, help: "Path to repository root")
-    var repoRoot: String?
+        @Option(name: .long, help: "Path to repository root")
+        var repoRoot: String?
 
-    // MARK: - Run
+        // MARK: - Run
 
-    mutating func run() async throws {
-        let root = try findRepoRoot()
-        let constantsPath = root.appendingPathComponent("Packages/Sources/Shared/Constants.swift")
-        let readmePath = root.appendingPathComponent("README.md")
+        mutating func run() async throws {
+            let root = try findRepoRoot()
+            let constantsPath = root.appendingPathComponent("Packages/Sources/Shared/Constants.swift")
+            let readmePath = root.appendingPathComponent("README.md")
 
-        Console.info("📚 Documentation Update Workflow")
-        Console.info("")
+            Console.info("📚 Documentation Update Workflow")
+            Console.info("")
 
-        if dryRun {
-            Console.warning("DRY RUN - No changes will be made\n")
-        }
-
-        // Step 1: Run cupertino save
-        Console.step(1, "Rebuild search index")
-        if skipSave {
-            Console.substep("Skipping (--skip-save)")
-        } else if dryRun {
-            Console.substep("Would run: cupertino save")
-        } else {
-            Console.substep("Running 'cupertino save'...")
-            try Shell.runInteractive("cupertino save")
-            Console.substep("✓ Search index rebuilt")
-        }
-
-        // Step 2: Query database for counts
-        Console.step(2, "Query database statistics")
-        let (docCount, frameworkCount) = try await getDocumentStats()
-        Console.substep("✓ Documents: \(formatNumber(docCount))")
-        Console.substep("✓ Frameworks: \(frameworkCount)")
-
-        // Step 3: Update README.md
-        Console.step(3, "Update README.md with new counts")
-        let statsMsg = "\(formatNumber(docCount))+ documentation pages across \(frameworkCount) frameworks"
-        if dryRun {
-            Console.substep("Would update to: '\(statsMsg)'")
-        } else {
-            try updateReadmeStats(at: readmePath, documents: docCount, frameworks: frameworkCount)
-            Console.substep("✓ Updated to '\(statsMsg)'")
-        }
-
-        // Step 4: Bump minor version
-        Console.step(4, "Bump minor version")
-        let currentVersion = try readCurrentVersion(from: constantsPath)
-        let newVersion = currentVersion.bumped(.minor)
-        Console.substep("Version: \(currentVersion) → \(newVersion)")
-
-        var bumpCmd = BumpCommand()
-        bumpCmd.versionOrType = newVersion.description
-        bumpCmd.dryRun = dryRun
-        bumpCmd.repoRoot = root.path
-        try await bumpCmd.run()
-
-        // Step 5: Optionally continue with release
-        if release {
-            Console.step(5, "Continue with tag and upload")
-
-            if !dryRun {
-                Console.info("\n    Please edit CHANGELOG.md to add release notes.")
-                Console.info("    Press Enter when done...")
-                _ = readLine()
+            if dryRun {
+                Console.warning("DRY RUN - No changes will be made\n")
             }
 
-            var tagCmd = TagCommand()
-            tagCmd.version = newVersion.description
-            tagCmd.dryRun = dryRun
-            tagCmd.push = true
-            tagCmd.repoRoot = root.path
-            try await tagCmd.run()
-
-            Console.substep("Waiting for GitHub Actions...")
-            if !dryRun {
-                Console.info("\n    Wait for GitHub Actions to complete, then run:")
-                Console.info("    cupertino-rel databases")
-                Console.info("    cupertino-rel homebrew --version \(newVersion)")
+            // Step 1: Run cupertino save
+            Console.step(1, "Rebuild search index")
+            if skipSave {
+                Console.substep("Skipping (--skip-save)")
+            } else if dryRun {
+                Console.substep("Would run: cupertino save")
+            } else {
+                Console.substep("Running 'cupertino save'...")
+                try Shell.runInteractive("cupertino save")
+                Console.substep("✓ Search index rebuilt")
             }
-        } else {
-            Console.info("\nNext steps:")
-            Console.info("  1. Review changes: git diff")
-            Console.info("  2. Edit CHANGELOG.md")
-            Console.info("  3. Tag and release: cupertino-rel tag --version \(newVersion) --push")
-            Console.info("  4. After GitHub Actions: cupertino-rel databases")
-            Console.info("  5. Update Homebrew: cupertino-rel homebrew --version \(newVersion)")
-        }
 
-        Console.info("")
-        Console.success("Documentation update prepared: \(formatNumber(docCount))+ docs, \(frameworkCount) frameworks")
-    }
+            // Step 2: Query database for counts
+            Console.step(2, "Query database statistics")
+            let (docCount, frameworkCount) = try await getDocumentStats()
+            Console.substep("✓ Documents: \(formatNumber(docCount))")
+            Console.substep("✓ Frameworks: \(frameworkCount)")
 
-    // MARK: - Helpers
-
-    private func findRepoRoot() throws -> URL {
-        if let root = repoRoot {
-            return URL(fileURLWithPath: root)
-        }
-        let output = try Shell.run("git rev-parse --show-toplevel")
-        return URL(fileURLWithPath: output)
-    }
-
-    private func readCurrentVersion(from url: URL) throws -> Version {
-        let content = try String(contentsOf: url, encoding: .utf8)
-        let pattern = #"public\s+static\s+let\s+version\s*=\s*"(\d+\.\d+\.\d+)""#
-        guard let regex = try? NSRegularExpression(pattern: pattern),
-              let match = regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)),
-              let versionRange = Range(match.range(at: 1), in: content),
-              let version = Version(String(content[versionRange])) else {
-            throw DocsUpdateError.versionNotFound
-        }
-        return version
-    }
-
-    private func getDocumentStats() async throws -> (documents: Int, frameworks: Int) {
-        // Always query - we need the counts even in dry-run to show what would be written
-        // Query using cupertino list-frameworks and parse output
-        let output = try Shell.run("cupertino list-frameworks 2>/dev/null || echo 'error'")
-
-        if output.contains("error") || output.isEmpty {
-            throw DocsUpdateError.databaseQueryFailed
-        }
-
-        // Parse output like:
-        // Available Frameworks (284 total, 200725 documents):
-
-        var totalDocs = 0
-        var frameworkCount = 0
-
-        // Look for "Available Frameworks (X total, Y documents):"
-        let pattern = #"\((\d+)\s+total,\s+(\d+)\s+documents\)"#
-        if let regex = try? NSRegularExpression(pattern: pattern),
-           let match = regex.firstMatch(in: output, range: NSRange(output.startIndex..., in: output)) {
-            if let fwRange = Range(match.range(at: 1), in: output),
-               let docRange = Range(match.range(at: 2), in: output) {
-                frameworkCount = Int(output[fwRange]) ?? 0
-                totalDocs = Int(output[docRange]) ?? 0
+            // Step 3: Update README.md
+            Console.step(3, "Update README.md with new counts")
+            let statsMsg = "\(formatNumber(docCount))+ documentation pages across \(frameworkCount) frameworks"
+            if dryRun {
+                Console.substep("Would update to: '\(statsMsg)'")
+            } else {
+                try updateReadmeStats(at: readmePath, documents: docCount, frameworks: frameworkCount)
+                Console.substep("✓ Updated to '\(statsMsg)'")
             }
+
+            // Step 4: Bump minor version
+            Console.step(4, "Bump minor version")
+            let currentVersion = try readCurrentVersion(from: constantsPath)
+            let newVersion = currentVersion.bumped(.minor)
+            Console.substep("Version: \(currentVersion) → \(newVersion)")
+
+            var bumpCmd = Release.Command.Bump()
+            bumpCmd.versionOrType = newVersion.description
+            bumpCmd.dryRun = dryRun
+            bumpCmd.repoRoot = root.path
+            try await bumpCmd.run()
+
+            // Step 5: Optionally continue with release
+            if release {
+                Console.step(5, "Continue with tag and upload")
+
+                if !dryRun {
+                    Console.info("\n    Please edit CHANGELOG.md to add release notes.")
+                    Console.info("    Press Enter when done...")
+                    _ = readLine()
+                }
+
+                var tagCmd = Release.Command.Tag()
+                tagCmd.version = newVersion.description
+                tagCmd.dryRun = dryRun
+                tagCmd.push = true
+                tagCmd.repoRoot = root.path
+                try await tagCmd.run()
+
+                Console.substep("Waiting for GitHub Actions...")
+                if !dryRun {
+                    Console.info("\n    Wait for GitHub Actions to complete, then run:")
+                    Console.info("    cupertino-rel databases")
+                    Console.info("    cupertino-rel homebrew --version \(newVersion)")
+                }
+            } else {
+                Console.info("\nNext steps:")
+                Console.info("  1. Review changes: git diff")
+                Console.info("  2. Edit CHANGELOG.md")
+                Console.info("  3. Tag and release: cupertino-rel tag --version \(newVersion) --push")
+                Console.info("  4. After GitHub Actions: cupertino-rel databases")
+                Console.info("  5. Update Homebrew: cupertino-rel homebrew --version \(newVersion)")
+            }
+
+            Console.info("")
+            Console.success("Documentation update prepared: \(formatNumber(docCount))+ docs, \(frameworkCount) frameworks")
         }
 
-        if totalDocs == 0 {
-            throw DocsUpdateError.databaseQueryFailed
+        // MARK: - Helpers
+
+        private func findRepoRoot() throws -> URL {
+            if let root = repoRoot {
+                return URL(fileURLWithPath: root)
+            }
+            let output = try Shell.run("git rev-parse --show-toplevel")
+            return URL(fileURLWithPath: output)
         }
 
-        return (totalDocs, frameworkCount)
-    }
-
-    private func updateReadmeStats(at url: URL, documents: Int, frameworks: Int) throws {
-        var content = try String(contentsOf: url, encoding: .utf8)
-
-        // Update pattern: "X+ documentation pages across Y frameworks"
-        // or "X,XXX+ documentation pages across Y frameworks"
-        let pattern = #"(\d+[,\d]*\+?\s+documentation pages across\s+)\d+(\s+frameworks)"#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else {
-            throw DocsUpdateError.readmeUpdateFailed
+        private func readCurrentVersion(from url: URL) throws -> Version {
+            let content = try String(contentsOf: url, encoding: .utf8)
+            let pattern = #"public\s+static\s+let\s+version\s*=\s*"(\d+\.\d+\.\d+)""#
+            guard let regex = try? NSRegularExpression(pattern: pattern),
+                  let match = regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)),
+                  let versionRange = Range(match.range(at: 1), in: content),
+                  let version = Version(String(content[versionRange])) else {
+                throw DocsUpdateError.versionNotFound
+            }
+            return version
         }
 
-        let formattedDocs = formatNumber(documents)
-        let replacement = "\(formattedDocs)+ documentation pages across \(frameworks) frameworks"
+        private func getDocumentStats() async throws -> (documents: Int, frameworks: Int) {
+            // Always query - we need the counts even in dry-run to show what would be written
+            // Query using cupertino list-frameworks and parse output
+            let output = try Shell.run("cupertino list-frameworks 2>/dev/null || echo 'error'")
 
-        // Find and replace the pattern
-        if let match = regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)),
-           let range = Range(match.range, in: content) {
-            content.replaceSubrange(range, with: replacement)
-        } else {
-            throw DocsUpdateError.readmeUpdateFailed
+            if output.contains("error") || output.isEmpty {
+                throw DocsUpdateError.databaseQueryFailed
+            }
+
+            // Parse output like:
+            // Available Frameworks (284 total, 200725 documents):
+
+            var totalDocs = 0
+            var frameworkCount = 0
+
+            // Look for "Available Frameworks (X total, Y documents):"
+            let pattern = #"\((\d+)\s+total,\s+(\d+)\s+documents\)"#
+            if let regex = try? NSRegularExpression(pattern: pattern),
+               let match = regex.firstMatch(in: output, range: NSRange(output.startIndex..., in: output)) {
+                if let fwRange = Range(match.range(at: 1), in: output),
+                   let docRange = Range(match.range(at: 2), in: output) {
+                    frameworkCount = Int(output[fwRange]) ?? 0
+                    totalDocs = Int(output[docRange]) ?? 0
+                }
+            }
+
+            if totalDocs == 0 {
+                throw DocsUpdateError.databaseQueryFailed
+            }
+
+            return (totalDocs, frameworkCount)
         }
 
-        try content.write(to: url, atomically: true, encoding: .utf8)
-    }
+        private func updateReadmeStats(at url: URL, documents: Int, frameworks: Int) throws {
+            var content = try String(contentsOf: url, encoding: .utf8)
 
-    private func formatNumber(_ number: Int) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.groupingSeparator = ","
-        return formatter.string(from: NSNumber(value: number)) ?? "\(number)"
+            // Update pattern: "X+ documentation pages across Y frameworks"
+            // or "X,XXX+ documentation pages across Y frameworks"
+            let pattern = #"(\d+[,\d]*\+?\s+documentation pages across\s+)\d+(\s+frameworks)"#
+            guard let regex = try? NSRegularExpression(pattern: pattern) else {
+                throw DocsUpdateError.readmeUpdateFailed
+            }
+
+            let formattedDocs = formatNumber(documents)
+            let replacement = "\(formattedDocs)+ documentation pages across \(frameworks) frameworks"
+
+            // Find and replace the pattern
+            if let match = regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)),
+               let range = Range(match.range, in: content) {
+                content.replaceSubrange(range, with: replacement)
+            } else {
+                throw DocsUpdateError.readmeUpdateFailed
+            }
+
+            try content.write(to: url, atomically: true, encoding: .utf8)
+        }
+
+        private func formatNumber(_ number: Int) -> String {
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .decimal
+            formatter.groupingSeparator = ","
+            return formatter.string(from: NSNumber(value: number)) ?? "\(number)"
+        }
     }
 }
 
