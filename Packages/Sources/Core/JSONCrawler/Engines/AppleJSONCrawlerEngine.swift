@@ -1,5 +1,5 @@
 import Foundation
-import Shared
+import SharedCore
 
 // MARK: - Apple JSON Crawler Engine
 

@@ -1,6 +1,7 @@
 import Foundation
 import OSLog
-import Shared
+import SharedCore
+import SharedConstants
 
 // MARK: - Unified Logger
 

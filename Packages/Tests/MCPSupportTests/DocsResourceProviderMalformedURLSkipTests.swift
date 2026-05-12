@@ -2,8 +2,11 @@ import Foundation
 import MCP
 @testable import MCPSupport
 import Search
-import Shared
+import SharedCore
 import Testing
+import SharedConfiguration
+import SharedConstants
+import SharedModels
 
 // Covers the malformed-URL skip path added to
 // `DocsResourceProvider.listResources` in PR #288: a row in

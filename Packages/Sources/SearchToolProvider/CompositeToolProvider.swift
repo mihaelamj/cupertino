@@ -4,7 +4,9 @@ import MCPSharedTools
 import SampleIndex
 import Search
 import Services
-import Shared
+import SharedCore
+import SharedConstants
+import SharedUtils
 
 // MARK: - Unified Cupertino Tool Provider
 

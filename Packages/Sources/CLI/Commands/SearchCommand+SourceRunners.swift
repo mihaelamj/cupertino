@@ -3,7 +3,9 @@ import Foundation
 import Logging
 import Search
 import Services
-import Shared
+import SharedCore
+import SharedConstants
+import SharedUtils
 
 // MARK: - Per-source runners
 

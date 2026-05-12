@@ -1,7 +1,8 @@
 import Foundation
 @testable import Search
-import Shared
+import SharedCore
 import Testing
+import SharedModels
 
 // Covers the malformed-URL skip path added to
 // `Search.IndexBuilder.indexAppleDocsFromMetadata` in PR #288. The skip

@@ -1,5 +1,5 @@
 import Foundation
-import Shared
+import SharedCore
 #if canImport(WebKit)
 import WebKit
 #endif

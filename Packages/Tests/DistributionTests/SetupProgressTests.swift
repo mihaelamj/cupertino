@@ -1,6 +1,8 @@
 import Foundation
-@testable import Shared
+@testable import SharedCore
 import Testing
+import SharedConstants
+import SharedUtils
 
 // MARK: - Progress Output Capture
 

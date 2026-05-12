@@ -1,7 +1,8 @@
 import Core
 import Foundation
-import Shared
+import SharedCore
 import SQLite3
+import SharedConstants
 
 // MARK: - Package Index (separate DB)
 

@@ -1,5 +1,6 @@
 import Foundation
-import Shared
+import SharedCore
+import SharedModels
 
 // MARK: - Content Transformer Protocol
 

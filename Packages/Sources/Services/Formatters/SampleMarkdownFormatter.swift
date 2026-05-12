@@ -1,6 +1,7 @@
 import Foundation
 import SampleIndex
-import Shared
+import SharedCore
+import SharedConstants
 
 // MARK: - Sample Search Markdown Formatter
 

@@ -1,5 +1,6 @@
 import Foundation
-import Shared
+import SharedCore
+import SharedConstants
 
 extension Core {
     /// Canonicalizes `(owner, repo)` pairs using `api.github.com/repos/<owner>/<repo>`,

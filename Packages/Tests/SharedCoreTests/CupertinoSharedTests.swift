@@ -1,5 +1,7 @@
 import Foundation
-@testable import Shared
+import SharedConfiguration
+import SharedConstants
+@testable import SharedCore
 import Testing
 import TestSupport
 

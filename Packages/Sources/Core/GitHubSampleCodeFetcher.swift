@@ -1,6 +1,6 @@
 import Foundation
 import Logging
-import Shared
+import SharedCore
 
 // MARK: - GitHub Sample Code Fetcher
 

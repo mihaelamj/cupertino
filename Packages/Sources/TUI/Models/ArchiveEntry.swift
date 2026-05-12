@@ -1,6 +1,7 @@
 import Foundation
 import Resources
-import Shared
+import SharedCore
+import SharedConstants
 
 /// Entry representing an archive guide in the TUI
 struct ArchiveEntry {

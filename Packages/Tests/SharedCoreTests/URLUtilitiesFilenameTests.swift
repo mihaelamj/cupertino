@@ -1,5 +1,6 @@
 import Foundation
-@testable import Shared
+@testable import SharedCore
+import SharedModels
 import Testing
 
 // MARK: - URLUtilities.filename — long-name truncation tests

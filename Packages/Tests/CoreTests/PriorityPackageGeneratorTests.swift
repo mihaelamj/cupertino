@@ -1,6 +1,6 @@
 @testable import Core
 import Foundation
-import Shared
+import SharedCore
 import Testing
 
 // MARK: - Priority Package Generator Tests

@@ -1,7 +1,9 @@
 import Foundation
-import Shared
+import SharedCore
 #if canImport(WebKit)
 import WebKit
+import SharedConstants
+import SharedModels
 #endif
 
 // MARK: - HTML to Markdown Converter

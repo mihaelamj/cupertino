@@ -3,9 +3,12 @@ import AppKit
 @testable import Core
 import Foundation
 @testable import Search
-@testable import Shared
+@testable import SharedCore
 import Testing
 import TestSupport
+import SharedConstants
+import SharedConfiguration
+import SharedModels
 
 // MARK: - Web Crawl Tests
 

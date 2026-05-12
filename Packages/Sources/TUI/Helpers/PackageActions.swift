@@ -1,7 +1,8 @@
 import Core
 import Foundation
 import Resources
-import Shared
+import SharedCore
+import SharedConstants
 
 /// Open a package's GitHub page in the default browser
 @MainActor

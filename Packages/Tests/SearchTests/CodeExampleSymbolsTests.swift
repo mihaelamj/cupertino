@@ -1,8 +1,9 @@
 import Foundation
 @testable import Search
-import Shared
+import SharedCore
 import SQLite3
 import Testing
+import SharedModels
 
 // AST extraction over stored `doc_code_examples` (#192 section D).
 //

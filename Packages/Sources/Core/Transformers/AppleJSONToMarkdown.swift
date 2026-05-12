@@ -1,5 +1,6 @@
 import Foundation
-import Shared
+import SharedCore
+import SharedModels
 
 // MARK: - Apple Documentation JSON to Markdown Converter
 

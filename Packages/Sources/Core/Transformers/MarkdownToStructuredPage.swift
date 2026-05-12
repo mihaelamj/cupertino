@@ -1,5 +1,6 @@
 import Foundation
-import Shared
+import SharedCore
+import SharedModels
 
 // swiftlint:disable type_body_length
 // Justification: MarkdownToStructuredPage is a comprehensive parser for Apple documentation markdown.

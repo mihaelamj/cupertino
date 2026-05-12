@@ -1,5 +1,7 @@
 import Foundation
-@testable import Shared
+import SharedConstants
+@testable import SharedCore
+import SharedUtils
 import Testing
 
 @Suite("Shared.SchemaVersion (#234)")
@@ -30,12 +32,12 @@ struct SchemaVersionTests {
     }
 
     @Test("now matches the supplied date in UTC")
-    func nowAtSpecificDate() {
+    func nowAtSpecificDate() throws {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "UTC") ?? .gmt
-        let date = calendar.date(from: DateComponents(
+        let date = try #require(calendar.date(from: DateComponents(
             year: 2026, month: 5, day: 4, hour: 22, minute: 40
-        ))!
+        )))
         #expect(Shared.SchemaVersion.now(date: date) == "202605042240")
     }
 

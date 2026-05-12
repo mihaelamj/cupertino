@@ -1,7 +1,11 @@
 import Foundation
 import Logging
 import os
-import Shared
+import SharedCore
+import SharedConfiguration
+import SharedConstants
+import SharedModels
+import SharedUtils
 
 // MARK: - Documentation Crawler
 

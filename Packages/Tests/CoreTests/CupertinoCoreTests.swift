@@ -2,9 +2,12 @@ import AppKit
 @testable import Core
 import Foundation
 @testable import Search
-@testable import Shared
+@testable import SharedCore
 import Testing
 import TestSupport
+import SharedConstants
+import SharedConfiguration
+import SharedModels
 
 @Test func hTMLToMarkdown() throws {
     let html = "<h1>Title</h1><p>Content</p>"

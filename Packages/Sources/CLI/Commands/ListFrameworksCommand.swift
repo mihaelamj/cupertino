@@ -2,7 +2,7 @@ import ArgumentParser
 import Foundation
 import Logging
 import Services
-import Shared
+import SharedCore
 
 // MARK: - List Frameworks Command
 

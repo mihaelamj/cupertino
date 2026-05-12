@@ -1,6 +1,7 @@
 // swiftlint:disable type_body_length
 import Foundation
-@testable import Shared
+@testable import SharedCore
+import SharedUtils
 import Testing
 import TestSupport
 

@@ -5,9 +5,10 @@ import MCP
 @testable import Search
 @testable import SearchToolProvider
 @testable import Services
-@testable import Shared
+@testable import SharedCore
 import Testing
 import TestSupport
+import SharedConstants
 
 // MARK: - Test Helpers
 

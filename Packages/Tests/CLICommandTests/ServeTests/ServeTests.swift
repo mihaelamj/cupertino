@@ -5,9 +5,12 @@ import Foundation
 @testable import MCPSupport
 @testable import Search
 @testable import SearchToolProvider
-@testable import Shared
+@testable import SharedCore
 import Testing
 import TestSupport
+import SharedConstants
+import SharedConfiguration
+import SharedModels
 
 // MARK: - MCP Command Tests
 

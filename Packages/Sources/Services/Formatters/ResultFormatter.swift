@@ -1,6 +1,6 @@
 import Foundation
 import Search
-import Shared
+import SharedCore
 
 // MARK: - Result Formatter Protocol
 

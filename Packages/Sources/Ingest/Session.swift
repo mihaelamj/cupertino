@@ -1,6 +1,9 @@
 import Foundation
 import Logging
-import Shared
+import SharedCore
+import SharedConstants
+import SharedModels
+import SharedUtils
 
 extension Ingest {
     /// Crawl-session state helpers: clear saved sessions, requeue errored

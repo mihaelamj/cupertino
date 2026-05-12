@@ -1,6 +1,6 @@
 import Foundation
 import SampleIndex
-import Shared
+import SharedCore
 
 // MARK: - Shared JSON Output Types
 

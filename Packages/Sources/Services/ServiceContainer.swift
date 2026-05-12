@@ -1,7 +1,9 @@
 import Foundation
 import SampleIndex
 import Search
-import Shared
+import SharedCore
+import SharedConstants
+import SharedUtils
 
 // MARK: - Service Container
 

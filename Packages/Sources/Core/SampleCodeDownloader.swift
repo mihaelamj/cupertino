@@ -1,9 +1,11 @@
 import Foundation
 import Logging
-import Shared
+import SharedCore
 import WebKit
 #if canImport(AppKit)
 import AppKit
+import SharedConstants
+import SharedUtils
 #endif
 
 // MARK: - Sample Code Downloader

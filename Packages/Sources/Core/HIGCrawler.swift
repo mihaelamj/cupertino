@@ -1,9 +1,11 @@
 import Foundation
 import Logging
-import Shared
+import SharedCore
 
 #if canImport(WebKit)
 import WebKit
+import SharedConstants
+import SharedUtils
 #endif
 
 // MARK: - HIG Crawler

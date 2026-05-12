@@ -1,8 +1,9 @@
 @testable import Cleanup
 import Foundation
-@testable import Shared
+@testable import SharedCore
 import Testing
 import TestSupport
+import SharedModels
 
 // MARK: - SampleCodeCleaner Tests
 

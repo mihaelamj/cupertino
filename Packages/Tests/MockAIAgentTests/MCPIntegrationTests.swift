@@ -1,8 +1,9 @@
 import Foundation
 @testable import MCP
 @testable import SampleIndex
-@testable import Shared
+@testable import SharedCore
 import Testing
+import SharedConstants
 @testable import TestSupport
 
 // MARK: - MCP Integration Tests
