@@ -345,7 +345,7 @@ struct TimeoutError: Error {}
 ///    config aside for the duration of the test so both processes agree
 ///    on `~/.cupertino/`.
 ///
-/// 2. `ServeCommand.checkForData` exits with the welcome-guide message
+/// 2. `Command.Serve.checkForData` exits with the welcome-guide message
 ///    if neither `~/.cupertino/samples.db` nor `~/.cupertino/search.db`
 ///    exists. Creating an empty samples.db (the same code path
 ///    `cupertino save --samples` uses) is enough to make
@@ -368,7 +368,7 @@ struct CupertinoServerFixture {
         }
 
         // Ensure samples.db exists at the production path so
-        // `ServeCommand.checkForData()` sees data. Empty schema is fine —
+        // `Command.Serve.checkForData()` sees data. Empty schema is fine —
         // these tests check MCP framing, not query results.
         let sampleDBPath = SampleIndex.defaultDatabasePath
         if !FileManager.default.fileExists(atPath: sampleDBPath.path) {

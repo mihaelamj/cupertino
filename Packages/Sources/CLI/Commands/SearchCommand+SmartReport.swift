@@ -10,19 +10,19 @@ import SharedUtils
 
 // MARK: - SmartQuery fan-out helpers (#239)
 
-/// Helpers for `SearchCommand`'s default (no `--source`) path: building the
+/// Helpers for `Command.Search`'s default (no `--source`) path: building the
 /// per-DB `CandidateFetcher` list, then printing the fused result in
-/// text / markdown / json. Lifted out of `SearchCommand.swift` so the
+/// text / markdown / json. Lifted out of `Command.Search.swift` so the
 /// struct body stays under SwiftLint's `type_body_length` ceiling and so
 /// the printers don't need access to instance-level CLI options.
-extension SearchCommand {
+extension Command.Search {
     /// Bundle returned by `buildFetchers`. The `searchIndex` and
     /// `sampleService` references are kept so the caller can disconnect
     /// them once the SmartQuery has run — the fetchers don't own those
     /// connections.
     struct FetcherPlan {
         let fetchers: [any Search.CandidateFetcher]
-        let searchIndex: Search.Index?
+        let searchIndex: SearchModule.Index?
         let sampleService: Services.SampleSearchService?
     }
 
@@ -50,10 +50,10 @@ extension SearchCommand {
     /// Validate the `--platform` / `--min-version` pair into an
     /// `AvailabilityFilter`. Either both flags or neither — anything else
     /// errors out with `ExitCode.failure` so the user sees a clean message.
-    func resolveAvailabilityFilter() throws -> Search.PackageQuery.AvailabilityFilter? {
+    func resolveAvailabilityFilter() throws -> SearchModule.PackageQuery.AvailabilityFilter? {
         switch (platform, minVersion) {
         case let (platform?, minVersion?):
-            return Search.PackageQuery.AvailabilityFilter(
+            return SearchModule.PackageQuery.AvailabilityFilter(
                 platform: platform,
                 minVersion: minVersion
             )
@@ -71,7 +71,7 @@ extension SearchCommand {
     /// or unopenable DBs log a one-line info note and are silently dropped
     /// from the fan-out (mirrors the resilience that `cupertino ask` had).
     func buildFetchers(
-        availabilityFilter: Search.PackageQuery.AvailabilityFilter?
+        availabilityFilter: SearchModule.PackageQuery.AvailabilityFilter?
     ) async -> FetcherPlan {
         var fetchers: [any Search.CandidateFetcher] = []
 
@@ -106,9 +106,9 @@ extension SearchCommand {
     private static func openDocsFetchers(
         override: String?,
         skip: Bool,
-        availability: Search.PackageQuery.AvailabilityFilter?,
+        availability: SearchModule.PackageQuery.AvailabilityFilter?,
         into fetchers: inout [any Search.CandidateFetcher]
-    ) async -> Search.Index? {
+    ) async -> SearchModule.Index? {
         guard !skip else { return nil }
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? Shared.Constants.defaultSearchDatabase
@@ -119,7 +119,7 @@ extension SearchCommand {
             return nil
         }
         do {
-            let index = try await Search.Index(dbPath: url)
+            let index = try await SearchModule.Index(dbPath: url)
             for source in docsSources {
                 fetchers.append(Search.DocsSourceCandidateFetcher(
                     searchIndex: index,
@@ -140,7 +140,7 @@ extension SearchCommand {
     private static func openPackagesFetcher(
         override: String?,
         skip: Bool,
-        availability: Search.PackageQuery.AvailabilityFilter?,
+        availability: SearchModule.PackageQuery.AvailabilityFilter?,
         into fetchers: inout [any Search.CandidateFetcher]
     ) {
         guard !skip else { return }
@@ -152,7 +152,7 @@ extension SearchCommand {
             )
             return
         }
-        fetchers.append(Search.PackageFTSCandidateFetcher(
+        fetchers.append(SearchModule.PackageFTSCandidateFetcher(
             dbPath: url,
             availability: availability
         ))
@@ -161,7 +161,7 @@ extension SearchCommand {
     private static func openSamplesFetcher(
         override: String?,
         skip: Bool,
-        availability: Search.PackageQuery.AvailabilityFilter?,
+        availability: SearchModule.PackageQuery.AvailabilityFilter?,
         into fetchers: inout [any Search.CandidateFetcher]
     ) async -> Services.SampleSearchService? {
         guard !skip else { return nil }

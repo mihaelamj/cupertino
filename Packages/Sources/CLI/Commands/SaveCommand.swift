@@ -17,172 +17,174 @@ import SharedUtils
 /// command parses flags, runs the preflight prompt, dispatches to the
 /// requested scope, and renders progress.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-struct SaveCommand: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "save",
-        abstract: "Save documentation to database and build search indexes"
-    )
-
-    @Option(name: .long, help: "Base directory (auto-fills all directories from standard structure)")
-    var baseDir: String?
-
-    @Option(name: .long, help: "Directory containing crawled documentation")
-    var docsDir: String?
-
-    @Option(name: .long, help: "Directory containing Swift Evolution proposals")
-    var evolutionDir: String?
-
-    @Option(name: .long, help: "Directory containing Swift.org documentation")
-    var swiftOrgDir: String?
-
-    @Option(name: .long, help: "Directory containing package READMEs")
-    var packagesDir: String?
-
-    @Option(name: .long, help: "Directory containing Apple Archive documentation")
-    var archiveDir: String?
-
-    @Option(name: .long, help: "Metadata file path")
-    var metadataFile: String?
-
-    @Option(name: .long, help: "Search database path")
-    var searchDB: String?
-
-    @Flag(name: .long, help: "Clear existing index before building")
-    var clear: Bool = false
-
-    @Flag(name: .long, help: "Stream documentation from GitHub (instant setup, no local files needed)")
-    var remote: Bool = false
-
-    @Flag(
-        name: .long,
-        help: """
-        Build search.db (Apple docs + Swift Evolution + HIG + Archive + \
-        Swift.org + Swift Book). Defaults to ON when no scope flag is \
-        passed. (#231)
-        """
-    )
-    var docs: Bool = false
-
-    @Flag(
-        name: .long,
-        help: """
-        Build packages.db from extracted package archives at \
-        `~/.cupertino/packages/<owner>/<repo>/`. (#231)
-        """
-    )
-    var packages: Bool = false
-
-    @Flag(
-        name: .long,
-        help: """
-        Build samples.db from extracted sample-code zips at \
-        `~/.cupertino/sample-code/`. Replaces the removed `cupertino \
-        index` command. (#231)
-        """
-    )
-    var samples: Bool = false
-
-    @Option(name: .long, help: "Sample-code directory for `--samples` (#231).")
-    var samplesDir: String?
-
-    @Option(name: .long, help: "samples.db path override for `--samples` (#231).")
-    var samplesDB: String?
-
-    @Flag(
-        name: .long,
-        help: "Force re-index of every sample under `--samples` (existing rows wiped)."
-    )
-    var force: Bool = false
-
-    @Flag(
-        name: [.short, .long],
-        help: "Skip the preflight summary + confirmation prompt (#232). Auto-skipped when stdin isn't a TTY."
-    )
-    var yes: Bool = false
-
-    mutating func run() async throws {
-        if remote {
-            try await runRemote()
-            return
-        }
-
-        let scopeFlagsSet = docs || packages || samples
-        let buildDocs = !scopeFlagsSet || docs
-        let buildPackages = !scopeFlagsSet || packages
-        let buildSamples = !scopeFlagsSet || samples
-
-        if !runPreflightAndConfirm(
-            buildDocs: buildDocs,
-            buildPackages: buildPackages,
-            buildSamples: buildSamples
-        ) {
-            Logging.ConsoleLogger.info("Aborted by user.")
-            return
-        }
-
-        let effectiveBase = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Shared.Constants.defaultBaseDirectory
-
-        if buildDocs {
-            try await runDocsIndexer(effectiveBase: effectiveBase)
-        }
-        if buildPackages {
-            try await runPackagesIndexerSafely(effectiveBase: effectiveBase)
-        }
-        if buildSamples {
-            try await runSamplesIndexerSafely()
-        }
-    }
-
-    // MARK: - Indexer dispatchers moved to SaveCommand+Indexers.swift (#244)
-
-    // MARK: - Preflight
-
-    private func runPreflightAndConfirm(
-        buildDocs: Bool,
-        buildPackages: Bool,
-        buildSamples: Bool
-    ) -> Bool {
-        let lines = Indexer.Preflight.preflightLines(
-            buildDocs: buildDocs,
-            buildPackages: buildPackages,
-            buildSamples: buildSamples,
-            baseDir: baseDir,
-            docsDir: docsDir,
-            samplesDir: samplesDir
+extension Command {
+    struct Save: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            commandName: "save",
+            abstract: "Save documentation to database and build search indexes"
         )
-        Logging.ConsoleLogger.info("🔍 Preflight check for `cupertino save`\n")
-        for line in lines {
-            Logging.ConsoleLogger.info(line)
-        }
-        Logging.ConsoleLogger.info("")
 
-        if yes {
-            Logging.ConsoleLogger.info("--yes: skipping confirmation, continuing.\n")
-            return true
-        }
-        guard isatty(fileno(stdin)) != 0 else {
-            return true
+        @Option(name: .long, help: "Base directory (auto-fills all directories from standard structure)")
+        var baseDir: String?
+
+        @Option(name: .long, help: "Directory containing crawled documentation")
+        var docsDir: String?
+
+        @Option(name: .long, help: "Directory containing Swift Evolution proposals")
+        var evolutionDir: String?
+
+        @Option(name: .long, help: "Directory containing Swift.org documentation")
+        var swiftOrgDir: String?
+
+        @Option(name: .long, help: "Directory containing package READMEs")
+        var packagesDir: String?
+
+        @Option(name: .long, help: "Directory containing Apple Archive documentation")
+        var archiveDir: String?
+
+        @Option(name: .long, help: "Metadata file path")
+        var metadataFile: String?
+
+        @Option(name: .long, help: "Search database path")
+        var searchDB: String?
+
+        @Flag(name: .long, help: "Clear existing index before building")
+        var clear: Bool = false
+
+        @Flag(name: .long, help: "Stream documentation from GitHub (instant setup, no local files needed)")
+        var remote: Bool = false
+
+        @Flag(
+            name: .long,
+            help: """
+            Build search.db (Apple docs + Swift Evolution + HIG + Archive + \
+            Swift.org + Swift Book). Defaults to ON when no scope flag is \
+            passed. (#231)
+            """
+        )
+        var docs: Bool = false
+
+        @Flag(
+            name: .long,
+            help: """
+            Build packages.db from extracted package archives at \
+            `~/.cupertino/packages/<owner>/<repo>/`. (#231)
+            """
+        )
+        var packages: Bool = false
+
+        @Flag(
+            name: .long,
+            help: """
+            Build samples.db from extracted sample-code zips at \
+            `~/.cupertino/sample-code/`. Replaces the removed `cupertino \
+            index` command. (#231)
+            """
+        )
+        var samples: Bool = false
+
+        @Option(name: .long, help: "Sample-code directory for `--samples` (#231).")
+        var samplesDir: String?
+
+        @Option(name: .long, help: "samples.db path override for `--samples` (#231).")
+        var samplesDB: String?
+
+        @Flag(
+            name: .long,
+            help: "Force re-index of every sample under `--samples` (existing rows wiped)."
+        )
+        var force: Bool = false
+
+        @Flag(
+            name: [.short, .long],
+            help: "Skip the preflight summary + confirmation prompt (#232). Auto-skipped when stdin isn't a TTY."
+        )
+        var yes: Bool = false
+
+        mutating func run() async throws {
+            if remote {
+                try await runRemote()
+                return
+            }
+
+            let scopeFlagsSet = docs || packages || samples
+            let buildDocs = !scopeFlagsSet || docs
+            let buildPackages = !scopeFlagsSet || packages
+            let buildSamples = !scopeFlagsSet || samples
+
+            if !runPreflightAndConfirm(
+                buildDocs: buildDocs,
+                buildPackages: buildPackages,
+                buildSamples: buildSamples
+            ) {
+                Logging.ConsoleLogger.info("Aborted by user.")
+                return
+            }
+
+            let effectiveBase = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+                ?? Shared.Constants.defaultBaseDirectory
+
+            if buildDocs {
+                try await runDocsIndexer(effectiveBase: effectiveBase)
+            }
+            if buildPackages {
+                try await runPackagesIndexerSafely(effectiveBase: effectiveBase)
+            }
+            if buildSamples {
+                try await runSamplesIndexerSafely()
+            }
         }
 
-        Logging.ConsoleLogger.info("Continue? [Y/n] ")
-        guard let response = readLine() else { return true }
-        let normalized = response.trimmingCharacters(in: .whitespaces).lowercased()
-        return normalized.isEmpty || normalized == "y" || normalized == "yes"
-    }
+        // MARK: - Indexer dispatchers moved to Command.Save+Indexers.swift (#244)
 
-    // MARK: - Helpers
+        // MARK: - Preflight
 
-    static func formatFileSize(_ url: URL) -> String {
-        guard let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
-              let size = attrs[.size] as? Int64
-        else {
-            return "unknown"
+        private func runPreflightAndConfirm(
+            buildDocs: Bool,
+            buildPackages: Bool,
+            buildSamples: Bool
+        ) -> Bool {
+            let lines = Indexer.Preflight.preflightLines(
+                buildDocs: buildDocs,
+                buildPackages: buildPackages,
+                buildSamples: buildSamples,
+                baseDir: baseDir,
+                docsDir: docsDir,
+                samplesDir: samplesDir
+            )
+            Logging.ConsoleLogger.info("🔍 Preflight check for `cupertino save`\n")
+            for line in lines {
+                Logging.ConsoleLogger.info(line)
+            }
+            Logging.ConsoleLogger.info("")
+
+            if yes {
+                Logging.ConsoleLogger.info("--yes: skipping confirmation, continuing.\n")
+                return true
+            }
+            guard isatty(fileno(stdin)) != 0 else {
+                return true
+            }
+
+            Logging.ConsoleLogger.info("Continue? [Y/n] ")
+            guard let response = readLine() else { return true }
+            let normalized = response.trimmingCharacters(in: .whitespaces).lowercased()
+            return normalized.isEmpty || normalized == "y" || normalized == "yes"
         }
-        let formatter = ByteCountFormatter()
-        formatter.allowedUnits = [.useKB, .useMB, .useGB]
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: size)
+
+        // MARK: - Helpers
+
+        static func formatFileSize(_ url: URL) -> String {
+            guard let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+                  let size = attrs[.size] as? Int64
+            else {
+                return "unknown"
+            }
+            let formatter = ByteCountFormatter()
+            formatter.allowedUnits = [.useKB, .useMB, .useGB]
+            formatter.countStyle = .file
+            return formatter.string(fromByteCount: size)
+        }
     }
 }
 
@@ -193,7 +195,7 @@ struct SaveCommand: AsyncParsableCommand {
 /// `RemoteIndexer` interface is heavily UI-coupled (animated progress
 /// bar, framework-by-framework status). Stays here until that pipeline
 /// gets a callback-based shape.
-extension SaveCommand {
+extension Command.Save {
     private func runRemote() async throws {
         Logging.ConsoleLogger.info("🚀 Building Search Index from Remote\n")
 
@@ -221,7 +223,7 @@ extension SaveCommand {
         }
 
         Logging.ConsoleLogger.info("🗄️  Initializing search database...")
-        let searchIndex = try await Search.Index(dbPath: searchDBURL)
+        let searchIndex = try await SearchModule.Index(dbPath: searchDBURL)
 
         let progressDisplay = AnimatedProgress(barWidth: 20, useEmoji: true)
         let reporter = ProgressReporter(display: progressDisplay)

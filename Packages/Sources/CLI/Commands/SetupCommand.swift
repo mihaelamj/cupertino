@@ -13,38 +13,40 @@ import SharedUtils
 /// this command parses flags, subscribes to progress events, and renders
 /// the spinner + progress bar + final summary.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-struct SetupCommand: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "setup",
-        abstract: "Download every cupertino database (search.db, samples.db, packages.db) in one go"
-    )
-
-    @Option(name: .long, help: "Base directory for databases")
-    var baseDir: String?
-
-    @Flag(name: .long, help: "Skip the download and keep whatever databases are already installed")
-    var keepExisting: Bool = false
-
-    mutating func run() async throws {
-        Logging.ConsoleLogger.info("📦 Cupertino Setup\n")
-
-        let baseURL = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Shared.Constants.defaultBaseDirectory
-
-        let renderer = SetupRenderer()
-        let request = Distribution.SetupService.Request(
-            baseDir: baseURL,
-            keepExisting: keepExisting
+extension Command {
+    struct Setup: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            commandName: "setup",
+            abstract: "Download every cupertino database (search.db, samples.db, packages.db) in one go"
         )
 
-        do {
-            let outcome = try await Distribution.SetupService.run(request) { event in
-                renderer.handle(event)
+        @Option(name: .long, help: "Base directory for databases")
+        var baseDir: String?
+
+        @Flag(name: .long, help: "Skip the download and keep whatever databases are already installed")
+        var keepExisting: Bool = false
+
+        mutating func run() async throws {
+            Logging.ConsoleLogger.info("📦 Cupertino Setup\n")
+
+            let baseURL = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+                ?? Shared.Constants.defaultBaseDirectory
+
+            let renderer = SetupRenderer()
+            let request = Distribution.SetupService.Request(
+                baseDir: baseURL,
+                keepExisting: keepExisting
+            )
+
+            do {
+                let outcome = try await Distribution.SetupService.run(request) { event in
+                    renderer.handle(event)
+                }
+                renderer.printFinalSummary(outcome: outcome)
+            } catch {
+                Logging.ConsoleLogger.error("❌ Setup failed: \(error)")
+                throw ExitCode.failure
             }
-            renderer.printFinalSummary(outcome: outcome)
-        } catch {
-            Logging.ConsoleLogger.error("❌ Setup failed: \(error)")
-            throw ExitCode.failure
         }
     }
 }
@@ -53,7 +55,7 @@ struct SetupCommand: AsyncParsableCommand {
 
 /// Subscribes to `Distribution.SetupService.Event` and renders the
 /// terminal UI: download progress bar, extract spinner, version banner,
-/// final summary. Pulled into its own type so `SetupCommand.run` stays a
+/// final summary. Pulled into its own type so `Command.Setup.run` stays a
 /// flat orchestration body.
 private final class SetupRenderer: @unchecked Sendable {
     private let lock = NSLock()

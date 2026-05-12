@@ -22,26 +22,26 @@ struct CommandRegistrationTests {
         // into `search` in #239 (default fan-out path produces the same
         // chunked output as `ask` did).
         #expect(config.subcommands.count == 14)
-        #expect(config.subcommands.contains { $0 == SetupCommand.self })
-        #expect(config.subcommands.contains { $0 == FetchCommand.self })
-        #expect(config.subcommands.contains { $0 == SaveCommand.self })
-        #expect(config.subcommands.contains { $0 == ServeCommand.self })
-        #expect(config.subcommands.contains { $0 == SearchCommand.self })
-        #expect(config.subcommands.contains { $0 == ReadCommand.self })
-        #expect(config.subcommands.contains { $0 == ListFrameworksCommand.self })
-        #expect(config.subcommands.contains { $0 == ListSamplesCommand.self })
-        #expect(config.subcommands.contains { $0 == ReadSampleCommand.self })
-        #expect(config.subcommands.contains { $0 == ReadSampleFileCommand.self })
-        #expect(config.subcommands.contains { $0 == DoctorCommand.self })
-        #expect(config.subcommands.contains { $0 == CleanupCommand.self })
-        #expect(config.subcommands.contains { $0 == PackageSearchCommand.self })
-        #expect(config.subcommands.contains { $0 == ResolveRefsCommand.self })
+        #expect(config.subcommands.contains { $0 == Command.Setup.self })
+        #expect(config.subcommands.contains { $0 == Command.Fetch.self })
+        #expect(config.subcommands.contains { $0 == Command.Save.self })
+        #expect(config.subcommands.contains { $0 == Command.Serve.self })
+        #expect(config.subcommands.contains { $0 == Command.Search.self })
+        #expect(config.subcommands.contains { $0 == Command.Read.self })
+        #expect(config.subcommands.contains { $0 == Command.ListFrameworks.self })
+        #expect(config.subcommands.contains { $0 == Command.ListSamples.self })
+        #expect(config.subcommands.contains { $0 == Command.ReadSample.self })
+        #expect(config.subcommands.contains { $0 == Command.ReadSampleFile.self })
+        #expect(config.subcommands.contains { $0 == Command.Doctor.self })
+        #expect(config.subcommands.contains { $0 == Command.Cleanup.self })
+        #expect(config.subcommands.contains { $0 == Command.PackageSearch.self })
+        #expect(config.subcommands.contains { $0 == Command.ResolveRefs.self })
     }
 
-    @Test("Default subcommand is ServeCommand")
+    @Test("Default subcommand is Command.Serve")
     func defaultSubcommand() {
         let config = Cupertino.configuration
-        #expect(config.defaultSubcommand == ServeCommand.self)
+        #expect(config.defaultSubcommand == Command.Serve.self)
     }
 
     @Test("Command name is set correctly")
