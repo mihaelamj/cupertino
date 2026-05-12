@@ -129,35 +129,37 @@ extension Core {
 
 // MARK: - Errors
 
-public enum PackageDownloadError: Error, LocalizedError {
-    case readmeNotFound
-    case invalidInput
-    case networkError(Error)
-    case fileSystemError(Error)
+extension Core {
+    public enum PackageDownloadError: Error, LocalizedError {
+        case readmeNotFound
+        case invalidInput
+        case networkError(Error)
+        case fileSystemError(Error)
 
-    public var errorDescription: String? {
-        switch self {
-        case .readmeNotFound:
-            return "README.md not found in repository"
-        case .invalidInput:
-            return "Invalid owner or repository name"
-        case let .networkError(error):
-            return "Network error: \(error.localizedDescription)"
-        case let .fileSystemError(error):
-            return "File system error: \(error.localizedDescription)"
+        public var errorDescription: String? {
+            switch self {
+            case .readmeNotFound:
+                return "README.md not found in repository"
+            case .invalidInput:
+                return "Invalid owner or repository name"
+            case let .networkError(error):
+                return "Network error: \(error.localizedDescription)"
+            case let .fileSystemError(error):
+                return "File system error: \(error.localizedDescription)"
+            }
         }
-    }
 
-    public var recoverySuggestion: String? {
-        switch self {
-        case .readmeNotFound:
-            return "The repository may not have a README.md file"
-        case .invalidInput:
-            return "Owner and repository names must contain only alphanumeric characters, hyphens, and underscores"
-        case .networkError:
-            return "Check your internet connection and try again"
-        case .fileSystemError:
-            return "Check disk space and file permissions"
+        public var recoverySuggestion: String? {
+            switch self {
+            case .readmeNotFound:
+                return "The repository may not have a README.md file"
+            case .invalidInput:
+                return "Owner and repository names must contain only alphanumeric characters, hyphens, and underscores"
+            case .networkError:
+                return "Check your internet connection and try again"
+            case .fileSystemError:
+                return "Check disk space and file permissions"
+            }
         }
     }
 }
