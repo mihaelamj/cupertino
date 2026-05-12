@@ -13,7 +13,7 @@ extension Services {
     public actor ServiceContainer {
         private var docsService: DocsSearchService?
         private var higService: HIGSearchService?
-        private var sampleService: SampleSearchService?
+        private var sampleService: Sample.Search.Service?
 
         private let searchDbPath: URL
         private let sampleDbPath: URL?
@@ -53,7 +53,7 @@ extension Services {
         }
 
         /// Get or create the sample search service
-        public func getSampleService() async throws -> SampleSearchService {
+        public func getSampleService() async throws -> Sample.Search.Service {
             if let service = sampleService {
                 return service
             }
@@ -62,7 +62,7 @@ extension Services {
                 throw ToolError.noData("Sample database path not configured")
             }
 
-            let service = try await SampleSearchService(dbPath: dbPath)
+            let service = try await Sample.Search.Service(dbPath: dbPath)
             sampleService = service
             return service
         }
@@ -135,13 +135,13 @@ extension Services {
         /// Execute an operation with a sample service, handling lifecycle
         public static func withSampleService<T: Sendable>(
             dbPath: URL,
-            operation: (SampleSearchService) async throws -> T
+            operation: (Sample.Search.Service) async throws -> T
         ) async throws -> T {
             guard Shared.Utils.PathResolver.exists(dbPath) else {
                 throw ToolError.noData("Sample database not found at \(dbPath.path). Run 'cupertino save --samples' to build the index.")
             }
 
-            let service = try await SampleSearchService(dbPath: dbPath)
+            let service = try await Sample.Search.Service(dbPath: dbPath)
             let result = try await operation(service)
             await service.disconnect()
             return result

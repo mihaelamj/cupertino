@@ -29,7 +29,7 @@
 /// Namespace for the service layer: a `ServiceContainer` that owns service
 /// lifecycle, the `SearchService` protocol + `SearchQuery` / `SearchFilters`
 /// inputs, and the concrete service actors that live in `Services/ReadCommands/`
-/// (`DocsSearchService`, `HIGSearchService`, `SampleSearchService`,
+/// (`DocsSearchService`, `HIGSearchService`, `Sample.Search.Service`,
 /// `UnifiedSearchService`, `TeaserService`, `ReadService`).
 ///
 /// Result formatters in `Services/Formatters/` also extend this same root

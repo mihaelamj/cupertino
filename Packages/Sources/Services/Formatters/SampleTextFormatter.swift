@@ -17,7 +17,7 @@ public struct SampleSearchTextFormatter: ResultFormatter {
         self.teasers = teasers
     }
 
-    public func format(_ result: SampleSearchResult) -> String {
+    public func format(_ result: Sample.Search.Result) -> String {
         if result.isEmpty {
             return "No results found for '\(query)'"
         }

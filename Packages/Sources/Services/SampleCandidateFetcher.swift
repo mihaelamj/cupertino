@@ -6,10 +6,10 @@ import SharedCore
 
 // MARK: - Sample candidate fetcher (#230)
 
-/// Adapter that bridges `SampleSearchService` into the
+/// Adapter that bridges `Sample.Search.Service` into the
 /// `Search.SmartQuery` fan-out used by `cupertino ask`.
 ///
-/// Wraps `SampleSearchService.search(text:limit:)` and emits one
+/// Wraps `Sample.Search.Service.search(text:limit:)` and emits one
 /// `Search.SmartCandidate` per matched file, scored on the file's
 /// FTS rank. Project-level matches are ignored at this layer — file
 /// chunks already cite their owning project through the metadata
@@ -20,15 +20,15 @@ import SharedCore
 /// `Search` would force a hard dep on `SampleIndex` for every consumer
 /// that just wants the docs corpus. `Services` already imports both
 /// `SampleIndex` and `Search`, so the fetcher slots in cleanly.
-extension Services {
-    public struct SampleCandidateFetcher: Search.CandidateFetcher {
+extension Sample.Services {
+    public struct CandidateFetcher: Search.CandidateFetcher {
         public let sourceName: String = Shared.Constants.SourcePrefix.samples
 
-        private let service: SampleSearchService
+        private let service: Sample.Search.Service
         private let availability: Search.PackageQuery.AvailabilityFilter?
 
         public init(
-            service: SampleSearchService,
+            service: Sample.Search.Service,
             availability: Search.PackageQuery.AvailabilityFilter? = nil
         ) {
             self.service = service
@@ -36,7 +36,7 @@ extension Services {
         }
 
         public func fetch(question: String, limit: Int) async throws -> [Search.SmartCandidate] {
-            let query = SampleQuery(
+            let query = Sample.Search.Query(
                 text: question,
                 limit: limit,
                 platform: availability?.platform,

@@ -16,7 +16,7 @@ import SharedCore
 /// with the bundled corpus.
 ///
 /// Lives in `Services` because it composes existing per-source readers
-/// (`DocsSearchService.read`, `SampleSearchService.getProject` /
+/// (`DocsSearchService.read`, `Sample.Search.Service.getProject` /
 /// `getFile`, `Search.PackageQuery.fileContent`). Both `cupertino read`
 /// (CLI) and the MCP layer call into this one entry point so behaviour
 /// stays identical across transports.
