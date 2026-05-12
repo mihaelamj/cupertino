@@ -149,8 +149,8 @@ extension Command {
             }
         }
 
-        private func loadSampleIndex() async -> SampleIndex.Database? {
-            let sampleDBURL = SampleIndex.defaultDatabasePath
+        private func loadSampleIndex() async -> Sample.Index.Database? {
+            let sampleDBURL = Sample.Index.defaultDatabasePath
             guard FileManager.default.fileExists(atPath: sampleDBURL.path) else {
                 let infoMsg = "ℹ️  Sample code index not found at: \(sampleDBURL.path)"
                 let cmd = "\(Shared.Constants.App.commandName) index"
@@ -160,7 +160,7 @@ extension Command {
             }
 
             do {
-                return try await SampleIndex.Database(dbPath: sampleDBURL)
+                return try await Sample.Index.Database(dbPath: sampleDBURL)
             } catch {
                 let errorMsg = "⚠️  Failed to load sample index: \(error)"
                 let cmd = "\(Shared.Constants.App.commandName) index"
@@ -199,7 +199,7 @@ extension Command {
             }
 
             // Add samples DB path if it exists
-            let sampleDBURL = SampleIndex.defaultDatabasePath
+            let sampleDBURL = Sample.Index.defaultDatabasePath
             if FileManager.default.fileExists(atPath: sampleDBURL.path) {
                 messages.append("   Samples DB: \(sampleDBURL.path)")
             }
@@ -216,7 +216,7 @@ extension Command {
 
             // Check if either database exists
             let hasSearchDB = fileManager.fileExists(atPath: searchDB.path)
-            let hasSamplesDB = fileManager.fileExists(atPath: SampleIndex.defaultDatabasePath.path)
+            let hasSamplesDB = fileManager.fileExists(atPath: Sample.Index.defaultDatabasePath.path)
 
             return hasSearchDB || hasSamplesDB
         }

@@ -93,7 +93,7 @@ public struct UnifiedSearchTextFormatter: ResultFormatter {
         return output
     }
 
-    private func formatSampleResults(_ projects: [SampleIndex.Project], sourceNumber: Int) -> String {
+    private func formatSampleResults(_ projects: [Sample.Index.Project], sourceNumber: Int) -> String {
         var output = ""
         for (index, project) in projects.enumerated() {
             let resultNumber = index + 1
@@ -237,7 +237,7 @@ private struct SampleJSONOutput: Encodable {
     let fileCount: Int
     let description: String
 
-    init(from project: SampleIndex.Project) {
+    init(from project: Sample.Index.Project) {
         id = project.id
         title = project.title
         frameworks = project.frameworks

@@ -10,7 +10,7 @@ import SharedCore
 /// Used by both MCP and CLI to show hints about other sources.
 public struct TeaserResults: Sendable {
     public var appleDocs: [Search.Result]
-    public var samples: [SampleIndex.Project]
+    public var samples: [Sample.Index.Project]
     public var archive: [Search.Result]
     public var hig: [Search.Result]
     public var swiftEvolution: [Search.Result]
@@ -20,7 +20,7 @@ public struct TeaserResults: Sendable {
 
     public init(
         appleDocs: [Search.Result] = [],
-        samples: [SampleIndex.Project] = [],
+        samples: [Sample.Index.Project] = [],
         archive: [Search.Result] = [],
         hig: [Search.Result] = [],
         swiftEvolution: [Search.Result] = [],

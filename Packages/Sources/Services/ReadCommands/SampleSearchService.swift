@@ -42,10 +42,10 @@ extension Sample.Search {
 /// Combined result from project and file searches
 extension Sample.Search {
     public struct Result: Sendable {
-        public let projects: [SampleIndex.Project]
-        public let files: [SampleIndex.Database.FileSearchResult]
+        public let projects: [Sample.Index.Project]
+        public let files: [Sample.Index.Database.FileSearchResult]
 
-        public init(projects: [SampleIndex.Project], files: [SampleIndex.Database.FileSearchResult]) {
+        public init(projects: [Sample.Index.Project], files: [Sample.Index.Database.FileSearchResult]) {
             self.projects = projects
             self.files = files
         }
@@ -65,19 +65,19 @@ extension Sample.Search {
 // MARK: - Sample Search Service
 
 /// Service for searching Apple sample code projects and files.
-/// Wraps SampleIndex.Database with a clean interface.
+/// Wraps Sample.Index.Database with a clean interface.
 extension Sample.Search {
     public actor Service {
-        private let database: SampleIndex.Database
+        private let database: Sample.Index.Database
 
         /// Initialize with an existing database
-        public init(database: SampleIndex.Database) {
+        public init(database: Sample.Index.Database) {
             self.database = database
         }
 
         /// Initialize with a database path
         public init(dbPath: URL) async throws {
-            database = try await SampleIndex.Database(dbPath: dbPath)
+            database = try await Sample.Index.Database(dbPath: dbPath)
         }
 
         // MARK: - Search Methods
@@ -90,7 +90,7 @@ extension Sample.Search {
                 limit: query.limit
             )
 
-            var files: [SampleIndex.Database.FileSearchResult] = []
+            var files: [Sample.Index.Database.FileSearchResult] = []
             if query.searchFiles {
                 files = try await database.searchFiles(
                     query: query.text,
@@ -117,12 +117,12 @@ extension Sample.Search {
         // MARK: - Project Access
 
         /// Get a project by ID
-        public func getProject(id: String) async throws -> SampleIndex.Project? {
+        public func getProject(id: String) async throws -> Sample.Index.Project? {
             try await database.getProject(id: id)
         }
 
         /// List all projects
-        public func listProjects(framework: String? = nil, limit: Int = 50) async throws -> [SampleIndex.Project] {
+        public func listProjects(framework: String? = nil, limit: Int = 50) async throws -> [Sample.Index.Project] {
             try await database.listProjects(framework: framework, limit: limit)
         }
 
@@ -134,12 +134,12 @@ extension Sample.Search {
         // MARK: - File Access
 
         /// Get a file by project ID and path
-        public func getFile(projectId: String, path: String) async throws -> SampleIndex.File? {
+        public func getFile(projectId: String, path: String) async throws -> Sample.Index.File? {
             try await database.getFile(projectId: projectId, path: path)
         }
 
         /// List files in a project
-        public func listFiles(projectId: String, folder: String? = nil) async throws -> [SampleIndex.File] {
+        public func listFiles(projectId: String, folder: String? = nil) async throws -> [Sample.Index.File] {
             try await database.listFiles(projectId: projectId, folder: folder)
         }
 

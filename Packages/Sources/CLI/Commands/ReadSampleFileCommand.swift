@@ -69,12 +69,12 @@ extension Command {
             if let sampleDb {
                 return URL(fileURLWithPath: sampleDb).expandingTildeInPath
             }
-            return SampleIndex.defaultDatabasePath
+            return Sample.Index.defaultDatabasePath
         }
 
         // MARK: - Output Formatting
 
-        private func outputText(_ file: SampleIndex.File) {
+        private func outputText(_ file: Sample.Index.File) {
             Logging.Log.output("// File: \(file.path)")
             Logging.Log.output("// Project: \(file.projectId)")
             Logging.Log.output("// Size: \(Shared.Utils.Formatting.formatBytes(file.size))")

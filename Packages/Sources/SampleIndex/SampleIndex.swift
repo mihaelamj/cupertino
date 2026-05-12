@@ -2,12 +2,18 @@ import Foundation
 import SharedConstants
 import SharedCore
 
-// MARK: - SampleIndex Namespace
+// MARK: - Sample.Index Module Anchor
 
-/// SampleIndex provides indexing and search for Apple sample code projects.
-/// Unlike the main Search database, SampleIndex uses a separate database
-/// (`~/.cupertino/samples.db`) optimized for code-level search.
-public enum SampleIndex {
+/// `Sample.Index` provides indexing and search for Apple sample code projects.
+/// Unlike the main Search database, Sample.Index uses a separate database
+/// (`~/.cupertino/samples.db`) optimised for code-level search.
+///
+/// The namespace enum itself is declared in `SharedConstants/Sample.swift`
+/// alongside the other `Sample.*` sub-namespaces. This file contributes the
+/// module-scope static helpers (`defaultDatabasePath`,
+/// `defaultSampleCodeDirectory`, `minColumn(for:)`) and acts as the
+/// SampleIndex SPM target's anchor.
+extension Sample.Index {
     /// Default database path for source code search index
     public static var defaultDatabasePath: URL {
         Shared.Constants.defaultBaseDirectory

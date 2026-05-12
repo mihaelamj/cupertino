@@ -19,9 +19,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     // Keep direct access for low-level operations (list frameworks, read document)
     private let searchIndex: Search.Index?
-    private let sampleDatabase: SampleIndex.Database?
+    private let sampleDatabase: Sample.Index.Database?
 
-    public init(searchIndex: Search.Index?, sampleDatabase: SampleIndex.Database?) {
+    public init(searchIndex: Search.Index?, sampleDatabase: Sample.Index.Database?) {
         self.searchIndex = searchIndex
         self.sampleDatabase = sampleDatabase
 

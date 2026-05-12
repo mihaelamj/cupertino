@@ -3,6 +3,7 @@ import Foundation
 import Logging
 import SampleIndex
 import Services
+import SharedConstants
 import SharedCore
 import SharedUtils
 
@@ -70,12 +71,12 @@ extension Command {
             if let sampleDb {
                 return URL(fileURLWithPath: sampleDb).expandingTildeInPath
             }
-            return SampleIndex.defaultDatabasePath
+            return Sample.Index.defaultDatabasePath
         }
 
         // MARK: - Output Formatting
 
-        private func outputText(_ projects: [SampleIndex.Project], totalProjects: Int, totalFiles: Int) {
+        private func outputText(_ projects: [Sample.Index.Project], totalProjects: Int, totalFiles: Int) {
             Logging.Log.output("Sample Code Projects")
             Logging.Log.output("Total: \(totalProjects) projects, \(totalFiles) files")
 
@@ -99,7 +100,7 @@ extension Command {
             }
         }
 
-        private func outputJSON(_ projects: [SampleIndex.Project], totalProjects: Int, totalFiles: Int) {
+        private func outputJSON(_ projects: [Sample.Index.Project], totalProjects: Int, totalFiles: Int) {
             struct Output: Encodable {
                 let totalProjects: Int
                 let totalFiles: Int
@@ -143,7 +144,7 @@ extension Command {
             }
         }
 
-        private func outputMarkdown(_ projects: [SampleIndex.Project], totalProjects: Int, totalFiles: Int) {
+        private func outputMarkdown(_ projects: [Sample.Index.Project], totalProjects: Int, totalFiles: Int) {
             Logging.Log.output("# Sample Code Projects\n")
             Logging.Log.output("Total: **\(totalProjects)** projects, **\(totalFiles)** files\n")
 

@@ -124,15 +124,15 @@ func createMultiSourceSearchIndex() async throws -> (index: Search.Index, cleanu
 }
 
 /// Creates a temporary sample database for testing
-func createTestSampleDatabase() async throws -> (database: SampleIndex.Database, cleanup: () -> Void) {
+func createTestSampleDatabase() async throws -> (database: Sample.Index.Database, cleanup: () -> Void) {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("sample-test-\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
     let dbPath = tempDir.appendingPathComponent("samples.db")
-    let database = try await SampleIndex.Database(dbPath: dbPath)
+    let database = try await Sample.Index.Database(dbPath: dbPath)
 
     // Add sample project using correct API
-    let project = SampleIndex.Project(
+    let project = Sample.Index.Project(
         id: "animating-views-sample",
         title: "Animating Views in SwiftUI",
         description: "Learn how to animate views using SwiftUI.",
@@ -146,7 +146,7 @@ func createTestSampleDatabase() async throws -> (database: SampleIndex.Database,
     try await database.indexProject(project)
 
     // Add sample file using correct API
-    let file = SampleIndex.File(
+    let file = Sample.Index.File(
         projectId: "animating-views-sample",
         path: "ContentView.swift",
         content: "import SwiftUI\n\nstruct ContentView: View {\n    @State var isAnimating = false\n}"
@@ -992,8 +992,8 @@ struct UnifiedSearchFormatterTests {
         )
     }
 
-    private func makeSampleProject() -> SampleIndex.Project {
-        SampleIndex.Project(
+    private func makeSampleProject() -> Sample.Index.Project {
+        Sample.Index.Project(
             id: "test-sample",
             title: "Test Sample",
             description: "A test sample project",

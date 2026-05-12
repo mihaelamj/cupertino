@@ -11,10 +11,10 @@ import SharedUtils
 /// Consolidates search logic previously duplicated between CLI and MCP.
 public actor UnifiedSearchService {
     private let searchIndex: Search.Index?
-    private let sampleDatabase: SampleIndex.Database?
+    private let sampleDatabase: Sample.Index.Database?
 
     /// Initialize with existing database connections
-    public init(searchIndex: Search.Index?, sampleDatabase: SampleIndex.Database?) {
+    public init(searchIndex: Search.Index?, sampleDatabase: Sample.Index.Database?) {
         self.searchIndex = searchIndex
         self.sampleDatabase = sampleDatabase
     }
@@ -28,7 +28,7 @@ public actor UnifiedSearchService {
         }
 
         if let sampleDbPath, Shared.Utils.PathResolver.exists(sampleDbPath) {
-            sampleDatabase = try await SampleIndex.Database(dbPath: sampleDbPath)
+            sampleDatabase = try await Sample.Index.Database(dbPath: sampleDbPath)
         } else {
             sampleDatabase = nil
         }
@@ -142,7 +142,7 @@ public actor UnifiedSearchService {
         query: String,
         framework: String?,
         limit: Int
-    ) async -> [SampleIndex.Project] {
+    ) async -> [Sample.Index.Project] {
         guard let sampleDatabase else { return [] }
 
         do {
@@ -175,7 +175,7 @@ extension Services.ServiceContainer {
         operation: (UnifiedSearchService) async throws -> T
     ) async throws -> T {
         let resolvedSearchPath = Shared.Utils.PathResolver.searchDatabase(searchDbPath)
-        let resolvedSamplePath = sampleDbPath ?? SampleIndex.defaultDatabasePath
+        let resolvedSamplePath = sampleDbPath ?? Sample.Index.defaultDatabasePath
 
         let service = try await UnifiedSearchService(
             searchDbPath: Shared.Utils.PathResolver.exists(resolvedSearchPath) ? resolvedSearchPath : nil,

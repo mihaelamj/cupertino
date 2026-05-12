@@ -280,7 +280,7 @@ extension Command {
             if let sampleDb {
                 return URL(fileURLWithPath: sampleDb).expandingTildeInPath
             }
-            return SampleIndex.defaultDatabasePath
+            return Sample.Index.defaultDatabasePath
         }
     }
 }

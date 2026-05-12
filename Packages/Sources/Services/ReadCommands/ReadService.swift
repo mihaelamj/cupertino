@@ -185,7 +185,7 @@ public enum ReadService {
         allowFallback: Bool,
         packagesDB: URL?
     ) async throws -> Result {
-        let dbURL = samplesDB ?? SampleIndex.defaultDatabasePath
+        let dbURL = samplesDB ?? Sample.Index.defaultDatabasePath
         guard FileManager.default.fileExists(atPath: dbURL.path) else {
             if allowFallback {
                 return try await readFromPackages(

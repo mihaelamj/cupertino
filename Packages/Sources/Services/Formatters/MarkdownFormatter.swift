@@ -235,7 +235,7 @@ public struct FrameworksMarkdownFormatter: ResultFormatter {
 public struct UnifiedSearchInput: Sendable {
     public let docResults: [Search.Result]
     public let archiveResults: [Search.Result]
-    public let sampleResults: [SampleIndex.Project]
+    public let sampleResults: [Sample.Index.Project]
     public let higResults: [Search.Result]
     public let swiftEvolutionResults: [Search.Result]
     public let swiftOrgResults: [Search.Result]
@@ -246,7 +246,7 @@ public struct UnifiedSearchInput: Sendable {
     public init(
         docResults: [Search.Result] = [],
         archiveResults: [Search.Result] = [],
-        sampleResults: [SampleIndex.Project] = [],
+        sampleResults: [Sample.Index.Project] = [],
         higResults: [Search.Result] = [],
         swiftEvolutionResults: [Search.Result] = [],
         swiftOrgResults: [Search.Result] = [],
@@ -281,7 +281,7 @@ public struct UnifiedSearchInput: Sendable {
     public struct SourceSection: Sendable {
         public let info: Shared.Constants.SourcePrefix.SourceInfo
         public let docResults: [Search.Result]
-        public let sampleResults: [SampleIndex.Project]
+        public let sampleResults: [Sample.Index.Project]
 
         public var isEmpty: Bool {
             docResults.isEmpty && sampleResults.isEmpty
@@ -307,7 +307,7 @@ public struct UnifiedSearchInput: Sendable {
         /// Create from sample results if not empty, nil otherwise
         public static func fromSamples(
             _ info: Shared.Constants.SourcePrefix.SourceInfo,
-            _ results: [SampleIndex.Project]
+            _ results: [Sample.Index.Project]
         ) -> SourceSection? {
             guard !results.isEmpty else { return nil }
             return SourceSection(info: info, docResults: [], sampleResults: results)
@@ -468,7 +468,7 @@ public struct UnifiedSearchMarkdownFormatter: ResultFormatter {
         return output
     }
 
-    private func formatSampleResults(_ projects: [SampleIndex.Project]) -> String {
+    private func formatSampleResults(_ projects: [Sample.Index.Project]) -> String {
         var output = ""
         let maxLen = Shared.Constants.Limit.summaryTruncationLength
         for project in projects {

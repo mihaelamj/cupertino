@@ -11,10 +11,10 @@ import SharedUtils
 /// Consolidates teaser logic previously duplicated between CLI and MCP.
 public actor TeaserService {
     private let searchIndex: Search.Index?
-    private let sampleDatabase: SampleIndex.Database?
+    private let sampleDatabase: Sample.Index.Database?
 
     /// Initialize with existing database connections
-    public init(searchIndex: Search.Index?, sampleDatabase: SampleIndex.Database?) {
+    public init(searchIndex: Search.Index?, sampleDatabase: Sample.Index.Database?) {
         self.searchIndex = searchIndex
         self.sampleDatabase = sampleDatabase
     }
@@ -28,7 +28,7 @@ public actor TeaserService {
         }
 
         if let sampleDbPath, Shared.Utils.PathResolver.exists(sampleDbPath) {
-            sampleDatabase = try await SampleIndex.Database(dbPath: sampleDbPath)
+            sampleDatabase = try await Sample.Index.Database(dbPath: sampleDbPath)
         } else {
             sampleDatabase = nil
         }
@@ -114,7 +114,7 @@ public actor TeaserService {
     // MARK: - Individual Teaser Fetchers
 
     /// Fetch a few sample projects as teaser
-    public func fetchTeaserSamples(query: String, framework: String?) async -> [SampleIndex.Project] {
+    public func fetchTeaserSamples(query: String, framework: String?) async -> [Sample.Index.Project] {
         guard let sampleDatabase else { return [] }
 
         do {
@@ -164,7 +164,7 @@ extension Services.ServiceContainer {
         operation: (TeaserService) async throws -> T
     ) async throws -> T {
         let resolvedSearchPath = Shared.Utils.PathResolver.searchDatabase(searchDbPath)
-        let resolvedSamplePath = sampleDbPath ?? SampleIndex.defaultDatabasePath
+        let resolvedSamplePath = sampleDbPath ?? Sample.Index.defaultDatabasePath
 
         let service = try await TeaserService(
             searchDbPath: Shared.Utils.PathResolver.exists(resolvedSearchPath) ? resolvedSearchPath : nil,
