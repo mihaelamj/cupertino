@@ -1,6 +1,7 @@
 import Foundation
 import Logging
 import MCP
+import MCPSharedTools
 import Search
 import Shared
 
@@ -55,8 +56,8 @@ public actor DocsResourceProvider: ResourceProvider {
                 let resource = Resource(
                     uri: uri,
                     name: extractTitle(from: url),
-                    description: "\(Shared.Constants.Search.appleDocsDescriptionPrefix) \(pageMetadata.framework)",
-                    mimeType: Shared.Constants.Search.mimeTypeMarkdown
+                    description: "\(MCPSharedTools.MCPCopy.appleDocsDescriptionPrefix) \(pageMetadata.framework)",
+                    mimeType: MCPSharedTools.MCPCopy.mimeTypeMarkdown
                 )
                 resources.append(resource)
             }
@@ -79,8 +80,8 @@ public actor DocsResourceProvider: ResourceProvider {
                     let resource = Resource(
                         uri: "\(Shared.Constants.Search.swiftEvolutionScheme)\(proposalID)",
                         name: proposalID,
-                        description: Shared.Constants.Search.swiftEvolutionDescription,
-                        mimeType: Shared.Constants.Search.mimeTypeMarkdown
+                        description: MCPSharedTools.MCPCopy.swiftEvolutionDescription,
+                        mimeType: MCPSharedTools.MCPCopy.mimeTypeMarkdown
                     )
                     resources.append(resource)
                 }
@@ -115,7 +116,7 @@ public actor DocsResourceProvider: ResourceProvider {
                 let contents = ResourceContents.text(
                     TextResourceContents(
                         uri: uri,
-                        mimeType: Shared.Constants.Search.mimeTypeMarkdown,
+                        mimeType: MCPSharedTools.MCPCopy.mimeTypeMarkdown,
                         text: dbContent
                     )
                 )
@@ -197,7 +198,7 @@ public actor DocsResourceProvider: ResourceProvider {
         let contents = ResourceContents.text(
             TextResourceContents(
                 uri: uri,
-                mimeType: Shared.Constants.Search.mimeTypeMarkdown,
+                mimeType: MCPSharedTools.MCPCopy.mimeTypeMarkdown,
                 text: markdown
             )
         )
@@ -208,16 +209,16 @@ public actor DocsResourceProvider: ResourceProvider {
     public func listResourceTemplates(cursor: String?) async throws -> ListResourceTemplatesResult? {
         let templates = [
             ResourceTemplate(
-                uriTemplate: Shared.Constants.Search.templateAppleDocs,
-                name: Shared.Constants.Search.appleDocsTemplateName,
-                description: Shared.Constants.Search.appleDocsTemplateDescription,
-                mimeType: Shared.Constants.Search.mimeTypeMarkdown
+                uriTemplate: MCPSharedTools.MCPCopy.templateAppleDocs,
+                name: MCPSharedTools.MCPCopy.appleDocsTemplateName,
+                description: MCPSharedTools.MCPCopy.appleDocsTemplateDescription,
+                mimeType: MCPSharedTools.MCPCopy.mimeTypeMarkdown
             ),
             ResourceTemplate(
-                uriTemplate: Shared.Constants.Search.templateSwiftEvolution,
-                name: Shared.Constants.Search.swiftEvolutionDescription,
-                description: Shared.Constants.Search.swiftEvolutionTemplateDescription,
-                mimeType: Shared.Constants.Search.mimeTypeMarkdown
+                uriTemplate: MCPSharedTools.MCPCopy.templateSwiftEvolution,
+                name: MCPSharedTools.MCPCopy.swiftEvolutionDescription,
+                description: MCPSharedTools.MCPCopy.swiftEvolutionTemplateDescription,
+                mimeType: MCPSharedTools.MCPCopy.mimeTypeMarkdown
             ),
         ]
 
@@ -329,7 +330,7 @@ public actor DocsResourceProvider: ResourceProvider {
                     uri: uri,
                     name: filename.replacingOccurrences(of: "-", with: " ").capitalized,
                     description: "Apple Archive documentation",
-                    mimeType: Shared.Constants.Search.mimeTypeMarkdown
+                    mimeType: MCPSharedTools.MCPCopy.mimeTypeMarkdown
                 )
                 resources.append(resource)
             }

@@ -1,5 +1,6 @@
 import Foundation
 import MCP
+import Shared
 
 // MARK: - Argument Extractor
 
