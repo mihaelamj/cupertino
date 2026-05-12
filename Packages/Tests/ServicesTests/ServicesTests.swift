@@ -118,8 +118,8 @@ struct ServicesTests {
 struct FormatConfigTests {
     @Test("CLI and MCP configs are identical")
     func configsAreIdentical() {
-        let cli = SearchResultFormatConfig.cliDefault
-        let mcp = SearchResultFormatConfig.mcpDefault
+        let cli = Services.Formatters.SearchResultFormatConfig.cliDefault
+        let mcp = Services.Formatters.SearchResultFormatConfig.mcpDefault
 
         // CLI and MCP must produce identical output
         #expect(cli.showScore == mcp.showScore)
@@ -132,7 +132,7 @@ struct FormatConfigTests {
 
     @Test("Shared config has expected values")
     func sharedConfigValues() {
-        let config = SearchResultFormatConfig.shared
+        let config = Services.Formatters.SearchResultFormatConfig.shared
 
         #expect(config.showScore == true)
         #expect(config.showWordCount == true)

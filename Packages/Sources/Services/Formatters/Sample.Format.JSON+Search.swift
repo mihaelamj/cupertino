@@ -58,7 +58,7 @@ private struct FileSearchJSONOutput: Encodable {
 
 /// Formats sample search results as JSON
 extension Sample.Format.JSON {
-    public struct Search: ResultFormatter {
+    public struct Search: Services.Formatters.ResultFormatter {
         private let query: String
         private let framework: String?
 
@@ -91,7 +91,7 @@ extension Sample.Format.JSON {
 
 /// Formats sample project list as JSON
 extension Sample.Format.JSON {
-    public struct List: ResultFormatter {
+    public struct List: Services.Formatters.ResultFormatter {
         public init() {}
 
         public func format(_ projects: [Sample.Index.Project]) -> String {
@@ -105,7 +105,7 @@ extension Sample.Format.JSON {
 
 /// Formats a single sample project as JSON
 extension Sample.Format.JSON {
-    public struct Project: ResultFormatter {
+    public struct Project: Services.Formatters.ResultFormatter {
         public init() {}
 
         public func format(_ project: Sample.Index.Project) -> String {
@@ -118,7 +118,7 @@ extension Sample.Format.JSON {
 
 /// Formats a sample file as JSON
 extension Sample.Format.JSON {
-    public struct File: ResultFormatter {
+    public struct File: Services.Formatters.ResultFormatter {
         public init() {}
 
         public func format(_ file: Sample.Index.File) -> String {

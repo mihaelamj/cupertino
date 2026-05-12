@@ -2,36 +2,39 @@
 
 The Services module provides a unified service layer for search operations across documentation sources. It abstracts database access and result formatting, allowing both CLI commands and MCP tool providers to share the same business logic.
 
+All public types now live under the `Services` namespace (per the namespacing sweep tracked in #183). Sample-flavoured services live under the cross-cutting `Sample` namespace: the sample search service is `Sample.Search.Service`, the sample-flavoured formatters live under `Sample.Format.{Markdown,JSON,Text}.*`, and the sample-flavoured candidate fetcher is `Sample.Services.CandidateFetcher`.
+
 ## Architecture
 
 ```
-                     ┌─────────────────────┐
-                     │  ServiceContainer   │
-                     │  (Lifecycle Mgmt)   │
-                     └─────────┬───────────┘
-                               │
-       ┌───────────────────────┼───────────────────────┐
-       │                       │                       │
-       ▼                       ▼                       ▼
-┌──────────────┐      ┌──────────────┐      ┌──────────────┐
-│DocsSearchSvc │      │ HIGSearchSvc │      │SampleSearchSvc│
-│ (Search.Index)│      │  (delegates) │      │ (SampleIndex) │
-└──────────────┘      └──────────────┘      └──────────────┘
-       │                       │                       │
-       └───────────────────────┼───────────────────────┘
-                               │
-                               ▼
-                     ┌─────────────────────┐
-                     │     Formatters      │
-                     │ (Text/JSON/Markdown)│
-                     └─────────────────────┘
+                       ┌──────────────────────────────┐
+                       │  Services.ServiceContainer   │
+                       │      (Lifecycle Mgmt)        │
+                       └──────────────┬───────────────┘
+                                      │
+        ┌─────────────────────────────┼─────────────────────────────┐
+        │                             │                             │
+        ▼                             ▼                             ▼
+┌──────────────────┐         ┌──────────────────┐         ┌──────────────────────┐
+│ DocsSearchService│         │  HIGSearchService│         │ Sample.Search.Service│
+│   (Search.Index) │         │    (delegates)   │         │     (Sample.Index)   │
+└──────────────────┘         └──────────────────┘         └──────────────────────┘
+        │                             │                             │
+        └─────────────────────────────┼─────────────────────────────┘
+                                      │
+                                      ▼
+                       ┌──────────────────────────────┐
+                       │     Services.Formatters      │
+                       │ + Sample.Format.{Md,JSON,Txt}│
+                       │      (Text/JSON/Markdown)    │
+                       └──────────────────────────────┘
 ```
 
 ## Services
 
 ### DocsSearchService
 
-Wraps `Search.Index` for searching Apple documentation, Swift Evolution proposals, Swift.org docs, and more.
+Wraps `Search.Index` for searching Apple documentation, Swift Evolution proposals, Swift.org docs, and more. Currently still at file scope inside the `Services` SPM target; will move to `Services.DocsSearchService` once the `Services/ReadCommands/` type-wrap PR lands.
 
 ```swift
 let service = try await DocsSearchService(dbPath: dbPath)
@@ -40,7 +43,7 @@ let service = try await DocsSearchService(dbPath: dbPath)
 let results = try await service.search(text: "View")
 
 // Search with filters
-let results = try await service.search(SearchQuery(
+let results = try await service.search(Services.SearchQuery(
     text: "Button",
     source: "apple-docs",
     framework: "swiftui",
@@ -77,15 +80,15 @@ let results = try await service.search(HIGQuery(
 await service.disconnect()
 ```
 
-### SampleSearchService
+### Sample.Search.Service
 
-Wraps `SampleIndex.Database` for searching Apple sample code projects and files.
+Wraps `Sample.Index.Database` for searching Apple sample code projects and files. Lives under the cross-cutting `Sample` namespace alongside `Sample.Search.Query` and `Sample.Search.Result`.
 
 ```swift
-let service = try await SampleSearchService(dbPath: dbPath)
+let service = try await Sample.Search.Service(dbPath: dbPath)
 
 // Search projects and files
-let result = try await service.search(SampleQuery(
+let result = try await service.search(Sample.Search.Query(
     text: "SwiftUI",
     framework: "swiftui",
     searchFiles: true,
@@ -106,25 +109,25 @@ let file = try await service.getFile(projectId: projectId, path: "ContentView.sw
 await service.disconnect()
 ```
 
-## ServiceContainer
+## Services.ServiceContainer
 
 Manages service lifecycle with convenient factory methods.
 
 ```swift
-// Managed lifecycle - service automatically disconnected
-try await ServiceContainer.withDocsService { service in
+// Managed lifecycle — service automatically disconnected
+try await Services.ServiceContainer.withDocsService { service in
     let results = try await service.search(text: "Actor")
     return results
 }
 
 // HIG service with managed lifecycle
-try await ServiceContainer.withHIGService { service in
+try await Services.ServiceContainer.withHIGService { service in
     let results = try await service.search(text: "buttons")
     return results
 }
 
 // Sample service with managed lifecycle
-try await ServiceContainer.withSampleService(dbPath: sampleDbPath) { service in
+try await Services.ServiceContainer.withSampleService(dbPath: sampleDbPath) { service in
     let results = try await service.search(text: "SwiftUI")
     return results
 }
@@ -132,7 +135,7 @@ try await ServiceContainer.withSampleService(dbPath: sampleDbPath) { service in
 
 ## Query Types
 
-### SearchQuery
+### Services.SearchQuery
 
 General-purpose query for documentation searches.
 
@@ -147,7 +150,7 @@ General-purpose query for documentation searches.
 
 ### HIGQuery
 
-Specialized query for Human Interface Guidelines.
+Specialized query for Human Interface Guidelines (file-scope today; will move to `Services.HIGQuery` in the `Services/ReadCommands/` wrap PR).
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -156,7 +159,7 @@ Specialized query for Human Interface Guidelines.
 | `category` | `String?` | `nil` | foundations, patterns, components, etc. |
 | `limit` | `Int` | 20 | Max results |
 
-### SampleQuery
+### Sample.Search.Query
 
 Query for sample code searches.
 
@@ -169,34 +172,39 @@ Query for sample code searches.
 
 ## Formatters
 
-### MarkdownSearchResultFormatter
+`Services/Formatters/*` ships two formatter families:
+
+- The `Services.Formatters.*` family (general-purpose `MarkdownSearchResultFormatter`, `TextSearchResultFormatter`, `JSONSearchResultFormatter`, `Frameworks*Formatter`, HIG-specific, unified-search) — wrap pass in progress; type names still flat at file scope for now.
+- The `Sample.Format.{Markdown,JSON,Text}.*` family (`Search` / `List` / `Project` / `File` per medium), already nested under the cross-cutting `Sample` namespace (#362).
+
+### Services.Formatters.MarkdownSearchResultFormatter
 
 Formats search results as markdown for MCP tools.
 
 ```swift
-let formatter = MarkdownSearchResultFormatter(
+let formatter = Services.Formatters.MarkdownSearchResultFormatter(
     query: "View",
-    filters: SearchFilters(framework: "swiftui"),
+    filters: Services.SearchFilters(framework: "swiftui"),
     config: .mcpDefault
 )
 let markdown = formatter.format(results)
 ```
 
-### TextSearchResultFormatter
+### Services.Formatters.TextSearchResultFormatter
 
 Formats search results as plain text for CLI output.
 
 ```swift
-let formatter = TextSearchResultFormatter(query: "View")
+let formatter = Services.Formatters.TextSearchResultFormatter(query: "View")
 let text = formatter.format(results)
 ```
 
-### JSONSearchResultFormatter
+### Services.Formatters.JSONSearchResultFormatter
 
 Formats search results as JSON.
 
 ```swift
-let formatter = JSONSearchResultFormatter()
+let formatter = Services.Formatters.JSONSearchResultFormatter()
 let json = formatter.format(results)
 ```
 
@@ -204,13 +212,13 @@ let json = formatter.format(results)
 
 ```swift
 // CLI defaults: no score/word count, show source, no separators
-let cliConfig = SearchResultFormatConfig.cliDefault
+let cliConfig = Services.Formatters.SearchResultFormatConfig.cliDefault
 
 // MCP defaults: show score/word count, separators between results
-let mcpConfig = SearchResultFormatConfig.mcpDefault
+let mcpConfig = Services.Formatters.SearchResultFormatConfig.mcpDefault
 
 // Custom configuration
-let config = SearchResultFormatConfig(
+let config = Services.Formatters.SearchResultFormatConfig(
     showScore: true,
     showWordCount: false,
     showSource: true,
@@ -223,15 +231,15 @@ let config = SearchResultFormatConfig(
 
 ```
 Services
-├── Shared (ToolError, PathResolver, Constants)
-├── Search (Search.Index, Search.Result)
-└── SampleIndex (Database, Project, File)
+├── Shared           (Shared.Core.ToolError, Shared.Utils.PathResolver, Shared.Constants)
+├── Search           (Search.Index, Search.Result, Search.SmartQuery, Search.PackageQuery)
+└── SampleIndex      (Sample.Index.Database, Sample.Index.Project, Sample.Index.File)
 ```
 
 ## Design Principles
 
 1. **Single Responsibility**: Each service wraps one database type
-2. **Composition**: HIGSearchService delegates to DocsSearchService
-3. **Lifecycle Management**: ServiceContainer handles connections
-4. **Type Safety**: Specialized query types for each search domain
-5. **Flexibility**: Formatters separate output from business logic
+2. **Composition**: `HIGSearchService` delegates to `DocsSearchService`
+3. **Lifecycle Management**: `Services.ServiceContainer` handles connections
+4. **Type Safety**: Specialized query types for each search domain (`Services.SearchQuery`, `Services.HIGQuery`, `Sample.Search.Query`)
+5. **Flexibility**: Formatters separate output from business logic (`Services.Formatters.*` for general, `Sample.Format.*` for sample-specific)

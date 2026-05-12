@@ -26,13 +26,27 @@
 
 // MARK: - Services Namespace
 
-/// Namespace for the service layer: a `ServiceContainer` that owns service
-/// lifecycle, the `SearchService` protocol + `SearchQuery` / `SearchFilters`
-/// inputs, and the concrete service actors that live in `Services/ReadCommands/`
-/// (`DocsSearchService`, `HIGSearchService`, `Sample.Search.Service`,
-/// `UnifiedSearchService`, `TeaserService`, `ReadService`).
+/// Namespace for the service layer.
 ///
-/// Result formatters in `Services/Formatters/` also extend this same root
-/// (`Services.MarkdownSearchResultFormatter`, `Services.JSONSearchResultFormatter`,
-/// `Services.TextSearchResultFormatter`, etc.).
-public enum Services {}
+/// Layout:
+/// - `Services.ServiceContainer`, `Services.SearchService` protocol,
+///   `Services.SearchQuery`, `Services.SearchFilters` — root-level lifecycle
+///   + protocol surface.
+/// - `Services.Formatters.*` — result-formatter family in
+///   `Sources/Services/Formatters/` (`ResultFormatter` protocol,
+///   `SearchResultFormatConfig`, `Markdown/JSON/Text` formatters,
+///   footer + HIG + unified-search variants).
+/// - Concrete service actors in `Services/ReadCommands/`
+///   (`DocsSearchService`, `HIGSearchService`, `UnifiedSearchService`,
+///   `TeaserService`, `ReadService`) still live at file scope and will
+///   move to `Services.*` once their wrap PRs land.
+///
+/// Sample-flavoured services live under the cross-cutting `Sample` root:
+/// `Sample.Search.Service`, `Sample.Format.{Markdown,JSON,Text}.*`,
+/// `Sample.Services.CandidateFetcher`.
+public enum Services {
+    /// Sub-namespace for result-formatter types. Mirrors
+    /// `Sources/Services/Formatters/`. Each concrete formatter conforms
+    /// to `Services.Formatters.ResultFormatter`.
+    public enum Formatters {}
+}
