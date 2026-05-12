@@ -9,6 +9,7 @@ import TestSupport
 import SharedConstants
 import SharedConfiguration
 import SharedModels
+import CoreProtocols
 
 // MARK: - Web Crawl Tests
 

@@ -10,6 +10,7 @@ import SharedConstants
 import SharedConfiguration
 import SharedModels
 import SharedUtils
+import CoreProtocols
 
 // MARK: - Save Command Tests
 

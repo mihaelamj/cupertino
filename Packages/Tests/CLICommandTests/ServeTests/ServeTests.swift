@@ -11,6 +11,7 @@ import TestSupport
 import SharedConstants
 import SharedConfiguration
 import SharedModels
+import CoreProtocols
 
 // MARK: - MCP Command Tests
 

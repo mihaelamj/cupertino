@@ -2,6 +2,7 @@ import Foundation
 import Logging
 import SharedCore
 import SharedModels
+import CoreProtocols
 
 // MARK: - Package Documentation Downloader
 

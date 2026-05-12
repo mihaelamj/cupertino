@@ -23,6 +23,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("SharedModels"),
     .singleTargetLibrary("SharedConfiguration"),
     .singleTargetLibrary("MCPSharedTools"),
+    .singleTargetLibrary("CoreProtocols"),
     .singleTargetLibrary("Core"),
     .singleTargetLibrary("Cleanup"),
     .singleTargetLibrary("Search"),
@@ -152,13 +153,19 @@ let targets: [Target] = {
         dependencies: ["Resources"]
     )
 
+    // ---------- CoreProtocols (v1.2 refactor 2.1: protocols + utilities + the Core namespace enum, lifted out of Core for downstream extraction) ----------
+    let coreProtocolsTarget = Target.target(
+        name: "CoreProtocols",
+        dependencies: ["SharedCore", "SharedConstants", "SharedModels", "Resources"]
+    )
+
     let coreTarget = Target.target(
         name: "Core",
-        dependencies: ["SharedCore", "SharedConfiguration", "SharedConstants", "SharedModels", "SharedUtils", "Logging", "Resources", "ASTIndexer"]
+        dependencies: ["CoreProtocols", "SharedCore", "SharedConfiguration", "SharedConstants", "SharedModels", "SharedUtils", "Logging", "Resources", "ASTIndexer"]
     )
     let coreTestsTarget = Target.testTarget(
         name: "CoreTests",
-        dependencies: ["Core", "Search", "SharedCore", "SharedConstants", "SharedModels", "TestSupport"],
+        dependencies: ["CoreProtocols", "Core", "Search", "SharedCore", "SharedConstants", "SharedModels", "TestSupport"],
         resources: [.copy("Resources/AppleJSON")]
     )
 
@@ -173,7 +180,7 @@ let targets: [Target] = {
 
     let searchTarget = Target.target(
         name: "Search",
-        dependencies: ["SharedCore", "SharedConstants", "SharedModels", "Logging", "Core", "ASTIndexer"]
+        dependencies: ["SharedCore", "SharedConstants", "SharedModels", "Logging", "CoreProtocols", "Core", "ASTIndexer"]
     )
     let searchTestsTarget = Target.testTarget(
         name: "SearchTests",
@@ -281,7 +288,7 @@ let targets: [Target] = {
     // ---------- Indexer (#244: SaveCommand indexer + preflight lift) ----------
     let indexerTarget = Target.target(
         name: "Indexer",
-        dependencies: ["SharedCore", "SharedConstants", "SharedUtils", "Search", "SampleIndex", "Core", "Logging"]
+        dependencies: ["SharedCore", "SharedConstants", "SharedUtils", "Search", "SampleIndex", "CoreProtocols", "Core", "Logging"]
     )
     let indexerTestsTarget = Target.testTarget(
         name: "IndexerTests",
@@ -306,7 +313,7 @@ let targets: [Target] = {
             "SharedConstants",
             "SharedModels",
             "SharedUtils",
-            "Core",
+            "CoreProtocols", "Core",
             "Cleanup",
             "Search",
             "SampleIndex",
@@ -332,7 +339,7 @@ let targets: [Target] = {
             "SharedCore",
             "SharedConstants",
             "SharedUtils",
-            "Core",
+            "CoreProtocols", "Core",
             "Search",
             "Resources",
             "Logging",
@@ -385,19 +392,19 @@ let targets: [Target] = {
 
     let fetchTestsTarget = Target.testTarget(
         name: "FetchTests",
-        dependencies: ["CLI", "Core", "Ingest", "SharedCore", "TestSupport"],
+        dependencies: ["CLI", "CoreProtocols", "Core", "Ingest", "SharedCore", "TestSupport"],
         path: "Tests/CLICommandTests/FetchTests"
     )
 
     let saveTestsTarget = Target.testTarget(
         name: "SaveTests",
-        dependencies: ["CLI", "Core", "Indexer", "Search", "SharedCore", "TestSupport"],
+        dependencies: ["CLI", "CoreProtocols", "Core", "Indexer", "Search", "SharedCore", "TestSupport"],
         path: "Tests/CLICommandTests/SaveTests"
     )
 
     let tuiTestsTarget = Target.testTarget(
         name: "TUITests",
-        dependencies: ["TUI", "Core", "SharedCore", "TestSupport"],
+        dependencies: ["TUI", "CoreProtocols", "Core", "SharedCore", "TestSupport"],
         exclude: [
             "TEST_SUMMARY.md",
             "HOW_TESTS_DETECT_BUGS.md",
@@ -424,6 +431,7 @@ let targets: [Target] = {
         sharedConfigurationTarget,
         mcpSharedToolsTarget,
         mcpSharedToolsTestsTarget,
+        coreProtocolsTarget,
         resourcesTarget,
         resourcesTestsTarget,
         coreTarget,

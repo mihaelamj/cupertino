@@ -5,6 +5,7 @@ import Foundation
 import SharedCore
 import SQLite3
 import Testing
+import CoreProtocols
 
 // MARK: - PackageIndexTests
 

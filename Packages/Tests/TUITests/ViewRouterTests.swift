@@ -3,6 +3,7 @@ import Foundation
 import Testing
 import TestSupport
 @testable import TUI
+import CoreProtocols
 
 // MARK: - ViewRouter Tests
 

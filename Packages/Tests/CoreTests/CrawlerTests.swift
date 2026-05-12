@@ -5,6 +5,7 @@ import Testing
 import SharedConstants
 import SharedConfiguration
 import SharedModels
+import CoreProtocols
 
 // MARK: - Crawler Tests
 

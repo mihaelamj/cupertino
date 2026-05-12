@@ -6,6 +6,7 @@ import SharedCore
 import SQLite3
 import Testing
 import SharedModels
+import CoreProtocols
 
 // End-to-end test that a real `Search.IndexBuilder` run on a fixture
 // directory of structured JSON docs produces populated `doc_symbols` rows,

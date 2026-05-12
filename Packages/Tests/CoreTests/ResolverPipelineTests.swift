@@ -5,6 +5,7 @@ import SharedCore
 import Testing
 import SharedConstants
 import SharedModels
+@testable import CoreProtocols
 
 // MARK: - Checksum stability
 

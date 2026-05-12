@@ -6,6 +6,7 @@ import SharedCore
 import SharedConstants
 import SharedModels
 import SharedUtils
+import CoreProtocols
 
 extension Core {
     /// Walks each seed repo's dependency graph via raw.githubusercontent.com and returns

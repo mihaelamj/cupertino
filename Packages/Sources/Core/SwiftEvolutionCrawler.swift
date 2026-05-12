@@ -4,6 +4,7 @@ import SharedCore
 import SharedConstants
 import SharedModels
 import SharedUtils
+import CoreProtocols
 
 // MARK: - Swift Evolution Crawler
 

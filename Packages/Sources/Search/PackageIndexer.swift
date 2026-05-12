@@ -3,6 +3,7 @@ import Foundation
 import SharedCore
 import SharedConstants
 import SharedModels
+import CoreProtocols
 
 extension Search {
     /// Reads downloaded-and-extracted package trees from

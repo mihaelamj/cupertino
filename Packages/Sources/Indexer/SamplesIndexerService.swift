@@ -2,6 +2,7 @@ import Core
 import Foundation
 import SampleIndex
 import SharedCore
+import CoreProtocols
 
 extension Indexer {
     /// Build `samples.db` from extracted sample-code zips at

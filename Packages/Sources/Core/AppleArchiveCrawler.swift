@@ -3,6 +3,7 @@ import Logging
 import SharedCore
 import SharedConstants
 import SharedUtils
+import CoreProtocols
 
 // MARK: - Apple Archive Crawler
 

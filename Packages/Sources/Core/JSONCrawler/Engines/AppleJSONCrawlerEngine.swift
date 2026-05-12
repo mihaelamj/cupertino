@@ -1,5 +1,6 @@
 import Foundation
 import SharedCore
+import CoreProtocols
 
 // MARK: - Apple JSON Crawler Engine
 

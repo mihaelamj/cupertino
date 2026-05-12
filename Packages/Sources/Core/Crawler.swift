@@ -6,6 +6,7 @@ import SharedConfiguration
 import SharedConstants
 import SharedModels
 import SharedUtils
+import CoreProtocols
 
 // MARK: - Documentation Crawler
 

@@ -1,4 +1,5 @@
 import Foundation
+import CoreProtocols
 
 // MARK: - XML Transformer
 

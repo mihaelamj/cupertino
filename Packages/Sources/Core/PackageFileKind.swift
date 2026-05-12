@@ -1,4 +1,5 @@
 import Foundation
+import CoreProtocols
 
 extension Core {
     /// Categorisation for every indexed file inside a Swift package. Drives the
