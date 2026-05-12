@@ -38,10 +38,10 @@ extension Command {
             // Output results using formatters
             switch format {
             case .text:
-                let formatter = FrameworksTextFormatter(totalDocs: totalDocs)
+                let formatter = Services.Formatters.FrameworksTextFormatter(totalDocs: totalDocs)
                 Logging.Log.output(formatter.format(frameworks))
             case .json:
-                let formatter = FrameworksJSONFormatter()
+                let formatter = Services.Formatters.FrameworksJSONFormatter()
                 Logging.Log.output(formatter.format(frameworks))
             case .markdown:
                 let formatter = FrameworksMarkdownFormatter(totalDocs: totalDocs)

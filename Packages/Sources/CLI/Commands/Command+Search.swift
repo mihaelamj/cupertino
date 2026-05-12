@@ -230,7 +230,7 @@ extension Command {
 
         // MARK: - Unified Search (All Sources, fan-out + RRF) (#239)
 
-        /// Replaces the previous `UnifiedSearchService` path with the SmartQuery
+        /// Replaces the previous `Services.UnifiedSearchService` path with the SmartQuery
         /// fan-out absorbed from `cupertino ask`. Default behaviour when no
         /// `--source` is passed.
         private func runUnifiedSearch() async throws {

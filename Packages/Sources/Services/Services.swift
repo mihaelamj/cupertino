@@ -37,8 +37,8 @@
 ///   `SearchResultFormatConfig`, `Markdown/JSON/Text` formatters,
 ///   footer + HIG + unified-search variants).
 /// - Concrete service actors in `Services/ReadCommands/`
-///   (`DocsSearchService`, `HIGSearchService`, `UnifiedSearchService`,
-///   `TeaserService`, `ReadService`) still live at file scope and will
+///   (`Services.DocsSearchService`, `Services.HIGSearchService`, `Services.UnifiedSearchService`,
+///   `Services.TeaserService`, `Services.ReadService`) still live at file scope and will
 ///   move to `Services.*` once their wrap PRs land.
 ///
 /// Sample-flavoured services live under the cross-cutting `Sample` root:

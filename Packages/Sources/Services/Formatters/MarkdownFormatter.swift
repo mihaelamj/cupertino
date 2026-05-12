@@ -11,14 +11,14 @@ public struct MarkdownSearchResultFormatter: Services.Formatters.ResultFormatter
     private let query: String
     private let filters: Services.SearchFilters?
     private let config: Services.Formatters.SearchResultFormatConfig
-    private let teasers: TeaserResults?
+    private let teasers: Services.Formatters.TeaserResults?
     private let showPlatformTip: Bool
 
     public init(
         query: String,
         filters: Services.SearchFilters? = nil,
         config: Services.Formatters.SearchResultFormatConfig = .mcpDefault,
-        teasers: TeaserResults? = nil,
+        teasers: Services.Formatters.TeaserResults? = nil,
         showPlatformTip: Bool = true
     ) {
         self.query = query
@@ -120,14 +120,14 @@ public struct MarkdownSearchResultFormatter: Services.Formatters.ResultFormatter
 
 /// Formats HIG search results as markdown
 public struct HIGMarkdownFormatter: Services.Formatters.ResultFormatter {
-    private let query: HIGQuery
+    private let query: Services.HIGQuery
     private let config: Services.Formatters.SearchResultFormatConfig
-    private let teasers: TeaserResults?
+    private let teasers: Services.Formatters.TeaserResults?
 
     public init(
-        query: HIGQuery,
+        query: Services.HIGQuery,
         config: Services.Formatters.SearchResultFormatConfig = .mcpDefault,
-        teasers: TeaserResults? = nil
+        teasers: Services.Formatters.TeaserResults? = nil
     ) {
         self.query = query
         self.config = config
