@@ -136,7 +136,7 @@ extension Command.Save {
 
     func runSamplesIndexerSafely() async throws {
         let sampleCodeURL = samplesDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? SampleIndex.defaultSampleCodeDirectory
+            ?? Sample.Index.defaultSampleCodeDirectory
         guard FileManager.default.fileExists(atPath: sampleCodeURL.path) else {
             Logging.ConsoleLogger.info(
                 "ℹ️  sample-code directory not found at \(sampleCodeURL.path) — skipping samples step. "
@@ -149,7 +149,7 @@ extension Command.Save {
 
     func runSamplesIndexer(sampleCodeURL: URL) async throws {
         let dbURL = samplesDB.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? SampleIndex.defaultDatabasePath
+            ?? Sample.Index.defaultDatabasePath
 
         let request = Indexer.SamplesService.Request(
             sampleCodeDir: sampleCodeURL,

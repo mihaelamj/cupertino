@@ -1,8 +1,9 @@
 import Foundation
+import SharedConstants
 
 // MARK: - Sample File Model
 
-extension SampleIndex {
+extension Sample.Index {
     /// Represents an indexed source file within a sample project
     public struct File: Sendable, Codable, Equatable {
         /// Project ID this file belongs to

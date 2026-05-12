@@ -1,8 +1,9 @@
 import Foundation
+import SharedConstants
 
 // MARK: - Sample Project Model
 
-extension SampleIndex {
+extension Sample.Index {
     /// Represents an indexed sample code project
     public struct Project: Sendable, Codable, Equatable {
         /// Unique identifier (slug from ZIP filename)

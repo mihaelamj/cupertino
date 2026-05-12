@@ -166,7 +166,7 @@ extension Command.Search {
     ) async -> Sample.Search.Service? {
         guard !skip else { return nil }
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? SampleIndex.defaultDatabasePath
+            ?? Sample.Index.defaultDatabasePath
         guard FileManager.default.fileExists(atPath: url.path) else {
             Logging.ConsoleLogger.info(
                 "ℹ️  samples.db not found at \(url.path) — skipping samples."

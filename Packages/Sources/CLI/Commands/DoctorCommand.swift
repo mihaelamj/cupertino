@@ -134,7 +134,7 @@ extension Command {
             let entries: [(String, URL)] = [
                 ("search.db", URL(fileURLWithPath: searchDB).expandingTildeInPath),
                 ("packages.db", Shared.Constants.defaultPackagesDatabase),
-                ("samples.db", SampleIndex.defaultDatabasePath),
+                ("samples.db", Sample.Index.defaultDatabasePath),
             ]
             for (label, url) in entries {
                 guard FileManager.default.fileExists(atPath: url.path) else {
@@ -283,7 +283,7 @@ extension Command {
         /// download + cleanup. Missing is a warning (server runs without it; the
         /// sample-code search just isn't available).
         private func checkSamplesDatabase() {
-            let samplesDBURL = SampleIndex.defaultDatabasePath
+            let samplesDBURL = Sample.Index.defaultDatabasePath
 
             Logging.Log.output("🧪 Sample Code Index (samples.db)")
 

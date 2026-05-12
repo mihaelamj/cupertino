@@ -7,7 +7,7 @@ import SharedCore
 
 extension Indexer {
     /// Build `samples.db` from extracted sample-code zips at
-    /// `~/.cupertino/sample-code/`. Wraps `SampleIndex.Builder` and emits
+    /// `~/.cupertino/sample-code/`. Wraps `Sample.Index.Builder` and emits
     /// progress events.
     public enum SamplesService {
         public struct Request: Sendable {
@@ -17,8 +17,8 @@ extension Indexer {
             public let force: Bool
 
             public init(
-                sampleCodeDir: URL = SampleIndex.defaultSampleCodeDirectory,
-                samplesDB: URL = SampleIndex.defaultDatabasePath,
+                sampleCodeDir: URL = Sample.Index.defaultSampleCodeDirectory,
+                samplesDB: URL = Sample.Index.defaultDatabasePath,
                 clear: Bool = false,
                 force: Bool = false
             ) {
@@ -89,7 +89,7 @@ extension Indexer {
                 try FileManager.default.removeItem(at: request.samplesDB)
             }
 
-            let database = try await SampleIndex.Database(dbPath: request.samplesDB)
+            let database = try await Sample.Index.Database(dbPath: request.samplesDB)
             if request.clear {
                 handler(.clearingExistingIndex)
                 try await database.clearAll()
@@ -106,7 +106,7 @@ extension Indexer {
             handler(.catalogLoaded(entryCount: catalogEntries.count))
 
             let entries = catalogEntries.map { entry in
-                SampleIndex.SampleCodeEntryInfo(
+                Sample.Index.SampleCodeEntryInfo(
                     title: entry.title,
                     description: entry.description,
                     frameworks: [entry.framework],
@@ -116,7 +116,7 @@ extension Indexer {
             }
 
             handler(.indexingStart)
-            let builder = SampleIndex.Builder(
+            let builder = Sample.Index.Builder(
                 database: database,
                 sampleCodeDirectory: request.sampleCodeDir
             )

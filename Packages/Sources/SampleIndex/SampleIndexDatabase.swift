@@ -9,7 +9,7 @@ import SQLite3
 
 // swiftlint:disable type_body_length file_length function_body_length
 
-extension SampleIndex {
+extension Sample.Index {
     /// SQLite FTS5-based database for sample code indexing and search
     public actor Database {
         /// Current schema version
@@ -28,7 +28,7 @@ extension SampleIndex {
         private let dbPath: URL
         private var isInitialized = false
 
-        public init(dbPath: URL = SampleIndex.defaultDatabasePath) async throws {
+        public init(dbPath: URL = Sample.Index.defaultDatabasePath) async throws {
             self.dbPath = dbPath
 
             // Ensure directory exists
@@ -86,7 +86,7 @@ extension SampleIndex {
             guard sqlite3_open(dbPath.path, &dbPointer) == SQLITE_OK else {
                 let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
                 sqlite3_close(dbPointer)
-                throw SampleIndex.Error.sqliteError("Failed to open database: \(errorMessage)")
+                throw Sample.Index.Error.sqliteError("Failed to open database: \(errorMessage)")
             }
 
             database = dbPointer
@@ -94,7 +94,7 @@ extension SampleIndex {
 
         private func setSchemaVersion() async throws {
             guard let database else {
-                throw SampleIndex.Error.databaseNotInitialized
+                throw Sample.Index.Error.databaseNotInitialized
             }
 
             let sql = "PRAGMA user_version = \(Self.schemaVersion)"
@@ -103,13 +103,13 @@ extension SampleIndex {
 
             guard sqlite3_exec(database, sql, nil, nil, &errorPointer) == SQLITE_OK else {
                 let errorMessage = errorPointer.map { String(cString: $0) } ?? "Unknown error"
-                throw SampleIndex.Error.sqliteError("Failed to set schema version: \(errorMessage)")
+                throw Sample.Index.Error.sqliteError("Failed to set schema version: \(errorMessage)")
             }
         }
 
         private func createTables() async throws {
             guard let database else {
-                throw SampleIndex.Error.databaseNotInitialized
+                throw Sample.Index.Error.databaseNotInitialized
             }
 
             let sql = """
@@ -238,7 +238,7 @@ extension SampleIndex {
 
             guard sqlite3_exec(database, sql, nil, nil, &errorPointer) == SQLITE_OK else {
                 let errorMessage = errorPointer.map { String(cString: $0) } ?? "Unknown error"
-                throw SampleIndex.Error.sqliteError("Failed to create tables: \(errorMessage)")
+                throw Sample.Index.Error.sqliteError("Failed to create tables: \(errorMessage)")
             }
         }
 
@@ -247,7 +247,7 @@ extension SampleIndex {
         /// Index a sample project
         public func indexProject(_ project: Project) async throws {
             guard let database else {
-                throw SampleIndex.Error.databaseNotInitialized
+                throw Sample.Index.Error.databaseNotInitialized
             }
 
             // Insert into projects table
@@ -263,7 +263,7 @@ extension SampleIndex {
 
             guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
                 let errorMessage = String(cString: sqlite3_errmsg(database))
-                throw SampleIndex.Error.prepareFailed("Project insert: \(errorMessage)")
+                throw Sample.Index.Error.prepareFailed("Project insert: \(errorMessage)")
             }
 
             let frameworksString = project.frameworks.joined(separator: ",")
@@ -306,7 +306,7 @@ extension SampleIndex {
 
             guard sqlite3_step(statement) == SQLITE_DONE else {
                 let errorMessage = String(cString: sqlite3_errmsg(database))
-                throw SampleIndex.Error.insertFailed("Project insert: \(errorMessage)")
+                throw Sample.Index.Error.insertFailed("Project insert: \(errorMessage)")
             }
 
             // Insert into FTS5
@@ -342,7 +342,7 @@ extension SampleIndex {
         /// Index a source file
         public func indexFile(_ file: File) async throws {
             guard let database else {
-                throw SampleIndex.Error.databaseNotInitialized
+                throw Sample.Index.Error.databaseNotInitialized
             }
 
             // Insert into files table
@@ -357,7 +357,7 @@ extension SampleIndex {
 
             guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
                 let errorMessage = String(cString: sqlite3_errmsg(database))
-                throw SampleIndex.Error.prepareFailed("File insert: \(errorMessage)")
+                throw Sample.Index.Error.prepareFailed("File insert: \(errorMessage)")
             }
 
             sqlite3_bind_text(statement, 1, (file.projectId as NSString).utf8String, -1, nil)
@@ -379,7 +379,7 @@ extension SampleIndex {
 
             guard sqlite3_step(statement) == SQLITE_DONE else {
                 let errorMessage = String(cString: sqlite3_errmsg(database))
-                throw SampleIndex.Error.insertFailed("File insert: \(errorMessage)")
+                throw Sample.Index.Error.insertFailed("File insert: \(errorMessage)")
             }
 
             // Insert into FTS5
@@ -406,7 +406,7 @@ extension SampleIndex {
         /// Get the file ID for a project/path combination
         public func getFileId(projectId: String, path: String) async throws -> Int64? {
             guard let database else {
-                throw SampleIndex.Error.databaseNotInitialized
+                throw Sample.Index.Error.databaseNotInitialized
             }
 
             let sql = "SELECT id FROM files WHERE project_id = ? AND path = ?;"
@@ -436,7 +436,7 @@ extension SampleIndex {
             symbols: [ASTIndexer.Symbol]
         ) async throws {
             guard let database else {
-                throw SampleIndex.Error.databaseNotInitialized
+                throw Sample.Index.Error.databaseNotInitialized
             }
 
             let sql = """
@@ -539,7 +539,7 @@ extension SampleIndex {
             imports: [ASTIndexer.Import]
         ) async throws {
             guard let database else {
-                throw SampleIndex.Error.databaseNotInitialized
+                throw Sample.Index.Error.databaseNotInitialized
             }
 
             let sql = """
@@ -573,11 +573,11 @@ extension SampleIndex {
             limit: Int = 20
         ) async throws -> [Project] {
             guard let database else {
-                throw SampleIndex.Error.databaseNotInitialized
+                throw Sample.Index.Error.databaseNotInitialized
             }
 
             guard !query.trimmingCharacters(in: .whitespaces).isEmpty else {
-                throw SampleIndex.Error.invalidQuery("Query cannot be empty")
+                throw Sample.Index.Error.invalidQuery("Query cannot be empty")
             }
 
             // Build FTS5 query: tokenize natural language, drop
@@ -606,7 +606,7 @@ extension SampleIndex {
 
             guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
                 let errorMessage = String(cString: sqlite3_errmsg(database))
-                throw SampleIndex.Error.searchFailed("Project search: \(errorMessage)")
+                throw Sample.Index.Error.searchFailed("Project search: \(errorMessage)")
             }
 
             var paramIndex: Int32 = 1
@@ -676,11 +676,11 @@ extension SampleIndex {
             minVersion: String? = nil
         ) async throws -> [FileSearchResult] {
             guard let database else {
-                throw SampleIndex.Error.databaseNotInitialized
+                throw Sample.Index.Error.databaseNotInitialized
             }
 
             guard !query.trimmingCharacters(in: .whitespaces).isEmpty else {
-                throw SampleIndex.Error.invalidQuery("Query cannot be empty")
+                throw Sample.Index.Error.invalidQuery("Query cannot be empty")
             }
 
             // Build FTS5 query: tokenize natural language, drop
@@ -697,7 +697,7 @@ extension SampleIndex {
             // used in #220's PackageQuery.
             let platformColumn: String?
             if platform != nil, minVersion != nil {
-                platformColumn = SampleIndex.minColumn(for: platform ?? "")
+                platformColumn = Sample.Index.minColumn(for: platform ?? "")
             } else {
                 platformColumn = nil
             }
@@ -734,7 +734,7 @@ extension SampleIndex {
 
             guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
                 let errorMessage = String(cString: sqlite3_errmsg(database))
-                throw SampleIndex.Error.searchFailed("File search: \(errorMessage)")
+                throw Sample.Index.Error.searchFailed("File search: \(errorMessage)")
             }
 
             var paramIndex: Int32 = 1
@@ -786,7 +786,7 @@ extension SampleIndex {
         /// Get a project by ID
         public func getProject(id: String) async throws -> Project? {
             guard let database else {
-                throw SampleIndex.Error.databaseNotInitialized
+                throw Sample.Index.Error.databaseNotInitialized
             }
 
             let sql = """
@@ -853,7 +853,7 @@ extension SampleIndex {
         /// Get a file by project ID and path
         public func getFile(projectId: String, path: String) async throws -> File? {
             guard let database else {
-                throw SampleIndex.Error.databaseNotInitialized
+                throw Sample.Index.Error.databaseNotInitialized
             }
 
             let sql = """
@@ -901,7 +901,7 @@ extension SampleIndex {
         /// List all files in a project
         public func listFiles(projectId: String, folder: String? = nil) async throws -> [File] {
             guard let database else {
-                throw SampleIndex.Error.databaseNotInitialized
+                throw Sample.Index.Error.databaseNotInitialized
             }
 
             var sql = """
@@ -957,7 +957,7 @@ extension SampleIndex {
             limit: Int = 100
         ) async throws -> [Project] {
             guard let database else {
-                throw SampleIndex.Error.databaseNotInitialized
+                throw Sample.Index.Error.databaseNotInitialized
             }
 
             var sql = """
@@ -1025,7 +1025,7 @@ extension SampleIndex {
         /// Get project count
         public func projectCount() async throws -> Int {
             guard let database else {
-                throw SampleIndex.Error.databaseNotInitialized
+                throw Sample.Index.Error.databaseNotInitialized
             }
 
             let sql = "SELECT COUNT(*) FROM projects;"
@@ -1044,7 +1044,7 @@ extension SampleIndex {
         /// Get file count
         public func fileCount() async throws -> Int {
             guard let database else {
-                throw SampleIndex.Error.databaseNotInitialized
+                throw Sample.Index.Error.databaseNotInitialized
             }
 
             let sql = "SELECT COUNT(*) FROM files;"
@@ -1063,7 +1063,7 @@ extension SampleIndex {
         /// Get total symbol count (#81)
         public func symbolCount() async throws -> Int {
             guard let database else {
-                throw SampleIndex.Error.databaseNotInitialized
+                throw Sample.Index.Error.databaseNotInitialized
             }
 
             let sql = "SELECT COUNT(*) FROM file_symbols;"
@@ -1082,7 +1082,7 @@ extension SampleIndex {
         /// Get total import count (#81)
         public func importCount() async throws -> Int {
             guard let database else {
-                throw SampleIndex.Error.databaseNotInitialized
+                throw Sample.Index.Error.databaseNotInitialized
             }
 
             let sql = "SELECT COUNT(*) FROM file_imports;"
@@ -1101,7 +1101,7 @@ extension SampleIndex {
         /// Clear all data
         public func clearAll() async throws {
             guard let database else {
-                throw SampleIndex.Error.databaseNotInitialized
+                throw Sample.Index.Error.databaseNotInitialized
             }
 
             let sql = """
@@ -1116,14 +1116,14 @@ extension SampleIndex {
 
             guard sqlite3_exec(database, sql, nil, nil, &errorPointer) == SQLITE_OK else {
                 let errorMessage = errorPointer.map { String(cString: $0) } ?? "Unknown error"
-                throw SampleIndex.Error.sqliteError("Failed to clear: \(errorMessage)")
+                throw Sample.Index.Error.sqliteError("Failed to clear: \(errorMessage)")
             }
         }
 
         /// Delete a project and its files
         public func deleteProject(id: String) async throws {
             guard let database else {
-                throw SampleIndex.Error.databaseNotInitialized
+                throw Sample.Index.Error.databaseNotInitialized
             }
 
             // Delete files first (FTS, then main table)

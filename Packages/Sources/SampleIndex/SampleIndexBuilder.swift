@@ -10,7 +10,7 @@ import SharedCore
 // Justification: This actor manages complete ZIP extraction and indexing workflow.
 // Breaking into smaller types would fragment the cohesive indexing logic.
 
-extension SampleIndex {
+extension Sample.Index {
     /// Builds the sample index by extracting ZIP files and indexing their contents
     public actor Builder {
         private let database: Database
@@ -22,7 +22,7 @@ extension SampleIndex {
 
         public init(
             database: Database,
-            sampleCodeDirectory: URL = SampleIndex.defaultSampleCodeDirectory
+            sampleCodeDirectory: URL = Sample.Index.defaultSampleCodeDirectory
         ) {
             self.database = database
             self.sampleCodeDirectory = sampleCodeDirectory
@@ -273,7 +273,7 @@ extension SampleIndex {
             // occurrences while we're already walking the swift sources.
             // Same shape as #219's per-package `availability.json`.
             // Phase 2 also persists each file's attrs into samples.db.
-            var fileAvailability: [SampleAvailabilitySidecar.FileEntry] = []
+            var fileAvailability: [Sample.Index.AvailabilitySidecar.FileEntry] = []
             let encoder = JSONEncoder()
             for file in files {
                 // Compute the per-file @available JSON before indexFile so
@@ -287,7 +287,7 @@ extension SampleIndex {
                             availableAttrsJSON = String(data: data, encoding: .utf8)
                         }
                         fileAvailability.append(
-                            SampleAvailabilitySidecar.FileEntry(
+                            Sample.Index.AvailabilitySidecar.FileEntry(
                                 relpath: file.path,
                                 attributes: attrs
                             )
@@ -347,11 +347,11 @@ extension SampleIndex {
             nextTo zipURL: URL,
             projectId: String,
             deploymentTargets: [String: String],
-            fileAvailability: [SampleAvailabilitySidecar.FileEntry]
+            fileAvailability: [Sample.Index.AvailabilitySidecar.FileEntry]
         ) throws {
             let sortedFiles = fileAvailability.sorted { $0.relpath < $1.relpath }
             let totalAttrs = sortedFiles.reduce(0) { $0 + $1.attributes.count }
-            let sidecar = SampleAvailabilitySidecar(
+            let sidecar = Sample.Index.AvailabilitySidecar(
                 version: "1.0",
                 annotatedAt: Date(),
                 projectId: projectId,
@@ -643,7 +643,7 @@ extension SampleIndex {
                 )
 
                 // Skip non-indexable files
-                guard SampleIndex.shouldIndex(path: relativePath) else {
+                guard Sample.Index.shouldIndex(path: relativePath) else {
                     continue
                 }
 

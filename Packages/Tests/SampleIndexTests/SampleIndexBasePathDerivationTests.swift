@@ -16,16 +16,16 @@ struct SampleIndexBasePathDerivationTests {
         base.path.hasSuffix("/") ? base.path : base.path + "/"
     }
 
-    @Test("SampleIndex.defaultDatabasePath sits under defaultBaseDirectory")
+    @Test("Sample.Index.defaultDatabasePath sits under defaultBaseDirectory")
     func samplesDatabaseUnderBase() {
-        let path = SampleIndex.defaultDatabasePath
+        let path = Sample.Index.defaultDatabasePath
         #expect(path.path.hasPrefix(basePrefix))
         #expect(path.lastPathComponent == "samples.db")
     }
 
-    @Test("SampleIndex.defaultSampleCodeDirectory sits under defaultBaseDirectory")
+    @Test("Sample.Index.defaultSampleCodeDirectory sits under defaultBaseDirectory")
     func sampleCodeDirUnderBase() {
-        let path = SampleIndex.defaultSampleCodeDirectory
+        let path = Sample.Index.defaultSampleCodeDirectory
         #expect(path.path.hasPrefix(basePrefix))
         #expect(path.lastPathComponent == "sample-code")
     }

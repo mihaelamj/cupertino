@@ -13,7 +13,7 @@ private struct ProjectJSONOutput: Encodable {
     let frameworks: [String]
     let fileCount: Int
 
-    init(from project: SampleIndex.Project) {
+    init(from project: Sample.Index.Project) {
         id = project.id
         title = project.title
         description = project.description
@@ -22,14 +22,14 @@ private struct ProjectJSONOutput: Encodable {
     }
 }
 
-/// File output for JSON encoding (from SampleIndex.File)
+/// File output for JSON encoding (from Sample.Index.File)
 private struct FileJSONOutput: Encodable {
     let projectId: String
     let path: String
     let filename: String
     let content: String
 
-    init(from file: SampleIndex.File) {
+    init(from file: Sample.Index.File) {
         projectId = file.projectId
         path = file.path
         filename = file.filename
@@ -45,7 +45,7 @@ private struct FileSearchJSONOutput: Encodable {
     let snippet: String
     let rank: Double
 
-    init(from result: SampleIndex.Database.FileSearchResult) {
+    init(from result: Sample.Index.Database.FileSearchResult) {
         projectId = result.projectId
         path = result.path
         filename = result.filename
@@ -91,7 +91,7 @@ public struct SampleSearchJSONFormatter: ResultFormatter {
 public struct SampleListJSONFormatter: ResultFormatter {
     public init() {}
 
-    public func format(_ projects: [SampleIndex.Project]) -> String {
+    public func format(_ projects: [Sample.Index.Project]) -> String {
         let output = projects.map { ProjectJSONOutput(from: $0) }
         return encodeJSON(output)
     }
@@ -103,7 +103,7 @@ public struct SampleListJSONFormatter: ResultFormatter {
 public struct SampleProjectJSONFormatter: ResultFormatter {
     public init() {}
 
-    public func format(_ project: SampleIndex.Project) -> String {
+    public func format(_ project: Sample.Index.Project) -> String {
         encodeJSON(ProjectJSONOutput(from: project))
     }
 }
@@ -114,7 +114,7 @@ public struct SampleProjectJSONFormatter: ResultFormatter {
 public struct SampleFileJSONFormatter: ResultFormatter {
     public init() {}
 
-    public func format(_ file: SampleIndex.File) -> String {
+    public func format(_ file: Sample.Index.File) -> String {
         encodeJSON(FileJSONOutput(from: file))
     }
 }

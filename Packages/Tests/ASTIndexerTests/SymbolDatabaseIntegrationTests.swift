@@ -5,6 +5,7 @@ import ASTIndexer
 import Foundation
 import SampleIndex
 import Search
+import SharedConstants
 import SharedCore
 import Testing
 
@@ -128,13 +129,13 @@ struct SearchDbSymbolIntegrationTests {
 @Suite("Samples.db Symbol Integration", .serialized)
 struct SamplesDbSymbolIntegrationTests {
     /// Create a test sample database
-    private func createTestSampleDatabase() async throws -> (SampleIndex.Database, () -> Void) {
+    private func createTestSampleDatabase() async throws -> (Sample.Index.Database, () -> Void) {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("sample-symbol-test-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let dbPath = tempDir.appendingPathComponent("samples.db")
-        let database = try await SampleIndex.Database(dbPath: dbPath)
+        let database = try await Sample.Index.Database(dbPath: dbPath)
 
         let cleanup: () -> Void = {
             try? FileManager.default.removeItem(at: tempDir)
@@ -149,7 +150,7 @@ struct SamplesDbSymbolIntegrationTests {
         defer { cleanup() }
 
         // Create project
-        let project = SampleIndex.Project(
+        let project = Sample.Index.Project(
             id: "observable-sample",
             title: "Observable Sample",
             description: "Sample showing @Observable usage",
@@ -182,7 +183,7 @@ struct SamplesDbSymbolIntegrationTests {
         }
         """
 
-        let file = SampleIndex.File(
+        let file = Sample.Index.File(
             projectId: "observable-sample",
             path: "Sources/AppState.swift",
             content: swiftSource
@@ -220,7 +221,7 @@ struct SamplesDbSymbolIntegrationTests {
         let (database, cleanup) = try await createTestSampleDatabase()
         defer { cleanup() }
 
-        let project = SampleIndex.Project(
+        let project = Sample.Index.Project(
             id: "multi-file-sample",
             title: "Multi-File Sample",
             description: "Sample with multiple Swift files",
@@ -270,7 +271,7 @@ struct SamplesDbSymbolIntegrationTests {
         var totalSymbols = 0
 
         for (path, content) in files {
-            let file = SampleIndex.File(
+            let file = Sample.Index.File(
                 projectId: "multi-file-sample",
                 path: path,
                 content: content

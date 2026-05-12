@@ -66,12 +66,12 @@ extension Command {
             if let sampleDb {
                 return URL(fileURLWithPath: sampleDb).expandingTildeInPath
             }
-            return SampleIndex.defaultDatabasePath
+            return Sample.Index.defaultDatabasePath
         }
 
         // MARK: - Output Formatting
 
-        private func outputText(_ project: SampleIndex.Project, files: [SampleIndex.File]) {
+        private func outputText(_ project: Sample.Index.Project, files: [Sample.Index.File]) {
             Logging.Log.output(project.title)
             Logging.Log.output(String(repeating: "=", count: project.title.count))
             Logging.Log.output("")
@@ -112,7 +112,7 @@ extension Command {
             Logging.Log.output("Tip: Use 'cupertino read-sample-file \(project.id) <path>' to view source code")
         }
 
-        private func outputJSON(_ project: SampleIndex.Project, files: [SampleIndex.File]) {
+        private func outputJSON(_ project: Sample.Index.Project, files: [Sample.Index.File]) {
             struct Output: Encodable {
                 let id: String
                 let title: String
@@ -150,7 +150,7 @@ extension Command {
             }
         }
 
-        private func outputMarkdown(_ project: SampleIndex.Project, files: [SampleIndex.File]) {
+        private func outputMarkdown(_ project: Sample.Index.Project, files: [Sample.Index.File]) {
             Logging.Log.output("# \(project.title)\n")
             Logging.Log.output("**Project ID:** `\(project.id)`\n")
 

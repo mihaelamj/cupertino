@@ -80,7 +80,7 @@ public struct SampleListTextFormatter: ResultFormatter {
         self.totalCount = totalCount
     }
 
-    public func format(_ projects: [SampleIndex.Project]) -> String {
+    public func format(_ projects: [Sample.Index.Project]) -> String {
         if projects.isEmpty {
             return "No sample projects found. Run 'cupertino save --samples' to build the sample index."
         }
@@ -108,7 +108,7 @@ public struct SampleListTextFormatter: ResultFormatter {
 public struct SampleProjectTextFormatter: ResultFormatter {
     public init() {}
 
-    public func format(_ project: SampleIndex.Project) -> String {
+    public func format(_ project: Sample.Index.Project) -> String {
         var output = "Project: \(project.title)\n"
         output += "ID: \(project.id)\n"
         output += "Frameworks: \(project.frameworks.joined(separator: ", "))\n"

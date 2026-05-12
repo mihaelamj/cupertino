@@ -1,8 +1,9 @@
 import Foundation
+import SharedConstants
 
 // MARK: - Sample Index Errors
 
-extension SampleIndex {
+extension Sample.Index {
     /// Errors that can occur during sample code indexing and search
     public enum Error: Swift.Error, LocalizedError, Sendable {
         case databaseNotInitialized

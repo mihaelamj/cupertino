@@ -1,5 +1,6 @@
 import Foundation
 @testable import SampleIndex
+import SharedConstants
 import Testing
 
 @Suite("SampleIndex Tests")
@@ -7,7 +8,7 @@ struct SampleIndexTests {
     @Test("Project ID extraction from filename")
     func projectIdFromFilename() {
         // Test that the File model extracts path components correctly
-        let file = SampleIndex.File(
+        let file = Sample.Index.File(
             projectId: "test-project",
             path: "Sources/Views/ContentView.swift",
             content: "import SwiftUI"
@@ -22,19 +23,19 @@ struct SampleIndexTests {
     @Test("Indexable file extensions")
     func indexableExtensions() {
         // Swift files should be indexed
-        #expect(SampleIndex.shouldIndex(path: "main.swift"))
-        #expect(SampleIndex.shouldIndex(path: "ViewController.m"))
-        #expect(SampleIndex.shouldIndex(path: "Header.h"))
+        #expect(Sample.Index.shouldIndex(path: "main.swift"))
+        #expect(Sample.Index.shouldIndex(path: "ViewController.m"))
+        #expect(Sample.Index.shouldIndex(path: "Header.h"))
 
         // Binary files should not be indexed
-        #expect(!SampleIndex.shouldIndex(path: "image.png"))
-        #expect(!SampleIndex.shouldIndex(path: "model.usdz"))
-        #expect(!SampleIndex.shouldIndex(path: "binary.dat"))
+        #expect(!Sample.Index.shouldIndex(path: "image.png"))
+        #expect(!Sample.Index.shouldIndex(path: "model.usdz"))
+        #expect(!Sample.Index.shouldIndex(path: "binary.dat"))
     }
 
     @Test("Project model creation")
     func projectModel() {
-        let project = SampleIndex.Project(
+        let project = Sample.Index.Project(
             id: "sample-app",
             title: "Sample App",
             description: "A sample application",
@@ -58,7 +59,7 @@ struct SampleIndexTests {
 struct SamplesAvailabilityPersistenceTests {
     @Test("Project carries deployment targets + availability source")
     func projectInitWithAvailability() {
-        let project = SampleIndex.Project(
+        let project = Sample.Index.Project(
             id: "swiftui-list",
             title: "SwiftUI List",
             description: "Sample showing List",
@@ -78,7 +79,7 @@ struct SamplesAvailabilityPersistenceTests {
 
     @Test("Project default init leaves availability empty + nil")
     func projectInitWithoutAvailability() {
-        let project = SampleIndex.Project(
+        let project = Sample.Index.Project(
             id: "x",
             title: "x",
             description: "x",
@@ -96,7 +97,7 @@ struct SamplesAvailabilityPersistenceTests {
     @Test("File carries availableAttrsJSON when supplied")
     func fileInitWithAttrs() {
         let json = "[{\"line\":12,\"raw\":\"(iOS 17, *)\",\"platforms\":[\"iOS\",\"*\"]}]"
-        let file = SampleIndex.File(
+        let file = Sample.Index.File(
             projectId: "p",
             path: "Sources/Foo.swift",
             content: "import SwiftUI",
@@ -107,7 +108,7 @@ struct SamplesAvailabilityPersistenceTests {
 
     @Test("File default init leaves availableAttrsJSON nil")
     func fileInitWithoutAttrs() {
-        let file = SampleIndex.File(
+        let file = Sample.Index.File(
             projectId: "p",
             path: "Sources/Foo.swift",
             content: "import SwiftUI"
@@ -121,10 +122,10 @@ struct SamplesAvailabilityPersistenceTests {
             .appendingPathComponent("samples-roundtrip-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: dbURL) }
 
-        let database = try await SampleIndex.Database(dbPath: dbURL)
+        let database = try await Sample.Index.Database(dbPath: dbURL)
         defer { Task { await database.disconnect() } }
 
-        let project = SampleIndex.Project(
+        let project = Sample.Index.Project(
             id: "test-roundtrip",
             title: "Test",
             description: "Test desc",
@@ -150,10 +151,10 @@ struct SamplesAvailabilityPersistenceTests {
             .appendingPathComponent("samples-file-roundtrip-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: dbURL) }
 
-        let database = try await SampleIndex.Database(dbPath: dbURL)
+        let database = try await Sample.Index.Database(dbPath: dbURL)
         defer { Task { await database.disconnect() } }
 
-        let project = SampleIndex.Project(
+        let project = Sample.Index.Project(
             id: "p1",
             title: "x",
             description: "x",
@@ -167,7 +168,7 @@ struct SamplesAvailabilityPersistenceTests {
         try await database.indexProject(project)
 
         let json = "[{\"line\":7,\"raw\":\"(iOS 17, *)\",\"platforms\":[\"iOS\",\"*\"]}]"
-        let file = SampleIndex.File(
+        let file = Sample.Index.File(
             projectId: "p1",
             path: "Sources/Foo.swift",
             content: "@available(iOS 17, *) func foo() {}",

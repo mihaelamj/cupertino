@@ -80,7 +80,7 @@ public struct SampleListMarkdownFormatter: ResultFormatter {
         self.framework = framework
     }
 
-    public func format(_ projects: [SampleIndex.Project]) -> String {
+    public func format(_ projects: [Sample.Index.Project]) -> String {
         var output = "# Sample Projects\n\n"
 
         if let framework {
@@ -118,7 +118,7 @@ public struct SampleListMarkdownFormatter: ResultFormatter {
 public struct SampleProjectMarkdownFormatter: ResultFormatter {
     public init() {}
 
-    public func format(_ project: SampleIndex.Project) -> String {
+    public func format(_ project: Sample.Index.Project) -> String {
         var output = "# \(project.title)\n\n"
         output += "- **ID:** `\(project.id)`\n"
         output += "- **Frameworks:** \(project.frameworks.joined(separator: ", "))\n"
@@ -142,7 +142,7 @@ public struct SampleProjectMarkdownFormatter: ResultFormatter {
 public struct SampleFileMarkdownFormatter: ResultFormatter {
     public init() {}
 
-    public func format(_ file: SampleIndex.File) -> String {
+    public func format(_ file: Sample.Index.File) -> String {
         // Determine language for syntax highlighting
         let language = file.filename.hasSuffix(".swift") ? "swift" :
             file.filename.hasSuffix(".m") ? "objc" :

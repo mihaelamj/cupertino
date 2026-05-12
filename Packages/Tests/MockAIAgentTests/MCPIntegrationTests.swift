@@ -370,7 +370,7 @@ struct CupertinoServerFixture {
         // Ensure samples.db exists at the production path so
         // `Command.Serve.checkForData()` sees data. Empty schema is fine —
         // these tests check MCP framing, not query results.
-        let sampleDBPath = SampleIndex.defaultDatabasePath
+        let sampleDBPath = Sample.Index.defaultDatabasePath
         if !FileManager.default.fileExists(atPath: sampleDBPath.path) {
             // Synchronous setup of the schema via a blocking task hop.
             // Swift Testing's @Test functions are async, so we can spin up
@@ -378,7 +378,7 @@ struct CupertinoServerFixture {
             // cupertino reads it. Use a dispatch semaphore.
             let sem = DispatchSemaphore(value: 0)
             Task {
-                if let db = try? await SampleIndex.Database(dbPath: sampleDBPath) {
+                if let db = try? await Sample.Index.Database(dbPath: sampleDBPath) {
                     await db.disconnect()
                 }
                 sem.signal()
