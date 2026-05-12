@@ -6,16 +6,16 @@ import SharedCore
 // MARK: - Text Search Result Formatter
 
 /// Formats search results as plain text for CLI output
-public struct TextSearchResultFormatter: ResultFormatter {
+public struct TextSearchResultFormatter: Services.Formatters.ResultFormatter {
     private let query: String
     private let source: String?
-    private let config: SearchResultFormatConfig
+    private let config: Services.Formatters.SearchResultFormatConfig
     private let teasers: TeaserResults?
 
     public init(
         query: String,
         source: String? = nil,
-        config: SearchResultFormatConfig = .cliDefault,
+        config: Services.Formatters.SearchResultFormatConfig = .cliDefault,
         teasers: TeaserResults? = nil
     ) {
         self.query = query
@@ -84,7 +84,7 @@ public struct TextSearchResultFormatter: ResultFormatter {
 // MARK: - Frameworks Text Formatter
 
 /// Formats framework list as plain text for CLI output
-public struct FrameworksTextFormatter: ResultFormatter {
+public struct FrameworksTextFormatter: Services.Formatters.ResultFormatter {
     private let totalDocs: Int
 
     public init(totalDocs: Int) {

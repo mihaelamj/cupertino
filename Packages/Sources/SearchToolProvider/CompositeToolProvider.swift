@@ -456,9 +456,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         )
 
         // Configure empty message to suggest archive if not already searching it
-        var config = SearchResultFormatConfig.mcpDefault
+        var config = Services.Formatters.SearchResultFormatConfig.mcpDefault
         if results.isEmpty, !includeArchive, source != Shared.Constants.SourcePrefix.appleArchive {
-            config = SearchResultFormatConfig(
+            config = Services.Formatters.SearchResultFormatConfig(
                 showScore: true,
                 showWordCount: true,
                 showSource: false,

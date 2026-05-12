@@ -5,7 +5,7 @@ import SharedCore
 // MARK: - JSON Search Result Formatter
 
 /// Formats search results as JSON for CLI --format json
-public struct JSONSearchResultFormatter: ResultFormatter {
+public struct JSONSearchResultFormatter: Services.Formatters.ResultFormatter {
     public init() {}
 
     public func format(_ results: [Search.Result]) -> String {
@@ -23,7 +23,7 @@ public struct JSONSearchResultFormatter: ResultFormatter {
 // MARK: - Frameworks JSON Formatter
 
 /// Formats framework list as JSON
-public struct FrameworksJSONFormatter: ResultFormatter {
+public struct FrameworksJSONFormatter: Services.Formatters.ResultFormatter {
     public init() {}
 
     public func format(_ frameworks: [String: Int]) -> String {
