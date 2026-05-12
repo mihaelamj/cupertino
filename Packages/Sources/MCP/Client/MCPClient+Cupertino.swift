@@ -3,12 +3,12 @@ import MCP
 
 // MARK: - Cupertino Convenience Methods
 
-extension MCPClient {
+extension MCP.Client {
     /// Create an MCP client configured for the cupertino server
     /// - Parameter executablePath: Path to cupertino executable (defaults to searching in common locations)
-    public static func cupertino(executablePath: String? = nil) -> MCPClient {
+    public static func cupertino(executablePath: String? = nil) -> MCP.Client {
         let path = executablePath ?? findCupertinoExecutable()
-        return MCPClient(serverCommand: path, serverArguments: ["serve"])
+        return MCP.Client(serverCommand: path, serverArguments: ["serve"])
     }
 
     /// Search Apple documentation

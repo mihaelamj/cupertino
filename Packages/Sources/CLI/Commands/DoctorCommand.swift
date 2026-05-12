@@ -399,7 +399,7 @@ extension Command {
 
         private func checkResourceProviders() -> Bool {
             Logging.Log.output("🔧 Providers")
-            Logging.Log.output("   ✓ DocsResourceProvider: available")
+            Logging.Log.output("   ✓ MCP.Support.DocsResourceProvider: available")
             Logging.Log.output("   ✓ SearchToolProvider: available")
             Logging.Log.output("")
             return true

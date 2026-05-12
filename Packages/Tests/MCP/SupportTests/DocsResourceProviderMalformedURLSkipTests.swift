@@ -9,7 +9,7 @@ import SharedModels
 import Testing
 
 // Covers the malformed-URL skip path added to
-// `DocsResourceProvider.listResources` in PR #288: a row in
+// `MCP.Support.DocsResourceProvider.listResources` in PR #288: a row in
 // `CrawlMetadata.pages` whose URL key fails `URL(string:)` is skipped
 // rather than crashing the listing call. The previous force-unwrap form
 // would crash on the same input.
@@ -19,15 +19,15 @@ import Testing
 // a `metadata.json` fixture to whatever directory the configuration is
 // pointing at.
 
-@Suite("DocsResourceProvider malformed-URL skip", .serialized)
+@Suite("MCP.Support.DocsResourceProvider malformed-URL skip", .serialized)
 struct DocsResourceProviderMalformedURLSkipTests {
-    private func makeProvider(in tempRoot: URL) -> DocsResourceProvider {
+    private func makeProvider(in tempRoot: URL) -> MCP.Support.DocsResourceProvider {
         // All-defaults Configuration is fine: we inject metadata via the
         // test seam, so the provider never touches the on-disk paths the
         // configuration would otherwise point at.
         let evolutionDir = tempRoot.appendingPathComponent("swift-evolution")
         let archiveDir = tempRoot.appendingPathComponent("archive")
-        return DocsResourceProvider(
+        return MCP.Support.DocsResourceProvider(
             configuration: Shared.Configuration(),
             evolutionDirectory: evolutionDir,
             archiveDirectory: archiveDir,

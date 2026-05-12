@@ -1,3 +1,4 @@
+import MCP
 @testable import MCPClient
 import Testing
 
@@ -5,21 +6,21 @@ import Testing
 struct MCPClientTests {
     @Test("Initialize with server command")
     func initWithCommand() async {
-        let client = MCPClient(serverCommand: "cupertino", serverArguments: ["serve"])
+        let client = MCP.Client(serverCommand: "cupertino", serverArguments: ["serve"])
         let connected = await client.isConnected
         #expect(connected == false)
     }
 
     @Test("Initialize with full command array")
     func initWithCommandArray() async {
-        let client = MCPClient(command: ["npx", "-y", "@modelcontextprotocol/server-memory"])
+        let client = MCP.Client(command: ["npx", "-y", "@modelcontextprotocol/server-memory"])
         let connected = await client.isConnected
         #expect(connected == false)
     }
 
     @Test("Create cupertino client")
     func createCupertinoClient() async {
-        let client = MCPClient.cupertino()
+        let client = MCP.Client.cupertino()
         let connected = await client.isConnected
         #expect(connected == false)
     }

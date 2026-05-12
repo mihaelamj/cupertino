@@ -68,7 +68,7 @@ struct MCPCommandTests {
             changeDetection: Shared.ChangeDetectionConfiguration(outputDirectory: tempDir),
             output: Shared.OutputConfiguration()
         )
-        let provider = DocsResourceProvider(configuration: config)
+        let provider = MCP.Support.DocsResourceProvider(configuration: config)
 
         await server.registerResourceProvider(provider)
 
@@ -112,7 +112,7 @@ struct MCPCommandTests {
             changeDetection: Shared.ChangeDetectionConfiguration(),
             output: Shared.OutputConfiguration()
         )
-        let provider = DocsResourceProvider(configuration: config)
+        let provider = MCP.Support.DocsResourceProvider(configuration: config)
 
         // Read resource
         let result = try await provider.readResource(uri: "apple-docs://swift/documentation_swift")
@@ -242,7 +242,7 @@ struct MCPCommandTests {
             changeDetection: Shared.ChangeDetectionConfiguration(),
             output: Shared.OutputConfiguration()
         )
-        let provider = DocsResourceProvider(configuration: config, evolutionDirectory: tempDir)
+        let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir)
 
         // List resources
         let listResult = try await provider.listResources(cursor: nil as String?)
@@ -294,7 +294,7 @@ struct MCPCommandTests {
             changeDetection: Shared.ChangeDetectionConfiguration(),
             output: Shared.OutputConfiguration()
         )
-        let provider = DocsResourceProvider(configuration: config, evolutionDirectory: tempDir)
+        let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir)
 
         // List resources — should include both SE and ST
         let listResult = try await provider.listResources(cursor: nil as String?)
@@ -330,7 +330,7 @@ struct MCPCommandTests {
             changeDetection: Shared.ChangeDetectionConfiguration(),
             output: Shared.OutputConfiguration()
         )
-        let provider = DocsResourceProvider(configuration: config)
+        let provider = MCP.Support.DocsResourceProvider(configuration: config)
 
         // Try to read non-existent resource
         await #expect(throws: ToolError.self) {
@@ -405,7 +405,7 @@ struct MCPServerIntegrationTests {
             changeDetection: Shared.ChangeDetectionConfiguration(),
             output: Shared.OutputConfiguration()
         )
-        let docsProvider = DocsResourceProvider(configuration: mcpConfig)
+        let docsProvider = MCP.Support.DocsResourceProvider(configuration: mcpConfig)
         let searchProvider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: nil)
 
         await server.registerResourceProvider(docsProvider)

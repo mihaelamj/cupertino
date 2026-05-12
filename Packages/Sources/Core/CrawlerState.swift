@@ -28,7 +28,7 @@ public actor CrawlerState {
                     // Cross-machine portability: PageMetadata.filePath is an
                     // absolute string captured on the writing host. After rsync
                     // to a machine with a different home dir, those strings
-                    // point at nothing — SearchIndexBuilder + DocsResourceProvider
+                    // point at nothing — SearchIndexBuilder + MCP.Support.DocsResourceProvider
                     // would silently fail to read each page, and our own
                     // validateMetadata would have already wiped crawlState.
                     // Rebase on load so all downstream consumers see paths

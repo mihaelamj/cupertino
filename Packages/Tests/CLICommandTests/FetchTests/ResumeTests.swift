@@ -728,7 +728,7 @@ struct ResumeAndStartCleanTests {
     // current `metadataFile`'s parent directory + framework + basename, so:
     //   * `validateMetadata` doesn't false-negative and wipe the saved session
     //   * `SearchIndexBuilder` reads pages from the right place
-    //   * `DocsResourceProvider` resolves correctly
+    //   * `MCP.Support.DocsResourceProvider` resolves correctly
 
     private static func writeFixturePagesAndFile(
         outputDir: URL,

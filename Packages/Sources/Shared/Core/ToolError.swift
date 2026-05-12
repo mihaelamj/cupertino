@@ -4,7 +4,7 @@ import Foundation
 
 /// Unified error type for MCP tool and resource providers.
 /// Consolidates error handling across DocumentationToolProvider, SampleCodeToolProvider,
-/// CompositeToolProvider, and DocsResourceProvider.
+/// CompositeToolProvider, and MCP.Support.DocsResourceProvider.
 public enum ToolError: Error, LocalizedError, Sendable {
     /// Unknown tool name requested
     case unknownTool(String)
