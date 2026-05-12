@@ -4,7 +4,9 @@ import Logging
 import SampleIndex
 import Search
 import Services
-import Shared
+import SharedCore
+import SharedConstants
+import SharedUtils
 
 // MARK: - SmartQuery fan-out helpers (#239)
 

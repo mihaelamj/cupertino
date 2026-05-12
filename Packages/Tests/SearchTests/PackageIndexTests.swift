@@ -2,7 +2,7 @@
 @testable import Core
 import Foundation
 @testable import Search
-import Shared
+import SharedCore
 import SQLite3
 import Testing
 

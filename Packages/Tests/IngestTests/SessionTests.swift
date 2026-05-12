@@ -1,7 +1,8 @@
 import Foundation
 @testable import Ingest
-@testable import Shared
+@testable import SharedCore
 import Testing
+import SharedConstants
 
 // MARK: - Ingest.Session smoke tests (#247 sub-PR 4a)
 

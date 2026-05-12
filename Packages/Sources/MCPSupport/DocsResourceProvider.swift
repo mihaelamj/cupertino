@@ -3,7 +3,11 @@ import Logging
 import MCP
 import MCPSharedTools
 import Search
-import Shared
+import SharedCore
+import SharedConfiguration
+import SharedConstants
+import SharedModels
+import SharedUtils
 
 // MARK: - Documentation Resource Provider
 

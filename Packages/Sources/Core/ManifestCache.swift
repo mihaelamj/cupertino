@@ -1,5 +1,5 @@
 import Foundation
-import Shared
+import SharedCore
 
 extension Core {
     /// Disk cache for fetched `Package.swift` / `Package.resolved` files, keyed by

@@ -1,5 +1,7 @@
 import Foundation
-import Shared
+import SharedCore
+import SharedConstants
+import SharedUtils
 
 extension Indexer {
     /// Pre-write inspection of the on-disk corpus state. Surfaces missing

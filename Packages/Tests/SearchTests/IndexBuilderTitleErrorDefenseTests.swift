@@ -1,7 +1,9 @@
 import Foundation
 @testable import Search
-import Shared
+import SharedCore
 import Testing
+import SharedModels
+import SharedUtils
 
 // Truth-table coverage for `Search.IndexBuilder.titleLooksLikeHTTPErrorTemplate`,
 // the indexer-side defense added as a belt-and-suspenders to PR #289's

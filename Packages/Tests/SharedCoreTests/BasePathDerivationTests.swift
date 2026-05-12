@@ -1,5 +1,6 @@
 import Foundation
-@testable import Shared
+import SharedConstants
+@testable import SharedCore
 import Testing
 
 /// Contract test for #211: every default path Cupertino exposes must derive

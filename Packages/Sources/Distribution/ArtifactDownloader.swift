@@ -1,5 +1,6 @@
 import Foundation
-import Shared
+import SharedCore
+import SharedConstants
 
 extension Distribution {
     /// Async file downloader with a progress callback. The callback fires

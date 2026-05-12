@@ -1,6 +1,7 @@
 import ArgumentParser
 import Darwin
-import Shared
+import SharedCore
+import SharedConstants
 
 // MARK: - Cupertino CLI
 

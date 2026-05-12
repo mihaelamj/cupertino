@@ -1,6 +1,7 @@
 import Foundation
-import Shared
+import SharedCore
 import SQLite3
+import SharedConstants
 
 extension Search.Index {
     func detectLanguage(from content: String) -> String {

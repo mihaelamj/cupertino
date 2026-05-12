@@ -1,7 +1,8 @@
 import MCP
 import MCPSharedTools
-import Shared
+import SharedCore
 import Testing
+import SharedConstants
 
 @Suite("ArgumentExtractor")
 struct ArgumentExtractorTests {

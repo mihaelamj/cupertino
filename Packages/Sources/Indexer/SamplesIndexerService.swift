@@ -1,7 +1,7 @@
 import Core
 import Foundation
 import SampleIndex
-import Shared
+import SharedCore
 
 extension Indexer {
     /// Build `samples.db` from extracted sample-code zips at

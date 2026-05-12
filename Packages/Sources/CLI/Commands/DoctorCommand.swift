@@ -9,7 +9,9 @@ import MCPSupport
 import SampleIndex
 import Search
 import SearchToolProvider
-import Shared
+import SharedCore
+import SharedConstants
+import SharedUtils
 
 // MARK: - Doctor Command
 

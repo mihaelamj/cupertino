@@ -1,6 +1,8 @@
 import Foundation
 import Logging
-import Shared
+import SharedCore
+import SharedConstants
+import SharedModels
 
 // MARK: - Sample Code Cleaner
 

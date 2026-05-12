@@ -1,5 +1,7 @@
 import Foundation
-import Shared
+import SharedConstants
+import SharedCore
+import SharedUtils
 import Testing
 
 // Direct coverage for the `URL.knownGood(_:file:line:)` helper introduced in

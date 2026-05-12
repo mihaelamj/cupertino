@@ -1,6 +1,6 @@
 import ASTIndexer
 import Foundation
-import Shared
+import SharedCore
 
 extension Core {
     /// Walks a downloaded package on disk and writes an `availability.json`

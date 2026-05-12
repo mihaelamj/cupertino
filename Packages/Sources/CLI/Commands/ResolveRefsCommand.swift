@@ -2,12 +2,14 @@ import ArgumentParser
 import Core
 import Foundation
 import Logging
-import Shared
+import SharedCore
 #if canImport(AppKit)
 import AppKit
 #endif
 #if canImport(WebKit)
 import WebKit
+import SharedModels
+import SharedUtils
 #endif
 
 // MARK: - Resolve-Refs Command

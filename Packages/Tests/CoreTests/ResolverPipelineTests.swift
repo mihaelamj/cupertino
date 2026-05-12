@@ -1,8 +1,10 @@
 // swiftlint:disable identifier_name use_data_constructor_over_string_member non_optional_string_data_conversion
 @testable import Core
 import Foundation
-import Shared
+import SharedCore
 import Testing
+import SharedConstants
+import SharedModels
 
 // MARK: - Checksum stability
 

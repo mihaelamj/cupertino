@@ -1,6 +1,9 @@
 import Foundation
 import Logging
-import Shared
+import SharedCore
+import SharedConstants
+import SharedModels
+import SharedUtils
 
 // MARK: - Swift Evolution Crawler
 

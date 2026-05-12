@@ -1,7 +1,8 @@
 import ASTIndexer
 import Foundation
 import OSLog
-import Shared
+import SharedCore
+import SharedConstants
 
 // MARK: - Sample Index Builder
 

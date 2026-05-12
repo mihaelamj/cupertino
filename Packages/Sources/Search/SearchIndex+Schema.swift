@@ -1,5 +1,5 @@
 import Foundation
-import Shared
+import SharedCore
 import SQLite3
 
 // swiftlint:disable function_body_length

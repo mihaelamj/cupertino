@@ -2,7 +2,9 @@ import Foundation
 import Indexer
 import Logging
 import SampleIndex
-import Shared
+import SharedCore
+import SharedConstants
+import SharedUtils
 
 // MARK: - Indexer dispatch + progress rendering (#244)
 

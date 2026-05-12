@@ -1,7 +1,9 @@
 import ASTIndexer
 import Foundation
-import Shared
+import SharedCore
 import SQLite3
+import SharedConstants
+import SharedModels
 
 // MARK: - Search Index
 

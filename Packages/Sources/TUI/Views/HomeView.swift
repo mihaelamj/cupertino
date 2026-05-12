@@ -1,5 +1,7 @@
 import Foundation
-import Shared
+import SharedCore
+import SharedUtils
+import SharedConstants
 
 struct MenuItem {
     let key: String

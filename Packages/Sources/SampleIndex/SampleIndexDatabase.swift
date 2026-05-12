@@ -1,7 +1,9 @@
 import ASTIndexer
 import Foundation
-import Shared
+import SharedCore
 import SQLite3
+import SharedUtils
+import SharedConstants
 
 // MARK: - Sample Index Database
 

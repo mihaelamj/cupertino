@@ -1,7 +1,8 @@
 import Foundation
 import SampleIndex
 import Search
-import Shared
+import SharedCore
+import SharedConstants
 
 // MARK: - Text Formatter for Unified Search
 

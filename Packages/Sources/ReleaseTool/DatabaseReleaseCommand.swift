@@ -1,6 +1,8 @@
 import ArgumentParser
 import Foundation
-import Shared
+import SharedCore
+import SharedConstants
+import SharedUtils
 
 // MARK: - Database Release Command (search.db + samples.db + packages.db → cupertino-docs)
 

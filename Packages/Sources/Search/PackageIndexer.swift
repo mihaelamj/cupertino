@@ -1,6 +1,8 @@
 import Core
 import Foundation
-import Shared
+import SharedCore
+import SharedConstants
+import SharedModels
 
 extension Search {
     /// Reads downloaded-and-extracted package trees from

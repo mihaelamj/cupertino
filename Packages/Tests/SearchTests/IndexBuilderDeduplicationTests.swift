@@ -1,7 +1,8 @@
 import Foundation
 @testable import Search
-import Shared
+import SharedCore
 import Testing
+import SharedModels
 
 // Regression coverage for `Search.IndexBuilder.deduplicateDocFilesByCanonicalURL`
 // (#200). The dedup helper reads `crawledAt` out of saved

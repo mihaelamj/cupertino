@@ -1,6 +1,7 @@
 import Foundation
 import Search
-import Shared
+import SharedCore
+import SharedConstants
 
 // MARK: - Documentation Search Service
 

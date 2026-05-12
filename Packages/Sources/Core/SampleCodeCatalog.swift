@@ -7,7 +7,8 @@
 // auto-discovery is the only path now.
 
 import Foundation
-import Shared
+import SharedCore
+import SharedConstants
 
 /// Represents a sample code project from Apple
 public struct SampleCodeEntry: Codable, Sendable {

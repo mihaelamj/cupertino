@@ -1,6 +1,8 @@
 import Foundation
 import Logging
-import Shared
+import SharedCore
+import SharedConstants
+import SharedUtils
 
 // MARK: - Apple Archive Crawler
 

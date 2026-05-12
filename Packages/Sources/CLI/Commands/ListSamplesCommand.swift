@@ -3,7 +3,8 @@ import Foundation
 import Logging
 import SampleIndex
 import Services
-import Shared
+import SharedCore
+import SharedUtils
 
 // MARK: - List Samples Command
 

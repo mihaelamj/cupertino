@@ -1,7 +1,8 @@
 import Foundation
-import Shared
+import SharedCore
 #if canImport(WebKit)
 import WebKit
+import SharedConstants
 #endif
 
 // MARK: - WKWeb Crawler Engine

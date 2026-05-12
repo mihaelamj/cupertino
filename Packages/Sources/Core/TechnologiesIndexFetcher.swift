@@ -1,5 +1,6 @@
 import Foundation
-import Shared
+import SharedCore
+import SharedUtils
 
 // MARK: - Technologies Index Fetcher
 

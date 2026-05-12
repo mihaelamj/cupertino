@@ -2,7 +2,10 @@
 // swiftlint:disable function_body_length type_body_length
 import Foundation
 import Logging
-import Shared
+import SharedCore
+import SharedConstants
+import SharedModels
+import SharedUtils
 
 extension Core {
     /// Walks each seed repo's dependency graph via raw.githubusercontent.com and returns

@@ -1,7 +1,10 @@
 @testable import Core
 import Foundation
-@testable import Shared
+@testable import SharedCore
 import Testing
+import SharedConstants
+import SharedConfiguration
+import SharedModels
 
 // MARK: - Crawler Tests
 

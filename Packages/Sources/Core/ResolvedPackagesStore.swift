@@ -1,5 +1,6 @@
 import Foundation
-import Shared
+import SharedCore
+import SharedModels
 
 extension Core {
     /// One entry in the resolved closure. Seeds list themselves as their own parent;

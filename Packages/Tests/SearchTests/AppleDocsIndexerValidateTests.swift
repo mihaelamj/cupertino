@@ -1,6 +1,6 @@
 import Foundation
 @testable import Search
-import Shared
+import SharedCore
 import Testing
 
 // Truth-table coverage for `AppleDocsIndexer.validate(_:)`. The function was
