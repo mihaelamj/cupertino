@@ -21,7 +21,7 @@ extension Search {
             public var durationSeconds: TimeInterval = 0
         }
 
-        public enum IndexerError: Error, LocalizedError {
+        public enum IndexerError: Swift.Error, LocalizedError {
             case noPackagesFound(URL)
             case manifestMissing(URL)
             case manifestMalformed(URL, String)

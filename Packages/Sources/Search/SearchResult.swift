@@ -33,7 +33,8 @@ public struct FrameworkAvailability: Sendable {
 // MARK: - Platform Availability (Search Module)
 
 /// Lightweight platform availability for search results
-public struct SearchPlatformAvailability: Codable, Sendable, Hashable {
+extension Search {
+public struct PlatformAvailability: Codable, Sendable, Hashable {
     public let name: String
     public let introducedAt: String?
     public let deprecated: Bool
@@ -53,6 +54,7 @@ public struct SearchPlatformAvailability: Codable, Sendable, Hashable {
         self.unavailable = unavailable
         self.beta = beta
     }
+}
 }
 
 // MARK: - Matched Symbol
@@ -94,7 +96,7 @@ extension Search {
         public let filePath: String
         public let wordCount: Int
         public let rank: Double // BM25 score (negative, closer to 0 = better match)
-        public let availability: [SearchPlatformAvailability]?
+        public let availability: [Search.PlatformAvailability]?
         public let matchedSymbols: [MatchedSymbol]? // AST-extracted symbols that matched query (#81)
 
         public init(
@@ -107,7 +109,7 @@ extension Search {
             filePath: String,
             wordCount: Int,
             rank: Double,
-            availability: [SearchPlatformAvailability]? = nil,
+            availability: [Search.PlatformAvailability]? = nil,
             matchedSymbols: [MatchedSymbol]? = nil
         ) {
             self.id = id
@@ -234,7 +236,7 @@ extension Search {
             filePath = try container.decode(String.self, forKey: .filePath)
             wordCount = try container.decode(Int.self, forKey: .wordCount)
             rank = try container.decode(Double.self, forKey: .rank)
-            availability = try container.decodeIfPresent([SearchPlatformAvailability].self, forKey: .availability)
+            availability = try container.decodeIfPresent([Search.PlatformAvailability].self, forKey: .availability)
             matchedSymbols = try container.decodeIfPresent([MatchedSymbol].self, forKey: .matchedSymbols)
             // summaryTruncated and availabilityString are computed, ignore during decode
         }
@@ -334,7 +336,8 @@ extension Search {
 
 // MARK: - Search Errors
 
-public enum SearchError: Error, LocalizedError {
+extension Search {
+public enum Error: Swift.Error, LocalizedError {
     case databaseNotInitialized
     case sqliteError(String)
     case prepareFailed(String)
@@ -358,4 +361,5 @@ public enum SearchError: Error, LocalizedError {
             return "Invalid search query: \(msg)"
         }
     }
+}
 }

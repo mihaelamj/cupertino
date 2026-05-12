@@ -20,7 +20,7 @@ extension Search.Index {
         lastUpdated: String?
     ) async throws {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         let sql = """
@@ -34,7 +34,7 @@ extension Search.Index {
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.prepareFailed("Package insert: \(errorMessage)")
+            throw Search.Error.prepareFailed("Package insert: \(errorMessage)")
         }
 
         sqlite3_bind_text(statement, 1, (name as NSString).utf8String, -1, nil)
@@ -63,7 +63,7 @@ extension Search.Index {
 
         guard sqlite3_step(statement) == SQLITE_DONE else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.insertFailed("Package insert: \(errorMessage)")
+            throw Search.Error.insertFailed("Package insert: \(errorMessage)")
         }
     }
 
@@ -84,7 +84,7 @@ extension Search.Index {
         minVisionOS: String? = nil
     ) async throws {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         // Insert into FTS5 table
@@ -98,7 +98,7 @@ extension Search.Index {
 
         guard sqlite3_prepare_v2(database, ftsSql, -1, &statement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.prepareFailed("Sample code FTS insert: \(errorMessage)")
+            throw Search.Error.prepareFailed("Sample code FTS insert: \(errorMessage)")
         }
 
         sqlite3_bind_text(statement, 1, (url as NSString).utf8String, -1, nil)
@@ -108,7 +108,7 @@ extension Search.Index {
 
         guard sqlite3_step(statement) == SQLITE_DONE else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.insertFailed("Sample code FTS insert: \(errorMessage)")
+            throw Search.Error.insertFailed("Sample code FTS insert: \(errorMessage)")
         }
 
         // Insert metadata with availability
@@ -124,7 +124,7 @@ extension Search.Index {
 
         guard sqlite3_prepare_v2(database, metaSql, -1, &metaStatement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.prepareFailed("Sample code metadata insert: \(errorMessage)")
+            throw Search.Error.prepareFailed("Sample code metadata insert: \(errorMessage)")
         }
 
         sqlite3_bind_text(metaStatement, 1, (url as NSString).utf8String, -1, nil)
@@ -140,7 +140,7 @@ extension Search.Index {
 
         guard sqlite3_step(metaStatement) == SQLITE_DONE else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.insertFailed("Sample code metadata insert: \(errorMessage)")
+            throw Search.Error.insertFailed("Sample code metadata insert: \(errorMessage)")
         }
     }
 
@@ -194,7 +194,7 @@ extension Search.Index {
         codeExamples: [(code: String, language: String)]
     ) async throws {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         // Delete existing code examples for this doc
@@ -254,7 +254,7 @@ extension Search.Index {
         codeExamples: [(code: String, language: String)]
     ) async throws {
         guard database != nil else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         let extractor = ASTIndexer.SwiftSourceExtractor()
@@ -314,7 +314,7 @@ extension Search.Index {
     /// table, so this method picks them up uniformly.
     func recomputeSymbolsBlob(docUri: String) async throws {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         // Read all symbol names for this doc, dedupe, sort.

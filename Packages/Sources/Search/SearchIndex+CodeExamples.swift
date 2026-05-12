@@ -14,7 +14,7 @@ extension Search.Index {
         limit: Int = 20
     ) async throws -> [(docUri: String, code: String, language: String)] {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         let sql = """
@@ -29,7 +29,7 @@ extension Search.Index {
         defer { sqlite3_finalize(statement) }
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
-            throw SearchError.searchFailed("Code search prepare failed")
+            throw Search.Error.searchFailed("Code search prepare failed")
         }
 
         sqlite3_bind_text(statement, 1, (query as NSString).utf8String, -1, nil)
@@ -50,7 +50,7 @@ extension Search.Index {
     /// Get code examples count
     public func codeExamplesCount() async throws -> Int {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         let sql = "SELECT COUNT(*) FROM doc_code_examples;"
@@ -73,11 +73,11 @@ extension Search.Index {
         sampleCodeDirectory: URL? = nil
     ) async throws -> [Search.SampleCodeResult] {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         guard !query.trimmingCharacters(in: .whitespaces).isEmpty else {
-            throw SearchError.invalidQuery("Query cannot be empty")
+            throw Search.Error.invalidQuery("Query cannot be empty")
         }
 
         var sql = """
@@ -105,7 +105,7 @@ extension Search.Index {
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.searchFailed("Sample code search prepare failed: \(errorMessage)")
+            throw Search.Error.searchFailed("Sample code search prepare failed: \(errorMessage)")
         }
 
         // Bind parameters

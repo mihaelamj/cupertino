@@ -599,7 +599,7 @@ extension Search {
         }
     }
 
-    public enum PackageIndexError: Error, LocalizedError {
+    public enum PackageIndexError: Swift.Error, LocalizedError {
         case databaseNotInitialized
         case sqliteError(String)
 

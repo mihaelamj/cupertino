@@ -84,7 +84,7 @@ extension Search {
             guard sqlite3_open(dbPath.path, &dbPointer) == SQLITE_OK else {
                 let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
                 sqlite3_close(dbPointer)
-                throw SearchError.sqliteError("Failed to open database: \(errorMessage)")
+                throw Search.Error.sqliteError("Failed to open database: \(errorMessage)")
             }
 
             // Auto-retry on SQLITE_BUSY for up to 5 seconds so concurrent

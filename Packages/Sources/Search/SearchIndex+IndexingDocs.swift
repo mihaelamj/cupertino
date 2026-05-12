@@ -33,7 +33,7 @@ extension Search.Index {
         availabilitySource: String? = nil
     ) async throws {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         // Extract summary (first 500 chars, stop at sentence)
@@ -59,7 +59,7 @@ extension Search.Index {
 
         guard sqlite3_prepare_v2(database, ftsSql, -1, &statement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.prepareFailed("FTS insert: \(errorMessage)")
+            throw Search.Error.prepareFailed("FTS insert: \(errorMessage)")
         }
 
         sqlite3_bind_text(statement, 1, (uri as NSString).utf8String, -1, nil)
@@ -72,7 +72,7 @@ extension Search.Index {
 
         guard sqlite3_step(statement) == SQLITE_DONE else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.insertFailed("FTS insert: \(errorMessage)")
+            throw Search.Error.insertFailed("FTS insert: \(errorMessage)")
         }
 
         // Create minimal JSON wrapper if no jsonData provided
@@ -107,7 +107,7 @@ extension Search.Index {
 
         guard sqlite3_prepare_v2(database, metaSql, -1, &metaStatement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.prepareFailed("Metadata insert: \(errorMessage)")
+            throw Search.Error.prepareFailed("Metadata insert: \(errorMessage)")
         }
 
         sqlite3_bind_text(metaStatement, 1, (uri as NSString).utf8String, -1, nil)
@@ -139,7 +139,7 @@ extension Search.Index {
 
         guard sqlite3_step(metaStatement) == SQLITE_DONE else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.insertFailed("Metadata insert: \(errorMessage)")
+            throw Search.Error.insertFailed("Metadata insert: \(errorMessage)")
         }
     }
 
@@ -150,7 +150,7 @@ extension Search.Index {
     /// - Parameters:
     ///   - item: The source item to index
     ///   - extractSymbols: Whether to extract and index AST symbols (default: true)
-    /// - Throws: SearchError if indexing fails
+    /// - Throws: Search.Error if indexing fails
     public func indexItem(_ item: SourceItem, extractSymbols: Bool = true) async throws {
         // Get the indexer for this source
         guard let indexer = IndexerRegistry.indexer(for: item.source) else {
@@ -180,7 +180,7 @@ extension Search.Index {
 
         // Validate the item
         guard indexer.validate(item) else {
-            throw SearchError.invalidQuery("Item failed validation for source: \(item.source)")
+            throw Search.Error.invalidQuery("Item failed validation for source: \(item.source)")
         }
 
         // Preprocess the item
@@ -360,7 +360,7 @@ extension Search.Index {
         let effectiveLanguage = page.language ?? detectLanguage(from: content)
 
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         // Insert into FTS5 table (db should be deleted before full re-index).
@@ -376,7 +376,7 @@ extension Search.Index {
 
         guard sqlite3_prepare_v2(database, ftsSql, -1, &statement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.prepareFailed("FTS insert: \(errorMessage)")
+            throw Search.Error.prepareFailed("FTS insert: \(errorMessage)")
         }
 
         sqlite3_bind_text(statement, 1, (uri as NSString).utf8String, -1, nil)
@@ -389,7 +389,7 @@ extension Search.Index {
 
         guard sqlite3_step(statement) == SQLITE_DONE else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.insertFailed("FTS insert: \(errorMessage)")
+            throw Search.Error.insertFailed("FTS insert: \(errorMessage)")
         }
 
         // Extract availability from JSON data, with optional overrides
@@ -423,7 +423,7 @@ extension Search.Index {
 
         guard sqlite3_prepare_v2(database, metaSql, -1, &metaStatement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.prepareFailed("Metadata insert: \(errorMessage)")
+            throw Search.Error.prepareFailed("Metadata insert: \(errorMessage)")
         }
 
         sqlite3_bind_text(metaStatement, 1, (uri as NSString).utf8String, -1, nil)
@@ -448,7 +448,7 @@ extension Search.Index {
 
         guard sqlite3_step(metaStatement) == SQLITE_DONE else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.insertFailed("Metadata insert: \(errorMessage)")
+            throw Search.Error.insertFailed("Metadata insert: \(errorMessage)")
         }
 
         // Insert structured fields for querying
@@ -460,7 +460,7 @@ extension Search.Index {
 
         guard sqlite3_prepare_v2(database, structSql, -1, &structStatement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.prepareFailed("Structured insert: \(errorMessage)")
+            throw Search.Error.prepareFailed("Structured insert: \(errorMessage)")
         }
 
         sqlite3_bind_text(structStatement, 1, (uri as NSString).utf8String, -1, nil)
@@ -531,7 +531,7 @@ extension Search.Index {
 
         guard sqlite3_step(structStatement) == SQLITE_DONE else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.insertFailed("Structured insert: \(errorMessage)")
+            throw Search.Error.insertFailed("Structured insert: \(errorMessage)")
         }
 
         // Extract symbols from declaration using SwiftSyntax (#81). Re-running
@@ -566,7 +566,7 @@ extension Search.Index {
         symbols: [ASTIndexer.ExtractedSymbol]
     ) async throws {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         let sql = """
@@ -672,7 +672,7 @@ extension Search.Index {
         imports: [ASTIndexer.ExtractedImport]
     ) async throws {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         let sql = """

@@ -20,7 +20,7 @@ extension Search.Index {
 
     func setSchemaVersion() async throws {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         // Skip the write if the on-disk version already matches. Every
@@ -40,7 +40,7 @@ extension Search.Index {
 
         guard sqlite3_exec(database, sql, nil, nil, &errorPointer) == SQLITE_OK else {
             let errorMessage = errorPointer.map { String(cString: $0) } ?? "Unknown error"
-            throw SearchError.sqliteError("Failed to set schema version: \(errorMessage)")
+            throw Search.Error.sqliteError("Failed to set schema version: \(errorMessage)")
         }
     }
 
@@ -54,7 +54,7 @@ extension Search.Index {
 
         // Future version - incompatible
         if currentVersion > Self.schemaVersion {
-            throw SearchError.sqliteError(
+            throw Search.Error.sqliteError(
                 "Database schema version \(currentVersion) is newer than supported version \(Self.schemaVersion). "
                     + "Please update cupertino or delete the database to recreate it."
             )
@@ -82,7 +82,7 @@ extension Search.Index {
             // Version 4 -> 5: Added language field to docs_fts and docs_metadata
             // BREAKING CHANGE: FTS5 tables cannot have columns added.
             // Database must be deleted and rebuilt with 'cupertino save'.
-            throw SearchError.sqliteError(
+            throw Search.Error.sqliteError(
                 "Database schema version \(currentVersion) requires migration to version 5. " +
                     "This is a breaking change that adds the 'language' field. " +
                     "Please delete the database and run 'cupertino save' to rebuild: " +
@@ -121,7 +121,7 @@ extension Search.Index {
             // bm25 can weight directly on AST-extracted symbol names. FTS5
             // does not support ALTER TABLE ADD COLUMN on virtual tables, so
             // this is a BREAKING change — existing DBs must be rebuilt.
-            throw SearchError.sqliteError(
+            throw Search.Error.sqliteError(
                 "Database schema version \(currentVersion) requires migration to version 12. " +
                     "This is a breaking change that adds AST-derived symbols to the FTS index. " +
                     "Please delete the database and run 'cupertino save' to rebuild: " +
@@ -136,7 +136,7 @@ extension Search.Index {
             // `URLUtilities.filename(_:)` makes new crawls produce canonical
             // URIs. The v1.0.2 bundle ships pre-built at v13, so `cupertino
             // setup` is the production upgrade path.
-            throw SearchError.sqliteError(
+            throw Search.Error.sqliteError(
                 "Database schema version \(currentVersion) requires migration to version 13. " +
                     "This is a breaking change that drops case-axis duplicate URIs (#283). " +
                     "Please delete the database and run 'cupertino setup' to download the " +
@@ -148,7 +148,7 @@ extension Search.Index {
 
     func migrateToVersion11() async throws {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         let statements = [
@@ -168,7 +168,7 @@ extension Search.Index {
 
     func migrateToVersion10() async throws {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         let sql = "ALTER TABLE framework_aliases ADD COLUMN synonyms TEXT;"
@@ -182,7 +182,7 @@ extension Search.Index {
 
     func migrateToVersion7() async throws {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         // Add availability columns to sample_code_metadata
@@ -207,7 +207,7 @@ extension Search.Index {
 
     func migrateToVersion6() async throws {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         // Add availability columns - these can be added with ALTER TABLE
@@ -249,7 +249,7 @@ extension Search.Index {
 
     func migrateToVersion4() async throws {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         // Add source column to docs_metadata (this can be done with ALTER)
@@ -266,7 +266,7 @@ extension Search.Index {
 
     func migrateToVersion3() async throws {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         // Add json_data column if it doesn't exist

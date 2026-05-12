@@ -7,7 +7,7 @@ extension Search.Index {
     /// Get full JSON data for a document
     public func getDocumentJSON(uri: String) async throws -> String? {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         let sql = "SELECT json_data FROM docs_metadata WHERE uri = ?;"
@@ -38,7 +38,7 @@ extension Search.Index {
         limit: Int = 50
     ) async throws -> [Search.Result] {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         var sql = """
@@ -59,7 +59,7 @@ extension Search.Index {
         defer { sqlite3_finalize(statement) }
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
-            throw SearchError.searchFailed("Kind search prepare failed")
+            throw Search.Error.searchFailed("Kind search prepare failed")
         }
 
         sqlite3_bind_text(statement, 1, (kind as NSString).utf8String, -1, nil)
@@ -104,7 +104,7 @@ extension Search.Index {
         limit: Int = 50
     ) async throws -> [Search.Result] {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         let sql = """
@@ -120,7 +120,7 @@ extension Search.Index {
         defer { sqlite3_finalize(statement) }
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
-            throw SearchError.searchFailed("Conforms search prepare failed")
+            throw Search.Error.searchFailed("Conforms search prepare failed")
         }
 
         sqlite3_bind_text(statement, 1, ("%\(protocolName)%" as NSString).utf8String, -1, nil)
@@ -160,7 +160,7 @@ extension Search.Index {
         limit: Int = 50
     ) async throws -> [Search.Result] {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         var sql = """
@@ -181,7 +181,7 @@ extension Search.Index {
         defer { sqlite3_finalize(statement) }
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
-            throw SearchError.searchFailed("Module search prepare failed")
+            throw Search.Error.searchFailed("Module search prepare failed")
         }
 
         sqlite3_bind_text(statement, 1, (module as NSString).utf8String, -1, nil)
@@ -226,7 +226,7 @@ extension Search.Index {
         limit: Int = 50
     ) async throws -> [Search.Result] {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         let sql = """
@@ -242,7 +242,7 @@ extension Search.Index {
         defer { sqlite3_finalize(statement) }
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
-            throw SearchError.searchFailed("Inherited search prepare failed")
+            throw Search.Error.searchFailed("Inherited search prepare failed")
         }
 
         sqlite3_bind_text(statement, 1, ("%\(typeName)%" as NSString).utf8String, -1, nil)
@@ -281,7 +281,7 @@ extension Search.Index {
         limit: Int = 50
     ) async throws -> [Search.Result] {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         let sql = """
@@ -297,7 +297,7 @@ extension Search.Index {
         defer { sqlite3_finalize(statement) }
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
-            throw SearchError.searchFailed("Conforming types search prepare failed")
+            throw Search.Error.searchFailed("Conforming types search prepare failed")
         }
 
         sqlite3_bind_text(statement, 1, ("%\(protocolName)%" as NSString).utf8String, -1, nil)
@@ -337,7 +337,7 @@ extension Search.Index {
         limit: Int = 50
     ) async throws -> [Search.Result] {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         var sql = """
@@ -358,7 +358,7 @@ extension Search.Index {
         defer { sqlite3_finalize(statement) }
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
-            throw SearchError.searchFailed("Declaration search prepare failed")
+            throw Search.Error.searchFailed("Declaration search prepare failed")
         }
 
         sqlite3_bind_text(statement, 1, ("%\(pattern)%" as NSString).utf8String, -1, nil)
@@ -404,7 +404,7 @@ extension Search.Index {
         limit: Int = 50
     ) async throws -> [Search.Result] {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         var sql = """
@@ -425,7 +425,7 @@ extension Search.Index {
         defer { sqlite3_finalize(statement) }
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
-            throw SearchError.searchFailed("Platform search prepare failed")
+            throw Search.Error.searchFailed("Platform search prepare failed")
         }
 
         sqlite3_bind_text(statement, 1, ("%\(platform)%" as NSString).utf8String, -1, nil)
