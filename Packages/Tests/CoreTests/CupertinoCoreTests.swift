@@ -1,20 +1,19 @@
 import AppKit
 @testable import Core
+@testable import CorePackageIndexing
+import CoreProtocols
 import Foundation
 @testable import Search
+import SharedConfiguration
+import SharedConstants
 @testable import SharedCore
+import SharedModels
 import Testing
 import TestSupport
-import SharedConstants
-import SharedConfiguration
-import SharedModels
-import CoreProtocols
-@testable import CoreHTMLParser
-@testable import CorePackageIndexing
 
 @Test func hTMLToMarkdown() throws {
     let html = "<h1>Title</h1><p>Content</p>"
-    let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
+    let markdown = try Core.Parser.HTML.convert(html, url: #require(URL(string: "https://example.com")))
     #expect(markdown.contains("# Title"))
 }
 

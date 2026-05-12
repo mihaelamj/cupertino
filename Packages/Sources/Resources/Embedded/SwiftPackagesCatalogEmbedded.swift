@@ -5749,7 +5749,7 @@ public enum SwiftPackagesCatalogEmbedded {
         "https://github.com/jaywcjlove/Colorful",
         "https://github.com/jaywcjlove/FileType",
         "https://github.com/jaywcjlove/HTMLMinifier",
-        "https://github.com/jaywcjlove/HTMLToMarkdown",
+        "https://github.com/jaywcjlove/Core.Parser.HTML",
         "https://github.com/jaywcjlove/OUIData",
         "https://github.com/jaywcjlove/Prettier",
         "https://github.com/jaywcjlove/SFSymbolsPicker",
