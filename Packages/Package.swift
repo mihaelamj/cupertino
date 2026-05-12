@@ -18,6 +18,7 @@ let baseProducts: [Product] = [
 let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Logging"),
     .singleTargetLibrary("Shared"),
+    .singleTargetLibrary("SharedConstants"),
     .singleTargetLibrary("MCPSharedTools"),
     .singleTargetLibrary("Core"),
     .singleTargetLibrary("Cleanup"),
@@ -92,9 +93,15 @@ let targets: [Target] = {
         dependencies: ["Logging", "TestSupport"]
     )
 
+    // ---------- SharedConstants (v1.1 refactor 1.3: extracts Constants.swift + the Shared namespace enum out of Shared) ----------
+    let sharedConstantsTarget = Target.target(
+        name: "SharedConstants",
+        dependencies: []
+    )
+
     let sharedTarget = Target.target(
         name: "Shared",
-        dependencies: []
+        dependencies: ["SharedConstants"]
     )
     let sharedTestsTarget = Target.testTarget(
         name: "SharedTests",
@@ -378,6 +385,7 @@ let targets: [Target] = {
     let cupertinoTargets: [Target] = [
         loggingTarget,
         loggingTestsTarget,
+        sharedConstantsTarget,
         sharedTarget,
         sharedTestsTarget,
         mcpSharedToolsTarget,
