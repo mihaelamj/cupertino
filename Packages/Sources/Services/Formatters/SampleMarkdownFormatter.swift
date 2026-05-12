@@ -17,7 +17,7 @@ public struct SampleSearchMarkdownFormatter: ResultFormatter {
         self.teasers = teasers
     }
 
-    public func format(_ result: SampleSearchResult) -> String {
+    public func format(_ result: Sample.Search.Result) -> String {
         var output = "# Sample Code Search: \"\(query)\"\n\n"
 
         // Tell the AI what source this is

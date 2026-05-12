@@ -15,7 +15,7 @@ import SharedUtils
 public actor CompositeToolProvider: MCP.Core.ToolProvider {
     // Use service layer for consistency with CLI
     private let docsService: DocsSearchService?
-    private let sampleService: SampleSearchService?
+    private let sampleService: Sample.Search.Service?
 
     // Keep direct access for low-level operations (list frameworks, read document)
     private let searchIndex: Search.Index?
@@ -33,7 +33,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         }
 
         if let sampleDatabase {
-            sampleService = SampleSearchService(database: sampleDatabase)
+            sampleService = Sample.Search.Service(database: sampleDatabase)
         } else {
             sampleService = nil
         }
@@ -511,7 +511,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         }
 
         // Use service layer (same as CLI)
-        let result = try await sampleService.search(SampleQuery(
+        let result = try await sampleService.search(Sample.Search.Query(
             text: query,
             framework: framework,
             searchFiles: true,

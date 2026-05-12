@@ -1,5 +1,6 @@
 import Foundation
 import SampleIndex
+import SharedConstants
 import SharedCore
 
 // MARK: - Shared JSON Output Types
@@ -65,7 +66,7 @@ public struct SampleSearchJSONFormatter: ResultFormatter {
         self.framework = framework
     }
 
-    public func format(_ result: SampleSearchResult) -> String {
+    public func format(_ result: Sample.Search.Result) -> String {
         struct Output: Encodable {
             let query: String
             let framework: String?

@@ -78,7 +78,7 @@ extension Command.Search {
         let dbPath = resolveSampleDbPath()
 
         let result = try await Services.ServiceContainer.withSampleService(dbPath: dbPath) { service in
-            try await service.search(SampleQuery(
+            try await service.search(Sample.Search.Query(
                 text: query,
                 framework: framework,
                 searchFiles: true,

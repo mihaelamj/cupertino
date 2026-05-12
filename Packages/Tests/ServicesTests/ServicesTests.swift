@@ -92,11 +92,11 @@ struct ServicesTests {
         #expect(query.limit == 30)
     }
 
-    // MARK: - SampleQuery Tests
+    // MARK: - Sample.Search.Query Tests
 
-    @Test("SampleQuery initializes with defaults")
+    @Test("Sample.Search.Query initializes with defaults")
     func sampleQueryDefaults() {
-        let query = SampleQuery(text: "SwiftUI")
+        let query = Sample.Search.Query(text: "SwiftUI")
 
         #expect(query.text == "SwiftUI")
         #expect(query.framework == nil)
@@ -104,9 +104,9 @@ struct ServicesTests {
         #expect(query.limit == Shared.Constants.Limit.defaultSearchLimit)
     }
 
-    @Test("SampleSearchResult isEmpty check")
+    @Test("Sample.Search.Result isEmpty check")
     func sampleSearchResultIsEmpty() {
-        let empty = SampleSearchResult(projects: [], files: [])
+        let empty = Sample.Search.Result(projects: [], files: [])
         #expect(empty.isEmpty == true)
         #expect(empty.totalCount == 0)
     }
@@ -143,9 +143,9 @@ struct FormatConfigTests {
     }
 }
 
-// MARK: - Services.SampleCandidateFetcher (#230)
+// MARK: - Sample.Services.CandidateFetcher (#230)
 
-@Suite("Services.SampleCandidateFetcher (#230)")
+@Suite("Sample.Services.CandidateFetcher (#230)")
 struct SampleCandidateFetcherTests {
     @Test("sourceName matches the canonical samples prefix")
     func sourceNameIsSamples() async throws {
@@ -156,10 +156,10 @@ struct SampleCandidateFetcherTests {
             .appendingPathComponent("samples-fetcher-test-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let service = try await SampleSearchService(dbPath: tempDB)
+        let service = try await Sample.Search.Service(dbPath: tempDB)
         defer { Task { await service.disconnect() } }
 
-        let fetcher = Services.SampleCandidateFetcher(service: service)
+        let fetcher = Sample.Services.CandidateFetcher(service: service)
         #expect(fetcher.sourceName == Shared.Constants.SourcePrefix.samples)
     }
 
@@ -169,10 +169,10 @@ struct SampleCandidateFetcherTests {
             .appendingPathComponent("samples-fetcher-test-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let service = try await SampleSearchService(dbPath: tempDB)
+        let service = try await Sample.Search.Service(dbPath: tempDB)
         defer { Task { await service.disconnect() } }
 
-        let fetcher = Services.SampleCandidateFetcher(service: service)
+        let fetcher = Sample.Services.CandidateFetcher(service: service)
         let candidates = try await fetcher.fetch(question: "swiftui list", limit: 5)
         #expect(candidates.isEmpty)
     }
