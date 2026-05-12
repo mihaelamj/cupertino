@@ -2,6 +2,7 @@
 import Foundation
 import Testing
 import CoreProtocols
+@testable import CoreHTMLParser
 
 // Coverage for the `HTMLToMarkdown.looksLikeHTTPErrorPage(...)` helper
 // added in #284. The helper gates the crawler's WebView fallback path

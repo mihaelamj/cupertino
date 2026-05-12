@@ -7,6 +7,7 @@ import SharedConstants
 import SharedModels
 import SharedUtils
 import CoreProtocols
+import CoreHTMLParser
 
 // MARK: - Documentation Crawler
 

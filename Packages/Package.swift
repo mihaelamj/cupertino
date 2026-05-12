@@ -24,6 +24,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("SharedConfiguration"),
     .singleTargetLibrary("MCPSharedTools"),
     .singleTargetLibrary("CoreProtocols"),
+    .singleTargetLibrary("CoreHTMLParser"),
     .singleTargetLibrary("Core"),
     .singleTargetLibrary("Cleanup"),
     .singleTargetLibrary("Search"),
@@ -128,7 +129,7 @@ let targets: [Target] = {
     )
     let sharedCoreTestsTarget = Target.testTarget(
         name: "SharedCoreTests",
-        dependencies: ["SharedCore", "SharedConstants", "SharedUtils", "SharedModels", "TestSupport"],
+        dependencies: ["SharedCore", "SharedConstants", "SharedUtils", "SharedModels", "CoreProtocols", "TestSupport"],
         path: "Tests/Shared/CoreTests"
     )
 
@@ -169,13 +170,32 @@ let targets: [Target] = {
         dependencies: ["SharedCore", "SharedConstants", "SharedModels", "Resources"]
     )
 
+    // ---------- CoreHTMLParser (v1.2 refactor 2.2: HTMLToMarkdown + XMLTransformer, the worst single-file god in Core) ----------
+    let coreHTMLParserTarget = Target.target(
+        name: "CoreHTMLParser",
+        dependencies: ["CoreProtocols", "SharedModels", "SharedConstants"],
+        path: "Sources/Core/HTMLParser"
+    )
+
     let coreTarget = Target.target(
         name: "Core",
-        dependencies: ["CoreProtocols", "SharedCore", "SharedConfiguration", "SharedConstants", "SharedModels", "SharedUtils", "Logging", "Resources", "ASTIndexer"]
+        dependencies: [
+            "CoreProtocols",
+            "CoreHTMLParser",
+            "SharedCore",
+            "SharedConfiguration",
+            "SharedConstants",
+            "SharedModels",
+            "SharedUtils",
+            "Logging",
+            "Resources",
+            "ASTIndexer",
+        ],
+        exclude: ["HTMLParser"]
     )
     let coreTestsTarget = Target.testTarget(
         name: "CoreTests",
-        dependencies: ["CoreProtocols", "Core", "Search", "SharedCore", "SharedConstants", "SharedModels", "TestSupport"],
+        dependencies: ["CoreProtocols", "CoreHTMLParser", "Core", "Search", "SharedCore", "SharedConstants", "SharedModels", "TestSupport"],
         resources: [.copy("Resources/AppleJSON")]
     )
 
@@ -446,6 +466,7 @@ let targets: [Target] = {
         mcpSharedToolsTarget,
         mcpSharedToolsTestsTarget,
         coreProtocolsTarget,
+        coreHTMLParserTarget,
         resourcesTarget,
         resourcesTestsTarget,
         coreTarget,
