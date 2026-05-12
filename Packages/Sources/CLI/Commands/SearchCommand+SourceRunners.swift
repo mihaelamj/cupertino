@@ -114,13 +114,13 @@ extension Command.Search {
 
         switch format {
         case .text:
-            let formatter = SampleSearchTextFormatter(query: query, framework: framework, teasers: teasers)
+            let formatter = Sample.Format.Text.Search(query: query, framework: framework, teasers: teasers)
             Logging.Log.output(formatter.format(result))
         case .json:
-            let formatter = SampleSearchJSONFormatter(query: query, framework: framework)
+            let formatter = Sample.Format.JSON.Search(query: query, framework: framework)
             Logging.Log.output(formatter.format(result))
         case .markdown:
-            let formatter = SampleSearchMarkdownFormatter(query: query, framework: framework, teasers: teasers)
+            let formatter = Sample.Format.Markdown.Search(query: query, framework: framework, teasers: teasers)
             Logging.Log.output(formatter.format(result))
         }
     }
