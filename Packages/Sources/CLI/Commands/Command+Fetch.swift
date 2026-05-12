@@ -871,7 +871,7 @@ extension Command {
             let defaultPath = Shared.Constants.defaultSampleCodeDirectory.path
             let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
 
-            let fetcher = GitHubSampleCodeFetcher(outputDirectory: outputURL)
+            let fetcher = Sample.Core.GitHubFetcher(outputDirectory: outputURL)
 
             let stats = try await fetcher.fetch { progress in
                 Logging.ConsoleLogger.output("   \(progress.message)")
