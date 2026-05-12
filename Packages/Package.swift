@@ -74,11 +74,13 @@ let targets: [Target] = {
     // ---------- MCP Framework (Consolidated from MCPShared + MCPTransport + MCPServer) ----------
     let mcpTarget = Target.target(
         name: "MCP",
-        dependencies: []
+        dependencies: [],
+        path: "Sources/MCP/Core"
     )
     let mcpTestsTarget = Target.testTarget(
         name: "MCPTests",
-        dependencies: ["MCP"]
+        dependencies: ["MCP"],
+        path: "Tests/MCP/CoreTests"
     )
 
     let mcpTargets = [
@@ -100,45 +102,53 @@ let targets: [Target] = {
     // ---------- SharedConstants (v1.1 refactor 1.3: extracts Constants.swift + the Shared namespace enum out of Shared) ----------
     let sharedConstantsTarget = Target.target(
         name: "SharedConstants",
-        dependencies: []
+        dependencies: [],
+        path: "Sources/Shared/Constants"
     )
 
     // ---------- SharedUtils (v1.1 refactor 1.4: extracts JSONCoding, PathResolver, Formatting, FTSQuery, SchemaVersion) ----------
     let sharedUtilsTarget = Target.target(
         name: "SharedUtils",
-        dependencies: ["SharedConstants"]
+        dependencies: ["SharedConstants"],
+        path: "Sources/Shared/Utils"
     )
 
     // ---------- SharedModels (v1.1 refactor 1.5: extracts the Models/ folder from Shared) ----------
     let sharedModelsTarget = Target.target(
         name: "SharedModels",
-        dependencies: ["SharedConstants", "SharedUtils"]
+        dependencies: ["SharedConstants", "SharedUtils"],
+        path: "Sources/Shared/Models"
     )
 
     // ---------- SharedCore (v1.1 refactor 1.6: residue of Shared - ToolError + CupertinoShared marker) ----------
     let sharedCoreTarget = Target.target(
         name: "SharedCore",
-        dependencies: []
+        dependencies: [],
+        path: "Sources/Shared/Core"
     )
     let sharedCoreTestsTarget = Target.testTarget(
         name: "SharedCoreTests",
-        dependencies: ["SharedCore", "SharedConstants", "SharedUtils", "SharedModels", "TestSupport"]
+        dependencies: ["SharedCore", "SharedConstants", "SharedUtils", "SharedModels", "TestSupport"],
+        path: "Tests/Shared/CoreTests"
     )
 
     // ---------- SharedConfiguration (v1.1 refactor 1.6: Configuration.swift moves out of Shared) ----------
     let sharedConfigurationTarget = Target.target(
         name: "SharedConfiguration",
-        dependencies: ["SharedConstants", "SharedUtils"]
+        dependencies: ["SharedConstants", "SharedUtils"],
+        path: "Sources/Shared/Configuration"
     )
 
     // ---------- MCPSharedTools (v1.1 refactor 1.1: extracts ArgumentExtractor + MCP-protocol-output constants from Shared) ----------
     let mcpSharedToolsTarget = Target.target(
         name: "MCPSharedTools",
-        dependencies: ["MCP", "SharedCore", "SharedConstants"]
+        dependencies: ["MCP", "SharedCore", "SharedConstants"],
+        path: "Sources/MCP/SharedTools"
     )
     let mcpSharedToolsTestsTarget = Target.testTarget(
         name: "MCPSharedToolsTests",
-        dependencies: ["MCPSharedTools", "SharedCore", "SharedConstants", "TestSupport"]
+        dependencies: ["MCPSharedTools", "SharedCore", "SharedConstants", "TestSupport"],
+        path: "Tests/MCP/SharedToolsTests"
     )
 
     // Resources target (#161): catalogs are now compiled in as Swift string
@@ -208,11 +218,13 @@ let targets: [Target] = {
 
     let mcpSupportTarget = Target.target(
         name: "MCPSupport",
-        dependencies: ["MCP", "MCPSharedTools", "SharedCore", "SharedConfiguration", "SharedConstants", "SharedModels", "SharedUtils", "Logging", "Search"]
+        dependencies: ["MCP", "MCPSharedTools", "SharedCore", "SharedConfiguration", "SharedConstants", "SharedModels", "SharedUtils", "Logging", "Search"],
+        path: "Sources/MCP/Support"
     )
     let mcpSupportTestsTarget = Target.testTarget(
         name: "MCPSupportTests",
-        dependencies: ["MCPSupport", "MCP", "MCPSharedTools", "SharedCore", "SharedConfiguration", "SharedConstants", "SharedModels", "Search", "TestSupport"]
+        dependencies: ["MCPSupport", "MCP", "MCPSharedTools", "SharedCore", "SharedConfiguration", "SharedConstants", "SharedModels", "Search", "TestSupport"],
+        path: "Tests/MCP/SupportTests"
     )
 
     let searchToolProviderTarget = Target.target(
@@ -226,11 +238,13 @@ let targets: [Target] = {
 
     let mcpClientTarget = Target.target(
         name: "MCPClient",
-        dependencies: ["MCP"]
+        dependencies: ["MCP"],
+        path: "Sources/MCP/Client"
     )
     let mcpClientTestsTarget = Target.testTarget(
         name: "MCPClientTests",
-        dependencies: ["MCPClient", "TestSupport"]
+        dependencies: ["MCPClient", "TestSupport"],
+        path: "Tests/MCP/ClientTests"
     )
 
     let remoteSyncTarget = Target.target(
