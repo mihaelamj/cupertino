@@ -962,10 +962,10 @@ extension Command {
             Logging.ConsoleLogger.info("\n📁 Output: \(outputURL.path)/")
         }
 
-        private func loadArchiveGuides() async throws -> [ArchiveGuideInfo] {
+        private func loadArchiveGuides() async throws -> [Core.AppleArchiveCrawler.GuideInfo] {
             // If start URL is provided, use it (no framework info available)
             if let startURL, let url = URL(string: startURL) {
-                return [ArchiveGuideInfo(url: url, framework: "")]
+                return [Core.AppleArchiveCrawler.GuideInfo(url: url, framework: "")]
             }
 
             // Otherwise use the curated list of essential archive guides with framework info

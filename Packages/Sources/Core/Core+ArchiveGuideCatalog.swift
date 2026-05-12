@@ -27,7 +27,7 @@ extension Core {
 
         /// Essential guides with full info (URL + framework)
         /// Always reads from user-writable location (creates from bundled if missing)
-        public static var essentialGuidesWithInfo: [ArchiveGuideInfo] {
+        public static var essentialGuidesWithInfo: [AppleArchiveCrawler.GuideInfo] {
             // Ensure user selections file exists (creates from bundled if missing)
             ensureUserSelectionsFileExists()
 
@@ -35,14 +35,14 @@ extension Core {
             if let selectedGuides = loadUserSelectedGuides(), !selectedGuides.isEmpty {
                 return selectedGuides.compactMap { guide in
                     guard let url = URL(string: "\(baseURL)/\(guide.path)") else { return nil }
-                    return ArchiveGuideInfo(url: url, framework: guide.framework)
+                    return AppleArchiveCrawler.GuideInfo(url: url, framework: guide.framework)
                 }
             }
 
             // Fall back to hardcoded list if everything else fails (no framework info)
             return essentialGuidePaths.compactMap { path in
                 guard let url = URL(string: "\(baseURL)/\(path)") else { return nil }
-                return ArchiveGuideInfo(url: url, framework: "")
+                return AppleArchiveCrawler.GuideInfo(url: url, framework: "")
             }
         }
 

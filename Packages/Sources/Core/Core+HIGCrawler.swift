@@ -43,9 +43,9 @@ extension Core {
 
         /// Crawl Human Interface Guidelines
         public func crawl(
-            onProgress: (@Sendable (HIGProgress) -> Void)? = nil
-        ) async throws -> HIGStatistics {
-            var stats = HIGStatistics(startTime: Date())
+            onProgress: (@Sendable (Progress) -> Void)? = nil
+        ) async throws -> Statistics {
+            var stats = Statistics(startTime: Date())
 
             logInfo("Starting Human Interface Guidelines crawler")
             logInfo("   Output: \(outputDirectory.path)")
@@ -79,7 +79,7 @@ extension Core {
 
                     // Progress callback
                     if let onProgress {
-                        let progress = HIGProgress(
+                        let progress = Progress(
                             currentPage: index + 1,
                             totalPages: min(pages.count, maxPages),
                             currentItem: page.title,
@@ -109,7 +109,7 @@ extension Core {
             fetcher = nil
             #else
             logError("WebKit not available - HIG crawler requires macOS")
-            throw HIGCrawlerError.webKitNotAvailable
+            throw Error.webKitNotAvailable
             #endif
 
             stats.endTime = Date()
@@ -125,9 +125,9 @@ extension Core {
         #if canImport(WebKit)
         private func discoverPages(
             from rootURL: URL,
-            stats: inout HIGStatistics
-        ) async throws -> [HIGPage] {
-            var pages: [HIGPage] = []
+            stats: inout Statistics
+        ) async throws -> [Page] {
+            var pages: [Page] = []
             var visited: Set<String> = []
             var queue: [URL] = [rootURL]
 
@@ -161,7 +161,7 @@ extension Core {
                 // Determine platforms from content
                 let platforms = extractPlatforms(from: html)
 
-                let page = HIGPage(
+                let page = Page(
                     url: url,
                     title: title,
                     category: category,
@@ -181,13 +181,13 @@ extension Core {
 
         private func loadPage(url: URL) async throws -> String {
             guard let fetcher else {
-                throw HIGCrawlerError.webViewNotInitialized
+                throw Error.webViewNotInitialized
             }
 
             return try await fetcher.fetch(url: url).content
         }
 
-        private func crawlPage(_ page: HIGPage, stats: inout HIGStatistics) async throws {
+        private func crawlPage(_ page: Page, stats: inout Statistics) async throws {
             // Determine output path
             let filename = sanitizeFilename(page.title) + ".md"
             let categoryDir = outputDirectory.appendingPathComponent(page.category.rawValue)
@@ -252,7 +252,7 @@ extension Core {
             return title.trimmingCharacters(in: .whitespacesAndNewlines)
         }
 
-        private func extractCategory(from url: URL) -> HIGCategory {
+        private func extractCategory(from url: URL) -> Category {
             let path = url.path.lowercased()
 
             if path.contains("/foundations") {
@@ -270,8 +270,8 @@ extension Core {
             }
         }
 
-        private func extractPlatforms(from html: String) -> [HIGPlatform] {
-            var platforms: [HIGPlatform] = []
+        private func extractPlatforms(from html: String) -> [Platform] {
+            var platforms: [Platform] = []
             let content = html.lowercased()
 
             if content.contains("ios") || content.contains("iphone") || content.contains("ipad") {
@@ -326,7 +326,7 @@ extension Core {
             return Array(Set(links))
         }
 
-        private func convertToMarkdown(_ html: String, page: HIGPage) -> String {
+        private func convertToMarkdown(_ html: String, page: Page) -> String {
             var lines: [String] = []
 
             // YAML front matter
@@ -531,7 +531,7 @@ extension Core {
             Logging.Log.error("Error: \(message)", category: .hig)
         }
 
-        private func logStatistics(_ stats: HIGStatistics) {
+        private func logStatistics(_ stats: Statistics) {
             let messages = [
                 "Statistics:",
                 "   Total pages: \(stats.totalPages)",
@@ -555,129 +555,137 @@ extension Core {
 
 // MARK: - Models
 
-/// Represents an HIG page to crawl
-public struct HIGPage: Sendable {
-    public let url: URL
-    public let title: String
-    public let category: HIGCategory
-    public let platforms: [HIGPlatform]
+extension Core.HIGCrawler {
+    /// Represents an HIG page to crawl
+    public struct Page: Sendable {
+        public let url: URL
+        public let title: String
+        public let category: Category
+        public let platforms: [Platform]
 
-    public init(url: URL, title: String, category: HIGCategory, platforms: [HIGPlatform]) {
-        self.url = url
-        self.title = title
-        self.category = category
-        self.platforms = platforms
-    }
-}
-
-/// HIG content categories
-public enum HIGCategory: String, Sendable, CaseIterable {
-    case foundations
-    case patterns
-    case components
-    case technologies
-    case inputs
-    case general
-
-    public var displayName: String {
-        switch self {
-        case .foundations: return "Foundations"
-        case .patterns: return "Patterns"
-        case .components: return "Components"
-        case .technologies: return "Technologies"
-        case .inputs: return "Inputs"
-        case .general: return "General"
+        public init(url: URL, title: String, category: Category, platforms: [Platform]) {
+            self.url = url
+            self.title = title
+            self.category = category
+            self.platforms = platforms
         }
     }
-}
 
-/// HIG platforms
-public enum HIGPlatform: String, Sendable, CaseIterable {
-    case iOS
-    case macOS
-    case watchOS
-    case visionOS
-    case tvOS
-    case all
+    /// HIG content categories
+    public enum Category: String, Sendable, CaseIterable {
+        case foundations
+        case patterns
+        case components
+        case technologies
+        case inputs
+        case general
 
-    public var displayName: String {
-        switch self {
-        case .iOS: return "iOS"
-        case .macOS: return "macOS"
-        case .watchOS: return "watchOS"
-        case .visionOS: return "visionOS"
-        case .tvOS: return "tvOS"
-        case .all: return "All Platforms"
+        public var displayName: String {
+            switch self {
+            case .foundations: return "Foundations"
+            case .patterns: return "Patterns"
+            case .components: return "Components"
+            case .technologies: return "Technologies"
+            case .inputs: return "Inputs"
+            case .general: return "General"
+            }
+        }
+    }
+
+    /// HIG platforms
+    public enum Platform: String, Sendable, CaseIterable {
+        case iOS
+        case macOS
+        case watchOS
+        case visionOS
+        case tvOS
+        case all
+
+        public var displayName: String {
+            switch self {
+            case .iOS: return "iOS"
+            case .macOS: return "macOS"
+            case .watchOS: return "watchOS"
+            case .visionOS: return "visionOS"
+            case .tvOS: return "tvOS"
+            case .all: return "All Platforms"
+            }
         }
     }
 }
 
 // MARK: - Statistics
 
-public struct HIGStatistics: Sendable {
-    public var totalPages: Int = 0
-    public var newPages: Int = 0
-    public var updatedPages: Int = 0
-    public var skippedPages: Int = 0
-    public var errors: Int = 0
-    public var startTime: Date?
-    public var endTime: Date?
+extension Core.HIGCrawler {
+    public struct Statistics: Sendable {
+        public var totalPages: Int = 0
+        public var newPages: Int = 0
+        public var updatedPages: Int = 0
+        public var skippedPages: Int = 0
+        public var errors: Int = 0
+        public var startTime: Date?
+        public var endTime: Date?
 
-    public init(
-        totalPages: Int = 0,
-        newPages: Int = 0,
-        updatedPages: Int = 0,
-        skippedPages: Int = 0,
-        errors: Int = 0,
-        startTime: Date? = nil,
-        endTime: Date? = nil
-    ) {
-        self.totalPages = totalPages
-        self.newPages = newPages
-        self.updatedPages = updatedPages
-        self.skippedPages = skippedPages
-        self.errors = errors
-        self.startTime = startTime
-        self.endTime = endTime
-    }
-
-    public var duration: TimeInterval? {
-        guard let start = startTime, let end = endTime else {
-            return nil
+        public init(
+            totalPages: Int = 0,
+            newPages: Int = 0,
+            updatedPages: Int = 0,
+            skippedPages: Int = 0,
+            errors: Int = 0,
+            startTime: Date? = nil,
+            endTime: Date? = nil
+        ) {
+            self.totalPages = totalPages
+            self.newPages = newPages
+            self.updatedPages = updatedPages
+            self.skippedPages = skippedPages
+            self.errors = errors
+            self.startTime = startTime
+            self.endTime = endTime
         }
-        return end.timeIntervalSince(start)
+
+        public var duration: TimeInterval? {
+            guard let start = startTime, let end = endTime else {
+                return nil
+            }
+            return end.timeIntervalSince(start)
+        }
     }
 }
 
 // MARK: - Progress
 
-public struct HIGProgress: Sendable {
-    public let currentPage: Int
-    public let totalPages: Int
-    public let currentItem: String
-    public let stats: HIGStatistics
+extension Core.HIGCrawler {
+    public struct Progress: Sendable {
+        public let currentPage: Int
+        public let totalPages: Int
+        public let currentItem: String
+        public let stats: Statistics
 
-    public var percentage: Double {
-        guard totalPages > 0 else { return 0 }
-        return Double(currentPage) / Double(totalPages) * 100
+        public var percentage: Double {
+            guard totalPages > 0 else { return 0 }
+            return Double(currentPage) / Double(totalPages) * 100
+        }
     }
 }
 
 // MARK: - Errors
 
-public enum HIGCrawlerError: Error, LocalizedError {
-    case invalidResponse(URL)
-    case webKitNotAvailable
-    case webViewNotInitialized
+extension Core.HIGCrawler {
+    public enum Error: Swift.Error, LocalizedError, Sendable {
+        case invalidResponse(URL)
+        case webKitNotAvailable
+        case webViewNotInitialized
 
-    public var errorDescription: String? {
-        switch self {
-        case .invalidResponse(let url):
-            return "Invalid response from \(url)"
-        case .webKitNotAvailable:
-            return "WebKit not available - HIG crawler requires macOS"
-        case .webViewNotInitialized:
-            return "WebView not initialized"
+        public var errorDescription: String? {
+            switch self {
+            case .invalidResponse(let url):
+                return "Invalid response from \(url)"
+            case .webKitNotAvailable:
+                return "WebKit not available - HIG crawler requires macOS"
+            case .webViewNotInitialized:
+                return "WebView not initialized"
+            }
         }
     }
 }
