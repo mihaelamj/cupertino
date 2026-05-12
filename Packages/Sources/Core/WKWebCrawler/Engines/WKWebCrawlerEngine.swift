@@ -1,16 +1,15 @@
 import Foundation
 import SharedCore
 #if canImport(WebKit)
-import WebKit
-import SharedConstants
 import CoreProtocols
-import CoreHTMLParser
+import SharedConstants
+import WebKit
 #endif
 
 // MARK: - WKWeb Crawler Engine
 
 /// Complete crawler engine using WKWebView for JavaScript-rendered pages
-/// Uses WKWebCrawler.ContentFetcher for fetching and HTMLToMarkdown for transformation
+/// Uses WKWebCrawler.ContentFetcher for fetching and Core.Parser.HTML for transformation
 extension WKWebCrawler {
     #if canImport(WebKit)
     @MainActor
@@ -33,8 +32,8 @@ extension WKWebCrawler {
             let html = result.content
             let finalURL = result.url
 
-            // Transform to markdown using HTMLToMarkdown
-            let markdown = HTMLToMarkdown.convert(html, url: finalURL)
+            // Transform to markdown using Core.Parser.HTML
+            let markdown = Core.Parser.HTML.convert(html, url: finalURL)
 
             // Extract links from HTML
             let links = extractLinks(from: html, baseURL: finalURL)

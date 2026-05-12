@@ -3,43 +3,47 @@ import Foundation
 
 // MARK: - XML Transformer
 
-/// Transforms XML content (like sitemaps or RSS feeds) into structured data
-/// Useful for parsing web crawled pages that return XML format
-public struct XMLTransformer: ContentTransformer, @unchecked Sendable {
-    public typealias RawContent = Data
+extension Core.Parser {
+    /// Transforms XML content (like sitemaps or RSS feeds) into structured data
+    /// Useful for parsing web crawled pages that return XML format
+    public struct XML: ContentTransformer, @unchecked Sendable {
+        public typealias RawContent = Data
 
-    public init() {}
+        public init() {}
 
-    // MARK: - ContentTransformer Protocol
+        // MARK: - ContentTransformer Protocol
 
-    /// Transform XML content to Markdown (protocol conformance)
-    public func transform(_ content: Data, url: URL) -> String? {
-        Self.convert(content, url: url)
-    }
-
-    /// Extract links from XML content (protocol conformance)
-    public func extractLinks(from content: Data) -> [URL] {
-        Self.extractLinks(from: content)
-    }
-
-    // MARK: - Static API (consistent with other transformers)
-
-    /// Convert XML data to Markdown
-    public static func convert(_ data: Data, url: URL) -> String? {
-        guard let parser = XMLToMarkdownParser(data: data, sourceURL: url) else {
-            return nil
+        /// Transform XML content to Markdown (protocol conformance)
+        public func transform(_ content: Data, url: URL) -> String? {
+            Self.convert(content, url: url)
         }
-        return parser.parse()
-    }
 
-    /// Extract links from XML content
-    public static func extractLinks(from data: Data) -> [URL] {
-        guard let parser = XMLLinkExtractor(data: data) else {
-            return []
+        /// Extract links from XML content (protocol conformance)
+        public func extractLinks(from content: Data) -> [URL] {
+            Self.extractLinks(from: content)
         }
-        return parser.extractLinks()
+
+        // MARK: - Static API (consistent with other transformers)
+
+        /// Convert XML data to Markdown
+        public static func convert(_ data: Data, url: URL) -> String? {
+            guard let parser = XMLToMarkdownParser(data: data, sourceURL: url) else {
+                return nil
+            }
+            return parser.parse()
+        }
+
+        /// Extract links from XML content
+        public static func extractLinks(from data: Data) -> [URL] {
+            guard let parser = XMLLinkExtractor(data: data) else {
+                return []
+            }
+            return parser.extractLinks()
+        }
     }
 }
+
+// closes extension Core.Parser
 
 // MARK: - XML to Markdown Parser
 

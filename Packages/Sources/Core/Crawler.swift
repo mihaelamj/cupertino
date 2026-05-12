@@ -1,15 +1,14 @@
+import CoreJSONParser
+import CorePackageIndexing
+import CoreProtocols
 import Foundation
 import Logging
 import os
-import SharedCore
 import SharedConfiguration
 import SharedConstants
+import SharedCore
 import SharedModels
 import SharedUtils
-import CoreProtocols
-import CoreHTMLParser
-import CoreJSONParser
-import CorePackageIndexing
 
 // MARK: - Documentation Crawler
 
@@ -321,7 +320,7 @@ extension Core {
                     // JSON API failed, fall back to HTML
                     logInfo("   ⚠️ JSON API unavailable, using HTML fallback")
                     let html = try await loadPage(url: url)
-                    if HTMLToMarkdown.looksLikeHTTPErrorPage(html: html) {
+                    if Core.Parser.HTML.looksLikeHTTPErrorPage(html: html) {
                         logInfo("   ⛔ HTTP error template detected, skipping (#284)")
                         await state.updateStatistics { $0.errors += 1 }
                         await state.updateStatistics { $0.totalPages += 1 }
@@ -329,16 +328,16 @@ extension Core {
                     }
                     (markdown, links, structuredPage) = autoreleasepool {
                         (
-                            HTMLToMarkdown.convert(html, url: url),
+                            Core.Parser.HTML.convert(html, url: url),
                             extractLinks(from: html, baseURL: url),
-                            HTMLToMarkdown.toStructuredPage(html, url: url, depth: depth)
+                            Core.Parser.HTML.toStructuredPage(html, url: url, depth: depth)
                         )
                     }
                 }
             } else {
                 // No JSON endpoint available, use HTML directly
                 let html = try await loadPage(url: url)
-                if HTMLToMarkdown.looksLikeHTTPErrorPage(html: html) {
+                if Core.Parser.HTML.looksLikeHTTPErrorPage(html: html) {
                     logInfo("   ⛔ HTTP error template detected, skipping (#284)")
                     await state.updateStatistics { $0.errors += 1 }
                     await state.updateStatistics { $0.totalPages += 1 }
@@ -346,9 +345,9 @@ extension Core {
                 }
                 (markdown, links, structuredPage) = autoreleasepool {
                     (
-                        HTMLToMarkdown.convert(html, url: url),
+                        Core.Parser.HTML.convert(html, url: url),
                         extractLinks(from: html, baseURL: url),
-                        HTMLToMarkdown.toStructuredPage(html, url: url, depth: depth)
+                        Core.Parser.HTML.toStructuredPage(html, url: url, depth: depth)
                     )
                 }
             }

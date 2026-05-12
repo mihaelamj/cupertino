@@ -24,7 +24,6 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("SharedConfiguration"),
     .singleTargetLibrary("MCPSharedTools"),
     .singleTargetLibrary("CoreProtocols"),
-    .singleTargetLibrary("CoreHTMLParser"),
     .singleTargetLibrary("CoreJSONParser"),
     .singleTargetLibrary("CorePackageIndexing"),
     .singleTargetLibrary("Core"),
@@ -172,12 +171,9 @@ let targets: [Target] = {
         dependencies: ["SharedCore", "SharedConstants", "SharedModels", "Resources"]
     )
 
-    // ---------- CoreHTMLParser (v1.2 refactor 2.2: HTMLToMarkdown + XMLTransformer, the worst single-file god in Core) ----------
-    let coreHTMLParserTarget = Target.target(
-        name: "CoreHTMLParser",
-        dependencies: ["CoreProtocols", "SharedModels", "SharedConstants"],
-        path: "Sources/Core/HTMLParser"
-    )
+    // CoreHTMLParser merged back into Core (HTMLToMarkdown -> Core.Parser.HTML,
+    // XMLTransformer -> Core.Parser.XML). The Sources/Core/HTMLParser/ folder
+    // stays; Core picks up those sources directly. See Core target below.
 
     // ---------- CoreJSONParser (v1.2 refactor 2.3: AppleJSONToMarkdown + MarkdownToStructuredPage + RefResolver + JSON engine) ----------
     let coreJSONParserTarget = Target.target(
@@ -197,7 +193,6 @@ let targets: [Target] = {
         name: "Core",
         dependencies: [
             "CoreProtocols",
-            "CoreHTMLParser",
             "CoreJSONParser",
             "CorePackageIndexing",
             "SharedCore",
@@ -209,13 +204,12 @@ let targets: [Target] = {
             "Resources",
             "ASTIndexer",
         ],
-        exclude: ["HTMLParser", "JSONParser", "PackageIndexing"]
+        exclude: ["JSONParser", "PackageIndexing"]
     )
     let coreTestsTarget = Target.testTarget(
         name: "CoreTests",
         dependencies: [
             "CoreProtocols",
-            "CoreHTMLParser",
             "CoreJSONParser",
             "CorePackageIndexing",
             "Core",
@@ -495,7 +489,6 @@ let targets: [Target] = {
         mcpSharedToolsTarget,
         mcpSharedToolsTestsTarget,
         coreProtocolsTarget,
-        coreHTMLParserTarget,
         coreJSONParserTarget,
         corePackageIndexingTarget,
         resourcesTarget,
