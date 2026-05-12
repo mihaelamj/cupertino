@@ -1,7 +1,7 @@
 import Foundation
 import OSLog
-import SharedCore
 import SharedConstants
+import SharedCore
 
 // MARK: - Logger Infrastructure
 

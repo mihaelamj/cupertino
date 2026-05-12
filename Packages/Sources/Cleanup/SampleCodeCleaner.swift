@@ -1,7 +1,7 @@
 import Foundation
 import Logging
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedModels
 
 // MARK: - Sample Code Cleaner
@@ -47,7 +47,7 @@ public actor SampleCodeCleaner {
         let zipFiles = try findZipFiles()
 
         guard !zipFiles.isEmpty else {
-            Log.info("No ZIP files found in \(sampleCodeDirectory.path)", category: .samples)
+            Logging.Log.info("No ZIP files found in \(sampleCodeDirectory.path)", category: .samples)
             return CleanupStatistics(
                 totalArchives: 0,
                 cleanedArchives: 0,
@@ -59,7 +59,7 @@ public actor SampleCodeCleaner {
             )
         }
 
-        Log.info("Found \(zipFiles.count) ZIP archives to process", category: .samples)
+        Logging.Log.info("Found \(zipFiles.count) ZIP archives to process", category: .samples)
 
         var cleanedArchives = 0
         var skippedArchives = 0
@@ -84,7 +84,7 @@ public actor SampleCodeCleaner {
             } else {
                 errors += 1
                 if let error = result.errorMessage {
-                    Log.error("Failed to clean \(zipFile.lastPathComponent): \(error)", category: .samples)
+                    Logging.Log.error("Failed to clean \(zipFile.lastPathComponent): \(error)", category: .samples)
                 }
             }
 
@@ -313,9 +313,9 @@ public actor SampleCodeCleaner {
             do {
                 try FileManager.default.removeItem(at: itemURL)
                 itemsRemoved += 1
-                Log.debug("Removed: \(itemURL.path)", category: .samples)
+                Logging.Log.debug("Removed: \(itemURL.path)", category: .samples)
             } catch {
-                Log.warning("Failed to remove \(itemURL.path): \(error)", category: .samples)
+                Logging.Log.warning("Failed to remove \(itemURL.path): \(error)", category: .samples)
             }
         }
 

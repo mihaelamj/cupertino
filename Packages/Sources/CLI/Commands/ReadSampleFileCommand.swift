@@ -3,9 +3,9 @@ import Foundation
 import Logging
 import SampleIndex
 import Services
+import SharedConstants
 import SharedCore
 import SharedUtils
-import SharedConstants
 
 // MARK: - Read Sample File Command
 
@@ -42,8 +42,8 @@ struct ReadSampleFileCommand: AsyncParsableCommand {
         // Use ServiceContainer for managed lifecycle
         let file = try await ServiceContainer.withSampleService(dbPath: dbPath) { service in
             guard let file = try await service.getFile(projectId: projectId, path: filePath) else {
-                Log.error("File not found: \(filePath) in project \(projectId)")
-                Log.output("Use 'cupertino read-sample \(projectId)' to list available files.")
+                Logging.Log.error("File not found: \(filePath) in project \(projectId)")
+                Logging.Log.output("Use 'cupertino read-sample \(projectId)' to list available files.")
                 throw ExitCode.failure
             }
             return file
@@ -55,10 +55,10 @@ struct ReadSampleFileCommand: AsyncParsableCommand {
             outputText(file)
         case .json:
             let formatter = SampleFileJSONFormatter()
-            Log.output(formatter.format(file))
+            Logging.Log.output(formatter.format(file))
         case .markdown:
             let formatter = SampleFileMarkdownFormatter()
-            Log.output(formatter.format(file))
+            Logging.Log.output(formatter.format(file))
         }
     }
 
@@ -74,11 +74,11 @@ struct ReadSampleFileCommand: AsyncParsableCommand {
     // MARK: - Output Formatting
 
     private func outputText(_ file: SampleIndex.File) {
-        Log.output("// File: \(file.path)")
-        Log.output("// Project: \(file.projectId)")
-        Log.output("// Size: \(Shared.Formatting.formatBytes(file.size))")
-        Log.output("")
-        Log.output(file.content)
+        Logging.Log.output("// File: \(file.path)")
+        Logging.Log.output("// Project: \(file.projectId)")
+        Logging.Log.output("// Size: \(Shared.Formatting.formatBytes(file.size))")
+        Logging.Log.output("")
+        Logging.Log.output(file.content)
     }
 }
 

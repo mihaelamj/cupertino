@@ -1,10 +1,10 @@
 import Core
+import CorePackageIndexing
+import CoreProtocols
 import Foundation
+import SharedConstants
 import SharedCore
 import SQLite3
-import SharedConstants
-import CoreProtocols
-import CorePackageIndexing
 
 // MARK: - Package Index (separate DB)
 
@@ -24,14 +24,14 @@ extension Search {
     /// - `kind` is stored `UNINDEXED` so it survives in SELECTs but doesn't bloat
     ///   the FTS index. Callers filter on it via the plain-column path.
     public actor PackageIndex {
-        // Bumped 1 → 2 in the #219 follow-up: added six availability
-        // columns to `package_metadata` (`min_ios`, `min_macos`,
-        // `min_tvos`, `min_watchos`, `min_visionos`,
-        // `availability_source`) and one column to `package_files`
-        // (`available_attrs_json`). Mirrors the SearchIndex docs_metadata
-        // pattern (#192 sec. C). Existing v1 DBs migrate via
-        // `ALTER TABLE ADD COLUMN`; fresh installs land them inline via
-        // `createTables`. No destructive migration.
+        /// Bumped 1 → 2 in the #219 follow-up: added six availability
+        /// columns to `package_metadata` (`min_ios`, `min_macos`,
+        /// `min_tvos`, `min_watchos`, `min_visionos`,
+        /// `availability_source`) and one column to `package_files`
+        /// (`available_attrs_json`). Mirrors the SearchIndex docs_metadata
+        /// pattern (#192 sec. C). Existing v1 DBs migrate via
+        /// `ALTER TABLE ADD COLUMN`; fresh installs land them inline via
+        /// `createTables`. No destructive migration.
         public static let schemaVersion: Int32 = 2
 
         private var database: OpaquePointer?
@@ -374,7 +374,7 @@ extension Search {
             }
             sqlite3_bind_text(statement, 12, parentsJSON, -1, SQLITE_TRANSIENT)
 
-            // Availability columns 13-18 (#219)
+            /// Availability columns 13-18 (#219)
             func bindMin(_ pos: Int32, _ key: String) {
                 if let value = availability?.deploymentTargets[key] {
                     sqlite3_bind_text(statement, pos, value, -1, SQLITE_TRANSIENT)

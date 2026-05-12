@@ -2,8 +2,8 @@ import ArgumentParser
 import Distribution
 import Foundation
 import Logging
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedUtils
 
 // MARK: - Setup Command

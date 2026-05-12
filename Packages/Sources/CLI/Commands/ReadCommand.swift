@@ -71,7 +71,7 @@ struct ReadCommand: AsyncParsableCommand {
         do {
             explicit = try Services.ReadService.resolveSource(source)
         } catch Services.ReadService.ReadError.unknownSource(let raw) {
-            Log.error("Unknown --source value: \(raw). See `cupertino read --help`.")
+            Logging.Log.error("Unknown --source value: \(raw). See `cupertino read --help`.")
             throw ExitCode.failure
         }
 
@@ -86,30 +86,30 @@ struct ReadCommand: AsyncParsableCommand {
                 packagesDB: packagesDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             )
         } catch Services.ReadService.ReadError.docsNotFound(let id) {
-            Log.error("Document not found in search.db: \(id)")
+            Logging.Log.error("Document not found in search.db: \(id)")
             throw ExitCode.failure
         } catch Services.ReadService.ReadError.samplesNotFound(let id) {
-            Log.error("Not found in samples.db: \(id)")
+            Logging.Log.error("Not found in samples.db: \(id)")
             throw ExitCode.failure
         } catch Services.ReadService.ReadError.packagesNotFound(let id) {
-            Log.error("Not found in packages.db: \(id)")
+            Logging.Log.error("Not found in packages.db: \(id)")
             throw ExitCode.failure
         } catch Services.ReadService.ReadError.packagesIdentifierInvalid(let id) {
-            Log.error(
+            Logging.Log.error(
                 "Invalid package identifier: \(id) — expected `<owner>/<repo>/<relpath>`."
             )
             throw ExitCode.failure
         } catch Services.ReadService.ReadError.backendFailed(let msg) {
-            Log.error("Read failed: \(msg)")
+            Logging.Log.error("Read failed: \(msg)")
             throw ExitCode.failure
         } catch Services.ReadService.ReadError.notFoundAnywhere(let id) {
-            Log.error(
+            Logging.Log.error(
                 "Tried docs, samples, and packages — no source matched. Identifier: \(id)"
             )
             throw ExitCode.failure
         }
 
-        Log.output(result.content)
+        Logging.Log.output(result.content)
     }
 }
 

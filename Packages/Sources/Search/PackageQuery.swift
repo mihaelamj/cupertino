@@ -1,7 +1,7 @@
 import Foundation
+import SharedConstants
 import SharedCore
 import SQLite3
-import SharedConstants
 
 extension Search {
     // MARK: - Public API

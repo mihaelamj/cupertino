@@ -1,7 +1,7 @@
 import ASTIndexer
 import Foundation
-import SharedCore
 import SharedConstants
+import SharedCore
 
 // MARK: - Source Item
 

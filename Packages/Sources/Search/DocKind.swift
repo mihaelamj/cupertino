@@ -15,8 +15,8 @@
 // and a corresponding case to `DocKind`.
 
 import Foundation
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedModels
 
 extension Search {

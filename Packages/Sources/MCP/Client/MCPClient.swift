@@ -311,7 +311,7 @@ public actor MCPClient {
 
 // MARK: - Helper Types
 
-struct EmptyParams: Codable, Sendable {}
+struct EmptyParams: Codable {}
 
 // MARK: - Errors
 

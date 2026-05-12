@@ -1,11 +1,11 @@
 import Core
+import CoreJSONParser
+import CoreProtocols
 import Foundation
 import Logging
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedModels
-import CoreProtocols
-import CoreJSONParser
 
 // MARK: - Search Index Builder
 
@@ -141,10 +141,10 @@ extension Search {
             try await indexAppleDocsFromDirectory(onProgress: onProgress)
         }
 
-        // `internal` rather than `private` so SearchTests can exercise the
-        // metadata-driven indexing path (including the malformed-URL skip
-        // branch added in PR #288) without needing to bootstrap the whole
-        // `buildIndex()` orchestration.
+        /// `internal` rather than `private` so SearchTests can exercise the
+        /// metadata-driven indexing path (including the malformed-URL skip
+        /// branch added in PR #288) without needing to bootstrap the whole
+        /// `buildIndex()` orchestration.
         func indexAppleDocsFromMetadata(
             metadata: CrawlMetadata,
             onProgress: (@Sendable (Int, Int) -> Void)?
@@ -1272,12 +1272,12 @@ extension Search {
         }
 
         private func logInfo(_ message: String) {
-            Log.info(message, category: .search)
+            Logging.Log.info(message, category: .search)
         }
 
         private func logError(_ message: String) {
             let errorMessage = "❌ \(message)"
-            Log.error(errorMessage, category: .search)
+            Logging.Log.error(errorMessage, category: .search)
         }
 
         // MARK: - #284 indexer-side defense
@@ -1306,7 +1306,7 @@ extension Search {
             }
 
             // Standalone phrase form (rare but seen in some Apple CDN error templates)
-            let standalone: Set<String> = [
+            let standalone: Set = [
                 "Forbidden",
                 "Bad Gateway",
                 "Not Found",

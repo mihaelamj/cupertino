@@ -1,6 +1,6 @@
 import Foundation
-import SharedCore
 import SharedConstants
+import SharedCore
 
 // MARK: - Smart-query abstraction (#192 section E)
 

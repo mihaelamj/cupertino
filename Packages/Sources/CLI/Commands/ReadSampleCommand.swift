@@ -3,9 +3,9 @@ import Foundation
 import Logging
 import SampleIndex
 import Services
+import SharedConstants
 import SharedCore
 import SharedUtils
-import SharedConstants
 
 // MARK: - Read Sample Command
 
@@ -39,8 +39,8 @@ struct ReadSampleCommand: AsyncParsableCommand {
         // Use ServiceContainer for managed lifecycle
         let (project, files) = try await ServiceContainer.withSampleService(dbPath: dbPath) { service in
             guard let project = try await service.getProject(id: projectId) else {
-                Log.error("Project not found: \(projectId)")
-                Log.output("Use 'cupertino list-samples' or 'cupertino search --source samples' to find valid project IDs.")
+                Logging.Log.error("Project not found: \(projectId)")
+                Logging.Log.output("Use 'cupertino list-samples' or 'cupertino search --source samples' to find valid project IDs.")
                 throw ExitCode.failure
             }
 
@@ -71,44 +71,44 @@ struct ReadSampleCommand: AsyncParsableCommand {
     // MARK: - Output Formatting
 
     private func outputText(_ project: SampleIndex.Project, files: [SampleIndex.File]) {
-        Log.output(project.title)
-        Log.output(String(repeating: "=", count: project.title.count))
-        Log.output("")
-        Log.output("Project ID: \(project.id)")
-        Log.output("Frameworks: \(project.frameworks.joined(separator: ", "))")
-        Log.output("Files: \(project.fileCount)")
-        Log.output("Size: \(Shared.Formatting.formatBytes(project.totalSize))")
+        Logging.Log.output(project.title)
+        Logging.Log.output(String(repeating: "=", count: project.title.count))
+        Logging.Log.output("")
+        Logging.Log.output("Project ID: \(project.id)")
+        Logging.Log.output("Frameworks: \(project.frameworks.joined(separator: ", "))")
+        Logging.Log.output("Files: \(project.fileCount)")
+        Logging.Log.output("Size: \(Shared.Formatting.formatBytes(project.totalSize))")
 
         if !project.webURL.isEmpty {
-            Log.output("Apple Developer: \(project.webURL)")
+            Logging.Log.output("Apple Developer: \(project.webURL)")
         }
 
-        Log.output("")
+        Logging.Log.output("")
 
         if !project.description.isEmpty {
-            Log.output("Description:")
-            Log.output(project.description)
-            Log.output("")
+            Logging.Log.output("Description:")
+            Logging.Log.output(project.description)
+            Logging.Log.output("")
         }
 
         if let readme = project.readme, !readme.isEmpty {
-            Log.output("README:")
-            Log.output(readme)
-            Log.output("")
+            Logging.Log.output("README:")
+            Logging.Log.output(readme)
+            Logging.Log.output("")
         }
 
         if !files.isEmpty {
-            Log.output("Files (\(files.count) total):")
+            Logging.Log.output("Files (\(files.count) total):")
             for file in files.prefix(30) {
-                Log.output("  - \(file.path)")
+                Logging.Log.output("  - \(file.path)")
             }
             if files.count > 30 {
-                Log.output("  ... and \(files.count - 30) more files")
+                Logging.Log.output("  ... and \(files.count - 30) more files")
             }
         }
 
-        Log.output("")
-        Log.output("Tip: Use 'cupertino read-sample-file \(project.id) <path>' to view source code")
+        Logging.Log.output("")
+        Logging.Log.output("Tip: Use 'cupertino read-sample-file \(project.id) <path>' to view source code")
     }
 
     private func outputJSON(_ project: SampleIndex.Project, files: [SampleIndex.File]) {
@@ -142,46 +142,46 @@ struct ReadSampleCommand: AsyncParsableCommand {
         do {
             let data = try encoder.encode(output)
             if let jsonString = String(data: data, encoding: .utf8) {
-                Log.output(jsonString)
+                Logging.Log.output(jsonString)
             }
         } catch {
-            Log.error("Error encoding JSON: \(error)")
+            Logging.Log.error("Error encoding JSON: \(error)")
         }
     }
 
     private func outputMarkdown(_ project: SampleIndex.Project, files: [SampleIndex.File]) {
-        Log.output("# \(project.title)\n")
-        Log.output("**Project ID:** `\(project.id)`\n")
+        Logging.Log.output("# \(project.title)\n")
+        Logging.Log.output("**Project ID:** `\(project.id)`\n")
 
         if !project.description.isEmpty {
-            Log.output("## Description\n")
-            Log.output("\(project.description)\n")
+            Logging.Log.output("## Description\n")
+            Logging.Log.output("\(project.description)\n")
         }
 
-        Log.output("## Metadata\n")
-        Log.output("- **Frameworks:** \(project.frameworks.joined(separator: ", "))")
-        Log.output("- **Files:** \(project.fileCount)")
-        Log.output("- **Size:** \(Shared.Formatting.formatBytes(project.totalSize))")
+        Logging.Log.output("## Metadata\n")
+        Logging.Log.output("- **Frameworks:** \(project.frameworks.joined(separator: ", "))")
+        Logging.Log.output("- **Files:** \(project.fileCount)")
+        Logging.Log.output("- **Size:** \(Shared.Formatting.formatBytes(project.totalSize))")
 
         if !project.webURL.isEmpty {
-            Log.output("- **Apple Developer:** \(project.webURL)")
+            Logging.Log.output("- **Apple Developer:** \(project.webURL)")
         }
 
-        Log.output("")
+        Logging.Log.output("")
 
         if let readme = project.readme, !readme.isEmpty {
-            Log.output("## README\n")
-            Log.output(readme)
-            Log.output("")
+            Logging.Log.output("## README\n")
+            Logging.Log.output(readme)
+            Logging.Log.output("")
         }
 
         if !files.isEmpty {
-            Log.output("## Files (\(files.count) total)\n")
+            Logging.Log.output("## Files (\(files.count) total)\n")
             for file in files.prefix(30) {
-                Log.output("- `\(file.path)`")
+                Logging.Log.output("- `\(file.path)`")
             }
             if files.count > 30 {
-                Log.output("- _... and \(files.count - 30) more files_")
+                Logging.Log.output("- _... and \(files.count - 30) more files_")
             }
         }
     }

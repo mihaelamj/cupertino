@@ -11,9 +11,9 @@
 @_exported import WebKit
 #endif
 
-@_exported import SharedCore
 import SharedConfiguration
 import SharedConstants
+@_exported import SharedCore
 
 // MARK: - Usage Example
 

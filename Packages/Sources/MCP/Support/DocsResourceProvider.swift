@@ -3,9 +3,9 @@ import Logging
 import MCP
 import MCPSharedTools
 import Search
-import SharedCore
 import SharedConfiguration
 import SharedConstants
+import SharedCore
 import SharedModels
 import SharedUtils
 
@@ -48,7 +48,7 @@ public actor DocsResourceProvider: ResourceProvider {
                 // SampleCodeDownloader) log the skip; matching that here so
                 // a degraded listing doesn't go unnoticed.
                 guard let parsedURL = URL(string: url) else {
-                    Log.warning(
+                    Logging.Log.warning(
                         "Skipping malformed URL key in CrawlMetadata.pages: '\(url)' "
                             + "(framework: \(pageMetadata.framework))",
                         category: .mcp
@@ -241,7 +241,7 @@ public actor DocsResourceProvider: ResourceProvider {
         do {
             metadata = try CrawlMetadata.load(from: metadataURL)
         } catch {
-            Log.warning("Failed to load metadata: \(error)", category: .mcp)
+            Logging.Log.warning("Failed to load metadata: \(error)", category: .mcp)
         }
     }
 

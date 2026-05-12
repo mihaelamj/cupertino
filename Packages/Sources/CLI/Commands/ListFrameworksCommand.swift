@@ -38,13 +38,13 @@ struct ListFrameworksCommand: AsyncParsableCommand {
         switch format {
         case .text:
             let formatter = FrameworksTextFormatter(totalDocs: totalDocs)
-            Log.output(formatter.format(frameworks))
+            Logging.Log.output(formatter.format(frameworks))
         case .json:
             let formatter = FrameworksJSONFormatter()
-            Log.output(formatter.format(frameworks))
+            Logging.Log.output(formatter.format(frameworks))
         case .markdown:
             let formatter = FrameworksMarkdownFormatter(totalDocs: totalDocs)
-            Log.output(formatter.format(frameworks))
+            Logging.Log.output(formatter.format(frameworks))
         }
     }
 }

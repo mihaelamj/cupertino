@@ -449,11 +449,11 @@ extension Core {
         // MARK: - Logging
 
         private func logInfo(_ message: String) {
-            Log.info(message, category: .packages)
+            Logging.Log.info(message, category: .packages)
         }
 
         private func logError(_ message: String) {
-            Log.error(message, category: .packages)
+            Logging.Log.error(message, category: .packages)
         }
     }
 }

@@ -1,10 +1,10 @@
+import CoreProtocols
 import Foundation
 import Logging
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedModels
 import SharedUtils
-import CoreProtocols
 
 // MARK: - Swift Evolution Crawler
 
@@ -239,12 +239,12 @@ extension Core {
         // MARK: - Logging
 
         private func logInfo(_ message: String) {
-            Log.info(message, category: .evolution)
+            Logging.Log.info(message, category: .evolution)
         }
 
         private func logError(_ message: String) {
             let errorMessage = "❌ \(message)"
-            Log.error(errorMessage, category: .evolution)
+            Logging.Log.error(errorMessage, category: .evolution)
         }
 
         private func logStatistics(_ stats: EvolutionStatistics) {
@@ -260,7 +260,7 @@ extension Core {
             ]
 
             for message in messages where !message.isEmpty {
-                Log.info(message, category: .evolution)
+                Logging.Log.info(message, category: .evolution)
             }
         }
     }

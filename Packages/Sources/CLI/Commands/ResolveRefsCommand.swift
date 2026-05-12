@@ -7,11 +7,11 @@ import SharedCore
 import AppKit
 #endif
 #if canImport(WebKit)
-import WebKit
+import CoreJSONParser
+import CoreProtocols
 import SharedModels
 import SharedUtils
-import CoreProtocols
-import CoreJSONParser
+import WebKit
 #endif
 
 // MARK: - Resolve-Refs Command
@@ -62,11 +62,11 @@ struct ResolveRefsCommand: AsyncParsableCommand {
     mutating func run() async throws {
         let dir = URL(fileURLWithPath: input).expandingTildeInPath
         guard FileManager.default.fileExists(atPath: dir.path) else {
-            Log.error("Directory does not exist: \(dir.path)")
+            Logging.Log.error("Directory does not exist: \(dir.path)")
             throw ExitCode.failure
         }
 
-        Log.info("Resolving doc:// markers in \(dir.path)")
+        Logging.Log.info("Resolving doc:// markers in \(dir.path)")
         let resolver = RefResolver(inputDirectory: dir)
 
         let fetcher = try await makeFetcher()
@@ -74,20 +74,20 @@ struct ResolveRefsCommand: AsyncParsableCommand {
         if let fetcher {
             (stats, unresolved) = try await resolver.runWithFetcher(fetcher) { done, total in
                 if done % 50 == 0 || done == total {
-                    Log.info("  network resolve: \(done)/\(total)")
+                    Logging.Log.info("  network resolve: \(done)/\(total)")
                 }
             }
         } else {
             (stats, unresolved) = try resolver.run()
         }
 
-        Log.info("Pages scanned:                  \(stats.pagesScanned)")
-        Log.info("Refs harvested:                 \(stats.refsHarvested)")
-        Log.info("Pages rewritten:                \(stats.pagesRewritten)")
-        Log.info("doc:// markers found:           \(stats.markersFound)")
-        Log.info("Resolved from harvest:          \(stats.markersResolvedFromHarvest)")
-        Log.info("Resolved from network:          \(stats.markersResolvedFromNetwork)")
-        Log.info("Unresolved (unique):            \(unresolved.count)")
+        Logging.Log.info("Pages scanned:                  \(stats.pagesScanned)")
+        Logging.Log.info("Refs harvested:                 \(stats.refsHarvested)")
+        Logging.Log.info("Pages rewritten:                \(stats.pagesRewritten)")
+        Logging.Log.info("doc:// markers found:           \(stats.markersFound)")
+        Logging.Log.info("Resolved from harvest:          \(stats.markersResolvedFromHarvest)")
+        Logging.Log.info("Resolved from network:          \(stats.markersResolvedFromNetwork)")
+        Logging.Log.info("Unresolved (unique):            \(unresolved.count)")
 
         // Persist a report next to the corpus.
         let report = ResolveReport(
@@ -101,7 +101,7 @@ struct ResolveRefsCommand: AsyncParsableCommand {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
         try encoder.encode(report).write(to: reportURL)
-        Log.info("Report: \(reportURL.path)")
+        Logging.Log.info("Report: \(reportURL.path)")
 
         if printUnresolved {
             for marker in report.unresolvedMarkers {
@@ -123,7 +123,7 @@ struct ResolveRefsCommand: AsyncParsableCommand {
     private func makeFetcher() async throws -> (any RefResolver.TitleFetcher)? {
         guard useNetwork else {
             if useWebview {
-                Log.error("--use-webview requires --use-network")
+                Logging.Log.error("--use-webview requires --use-network")
                 throw ExitCode.failure
             }
             return nil
@@ -146,7 +146,7 @@ struct ResolveRefsCommand: AsyncParsableCommand {
         }
         return CompositeTitleFetcher(primary: json, fallback: webView)
         #else
-        Log.error("--use-webview is only supported on macOS")
+        Logging.Log.error("--use-webview is only supported on macOS")
         throw ExitCode.failure
         #endif
     }

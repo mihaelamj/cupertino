@@ -75,26 +75,26 @@ struct ListSamplesCommand: AsyncParsableCommand {
     // MARK: - Output Formatting
 
     private func outputText(_ projects: [SampleIndex.Project], totalProjects: Int, totalFiles: Int) {
-        Log.output("Sample Code Projects")
-        Log.output("Total: \(totalProjects) projects, \(totalFiles) files")
+        Logging.Log.output("Sample Code Projects")
+        Logging.Log.output("Total: \(totalProjects) projects, \(totalFiles) files")
 
         if let framework {
-            Log.output("Filtered by: \(framework)")
+            Logging.Log.output("Filtered by: \(framework)")
         }
 
-        Log.output("")
+        Logging.Log.output("")
 
         if projects.isEmpty {
-            Log.output("No projects found. Run 'cupertino save --samples' to index sample code.")
+            Logging.Log.output("No projects found. Run 'cupertino save --samples' to index sample code.")
             return
         }
 
         for (index, project) in projects.enumerated() {
-            Log.output("[\(index + 1)] \(project.title)")
-            Log.output("    ID: \(project.id)")
-            Log.output("    Frameworks: \(project.frameworks.joined(separator: ", "))")
-            Log.output("    Files: \(project.fileCount)")
-            Log.output("")
+            Logging.Log.output("[\(index + 1)] \(project.title)")
+            Logging.Log.output("    ID: \(project.id)")
+            Logging.Log.output("    Frameworks: \(project.frameworks.joined(separator: ", "))")
+            Logging.Log.output("    Files: \(project.fileCount)")
+            Logging.Log.output("")
         }
     }
 
@@ -135,32 +135,32 @@ struct ListSamplesCommand: AsyncParsableCommand {
         do {
             let data = try encoder.encode(output)
             if let jsonString = String(data: data, encoding: .utf8) {
-                Log.output(jsonString)
+                Logging.Log.output(jsonString)
             }
         } catch {
-            Log.error("Error encoding JSON: \(error)")
+            Logging.Log.error("Error encoding JSON: \(error)")
         }
     }
 
     private func outputMarkdown(_ projects: [SampleIndex.Project], totalProjects: Int, totalFiles: Int) {
-        Log.output("# Sample Code Projects\n")
-        Log.output("Total: **\(totalProjects)** projects, **\(totalFiles)** files\n")
+        Logging.Log.output("# Sample Code Projects\n")
+        Logging.Log.output("Total: **\(totalProjects)** projects, **\(totalFiles)** files\n")
 
         if let framework {
-            Log.output("_Filtered to framework: **\(framework)**_\n")
+            Logging.Log.output("_Filtered to framework: **\(framework)**_\n")
         }
 
         if projects.isEmpty {
-            Log.output("_No projects found. Run `cupertino save --samples` to index sample code._")
+            Logging.Log.output("_No projects found. Run `cupertino save --samples` to index sample code._")
             return
         }
 
-        Log.output("| Project | Frameworks | Files |")
-        Log.output("|---------|-----------|------:|")
+        Logging.Log.output("| Project | Frameworks | Files |")
+        Logging.Log.output("|---------|-----------|------:|")
 
         for project in projects {
             let frameworks = project.frameworks.joined(separator: ", ")
-            Log.output("| `\(project.id)` | \(frameworks) | \(project.fileCount) |")
+            Logging.Log.output("| `\(project.id)` | \(frameworks) | \(project.fileCount) |")
         }
     }
 }

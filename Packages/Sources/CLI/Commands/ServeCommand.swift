@@ -1,5 +1,6 @@
 import ArgumentParser
 import Core
+import CoreProtocols
 import Darwin
 import Foundation
 import Logging
@@ -8,10 +9,9 @@ import MCPSupport
 import SampleIndex
 import Search
 import SearchToolProvider
-import SharedCore
 import SharedConfiguration
 import SharedConstants
-import CoreProtocols
+import SharedCore
 
 // MARK: - Serve Command
 
@@ -58,7 +58,7 @@ struct ServeCommand: AsyncParsableCommand {
         ServeReaper.reapSiblings()
 
         if isatty(STDOUT_FILENO) == 0 {
-            Log.disableConsole()
+            Logging.Log.disableConsole()
         }
 
         let config = Shared.Configuration(
@@ -140,11 +140,11 @@ struct ServeCommand: AsyncParsableCommand {
         // Log availability of each index
         if searchIndex != nil {
             let message = "✅ Documentation search enabled (index found)"
-            Log.info(message, category: .mcp)
+            Logging.Log.info(message, category: .mcp)
         }
         if sampleIndex != nil {
             let message = "✅ Sample code search enabled (index found)"
-            Log.info(message, category: .mcp)
+            Logging.Log.info(message, category: .mcp)
         }
     }
 
@@ -154,7 +154,7 @@ struct ServeCommand: AsyncParsableCommand {
             let infoMsg = "ℹ️  Sample code index not found at: \(sampleDBURL.path)"
             let cmd = "\(Shared.Constants.App.commandName) index"
             let hintMsg = "   Sample tools will not be available. Run '\(cmd)' to enable."
-            Log.info("\(infoMsg) \(hintMsg)", category: .mcp)
+            Logging.Log.info("\(infoMsg) \(hintMsg)", category: .mcp)
             return nil
         }
 
@@ -164,7 +164,7 @@ struct ServeCommand: AsyncParsableCommand {
             let errorMsg = "⚠️  Failed to load sample index: \(error)"
             let cmd = "\(Shared.Constants.App.commandName) index"
             let hintMsg = "   Sample tools will not be available. Run '\(cmd)' to create the index."
-            Log.warning("\(errorMsg) \(hintMsg)", category: .mcp)
+            Logging.Log.warning("\(errorMsg) \(hintMsg)", category: .mcp)
             return nil
         }
     }
@@ -174,7 +174,7 @@ struct ServeCommand: AsyncParsableCommand {
             let infoMsg = "ℹ️  Search index not found at: \(searchDBURL.path)"
             let cmd = "\(Shared.Constants.App.commandName) save"
             let hintMsg = "   Tools will not be available. Run '\(cmd)' to enable search."
-            Log.info("\(infoMsg) \(hintMsg)", category: .mcp)
+            Logging.Log.info("\(infoMsg) \(hintMsg)", category: .mcp)
             return nil
         }
 
@@ -184,7 +184,7 @@ struct ServeCommand: AsyncParsableCommand {
             let errorMsg = "⚠️  Failed to load search index: \(error)"
             let cmd = "\(Shared.Constants.App.commandName) save"
             let hintMsg = "   Tools will not be available. Run '\(cmd)' to create the index."
-            Log.warning("\(errorMsg) \(hintMsg)", category: .mcp)
+            Logging.Log.warning("\(errorMsg) \(hintMsg)", category: .mcp)
             return nil
         }
     }
@@ -206,7 +206,7 @@ struct ServeCommand: AsyncParsableCommand {
         messages.append("   Waiting for client connection...")
 
         for message in messages {
-            Log.info(message, category: .mcp)
+            Logging.Log.info(message, category: .mcp)
         }
     }
 

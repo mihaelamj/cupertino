@@ -4,8 +4,8 @@ import Logging
 import SampleIndex
 import Search
 import Services
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedUtils
 
 // MARK: - SmartQuery fan-out helpers (#239)
@@ -468,7 +468,7 @@ extension SearchCommand {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         if let data = try? encoder.encode(report),
            let json = String(data: data, encoding: .utf8) {
-            Log.output(json)
+            Logging.Log.output(json)
         }
     }
 

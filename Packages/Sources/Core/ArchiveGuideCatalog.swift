@@ -1,7 +1,7 @@
 import Foundation
 import Resources
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedUtils
 
 // MARK: - Archive Guide Catalog

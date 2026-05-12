@@ -1,9 +1,9 @@
 import Foundation
 import SharedCore
 #if canImport(WebKit)
-import WebKit
-import SharedConstants
 import CoreProtocols
+import SharedConstants
+import WebKit
 #endif
 
 // MARK: - WKWeb Content Fetcher

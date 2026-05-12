@@ -1,10 +1,10 @@
 import Core
-import Foundation
-import SharedCore
-import SharedConstants
-import SharedModels
-import CoreProtocols
 import CorePackageIndexing
+import CoreProtocols
+import Foundation
+import SharedConstants
+import SharedCore
+import SharedModels
 
 extension Search {
     /// Reads downloaded-and-extracted package trees from

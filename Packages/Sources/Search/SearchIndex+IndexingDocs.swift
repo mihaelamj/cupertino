@@ -1,9 +1,9 @@
 import ASTIndexer
 import Foundation
-import SharedCore
-import SQLite3
 import SharedConstants
+import SharedCore
 import SharedModels
+import SQLite3
 
 // swiftlint:disable function_body_length function_parameter_count
 // Justification: extracted from SearchIndex.swift; the original 4598-line

@@ -204,7 +204,7 @@ public final class GitHubSampleCodeFetcher {
     // MARK: - Logging
 
     private func logInfo(_ message: String) {
-        Log.info(message, category: .samples)
+        Logging.Log.info(message, category: .samples)
     }
 
     private func logStatistics(_ stats: FetchStatistics, repoPath: URL) {
@@ -218,7 +218,7 @@ public final class GitHubSampleCodeFetcher {
         ]
 
         for message in messages where !message.isEmpty {
-            Log.info(message, category: .samples)
+            Logging.Log.info(message, category: .samples)
         }
     }
 }

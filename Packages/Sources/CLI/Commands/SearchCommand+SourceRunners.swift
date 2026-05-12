@@ -3,8 +3,8 @@ import Foundation
 import Logging
 import Search
 import Services
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedUtils
 
 // MARK: - Per-source runners
@@ -50,10 +50,10 @@ extension SearchCommand {
                 source: source,
                 teasers: teasers
             )
-            Log.output(formatter.format(results))
+            Logging.Log.output(formatter.format(results))
         case .json:
             let formatter = JSONSearchResultFormatter()
-            Log.output(formatter.format(results))
+            Logging.Log.output(formatter.format(results))
         case .markdown:
             let formatter = MarkdownSearchResultFormatter(
                 query: query,
@@ -70,7 +70,7 @@ extension SearchCommand {
                 config: .cliDefault,
                 teasers: teasers
             )
-            Log.output(formatter.format(results))
+            Logging.Log.output(formatter.format(results))
         }
     }
 
@@ -104,7 +104,7 @@ extension SearchCommand {
                 )
             }
         } catch {
-            Log.info(
+            Logging.Log.info(
                 "ℹ️  Teaser results from other sources unavailable: \(error.localizedDescription) "
                     + "(common when another process is writing search.db). "
                     + "Continuing with samples results only."
@@ -115,13 +115,13 @@ extension SearchCommand {
         switch format {
         case .text:
             let formatter = SampleSearchTextFormatter(query: query, framework: framework, teasers: teasers)
-            Log.output(formatter.format(result))
+            Logging.Log.output(formatter.format(result))
         case .json:
             let formatter = SampleSearchJSONFormatter(query: query, framework: framework)
-            Log.output(formatter.format(result))
+            Logging.Log.output(formatter.format(result))
         case .markdown:
             let formatter = SampleSearchMarkdownFormatter(query: query, framework: framework, teasers: teasers)
-            Log.output(formatter.format(result))
+            Logging.Log.output(formatter.format(result))
         }
     }
 
@@ -201,13 +201,13 @@ extension SearchCommand {
         switch format {
         case .text:
             let formatter = HIGTextFormatter(query: higQuery, teasers: teasers)
-            Log.output(formatter.format(results))
+            Logging.Log.output(formatter.format(results))
         case .json:
             let formatter = HIGJSONFormatter(query: higQuery)
-            Log.output(formatter.format(results))
+            Logging.Log.output(formatter.format(results))
         case .markdown:
             let formatter = HIGMarkdownFormatter(query: higQuery, config: .cliDefault, teasers: teasers)
-            Log.output(formatter.format(results))
+            Logging.Log.output(formatter.format(results))
         }
     }
 }
