@@ -25,6 +25,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("MCPSharedTools"),
     .singleTargetLibrary("CoreProtocols"),
     .singleTargetLibrary("CoreHTMLParser"),
+    .singleTargetLibrary("CoreJSONParser"),
     .singleTargetLibrary("Core"),
     .singleTargetLibrary("Cleanup"),
     .singleTargetLibrary("Search"),
@@ -177,11 +178,19 @@ let targets: [Target] = {
         path: "Sources/Core/HTMLParser"
     )
 
+    // ---------- CoreJSONParser (v1.2 refactor 2.3: AppleJSONToMarkdown + MarkdownToStructuredPage + RefResolver + JSON engine) ----------
+    let coreJSONParserTarget = Target.target(
+        name: "CoreJSONParser",
+        dependencies: ["CoreProtocols", "SharedCore", "SharedModels", "SharedConstants", "SharedUtils", "Logging"],
+        path: "Sources/Core/JSONParser"
+    )
+
     let coreTarget = Target.target(
         name: "Core",
         dependencies: [
             "CoreProtocols",
             "CoreHTMLParser",
+            "CoreJSONParser",
             "SharedCore",
             "SharedConfiguration",
             "SharedConstants",
@@ -191,11 +200,11 @@ let targets: [Target] = {
             "Resources",
             "ASTIndexer",
         ],
-        exclude: ["HTMLParser"]
+        exclude: ["HTMLParser", "JSONParser"]
     )
     let coreTestsTarget = Target.testTarget(
         name: "CoreTests",
-        dependencies: ["CoreProtocols", "CoreHTMLParser", "Core", "Search", "SharedCore", "SharedConstants", "SharedModels", "TestSupport"],
+        dependencies: ["CoreProtocols", "CoreHTMLParser", "CoreJSONParser", "Core", "Search", "SharedCore", "SharedConstants", "SharedModels", "TestSupport"],
         resources: [.copy("Resources/AppleJSON")]
     )
 
@@ -210,7 +219,7 @@ let targets: [Target] = {
 
     let searchTarget = Target.target(
         name: "Search",
-        dependencies: ["SharedCore", "SharedConstants", "SharedModels", "Logging", "CoreProtocols", "Core", "ASTIndexer"]
+        dependencies: ["SharedCore", "SharedConstants", "SharedModels", "Logging", "CoreProtocols", "CoreJSONParser", "Core", "ASTIndexer"]
     )
     let searchTestsTarget = Target.testTarget(
         name: "SearchTests",
@@ -347,7 +356,7 @@ let targets: [Target] = {
             "SharedConstants",
             "SharedModels",
             "SharedUtils",
-            "CoreProtocols", "Core",
+            "CoreProtocols", "CoreJSONParser", "Core",
             "Cleanup",
             "Search",
             "SampleIndex",
@@ -467,6 +476,7 @@ let targets: [Target] = {
         mcpSharedToolsTestsTarget,
         coreProtocolsTarget,
         coreHTMLParserTarget,
+        coreJSONParserTarget,
         resourcesTarget,
         resourcesTestsTarget,
         coreTarget,

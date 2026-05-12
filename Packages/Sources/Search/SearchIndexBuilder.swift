@@ -5,6 +5,7 @@ import SharedCore
 import SharedConstants
 import SharedModels
 import CoreProtocols
+import CoreJSONParser
 
 // MARK: - Search Index Builder
 
