@@ -23,14 +23,14 @@ struct ReleaseCLI: AsyncParsableCommand {
         """,
         version: Shared.Constants.App.version,
         subcommands: [
-            BumpCommand.self,
-            TagCommand.self,
-            DatabaseReleaseCommand.self,
-            HomebrewCommand.self,
-            DocsUpdateCommand.self,
-            FullCommand.self,
+            Release.Command.Bump.self,
+            Release.Command.Tag.self,
+            Release.Command.Database.self,
+            Release.Command.Homebrew.self,
+            Release.Command.DocsUpdate.self,
+            Release.Command.Full.self,
         ],
-        defaultSubcommand: FullCommand.self
+        defaultSubcommand: Release.Command.Full.self
     )
 }
 
