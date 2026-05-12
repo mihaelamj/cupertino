@@ -20,6 +20,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Shared"),
     .singleTargetLibrary("SharedConstants"),
     .singleTargetLibrary("SharedUtils"),
+    .singleTargetLibrary("SharedModels"),
     .singleTargetLibrary("MCPSharedTools"),
     .singleTargetLibrary("Core"),
     .singleTargetLibrary("Cleanup"),
@@ -106,9 +107,15 @@ let targets: [Target] = {
         dependencies: ["SharedConstants"]
     )
 
+    // ---------- SharedModels (v1.1 refactor 1.5: extracts the Models/ folder from Shared) ----------
+    let sharedModelsTarget = Target.target(
+        name: "SharedModels",
+        dependencies: ["SharedConstants", "SharedUtils"]
+    )
+
     let sharedTarget = Target.target(
         name: "Shared",
-        dependencies: ["SharedConstants", "SharedUtils"]
+        dependencies: ["SharedConstants", "SharedUtils", "SharedModels"]
     )
     let sharedTestsTarget = Target.testTarget(
         name: "SharedTests",
@@ -394,6 +401,7 @@ let targets: [Target] = {
         loggingTestsTarget,
         sharedConstantsTarget,
         sharedUtilsTarget,
+        sharedModelsTarget,
         sharedTarget,
         sharedTestsTarget,
         mcpSharedToolsTarget,
