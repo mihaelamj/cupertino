@@ -121,16 +121,18 @@ extension WKWebCrawler {
 
 // MARK: - WebKit Crawler Errors
 
-public enum WebKitCrawlerError: Error, LocalizedError {
-    case transformFailed
-    case unsupportedPlatform
+extension WKWebCrawler {
+    public enum WebKitCrawlerError: Error, LocalizedError {
+        case transformFailed
+        case unsupportedPlatform
 
-    public var errorDescription: String? {
-        switch self {
-        case .transformFailed:
-            return "Failed to transform HTML content to Markdown"
-        case .unsupportedPlatform:
-            return "WKWebView-based crawling is not available on this platform"
+        public var errorDescription: String? {
+            switch self {
+            case .transformFailed:
+                return "Failed to transform HTML content to Markdown"
+            case .unsupportedPlatform:
+                return "WKWebView-based crawling is not available on this platform"
+            }
         }
     }
 }

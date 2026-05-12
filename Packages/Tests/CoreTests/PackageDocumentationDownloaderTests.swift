@@ -69,7 +69,7 @@ struct PackageDocumentationDownloaderTests {
                 outputDirectory: tempDir
             )
 
-            await #expect(throws: PackageDownloadError.self) {
+            await #expect(throws: Core.PackageDownloadError.self) {
                 try await downloader.downloadREADME(
                     owner: "invalid-owner-\(UUID().uuidString)",
                     repo: "nonexistent-repo-\(UUID().uuidString)"
@@ -188,7 +188,7 @@ struct PackageDocumentationDownloaderTests {
                 outputDirectory: tempDir
             )
 
-            await #expect(throws: PackageDownloadError.self) {
+            await #expect(throws: Core.PackageDownloadError.self) {
                 try await downloader.downloadREADME(
                     owner: "../../../etc",
                     repo: "passwd"

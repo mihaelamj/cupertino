@@ -145,19 +145,21 @@ extension WKWebCrawler.ContentFetcher: WKNavigationDelegate {
 
 // MARK: - WebKit Fetcher Errors
 
-public enum WebKitFetcherError: Error, LocalizedError {
-    case timeout
-    case invalidHTML
-    case unsupportedPlatform
+extension WKWebCrawler {
+    public enum WebKitFetcherError: Error, LocalizedError {
+        case timeout
+        case invalidHTML
+        case unsupportedPlatform
 
-    public var errorDescription: String? {
-        switch self {
-        case .timeout:
-            return "Page load timeout"
-        case .invalidHTML:
-            return "Invalid HTML received from JavaScript evaluation"
-        case .unsupportedPlatform:
-            return "WKWebView is not available on this platform"
+        public var errorDescription: String? {
+            switch self {
+            case .timeout:
+                return "Page load timeout"
+            case .invalidHTML:
+                return "Invalid HTML received from JavaScript evaluation"
+            case .unsupportedPlatform:
+                return "WKWebView is not available on this platform"
+            }
         }
     }
 }
