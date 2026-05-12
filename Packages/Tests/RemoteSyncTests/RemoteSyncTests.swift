@@ -137,14 +137,14 @@ struct RemoteIndexStateTests {
     }
 }
 
-// MARK: - RemoteSyncProgress Tests
+// MARK: - RemoteSync.Progress Tests
 
-@Suite("RemoteSyncProgress Tests")
+@Suite("RemoteSync.Progress Tests")
 struct RemoteSyncProgressTests {
     @Test("Progress ETA calculation")
     func progressETA() throws {
         // 50% done in 60 seconds = ~60 seconds remaining
-        let progress = RemoteSyncProgress(
+        let progress = RemoteSync.Progress(
             phase: .docs,
             framework: "swiftui",
             frameworkIndex: 124,
@@ -163,7 +163,7 @@ struct RemoteSyncProgressTests {
 
     @Test("Progress ETA nil for early progress")
     func progressETAEarly() {
-        let progress = RemoteSyncProgress(
+        let progress = RemoteSync.Progress(
             phase: .docs,
             framework: nil,
             frameworkIndex: 0,
@@ -185,7 +185,7 @@ struct AnimatedProgressTests {
     @Test("Progress bar rendering")
     func progressBarRendering() {
         let display = AnimatedProgress(barWidth: 10, useEmoji: false)
-        let progress = RemoteSyncProgress(
+        let progress = RemoteSync.Progress(
             phase: .docs,
             framework: "swiftui",
             frameworkIndex: 5,
@@ -207,7 +207,7 @@ struct AnimatedProgressTests {
     @Test("Compact rendering")
     func compactRendering() {
         let display = AnimatedProgress(barWidth: 10, useEmoji: false)
-        let progress = RemoteSyncProgress(
+        let progress = RemoteSync.Progress(
             phase: .docs,
             framework: "foundation",
             frameworkIndex: 3,

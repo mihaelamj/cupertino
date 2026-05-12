@@ -8,7 +8,7 @@ import SharedConstants
 /// Reduces function parameter count while maintaining type safety.
 struct IndexingContext: @unchecked Sendable {
     let indexDocument: RemoteIndexer.DocumentIndexer
-    let onProgress: @Sendable (RemoteSyncProgress) -> Void
+    let onProgress: @Sendable (RemoteSync.Progress) -> Void
     let onDocument: (@Sendable (RemoteIndexer.IndexResult) -> Void)?
 }
 
@@ -103,7 +103,7 @@ public actor RemoteIndexer {
     ///   - onDocument: Called for each document processed
     public func run(
         indexDocument: @escaping DocumentIndexer,
-        onProgress: @escaping @Sendable (RemoteSyncProgress) -> Void,
+        onProgress: @escaping @Sendable (RemoteSync.Progress) -> Void,
         onDocument: (@Sendable (IndexResult) -> Void)? = nil
     ) async throws {
         // Determine which phases to run
@@ -139,7 +139,7 @@ public actor RemoteIndexer {
     private func runPhase(
         _ phase: RemoteIndexState.Phase,
         indexDocument: @escaping DocumentIndexer,
-        onProgress: @escaping @Sendable (RemoteSyncProgress) -> Void,
+        onProgress: @escaping @Sendable (RemoteSync.Progress) -> Void,
         onDocument: (@Sendable (IndexResult) -> Void)?
     ) async throws {
         let path = phasePath(phase)
@@ -314,8 +314,8 @@ public actor RemoteIndexer {
             .capitalized
     }
 
-    private func reportProgress(_ onProgress: @Sendable (RemoteSyncProgress) -> Void) {
-        let progress = RemoteSyncProgress(
+    private func reportProgress(_ onProgress: @Sendable (RemoteSync.Progress) -> Void) {
+        let progress = RemoteSync.Progress(
             phase: state.phase,
             framework: state.currentFramework,
             frameworkIndex: state.frameworksCompleted.count + (state.currentFramework != nil ? 1 : 0),
