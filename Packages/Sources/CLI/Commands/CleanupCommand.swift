@@ -79,7 +79,7 @@ extension Command {
                 Logging.Log.output("")
             }
 
-            let cleaner = CleanupModule.SampleCodeCleaner(
+            let cleaner = Sample.Cleanup.Cleaner(
                 sampleCodeDirectory: directory,
                 dryRun: dryRun,
                 keepOriginals: keepOriginals

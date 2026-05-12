@@ -9,7 +9,7 @@ import Cleanup
 // enclosing types before imported modules.
 //
 // `CleanupModule` pins the SPM target so callers in the CLI target can
-// write `CleanupModule.SampleCodeCleaner` and reach the actual module type.
+// write `Sample.Cleanup.Cleaner` and reach the actual module type.
 // One declaration covers every file in the CLI target.
 
 typealias CleanupModule = Cleanup

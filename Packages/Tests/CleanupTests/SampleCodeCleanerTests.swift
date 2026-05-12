@@ -6,7 +6,7 @@ import SharedModels
 import Testing
 import TestSupport
 
-// MARK: - Cleanup.SampleCodeCleaner Tests
+// MARK: - Sample.Cleanup.Cleaner Tests
 
 @Test("CleanupProgress percentage calculation")
 func cleanupProgressPercentage() {
