@@ -18,6 +18,7 @@ let baseProducts: [Product] = [
 let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Logging"),
     .singleTargetLibrary("Shared"),
+    .singleTargetLibrary("MCPSharedTools"),
     .singleTargetLibrary("Core"),
     .singleTargetLibrary("Cleanup"),
     .singleTargetLibrary("Search"),
@@ -93,11 +94,21 @@ let targets: [Target] = {
 
     let sharedTarget = Target.target(
         name: "Shared",
-        dependencies: ["MCP"]
+        dependencies: []
     )
     let sharedTestsTarget = Target.testTarget(
         name: "SharedTests",
         dependencies: ["Shared", "TestSupport"]
+    )
+
+    // ---------- MCPSharedTools (v1.1 refactor 1.1: extracts ArgumentExtractor + MCP-protocol-output constants from Shared) ----------
+    let mcpSharedToolsTarget = Target.target(
+        name: "MCPSharedTools",
+        dependencies: ["MCP", "Shared"]
+    )
+    let mcpSharedToolsTestsTarget = Target.testTarget(
+        name: "MCPSharedToolsTests",
+        dependencies: ["MCPSharedTools", "Shared", "TestSupport"]
     )
 
     // Resources target (#161): catalogs are now compiled in as Swift string
@@ -161,20 +172,20 @@ let targets: [Target] = {
 
     let mcpSupportTarget = Target.target(
         name: "MCPSupport",
-        dependencies: ["MCP", "Shared", "Logging", "Search"]
+        dependencies: ["MCP", "MCPSharedTools", "Shared", "Logging", "Search"]
     )
     let mcpSupportTestsTarget = Target.testTarget(
         name: "MCPSupportTests",
-        dependencies: ["MCPSupport", "MCP", "Shared", "Search", "TestSupport"]
+        dependencies: ["MCPSupport", "MCP", "MCPSharedTools", "Shared", "Search", "TestSupport"]
     )
 
     let searchToolProviderTarget = Target.target(
         name: "SearchToolProvider",
-        dependencies: ["MCP", "Search", "SampleIndex", "Services", "Shared"]
+        dependencies: ["MCP", "MCPSharedTools", "Search", "SampleIndex", "Services", "Shared"]
     )
     let searchToolProviderTestsTarget = Target.testTarget(
         name: "SearchToolProviderTests",
-        dependencies: ["SearchToolProvider", "TestSupport"]
+        dependencies: ["SearchToolProvider", "MCPSharedTools", "TestSupport"]
     )
 
     let mcpClientTarget = Target.target(
@@ -369,6 +380,8 @@ let targets: [Target] = {
         loggingTestsTarget,
         sharedTarget,
         sharedTestsTarget,
+        mcpSharedToolsTarget,
+        mcpSharedToolsTestsTarget,
         resourcesTarget,
         resourcesTestsTarget,
         coreTarget,

@@ -126,20 +126,50 @@ Operations / MCP / Apps:
 
 **Why first**: kills Violation #1 (`Shared → MCP`).
 
-**Files moved**:
+**Scope discovery before cut**. The full audit of `Constants.Search` (404 LOC, lines 602-1005 of `Shared/Constants.swift`) revealed two cross-references that constrain the split:
+
+- `tipPlatformFilters` (line 960) and `tipSemanticSearch` (line 989) are used by `Services` formatters and are themselves *string-interpolated* over the `schemaParam*` and `tool*` identity names. Moving those identities into `MCPSharedTools` would break the interpolations or force `Services` to take a new MCP-adjacent dep.
+
+The cut therefore moves only **MCP-protocol output strings**, not the search-domain identities:
+
+**Files / slices moved**:
 - `Packages/Sources/Shared/ArgumentExtractor.swift` → `Packages/Sources/MCPSharedTools/ArgumentExtractor.swift`
-- Sub-enum `Shared.Constants.Search` (the ~280 LOC of MCP tool descriptions, parameter names, URI schemes, messages, tips inside `Constants.swift`) → `Packages/Sources/MCPSharedTools/MCPCopy.swift`
+- New `Packages/Sources/MCPSharedTools/MCPCopy.swift` containing only:
+  - Tool **descriptions** (10 long help strings: `toolSearchDescription`, `toolListFrameworksDescription`, `toolReadDocumentDescription`, `toolListSamplesDescription`, `toolReadSampleDescription`, `toolReadSampleFileDescription`, `toolSearchSymbolsDescription`, `toolSearchPropertyWrappersDescription`, `toolSearchConcurrencyDescription`, `toolSearchConformancesDescription`). Lines 692-834.
+  - Resource template URIs: `templateAppleDocs`, `templateSwiftEvolution`. Lines 653-659.
+  - Resource descriptions: `appleDocsDescriptionPrefix`, `swiftEvolutionDescription`, `appleDocsTemplateName`, `appleDocsTemplateDescription`, `swiftEvolutionTemplateDescription`. Lines 661-677.
+  - `mimeTypeMarkdown`. Line 682.
+
+**Stays in `Shared.Constants.Search`** (and follows the package to `SharedConstants` in 1.3):
+- URI schemes (`appleDocsScheme`, `appleArchiveScheme`, `swiftEvolutionScheme`, `higScheme`)
+- Tool/command **names** (`toolSearch`, `toolListFrameworks`, `toolReadDocument`, `toolListSamples`, `toolReadSample`, `toolReadSampleFile`, `toolSearchSymbols`, `toolSearchPropertyWrappers`, `toolSearchConcurrency`, `toolSearchConformances`)
+- All `schemaParam*` and `schemaTypeObject` (used by the tips above, and read by ArgumentExtractor's defaults via `Shared.Constants.Search.*`)
+- `formatValueJSON`, `formatValueMarkdown`
+- Swift Evolution `sePrefix` / `stPrefix`
+- All tips, messages, `availableSources`, `otherSources(excluding:)`, `formatScore`
 
 **Package.swift changes**:
-- Add `MCPSharedTools` target with deps `["MCP", "SharedCore"]`. (Note: `SharedCore` does not exist yet at this point. Provisional dep is `["MCP", "Shared"]`; updated in 1.6.)
+- Add `MCPSharedTools` target with provisional deps `["MCP", "Shared"]` (tightens to `["MCP", "SharedCore"]` in 1.6).
 - Add `MCPSharedTools` product.
-- Remove `MCP` from `Shared` target deps.
+- Remove `MCP` from `Shared` target deps. This is the line that kills Violation #1.
+- Add `MCPSharedToolsTests` target depending on `["MCPSharedTools", "Shared", "TestSupport"]`.
 
-**Import updates**: every consumer of `Constants.Search.*` or `ArgumentExtractor` (`MCPSupport`, `SearchToolProvider`, `CLI`) adds `import MCPSharedTools` and removes the symbol from their `Shared` references.
+**Public surface**:
+- `public struct MCPSharedTools.ArgumentExtractor` (identical API to today's `Shared.ArgumentExtractor`).
+- `public enum MCPSharedTools.MCPCopy` namespace holding the moved sub-set above.
+- Nothing removed from `Shared`'s public API beyond what moved. The shared identities and tips keep their paths.
 
-**Risk**: medium. Many callers. Caller list is small (3 packages).
+**Tests**: new `Packages/Tests/MCPSharedToolsTests/ArgumentExtractorTests.swift` covers `require*`, `optional*`, defaults, and `limit` clamping. `ArgumentExtractor` had no dedicated test file in `SharedTests`; this PR adds one.
 
-**Verification**: standard recipe + grep for `Constants.Search` in all sources, expect zero hits outside `MCPSharedTools`.
+**Import sweep**: ~25 call sites, not the ~125 implied by the original block-level split. Affected packages:
+- `MCPSupport/DocsResourceProvider.swift`: `mimeTypeMarkdown` (8 refs) and any resource template / description refs → `MCPSharedTools.MCPCopy.*`.
+- `SearchToolProvider/CompositeToolProvider.swift` and adjacent: tool description refs → `MCPSharedTools.MCPCopy.*`; `ArgumentExtractor` import path updates.
+- `MockAIAgent`: zero changes (only uses `appleDocsScheme`, which stays).
+- `Services` and `CLI`: zero changes (their refs are to identity constants and tips, all of which stay).
+
+**Risk**: medium. The MCP-side import sweep is mechanical but touches the tool-registration call sites that matter for `cupertino mcp serve`. Verification must include a live MCP smoke test, not just `swift build`.
+
+**Verification**: standard recipe (`swiftformat`, `swiftlint`, `swift build`, `swift test`, `swift run cupertino --help`) plus `rg "Shared\.Constants\.Search\.(toolSearchDescription|tool.*Description|templateAppleDocs|templateSwiftEvolution|appleDocsTemplateName|appleDocsDescriptionPrefix|swiftEvolutionDescription|appleDocsTemplateDescription|swiftEvolutionTemplateDescription|mimeTypeMarkdown)\b"` expected to return zero hits.
 
 ### 1.2 — In-file split of `Shared/Models.swift`
 

@@ -1,5 +1,6 @@
 import Foundation
 import MCP
+import MCPSharedTools
 import SampleIndex
 import Search
 import Services
@@ -175,7 +176,7 @@ public actor CompositeToolProvider: ToolProvider {
         if searchIndex != nil || sampleDatabase != nil {
             allTools.append(Tool(
                 name: Shared.Constants.Search.toolSearch,
-                description: Shared.Constants.Search.toolSearchDescription,
+                description: MCPSharedTools.MCPCopy.toolSearchDescription,
                 inputSchema: objectSchema(
                     properties: searchProperties,
                     required: [Shared.Constants.Search.schemaParamQuery]
@@ -187,13 +188,13 @@ public actor CompositeToolProvider: ToolProvider {
         if searchIndex != nil {
             allTools.append(Tool(
                 name: Shared.Constants.Search.toolListFrameworks,
-                description: Shared.Constants.Search.toolListFrameworksDescription,
+                description: MCPSharedTools.MCPCopy.toolListFrameworksDescription,
                 inputSchema: objectSchema(properties: [:])
             ))
 
             allTools.append(Tool(
                 name: Shared.Constants.Search.toolReadDocument,
-                description: Shared.Constants.Search.toolReadDocumentDescription,
+                description: MCPSharedTools.MCPCopy.toolReadDocumentDescription,
                 inputSchema: objectSchema(
                     properties: readDocumentProperties,
                     required: [Shared.Constants.Search.schemaParamURI]
@@ -205,13 +206,13 @@ public actor CompositeToolProvider: ToolProvider {
         if sampleDatabase != nil {
             allTools.append(Tool(
                 name: Shared.Constants.Search.toolListSamples,
-                description: Shared.Constants.Search.toolListSamplesDescription,
+                description: MCPSharedTools.MCPCopy.toolListSamplesDescription,
                 inputSchema: objectSchema(properties: [:])
             ))
 
             allTools.append(Tool(
                 name: Shared.Constants.Search.toolReadSample,
-                description: Shared.Constants.Search.toolReadSampleDescription,
+                description: MCPSharedTools.MCPCopy.toolReadSampleDescription,
                 inputSchema: objectSchema(
                     properties: readSampleProperties,
                     required: [Shared.Constants.Search.schemaParamProjectId]
@@ -220,7 +221,7 @@ public actor CompositeToolProvider: ToolProvider {
 
             allTools.append(Tool(
                 name: Shared.Constants.Search.toolReadSampleFile,
-                description: Shared.Constants.Search.toolReadSampleFileDescription,
+                description: MCPSharedTools.MCPCopy.toolReadSampleFileDescription,
                 inputSchema: objectSchema(
                     properties: readSampleFileProperties,
                     required: [
@@ -235,13 +236,13 @@ public actor CompositeToolProvider: ToolProvider {
         if searchIndex != nil {
             allTools.append(Tool(
                 name: Shared.Constants.Search.toolSearchSymbols,
-                description: Shared.Constants.Search.toolSearchSymbolsDescription,
+                description: MCPSharedTools.MCPCopy.toolSearchSymbolsDescription,
                 inputSchema: objectSchema(properties: searchSymbolsProperties)
             ))
 
             allTools.append(Tool(
                 name: Shared.Constants.Search.toolSearchPropertyWrappers,
-                description: Shared.Constants.Search.toolSearchPropertyWrappersDescription,
+                description: MCPSharedTools.MCPCopy.toolSearchPropertyWrappersDescription,
                 inputSchema: objectSchema(
                     properties: searchPropertyWrappersProperties,
                     required: [Shared.Constants.Search.schemaParamWrapper]
@@ -250,7 +251,7 @@ public actor CompositeToolProvider: ToolProvider {
 
             allTools.append(Tool(
                 name: Shared.Constants.Search.toolSearchConcurrency,
-                description: Shared.Constants.Search.toolSearchConcurrencyDescription,
+                description: MCPSharedTools.MCPCopy.toolSearchConcurrencyDescription,
                 inputSchema: objectSchema(
                     properties: searchConcurrencyProperties,
                     required: [Shared.Constants.Search.schemaParamPattern]
@@ -259,7 +260,7 @@ public actor CompositeToolProvider: ToolProvider {
 
             allTools.append(Tool(
                 name: Shared.Constants.Search.toolSearchConformances,
-                description: Shared.Constants.Search.toolSearchConformancesDescription,
+                description: MCPSharedTools.MCPCopy.toolSearchConformancesDescription,
                 inputSchema: objectSchema(
                     properties: searchConformancesProperties,
                     required: [Shared.Constants.Search.schemaParamProtocol]
