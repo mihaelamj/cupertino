@@ -19,6 +19,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Logging"),
     .singleTargetLibrary("Shared"),
     .singleTargetLibrary("SharedConstants"),
+    .singleTargetLibrary("SharedUtils"),
     .singleTargetLibrary("MCPSharedTools"),
     .singleTargetLibrary("Core"),
     .singleTargetLibrary("Cleanup"),
@@ -99,9 +100,15 @@ let targets: [Target] = {
         dependencies: []
     )
 
+    // ---------- SharedUtils (v1.1 refactor 1.4: extracts JSONCoding, PathResolver, Formatting, FTSQuery, SchemaVersion) ----------
+    let sharedUtilsTarget = Target.target(
+        name: "SharedUtils",
+        dependencies: ["SharedConstants"]
+    )
+
     let sharedTarget = Target.target(
         name: "Shared",
-        dependencies: ["SharedConstants"]
+        dependencies: ["SharedConstants", "SharedUtils"]
     )
     let sharedTestsTarget = Target.testTarget(
         name: "SharedTests",
@@ -386,6 +393,7 @@ let targets: [Target] = {
         loggingTarget,
         loggingTestsTarget,
         sharedConstantsTarget,
+        sharedUtilsTarget,
         sharedTarget,
         sharedTestsTarget,
         mcpSharedToolsTarget,
