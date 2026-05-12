@@ -1,4 +1,4 @@
-# Cupertino Refactor Plan (v1.1)
+# Cupertino Refactor Plan (v1.2)
 
 Status: **draft, pending review**. Tracks the package split work that lands on `develop` after v1.0.2 ships from `main`.
 
@@ -33,7 +33,7 @@ No cycles exist. The graph is a valid DAG. The split below preserves that.
 - Branch naming: `refactor/<phase>.<task>-<slug>`. Example: `refactor/1.1-mcp-shared-tools-extract`.
 - PR title format: `refactor(<scope>): <summary> (#<refactor-task-number>)`. Scope is the resulting package name when possible.
 - Squash-merge into `develop`. Auto-delete the feature branch.
-- When the full plan is green on `develop`, open a single PR `develop → main` titled `release(v1.1.0): package split`.
+- When the full plan is green on `develop`, open a single PR `develop → main` titled `release(v1.2.0): package split`.
 - **Schema is frozen.** No DB column or table changes. `databaseVersion` stays at `1.0.2`. No bundle reindex required.
 
 ### Verification recipe (every PR)
@@ -590,9 +590,9 @@ Once Phases 1–5 are merged into `develop` and green:
 
 1. Rebase `develop` on the latest `main` (v1.0.3 will have shipped by then).
 2. Run the full verification recipe on the rebased tip.
-3. Open PR `develop → main` titled `release(v1.1.0): package split`.
+3. Open PR `develop → main` titled `release(v1.2.0): package split`.
 4. CHANGELOG entry under `## [1.1.0] — <date>`: summarize phases, list new/removed/renamed packages, note schema unchanged.
-5. After merge, tag `v1.1.0`. No bundle reindex required (schema unchanged, `databaseVersion` unchanged at `1.0.2`).
+5. After merge, tag `v1.2.0`. No bundle reindex required (schema unchanged, `databaseVersion` unchanged at `1.0.2`).
 
 ---
 
@@ -629,7 +629,7 @@ Open follow-ups (decide before the relevant PR is cut, not blocking the plan):
 
 ## 11. Tracking
 
-- GitHub milestone: `v1.1.0`.
+- GitHub milestone: `v1.2.0`.
 - One issue per task in the plan (1.1 through 5.4 + 4.1 through 4.8 + the integration PR). Each issue is labelled `refactor` and assigned to the milestone. Phase labels (`phase-1`, `phase-2`, …) group them.
 - Issues reference the plan section in the body. PR titles reference both: `refactor(<package>): <summary> (#<issue> / refactor-plan §<task-number>)`.
 
