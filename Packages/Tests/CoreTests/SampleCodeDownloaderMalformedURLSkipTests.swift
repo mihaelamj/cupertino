@@ -1,6 +1,7 @@
 @testable import Core
 import CoreProtocols
 import Foundation
+import SharedConstants
 import SharedCore
 import Testing
 
@@ -30,7 +31,7 @@ struct SampleCodeDownloaderMalformedURLSkipTests {
         defer { try? FileManager.default.removeItem(at: outputDir) }
 
         let downloader = SampleCodeDownloader(outputDirectory: outputDir)
-        var stats = SampleStatistics()
+        var stats = Sample.Core.Statistics()
         let badSample = SampleMetadata(name: "Bad Sample", url: "", slug: "bad-sample")
 
         // If the guard fires before createWebView (the PR #288 ordering),
@@ -59,7 +60,7 @@ struct SampleCodeDownloaderMalformedURLSkipTests {
         defer { try? FileManager.default.removeItem(at: outputDir) }
 
         let downloader = SampleCodeDownloader(outputDirectory: outputDir)
-        var stats = SampleStatistics()
+        var stats = Sample.Core.Statistics()
         let badSample = SampleMetadata(name: "Bad Sample 2", url: "ht tp://x", slug: "bad-sample-2")
 
         try await downloader.downloadSample(badSample, stats: &stats)
@@ -75,7 +76,7 @@ struct SampleCodeDownloaderMalformedURLSkipTests {
         defer { try? FileManager.default.removeItem(at: outputDir) }
 
         let downloader = SampleCodeDownloader(outputDirectory: outputDir)
-        var stats = SampleStatistics()
+        var stats = Sample.Core.Statistics()
 
         try await downloader.downloadSample(
             SampleMetadata(name: "A", url: "", slug: "a"),

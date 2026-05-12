@@ -2,6 +2,7 @@ import Core
 import CoreProtocols
 import Foundation
 import SampleIndex
+import SharedConstants
 import SharedCore
 
 extension Indexer {
@@ -101,7 +102,7 @@ extension Indexer {
             }
 
             handler(.loadingCatalog)
-            let catalogEntries = await SampleCodeCatalog.allEntries
+            let catalogEntries = await Sample.Core.Catalog.allEntries
             handler(.catalogLoaded(entryCount: catalogEntries.count))
 
             let entries = catalogEntries.map { entry in

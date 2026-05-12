@@ -104,11 +104,11 @@ struct SampleCodeDownloaderTests {
         #expect(slug == "fruta_building_a_feature_rich_app")
     }
 
-    // MARK: - SampleStatistics Tests
+    // MARK: - Sample.Core.Statistics Tests
 
-    @Test("SampleStatistics initializes with zeros")
+    @Test("Sample.Core.Statistics initializes with zeros")
     func statisticsInitializesWithZeros() {
-        let stats = SampleStatistics()
+        let stats = Sample.Core.Statistics()
 
         #expect(stats.totalSamples == 0)
         #expect(stats.downloadedSamples == 0)
@@ -116,9 +116,9 @@ struct SampleCodeDownloaderTests {
         #expect(stats.errors == 0)
     }
 
-    @Test("SampleStatistics tracks counts")
+    @Test("Sample.Core.Statistics tracks counts")
     func statisticsTracksCounts() {
-        var stats = SampleStatistics(startTime: Date())
+        var stats = Sample.Core.Statistics(startTime: Date())
         stats.totalSamples = 606
         stats.downloadedSamples = 500
         stats.skippedSamples = 100
@@ -130,28 +130,28 @@ struct SampleCodeDownloaderTests {
         #expect(stats.errors == 6)
     }
 
-    @Test("SampleStatistics calculates duration")
+    @Test("Sample.Core.Statistics calculates duration")
     func statisticsCalculatesDuration() {
-        var stats = SampleStatistics(startTime: Date())
+        var stats = Sample.Core.Statistics(startTime: Date())
         stats.endTime = stats.startTime?.addingTimeInterval(7200) // 2 hours
 
         let duration = stats.duration
         #expect(duration == 7200.0)
     }
 
-    @Test("SampleStatistics duration is nil without end time")
+    @Test("Sample.Core.Statistics duration is nil without end time")
     func statisticsDurationNilWithoutEndTime() {
-        let stats = SampleStatistics(startTime: Date())
+        let stats = Sample.Core.Statistics(startTime: Date())
 
         #expect(stats.duration == nil)
     }
 
-    // MARK: - SampleProgress Tests
+    // MARK: - Sample.Core.Progress Tests
 
-    @Test("SampleProgress tracks download progress")
+    @Test("Sample.Core.Progress tracks download progress")
     func progressTracksProgress() {
-        let stats = SampleStatistics()
-        let progress = SampleProgress(
+        let stats = Sample.Core.Statistics()
+        let progress = Sample.Core.Progress(
             current: 100,
             total: 606,
             sampleName: "Building a Document-Based App",
@@ -164,10 +164,10 @@ struct SampleCodeDownloaderTests {
         #expect(abs(progress.percentage - 16.5) < 0.1) // ~16.5%
     }
 
-    @Test("SampleProgress calculates percentage correctly")
+    @Test("Sample.Core.Progress calculates percentage correctly")
     func progressCalculatesPercentage() {
-        let stats = SampleStatistics()
-        let progress = SampleProgress(
+        let stats = Sample.Core.Statistics()
+        let progress = Sample.Core.Progress(
             current: 303,
             total: 606,
             sampleName: "Test Sample",
