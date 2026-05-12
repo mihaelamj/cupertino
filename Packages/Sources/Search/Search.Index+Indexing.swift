@@ -145,7 +145,7 @@ extension Search.Index {
     }
 
     /// Look up availability for a framework from indexed docs
-    public func getFrameworkAvailability(framework: String) async -> FrameworkAvailability {
+    public func getFrameworkAvailability(framework: String) async -> Search.FrameworkAvailability {
         guard let database else {
             return .empty
         }
@@ -177,7 +177,7 @@ extension Search.Index {
         let minWatchOS = sqlite3_column_text(statement, 3).map { String(cString: $0) }
         let minVisionOS = sqlite3_column_text(statement, 4).map { String(cString: $0) }
 
-        return FrameworkAvailability(
+        return Search.FrameworkAvailability(
             minIOS: minIOS,
             minMacOS: minMacOS,
             minTvOS: minTvOS,

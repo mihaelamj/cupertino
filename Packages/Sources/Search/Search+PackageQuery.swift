@@ -6,13 +6,6 @@ import SQLite3
 extension Search {
     // MARK: - Public API
 
-    public enum QueryIntent: String, Sendable {
-        case howTo // "how do I ...", "how to ..."
-        case example // "show me an example of ...", "example of ..."
-        case symbolLookup // "what is the signature of ...", "what does X do"
-        case crossReference // "where is X used", "who uses X"
-    }
-
     public struct PackageSearchResult: Sendable {
         public let owner: String
         public let repo: String
@@ -32,6 +25,13 @@ extension Search {
     ///     markdown, enclosing Swift declaration for source).
     ///  4. Rescore with per-intent kind bonus; dedupe by file; return top N.
     public actor PackageQuery {
+        public enum QueryIntent: String, Sendable {
+            case howTo // "how do I ...", "how to ..."
+            case example // "show me an example of ...", "example of ..."
+            case symbolLookup // "what is the signature of ...", "what does X do"
+            case crossReference // "where is X used", "who uses X"
+        }
+
         private var database: OpaquePointer?
         private let dbPath: URL
 
@@ -535,7 +535,7 @@ extension Search {
     // MARK: - Intent classifier
 
     enum IntentClassifier {
-        static func classify(_ question: String) -> QueryIntent {
+        static func classify(_ question: String) -> PackageQuery.QueryIntent {
             let lower = question.lowercased()
             if lower.contains("where is") || lower.contains("who uses") || lower.contains("who calls")
                 || lower.contains("usage of") {
@@ -572,7 +572,7 @@ extension Search {
             return Double(kindOrder.count - idx)
         }
 
-        static func `for`(_ intent: QueryIntent) -> IntentConfig {
+        static func `for`(_ intent: PackageQuery.QueryIntent) -> IntentConfig {
             switch intent {
             case .howTo:
                 return IntentConfig(

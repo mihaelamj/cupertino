@@ -5,29 +5,31 @@ import SharedCore
 // MARK: - Framework Availability (Search Module)
 
 /// Minimum platform versions for a framework (used for availability filtering)
-public struct FrameworkAvailability: Sendable {
-    public let minIOS: String?
-    public let minMacOS: String?
-    public let minTvOS: String?
-    public let minWatchOS: String?
-    public let minVisionOS: String?
+extension Search {
+    public struct FrameworkAvailability: Sendable {
+        public let minIOS: String?
+        public let minMacOS: String?
+        public let minTvOS: String?
+        public let minWatchOS: String?
+        public let minVisionOS: String?
 
-    public init(
-        minIOS: String? = nil,
-        minMacOS: String? = nil,
-        minTvOS: String? = nil,
-        minWatchOS: String? = nil,
-        minVisionOS: String? = nil
-    ) {
-        self.minIOS = minIOS
-        self.minMacOS = minMacOS
-        self.minTvOS = minTvOS
-        self.minWatchOS = minWatchOS
-        self.minVisionOS = minVisionOS
+        public init(
+            minIOS: String? = nil,
+            minMacOS: String? = nil,
+            minTvOS: String? = nil,
+            minWatchOS: String? = nil,
+            minVisionOS: String? = nil
+        ) {
+            self.minIOS = minIOS
+            self.minMacOS = minMacOS
+            self.minTvOS = minTvOS
+            self.minWatchOS = minWatchOS
+            self.minVisionOS = minVisionOS
+        }
+
+        /// Empty availability (no platform data)
+        public static let empty = FrameworkAvailability()
     }
-
-    /// Empty availability (no platform data)
-    public static let empty = FrameworkAvailability()
 }
 
 // MARK: - Platform Availability (Search Module)
@@ -60,25 +62,27 @@ extension Search {
 // MARK: - Matched Symbol
 
 /// A symbol extracted from documentation that matched the search query
-public struct MatchedSymbol: Codable, Sendable, Hashable {
-    public let kind: String // struct, class, actor, enum, protocol, function, property, etc.
-    public let name: String
-    public let signature: String? // Full signature for functions/methods
-    public let isAsync: Bool
+extension Search {
+    public struct MatchedSymbol: Codable, Sendable, Hashable {
+        public let kind: String // struct, class, actor, enum, protocol, function, property, etc.
+        public let name: String
+        public let signature: String? // Full signature for functions/methods
+        public let isAsync: Bool
 
-    public init(kind: String, name: String, signature: String? = nil, isAsync: Bool = false) {
-        self.kind = kind
-        self.name = name
-        self.signature = signature
-        self.isAsync = isAsync
-    }
-
-    /// Compact display format (e.g., "class UIFontMetrics" or "func scaledFont(for:)")
-    public var displayString: String {
-        if let sig = signature, !sig.isEmpty {
-            return "\(kind) \(sig)"
+        public init(kind: String, name: String, signature: String? = nil, isAsync: Bool = false) {
+            self.kind = kind
+            self.name = name
+            self.signature = signature
+            self.isAsync = isAsync
         }
-        return "\(kind) \(name)"
+
+        /// Compact display format (e.g., "class UIFontMetrics" or "func scaledFont(for:)")
+        public var displayString: String {
+            if let sig = signature, !sig.isEmpty {
+                return "\(kind) \(sig)"
+            }
+            return "\(kind) \(name)"
+        }
     }
 }
 
