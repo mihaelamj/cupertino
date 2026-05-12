@@ -1,7 +1,7 @@
+import CoreProtocols
 import Foundation
 import SharedCore
 import SharedModels
-import CoreProtocols
 
 // MARK: - Apple Documentation JSON to Markdown Converter
 

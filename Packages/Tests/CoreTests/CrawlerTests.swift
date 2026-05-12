@@ -6,6 +6,7 @@ import SharedConstants
 import SharedConfiguration
 import SharedModels
 import CoreProtocols
+@testable import CoreJSONParser
 
 // MARK: - Crawler Tests
 

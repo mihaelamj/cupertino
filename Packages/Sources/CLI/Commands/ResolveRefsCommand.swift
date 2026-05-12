@@ -11,6 +11,7 @@ import WebKit
 import SharedModels
 import SharedUtils
 import CoreProtocols
+import CoreJSONParser
 #endif
 
 // MARK: - Resolve-Refs Command

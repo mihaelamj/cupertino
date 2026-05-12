@@ -4,6 +4,7 @@ import Foundation
 import Testing
 import SharedModels
 import CoreProtocols
+@testable import CoreJSONParser
 
 // MARK: - canonicalPath(forDocURI:)
 
