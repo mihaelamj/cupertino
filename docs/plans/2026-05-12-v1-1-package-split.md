@@ -179,7 +179,7 @@ The cut therefore moves only **MCP-protocol output strings**, not the search-dom
 - `Models.swift` (deleted)
 - New `Models/Page.swift` ← `StructuredDocumentationPage`, `DocumentationPage`, `Kind`, `Source`, `Declaration`, `Section`, `Section.Item`, `CodeExample`
 - New `Models/Crawl.swift` ← `CrawlMetadata`, `CrawlStatistics`, `FrameworkStats`, `PageMetadata`, `CrawlSessionState`, `QueuedURL`
-- New `Models/Package.swift` ← `PackageReference`, `DocumentationSite`, `PackageDownloadProgress`, `PackageDownloadStatistics`
+- New `Models/SwiftPackage.swift` ← `PackageReference`, `PackagePriority`, `DocumentationSite`, `PackageDownloadProgress`, `PackageDownloadStatistics` (named `SwiftPackage` so the filename does not collide with the SwiftPM manifest `Package.swift`)
 - New `Models/Sample.swift` ← `CleanupProgress`, `CleanupStatistics`, `CleanupResult`
 - New `Models/URLUtilities.swift` ← `URLUtilities` (the 170-LOC enum, including the `filename(_:)` from #283)
 - New `Models/HashUtilities.swift` ← `HashUtilities`
