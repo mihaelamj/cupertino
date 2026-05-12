@@ -208,8 +208,9 @@ public struct RemoteIndexState: Codable, Sendable, Equatable {
 
 // MARK: - Progress Callback
 
+extension RemoteSync {
 /// Progress information for callbacks
-public struct RemoteSyncProgress: Sendable {
+public struct Progress: Sendable {
     public let phase: RemoteIndexState.Phase
     public let framework: String?
     public let frameworkIndex: Int
@@ -245,4 +246,5 @@ public struct RemoteSyncProgress: Sendable {
         let totalEstimated = elapsed / overallProgress
         return totalEstimated - elapsed
     }
+}
 }

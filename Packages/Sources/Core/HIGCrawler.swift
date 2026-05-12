@@ -26,7 +26,7 @@ extension Core {
         private let maxPages: Int
 
         #if canImport(WebKit)
-        private var fetcher: WKWebCrawler.WKWebContentFetcher?
+        private var fetcher: WKWebCrawler.ContentFetcher?
         #endif
 
         public init(
@@ -59,7 +59,7 @@ extension Core {
 
             #if canImport(WebKit)
             // Initialize content fetcher with HIG-specific wait time
-            fetcher = WKWebCrawler.WKWebContentFetcher(
+            fetcher = WKWebCrawler.ContentFetcher(
                 pageLoadTimeout: Shared.Constants.Timeout.pageLoad,
                 javascriptWaitTime: Shared.Constants.Timeout.higJavascriptWait
             )

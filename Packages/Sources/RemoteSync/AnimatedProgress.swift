@@ -22,7 +22,7 @@ public struct AnimatedProgress: Sendable {
     // MARK: - Rendering
 
     /// Render progress to string (for terminal output)
-    public func render(_ progress: RemoteSyncProgress) -> String {
+    public func render(_ progress: RemoteSync.Progress) -> String {
         // Phase and framework progress
         let phaseIcon = useEmoji ? phaseEmoji(progress.phase) : "-"
         let frameworkBar = renderBar(
@@ -50,7 +50,7 @@ public struct AnimatedProgress: Sendable {
     }
 
     /// Render a single-line status update
-    public func renderCompact(_ progress: RemoteSyncProgress) -> String {
+    public func renderCompact(_ progress: RemoteSync.Progress) -> String {
         let bar = renderBar(current: progress.frameworkIndex, total: progress.frameworksTotal)
         let framework = progress.framework ?? "..."
         let fileInfo = progress.filesTotal > 0 ? " (\(progress.fileIndex)/\(progress.filesTotal))" : ""
@@ -128,7 +128,7 @@ public final class ProgressReporter: @unchecked Sendable {
     }
 
     /// Update progress display (single line, overwrites previous)
-    public func update(_ progress: RemoteSyncProgress) {
+    public func update(_ progress: RemoteSync.Progress) {
         lock.lock()
         defer { lock.unlock() }
 

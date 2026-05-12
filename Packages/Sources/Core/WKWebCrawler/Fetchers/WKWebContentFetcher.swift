@@ -13,7 +13,7 @@ import CoreProtocols
 extension WKWebCrawler {
     #if canImport(WebKit)
     @MainActor
-    public final class WKWebContentFetcher: NSObject, @preconcurrency ContentFetcher {
+    public final class ContentFetcher: NSObject, @preconcurrency CoreProtocols.ContentFetcher {
         public typealias RawContent = String
 
         // `webView` is an IUO on purpose: `recycle()` (below) is called
@@ -132,7 +132,7 @@ extension WKWebCrawler {
 // MARK: - WKNavigationDelegate
 
 #if canImport(WebKit)
-extension WKWebCrawler.WKWebContentFetcher: WKNavigationDelegate {
+extension WKWebCrawler.ContentFetcher: WKNavigationDelegate {
     public nonisolated func webView(
         _ webView: WKWebView,
         didFailProvisionalNavigation navigation: WKNavigation!,

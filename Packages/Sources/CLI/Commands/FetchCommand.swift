@@ -985,18 +985,18 @@ struct FetchCommand: AsyncParsableCommand {
         Logging.ConsoleLogger.info("   Source: \(docsDir.path)")
         Logging.ConsoleLogger.info("   API: developer.apple.com/tutorials/data/documentation\n")
 
-        let configuration: AvailabilityFetcher.Configuration
+        let configuration: Availability.Fetcher.Configuration
         if fast {
             configuration = .fast
         } else {
-            configuration = AvailabilityFetcher.Configuration(
+            configuration = Availability.Fetcher.Configuration(
                 concurrency: 50,
                 timeout: 1.0,
                 skipExisting: !force
             )
         }
 
-        let fetcher = AvailabilityFetcher(
+        let fetcher = Availability.Fetcher(
             docsDirectory: docsDir,
             configuration: configuration
         )
