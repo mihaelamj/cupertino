@@ -10,18 +10,18 @@ import CoreHTMLParser
 // MARK: - WKWeb Crawler Engine
 
 /// Complete crawler engine using WKWebView for JavaScript-rendered pages
-/// Uses WKWebContentFetcher for fetching and HTMLToMarkdown for transformation
+/// Uses WKWebCrawler.ContentFetcher for fetching and HTMLToMarkdown for transformation
 extension WKWebCrawler {
     #if canImport(WebKit)
     @MainActor
-    public final class WKWebCrawlerEngine: @preconcurrency CrawlerEngine {
-        private let fetcher: WKWebContentFetcher
+    public final class Engine: @preconcurrency CrawlerEngine {
+        private let fetcher: WKWebCrawler.ContentFetcher
 
         public init(
             pageLoadTimeout: Duration = Shared.Constants.Timeout.pageLoad,
             javascriptWaitTime: Duration = Shared.Constants.Timeout.javascriptWait
         ) {
-            fetcher = WKWebContentFetcher(
+            fetcher = WKWebCrawler.ContentFetcher(
                 pageLoadTimeout: pageLoadTimeout,
                 javascriptWaitTime: javascriptWaitTime
             )
