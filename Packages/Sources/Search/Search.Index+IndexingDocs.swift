@@ -153,7 +153,7 @@ extension Search.Index {
     /// - Throws: Search.Error if indexing fails
     public func indexItem(_ item: Search.SourceItem, extractSymbols: Bool = true) async throws {
         // Get the indexer for this source
-        guard let indexer = IndexerRegistry.indexer(for: item.source) else {
+        guard let indexer = Search.IndexerRegistry.indexer(for: item.source) else {
             // Fall back to generic indexing if no specific indexer
             try await indexDocument(
                 uri: item.uri,
