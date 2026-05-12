@@ -55,10 +55,10 @@ extension Command {
             case .text:
                 outputText(file)
             case .json:
-                let formatter = SampleFileJSONFormatter()
+                let formatter = Sample.Format.JSON.File()
                 Logging.Log.output(formatter.format(file))
             case .markdown:
-                let formatter = SampleFileMarkdownFormatter()
+                let formatter = Sample.Format.Markdown.File()
                 Logging.Log.output(formatter.format(file))
             }
         }

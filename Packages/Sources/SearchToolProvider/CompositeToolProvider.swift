@@ -527,7 +527,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         )
 
         // Use shared formatter
-        let formatter = SampleSearchMarkdownFormatter(query: query, framework: framework, teasers: teasers)
+        let formatter = Sample.Format.Markdown.Search(query: query, framework: framework, teasers: teasers)
         let markdown = formatter.format(result)
 
         return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])

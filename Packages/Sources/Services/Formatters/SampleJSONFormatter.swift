@@ -57,65 +57,73 @@ private struct FileSearchJSONOutput: Encodable {
 // MARK: - Sample Search JSON Formatter
 
 /// Formats sample search results as JSON
-public struct SampleSearchJSONFormatter: ResultFormatter {
-    private let query: String
-    private let framework: String?
+extension Sample.Format.JSON {
+    public struct Search: ResultFormatter {
+        private let query: String
+        private let framework: String?
 
-    public init(query: String, framework: String? = nil) {
-        self.query = query
-        self.framework = framework
-    }
-
-    public func format(_ result: Sample.Search.Result) -> String {
-        struct Output: Encodable {
-            let query: String
-            let framework: String?
-            let projects: [ProjectJSONOutput]
-            let files: [FileSearchJSONOutput]
+        public init(query: String, framework: String? = nil) {
+            self.query = query
+            self.framework = framework
         }
 
-        let output = Output(
-            query: query,
-            framework: framework,
-            projects: result.projects.map { ProjectJSONOutput(from: $0) },
-            files: result.files.map { FileSearchJSONOutput(from: $0) }
-        )
+        public func format(_ result: Sample.Search.Result) -> String {
+            struct Output: Encodable {
+                let query: String
+                let framework: String?
+                let projects: [ProjectJSONOutput]
+                let files: [FileSearchJSONOutput]
+            }
 
-        return encodeJSON(output)
+            let output = Output(
+                query: query,
+                framework: framework,
+                projects: result.projects.map { ProjectJSONOutput(from: $0) },
+                files: result.files.map { FileSearchJSONOutput(from: $0) }
+            )
+
+            return encodeJSON(output)
+        }
     }
 }
 
 // MARK: - Sample List JSON Formatter
 
 /// Formats sample project list as JSON
-public struct SampleListJSONFormatter: ResultFormatter {
-    public init() {}
+extension Sample.Format.JSON {
+    public struct List: ResultFormatter {
+        public init() {}
 
-    public func format(_ projects: [Sample.Index.Project]) -> String {
-        let output = projects.map { ProjectJSONOutput(from: $0) }
-        return encodeJSON(output)
+        public func format(_ projects: [Sample.Index.Project]) -> String {
+            let output = projects.map { ProjectJSONOutput(from: $0) }
+            return encodeJSON(output)
+        }
     }
 }
 
 // MARK: - Sample Project JSON Formatter
 
 /// Formats a single sample project as JSON
-public struct SampleProjectJSONFormatter: ResultFormatter {
-    public init() {}
+extension Sample.Format.JSON {
+    public struct Project: ResultFormatter {
+        public init() {}
 
-    public func format(_ project: Sample.Index.Project) -> String {
-        encodeJSON(ProjectJSONOutput(from: project))
+        public func format(_ project: Sample.Index.Project) -> String {
+            encodeJSON(ProjectJSONOutput(from: project))
+        }
     }
 }
 
 // MARK: - Sample File JSON Formatter
 
 /// Formats a sample file as JSON
-public struct SampleFileJSONFormatter: ResultFormatter {
-    public init() {}
+extension Sample.Format.JSON {
+    public struct File: ResultFormatter {
+        public init() {}
 
-    public func format(_ file: Sample.Index.File) -> String {
-        encodeJSON(FileJSONOutput(from: file))
+        public func format(_ file: Sample.Index.File) -> String {
+            encodeJSON(FileJSONOutput(from: file))
+        }
     }
 }
 
