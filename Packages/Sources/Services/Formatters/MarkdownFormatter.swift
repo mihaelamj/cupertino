@@ -9,14 +9,14 @@ import SharedCore
 /// Formats search results as markdown for MCP tools and CLI --format markdown
 public struct MarkdownSearchResultFormatter: ResultFormatter {
     private let query: String
-    private let filters: SearchFilters?
+    private let filters: Services.SearchFilters?
     private let config: SearchResultFormatConfig
     private let teasers: TeaserResults?
     private let showPlatformTip: Bool
 
     public init(
         query: String,
-        filters: SearchFilters? = nil,
+        filters: Services.SearchFilters? = nil,
         config: SearchResultFormatConfig = .mcpDefault,
         teasers: TeaserResults? = nil,
         showPlatformTip: Bool = true

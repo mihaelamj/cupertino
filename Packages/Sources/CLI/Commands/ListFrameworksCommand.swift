@@ -28,8 +28,8 @@ extension Command {
         var searchDb: String?
 
         mutating func run() async throws {
-            // Use ServiceContainer for managed lifecycle
-            let (frameworks, totalDocs) = try await ServiceContainer.withDocsService(dbPath: searchDb) { service in
+            // Use Services.ServiceContainer for managed lifecycle
+            let (frameworks, totalDocs) = try await Services.ServiceContainer.withDocsService(dbPath: searchDb) { service in
                 let frameworks = try await service.listFrameworks()
                 let totalDocs = try await service.documentCount()
                 return (frameworks, totalDocs)

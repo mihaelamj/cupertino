@@ -23,7 +23,7 @@ extension Command.Search {
     struct FetcherPlan {
         let fetchers: [any Search.CandidateFetcher]
         let searchIndex: SearchModule.Index?
-        let sampleService: Services.SampleSearchService?
+        let sampleService: SampleSearchService?
     }
 
     /// Docs-backed sources in a consistent order. `apple-archive` is included
@@ -163,7 +163,7 @@ extension Command.Search {
         skip: Bool,
         availability: SearchModule.PackageQuery.AvailabilityFilter?,
         into fetchers: inout [any Search.CandidateFetcher]
-    ) async -> Services.SampleSearchService? {
+    ) async -> SampleSearchService? {
         guard !skip else { return nil }
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? SampleIndex.defaultDatabasePath
@@ -174,7 +174,7 @@ extension Command.Search {
             return nil
         }
         do {
-            let service = try await Services.SampleSearchService(dbPath: url)
+            let service = try await SampleSearchService(dbPath: url)
             fetchers.append(Services.SampleCandidateFetcher(
                 service: service,
                 availability: availability
