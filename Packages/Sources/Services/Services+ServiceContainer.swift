@@ -11,8 +11,8 @@ import SharedUtils
 /// Handles database connections and cleanup.
 extension Services {
     public actor ServiceContainer {
-        private var docsService: DocsSearchService?
-        private var higService: HIGSearchService?
+        private var docsService: Services.DocsSearchService?
+        private var higService: Services.HIGSearchService?
         private var sampleService: Sample.Search.Service?
 
         private let searchDbPath: URL
@@ -30,24 +30,24 @@ extension Services {
         // MARK: - Service Access
 
         /// Get or create the documentation search service
-        public func getDocsService() async throws -> DocsSearchService {
+        public func getDocsService() async throws -> Services.DocsSearchService {
             if let service = docsService {
                 return service
             }
 
-            let service = try await DocsSearchService(dbPath: searchDbPath)
+            let service = try await Services.DocsSearchService(dbPath: searchDbPath)
             docsService = service
             return service
         }
 
         /// Get or create the HIG search service
-        public func getHIGService() async throws -> HIGSearchService {
+        public func getHIGService() async throws -> Services.HIGSearchService {
             if let service = higService {
                 return service
             }
 
             let docsService = try await getDocsService()
-            let service = HIGSearchService(docsService: docsService)
+            let service = Services.HIGSearchService(docsService: docsService)
             higService = service
             return service
         }
@@ -92,7 +92,7 @@ extension Services {
         /// Execute an operation with a docs service, handling lifecycle
         public static func withDocsService<T>(
             dbPath: String? = nil,
-            operation: (DocsSearchService) async throws -> T
+            operation: (Services.DocsSearchService) async throws -> T
         ) async throws -> T {
             let resolvedPath = Shared.Utils.PathResolver.searchDatabase(dbPath)
 
@@ -100,7 +100,7 @@ extension Services {
                 throw ToolError.noData("Search database not found at \(resolvedPath.path). Run 'cupertino save' to build the index.")
             }
 
-            let service = try await DocsSearchService(dbPath: resolvedPath)
+            let service = try await Services.DocsSearchService(dbPath: resolvedPath)
             defer {
                 Task {
                     await service.disconnect()
@@ -113,7 +113,7 @@ extension Services {
         /// Execute an operation with a HIG service, handling lifecycle
         public static func withHIGService<T>(
             dbPath: String? = nil,
-            operation: (HIGSearchService) async throws -> T
+            operation: (Services.HIGSearchService) async throws -> T
         ) async throws -> T {
             let resolvedPath = Shared.Utils.PathResolver.searchDatabase(dbPath)
 
@@ -122,7 +122,7 @@ extension Services {
             }
 
             let index = try await Search.Index(dbPath: resolvedPath)
-            let service = HIGSearchService(index: index)
+            let service = Services.HIGSearchService(index: index)
             defer {
                 Task {
                     await service.disconnect()

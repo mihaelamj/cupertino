@@ -9,7 +9,7 @@ import SharedUtils
 
 // MARK: - Read Command (unified, #239 follow-up)
 
-/// Thin CLI wrapper around `ReadService`. The dispatch + per-source
+/// Thin CLI wrapper around `Services.ReadService`. The dispatch + per-source
 /// reads live there so the MCP layer (and any future agent-shell adapter)
 /// can share one implementation.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
@@ -68,17 +68,17 @@ extension Command {
                 ? .markdown
                 : .json
 
-            let explicit: ReadService.Source?
+            let explicit: Services.ReadService.Source?
             do {
-                explicit = try ReadService.resolveSource(source)
-            } catch ReadService.ReadError.unknownSource(let raw) {
+                explicit = try Services.ReadService.resolveSource(source)
+            } catch Services.ReadService.ReadError.unknownSource(let raw) {
                 Logging.Log.error("Unknown --source value: \(raw). See `cupertino read --help`.")
                 throw ExitCode.failure
             }
 
-            let result: ReadService.Result
+            let result: Services.ReadService.Result
             do {
-                result = try await ReadService.read(
+                result = try await Services.ReadService.read(
                     identifier: identifier,
                     explicit: explicit,
                     format: documentFormat,
@@ -86,24 +86,24 @@ extension Command {
                     samplesDB: sampleDb.map { URL(fileURLWithPath: $0).expandingTildeInPath },
                     packagesDB: packagesDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
                 )
-            } catch ReadService.ReadError.docsNotFound(let id) {
+            } catch Services.ReadService.ReadError.docsNotFound(let id) {
                 Logging.Log.error("Document not found in search.db: \(id)")
                 throw ExitCode.failure
-            } catch ReadService.ReadError.samplesNotFound(let id) {
+            } catch Services.ReadService.ReadError.samplesNotFound(let id) {
                 Logging.Log.error("Not found in samples.db: \(id)")
                 throw ExitCode.failure
-            } catch ReadService.ReadError.packagesNotFound(let id) {
+            } catch Services.ReadService.ReadError.packagesNotFound(let id) {
                 Logging.Log.error("Not found in packages.db: \(id)")
                 throw ExitCode.failure
-            } catch ReadService.ReadError.packagesIdentifierInvalid(let id) {
+            } catch Services.ReadService.ReadError.packagesIdentifierInvalid(let id) {
                 Logging.Log.error(
                     "Invalid package identifier: \(id) — expected `<owner>/<repo>/<relpath>`."
                 )
                 throw ExitCode.failure
-            } catch ReadService.ReadError.backendFailed(let msg) {
+            } catch Services.ReadService.ReadError.backendFailed(let msg) {
                 Logging.Log.error("Read failed: \(msg)")
                 throw ExitCode.failure
-            } catch ReadService.ReadError.notFoundAnywhere(let id) {
+            } catch Services.ReadService.ReadError.notFoundAnywhere(let id) {
                 Logging.Log.error(
                     "Tried docs, samples, and packages — no source matched. Identifier: \(id)"
                 )

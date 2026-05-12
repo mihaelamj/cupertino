@@ -54,7 +54,7 @@ extension Search {
         }
 
         /// Read a single package file's stored content out of
-        /// `package_files_fts`. Used by `ReadService` for the
+        /// `package_files_fts`. Used by `Services.ReadService` for the
         /// `cupertino read <owner>/<repo>/<relpath> --source packages`
         /// path so the read source matches what was indexed (no need
         /// to keep the on-disk packages tree around when consumers

@@ -10,9 +10,9 @@ extension Sample.Format.Text {
     public struct Search: Services.Formatters.ResultFormatter {
         private let query: String
         private let framework: String?
-        private let teasers: TeaserResults?
+        private let teasers: Services.Formatters.TeaserResults?
 
-        public init(query: String, framework: String? = nil, teasers: TeaserResults? = nil) {
+        public init(query: String, framework: String? = nil, teasers: Services.Formatters.TeaserResults? = nil) {
             self.query = query
             self.framework = framework
             self.teasers = teasers

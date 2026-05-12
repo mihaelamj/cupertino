@@ -65,11 +65,11 @@ struct ServicesTests {
         #expect(withLanguage.hasActiveFilters == true)
     }
 
-    // MARK: - HIGQuery Tests
+    // MARK: - Services.HIGQuery Tests
 
-    @Test("HIGQuery initializes with defaults")
+    @Test("Services.HIGQuery initializes with defaults")
     func higQueryDefaults() {
-        let query = HIGQuery(text: "buttons")
+        let query = Services.HIGQuery(text: "buttons")
 
         #expect(query.text == "buttons")
         #expect(query.platform == nil)
@@ -77,9 +77,9 @@ struct ServicesTests {
         #expect(query.limit == Shared.Constants.Limit.defaultSearchLimit)
     }
 
-    @Test("HIGQuery accepts platform and category")
+    @Test("Services.HIGQuery accepts platform and category")
     func higQueryWithFilters() {
-        let query = HIGQuery(
+        let query = Services.HIGQuery(
             text: "navigation",
             platform: "iOS",
             category: "patterns",
@@ -184,7 +184,7 @@ struct SampleCandidateFetcherTests {
 struct TeaserResultsResilienceTests {
     @Test("TeaserResults() default is empty")
     func defaultIsEmpty() {
-        let results = TeaserResults()
+        let results = Services.Formatters.TeaserResults()
         #expect(results.isEmpty)
         #expect(results.appleDocs.isEmpty)
         #expect(results.samples.isEmpty)
@@ -230,7 +230,7 @@ struct TeaserResultsResilienceTests {
         // catch the throw, fall back to TeaserResults(). Verifies the
         // fallback contract (empty + iterable) so future changes don't
         // accidentally make the empty struct require parameters.
-        let teasers: TeaserResults
+        let teasers: Services.Formatters.TeaserResults
         do {
             teasers = try await Services.ServiceContainer.withTeaserService(
                 searchDbPath: "/var/empty/intentionally-broken-search.db.\(UUID().uuidString)",
@@ -244,7 +244,7 @@ struct TeaserResultsResilienceTests {
                 )
             }
         } catch {
-            teasers = TeaserResults()
+            teasers = Services.Formatters.TeaserResults()
         }
         #expect(teasers.isEmpty || !teasers.isEmpty) // either path is OK
         #expect(teasers.allSources.isEmpty || !teasers.allSources.isEmpty)

@@ -14,7 +14,7 @@ import SharedUtils
 /// Handles `search_docs` with `source` parameter to search docs, samples, HIG, archive, etc.
 public actor CompositeToolProvider: MCP.Core.ToolProvider {
     // Use service layer for consistency with CLI
-    private let docsService: DocsSearchService?
+    private let docsService: Services.DocsSearchService?
     private let sampleService: Sample.Search.Service?
 
     // Keep direct access for low-level operations (list frameworks, read document)
@@ -27,7 +27,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
         // Wrap databases with services for search operations
         if let searchIndex {
-            docsService = DocsSearchService(index: searchIndex)
+            docsService = Services.DocsSearchService(index: searchIndex)
         } else {
             docsService = nil
         }
@@ -481,7 +481,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     // MARK: - Teaser Results
 
-    // Uses shared TeaserService from Services module
+    // Uses shared Services.TeaserService from Services module
 
     /// Fetch teaser results from all sources the user didn't search
     private func fetchAllTeasers(
@@ -489,8 +489,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         framework: String?,
         currentSource: String?,
         includeArchive: Bool
-    ) async -> TeaserResults {
-        let teaserService = TeaserService(searchIndex: searchIndex, sampleDatabase: sampleDatabase)
+    ) async -> Services.Formatters.TeaserResults {
+        let teaserService = Services.TeaserService(searchIndex: searchIndex, sampleDatabase: sampleDatabase)
         return await teaserService.fetchAllTeasers(
             query: query,
             framework: framework,
@@ -563,7 +563,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         )
 
         // Use shared formatter
-        let higQuery = HIGQuery(text: query, platform: nil, category: nil)
+        let higQuery = Services.HIGQuery(text: query, platform: nil, category: nil)
         let formatter = HIGMarkdownFormatter(query: higQuery, config: .mcpDefault, teasers: teasers)
         let markdown = formatter.format(results)
 
@@ -577,8 +577,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         framework: String?,
         limit: Int
     ) async throws -> MCP.Core.Protocols.CallToolResult {
-        // Use UnifiedSearchService to search all 8 sources
-        let unifiedService = UnifiedSearchService(searchIndex: searchIndex, sampleDatabase: sampleDatabase)
+        // Use Services.UnifiedSearchService to search all 8 sources
+        let unifiedService = Services.UnifiedSearchService(searchIndex: searchIndex, sampleDatabase: sampleDatabase)
         let input = await unifiedService.searchAll(
             query: query,
             framework: framework,
