@@ -134,7 +134,7 @@ func exclusionListAbsent() throws {
         .appendingPathComponent("cupertino-excl-test-\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: tempDir) }
-    #expect(Core.ExclusionList.load(from: tempDir).isEmpty)
+    #expect(Core.Protocols.ExclusionList.load(from: tempDir).isEmpty)
 }
 
 @Test("ExclusionList: loads and normalises entries")
@@ -146,7 +146,7 @@ func exclusionListLoads() throws {
     let fileURL = tempDir.appendingPathComponent(Shared.Constants.FileName.excludedPackages)
     let json = #"[" APPLE/Swift-NIO ", "vapor/vapor"]"#.data(using: .utf8)!
     try json.write(to: fileURL)
-    let excluded = Core.ExclusionList.load(from: tempDir)
+    let excluded = Core.Protocols.ExclusionList.load(from: tempDir)
     #expect(excluded.contains("apple/swift-nio"))
     #expect(excluded.contains("vapor/vapor"))
     #expect(excluded.count == 2)
@@ -161,7 +161,7 @@ func exclusionListMalformed() throws {
     let fileURL = tempDir.appendingPathComponent(Shared.Constants.FileName.excludedPackages)
     let badPayload = try #require("not a json array".data(using: .utf8))
     try badPayload.write(to: fileURL)
-    #expect(Core.ExclusionList.load(from: tempDir).isEmpty)
+    #expect(Core.Protocols.ExclusionList.load(from: tempDir).isEmpty)
 }
 
 // MARK: - Canonicalizer disk cache
@@ -179,7 +179,7 @@ func canonicalizerCacheHit() async throws {
     let data = try JSONEncoder().encode(seed)
     try data.write(to: cacheURL)
 
-    let canonicalizer = Core.GitHubCanonicalizer(cacheURL: cacheURL)
+    let canonicalizer = Core.Protocols.GitHubCanonicalizer(cacheURL: cacheURL)
     let canonical = await canonicalizer.canonicalize(owner: "apple", repo: "swift-docc")
     #expect(canonical.owner == "swiftlang")
     #expect(canonical.repo == "swift-docc")
@@ -193,7 +193,7 @@ func canonicalizerPersistRoundTrip() async throws {
     defer { try? FileManager.default.removeItem(at: tempDir) }
     let cacheURL = tempDir.appendingPathComponent("canonical-owners.json")
 
-    let c1 = Core.GitHubCanonicalizer(cacheURL: cacheURL)
+    let c1 = Core.Protocols.GitHubCanonicalizer(cacheURL: cacheURL)
     await c1.primeCache(
         inputOwner: "apple", inputRepo: "swift-docc",
         canonicalOwner: "swiftlang", canonicalRepo: "swift-docc"
@@ -201,7 +201,7 @@ func canonicalizerPersistRoundTrip() async throws {
     await c1.persist()
 
     // New canonicalizer reads the persisted cache from disk.
-    let c2 = Core.GitHubCanonicalizer(cacheURL: cacheURL)
+    let c2 = Core.Protocols.GitHubCanonicalizer(cacheURL: cacheURL)
     let canonical = await c2.canonicalize(owner: "apple", repo: "swift-docc")
     #expect(canonical.owner == "swiftlang")
     #expect(canonical.repo == "swift-docc")
@@ -219,7 +219,7 @@ func resolverSeedIsSelfParent() async throws {
     defer { try? FileManager.default.removeItem(at: tempDir) }
     let cacheURL = tempDir.appendingPathComponent("canonical-owners.json")
     // Prime the canonicalizer so we don't hit the network: canonical == input.
-    let canonicalizer = Core.GitHubCanonicalizer(cacheURL: cacheURL)
+    let canonicalizer = Core.Protocols.GitHubCanonicalizer(cacheURL: cacheURL)
     await canonicalizer.primeCache(
         inputOwner: "apple", inputRepo: "only-seed",
         canonicalOwner: "apple", canonicalRepo: "only-seed"
@@ -244,7 +244,7 @@ func resolverExcludesSeed() async throws {
     try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: tempDir) }
     let cacheURL = tempDir.appendingPathComponent("canonical-owners.json")
-    let canonicalizer = Core.GitHubCanonicalizer(cacheURL: cacheURL)
+    let canonicalizer = Core.Protocols.GitHubCanonicalizer(cacheURL: cacheURL)
     await canonicalizer.primeCache(
         inputOwner: "apple", inputRepo: "only-seed",
         canonicalOwner: "apple", canonicalRepo: "only-seed"
@@ -376,7 +376,7 @@ func manifestCacheMissSentinel() async throws {
 @Test("parseGitHubURL: plain github.com/owner/repo")
 func parseGitHubURLPlain() throws {
     let url = try #require(URL(string: "https://github.com/apple/swift-nio"))
-    let parsed = try #require(Core.GitHubCanonicalizer.parseGitHubURL(url))
+    let parsed = try #require(Core.Protocols.GitHubCanonicalizer.parseGitHubURL(url))
     #expect(parsed.owner == "apple")
     #expect(parsed.repo == "swift-nio")
 }
@@ -384,7 +384,7 @@ func parseGitHubURLPlain() throws {
 @Test("parseGitHubURL: strips trailing .git")
 func parseGitHubURLStripsGitSuffix() throws {
     let url = try #require(URL(string: "https://github.com/apple/swift-nio.git"))
-    let parsed = try #require(Core.GitHubCanonicalizer.parseGitHubURL(url))
+    let parsed = try #require(Core.Protocols.GitHubCanonicalizer.parseGitHubURL(url))
     #expect(parsed.owner == "apple")
     #expect(parsed.repo == "swift-nio")
 }
@@ -392,7 +392,7 @@ func parseGitHubURLStripsGitSuffix() throws {
 @Test("parseGitHubURL: strips tree/branch suffixes")
 func parseGitHubURLStripsExtraPath() throws {
     let url = try #require(URL(string: "https://github.com/apple/swift-nio/tree/main"))
-    let parsed = try #require(Core.GitHubCanonicalizer.parseGitHubURL(url))
+    let parsed = try #require(Core.Protocols.GitHubCanonicalizer.parseGitHubURL(url))
     #expect(parsed.owner == "apple")
     #expect(parsed.repo == "swift-nio")
 }
@@ -400,13 +400,13 @@ func parseGitHubURLStripsExtraPath() throws {
 @Test("parseGitHubURL: rejects non-github host")
 func parseGitHubURLRejectsOtherHosts() throws {
     let url = try #require(URL(string: "https://gitlab.com/apple/swift-nio"))
-    #expect(Core.GitHubCanonicalizer.parseGitHubURL(url) == nil)
+    #expect(Core.Protocols.GitHubCanonicalizer.parseGitHubURL(url) == nil)
 }
 
 @Test("parseGitHubURL: rejects path with only owner")
 func parseGitHubURLRejectsSingleComponent() throws {
     let url = try #require(URL(string: "https://github.com/apple"))
-    #expect(Core.GitHubCanonicalizer.parseGitHubURL(url) == nil)
+    #expect(Core.Protocols.GitHubCanonicalizer.parseGitHubURL(url) == nil)
 }
 
 // MARK: - Integration (network required)
@@ -425,7 +425,7 @@ struct ResolverNetworkIntegration {
         defer { try? FileManager.default.removeItem(at: tempDir) }
         let cacheURL = tempDir.appendingPathComponent("canonical-owners.json")
 
-        let canonicalizer = Core.GitHubCanonicalizer(cacheURL: cacheURL)
+        let canonicalizer = Core.Protocols.GitHubCanonicalizer(cacheURL: cacheURL)
         let canonical = await canonicalizer.canonicalize(owner: "apple", repo: "swift-docc")
         #expect(canonical.owner == "swiftlang")
         #expect(canonical.repo == "swift-docc")
@@ -442,7 +442,7 @@ struct ResolverNetworkIntegration {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let canonicalizer = Core.GitHubCanonicalizer(
+        let canonicalizer = Core.Protocols.GitHubCanonicalizer(
             cacheURL: tempDir.appendingPathComponent("canonical-owners.json")
         )
         let manifestCache = Core.ManifestCache(
@@ -486,7 +486,7 @@ struct ResolverNetworkIntegration {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let canonicalizer = Core.GitHubCanonicalizer(
+        let canonicalizer = Core.Protocols.GitHubCanonicalizer(
             cacheURL: tempDir.appendingPathComponent("canonical-owners.json")
         )
         let manifestCache = Core.ManifestCache(
@@ -531,7 +531,7 @@ func resolverCanonicalizeDedupes() async throws {
     try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: tempDir) }
     let cacheURL = tempDir.appendingPathComponent("canonical-owners.json")
-    let canonicalizer = Core.GitHubCanonicalizer(cacheURL: cacheURL)
+    let canonicalizer = Core.Protocols.GitHubCanonicalizer(cacheURL: cacheURL)
     // Use fake repos so no real Package.swift is fetched; both canonicalize to the
     // same fake canonical name to prove dedupe.
     await canonicalizer.primeCache(

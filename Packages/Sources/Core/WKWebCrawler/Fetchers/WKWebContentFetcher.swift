@@ -13,7 +13,7 @@ import WebKit
 extension WKWebCrawler {
     #if canImport(WebKit)
     @MainActor
-    public final class ContentFetcher: NSObject, @preconcurrency CoreProtocols.ContentFetcher {
+    public final class ContentFetcher: NSObject, @preconcurrency Core.Protocols.ContentFetcher {
         public typealias RawContent = String
 
         // `webView` is an IUO on purpose: `recycle()` (below) is called
@@ -47,7 +47,7 @@ extension WKWebCrawler {
         /// Fetch HTML content from a URL using WKWebView
         /// - Parameter url: The URL to fetch
         /// - Returns: A FetchResult containing the rendered HTML and the post-redirect final URL
-        public func fetch(url: URL) async throws -> FetchResult<String> {
+        public func fetch(url: URL) async throws -> Core.Protocols.FetchResult<String> {
             webView.load(URLRequest(url: url))
 
             let html = try await withThrowingTaskGroup(of: String?.self) { group in
@@ -74,7 +74,7 @@ extension WKWebCrawler {
             }
 
             let finalURL = webView.url ?? url
-            return FetchResult(content: html, url: finalURL)
+            return Core.Protocols.FetchResult(content: html, url: finalURL)
         }
 
         /// Recycle the WKWebView to free memory.

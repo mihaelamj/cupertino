@@ -7,14 +7,14 @@ import SharedCore
 /// Complete crawler engine for Apple documentation using JSON API
 /// Uses JSONContentFetcher for fetching and AppleJSONToMarkdown for transformation
 extension JSONCrawler {
-    public final class AppleJSONCrawlerEngine: CrawlerEngine, @unchecked Sendable {
+    public final class AppleJSONCrawlerEngine: Core.Protocols.CrawlerEngine, @unchecked Sendable {
         private let fetcher: JSONContentFetcher
 
         public init(timeout: TimeInterval = 30) {
             fetcher = JSONContentFetcher(timeout: timeout)
         }
 
-        public func crawl(url: URL) async throws -> TransformResult {
+        public func crawl(url: URL) async throws -> Core.Protocols.TransformResult {
             // Convert documentation URL to JSON API URL
             guard let jsonURL = apiURL(from: url) else {
                 throw JSONCrawlerError.invalidURL
@@ -41,7 +41,7 @@ extension JSONCrawler {
             // Extract metadata
             let metadata = extractMetadata(from: data)
 
-            return TransformResult(
+            return Core.Protocols.TransformResult(
                 markdown: markdown,
                 links: links,
                 metadata: metadata,
@@ -56,7 +56,7 @@ extension JSONCrawler {
 
         // MARK: - Private Helpers
 
-        private func extractMetadata(from data: Data) -> TransformMetadata? {
+        private func extractMetadata(from data: Data) -> Core.Protocols.TransformMetadata? {
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let metadata = json["metadata"] as? [String: Any]
             else {
@@ -81,7 +81,7 @@ extension JSONCrawler {
                 framework = firstModule["name"] as? String
             }
 
-            return TransformMetadata(
+            return Core.Protocols.TransformMetadata(
                 title: title,
                 description: role,
                 framework: framework,

@@ -36,7 +36,7 @@ import TestSupport
 
 @Test("SwiftPackagesCatalog loads from JSON resource")
 func swiftPackagesCatalogLoadsFromJSON() async {
-    let count = await SwiftPackagesCatalog.count
+    let count = await Core.Protocols.SwiftPackagesCatalog.count
     #expect(count > 9000, "Should have thousands of Swift packages")
     #expect(count < 15000, "Package count should be reasonable")
     print("   ✅ Loaded \(count) Swift packages")
@@ -44,9 +44,9 @@ func swiftPackagesCatalogLoadsFromJSON() async {
 
 @Test("SwiftPackagesCatalog has correct metadata")
 func swiftPackagesCatalogMetadata() async {
-    let version = await SwiftPackagesCatalog.version
-    let lastCrawled = await SwiftPackagesCatalog.lastCrawled
-    let source = await SwiftPackagesCatalog.source
+    let version = await Core.Protocols.SwiftPackagesCatalog.version
+    let lastCrawled = await Core.Protocols.SwiftPackagesCatalog.lastCrawled
+    let source = await Core.Protocols.SwiftPackagesCatalog.source
 
     #expect(!version.isEmpty, "Version should not be empty")
     #expect(!lastCrawled.isEmpty, "Last crawled date should not be empty")
@@ -57,7 +57,7 @@ func swiftPackagesCatalogMetadata() async {
 
 @Test("SwiftPackagesCatalog entries have required fields")
 func swiftPackagesCatalogEntriesValid() async {
-    let packages = await SwiftPackagesCatalog.allPackages
+    let packages = await Core.Protocols.SwiftPackagesCatalog.allPackages
     #expect(!packages.isEmpty, "Should have at least one package")
 
     // Verify first entry has all required fields
@@ -75,7 +75,7 @@ func swiftPackagesCatalogEntriesValid() async {
 
 @Test("SwiftPackagesCatalog search works")
 func swiftPackagesCatalogSearch() async {
-    let results = await SwiftPackagesCatalog.search("SwiftUI")
+    let results = await Core.Protocols.SwiftPackagesCatalog.search("SwiftUI")
     #expect(!results.isEmpty, "Search for 'SwiftUI' should return results")
 
     print("   ✅ Found \(results.count) results for 'SwiftUI'")

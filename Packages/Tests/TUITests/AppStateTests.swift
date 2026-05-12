@@ -29,7 +29,7 @@ func appStateVisiblePackagesFilter() {
     let state = AppState()
 
     // Create test packages
-    let pkg1 = SwiftPackageEntry(
+    let pkg1 = Core.Protocols.SwiftPackageEntry(
         owner: "apple",
         repo: "swift",
         url: "https://github.com/apple/swift",
@@ -42,7 +42,7 @@ func appStateVisiblePackagesFilter() {
         updatedAt: "2025-11-19"
     )
 
-    let pkg2 = SwiftPackageEntry(
+    let pkg2 = Core.Protocols.SwiftPackageEntry(
         owner: "vapor",
         repo: "vapor",
         url: "https://github.com/vapor/vapor",
@@ -55,7 +55,7 @@ func appStateVisiblePackagesFilter() {
         updatedAt: "2025-11-18"
     )
 
-    let pkg3 = SwiftPackageEntry(
+    let pkg3 = Core.Protocols.SwiftPackageEntry(
         owner: "realm",
         repo: "SwiftLint",
         url: "https://github.com/realm/SwiftLint",
@@ -92,7 +92,7 @@ func appStateVisiblePackagesFilter() {
 func appStateSearchFilter() {
     let state = AppState()
 
-    let pkg1 = SwiftPackageEntry(
+    let pkg1 = Core.Protocols.SwiftPackageEntry(
         owner: "apple",
         repo: "swift",
         url: "https://github.com/apple/swift",
@@ -105,7 +105,7 @@ func appStateSearchFilter() {
         updatedAt: "2025-11-19"
     )
 
-    let pkg2 = SwiftPackageEntry(
+    let pkg2 = Core.Protocols.SwiftPackageEntry(
         owner: "vapor",
         repo: "vapor",
         url: "https://github.com/vapor/vapor",
@@ -151,7 +151,7 @@ func appStateSearchFilter() {
 func appStateSortModes() {
     let state = AppState()
 
-    let pkg1 = SwiftPackageEntry(
+    let pkg1 = Core.Protocols.SwiftPackageEntry(
         owner: "apple",
         repo: "swift",
         url: "https://github.com/apple/swift",
@@ -164,7 +164,7 @@ func appStateSortModes() {
         updatedAt: "2025-11-19"
     )
 
-    let pkg2 = SwiftPackageEntry(
+    let pkg2 = Core.Protocols.SwiftPackageEntry(
         owner: "vapor",
         repo: "vapor",
         url: "https://github.com/vapor/vapor",
@@ -177,7 +177,7 @@ func appStateSortModes() {
         updatedAt: "2025-11-20"
     )
 
-    let pkg3 = SwiftPackageEntry(
+    let pkg3 = Core.Protocols.SwiftPackageEntry(
         owner: "realm",
         repo: "SwiftLint",
         url: "https://github.com/realm/SwiftLint",
@@ -220,7 +220,7 @@ func appStateSortModes() {
 func appStateToggleCurrent() {
     let state = AppState()
 
-    let pkg = SwiftPackageEntry(
+    let pkg = Core.Protocols.SwiftPackageEntry(
         owner: "apple",
         repo: "swift",
         url: "https://github.com/apple/swift",
@@ -255,7 +255,7 @@ func appStateMoveCursor() {
 
     // Create 10 test packages
     for index in 0..<10 {
-        let pkg = SwiftPackageEntry(
+        let pkg = Core.Protocols.SwiftPackageEntry(
             owner: "owner\(index)",
             repo: "repo\(index)",
             url: "https://github.com/owner\(index)/repo\(index)",

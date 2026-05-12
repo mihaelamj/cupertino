@@ -663,7 +663,7 @@ extension Command {
                 )
             }
 
-            let exclusions = Core.ExclusionList.load()
+            let exclusions = Core.Protocols.ExclusionList.load()
             let seedChecksum = Core.ResolvedPackagesStore.checksum(seeds: seedRefs, exclusions: exclusions)
             let resolvedStoreURL = Shared.Constants.defaultBaseDirectory
                 .appendingPathComponent(Shared.Constants.FileName.resolvedPackages)
@@ -687,7 +687,7 @@ extension Command {
                     if !exclusions.isEmpty {
                         Logging.ConsoleLogger.info("   Exclusion list in effect: \(exclusions.count) entries")
                     }
-                    let canonicalizer = Core.GitHubCanonicalizer(cacheURL: canonicalCacheURL)
+                    let canonicalizer = Core.Protocols.GitHubCanonicalizer(cacheURL: canonicalCacheURL)
                     let manifestCache = Core.ManifestCache(
                         rootDirectory: Shared.Constants.defaultBaseDirectory
                             .appendingPathComponent(".cache")

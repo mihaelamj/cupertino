@@ -6,7 +6,7 @@ import Foundation
 extension Core.Parser {
     /// Transforms XML content (like sitemaps or RSS feeds) into structured data
     /// Useful for parsing web crawled pages that return XML format
-    public struct XML: ContentTransformer, @unchecked Sendable {
+    public struct XML: Core.Protocols.ContentTransformer, @unchecked Sendable {
         public typealias RawContent = Data
 
         public init() {}

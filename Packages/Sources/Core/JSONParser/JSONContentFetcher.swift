@@ -6,7 +6,7 @@ import Foundation
 /// Fetches JSON content from Apple's documentation API
 /// Uses URLSession for direct HTTP requests, avoiding WKWebView memory issues
 extension JSONCrawler {
-    public struct JSONContentFetcher: ContentFetcher, @unchecked Sendable {
+    public struct JSONContentFetcher: Core.Protocols.ContentFetcher, @unchecked Sendable {
         public typealias RawContent = Data
 
         private let session: URLSession
@@ -20,7 +20,7 @@ extension JSONCrawler {
             session = URLSession(configuration: config)
         }
 
-        public func fetch(url: URL) async throws -> FetchResult<Data> {
+        public func fetch(url: URL) async throws -> Core.Protocols.FetchResult<Data> {
             let (data, response) = try await session.data(from: url)
 
             guard let httpResponse = response as? HTTPURLResponse else {
@@ -32,7 +32,7 @@ extension JSONCrawler {
             }
 
             let finalURL = response.url ?? url
-            return FetchResult(content: data, url: finalURL)
+            return Core.Protocols.FetchResult(content: data, url: finalURL)
         }
     }
 }

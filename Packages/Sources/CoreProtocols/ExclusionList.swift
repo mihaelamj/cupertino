@@ -2,7 +2,7 @@ import Foundation
 import SharedConstants
 import SharedCore
 
-extension Core {
+extension Core.Protocols {
     /// User-maintained skip list at `~/.cupertino/excluded-packages.json`: a flat JSON
     /// array of `"owner/repo"` strings that the resolver must drop from its closure
     /// even when transitively discovered. Absent file = empty set.
