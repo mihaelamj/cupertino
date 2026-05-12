@@ -5,134 +5,136 @@ import SharedCore
 
 // MARK: - Argument Extractor
 
-/// Helper for extracting and validating MCP tool arguments.
-/// Reduces boilerplate in tool providers by providing type-safe access to arguments.
-public struct ArgumentExtractor: Sendable {
-    private let arguments: [String: MCP.Core.Protocols.AnyCodable]?
+extension MCP.SharedTools {
+    /// Helper for extracting and validating MCP tool arguments.
+    /// Reduces boilerplate in tool providers by providing type-safe access to arguments.
+    public struct ArgumentExtractor: Sendable {
+        private let arguments: [String: MCP.Core.Protocols.AnyCodable]?
 
-    /// Initialize with MCP tool arguments
-    public init(_ arguments: [String: MCP.Core.Protocols.AnyCodable]?) {
-        self.arguments = arguments
-    }
-
-    // MARK: - Required Arguments
-
-    /// Extract a required string argument, throwing if missing
-    public func require(_ key: String) throws -> String {
-        guard let value = arguments?[key]?.value as? String else {
-            throw ToolError.missingArgument(key)
+        /// Initialize with MCP tool arguments
+        public init(_ arguments: [String: MCP.Core.Protocols.AnyCodable]?) {
+            self.arguments = arguments
         }
-        return value
-    }
 
-    /// Extract a required integer argument, throwing if missing
-    public func requireInt(_ key: String) throws -> Int {
-        guard let value = arguments?[key]?.value as? Int else {
-            throw ToolError.missingArgument(key)
+        // MARK: - Required Arguments
+
+        /// Extract a required string argument, throwing if missing
+        public func require(_ key: String) throws -> String {
+            guard let value = arguments?[key]?.value as? String else {
+                throw ToolError.missingArgument(key)
+            }
+            return value
         }
-        return value
-    }
 
-    /// Extract a required boolean argument, throwing if missing
-    public func requireBool(_ key: String) throws -> Bool {
-        guard let value = arguments?[key]?.value as? Bool else {
-            throw ToolError.missingArgument(key)
+        /// Extract a required integer argument, throwing if missing
+        public func requireInt(_ key: String) throws -> Int {
+            guard let value = arguments?[key]?.value as? Int else {
+                throw ToolError.missingArgument(key)
+            }
+            return value
         }
-        return value
-    }
 
-    // MARK: - Optional Arguments
+        /// Extract a required boolean argument, throwing if missing
+        public func requireBool(_ key: String) throws -> Bool {
+            guard let value = arguments?[key]?.value as? Bool else {
+                throw ToolError.missingArgument(key)
+            }
+            return value
+        }
 
-    /// Extract an optional string argument
-    public func optional(_ key: String) -> String? {
-        arguments?[key]?.value as? String
-    }
+        // MARK: - Optional Arguments
 
-    /// Extract an optional integer argument
-    public func optionalInt(_ key: String) -> Int? {
-        arguments?[key]?.value as? Int
-    }
+        /// Extract an optional string argument
+        public func optional(_ key: String) -> String? {
+            arguments?[key]?.value as? String
+        }
 
-    /// Extract an optional boolean argument
-    public func optionalBool(_ key: String) -> Bool? {
-        arguments?[key]?.value as? Bool
-    }
+        /// Extract an optional integer argument
+        public func optionalInt(_ key: String) -> Int? {
+            arguments?[key]?.value as? Int
+        }
 
-    // MARK: - Arguments with Defaults
+        /// Extract an optional boolean argument
+        public func optionalBool(_ key: String) -> Bool? {
+            arguments?[key]?.value as? Bool
+        }
 
-    /// Extract a string argument with a default value
-    public func optional(_ key: String, default defaultValue: String) -> String {
-        (arguments?[key]?.value as? String) ?? defaultValue
-    }
+        // MARK: - Arguments with Defaults
 
-    /// Extract an integer argument with a default value
-    public func optional(_ key: String, default defaultValue: Int) -> Int {
-        (arguments?[key]?.value as? Int) ?? defaultValue
-    }
+        /// Extract a string argument with a default value
+        public func optional(_ key: String, default defaultValue: String) -> String {
+            (arguments?[key]?.value as? String) ?? defaultValue
+        }
 
-    /// Extract a boolean argument with a default value
-    public func optional(_ key: String, default defaultValue: Bool) -> Bool {
-        (arguments?[key]?.value as? Bool) ?? defaultValue
-    }
+        /// Extract an integer argument with a default value
+        public func optional(_ key: String, default defaultValue: Int) -> Int {
+            (arguments?[key]?.value as? Int) ?? defaultValue
+        }
 
-    // MARK: - Specialized Extractors
+        /// Extract a boolean argument with a default value
+        public func optional(_ key: String, default defaultValue: Bool) -> Bool {
+            (arguments?[key]?.value as? Bool) ?? defaultValue
+        }
 
-    /// Extract a limit argument, clamped to the max search limit
-    public func limit(
-        key: String = Shared.Constants.Search.schemaParamLimit,
-        default defaultLimit: Int = Shared.Constants.Limit.defaultSearchLimit
-    ) -> Int {
-        let requested = optional(key, default: defaultLimit)
-        return min(requested, Shared.Constants.Limit.maxSearchLimit)
-    }
+        // MARK: - Specialized Extractors
 
-    /// Extract a format argument for document output
-    public func format(
-        key: String = Shared.Constants.Search.schemaParamFormat,
-        default defaultFormat: String = Shared.Constants.Search.formatValueJSON
-    ) -> String {
-        optional(key, default: defaultFormat)
-    }
+        /// Extract a limit argument, clamped to the max search limit
+        public func limit(
+            key: String = Shared.Constants.Search.schemaParamLimit,
+            default defaultLimit: Int = Shared.Constants.Limit.defaultSearchLimit
+        ) -> Int {
+            let requested = optional(key, default: defaultLimit)
+            return min(requested, Shared.Constants.Limit.maxSearchLimit)
+        }
 
-    /// Check if include_archive flag is set
-    public func includeArchive(
-        key: String = Shared.Constants.Search.schemaParamIncludeArchive
-    ) -> Bool {
-        optional(key, default: false)
-    }
+        /// Extract a format argument for document output
+        public func format(
+            key: String = Shared.Constants.Search.schemaParamFormat,
+            default defaultFormat: String = Shared.Constants.Search.formatValueJSON
+        ) -> String {
+            optional(key, default: defaultFormat)
+        }
 
-    /// Extract min_ios version filter
-    public func minIOS(
-        key: String = Shared.Constants.Search.schemaParamMinIOS
-    ) -> String? {
-        optional(key)
-    }
+        /// Check if include_archive flag is set
+        public func includeArchive(
+            key: String = Shared.Constants.Search.schemaParamIncludeArchive
+        ) -> Bool {
+            optional(key, default: false)
+        }
 
-    /// Extract min_macos version filter
-    public func minMacOS(
-        key: String = Shared.Constants.Search.schemaParamMinMacOS
-    ) -> String? {
-        optional(key)
-    }
+        /// Extract min_ios version filter
+        public func minIOS(
+            key: String = Shared.Constants.Search.schemaParamMinIOS
+        ) -> String? {
+            optional(key)
+        }
 
-    /// Extract min_tvos version filter
-    public func minTvOS(
-        key: String = Shared.Constants.Search.schemaParamMinTvOS
-    ) -> String? {
-        optional(key)
-    }
+        /// Extract min_macos version filter
+        public func minMacOS(
+            key: String = Shared.Constants.Search.schemaParamMinMacOS
+        ) -> String? {
+            optional(key)
+        }
 
-    /// Extract min_watchos version filter
-    public func minWatchOS(
-        key: String = Shared.Constants.Search.schemaParamMinWatchOS
-    ) -> String? {
-        optional(key)
-    }
+        /// Extract min_tvos version filter
+        public func minTvOS(
+            key: String = Shared.Constants.Search.schemaParamMinTvOS
+        ) -> String? {
+            optional(key)
+        }
 
-    /// Extract min_visionos version filter
-    public func minVisionOS(
-        key: String = Shared.Constants.Search.schemaParamMinVisionOS
-    ) -> String? {
-        optional(key)
+        /// Extract min_watchos version filter
+        public func minWatchOS(
+            key: String = Shared.Constants.Search.schemaParamMinWatchOS
+        ) -> String? {
+            optional(key)
+        }
+
+        /// Extract min_visionos version filter
+        public func minVisionOS(
+            key: String = Shared.Constants.Search.schemaParamMinVisionOS
+        ) -> String? {
+            optional(key)
+        }
     }
 }

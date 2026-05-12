@@ -124,7 +124,7 @@ extension Command {
             let searchIndex: SearchModule.Index? = await loadSearchIndex(searchDBURL: searchDBURL)
 
             // Register resource provider with optional search index
-            let resourceProvider = DocsResourceProvider(
+            let resourceProvider = MCP.Support.DocsResourceProvider(
                 configuration: config,
                 evolutionDirectory: evolutionURL,
                 searchIndex: searchIndex

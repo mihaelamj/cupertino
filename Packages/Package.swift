@@ -141,7 +141,7 @@ let targets: [Target] = {
         path: "Sources/Shared/Configuration"
     )
 
-    // ---------- MCPSharedTools (v1.1 refactor 1.1: extracts ArgumentExtractor + MCP-protocol-output constants from Shared) ----------
+    // ---------- MCPSharedTools (v1.1 refactor 1.1: extracts MCP.SharedTools.ArgumentExtractor + MCP-protocol-output constants from Shared) ----------
     let mcpSharedToolsTarget = Target.target(
         name: "MCPSharedTools",
         dependencies: ["MCP", "SharedCore", "SharedConstants"],
