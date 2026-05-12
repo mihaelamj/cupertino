@@ -25,7 +25,7 @@ import WebKit
 
 extension Core.Parser {
     /// Converts HTML documentation to clean Markdown
-    public struct HTML: ContentTransformer, @unchecked Sendable {
+    public struct HTML: Core.Protocols.ContentTransformer, @unchecked Sendable {
         public typealias RawContent = String
 
         public init() {}

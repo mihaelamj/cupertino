@@ -23,7 +23,7 @@ struct PackageCuratorApp {
         }
 
         // Load packages
-        let packages = await SwiftPackagesCatalog.allPackages
+        let packages = await Core.Protocols.SwiftPackagesCatalog.allPackages
 
         // Load user selections first, fall back to bundled priority packages
         let userSelectedURLs = loadUserSelectedPackageURLs()

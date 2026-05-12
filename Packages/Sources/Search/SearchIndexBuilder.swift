@@ -1233,7 +1233,7 @@ extension Search {
         private func indexPackagesCatalog(onProgress: (@Sendable (Int, Int) -> Void)?) async throws {
             logInfo("📦 Indexing Swift packages catalog from bundled resources...")
 
-            let packages = await SwiftPackagesCatalog.allPackages
+            let packages = await Core.Protocols.SwiftPackagesCatalog.allPackages
 
             guard !packages.isEmpty else {
                 logInfo("⚠️  No packages found in catalog")

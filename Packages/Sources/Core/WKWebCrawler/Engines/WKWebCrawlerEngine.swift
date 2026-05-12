@@ -13,7 +13,7 @@ import WebKit
 extension WKWebCrawler {
     #if canImport(WebKit)
     @MainActor
-    public final class Engine: @preconcurrency CrawlerEngine {
+    public final class Engine: @preconcurrency Core.Protocols.CrawlerEngine {
         private let fetcher: WKWebCrawler.ContentFetcher
 
         public init(
@@ -26,7 +26,7 @@ extension WKWebCrawler {
             )
         }
 
-        public func crawl(url: URL) async throws -> TransformResult {
+        public func crawl(url: URL) async throws -> Core.Protocols.TransformResult {
             // Fetch HTML content via WKWebView; result.url is the post-redirect final URL
             let result = try await fetcher.fetch(url: url)
             let html = result.content
@@ -41,7 +41,7 @@ extension WKWebCrawler {
             // Extract metadata from HTML
             let metadata = extractMetadata(from: html)
 
-            return TransformResult(
+            return Core.Protocols.TransformResult(
                 markdown: markdown,
                 links: links,
                 metadata: metadata
@@ -80,7 +80,7 @@ extension WKWebCrawler {
             return links
         }
 
-        private func extractMetadata(from html: String) -> TransformMetadata? {
+        private func extractMetadata(from html: String) -> Core.Protocols.TransformMetadata? {
             var title: String?
             var description: String?
 
@@ -110,7 +110,7 @@ extension WKWebCrawler {
                 return nil
             }
 
-            return TransformMetadata(
+            return Core.Protocols.TransformMetadata(
                 title: title,
                 description: description
             )

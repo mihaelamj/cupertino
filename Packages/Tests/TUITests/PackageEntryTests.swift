@@ -9,7 +9,7 @@ import TestSupport
 
 @Test("PackageEntry initializes with package data")
 func packageEntryInitialization() {
-    let pkg = SwiftPackageEntry(
+    let pkg = Core.Protocols.SwiftPackageEntry(
         owner: "apple",
         repo: "swift",
         url: "https://github.com/apple/swift",
@@ -32,7 +32,7 @@ func packageEntryInitialization() {
 
 @Test("PackageEntry isSelected can be toggled")
 func packageEntrySelection() {
-    let pkg = SwiftPackageEntry(
+    let pkg = Core.Protocols.SwiftPackageEntry(
         owner: "vapor",
         repo: "vapor",
         url: "https://github.com/vapor/vapor",
@@ -58,7 +58,7 @@ func packageEntrySelection() {
 
 @Test("PackageEntry isDownloaded reflects local state")
 func packageEntryDownloadStatus() {
-    let pkg = SwiftPackageEntry(
+    let pkg = Core.Protocols.SwiftPackageEntry(
         owner: "realm",
         repo: "SwiftLint",
         url: "https://github.com/realm/SwiftLint",
@@ -81,7 +81,7 @@ func packageEntryDownloadStatus() {
 @Test("PackageEntry works with different package data")
 func packageEntryVariousData() {
     // Test with minimal data
-    let minimalPkg = SwiftPackageEntry(
+    let minimalPkg = Core.Protocols.SwiftPackageEntry(
         owner: "user",
         repo: "repo",
         url: "https://github.com/user/repo",
@@ -101,7 +101,7 @@ func packageEntryVariousData() {
     #expect(minimalEntry.package.archived, "Should handle archived status")
 
     // Test with full data
-    let fullPkg = SwiftPackageEntry(
+    let fullPkg = Core.Protocols.SwiftPackageEntry(
         owner: "apple",
         repo: "swift-nio",
         url: "https://github.com/apple/swift-nio",

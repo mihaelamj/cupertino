@@ -9,7 +9,7 @@ import SharedModels
 /// Converts Apple's documentation JSON API response to Markdown
 /// This is a lightweight alternative to WKWebView rendering that avoids memory issues
 /// with large index pages like lapack-functions (1600+ items)
-public struct AppleJSONToMarkdown: ContentTransformer, @unchecked Sendable {
+public struct AppleJSONToMarkdown: Core.Protocols.ContentTransformer, @unchecked Sendable {
     public typealias RawContent = Data
 
     public init() {}

@@ -130,7 +130,7 @@ private var userExclusionsURL: URL {
 /// Load excluded "owner/repo" entries from disk; empty set if absent/malformed.
 @MainActor
 func loadExcludedPackages() -> Set<String> {
-    Core.ExclusionList.load()
+    Core.Protocols.ExclusionList.load()
 }
 
 /// Load the resolved closure's non-seed entries so the TUI can flag them as

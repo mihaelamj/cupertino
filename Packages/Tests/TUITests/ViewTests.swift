@@ -172,7 +172,7 @@ func packageViewWithPackages() {
     let view = PackageView()
     let state = AppState()
 
-    let pkg1 = SwiftPackageEntry(
+    let pkg1 = Core.Protocols.SwiftPackageEntry(
         owner: "apple",
         repo: "swift",
         url: "https://github.com/apple/swift",
@@ -203,7 +203,7 @@ func packageViewSelectionIndicator() {
     let view = PackageView()
     let state = AppState()
 
-    let pkg = SwiftPackageEntry(
+    let pkg = Core.Protocols.SwiftPackageEntry(
         owner: "test",
         repo: "package",
         url: "https://github.com/test/package",
@@ -231,7 +231,7 @@ func packageViewDownloadIndicator() {
     let view = PackageView()
     let state = AppState()
 
-    let pkg = SwiftPackageEntry(
+    let pkg = Core.Protocols.SwiftPackageEntry(
         owner: "test",
         repo: "package",
         url: "https://github.com/test/package",
@@ -311,7 +311,7 @@ func packageViewLineWidth() {
 
     // Add packages with varying name lengths
     let packages = [
-        SwiftPackageEntry(
+        Core.Protocols.SwiftPackageEntry(
             owner: "a",
             repo: "b",
             url: "https://github.com/a/b",
@@ -323,7 +323,7 @@ func packageViewLineWidth() {
             archived: false,
             updatedAt: nil
         ),
-        SwiftPackageEntry(
+        Core.Protocols.SwiftPackageEntry(
             owner: "verylongowner",
             repo: "verylongrepo",
             url: "https://github.com/verylongowner/verylongrepo",
@@ -335,7 +335,7 @@ func packageViewLineWidth() {
             archived: false,
             updatedAt: nil
         ),
-        SwiftPackageEntry(
+        Core.Protocols.SwiftPackageEntry(
             owner: "apple",
             repo: "swift",
             url: "https://github.com/apple/swift",
@@ -382,7 +382,7 @@ func packageViewBorderAlignment() {
     let view = PackageView()
     let state = AppState()
 
-    let pkg = SwiftPackageEntry(
+    let pkg = Core.Protocols.SwiftPackageEntry(
         owner: "apple",
         repo: "swift",
         url: "https://github.com/apple/swift",
@@ -480,7 +480,7 @@ func packageViewSelectedState() {
     let state = AppState()
     let width = 100
 
-    let pkg = SwiftPackageEntry(
+    let pkg = Core.Protocols.SwiftPackageEntry(
         owner: "apple",
         repo: "swift",
         url: "https://github.com/apple/swift",
@@ -521,7 +521,7 @@ func packageViewDownloadedState() {
     let state = AppState()
     let width = 100
 
-    let pkg = SwiftPackageEntry(
+    let pkg = Core.Protocols.SwiftPackageEntry(
         owner: "apple",
         repo: "swift",
         url: "https://github.com/apple/swift",
@@ -562,7 +562,7 @@ func packageViewSearchHighlighting() {
     let state = AppState()
     let width = 100
 
-    let pkg = SwiftPackageEntry(
+    let pkg = Core.Protocols.SwiftPackageEntry(
         owner: "apple",
         repo: "swift-foundation",
         url: "https://github.com/apple/swift-foundation",
@@ -600,7 +600,7 @@ func packageViewSearchHighlightingOnSelected() {
     let state = AppState()
     let width = 100
 
-    let pkg = SwiftPackageEntry(
+    let pkg = Core.Protocols.SwiftPackageEntry(
         owner: "apple",
         repo: "swift-foundation",
         url: "https://github.com/apple/swift-foundation",
@@ -639,7 +639,7 @@ func packageViewLongNames() {
     let width = 100
 
     // Very long name that will definitely need truncation
-    let pkg = SwiftPackageEntry(
+    let pkg = Core.Protocols.SwiftPackageEntry(
         owner: "verylongorganizationname",
         repo: "verylongrepositorynamethatshouldbetruncatedwithellipsis",
         url: "https://github.com/test/test",
@@ -679,7 +679,7 @@ func packageViewComponentWidths() {
     let state = AppState()
     let width = 100
 
-    let pkg = SwiftPackageEntry(
+    let pkg = Core.Protocols.SwiftPackageEntry(
         owner: "test",
         repo: "pkg",
         url: "https://github.com/test/pkg",
@@ -723,7 +723,7 @@ func packageViewMinimumWidth() {
     let state = AppState()
     let width = 80 // Minimum guaranteed width
 
-    let pkg = SwiftPackageEntry(
+    let pkg = Core.Protocols.SwiftPackageEntry(
         owner: "test",
         repo: "package",
         url: "https://github.com/test/package",
@@ -792,7 +792,7 @@ func packageViewBoxCharacters() {
     let view = PackageView()
     let state = AppState()
 
-    let pkg = SwiftPackageEntry(
+    let pkg = Core.Protocols.SwiftPackageEntry(
         owner: "test",
         repo: "pkg",
         url: "https://github.com/test/pkg",
@@ -829,7 +829,7 @@ func packageViewLargeWidth() {
     let state = AppState()
     let width = 200 // Very wide terminal
 
-    let pkg = SwiftPackageEntry(
+    let pkg = Core.Protocols.SwiftPackageEntry(
         owner: "test",
         repo: "package",
         url: "https://github.com/test/package",
@@ -860,7 +860,7 @@ func packageViewZeroStars() {
     let state = AppState()
     let width = 100
 
-    let pkg = SwiftPackageEntry(
+    let pkg = Core.Protocols.SwiftPackageEntry(
         owner: "test",
         repo: "package",
         url: "https://github.com/test/package",
@@ -896,7 +896,7 @@ func packageViewCombinedStates() {
     let state = AppState()
     let width = 100
 
-    let pkg = SwiftPackageEntry(
+    let pkg = Core.Protocols.SwiftPackageEntry(
         owner: "apple",
         repo: "swift",
         url: "https://github.com/apple/swift",

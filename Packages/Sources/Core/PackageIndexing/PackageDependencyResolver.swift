@@ -37,12 +37,12 @@ extension Core {
         private let requestDelay: TimeInterval
         private let concurrency: Int
         private let candidateBranches = ["HEAD", "main", "master"]
-        private let canonicalizer: GitHubCanonicalizer?
+        private let canonicalizer: Core.Protocols.GitHubCanonicalizer?
         private let exclusions: Set<String>
         private let manifestCache: ManifestCache?
 
         public init(
-            canonicalizer: GitHubCanonicalizer? = nil,
+            canonicalizer: Core.Protocols.GitHubCanonicalizer? = nil,
             exclusions: Set<String> = [],
             manifestCache: ManifestCache? = nil,
             concurrency: Int = 10,
