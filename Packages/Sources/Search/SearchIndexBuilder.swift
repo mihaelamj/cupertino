@@ -292,6 +292,31 @@ extension Search {
                     jsonString = json
                 }
 
+                // Defense-in-depth: refuse to index any page whose title looks
+                // like an HTTP error template (502 Bad Gateway, 403 Forbidden,
+                // etc.). The crawler-side filter (#284 / PR #289) catches
+                // these at fetch time, but stray poison files can land on disk
+                // via mid-flight rsync from a pre-#284 binary, restored
+                // backups, or hand-edited corpora. Skipping at index time
+                // keeps the bundle clean by construction regardless of how
+                // the file got onto disk.
+                if Self.titleLooksLikeHTTPErrorTemplate(structuredPage.title) {
+                    logError(
+                        "⛔ Skipping HTTP-error-template page (#284 indexer defense): " +
+                            "title=\(structuredPage.title.prefix(60)) file=\(file.lastPathComponent)"
+                    )
+                    skipped += 1
+                    continue
+                }
+                if Self.pageLooksLikeJavaScriptFallback(structuredPage) {
+                    logError(
+                        "⛔ Skipping JS-disabled-fallback page (#284 indexer defense): " +
+                            "title=\(structuredPage.title.prefix(60)) file=\(file.lastPathComponent)"
+                    )
+                    skipped += 1
+                    continue
+                }
+
                 // Generate URI: apple-docs://{framework}/{filename}
                 let filename = URLUtilities.normalize(structuredPage.url)?.lastPathComponent
                     ?? canonicalPathComponent(file.deletingPathExtension().lastPathComponent)
@@ -1249,6 +1274,70 @@ extension Search {
         private func logError(_ message: String) {
             let errorMessage = "❌ \(message)"
             Log.error(errorMessage, category: .search)
+        }
+
+        // MARK: - #284 indexer-side defense
+
+        /// Returns true if `title` matches an HTTP error template's title
+        /// pattern. Used to skip poisoned-on-disk JSON files at index time as
+        /// a belt-and-suspenders complement to PR #289's crawler-side gate.
+        ///
+        /// Two checks, mirroring the issue spec:
+        /// 1. Title starts with one of the canonical HTTP error status codes
+        ///    followed by whitespace or end-of-string ("502 Bad Gateway",
+        ///    "404 Not Found", etc.). Catches the literal CDN-rendered
+        ///    error pages.
+        /// 2. Title equals (after trim) one of the standalone error phrases
+        ///    Apple's CDN sometimes returns. Catches templates that drop
+        ///    the numeric prefix.
+        ///
+        /// `internal` so SearchTests can pin the truth table.
+        static func titleLooksLikeHTTPErrorTemplate(_ title: String) -> Bool {
+            let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty { return false }
+
+            // Status-prefix form: "403 Forbidden", "502 Bad Gateway", etc.
+            if trimmed.range(of: #"^(403|404|429|500|502|503|504)(\s|$)"#, options: .regularExpression) != nil {
+                return true
+            }
+
+            // Standalone phrase form (rare but seen in some Apple CDN error templates)
+            let standalone: Set<String> = [
+                "Forbidden",
+                "Bad Gateway",
+                "Not Found",
+                "Service Unavailable",
+                "Gateway Timeout",
+                "Too Many Requests",
+                "Internal Server Error",
+            ]
+            return standalone.contains(trimmed)
+        }
+
+        /// Returns true if the page looks like Apple's "JavaScript disabled"
+        /// fallback that the WebView crawler captured when JS didn't render
+        /// in time. The on-disk file has a real-looking title (Apple ships
+        /// it in HTML metadata even when JS is off) but the body content is
+        /// `[ Skip Navigation ](#app-main)# An unknown error occurred.` with
+        /// an `overview` of `Please turn on JavaScript in your browser…`.
+        ///
+        /// Found in 1,327 files of the v1.0.2 corpus when this audit ran;
+        /// missed by every prior title-only check.
+        ///
+        /// `internal` so SearchTests can pin the truth table.
+        static func pageLooksLikeJavaScriptFallback(_ page: StructuredDocumentationPage) -> Bool {
+            // Strongest signal: overview is the literal Apple JS-warning text.
+            if let overview = page.overview, overview.contains("Please turn on JavaScript") {
+                return true
+            }
+            // Body signal: rawMarkdown carries the broken Skip-Navigation +
+            // "An unknown error occurred" pattern that the crawler emitted
+            // when it couldn't extract real content.
+            if let rawmd = page.rawMarkdown {
+                if rawmd.contains("Please turn on JavaScript") { return true }
+                if rawmd.contains("#app-main)# An unknown error occurred") { return true }
+            }
+            return false
         }
     }
 }
