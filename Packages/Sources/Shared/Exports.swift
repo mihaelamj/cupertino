@@ -6,4 +6,5 @@
 // SharedUtils. Removed in task 1.6 along with the `Shared` target rename
 // to `SharedCore`.
 @_exported import SharedConstants
+@_exported import SharedModels
 @_exported import SharedUtils
