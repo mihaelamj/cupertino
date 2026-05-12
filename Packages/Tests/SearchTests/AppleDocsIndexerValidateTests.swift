@@ -21,8 +21,8 @@ struct AppleDocsIndexerValidateTests {
         uri: String = "apple-docs://swiftui/view",
         title: String = "View",
         framework: String? = "swiftui"
-    ) -> SourceItem {
-        SourceItem(
+    ) -> Search.SourceItem {
+        Search.SourceItem(
             uri: uri,
             source: "apple-docs",
             title: title,

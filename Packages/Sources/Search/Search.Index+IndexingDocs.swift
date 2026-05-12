@@ -151,7 +151,7 @@ extension Search.Index {
     ///   - item: The source item to index
     ///   - extractSymbols: Whether to extract and index AST symbols (default: true)
     /// - Throws: Search.Error if indexing fails
-    public func indexItem(_ item: SourceItem, extractSymbols: Bool = true) async throws {
+    public func indexItem(_ item: Search.SourceItem, extractSymbols: Bool = true) async throws {
         // Get the indexer for this source
         guard let indexer = IndexerRegistry.indexer(for: item.source) else {
             // Fall back to generic indexing if no specific indexer
@@ -237,7 +237,7 @@ extension Search.Index {
     /// - Returns: Number of successfully indexed items
     @discardableResult
     public func indexItems(
-        _ items: [SourceItem],
+        _ items: [Search.SourceItem],
         extractSymbols: Bool = true,
         progress: ((Int, Int) -> Void)? = nil
     ) async throws -> Int {
