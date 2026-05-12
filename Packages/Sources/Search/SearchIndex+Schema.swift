@@ -10,7 +10,7 @@ import SQLite3
 extension Search.Index {
     func createTables() async throws {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         // FTS5 virtual table for full-text search
@@ -231,7 +231,7 @@ extension Search.Index {
 
         guard sqlite3_exec(database, sql, nil, nil, &errorPointer) == SQLITE_OK else {
             let errorMessage = errorPointer.map { String(cString: $0) } ?? "Unknown error"
-            throw SearchError.sqliteError("Failed to create tables: \(errorMessage)")
+            throw Search.Error.sqliteError("Failed to create tables: \(errorMessage)")
         }
     }
 

@@ -17,7 +17,7 @@ extension Search.Index {
         limit: Int = Shared.Constants.Limit.defaultSearchLimit
     ) async throws -> [SymbolSearchResult] {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         var conditions: [String] = []
@@ -69,7 +69,7 @@ extension Search.Index {
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.searchFailed("Symbol search failed: \(errorMessage)")
+            throw Search.Error.searchFailed("Symbol search failed: \(errorMessage)")
         }
 
         var paramIndex: Int32 = 1
@@ -123,7 +123,7 @@ extension Search.Index {
         limit: Int = Shared.Constants.Limit.defaultSearchLimit
     ) async throws -> [SymbolSearchResult] {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         // Normalize wrapper name (add @ if not present)
@@ -165,7 +165,7 @@ extension Search.Index {
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.searchFailed("Property wrapper search failed: \(errorMessage)")
+            throw Search.Error.searchFailed("Property wrapper search failed: \(errorMessage)")
         }
 
         var paramIndex: Int32 = 1
@@ -217,7 +217,7 @@ extension Search.Index {
         limit: Int = Shared.Constants.Limit.defaultSearchLimit
     ) async throws -> [SymbolSearchResult] {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         var conditions: [String] = []
@@ -278,7 +278,7 @@ extension Search.Index {
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.searchFailed("Concurrency pattern search failed: \(errorMessage)")
+            throw Search.Error.searchFailed("Concurrency pattern search failed: \(errorMessage)")
         }
 
         var paramIndex: Int32 = 1
@@ -330,7 +330,7 @@ extension Search.Index {
         limit: Int = Shared.Constants.Limit.defaultSearchLimit
     ) async throws -> [SymbolSearchResult] {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         let conformancePattern = "%\(protocolName)%"
@@ -370,7 +370,7 @@ extension Search.Index {
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.searchFailed("Conformance search failed: \(errorMessage)")
+            throw Search.Error.searchFailed("Conformance search failed: \(errorMessage)")
         }
 
         var paramIndex: Int32 = 1

@@ -701,7 +701,7 @@ extension Search {
         }
     }
 
-    public enum PackageQueryError: Error, LocalizedError {
+    public enum PackageQueryError: Swift.Error, LocalizedError {
         case openFailed(String)
         case databaseNotOpen
         case sqliteError(String)

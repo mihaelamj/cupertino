@@ -20,7 +20,8 @@ import Foundation
 // MARK: - Source Identity
 
 /// Identifies which documentation source produced a result
-public enum SearchSource: String, Codable, Sendable, CaseIterable {
+extension Search {
+public enum Source: String, Codable, Sendable, CaseIterable {
     case appleDocs = "apple-docs"
     case samples
     case hig
@@ -58,12 +59,13 @@ public enum SearchSource: String, Codable, Sendable, CaseIterable {
         }
     }
 }
+}
 
 // MARK: - Result Atom (Single Item)
 
 /// Protocol for any single search result item
 public protocol ResultAtom: Sendable, Identifiable {
-    var source: SearchSource { get }
+    var source: Search.Source { get }
     var title: String { get }
     var summary: String { get }
     var uri: String { get }
@@ -73,23 +75,23 @@ public protocol ResultAtom: Sendable, Identifiable {
 /// Documentation result atom (Apple Docs, HIG, Archive, Swift Evolution, etc.)
 public struct DocAtom: ResultAtom, Codable, Sendable {
     public let id: UUID
-    public let source: SearchSource
+    public let source: Search.Source
     public let title: String
     public let summary: String
     public let uri: String
     public let score: Double
     public let framework: String?
-    public let availability: [SearchPlatformAvailability]?
+    public let availability: [Search.PlatformAvailability]?
 
     public init(
         id: UUID = UUID(),
-        source: SearchSource,
+        source: Search.Source,
         title: String,
         summary: String,
         uri: String,
         score: Double,
         framework: String? = nil,
-        availability: [SearchPlatformAvailability]? = nil
+        availability: [Search.PlatformAvailability]? = nil
     ) {
         self.id = id
         self.source = source
@@ -102,7 +104,7 @@ public struct DocAtom: ResultAtom, Codable, Sendable {
     }
 
     /// Convert from existing Search.Result
-    public init(from result: Search.Result, source: SearchSource) {
+    public init(from result: Search.Result, source: Search.Source) {
         id = result.id
         self.source = source
         title = result.title
@@ -132,7 +134,7 @@ public struct DocAtom: ResultAtom, Codable, Sendable {
 /// Sample code result atom
 public struct SampleAtom: ResultAtom, Codable, Sendable {
     public let id: UUID
-    public let source: SearchSource
+    public let source: Search.Source
     public let title: String
     public let summary: String
     public let uri: String
@@ -166,7 +168,7 @@ public struct SampleAtom: ResultAtom, Codable, Sendable {
 /// Swift package result atom
 public struct PackageAtom: ResultAtom, Codable, Sendable {
     public let id: UUID
-    public let source: SearchSource
+    public let source: Search.Source
     public let title: String
     public let summary: String
     public let uri: String
@@ -204,11 +206,11 @@ public struct PackageAtom: ResultAtom, Codable, Sendable {
 
 /// A section containing results from a single source
 public struct ResultSection<Atom: ResultAtom>: Sendable {
-    public let source: SearchSource
+    public let source: Search.Source
     public let atoms: [Atom]
     public let totalAvailable: Int // Total in source (may exceed atoms.count due to limits)
 
-    public init(source: SearchSource, atoms: [Atom], totalAvailable: Int? = nil) {
+    public init(source: Search.Source, atoms: [Atom], totalAvailable: Int? = nil) {
         self.source = source
         self.atoms = atoms
         self.totalAvailable = totalAvailable ?? atoms.count
@@ -231,12 +233,12 @@ public struct ResultSection<Atom: ResultAtom>: Sendable {
 
 /// A hint about additional results in other sources
 public struct SourceHint: Codable, Sendable {
-    public let source: SearchSource
+    public let source: Search.Source
     public let count: Int
     public let topTitles: [String] // Preview of what's available
     public let howToAccess: String // e.g., "Use source: samples"
 
-    public init(source: SearchSource, count: Int, topTitles: [String], howToAccess: String) {
+    public init(source: Search.Source, count: Int, topTitles: [String], howToAccess: String) {
         self.source = source
         self.count = count
         self.topTitles = topTitles
@@ -245,7 +247,8 @@ public struct SourceHint: Codable, Sendable {
 }
 
 /// A contextual tip for the user/AI
-public struct SearchTip: Codable, Sendable, Identifiable {
+extension Search {
+public struct Tip: Codable, Sendable, Identifiable {
     public let id: UUID
     public let category: TipCategory
     public let message: String
@@ -270,6 +273,7 @@ public struct SearchTip: Codable, Sendable, Identifiable {
         self.message = message
         self.actionHint = actionHint
     }
+}
 }
 
 /// Quick link to a relevant resource
@@ -312,7 +316,7 @@ public struct ComposedSearchResult: Sendable {
     public let hints: [SourceHint]
 
     /// Contextual tips
-    public let tips: [SearchTip]
+    public let tips: [Search.Tip]
 
     /// Quick links
     public let quickLinks: [QuickLink]
@@ -330,7 +334,7 @@ public struct ComposedSearchResult: Sendable {
         swiftBookSection: ResultSection<DocAtom>? = nil,
         packageSection: ResultSection<PackageAtom>? = nil,
         hints: [SourceHint] = [],
-        tips: [SearchTip] = [],
+        tips: [Search.Tip] = [],
         quickLinks: [QuickLink] = []
     ) {
         self.query = query
@@ -364,8 +368,8 @@ public struct ComposedSearchResult: Sendable {
     }
 
     /// All non-empty sections for iteration
-    public var allSections: [SearchSource] {
-        var sources: [SearchSource] = []
+    public var allSections: [Search.Source] {
+        var sources: [Search.Source] = []
         if let section = primarySection, !section.isEmpty { sources.append(section.source) }
         if let section = sampleSection, !section.isEmpty { sources.append(section.source) }
         if let section = higSection, !section.isEmpty { sources.append(section.source) }
@@ -393,7 +397,7 @@ public final class ComposedResultBuilder: @unchecked Sendable {
     private var swiftBookSection: ResultSection<DocAtom>?
     private var packageSection: ResultSection<PackageAtom>?
     private var hints: [SourceHint] = []
-    private var tips: [SearchTip] = []
+    private var tips: [Search.Tip] = []
     private var quickLinks: [QuickLink] = []
 
     public init() {}
@@ -465,7 +469,7 @@ public final class ComposedResultBuilder: @unchecked Sendable {
     }
 
     @discardableResult
-    public func addTip(_ tip: SearchTip) -> Self {
+    public func addTip(_ tip: Search.Tip) -> Self {
         tips.append(tip)
         return self
     }
@@ -512,7 +516,7 @@ public enum QueryIntent: String, Codable, Sendable {
 
     /// Sources boosted for this intent (in priority order)
     /// Now data-driven via SourceRegistry instead of hardcoded
-    public var boostedSources: [SearchSource] {
+    public var boostedSources: [Search.Source] {
         // Use registry-based lookup (data-driven)
         registryBoostedSources
     }
@@ -734,9 +738,9 @@ public struct SourceProperties: Codable, Sendable {
 @available(*, deprecated, message: "Use SourceRegistry.properties(for:) instead")
 public enum SourcePropertiesRegistry {
     /// @deprecated Use `SourceRegistry.properties(for:)` instead
-    public static var properties: [SearchSource: SourceProperties] {
-        var result: [SearchSource: SourceProperties] = [:]
-        for source in SearchSource.allCases {
+    public static var properties: [Search.Source: SourceProperties] {
+        var result: [Search.Source: SourceProperties] = [:]
+        for source in Search.Source.allCases {
             if let props = SourceRegistry.properties(for: source.rawValue) {
                 result[source] = props
             }
@@ -745,7 +749,7 @@ public enum SourcePropertiesRegistry {
     }
 
     /// @deprecated Use `SourceRegistry.properties(for:)` instead
-    public static func properties(for source: SearchSource) -> SourceProperties {
+    public static func properties(for source: Search.Source) -> SourceProperties {
         SourceRegistry.properties(for: source.rawValue) ?? SourceProperties(
             authority: 0.5, freshness: 0.5, comprehensiveness: 0.5, codeExamples: 0.5,
             hasAvailability: 0.5, designFocus: 0.5, languageFocus: 0.5, searchQuality: 0.5
@@ -761,7 +765,7 @@ public struct UnifiedSearchSummary: Codable, Sendable {
     public let totalResults: Int
     public let sourceSummaries: [SourceSummary]
     public let hints: [SourceHint]
-    public let tips: [SearchTip]
+    public let tips: [Search.Tip]
     public let detectedIntent: QueryIntent
 
     public init(
@@ -769,7 +773,7 @@ public struct UnifiedSearchSummary: Codable, Sendable {
         totalResults: Int,
         sourceSummaries: [SourceSummary],
         hints: [SourceHint] = [],
-        tips: [SearchTip] = [],
+        tips: [Search.Tip] = [],
         detectedIntent: QueryIntent = .apiReference
     ) {
         self.query = query
@@ -782,12 +786,12 @@ public struct UnifiedSearchSummary: Codable, Sendable {
 
     /// Short summary for one source in unified results
     public struct SourceSummary: Codable, Sendable {
-        public let source: SearchSource
+        public let source: Search.Source
         public let count: Int
         public let topResult: TopResultPreview?
         public let hasMore: Bool
 
-        public init(source: SearchSource, count: Int, topResult: TopResultPreview?, hasMore: Bool) {
+        public init(source: Search.Source, count: Int, topResult: TopResultPreview?, hasMore: Bool) {
             self.source = source
             self.count = count
             self.topResult = topResult
@@ -812,60 +816,62 @@ public struct UnifiedSearchSummary: Codable, Sendable {
 // MARK: - Tip Factory (Common Tips)
 
 /// Factory for creating common search tips
-public enum SearchTipFactory {
-    public static func noResultsTip(query: String) -> SearchTip {
-        SearchTip(
+extension Search {
+public enum TipFactory {
+    public static func noResultsTip(query: String) -> Search.Tip {
+        Search.Tip(
             category: .refinement,
             message: "No results for '\(query)'. Try broader terms or check spelling.",
             actionHint: "Remove specific version numbers or use related framework names"
         )
     }
 
-    public static func tryOtherSourceTip(current: SearchSource, suggested: SearchSource) -> SearchTip {
-        SearchTip(
+    public static func tryOtherSourceTip(current: Search.Source, suggested: Search.Source) -> Search.Tip {
+        Search.Tip(
             category: .source,
             message: "Also check \(suggested.displayName) for \(suggested == .hig ? "design guidance" : "more context")",
             actionHint: "Use source: \(suggested.rawValue)"
         )
     }
 
-    public static func availabilityTip(platform: String, minVersion: String) -> SearchTip {
-        SearchTip(
+    public static func availabilityTip(platform: String, minVersion: String) -> Search.Tip {
+        Search.Tip(
             category: .availability,
             message: "This API requires \(platform) \(minVersion)+",
             actionHint: "Check availability before using in production"
         )
     }
 
-    public static func deprecationTip(replacement: String?) -> SearchTip {
-        SearchTip(
+    public static func deprecationTip(replacement: String?) -> Search.Tip {
+        Search.Tip(
             category: .bestPractice,
             message: "This API is deprecated." + (replacement.map { " Use \($0) instead." } ?? ""),
             actionHint: replacement.map { "Search for \($0)" }
         )
     }
 
-    public static func swiftEvolutionTip(proposalID: String) -> SearchTip {
-        SearchTip(
+    public static func swiftEvolutionTip(proposalID: String) -> Search.Tip {
+        Search.Tip(
             category: .related,
             message: "See Swift Evolution proposal \(proposalID) for background",
             actionHint: "Use source: swift-evolution for full proposal"
         )
     }
 
-    public static func sampleCodeAvailableTip(count: Int) -> SearchTip {
-        SearchTip(
+    public static func sampleCodeAvailableTip(count: Int) -> Search.Tip {
+        Search.Tip(
             category: .source,
             message: "\(count) sample project\(count == 1 ? "" : "s") available with working code",
             actionHint: "Use source: samples to explore"
         )
     }
 
-    public static func designGuidelineTip() -> SearchTip {
-        SearchTip(
+    public static func designGuidelineTip() -> Search.Tip {
+        Search.Tip(
             category: .source,
             message: "Check Human Interface Guidelines for design best practices",
             actionHint: "Use source: hig"
         )
     }
+}
 }

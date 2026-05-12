@@ -32,11 +32,11 @@ extension Search.Index {
         minVisionOS: String? = nil
     ) async throws -> [Search.Result] {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         guard !query.trimmingCharacters(in: .whitespaces).isEmpty else {
-            throw SearchError.invalidQuery("Query cannot be empty")
+            throw Search.Error.invalidQuery("Query cannot be empty")
         }
 
         // Detect query intent for source boosting (#81)
@@ -164,7 +164,7 @@ extension Search.Index {
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.searchFailed("Prepare failed: \(errorMessage)")
+            throw Search.Error.searchFailed("Prepare failed: \(errorMessage)")
         }
 
         // Bind parameters (use sanitized query for FTS5)
@@ -224,9 +224,9 @@ extension Search.Index {
             let minVisionOSPtr = sqlite3_column_text(statement, 13)
 
             // Build availability array from columns
-            var availabilityItems: [SearchPlatformAvailability] = []
+            var availabilityItems: [Search.PlatformAvailability] = []
             if let ptr = miniOSPtr {
-                availabilityItems.append(SearchPlatformAvailability(
+                availabilityItems.append(Search.PlatformAvailability(
                     name: "iOS",
                     introducedAt: String(cString: ptr),
                     deprecated: false,
@@ -235,7 +235,7 @@ extension Search.Index {
                 ))
             }
             if let ptr = minMacOSPtr {
-                availabilityItems.append(SearchPlatformAvailability(
+                availabilityItems.append(Search.PlatformAvailability(
                     name: "macOS",
                     introducedAt: String(cString: ptr),
                     deprecated: false,
@@ -244,7 +244,7 @@ extension Search.Index {
                 ))
             }
             if let ptr = minTvOSPtr {
-                availabilityItems.append(SearchPlatformAvailability(
+                availabilityItems.append(Search.PlatformAvailability(
                     name: "tvOS",
                     introducedAt: String(cString: ptr),
                     deprecated: false,
@@ -253,7 +253,7 @@ extension Search.Index {
                 ))
             }
             if let ptr = minWatchOSPtr {
-                availabilityItems.append(SearchPlatformAvailability(
+                availabilityItems.append(Search.PlatformAvailability(
                     name: "watchOS",
                     introducedAt: String(cString: ptr),
                     deprecated: false,
@@ -262,7 +262,7 @@ extension Search.Index {
                 ))
             }
             if let ptr = minVisionOSPtr {
-                availabilityItems.append(SearchPlatformAvailability(
+                availabilityItems.append(Search.PlatformAvailability(
                     name: "visionOS",
                     introducedAt: String(cString: ptr),
                     deprecated: false,
@@ -270,7 +270,7 @@ extension Search.Index {
                     beta: false
                 ))
             }
-            let availability: [SearchPlatformAvailability]? = availabilityItems.isEmpty ? nil : availabilityItems
+            let availability: [Search.PlatformAvailability]? = availabilityItems.isEmpty ? nil : availabilityItems
             let rawKind = String(cString: kindPtr)
 
             // Infer kind when unknown using multiple signals
@@ -369,8 +369,8 @@ extension Search.Index {
                     return 2.5 // Strong penalty - release notes pollute general searches
                 }
 
-                // Convert source string to SearchSource for intent matching
-                let searchSource = SearchSource(rawValue: source)
+                // Convert source string to Search.Source for intent matching
+                let searchSource = Search.Source(rawValue: source)
 
                 // Check if this source is boosted for the detected intent
                 let isIntentBoosted = searchSource.map { queryIntent.boostedSources.contains($0) } ?? false
@@ -934,21 +934,21 @@ extension Search.Index {
                 let filePath = sqlite3_column_text(statement, 5).map { String(cString: $0) } ?? ""
                 let wordCount = Int(sqlite3_column_int(statement, 6))
 
-                var availabilityArray: [SearchPlatformAvailability] = []
+                var availabilityArray: [Search.PlatformAvailability] = []
                 if let ios = sqlite3_column_text(statement, 7).map({ String(cString: $0) }) {
-                    availabilityArray.append(SearchPlatformAvailability(name: "iOS", introducedAt: ios))
+                    availabilityArray.append(Search.PlatformAvailability(name: "iOS", introducedAt: ios))
                 }
                 if let macos = sqlite3_column_text(statement, 8).map({ String(cString: $0) }) {
-                    availabilityArray.append(SearchPlatformAvailability(name: "macOS", introducedAt: macos))
+                    availabilityArray.append(Search.PlatformAvailability(name: "macOS", introducedAt: macos))
                 }
                 if let tvos = sqlite3_column_text(statement, 9).map({ String(cString: $0) }) {
-                    availabilityArray.append(SearchPlatformAvailability(name: "tvOS", introducedAt: tvos))
+                    availabilityArray.append(Search.PlatformAvailability(name: "tvOS", introducedAt: tvos))
                 }
                 if let watchos = sqlite3_column_text(statement, 10).map({ String(cString: $0) }) {
-                    availabilityArray.append(SearchPlatformAvailability(name: "watchOS", introducedAt: watchos))
+                    availabilityArray.append(Search.PlatformAvailability(name: "watchOS", introducedAt: watchos))
                 }
                 if let visionos = sqlite3_column_text(statement, 11).map({ String(cString: $0) }) {
-                    availabilityArray.append(SearchPlatformAvailability(name: "visionOS", introducedAt: visionos))
+                    availabilityArray.append(Search.PlatformAvailability(name: "visionOS", introducedAt: visionos))
                 }
 
                 hits.append(Search.Result(
@@ -1024,21 +1024,21 @@ extension Search.Index {
         let wordCount = Int(sqlite3_column_int(statement, 6))
 
         // Build availability array from platform versions
-        var availabilityArray: [SearchPlatformAvailability] = []
+        var availabilityArray: [Search.PlatformAvailability] = []
         if let ios = sqlite3_column_text(statement, 7).map({ String(cString: $0) }) {
-            availabilityArray.append(SearchPlatformAvailability(name: "iOS", introducedAt: ios))
+            availabilityArray.append(Search.PlatformAvailability(name: "iOS", introducedAt: ios))
         }
         if let macos = sqlite3_column_text(statement, 8).map({ String(cString: $0) }) {
-            availabilityArray.append(SearchPlatformAvailability(name: "macOS", introducedAt: macos))
+            availabilityArray.append(Search.PlatformAvailability(name: "macOS", introducedAt: macos))
         }
         if let tvos = sqlite3_column_text(statement, 9).map({ String(cString: $0) }) {
-            availabilityArray.append(SearchPlatformAvailability(name: "tvOS", introducedAt: tvos))
+            availabilityArray.append(Search.PlatformAvailability(name: "tvOS", introducedAt: tvos))
         }
         if let watchos = sqlite3_column_text(statement, 10).map({ String(cString: $0) }) {
-            availabilityArray.append(SearchPlatformAvailability(name: "watchOS", introducedAt: watchos))
+            availabilityArray.append(Search.PlatformAvailability(name: "watchOS", introducedAt: watchos))
         }
         if let visionos = sqlite3_column_text(statement, 11).map({ String(cString: $0) }) {
-            availabilityArray.append(SearchPlatformAvailability(name: "visionOS", introducedAt: visionos))
+            availabilityArray.append(Search.PlatformAvailability(name: "visionOS", introducedAt: visionos))
         }
 
         // Return with best possible rank (most negative)

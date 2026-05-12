@@ -285,7 +285,7 @@ struct CupertinoSearchTests {
         defer { try? cleanup() }
 
         // Empty query should throw invalidQuery error
-        await #expect(throws: SearchError.self) {
+        await #expect(throws: Search.Error.self) {
             try await index.search(query: "", framework: nil, limit: 10)
         }
 
@@ -298,7 +298,7 @@ struct CupertinoSearchTests {
         defer { try? cleanup() }
 
         // Whitespace query should throw invalidQuery error
-        await #expect(throws: SearchError.self) {
+        await #expect(throws: Search.Error.self) {
             try await index.search(query: "   ", framework: nil, limit: 10)
         }
 

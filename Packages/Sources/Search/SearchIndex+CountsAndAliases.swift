@@ -5,7 +5,7 @@ import SQLite3
 extension Search.Index {
     public func symbolCount() async throws -> Int {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         let sql = "SELECT COUNT(*) FROM doc_symbols;"
@@ -27,7 +27,7 @@ extension Search.Index {
     /// List all frameworks with document counts
     public func listFrameworks() async throws -> [String: Int] {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         let sql = """
@@ -42,7 +42,7 @@ extension Search.Index {
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.searchFailed("List frameworks failed: \(errorMessage)")
+            throw Search.Error.searchFailed("List frameworks failed: \(errorMessage)")
         }
 
         var frameworks: [String: Int] = [:]
@@ -76,7 +76,7 @@ extension Search.Index {
     ///   - displayName: display name from JSON module field (e.g., "App Intents")
     public func registerFrameworkAlias(identifier: String, displayName: String) async throws {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         // Derive import name by removing spaces from display name
@@ -110,7 +110,7 @@ extension Search.Index {
     ///   - synonyms: Comma-separated alternate names (e.g., "nfc")
     public func updateFrameworkSynonyms(identifier: String, synonyms: String) async throws {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         let sql = "UPDATE framework_aliases SET synonyms = ? WHERE identifier = ?;"
@@ -133,7 +133,7 @@ extension Search.Index {
     /// - Returns: The identifier form (e.g., "appintents"), or nil if not found
     public func resolveFrameworkIdentifier(_ input: String) async throws -> String? {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         // First try: exact match on identifier (most common case)
@@ -201,7 +201,7 @@ extension Search.Index {
     /// List all frameworks with full alias info and document counts
     public func listFrameworksWithAliases() async throws -> [FrameworkInfo] {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         let sql = """
@@ -221,7 +221,7 @@ extension Search.Index {
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.searchFailed("List frameworks with aliases failed: \(errorMessage)")
+            throw Search.Error.searchFailed("List frameworks with aliases failed: \(errorMessage)")
         }
 
         var frameworks: [FrameworkInfo] = []
@@ -249,7 +249,7 @@ extension Search.Index {
     /// Get total document count
     public func documentCount() async throws -> Int {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         let sql = "SELECT COUNT(*) FROM docs_metadata;"
@@ -258,7 +258,7 @@ extension Search.Index {
         defer { sqlite3_finalize(statement) }
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
-            throw SearchError.searchFailed("Count failed")
+            throw Search.Error.searchFailed("Count failed")
         }
 
         guard sqlite3_step(statement) == SQLITE_ROW else {
@@ -271,7 +271,7 @@ extension Search.Index {
     /// Get total sample code count
     public func sampleCodeCount() async throws -> Int {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         let sql = "SELECT COUNT(*) FROM sample_code_metadata;"
@@ -280,7 +280,7 @@ extension Search.Index {
         defer { sqlite3_finalize(statement) }
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
-            throw SearchError.searchFailed("Sample code count failed")
+            throw Search.Error.searchFailed("Sample code count failed")
         }
 
         guard sqlite3_step(statement) == SQLITE_ROW else {
@@ -293,7 +293,7 @@ extension Search.Index {
     /// Get total package count
     public func packageCount() async throws -> Int {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         let sql = "SELECT COUNT(*) FROM packages;"
@@ -302,7 +302,7 @@ extension Search.Index {
         defer { sqlite3_finalize(statement) }
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
-            throw SearchError.searchFailed("Package count failed")
+            throw Search.Error.searchFailed("Package count failed")
         }
 
         guard sqlite3_step(statement) == SQLITE_ROW else {

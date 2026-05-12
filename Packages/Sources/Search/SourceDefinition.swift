@@ -315,10 +315,10 @@ public enum SourceRegistry {
     }
 }
 
-// MARK: - SearchSource Extension
+// MARK: - Search.Source Extension
 
-/// Extend SearchSource to use SourceRegistry
-public extension SearchSource {
+/// Extend Search.Source to use SourceRegistry
+public extension Search.Source {
     /// Get the SourceDefinition for this source
     var definition: SourceDefinition? {
         SourceRegistry.definition(for: rawValue)
@@ -345,7 +345,7 @@ public extension QueryIntent {
     }
 
     /// Get boosted SearchSources from registry
-    var registryBoostedSources: [SearchSource] {
-        boostedSourceIDs.compactMap { SearchSource(rawValue: $0) }
+    var registryBoostedSources: [Search.Source] {
+        boostedSourceIDs.compactMap { Search.Source(rawValue: $0) }
     }
 }

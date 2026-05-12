@@ -16,11 +16,11 @@ extension Search.Index {
         limit: Int = Shared.Constants.Limit.defaultSearchLimit
     ) async throws -> [Search.PackageResult] {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         guard !query.trimmingCharacters(in: .whitespaces).isEmpty else {
-            throw SearchError.invalidQuery("Query cannot be empty")
+            throw Search.Error.invalidQuery("Query cannot be empty")
         }
 
         let sql = """
@@ -44,7 +44,7 @@ extension Search.Index {
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.searchFailed("Package search failed: \(errorMessage)")
+            throw Search.Error.searchFailed("Package search failed: \(errorMessage)")
         }
 
         // Replace spaces with % wildcards for flexible matching (e.g., "swift argument parser" -> "swift%argument%parser")
@@ -109,7 +109,7 @@ extension Search.Index {
     /// - Returns: Document content in requested format, or nil if not found
     public func getDocumentContent(uri: String, format: DocumentFormat = .json) async throws -> String? {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         // Get json_data from metadata table
@@ -125,7 +125,7 @@ extension Search.Index {
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw SearchError.searchFailed("Get content failed: \(errorMessage)")
+            throw Search.Error.searchFailed("Get content failed: \(errorMessage)")
         }
 
         sqlite3_bind_text(statement, 1, (uri as NSString).utf8String, -1, nil)
@@ -216,7 +216,7 @@ extension Search.Index {
     /// Clear all documents from the index
     public func clearIndex() async throws {
         guard let database else {
-            throw SearchError.databaseNotInitialized
+            throw Search.Error.databaseNotInitialized
         }
 
         let sql = """
@@ -229,7 +229,7 @@ extension Search.Index {
 
         guard sqlite3_exec(database, sql, nil, nil, &errorPointer) == SQLITE_OK else {
             let errorMessage = errorPointer.map { String(cString: $0) } ?? "Unknown error"
-            throw SearchError.sqliteError("Failed to clear index: \(errorMessage)")
+            throw Search.Error.sqliteError("Failed to clear index: \(errorMessage)")
         }
     }
 
