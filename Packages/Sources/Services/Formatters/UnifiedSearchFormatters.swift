@@ -222,7 +222,7 @@ private struct SymbolJSONOutput: Encodable {
     let signature: String?
     let isAsync: Bool
 
-    init(from symbol: MatchedSymbol) {
+    init(from symbol: Search.MatchedSymbol) {
         kind = symbol.kind
         name = symbol.name
         signature = symbol.signature

@@ -377,7 +377,7 @@ extension Search.Index {
 
                 // Get SourceProperties for quality-based scoring (#81)
                 // Uses empirical data from SourceRegistry (single source of truth)
-                let sourceProps = searchSource.flatMap { SourceRegistry.properties(for: $0.rawValue) }
+                let sourceProps = searchSource.flatMap { Search.SourceRegistry.properties(for: $0.rawValue) }
 
                 // Calculate base multiplier from SourceProperties or fallback to static values
                 let baseMultiplier: Double = {
@@ -749,7 +749,7 @@ extension Search.Index {
 
     /// Fetch matching symbols for a set of document URIs (#81)
     /// Returns dictionary mapping URI to array of matched symbols
-    func fetchMatchingSymbols(query: String, uris: Set<String>) async throws -> [String: [MatchedSymbol]] {
+    func fetchMatchingSymbols(query: String, uris: Set<String>) async throws -> [String: [Search.MatchedSymbol]] {
         guard let database, !uris.isEmpty else { return [:] }
 
         // Strip FTS5 quotes from sanitized query for LIKE pattern
@@ -787,7 +787,7 @@ extension Search.Index {
         sqlite3_bind_text(statement, bindIndex + 2, (likePattern as NSString).utf8String, -1, nil)
         sqlite3_bind_text(statement, bindIndex + 3, (likePattern as NSString).utf8String, -1, nil)
 
-        var result: [String: [MatchedSymbol]] = [:]
+        var result: [String: [Search.MatchedSymbol]] = [:]
         while sqlite3_step(statement) == SQLITE_ROW {
             guard let uriPtr = sqlite3_column_text(statement, 0),
                   let kindPtr = sqlite3_column_text(statement, 1),
@@ -801,7 +801,7 @@ extension Search.Index {
             let signature = sqlite3_column_text(statement, 3).map { String(cString: $0) }
             let isAsync = sqlite3_column_int(statement, 4) != 0
 
-            let symbol = MatchedSymbol(kind: kind, name: name, signature: signature, isAsync: isAsync)
+            let symbol = Search.MatchedSymbol(kind: kind, name: name, signature: signature, isAsync: isAsync)
             result[uri, default: []].append(symbol)
         }
 
