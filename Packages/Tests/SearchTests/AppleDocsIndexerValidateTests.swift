@@ -3,7 +3,7 @@ import Foundation
 import SharedCore
 import Testing
 
-// Truth-table coverage for `AppleDocsIndexer.validate(_:)`. The function was
+// Truth-table coverage for `Search.AppleDocsIndexer.validate(_:)`. The function was
 // rewritten in PR #288 from
 //
 //   item.framework != nil && !item.framework!.isEmpty
@@ -15,7 +15,7 @@ import Testing
 // These tests pin the four-branch truth table so future edits to the
 // validator can't silently change which items are accepted.
 
-@Suite("AppleDocsIndexer.validate")
+@Suite("Search.AppleDocsIndexer.validate")
 struct AppleDocsIndexerValidateTests {
     private static func item(
         uri: String = "apple-docs://swiftui/view",
@@ -33,7 +33,7 @@ struct AppleDocsIndexerValidateTests {
         )
     }
 
-    private let indexer = AppleDocsIndexer()
+    private let indexer = Search.AppleDocsIndexer()
 
     // MARK: framework field
 
