@@ -25,7 +25,7 @@ extension Core {
         private let configuration: Shared.CrawlerConfiguration
         private let changeDetection: Shared.ChangeDetectionConfiguration
         private let output: Shared.OutputConfiguration
-        private let state: CrawlerState
+        private let state: Core.CrawlerState
 
         private var webPageFetcher: WKWebCrawler.ContentFetcher!
         private var visited = Set<String>()
@@ -46,7 +46,7 @@ extension Core {
             self.configuration = configuration.crawler
             changeDetection = configuration.changeDetection
             output = configuration.output
-            state = CrawlerState(configuration: configuration.changeDetection)
+            state = Core.CrawlerState(configuration: configuration.changeDetection)
             stats = Shared.Models.CrawlStatistics()
             super.init()
 
@@ -115,7 +115,7 @@ extension Core {
                 if isAppleDocs, isDocsRoot {
                     do {
                         logInfo("📋 Fetching technology index for complete framework coverage...")
-                        let frameworkURLs = try await TechnologiesIndexFetcher.fetchFrameworkURLs()
+                        let frameworkURLs = try await Core.TechnologiesIndexFetcher.fetchFrameworkURLs()
                         queue = frameworkURLs.compactMap { url in
                             Shared.Models.URLUtilities.normalize(url).map { (url: $0, depth: 0) }
                         }

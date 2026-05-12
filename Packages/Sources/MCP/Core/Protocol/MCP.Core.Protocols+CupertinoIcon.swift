@@ -1,4 +1,4 @@
-// CupertinoIconEmbedded.swift
+// MCP.Core.Protocols+CupertinoIcon.swift
 //
 // 64×64 PNG embedded as a base64 data URI for the MCP 2025-11-25
 // `serverInfo.icons` field. Auto-generated from assets/cupertino-icon-64.png.

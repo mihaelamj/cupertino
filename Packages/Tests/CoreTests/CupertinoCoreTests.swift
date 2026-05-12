@@ -400,9 +400,9 @@ private func verifyMetadata(_ metadataFile: URL) throws {
     }
 }
 
-// MARK: - CrawlerState Change Detection Tests
+// MARK: - Core.CrawlerState Change Detection Tests
 
-@Test("CrawlerState initializes with empty metadata")
+@Test("Core.CrawlerState initializes with empty metadata")
 func crawlerStateInitialization() async {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -413,14 +413,14 @@ func crawlerStateInitialization() async {
         forceRecrawl: false
     )
 
-    let state = CrawlerState(configuration: config)
+    let state = Core.CrawlerState(configuration: config)
     let pageCount = await state.getPageCount()
 
     #expect(pageCount == 0)
-    print("   ✅ CrawlerState initialized with empty metadata")
+    print("   ✅ Core.CrawlerState initialized with empty metadata")
 }
 
-@Test("CrawlerState loads existing metadata on initialization")
+@Test("Core.CrawlerState loads existing metadata on initialization")
 func crawlerStateLoadsExistingMetadata() async throws {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -459,14 +459,14 @@ func crawlerStateLoadsExistingMetadata() async throws {
         metadataFile: metadataFile,
         forceRecrawl: false
     )
-    let state = CrawlerState(configuration: config)
+    let state = Core.CrawlerState(configuration: config)
     let pageCount = await state.getPageCount()
 
     #expect(pageCount == 2)
-    print("   ✅ CrawlerState loaded existing metadata with \(pageCount) pages")
+    print("   ✅ Core.CrawlerState loaded existing metadata with \(pageCount) pages")
 }
 
-@Test("CrawlerState shouldRecrawl detects new pages")
+@Test("Core.CrawlerState shouldRecrawl detects new pages")
 func crawlerStateShouldRecrawlNewPage() async {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -477,7 +477,7 @@ func crawlerStateShouldRecrawlNewPage() async {
         forceRecrawl: false
     )
 
-    let state = CrawlerState(configuration: config)
+    let state = Core.CrawlerState(configuration: config)
 
     // New page should be recrawled
     let shouldRecrawl = await state.shouldRecrawl(
@@ -490,7 +490,7 @@ func crawlerStateShouldRecrawlNewPage() async {
     print("   ✅ New page correctly identified for crawling")
 }
 
-@Test("CrawlerState shouldRecrawl detects content changes")
+@Test("Core.CrawlerState shouldRecrawl detects content changes")
 func crawlerStateShouldRecrawlContentChanged() async throws {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -518,7 +518,7 @@ func crawlerStateShouldRecrawlContentChanged() async throws {
         metadataFile: metadataFile,
         forceRecrawl: false
     )
-    let state = CrawlerState(configuration: config)
+    let state = Core.CrawlerState(configuration: config)
 
     // Same URL but different hash should trigger recrawl
     let shouldRecrawl = await state.shouldRecrawl(
@@ -531,7 +531,7 @@ func crawlerStateShouldRecrawlContentChanged() async throws {
     print("   ✅ Content change correctly detected")
 }
 
-@Test("CrawlerState shouldRecrawl skips unchanged pages")
+@Test("Core.CrawlerState shouldRecrawl skips unchanged pages")
 func crawlerStateShouldRecrawlSkipsUnchanged() async throws {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -559,7 +559,7 @@ func crawlerStateShouldRecrawlSkipsUnchanged() async throws {
         metadataFile: metadataFile,
         forceRecrawl: false
     )
-    let state = CrawlerState(configuration: config)
+    let state = Core.CrawlerState(configuration: config)
 
     // Same URL, same hash, file exists - should skip
     let shouldRecrawl = await state.shouldRecrawl(
@@ -572,7 +572,7 @@ func crawlerStateShouldRecrawlSkipsUnchanged() async throws {
     print("   ✅ Unchanged page correctly skipped")
 }
 
-@Test("CrawlerState shouldRecrawl detects missing files")
+@Test("Core.CrawlerState shouldRecrawl detects missing files")
 func crawlerStateShouldRecrawlMissingFile() async throws {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -598,7 +598,7 @@ func crawlerStateShouldRecrawlMissingFile() async throws {
         metadataFile: metadataFile,
         forceRecrawl: false
     )
-    let state = CrawlerState(configuration: config)
+    let state = Core.CrawlerState(configuration: config)
 
     // File missing should trigger recrawl
     let shouldRecrawl = await state.shouldRecrawl(
@@ -611,7 +611,7 @@ func crawlerStateShouldRecrawlMissingFile() async throws {
     print("   ✅ Missing file correctly detected")
 }
 
-@Test("CrawlerState respects forceRecrawl flag")
+@Test("Core.CrawlerState respects forceRecrawl flag")
 func crawlerStateForceRecrawl() async throws {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -639,7 +639,7 @@ func crawlerStateForceRecrawl() async throws {
         metadataFile: metadataFile,
         forceRecrawl: true // Force recrawl
     )
-    let state = CrawlerState(configuration: config)
+    let state = Core.CrawlerState(configuration: config)
 
     // Even with same hash and existing file, should recrawl when forced
     let shouldRecrawl = await state.shouldRecrawl(
@@ -652,7 +652,7 @@ func crawlerStateForceRecrawl() async throws {
     print("   ✅ forceRecrawl flag correctly enforced")
 }
 
-@Test("CrawlerState respects disabled change detection")
+@Test("Core.CrawlerState respects disabled change detection")
 func crawlerStateDisabledChangeDetection() async throws {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -680,7 +680,7 @@ func crawlerStateDisabledChangeDetection() async throws {
         metadataFile: metadataFile,
         forceRecrawl: false
     )
-    let state = CrawlerState(configuration: config)
+    let state = Core.CrawlerState(configuration: config)
 
     // With change detection disabled, should always recrawl
     let shouldRecrawl = await state.shouldRecrawl(
@@ -693,7 +693,7 @@ func crawlerStateDisabledChangeDetection() async throws {
     print("   ✅ Disabled change detection correctly handled")
 }
 
-@Test("CrawlerState updatePage adds page metadata")
+@Test("Core.CrawlerState updatePage adds page metadata")
 func crawlerStateUpdatePage() async {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -704,7 +704,7 @@ func crawlerStateUpdatePage() async {
         forceRecrawl: false
     )
 
-    let state = CrawlerState(configuration: config)
+    let state = Core.CrawlerState(configuration: config)
 
     let initialCount = await state.getPageCount()
     #expect(initialCount == 0)
@@ -723,7 +723,7 @@ func crawlerStateUpdatePage() async {
     print("   ✅ Page metadata successfully added")
 }
 
-@Test("CrawlerState updateStatistics modifies stats")
+@Test("Core.CrawlerState updateStatistics modifies stats")
 func crawlerStateUpdateStatistics() async {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -734,7 +734,7 @@ func crawlerStateUpdateStatistics() async {
         forceRecrawl: false
     )
 
-    let state = CrawlerState(configuration: config)
+    let state = Core.CrawlerState(configuration: config)
 
     await state.updateStatistics { stats in
         stats.totalPages = 10
@@ -753,7 +753,7 @@ func crawlerStateUpdateStatistics() async {
     print("   ✅ Statistics successfully updated")
 }
 
-@Test("CrawlerState session state management")
+@Test("Core.CrawlerState session state management")
 func crawlerStateSessionManagement() async throws {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -766,7 +766,7 @@ func crawlerStateSessionManagement() async throws {
         forceRecrawl: false
     )
 
-    let state = CrawlerState(configuration: config)
+    let state = Core.CrawlerState(configuration: config)
 
     // Initially no active session
     let hasActiveSession1 = await state.hasActiveSession()
@@ -804,7 +804,7 @@ func crawlerStateSessionManagement() async throws {
     print("   ✅ Session state management working correctly")
 }
 
-@Test("CrawlerState finalizeCrawl saves metadata")
+@Test("Core.CrawlerState finalizeCrawl saves metadata")
 func crawlerStateFinalizeAndSave() async throws {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -818,7 +818,7 @@ func crawlerStateFinalizeAndSave() async throws {
         forceRecrawl: false
     )
 
-    let state = CrawlerState(configuration: config)
+    let state = Core.CrawlerState(configuration: config)
 
     // Update some data
     await state.updatePage(
@@ -854,7 +854,7 @@ func crawlerStateFinalizeAndSave() async throws {
     print("   ✅ Metadata finalized and saved correctly")
 }
 
-@Test("CrawlerState autoSaveIfNeeded respects interval")
+@Test("Core.CrawlerState autoSaveIfNeeded respects interval")
 func crawlerStateAutoSaveInterval() async throws {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -868,7 +868,7 @@ func crawlerStateAutoSaveInterval() async throws {
         forceRecrawl: false
     )
 
-    let state = CrawlerState(configuration: config)
+    let state = Core.CrawlerState(configuration: config)
 
     let visited = Set(["https://example.com/1"])
     let queue = try [(url: #require(URL(string: "https://example.com/2")), depth: 1)]

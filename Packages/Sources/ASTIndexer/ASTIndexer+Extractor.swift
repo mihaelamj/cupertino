@@ -1,4 +1,4 @@
-// SwiftSourceExtractor.swift
+// ASTIndexer+Extractor.swift
 // Main API for extracting symbols from Swift source code (#81)
 
 import Foundation
