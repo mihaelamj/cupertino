@@ -421,7 +421,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         }
 
         // Use service layer (same as CLI)
-        let results = try await docsService.search(SearchQuery(
+        let results = try await docsService.search(Services.SearchQuery(
             text: query,
             source: source,
             framework: framework,
@@ -444,7 +444,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         )
 
         // Use shared formatter
-        let filters = SearchFilters(
+        let filters = Services.SearchFilters(
             source: source,
             framework: framework,
             language: language,
@@ -489,7 +489,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         framework: String?,
         currentSource: String?,
         includeArchive: Bool
-    ) async -> Services.TeaserResults {
+    ) async -> TeaserResults {
         let teaserService = TeaserService(searchIndex: searchIndex, sampleDatabase: sampleDatabase)
         return await teaserService.fetchAllTeasers(
             query: query,
@@ -545,7 +545,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         }
 
         // Use service layer (same as CLI)
-        let results = try await docsService.search(SearchQuery(
+        let results = try await docsService.search(Services.SearchQuery(
             text: query,
             source: Shared.Constants.SourcePrefix.hig,
             framework: framework,

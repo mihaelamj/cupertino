@@ -40,8 +40,8 @@ extension Command {
             // Resolve database path
             let dbPath = resolveSampleDbPath()
 
-            // Use ServiceContainer for managed lifecycle
-            let file = try await ServiceContainer.withSampleService(dbPath: dbPath) { service in
+            // Use Services.ServiceContainer for managed lifecycle
+            let file = try await Services.ServiceContainer.withSampleService(dbPath: dbPath) { service in
                 guard let file = try await service.getFile(projectId: projectId, path: filePath) else {
                     Logging.Log.error("File not found: \(filePath) in project \(projectId)")
                     Logging.Log.output("Use 'cupertino read-sample \(projectId)' to list available files.")

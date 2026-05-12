@@ -7,7 +7,7 @@ import SharedCore
 
 /// Service for searching Apple documentation, Swift Evolution, and other indexed sources.
 /// Wraps Search.Index with a clean interface for both CLI and MCP consumers.
-public actor DocsSearchService: SearchService {
+public actor DocsSearchService: Services.SearchService {
     private let index: Search.Index
 
     /// Initialize with an existing search index
@@ -20,9 +20,9 @@ public actor DocsSearchService: SearchService {
         index = try await Search.Index(dbPath: dbPath)
     }
 
-    // MARK: - SearchService Protocol
+    // MARK: - Services.SearchService Protocol
 
-    public func search(_ query: SearchQuery) async throws -> [Search.Result] {
+    public func search(_ query: Services.SearchQuery) async throws -> [Search.Result] {
         // Platform version filtering is now done at SQL level for better performance
         try await index.search(
             query: query.text,
@@ -59,16 +59,16 @@ public actor DocsSearchService: SearchService {
 
     /// Search with a simple text query using defaults
     public func search(text: String, limit: Int = Shared.Constants.Limit.defaultSearchLimit) async throws -> [Search.Result] {
-        try await search(SearchQuery(text: text, limit: limit))
+        try await search(Services.SearchQuery(text: text, limit: limit))
     }
 
     /// Search within a specific framework
     public func search(text: String, framework: String, limit: Int = Shared.Constants.Limit.defaultSearchLimit) async throws -> [Search.Result] {
-        try await search(SearchQuery(text: text, framework: framework, limit: limit))
+        try await search(Services.SearchQuery(text: text, framework: framework, limit: limit))
     }
 
     /// Search within a specific source (apple-docs, swift-evolution, etc.)
     public func search(text: String, source: String, limit: Int = Shared.Constants.Limit.defaultSearchLimit) async throws -> [Search.Result] {
-        try await search(SearchQuery(text: text, source: source, limit: limit))
+        try await search(Services.SearchQuery(text: text, source: source, limit: limit))
     }
 }

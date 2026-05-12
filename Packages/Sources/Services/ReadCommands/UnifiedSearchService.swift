@@ -165,9 +165,9 @@ public actor UnifiedSearchService {
     }
 }
 
-// MARK: - ServiceContainer Extension
+// MARK: - Services.ServiceContainer Extension
 
-extension ServiceContainer {
+extension Services.ServiceContainer {
     /// Execute an operation with a unified search service
     public static func withUnifiedSearchService<T: Sendable>(
         searchDbPath: String? = nil,

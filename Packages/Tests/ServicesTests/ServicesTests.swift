@@ -8,11 +8,11 @@ import Testing
 
 @Suite("Services Module Tests")
 struct ServicesTests {
-    // MARK: - SearchQuery Tests
+    // MARK: - Services.SearchQuery Tests
 
-    @Test("SearchQuery initializes with defaults")
+    @Test("Services.SearchQuery initializes with defaults")
     func searchQueryDefaults() {
-        let query = SearchQuery(text: "View")
+        let query = Services.SearchQuery(text: "View")
 
         #expect(query.text == "View")
         #expect(query.source == nil)
@@ -22,16 +22,16 @@ struct ServicesTests {
         #expect(query.includeArchive == false)
     }
 
-    @Test("SearchQuery clamps limit to max")
+    @Test("Services.SearchQuery clamps limit to max")
     func searchQueryClampsLimit() {
-        let query = SearchQuery(text: "View", limit: 1000)
+        let query = Services.SearchQuery(text: "View", limit: 1000)
 
         #expect(query.limit == Shared.Constants.Limit.maxSearchLimit)
     }
 
-    @Test("SearchQuery accepts all parameters")
+    @Test("Services.SearchQuery accepts all parameters")
     func searchQueryAllParams() {
-        let query = SearchQuery(
+        let query = Services.SearchQuery(
             text: "Button",
             source: "apple-docs",
             framework: "swiftui",
@@ -48,20 +48,20 @@ struct ServicesTests {
         #expect(query.includeArchive == true)
     }
 
-    // MARK: - SearchFilters Tests
+    // MARK: - Services.SearchFilters Tests
 
-    @Test("SearchFilters detects active filters")
+    @Test("Services.SearchFilters detects active filters")
     func searchFiltersActiveDetection() {
-        let noFilters = SearchFilters()
+        let noFilters = Services.SearchFilters()
         #expect(noFilters.hasActiveFilters == false)
 
-        let withSource = SearchFilters(source: "apple-docs")
+        let withSource = Services.SearchFilters(source: "apple-docs")
         #expect(withSource.hasActiveFilters == true)
 
-        let withFramework = SearchFilters(framework: "swiftui")
+        let withFramework = Services.SearchFilters(framework: "swiftui")
         #expect(withFramework.hasActiveFilters == true)
 
-        let withLanguage = SearchFilters(language: "swift")
+        let withLanguage = Services.SearchFilters(language: "swift")
         #expect(withLanguage.hasActiveFilters == true)
     }
 
@@ -143,9 +143,9 @@ struct FormatConfigTests {
     }
 }
 
-// MARK: - SampleCandidateFetcher (#230)
+// MARK: - Services.SampleCandidateFetcher (#230)
 
-@Suite("SampleCandidateFetcher (#230)")
+@Suite("Services.SampleCandidateFetcher (#230)")
 struct SampleCandidateFetcherTests {
     @Test("sourceName matches the canonical samples prefix")
     func sourceNameIsSamples() async throws {
@@ -156,7 +156,7 @@ struct SampleCandidateFetcherTests {
             .appendingPathComponent("samples-fetcher-test-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let service = try await Services.SampleSearchService(dbPath: tempDB)
+        let service = try await SampleSearchService(dbPath: tempDB)
         defer { Task { await service.disconnect() } }
 
         let fetcher = Services.SampleCandidateFetcher(service: service)
@@ -169,7 +169,7 @@ struct SampleCandidateFetcherTests {
             .appendingPathComponent("samples-fetcher-test-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let service = try await Services.SampleSearchService(dbPath: tempDB)
+        let service = try await SampleSearchService(dbPath: tempDB)
         defer { Task { await service.disconnect() } }
 
         let fetcher = Services.SampleCandidateFetcher(service: service)

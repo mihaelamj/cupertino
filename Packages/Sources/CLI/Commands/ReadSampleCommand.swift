@@ -37,8 +37,8 @@ extension Command {
             // Resolve database path
             let dbPath = resolveSampleDbPath()
 
-            // Use ServiceContainer for managed lifecycle
-            let (project, files) = try await ServiceContainer.withSampleService(dbPath: dbPath) { service in
+            // Use Services.ServiceContainer for managed lifecycle
+            let (project, files) = try await Services.ServiceContainer.withSampleService(dbPath: dbPath) { service in
                 guard let project = try await service.getProject(id: projectId) else {
                     Logging.Log.error("Project not found: \(projectId)")
                     Logging.Log.output("Use 'cupertino list-samples' or 'cupertino search --source samples' to find valid project IDs.")

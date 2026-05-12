@@ -15,8 +15,8 @@ import SharedUtils
 /// `Command.Search+SmartReport.swift` (#239).
 extension Command.Search {
     func runDocsSearch() async throws {
-        let results = try await ServiceContainer.withDocsService(dbPath: searchDb) { service in
-            try await service.search(SearchQuery(
+        let results = try await Services.ServiceContainer.withDocsService(dbPath: searchDb) { service in
+            try await service.search(Services.SearchQuery(
                 text: query,
                 source: source,
                 framework: framework,
@@ -31,7 +31,7 @@ extension Command.Search {
             ))
         }
 
-        let teasers = try await ServiceContainer.withTeaserService(
+        let teasers = try await Services.ServiceContainer.withTeaserService(
             searchDbPath: searchDb,
             sampleDbPath: resolveSampleDbPath()
         ) { service in
@@ -57,7 +57,7 @@ extension Command.Search {
         case .markdown:
             let formatter = MarkdownSearchResultFormatter(
                 query: query,
-                filters: SearchFilters(
+                filters: Services.SearchFilters(
                     source: source,
                     framework: framework,
                     language: language,
@@ -77,7 +77,7 @@ extension Command.Search {
     func runSampleSearch() async throws {
         let dbPath = resolveSampleDbPath()
 
-        let result = try await ServiceContainer.withSampleService(dbPath: dbPath) { service in
+        let result = try await Services.ServiceContainer.withSampleService(dbPath: dbPath) { service in
             try await service.search(SampleQuery(
                 text: query,
                 framework: framework,
@@ -92,7 +92,7 @@ extension Command.Search {
         // query (#237).
         let teasers: TeaserResults
         do {
-            teasers = try await ServiceContainer.withTeaserService(
+            teasers = try await Services.ServiceContainer.withTeaserService(
                 searchDbPath: searchDb,
                 sampleDbPath: resolveSampleDbPath()
             ) { service in
@@ -173,8 +173,8 @@ extension Command.Search {
     }
 
     func runHIGSearch() async throws {
-        let results = try await ServiceContainer.withDocsService(dbPath: searchDb) { service in
-            try await service.search(SearchQuery(
+        let results = try await Services.ServiceContainer.withDocsService(dbPath: searchDb) { service in
+            try await service.search(Services.SearchQuery(
                 text: query,
                 source: Shared.Constants.SourcePrefix.hig,
                 framework: nil,
@@ -184,7 +184,7 @@ extension Command.Search {
             ))
         }
 
-        let teasers = try await ServiceContainer.withTeaserService(
+        let teasers = try await Services.ServiceContainer.withTeaserService(
             searchDbPath: searchDb,
             sampleDbPath: resolveSampleDbPath()
         ) { service in

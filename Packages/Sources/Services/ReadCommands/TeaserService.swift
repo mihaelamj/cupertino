@@ -154,9 +154,9 @@ public actor TeaserService {
     }
 }
 
-// MARK: - ServiceContainer Extension
+// MARK: - Services.ServiceContainer Extension
 
-extension ServiceContainer {
+extension Services.ServiceContainer {
     /// Execute an operation with a teaser service
     public static func withTeaserService<T: Sendable>(
         searchDbPath: String? = nil,

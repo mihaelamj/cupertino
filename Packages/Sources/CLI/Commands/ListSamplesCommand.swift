@@ -45,8 +45,8 @@ extension Command {
             // Resolve database path
             let dbPath = resolveSampleDbPath()
 
-            // Use ServiceContainer for managed lifecycle
-            let (projects, totalProjects, totalFiles) = try await ServiceContainer.withSampleService(dbPath: dbPath) { service in
+            // Use Services.ServiceContainer for managed lifecycle
+            let (projects, totalProjects, totalFiles) = try await Services.ServiceContainer.withSampleService(dbPath: dbPath) { service in
                 let projects = try await service.listProjects(framework: framework, limit: limit)
                 let totalProjects = try await service.projectCount()
                 let totalFiles = try await service.fileCount()

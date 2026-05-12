@@ -168,7 +168,7 @@ public enum ReadService {
         format: Search.Index.DocumentFormat,
         searchDB: URL?
     ) async throws -> Result {
-        let content = try await ServiceContainer.withDocsService(
+        let content = try await Services.ServiceContainer.withDocsService(
             dbPath: searchDB?.path
         ) { service in
             try await service.read(uri: identifier, format: format)
@@ -199,14 +199,14 @@ public enum ReadService {
         if let slashIdx = identifier.firstIndex(of: "/") {
             let projectId = String(identifier[..<slashIdx])
             let path = String(identifier[identifier.index(after: slashIdx)...])
-            let file = try await ServiceContainer.withSampleService(dbPath: dbURL) { service in
+            let file = try await Services.ServiceContainer.withSampleService(dbPath: dbURL) { service in
                 try await service.getFile(projectId: projectId, path: path)
             }
             if let file {
                 return Result(content: file.content, resolvedSource: .samples)
             }
         } else {
-            let project = try await ServiceContainer.withSampleService(dbPath: dbURL) { service in
+            let project = try await Services.ServiceContainer.withSampleService(dbPath: dbURL) { service in
                 try await service.getProject(id: identifier)
             }
             if let project {

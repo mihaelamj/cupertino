@@ -61,7 +61,7 @@ public actor HIGSearchService {
             effectiveText += " \(category)"
         }
 
-        let searchQuery = SearchQuery(
+        let searchQuery = Services.SearchQuery(
             text: effectiveText,
             source: Shared.Constants.SourcePrefix.hig,
             limit: query.limit,
