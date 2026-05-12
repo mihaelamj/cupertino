@@ -46,14 +46,14 @@ extension Availability {
 
 extension Availability {
     /// Response from Apple's /tutorials/data/documentation API
-    struct APIResponse: Codable, Sendable {
+    struct APIResponse: Codable {
         let metadata: Metadata?
 
-        struct Metadata: Codable, Sendable {
+        struct Metadata: Codable {
             let platforms: [PlatformInfo]?
         }
 
-        struct PlatformInfo: Codable, Sendable {
+        struct PlatformInfo: Codable {
             let name: String
             let introducedAt: String?
             let deprecated: Bool?

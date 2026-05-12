@@ -65,7 +65,7 @@ extension Core {
         /// `apple/swift-docc` and `swiftlang/swift-docc` collapse into one entry);
         /// exclusions drop matched canonical names before adding them to the frontier.
         public func resolve(
-            seeds: [PackageReference],
+            seeds: [Shared.Models.PackageReference],
             onProgress: (@Sendable (String, Int, Int) -> Void)? = nil
         ) async -> (packages: [ResolvedPackage], stats: Statistics) {
             let startedAt = Date()
@@ -449,7 +449,7 @@ extension Core {
 
         // MARK: - Helpers
 
-        private func classify(owner: String) -> PackagePriority {
+        private func classify(owner: String) -> Shared.Models.PackagePriority {
             if owner == Shared.Constants.GitHubOrg.apple
                 || owner == Shared.Constants.GitHubOrg.swiftlang
                 || owner == Shared.Constants.GitHubOrg.swiftServer {

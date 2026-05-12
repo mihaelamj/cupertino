@@ -1,6 +1,6 @@
 import Foundation
-import SharedCore
 import SharedConstants
+import SharedCore
 
 extension Distribution {
     /// Reads / writes / classifies the installed-version stamp under the

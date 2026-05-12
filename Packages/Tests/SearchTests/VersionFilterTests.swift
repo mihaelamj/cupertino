@@ -112,14 +112,14 @@ struct VersionFilterTests {
 
     // MARK: - Platform-Specific Filters (Parameterized)
 
-    struct PlatformTestCase: Sendable {
+    struct PlatformTestCase {
         let name: String
         let platform: Platform
         let apiVersion: String
         let excludedTarget: String
         let matchingTarget: String
 
-        enum Platform: Sendable {
+        enum Platform {
             case iOS, macOS, tvOS, watchOS, visionOS
         }
     }

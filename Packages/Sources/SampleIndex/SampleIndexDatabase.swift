@@ -1,9 +1,9 @@
 import ASTIndexer
 import Foundation
-import SharedCore
-import SQLite3
-import SharedUtils
 import SharedConstants
+import SharedCore
+import SharedUtils
+import SQLite3
 
 // MARK: - Sample Index Database
 
@@ -16,12 +16,12 @@ extension SampleIndex {
         /// Version history:
         /// - 1: Initial schema (projects, files, projects_fts, files_fts)
         /// - 2: Added file_symbols, file_imports tables for SwiftSyntax AST indexing (#81)
-        // Bumped to 3 in #228 phase 2: added per-sample availability
-        // columns to `projects` (`min_ios`, `min_macos`, `min_tvos`,
-        // `min_watchos`, `min_visionos`, `availability_source`) plus
-        // `available_attrs_json` on `files`. No migration — `save
-        // --samples` always wipes the DB and rebuilds, so existing v2
-        // databases get replaced wholesale on the next run.
+        /// Bumped to 3 in #228 phase 2: added per-sample availability
+        /// columns to `projects` (`min_ios`, `min_macos`, `min_tvos`,
+        /// `min_watchos`, `min_visionos`, `availability_source`) plus
+        /// `available_attrs_json` on `files`. No migration — `save
+        /// --samples` always wipes the DB and rebuilds, so existing v2
+        /// databases get replaced wholesale on the next run.
         public static let schemaVersion: Int32 = 3
 
         private var database: OpaquePointer?
@@ -285,7 +285,7 @@ extension SampleIndex {
             sqlite3_bind_int64(statement, 9, Int64(project.totalSize))
             sqlite3_bind_int64(statement, 10, Int64(project.indexedAt.timeIntervalSince1970))
 
-            // #228 phase 2: availability columns 11-16.
+            /// #228 phase 2: availability columns 11-16.
             func bindMin(_ pos: Int32, _ key: String) {
                 if let value = project.deploymentTargets[key] {
                     sqlite3_bind_text(statement, pos, (value as NSString).utf8String, -1, nil)
@@ -583,8 +583,8 @@ extension SampleIndex {
             // Build FTS5 query: tokenize natural language, drop
             // stopwords, OR-join the remainder. Same shape as
             // Search.PackageQuery uses for packages.db (#238 unified
-            // both paths via Shared.FTSQuery).
-            let sanitizedQuery = Shared.FTSQuery.build(question: query)
+            // both paths via Shared.Utils.FTSQuery).
+            let sanitizedQuery = Shared.Utils.FTSQuery.build(question: query)
             guard !sanitizedQuery.isEmpty else { return [] }
 
             var sql = """
@@ -686,8 +686,8 @@ extension SampleIndex {
             // Build FTS5 query: tokenize natural language, drop
             // stopwords, OR-join the remainder. Same shape as
             // Search.PackageQuery uses for packages.db (#238 unified
-            // both paths via Shared.FTSQuery).
-            let sanitizedQuery = Shared.FTSQuery.build(question: query)
+            // both paths via Shared.Utils.FTSQuery).
+            let sanitizedQuery = Shared.Utils.FTSQuery.build(question: query)
             guard !sanitizedQuery.isEmpty else { return [] }
 
             // #233: optional platform filter — JOIN projects table when

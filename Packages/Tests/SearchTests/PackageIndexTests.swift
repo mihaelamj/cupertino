@@ -1,12 +1,12 @@
 // swiftlint:disable identifier_name
 @testable import Core
+@testable import CorePackageIndexing
+import CoreProtocols
 import Foundation
 @testable import Search
 import SharedCore
 import SQLite3
 import Testing
-import CoreProtocols
-@testable import CorePackageIndexing
 
 // MARK: - PackageIndexTests
 

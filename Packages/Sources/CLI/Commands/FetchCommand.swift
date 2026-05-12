@@ -452,7 +452,7 @@ struct FetchCommand: AsyncParsableCommand {
         logCrawlCompletion(stats)
     }
 
-    private func logCrawlCompletion(_ stats: CrawlStatistics) {
+    private func logCrawlCompletion(_ stats: Shared.Models.CrawlStatistics) {
         Logging.ConsoleLogger.output("")
         Logging.ConsoleLogger.info("✅ Crawl completed!")
         Logging.ConsoleLogger.info("   Total: \(stats.totalPages) pages")
@@ -634,7 +634,7 @@ struct FetchCommand: AsyncParsableCommand {
         }
 
         // Convert to PackageReference format
-        let seedRefs = priorityPackages.compactMap { pkg -> PackageReference? in
+        let seedRefs = priorityPackages.compactMap { pkg -> Shared.Models.PackageReference? in
             // Extract owner from URL if not provided
             let owner: String
             if let explicitOwner = pkg.owner, !explicitOwner.isEmpty {
@@ -654,7 +654,7 @@ struct FetchCommand: AsyncParsableCommand {
             let isApple = owner == Shared.Constants.GitHubOrg.apple
                 || owner == Shared.Constants.GitHubOrg.swiftlang
                 || owner == Shared.Constants.GitHubOrg.swiftServer
-            return PackageReference(
+            return Shared.Models.PackageReference(
                 owner: owner,
                 repo: pkg.repo,
                 url: pkg.url,
@@ -744,7 +744,7 @@ struct FetchCommand: AsyncParsableCommand {
 
         let extractor = Core.PackageArchiveExtractor()
         let startedAt = Date()
-        var stats = PackageDownloadStatistics(
+        var stats = Shared.Models.PackageDownloadStatistics(
             totalPackages: resolvedPackages.count,
             startTime: startedAt
         )

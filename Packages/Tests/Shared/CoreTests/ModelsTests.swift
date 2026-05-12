@@ -1,14 +1,15 @@
+import CoreProtocols
 import Foundation
+import SharedConstants
 @testable import SharedCore
 import SharedModels
 import Testing
-import CoreProtocols
 
 // MARK: - DocumentationPage Tests
 
 @Test("DocumentationPage initializes with all required fields")
 func documentationPageInitialization() throws {
-    let page = try DocumentationPage(
+    let page = try Shared.Models.DocumentationPage(
         url: #require(URL(string: "https://developer.apple.com/documentation/swift")),
         framework: "Swift",
         title: "Swift Documentation",
@@ -26,7 +27,7 @@ func documentationPageInitialization() throws {
 
 @Test("DocumentationPage is Codable")
 func documentationPageCodable() throws {
-    let originalPage = try DocumentationPage(
+    let originalPage = try Shared.Models.DocumentationPage(
         url: #require(URL(string: "https://developer.apple.com/documentation/swift/array")),
         framework: "Swift",
         title: "Array",
@@ -41,7 +42,7 @@ func documentationPageCodable() throws {
 
     // Decode
     let decoder = JSONDecoder()
-    let decodedPage = try decoder.decode(DocumentationPage.self, from: data)
+    let decodedPage = try decoder.decode(Shared.Models.DocumentationPage.self, from: data)
 
     #expect(decodedPage.url == originalPage.url)
     #expect(decodedPage.framework == originalPage.framework)
@@ -52,7 +53,7 @@ func documentationPageCodable() throws {
 
 @Test("DocumentationPage generates unique IDs")
 func documentationPageUniqueIDs() throws {
-    let page1 = try DocumentationPage(
+    let page1 = try Shared.Models.DocumentationPage(
         url: #require(URL(string: "https://example.com/doc1")),
         framework: "Test",
         title: "Doc 1",
@@ -61,7 +62,7 @@ func documentationPageUniqueIDs() throws {
         depth: 0
     )
 
-    let page2 = try DocumentationPage(
+    let page2 = try Shared.Models.DocumentationPage(
         url: #require(URL(string: "https://example.com/doc2")),
         framework: "Test",
         title: "Doc 2",
@@ -77,7 +78,7 @@ func documentationPageUniqueIDs() throws {
 
 @Test("CrawlMetadata initializes with empty state")
 func crawlMetadataInitialization() {
-    let metadata = CrawlMetadata()
+    let metadata = Shared.Models.CrawlMetadata()
 
     #expect(metadata.pages.isEmpty)
     #expect(metadata.lastCrawl == nil)
@@ -87,8 +88,8 @@ func crawlMetadataInitialization() {
 
 @Test("CrawlMetadata is Codable")
 func crawlMetadataCodable() throws {
-    var metadata = CrawlMetadata()
-    metadata.pages["https://example.com"] = PageMetadata(
+    var metadata = Shared.Models.CrawlMetadata()
+    metadata.pages["https://example.com"] = Shared.Models.PageMetadata(
         url: "https://example.com",
         framework: "test",
         filePath: "/test.md",
@@ -102,7 +103,7 @@ func crawlMetadataCodable() throws {
     let data = try encoder.encode(metadata)
 
     let decoder = JSONDecoder()
-    let decoded = try decoder.decode(CrawlMetadata.self, from: data)
+    let decoded = try decoder.decode(Shared.Models.CrawlMetadata.self, from: data)
 
     #expect(decoded.pages.count == 1)
     #expect(decoded.stats.totalPages == 10)
@@ -114,15 +115,15 @@ func crawlMetadataSaveLoad() throws {
         .appendingPathComponent("test-\(UUID().uuidString).json")
     defer { try? FileManager.default.removeItem(at: tempFile) }
 
-    var metadata = CrawlMetadata()
-    metadata.pages["https://example.com/doc1"] = PageMetadata(
+    var metadata = Shared.Models.CrawlMetadata()
+    metadata.pages["https://example.com/doc1"] = Shared.Models.PageMetadata(
         url: "https://example.com/doc1",
         framework: "swift",
         filePath: "/docs/doc1.md",
         contentHash: "hash1",
         depth: 1
     )
-    metadata.pages["https://example.com/doc2"] = PageMetadata(
+    metadata.pages["https://example.com/doc2"] = Shared.Models.PageMetadata(
         url: "https://example.com/doc2",
         framework: "uikit",
         filePath: "/docs/doc2.md",
@@ -139,7 +140,7 @@ func crawlMetadataSaveLoad() throws {
     #expect(FileManager.default.fileExists(atPath: tempFile.path))
 
     // Load
-    let loaded = try CrawlMetadata.load(from: tempFile)
+    let loaded = try Shared.Models.CrawlMetadata.load(from: tempFile)
 
     #expect(loaded.pages.count == 2)
     #expect(loaded.stats.totalPages == 2)
@@ -151,7 +152,7 @@ func crawlMetadataSaveLoad() throws {
 
 @Test("PageMetadata initializes correctly")
 func pageMetadataInitialization() {
-    let metadata = PageMetadata(
+    let metadata = Shared.Models.PageMetadata(
         url: "https://developer.apple.com/documentation/swift/array",
         framework: "Swift",
         filePath: "/docs/swift/array.md",
@@ -168,7 +169,7 @@ func pageMetadataInitialization() {
 
 @Test("PageMetadata is Codable")
 func pageMetadataCodable() throws {
-    let original = PageMetadata(
+    let original = Shared.Models.PageMetadata(
         url: "https://example.com",
         framework: "test",
         filePath: "/test.md",
@@ -180,7 +181,7 @@ func pageMetadataCodable() throws {
     let data = try encoder.encode(original)
 
     let decoder = JSONDecoder()
-    let decoded = try decoder.decode(PageMetadata.self, from: data)
+    let decoded = try decoder.decode(Shared.Models.PageMetadata.self, from: data)
 
     #expect(decoded.url == original.url)
     #expect(decoded.framework == original.framework)
@@ -193,7 +194,7 @@ func pageMetadataCodable() throws {
 
 @Test("CrawlStatistics initializes with zeros")
 func crawlStatisticsInitialization() {
-    let stats = CrawlStatistics()
+    let stats = Shared.Models.CrawlStatistics()
 
     #expect(stats.totalPages == 0)
     #expect(stats.newPages == 0)
@@ -204,7 +205,7 @@ func crawlStatisticsInitialization() {
 
 @Test("CrawlStatistics is Codable")
 func crawlStatisticsCodable() throws {
-    let stats = CrawlStatistics(
+    let stats = Shared.Models.CrawlStatistics(
         totalPages: 100,
         newPages: 50,
         updatedPages: 30,
@@ -218,7 +219,7 @@ func crawlStatisticsCodable() throws {
     let data = try encoder.encode(stats)
 
     let decoder = JSONDecoder()
-    let decoded = try decoder.decode(CrawlStatistics.self, from: data)
+    let decoded = try decoder.decode(Shared.Models.CrawlStatistics.self, from: data)
 
     #expect(decoded.totalPages == 100)
     #expect(decoded.newPages == 50)
@@ -232,7 +233,7 @@ func crawlStatisticsDuration() {
     let startTime = Date()
     let endTime = startTime.addingTimeInterval(300) // 5 minutes
 
-    let stats = CrawlStatistics(
+    let stats = Shared.Models.CrawlStatistics(
         totalPages: 10,
         newPages: 10,
         updatedPages: 0,
@@ -249,7 +250,7 @@ func crawlStatisticsDuration() {
 
 @Test("CrawlStatistics duration is nil when times not set")
 func crawlStatisticsNoDuration() {
-    let stats = CrawlStatistics(
+    let stats = Shared.Models.CrawlStatistics(
         totalPages: 10,
         newPages: 10,
         updatedPages: 0,
@@ -268,8 +269,8 @@ func crawlStatisticsNoDuration() {
 // MARK: - StructuredDocumentationPage Declaration and Kind Tests
 
 // Helper type alias for brevity
-private typealias Page = StructuredDocumentationPage
-private typealias Kind = StructuredDocumentationPage.Kind
+private typealias Page = Shared.Models.StructuredDocumentationPage
+private typealias Kind = Shared.Models.StructuredDocumentationPage.Kind
 
 @Test("StructuredDocumentationPage extracts @attributes from declaration")
 func structuredPageExtractsAttributes() throws {
@@ -692,9 +693,9 @@ func withContentHashPreservesFields() throws {
 func normalizeLowercasesPathAndStripsFragmentQuery() throws {
     let mixed = try #require(URL(string: "https://developer.apple.com/documentation/Cinematic/CNAssetInfo-2ata2?lang=en#topic"))
     let lower = try #require(URL(string: "https://developer.apple.com/documentation/cinematic/cnassetinfo-2ata2"))
-    #expect(URLUtilities.normalize(mixed) == URLUtilities.normalize(lower))
+    #expect(Shared.Models.URLUtilities.normalize(mixed) == Shared.Models.URLUtilities.normalize(lower))
     #expect(
-        URLUtilities.normalize(mixed)?.absoluteString
+        Shared.Models.URLUtilities.normalize(mixed)?.absoluteString
             == "https://developer.apple.com/documentation/cinematic/cnassetinfo-2ata2"
     )
 }
@@ -702,8 +703,8 @@ func normalizeLowercasesPathAndStripsFragmentQuery() throws {
 @Test("URLUtilities.normalize is idempotent")
 func normalizeIsIdempotent() throws {
     let url = try #require(URL(string: "https://developer.apple.com/documentation/SwiftUI/View"))
-    let once = try #require(URLUtilities.normalize(url))
-    let twice = try #require(URLUtilities.normalize(once))
+    let once = try #require(Shared.Models.URLUtilities.normalize(url))
+    let twice = try #require(Shared.Models.URLUtilities.normalize(once))
     #expect(once == twice)
 }
 
@@ -712,7 +713,7 @@ func normalizePreservesUnderscoresInPath() throws {
     // installer_js is a real Apple framework that uses underscore in its
     // canonical URL path. Normalize must not collapse it.
     let url = try #require(URL(string: "https://developer.apple.com/documentation/installer_js/system"))
-    let normalized = URLUtilities.normalize(url)
+    let normalized = Shared.Models.URLUtilities.normalize(url)
     #expect(normalized?.absoluteString == "https://developer.apple.com/documentation/installer_js/system")
 }
 

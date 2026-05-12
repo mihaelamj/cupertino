@@ -1,7 +1,7 @@
 import Foundation
+import SharedConstants
 import SharedCore
 import SharedUtils
-import SharedConstants
 
 // MARK: - Animated Progress Display
 
@@ -43,7 +43,7 @@ public struct AnimatedProgress: Sendable {
         }
 
         // Time info
-        let elapsedStr = Shared.Formatting.formatDuration(progress.elapsed)
+        let elapsedStr = Shared.Utils.Formatting.formatDuration(progress.elapsed)
         line += " | \(elapsedStr)"
 
         return line

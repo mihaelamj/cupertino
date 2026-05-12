@@ -1,7 +1,7 @@
 import ArgumentParser
 import Foundation
-import SharedCore
 import SharedConstants
+import SharedCore
 
 // MARK: - Release CLI
 

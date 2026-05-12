@@ -1,7 +1,7 @@
 import ArgumentParser
 import Foundation
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedUtils
 
 // MARK: - Database Release Command (search.db + samples.db + packages.db → cupertino-docs)
@@ -80,10 +80,10 @@ struct DatabaseReleaseCommand: AsyncParsableCommand {
         let samplesSize = try ReleasePublishing.fileSize(at: samplesDBURL)
         let packagesSize = try packagesDBPresent ? (ReleasePublishing.fileSize(at: packagesDBURL)) : 0
         Console.info("📊 Database sizes:")
-        Console.substep("search.db:   \(Shared.Formatting.formatBytes(searchSize))")
-        Console.substep("samples.db:  \(Shared.Formatting.formatBytes(samplesSize))")
+        Console.substep("search.db:   \(Shared.Utils.Formatting.formatBytes(searchSize))")
+        Console.substep("samples.db:  \(Shared.Utils.Formatting.formatBytes(samplesSize))")
         if packagesDBPresent {
-            Console.substep("packages.db: \(Shared.Formatting.formatBytes(packagesSize))")
+            Console.substep("packages.db: \(Shared.Utils.Formatting.formatBytes(packagesSize))")
         } else {
             Console.warning("packages.db: missing (continuing because --allow-missing-packages was passed)")
         }
@@ -100,7 +100,7 @@ struct DatabaseReleaseCommand: AsyncParsableCommand {
         try ReleasePublishing.createZip(containing: bundled, at: zipURL)
 
         let zipSize = try ReleasePublishing.fileSize(at: zipURL)
-        Console.substep("✓ Created (\(Shared.Formatting.formatBytes(zipSize)))")
+        Console.substep("✓ Created (\(Shared.Utils.Formatting.formatBytes(zipSize)))")
 
         Console.info("\n🔐 Calculating SHA256...")
         let sha256 = try ReleasePublishing.calculateSHA256(of: zipURL)

@@ -3,7 +3,7 @@ import SharedConstants
 
 // MARK: - Formatting Utilities
 
-extension Shared {
+extension Shared.Utils {
     /// Shared formatting utilities
     public enum Formatting {
         // MARK: - Byte Formatting

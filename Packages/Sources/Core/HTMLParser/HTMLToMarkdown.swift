@@ -714,9 +714,9 @@ extension Core.Parser.HTML {
     public static func toStructuredPage(
         _ html: String,
         url: URL,
-        source: StructuredDocumentationPage.Source = .appleWebKit,
+        source: Shared.Models.StructuredDocumentationPage.Source = .appleWebKit,
         depth: Int? = nil
-    ) -> StructuredDocumentationPage? {
+    ) -> Shared.Models.StructuredDocumentationPage? {
         // Extract title
         guard let title = extractTitle(from: html) else {
             return nil
@@ -749,8 +749,8 @@ extension Core.Parser.HTML {
         // Hash canonical structured fields, not raw `html` — page bytes carry
         // volatile cache/build metadata that doesn't reach our parsed output,
         // so `sha256(of: html)` was non-deterministic across runs (#199).
-        let page = StructuredDocumentationPage(
-            id: StructuredDocumentationPage.deterministicID(for: url),
+        let page = Shared.Models.StructuredDocumentationPage(
+            id: Shared.Models.StructuredDocumentationPage.deterministicID(for: url),
             url: url,
             title: title,
             kind: kind,
@@ -772,8 +772,8 @@ extension Core.Parser.HTML {
 
     private static func detectSource(
         from url: URL,
-        provided: StructuredDocumentationPage.Source
-    ) -> StructuredDocumentationPage.Source {
+        provided: Shared.Models.StructuredDocumentationPage.Source
+    ) -> Shared.Models.StructuredDocumentationPage.Source {
         guard let host = url.host?.lowercased() else {
             return provided
         }
@@ -792,7 +792,7 @@ extension Core.Parser.HTML {
     private static func detectKind(
         from html: String,
         url: URL
-    ) -> StructuredDocumentationPage.Kind {
+    ) -> Shared.Models.StructuredDocumentationPage.Kind {
         let lowercased = html.lowercased()
 
         // Check URL path for hints
@@ -893,7 +893,7 @@ extension Core.Parser.HTML {
 
     private static func extractDeclarationFromHTML(
         from html: String
-    ) -> StructuredDocumentationPage.Declaration? {
+    ) -> Shared.Models.StructuredDocumentationPage.Declaration? {
         let mainContent = extractMainContent(from: html)
         let regexOptions: NSRegularExpression.Options = [.caseInsensitive, .dotMatchesLineSeparators]
 
@@ -918,7 +918,7 @@ extension Core.Parser.HTML {
 
                     // Check if this looks like a declaration
                     if looksLikeDeclaration(trimmed) {
-                        return StructuredDocumentationPage.Declaration(
+                        return Shared.Models.StructuredDocumentationPage.Declaration(
                             code: trimmed,
                             language: language.isEmpty ? "swift" : language
                         )
@@ -945,7 +945,7 @@ extension Core.Parser.HTML {
                     let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
 
                     if looksLikeDeclaration(trimmed) {
-                        return StructuredDocumentationPage.Declaration(
+                        return Shared.Models.StructuredDocumentationPage.Declaration(
                             code: trimmed,
                             language: "swift"
                         )
@@ -964,8 +964,8 @@ extension Core.Parser.HTML {
 
     private static func extractCodeExamplesFromHTML(
         from html: String
-    ) -> [StructuredDocumentationPage.CodeExample] {
-        var examples: [StructuredDocumentationPage.CodeExample] = []
+    ) -> [Shared.Models.StructuredDocumentationPage.CodeExample] {
+        var examples: [Shared.Models.StructuredDocumentationPage.CodeExample] = []
         let mainContent = extractMainContent(from: html)
         let regexOptions: NSRegularExpression.Options = [.caseInsensitive, .dotMatchesLineSeparators]
 
@@ -993,7 +993,7 @@ extension Core.Parser.HTML {
 
                     // Skip if this looks like a declaration (already captured)
                     if !looksLikeDeclaration(trimmed), !trimmed.isEmpty {
-                        examples.append(StructuredDocumentationPage.CodeExample(
+                        examples.append(Shared.Models.StructuredDocumentationPage.CodeExample(
                             code: trimmed,
                             language: language
                         ))
@@ -1040,8 +1040,8 @@ extension Core.Parser.HTML {
 
     private static func extractSectionsFromHTML(
         from html: String
-    ) -> [StructuredDocumentationPage.Section] {
-        var sections: [StructuredDocumentationPage.Section] = []
+    ) -> [Shared.Models.StructuredDocumentationPage.Section] {
+        var sections: [Shared.Models.StructuredDocumentationPage.Section] = []
         let mainContent = extractMainContent(from: html)
 
         // Find all H2 headers
@@ -1064,7 +1064,7 @@ extension Core.Parser.HTML {
                     let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
 
                     if !trimmedTitle.isEmpty {
-                        sections.append(StructuredDocumentationPage.Section(
+                        sections.append(Shared.Models.StructuredDocumentationPage.Section(
                             title: trimmedTitle
                         ))
                     }

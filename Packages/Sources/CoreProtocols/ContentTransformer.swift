@@ -1,4 +1,5 @@
 import Foundation
+import SharedConstants
 import SharedCore
 import SharedModels
 
@@ -30,13 +31,13 @@ public struct TransformResult: Sendable {
     public let markdown: String
     public let links: [URL]
     public let metadata: TransformMetadata?
-    public let structuredPage: StructuredDocumentationPage?
+    public let structuredPage: Shared.Models.StructuredDocumentationPage?
 
     public init(
         markdown: String,
         links: [URL],
         metadata: TransformMetadata? = nil,
-        structuredPage: StructuredDocumentationPage? = nil
+        structuredPage: Shared.Models.StructuredDocumentationPage? = nil
     ) {
         self.markdown = markdown
         self.links = links

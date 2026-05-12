@@ -70,7 +70,7 @@ struct WebCrawlTests {
         let metadataFile = tempDir.appendingPathComponent("metadata.json")
         #expect(FileManager.default.fileExists(atPath: metadataFile.path), "Metadata should exist")
 
-        let metadata = try CrawlMetadata.load(from: metadataFile)
+        let metadata = try Shared.Models.CrawlMetadata.load(from: metadataFile)
         #expect(!metadata.pages.isEmpty, "Metadata should contain pages")
         #expect(metadata.stats.totalPages == 1, "Metadata stats should match")
 

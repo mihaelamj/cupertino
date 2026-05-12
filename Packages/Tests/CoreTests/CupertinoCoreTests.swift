@@ -338,7 +338,7 @@ private func logTestStart(config: Shared.Configuration) {
     print("   Output: \(config.crawler.outputDirectory.path)")
 }
 
-private func verifyBasicStats(_ stats: CrawlStatistics) throws {
+private func verifyBasicStats(_ stats: Shared.Models.CrawlStatistics) throws {
     #expect(stats.totalPages > 0, "Should have crawled at least 1 page")
     #expect(stats.newPages > 0, "Should have at least 1 new page")
     print("   ✅ Crawled \(stats.totalPages) page(s)")
@@ -394,7 +394,7 @@ private func verifyMetadata(_ metadataFile: URL) throws {
     #expect(FileManager.default.fileExists(atPath: metadataFile.path), "Metadata file should be created")
 
     if FileManager.default.fileExists(atPath: metadataFile.path) {
-        let metadata = try CrawlMetadata.load(from: metadataFile)
+        let metadata = try Shared.Models.CrawlMetadata.load(from: metadataFile)
         #expect(!metadata.pages.isEmpty, "Metadata should contain page information")
         print("   ✅ Metadata created with \(metadata.pages.count) page(s)")
     }
@@ -436,15 +436,15 @@ func crawlerStateLoadsExistingMetadata() async throws {
     try "# Doc 2".write(to: doc2Path, atomically: true, encoding: .utf8)
 
     // Create initial metadata with some pages (file paths must match real files)
-    var metadata = CrawlMetadata()
-    metadata.pages["https://example.com/doc1"] = PageMetadata(
+    var metadata = Shared.Models.CrawlMetadata()
+    metadata.pages["https://example.com/doc1"] = Shared.Models.PageMetadata(
         url: "https://example.com/doc1",
         framework: "test",
         filePath: doc1Path.path,
         contentHash: "hash1",
         depth: 0
     )
-    metadata.pages["https://example.com/doc2"] = PageMetadata(
+    metadata.pages["https://example.com/doc2"] = Shared.Models.PageMetadata(
         url: "https://example.com/doc2",
         framework: "test",
         filePath: doc2Path.path,
@@ -503,8 +503,8 @@ func crawlerStateShouldRecrawlContentChanged() async throws {
     // Create file and metadata
     try "Original content".write(to: outputFile, atomically: true, encoding: .utf8)
 
-    var metadata = CrawlMetadata()
-    metadata.pages["https://example.com/doc"] = PageMetadata(
+    var metadata = Shared.Models.CrawlMetadata()
+    metadata.pages["https://example.com/doc"] = Shared.Models.PageMetadata(
         url: "https://example.com/doc",
         framework: "test",
         filePath: outputFile.path,
@@ -544,8 +544,8 @@ func crawlerStateShouldRecrawlSkipsUnchanged() async throws {
     // Create file and metadata
     try "Content".write(to: outputFile, atomically: true, encoding: .utf8)
 
-    var metadata = CrawlMetadata()
-    metadata.pages["https://example.com/doc"] = PageMetadata(
+    var metadata = Shared.Models.CrawlMetadata()
+    metadata.pages["https://example.com/doc"] = Shared.Models.PageMetadata(
         url: "https://example.com/doc",
         framework: "test",
         filePath: outputFile.path,
@@ -583,8 +583,8 @@ func crawlerStateShouldRecrawlMissingFile() async throws {
     let outputFile = tempDir.appendingPathComponent("missing.md")
 
     // Create metadata but NOT the file
-    var metadata = CrawlMetadata()
-    metadata.pages["https://example.com/doc"] = PageMetadata(
+    var metadata = Shared.Models.CrawlMetadata()
+    metadata.pages["https://example.com/doc"] = Shared.Models.PageMetadata(
         url: "https://example.com/doc",
         framework: "test",
         filePath: outputFile.path,
@@ -624,8 +624,8 @@ func crawlerStateForceRecrawl() async throws {
     // Create file and metadata
     try "Content".write(to: outputFile, atomically: true, encoding: .utf8)
 
-    var metadata = CrawlMetadata()
-    metadata.pages["https://example.com/doc"] = PageMetadata(
+    var metadata = Shared.Models.CrawlMetadata()
+    metadata.pages["https://example.com/doc"] = Shared.Models.PageMetadata(
         url: "https://example.com/doc",
         framework: "test",
         filePath: outputFile.path,
@@ -665,8 +665,8 @@ func crawlerStateDisabledChangeDetection() async throws {
     // Create file and metadata
     try "Content".write(to: outputFile, atomically: true, encoding: .utf8)
 
-    var metadata = CrawlMetadata()
-    metadata.pages["https://example.com/doc"] = PageMetadata(
+    var metadata = Shared.Models.CrawlMetadata()
+    metadata.pages["https://example.com/doc"] = Shared.Models.PageMetadata(
         url: "https://example.com/doc",
         framework: "test",
         filePath: outputFile.path,
@@ -829,7 +829,7 @@ func crawlerStateFinalizeAndSave() async throws {
         depth: 0
     )
 
-    let stats = CrawlStatistics(
+    let stats = Shared.Models.CrawlStatistics(
         totalPages: 5,
         newPages: 3,
         updatedPages: 1,
@@ -846,7 +846,7 @@ func crawlerStateFinalizeAndSave() async throws {
     #expect(FileManager.default.fileExists(atPath: metadataFile.path))
 
     // Verify we can load it back
-    let loadedMetadata = try CrawlMetadata.load(from: metadataFile)
+    let loadedMetadata = try Shared.Models.CrawlMetadata.load(from: metadataFile)
     #expect(loadedMetadata.pages.count == 1)
     #expect(loadedMetadata.stats.totalPages == 5)
     #expect(loadedMetadata.lastCrawl != nil)
@@ -921,9 +921,9 @@ func hashUtilitiesSHA256Consistency() {
     let content2 = "Hello, World!"
     let content3 = "Different content"
 
-    let hash1 = HashUtilities.sha256(of: content1)
-    let hash2 = HashUtilities.sha256(of: content2)
-    let hash3 = HashUtilities.sha256(of: content3)
+    let hash1 = Shared.Models.HashUtilities.sha256(of: content1)
+    let hash2 = Shared.Models.HashUtilities.sha256(of: content2)
+    let hash3 = Shared.Models.HashUtilities.sha256(of: content3)
 
     // Same content should produce same hash
     #expect(hash1 == hash2)

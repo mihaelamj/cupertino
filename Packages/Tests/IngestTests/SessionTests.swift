@@ -1,8 +1,8 @@
 import Foundation
 @testable import Ingest
+import SharedConstants
 @testable import SharedCore
 import Testing
-import SharedConstants
 
 // MARK: - Ingest.Session smoke tests (#247 sub-PR 4a)
 
@@ -39,7 +39,7 @@ struct CheckForSessionSmokeTests {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: dir) }
 
-        let url = URL(string: "https://example.com/")!
+        let url = try #require(URL(string: "https://example.com/"))
         #expect(Ingest.Session.checkForSession(at: dir, matching: url) == nil)
     }
 }

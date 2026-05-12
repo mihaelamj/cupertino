@@ -1,8 +1,8 @@
 import Foundation
 @testable import SampleIndex
+import SharedConstants
 import SharedCore
 import Testing
-import SharedConstants
 
 /// Companion to `BasePathDerivationTests` in SharedTests, covering the
 /// SampleIndex-side defaults. Asserts that the samples database path and the

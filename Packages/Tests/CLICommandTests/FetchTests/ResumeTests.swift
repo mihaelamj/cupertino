@@ -50,8 +50,8 @@ struct ResumeAndStartCleanTests {
         queue: [(url: String, depth: Int)],
         isActive: Bool = true
     ) throws {
-        let queued = queue.map { QueuedURL(url: $0.url, depth: $0.depth) }
-        let crawlState = CrawlSessionState(
+        let queued = queue.map { Shared.Models.QueuedURL(url: $0.url, depth: $0.depth) }
+        let crawlState = Shared.Models.CrawlSessionState(
             visited: visited,
             queue: queued,
             startURL: startURL,
@@ -60,7 +60,7 @@ struct ResumeAndStartCleanTests {
             lastSaveTime: Date(timeIntervalSince1970: 1700000500),
             isActive: isActive
         )
-        var metadata = CrawlMetadata()
+        var metadata = Shared.Models.CrawlMetadata()
         metadata.crawlState = crawlState
         metadata.stats.totalPages = visited.count
         metadata.stats.newPages = visited.count
@@ -99,7 +99,7 @@ struct ResumeAndStartCleanTests {
         )
 
         // Sanity: crawlState is there before the wipe.
-        let before = try CrawlMetadata.load(from: file)
+        let before = try Shared.Models.CrawlMetadata.load(from: file)
         #expect(before.crawlState != nil)
         #expect(before.crawlState?.isActive == true)
         #expect(before.crawlState?.visited.count == 3)
@@ -111,7 +111,7 @@ struct ResumeAndStartCleanTests {
         // crawlState is gone; the other fields are intact (so we don't lose
         // accumulated stats / page hashes — those are what change-detection
         // uses to skip unchanged pages on the resumed run).
-        let after = try CrawlMetadata.load(from: file)
+        let after = try Shared.Models.CrawlMetadata.load(from: file)
         #expect(after.crawlState == nil)
         #expect(after.stats.totalPages == 3, "stats must survive --start-clean")
         #expect(after.stats.newPages == 3, "stats must survive --start-clean")
@@ -136,13 +136,13 @@ struct ResumeAndStartCleanTests {
         // The file must be valid JSON parsable as CrawlMetadata — if it's
         // truncated or corrupt, the next `cupertino fetch` will throw at
         // load time and the user is locked out of resume.
-        let reloaded = try CrawlMetadata.load(from: file)
+        let reloaded = try Shared.Models.CrawlMetadata.load(from: file)
         #expect(reloaded.crawlState == nil)
 
         // And running --start-clean a second time on the already-cleaned file
         // is also a no-throw no-op.
         try Ingest.Session.clearSavedSession(at: tempDir)
-        let twiceCleaned = try CrawlMetadata.load(from: file)
+        let twiceCleaned = try Shared.Models.CrawlMetadata.load(from: file)
         #expect(twiceCleaned.crawlState == nil)
     }
 
@@ -157,9 +157,9 @@ struct ResumeAndStartCleanTests {
         savedURLs: [String],
         erroredURLs: [String]
     ) throws {
-        var pages: [String: PageMetadata] = [:]
+        var pages: [String: Shared.Models.PageMetadata] = [:]
         for url in savedURLs {
-            pages[url] = PageMetadata(
+            pages[url] = Shared.Models.PageMetadata(
                 url: url,
                 framework: "test",
                 filePath: "/tmp/foo.json",
@@ -168,13 +168,13 @@ struct ResumeAndStartCleanTests {
             )
         }
         let visited = Set(savedURLs + erroredURLs)
-        let crawlState = CrawlSessionState(
+        let crawlState = Shared.Models.CrawlSessionState(
             visited: visited,
             queue: [],
             startURL: "https://example.com/",
             outputDirectory: outputDirectory
         )
-        var metadata = CrawlMetadata()
+        var metadata = Shared.Models.CrawlMetadata()
         metadata.crawlState = crawlState
         metadata.pages = pages
         try metadata.save(to: file)
@@ -208,7 +208,7 @@ struct ResumeAndStartCleanTests {
 
         try Ingest.Session.requeueErroredURLs(at: tempDir, maxDepth: 15)
 
-        let after = try CrawlMetadata.load(from: file)
+        let after = try Shared.Models.CrawlMetadata.load(from: file)
         #expect(after.crawlState?.queue.isEmpty == true, "queue should remain empty")
         #expect(after.crawlState?.visited.count == 3)
     }
@@ -243,7 +243,7 @@ struct ResumeAndStartCleanTests {
 
         try Ingest.Session.requeueErroredURLs(at: tempDir, maxDepth: 15)
 
-        let after = try CrawlMetadata.load(from: file)
+        let after = try Shared.Models.CrawlMetadata.load(from: file)
         let queueURLs = Set(after.crawlState?.queue.map(\.url) ?? [])
         #expect(queueURLs == [erroredA, erroredB])
         #expect(
@@ -318,7 +318,7 @@ struct ResumeAndStartCleanTests {
 
         try Ingest.Session.requeueFromBaseline(at: tempDir, baselineDir: baselineDir, maxDepth: 15)
 
-        let after = try CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
+        let after = try Shared.Models.CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
         let queueURLs = Set(after.crawlState?.queue.map(\.url) ?? [])
         #expect(queueURLs.count == 2)
         #expect(queueURLs.contains("https://developer.apple.com/documentation/swift/dictionary"))
@@ -351,7 +351,7 @@ struct ResumeAndStartCleanTests {
 
         try Ingest.Session.requeueFromBaseline(at: tempDir, baselineDir: baselineDir, maxDepth: 15)
 
-        let after = try CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
+        let after = try Shared.Models.CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
         // Already known case-insensitively → should NOT be injected.
         #expect(
             after.crawlState?.queue.isEmpty == true,
@@ -374,7 +374,7 @@ struct ResumeAndStartCleanTests {
         let nonExistent = tempDir.appendingPathComponent("nope")
         try Ingest.Session.requeueFromBaseline(at: tempDir, baselineDir: nonExistent, maxDepth: 15)
 
-        let after = try CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
+        let after = try Shared.Models.CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
         #expect(after.crawlState?.queue.isEmpty == true)
     }
 
@@ -393,7 +393,7 @@ struct ResumeAndStartCleanTests {
         )
 
         try Ingest.Session.requeueFromBaseline(at: tempDir, baselineDir: baselineDir, maxDepth: 15)
-        let after = try CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
+        let after = try Shared.Models.CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
         #expect(after.crawlState?.queue.isEmpty == true)
     }
 
@@ -432,7 +432,7 @@ struct ResumeAndStartCleanTests {
 
         try Ingest.Session.requeueFromBaseline(at: tempDir, baselineDir: baselineDir, maxDepth: 15)
 
-        let after = try CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
+        let after = try Shared.Models.CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
         let queueURLs = (after.crawlState?.queue ?? []).map(\.url)
         #expect(queueURLs == ["https://developer.apple.com/documentation/swift/array"])
     }
@@ -462,7 +462,7 @@ struct ResumeAndStartCleanTests {
 
         try Ingest.Session.requeueFromBaseline(at: tempDir, baselineDir: baselineDir, maxDepth: 15)
 
-        let after = try CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
+        let after = try Shared.Models.CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
         let queue = after.crawlState?.queue ?? []
         #expect(queue.count == 2)
         #expect(
@@ -477,12 +477,12 @@ struct ResumeAndStartCleanTests {
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         // Write a metadata.json with no crawlState (e.g. cleared by --start-clean).
-        var metadata = CrawlMetadata()
+        var metadata = Shared.Models.CrawlMetadata()
         try metadata.save(to: Self.metadataFile(in: tempDir))
 
         // Should not throw and should not synthesize a crawlState.
         try Ingest.Session.requeueErroredURLs(at: tempDir, maxDepth: 15)
-        let after = try CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
+        let after = try Shared.Models.CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
         #expect(after.crawlState == nil)
     }
 
@@ -533,7 +533,7 @@ struct ResumeAndStartCleanTests {
 
         // Empty metadata — no crawlState field.
         let file = Self.metadataFile(in: tempDir)
-        let metadata = CrawlMetadata()
+        let metadata = Shared.Models.CrawlMetadata()
         try metadata.save(to: file)
 
         let config = Shared.ChangeDetectionConfiguration(
@@ -735,7 +735,7 @@ struct ResumeAndStartCleanTests {
         framework: String,
         filename: String,
         foreignFilePath: String
-    ) throws -> PageMetadata {
+    ) throws -> Shared.Models.PageMetadata {
         // Make the actual file on disk under outputDir/framework/.
         let frameworkDir = outputDir.appendingPathComponent(framework)
         try FileManager.default.createDirectory(at: frameworkDir, withIntermediateDirectories: true)
@@ -744,7 +744,7 @@ struct ResumeAndStartCleanTests {
 
         // PageMetadata records the *foreign* path — same basename / framework
         // as the on-disk file, but a host-specific absolute prefix.
-        return PageMetadata(
+        return Shared.Models.PageMetadata(
             url: "https://developer.apple.com/documentation/\(framework)",
             framework: framework,
             filePath: foreignFilePath,
@@ -763,7 +763,7 @@ struct ResumeAndStartCleanTests {
         // Build a metadata fixture: 3 pages whose `filePath` strings are from
         // a different machine, but whose actual files exist under outputDir.
         // This is the rsync-from-another-host scenario — exact bug we hit on Claw.
-        var metadata = CrawlMetadata()
+        var metadata = Shared.Models.CrawlMetadata()
         let frameworks = ["accessibility", "swiftui", "foundation"]
         for fw in frameworks {
             let page = try Self.writeFixturePagesAndFile(
@@ -786,9 +786,9 @@ struct ResumeAndStartCleanTests {
         defer { try? FileManager.default.removeItem(at: outputDir) }
 
         // 5 page entries, but no files on disk → genuinely lying metadata
-        var metadata = CrawlMetadata()
+        var metadata = Shared.Models.CrawlMetadata()
         for fw in ["a", "b", "c", "d", "e"] {
-            metadata.pages["https://x/\(fw)"] = PageMetadata(
+            metadata.pages["https://x/\(fw)"] = Shared.Models.PageMetadata(
                 url: "https://x/\(fw)",
                 framework: fw,
                 filePath: "/anywhere/\(fw)/file.json",
@@ -812,15 +812,15 @@ struct ResumeAndStartCleanTests {
         // which is the right behavior at runtime but breaks this test.)
         let foreignRoot = "/__nonexistent-foreign-host-\(UUID().uuidString)"
         let outputDir = URL(fileURLWithPath: "/__nonexistent-target-host-\(UUID().uuidString)/cupertino/docs")
-        var metadata = CrawlMetadata()
-        metadata.pages["u1"] = PageMetadata(
+        var metadata = Shared.Models.CrawlMetadata()
+        metadata.pages["u1"] = Shared.Models.PageMetadata(
             url: "u1",
             framework: "accessibility",
             filePath: "\(foreignRoot)/cupertino/docs/accessibility/documentation_accessibility.json",
             contentHash: "h1",
             depth: 0
         )
-        metadata.pages["u2"] = PageMetadata(
+        metadata.pages["u2"] = Shared.Models.PageMetadata(
             url: "u2",
             framework: "swiftui",
             filePath: "\(foreignRoot)/some/swiftui/documentation_swiftui.json",
@@ -844,8 +844,8 @@ struct ResumeAndStartCleanTests {
     @Test("rebasePagePaths is idempotent — running twice does not change paths")
     func rebasePathsIdempotent() {
         let outputDir = URL(fileURLWithPath: "/Volumes/ClawSSD/.cupertino/docs")
-        var metadata = CrawlMetadata()
-        metadata.pages["u1"] = PageMetadata(
+        var metadata = Shared.Models.CrawlMetadata()
+        metadata.pages["u1"] = Shared.Models.PageMetadata(
             url: "u1",
             framework: "accessibility",
             filePath: "/Volumes/ClawSSD/.cupertino/docs/accessibility/documentation_accessibility.json",
@@ -872,7 +872,7 @@ struct ResumeAndStartCleanTests {
         // Stage 1: build a metadata.json that looks like it came from another
         // host. crawlState marks the session active; pages dict has foreign
         // filePaths but the actual files exist under outputDir.
-        var metadata = CrawlMetadata()
+        var metadata = Shared.Models.CrawlMetadata()
         for fw in ["accessibility", "swiftui", "foundation"] {
             let page = try Self.writeFixturePagesAndFile(
                 outputDir: outputDir,
@@ -882,12 +882,12 @@ struct ResumeAndStartCleanTests {
             )
             metadata.pages[page.url] = page
         }
-        metadata.crawlState = CrawlSessionState(
+        metadata.crawlState = Shared.Models.CrawlSessionState(
             visited: [
                 "https://developer.apple.com/documentation/accessibility",
                 "https://developer.apple.com/documentation/swiftui",
             ],
-            queue: [QueuedURL(url: "https://developer.apple.com/documentation/foundation", depth: 0)],
+            queue: [Shared.Models.QueuedURL(url: "https://developer.apple.com/documentation/foundation", depth: 0)],
             startURL: "https://developer.apple.com/documentation/",
             outputDirectory: "/Users/foreign/.cupertino/docs",
             sessionStartTime: Date(),
@@ -982,7 +982,7 @@ struct ResumeAndStartCleanTests {
             startURL: Self.seedURL
         )
 
-        let metadata = try CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
+        let metadata = try Shared.Models.CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
         #expect(metadata.crawlState != nil)
         let queue = metadata.crawlState?.queue ?? []
         #expect(queue.count == 3)
@@ -1015,7 +1015,7 @@ struct ResumeAndStartCleanTests {
             startURL: Self.seedURL
         )
 
-        let metadata = try CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
+        let metadata = try Shared.Models.CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
         #expect(metadata.crawlState?.queue.count == 2)
     }
 
@@ -1048,7 +1048,7 @@ struct ResumeAndStartCleanTests {
             startURL: Self.seedURL
         )
 
-        let metadata = try CrawlMetadata.load(from: metaFile)
+        let metadata = try Shared.Models.CrawlMetadata.load(from: metaFile)
         let queue = metadata.crawlState?.queue ?? []
         #expect(queue.count == 4)
         // New URLs at the front, queued at depth 0 so descent follows

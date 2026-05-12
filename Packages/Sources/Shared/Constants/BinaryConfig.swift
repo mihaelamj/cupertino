@@ -1,6 +1,6 @@
 import Foundation
 
-extension Shared {
+extension Shared.Constants {
     /// Optional configuration loaded from a JSON file sitting next to the cupertino
     /// executable. Lets multiple binaries (e.g. brew install vs dev build) point at
     /// different data directories without env vars or per-command flags.

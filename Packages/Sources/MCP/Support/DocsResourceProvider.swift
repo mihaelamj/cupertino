@@ -14,7 +14,7 @@ import SharedUtils
 /// Provides crawled documentation as MCP resources
 public actor DocsResourceProvider: MCP.Core.ResourceProvider {
     private let configuration: Shared.Configuration
-    private var metadata: CrawlMetadata?
+    private var metadata: Shared.Models.CrawlMetadata?
     private let evolutionDirectory: URL
     private let archiveDirectory: URL
     private let searchIndex: Search.Index?
@@ -56,7 +56,7 @@ public actor DocsResourceProvider: MCP.Core.ResourceProvider {
                     continue
                 }
                 let uri = "\(Shared.Constants.Search.appleDocsScheme)\(pageMetadata.framework)/"
-                    + "\(URLUtilities.filename(from: parsedURL))"
+                    + "\(Shared.Models.URLUtilities.filename(from: parsedURL))"
                 let resource = MCP.Core.Protocols.Resource(
                     uri: uri,
                     name: extractTitle(from: url),
@@ -146,7 +146,7 @@ public actor DocsResourceProvider: MCP.Core.ResourceProvider {
             if FileManager.default.fileExists(atPath: jsonPath.path) {
                 // Read JSON and extract rawMarkdown
                 let jsonData = try Data(contentsOf: jsonPath)
-                let page = try JSONCoding.decode(StructuredDocumentationPage.self, from: jsonData)
+                let page = try Shared.Utils.JSONCoding.decode(Shared.Models.StructuredDocumentationPage.self, from: jsonData)
                 guard let rawMarkdown = page.rawMarkdown else {
                     throw ToolError.notFound(uri)
                 }
@@ -239,7 +239,7 @@ public actor DocsResourceProvider: MCP.Core.ResourceProvider {
         }
 
         do {
-            metadata = try CrawlMetadata.load(from: metadataURL)
+            metadata = try Shared.Models.CrawlMetadata.load(from: metadataURL)
         } catch {
             Logging.Log.warning("Failed to load metadata: \(error)", category: .mcp)
         }
@@ -251,13 +251,13 @@ public actor DocsResourceProvider: MCP.Core.ResourceProvider {
     /// can exercise `listResources` against a hand-crafted `CrawlMetadata`
     /// (including malformed-URL rows) without bootstrapping a real
     /// crawl + metadata.json fixture on disk.
-    func injectMetadataForTesting(_ metadata: CrawlMetadata) {
+    func injectMetadataForTesting(_ metadata: Shared.Models.CrawlMetadata) {
         self.metadata = metadata
     }
 
     // MARK: - Metadata
 
-    private func getMetadata() async throws -> CrawlMetadata {
+    private func getMetadata() async throws -> Shared.Models.CrawlMetadata {
         if let metadata {
             return metadata
         }

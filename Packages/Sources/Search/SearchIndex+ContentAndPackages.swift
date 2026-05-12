@@ -152,7 +152,7 @@ extension Search.Index {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
 
-            if let page = try? decoder.decode(StructuredDocumentationPage.self, from: jsonData) {
+            if let page = try? decoder.decode(Shared.Models.StructuredDocumentationPage.self, from: jsonData) {
                 // 1. Try rawMarkdown first
                 if let rawMarkdown = page.rawMarkdown, !rawMarkdown.isEmpty {
                     return rawMarkdown

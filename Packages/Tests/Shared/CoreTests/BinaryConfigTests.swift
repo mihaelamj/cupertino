@@ -10,7 +10,7 @@ struct BinaryConfigTests {
 
     @Test("nil search directory yields empty config")
     func nilDirectory() {
-        let config = Shared.BinaryConfig.load(from: nil)
+        let config = Shared.Constants.BinaryConfig.load(from: nil)
         #expect(config.baseDirectory == nil)
         #expect(config.resolvedBaseDirectory == nil)
     }
@@ -19,7 +19,7 @@ struct BinaryConfigTests {
     func missingFile() throws {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let config = Shared.BinaryConfig.load(from: dir)
+        let config = Shared.Constants.BinaryConfig.load(from: dir)
         #expect(config.baseDirectory == nil)
         #expect(config.resolvedBaseDirectory == nil)
     }
@@ -29,7 +29,7 @@ struct BinaryConfigTests {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         try Self.writeConfig(in: dir, contents: #"{"baseDirectory":"/var/tmp/cupertino-dev"}"#)
-        let config = Shared.BinaryConfig.load(from: dir)
+        let config = Shared.Constants.BinaryConfig.load(from: dir)
         #expect(config.baseDirectory == "/var/tmp/cupertino-dev")
         #expect(config.resolvedBaseDirectory?.path == "/var/tmp/cupertino-dev")
     }
@@ -39,7 +39,7 @@ struct BinaryConfigTests {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         try Self.writeConfig(in: dir, contents: #"{"baseDirectory":"~/.cupertino-dev"}"#)
-        let config = Shared.BinaryConfig.load(from: dir)
+        let config = Shared.Constants.BinaryConfig.load(from: dir)
         let expected = ("~/.cupertino-dev" as NSString).expandingTildeInPath
         #expect(config.resolvedBaseDirectory?.path == expected)
         #expect(config.resolvedBaseDirectory?.path.hasPrefix("~") == false)
@@ -50,7 +50,7 @@ struct BinaryConfigTests {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         try Self.writeConfig(in: dir, contents: "{}")
-        let config = Shared.BinaryConfig.load(from: dir)
+        let config = Shared.Constants.BinaryConfig.load(from: dir)
         #expect(config.baseDirectory == nil)
         #expect(config.resolvedBaseDirectory == nil)
     }
@@ -60,7 +60,7 @@ struct BinaryConfigTests {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         try Self.writeConfig(in: dir, contents: #"{"baseDirectory":""}"#)
-        let config = Shared.BinaryConfig.load(from: dir)
+        let config = Shared.Constants.BinaryConfig.load(from: dir)
         #expect(config.baseDirectory == "")
         #expect(config.resolvedBaseDirectory == nil)
     }
@@ -70,7 +70,7 @@ struct BinaryConfigTests {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         try Self.writeConfig(in: dir, contents: "{ this is not valid")
-        let config = Shared.BinaryConfig.load(from: dir)
+        let config = Shared.Constants.BinaryConfig.load(from: dir)
         #expect(config.baseDirectory == nil)
         #expect(config.resolvedBaseDirectory == nil)
     }
@@ -83,13 +83,13 @@ struct BinaryConfigTests {
             in: dir,
             contents: #"{"baseDirectory":"/tmp/x","futureKey":"ignored","another":42}"#
         )
-        let config = Shared.BinaryConfig.load(from: dir)
+        let config = Shared.Constants.BinaryConfig.load(from: dir)
         #expect(config.baseDirectory == "/tmp/x")
     }
 
     @Test("file name constant is cupertino.config.json")
     func fileNameConstant() {
-        #expect(Shared.BinaryConfig.fileName == "cupertino.config.json")
+        #expect(Shared.Constants.BinaryConfig.fileName == "cupertino.config.json")
     }
 
     // MARK: - Helpers
@@ -102,7 +102,7 @@ struct BinaryConfigTests {
     }
 
     private static func writeConfig(in dir: URL, contents: String) throws {
-        let url = dir.appendingPathComponent(Shared.BinaryConfig.fileName)
+        let url = dir.appendingPathComponent(Shared.Constants.BinaryConfig.fileName)
         try contents.write(to: url, atomically: true, encoding: .utf8)
     }
 }

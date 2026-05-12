@@ -162,7 +162,7 @@ public struct RefResolver {
         for fileURL in pageFiles {
             stats.pagesScanned += 1
             guard let data = try? Data(contentsOf: fileURL) else { continue }
-            guard let page = try? decoder.decode(StructuredDocumentationPage.self, from: data) else {
+            guard let page = try? decoder.decode(Shared.Models.StructuredDocumentationPage.self, from: data) else {
                 continue
             }
 
@@ -209,7 +209,7 @@ public struct RefResolver {
 
         for fileURL in pageFiles {
             guard let data = try? Data(contentsOf: fileURL) else { continue }
-            guard let page = try? decoder.decode(StructuredDocumentationPage.self, from: data) else {
+            guard let page = try? decoder.decode(Shared.Models.StructuredDocumentationPage.self, from: data) else {
                 continue
             }
             guard let markdown = page.rawMarkdown, !markdown.isEmpty else { continue }
@@ -375,14 +375,14 @@ private extension NSTextCheckingResult {
 
 // MARK: - StructuredDocumentationPage helper
 
-private extension StructuredDocumentationPage {
+private extension Shared.Models.StructuredDocumentationPage {
     /// Return a copy of the page with `rawMarkdown` replaced. All other
     /// fields preserved including `crawlDepth` and `contentHash` (we
     /// deliberately leave the content hash intact — resolve-refs is a
     /// downstream rewrite, not a recrawl, and we don't want it to look
     /// like the page changed at the source).
-    func with(rawMarkdown newMarkdown: String) -> StructuredDocumentationPage {
-        StructuredDocumentationPage(
+    func with(rawMarkdown newMarkdown: String) -> Shared.Models.StructuredDocumentationPage {
+        Shared.Models.StructuredDocumentationPage(
             id: id,
             url: url,
             title: title,

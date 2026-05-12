@@ -77,7 +77,7 @@ struct ReadSampleCommand: AsyncParsableCommand {
         Logging.Log.output("Project ID: \(project.id)")
         Logging.Log.output("Frameworks: \(project.frameworks.joined(separator: ", "))")
         Logging.Log.output("Files: \(project.fileCount)")
-        Logging.Log.output("Size: \(Shared.Formatting.formatBytes(project.totalSize))")
+        Logging.Log.output("Size: \(Shared.Utils.Formatting.formatBytes(project.totalSize))")
 
         if !project.webURL.isEmpty {
             Logging.Log.output("Apple Developer: \(project.webURL)")
@@ -161,7 +161,7 @@ struct ReadSampleCommand: AsyncParsableCommand {
         Logging.Log.output("## Metadata\n")
         Logging.Log.output("- **Frameworks:** \(project.frameworks.joined(separator: ", "))")
         Logging.Log.output("- **Files:** \(project.fileCount)")
-        Logging.Log.output("- **Size:** \(Shared.Formatting.formatBytes(project.totalSize))")
+        Logging.Log.output("- **Size:** \(Shared.Utils.Formatting.formatBytes(project.totalSize))")
 
         if !project.webURL.isEmpty {
             Logging.Log.output("- **Apple Developer:** \(project.webURL)")

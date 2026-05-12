@@ -273,7 +273,7 @@ extension SaveCommand {
         Logging.ConsoleLogger.info("   Total documents: \(docCount)")
         Logging.ConsoleLogger.info("   Frameworks: \(frameworks.count)")
         Logging.ConsoleLogger.info("   Indexed: \(stats.successCount) | Errors: \(stats.errorCount)")
-        Logging.ConsoleLogger.info("   Time: \(Shared.Formatting.formatDuration(elapsed))")
+        Logging.ConsoleLogger.info("   Time: \(Shared.Utils.Formatting.formatDuration(elapsed))")
         Logging.ConsoleLogger.info("   Database: \(searchDBURL.path)")
         Logging.ConsoleLogger.info("   Size: \(Self.formatFileSize(searchDBURL))")
         Logging.ConsoleLogger.info(

@@ -49,7 +49,7 @@ struct SaveCommandTests {
         let searchDbPath = tempDir.appendingPathComponent("search.db")
         let searchIndex = try await Search.Index(dbPath: searchDbPath)
 
-        let metadata = try CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
+        let metadata = try Shared.Models.CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
         let builder = Search.IndexBuilder(
             searchIndex: searchIndex,
             metadata: metadata,
@@ -103,7 +103,7 @@ struct SaveCommandTests {
         let searchDbPath = tempDir.appendingPathComponent("search.db")
         let searchIndex = try await Search.Index(dbPath: searchDbPath)
 
-        let metadata = try CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
+        let metadata = try Shared.Models.CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
         let builder = Search.IndexBuilder(
             searchIndex: searchIndex,
             metadata: metadata,
@@ -142,7 +142,7 @@ struct SaveCommandTests {
         let searchIndex = try await Search.Index(dbPath: searchDbPath)
 
         // Create empty metadata
-        let emptyMetadata = CrawlMetadata()
+        let emptyMetadata = Shared.Models.CrawlMetadata()
         let metadataFile = tempDir.appendingPathComponent("metadata.json")
         try emptyMetadata.save(to: metadataFile)
 
@@ -179,7 +179,7 @@ struct SaveCommandTests {
         try FileManager.default.createDirectory(at: evolutionDir, withIntermediateDirectories: true)
 
         // Create minimal metadata
-        let metadata = CrawlMetadata()
+        let metadata = Shared.Models.CrawlMetadata()
         let metadataFile = baseDir.appendingPathComponent("metadata.json")
         try metadata.save(to: metadataFile)
 
@@ -234,7 +234,7 @@ struct SaveCommandTests {
         try FileManager.default.createDirectory(at: swiftDir, withIntermediateDirectories: true)
 
         // Create test JSON files (StructuredDocumentationPage format)
-        let arrayPage = try StructuredDocumentationPage(
+        let arrayPage = try Shared.Models.StructuredDocumentationPage(
             url: #require(URL(string: "https://developer.apple.com/documentation/swift/array")),
             title: "Array",
             kind: .struct,
@@ -243,9 +243,9 @@ struct SaveCommandTests {
             rawMarkdown: "# Array\n\nAn ordered collection of elements."
         )
         let arrayDoc = swiftDir.appendingPathComponent("array.json")
-        try JSONCoding.encode(arrayPage, to: arrayDoc)
+        try Shared.Utils.JSONCoding.encode(arrayPage, to: arrayDoc)
 
-        let dictPage = try StructuredDocumentationPage(
+        let dictPage = try Shared.Models.StructuredDocumentationPage(
             url: #require(URL(string: "https://developer.apple.com/documentation/swift/dictionary")),
             title: "Dictionary",
             kind: .struct,
@@ -254,13 +254,13 @@ struct SaveCommandTests {
             rawMarkdown: "# Dictionary\n\nA collection of key-value pairs."
         )
         let dictDoc = swiftDir.appendingPathComponent("dictionary.json")
-        try JSONCoding.encode(dictPage, to: dictDoc)
+        try Shared.Utils.JSONCoding.encode(dictPage, to: dictDoc)
 
         // Create swiftui directory
         let swiftuiDir = tempDir.appendingPathComponent("docs/swiftui")
         try FileManager.default.createDirectory(at: swiftuiDir, withIntermediateDirectories: true)
 
-        let viewPage = try StructuredDocumentationPage(
+        let viewPage = try Shared.Models.StructuredDocumentationPage(
             url: #require(URL(string: "https://developer.apple.com/documentation/swiftui/view")),
             title: "View",
             kind: .protocol,
@@ -269,7 +269,7 @@ struct SaveCommandTests {
             rawMarkdown: "# View\n\nA piece of user interface."
         )
         let viewDoc = swiftuiDir.appendingPathComponent("view.json")
-        try JSONCoding.encode(viewPage, to: viewDoc)
+        try Shared.Utils.JSONCoding.encode(viewPage, to: viewDoc)
 
         // Build index WITHOUT metadata.json
         let searchDbPath = tempDir.appendingPathComponent("search.db")
@@ -314,7 +314,7 @@ struct SaveCommandTests {
         let nestedDir = tempDir.appendingPathComponent("docs/foundation/collections")
         try FileManager.default.createDirectory(at: nestedDir, withIntermediateDirectories: true)
 
-        let nestedPage = try StructuredDocumentationPage(
+        let nestedPage = try Shared.Models.StructuredDocumentationPage(
             url: #require(URL(string: "https://developer.apple.com/documentation/foundation/nsarray")),
             title: "NSArray",
             kind: .class,
@@ -323,7 +323,7 @@ struct SaveCommandTests {
             rawMarkdown: "# NSArray\n\nFoundation array class."
         )
         let nestedDoc = nestedDir.appendingPathComponent("array.json")
-        try JSONCoding.encode(nestedPage, to: nestedDoc)
+        try Shared.Utils.JSONCoding.encode(nestedPage, to: nestedDoc)
 
         // Build index
         let searchDbPath = tempDir.appendingPathComponent("search.db")

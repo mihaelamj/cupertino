@@ -12,7 +12,7 @@ import Testing
 
 @Test("ResolvedPackagesStore.checksum: same inputs yield same checksum")
 func checksumStable() {
-    let seeds: [PackageReference] = [
+    let seeds: [Shared.Models.PackageReference] = [
         .init(owner: "apple", repo: "swift-nio", url: "https://github.com/apple/swift-nio", priority: .appleOfficial),
         .init(owner: "vapor", repo: "vapor", url: "https://github.com/vapor/vapor", priority: .ecosystem),
     ]
@@ -42,7 +42,7 @@ func checksumSeedOrderAgnostic() {
 
 @Test("ResolvedPackagesStore.checksum: adding a seed changes the checksum")
 func checksumAddedSeedInvalidates() {
-    let base: [PackageReference] = [
+    let base: [Shared.Models.PackageReference] = [
         .init(owner: "apple", repo: "swift-nio", url: "", priority: .appleOfficial),
     ]
     let extended = base + [
@@ -55,7 +55,7 @@ func checksumAddedSeedInvalidates() {
 
 @Test("ResolvedPackagesStore.checksum: adding an exclusion changes the checksum")
 func checksumAddedExclusionInvalidates() {
-    let seeds: [PackageReference] = [
+    let seeds: [Shared.Models.PackageReference] = [
         .init(owner: "apple", repo: "swift-nio", url: "", priority: .appleOfficial),
     ]
     let a = Core.ResolvedPackagesStore.checksum(seeds: seeds, exclusions: [])
@@ -226,7 +226,7 @@ func resolverSeedIsSelfParent() async throws {
     )
 
     let resolver = Core.PackageDependencyResolver(canonicalizer: canonicalizer)
-    let seeds: [PackageReference] = [
+    let seeds: [Shared.Models.PackageReference] = [
         .init(owner: "apple", repo: "only-seed", url: "https://github.com/apple/only-seed", priority: .appleOfficial),
     ]
     // No Package.swift will be found for a fake repo → missing manifest, seed still
@@ -254,7 +254,7 @@ func resolverExcludesSeed() async throws {
         canonicalizer: canonicalizer,
         exclusions: ["apple/only-seed"]
     )
-    let seeds: [PackageReference] = [
+    let seeds: [Shared.Models.PackageReference] = [
         .init(owner: "apple", repo: "only-seed", url: "https://github.com/apple/only-seed", priority: .appleOfficial),
     ]
     let (packages, stats) = await resolver.resolve(seeds: seeds)
@@ -454,7 +454,7 @@ struct ResolverNetworkIntegration {
             concurrency: 4
         )
 
-        let seeds: [PackageReference] = [
+        let seeds: [Shared.Models.PackageReference] = [
             .init(
                 owner: "pointfreeco",
                 repo: "swift-composable-architecture",
@@ -493,7 +493,7 @@ struct ResolverNetworkIntegration {
             rootDirectory: tempDir.appendingPathComponent("manifests")
         )
 
-        let seeds: [PackageReference] = [
+        let seeds: [Shared.Models.PackageReference] = [
             .init(
                 owner: "pointfreeco",
                 repo: "swift-dependencies",
@@ -544,7 +544,7 @@ func resolverCanonicalizeDedupes() async throws {
     )
 
     let resolver = Core.PackageDependencyResolver(canonicalizer: canonicalizer)
-    let seeds: [PackageReference] = [
+    let seeds: [Shared.Models.PackageReference] = [
         .init(owner: "fakealias", repo: "only", url: "https://github.com/fakealias/only", priority: .appleOfficial),
         .init(owner: "canonicalfake", repo: "only", url: "https://github.com/canonicalfake/only", priority: .appleOfficial),
     ]

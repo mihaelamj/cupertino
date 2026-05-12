@@ -37,7 +37,7 @@ extension Core {
         // on resume so the existing CrawlSessionState schema doesn't need a
         // migration. (#206)
         private var enqueued = Set<String>()
-        private var stats: CrawlStatistics
+        private var stats: Shared.Models.CrawlStatistics
 
         private var onProgress: (@Sendable (CrawlProgress) -> Void)?
         private var logFileHandle: FileHandle?
@@ -47,7 +47,7 @@ extension Core {
             changeDetection = configuration.changeDetection
             output = configuration.output
             state = CrawlerState(configuration: configuration.changeDetection)
-            stats = CrawlStatistics()
+            stats = Shared.Models.CrawlStatistics()
             super.init()
 
             // Initialize WKWebCrawler.ContentFetcher from WKWebCrawler namespace
@@ -64,7 +64,7 @@ extension Core {
         // MARK: - Public API
 
         /// Start crawling from the configured start URL
-        public func crawl(onProgress: (@Sendable (CrawlProgress) -> Void)? = nil) async throws -> CrawlStatistics {
+        public func crawl(onProgress: (@Sendable (CrawlProgress) -> Void)? = nil) async throws -> Shared.Models.CrawlStatistics {
             self.onProgress = onProgress
 
             // Check for resumable session (must match current start URL)
@@ -81,7 +81,7 @@ extension Core {
                 visited = savedSession.visited
                 queue = savedSession.queue.compactMap { queued in
                     guard let url = URL(string: queued.url),
-                          let normalized = URLUtilities.normalize(url) else { return nil }
+                          let normalized = Shared.Models.URLUtilities.normalize(url) else { return nil }
                     return (url: normalized, depth: queued.depth)
                 }
                 // Rebuild the enqueued-URL set from the restored queue so the
@@ -104,7 +104,7 @@ extension Core {
                 // Initialize stats for new crawl
                 let startTime = Date()
                 await state.updateStatistics { stats in
-                    stats = CrawlStatistics(startTime: startTime)
+                    stats = Shared.Models.CrawlStatistics(startTime: startTime)
                 }
 
                 // Initialize queue — seed from technologies.json for Apple docs root
@@ -117,17 +117,17 @@ extension Core {
                         logInfo("📋 Fetching technology index for complete framework coverage...")
                         let frameworkURLs = try await TechnologiesIndexFetcher.fetchFrameworkURLs()
                         queue = frameworkURLs.compactMap { url in
-                            URLUtilities.normalize(url).map { (url: $0, depth: 0) }
+                            Shared.Models.URLUtilities.normalize(url).map { (url: $0, depth: 0) }
                         }
                         logInfo("   ✅ Seeded queue with \(frameworkURLs.count) framework root URLs")
                     } catch {
                         logInfo("   ⚠️ Failed to fetch technology index: \(error.localizedDescription)")
                         logInfo("   ⚠️ Falling back to start URL only")
-                        let startURL = URLUtilities.normalize(configuration.startURL) ?? configuration.startURL
+                        let startURL = Shared.Models.URLUtilities.normalize(configuration.startURL) ?? configuration.startURL
                         queue = [(url: startURL, depth: 0)]
                     }
                 } else {
-                    let startURL = URLUtilities.normalize(configuration.startURL) ?? configuration.startURL
+                    let startURL = Shared.Models.URLUtilities.normalize(configuration.startURL) ?? configuration.startURL
                     queue = [(url: startURL, depth: 0)]
                 }
 
@@ -154,7 +154,7 @@ extension Core {
                 // raw URL string since enqueue keys on `link.absoluteString`.
                 enqueued.remove(url.absoluteString)
 
-                guard let normalizedURL = URLUtilities.normalize(url),
+                guard let normalizedURL = Shared.Models.URLUtilities.normalize(url),
                       !visited.contains(normalizedURL.absoluteString)
                 else {
                     continue
@@ -251,7 +251,7 @@ extension Core {
         }
 
         private func crawlPage(url: URL, depth: Int) async throws {
-            let framework = URLUtilities.extractFramework(from: url)
+            let framework = Shared.Models.URLUtilities.extractFramework(from: url)
 
             // Get framework page count for display
             let fwStats = await state.getFrameworkStats(framework: framework)
@@ -262,7 +262,7 @@ extension Core {
             logInfo("📄 \(progress) depth=\(depth) \(urlString)")
 
             // Try JSON API first (better data quality), fall back to HTML if unavailable
-            var structuredPage: StructuredDocumentationPage?
+            var structuredPage: Shared.Models.StructuredDocumentationPage?
             var markdown: String
             var links: [URL]
             // storageURL is the post-redirect canonical URL used for all on-disk paths.
@@ -353,18 +353,18 @@ extension Core {
             }
 
             // Compute content hash from structured page or markdown
-            let contentHash = structuredPage?.contentHash ?? HashUtilities.sha256(of: markdown)
+            let contentHash = structuredPage?.contentHash ?? Shared.Models.HashUtilities.sha256(of: markdown)
 
             // Derive output path from the canonical post-redirect URL so the on-disk
             // structure always reflects the final URL, not the stale request URL.
-            let storageFramework = URLUtilities.extractFramework(from: storageURL)
+            let storageFramework = Shared.Models.URLUtilities.extractFramework(from: storageURL)
             let frameworkDir = configuration.outputDirectory.appendingPathComponent(storageFramework)
             try FileManager.default.createDirectory(
                 at: frameworkDir,
                 withIntermediateDirectories: true
             )
 
-            let filename = URLUtilities.filename(from: storageURL)
+            let filename = Shared.Models.URLUtilities.filename(from: storageURL)
 
             // JSON file path (primary output format)
             let jsonFilePath = frameworkDir.appendingPathComponent(
@@ -456,7 +456,7 @@ extension Core {
         /// Load page via Apple's JSON API - avoids WKWebView memory issues
         /// Returns structured page data for JSON output, links for crawling, and the post-redirect canonical URL
         private func loadPageViaJSON(url: URL, depth: Int) async throws -> (
-            structuredPage: StructuredDocumentationPage?,
+            structuredPage: Shared.Models.StructuredDocumentationPage?,
             markdown: String,
             links: [URL],
             canonicalURL: URL
@@ -537,7 +537,7 @@ extension Core {
             }
 
             // Check if already visited
-            guard let normalized = URLUtilities.normalize(url) else {
+            guard let normalized = Shared.Models.URLUtilities.normalize(url) else {
                 return false
             }
 
@@ -547,7 +547,7 @@ extension Core {
             }
 
             return !queue.contains { queuedURL, _ in
-                URLUtilities.normalize(queuedURL)?.absoluteString == normalizedString
+                Shared.Models.URLUtilities.normalize(queuedURL)?.absoluteString == normalizedString
             }
         }
 
@@ -579,8 +579,8 @@ extension Core {
                 "   New: \(stats.newPages) | Updated: \(stats.updatedPages) | Skipped: \(stats.skippedPages)",
                 "   Errors: \(stats.errors)",
                 "   Speed: \(String(format: "%.2f", pagesPerSecond)) pages/sec",
-                "   Elapsed: \(Shared.Formatting.formatDurationVerbose(elapsed))",
-                "   ETA: \(Shared.Formatting.formatDurationVerbose(etaSeconds))",
+                "   Elapsed: \(Shared.Utils.Formatting.formatDurationVerbose(elapsed))",
+                "   ETA: \(Shared.Utils.Formatting.formatDurationVerbose(etaSeconds))",
                 "",
             ]
 
@@ -598,7 +598,7 @@ extension Core {
                 "   Updated pages: \(stats.updatedPages)",
                 "   Skipped (unchanged): \(stats.skippedPages)",
                 "   Errors: \(stats.errors)",
-                stats.duration.map { "   Duration: \(Shared.Formatting.formatDurationVerbose($0))" } ?? "",
+                stats.duration.map { "   Duration: \(Shared.Utils.Formatting.formatDurationVerbose($0))" } ?? "",
                 "",
                 "📁 Output: \(configuration.outputDirectory.path)",
             ]
@@ -672,7 +672,7 @@ public struct CrawlProgress: Sendable {
     public let currentURL: URL
     public let visitedCount: Int
     public let totalPages: Int
-    public let stats: CrawlStatistics
+    public let stats: Shared.Models.CrawlStatistics
 
     public var percentage: Double {
         Double(visitedCount) / Double(totalPages) * 100

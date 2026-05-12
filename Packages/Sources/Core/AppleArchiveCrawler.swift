@@ -82,7 +82,7 @@ extension Core {
 
                     // Save book.json for reference
                     let bookJSONPath = guideDir.appendingPathComponent("book.json")
-                    let bookData = try JSONCoding.encode(bookJSON)
+                    let bookData = try Shared.Utils.JSONCoding.encode(bookJSON)
                     try bookData.write(to: bookJSONPath)
 
                     // Crawl each page

@@ -34,7 +34,7 @@ struct HomeView {
         result += renderPaddedLine("Quick Stats", width: width)
         let selected = " \(stats.selectedPackages) pkgs"
         let downloaded = " \(stats.downloadedPackages) dl"
-        let totalSize = " \(Shared.Formatting.formatBytes(stats.totalSize))"
+        let totalSize = " \(Shared.Utils.Formatting.formatBytes(stats.totalSize))"
         let statsLine = "•\(selected) •\(downloaded) •\(totalSize)"
         result += renderPaddedLine(statsLine, width: width)
         result += Box.teeRight + String(repeating: Box.horizontal, count: width - 2) + Box.teeLeft + "\r\n"

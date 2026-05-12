@@ -42,21 +42,21 @@ struct DocsResourceProviderMalformedURLSkipTests {
         try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempRoot) }
 
-        let goodPage = PageMetadata(
+        let goodPage = Shared.Models.PageMetadata(
             url: "https://developer.apple.com/documentation/swiftui/list",
             framework: "swiftui",
             filePath: "/dev/null",
             contentHash: "good",
             depth: 0
         )
-        let badPage = PageMetadata(
+        let badPage = Shared.Models.PageMetadata(
             url: "",
             framework: "swiftui",
             filePath: "/dev/null",
             contentHash: "bad",
             depth: 0
         )
-        let metadata = CrawlMetadata(pages: [
+        let metadata = Shared.Models.CrawlMetadata(pages: [
             "https://developer.apple.com/documentation/swiftui/list": goodPage,
             "": badPage,
         ])
@@ -88,14 +88,14 @@ struct DocsResourceProviderMalformedURLSkipTests {
         try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempRoot) }
 
-        let badPage = PageMetadata(
+        let badPage = Shared.Models.PageMetadata(
             url: "",
             framework: "swiftui",
             filePath: "/dev/null",
             contentHash: "bad",
             depth: 0
         )
-        let metadata = CrawlMetadata(pages: ["": badPage])
+        let metadata = Shared.Models.CrawlMetadata(pages: ["": badPage])
 
         let provider = makeProvider(in: tempRoot)
         await provider.injectMetadataForTesting(metadata)

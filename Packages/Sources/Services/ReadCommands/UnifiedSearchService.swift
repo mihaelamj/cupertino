@@ -1,8 +1,8 @@
 import Foundation
 import SampleIndex
 import Search
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedUtils
 
 // MARK: - Unified Search Service
@@ -21,13 +21,13 @@ public actor UnifiedSearchService {
 
     /// Initialize with database paths (creates connections)
     public init(searchDbPath: URL?, sampleDbPath: URL?) async throws {
-        if let searchDbPath, PathResolver.exists(searchDbPath) {
+        if let searchDbPath, Shared.Utils.PathResolver.exists(searchDbPath) {
             searchIndex = try await Search.Index(dbPath: searchDbPath)
         } else {
             searchIndex = nil
         }
 
-        if let sampleDbPath, PathResolver.exists(sampleDbPath) {
+        if let sampleDbPath, Shared.Utils.PathResolver.exists(sampleDbPath) {
             sampleDatabase = try await SampleIndex.Database(dbPath: sampleDbPath)
         } else {
             sampleDatabase = nil
@@ -174,12 +174,12 @@ extension ServiceContainer {
         sampleDbPath: URL? = nil,
         operation: (UnifiedSearchService) async throws -> T
     ) async throws -> T {
-        let resolvedSearchPath = PathResolver.searchDatabase(searchDbPath)
+        let resolvedSearchPath = Shared.Utils.PathResolver.searchDatabase(searchDbPath)
         let resolvedSamplePath = sampleDbPath ?? SampleIndex.defaultDatabasePath
 
         let service = try await UnifiedSearchService(
-            searchDbPath: PathResolver.exists(resolvedSearchPath) ? resolvedSearchPath : nil,
-            sampleDbPath: PathResolver.exists(resolvedSamplePath) ? resolvedSamplePath : nil
+            searchDbPath: Shared.Utils.PathResolver.exists(resolvedSearchPath) ? resolvedSearchPath : nil,
+            sampleDbPath: Shared.Utils.PathResolver.exists(resolvedSamplePath) ? resolvedSamplePath : nil
         )
 
         return try await operation(service)

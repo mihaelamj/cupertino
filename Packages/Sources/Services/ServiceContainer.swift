@@ -1,8 +1,8 @@
 import Foundation
 import SampleIndex
 import Search
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedUtils
 
 // MARK: - Service Container
@@ -93,9 +93,9 @@ public actor ServiceContainer {
         dbPath: String? = nil,
         operation: (DocsSearchService) async throws -> T
     ) async throws -> T {
-        let resolvedPath = PathResolver.searchDatabase(dbPath)
+        let resolvedPath = Shared.Utils.PathResolver.searchDatabase(dbPath)
 
-        guard PathResolver.exists(resolvedPath) else {
+        guard Shared.Utils.PathResolver.exists(resolvedPath) else {
             throw ToolError.noData("Search database not found at \(resolvedPath.path). Run 'cupertino save' to build the index.")
         }
 
@@ -114,9 +114,9 @@ public actor ServiceContainer {
         dbPath: String? = nil,
         operation: (HIGSearchService) async throws -> T
     ) async throws -> T {
-        let resolvedPath = PathResolver.searchDatabase(dbPath)
+        let resolvedPath = Shared.Utils.PathResolver.searchDatabase(dbPath)
 
-        guard PathResolver.exists(resolvedPath) else {
+        guard Shared.Utils.PathResolver.exists(resolvedPath) else {
             throw ToolError.noData("Search database not found at \(resolvedPath.path). Run 'cupertino save' to build the index.")
         }
 
@@ -136,7 +136,7 @@ public actor ServiceContainer {
         dbPath: URL,
         operation: (SampleSearchService) async throws -> T
     ) async throws -> T {
-        guard PathResolver.exists(dbPath) else {
+        guard Shared.Utils.PathResolver.exists(dbPath) else {
             throw ToolError.noData("Sample database not found at \(dbPath.path). Run 'cupertino save --samples' to build the index.")
         }
 

@@ -1,7 +1,7 @@
 import Foundation
 import Logging
-import SharedCore
 import SharedConstants
+import SharedCore
 import SharedModels
 import SharedUtils
 
@@ -24,7 +24,7 @@ extension Ingest {
                 )
                 return
             }
-            var metadata = try CrawlMetadata.load(from: metadataFile)
+            var metadata = try Shared.Models.CrawlMetadata.load(from: metadataFile)
             metadata.crawlState = nil
             try metadata.save(to: metadataFile)
             Logging.ConsoleLogger.info(
@@ -46,7 +46,7 @@ extension Ingest {
                 )
                 return
             }
-            var metadata = try CrawlMetadata.load(from: metadataFile)
+            var metadata = try Shared.Models.CrawlMetadata.load(from: metadataFile)
             guard var crawlState = metadata.crawlState else {
                 Logging.ConsoleLogger.info(
                     "🔁 --retry-errors: no saved crawlState — nothing to retry"
@@ -64,7 +64,7 @@ extension Ingest {
                 return
             }
 
-            let erroredItems = errored.map { QueuedURL(url: $0, depth: maxDepth) }
+            let erroredItems = errored.map { Shared.Models.QueuedURL(url: $0, depth: maxDepth) }
             crawlState.queue = erroredItems + crawlState.queue
             for url in errored {
                 crawlState.visited.remove(url)
@@ -103,7 +103,7 @@ extension Ingest {
                 return
             }
 
-            var metadata = try CrawlMetadata.load(from: metadataFile)
+            var metadata = try Shared.Models.CrawlMetadata.load(from: metadataFile)
             guard var crawlState = metadata.crawlState else {
                 Logging.ConsoleLogger.info(
                     "🩹 --baseline: no saved crawlState — run with auto-resume "
@@ -150,7 +150,7 @@ extension Ingest {
                 return
             }
 
-            let injected = missing.map { QueuedURL(url: $0, depth: maxDepth) }
+            let injected = missing.map { Shared.Models.QueuedURL(url: $0, depth: maxDepth) }
             crawlState.queue = injected + crawlState.queue
             crawlState.lastSaveTime = Date()
             metadata.crawlState = crawlState
@@ -201,19 +201,19 @@ extension Ingest {
                 withIntermediateDirectories: true
             )
 
-            var metadata: CrawlMetadata
+            var metadata: Shared.Models.CrawlMetadata
             if FileManager.default.fileExists(atPath: metadataFile.path) {
-                metadata = try CrawlMetadata.load(from: metadataFile)
+                metadata = try Shared.Models.CrawlMetadata.load(from: metadataFile)
             } else {
-                metadata = CrawlMetadata()
+                metadata = Shared.Models.CrawlMetadata()
             }
 
-            var crawlState = metadata.crawlState ?? CrawlSessionState(
+            var crawlState = metadata.crawlState ?? Shared.Models.CrawlSessionState(
                 startURL: startURL.absoluteString,
                 outputDirectory: outputDirectory.path
             )
 
-            let newItems = validURLs.map { QueuedURL(url: $0, depth: 0) }
+            let newItems = validURLs.map { Shared.Models.QueuedURL(url: $0, depth: 0) }
             crawlState.queue = newItems + crawlState.queue
             crawlState.lastSaveTime = Date()
             metadata.crawlState = crawlState
@@ -234,7 +234,7 @@ extension Ingest {
             let metadataFile = directory.appendingPathComponent(Shared.Constants.FileName.metadata)
             guard FileManager.default.fileExists(atPath: metadataFile.path),
                   let data = try? Data(contentsOf: metadataFile),
-                  let metadata = try? JSONCoding.decode(CrawlMetadata.self, from: data),
+                  let metadata = try? Shared.Utils.JSONCoding.decode(Shared.Models.CrawlMetadata.self, from: data),
                   let session = metadata.crawlState,
                   session.isActive,
                   session.startURL == url.absoluteString

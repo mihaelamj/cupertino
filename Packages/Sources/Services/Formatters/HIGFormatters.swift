@@ -1,7 +1,7 @@
 import Foundation
 import Search
-import SharedCore
 import SharedConstants
+import SharedCore
 
 // MARK: - HIG Text Formatter
 

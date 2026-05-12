@@ -39,8 +39,8 @@ public actor SampleCodeCleaner {
 
     /// Clean all ZIP archives in the sample code directory
     public func cleanup(
-        onProgress: (@Sendable (CleanupProgress) -> Void)? = nil
-    ) async throws -> CleanupStatistics {
+        onProgress: (@Sendable (Shared.Models.CleanupProgress) -> Void)? = nil
+    ) async throws -> Shared.Models.CleanupStatistics {
         let startTime = Date()
 
         // Find all ZIP files
@@ -48,7 +48,7 @@ public actor SampleCodeCleaner {
 
         guard !zipFiles.isEmpty else {
             Logging.Log.info("No ZIP files found in \(sampleCodeDirectory.path)", category: .samples)
-            return CleanupStatistics(
+            return Shared.Models.CleanupStatistics(
                 totalArchives: 0,
                 cleanedArchives: 0,
                 skippedArchives: 0,
@@ -88,7 +88,7 @@ public actor SampleCodeCleaner {
                 }
             }
 
-            onProgress?(CleanupProgress(
+            onProgress?(Shared.Models.CleanupProgress(
                 current: index + 1,
                 total: zipFiles.count,
                 currentFile: zipFile.lastPathComponent,
@@ -97,7 +97,7 @@ public actor SampleCodeCleaner {
             ))
         }
 
-        return CleanupStatistics(
+        return Shared.Models.CleanupStatistics(
             totalArchives: zipFiles.count,
             cleanedArchives: cleanedArchives,
             skippedArchives: skippedArchives,
@@ -124,7 +124,7 @@ public actor SampleCodeCleaner {
     }
 
     /// Clean a single archive
-    private func cleanArchive(at zipURL: URL) async -> CleanupResult {
+    private func cleanArchive(at zipURL: URL) async -> Shared.Models.CleanupResult {
         let filename = zipURL.lastPathComponent
 
         // Get original size
@@ -133,7 +133,7 @@ public actor SampleCodeCleaner {
             let attributes = try FileManager.default.attributesOfItem(atPath: zipURL.path)
             originalSize = (attributes[.size] as? Int64) ?? 0
         } catch {
-            return CleanupResult(
+            return Shared.Models.CleanupResult(
                 filename: filename,
                 originalSize: 0,
                 cleanedSize: 0,
@@ -146,7 +146,7 @@ public actor SampleCodeCleaner {
         // Dry run - just report what would be cleaned
         if dryRun {
             let itemsToRemove = await countItemsToRemove(in: zipURL)
-            return CleanupResult(
+            return Shared.Models.CleanupResult(
                 filename: filename,
                 originalSize: originalSize,
                 cleanedSize: originalSize,
@@ -173,7 +173,7 @@ public actor SampleCodeCleaner {
             // Extract ZIP
             let extractResult = try await extractZip(zipURL, to: tempDir)
             guard extractResult else {
-                return CleanupResult(
+                return Shared.Models.CleanupResult(
                     filename: filename,
                     originalSize: originalSize,
                     cleanedSize: originalSize,
@@ -188,7 +188,7 @@ public actor SampleCodeCleaner {
 
             // Skip recompression if nothing was removed
             if itemsRemoved == 0 {
-                return CleanupResult(
+                return Shared.Models.CleanupResult(
                     filename: filename,
                     originalSize: originalSize,
                     cleanedSize: originalSize,
@@ -213,7 +213,7 @@ public actor SampleCodeCleaner {
 
             let compressResult = try await compressDirectory(tempDir, to: cleanedZipURL)
             guard compressResult else {
-                return CleanupResult(
+                return Shared.Models.CleanupResult(
                     filename: filename,
                     originalSize: originalSize,
                     cleanedSize: originalSize,
@@ -227,7 +227,7 @@ public actor SampleCodeCleaner {
             let newAttributes = try FileManager.default.attributesOfItem(atPath: cleanedZipURL.path)
             let cleanedSize = (newAttributes[.size] as? Int64) ?? 0
 
-            return CleanupResult(
+            return Shared.Models.CleanupResult(
                 filename: filename,
                 originalSize: originalSize,
                 cleanedSize: cleanedSize,
@@ -236,7 +236,7 @@ public actor SampleCodeCleaner {
             )
 
         } catch {
-            return CleanupResult(
+            return Shared.Models.CleanupResult(
                 filename: filename,
                 originalSize: originalSize,
                 cleanedSize: originalSize,

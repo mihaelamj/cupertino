@@ -1,8 +1,9 @@
 import Foundation
 @testable import Search
+import SharedConstants
 import SharedCore
-import Testing
 import SharedModels
+import Testing
 
 // Regression coverage for `Search.IndexBuilder.deduplicateDocFilesByCanonicalURL`
 // (#200). The dedup helper reads `crawledAt` out of saved
@@ -31,18 +32,18 @@ struct IndexBuilderDeduplicationTests {
         // vs dash framework variants pre-fix). Distinct filenames so the test
         // is FS-case-insensitivity-independent (macOS HFS+ default would
         // otherwise collapse them before dedup runs).
-        let sharedCanonicalURL = URL(string: "https://developer.apple.com/documentation/swiftui/list")!
+        let sharedCanonicalURL = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/list"))
 
         let older = try writeFixtureDoc(
             url: sharedCanonicalURL,
-            crawledAt: Date(timeIntervalSince1970: 1_700_000_000),
+            crawledAt: Date(timeIntervalSince1970: 1700000000),
             into: docsDir,
             framework: "swiftui",
             name: "list"
         )
         let newer = try writeFixtureDoc(
             url: sharedCanonicalURL,
-            crawledAt: Date(timeIntervalSince1970: 1_800_000_000),
+            crawledAt: Date(timeIntervalSince1970: 1800000000),
             into: docsDir,
             framework: "swiftui",
             name: "list-copy"
@@ -53,7 +54,7 @@ struct IndexBuilderDeduplicationTests {
         // (i.e. the JSON decode silently fails because `.iso8601` isn't set),
         // it would now incorrectly keep `older`. With `.iso8601` working,
         // dedup reads `crawledAt` from the JSON directly and keeps `newer`.
-        let inFuture = Date().addingTimeInterval(86_400)
+        let inFuture = Date().addingTimeInterval(86400)
         try FileManager.default.setAttributes(
             [.modificationDate: inFuture],
             ofItemAtPath: older.path
@@ -83,7 +84,7 @@ struct IndexBuilderDeduplicationTests {
         try FileManager.default.createDirectory(at: docsDir, withIntermediateDirectories: true)
 
         let file = try writeFixtureDoc(
-            url: URL(string: "https://developer.apple.com/documentation/swiftui/list")!,
+            url: #require(URL(string: "https://developer.apple.com/documentation/swiftui/list")),
             crawledAt: Date(),
             into: docsDir,
             framework: "swiftui",
@@ -114,14 +115,14 @@ struct IndexBuilderDeduplicationTests {
         try FileManager.default.createDirectory(at: docsDir, withIntermediateDirectories: true)
 
         let listView = try writeFixtureDoc(
-            url: URL(string: "https://developer.apple.com/documentation/swiftui/list")!,
+            url: #require(URL(string: "https://developer.apple.com/documentation/swiftui/list")),
             crawledAt: Date(),
             into: docsDir,
             framework: "swiftui",
             name: "list"
         )
         let textField = try writeFixtureDoc(
-            url: URL(string: "https://developer.apple.com/documentation/swiftui/textfield")!,
+            url: #require(URL(string: "https://developer.apple.com/documentation/swiftui/textfield")),
             crawledAt: Date(),
             into: docsDir,
             framework: "swiftui",
@@ -151,9 +152,9 @@ struct IndexBuilderDeduplicationTests {
         let docsDir = tempRoot.appendingPathComponent("docs")
         try FileManager.default.createDirectory(at: docsDir, withIntermediateDirectories: true)
 
-        let knownDate = Date(timeIntervalSince1970: 1_750_000_000)
+        let knownDate = Date(timeIntervalSince1970: 1750000000)
         let file = try writeFixtureDoc(
-            url: URL(string: "https://developer.apple.com/documentation/swiftui/view")!,
+            url: #require(URL(string: "https://developer.apple.com/documentation/swiftui/view")),
             crawledAt: knownDate,
             into: docsDir,
             framework: "swiftui",
@@ -188,7 +189,7 @@ private func writeFixtureDoc(
     let frameworkDir = directory.appendingPathComponent(framework)
     try FileManager.default.createDirectory(at: frameworkDir, withIntermediateDirectories: true)
 
-    let page = StructuredDocumentationPage(
+    let page = Shared.Models.StructuredDocumentationPage(
         url: url,
         title: "Sample",
         kind: .struct,

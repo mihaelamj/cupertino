@@ -1,4 +1,5 @@
 import Foundation
+import SharedConstants
 import SharedCore
 import SharedModels
 
@@ -16,7 +17,7 @@ public enum MarkdownToStructuredPage {
     ///   - markdown: The markdown content
     ///   - url: Optional URL (extracted from frontmatter if not provided)
     /// - Returns: A StructuredDocumentationPage if extraction succeeds
-    public static func convert(_ markdown: String, url: URL? = nil) -> StructuredDocumentationPage? {
+    public static func convert(_ markdown: String, url: URL? = nil) -> Shared.Models.StructuredDocumentationPage? {
         // Parse frontmatter
         let (frontmatter, content) = parseFrontmatter(markdown)
 
@@ -75,8 +76,8 @@ public enum MarkdownToStructuredPage {
         // Hash canonical structured fields, not raw `markdown` — the markdown
         // body embeds the `crawled:` timestamp in its frontmatter, so
         // `sha256(of: markdown)` was non-deterministic across runs (#199).
-        let page = StructuredDocumentationPage(
-            id: StructuredDocumentationPage.deterministicID(for: pageURL),
+        let page = Shared.Models.StructuredDocumentationPage(
+            id: Shared.Models.StructuredDocumentationPage.deterministicID(for: pageURL),
             url: pageURL,
             title: title,
             kind: kind,
@@ -147,7 +148,7 @@ public enum MarkdownToStructuredPage {
 
     // MARK: - Kind Extraction
 
-    private static func extractKind(from content: String) -> StructuredDocumentationPage.Kind {
+    private static func extractKind(from content: String) -> Shared.Models.StructuredDocumentationPage.Kind {
         let lines = content.split(separator: "\n", omittingEmptySubsequences: false)
 
         // Look for pattern: "Kind# Title" on a single line
@@ -165,7 +166,7 @@ public enum MarkdownToStructuredPage {
         return .unknown
     }
 
-    private static func parseKind(_ kindString: String) -> StructuredDocumentationPage.Kind {
+    private static func parseKind(_ kindString: String) -> Shared.Models.StructuredDocumentationPage.Kind {
         let kind = kindString.lowercased().trimmingCharacters(in: .whitespaces)
 
         switch kind {
@@ -189,7 +190,7 @@ public enum MarkdownToStructuredPage {
 
     // MARK: - Declaration Extraction
 
-    private static func extractDeclaration(from content: String) -> StructuredDocumentationPage.Declaration? {
+    private static func extractDeclaration(from content: String) -> Shared.Models.StructuredDocumentationPage.Declaration? {
         // Find first fenced code block after title
         let pattern = #"```(?:swift)?\n([\s\S]*?)```"#
 
@@ -212,11 +213,11 @@ public enum MarkdownToStructuredPage {
             code.contains("protocol ") || code.contains("init(") ||
             code.contains("typealias ") || code.hasPrefix("@") ||
             code.hasPrefix("nonisolated") {
-            return StructuredDocumentationPage.Declaration(code: code, language: "swift")
+            return Shared.Models.StructuredDocumentationPage.Declaration(code: code, language: "swift")
         }
 
         // Return first code block anyway as declaration
-        return StructuredDocumentationPage.Declaration(code: code, language: "swift")
+        return Shared.Models.StructuredDocumentationPage.Declaration(code: code, language: "swift")
     }
 
     // MARK: - Abstract Extraction
@@ -346,8 +347,8 @@ public enum MarkdownToStructuredPage {
 
     // MARK: - Code Examples Extraction
 
-    private static func extractCodeExamples(from content: String) -> [StructuredDocumentationPage.CodeExample] {
-        var examples: [StructuredDocumentationPage.CodeExample] = []
+    private static func extractCodeExamples(from content: String) -> [Shared.Models.StructuredDocumentationPage.CodeExample] {
+        var examples: [Shared.Models.StructuredDocumentationPage.CodeExample] = []
 
         // Extract ALL code blocks from the document
         let pattern = #"```(?:swift)?\n([\s\S]*?)```"#
@@ -373,7 +374,7 @@ public enum MarkdownToStructuredPage {
                     }
                 }
 
-                examples.append(StructuredDocumentationPage.CodeExample(
+                examples.append(Shared.Models.StructuredDocumentationPage.CodeExample(
                     code: code,
                     language: "swift"
                 ))
@@ -403,7 +404,7 @@ public enum MarkdownToStructuredPage {
 
     // MARK: - Sections Extraction
 
-    private static func extractSections(from content: String) -> [StructuredDocumentationPage.Section] {
+    private static func extractSections(from content: String) -> [Shared.Models.StructuredDocumentationPage.Section] {
         // Try traditional Topics-based extraction first
         var sections = extractTopicsSections(from: content)
 
@@ -416,8 +417,8 @@ public enum MarkdownToStructuredPage {
     }
 
     /// Extract sections from ## [Topics] / ### [Section] format (WebKit HTML)
-    private static func extractTopicsSections(from content: String) -> [StructuredDocumentationPage.Section] {
-        var sections: [StructuredDocumentationPage.Section] = []
+    private static func extractTopicsSections(from content: String) -> [Shared.Models.StructuredDocumentationPage.Section] {
+        var sections: [Shared.Models.StructuredDocumentationPage.Section] = []
 
         // Find ## [Topics] section
         guard let topicsStart = content.range(of: "## [Topics]") ??
@@ -440,7 +441,7 @@ public enum MarkdownToStructuredPage {
         // Parse ### sections
         let lines = topicsContent.split(separator: "\n", omittingEmptySubsequences: false)
         var currentSection: String?
-        var currentItems: [StructuredDocumentationPage.Section.Item] = []
+        var currentItems: [Shared.Models.StructuredDocumentationPage.Section.Item] = []
         var currentContent: [String] = []
 
         for line in lines {
@@ -449,7 +450,7 @@ public enum MarkdownToStructuredPage {
             if trimmed.hasPrefix("### ") {
                 // Save previous section
                 if let section = currentSection {
-                    sections.append(StructuredDocumentationPage.Section(
+                    sections.append(Shared.Models.StructuredDocumentationPage.Section(
                         title: section,
                         content: currentContent.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines),
                         items: currentItems.isEmpty ? nil : currentItems
@@ -473,7 +474,7 @@ public enum MarkdownToStructuredPage {
 
         // Save last section
         if let section = currentSection {
-            sections.append(StructuredDocumentationPage.Section(
+            sections.append(Shared.Models.StructuredDocumentationPage.Section(
                 title: section,
                 content: currentContent.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines),
                 items: currentItems.isEmpty ? nil : currentItems
@@ -484,12 +485,12 @@ public enum MarkdownToStructuredPage {
     }
 
     /// Extract sections from ## Header / - **item**: format (JSON API markdown)
-    private static func extractH2Sections(from content: String) -> [StructuredDocumentationPage.Section] {
-        var sections: [StructuredDocumentationPage.Section] = []
+    private static func extractH2Sections(from content: String) -> [Shared.Models.StructuredDocumentationPage.Section] {
+        var sections: [Shared.Models.StructuredDocumentationPage.Section] = []
 
         let lines = content.split(separator: "\n", omittingEmptySubsequences: false)
         var currentSection: String?
-        var currentItems: [StructuredDocumentationPage.Section.Item] = []
+        var currentItems: [Shared.Models.StructuredDocumentationPage.Section.Item] = []
         var currentContent: [String] = []
         var inTopicsArea = false
 
@@ -514,7 +515,7 @@ public enum MarkdownToStructuredPage {
             if trimmed.hasPrefix("## ") {
                 // Save previous section if it had items
                 if let section = currentSection, !currentItems.isEmpty {
-                    sections.append(StructuredDocumentationPage.Section(
+                    sections.append(Shared.Models.StructuredDocumentationPage.Section(
                         title: section,
                         content: currentContent.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines),
                         items: currentItems
@@ -553,7 +554,7 @@ public enum MarkdownToStructuredPage {
 
         // Save last section
         if let section = currentSection, !currentItems.isEmpty {
-            sections.append(StructuredDocumentationPage.Section(
+            sections.append(Shared.Models.StructuredDocumentationPage.Section(
                 title: section,
                 content: currentContent.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines),
                 items: currentItems
@@ -564,7 +565,7 @@ public enum MarkdownToStructuredPage {
     }
 
     /// Parse - **name**: Description format
-    private static func parseBoldItem(_ line: String) -> StructuredDocumentationPage.Section.Item? {
+    private static func parseBoldItem(_ line: String) -> Shared.Models.StructuredDocumentationPage.Section.Item? {
         // Pattern: - **name**: Description or - **name**
         let pattern = #"- \*\*([^*]+)\*\*(?::?\s*(.*))?"#
 
@@ -589,7 +590,7 @@ public enum MarkdownToStructuredPage {
             }
         }
 
-        return StructuredDocumentationPage.Section.Item(name: name, description: description)
+        return Shared.Models.StructuredDocumentationPage.Section.Item(name: name, description: description)
     }
 
     private static func extractLinkText(from text: String) -> String {
@@ -603,8 +604,8 @@ public enum MarkdownToStructuredPage {
 
     /// Parse ALL topic items from a line (WebKit puts multiple items on one line)
     /// Format: [`name`](url)Description[`name2`](url2)Description2
-    private static func parseAllTopicItems(_ line: String) -> [StructuredDocumentationPage.Section.Item] {
-        var items: [StructuredDocumentationPage.Section.Item] = []
+    private static func parseAllTopicItems(_ line: String) -> [Shared.Models.StructuredDocumentationPage.Section.Item] {
+        var items: [Shared.Models.StructuredDocumentationPage.Section.Item] = []
 
         // Pattern matches: [`name`](url) followed by description (until next [` or end)
         // The description is everything up to the next [`
@@ -638,13 +639,13 @@ public enum MarkdownToStructuredPage {
                 }
             }
 
-            items.append(StructuredDocumentationPage.Section.Item(name: name, description: description, url: url))
+            items.append(Shared.Models.StructuredDocumentationPage.Section.Item(name: name, description: description, url: url))
         }
 
         return items
     }
 
-    private static func parseTopicItem(_ line: String) -> StructuredDocumentationPage.Section.Item? {
+    private static func parseTopicItem(_ line: String) -> Shared.Models.StructuredDocumentationPage.Section.Item? {
         // Pattern: [`name`](link)Description
         let pattern = #"\[`([^`]+)`\]\(([^)]+)\)(.*)"#
 
@@ -674,7 +675,7 @@ public enum MarkdownToStructuredPage {
             }
         }
 
-        return StructuredDocumentationPage.Section.Item(name: name, description: description, url: url)
+        return Shared.Models.StructuredDocumentationPage.Section.Item(name: name, description: description, url: url)
     }
 
     // MARK: - Platform Extraction

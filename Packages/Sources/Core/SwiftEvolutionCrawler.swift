@@ -173,7 +173,7 @@ extension Core {
             }
 
             // Compute hash for change detection
-            _ = HashUtilities.sha256(of: markdown)
+            _ = Shared.Models.HashUtilities.sha256(of: markdown)
 
             // Save to file with proposal ID prefix (e.g., "SE-0001.md" or "ST-0001.md")
             let filename = "\(proposal.id)\(Shared.Constants.FileName.markdownExtension)"
