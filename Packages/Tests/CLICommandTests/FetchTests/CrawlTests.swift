@@ -1,15 +1,15 @@
 import AppKit
 @testable import CLI
 @testable import Core
+import CoreProtocols
 import Foundation
 @testable import Search
+import SharedConfiguration
+import SharedConstants
 @testable import SharedCore
+import SharedModels
 import Testing
 import TestSupport
-import SharedConstants
-import SharedConfiguration
-import SharedModels
-import CoreProtocols
 
 // MARK: - Web Crawl Tests
 

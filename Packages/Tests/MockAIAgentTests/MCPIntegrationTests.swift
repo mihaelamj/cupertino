@@ -1,9 +1,9 @@
 import Foundation
 @testable import MCP
 @testable import SampleIndex
+import SharedConstants
 @testable import SharedCore
 import Testing
-import SharedConstants
 @testable import TestSupport
 
 // MARK: - MCP Integration Tests
@@ -79,12 +79,12 @@ struct MCPIntegrationTests {
 
         let lines = buffer.split(separator: "\n", omittingEmptySubsequences: true)
         let firstLine = try #require(lines.first.map(String.init), "Should receive at least one response line")
-        let responseJSON = try JSONDecoder().decode(JSONRPCResponse.self, from: Data(firstLine.utf8))
+        let responseJSON = try JSONDecoder().decode(MCP.Core.Protocols.JSONRPCResponse.self, from: Data(firstLine.utf8))
 
         #expect(responseJSON.id == .int(1))
 
         let resultData = try JSONEncoder().encode(responseJSON.result)
-        let initResult = try JSONDecoder().decode(InitializeResult.self, from: resultData)
+        let initResult = try JSONDecoder().decode(MCP.Core.Protocols.InitializeResult.self, from: resultData)
 
         #expect(MCPProtocolVersionsSupported.contains(initResult.protocolVersion))
         #expect(initResult.serverInfo.name == "cupertino")
@@ -155,9 +155,9 @@ struct MCPIntegrationTests {
             "Should find tools/list response"
         )
 
-        let toolsResponse = try JSONDecoder().decode(JSONRPCResponse.self, from: Data(String(toolsLine).utf8))
+        let toolsResponse = try JSONDecoder().decode(MCP.Core.Protocols.JSONRPCResponse.self, from: Data(String(toolsLine).utf8))
         let resultData = try JSONEncoder().encode(toolsResponse.result)
-        let toolsResult = try JSONDecoder().decode(ListToolsResult.self, from: resultData)
+        let toolsResult = try JSONDecoder().decode(MCP.Core.Protocols.ListToolsResult.self, from: resultData)
 
         // Cupertino exposes tools based on available databases:
         // - Without search DB: 4 tools (search, list_samples, read_sample, read_sample_file)
@@ -210,7 +210,7 @@ struct MCPIntegrationTests {
 
         #expect(throws: Error.self) {
             let data = Data(malformedResponse.utf8)
-            _ = try JSONDecoder().decode(JSONRPCResponse.self, from: data)
+            _ = try JSONDecoder().decode(MCP.Core.Protocols.JSONRPCResponse.self, from: data)
         }
     }
 
@@ -247,7 +247,7 @@ struct MCPIntegrationTests {
         // The server would only see the first line: "{"
         let firstLine = try #require(prettyJSON.split(separator: "\n", omittingEmptySubsequences: true).first)
         #expect(throws: Error.self) {
-            _ = try JSONDecoder().decode(JSONRPCRequest.self, from: Data(String(firstLine).utf8))
+            _ = try JSONDecoder().decode(MCP.Core.Protocols.JSONRPCRequest.self, from: Data(String(firstLine).utf8))
         }
     }
 
@@ -262,7 +262,7 @@ struct MCPIntegrationTests {
 
         // Should parse successfully
         let data = Data(compactJSON.utf8)
-        let request = try JSONDecoder().decode(JSONRPCRequest.self, from: data)
+        let request = try JSONDecoder().decode(MCP.Core.Protocols.JSONRPCRequest.self, from: data)
         #expect(request.method == "initialize")
     }
 
@@ -293,7 +293,7 @@ struct MCPIntegrationTests {
         // All should parse successfully
         for (index, line) in lines.enumerated() {
             let data = Data(String(line).utf8)
-            let response = try JSONDecoder().decode(JSONRPCResponse.self, from: data)
+            let response = try JSONDecoder().decode(MCP.Core.Protocols.JSONRPCResponse.self, from: data)
             #expect(response.id == .int(index + 1))
         }
     }

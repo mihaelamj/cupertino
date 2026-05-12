@@ -12,7 +12,7 @@ import SharedUtils
 // MARK: - Documentation Resource Provider
 
 /// Provides crawled documentation as MCP resources
-public actor DocsResourceProvider: ResourceProvider {
+public actor DocsResourceProvider: MCP.Core.ResourceProvider {
     private let configuration: Shared.Configuration
     private var metadata: CrawlMetadata?
     private let evolutionDirectory: URL
@@ -34,8 +34,8 @@ public actor DocsResourceProvider: ResourceProvider {
 
     // MARK: - ResourceProvider
 
-    public func listResources(cursor: String?) async throws -> ListResourcesResult {
-        var resources: [Resource] = []
+    public func listResources(cursor: String?) async throws -> MCP.Core.Protocols.ListResourcesResult {
+        var resources: [MCP.Core.Protocols.Resource] = []
 
         // Add Apple Documentation resources
         do {
@@ -57,7 +57,7 @@ public actor DocsResourceProvider: ResourceProvider {
                 }
                 let uri = "\(Shared.Constants.Search.appleDocsScheme)\(pageMetadata.framework)/"
                     + "\(URLUtilities.filename(from: parsedURL))"
-                let resource = Resource(
+                let resource = MCP.Core.Protocols.Resource(
                     uri: uri,
                     name: extractTitle(from: url),
                     description: "\(MCPSharedTools.MCPCopy.appleDocsDescriptionPrefix) \(pageMetadata.framework)",
@@ -81,7 +81,7 @@ public actor DocsResourceProvider: ResourceProvider {
                     && (file.lastPathComponent.hasPrefix(Shared.Constants.Search.sePrefix) ||
                         file.lastPathComponent.hasPrefix(Shared.Constants.Search.stPrefix)) {
                     let proposalID = file.deletingPathExtension().lastPathComponent
-                    let resource = Resource(
+                    let resource = MCP.Core.Protocols.Resource(
                         uri: "\(Shared.Constants.Search.swiftEvolutionScheme)\(proposalID)",
                         name: proposalID,
                         description: MCPSharedTools.MCPCopy.swiftEvolutionDescription,
@@ -107,24 +107,24 @@ public actor DocsResourceProvider: ResourceProvider {
         // Sort by name
         resources.sort { $0.name < $1.name }
 
-        return ListResourcesResult(resources: resources)
+        return MCP.Core.Protocols.ListResourcesResult(resources: resources)
     }
 
-    public func readResource(uri: String) async throws -> ReadResourceResult {
+    public func readResource(uri: String) async throws -> MCP.Core.Protocols.ReadResourceResult {
         let markdown: String
 
         // Try database first if search index is available
         if let searchIndex {
             if let dbContent = try await searchIndex.getDocumentContent(uri: uri, format: .markdown) {
                 // Found in database - return markdown
-                let contents = ResourceContents.text(
-                    TextResourceContents(
+                let contents = MCP.Core.Protocols.ResourceContents.text(
+                    MCP.Core.Protocols.TextResourceContents(
                         uri: uri,
                         mimeType: MCPSharedTools.MCPCopy.mimeTypeMarkdown,
                         text: dbContent
                     )
                 )
-                return ReadResourceResult(contents: [contents])
+                return MCP.Core.Protocols.ReadResourceResult(contents: [contents])
             }
         }
 
@@ -199,26 +199,26 @@ public actor DocsResourceProvider: ResourceProvider {
         }
 
         // Create resource contents
-        let contents = ResourceContents.text(
-            TextResourceContents(
+        let contents = MCP.Core.Protocols.ResourceContents.text(
+            MCP.Core.Protocols.TextResourceContents(
                 uri: uri,
                 mimeType: MCPSharedTools.MCPCopy.mimeTypeMarkdown,
                 text: markdown
             )
         )
 
-        return ReadResourceResult(contents: [contents])
+        return MCP.Core.Protocols.ReadResourceResult(contents: [contents])
     }
 
-    public func listResourceTemplates(cursor: String?) async throws -> ListResourceTemplatesResult? {
+    public func listResourceTemplates(cursor: String?) async throws -> MCP.Core.Protocols.ListResourceTemplatesResult? {
         let templates = [
-            ResourceTemplate(
+            MCP.Core.Protocols.ResourceTemplate(
                 uriTemplate: MCPSharedTools.MCPCopy.templateAppleDocs,
                 name: MCPSharedTools.MCPCopy.appleDocsTemplateName,
                 description: MCPSharedTools.MCPCopy.appleDocsTemplateDescription,
                 mimeType: MCPSharedTools.MCPCopy.mimeTypeMarkdown
             ),
-            ResourceTemplate(
+            MCP.Core.Protocols.ResourceTemplate(
                 uriTemplate: MCPSharedTools.MCPCopy.templateSwiftEvolution,
                 name: MCPSharedTools.MCPCopy.swiftEvolutionDescription,
                 description: MCPSharedTools.MCPCopy.swiftEvolutionTemplateDescription,
@@ -226,7 +226,7 @@ public actor DocsResourceProvider: ResourceProvider {
             ),
         ]
 
-        return ListResourceTemplatesResult(resourceTemplates: templates)
+        return MCP.Core.Protocols.ListResourceTemplatesResult(resourceTemplates: templates)
     }
 
     // MARK: - Private Methods
@@ -312,8 +312,8 @@ public actor DocsResourceProvider: ResourceProvider {
             .capitalized
     }
 
-    private func listArchiveResources() throws -> [Resource] {
-        var resources: [Resource] = []
+    private func listArchiveResources() throws -> [MCP.Core.Protocols.Resource] {
+        var resources: [MCP.Core.Protocols.Resource] = []
 
         let guides = try FileManager.default.contentsOfDirectory(
             at: archiveDirectory,
@@ -330,7 +330,7 @@ public actor DocsResourceProvider: ResourceProvider {
             for file in files where file.pathExtension == "md" {
                 let filename = file.deletingPathExtension().lastPathComponent
                 let uri = "\(Shared.Constants.Search.appleArchiveScheme)\(guideUID)/\(filename)"
-                let resource = Resource(
+                let resource = MCP.Core.Protocols.Resource(
                     uri: uri,
                     name: filename.replacingOccurrences(of: "-", with: " ").capitalized,
                     description: "Apple Archive documentation",

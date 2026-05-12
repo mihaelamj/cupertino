@@ -8,10 +8,10 @@ import SharedCore
 /// Helper for extracting and validating MCP tool arguments.
 /// Reduces boilerplate in tool providers by providing type-safe access to arguments.
 public struct ArgumentExtractor: Sendable {
-    private let arguments: [String: AnyCodable]?
+    private let arguments: [String: MCP.Core.Protocols.AnyCodable]?
 
     /// Initialize with MCP tool arguments
-    public init(_ arguments: [String: AnyCodable]?) {
+    public init(_ arguments: [String: MCP.Core.Protocols.AnyCodable]?) {
         self.arguments = arguments
     }
 

@@ -1,17 +1,17 @@
 import AppKit
 @testable import Core
+import CoreProtocols
 import Foundation
 @testable import MCP
 @testable import MCPSupport
 @testable import Search
 @testable import SearchToolProvider
+import SharedConfiguration
+import SharedConstants
 @testable import SharedCore
+import SharedModels
 import Testing
 import TestSupport
-import SharedConstants
-import SharedConfiguration
-import SharedModels
-import CoreProtocols
 
 // MARK: - MCP Command Tests
 
@@ -24,7 +24,7 @@ struct MCPCommandTests {
     func serverInitialization() {
         print("🧪 Test: MCP server initialization")
 
-        _ = MCPServer(name: "test-server", version: "1.0.0")
+        _ = MCP.Core.Server(name: "test-server", version: "1.0.0")
 
         // Verify server is created (server is a non-optional actor)
         // Simply checking it was instantiated successfully
@@ -62,7 +62,7 @@ struct MCPCommandTests {
         let metadataFile = tempDir.appendingPathComponent("metadata.json")
         try metadata.save(to: metadataFile)
 
-        let server = MCPServer(name: "test-server", version: "1.0.0")
+        let server = MCP.Core.Server(name: "test-server", version: "1.0.0")
         let config = Shared.Configuration(
             crawler: Shared.CrawlerConfiguration(outputDirectory: tempDir),
             changeDetection: Shared.ChangeDetectionConfiguration(outputDirectory: tempDir),
@@ -156,7 +156,7 @@ struct MCPCommandTests {
             lastCrawled: Date()
         )
 
-        let server = MCPServer(name: "test-server", version: "1.0.0")
+        let server = MCP.Core.Server(name: "test-server", version: "1.0.0")
         let provider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: nil)
 
         await server.registerToolProvider(provider)
@@ -204,9 +204,9 @@ struct MCPCommandTests {
         let provider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: nil)
 
         // Execute search
-        let arguments: [String: AnyCodable] = [
-            "query": AnyCodable("array"),
-            "limit": AnyCodable(5),
+        let arguments: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("array"),
+            "limit": MCP.Core.Protocols.AnyCodable(5),
         ]
 
         let result = try await provider.callTool(name: "search", arguments: arguments)
@@ -397,7 +397,7 @@ struct MCPServerIntegrationTests {
 
         // Step 3: Initialize MCP server
         print("\n   🚀 Step 3: Starting MCP server...")
-        let server = MCPServer(name: "test-server", version: "1.0.0")
+        let server = MCP.Core.Server(name: "test-server", version: "1.0.0")
 
         // Register providers
         let mcpConfig = Shared.Configuration(
@@ -414,9 +414,9 @@ struct MCPServerIntegrationTests {
 
         // Step 4: Search via tool
         print("\n   🔎 Step 4: Searching via MCP tool...")
-        let searchArgs: [String: AnyCodable] = [
-            "query": AnyCodable("swift"),
-            "limit": AnyCodable(5),
+        let searchArgs: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("swift"),
+            "limit": MCP.Core.Protocols.AnyCodable(5),
         ]
         let searchResults = try await searchProvider.callTool(name: "search", arguments: searchArgs)
         #expect(!searchResults.content.isEmpty, "Search should return results")

@@ -1,16 +1,16 @@
 import AppKit
 @testable import CLI
 @testable import Core
+import CoreProtocols
 import Foundation
 @testable import Search
-@testable import SharedCore
-import Testing
-import TestSupport
-import SharedConstants
 import SharedConfiguration
+import SharedConstants
+@testable import SharedCore
 import SharedModels
 import SharedUtils
-import CoreProtocols
+import Testing
+import TestSupport
 
 // MARK: - Save Command Tests
 

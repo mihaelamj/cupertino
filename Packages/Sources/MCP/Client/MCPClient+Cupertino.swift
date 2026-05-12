@@ -18,8 +18,8 @@ extension MCPClient {
     /// - Returns: Search results as markdown text
     public func searchDocs(query: String, limit: Int = 10) async throws -> String {
         let result = try await callTool(name: "search_docs", arguments: [
-            "query": AnyCodable(query),
-            "limit": AnyCodable(limit),
+            "query": MCP.Core.Protocols.AnyCodable(query),
+            "limit": MCP.Core.Protocols.AnyCodable(limit),
         ])
         return extractText(from: result)
     }
@@ -31,12 +31,12 @@ extension MCPClient {
     ///   - limit: Maximum number of results (default: 10)
     /// - Returns: Search results as markdown text
     public func searchSamples(query: String, framework: String? = nil, limit: Int = 10) async throws -> String {
-        var args: [String: AnyCodable] = [
-            "query": AnyCodable(query),
-            "limit": AnyCodable(limit),
+        var args: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable(query),
+            "limit": MCP.Core.Protocols.AnyCodable(limit),
         ]
         if let framework {
-            args["framework"] = AnyCodable(framework)
+            args["framework"] = MCP.Core.Protocols.AnyCodable(framework)
         }
 
         let result = try await callTool(name: "search_samples", arguments: args)
@@ -49,9 +49,9 @@ extension MCPClient {
     ///   - limit: Maximum number of results (default: 50)
     /// - Returns: Project list as markdown text
     public func listSamples(framework: String? = nil, limit: Int = 50) async throws -> String {
-        var args: [String: AnyCodable] = ["limit": AnyCodable(limit)]
+        var args: [String: MCP.Core.Protocols.AnyCodable] = ["limit": MCP.Core.Protocols.AnyCodable(limit)]
         if let framework {
-            args["framework"] = AnyCodable(framework)
+            args["framework"] = MCP.Core.Protocols.AnyCodable(framework)
         }
 
         let result = try await callTool(name: "list_samples", arguments: args)
@@ -63,7 +63,7 @@ extension MCPClient {
     /// - Returns: Project details as markdown text
     public func readSample(projectId: String) async throws -> String {
         let result = try await callTool(name: "read_sample", arguments: [
-            "project_id": AnyCodable(projectId),
+            "project_id": MCP.Core.Protocols.AnyCodable(projectId),
         ])
         return extractText(from: result)
     }
@@ -75,8 +75,8 @@ extension MCPClient {
     /// - Returns: File contents with syntax highlighting
     public func readSampleFile(projectId: String, filePath: String) async throws -> String {
         let result = try await callTool(name: "read_sample_file", arguments: [
-            "project_id": AnyCodable(projectId),
-            "file_path": AnyCodable(filePath),
+            "project_id": MCP.Core.Protocols.AnyCodable(projectId),
+            "file_path": MCP.Core.Protocols.AnyCodable(filePath),
         ])
         return extractText(from: result)
     }
@@ -101,7 +101,7 @@ extension MCPClient {
 
     // MARK: - Private Helpers
 
-    private func extractText(from result: CallToolResult) -> String {
+    private func extractText(from result: MCP.Core.Protocols.CallToolResult) -> String {
         var text = ""
         for content in result.content {
             switch content {

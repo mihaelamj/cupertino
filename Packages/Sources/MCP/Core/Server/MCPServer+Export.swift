@@ -14,28 +14,28 @@
 
  // Register a resource provider
  struct MyResourceProvider: ResourceProvider {
-     func listResources(cursor: String?) async throws -> ListResourcesResult {
+     func listResources(cursor: String?) async throws -> MCP.Core.Protocols.ListResourcesResult {
          let resources = [
-             Resource(
+             MCP.Core.Protocols.Resource(
                  uri: "file:///docs/intro.md",
                  name: "Introduction",
                  description: "Getting started guide",
                  mimeType: "text/markdown"
              )
          ]
-         return ListResourcesResult(resources: resources)
+         return MCP.Core.Protocols.ListResourcesResult(resources: resources)
      }
 
-     func readResource(uri: String) async throws -> ReadResourceResult {
+     func readResource(uri: String) async throws -> MCP.Core.Protocols.ReadResourceResult {
          let markdown = "# Introduction\n\nWelcome to the docs!"
-         let contents = ResourceContents.text(
-             TextResourceContents(
+         let contents = MCP.Core.Protocols.ResourceContents.text(
+             MCP.Core.Protocols.TextResourceContents(
                  uri: uri,
                  mimeType: "text/markdown",
                  text: markdown
              )
          )
-         return ReadResourceResult(contents: [contents])
+         return MCP.Core.Protocols.ReadResourceResult(contents: [contents])
      }
  }
 

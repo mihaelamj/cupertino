@@ -17,8 +17,8 @@ public actor MCPClient {
     private let serverArguments: [String]
 
     /// Server information after initialization
-    public private(set) var serverInfo: Implementation?
-    public private(set) var serverCapabilities: ServerCapabilities?
+    public private(set) var serverInfo: MCP.Core.Protocols.Implementation?
+    public private(set) var serverCapabilities: MCP.Core.Protocols.ServerCapabilities?
     public private(set) var protocolVersion: String?
 
     /// Whether the client is connected to a server
@@ -125,23 +125,23 @@ public actor MCPClient {
         var lastError: Error?
 
         for version in versions {
-            let request = MCPRequest(
+            let request = MCP.Core.Protocols.Request(
                 jsonrpc: "2.0",
                 id: .int(nextMessageID()),
                 method: "initialize",
-                params: InitializeParams(
+                params: MCP.Core.Protocols.InitializeParams(
                     protocolVersion: version,
-                    capabilities: ClientCapabilities(
+                    capabilities: MCP.Core.Protocols.ClientCapabilities(
                         experimental: nil,
                         sampling: nil,
-                        roots: RootsCapability(listChanged: true)
+                        roots: MCP.Core.Protocols.RootsCapability(listChanged: true)
                     ),
-                    clientInfo: Implementation(name: "MCPClient", version: "1.0.0")
+                    clientInfo: MCP.Core.Protocols.Implementation(name: "MCPClient", version: "1.0.0")
                 )
             )
 
             do {
-                let response: InitializeResult = try await sendRequest(request)
+                let response: MCP.Core.Protocols.InitializeResult = try await sendRequest(request)
                 serverInfo = response.serverInfo
                 serverCapabilities = response.capabilities
                 protocolVersion = response.protocolVersion
@@ -178,15 +178,15 @@ public actor MCPClient {
     }
 
     /// List available tools from the server
-    public func listTools() async throws -> [Tool] {
-        let request = MCPRequest(
+    public func listTools() async throws -> [MCP.Core.Protocols.Tool] {
+        let request = MCP.Core.Protocols.Request(
             jsonrpc: "2.0",
             id: .int(nextMessageID()),
             method: "tools/list",
             params: EmptyParams()
         )
 
-        let response: ListToolsResult = try await sendRequest(request)
+        let response: MCP.Core.Protocols.ListToolsResult = try await sendRequest(request)
         return response.tools
     }
 
@@ -195,39 +195,39 @@ public actor MCPClient {
     ///   - name: Tool name
     ///   - arguments: Tool arguments as a dictionary
     /// - Returns: Tool call result with content blocks
-    public func callTool(name: String, arguments: [String: AnyCodable]? = nil) async throws -> CallToolResult {
-        let request = MCPRequest(
+    public func callTool(name: String, arguments: [String: MCP.Core.Protocols.AnyCodable]? = nil) async throws -> MCP.Core.Protocols.CallToolResult {
+        let request = MCP.Core.Protocols.Request(
             jsonrpc: "2.0",
             id: .int(nextMessageID()),
             method: "tools/call",
-            params: CallToolParams(name: name, arguments: arguments)
+            params: MCP.Core.Protocols.CallToolParams(name: name, arguments: arguments)
         )
 
         return try await sendRequest(request)
     }
 
     /// List available resources from the server
-    public func listResources() async throws -> [Resource] {
-        let request = MCPRequest(
+    public func listResources() async throws -> [MCP.Core.Protocols.Resource] {
+        let request = MCP.Core.Protocols.Request(
             jsonrpc: "2.0",
             id: .int(nextMessageID()),
             method: "resources/list",
             params: EmptyParams()
         )
 
-        let response: ListResourcesResult = try await sendRequest(request)
+        let response: MCP.Core.Protocols.ListResourcesResult = try await sendRequest(request)
         return response.resources
     }
 
     /// Read a resource from the server
     /// - Parameter uri: Resource URI
     /// - Returns: Resource contents
-    public func readResource(uri: String) async throws -> ReadResourceResult {
-        let request = MCPRequest(
+    public func readResource(uri: String) async throws -> MCP.Core.Protocols.ReadResourceResult {
+        let request = MCP.Core.Protocols.Request(
             jsonrpc: "2.0",
             id: .int(nextMessageID()),
             method: "resources/read",
-            params: ReadResourceParams(uri: uri)
+            params: MCP.Core.Protocols.ReadResourceParams(uri: uri)
         )
 
         return try await sendRequest(request)
@@ -235,7 +235,7 @@ public actor MCPClient {
 
     // MARK: - Low-level Communication
 
-    private func sendRequest<R: Decodable>(_ request: MCPRequest<some Codable & Sendable>) async throws -> R {
+    private func sendRequest<R: Decodable>(_ request: MCP.Core.Protocols.Request<some Codable & Sendable>) async throws -> R {
         guard let stdin, let stdout else {
             throw MCPClientError.notConnected
         }
@@ -267,12 +267,12 @@ public actor MCPClient {
         let responseData = Data(responseLine.utf8)
 
         // Check for error response
-        if let errorResponse = try? JSONDecoder().decode(JSONRPCError.self, from: responseData) {
+        if let errorResponse = try? JSONDecoder().decode(MCP.Core.Protocols.JSONRPCError.self, from: responseData) {
             throw MCPClientError.serverError(errorResponse.error.message)
         }
 
         // Decode success response
-        let response = try JSONDecoder().decode(JSONRPCResponse.self, from: responseData)
+        let response = try JSONDecoder().decode(MCP.Core.Protocols.JSONRPCResponse.self, from: responseData)
 
         // Convert result to specific type
         let resultData = try JSONEncoder().encode(response.result)

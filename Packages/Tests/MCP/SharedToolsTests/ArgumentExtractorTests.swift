@@ -1,8 +1,8 @@
 import MCP
 import MCPSharedTools
+import SharedConstants
 import SharedCore
 import Testing
-import SharedConstants
 
 @Suite("ArgumentExtractor")
 struct ArgumentExtractorTests {
@@ -10,7 +10,7 @@ struct ArgumentExtractorTests {
 
     @Test("require returns string value when present")
     func requireReturnsStringValue() throws {
-        let args: [String: AnyCodable] = ["query": AnyCodable("swiftui")]
+        let args: [String: MCP.Core.Protocols.AnyCodable] = ["query": MCP.Core.Protocols.AnyCodable("swiftui")]
         let extractor = ArgumentExtractor(args)
         #expect(try extractor.require("query") == "swiftui")
     }
@@ -25,7 +25,7 @@ struct ArgumentExtractorTests {
 
     @Test("require throws when value has wrong type")
     func requireThrowsOnWrongType() {
-        let args: [String: AnyCodable] = ["query": AnyCodable(42)]
+        let args: [String: MCP.Core.Protocols.AnyCodable] = ["query": MCP.Core.Protocols.AnyCodable(42)]
         let extractor = ArgumentExtractor(args)
         #expect(throws: ToolError.self) {
             _ = try extractor.require("query")
@@ -34,14 +34,14 @@ struct ArgumentExtractorTests {
 
     @Test("requireInt returns int value")
     func requireIntReturnsValue() throws {
-        let args: [String: AnyCodable] = ["limit": AnyCodable(5)]
+        let args: [String: MCP.Core.Protocols.AnyCodable] = ["limit": MCP.Core.Protocols.AnyCodable(5)]
         let extractor = ArgumentExtractor(args)
         #expect(try extractor.requireInt("limit") == 5)
     }
 
     @Test("requireBool returns bool value")
     func requireBoolReturnsValue() throws {
-        let args: [String: AnyCodable] = ["include_archive": AnyCodable(true)]
+        let args: [String: MCP.Core.Protocols.AnyCodable] = ["include_archive": MCP.Core.Protocols.AnyCodable(true)]
         let extractor = ArgumentExtractor(args)
         #expect(try extractor.requireBool("include_archive") == true)
     }
@@ -56,7 +56,7 @@ struct ArgumentExtractorTests {
 
     @Test("optional returns value when present")
     func optionalReturnsValueWhenPresent() {
-        let args: [String: AnyCodable] = ["framework": AnyCodable("swiftui")]
+        let args: [String: MCP.Core.Protocols.AnyCodable] = ["framework": MCP.Core.Protocols.AnyCodable("swiftui")]
         let extractor = ArgumentExtractor(args)
         #expect(extractor.optional("framework") == "swiftui")
     }
@@ -69,7 +69,7 @@ struct ArgumentExtractorTests {
 
     @Test("optional with default returns value when present")
     func optionalWithDefaultReturnsValue() {
-        let args: [String: AnyCodable] = ["language": AnyCodable("de")]
+        let args: [String: MCP.Core.Protocols.AnyCodable] = ["language": MCP.Core.Protocols.AnyCodable("de")]
         let extractor = ArgumentExtractor(args)
         #expect(extractor.optional("language", default: "en") == "de")
     }
@@ -84,8 +84,8 @@ struct ArgumentExtractorTests {
 
     @Test("limit returns requested value when below max")
     func limitReturnsValueBelowMax() {
-        let args: [String: AnyCodable] = [
-            Shared.Constants.Search.schemaParamLimit: AnyCodable(15),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            Shared.Constants.Search.schemaParamLimit: MCP.Core.Protocols.AnyCodable(15),
         ]
         let extractor = ArgumentExtractor(args)
         #expect(extractor.limit() == 15)
@@ -93,8 +93,8 @@ struct ArgumentExtractorTests {
 
     @Test("limit clamps to maxSearchLimit when requested exceeds max")
     func limitClampsToMax() {
-        let args: [String: AnyCodable] = [
-            Shared.Constants.Search.schemaParamLimit: AnyCodable(9999),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            Shared.Constants.Search.schemaParamLimit: MCP.Core.Protocols.AnyCodable(9999),
         ]
         let extractor = ArgumentExtractor(args)
         #expect(extractor.limit() == Shared.Constants.Limit.maxSearchLimit)
@@ -110,8 +110,8 @@ struct ArgumentExtractorTests {
 
     @Test("format returns supplied value when present")
     func formatReturnsValueWhenPresent() {
-        let args: [String: AnyCodable] = [
-            Shared.Constants.Search.schemaParamFormat: AnyCodable(
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            Shared.Constants.Search.schemaParamFormat: MCP.Core.Protocols.AnyCodable(
                 Shared.Constants.Search.formatValueMarkdown
             ),
         ]
@@ -129,8 +129,8 @@ struct ArgumentExtractorTests {
 
     @Test("includeArchive reads supplied value")
     func includeArchiveReadsValue() {
-        let args: [String: AnyCodable] = [
-            Shared.Constants.Search.schemaParamIncludeArchive: AnyCodable(true),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            Shared.Constants.Search.schemaParamIncludeArchive: MCP.Core.Protocols.AnyCodable(true),
         ]
         let extractor = ArgumentExtractor(args)
         #expect(extractor.includeArchive() == true)
@@ -143,8 +143,8 @@ struct ArgumentExtractorTests {
         let absent = ArgumentExtractor(nil)
         #expect(absent.minIOS() == nil)
 
-        let args: [String: AnyCodable] = [
-            Shared.Constants.Search.schemaParamMinIOS: AnyCodable("17.0"),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            Shared.Constants.Search.schemaParamMinIOS: MCP.Core.Protocols.AnyCodable("17.0"),
         ]
         let extractor = ArgumentExtractor(args)
         #expect(extractor.minIOS() == "17.0")
@@ -152,11 +152,11 @@ struct ArgumentExtractorTests {
 
     @Test("minMacOS / minTvOS / minWatchOS / minVisionOS round-trip")
     func minPlatformsRoundTrip() {
-        let args: [String: AnyCodable] = [
-            Shared.Constants.Search.schemaParamMinMacOS: AnyCodable("14.0"),
-            Shared.Constants.Search.schemaParamMinTvOS: AnyCodable("17.0"),
-            Shared.Constants.Search.schemaParamMinWatchOS: AnyCodable("10.0"),
-            Shared.Constants.Search.schemaParamMinVisionOS: AnyCodable("1.0"),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            Shared.Constants.Search.schemaParamMinMacOS: MCP.Core.Protocols.AnyCodable("14.0"),
+            Shared.Constants.Search.schemaParamMinTvOS: MCP.Core.Protocols.AnyCodable("17.0"),
+            Shared.Constants.Search.schemaParamMinWatchOS: MCP.Core.Protocols.AnyCodable("10.0"),
+            Shared.Constants.Search.schemaParamMinVisionOS: MCP.Core.Protocols.AnyCodable("1.0"),
         ]
         let extractor = ArgumentExtractor(args)
         #expect(extractor.minMacOS() == "14.0")

@@ -43,12 +43,12 @@ struct ServeReaperTests {
     @Test("handles multiple lines and skips blank lines")
     func multipleLines() {
         let output = """
-            12345 00:30 /usr/local/bin/cupertino serve
+        12345 00:30 /usr/local/bin/cupertino serve
 
-            54321 1:20 /usr/local/bin/cupertino save
+        54321 1:20 /usr/local/bin/cupertino save
 
-            99999 02:00 /bin/bash -c whatever
-            """
+        99999 02:00 /bin/bash -c whatever
+        """
         let entries = ServeReaper.parsePsOutput(output)
         #expect(entries.count == 3)
         #expect(entries.map(\.pid) == [12345, 54321, 99999])
@@ -57,9 +57,9 @@ struct ServeReaperTests {
     @Test("skips lines without a parseable pid")
     func skipsMalformed() throws {
         let output = """
-            not-a-pid 00:30 /usr/local/bin/cupertino serve
-            12345 00:10 /usr/local/bin/cupertino serve
-            """
+        not-a-pid 00:30 /usr/local/bin/cupertino serve
+        12345 00:10 /usr/local/bin/cupertino serve
+        """
         let entries = ServeReaper.parsePsOutput(output)
         #expect(entries.count == 1)
         let entry = try #require(entries.first)

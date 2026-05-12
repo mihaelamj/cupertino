@@ -2,12 +2,12 @@ import AppKit
 import ArgumentParser
 @testable import CLI
 @testable import Core
+@testable import CorePackageIndexing
+import CoreProtocols
 import Foundation
 @testable import SharedCore
 import Testing
 import TestSupport
-import CoreProtocols
-@testable import CorePackageIndexing
 
 // MARK: - Fetch Command Tests
 
