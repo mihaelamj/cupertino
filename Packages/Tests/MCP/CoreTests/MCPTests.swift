@@ -16,12 +16,12 @@ struct JSONRPCProtocolTests {
 
     @Test("RequestID encodes and decodes string variant")
     func requestIDString() throws {
-        let requestID = RequestID.string("test-123")
+        let requestID = MCP.Core.Protocols.RequestID.string("test-123")
 
         let encoder = JSONEncoder()
         let data = try encoder.encode(requestID)
         let decoder = JSONDecoder()
-        let decoded = try decoder.decode(RequestID.self, from: data)
+        let decoded = try decoder.decode(MCP.Core.Protocols.RequestID.self, from: data)
 
         #expect(decoded == requestID)
 
@@ -34,12 +34,12 @@ struct JSONRPCProtocolTests {
 
     @Test("RequestID encodes and decodes int variant")
     func requestIDInt() throws {
-        let requestID = RequestID.int(42)
+        let requestID = MCP.Core.Protocols.RequestID.int(42)
 
         let encoder = JSONEncoder()
         let data = try encoder.encode(requestID)
         let decoder = JSONDecoder()
-        let decoded = try decoder.decode(RequestID.self, from: data)
+        let decoded = try decoder.decode(MCP.Core.Protocols.RequestID.self, from: data)
 
         #expect(decoded == requestID)
 
@@ -52,14 +52,14 @@ struct JSONRPCProtocolTests {
 
     @Test("RequestID is Hashable")
     func requestIDHashable() {
-        let id1 = RequestID.string("test")
-        let id2 = RequestID.string("test")
-        let id3 = RequestID.int(1)
+        let id1 = MCP.Core.Protocols.RequestID.string("test")
+        let id2 = MCP.Core.Protocols.RequestID.string("test")
+        let id3 = MCP.Core.Protocols.RequestID.int(1)
 
         #expect(id1 == id2)
         #expect(id1 != id3)
 
-        let set: Set<RequestID> = [id1, id2, id3]
+        let set: Set<MCP.Core.Protocols.RequestID> = [id1, id2, id3]
         #expect(set.count == 2) // id1 and id2 are identical
     }
 
@@ -67,10 +67,10 @@ struct JSONRPCProtocolTests {
 
     @Test("JSONRPCRequest serializes correctly")
     func jsonRPCRequestSerialization() throws {
-        let request = JSONRPCRequest(
+        let request = MCP.Core.Protocols.JSONRPCRequest(
             id: .int(1),
             method: "initialize",
-            params: ["test": AnyCodable("value")]
+            params: ["test": MCP.Core.Protocols.AnyCodable("value")]
         )
 
         #expect(request.jsonrpc == "2.0")
@@ -84,14 +84,14 @@ struct JSONRPCProtocolTests {
 
         // Verify it can be decoded
         let decoder = JSONDecoder()
-        let decoded = try decoder.decode(JSONRPCRequest.self, from: data)
+        let decoded = try decoder.decode(MCP.Core.Protocols.JSONRPCRequest.self, from: data)
         #expect(decoded.jsonrpc == "2.0")
         #expect(decoded.method == "initialize")
     }
 
     @Test("JSONRPCRequest handles nil params")
     func jsonRPCRequestNilParams() throws {
-        let request = JSONRPCRequest(
+        let request = MCP.Core.Protocols.JSONRPCRequest(
             id: .string("test-id"),
             method: "ping"
         )
@@ -101,7 +101,7 @@ struct JSONRPCProtocolTests {
         let encoder = JSONEncoder()
         let data = try encoder.encode(request)
         let decoder = JSONDecoder()
-        let decoded = try decoder.decode(JSONRPCRequest.self, from: data)
+        let decoded = try decoder.decode(MCP.Core.Protocols.JSONRPCRequest.self, from: data)
 
         #expect(decoded.params == nil)
     }
@@ -109,14 +109,14 @@ struct JSONRPCProtocolTests {
     @Test("AnyCodable preserves dictionary type")
     func anyCodableDictionaryPreservation() {
         // Create a nested dictionary structure like tools/call request
-        let innerDict: [String: AnyCodable] = [
-            "query": AnyCodable("SwiftUI"),
-            "limit": AnyCodable(5),
+        let innerDict: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("SwiftUI"),
+            "limit": MCP.Core.Protocols.AnyCodable(5),
         ]
 
-        let outerDict: [String: AnyCodable] = [
-            "name": AnyCodable("search_docs"),
-            "arguments": AnyCodable(innerDict),
+        let outerDict: [String: MCP.Core.Protocols.AnyCodable] = [
+            "name": MCP.Core.Protocols.AnyCodable("search_docs"),
+            "arguments": MCP.Core.Protocols.AnyCodable(innerDict),
         ]
 
         // Verify we can extract the nested dictionary
@@ -133,17 +133,17 @@ struct JSONRPCProtocolTests {
     @Test("JSONRPCRequest tools/call argument extraction")
     func toolsCallArgumentExtraction() throws {
         // Simulate the exact structure from a tools/call request
-        let arguments: [String: AnyCodable] = [
-            "query": AnyCodable("SwiftUI"),
-            "limit": AnyCodable(5),
+        let arguments: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("SwiftUI"),
+            "limit": MCP.Core.Protocols.AnyCodable(5),
         ]
 
-        let params: [String: AnyCodable] = [
-            "name": AnyCodable("search_docs"),
-            "arguments": AnyCodable(arguments),
+        let params: [String: MCP.Core.Protocols.AnyCodable] = [
+            "name": MCP.Core.Protocols.AnyCodable("search_docs"),
+            "arguments": MCP.Core.Protocols.AnyCodable(arguments),
         ]
 
-        let request = JSONRPCRequest(
+        let request = MCP.Core.Protocols.JSONRPCRequest(
             id: .int(3),
             method: "tools/call",
             params: params
@@ -153,7 +153,7 @@ struct JSONRPCProtocolTests {
         let encoder = JSONEncoder()
         let data = try encoder.encode(request)
         let decoder = JSONDecoder()
-        let decoded = try decoder.decode(JSONRPCRequest.self, from: data)
+        let decoded = try decoder.decode(MCP.Core.Protocols.JSONRPCRequest.self, from: data)
 
         // Extract name
         guard let name = decoded.params?["name"]?.value as? String else {
@@ -204,7 +204,7 @@ struct JSONRPCProtocolTests {
 
         // Decode the request
         let decoder = JSONDecoder()
-        let request = try decoder.decode(JSONRPCRequest.self, from: jsonData)
+        let request = try decoder.decode(MCP.Core.Protocols.JSONRPCRequest.self, from: jsonData)
 
         // Verify method
         #expect(request.method == "tools/call")
@@ -242,9 +242,9 @@ struct JSONRPCProtocolTests {
 
     @Test("JSONRPCNotification serializes correctly")
     func jsonRPCNotificationSerialization() throws {
-        let notification = JSONRPCNotification(
+        let notification = MCP.Core.Protocols.JSONRPCNotification(
             method: "cancelled",
-            params: ["requestId": AnyCodable("123")]
+            params: ["requestId": MCP.Core.Protocols.AnyCodable("123")]
         )
 
         #expect(notification.jsonrpc == "2.0")
@@ -253,7 +253,7 @@ struct JSONRPCProtocolTests {
         let encoder = JSONEncoder()
         let data = try encoder.encode(notification)
         let decoder = JSONDecoder()
-        let decoded = try decoder.decode(JSONRPCNotification.self, from: data)
+        let decoded = try decoder.decode(MCP.Core.Protocols.JSONRPCNotification.self, from: data)
 
         #expect(decoded.method == "cancelled")
     }
@@ -262,9 +262,9 @@ struct JSONRPCProtocolTests {
 
     @Test("JSONRPCResponse serializes correctly")
     func jsonRPCResponseSerialization() throws {
-        let response = JSONRPCResponse(
+        let response = MCP.Core.Protocols.JSONRPCResponse(
             id: .int(1),
-            result: ["status": AnyCodable("ok")]
+            result: ["status": MCP.Core.Protocols.AnyCodable("ok")]
         )
 
         #expect(response.jsonrpc == "2.0")
@@ -273,7 +273,7 @@ struct JSONRPCProtocolTests {
         let encoder = JSONEncoder()
         let data = try encoder.encode(response)
         let decoder = JSONDecoder()
-        let decoded = try decoder.decode(JSONRPCResponse.self, from: data)
+        let decoded = try decoder.decode(MCP.Core.Protocols.JSONRPCResponse.self, from: data)
 
         #expect(decoded.result["status"]?.value as? String == "ok")
     }
@@ -282,13 +282,13 @@ struct JSONRPCProtocolTests {
 
     @Test("JSONRPCError serializes correctly")
     func jsonRPCErrorSerialization() throws {
-        let errorDetail = JSONRPCError.ErrorDetail(
+        let errorDetail = MCP.Core.Protocols.JSONRPCError.ErrorDetail(
             code: -32600,
             message: "Invalid Request",
-            data: AnyCodable("Additional info")
+            data: MCP.Core.Protocols.AnyCodable("Additional info")
         )
 
-        let error = JSONRPCError(
+        let error = MCP.Core.Protocols.JSONRPCError(
             id: .string("bad-request"),
             error: errorDetail
         )
@@ -300,7 +300,7 @@ struct JSONRPCProtocolTests {
         let encoder = JSONEncoder()
         let data = try encoder.encode(error)
         let decoder = JSONDecoder()
-        let decoded = try decoder.decode(JSONRPCError.self, from: data)
+        let decoded = try decoder.decode(MCP.Core.Protocols.JSONRPCError.self, from: data)
 
         #expect(decoded.error.code == -32600)
         #expect(decoded.error.message == "Invalid Request")
@@ -308,12 +308,12 @@ struct JSONRPCProtocolTests {
 
     @Test("JSONRPCError handles nil data")
     func jsonRPCErrorNilData() throws {
-        let errorDetail = JSONRPCError.ErrorDetail(
+        let errorDetail = MCP.Core.Protocols.JSONRPCError.ErrorDetail(
             code: -32601,
             message: "Method not found"
         )
 
-        let error = JSONRPCError(
+        let error = MCP.Core.Protocols.JSONRPCError(
             id: .int(999),
             error: errorDetail
         )
@@ -323,7 +323,7 @@ struct JSONRPCProtocolTests {
         let encoder = JSONEncoder()
         let data = try encoder.encode(error)
         let decoder = JSONDecoder()
-        let decoded = try decoder.decode(JSONRPCError.self, from: data)
+        let decoded = try decoder.decode(MCP.Core.Protocols.JSONRPCError.self, from: data)
 
         #expect(decoded.error.data == nil)
     }
@@ -335,7 +335,7 @@ struct JSONRPCProtocolTests {
 struct ContentBlockTests {
     @Test("TextContent includes type field in JSON")
     func textContentIncludesType() throws {
-        let content = TextContent(text: "Hello, world!")
+        let content = MCP.Core.Protocols.TextContent(text: "Hello, world!")
 
         let encoder = JSONEncoder()
         let data = try encoder.encode(content)
@@ -349,7 +349,7 @@ struct ContentBlockTests {
 
     @Test("ImageContent includes type field in JSON")
     func imageContentIncludesType() throws {
-        let content = ImageContent(data: "base64data", mimeType: "image/png")
+        let content = MCP.Core.Protocols.ImageContent(data: "base64data", mimeType: "image/png")
 
         let encoder = JSONEncoder()
         let data = try encoder.encode(content)
@@ -364,12 +364,12 @@ struct ContentBlockTests {
 
     @Test("EmbeddedResource includes type field in JSON")
     func embeddedResourceIncludesType() throws {
-        let textResource = TextResourceContents(
+        let textResource = MCP.Core.Protocols.TextResourceContents(
             uri: "test://resource",
             mimeType: "text/plain",
             text: "test content"
         )
-        let content = EmbeddedResource(resource: .text(textResource))
+        let content = MCP.Core.Protocols.EmbeddedResource(resource: .text(textResource))
 
         let encoder = JSONEncoder()
         let data = try encoder.encode(content)
@@ -383,8 +383,8 @@ struct ContentBlockTests {
 
     @Test("ContentBlock.text encodes with type field")
     func contentBlockTextEncoding() throws {
-        let textContent = TextContent(text: "Test message")
-        let block = ContentBlock.text(textContent)
+        let textContent = MCP.Core.Protocols.TextContent(text: "Test message")
+        let block = MCP.Core.Protocols.ContentBlock.text(textContent)
 
         let encoder = JSONEncoder()
         let data = try encoder.encode([block])
@@ -399,15 +399,15 @@ struct ContentBlockTests {
 
     @Test("CallToolResult encodes content blocks correctly")
     func callToolResultEncoding() throws {
-        let textContent = TextContent(text: "Search results")
-        let result = CallToolResult(content: [.text(textContent)])
+        let textContent = MCP.Core.Protocols.TextContent(text: "Search results")
+        let result = MCP.Core.Protocols.CallToolResult(content: [.text(textContent)])
 
         let encoder = JSONEncoder()
         let data = try encoder.encode(result)
 
         // Verify it can be decoded back
         let decoder = JSONDecoder()
-        let decoded = try decoder.decode(CallToolResult.self, from: data)
+        let decoded = try decoder.decode(MCP.Core.Protocols.CallToolResult.self, from: data)
 
         #expect(decoded.content.count == 1)
         if case .text(let content) = decoded.content[0] {
@@ -436,7 +436,7 @@ struct ContentBlockTests {
 
         // Decode
         let decoder = JSONDecoder()
-        let result = try decoder.decode(CallToolResult.self, from: jsonData)
+        let result = try decoder.decode(MCP.Core.Protocols.CallToolResult.self, from: jsonData)
 
         // Re-encode
         let encoder = JSONEncoder()
@@ -474,9 +474,9 @@ struct MCPProtocolTypesTests {
 
     @Test("Icon round-trips through Codable")
     func iconCodable() throws {
-        let icon = Icon(src: "data:image/png;base64,abcd", mimeType: "image/png", sizes: ["64x64"])
+        let icon = MCP.Core.Protocols.Icon(src: "data:image/png;base64,abcd", mimeType: "image/png", sizes: ["64x64"])
         let data = try JSONEncoder().encode(icon)
-        let decoded = try JSONDecoder().decode(Icon.self, from: data)
+        let decoded = try JSONDecoder().decode(MCP.Core.Protocols.Icon.self, from: data)
         #expect(decoded.src == icon.src)
         #expect(decoded.mimeType == "image/png")
         #expect(decoded.sizes == ["64x64"])
@@ -484,7 +484,7 @@ struct MCPProtocolTypesTests {
 
     @Test("Implementation type works correctly")
     func implementationType() throws {
-        let impl = Implementation(name: "cupertino", version: "1.0.0")
+        let impl = MCP.Core.Protocols.Implementation(name: "cupertino", version: "1.0.0")
 
         #expect(impl.name == "cupertino")
         #expect(impl.version == "1.0.0")
@@ -494,7 +494,7 @@ struct MCPProtocolTypesTests {
         let encoder = JSONEncoder()
         let data = try encoder.encode(impl)
         let decoder = JSONDecoder()
-        let decoded = try decoder.decode(Implementation.self, from: data)
+        let decoded = try decoder.decode(MCP.Core.Protocols.Implementation.self, from: data)
 
         #expect(decoded.name == "cupertino")
         #expect(decoded.version == "1.0.0")
@@ -503,11 +503,11 @@ struct MCPProtocolTypesTests {
 
     @Test("Implementation carries icons when supplied (MCP 2025-11-25)")
     func implementationWithIcons() throws {
-        let icon = Icon(src: "data:image/png;base64,zzz", mimeType: "image/png", sizes: ["64x64"])
-        let impl = Implementation(name: "cupertino", version: "1.0.0", icons: [icon])
+        let icon = MCP.Core.Protocols.Icon(src: "data:image/png;base64,zzz", mimeType: "image/png", sizes: ["64x64"])
+        let impl = MCP.Core.Protocols.Implementation(name: "cupertino", version: "1.0.0", icons: [icon])
 
         let data = try JSONEncoder().encode(impl)
-        let decoded = try JSONDecoder().decode(Implementation.self, from: data)
+        let decoded = try JSONDecoder().decode(MCP.Core.Protocols.Implementation.self, from: data)
 
         #expect(decoded.icons?.count == 1)
         #expect(decoded.icons?.first?.src == icon.src)
@@ -517,16 +517,16 @@ struct MCPProtocolTypesTests {
     func implementationLegacyDecoding() throws {
         // A 2024-11-05 / 2025-06-18 handshake never emits `icons`. Must decode.
         let legacyJSON = #"{"name":"old-client","version":"0.1.0"}"#.data(using: .utf8)!
-        let decoded = try JSONDecoder().decode(Implementation.self, from: legacyJSON)
+        let decoded = try JSONDecoder().decode(MCP.Core.Protocols.Implementation.self, from: legacyJSON)
         #expect(decoded.name == "old-client")
         #expect(decoded.icons == nil)
     }
 
     @Test("ClientCapabilities serializes correctly")
     func clientCapabilities() throws {
-        let capabilities = ClientCapabilities(
-            sampling: ClientCapabilities.SamplingCapability(),
-            roots: ClientCapabilities.RootsCapability(listChanged: true)
+        let capabilities = MCP.Core.Protocols.ClientCapabilities(
+            sampling: MCP.Core.Protocols.ClientCapabilities.SamplingCapability(),
+            roots: MCP.Core.Protocols.ClientCapabilities.RootsCapability(listChanged: true)
         )
 
         #expect(capabilities.sampling != nil)
@@ -535,19 +535,19 @@ struct MCPProtocolTypesTests {
         let encoder = JSONEncoder()
         let data = try encoder.encode(capabilities)
         let decoder = JSONDecoder()
-        let decoded = try decoder.decode(ClientCapabilities.self, from: data)
+        let decoded = try decoder.decode(MCP.Core.Protocols.ClientCapabilities.self, from: data)
 
         #expect(decoded.roots?.listChanged == true)
     }
 
     @Test("ServerCapabilities serializes correctly")
     func serverCapabilities() throws {
-        let capabilities = ServerCapabilities(
-            resources: ServerCapabilities.ResourcesCapability(
+        let capabilities = MCP.Core.Protocols.ServerCapabilities(
+            resources: MCP.Core.Protocols.ServerCapabilities.ResourcesCapability(
                 subscribe: true,
                 listChanged: true
             ),
-            tools: ServerCapabilities.ToolsCapability(listChanged: false)
+            tools: MCP.Core.Protocols.ServerCapabilities.ToolsCapability(listChanged: false)
         )
 
         #expect(capabilities.resources?.subscribe == true)
@@ -556,7 +556,7 @@ struct MCPProtocolTypesTests {
         let encoder = JSONEncoder()
         let data = try encoder.encode(capabilities)
         let decoder = JSONDecoder()
-        let decoded = try decoder.decode(ServerCapabilities.self, from: data)
+        let decoded = try decoder.decode(MCP.Core.Protocols.ServerCapabilities.self, from: data)
 
         #expect(decoded.resources?.subscribe == true)
         #expect(decoded.tools?.listChanged == false)
@@ -564,10 +564,10 @@ struct MCPProtocolTypesTests {
 
     @Test("InitializeRequest has correct structure")
     func initializeRequest() throws {
-        let clientInfo = Implementation(name: "test-client", version: "0.1.0")
-        let capabilities = ClientCapabilities()
+        let clientInfo = MCP.Core.Protocols.Implementation(name: "test-client", version: "0.1.0")
+        let capabilities = MCP.Core.Protocols.ClientCapabilities()
 
-        let request = InitializeRequest(
+        let request = MCP.Core.Protocols.InitializeRequest(
             protocolVersion: MCPProtocolVersion,
             capabilities: capabilities,
             clientInfo: clientInfo
@@ -585,12 +585,12 @@ struct MCPProtocolTypesTests {
 
     @Test("InitializeResult has correct structure")
     func initializeResult() throws {
-        let serverInfo = Implementation(name: "cupertino-mcp", version: "1.0.0")
-        let capabilities = ServerCapabilities(
-            resources: ServerCapabilities.ResourcesCapability(subscribe: false)
+        let serverInfo = MCP.Core.Protocols.Implementation(name: "cupertino-mcp", version: "1.0.0")
+        let capabilities = MCP.Core.Protocols.ServerCapabilities(
+            resources: MCP.Core.Protocols.ServerCapabilities.ResourcesCapability(subscribe: false)
         )
 
-        let result = InitializeResult(
+        let result = MCP.Core.Protocols.InitializeResult(
             protocolVersion: MCPProtocolVersion,
             capabilities: capabilities,
             serverInfo: serverInfo,
@@ -605,7 +605,7 @@ struct MCPProtocolTypesTests {
         let encoder = JSONEncoder()
         let data = try encoder.encode(result)
         let decoder = JSONDecoder()
-        let decoded = try decoder.decode(InitializeResult.self, from: data)
+        let decoded = try decoder.decode(MCP.Core.Protocols.InitializeResult.self, from: data)
 
         #expect(decoded.serverInfo.name == "cupertino-mcp")
     }
@@ -617,14 +617,14 @@ struct MCPProtocolTypesTests {
 struct MCPServerTests {
     @Test("Server initializes with correct info")
     func serverInitialization() {
-        let server = MCPServer(name: "test-server", version: "1.0.0")
+        let server = MCP.Core.Server(name: "test-server", version: "1.0.0")
         // Server should be created successfully (if this compiles, it worked)
         _ = server
     }
 
     @Test("Server can register resource provider")
     func registerResourceProvider() async {
-        let server = MCPServer(name: "test-server", version: "1.0.0")
+        let server = MCP.Core.Server(name: "test-server", version: "1.0.0")
         let provider = TestResourceProvider()
 
         await server.registerResourceProvider(provider)
@@ -633,7 +633,7 @@ struct MCPServerTests {
 
     @Test("Server can register tool provider")
     func registerToolProvider() async {
-        let server = MCPServer(name: "test-server", version: "1.0.0")
+        let server = MCP.Core.Server(name: "test-server", version: "1.0.0")
         let provider = TestToolProvider()
 
         await server.registerToolProvider(provider)
@@ -642,7 +642,7 @@ struct MCPServerTests {
 
     @Test("Server can register prompt provider")
     func registerPromptProvider() async {
-        let server = MCPServer(name: "test-server", version: "1.0.0")
+        let server = MCP.Core.Server(name: "test-server", version: "1.0.0")
         let provider = TestPromptProvider()
 
         await server.registerPromptProvider(provider)
@@ -653,43 +653,43 @@ struct MCPServerTests {
 // MARK: - Test Helpers
 
 /// Mock resource provider for testing
-struct TestResourceProvider: ResourceProvider {
-    func listResources(cursor: String?) async throws -> ListResourcesResult {
-        ListResourcesResult(resources: [])
+struct TestResourceProvider: MCP.Core.ResourceProvider {
+    func listResources(cursor: String?) async throws -> MCP.Core.Protocols.ListResourcesResult {
+        MCP.Core.Protocols.ListResourcesResult(resources: [])
     }
 
-    func readResource(uri: String) async throws -> ReadResourceResult {
-        let textResourceContents = TextResourceContents(
+    func readResource(uri: String) async throws -> MCP.Core.Protocols.ReadResourceResult {
+        let textResourceContents = MCP.Core.Protocols.TextResourceContents(
             uri: uri,
             mimeType: "text/plain",
             text: "test content"
         )
-        let contents = ResourceContents.text(textResourceContents)
-        return ReadResourceResult(contents: [contents])
+        let contents = MCP.Core.Protocols.ResourceContents.text(textResourceContents)
+        return MCP.Core.Protocols.ReadResourceResult(contents: [contents])
     }
 }
 
 /// Mock tool provider for testing
-struct TestToolProvider: ToolProvider {
-    func listTools(cursor: String?) async throws -> ListToolsResult {
-        ListToolsResult(tools: [])
+struct TestToolProvider: MCP.Core.ToolProvider {
+    func listTools(cursor: String?) async throws -> MCP.Core.Protocols.ListToolsResult {
+        MCP.Core.Protocols.ListToolsResult(tools: [])
     }
 
-    func callTool(name: String, arguments: [String: AnyCodable]?) async throws -> CallToolResult {
-        let textContent = TextContent(text: "test result")
-        return CallToolResult(content: [.text(textContent)])
+    func callTool(name: String, arguments: [String: MCP.Core.Protocols.AnyCodable]?) async throws -> MCP.Core.Protocols.CallToolResult {
+        let textContent = MCP.Core.Protocols.TextContent(text: "test result")
+        return MCP.Core.Protocols.CallToolResult(content: [.text(textContent)])
     }
 }
 
 /// Mock prompt provider for testing
-struct TestPromptProvider: PromptProvider {
-    func listPrompts(cursor: String?) async throws -> ListPromptsResult {
-        ListPromptsResult(prompts: [])
+struct TestPromptProvider: MCP.Core.PromptProvider {
+    func listPrompts(cursor: String?) async throws -> MCP.Core.Protocols.ListPromptsResult {
+        MCP.Core.Protocols.ListPromptsResult(prompts: [])
     }
 
-    func getPrompt(name: String, arguments: [String: String]?) async throws -> GetPromptResult {
-        let textContent = TextContent(text: "test prompt")
-        let message = PromptMessage(role: .user, content: .text(textContent))
-        return GetPromptResult(messages: [message])
+    func getPrompt(name: String, arguments: [String: String]?) async throws -> MCP.Core.Protocols.GetPromptResult {
+        let textContent = MCP.Core.Protocols.TextContent(text: "test prompt")
+        let message = MCP.Core.Protocols.PromptMessage(role: .user, content: .text(textContent))
+        return MCP.Core.Protocols.GetPromptResult(messages: [message])
     }
 }

@@ -4,128 +4,130 @@ import Foundation
 
 /// Transport implementation using standard input/output streams
 /// This is the primary transport for Claude Desktop and CLI tools
-public actor StdioTransport: MCPTransport {
-    private let input: FileHandle
-    private let output: FileHandle
-    private var inputTask: Task<Void, Never>?
-    private let messagesContinuation: AsyncStream<JSONRPCMessage>.Continuation
-    private let _messages: AsyncStream<JSONRPCMessage>
-    private var _isConnected: Bool = false
+extension MCP.Core.Transport {
+    public actor Stdio: Channel {
+        private let input: FileHandle
+        private let output: FileHandle
+        private var inputTask: Task<Void, Never>?
+        private let messagesContinuation: AsyncStream<Message>.Continuation
+        private let _messages: AsyncStream<Message>
+        private var _isConnected: Bool = false
 
-    public var messages: AsyncStream<JSONRPCMessage> {
-        get async { _messages }
-    }
-
-    public var isConnected: Bool {
-        get async { _isConnected }
-    }
-
-    public init(
-        input: FileHandle = .standardInput,
-        output: FileHandle = .standardOutput
-    ) {
-        self.input = input
-        self.output = output
-
-        var continuation: AsyncStream<JSONRPCMessage>.Continuation!
-        _messages = AsyncStream { continuation = $0 }
-        messagesContinuation = continuation
-    }
-
-    public func start() async throws {
-        guard !_isConnected else {
-            return
+        public var messages: AsyncStream<Message> {
+            get async { _messages }
         }
 
-        _isConnected = true
-
-        // Start reading from stdin in background task
-        inputTask = Task { [weak self] in
-            await self?.readLoop()
-        }
-    }
-
-    public func stop() async throws {
-        guard _isConnected else {
-            return
+        public var isConnected: Bool {
+            get async { _isConnected }
         }
 
-        _isConnected = false
-        inputTask?.cancel()
-        inputTask = nil
-        messagesContinuation.finish()
-    }
+        public init(
+            input: FileHandle = .standardInput,
+            output: FileHandle = .standardOutput
+        ) {
+            self.input = input
+            self.output = output
 
-    public func send(_ message: JSONRPCMessage) async throws {
-        guard _isConnected else {
-            throw TransportError.notConnected
+            var continuation: AsyncStream<Message>.Continuation!
+            _messages = AsyncStream { continuation = $0 }
+            messagesContinuation = continuation
         }
 
-        do {
-            let data = try message.encode()
-
-            // Write newline-delimited JSON
-            var outputData = data
-            outputData.append(contentsOf: [0x0a]) // \n
-
-            try output.write(contentsOf: outputData)
-
-            // Log to stderr for debugging (not stdout which is used for protocol)
-            if let messageStr = String(data: data, encoding: .utf8) {
-                fputs("→ \(messageStr)\n", stderr)
+        public func start() async throws {
+            guard !_isConnected else {
+                return
             }
-        } catch {
-            throw TransportError.sendFailed(error.localizedDescription)
+
+            _isConnected = true
+
+            // Start reading from stdin in background task
+            inputTask = Task { [weak self] in
+                await self?.readLoop()
+            }
         }
-    }
 
-    // MARK: - Private Methods
+        public func stop() async throws {
+            guard _isConnected else {
+                return
+            }
 
-    private func readLoop() async {
-        var buffer = Data()
+            _isConnected = false
+            inputTask?.cancel()
+            inputTask = nil
+            messagesContinuation.finish()
+        }
 
-        do {
-            // Use async bytes sequence (non-blocking, async iteration)
-            for try await byte in input.bytes {
-                guard _isConnected else {
-                    break
+        public func send(_ message: Message) async throws {
+            guard _isConnected else {
+                throw Failure.notConnected
+            }
+
+            do {
+                let data = try message.encode()
+
+                // Write newline-delimited JSON
+                var outputData = data
+                outputData.append(contentsOf: [0x0a]) // \n
+
+                try output.write(contentsOf: outputData)
+
+                // Log to stderr for debugging (not stdout which is used for protocol)
+                if let messageStr = String(data: data, encoding: .utf8) {
+                    fputs("→ \(messageStr)\n", stderr)
                 }
+            } catch {
+                throw Failure.sendFailed(error.localizedDescription)
+            }
+        }
 
-                buffer.append(byte)
+        // MARK: - Private Methods
 
-                // Process complete lines (newline-delimited JSON)
-                if byte == 0x0a { // \n
-                    let lineData = Data(buffer.dropLast()) // Remove the newline
+        private func readLoop() async {
+            var buffer = Data()
 
-                    // Skip empty lines
-                    if !lineData.isEmpty {
-                        // Parse and emit message
-                        do {
-                            let message = try JSONRPCMessage.decode(from: lineData)
-
-                            // Log to stderr for debugging
-                            if let messageStr = String(data: lineData, encoding: .utf8) {
-                                fputs("← \(messageStr)\n", stderr)
-                            }
-
-                            messagesContinuation.yield(message)
-                        } catch {
-                            fputs("Error decoding message: \(error)\n", stderr)
-                        }
+            do {
+                // Use async bytes sequence (non-blocking, async iteration)
+                for try await byte in input.bytes {
+                    guard _isConnected else {
+                        break
                     }
 
-                    // Clear buffer for next message
-                    buffer.removeAll(keepingCapacity: true)
+                    buffer.append(byte)
+
+                    // Process complete lines (newline-delimited JSON)
+                    if byte == 0x0a { // \n
+                        let lineData = Data(buffer.dropLast()) // Remove the newline
+
+                        // Skip empty lines
+                        if !lineData.isEmpty {
+                            // Parse and emit message
+                            do {
+                                let message = try Message.decode(from: lineData)
+
+                                // Log to stderr for debugging
+                                if let messageStr = String(data: lineData, encoding: .utf8) {
+                                    fputs("← \(messageStr)\n", stderr)
+                                }
+
+                                messagesContinuation.yield(message)
+                            } catch {
+                                fputs("Error decoding message: \(error)\n", stderr)
+                            }
+                        }
+
+                        // Clear buffer for next message
+                        buffer.removeAll(keepingCapacity: true)
+                    }
+                }
+            } catch {
+                if _isConnected {
+                    fputs("Error reading stdin: \(error)\n", stderr)
                 }
             }
-        } catch {
-            if _isConnected {
-                fputs("Error reading stdin: \(error)\n", stderr)
-            }
-        }
 
-        // Clean up when loop exits
-        messagesContinuation.finish()
+            // Clean up when loop exits
+            messagesContinuation.finish()
+        }
     }
 }
 

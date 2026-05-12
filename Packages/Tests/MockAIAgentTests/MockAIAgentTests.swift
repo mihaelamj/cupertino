@@ -14,18 +14,18 @@ import Testing
 struct MCPMessageEncodingTests {
     @Test("Encodes compact JSON without embedded newlines")
     func compactJSONEncoding() throws {
-        let request = MCPRequest(
+        let request = MCP.Core.Protocols.Request(
             jsonrpc: "2.0",
             id: .int(1),
             method: "initialize",
-            params: InitializeParams(
+            params: MCP.Core.Protocols.InitializeParams(
                 protocolVersion: MCPProtocolVersion,
-                capabilities: ClientCapabilities(
+                capabilities: MCP.Core.Protocols.ClientCapabilities(
                     experimental: nil,
                     sampling: nil,
-                    roots: RootsCapability(listChanged: true)
+                    roots: MCP.Core.Protocols.RootsCapability(listChanged: true)
                 ),
-                clientInfo: Implementation(name: "Test", version: "1.0.0")
+                clientInfo: MCP.Core.Protocols.Implementation(name: "Test", version: "1.0.0")
             )
         )
 
@@ -42,18 +42,18 @@ struct MCPMessageEncodingTests {
 
     @Test("Pretty printed JSON contains embedded newlines")
     func prettyPrintedViolatesSpec() throws {
-        let request = MCPRequest(
+        let request = MCP.Core.Protocols.Request(
             jsonrpc: "2.0",
             id: .int(1),
             method: "initialize",
-            params: InitializeParams(
+            params: MCP.Core.Protocols.InitializeParams(
                 protocolVersion: MCPProtocolVersion,
-                capabilities: ClientCapabilities(
+                capabilities: MCP.Core.Protocols.ClientCapabilities(
                     experimental: nil,
                     sampling: nil,
-                    roots: RootsCapability(listChanged: true)
+                    roots: MCP.Core.Protocols.RootsCapability(listChanged: true)
                 ),
-                clientInfo: Implementation(name: "Test", version: "1.0.0")
+                clientInfo: MCP.Core.Protocols.Implementation(name: "Test", version: "1.0.0")
             )
         )
 
@@ -69,7 +69,7 @@ struct MCPMessageEncodingTests {
 
     @Test("Compact JSON is valid JSON-RPC 2.0")
     func compactJSONValid() throws {
-        let request = MCPRequest(
+        let request = MCP.Core.Protocols.Request(
             jsonrpc: "2.0",
             id: .int(42),
             method: "tools/list",
@@ -82,7 +82,7 @@ struct MCPMessageEncodingTests {
         let json = try #require(String(data: data, encoding: .utf8))
 
         // Decode back to verify it's valid
-        let decoded = try JSONDecoder().decode(JSONRPCRequest.self, from: Data(json.utf8))
+        let decoded = try JSONDecoder().decode(MCP.Core.Protocols.JSONRPCRequest.self, from: Data(json.utf8))
         #expect(decoded.jsonrpc == "2.0")
         #expect(decoded.id == .int(42))
         #expect(decoded.method == "tools/list")
@@ -90,8 +90,8 @@ struct MCPMessageEncodingTests {
 
     @Test("RequestID encodes as int or string without newlines")
     func requestIDEncoding() throws {
-        let intID = RequestID.int(123)
-        let stringID = RequestID.string("test-456")
+        let intID = MCP.Core.Protocols.RequestID.int(123)
+        let stringID = MCP.Core.Protocols.RequestID.string("test-456")
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
@@ -170,7 +170,7 @@ struct MCPResponseParsingTests {
         """
 
         let data = Data(responseJSON.utf8)
-        let response = try JSONDecoder().decode(JSONRPCResponse.self, from: data)
+        let response = try JSONDecoder().decode(MCP.Core.Protocols.JSONRPCResponse.self, from: data)
 
         #expect(response.jsonrpc == "2.0")
         #expect(response.id == .int(1))
@@ -183,7 +183,7 @@ struct MCPResponseParsingTests {
         """
 
         let data = Data(errorJSON.utf8)
-        let error = try JSONDecoder().decode(JSONRPCError.self, from: data)
+        let error = try JSONDecoder().decode(MCP.Core.Protocols.JSONRPCError.self, from: data)
 
         #expect(error.jsonrpc == "2.0")
         #expect(error.id == .int(3))
@@ -198,11 +198,11 @@ struct MCPResponseParsingTests {
         """
 
         let data = Data(responseJSON.utf8)
-        let response = try JSONDecoder().decode(JSONRPCResponse.self, from: data)
+        let response = try JSONDecoder().decode(MCP.Core.Protocols.JSONRPCResponse.self, from: data)
 
         // Convert result to InitializeResult
         let resultData = try JSONEncoder().encode(response.result)
-        let initResult = try JSONDecoder().decode(InitializeResult.self, from: resultData)
+        let initResult = try JSONDecoder().decode(MCP.Core.Protocols.InitializeResult.self, from: resultData)
 
         #expect(initResult.protocolVersion == MCPProtocolVersion)
         #expect(initResult.serverInfo.name == "test-server")
@@ -216,10 +216,10 @@ struct MCPResponseParsingTests {
         """
 
         let data = Data(responseJSON.utf8)
-        let response = try JSONDecoder().decode(JSONRPCResponse.self, from: data)
+        let response = try JSONDecoder().decode(MCP.Core.Protocols.JSONRPCResponse.self, from: data)
 
         let resultData = try JSONEncoder().encode(response.result)
-        let toolsResult = try JSONDecoder().decode(ListToolsResult.self, from: resultData)
+        let toolsResult = try JSONDecoder().decode(MCP.Core.Protocols.ListToolsResult.self, from: resultData)
 
         #expect(toolsResult.tools.count == 1)
         #expect(toolsResult.tools[0].name == "test_tool")
@@ -263,7 +263,7 @@ struct MCPBufferHandlingTests {
         // Each line should be valid JSON-RPC
         for line in lines {
             let data = Data(String(line).utf8)
-            _ = try JSONDecoder().decode(JSONRPCResponse.self, from: data)
+            _ = try JSONDecoder().decode(MCP.Core.Protocols.JSONRPCResponse.self, from: data)
         }
     }
 
@@ -313,16 +313,16 @@ struct MCPBufferHandlingTests {
 struct MCPToolCallTests {
     @Test("Encodes tool call with arguments")
     func toolCallWithArguments() throws {
-        let arguments: [String: AnyCodable] = [
-            "query": AnyCodable("test search"),
-            "limit": AnyCodable(10),
+        let arguments: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("test search"),
+            "limit": MCP.Core.Protocols.AnyCodable(10),
         ]
 
-        let request = MCPRequest(
+        let request = MCP.Core.Protocols.Request(
             jsonrpc: "2.0",
             id: .int(5),
             method: "tools/call",
-            params: CallToolParams(name: "search", arguments: arguments)
+            params: MCP.Core.Protocols.CallToolParams(name: "search", arguments: arguments)
         )
 
         let encoder = JSONEncoder()
@@ -346,10 +346,10 @@ struct MCPToolCallTests {
         """
 
         let data = Data(responseJSON.utf8)
-        let response = try JSONDecoder().decode(JSONRPCResponse.self, from: data)
+        let response = try JSONDecoder().decode(MCP.Core.Protocols.JSONRPCResponse.self, from: data)
 
         let resultData = try JSONEncoder().encode(response.result)
-        let toolResult = try JSONDecoder().decode(CallToolResult.self, from: resultData)
+        let toolResult = try JSONDecoder().decode(MCP.Core.Protocols.CallToolResult.self, from: resultData)
 
         #expect(toolResult.content.count == 1)
         if case .text(let textContent) = toolResult.content[0] {
@@ -361,7 +361,7 @@ struct MCPToolCallTests {
 
     @Test("Encodes notification without id")
     func notification() throws {
-        let notification = JSONRPCNotification(
+        let notification = MCP.Core.Protocols.JSONRPCNotification(
             method: "notifications/cancelled",
             params: nil
         )
@@ -384,4 +384,4 @@ struct MCPToolCallTests {
 
 // MARK: - Helper Types
 
-struct EmptyParams: Codable, Sendable {}
+struct EmptyParams: Codable {}

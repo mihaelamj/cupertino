@@ -31,9 +31,9 @@
  }
 
  // Send a response
- let response = JSONRPCResponse(
+ let response = MCP.Core.Protocols.JSONRPCResponse(
      id: .int(1),
-     result: ["status": AnyCodable("ok")]
+     result: ["status": MCP.Core.Protocols.AnyCodable("ok")]
  )
  try await transport.send(.response(response))
 

@@ -84,12 +84,12 @@ struct ServeCommand: AsyncParsableCommand {
 
         // Advertise the embedded cupertino icon to MCP clients that speak
         // the 2025-11-25 protocol. Older clients ignore the field.
-        let icon = Icon(
-            src: CupertinoIconEmbedded.dataURI,
+        let icon = MCP.Core.Protocols.Icon(
+            src: MCP.Core.Protocols.CupertinoIcon.dataURI,
             mimeType: "image/png",
             sizes: ["64x64"]
         )
-        let server = MCPServer(
+        let server = MCP.Core.Server(
             name: Shared.Constants.App.mcpServerName,
             version: Shared.Constants.App.version,
             icons: [icon]
@@ -104,7 +104,7 @@ struct ServeCommand: AsyncParsableCommand {
 
         printStartupMessages(config: config, evolutionURL: evolutionURL, searchDBURL: searchDBURL)
 
-        let transport = StdioTransport()
+        let transport = MCP.Core.Transport.Stdio()
         try await server.connect(transport)
 
         // Keep running indefinitely
@@ -114,7 +114,7 @@ struct ServeCommand: AsyncParsableCommand {
     }
 
     private func registerProviders(
-        server: MCPServer,
+        server: MCP.Core.Server,
         config: Shared.Configuration,
         evolutionURL: URL,
         searchDBURL: URL

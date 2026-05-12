@@ -5,10 +5,10 @@ import MCP
 @testable import Search
 @testable import SearchToolProvider
 @testable import Services
+import SharedConstants
 @testable import SharedCore
 import Testing
 import TestSupport
-import SharedConstants
 
 // MARK: - Test Helpers
 
@@ -223,8 +223,8 @@ struct SearchToolSourceRoutingTests {
         defer { try? cleanup() }
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
-        let args: [String: AnyCodable] = [
-            "query": AnyCodable("animation"),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("animation"),
         ]
 
         let result = try await provider.callTool(name: "search", arguments: args)
@@ -248,9 +248,9 @@ struct SearchToolSourceRoutingTests {
         defer { dbCleanup() }
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: database)
-        let args: [String: AnyCodable] = [
-            "query": AnyCodable("animation"),
-            "source": AnyCodable(Shared.Constants.SourcePrefix.samples),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("animation"),
+            "source": MCP.Core.Protocols.AnyCodable(Shared.Constants.SourcePrefix.samples),
         ]
 
         let result = try await provider.callTool(name: "search", arguments: args)
@@ -269,9 +269,9 @@ struct SearchToolSourceRoutingTests {
         defer { try? cleanup() }
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
-        let args: [String: AnyCodable] = [
-            "query": AnyCodable("animation"),
-            "source": AnyCodable(Shared.Constants.SourcePrefix.hig),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("animation"),
+            "source": MCP.Core.Protocols.AnyCodable(Shared.Constants.SourcePrefix.hig),
         ]
 
         let result = try await provider.callTool(name: "search", arguments: args)
@@ -291,9 +291,9 @@ struct SearchToolSourceRoutingTests {
         defer { try? cleanup() }
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
-        let args: [String: AnyCodable] = [
-            "query": AnyCodable("animation"),
-            "source": AnyCodable(Shared.Constants.SourcePrefix.appleArchive),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("animation"),
+            "source": MCP.Core.Protocols.AnyCodable(Shared.Constants.SourcePrefix.appleArchive),
         ]
 
         let result = try await provider.callTool(name: "search", arguments: args)
@@ -312,9 +312,9 @@ struct SearchToolSourceRoutingTests {
         defer { try? cleanup() }
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
-        let args: [String: AnyCodable] = [
-            "query": AnyCodable("animation"),
-            "source": AnyCodable(Shared.Constants.SourcePrefix.swiftEvolution),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("animation"),
+            "source": MCP.Core.Protocols.AnyCodable(Shared.Constants.SourcePrefix.swiftEvolution),
         ]
 
         let result = try await provider.callTool(name: "search", arguments: args)
@@ -333,9 +333,9 @@ struct SearchToolSourceRoutingTests {
         defer { try? cleanup() }
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
-        let args: [String: AnyCodable] = [
-            "query": AnyCodable("animation"),
-            "source": AnyCodable(Shared.Constants.SourcePrefix.swiftOrg),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("animation"),
+            "source": MCP.Core.Protocols.AnyCodable(Shared.Constants.SourcePrefix.swiftOrg),
         ]
 
         let result = try await provider.callTool(name: "search", arguments: args)
@@ -354,9 +354,9 @@ struct SearchToolSourceRoutingTests {
         defer { try? cleanup() }
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
-        let args: [String: AnyCodable] = [
-            "query": AnyCodable("animation"),
-            "source": AnyCodable(Shared.Constants.SourcePrefix.swiftBook),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("animation"),
+            "source": MCP.Core.Protocols.AnyCodable(Shared.Constants.SourcePrefix.swiftBook),
         ]
 
         let result = try await provider.callTool(name: "search", arguments: args)
@@ -375,9 +375,9 @@ struct SearchToolSourceRoutingTests {
         defer { try? cleanup() }
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
-        let args: [String: AnyCodable] = [
-            "query": AnyCodable("animation"),
-            "source": AnyCodable(Shared.Constants.SourcePrefix.packages),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("animation"),
+            "source": MCP.Core.Protocols.AnyCodable(Shared.Constants.SourcePrefix.packages),
         ]
 
         let result = try await provider.callTool(name: "search", arguments: args)
@@ -403,9 +403,9 @@ struct UnifiedSearchTests {
         defer { dbCleanup() }
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: database)
-        let args: [String: AnyCodable] = [
-            "query": AnyCodable("animation"),
-            "source": AnyCodable(Shared.Constants.SourcePrefix.all),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("animation"),
+            "source": MCP.Core.Protocols.AnyCodable(Shared.Constants.SourcePrefix.all),
         ]
 
         let result = try await provider.callTool(name: "search", arguments: args)
@@ -433,9 +433,9 @@ struct UnifiedSearchTests {
         defer { try? cleanup() }
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
-        let args: [String: AnyCodable] = [
-            "query": AnyCodable("animation"),
-            "source": AnyCodable(Shared.Constants.SourcePrefix.all),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("animation"),
+            "source": MCP.Core.Protocols.AnyCodable(Shared.Constants.SourcePrefix.all),
         ]
 
         let result = try await provider.callTool(name: "search", arguments: args)
@@ -454,9 +454,9 @@ struct UnifiedSearchTests {
         defer { try? cleanup() }
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
-        let args: [String: AnyCodable] = [
-            "query": AnyCodable("animation"),
-            "source": AnyCodable(Shared.Constants.SourcePrefix.all),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("animation"),
+            "source": MCP.Core.Protocols.AnyCodable(Shared.Constants.SourcePrefix.all),
         ]
 
         let result = try await provider.callTool(name: "search", arguments: args)
@@ -489,9 +489,9 @@ struct UnifiedSearchTests {
         )
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
-        let args: [String: AnyCodable] = [
-            "query": AnyCodable("string"),
-            "source": AnyCodable(Shared.Constants.SourcePrefix.all),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("string"),
+            "source": MCP.Core.Protocols.AnyCodable(Shared.Constants.SourcePrefix.all),
         ]
 
         let result = try await provider.callTool(name: "search", arguments: args)
@@ -522,9 +522,9 @@ struct TeaserResultsTests {
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: database)
 
         // Search apple-docs only
-        let args: [String: AnyCodable] = [
-            "query": AnyCodable("animation"),
-            "source": AnyCodable(Shared.Constants.SourcePrefix.appleDocs),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("animation"),
+            "source": MCP.Core.Protocols.AnyCodable(Shared.Constants.SourcePrefix.appleDocs),
         ]
 
         let result = try await provider.callTool(name: "search", arguments: args)
@@ -571,8 +571,8 @@ struct TeaserResultsTests {
         )
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
-        let args: [String: AnyCodable] = [
-            "query": AnyCodable("animation"),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("animation"),
         ]
 
         let result = try await provider.callTool(name: "search", arguments: args)
@@ -640,8 +640,8 @@ struct TeaserResultsTests {
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
 
         // Search for "networking" specifically
-        let args: [String: AnyCodable] = [
-            "query": AnyCodable("networking"),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("networking"),
         ]
 
         let result = try await provider.callTool(name: "search", arguments: args)
@@ -666,9 +666,9 @@ struct TeaserResultsTests {
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
 
         // Search HIG source
-        let args: [String: AnyCodable] = [
-            "query": AnyCodable("animation"),
-            "source": AnyCodable(Shared.Constants.SourcePrefix.hig),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("animation"),
+            "source": MCP.Core.Protocols.AnyCodable(Shared.Constants.SourcePrefix.hig),
         ]
 
         let result = try await provider.callTool(name: "search", arguments: args)
@@ -700,8 +700,8 @@ struct TeaserResultsTests {
         )
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
-        let args: [String: AnyCodable] = [
-            "query": AnyCodable("unique"),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("unique"),
         ]
 
         let result = try await provider.callTool(name: "search", arguments: args)
@@ -749,9 +749,9 @@ struct SearchFilteringTests {
         )
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
-        let args: [String: AnyCodable] = [
-            "query": AnyCodable("view"),
-            "framework": AnyCodable("swiftui"),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("view"),
+            "framework": MCP.Core.Protocols.AnyCodable("swiftui"),
         ]
 
         let result = try await provider.callTool(name: "search", arguments: args)
@@ -785,10 +785,10 @@ struct SearchFilteringTests {
         }
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
-        let args: [String: AnyCodable] = [
-            "query": AnyCodable("swift"),
-            "source": AnyCodable("apple-docs"), // Specify source to get numbered results format
-            "limit": AnyCodable(3),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("swift"),
+            "source": MCP.Core.Protocols.AnyCodable("apple-docs"), // Specify source to get numbered results format
+            "limit": MCP.Core.Protocols.AnyCodable(3),
         ]
 
         let result = try await provider.callTool(name: "search", arguments: args)
@@ -836,15 +836,15 @@ struct SearchFilteringTests {
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
 
         // Without include_archive
-        let argsWithout: [String: AnyCodable] = [
-            "query": AnyCodable("string"),
+        let argsWithout: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("string"),
         ]
         let resultWithout = try await provider.callTool(name: "search", arguments: argsWithout)
 
         // With include_archive
-        let argsWith: [String: AnyCodable] = [
-            "query": AnyCodable("string"),
-            "include_archive": AnyCodable(true),
+        let argsWith: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("string"),
+            "include_archive": MCP.Core.Protocols.AnyCodable(true),
         ]
         let resultWith = try await provider.callTool(name: "search", arguments: argsWith)
 
@@ -897,9 +897,9 @@ struct SearchErrorHandlingTests {
         defer { try? cleanup() }
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
-        let args: [String: AnyCodable] = [
-            "query": AnyCodable("animation"),
-            "source": AnyCodable(Shared.Constants.SourcePrefix.samples),
+        let args: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("animation"),
+            "source": MCP.Core.Protocols.AnyCodable(Shared.Constants.SourcePrefix.samples),
         ]
 
         await #expect(throws: ToolError.self) {
@@ -1021,14 +1021,14 @@ struct SearchIntegrationTests {
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: database)
 
         // Test 1: Default search (apple-docs)
-        let defaultArgs: [String: AnyCodable] = ["query": AnyCodable("animation")]
+        let defaultArgs: [String: MCP.Core.Protocols.AnyCodable] = ["query": MCP.Core.Protocols.AnyCodable("animation")]
         let defaultResult = try await provider.callTool(name: "search", arguments: defaultArgs)
         #expect(!defaultResult.content.isEmpty)
 
         // Test 2: Unified search (all)
-        let allArgs: [String: AnyCodable] = [
-            "query": AnyCodable("animation"),
-            "source": AnyCodable("all"),
+        let allArgs: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("animation"),
+            "source": MCP.Core.Protocols.AnyCodable("all"),
         ]
         let allResult = try await provider.callTool(name: "search", arguments: allArgs)
         if case let .text(content) = allResult.content.first {
@@ -1036,9 +1036,9 @@ struct SearchIntegrationTests {
         }
 
         // Test 3: Sample search
-        let sampleArgs: [String: AnyCodable] = [
-            "query": AnyCodable("animation"),
-            "source": AnyCodable("samples"),
+        let sampleArgs: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("animation"),
+            "source": MCP.Core.Protocols.AnyCodable("samples"),
         ]
         let sampleResult = try await provider.callTool(name: "search", arguments: sampleArgs)
         #expect(!sampleResult.content.isEmpty)

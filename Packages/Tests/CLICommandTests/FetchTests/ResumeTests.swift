@@ -1,14 +1,14 @@
 @testable import CLI
 @testable import Core
+import CoreProtocols
 import Foundation
 import Ingest
+import SharedConfiguration
+import SharedConstants
 @testable import SharedCore
+import SharedModels
 import Testing
 import TestSupport
-import SharedConstants
-import SharedConfiguration
-import SharedModels
-import CoreProtocols
 
 // MARK: - Auto-Resume + --start-clean Tests
 
@@ -927,7 +927,7 @@ struct ResumeAndStartCleanTests {
 
         // Save through the real crawler API.
         let writer = CrawlerState(configuration: config)
-        let visited: Set<String> = [
+        let visited: Set = [
             "http://127.0.0.1:1/v1",
             "http://127.0.0.1:1/v2",
             "http://127.0.0.1:1/v3",
