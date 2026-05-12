@@ -29,9 +29,9 @@ extension Core {
         /// Crawl Swift Evolution proposals
         public func crawl(
             limit: Int? = nil, // Internal use only - for testing
-            onProgress: (@Sendable (EvolutionProgress) -> Void)? = nil
-        ) async throws -> EvolutionStatistics {
-            var stats = EvolutionStatistics(startTime: Date())
+            onProgress: (@Sendable (Progress) -> Void)? = nil
+        ) async throws -> Statistics {
+            var stats = Statistics(startTime: Date())
 
             logInfo("🚀 Starting Swift Evolution crawler")
             logInfo("   Repository: \(repo)")
@@ -69,7 +69,7 @@ extension Core {
 
                     // Progress callback
                     if let onProgress {
-                        let progress = EvolutionProgress(
+                        let progress = Progress(
                             current: index + 1,
                             total: proposals.count,
                             proposalID: proposal.id,
@@ -127,7 +127,7 @@ extension Core {
             let (data, response) = try await URLSession.shared.data(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                throw EvolutionCrawlerError.invalidResponse
+                throw Error.invalidResponse
             }
 
             if httpResponse.statusCode != 200 {
@@ -136,7 +136,7 @@ extension Core {
                     logInfo("   Testing proposals directory (\(path)) not found, skipping")
                     return []
                 }
-                throw EvolutionCrawlerError.invalidResponse
+                throw Error.invalidResponse
             }
 
             let files = try JSONDecoder().decode([GitHubFile].self, from: data)
@@ -149,17 +149,17 @@ extension Core {
             }
         }
 
-        private func downloadProposal(_ proposal: ProposalMetadata, stats: inout EvolutionStatistics) async throws {
+        private func downloadProposal(_ proposal: ProposalMetadata, stats: inout Statistics) async throws {
             logInfo("📄 [\(stats.totalProposals + 1)] \(proposal.id)")
 
             // Download markdown content
             guard let url = URL(string: proposal.downloadURL) else {
-                throw EvolutionCrawlerError.invalidURL(proposal.downloadURL)
+                throw Error.invalidURL(proposal.downloadURL)
             }
 
             let (data, _) = try await URLSession.shared.data(from: url)
             guard let markdown = String(data: data, encoding: .utf8) else {
-                throw EvolutionCrawlerError.invalidEncoding
+                throw Error.invalidEncoding
             }
 
             // Check status if filtering for accepted only
@@ -247,7 +247,7 @@ extension Core {
             Logging.Log.error(errorMessage, category: .evolution)
         }
 
-        private func logStatistics(_ stats: EvolutionStatistics) {
+        private func logStatistics(_ stats: Statistics) {
             let messages = [
                 "📊 Statistics:",
                 "   Total proposals: \(stats.totalProposals)",
@@ -268,69 +268,73 @@ extension Core {
 
 // MARK: - Models
 
-struct GitHubFile: Codable {
-    let name: String
-    let downloadURL: String? // Optional - directories have null download_url
+extension Core.EvolutionCrawler {
+    struct GitHubFile: Codable {
+        let name: String
+        let downloadURL: String? // Optional - directories have null download_url
 
-    enum CodingKeys: String, CodingKey {
-        case name
-        case downloadURL = "download_url"
-    }
-}
-
-struct ProposalMetadata {
-    let id: String
-    let filename: String
-    let downloadURL: String
-}
-
-public struct EvolutionStatistics: Sendable {
-    public var totalProposals: Int = 0
-    public var newProposals: Int = 0
-    public var updatedProposals: Int = 0
-    public var errors: Int = 0
-    public var startTime: Date?
-    public var endTime: Date?
-
-    public init(
-        totalProposals: Int = 0,
-        newProposals: Int = 0,
-        updatedProposals: Int = 0,
-        errors: Int = 0,
-        startTime: Date? = nil,
-        endTime: Date? = nil
-    ) {
-        self.totalProposals = totalProposals
-        self.newProposals = newProposals
-        self.updatedProposals = updatedProposals
-        self.errors = errors
-        self.startTime = startTime
-        self.endTime = endTime
-    }
-
-    public var duration: TimeInterval? {
-        guard let start = startTime, let end = endTime else {
-            return nil
+        enum CodingKeys: String, CodingKey {
+            case name
+            case downloadURL = "download_url"
         }
-        return end.timeIntervalSince(start)
     }
-}
 
-public struct EvolutionProgress: Sendable {
-    public let current: Int
-    public let total: Int
-    public let proposalID: String
-    public let stats: EvolutionStatistics
+    struct ProposalMetadata {
+        let id: String
+        let filename: String
+        let downloadURL: String
+    }
 
-    public var percentage: Double {
-        Double(current) / Double(total) * 100
+    public struct Statistics: Sendable {
+        public var totalProposals: Int = 0
+        public var newProposals: Int = 0
+        public var updatedProposals: Int = 0
+        public var errors: Int = 0
+        public var startTime: Date?
+        public var endTime: Date?
+
+        public init(
+            totalProposals: Int = 0,
+            newProposals: Int = 0,
+            updatedProposals: Int = 0,
+            errors: Int = 0,
+            startTime: Date? = nil,
+            endTime: Date? = nil
+        ) {
+            self.totalProposals = totalProposals
+            self.newProposals = newProposals
+            self.updatedProposals = updatedProposals
+            self.errors = errors
+            self.startTime = startTime
+            self.endTime = endTime
+        }
+
+        public var duration: TimeInterval? {
+            guard let start = startTime, let end = endTime else {
+                return nil
+            }
+            return end.timeIntervalSince(start)
+        }
+    }
+
+    public struct Progress: Sendable {
+        public let current: Int
+        public let total: Int
+        public let proposalID: String
+        public let stats: Statistics
+
+        public var percentage: Double {
+            Double(current) / Double(total) * 100
+        }
     }
 }
 
 // MARK: - Errors
 
-enum EvolutionCrawlerError: Error {
-    case invalidResponse
-    case invalidURL(String)
-    case invalidEncoding
+extension Core.EvolutionCrawler {
+    enum Error: Swift.Error {
+        case invalidResponse
+        case invalidURL(String)
+        case invalidEncoding
+    }
 }

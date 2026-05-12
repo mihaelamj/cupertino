@@ -213,11 +213,11 @@ struct SwiftEvolutionCrawlerTests {
         #expect(isAccepted == false)
     }
 
-    // MARK: - EvolutionStatistics Tests
+    // MARK: - Core.EvolutionCrawler.Statistics Tests
 
-    @Test("EvolutionStatistics initializes with zeros")
+    @Test("Core.EvolutionCrawler.Statistics initializes with zeros")
     func statisticsInitializesWithZeros() {
-        let stats = EvolutionStatistics()
+        let stats = Core.EvolutionCrawler.Statistics()
 
         #expect(stats.totalProposals == 0)
         #expect(stats.newProposals == 0)
@@ -225,9 +225,9 @@ struct SwiftEvolutionCrawlerTests {
         #expect(stats.errors == 0)
     }
 
-    @Test("EvolutionStatistics tracks counts")
+    @Test("Core.EvolutionCrawler.Statistics tracks counts")
     func statisticsTracksCounts() {
-        var stats = EvolutionStatistics(startTime: Date())
+        var stats = Core.EvolutionCrawler.Statistics(startTime: Date())
         stats.totalProposals = 400
         stats.newProposals = 350
         stats.updatedProposals = 50
@@ -239,21 +239,21 @@ struct SwiftEvolutionCrawlerTests {
         #expect(stats.errors == 0)
     }
 
-    @Test("EvolutionStatistics calculates duration")
+    @Test("Core.EvolutionCrawler.Statistics calculates duration")
     func statisticsCalculatesDuration() {
-        var stats = EvolutionStatistics(startTime: Date())
+        var stats = Core.EvolutionCrawler.Statistics(startTime: Date())
         stats.endTime = stats.startTime?.addingTimeInterval(3600) // 1 hour
 
         let duration = stats.duration
         #expect(duration == 3600.0)
     }
 
-    // MARK: - EvolutionProgress Tests
+    // MARK: - Core.EvolutionCrawler.Progress Tests
 
-    @Test("EvolutionProgress tracks progress")
+    @Test("Core.EvolutionCrawler.Progress tracks progress")
     func progressTracksProgress() {
-        let stats = EvolutionStatistics()
-        let progress = EvolutionProgress(
+        let stats = Core.EvolutionCrawler.Statistics()
+        let progress = Core.EvolutionCrawler.Progress(
             current: 100,
             total: 400,
             proposalID: "SE-0100",
@@ -266,11 +266,11 @@ struct SwiftEvolutionCrawlerTests {
         #expect(progress.percentage == 25.0)
     }
 
-    // MARK: - ProposalMetadata Tests
+    // MARK: - Core.EvolutionCrawler.ProposalMetadata Tests
 
-    @Test("ProposalMetadata stores proposal info")
+    @Test("Core.EvolutionCrawler.ProposalMetadata stores proposal info")
     func proposalMetadataStoresInfo() {
-        let metadata = ProposalMetadata(
+        let metadata = Core.EvolutionCrawler.ProposalMetadata(
             id: "SE-0001",
             filename: "0001-keywords-as-argument-labels.md",
             downloadURL: "https://raw.githubusercontent.com/swiftlang/swift-evolution/main/proposals/0001-keywords-as-argument-labels.md"
@@ -281,14 +281,14 @@ struct SwiftEvolutionCrawlerTests {
         #expect(metadata.downloadURL.contains("raw.githubusercontent.com"))
     }
 
-    @Test("ProposalMetadata can be sorted by ID")
+    @Test("Core.EvolutionCrawler.ProposalMetadata can be sorted by ID")
     func proposalMetadataCanBeSorted() {
-        let proposal1 = ProposalMetadata(
+        let proposal1 = Core.EvolutionCrawler.ProposalMetadata(
             id: "SE-0001",
             filename: "0001-test.md",
             downloadURL: "https://example.com/1"
         )
-        let proposal2 = ProposalMetadata(
+        let proposal2 = Core.EvolutionCrawler.ProposalMetadata(
             id: "SE-0002",
             filename: "0002-test.md",
             downloadURL: "https://example.com/2"
@@ -322,9 +322,9 @@ struct SwiftEvolutionCrawlerTests {
         }
     }
 
-    @Test("ProposalMetadata stores ST proposal info")
+    @Test("Core.EvolutionCrawler.ProposalMetadata stores ST proposal info")
     func stProposalMetadataStoresInfo() {
-        let metadata = ProposalMetadata(
+        let metadata = Core.EvolutionCrawler.ProposalMetadata(
             id: "ST-0001",
             filename: "0001-refactor-bug-inits.md",
             downloadURL: "https://raw.githubusercontent.com/swiftlang/swift-evolution/main/proposals/testing/0001-refactor-bug-inits.md"
@@ -338,10 +338,10 @@ struct SwiftEvolutionCrawlerTests {
     @Test("Mixed SE and ST proposals sort correctly")
     func mixedSEAndSTProposalsSortCorrectly() {
         let proposals = [
-            ProposalMetadata(id: "ST-0001", filename: "0001-test.md", downloadURL: "https://example.com/st1"),
-            ProposalMetadata(id: "SE-0002", filename: "0002-test.md", downloadURL: "https://example.com/se2"),
-            ProposalMetadata(id: "SE-0001", filename: "0001-test.md", downloadURL: "https://example.com/se1"),
-            ProposalMetadata(id: "ST-0002", filename: "0002-test.md", downloadURL: "https://example.com/st2"),
+            Core.EvolutionCrawler.ProposalMetadata(id: "ST-0001", filename: "0001-test.md", downloadURL: "https://example.com/st1"),
+            Core.EvolutionCrawler.ProposalMetadata(id: "SE-0002", filename: "0002-test.md", downloadURL: "https://example.com/se2"),
+            Core.EvolutionCrawler.ProposalMetadata(id: "SE-0001", filename: "0001-test.md", downloadURL: "https://example.com/se1"),
+            Core.EvolutionCrawler.ProposalMetadata(id: "ST-0002", filename: "0002-test.md", downloadURL: "https://example.com/st2"),
         ]
 
         let sorted = proposals.sorted { $0.id < $1.id }
@@ -351,10 +351,10 @@ struct SwiftEvolutionCrawlerTests {
         #expect(sorted[3].id == "ST-0002")
     }
 
-    @Test("EvolutionProgress works with ST proposal ID")
+    @Test("Core.EvolutionCrawler.Progress works with ST proposal ID")
     func progressWithSTProposalID() {
-        let stats = EvolutionStatistics()
-        let progress = EvolutionProgress(
+        let stats = Core.EvolutionCrawler.Statistics()
+        let progress = Core.EvolutionCrawler.Progress(
             current: 1,
             total: 10,
             proposalID: "ST-0001",

@@ -18,12 +18,12 @@ extension Core {
     @MainActor
     public final class AppleArchiveCrawler {
         private let outputDirectory: URL
-        private let guides: [ArchiveGuideInfo]
+        private let guides: [GuideInfo]
         private let forceRecrawl: Bool
 
         public init(
             outputDirectory: URL,
-            guides: [ArchiveGuideInfo],
+            guides: [GuideInfo],
             forceRecrawl: Bool = false
         ) {
             self.outputDirectory = outputDirectory
@@ -37,7 +37,7 @@ extension Core {
             guideURLs: [URL],
             forceRecrawl: Bool = false
         ) {
-            let guides = guideURLs.map { ArchiveGuideInfo(url: $0, framework: "") }
+            let guides = guideURLs.map { GuideInfo(url: $0, framework: "") }
             self.init(outputDirectory: outputDirectory, guides: guides, forceRecrawl: forceRecrawl)
         }
 
@@ -45,9 +45,9 @@ extension Core {
 
         /// Crawl all specified archive guides
         public func crawl(
-            onProgress: (@Sendable (ArchiveProgress) -> Void)? = nil
-        ) async throws -> ArchiveStatistics {
-            var stats = ArchiveStatistics(startTime: Date())
+            onProgress: (@Sendable (Progress) -> Void)? = nil
+        ) async throws -> Statistics {
+            var stats = Statistics(startTime: Date())
 
             logInfo("Starting Apple Archive crawler")
             logInfo("   Output: \(outputDirectory.path)")
@@ -93,7 +93,7 @@ extension Core {
 
                             // Progress callback
                             if let onProgress {
-                                let progress = ArchiveProgress(
+                                let progress = Progress(
                                     currentGuide: currentGuide,
                                     totalGuides: guides.count,
                                     currentPage: index + 1,
@@ -139,14 +139,14 @@ extension Core {
             guard let httpResponse = response as? HTTPURLResponse,
                   httpResponse.statusCode == 200
             else {
-                throw ArchiveCrawlerError.invalidResponse(bookURL)
+                throw Error.invalidResponse(bookURL)
             }
 
             return try JSONDecoder().decode(BookJSON.self, from: data)
         }
 
-        private func extractPages(from book: BookJSON, baseURL: URL) -> [ArchivePage] {
-            var pages: [ArchivePage] = []
+        private func extractPages(from book: BookJSON, baseURL: URL) -> [Page] {
+            var pages: [Page] = []
             var seenHrefs: Set<String> = []
 
             func extractFromSections(_ sections: [BookSection], parentPath: String = "") {
@@ -167,7 +167,7 @@ extension Core {
 
                         seenHrefs.insert(cleanHref)
                         let pageURL = baseURL.appendingPathComponent(cleanHref)
-                        let page = ArchivePage(
+                        let page = Page(
                             title: section.title,
                             href: cleanHref,
                             url: pageURL,
@@ -189,10 +189,10 @@ extension Core {
         }
 
         private func crawlPage(
-            _ page: ArchivePage,
+            _ page: Page,
             to guideDir: URL,
             framework: String,
-            stats: inout ArchiveStatistics
+            stats: inout Statistics
         ) async throws {
             // Determine output path - preserve directory structure
             let relativePath = page.href.replacingOccurrences(of: ".html", with: ".md")
@@ -215,11 +215,11 @@ extension Core {
             guard let httpResponse = response as? HTTPURLResponse,
                   httpResponse.statusCode == 200
             else {
-                throw ArchiveCrawlerError.invalidResponse(page.url)
+                throw Error.invalidResponse(page.url)
             }
 
             guard let html = String(data: data, encoding: .utf8) else {
-                throw ArchiveCrawlerError.invalidEncoding
+                throw Error.invalidEncoding
             }
 
             // Parse HTML to extract metadata and content
@@ -240,7 +240,7 @@ extension Core {
             stats.totalPages += 1
         }
 
-        private func parseArchiveHTML(_ html: String, page: ArchivePage) -> ParsedArchivePage {
+        private func parseArchiveHTML(_ html: String, page: Page) -> ParsedPage {
             // Extract metadata from meta tags
             let bookTitle = extractMetaContent(from: html, name: "book-title") ?? "Unknown"
             let chapterId = extractMetaContent(from: html, name: "chapterId")
@@ -252,7 +252,7 @@ extension Core {
             // Extract article content
             let content = extractArticleContent(from: html)
 
-            return ParsedArchivePage(
+            return ParsedPage(
                 title: page.title,
                 bookTitle: bookTitle,
                 chapterId: chapterId,
@@ -314,7 +314,7 @@ extension Core {
             return String(html[articleStart.upperBound..<articleEnd.lowerBound])
         }
 
-        private func convertToMarkdown(_ parsed: ParsedArchivePage, framework: String) -> String {
+        private func convertToMarkdown(_ parsed: ParsedPage, framework: String) -> String {
             var lines: [String] = []
 
             // YAML front matter
@@ -549,7 +549,7 @@ extension Core {
             Logging.Log.error("Error: \(message)", category: .archive)
         }
 
-        private func logStatistics(_ stats: ArchiveStatistics) {
+        private func logStatistics(_ stats: Statistics) {
             let messages = [
                 "Statistics:",
                 "   Total guides: \(stats.totalGuides)",
@@ -572,168 +572,176 @@ extension Core {
 
 // MARK: - Models
 
-/// Guide info containing URL and framework name for archive crawling
-public struct ArchiveGuideInfo: Sendable {
-    public let url: URL
-    public let framework: String
+extension Core.AppleArchiveCrawler {
+    /// Guide info containing URL and framework name for archive crawling
+    public struct GuideInfo: Sendable {
+        public let url: URL
+        public let framework: String
 
-    public init(url: URL, framework: String) {
-        self.url = url
-        self.framework = framework
+        public init(url: URL, framework: String) {
+            self.url = url
+            self.framework = framework
+        }
     }
-}
 
-/// Represents the book.json structure from Apple Archive
-public struct BookJSON: Codable, Sendable {
-    public let type: String?
-    public let title: String
-    public let technology: String?
-    public let version: String?
-    public let sections: [BookSection]
-    public let uid: String
+    /// Represents the book.json structure from Apple Archive
+    public struct BookJSON: Codable, Sendable {
+        public let type: String?
+        public let title: String
+        public let technology: String?
+        public let version: String?
+        public let sections: [BookSection]
+        public let uid: String
 
-    public init(
-        type: String? = nil,
-        title: String,
-        technology: String? = nil,
-        version: String? = nil,
-        sections: [BookSection],
-        uid: String
-    ) {
-        self.type = type
-        self.title = title
-        self.technology = technology
-        self.version = version
-        self.sections = sections
-        self.uid = uid
+        public init(
+            type: String? = nil,
+            title: String,
+            technology: String? = nil,
+            version: String? = nil,
+            sections: [BookSection],
+            uid: String
+        ) {
+            self.type = type
+            self.title = title
+            self.technology = technology
+            self.version = version
+            self.sections = sections
+            self.uid = uid
+        }
     }
-}
 
-/// Section within book.json
-public struct BookSection: Codable, Sendable {
-    public let title: String
-    public let href: String?
-    public let aref: String?
-    public let type: String?
-    public let isPart: Bool?
-    public let sections: [BookSection]?
+    /// Section within book.json
+    public struct BookSection: Codable, Sendable {
+        public let title: String
+        public let href: String?
+        public let aref: String?
+        public let type: String?
+        public let isPart: Bool?
+        public let sections: [BookSection]?
 
-    public init(
-        title: String,
-        href: String? = nil,
-        aref: String? = nil,
-        type: String? = nil,
-        isPart: Bool? = nil,
-        sections: [BookSection]? = nil
-    ) {
-        self.title = title
-        self.href = href
-        self.aref = aref
-        self.type = type
-        self.isPart = isPart
-        self.sections = sections
+        public init(
+            title: String,
+            href: String? = nil,
+            aref: String? = nil,
+            type: String? = nil,
+            isPart: Bool? = nil,
+            sections: [BookSection]? = nil
+        ) {
+            self.title = title
+            self.href = href
+            self.aref = aref
+            self.type = type
+            self.isPart = isPart
+            self.sections = sections
+        }
     }
-}
 
-/// Represents a page to crawl
-struct ArchivePage {
-    let title: String
-    let href: String
-    let url: URL
-    let type: String
-    let aref: String?
-}
+    /// Represents a page to crawl
+    struct Page {
+        let title: String
+        let href: String
+        let url: URL
+        let type: String
+        let aref: String?
+    }
 
-/// Parsed content from an archive HTML page
-struct ParsedArchivePage {
-    let title: String
-    let bookTitle: String
-    let chapterId: String?
-    let date: String?
-    let description: String?
-    let identifier: String?
-    let platforms: String?
-    let content: String
-    let href: String
+    /// Parsed content from an archive HTML page
+    struct ParsedPage {
+        let title: String
+        let bookTitle: String
+        let chapterId: String?
+        let date: String?
+        let description: String?
+        let identifier: String?
+        let platforms: String?
+        let content: String
+        let href: String
+    }
 }
 
 // MARK: - Statistics
 
-public struct ArchiveStatistics: Sendable {
-    public var totalGuides: Int = 0
-    public var totalPages: Int = 0
-    public var newPages: Int = 0
-    public var updatedPages: Int = 0
-    public var skippedPages: Int = 0
-    public var errors: Int = 0
-    public var startTime: Date?
-    public var endTime: Date?
+extension Core.AppleArchiveCrawler {
+    public struct Statistics: Sendable {
+        public var totalGuides: Int = 0
+        public var totalPages: Int = 0
+        public var newPages: Int = 0
+        public var updatedPages: Int = 0
+        public var skippedPages: Int = 0
+        public var errors: Int = 0
+        public var startTime: Date?
+        public var endTime: Date?
 
-    public init(
-        totalGuides: Int = 0,
-        totalPages: Int = 0,
-        newPages: Int = 0,
-        updatedPages: Int = 0,
-        skippedPages: Int = 0,
-        errors: Int = 0,
-        startTime: Date? = nil,
-        endTime: Date? = nil
-    ) {
-        self.totalGuides = totalGuides
-        self.totalPages = totalPages
-        self.newPages = newPages
-        self.updatedPages = updatedPages
-        self.skippedPages = skippedPages
-        self.errors = errors
-        self.startTime = startTime
-        self.endTime = endTime
-    }
-
-    public var duration: TimeInterval? {
-        guard let start = startTime, let end = endTime else {
-            return nil
+        public init(
+            totalGuides: Int = 0,
+            totalPages: Int = 0,
+            newPages: Int = 0,
+            updatedPages: Int = 0,
+            skippedPages: Int = 0,
+            errors: Int = 0,
+            startTime: Date? = nil,
+            endTime: Date? = nil
+        ) {
+            self.totalGuides = totalGuides
+            self.totalPages = totalPages
+            self.newPages = newPages
+            self.updatedPages = updatedPages
+            self.skippedPages = skippedPages
+            self.errors = errors
+            self.startTime = startTime
+            self.endTime = endTime
         }
-        return end.timeIntervalSince(start)
+
+        public var duration: TimeInterval? {
+            guard let start = startTime, let end = endTime else {
+                return nil
+            }
+            return end.timeIntervalSince(start)
+        }
     }
 }
 
 // MARK: - Progress
 
-public struct ArchiveProgress: Sendable {
-    public let currentGuide: Int
-    public let totalGuides: Int
-    public let currentPage: Int
-    public let totalPages: Int
-    public let guideName: String
-    public let pageName: String
-    public let stats: ArchiveStatistics
+extension Core.AppleArchiveCrawler {
+    public struct Progress: Sendable {
+        public let currentGuide: Int
+        public let totalGuides: Int
+        public let currentPage: Int
+        public let totalPages: Int
+        public let guideName: String
+        public let pageName: String
+        public let stats: Statistics
 
-    public var percentage: Double {
-        let guideProgress = Double(currentGuide - 1) / Double(totalGuides)
-        let pageProgress = Double(currentPage) / Double(max(totalPages, 1)) / Double(totalGuides)
-        return (guideProgress + pageProgress) * 100
-    }
+        public var percentage: Double {
+            let guideProgress = Double(currentGuide - 1) / Double(totalGuides)
+            let pageProgress = Double(currentPage) / Double(max(totalPages, 1)) / Double(totalGuides)
+            return (guideProgress + pageProgress) * 100
+        }
 
-    public var currentItem: String {
-        "\(guideName) - \(pageName)"
+        public var currentItem: String {
+            "\(guideName) - \(pageName)"
+        }
     }
 }
 
 // MARK: - Errors
 
-public enum ArchiveCrawlerError: Error, LocalizedError {
-    case invalidResponse(URL)
-    case invalidEncoding
-    case bookJSONNotFound(URL)
+extension Core.AppleArchiveCrawler {
+    public enum Error: Swift.Error, LocalizedError, Sendable {
+        case invalidResponse(URL)
+        case invalidEncoding
+        case bookJSONNotFound(URL)
 
-    public var errorDescription: String? {
-        switch self {
-        case .invalidResponse(let url):
-            return "Invalid response from \(url)"
-        case .invalidEncoding:
-            return "Invalid text encoding"
-        case .bookJSONNotFound(let url):
-            return "book.json not found at \(url)"
+        public var errorDescription: String? {
+            switch self {
+            case .invalidResponse(let url):
+                return "Invalid response from \(url)"
+            case .invalidEncoding:
+                return "Invalid text encoding"
+            case .bookJSONNotFound(let url):
+                return "book.json not found at \(url)"
+            }
         }
     }
 }
