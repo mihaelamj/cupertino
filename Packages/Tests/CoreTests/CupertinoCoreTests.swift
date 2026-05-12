@@ -9,6 +9,7 @@ import SharedConstants
 import SharedConfiguration
 import SharedModels
 import CoreProtocols
+@testable import CoreHTMLParser
 
 @Test func hTMLToMarkdown() throws {
     let html = "<h1>Title</h1><p>Content</p>"

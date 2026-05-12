@@ -4,6 +4,7 @@ import SharedCore
 import WebKit
 import SharedConstants
 import CoreProtocols
+import CoreHTMLParser
 #endif
 
 // MARK: - WKWeb Crawler Engine

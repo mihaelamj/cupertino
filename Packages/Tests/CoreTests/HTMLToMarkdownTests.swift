@@ -3,6 +3,7 @@
 import Foundation
 import Testing
 import CoreProtocols
+@testable import CoreHTMLParser
 
 // MARK: - HTML to Markdown Converter Tests
 
