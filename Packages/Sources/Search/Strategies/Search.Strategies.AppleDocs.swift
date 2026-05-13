@@ -42,27 +42,18 @@ extension Search {
         /// Root directory containing the crawled Apple documentation files.
         public let docsDirectory: URL
 
-        /// Optional crawl metadata for metadata-driven indexing.
-        ///
-        /// When `nil` the strategy falls back to directory scanning.
-        public let metadata: Shared.Models.CrawlMetadata?
-
         /// Create a strategy for indexing Apple Developer Documentation.
         ///
-        /// - Parameters:
-        ///   - docsDirectory: Root directory of the crawled documentation.
-        ///   - metadata: Optional crawl metadata; triggers the metadata-driven path when provided.
-        public init(docsDirectory: URL, metadata: Shared.Models.CrawlMetadata? = nil) {
+        /// - Parameter docsDirectory: Root directory of the crawled documentation.
+        public init(docsDirectory: URL) {
             self.docsDirectory = docsDirectory
-            self.metadata = metadata
         }
 
-        /// Index all Apple documentation pages.
+        /// Index all Apple documentation pages by scanning ``docsDirectory``.
         ///
-        /// Always uses the directory scan path regardless of whether metadata is present,
-        /// matching the original `indexAppleDocs` behaviour (metadata is for fetching, not
-        /// indexing).  The metadata-driven path is available via
-        /// ``indexFromMetadata(into:metadata:progress:)``.
+        /// Crawl metadata is intentionally not used here: metadata is for fetching,
+        /// not indexing.  To index from metadata directly (e.g., in tests), call
+        /// ``indexFromMetadata(into:metadata:progress:)`` instead.
         ///
         /// - Parameters:
         ///   - index: The ``Search/Index`` to write into.

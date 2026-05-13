@@ -134,12 +134,22 @@ extension Search {
                 Logging.Log.info("   Cleared existing index", category: .search)
             }
 
+            var allStats: [Search.IndexStats] = []
             for strategy in strategies {
-                _ = try await strategy.indexItems(into: searchIndex, progress: onProgress)
+                let stats = try await strategy.indexItems(into: searchIndex, progress: onProgress)
+                allStats.append(stats)
             }
 
             try await registerFrameworkSynonyms()
 
+            // Log per-source breakdown so operators can diagnose index-build issues
+            // without having to re-run with verbose logging.
+            for stats in allStats {
+                Logging.Log.info(
+                    "   [\(stats.source)] indexed: \(stats.indexed), skipped: \(stats.skipped)",
+                    category: .search
+                )
+            }
             let count = try await searchIndex.documentCount()
             Logging.Log.info("✅ Search index built: \(count) documents", category: .search)
         }
@@ -169,7 +179,7 @@ extension Search {
             indexSampleCode: Bool = true
         ) -> [any Search.SourceIndexingStrategy] {
             var strategies: [any Search.SourceIndexingStrategy] = [
-                Search.AppleDocsStrategy(docsDirectory: docsDirectory, metadata: metadata),
+                Search.AppleDocsStrategy(docsDirectory: docsDirectory),
             ]
             if let dir = evolutionDirectory {
                 strategies.append(Search.SwiftEvolutionStrategy(evolutionDirectory: dir))

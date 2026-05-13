@@ -112,5 +112,6 @@ struct IndexBuilderMalformedURLSkipTests {
         let indexedCount = try await index.documentCount()
         #expect(indexedCount == 0, "All-malformed metadata should land on zero indexed rows and zero crashes")
         #expect(stats.indexed == 0)
+        #expect(stats.skipped == 1)
     }
 }
