@@ -6,11 +6,11 @@ import SharedUtils
 
 // MARK: - Technologies Index Fetcher
 
-extension Core {
+extension Crawler {
     /// Fetches all framework URLs from Apple's technology index (technologies.json)
     /// Used to seed the crawler queue for complete framework coverage.
     /// See: https://github.com/mihaelamj/cupertino/issues/160
-    public enum TechnologiesIndexFetcher {
+    public enum TechnologiesIndex {
         private static let indexURL = URL.knownGood(
             "\(Shared.Constants.BaseURL.appleTutorialsDocs)/technologies.json"
         )
@@ -22,7 +22,7 @@ extension Core {
             guard let httpResponse = response as? HTTPURLResponse,
                   httpResponse.statusCode == 200
             else {
-                throw TechnologiesIndexError.fetchFailed
+                throw Error.fetchFailed
             }
 
             return try parseFrameworkURLs(from: data)
@@ -32,7 +32,7 @@ extension Core {
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let sections = json["sections"] as? [[String: Any]]
             else {
-                throw TechnologiesIndexError.invalidFormat
+                throw Error.invalidFormat
             }
 
             var urls: [URL] = []
@@ -83,8 +83,8 @@ extension Core {
 
 // MARK: - Error Types
 
-extension Core {
-    public enum TechnologiesIndexError: Error, LocalizedError {
+extension Crawler {
+    public enum Error: Swift.Error, LocalizedError {
         case fetchFailed
         case invalidFormat
 

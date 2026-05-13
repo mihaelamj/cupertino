@@ -1,3 +1,4 @@
+import Core
 import CoreJSONParser
 import CorePackageIndexing
 import CoreProtocols
@@ -19,15 +20,15 @@ import SharedUtils
 // inherently stateful and requires coordinating multiple async operations in sequence.
 
 /// Main crawler for Apple documentation using WKWebView
-extension Core {
+extension Crawler {
     @MainActor
-    public final class Crawler: NSObject {
+    public final class AppleDocs: NSObject {
         private let configuration: Shared.Configuration.Crawler
         private let changeDetection: Shared.Configuration.ChangeDetection
         private let output: Shared.Configuration.Output
-        private let state: Core.CrawlerState
+        private let state: State
 
-        private var webPageFetcher: Core.WKWebCrawler.ContentFetcher!
+        private var webPageFetcher: Crawler.WebKit.ContentFetcher!
         private var visited = Set<String>()
         private var queue: [(url: URL, depth: Int)] = []
         // Tracks URLs currently in `queue` so the same URL discovered from
@@ -46,12 +47,12 @@ extension Core {
             self.configuration = configuration.crawler
             changeDetection = configuration.changeDetection
             output = configuration.output
-            state = Core.CrawlerState(configuration: configuration.changeDetection)
+            state = State(configuration: configuration.changeDetection)
             stats = Shared.Models.CrawlStatistics()
             super.init()
 
-            // Initialize Core.WKWebCrawler.ContentFetcher from WKWebCrawler namespace
-            webPageFetcher = Core.WKWebCrawler.ContentFetcher()
+            // Initialize Crawler.WebKit.ContentFetcher from WKWebCrawler namespace
+            webPageFetcher = Crawler.WebKit.ContentFetcher()
 
             // Temporary debug logging for #25
             let logPath = self.configuration.outputDirectory
@@ -115,7 +116,7 @@ extension Core {
                 if isAppleDocs, isDocsRoot {
                     do {
                         logInfo("📋 Fetching technology index for complete framework coverage...")
-                        let frameworkURLs = try await Core.TechnologiesIndexFetcher.fetchFrameworkURLs()
+                        let frameworkURLs = try await Crawler.TechnologiesIndex.fetchFrameworkURLs()
                         queue = frameworkURLs.compactMap { url in
                             Shared.Models.URLUtilities.normalize(url).map { (url: $0, depth: 0) }
                         }
@@ -502,7 +503,7 @@ extension Core {
         }
 
         private func loadPage(url: URL) async throws -> String {
-            // Delegate to WKWebCrawler's Core.WKWebCrawler.ContentFetcher
+            // Delegate to WKWebCrawler's Crawler.WebKit.ContentFetcher
             try await webPageFetcher.fetch(url: url).content
         }
 
@@ -622,18 +623,18 @@ extension Core {
         }
 
         private func getMemoryUsageMB() -> Double {
-            // Delegate to WKWebCrawler's Core.WKWebCrawler.ContentFetcher
+            // Delegate to WKWebCrawler's Crawler.WebKit.ContentFetcher
             webPageFetcher.getMemoryUsageMB()
         }
 
         private func recycleWebView() async {
             let memBefore = getMemoryUsageMB()
-            // Delegate to WKWebCrawler's Core.WKWebCrawler.ContentFetcher
+            // Delegate to WKWebCrawler's Crawler.WebKit.ContentFetcher
             webPageFetcher.recycle()
             let memAfter = getMemoryUsageMB()
             let before = String(format: "%.1f", memBefore)
             let after = String(format: "%.1f", memAfter)
-            logInfo("♻️ Recycled Core.WKWebCrawler.ContentFetcher: \(before)MB → \(after)MB")
+            logInfo("♻️ Recycled Crawler.WebKit.ContentFetcher: \(before)MB → \(after)MB")
         }
 
         /// Auto-generate priority package list if this was a Swift.org crawl
@@ -667,7 +668,7 @@ extension Core {
 
 // MARK: - Crawler Progress
 
-extension Core.Crawler {
+extension Crawler.AppleDocs {
     /// Progress information during crawling
     public struct Progress: Sendable {
         public let currentURL: URL
@@ -683,7 +684,7 @@ extension Core.Crawler {
 
 // MARK: - Crawler Errors
 
-extension Core.Crawler {
+extension Crawler.AppleDocs {
     public enum Error: Swift.Error, LocalizedError, Sendable {
         case timeout
         case invalidState

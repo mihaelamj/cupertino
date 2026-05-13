@@ -1,22 +1,23 @@
 @testable import Core
 import CoreProtocols
+import Crawler
 import Foundation
 import SharedConstants
 @testable import SharedCore
 import Testing
 
-// MARK: - Core.ArchiveGuideCatalog Tests
+// MARK: - Crawler.ArchiveGuideCatalog Tests
 
-@Test("Core.ArchiveGuideCatalog loads bundled catalog")
+@Test("Crawler.ArchiveGuideCatalog loads bundled catalog")
 func archiveGuideCatalogLoadsBundledCatalog() {
-    let requiredPaths = Core.ArchiveGuideCatalog.getRequiredGuidePaths()
+    let requiredPaths = Crawler.ArchiveGuideCatalog.getRequiredGuidePaths()
     #expect(!requiredPaths.isEmpty, "Should have required guide paths from bundled catalog")
     print("   ✅ Found \(requiredPaths.count) required guides in bundled catalog")
 }
 
-@Test("Core.ArchiveGuideCatalog required guides include Core frameworks")
+@Test("Crawler.ArchiveGuideCatalog required guides include Core frameworks")
 func archiveGuideCatalogRequiredGuidesIncludeCoreFrameworks() {
-    let requiredPaths = Core.ArchiveGuideCatalog.getRequiredGuidePaths()
+    let requiredPaths = Crawler.ArchiveGuideCatalog.getRequiredGuidePaths()
 
     // Check for expected Core framework guides
     let hasQuartz2D = requiredPaths.contains { $0.contains("drawingwithquartz2d") }
@@ -27,7 +28,7 @@ func archiveGuideCatalogRequiredGuidesIncludeCoreFrameworks() {
     print("   ✅ Required guides include Core framework documentation")
 }
 
-@Test("Core.ArchiveGuideCatalog creates user file if missing")
+@Test("Crawler.ArchiveGuideCatalog creates user file if missing")
 func archiveGuideCatalogCreatesUserFileIfMissing() throws {
     // Use temp directory to avoid conflicts with other tests
     let tempDir = FileManager.default.temporaryDirectory
@@ -43,24 +44,24 @@ func archiveGuideCatalogCreatesUserFileIfMissing() throws {
     #expect(!FileManager.default.fileExists(atPath: testFileURL.path), "File should not exist before test")
 
     // Access essentialGuides returns guides regardless of file state
-    let guides = Core.ArchiveGuideCatalog.essentialGuides
+    let guides = Crawler.ArchiveGuideCatalog.essentialGuides
     #expect(!guides.isEmpty, "Should return guides")
 
     print("   ✅ User selections file created automatically")
 }
 
-@Test("Core.ArchiveGuideCatalog does not overwrite existing user file")
+@Test("Crawler.ArchiveGuideCatalog does not overwrite existing user file")
 func archiveGuideCatalogDoesNotOverwriteExistingFile() {
     // This test verifies that essentialGuides returns data even when file exists
-    // The actual file preservation is handled by the Core.ArchiveGuideCatalog implementation
-    let guides = Core.ArchiveGuideCatalog.essentialGuides
+    // The actual file preservation is handled by the Crawler.ArchiveGuideCatalog implementation
+    let guides = Crawler.ArchiveGuideCatalog.essentialGuides
     #expect(!guides.isEmpty, "Should return guides")
     print("   ✅ Existing user file not overwritten")
 }
 
-@Test("Core.ArchiveGuideCatalog essentialGuides returns valid URLs")
+@Test("Crawler.ArchiveGuideCatalog essentialGuides returns valid URLs")
 func archiveGuideCatalogEssentialGuidesReturnsValidURLs() {
-    let guides = Core.ArchiveGuideCatalog.essentialGuides
+    let guides = Crawler.ArchiveGuideCatalog.essentialGuides
     #expect(!guides.isEmpty, "Should have essential guides")
 
     // All URLs should be valid Apple archive URLs
@@ -74,9 +75,9 @@ func archiveGuideCatalogEssentialGuidesReturnsValidURLs() {
     print("   ✅ All \(guides.count) guide URLs are valid")
 }
 
-@Test("Core.ArchiveGuideCatalog testGuides returns minimal set")
+@Test("Crawler.ArchiveGuideCatalog testGuides returns minimal set")
 func archiveGuideCatalogTestGuidesReturnsMinimalSet() {
-    let testGuides = Core.ArchiveGuideCatalog.testGuides
+    let testGuides = Crawler.ArchiveGuideCatalog.testGuides
     #expect(!testGuides.isEmpty, "Should have at least one test guide")
     #expect(testGuides.count <= 3, "Test guides should be a minimal set for testing")
 
@@ -86,9 +87,9 @@ func archiveGuideCatalogTestGuidesReturnsMinimalSet() {
     print("   ✅ Test guides: \(testGuides.count) guide(s)")
 }
 
-@Test("Core.ArchiveGuideCatalog userSelectionsFileURL points to correct location")
+@Test("Crawler.ArchiveGuideCatalog userSelectionsFileURL points to correct location")
 func archiveGuideCatalogUserSelectionsFileURLCorrect() {
-    let fileURL = Core.ArchiveGuideCatalog.userSelectionsFileURL
+    let fileURL = Crawler.ArchiveGuideCatalog.userSelectionsFileURL
     let expectedPath = Shared.Constants.defaultBaseDirectory.appendingPathComponent("selected-archive-guides.json")
 
     #expect(fileURL == expectedPath, "User selections file should be in ~/.cupertino/")
@@ -96,12 +97,12 @@ func archiveGuideCatalogUserSelectionsFileURLCorrect() {
     print("   ✅ User selections file URL: \(fileURL.path)")
 }
 
-@Test("Core.ArchiveGuideCatalog created file contains only required guides")
+@Test("Crawler.ArchiveGuideCatalog created file contains only required guides")
 func archiveGuideCatalogCreatedFileContainsOnlyRequiredGuides() {
     // This test verifies that the bundled catalog has required guides
     // NOTE: essentialGuides reads from user file (~/.cupertino/selected-archive-guides.json)
     // which may be modified by TUI, so we only test bundled catalog requirements
-    let requiredPaths = Core.ArchiveGuideCatalog.getRequiredGuidePaths()
+    let requiredPaths = Crawler.ArchiveGuideCatalog.getRequiredGuidePaths()
 
     #expect(!requiredPaths.isEmpty, "Should have required guide paths from bundled catalog")
 

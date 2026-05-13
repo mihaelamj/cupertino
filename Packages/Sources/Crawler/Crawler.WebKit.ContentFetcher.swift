@@ -10,7 +10,7 @@ import WebKit
 
 /// Fetches HTML content using WKWebView for JavaScript-rendered pages
 /// This is required for sites that render content via JavaScript
-extension Core.WKWebCrawler {
+extension Crawler.WebKit {
     #if canImport(WebKit)
     @MainActor
     public final class ContentFetcher: NSObject, @preconcurrency Core.Protocols.ContentFetcher {
@@ -132,7 +132,7 @@ extension Core.WKWebCrawler {
 // MARK: - WKNavigationDelegate
 
 #if canImport(WebKit)
-extension Core.WKWebCrawler.ContentFetcher: WKNavigationDelegate {
+extension Crawler.WebKit.ContentFetcher: WKNavigationDelegate {
     public nonisolated func webView(
         _ webView: WKWebView,
         didFailProvisionalNavigation navigation: WKNavigation!,
@@ -146,7 +146,7 @@ extension Core.WKWebCrawler.ContentFetcher: WKNavigationDelegate {
 // MARK: - WebKit Fetcher Errors
 
 #if canImport(WebKit)
-extension Core.WKWebCrawler.ContentFetcher {
+extension Crawler.WebKit.ContentFetcher {
     public enum Error: Swift.Error, LocalizedError, Sendable {
         case timeout
         case invalidHTML

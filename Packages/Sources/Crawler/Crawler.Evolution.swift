@@ -9,9 +9,9 @@ import SharedUtils
 // MARK: - Swift Evolution Crawler
 
 /// Crawls Swift Evolution proposals from GitHub
-extension Core {
+extension Crawler {
     @MainActor
-    public final class EvolutionCrawler {
+    public final class Evolution {
         private let outputDirectory: URL
         private let onlyAccepted: Bool
         private let githubAPI = Shared.Constants.BaseURL.githubAPI
@@ -268,7 +268,7 @@ extension Core {
 
 // MARK: - Models
 
-extension Core.EvolutionCrawler {
+extension Crawler.Evolution {
     struct GitHubFile: Codable {
         let name: String
         let downloadURL: String? // Optional - directories have null download_url
@@ -331,7 +331,7 @@ extension Core.EvolutionCrawler {
 
 // MARK: - Errors
 
-extension Core.EvolutionCrawler {
+extension Crawler.Evolution {
     enum Error: Swift.Error {
         case invalidResponse
         case invalidURL(String)
