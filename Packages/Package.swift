@@ -182,6 +182,10 @@ let targets: [Target] = {
         name: "CoreProtocols",
         dependencies: ["SharedCore", "SharedConstants", "SharedModels", "Resources"]
     )
+    let coreProtocolsTestsTarget = Target.testTarget(
+        name: "CoreProtocolsTests",
+        dependencies: ["CoreProtocols", "SharedCore", "SharedConstants", "SharedModels", "Resources"]
+    )
 
     // CoreHTMLParser merged back into Core (HTMLToMarkdown -> Core.Parser.HTML,
     // XMLTransformer -> Core.Parser.XML). The Sources/Core/HTMLParser/ folder
@@ -527,6 +531,7 @@ let targets: [Target] = {
         mcpSharedToolsTarget,
         mcpSharedToolsTestsTarget,
         coreProtocolsTarget,
+        coreProtocolsTestsTarget,
         coreJSONParserTarget,
         corePackageIndexingTarget,
         resourcesTarget,
