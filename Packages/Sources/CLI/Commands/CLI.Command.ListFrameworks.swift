@@ -8,7 +8,7 @@ import SharedCore
 
 /// CLI command for listing available frameworks - mirrors MCP tool functionality.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension Command {
+extension CLI.Command {
     struct ListFrameworks: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "list-frameworks",
@@ -53,7 +53,7 @@ extension Command {
 
 // MARK: - Output Format
 
-extension Command.ListFrameworks {
+extension CLI.Command.ListFrameworks {
     enum OutputFormat: String, ExpressibleByArgument, CaseIterable {
         case text
         case json

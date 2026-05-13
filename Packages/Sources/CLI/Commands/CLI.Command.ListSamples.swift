@@ -11,7 +11,7 @@ import SharedUtils
 
 /// CLI command for listing sample code projects - mirrors MCP tool functionality.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension Command {
+extension CLI.Command {
     struct ListSamples: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "list-samples",
@@ -170,7 +170,7 @@ extension Command {
 
 // MARK: - Output Format
 
-extension Command.ListSamples {
+extension CLI.Command.ListSamples {
     enum OutputFormat: String, ExpressibleByArgument, CaseIterable {
         case text
         case json

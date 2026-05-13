@@ -13,22 +13,22 @@ struct Cupertino: AsyncParsableCommand {
         abstract: "MCP Server for Apple Documentation, Swift Evolution, and Swift Packages",
         version: Shared.Constants.App.version,
         subcommands: [
-            Command.Setup.self,
-            Command.Fetch.self,
-            Command.Save.self,
-            Command.Serve.self,
-            Command.Search.self,
-            Command.Read.self,
-            Command.ListFrameworks.self,
-            Command.ListSamples.self,
-            Command.ReadSample.self,
-            Command.ReadSampleFile.self,
-            Command.Doctor.self,
-            Command.Cleanup.self,
-            Command.PackageSearch.self,
-            Command.ResolveRefs.self,
+            CLI.Command.Setup.self,
+            CLI.Command.Fetch.self,
+            CLI.Command.Save.self,
+            CLI.Command.Serve.self,
+            CLI.Command.Search.self,
+            CLI.Command.Read.self,
+            CLI.Command.ListFrameworks.self,
+            CLI.Command.ListSamples.self,
+            CLI.Command.ReadSample.self,
+            CLI.Command.ReadSampleFile.self,
+            CLI.Command.Doctor.self,
+            CLI.Command.Cleanup.self,
+            CLI.Command.PackageSearch.self,
+            CLI.Command.ResolveRefs.self,
         ],
-        defaultSubcommand: Command.Serve.self
+        defaultSubcommand: CLI.Command.Serve.self
     )
 
     /// Force stdout to line-buffered mode before any subcommand runs. By

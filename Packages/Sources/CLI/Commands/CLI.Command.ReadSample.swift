@@ -11,7 +11,7 @@ import SharedUtils
 
 /// CLI command for reading a sample project's README - mirrors MCP tool functionality.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension Command {
+extension CLI.Command {
     struct ReadSample: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "read-sample",
@@ -191,7 +191,7 @@ extension Command {
 
 // MARK: - Output Format
 
-extension Command.ReadSample {
+extension CLI.Command.ReadSample {
     enum OutputFormat: String, ExpressibleByArgument, CaseIterable {
         case text
         case json

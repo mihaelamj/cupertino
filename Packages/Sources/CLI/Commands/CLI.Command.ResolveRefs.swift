@@ -16,7 +16,7 @@ import WebKit
 
 // MARK: - Resolve-Refs Command
 
-extension Command {
+extension CLI.Command {
     struct ResolveRefs: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "resolve-refs",

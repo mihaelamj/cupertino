@@ -10,12 +10,12 @@ import SharedUtils
 
 // MARK: - SmartQuery fan-out helpers (#239)
 
-/// Helpers for `Command.Search`'s default (no `--source`) path: building the
+/// Helpers for `CLI.Command.Search`'s default (no `--source`) path: building the
 /// per-DB `CandidateFetcher` list, then printing the fused result in
-/// text / markdown / json. Lifted out of `Command.Search.swift` so the
+/// text / markdown / json. Lifted out of `CLI.Command.Search.swift` so the
 /// struct body stays under SwiftLint's `type_body_length` ceiling and so
 /// the printers don't need access to instance-level CLI options.
-extension Command.Search {
+extension CLI.Command.Search {
     /// Bundle returned by `buildFetchers`. The `searchIndex` and
     /// `sampleService` references are kept so the caller can disconnect
     /// them once the SmartQuery has run — the fetchers don't own those
