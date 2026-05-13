@@ -1,5 +1,7 @@
+import Foundation
 import Search
 import SearchModels
+import Services
 
 // MARK: - Search Module Disambiguator
 
@@ -15,3 +17,14 @@ import SearchModels
 // in the CLI target.
 
 typealias SearchModule = Search
+
+// MARK: - Production Search.Database Factory
+
+// The factory closure CLI threads into every `Services.ServiceContainer.with*Service`
+// call. Production wiring: open a `SearchModule.Index` at the resolved path —
+// `Search.Index` conforms to `Search.Database` (the protocol in SearchModels) so
+// the concrete actor flows through Services' protocol-typed inits unchanged.
+// One declaration covers every with*Service call site in CLI.
+let makeSearchDatabase: Services.ServiceContainer.MakeSearchDatabase = { dbURL in
+    try await SearchModule.Index(dbPath: dbURL)
+}

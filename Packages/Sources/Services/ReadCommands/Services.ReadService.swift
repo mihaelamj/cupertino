@@ -88,6 +88,7 @@ extension Services {
             searchDB: URL?,
             samplesDB: URL?,
             packagesDB: URL?,
+            makeSearchDatabase: Services.ServiceContainer.MakeSearchDatabase,
             packageFileLookup: PackageFileLookup,
         ) async throws -> Result {
             if let explicit {
@@ -99,6 +100,7 @@ extension Services {
                     samplesDB: samplesDB,
                     packagesDB: packagesDB,
                     allowFallback: false,
+                    makeSearchDatabase: makeSearchDatabase,
                     packageFileLookup: packageFileLookup,
                 )
             }
@@ -112,6 +114,7 @@ extension Services {
                     samplesDB: samplesDB,
                     packagesDB: packagesDB,
                     allowFallback: false,
+                    makeSearchDatabase: makeSearchDatabase,
                     packageFileLookup: packageFileLookup,
                 )
             }
@@ -125,6 +128,7 @@ extension Services {
                     samplesDB: samplesDB,
                     packagesDB: packagesDB,
                     allowFallback: true,
+                    makeSearchDatabase: makeSearchDatabase,
                     packageFileLookup: packageFileLookup,
                 )
             } catch ReadError.samplesNotFound, ReadError.packagesNotFound,
@@ -139,6 +143,7 @@ extension Services {
                 samplesDB: samplesDB,
                 packagesDB: packagesDB,
                 allowFallback: false,
+                makeSearchDatabase: makeSearchDatabase,
                 packageFileLookup: packageFileLookup,
             )
         }
@@ -153,6 +158,7 @@ extension Services {
             samplesDB: URL?,
             packagesDB: URL?,
             allowFallback: Bool,
+            makeSearchDatabase: Services.ServiceContainer.MakeSearchDatabase,
             packageFileLookup: PackageFileLookup,
         ) async throws -> Result {
             switch source {
@@ -160,7 +166,8 @@ extension Services {
                 return try await readFromDocs(
                     identifier: identifier,
                     format: format,
-                    searchDB: searchDB
+                    searchDB: searchDB,
+                    makeSearchDatabase: makeSearchDatabase,
                 )
             case .samples:
                 return try await readFromSamples(
@@ -182,10 +189,12 @@ extension Services {
         private static func readFromDocs(
             identifier: String,
             format: Search.DocumentFormat,
-            searchDB: URL?
+            searchDB: URL?,
+            makeSearchDatabase: Services.ServiceContainer.MakeSearchDatabase,
         ) async throws -> Result {
             let content = try await Services.ServiceContainer.withDocsService(
-                dbPath: searchDB?.path
+                dbPath: searchDB?.path,
+                makeSearchDatabase: makeSearchDatabase,
             ) { service in
                 try await service.read(uri: identifier, format: format)
             }
