@@ -14,8 +14,4 @@ struct PackageEntry {
     var isExcluded: Bool = false
 }
 
-enum SortMode: String {
-    case stars = "Stars ▼"
-    case name = "Name ▲"
-    case recent = "Recent ▼"
-}
+// SortMode moved to SortMode.swift
