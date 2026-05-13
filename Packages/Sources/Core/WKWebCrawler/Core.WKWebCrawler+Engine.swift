@@ -9,18 +9,18 @@ import WebKit
 // MARK: - WKWeb Crawler Engine
 
 /// Complete crawler engine using WKWebView for JavaScript-rendered pages
-/// Uses WKWebCrawler.ContentFetcher for fetching and Core.Parser.HTML for transformation
-extension WKWebCrawler {
+/// Uses Core.WKWebCrawler.ContentFetcher for fetching and Core.Parser.HTML for transformation.
+extension Core.WKWebCrawler {
     #if canImport(WebKit)
     @MainActor
     public final class Engine: @preconcurrency Core.Protocols.CrawlerEngine {
-        private let fetcher: WKWebCrawler.ContentFetcher
+        private let fetcher: Core.WKWebCrawler.ContentFetcher
 
         public init(
             pageLoadTimeout: Duration = Shared.Constants.Timeout.pageLoad,
             javascriptWaitTime: Duration = Shared.Constants.Timeout.javascriptWait
         ) {
-            fetcher = WKWebCrawler.ContentFetcher(
+            fetcher = Core.WKWebCrawler.ContentFetcher(
                 pageLoadTimeout: pageLoadTimeout,
                 javascriptWaitTime: javascriptWaitTime
             )
@@ -119,10 +119,11 @@ extension WKWebCrawler {
     #endif
 }
 
-// MARK: - WebKit Crawler Errors
+// MARK: - WebKit Crawler Engine Errors
 
-extension WKWebCrawler {
-    public enum WebKitCrawlerError: Error, LocalizedError {
+#if canImport(WebKit)
+extension Core.WKWebCrawler.Engine {
+    public enum Error: Swift.Error, LocalizedError, Sendable {
         case transformFailed
         case unsupportedPlatform
 
@@ -136,3 +137,4 @@ extension WKWebCrawler {
         }
     }
 }
+#endif

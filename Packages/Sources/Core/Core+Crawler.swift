@@ -27,7 +27,7 @@ extension Core {
         private let output: Shared.OutputConfiguration
         private let state: Core.CrawlerState
 
-        private var webPageFetcher: WKWebCrawler.ContentFetcher!
+        private var webPageFetcher: Core.WKWebCrawler.ContentFetcher!
         private var visited = Set<String>()
         private var queue: [(url: URL, depth: Int)] = []
         // Tracks URLs currently in `queue` so the same URL discovered from
@@ -50,8 +50,8 @@ extension Core {
             stats = Shared.Models.CrawlStatistics()
             super.init()
 
-            // Initialize WKWebCrawler.ContentFetcher from WKWebCrawler namespace
-            webPageFetcher = WKWebCrawler.ContentFetcher()
+            // Initialize Core.WKWebCrawler.ContentFetcher from WKWebCrawler namespace
+            webPageFetcher = Core.WKWebCrawler.ContentFetcher()
 
             // Temporary debug logging for #25
             let logPath = self.configuration.outputDirectory
@@ -502,7 +502,7 @@ extension Core {
         }
 
         private func loadPage(url: URL) async throws -> String {
-            // Delegate to WKWebCrawler's WKWebCrawler.ContentFetcher
+            // Delegate to WKWebCrawler's Core.WKWebCrawler.ContentFetcher
             try await webPageFetcher.fetch(url: url).content
         }
 
@@ -622,18 +622,18 @@ extension Core {
         }
 
         private func getMemoryUsageMB() -> Double {
-            // Delegate to WKWebCrawler's WKWebCrawler.ContentFetcher
+            // Delegate to WKWebCrawler's Core.WKWebCrawler.ContentFetcher
             webPageFetcher.getMemoryUsageMB()
         }
 
         private func recycleWebView() async {
             let memBefore = getMemoryUsageMB()
-            // Delegate to WKWebCrawler's WKWebCrawler.ContentFetcher
+            // Delegate to WKWebCrawler's Core.WKWebCrawler.ContentFetcher
             webPageFetcher.recycle()
             let memAfter = getMemoryUsageMB()
             let before = String(format: "%.1f", memBefore)
             let after = String(format: "%.1f", memAfter)
-            logInfo("♻️ Recycled WKWebCrawler.ContentFetcher: \(before)MB → \(after)MB")
+            logInfo("♻️ Recycled Core.WKWebCrawler.ContentFetcher: \(before)MB → \(after)MB")
         }
 
         /// Auto-generate priority package list if this was a Swift.org crawl
