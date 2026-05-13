@@ -10,7 +10,7 @@ import WebKit
 
 /// Fetches HTML content using WKWebView for JavaScript-rendered pages
 /// This is required for sites that render content via JavaScript
-extension WKWebCrawler {
+extension Core.WKWebCrawler {
     #if canImport(WebKit)
     @MainActor
     public final class ContentFetcher: NSObject, @preconcurrency Core.Protocols.ContentFetcher {
@@ -70,7 +70,7 @@ extension WKWebCrawler {
                 }
 
                 group.cancelAll()
-                throw WebKitFetcherError.timeout
+                throw Error.timeout
             }
 
             let finalURL = webView.url ?? url
@@ -120,7 +120,7 @@ extension WKWebCrawler {
             )
 
             guard let html = result as? String else {
-                throw WebKitFetcherError.invalidHTML
+                throw Error.invalidHTML
             }
 
             return html
@@ -132,11 +132,11 @@ extension WKWebCrawler {
 // MARK: - WKNavigationDelegate
 
 #if canImport(WebKit)
-extension WKWebCrawler.ContentFetcher: WKNavigationDelegate {
+extension Core.WKWebCrawler.ContentFetcher: WKNavigationDelegate {
     public nonisolated func webView(
         _ webView: WKWebView,
         didFailProvisionalNavigation navigation: WKNavigation!,
-        withError error: Error
+        withError error: Swift.Error
     ) {
         // Navigation errors are handled by timeout
     }
@@ -145,8 +145,9 @@ extension WKWebCrawler.ContentFetcher: WKNavigationDelegate {
 
 // MARK: - WebKit Fetcher Errors
 
-extension WKWebCrawler {
-    public enum WebKitFetcherError: Error, LocalizedError {
+#if canImport(WebKit)
+extension Core.WKWebCrawler.ContentFetcher {
+    public enum Error: Swift.Error, LocalizedError, Sendable {
         case timeout
         case invalidHTML
         case unsupportedPlatform
@@ -163,3 +164,4 @@ extension WKWebCrawler {
         }
     }
 }
+#endif
