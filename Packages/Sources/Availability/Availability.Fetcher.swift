@@ -1,5 +1,6 @@
 import Foundation
 import SharedConstants
+import SharedUtils
 
 #if canImport(FoundationNetworking)
 import FoundationNetworking
@@ -554,7 +555,7 @@ extension Availability {
             return false // Equal versions
         }
 
-        private func buildAPIURL(from docURL: URL) -> URL {
+        func buildAPIURL(from docURL: URL) -> URL {
             // Extract path after /documentation/
             let path = docURL.path.lowercased()
             let apiPath: String
@@ -565,13 +566,7 @@ extension Availability {
                 apiPath = path
             }
 
-            // Availability target deliberately has no `Shared` dependency, so the
-            // `URL.knownGood` helper used elsewhere in the codebase isn't
-            // available here. The single site, with a known-good base + sanitized
-            // path, gets a localized swiftlint exemption rather than dragging a
-            // whole package dependency in just for one URL constructor.
-            // swiftlint:disable:next force_unwrapping
-            return URL(string: "\(configuration.apiBaseURL)/\(apiPath).json")!
+            return URL.knownGood("\(configuration.apiBaseURL)/\(apiPath).json")
         }
 
         private func fetchAvailability(from url: URL) async -> Availability.Info? {
