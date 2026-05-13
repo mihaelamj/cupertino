@@ -1,4 +1,4 @@
-// ASTIndexer+Symbol.swift
+// ASTIndexer.Symbol.swift
 // Data models for extracted AST symbols (#81)
 
 import Foundation
