@@ -12,11 +12,13 @@ import SearchModels
 /// Consolidates teaser logic previously duplicated between CLI and MCP.
 extension Services {
     public actor TeaserService {
-        private let searchIndex: Search.Index?
+        private let searchIndex: (any Search.Database)?
         private let sampleDatabase: Sample.Index.Database?
 
-        /// Initialize with existing database connections
-        public init(searchIndex: Search.Index?, sampleDatabase: Sample.Index.Database?) {
+        /// Initialize with existing database connections. The concrete
+        /// `Search.Index?` form continues to compile because `Search.Index`
+        /// conforms to `Search.Database`.
+        public init(searchIndex: (any Search.Database)?, sampleDatabase: Sample.Index.Database?) {
             self.searchIndex = searchIndex
             self.sampleDatabase = sampleDatabase
         }
