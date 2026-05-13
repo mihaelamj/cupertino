@@ -3,6 +3,7 @@ import Availability
 import Core
 import CorePackageIndexing
 import CoreProtocols
+import Crawler
 import Foundation
 import Ingest
 import Logging
@@ -443,7 +444,7 @@ extension CLI.Command {
         }
 
         private func executeCrawl(with config: Shared.Configuration) async throws {
-            let crawler = await Core.Crawler(configuration: config)
+            let crawler = await Crawler.AppleDocs(configuration: config)
             let stats = try await crawler.crawl { progress in
                 let percentage = String(format: "%.1f", progress.percentage)
                 let urlComponent = progress.currentURL.lastPathComponent
@@ -469,7 +470,7 @@ extension CLI.Command {
             let defaultPath = Shared.Constants.defaultSwiftEvolutionDirectory.path
             let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
 
-            let crawler = await Core.EvolutionCrawler(
+            let crawler = await Crawler.Evolution(
                 outputDirectory: outputURL,
                 onlyAccepted: onlyAccepted
             )
@@ -905,7 +906,7 @@ extension CLI.Command {
             Logging.ConsoleLogger.info("📚 Crawling \(guides.count) Apple Archive guides...")
             Logging.ConsoleLogger.info("   Output: \(outputURL.path)\n")
 
-            let crawler = await Core.AppleArchiveCrawler(
+            let crawler = await Crawler.AppleArchive(
                 outputDirectory: outputURL,
                 guides: guides,
                 forceRecrawl: force
@@ -939,7 +940,7 @@ extension CLI.Command {
             Logging.ConsoleLogger.info("📖 Crawling Human Interface Guidelines...")
             Logging.ConsoleLogger.info("   Output: \(outputURL.path)\n")
 
-            let crawler = await Core.HIGCrawler(
+            let crawler = await Crawler.HIG(
                 outputDirectory: outputURL,
                 forceRecrawl: force
             )
@@ -962,14 +963,14 @@ extension CLI.Command {
             Logging.ConsoleLogger.info("\n📁 Output: \(outputURL.path)/")
         }
 
-        private func loadArchiveGuides() async throws -> [Core.AppleArchiveCrawler.GuideInfo] {
+        private func loadArchiveGuides() async throws -> [Crawler.AppleArchive.GuideInfo] {
             // If start URL is provided, use it (no framework info available)
             if let startURL, let url = URL(string: startURL) {
-                return [Core.AppleArchiveCrawler.GuideInfo(url: url, framework: "")]
+                return [Crawler.AppleArchive.GuideInfo(url: url, framework: "")]
             }
 
             // Otherwise use the curated list of essential archive guides with framework info
-            return Core.ArchiveGuideCatalog.essentialGuidesWithInfo
+            return Crawler.ArchiveGuideCatalog.essentialGuidesWithInfo
         }
 
         private func runAvailabilityFetch() async throws {

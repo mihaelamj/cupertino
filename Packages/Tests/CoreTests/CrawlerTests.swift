@@ -1,6 +1,7 @@
 @testable import Core
 @testable import CoreJSONParser
 import CoreProtocols
+@testable import Crawler
 import Foundation
 import SharedConfiguration
 import SharedConstants
@@ -10,7 +11,7 @@ import Testing
 
 // MARK: - Crawler Tests
 
-// Tests for the Core.Crawler web crawling engine
+// Tests for the Crawler.AppleDocs web crawling engine
 // Note: These are integration tests that use real WKWebView
 
 @Suite("Crawler")
@@ -36,7 +37,7 @@ struct CrawlerTests {
             output: Shared.Configuration.Output()
         )
 
-        let crawler = await Core.Crawler(configuration: config)
+        let crawler = await Crawler.AppleDocs(configuration: config)
 
         // If we get here without crashing, initialization worked
         _ = crawler
@@ -282,12 +283,12 @@ struct CrawlerTests {
         #expect(decoded.errors == 5)
     }
 
-    // MARK: - Core.Crawler.Progress Tests
+    // MARK: - Crawler.AppleDocs.Progress Tests
 
-    @Test("Core.Crawler.Progress calculates percentage")
+    @Test("Crawler.AppleDocs.Progress calculates percentage")
     func progressCalculatesPercentage() throws {
         let stats = Shared.Models.CrawlStatistics()
-        let progress = try Core.Crawler.Progress(
+        let progress = try Crawler.AppleDocs.Progress(
             currentURL: #require(URL(string: "https://example.com")),
             visitedCount: 10,
             totalPages: 100,
@@ -321,7 +322,7 @@ struct CrawlerTests {
             output: Shared.Configuration.Output()
         )
 
-        let crawler = await Core.Crawler(configuration: config)
+        let crawler = await Crawler.AppleDocs(configuration: config)
 
         // Note: This may fail to load the actual page (network required),
         // but it tests that the crawler can be instantiated and attempt to crawl
@@ -361,7 +362,7 @@ struct CrawlerTests {
             output: Shared.Configuration.Output()
         )
 
-        let crawler = await Core.Crawler(configuration: config)
+        let crawler = await Crawler.AppleDocs(configuration: config)
 
         do {
             _ = try await crawler.crawl()

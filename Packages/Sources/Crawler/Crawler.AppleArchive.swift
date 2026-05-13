@@ -14,9 +14,9 @@ import SharedUtils
 
 /// Crawls Apple's archived documentation (static HTML pages)
 /// These are the pre-2016 guides that are no longer updated but still valuable
-extension Core {
+extension Crawler {
     @MainActor
-    public final class AppleArchiveCrawler {
+    public final class AppleArchive {
         private let outputDirectory: URL
         private let guides: [GuideInfo]
         private let forceRecrawl: Bool
@@ -572,7 +572,7 @@ extension Core {
 
 // MARK: - Models
 
-extension Core.AppleArchiveCrawler {
+extension Crawler.AppleArchive {
     /// Guide info containing URL and framework name for archive crawling
     public struct GuideInfo: Sendable {
         public let url: URL
@@ -661,7 +661,7 @@ extension Core.AppleArchiveCrawler {
 
 // MARK: - Statistics
 
-extension Core.AppleArchiveCrawler {
+extension Crawler.AppleArchive {
     public struct Statistics: Sendable {
         public var totalGuides: Int = 0
         public var totalPages: Int = 0
@@ -703,7 +703,7 @@ extension Core.AppleArchiveCrawler {
 
 // MARK: - Progress
 
-extension Core.AppleArchiveCrawler {
+extension Crawler.AppleArchive {
     public struct Progress: Sendable {
         public let currentGuide: Int
         public let totalGuides: Int
@@ -727,7 +727,7 @@ extension Core.AppleArchiveCrawler {
 
 // MARK: - Errors
 
-extension Core.AppleArchiveCrawler {
+extension Crawler.AppleArchive {
     public enum Error: Swift.Error, LocalizedError, Sendable {
         case invalidResponse(URL)
         case invalidEncoding

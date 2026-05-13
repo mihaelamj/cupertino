@@ -3,6 +3,7 @@ import Logging
 import SharedCore
 
 #if canImport(WebKit)
+import Core
 import CoreProtocols
 import SharedConstants
 import SharedUtils
@@ -18,15 +19,15 @@ import WebKit
 
 /// Crawls Apple's Human Interface Guidelines
 /// The HIG website is a JavaScript SPA, requiring WKWebView-based crawling
-extension Core {
+extension Crawler {
     @MainActor
-    public final class HIGCrawler {
+    public final class HIG {
         private let outputDirectory: URL
         private let forceRecrawl: Bool
         private let maxPages: Int
 
         #if canImport(WebKit)
-        private var fetcher: Core.WKWebCrawler.ContentFetcher?
+        private var fetcher: Crawler.WebKit.ContentFetcher?
         #endif
 
         public init(
@@ -59,7 +60,7 @@ extension Core {
 
             #if canImport(WebKit)
             // Initialize content fetcher with HIG-specific wait time
-            fetcher = Core.WKWebCrawler.ContentFetcher(
+            fetcher = Crawler.WebKit.ContentFetcher(
                 pageLoadTimeout: Shared.Constants.Timeout.pageLoad,
                 javascriptWaitTime: Shared.Constants.Timeout.higJavascriptWait
             )
@@ -555,7 +556,7 @@ extension Core {
 
 // MARK: - Models
 
-extension Core.HIGCrawler {
+extension Crawler.HIG {
     /// Represents an HIG page to crawl
     public struct Page: Sendable {
         public let url: URL
@@ -616,7 +617,7 @@ extension Core.HIGCrawler {
 
 // MARK: - Statistics
 
-extension Core.HIGCrawler {
+extension Crawler.HIG {
     public struct Statistics: Sendable {
         public var totalPages: Int = 0
         public var newPages: Int = 0
@@ -655,7 +656,7 @@ extension Core.HIGCrawler {
 
 // MARK: - Progress
 
-extension Core.HIGCrawler {
+extension Crawler.HIG {
     public struct Progress: Sendable {
         public let currentPage: Int
         public let totalPages: Int
@@ -671,7 +672,7 @@ extension Core.HIGCrawler {
 
 // MARK: - Errors
 
-extension Core.HIGCrawler {
+extension Crawler.HIG {
     public enum Error: Swift.Error, LocalizedError, Sendable {
         case invalidResponse(URL)
         case webKitNotAvailable

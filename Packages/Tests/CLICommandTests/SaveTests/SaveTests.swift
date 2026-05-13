@@ -2,6 +2,7 @@ import AppKit
 @testable import CLI
 @testable import Core
 import CoreProtocols
+import Crawler
 import Foundation
 @testable import Search
 import SharedConfiguration
@@ -42,7 +43,7 @@ struct SaveCommandTests {
             output: Shared.Configuration.Output(format: .markdown)
         )
 
-        let crawler = await Core.Crawler(configuration: config)
+        let crawler = await Crawler.AppleDocs(configuration: config)
         _ = try await crawler.crawl()
 
         // Build search index
@@ -97,7 +98,7 @@ struct SaveCommandTests {
             output: Shared.Configuration.Output(format: .markdown)
         )
 
-        let crawler = await Core.Crawler(configuration: config)
+        let crawler = await Crawler.AppleDocs(configuration: config)
         _ = try await crawler.crawl()
 
         let searchDbPath = tempDir.appendingPathComponent("search.db")

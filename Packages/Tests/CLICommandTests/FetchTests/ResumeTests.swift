@@ -1,6 +1,7 @@
 @testable import CLI
 @testable import Core
 import CoreProtocols
+@testable import Crawler
 import Foundation
 import Ingest
 import SharedConfiguration
@@ -22,7 +23,7 @@ import TestSupport
 //   - `--start-clean` flag added — wipes `crawlState` so the next run starts
 //     from the seed URL with an empty queue
 //
-// These tests guard the two behaviors at the persistence layer (Core.CrawlerState
+// These tests guard the two behaviors at the persistence layer (Crawler.AppleDocs.State
 // for auto-resume, Ingest.Session.clearSavedSession for --start-clean), so a
 // future refactor that breaks either path fails CI instead of silently
 // stranding users on stale or non-resumable crawls.
@@ -486,9 +487,9 @@ struct ResumeAndStartCleanTests {
         #expect(after.crawlState == nil)
     }
 
-    // MARK: - Auto-resume (Core.CrawlerState)
+    // MARK: - Auto-resume (Crawler.AppleDocs.State)
 
-    @Test("Fresh Core.CrawlerState picks up an active session from metadata.json")
+    @Test("Fresh Crawler.AppleDocs.State picks up an active session from metadata.json")
     func crawlerStateAutoLoadsActiveSession() async throws {
         let tempDir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -506,14 +507,14 @@ struct ResumeAndStartCleanTests {
             ]
         )
 
-        // A new Core.CrawlerState (the only thing the Crawler instantiates on
+        // A new Crawler.AppleDocs.State (the only thing the Crawler instantiates on
         // startup before deciding whether to resume) reads the on-disk
         // session through its init / `getSavedSession`.
         let config = Shared.Configuration.ChangeDetection(
             metadataFile: file,
             outputDirectory: tempDir
         )
-        let state = Core.CrawlerState(configuration: config)
+        let state = Crawler.AppleDocs.State(configuration: config)
 
         let hasSession = await state.hasActiveSession()
         #expect(hasSession, "auto-resume must observe isActive=true on disk")
@@ -526,7 +527,7 @@ struct ResumeAndStartCleanTests {
         #expect(session?.startURL == "http://127.0.0.1:1/seed")
     }
 
-    @Test("Fresh Core.CrawlerState reports no active session when metadata.json has no crawlState")
+    @Test("Fresh Crawler.AppleDocs.State reports no active session when metadata.json has no crawlState")
     func crawlerStateNoActiveSessionWhenMissing() async throws {
         let tempDir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -540,7 +541,7 @@ struct ResumeAndStartCleanTests {
             metadataFile: file,
             outputDirectory: tempDir
         )
-        let state = Core.CrawlerState(configuration: config)
+        let state = Crawler.AppleDocs.State(configuration: config)
 
         let hasSession = await state.hasActiveSession()
         #expect(!hasSession)
@@ -548,7 +549,7 @@ struct ResumeAndStartCleanTests {
         #expect(session == nil)
     }
 
-    @Test("--start-clean + fresh Core.CrawlerState = no active session")
+    @Test("--start-clean + fresh Crawler.AppleDocs.State = no active session")
     func startCleanThenLoadHasNoActiveSession() async throws {
         let tempDir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -571,7 +572,7 @@ struct ResumeAndStartCleanTests {
             metadataFile: file,
             outputDirectory: tempDir
         )
-        let state = Core.CrawlerState(configuration: config)
+        let state = Crawler.AppleDocs.State(configuration: config)
 
         let hasSession = await state.hasActiveSession()
         #expect(!hasSession, "--start-clean must leave no resumable session")
@@ -724,7 +725,7 @@ struct ResumeAndStartCleanTests {
     //
     // `PageMetadata.filePath` is an absolute string captured on the writing
     // host. After rsync to a machine with a different home dir, those strings
-    // point at nothing. Core.CrawlerState's load path now rebases them to the
+    // point at nothing. Crawler.AppleDocs.State's load path now rebases them to the
     // current `metadataFile`'s parent directory + framework + basename, so:
     //   * `validateMetadata` doesn't false-negative and wipe the saved session
     //   * `SearchIndexBuilder` reads pages from the right place
@@ -776,7 +777,7 @@ struct ResumeAndStartCleanTests {
         }
         try metadata.save(to: metadataFile)
 
-        let result = Core.CrawlerState.validateMetadata(metadata, metadataFile: metadataFile)
+        let result = Crawler.AppleDocs.State.validateMetadata(metadata, metadataFile: metadataFile)
         #expect(result, "validation must pass when the *portable* path (outputDir+framework+basename) resolves, even if filePath strings are foreign")
     }
 
@@ -799,7 +800,7 @@ struct ResumeAndStartCleanTests {
         let metadataFile = Self.metadataFile(in: outputDir)
         try metadata.save(to: metadataFile)
 
-        let result = Core.CrawlerState.validateMetadata(metadata, metadataFile: metadataFile)
+        let result = Crawler.AppleDocs.State.validateMetadata(metadata, metadataFile: metadataFile)
         #expect(!result, "validation must reject metadata claiming pages that don't exist on this host at all")
     }
 
@@ -828,7 +829,7 @@ struct ResumeAndStartCleanTests {
             depth: 0
         )
 
-        Core.CrawlerState.rebasePagePaths(in: &metadata, to: outputDir)
+        Crawler.AppleDocs.State.rebasePagePaths(in: &metadata, to: outputDir)
 
         let expectedU1 = outputDir.appendingPathComponent("accessibility")
             .appendingPathComponent("documentation_accessibility.json").path
@@ -853,9 +854,9 @@ struct ResumeAndStartCleanTests {
             depth: 0
         )
 
-        Core.CrawlerState.rebasePagePaths(in: &metadata, to: outputDir)
+        Crawler.AppleDocs.State.rebasePagePaths(in: &metadata, to: outputDir)
         let firstPass = metadata.pages["u1"]?.filePath
-        Core.CrawlerState.rebasePagePaths(in: &metadata, to: outputDir)
+        Crawler.AppleDocs.State.rebasePagePaths(in: &metadata, to: outputDir)
         let secondPass = metadata.pages["u1"]?.filePath
 
         #expect(firstPass == secondPass)
@@ -896,12 +897,12 @@ struct ResumeAndStartCleanTests {
         )
         try metadata.save(to: metadataFile)
 
-        // Stage 2: a fresh Core.CrawlerState (the post-rsync simulation)
+        // Stage 2: a fresh Crawler.AppleDocs.State (the post-rsync simulation)
         let config = Shared.Configuration.ChangeDetection(
             metadataFile: metadataFile,
             outputDirectory: outputDir
         )
-        let state = Core.CrawlerState(configuration: config)
+        let state = Crawler.AppleDocs.State(configuration: config)
 
         // The session must survive — it would have been wiped pre-fix because
         // validateMetadata couldn't find any files at the foreign paths.
@@ -914,7 +915,7 @@ struct ResumeAndStartCleanTests {
         #expect(pageCount == 3)
     }
 
-    @Test("Core.CrawlerState round-trip: save → reload via fresh instance restores all fields")
+    @Test("Crawler.AppleDocs.State round-trip: save → reload via fresh instance restores all fields")
     func crawlerStateSaveReloadRoundTrip() async throws {
         let tempDir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -926,7 +927,7 @@ struct ResumeAndStartCleanTests {
         )
 
         // Save through the real crawler API.
-        let writer = Core.CrawlerState(configuration: config)
+        let writer = Crawler.AppleDocs.State(configuration: config)
         let visited: Set = [
             "http://127.0.0.1:1/v1",
             "http://127.0.0.1:1/v2",
@@ -943,9 +944,9 @@ struct ResumeAndStartCleanTests {
             outputDirectory: tempDir
         )
 
-        // Read through a *fresh* Core.CrawlerState — the actual scenario when
+        // Read through a *fresh* Crawler.AppleDocs.State — the actual scenario when
         // the cupertino process is killed and re-launched.
-        let reader = Core.CrawlerState(configuration: config)
+        let reader = Crawler.AppleDocs.State(configuration: config)
         let session = await reader.getSavedSession()
         #expect(session != nil)
         #expect(session?.isActive == true)

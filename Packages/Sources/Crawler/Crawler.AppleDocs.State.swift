@@ -8,9 +8,9 @@ import SharedModels
 
 // MARK: - Crawler State Manager
 
-extension Core {
+extension Crawler.AppleDocs {
     /// Manages crawler state including metadata and change detection
-    public actor CrawlerState {
+    public actor State {
         private let configuration: Shared.Configuration.ChangeDetection
         private var metadata: Shared.Models.CrawlMetadata
         private var autoSaveInterval: TimeInterval = Shared.Constants.Interval.autoSave

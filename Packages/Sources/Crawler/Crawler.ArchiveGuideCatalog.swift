@@ -7,7 +7,7 @@ import SharedUtils
 
 // MARK: - Archive Guide Catalog
 
-extension Core {
+extension Crawler {
     /// Curated catalog of essential Apple Archive documentation guides
     /// These are classic guides that contain foundational knowledge not available elsewhere
     public enum ArchiveGuideCatalog {
@@ -29,7 +29,7 @@ extension Core {
 
         /// Essential guides with full info (URL + framework)
         /// Always reads from user-writable location (creates from bundled if missing)
-        public static var essentialGuidesWithInfo: [AppleArchiveCrawler.GuideInfo] {
+        public static var essentialGuidesWithInfo: [AppleArchive.GuideInfo] {
             // Ensure user selections file exists (creates from bundled if missing)
             ensureUserSelectionsFileExists()
 
@@ -37,14 +37,14 @@ extension Core {
             if let selectedGuides = loadUserSelectedGuides(), !selectedGuides.isEmpty {
                 return selectedGuides.compactMap { guide in
                     guard let url = URL(string: "\(baseURL)/\(guide.path)") else { return nil }
-                    return AppleArchiveCrawler.GuideInfo(url: url, framework: guide.framework)
+                    return AppleArchive.GuideInfo(url: url, framework: guide.framework)
                 }
             }
 
             // Fall back to hardcoded list if everything else fails (no framework info)
             return essentialGuidePaths.compactMap { path in
                 guard let url = URL(string: "\(baseURL)/\(path)") else { return nil }
-                return AppleArchiveCrawler.GuideInfo(url: url, framework: "")
+                return AppleArchive.GuideInfo(url: url, framework: "")
             }
         }
 
