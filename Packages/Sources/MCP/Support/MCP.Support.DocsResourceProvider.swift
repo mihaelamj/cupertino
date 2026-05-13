@@ -133,7 +133,7 @@ extension MCP.Support {
             if uri.hasPrefix(Shared.Constants.Search.appleDocsScheme) {
                 // Parse URI: apple-docs://framework/filename
                 guard let components = parseAppleDocsURI(uri) else {
-                    throw ToolError.invalidURI(uri)
+                    throw Shared.Core.ToolError.invalidURI(uri)
                 }
 
                 let baseDir = configuration.crawler.outputDirectory
@@ -149,20 +149,20 @@ extension MCP.Support {
                     let jsonData = try Data(contentsOf: jsonPath)
                     let page = try Shared.Utils.JSONCoding.decode(Shared.Models.StructuredDocumentationPage.self, from: jsonData)
                     guard let rawMarkdown = page.rawMarkdown else {
-                        throw ToolError.notFound(uri)
+                        throw Shared.Core.ToolError.notFound(uri)
                     }
                     markdown = rawMarkdown
                 } else if FileManager.default.fileExists(atPath: mdPath.path) {
                     // Fall back to markdown file
                     markdown = try String(contentsOf: mdPath, encoding: .utf8)
                 } else {
-                    throw ToolError.notFound(uri)
+                    throw Shared.Core.ToolError.notFound(uri)
                 }
 
             } else if uri.hasPrefix(Shared.Constants.Search.swiftEvolutionScheme) {
                 // Parse URI: swift-evolution://SE-NNNN
                 guard let proposalID = parseEvolutionURI(uri) else {
-                    throw ToolError.invalidURI(uri)
+                    throw Shared.Core.ToolError.invalidURI(uri)
                 }
 
                 // Find the proposal file
@@ -172,7 +172,7 @@ extension MCP.Support {
                 )
 
                 guard let file = files.first(where: { $0.lastPathComponent.hasPrefix(proposalID) }) else {
-                    throw ToolError.notFound(uri)
+                    throw Shared.Core.ToolError.notFound(uri)
                 }
 
                 // Read markdown content from filesystem
@@ -181,7 +181,7 @@ extension MCP.Support {
             } else if uri.hasPrefix(Shared.Constants.Search.appleArchiveScheme) {
                 // Parse URI: apple-archive://guideUID/filename
                 guard let components = parseArchiveURI(uri) else {
-                    throw ToolError.invalidURI(uri)
+                    throw Shared.Core.ToolError.invalidURI(uri)
                 }
 
                 // Construct file path: archive/{guideUID}/{filename}.md
@@ -190,13 +190,13 @@ extension MCP.Support {
                     .appendingPathComponent("\(components.filename).md")
 
                 guard FileManager.default.fileExists(atPath: filePath.path) else {
-                    throw ToolError.notFound(uri)
+                    throw Shared.Core.ToolError.notFound(uri)
                 }
 
                 markdown = try String(contentsOf: filePath, encoding: .utf8)
 
             } else {
-                throw ToolError.invalidURI(uri)
+                throw Shared.Core.ToolError.invalidURI(uri)
             }
 
             // Create resource contents
@@ -268,7 +268,7 @@ extension MCP.Support {
 
             guard let metadata else {
                 let cmd = "\(Shared.Constants.App.commandName) \(Shared.Constants.Command.crawl)"
-                throw ToolError.noData("No documentation has been crawled yet. Run '\(cmd)' first.")
+                throw Shared.Core.ToolError.noData("No documentation has been crawled yet. Run '\(cmd)' first.")
             }
 
             return metadata

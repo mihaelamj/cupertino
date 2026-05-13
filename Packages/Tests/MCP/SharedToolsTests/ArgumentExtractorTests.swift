@@ -18,7 +18,7 @@ struct ArgumentExtractorTests {
     @Test("require throws missingArgument when key absent")
     func requireThrowsWhenAbsent() {
         let extractor = MCP.SharedTools.ArgumentExtractor(nil)
-        #expect(throws: ToolError.self) {
+        #expect(throws: Shared.Core.ToolError.self) {
             _ = try extractor.require("query")
         }
     }
@@ -27,7 +27,7 @@ struct ArgumentExtractorTests {
     func requireThrowsOnWrongType() {
         let args: [String: MCP.Core.Protocols.AnyCodable] = ["query": MCP.Core.Protocols.AnyCodable(42)]
         let extractor = MCP.SharedTools.ArgumentExtractor(args)
-        #expect(throws: ToolError.self) {
+        #expect(throws: Shared.Core.ToolError.self) {
             _ = try extractor.require("query")
         }
     }

@@ -333,7 +333,7 @@ struct MCPCommandTests {
         let provider = MCP.Support.DocsResourceProvider(configuration: config)
 
         // Try to read non-existent resource
-        await #expect(throws: ToolError.self) {
+        await #expect(throws: Shared.Core.ToolError.self) {
             _ = try await provider.readResource(uri: "apple-docs://nonexistent/file")
         }
 

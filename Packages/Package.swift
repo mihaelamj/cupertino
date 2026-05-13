@@ -125,7 +125,7 @@ let targets: [Target] = {
     // ---------- SharedCore (v1.1 refactor 1.6: residue of Shared - ToolError + CupertinoShared marker) ----------
     let sharedCoreTarget = Target.target(
         name: "SharedCore",
-        dependencies: [],
+        dependencies: ["SharedConstants"],
         path: "Sources/Shared/Core"
     )
     let sharedCoreTestsTarget = Target.testTarget(

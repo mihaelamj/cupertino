@@ -21,7 +21,7 @@ extension MCP.SharedTools {
         /// Extract a required string argument, throwing if missing
         public func require(_ key: String) throws -> String {
             guard let value = arguments?[key]?.value as? String else {
-                throw ToolError.missingArgument(key)
+                throw Shared.Core.ToolError.missingArgument(key)
             }
             return value
         }
@@ -29,7 +29,7 @@ extension MCP.SharedTools {
         /// Extract a required integer argument, throwing if missing
         public func requireInt(_ key: String) throws -> Int {
             guard let value = arguments?[key]?.value as? Int else {
-                throw ToolError.missingArgument(key)
+                throw Shared.Core.ToolError.missingArgument(key)
             }
             return value
         }
@@ -37,7 +37,7 @@ extension MCP.SharedTools {
         /// Extract a required boolean argument, throwing if missing
         public func requireBool(_ key: String) throws -> Bool {
             guard let value = arguments?[key]?.value as? Bool else {
-                throw ToolError.missingArgument(key)
+                throw Shared.Core.ToolError.missingArgument(key)
             }
             return value
         }

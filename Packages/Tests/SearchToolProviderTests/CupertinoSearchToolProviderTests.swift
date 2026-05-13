@@ -870,7 +870,7 @@ struct SearchErrorHandlingTests {
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
 
-        await #expect(throws: ToolError.self) {
+        await #expect(throws: Shared.Core.ToolError.self) {
             _ = try await provider.callTool(name: "nonexistent_tool", arguments: nil)
         }
 
@@ -884,7 +884,7 @@ struct SearchErrorHandlingTests {
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
 
-        await #expect(throws: ToolError.self) {
+        await #expect(throws: Shared.Core.ToolError.self) {
             _ = try await provider.callTool(name: "search", arguments: [:])
         }
 
@@ -902,7 +902,7 @@ struct SearchErrorHandlingTests {
             "source": MCP.Core.Protocols.AnyCodable(Shared.Constants.SourcePrefix.samples),
         ]
 
-        await #expect(throws: ToolError.self) {
+        await #expect(throws: Shared.Core.ToolError.self) {
             _ = try await provider.callTool(name: "search", arguments: args)
         }
 
