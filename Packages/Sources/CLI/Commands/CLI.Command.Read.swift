@@ -86,6 +86,7 @@ extension CLI.Command {
                     searchDB: searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath },
                     samplesDB: sampleDb.map { URL(fileURLWithPath: $0).expandingTildeInPath },
                     packagesDB: packagesDb.map { URL(fileURLWithPath: $0).expandingTildeInPath },
+                    makeSearchDatabase: makeSearchDatabase,
                     packageFileLookup: { dbURL, owner, repo, relpath in
                         // The Search.PackageQuery actor is the production
                         // packages.db reader. CLI wires it in here so
