@@ -4,6 +4,7 @@
 
 import CoreProtocols
 import Foundation
+import Logging
 import Resources
 import SharedConstants
 import SharedCore
@@ -298,7 +299,7 @@ extension Core.PackageIndexing {
 
             do {
                 try mergedData.write(to: selectedURL)
-                print("📥 selected-packages.json: added \(totalNew) new priority entries from embedded list (#218)")
+                Logging.ConsoleLogger.info("📥 selected-packages.json: added \(totalNew) new priority entries from embedded list (#218)")
             } catch {
                 // Silently fail - we already have the user file from before
             }
