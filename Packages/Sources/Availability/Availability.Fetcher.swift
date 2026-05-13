@@ -555,7 +555,7 @@ extension Availability {
             return false // Equal versions
         }
 
-        private func buildAPIURL(from docURL: URL) -> URL {
+        func buildAPIURL(from docURL: URL) -> URL {
             // Extract path after /documentation/
             let path = docURL.path.lowercased()
             let apiPath: String
