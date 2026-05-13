@@ -10,7 +10,7 @@ import PackageDescription
 
 let baseProducts: [Product] = [
     // MCP Framework (cross-platform, consolidated from MCPShared + MCPTransport + MCPServer)
-    .singleTargetLibrary("MCP"),
+    .singleTargetLibrary("MCPCore"),
 ]
 
 // Cupertino products (macOS only - uses FileManager.homeDirectoryForCurrentUser)
@@ -74,20 +74,20 @@ let deps: [Package.Dependency] = [
 
 let targets: [Target] = {
     // ---------- MCP Framework (Consolidated from MCPShared + MCPTransport + MCPServer) ----------
-    let mcpTarget = Target.target(
-        name: "MCP",
+    let mcpCoreTarget = Target.target(
+        name: "MCPCore",
         dependencies: [],
         path: "Sources/MCP/Core"
     )
-    let mcpTestsTarget = Target.testTarget(
+    let mcpCoreTestsTarget = Target.testTarget(
         name: "MCPTests",
-        dependencies: ["MCP"],
+        dependencies: ["MCPCore"],
         path: "Tests/MCP/CoreTests"
     )
 
     let mcpTargets = [
-        mcpTarget,
-        mcpTestsTarget,
+        mcpCoreTarget,
+        mcpCoreTestsTarget,
     ]
 
     // ---------- Cupertino (Apple Docs Crawler → MCP Server - macOS only) ----------
@@ -144,7 +144,7 @@ let targets: [Target] = {
     // ---------- MCPSharedTools (v1.1 refactor 1.1: extracts MCP.SharedTools.ArgumentExtractor + MCP-protocol-output constants from Shared) ----------
     let mcpSharedToolsTarget = Target.target(
         name: "MCPSharedTools",
-        dependencies: ["MCP", "SharedCore", "SharedConstants"],
+        dependencies: ["MCPCore", "SharedCore", "SharedConstants"],
         path: "Sources/MCP/SharedTools"
     )
     let mcpSharedToolsTestsTarget = Target.testTarget(
@@ -283,18 +283,18 @@ let targets: [Target] = {
 
     let mcpSupportTarget = Target.target(
         name: "MCPSupport",
-        dependencies: ["MCP", "MCPSharedTools", "SharedCore", "SharedConfiguration", "SharedConstants", "SharedModels", "SharedUtils", "Logging", "Search"],
+        dependencies: ["MCPCore", "MCPSharedTools", "SharedCore", "SharedConfiguration", "SharedConstants", "SharedModels", "SharedUtils", "Logging", "Search"],
         path: "Sources/MCP/Support"
     )
     let mcpSupportTestsTarget = Target.testTarget(
         name: "MCPSupportTests",
-        dependencies: ["MCPSupport", "MCP", "MCPSharedTools", "SharedCore", "SharedConfiguration", "SharedConstants", "SharedModels", "Search", "TestSupport"],
+        dependencies: ["MCPSupport", "MCPCore", "MCPSharedTools", "SharedCore", "SharedConfiguration", "SharedConstants", "SharedModels", "Search", "TestSupport"],
         path: "Tests/MCP/SupportTests"
     )
 
     let searchToolProviderTarget = Target.target(
         name: "SearchToolProvider",
-        dependencies: ["MCP", "MCPSharedTools", "SharedCore", "SharedConstants", "SharedUtils", "Search", "SampleIndex", "Services"]
+        dependencies: ["MCPCore", "MCPSharedTools", "SharedCore", "SharedConstants", "SharedUtils", "Search", "SampleIndex", "Services"]
     )
     let searchToolProviderTestsTarget = Target.testTarget(
         name: "SearchToolProviderTests",
@@ -303,7 +303,7 @@ let targets: [Target] = {
 
     let mcpClientTarget = Target.target(
         name: "MCPClient",
-        dependencies: ["MCP"],
+        dependencies: ["MCPCore"],
         path: "Sources/MCP/Client"
     )
     let mcpClientTestsTarget = Target.testTarget(
@@ -406,7 +406,7 @@ let targets: [Target] = {
             "RemoteSync",
             "Availability",
             // MCP dependencies (for mcp serve command)
-            "MCP",
+            "MCPCore",
             "MCPSupport",
             "SearchToolProvider",
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
@@ -430,7 +430,7 @@ let targets: [Target] = {
     let mockAIAgentTarget = Target.executableTarget(
         name: "MockAIAgent",
         dependencies: [
-            "MCP",
+            "MCPCore",
             "SharedCore",
             "SharedConstants",
             "Logging",
@@ -460,13 +460,13 @@ let targets: [Target] = {
     // CLI Command Test Targets
     let serveTestsTarget = Target.testTarget(
         name: "ServeTests",
-        dependencies: ["CLI", "Crawler", "MCP", "MCPSupport", "Search", "SearchToolProvider", "SharedCore", "TestSupport"],
+        dependencies: ["CLI", "Crawler", "MCPCore", "MCPSupport", "Search", "SearchToolProvider", "SharedCore", "TestSupport"],
         path: "Tests/CLICommandTests/ServeTests"
     )
 
     let doctorTestsTarget = Target.testTarget(
         name: "DoctorTests",
-        dependencies: ["CLI", "Diagnostics", "MCP", "MCPSupport", "Search", "SharedCore", "TestSupport"],
+        dependencies: ["CLI", "Diagnostics", "MCPCore", "MCPSupport", "Search", "SharedCore", "TestSupport"],
         path: "Tests/CLICommandTests/DoctorTests"
     )
 
@@ -497,7 +497,7 @@ let targets: [Target] = {
     )
     let mockAIAgentTestsTarget = Target.testTarget(
         name: "MockAIAgentTests",
-        dependencies: ["MCP", "SampleIndex", "SharedCore", "TestSupport"]
+        dependencies: ["MCPCore", "SampleIndex", "SharedCore", "TestSupport"]
     )
 
     let cupertinoTargets: [Target] = [

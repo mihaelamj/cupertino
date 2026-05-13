@@ -3,7 +3,7 @@ import Core
 import CoreProtocols
 import Diagnostics
 import Foundation
-import MCP
+import MCPCore
 import MCPSupport
 import Search
 import SharedCore

@@ -3,7 +3,7 @@ import AppKit
 import CoreProtocols
 import Crawler
 import Foundation
-@testable import MCP
+@testable import MCPCore
 @testable import MCPSupport
 @testable import Search
 @testable import SearchToolProvider

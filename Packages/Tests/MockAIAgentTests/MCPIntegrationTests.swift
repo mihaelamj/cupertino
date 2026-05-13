@@ -1,5 +1,5 @@
 import Foundation
-@testable import MCP
+@testable import MCPCore
 @testable import SampleIndex
 import SharedConstants
 @testable import SharedCore

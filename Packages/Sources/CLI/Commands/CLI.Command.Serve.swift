@@ -4,7 +4,7 @@ import CoreProtocols
 import Darwin
 import Foundation
 import Logging
-import MCP
+import MCPCore
 import MCPSupport
 import SampleIndex
 import Search

@@ -1,4 +1,4 @@
-import MCP
+import MCPCore
 import MCPSharedTools
 import SharedConstants
 import SharedCore

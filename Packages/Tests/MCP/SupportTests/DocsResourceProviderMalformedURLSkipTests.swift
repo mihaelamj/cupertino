@@ -1,5 +1,5 @@
 import Foundation
-import MCP
+import MCPCore
 @testable import MCPSupport
 import Search
 import SharedConfiguration

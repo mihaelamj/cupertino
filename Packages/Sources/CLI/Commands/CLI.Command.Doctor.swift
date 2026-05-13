@@ -6,7 +6,7 @@ import Diagnostics
 import Foundation
 import Indexer
 import Logging
-import MCP
+import MCPCore
 import MCPSupport
 import SampleIndex
 import Search

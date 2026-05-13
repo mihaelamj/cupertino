@@ -1,5 +1,5 @@
 import Foundation
-import MCP
+import MCPCore
 
 // MARK: - MCP.Support Namespace
 

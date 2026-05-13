@@ -1,5 +1,5 @@
 import Foundation
-import MCP
+import MCPCore
 import SharedConstants
 
 // MARK: - MCP.SharedTools.Copy
