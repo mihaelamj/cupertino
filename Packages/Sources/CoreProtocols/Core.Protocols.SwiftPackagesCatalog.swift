@@ -1,5 +1,5 @@
 // swiftlint:disable identifier_name
-// Core.Protocols+SwiftPackagesCatalog.swift
+// Core.Protocols.SwiftPackagesCatalog.swift
 //
 // Seed list of Swift package URLs, slimmed (#161 follow-up) from the original
 // 3.4 MB bundled JSON catalog to a compiled-in `[String]` of URLs. Rich

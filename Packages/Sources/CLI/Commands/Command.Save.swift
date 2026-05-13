@@ -192,7 +192,7 @@ extension Command {
 
 /// `--remote` streams documentation from GitHub instead of building from
 /// a local corpus. Hasn't been lifted to `Indexer` yet because the
-/// `RemoteIndexer` interface is heavily UI-coupled (animated progress
+/// `RemoteSync.Indexer` interface is heavily UI-coupled (animated progress
 /// bar, framework-by-framework status). Stays here until that pipeline
 /// gets a callback-based shape.
 extension Command.Save {
@@ -205,8 +205,8 @@ extension Command.Save {
             ?? effectiveBase.appendingPathComponent(Shared.Constants.FileName.searchDatabase)
         let stateFileURL = effectiveBase.appendingPathComponent("remote-save-state.json")
 
-        let fetcher = GitHubFetcher()
-        let indexer = RemoteIndexer(
+        let fetcher = RemoteSync.GitHubFetcher()
+        let indexer = RemoteSync.Indexer(
             fetcher: fetcher,
             stateFileURL: stateFileURL,
             appVersion: Shared.Constants.App.version
@@ -225,8 +225,8 @@ extension Command.Save {
         Logging.ConsoleLogger.info("🗄️  Initializing search database...")
         let searchIndex = try await SearchModule.Index(dbPath: searchDBURL)
 
-        let progressDisplay = AnimatedProgress(barWidth: 20, useEmoji: true)
-        let reporter = ProgressReporter(display: progressDisplay)
+        let progressDisplay = RemoteSync.AnimatedProgress(barWidth: 20, useEmoji: true)
+        let reporter = RemoteSync.ProgressReporter(display: progressDisplay)
 
         final class StatsTracker: @unchecked Sendable {
             var successCount = 0
@@ -284,7 +284,7 @@ extension Command.Save {
     }
 
     private func handleResumableRemoteSession(
-        indexer: RemoteIndexer,
+        indexer: RemoteSync.Indexer,
         searchDBURL: URL
     ) async throws {
         let state = await indexer.getState()
