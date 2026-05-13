@@ -22,9 +22,9 @@ import SharedUtils
 extension Core {
     @MainActor
     public final class Crawler: NSObject {
-        private let configuration: Shared.CrawlerConfiguration
-        private let changeDetection: Shared.ChangeDetectionConfiguration
-        private let output: Shared.OutputConfiguration
+        private let configuration: Shared.Configuration.Crawler
+        private let changeDetection: Shared.Configuration.ChangeDetection
+        private let output: Shared.Configuration.Output
         private let state: Core.CrawlerState
 
         private var webPageFetcher: Core.WKWebCrawler.ContentFetcher!
@@ -281,7 +281,7 @@ extension Core {
             // the implicit Task-scoped pool would otherwise hoard megabytes
             // of pool buffers per thousand pages.
             // Discovery mode controls which path the crawler uses for content
-            // and link extraction. See `Shared.DiscoveryMode` for semantics.
+            // and link extraction. See `Shared.Configuration.DiscoveryMode` for semantics.
             // The webview-only mode skips JSON entirely so we can produce a
             // clean WKWebView-discovered corpus alongside a JSON-only corpus
             // in a separate output directory, then diff the two metadata.json

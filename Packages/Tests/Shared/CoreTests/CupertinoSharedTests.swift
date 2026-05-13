@@ -6,7 +6,7 @@ import Testing
 import TestSupport
 
 @Test func configuration() {
-    let config = Shared.CrawlerConfiguration()
+    let config = Shared.Configuration.Crawler()
     #expect(config.maxPages > 0)
 }
 

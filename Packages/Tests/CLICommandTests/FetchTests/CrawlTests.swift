@@ -29,14 +29,14 @@ struct WebCrawlTests {
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let config = try Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(
+            crawler: Shared.Configuration.Crawler(
                 startURL: #require(URL(string: "https://developer.apple.com/documentation/swift")),
                 maxPages: 1,
                 maxDepth: 0,
                 outputDirectory: tempDir
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true, outputDirectory: tempDir),
-            output: Shared.OutputConfiguration(format: .markdown)
+            changeDetection: Shared.Configuration.ChangeDetection(forceRecrawl: true, outputDirectory: tempDir),
+            output: Shared.Configuration.Output(format: .markdown)
         )
 
         print("🧪 Test: Fetch single page")
@@ -87,18 +87,18 @@ struct WebCrawlTests {
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let config = try Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(
+            crawler: Shared.Configuration.Crawler(
                 startURL: #require(URL(string: "https://developer.apple.com/documentation/swift")),
                 maxPages: 1,
                 maxDepth: 0,
                 outputDirectory: tempDir
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(
+            changeDetection: Shared.Configuration.ChangeDetection(
                 enabled: true,
                 forceRecrawl: false,
                 outputDirectory: tempDir
             ),
-            output: Shared.OutputConfiguration(format: .markdown)
+            output: Shared.Configuration.Output(format: .markdown)
         )
 
         print("🧪 Test: Fetch with resume")

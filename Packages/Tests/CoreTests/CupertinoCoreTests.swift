@@ -321,14 +321,14 @@ private func cleanupTempDirectory(_ tempDir: URL) {
 
 private func createTestConfiguration(outputDirectory: URL) -> Shared.Configuration {
     Shared.Configuration(
-        crawler: Shared.CrawlerConfiguration(
+        crawler: Shared.Configuration.Crawler(
             startURL: URL(string: "https://developer.apple.com/documentation/swift")!,
             maxPages: 1,
             maxDepth: 1,
             outputDirectory: outputDirectory
         ),
-        changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true),
-        output: Shared.OutputConfiguration(format: .markdown)
+        changeDetection: Shared.Configuration.ChangeDetection(forceRecrawl: true),
+        output: Shared.Configuration.Output(format: .markdown)
     )
 }
 
@@ -407,7 +407,7 @@ func crawlerStateInitialization() async {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
 
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: tempDir.appendingPathComponent("metadata.json"),
         forceRecrawl: false
@@ -454,7 +454,7 @@ func crawlerStateLoadsExistingMetadata() async throws {
     try metadata.save(to: metadataFile)
 
     // Initialize state - should load existing metadata
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: metadataFile,
         forceRecrawl: false
@@ -471,7 +471,7 @@ func crawlerStateShouldRecrawlNewPage() async {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
 
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: tempDir.appendingPathComponent("metadata.json"),
         forceRecrawl: false
@@ -513,7 +513,7 @@ func crawlerStateShouldRecrawlContentChanged() async throws {
     )
     try metadata.save(to: metadataFile)
 
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: metadataFile,
         forceRecrawl: false
@@ -554,7 +554,7 @@ func crawlerStateShouldRecrawlSkipsUnchanged() async throws {
     )
     try metadata.save(to: metadataFile)
 
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: metadataFile,
         forceRecrawl: false
@@ -593,7 +593,7 @@ func crawlerStateShouldRecrawlMissingFile() async throws {
     )
     try metadata.save(to: metadataFile)
 
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: metadataFile,
         forceRecrawl: false
@@ -634,7 +634,7 @@ func crawlerStateForceRecrawl() async throws {
     )
     try metadata.save(to: metadataFile)
 
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: metadataFile,
         forceRecrawl: true // Force recrawl
@@ -675,7 +675,7 @@ func crawlerStateDisabledChangeDetection() async throws {
     )
     try metadata.save(to: metadataFile)
 
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: false, // Disabled
         metadataFile: metadataFile,
         forceRecrawl: false
@@ -698,7 +698,7 @@ func crawlerStateUpdatePage() async {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
 
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: tempDir.appendingPathComponent("metadata.json"),
         forceRecrawl: false
@@ -728,7 +728,7 @@ func crawlerStateUpdateStatistics() async {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
 
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: tempDir.appendingPathComponent("metadata.json"),
         forceRecrawl: false
@@ -760,7 +760,7 @@ func crawlerStateSessionManagement() async throws {
 
     try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: tempDir.appendingPathComponent("metadata.json"),
         forceRecrawl: false
@@ -812,7 +812,7 @@ func crawlerStateFinalizeAndSave() async throws {
     try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
     let metadataFile = tempDir.appendingPathComponent("metadata.json")
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: metadataFile,
         forceRecrawl: false
@@ -862,7 +862,7 @@ func crawlerStateAutoSaveInterval() async throws {
     try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
     let metadataFile = tempDir.appendingPathComponent("metadata.json")
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: metadataFile,
         forceRecrawl: false

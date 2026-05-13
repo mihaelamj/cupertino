@@ -20,7 +20,7 @@ import SharedConstants
 /*
  // Create configuration
  let config = Shared.Configuration(
-     crawler: Shared.CrawlerConfiguration(
+     crawler: Shared.Configuration.Crawler(
          startURL: URL(string: "\(Shared.Constants.BaseURL.appleDeveloperDocs)swiftui")!,
          maxPages: 100
      )

@@ -24,16 +24,16 @@ struct CrawlerTests {
             .appendingPathComponent(UUID().uuidString)
 
         let config = try Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(
+            crawler: Shared.Configuration.Crawler(
                 startURL: #require(URL(string: "https://developer.apple.com")),
                 maxPages: 5,
                 outputDirectory: tempDir
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(
+            changeDetection: Shared.Configuration.ChangeDetection(
                 enabled: false,
                 metadataFile: tempDir.appendingPathComponent("metadata.json")
             ),
-            output: Shared.OutputConfiguration()
+            output: Shared.Configuration.Output()
         )
 
         let crawler = await Core.Crawler(configuration: config)
@@ -308,17 +308,17 @@ struct CrawlerTests {
             .appendingPathComponent(UUID().uuidString)
 
         let config = try Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(
+            crawler: Shared.Configuration.Crawler(
                 startURL: #require(URL(string: "https://example.com")),
                 maxPages: 1, // Limit to 1 page
                 outputDirectory: tempDir,
                 requestDelay: 0.1
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(
+            changeDetection: Shared.Configuration.ChangeDetection(
                 enabled: false,
                 metadataFile: tempDir.appendingPathComponent("metadata.json")
             ),
-            output: Shared.OutputConfiguration()
+            output: Shared.Configuration.Output()
         )
 
         let crawler = await Core.Crawler(configuration: config)
@@ -348,17 +348,17 @@ struct CrawlerTests {
         #expect(!FileManager.default.fileExists(atPath: tempDir.path))
 
         let config = try Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(
+            crawler: Shared.Configuration.Crawler(
                 startURL: #require(URL(string: "https://example.com")),
                 maxPages: 1,
                 outputDirectory: tempDir,
                 requestDelay: 0.1
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(
+            changeDetection: Shared.Configuration.ChangeDetection(
                 enabled: false,
                 metadataFile: tempDir.appendingPathComponent("metadata.json")
             ),
-            output: Shared.OutputConfiguration()
+            output: Shared.Configuration.Output()
         )
 
         let crawler = await Core.Crawler(configuration: config)
@@ -493,7 +493,7 @@ struct CrawlerTests {
 
     @Test("CrawlerConfiguration htmlLinkAugmentation defaults to true")
     func htmlLinkAugmentationDefaultsToTrue() throws {
-        let config = try Shared.CrawlerConfiguration(
+        let config = try Shared.Configuration.Crawler(
             startURL: #require(URL(string: "https://developer.apple.com/documentation")),
             outputDirectory: FileManager.default.temporaryDirectory
         )
@@ -502,7 +502,7 @@ struct CrawlerTests {
 
     @Test("CrawlerConfiguration htmlLinkAugmentationMaxRefs defaults to 10")
     func htmlLinkAugmentationMaxRefsDefaultsToTen() throws {
-        let config = try Shared.CrawlerConfiguration(
+        let config = try Shared.Configuration.Crawler(
             startURL: #require(URL(string: "https://developer.apple.com/documentation")),
             outputDirectory: FileManager.default.temporaryDirectory
         )
@@ -511,7 +511,7 @@ struct CrawlerTests {
 
     @Test("CrawlerConfiguration htmlLinkAugmentation can be disabled explicitly")
     func htmlLinkAugmentationCanBeDisabled() throws {
-        let config = try Shared.CrawlerConfiguration(
+        let config = try Shared.Configuration.Crawler(
             startURL: #require(URL(string: "https://developer.apple.com/documentation")),
             outputDirectory: FileManager.default.temporaryDirectory,
             htmlLinkAugmentation: false
@@ -521,7 +521,7 @@ struct CrawlerTests {
 
     @Test("CrawlerConfiguration htmlLinkAugmentationMaxRefs can be raised to disable the heuristic")
     func htmlLinkAugmentationMaxRefsCanBeRaised() throws {
-        let config = try Shared.CrawlerConfiguration(
+        let config = try Shared.Configuration.Crawler(
             startURL: #require(URL(string: "https://developer.apple.com/documentation")),
             outputDirectory: FileManager.default.temporaryDirectory,
             htmlLinkAugmentationMaxRefs: .max
@@ -544,7 +544,7 @@ struct CrawlerTests {
         }
         """
         let data = try #require(Data(json.utf8))
-        let config = try JSONDecoder().decode(Shared.CrawlerConfiguration.self, from: data)
+        let config = try JSONDecoder().decode(Shared.Configuration.Crawler.self, from: data)
         #expect(config.htmlLinkAugmentation == true)
         #expect(config.htmlLinkAugmentationMaxRefs == 10)
     }
@@ -566,21 +566,21 @@ struct CrawlerTests {
         }
         """
         let data = try #require(Data(json.utf8))
-        let config = try JSONDecoder().decode(Shared.CrawlerConfiguration.self, from: data)
+        let config = try JSONDecoder().decode(Shared.Configuration.Crawler.self, from: data)
         #expect(config.htmlLinkAugmentation == false)
         #expect(config.htmlLinkAugmentationMaxRefs == 25)
     }
 
     @Test("CrawlerConfiguration encode + decode round-trips the augmentation fields")
     func htmlLinkAugmentationRoundTripsThroughEncode() throws {
-        let original = try Shared.CrawlerConfiguration(
+        let original = try Shared.Configuration.Crawler(
             startURL: #require(URL(string: "https://developer.apple.com/documentation")),
             outputDirectory: FileManager.default.temporaryDirectory,
             htmlLinkAugmentation: false,
             htmlLinkAugmentationMaxRefs: 5
         )
         let data = try JSONEncoder().encode(original)
-        let decoded = try JSONDecoder().decode(Shared.CrawlerConfiguration.self, from: data)
+        let decoded = try JSONDecoder().decode(Shared.Configuration.Crawler.self, from: data)
         #expect(decoded.htmlLinkAugmentation == false)
         #expect(decoded.htmlLinkAugmentationMaxRefs == 5)
     }

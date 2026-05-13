@@ -63,7 +63,7 @@ extension CLI.Command {
             }
 
             let config = Shared.Configuration(
-                crawler: Shared.CrawlerConfiguration(
+                crawler: Shared.Configuration.Crawler(
                     outputDirectory: Shared.Constants.defaultDocsDirectory
                 )
             )

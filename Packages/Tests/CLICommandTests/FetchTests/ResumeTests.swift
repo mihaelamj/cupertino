@@ -509,7 +509,7 @@ struct ResumeAndStartCleanTests {
         // A new Core.CrawlerState (the only thing the Crawler instantiates on
         // startup before deciding whether to resume) reads the on-disk
         // session through its init / `getSavedSession`.
-        let config = Shared.ChangeDetectionConfiguration(
+        let config = Shared.Configuration.ChangeDetection(
             metadataFile: file,
             outputDirectory: tempDir
         )
@@ -536,7 +536,7 @@ struct ResumeAndStartCleanTests {
         let metadata = Shared.Models.CrawlMetadata()
         try metadata.save(to: file)
 
-        let config = Shared.ChangeDetectionConfiguration(
+        let config = Shared.Configuration.ChangeDetection(
             metadataFile: file,
             outputDirectory: tempDir
         )
@@ -567,7 +567,7 @@ struct ResumeAndStartCleanTests {
 
         // The Crawler's resume read sees nothing, so it'll start fresh from
         // the seed URL — exactly what --start-clean should produce.
-        let config = Shared.ChangeDetectionConfiguration(
+        let config = Shared.Configuration.ChangeDetection(
             metadataFile: file,
             outputDirectory: tempDir
         )
@@ -897,7 +897,7 @@ struct ResumeAndStartCleanTests {
         try metadata.save(to: metadataFile)
 
         // Stage 2: a fresh Core.CrawlerState (the post-rsync simulation)
-        let config = Shared.ChangeDetectionConfiguration(
+        let config = Shared.Configuration.ChangeDetection(
             metadataFile: metadataFile,
             outputDirectory: outputDir
         )
@@ -920,7 +920,7 @@ struct ResumeAndStartCleanTests {
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let file = Self.metadataFile(in: tempDir)
-        let config = Shared.ChangeDetectionConfiguration(
+        let config = Shared.Configuration.ChangeDetection(
             metadataFile: file,
             outputDirectory: tempDir
         )

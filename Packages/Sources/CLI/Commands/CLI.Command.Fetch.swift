@@ -16,7 +16,7 @@ import SharedUtils
 /// Lets ArgumentParser parse `--discovery-mode <mode>` directly into the
 /// shared enum. The conformance lives here (not in Shared) so the Shared
 /// module doesn't take on an ArgumentParser dependency.
-extension Shared.DiscoveryMode: ExpressibleByArgument {}
+extension Shared.Configuration.DiscoveryMode: ExpressibleByArgument {}
 
 // MARK: - Fetch Command
 
@@ -124,7 +124,7 @@ extension CLI.Command {
             matches pre-2025-11-30 behavior).
             """
         )
-        var discoveryMode: Shared.DiscoveryMode = .auto
+        var discoveryMode: Shared.Configuration.DiscoveryMode = .auto
 
         @Flag(name: .long, inversion: .prefixedNo, help: "Only download accepted/implemented proposals (evolution type only)")
         var onlyAccepted: Bool = true
@@ -426,7 +426,7 @@ extension CLI.Command {
                 ?? type.defaultAllowedPrefixes
 
             return Shared.Configuration(
-                crawler: Shared.CrawlerConfiguration(
+                crawler: Shared.Configuration.Crawler(
                     startURL: url,
                     allowedPrefixes: prefixes,
                     maxPages: maxPages,
@@ -434,11 +434,11 @@ extension CLI.Command {
                     outputDirectory: outputDirectory,
                     discoveryMode: discoveryMode
                 ),
-                changeDetection: Shared.ChangeDetectionConfiguration(
+                changeDetection: Shared.Configuration.ChangeDetection(
                     forceRecrawl: force,
                     outputDirectory: outputDirectory
                 ),
-                output: Shared.OutputConfiguration(format: .markdown)
+                output: Shared.Configuration.Output(format: .markdown)
             )
         }
 
