@@ -1,9 +1,8 @@
 import Foundation
 import SampleIndex
-import Search
+import SearchModels
 import SharedConstants
 import SharedCore
-import SearchModels
 
 // MARK: - Sample candidate fetcher (#230)
 
@@ -26,11 +25,11 @@ extension Sample.Services {
         public let sourceName: String = Shared.Constants.SourcePrefix.samples
 
         private let service: Sample.Search.Service
-        private let availability: Search.PackageQuery.AvailabilityFilter?
+        private let availability: Search.AvailabilityFilter?
 
         public init(
             service: Sample.Search.Service,
-            availability: Search.PackageQuery.AvailabilityFilter? = nil
+            availability: Search.AvailabilityFilter? = nil
         ) {
             self.service = service
             self.availability = availability
