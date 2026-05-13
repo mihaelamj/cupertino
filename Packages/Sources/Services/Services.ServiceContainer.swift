@@ -149,5 +149,58 @@ extension Services {
             await service.disconnect()
             return result
         }
+
+        /// Execute an operation with a teaser service. The teaser service
+        /// reads from the search database (optional) and the sample
+        /// database (optional). If either path is missing or doesn't
+        /// resolve to a file, the service handles that source as empty
+        /// rather than failing.
+        public static func withTeaserService<T: Sendable>(
+            searchDbPath: String? = nil,
+            sampleDbPath: URL? = nil,
+            operation: (Services.TeaserService) async throws -> T,
+        ) async throws -> T {
+            let resolvedSearchPath = Shared.Utils.PathResolver.searchDatabase(searchDbPath)
+            let resolvedSamplePath = sampleDbPath ?? Sample.Index.defaultDatabasePath
+
+            let searchIndex: (any Search.Database)?
+            if Shared.Utils.PathResolver.exists(resolvedSearchPath) {
+                searchIndex = try await Search.Index(dbPath: resolvedSearchPath)
+            } else {
+                searchIndex = nil
+            }
+
+            let service = try await Services.TeaserService(
+                searchIndex: searchIndex,
+                sampleDbPath: Shared.Utils.PathResolver.exists(resolvedSamplePath) ? resolvedSamplePath : nil,
+            )
+
+            return try await operation(service)
+        }
+
+        /// Execute an operation with a unified search service. Same
+        /// composition pattern as `withTeaserService`.
+        public static func withUnifiedSearchService<T: Sendable>(
+            searchDbPath: String? = nil,
+            sampleDbPath: URL? = nil,
+            operation: (Services.UnifiedSearchService) async throws -> T,
+        ) async throws -> T {
+            let resolvedSearchPath = Shared.Utils.PathResolver.searchDatabase(searchDbPath)
+            let resolvedSamplePath = sampleDbPath ?? Sample.Index.defaultDatabasePath
+
+            let searchIndex: (any Search.Database)?
+            if Shared.Utils.PathResolver.exists(resolvedSearchPath) {
+                searchIndex = try await Search.Index(dbPath: resolvedSearchPath)
+            } else {
+                searchIndex = nil
+            }
+
+            let service = try await Services.UnifiedSearchService(
+                searchIndex: searchIndex,
+                sampleDbPath: Shared.Utils.PathResolver.exists(resolvedSamplePath) ? resolvedSamplePath : nil,
+            )
+
+            return try await operation(service)
+        }
     }
 }
