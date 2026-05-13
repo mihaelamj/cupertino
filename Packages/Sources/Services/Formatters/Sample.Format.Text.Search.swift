@@ -64,7 +64,7 @@ extension Sample.Format.Text {
             }
 
             // Footer: teasers, tips, and guidance
-            let footer = SearchFooter.singleSource(Shared.Constants.SourcePrefix.samples, teasers: teasers)
+            let footer = Services.Formatter.Footer.Search.singleSource(Shared.Constants.SourcePrefix.samples, teasers: teasers)
             output += footer.formatText()
 
             return output
@@ -98,7 +98,7 @@ extension Sample.Format.Text {
             }
 
             // Footer: tips and guidance
-            let footer = SearchFooter.singleSource(Shared.Constants.SourcePrefix.samples)
+            let footer = Services.Formatter.Footer.Search.singleSource(Shared.Constants.SourcePrefix.samples)
             output += footer.formatText()
 
             return output
@@ -124,7 +124,7 @@ extension Sample.Format.Text {
             }
 
             // Footer: tips and guidance
-            let footer = SearchFooter.singleSource(Shared.Constants.SourcePrefix.samples)
+            let footer = Services.Formatter.Footer.Search.singleSource(Shared.Constants.SourcePrefix.samples)
             output += footer.formatText()
 
             return output

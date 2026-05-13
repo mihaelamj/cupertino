@@ -914,9 +914,9 @@ struct SearchErrorHandlingTests {
 
 @Suite("Unified Search Formatter", .serialized)
 struct UnifiedSearchFormatterTests {
-    @Test("UnifiedSearchInput calculates total count correctly")
+    @Test("Services.Formatter.Unified.Input calculates total count correctly")
     func totalCountCalculation() {
-        let input = UnifiedSearchInput(
+        let input = Services.Formatter.Unified.Input(
             docResults: [makeResult(title: "Doc1"), makeResult(title: "Doc2")],
             archiveResults: [makeResult(title: "Archive1")],
             sampleResults: [makeSampleProject()],
@@ -930,15 +930,15 @@ struct UnifiedSearchFormatterTests {
         #expect(input.totalCount == 7)
     }
 
-    @Test("UnifiedSearchInput empty state")
+    @Test("Services.Formatter.Unified.Input empty state")
     func emptyState() {
-        let input = UnifiedSearchInput()
+        let input = Services.Formatter.Unified.Input()
         #expect(input.totalCount == 0)
     }
 
     @Test("Formatter outputs correct markdown structure")
     func formatterMarkdownStructure() {
-        let input = UnifiedSearchInput(
+        let input = Services.Formatter.Unified.Input(
             docResults: [makeResult(title: "SwiftUI View")],
             archiveResults: [],
             sampleResults: [],
@@ -949,7 +949,7 @@ struct UnifiedSearchFormatterTests {
             packagesResults: []
         )
 
-        let formatter = UnifiedSearchMarkdownFormatter(query: "view")
+        let formatter = Services.Formatter.Unified.Markdown(query: "view")
         let output = formatter.format(input)
 
         #expect(output.contains("# Unified Search"))
@@ -960,7 +960,7 @@ struct UnifiedSearchFormatterTests {
 
     @Test("Formatter hides empty sections")
     func formatterHidesEmptySections() {
-        let input = UnifiedSearchInput(
+        let input = Services.Formatter.Unified.Input(
             docResults: [makeResult(title: "Doc1")],
             archiveResults: [],
             sampleResults: [],
@@ -971,7 +971,7 @@ struct UnifiedSearchFormatterTests {
             packagesResults: []
         )
 
-        let formatter = UnifiedSearchMarkdownFormatter(query: "test")
+        let formatter = Services.Formatter.Unified.Markdown(query: "test")
         let output = formatter.format(input)
 
         #expect(!output.contains("Apple Archive (0)"))

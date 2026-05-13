@@ -11,7 +11,7 @@
 // // Using ServiceContainer for managed lifecycle
 // try await Services.ServiceContainer.withDocsService { service in
 //     let results = try await service.search(text: "View")
-//     let formatter = Services.MarkdownSearchResultFormatter(query: "View")
+//     let formatter = Services.Services.Formatter.Markdown(query: "View")
 //     print(formatter.format(results))
 // }
 //

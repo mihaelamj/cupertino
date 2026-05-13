@@ -1,32 +1,11 @@
 import Foundation
-import Search
 import SharedCore
-
-// MARK: - JSON Search Result Formatter
-
-/// Formats search results as JSON for CLI --format json
-extension Services.Formatter {
-    public struct JSONSearchResultFormatter: Services.Formatter.Result {
-        public init() {}
-
-        public func format(_ results: [Search.Result]) -> String {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-
-            guard let data = try? encoder.encode(results),
-                  let json = String(data: data, encoding: .utf8) else {
-                return "[]"
-            }
-            return json
-        }
-    }
-}
 
 // MARK: - Frameworks JSON Formatter
 
-/// Formats framework list as JSON
-extension Services.Formatter {
-    public struct FrameworksJSONFormatter: Services.Formatter.Result {
+extension Services.Formatter.Frameworks {
+    /// Formats framework list as JSON
+    public struct JSON: Services.Formatter.Result {
         public init() {}
 
         public func format(_ frameworks: [String: Int]) -> String {
