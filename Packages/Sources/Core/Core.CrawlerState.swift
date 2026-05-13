@@ -11,12 +11,12 @@ import SharedModels
 extension Core {
     /// Manages crawler state including metadata and change detection
     public actor CrawlerState {
-        private let configuration: Shared.ChangeDetectionConfiguration
+        private let configuration: Shared.Configuration.ChangeDetection
         private var metadata: Shared.Models.CrawlMetadata
         private var autoSaveInterval: TimeInterval = Shared.Constants.Interval.autoSave
         private var lastAutoSave: Date = .init()
 
-        public init(configuration: Shared.ChangeDetectionConfiguration) {
+        public init(configuration: Shared.Configuration.ChangeDetection) {
             self.configuration = configuration
             metadata = Shared.Models.CrawlMetadata()
 

@@ -32,14 +32,14 @@ struct SaveCommandTests {
 
         // First, fetch a page to have data
         let config = try Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(
+            crawler: Shared.Configuration.Crawler(
                 startURL: #require(URL(string: "https://developer.apple.com/documentation/swift")),
                 maxPages: 1,
                 maxDepth: 0,
                 outputDirectory: tempDir
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true, outputDirectory: tempDir),
-            output: Shared.OutputConfiguration(format: .markdown)
+            changeDetection: Shared.Configuration.ChangeDetection(forceRecrawl: true, outputDirectory: tempDir),
+            output: Shared.Configuration.Output(format: .markdown)
         )
 
         let crawler = await Core.Crawler(configuration: config)
@@ -87,14 +87,14 @@ struct SaveCommandTests {
 
         // Fetch and save
         let config = try Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(
+            crawler: Shared.Configuration.Crawler(
                 startURL: #require(URL(string: "https://developer.apple.com/documentation/swift")),
                 maxPages: 1,
                 maxDepth: 0,
                 outputDirectory: tempDir
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true, outputDirectory: tempDir),
-            output: Shared.OutputConfiguration(format: .markdown)
+            changeDetection: Shared.Configuration.ChangeDetection(forceRecrawl: true, outputDirectory: tempDir),
+            output: Shared.Configuration.Output(format: .markdown)
         )
 
         let crawler = await Core.Crawler(configuration: config)

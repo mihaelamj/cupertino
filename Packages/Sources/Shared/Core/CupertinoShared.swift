@@ -15,12 +15,12 @@
 /*
  // Create configuration
  let config = Shared.Configuration(
-     crawler: Shared.CrawlerConfiguration(
+     crawler: Shared.Configuration.Crawler(
          startURL: URL(string: "\(Shared.Constants.BaseURL.appleDeveloperDocs)swiftui")!,
          maxPages: 1000
      ),
-     changeDetection: Shared.ChangeDetectionConfiguration(enabled: true),
-     output: Shared.OutputConfiguration(format: .markdown)
+     changeDetection: Shared.Configuration.ChangeDetection(enabled: true),
+     output: Shared.Configuration.Output(format: .markdown)
  )
 
  // Save configuration

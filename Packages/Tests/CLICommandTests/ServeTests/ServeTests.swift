@@ -64,9 +64,9 @@ struct MCPCommandTests {
 
         let server = MCP.Core.Server(name: "test-server", version: "1.0.0")
         let config = Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(outputDirectory: tempDir),
-            changeDetection: Shared.ChangeDetectionConfiguration(outputDirectory: tempDir),
-            output: Shared.OutputConfiguration()
+            crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
+            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
+            output: Shared.Configuration.Output()
         )
         let provider = MCP.Support.DocsResourceProvider(configuration: config)
 
@@ -108,9 +108,9 @@ struct MCPCommandTests {
         try testContent.write(to: testFile, atomically: true, encoding: .utf8)
 
         let config = Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(outputDirectory: tempDir),
-            changeDetection: Shared.ChangeDetectionConfiguration(),
-            output: Shared.OutputConfiguration()
+            crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
+            changeDetection: Shared.Configuration.ChangeDetection(),
+            output: Shared.Configuration.Output()
         )
         let provider = MCP.Support.DocsResourceProvider(configuration: config)
 
@@ -238,9 +238,9 @@ struct MCPCommandTests {
         try testProposal.write(to: testFile, atomically: true, encoding: .utf8)
 
         let config = Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(outputDirectory: tempDir),
-            changeDetection: Shared.ChangeDetectionConfiguration(),
-            output: Shared.OutputConfiguration()
+            crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
+            changeDetection: Shared.Configuration.ChangeDetection(),
+            output: Shared.Configuration.Output()
         )
         let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir)
 
@@ -290,9 +290,9 @@ struct MCPCommandTests {
         try stProposal.write(to: stFile, atomically: true, encoding: .utf8)
 
         let config = Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(outputDirectory: tempDir),
-            changeDetection: Shared.ChangeDetectionConfiguration(),
-            output: Shared.OutputConfiguration()
+            crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
+            changeDetection: Shared.Configuration.ChangeDetection(),
+            output: Shared.Configuration.Output()
         )
         let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir)
 
@@ -326,9 +326,9 @@ struct MCPCommandTests {
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let config = Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(outputDirectory: tempDir),
-            changeDetection: Shared.ChangeDetectionConfiguration(),
-            output: Shared.OutputConfiguration()
+            crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
+            changeDetection: Shared.Configuration.ChangeDetection(),
+            output: Shared.Configuration.Output()
         )
         let provider = MCP.Support.DocsResourceProvider(configuration: config)
 
@@ -365,14 +365,14 @@ struct MCPServerIntegrationTests {
         // Step 1: Crawl
         print("\n   📥 Step 1: Crawling documentation...")
         let config = try Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(
+            crawler: Shared.Configuration.Crawler(
                 startURL: #require(URL(string: "https://developer.apple.com/documentation/swift")),
                 maxPages: 1,
                 maxDepth: 0,
                 outputDirectory: tempDir
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true, outputDirectory: tempDir),
-            output: Shared.OutputConfiguration(format: .markdown)
+            changeDetection: Shared.Configuration.ChangeDetection(forceRecrawl: true, outputDirectory: tempDir),
+            output: Shared.Configuration.Output(format: .markdown)
         )
 
         let crawler = await Core.Crawler(configuration: config)
@@ -401,9 +401,9 @@ struct MCPServerIntegrationTests {
 
         // Register providers
         let mcpConfig = Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(outputDirectory: tempDir),
-            changeDetection: Shared.ChangeDetectionConfiguration(),
-            output: Shared.OutputConfiguration()
+            crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
+            changeDetection: Shared.Configuration.ChangeDetection(),
+            output: Shared.Configuration.Output()
         )
         let docsProvider = MCP.Support.DocsResourceProvider(configuration: mcpConfig)
         let searchProvider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: nil)

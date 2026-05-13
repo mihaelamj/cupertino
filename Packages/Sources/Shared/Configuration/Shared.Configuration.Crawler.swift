@@ -2,21 +2,11 @@ import Foundation
 import SharedConstants
 import SharedUtils
 
-// MARK: - Cupertino Configuration
+// MARK: - Shared.Configuration.Crawler
 
-/// Configuration for the Apple Documentation crawler
-extension Shared {
-    /// Selects how the crawler discovers child URLs.
-    /// - `auto`: JSON API primary, fall back to WKWebView when JSON 404s. (default)
-    /// - `jsonOnly`: JSON API only, no WKWebView fallback (fastest, narrowest).
-    /// - `webViewOnly`: WKWebView for everything (matches pre-2025-11-30 behavior, broadest discovery).
-    public enum DiscoveryMode: String, Codable, Sendable {
-        case auto
-        case jsonOnly = "json-only"
-        case webViewOnly = "webview-only"
-    }
-
-    public struct CrawlerConfiguration: Codable, Sendable {
+extension Shared.Configuration {
+    /// Configuration for the Apple Documentation crawler
+    public struct Crawler: Codable, Sendable {
         public let startURL: URL
         public let allowedPrefixes: [String]
         public let maxPages: Int
@@ -121,10 +111,10 @@ extension Shared {
         }
 
         /// Load configuration from JSON file
-        public static func load(from url: URL) throws -> CrawlerConfiguration {
+        public static func load(from url: URL) throws -> Crawler {
             let data = try Data(contentsOf: url)
             let decoder = JSONDecoder()
-            return try decoder.decode(CrawlerConfiguration.self, from: data)
+            return try decoder.decode(Crawler.self, from: data)
         }
 
         /// Save configuration to JSON file
@@ -133,114 +123,6 @@ extension Shared {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             let data = try encoder.encode(self)
             try data.write(to: url)
-        }
-    }
-}
-
-// MARK: - Change Detection Configuration
-
-/// Configuration for change detection system
-extension Shared {
-    public struct ChangeDetectionConfiguration: Codable, Sendable {
-        public let enabled: Bool
-        public let metadataFile: URL
-        public let forceRecrawl: Bool
-
-        public init(
-            enabled: Bool = true,
-            metadataFile: URL? = nil,
-            forceRecrawl: Bool = false,
-            outputDirectory: URL? = nil
-        ) {
-            self.enabled = enabled
-
-            // If metadataFile is provided, use it
-            // Otherwise, derive from outputDirectory (per-directory metadata)
-            // Fall back to global metadata file if neither is provided
-            if let metadataFile {
-                self.metadataFile = metadataFile
-            } else if let outputDirectory {
-                // Store metadata.json in the output directory itself
-                self.metadataFile = outputDirectory.appendingPathComponent(Shared.Constants.FileName.metadata)
-            } else {
-                // Global fallback
-                self.metadataFile = Shared.Constants.defaultMetadataFile
-            }
-
-            self.forceRecrawl = forceRecrawl
-        }
-    }
-}
-
-// MARK: - Output Configuration
-
-/// Configuration for output format
-extension Shared {
-    public struct OutputConfiguration: Codable, Sendable {
-        public let format: OutputFormat
-        public let includeMarkdown: Bool
-
-        public init(
-            format: OutputFormat = .json,
-            includeMarkdown: Bool = false
-        ) {
-            self.format = format
-            self.includeMarkdown = includeMarkdown
-        }
-
-        public enum OutputFormat: String, Codable, Sendable {
-            /// Primary output is JSON (StructuredDocumentationPage)
-            case json
-            /// Primary output is markdown
-            case markdown
-            /// Primary output is HTML
-            case html
-        }
-    }
-}
-
-// MARK: - Complete Configuration
-
-/// Complete Cupertino configuration
-extension Shared {
-    public struct Configuration: Codable, Sendable {
-        public let crawler: CrawlerConfiguration
-        public let changeDetection: ChangeDetectionConfiguration
-        public let output: OutputConfiguration
-
-        public init(
-            crawler: CrawlerConfiguration = CrawlerConfiguration(),
-            changeDetection: ChangeDetectionConfiguration = ChangeDetectionConfiguration(),
-            output: OutputConfiguration = OutputConfiguration()
-        ) {
-            self.crawler = crawler
-            self.changeDetection = changeDetection
-            self.output = output
-        }
-
-        /// Load complete configuration from JSON file
-        public static func load(from url: URL) throws -> Shared.Configuration {
-            let data = try Data(contentsOf: url)
-            let decoder = JSONDecoder()
-            return try decoder.decode(Shared.Configuration.self, from: data)
-        }
-
-        /// Save complete configuration to JSON file
-        public func save(to url: URL) throws {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(self)
-            try data.write(to: url)
-        }
-
-        /// Create default configuration file if it doesn't exist
-        public static func createDefaultIfNeeded(at url: URL) throws {
-            guard !FileManager.default.fileExists(atPath: url.path) else {
-                return
-            }
-
-            let defaultConfig = Configuration()
-            try defaultConfig.save(to: url)
         }
     }
 }
