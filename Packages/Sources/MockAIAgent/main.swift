@@ -62,7 +62,7 @@ struct MockAIAgent {
 
 // MARK: - MCP Client
 
-actor MCPClient {
+private actor MCPClient {
     private var process: Process?
     private var stdin: FileHandle?
     private var stdout: FileHandle?
