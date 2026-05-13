@@ -108,8 +108,8 @@ extension Search {
         /// (owner, repo) first so re-indexes converge cleanly without FTS5
         /// duplicate-row issues. All SQL runs in one transaction per package.
         public func index(
-            resolved: Core.ResolvedPackage,
-            extraction: Core.PackageArchiveExtractor.Result,
+            resolved: Core.PackageIndexing.ResolvedPackage,
+            extraction: Core.PackageIndexing.PackageArchiveExtractor.Result,
             stars: Int? = nil,
             hostedDocumentationURL: URL? = nil,
             availability: AvailabilityPayload? = nil
@@ -333,8 +333,8 @@ extension Search {
         }
 
         private func insertMetadata(
-            resolved: Core.ResolvedPackage,
-            extraction: Core.PackageArchiveExtractor.Result,
+            resolved: Core.PackageIndexing.ResolvedPackage,
+            extraction: Core.PackageIndexing.PackageArchiveExtractor.Result,
             stars: Int?,
             hostedDocumentationURL: URL?,
             availability: AvailabilityPayload?
@@ -401,8 +401,8 @@ extension Search {
 
         private func insertFile(
             packageId: Int64,
-            resolved: Core.ResolvedPackage,
-            file: Core.ExtractedFile,
+            resolved: Core.PackageIndexing.ResolvedPackage,
+            file: Core.PackageIndexing.ExtractedFile,
             availability: AvailabilityPayload?
         ) throws {
             guard database != nil else { throw PackageIndexError.databaseNotInitialized }

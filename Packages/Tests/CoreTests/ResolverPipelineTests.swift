@@ -16,21 +16,21 @@ func checksumStable() {
         .init(owner: "apple", repo: "swift-nio", url: "https://github.com/apple/swift-nio", priority: .appleOfficial),
         .init(owner: "vapor", repo: "vapor", url: "https://github.com/vapor/vapor", priority: .ecosystem),
     ]
-    let a = Core.ResolvedPackagesStore.checksum(seeds: seeds, exclusions: ["foo/bar"])
-    let b = Core.ResolvedPackagesStore.checksum(seeds: seeds, exclusions: ["foo/bar"])
+    let a = Core.PackageIndexing.ResolvedPackagesStore.checksum(seeds: seeds, exclusions: ["foo/bar"])
+    let b = Core.PackageIndexing.ResolvedPackagesStore.checksum(seeds: seeds, exclusions: ["foo/bar"])
     #expect(a == b)
 }
 
 @Test("ResolvedPackagesStore.checksum: reordering seeds does not change checksum")
 func checksumSeedOrderAgnostic() {
-    let a = Core.ResolvedPackagesStore.checksum(
+    let a = Core.PackageIndexing.ResolvedPackagesStore.checksum(
         seeds: [
             .init(owner: "apple", repo: "swift-nio", url: "", priority: .appleOfficial),
             .init(owner: "vapor", repo: "vapor", url: "", priority: .ecosystem),
         ],
         exclusions: []
     )
-    let b = Core.ResolvedPackagesStore.checksum(
+    let b = Core.PackageIndexing.ResolvedPackagesStore.checksum(
         seeds: [
             .init(owner: "vapor", repo: "vapor", url: "", priority: .ecosystem),
             .init(owner: "apple", repo: "swift-nio", url: "", priority: .appleOfficial),
@@ -48,8 +48,8 @@ func checksumAddedSeedInvalidates() {
     let extended = base + [
         .init(owner: "vapor", repo: "vapor", url: "", priority: .ecosystem),
     ]
-    let a = Core.ResolvedPackagesStore.checksum(seeds: base, exclusions: [])
-    let b = Core.ResolvedPackagesStore.checksum(seeds: extended, exclusions: [])
+    let a = Core.PackageIndexing.ResolvedPackagesStore.checksum(seeds: base, exclusions: [])
+    let b = Core.PackageIndexing.ResolvedPackagesStore.checksum(seeds: extended, exclusions: [])
     #expect(a != b)
 }
 
@@ -58,8 +58,8 @@ func checksumAddedExclusionInvalidates() {
     let seeds: [Shared.Models.PackageReference] = [
         .init(owner: "apple", repo: "swift-nio", url: "", priority: .appleOfficial),
     ]
-    let a = Core.ResolvedPackagesStore.checksum(seeds: seeds, exclusions: [])
-    let b = Core.ResolvedPackagesStore.checksum(seeds: seeds, exclusions: ["foo/bar"])
+    let a = Core.PackageIndexing.ResolvedPackagesStore.checksum(seeds: seeds, exclusions: [])
+    let b = Core.PackageIndexing.ResolvedPackagesStore.checksum(seeds: seeds, exclusions: ["foo/bar"])
     #expect(a != b)
 }
 
@@ -67,11 +67,11 @@ func checksumAddedExclusionInvalidates() {
 func checksumSeedExclusionSeparated() {
     // If we didn't separate the two, swapping a seed for an exclusion of the same
     // owner/repo would collide. Confirm it doesn't.
-    let seedA = Core.ResolvedPackagesStore.checksum(
+    let seedA = Core.PackageIndexing.ResolvedPackagesStore.checksum(
         seeds: [.init(owner: "apple", repo: "swift-nio", url: "", priority: .appleOfficial)],
         exclusions: []
     )
-    let seedB = Core.ResolvedPackagesStore.checksum(
+    let seedB = Core.PackageIndexing.ResolvedPackagesStore.checksum(
         seeds: [],
         exclusions: ["apple/swift-nio"]
     )
@@ -89,19 +89,19 @@ func storeRoundTrip() throws {
 
     let fileURL = tempDir.appendingPathComponent("resolved-packages.json")
     let generatedAt = Date(timeIntervalSince1970: 1700000000)
-    let store = Core.ResolvedPackagesStore(
+    let store = Core.PackageIndexing.ResolvedPackagesStore(
         generatedAt: generatedAt,
         cupertinoVersion: "0.11.0",
         seedChecksum: "fnv1a64:deadbeefcafebabe",
         packages: [
-            Core.ResolvedPackage(
+            Core.PackageIndexing.ResolvedPackage(
                 owner: "apple",
                 repo: "swift-nio",
                 url: "https://github.com/apple/swift-nio",
                 priority: .appleOfficial,
                 parents: ["apple/swift-nio"]
             ),
-            Core.ResolvedPackage(
+            Core.PackageIndexing.ResolvedPackage(
                 owner: "swift-server",
                 repo: "swift-service-lifecycle",
                 url: "https://github.com/swift-server/swift-service-lifecycle",
@@ -111,8 +111,8 @@ func storeRoundTrip() throws {
         ]
     )
     try store.write(to: fileURL)
-    let loaded = try #require(Core.ResolvedPackagesStore.load(from: fileURL))
-    #expect(loaded.schemaVersion == Core.ResolvedPackagesStore.currentSchemaVersion)
+    let loaded = try #require(Core.PackageIndexing.ResolvedPackagesStore.load(from: fileURL))
+    #expect(loaded.schemaVersion == Core.PackageIndexing.ResolvedPackagesStore.currentSchemaVersion)
     #expect(loaded.cupertinoVersion == "0.11.0")
     #expect(loaded.seedChecksum == "fnv1a64:deadbeefcafebabe")
     #expect(loaded.packages.count == 2)
@@ -123,7 +123,7 @@ func storeRoundTrip() throws {
 @Test("ResolvedPackagesStore: missing file returns nil (fresh install)")
 func storeMissingFileReturnsNil() {
     let path = URL(fileURLWithPath: "/tmp/cupertino-nonexistent-\(UUID().uuidString).json")
-    #expect(Core.ResolvedPackagesStore.load(from: path) == nil)
+    #expect(Core.PackageIndexing.ResolvedPackagesStore.load(from: path) == nil)
 }
 
 // MARK: - ExclusionList
@@ -225,7 +225,7 @@ func resolverSeedIsSelfParent() async throws {
         canonicalOwner: "apple", canonicalRepo: "only-seed"
     )
 
-    let resolver = Core.PackageDependencyResolver(canonicalizer: canonicalizer)
+    let resolver = Core.PackageIndexing.PackageDependencyResolver(canonicalizer: canonicalizer)
     let seeds: [Shared.Models.PackageReference] = [
         .init(owner: "apple", repo: "only-seed", url: "https://github.com/apple/only-seed", priority: .appleOfficial),
     ]
@@ -250,7 +250,7 @@ func resolverExcludesSeed() async throws {
         canonicalOwner: "apple", canonicalRepo: "only-seed"
     )
 
-    let resolver = Core.PackageDependencyResolver(
+    let resolver = Core.PackageIndexing.PackageDependencyResolver(
         canonicalizer: canonicalizer,
         exclusions: ["apple/only-seed"]
     )
@@ -272,7 +272,7 @@ func parseRegistryIdSingle() {
         .package(id: "apple.swift-nio", from: "2.0.0"),
     ]
     """.data(using: .utf8)!
-    #expect(Core.PackageDependencyResolver.parsePackageSwiftRegistryIdCount(source) == 1)
+    #expect(Core.PackageIndexing.PackageDependencyResolver.parsePackageSwiftRegistryIdCount(source) == 1)
 }
 
 @Test("parsePackageSwiftRegistryIdCount: counts multiple .package(id:) calls")
@@ -284,7 +284,7 @@ func parseRegistryIdMultiple() {
         .package(url: "https://github.com/apple/swift-crypto", from: "3.0.0"),
     ]
     """.data(using: .utf8)!
-    #expect(Core.PackageDependencyResolver.parsePackageSwiftRegistryIdCount(source) == 2)
+    #expect(Core.PackageIndexing.PackageDependencyResolver.parsePackageSwiftRegistryIdCount(source) == 2)
 }
 
 @Test("parsePackageSwiftRegistryIdCount: ignores commented-out registry id")
@@ -295,7 +295,7 @@ func parseRegistryIdCommented() {
         .package(id: "apple.swift-nio", from: "2.0.0"),
     ]
     """.data(using: .utf8)!
-    #expect(Core.PackageDependencyResolver.parsePackageSwiftRegistryIdCount(source) == 1)
+    #expect(Core.PackageIndexing.PackageDependencyResolver.parsePackageSwiftRegistryIdCount(source) == 1)
 }
 
 @Test("parsePackageSwiftRegistryIdCount: no registry ids in url-only manifest")
@@ -305,7 +305,7 @@ func parseRegistryIdNoneWhenUrlOnly() {
         .package(url: "https://github.com/apple/swift-nio", from: "2.0.0"),
     ]
     """.data(using: .utf8)!
-    #expect(Core.PackageDependencyResolver.parsePackageSwiftRegistryIdCount(source) == 0)
+    #expect(Core.PackageIndexing.PackageDependencyResolver.parsePackageSwiftRegistryIdCount(source) == 0)
 }
 
 // MARK: - ManifestCache
@@ -317,7 +317,7 @@ func manifestCacheWriteRead() async throws {
     try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: tempDir) }
 
-    let cache = Core.ManifestCache(rootDirectory: tempDir, ttl: 60)
+    let cache = Core.PackageIndexing.ManifestCache(rootDirectory: tempDir, ttl: 60)
     let payload = "hello".data(using: .utf8)!
     await cache.write(payload, owner: "apple", repo: "swift-nio", branch: "main", file: "Package.swift")
 
@@ -332,7 +332,7 @@ func manifestCacheMiss() async throws {
     try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: tempDir) }
 
-    let cache = Core.ManifestCache(rootDirectory: tempDir, ttl: 60)
+    let cache = Core.PackageIndexing.ManifestCache(rootDirectory: tempDir, ttl: 60)
     let cached = await cache.read(owner: "apple", repo: "swift-nio", branch: "main", file: "Package.swift")
     #expect(cached == nil)
 }
@@ -344,7 +344,7 @@ func manifestCacheExpired() async throws {
     try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: tempDir) }
 
-    let cache = Core.ManifestCache(rootDirectory: tempDir, ttl: 0.001)
+    let cache = Core.PackageIndexing.ManifestCache(rootDirectory: tempDir, ttl: 0.001)
     let payload = "hello".data(using: .utf8)!
     await cache.write(payload, owner: "apple", repo: "swift-nio", branch: "main", file: "Package.swift")
 
@@ -362,7 +362,7 @@ func manifestCacheMissSentinel() async throws {
     try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: tempDir) }
 
-    let cache = Core.ManifestCache(rootDirectory: tempDir, ttl: 60)
+    let cache = Core.PackageIndexing.ManifestCache(rootDirectory: tempDir, ttl: 60)
     await cache.writeMiss(owner: "apple", repo: "not-exist", branch: "main", file: "Package.swift")
 
     let cached = await cache.read(owner: "apple", repo: "not-exist", branch: "main", file: "Package.swift")
@@ -445,10 +445,10 @@ struct ResolverNetworkIntegration {
         let canonicalizer = Core.Protocols.GitHubCanonicalizer(
             cacheURL: tempDir.appendingPathComponent("canonical-owners.json")
         )
-        let manifestCache = Core.ManifestCache(
+        let manifestCache = Core.PackageIndexing.ManifestCache(
             rootDirectory: tempDir.appendingPathComponent("manifests")
         )
-        let resolver = Core.PackageDependencyResolver(
+        let resolver = Core.PackageIndexing.PackageDependencyResolver(
             canonicalizer: canonicalizer,
             manifestCache: manifestCache,
             concurrency: 4
@@ -489,7 +489,7 @@ struct ResolverNetworkIntegration {
         let canonicalizer = Core.Protocols.GitHubCanonicalizer(
             cacheURL: tempDir.appendingPathComponent("canonical-owners.json")
         )
-        let manifestCache = Core.ManifestCache(
+        let manifestCache = Core.PackageIndexing.ManifestCache(
             rootDirectory: tempDir.appendingPathComponent("manifests")
         )
 
@@ -502,7 +502,7 @@ struct ResolverNetworkIntegration {
             ),
         ]
 
-        let resolver1 = Core.PackageDependencyResolver(
+        let resolver1 = Core.PackageIndexing.PackageDependencyResolver(
             canonicalizer: canonicalizer,
             manifestCache: manifestCache,
             concurrency: 4
@@ -512,7 +512,7 @@ struct ResolverNetworkIntegration {
 
         // Second resolver over the same cache; both canonicalizer and manifest cache
         // are warm. Manifest cache's 24h TTL keeps entries alive.
-        let resolver2 = Core.PackageDependencyResolver(
+        let resolver2 = Core.PackageIndexing.PackageDependencyResolver(
             canonicalizer: canonicalizer,
             manifestCache: manifestCache,
             concurrency: 4
@@ -543,7 +543,7 @@ func resolverCanonicalizeDedupes() async throws {
         canonicalOwner: "canonicalfake", canonicalRepo: "only"
     )
 
-    let resolver = Core.PackageDependencyResolver(canonicalizer: canonicalizer)
+    let resolver = Core.PackageIndexing.PackageDependencyResolver(canonicalizer: canonicalizer)
     let seeds: [Shared.Models.PackageReference] = [
         .init(owner: "fakealias", repo: "only", url: "https://github.com/fakealias/only", priority: .appleOfficial),
         .init(owner: "canonicalfake", repo: "only", url: "https://github.com/canonicalfake/only", priority: .appleOfficial),

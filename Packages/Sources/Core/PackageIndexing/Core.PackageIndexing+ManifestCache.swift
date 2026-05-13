@@ -2,7 +2,7 @@ import CoreProtocols
 import Foundation
 import SharedCore
 
-extension Core {
+extension Core.PackageIndexing {
     /// Disk cache for fetched `Package.swift` / `Package.resolved` files, keyed by
     /// `(owner, repo, branch, file)`. Entries have a TTL (default 24h) so the resolver
     /// can skip the HTTP round-trip on re-runs within that window without going fully

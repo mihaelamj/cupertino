@@ -18,7 +18,7 @@ struct PackageDocumentationDownloaderTests {
             let tempDir = FileManager.default.temporaryDirectory
                 .appendingPathComponent(UUID().uuidString)
 
-            let downloader = Core.PackageDocumentationDownloader(
+            let downloader = Core.PackageIndexing.PackageDocumentationDownloader(
                 outputDirectory: tempDir
             )
 
@@ -40,7 +40,7 @@ struct PackageDocumentationDownloaderTests {
             let tempDir = FileManager.default.temporaryDirectory
                 .appendingPathComponent(UUID().uuidString)
 
-            let downloader = Core.PackageDocumentationDownloader(
+            let downloader = Core.PackageIndexing.PackageDocumentationDownloader(
                 outputDirectory: tempDir
             )
 
@@ -65,11 +65,11 @@ struct PackageDocumentationDownloaderTests {
             let tempDir = FileManager.default.temporaryDirectory
                 .appendingPathComponent(UUID().uuidString)
 
-            let downloader = Core.PackageDocumentationDownloader(
+            let downloader = Core.PackageIndexing.PackageDocumentationDownloader(
                 outputDirectory: tempDir
             )
 
-            await #expect(throws: Core.PackageDownloadError.self) {
+            await #expect(throws: Core.PackageIndexing.PackageDownloadError.self) {
                 try await downloader.downloadREADME(
                     owner: "invalid-owner-\(UUID().uuidString)",
                     repo: "nonexistent-repo-\(UUID().uuidString)"
@@ -85,7 +85,7 @@ struct PackageDocumentationDownloaderTests {
             let tempDir = FileManager.default.temporaryDirectory
                 .appendingPathComponent(UUID().uuidString)
 
-            let downloader = Core.PackageDocumentationDownloader(
+            let downloader = Core.PackageIndexing.PackageDocumentationDownloader(
                 outputDirectory: tempDir
             )
 
@@ -111,7 +111,7 @@ struct PackageDocumentationDownloaderTests {
             let tempDir = FileManager.default.temporaryDirectory
                 .appendingPathComponent(UUID().uuidString)
 
-            let downloader = Core.PackageDocumentationDownloader(
+            let downloader = Core.PackageIndexing.PackageDocumentationDownloader(
                 outputDirectory: tempDir
             )
 
@@ -135,7 +135,7 @@ struct PackageDocumentationDownloaderTests {
             let tempDir = FileManager.default.temporaryDirectory
                 .appendingPathComponent(UUID().uuidString)
 
-            let downloader = Core.PackageDocumentationDownloader(
+            let downloader = Core.PackageIndexing.PackageDocumentationDownloader(
                 outputDirectory: tempDir
             )
 
@@ -159,7 +159,7 @@ struct PackageDocumentationDownloaderTests {
             let tempDir = FileManager.default.temporaryDirectory
                 .appendingPathComponent(UUID().uuidString)
 
-            let downloader = Core.PackageDocumentationDownloader(
+            let downloader = Core.PackageIndexing.PackageDocumentationDownloader(
                 outputDirectory: tempDir
             )
 
@@ -184,11 +184,11 @@ struct PackageDocumentationDownloaderTests {
             let tempDir = FileManager.default.temporaryDirectory
                 .appendingPathComponent(UUID().uuidString)
 
-            let downloader = Core.PackageDocumentationDownloader(
+            let downloader = Core.PackageIndexing.PackageDocumentationDownloader(
                 outputDirectory: tempDir
             )
 
-            await #expect(throws: Core.PackageDownloadError.self) {
+            await #expect(throws: Core.PackageIndexing.PackageDownloadError.self) {
                 try await downloader.downloadREADME(
                     owner: "../../../etc",
                     repo: "passwd"

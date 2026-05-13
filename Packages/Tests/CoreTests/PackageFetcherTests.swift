@@ -14,9 +14,9 @@ import Testing
 struct PackageFetcherTests {
     // MARK: - Model Tests
 
-    @Test("PackageInfo initializes correctly")
+    @Test("Core.PackageIndexing.PackageFetcher.PackageInfo initializes correctly")
     func packageInfoInitialization() {
-        let pkg = PackageInfo(
+        let pkg = Core.PackageIndexing.PackageFetcher.PackageInfo(
             owner: "apple",
             repo: "swift",
             stars: 1000,
@@ -42,9 +42,9 @@ struct PackageFetcherTests {
         #expect(pkg.error == nil)
     }
 
-    @Test("PackageInfo handles error field")
+    @Test("Core.PackageIndexing.PackageFetcher.PackageInfo handles error field")
     func packageInfoWithError() {
-        let pkg = PackageInfo(
+        let pkg = Core.PackageIndexing.PackageFetcher.PackageInfo(
             owner: "test",
             repo: "repo",
             stars: 0,
@@ -61,9 +61,9 @@ struct PackageFetcherTests {
         #expect(pkg.error == "not_found")
     }
 
-    @Test("PackageInfo handles optional fields")
+    @Test("Core.PackageIndexing.PackageFetcher.PackageInfo handles optional fields")
     func packageInfoWithOptionals() {
-        let pkg = PackageInfo(
+        let pkg = Core.PackageIndexing.PackageFetcher.PackageInfo(
             owner: "test",
             repo: "repo",
             stars: 0,
@@ -84,9 +84,9 @@ struct PackageFetcherTests {
 
     // MARK: - Statistics Tests
 
-    @Test("PackageFetchStatistics initializes with defaults")
+    @Test("Core.PackageIndexing.PackageFetcher.Statistics initializes with defaults")
     func statisticsInitialization() {
-        let stats = PackageFetchStatistics()
+        let stats = Core.PackageIndexing.PackageFetcher.Statistics()
 
         #expect(stats.totalPackages == 0)
         #expect(stats.successfulFetches == 0)
@@ -96,21 +96,21 @@ struct PackageFetcherTests {
         #expect(stats.duration == nil)
     }
 
-    @Test("PackageFetchStatistics calculates duration")
+    @Test("Core.PackageIndexing.PackageFetcher.Statistics calculates duration")
     func statisticsCalculatesDuration() {
         let start = Date()
         let end = start.addingTimeInterval(120)
 
-        var stats = PackageFetchStatistics()
+        var stats = Core.PackageIndexing.PackageFetcher.Statistics()
         stats.startTime = start
         stats.endTime = end
 
         #expect(stats.duration == 120)
     }
 
-    @Test("PackageFetchStatistics duration is nil when incomplete")
+    @Test("Core.PackageIndexing.PackageFetcher.Statistics duration is nil when incomplete")
     func statisticsDurationNilWhenIncomplete() {
-        var stats = PackageFetchStatistics()
+        var stats = Core.PackageIndexing.PackageFetcher.Statistics()
         #expect(stats.duration == nil)
 
         stats.startTime = Date()
@@ -122,10 +122,10 @@ struct PackageFetcherTests {
 
     // MARK: - Progress Tests
 
-    @Test("PackageFetchProgress calculates percentage")
+    @Test("Core.PackageIndexing.PackageFetcher.Progress calculates percentage")
     func progressCalculatesPercentage() {
-        let stats = PackageFetchStatistics()
-        let progress = PackageFetchProgress(
+        let stats = Core.PackageIndexing.PackageFetcher.Statistics()
+        let progress = Core.PackageIndexing.PackageFetcher.Progress(
             current: 25,
             total: 100,
             packageName: "apple/swift",
@@ -135,25 +135,25 @@ struct PackageFetcherTests {
         #expect(progress.percentage == 25.0)
     }
 
-    @Test("PackageFetchProgress handles edge cases")
+    @Test("Core.PackageIndexing.PackageFetcher.Progress handles edge cases")
     func progressHandlesEdgeCases() {
-        let stats = PackageFetchStatistics()
+        let stats = Core.PackageIndexing.PackageFetcher.Statistics()
 
-        let progress1 = PackageFetchProgress(current: 0, total: 100, packageName: "test/repo", stats: stats)
+        let progress1 = Core.PackageIndexing.PackageFetcher.Progress(current: 0, total: 100, packageName: "test/repo", stats: stats)
         #expect(progress1.percentage == 0.0)
 
-        let progress2 = PackageFetchProgress(current: 100, total: 100, packageName: "test/repo", stats: stats)
+        let progress2 = Core.PackageIndexing.PackageFetcher.Progress(current: 100, total: 100, packageName: "test/repo", stats: stats)
         #expect(progress2.percentage == 100.0)
 
-        let progress3 = PackageFetchProgress(current: 50, total: 100, packageName: "test/repo", stats: stats)
+        let progress3 = Core.PackageIndexing.PackageFetcher.Progress(current: 50, total: 100, packageName: "test/repo", stats: stats)
         #expect(progress3.percentage == 50.0)
     }
 
     // MARK: - Output Model Tests
 
-    @Test("PackageFetchOutput encodes and decodes")
+    @Test("Core.PackageIndexing.PackageFetcher.FetchOutput encodes and decodes")
     func outputEncodesAndDecodes() throws {
-        let package = PackageInfo(
+        let package = Core.PackageIndexing.PackageFetcher.PackageInfo(
             owner: "apple",
             repo: "swift",
             stars: 1000,
@@ -166,7 +166,7 @@ struct PackageFetcherTests {
             license: "Apache-2.0"
         )
 
-        let output = PackageFetchOutput(
+        let output = Core.PackageIndexing.PackageFetcher.FetchOutput(
             totalPackages: 1,
             totalProcessed: 1,
             errors: 0,
@@ -180,7 +180,7 @@ struct PackageFetcherTests {
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        let decoded = try decoder.decode(PackageFetchOutput.self, from: data)
+        let decoded = try decoder.decode(Core.PackageIndexing.PackageFetcher.FetchOutput.self, from: data)
 
         #expect(decoded.totalPackages == 1)
         #expect(decoded.totalProcessed == 1)
@@ -191,9 +191,9 @@ struct PackageFetcherTests {
 
     // MARK: - Checkpoint Model Tests
 
-    @Test("PackageFetchCheckpoint encodes and decodes")
+    @Test("Core.PackageIndexing.PackageFetcher.Checkpoint encodes and decodes")
     func checkpointEncodesAndDecodes() throws {
-        let package = PackageInfo(
+        let package = Core.PackageIndexing.PackageFetcher.PackageInfo(
             owner: "apple",
             repo: "swift",
             stars: 1000,
@@ -206,7 +206,7 @@ struct PackageFetcherTests {
             license: "Apache-2.0"
         )
 
-        let checkpoint = PackageFetchCheckpoint(
+        let checkpoint = Core.PackageIndexing.PackageFetcher.Checkpoint(
             processedCount: 10,
             packages: [package],
             timestamp: Date()
@@ -218,7 +218,7 @@ struct PackageFetcherTests {
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        let decoded = try decoder.decode(PackageFetchCheckpoint.self, from: data)
+        let decoded = try decoder.decode(Core.PackageIndexing.PackageFetcher.Checkpoint.self, from: data)
 
         #expect(decoded.processedCount == 10)
         #expect(decoded.packages.count == 1)
@@ -227,22 +227,22 @@ struct PackageFetcherTests {
 
     // MARK: - Error Tests
 
-    @Test("PackageFetchError equatable")
+    @Test("Core.PackageIndexing.PackageFetcher.Error equatable")
     func errorEquatable() {
-        #expect(PackageFetchError.rateLimited == PackageFetchError.rateLimited)
-        #expect(PackageFetchError.notFound == PackageFetchError.notFound)
-        #expect(PackageFetchError.forbidden == PackageFetchError.forbidden)
-        #expect(PackageFetchError.invalidResponse == PackageFetchError.invalidResponse)
-        #expect(PackageFetchError.httpError(404) == PackageFetchError.httpError(404))
-        #expect(PackageFetchError.httpError(404) != PackageFetchError.httpError(500))
+        #expect(Core.PackageIndexing.PackageFetcher.Error.rateLimited == Core.PackageIndexing.PackageFetcher.Error.rateLimited)
+        #expect(Core.PackageIndexing.PackageFetcher.Error.notFound == Core.PackageIndexing.PackageFetcher.Error.notFound)
+        #expect(Core.PackageIndexing.PackageFetcher.Error.forbidden == Core.PackageIndexing.PackageFetcher.Error.forbidden)
+        #expect(Core.PackageIndexing.PackageFetcher.Error.invalidResponse == Core.PackageIndexing.PackageFetcher.Error.invalidResponse)
+        #expect(Core.PackageIndexing.PackageFetcher.Error.httpError(404) == Core.PackageIndexing.PackageFetcher.Error.httpError(404))
+        #expect(Core.PackageIndexing.PackageFetcher.Error.httpError(404) != Core.PackageIndexing.PackageFetcher.Error.httpError(500))
     }
 
     // MARK: - Helper Methods
 
-    private func createTestFetcher() async -> Core.PackageFetcher {
+    private func createTestFetcher() async -> Core.PackageIndexing.PackageFetcher {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("package-fetcher-test-\(UUID().uuidString)")
-        return await Core.PackageFetcher(outputDirectory: tempDir)
+        return await Core.PackageIndexing.PackageFetcher(outputDirectory: tempDir)
     }
 
     private func createTempDirectory() -> URL {

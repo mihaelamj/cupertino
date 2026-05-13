@@ -12,7 +12,7 @@ import SharedModels
 /// tests; the main `cupertino fetch --type packages` pipeline now goes through
 /// `PackageArchiveExtractor` + `Search.PackageIndex` directly and does not call
 /// any method on this type.
-extension Core {
+extension Core.PackageIndexing {
     public actor PackageDocumentationDownloader {
         private let outputDirectory: URL
 
@@ -129,7 +129,7 @@ extension Core {
 
 // MARK: - Errors
 
-extension Core {
+extension Core.PackageIndexing {
     public enum PackageDownloadError: Error, LocalizedError {
         case readmeNotFound
         case invalidInput

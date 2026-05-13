@@ -1,7 +1,7 @@
 import CoreProtocols
 import Foundation
 
-extension Core {
+extension Core.PackageIndexing {
     /// Categorisation for every indexed file inside a Swift package. Drives the
     /// `kind` column in `package_files_fts`, which is how queries narrow results
     /// (e.g. `WHERE kind='example'` for "show me code that uses X").

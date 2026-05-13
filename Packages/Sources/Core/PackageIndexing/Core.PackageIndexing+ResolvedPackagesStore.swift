@@ -4,7 +4,7 @@ import SharedConstants
 import SharedCore
 import SharedModels
 
-extension Core {
+extension Core.PackageIndexing {
     /// One entry in the resolved closure. Seeds list themselves as their own parent;
     /// transitively-discovered packages list every seed whose dependency graph reached
     /// them (can be multiple, which is how the store records a shared dependency).

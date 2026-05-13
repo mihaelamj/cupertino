@@ -31,7 +31,7 @@ struct PackageCuratorApp {
         if !userSelectedURLs.isEmpty {
             priorityURLs = userSelectedURLs
         } else {
-            priorityURLs = await Set(PriorityPackagesCatalog.allPackages.map(\.url))
+            priorityURLs = await Set(Core.PackageIndexing.PriorityPackagesCatalog.allPackages.map(\.url))
         }
 
         // Load configuration first

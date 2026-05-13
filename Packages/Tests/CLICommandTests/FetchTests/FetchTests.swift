@@ -26,7 +26,7 @@ struct FetchCommandTests {
 
         print("🧪 Test: Fetch Swift packages")
 
-        _ = Core.PackageFetcher(
+        _ = Core.PackageIndexing.PackageFetcher(
             outputDirectory: tempDir
         )
 
