@@ -201,6 +201,10 @@ let targets: [Target] = {
         dependencies: ["CoreProtocols", "SharedCore", "SharedModels", "SharedConstants", "SharedUtils", "Logging"],
         path: "Sources/Core/JSONParser"
     )
+    let coreJSONParserTestsTarget = Target.testTarget(
+        name: "CoreJSONParserTests",
+        dependencies: ["CoreJSONParser", "CoreProtocols", "TestSupport"]
+    )
 
     // ---------- CorePackageIndexing (v1.2 refactor 2.4: Resolver + Fetcher + Archive Extractor + Annotator + FileKind + ManifestCache + Store + DocDownloader) ----------
     let corePackageIndexingTarget = Target.target(
@@ -538,6 +542,7 @@ let targets: [Target] = {
         coreProtocolsTarget,
         coreProtocolsTestsTarget,
         coreJSONParserTarget,
+        coreJSONParserTestsTarget,
         corePackageIndexingTarget,
         resourcesTarget,
         resourcesTestsTarget,
