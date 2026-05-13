@@ -1,10 +1,9 @@
 import Foundation
 import SampleIndex
-import Search
+import SearchModels
 import SharedConstants
 import SharedCore
 import SharedUtils
-import SearchModels
 
 // MARK: - Teaser Service
 
@@ -23,13 +22,13 @@ extension Services {
             self.sampleDatabase = sampleDatabase
         }
 
-        /// Initialize with database paths (creates connections)
-        public init(searchDbPath: URL?, sampleDbPath: URL?) async throws {
-            if let searchDbPath, Shared.Utils.PathResolver.exists(searchDbPath) {
-                searchIndex = try await Search.Index(dbPath: searchDbPath)
-            } else {
-                searchIndex = nil
-            }
+        /// Initialize with a sample-database path. The search-side database
+        /// is injected via `searchIndex:` because constructing a
+        /// `Search.Index` requires the Search target — which Services no
+        /// longer imports. The composition root (`withTeaserService` in
+        /// `Services.ServiceContainer`) wires both sides.
+        public init(searchIndex: (any Search.Database)?, sampleDbPath: URL?) async throws {
+            self.searchIndex = searchIndex
 
             if let sampleDbPath, Shared.Utils.PathResolver.exists(sampleDbPath) {
                 sampleDatabase = try await Sample.Index.Database(dbPath: sampleDbPath)
@@ -159,23 +158,10 @@ extension Services {
     }
 }
 
-// MARK: - Services.ServiceContainer Extension
-
-extension Services.ServiceContainer {
-    /// Execute an operation with a teaser service
-    public static func withTeaserService<T: Sendable>(
-        searchDbPath: String? = nil,
-        sampleDbPath: URL? = nil,
-        operation: (Services.TeaserService) async throws -> T
-    ) async throws -> T {
-        let resolvedSearchPath = Shared.Utils.PathResolver.searchDatabase(searchDbPath)
-        let resolvedSamplePath = sampleDbPath ?? Sample.Index.defaultDatabasePath
-
-        let service = try await Services.TeaserService(
-            searchDbPath: Shared.Utils.PathResolver.exists(resolvedSearchPath) ? resolvedSearchPath : nil,
-            sampleDbPath: Shared.Utils.PathResolver.exists(resolvedSamplePath) ? resolvedSamplePath : nil
-        )
-
-        return try await operation(service)
-    }
-}
+// The `withTeaserService` factory used to live here, but it needed to
+// construct a `Search.Index` (which lives in the Search target) and so
+// dragged `import Search` into this file. The factory now lives in
+// `Services.ServiceContainer.swift`, alongside the other
+// `with*Service` factories — that file keeps its `import Search` for
+// the same Search.Index-instantiation responsibility, but this file no
+// longer needs it.
