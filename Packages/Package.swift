@@ -241,8 +241,6 @@ let targets: [Target] = {
             "CoreJSONParser",
             "CorePackageIndexing",
             "Core",
-            "Crawler",
-            "Search",
             "SharedCore",
             "SharedConstants",
             "SharedModels",
