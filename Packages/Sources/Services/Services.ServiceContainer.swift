@@ -123,7 +123,7 @@ extension Services {
             }
 
             let index = try await Search.Index(dbPath: resolvedPath)
-            let service = Services.HIGSearchService(index: index)
+            let service = Services.HIGSearchService(database: index)
             defer {
                 Task {
                     await service.disconnect()
