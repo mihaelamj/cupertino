@@ -165,7 +165,7 @@ let targets: [Target] = {
     )
     let mcpSharedToolsTestsTarget = Target.testTarget(
         name: "MCPSharedToolsTests",
-        dependencies: ["MCPSharedTools", "SharedCore", "SharedConstants", "TestSupport"],
+        dependencies: ["MCPSharedTools", "MCPCore", "SharedCore", "SharedConstants", "TestSupport"],
         path: "Tests/MCP/SharedToolsTests"
     )
 
