@@ -74,10 +74,16 @@ let deps: [Package.Dependency] = [
 
 let targets: [Target] = {
     // ---------- MCP Framework (Consolidated from MCPShared + MCPTransport + MCPServer) ----------
+    // path is Sources/MCP/ (not Sources/MCP/Core) so the `MCP` namespace anchor
+    // file lives at the folder root next to the sibling sub-target folders
+    // (Client / SharedTools / Support). MCPCore picks up MCP.swift + the
+    // Core/ subtree (Protocol, Server, Transport); the three sibling folders
+    // are excluded because they are their own SPM targets.
     let mcpCoreTarget = Target.target(
         name: "MCPCore",
         dependencies: [],
-        path: "Sources/MCP/Core"
+        path: "Sources/MCP",
+        exclude: ["Client", "SharedTools", "Support"]
     )
     let mcpCoreTestsTarget = Target.testTarget(
         name: "MCPTests",
@@ -102,10 +108,17 @@ let targets: [Target] = {
     )
 
     // ---------- SharedConstants (v1.1 refactor 1.3: extracts Constants.swift + the Shared namespace enum out of Shared) ----------
+    // path is Sources/Shared/ (not Sources/Shared/Constants) so the `Shared`
+    // and `Sample` namespace anchor files live at the Shared/ folder root next
+    // to the sibling sub-target folders (Configuration / Core / Models / Utils).
+    // SharedConstants picks up Shared.swift + Sample.swift + the Constants/
+    // subtree; the four sibling folders are excluded because they are their
+    // own SPM targets.
     let sharedConstantsTarget = Target.target(
         name: "SharedConstants",
         dependencies: [],
-        path: "Sources/Shared/Constants"
+        path: "Sources/Shared",
+        exclude: ["Configuration", "Core", "Models", "Utils"]
     )
     let sharedConstantsTestsTarget = Target.testTarget(
         name: "SharedConstantsTests",
