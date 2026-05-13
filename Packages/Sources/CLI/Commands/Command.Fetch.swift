@@ -845,7 +845,7 @@ extension Command {
 
             try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
 
-            let crawler = await SampleCodeDownloader(
+            let crawler = await Sample.Core.Downloader(
                 outputDirectory: outputURL,
                 maxSamples: limit,
                 forceDownload: force

@@ -6,7 +6,7 @@ import SharedCore
 import Testing
 
 // Covers the malformed-URL skip path added to
-// `Core.SampleCodeDownloader.downloadSample` in PR #288. The skip fires
+// `Core.Sample.Core.Downloader.downloadSample` in PR #288. The skip fires
 // when a row from Apple's sample-code catalog has a `sample.url` that
 // `URL(string:)` can't parse. The previous force-unwrap form would
 // crash on the same input.
@@ -15,7 +15,7 @@ import Testing
 // so the test never has to stand up a WKWebView — the guard short-
 // circuits with `stats.errors += 1` first.
 
-@Suite("SampleCodeDownloader.downloadSample malformed-URL skip", .serialized)
+@Suite("Sample.Core.Downloader.downloadSample malformed-URL skip", .serialized)
 struct SampleCodeDownloaderMalformedURLSkipTests {
     private func tempOutputDirectory() throws -> URL {
         let dir = FileManager.default.temporaryDirectory
@@ -30,7 +30,7 @@ struct SampleCodeDownloaderMalformedURLSkipTests {
         let outputDir = try tempOutputDirectory()
         defer { try? FileManager.default.removeItem(at: outputDir) }
 
-        let downloader = SampleCodeDownloader(outputDirectory: outputDir)
+        let downloader = Sample.Core.Downloader(outputDirectory: outputDir)
         var stats = Sample.Core.Statistics()
         let badSample = SampleMetadata(name: "Bad Sample", url: "", slug: "bad-sample")
 
@@ -59,7 +59,7 @@ struct SampleCodeDownloaderMalformedURLSkipTests {
         let outputDir = try tempOutputDirectory()
         defer { try? FileManager.default.removeItem(at: outputDir) }
 
-        let downloader = SampleCodeDownloader(outputDirectory: outputDir)
+        let downloader = Sample.Core.Downloader(outputDirectory: outputDir)
         var stats = Sample.Core.Statistics()
         let badSample = SampleMetadata(name: "Bad Sample 2", url: "ht tp://x", slug: "bad-sample-2")
 
@@ -75,7 +75,7 @@ struct SampleCodeDownloaderMalformedURLSkipTests {
         let outputDir = try tempOutputDirectory()
         defer { try? FileManager.default.removeItem(at: outputDir) }
 
-        let downloader = SampleCodeDownloader(outputDirectory: outputDir)
+        let downloader = Sample.Core.Downloader(outputDirectory: outputDir)
         var stats = Sample.Core.Statistics()
 
         try await downloader.downloadSample(

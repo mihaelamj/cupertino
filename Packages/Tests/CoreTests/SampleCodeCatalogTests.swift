@@ -8,7 +8,7 @@ import Testing
 /// `catalog.json` (written by `cupertino fetch --type code`) over the
 /// embedded snapshot, and gracefully fall back when the on-disk file is
 /// missing or malformed. Also covers
-/// `SampleCodeDownloader.transformAppleListingToCatalog`.
+/// `Sample.Core.Downloader.transformAppleListingToCatalog`.
 @Suite("Sample.Core.Catalog disk-first loading (#214)")
 struct SampleCodeCatalogTests {
     // MARK: - loadFromDisk
@@ -72,12 +72,12 @@ struct SampleCodeCatalogTests {
         }
     }
 
-    // MARK: - SampleCodeDownloader.transformAppleListingToCatalog
+    // MARK: - Sample.Core.Downloader.transformAppleListingToCatalog
 
     @Test("transformAppleListingToCatalog returns nil for non-JSON input")
     func transformInvalid() {
         let bytes = Data("not json".utf8)
-        #expect(SampleCodeDownloader.transformAppleListingToCatalog(data: bytes) == nil)
+        #expect(Sample.Core.Downloader.transformAppleListingToCatalog(data: bytes) == nil)
     }
 
     @Test("transformAppleListingToCatalog returns nil when references key missing")
@@ -85,13 +85,13 @@ struct SampleCodeCatalogTests {
         let json = Data("""
         { "metadata": { "title": "Sample Code" } }
         """.utf8)
-        #expect(SampleCodeDownloader.transformAppleListingToCatalog(data: json) == nil)
+        #expect(Sample.Core.Downloader.transformAppleListingToCatalog(data: json) == nil)
     }
 
     @Test("transformAppleListingToCatalog filters to role=sampleCode entries")
     func transformFiltersByRole() throws {
         let json = Data(Self.appleListingFixture(includeNonSamples: true).utf8)
-        let catalog = try #require(SampleCodeDownloader.transformAppleListingToCatalog(data: json))
+        let catalog = try #require(Sample.Core.Downloader.transformAppleListingToCatalog(data: json))
         // Fixture has 2 sampleCode + 1 article; only the 2 should land
         #expect(catalog.count == 2)
         #expect(catalog.entries.allSatisfy { !$0.title.isEmpty })
@@ -100,7 +100,7 @@ struct SampleCodeCatalogTests {
     @Test("transformAppleListingToCatalog extracts framework from URL path")
     func transformExtractsFramework() throws {
         let json = Data(Self.appleListingFixture(includeNonSamples: false).utf8)
-        let catalog = try #require(SampleCodeDownloader.transformAppleListingToCatalog(data: json))
+        let catalog = try #require(Sample.Core.Downloader.transformAppleListingToCatalog(data: json))
         let frameworks = Set(catalog.entries.map(\.framework))
         #expect(frameworks.contains("Foundation"))
         #expect(frameworks.contains("RealityKit"))
@@ -109,7 +109,7 @@ struct SampleCodeCatalogTests {
     @Test("transformAppleListingToCatalog assembles webURL + zipFilename")
     func transformDerivedFields() throws {
         let json = Data(Self.appleListingFixture(includeNonSamples: false).utf8)
-        let catalog = try #require(SampleCodeDownloader.transformAppleListingToCatalog(data: json))
+        let catalog = try #require(Sample.Core.Downloader.transformAppleListingToCatalog(data: json))
         let foundationEntry = try #require(catalog.entries.first { $0.framework == "Foundation" })
         #expect(foundationEntry.webURL.hasPrefix("https://developer.apple.com/documentation/Foundation/"))
         #expect(foundationEntry.zipFilename.hasPrefix("foundation-"))
@@ -119,13 +119,13 @@ struct SampleCodeCatalogTests {
     @Test("transformAppleListingToCatalog sorts by (framework, title)")
     func transformSortsStably() throws {
         let json = Data(Self.appleListingFixture(includeNonSamples: false).utf8)
-        let catalog = try #require(SampleCodeDownloader.transformAppleListingToCatalog(data: json))
+        let catalog = try #require(Sample.Core.Downloader.transformAppleListingToCatalog(data: json))
         let frameworks = catalog.entries.map(\.framework)
         // Assert sorted
         #expect(frameworks == frameworks.sorted())
     }
 
-    // MARK: - SampleCodeDownloader.writeCatalog (extracted disk-write step)
+    // MARK: - Sample.Core.Downloader.writeCatalog (extracted disk-write step)
 
     @Test("writeCatalog round-trips through disk")
     func writeCatalogRoundTrip() throws {
@@ -134,12 +134,12 @@ struct SampleCodeCatalogTests {
         let catalogURL = dir.appendingPathComponent(Sample.Core.Catalog.onDiskCatalogFilename)
 
         let original = try #require(
-            SampleCodeDownloader.transformAppleListingToCatalog(
+            Sample.Core.Downloader.transformAppleListingToCatalog(
                 data: Data(Self.appleListingFixture(includeNonSamples: false).utf8)
             )
         )
 
-        try SampleCodeDownloader.writeCatalog(original, to: catalogURL)
+        try Sample.Core.Downloader.writeCatalog(original, to: catalogURL)
 
         // File exists with non-zero size
         let attrs = try FileManager.default.attributesOfItem(atPath: catalogURL.path)
@@ -164,11 +164,11 @@ struct SampleCodeCatalogTests {
 
         // Write a real catalog over it
         let real = try #require(
-            SampleCodeDownloader.transformAppleListingToCatalog(
+            Sample.Core.Downloader.transformAppleListingToCatalog(
                 data: Data(Self.appleListingFixture(includeNonSamples: false).utf8)
             )
         )
-        try SampleCodeDownloader.writeCatalog(real, to: catalogURL)
+        try Sample.Core.Downloader.writeCatalog(real, to: catalogURL)
 
         // Old content gone, new content parses
         let reloaded = try #require(Sample.Core.Catalog.loadFromDisk(at: dir))

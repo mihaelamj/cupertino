@@ -7,20 +7,20 @@ import Testing
 
 // MARK: - Sample Code Downloader Tests
 
-// Tests for the SampleCodeDownloader
+// Tests for the Sample.Core.Downloader
 // Tests initialization, metadata handling, and statistics tracking
 
 @Suite("Sample Code Downloader")
 struct SampleCodeDownloaderTests {
     // MARK: - Initialization Tests
 
-    @Test("SampleCodeDownloader initializes with output directory")
+    @Test("Sample.Core.Downloader initializes with output directory")
     @MainActor
     func downloaderInitialization() {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 
-        let downloader = SampleCodeDownloader(outputDirectory: tempDir)
+        let downloader = Sample.Core.Downloader(outputDirectory: tempDir)
 
         // If we get here without crashing, initialization worked
         _ = downloader
@@ -29,13 +29,13 @@ struct SampleCodeDownloaderTests {
         try? FileManager.default.removeItem(at: tempDir)
     }
 
-    @Test("SampleCodeDownloader initializes with maxSamples limit")
+    @Test("Sample.Core.Downloader initializes with maxSamples limit")
     @MainActor
     func downloaderInitializationWithLimit() {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 
-        let downloader = SampleCodeDownloader(
+        let downloader = Sample.Core.Downloader(
             outputDirectory: tempDir,
             maxSamples: 10
         )
@@ -46,13 +46,13 @@ struct SampleCodeDownloaderTests {
         try? FileManager.default.removeItem(at: tempDir)
     }
 
-    @Test("SampleCodeDownloader initializes with forceDownload flag")
+    @Test("Sample.Core.Downloader initializes with forceDownload flag")
     @MainActor
     func downloaderInitializationWithForceDownload() {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 
-        let downloader = SampleCodeDownloader(
+        let downloader = Sample.Core.Downloader(
             outputDirectory: tempDir,
             forceDownload: true
         )
@@ -63,13 +63,13 @@ struct SampleCodeDownloaderTests {
         try? FileManager.default.removeItem(at: tempDir)
     }
 
-    @Test("SampleCodeDownloader initializes with visible browser flag")
+    @Test("Sample.Core.Downloader initializes with visible browser flag")
     @MainActor
     func downloaderInitializationWithVisibleBrowser() {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 
-        let downloader = SampleCodeDownloader(
+        let downloader = Sample.Core.Downloader(
             outputDirectory: tempDir,
             visibleBrowser: false // Don't actually show browser in tests
         )
@@ -245,7 +245,7 @@ struct SampleCodeDownloaderTests {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 
-        let downloader = SampleCodeDownloader(outputDirectory: tempDir)
+        let downloader = Sample.Core.Downloader(outputDirectory: tempDir)
 
         // Cookie path should be: outputDirectory/auth-cookies.json
         let expectedPath = tempDir.appendingPathComponent(Shared.Constants.FileName.authCookies)
@@ -288,7 +288,7 @@ struct SampleCodeDownloaderTests {
         try? FileManager.default.removeItem(at: tempDir)
         #expect(!FileManager.default.fileExists(atPath: tempDir.path))
 
-        let downloader = SampleCodeDownloader(outputDirectory: tempDir)
+        let downloader = Sample.Core.Downloader(outputDirectory: tempDir)
 
         // Note: We're not actually calling download() to avoid network calls
         // Just verify the downloader can be instantiated
