@@ -738,7 +738,7 @@ For development setup, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Project Status
 
-**Version:** 1.2.0
+**Version:** 1.1.0
 **Status:** ✅ Released 2026-05-13 (refactor release: namespacing + Crawler extract + DI epic kickoff; bundle stays at v1.0.2)
 
 - ✅ All core functionality working

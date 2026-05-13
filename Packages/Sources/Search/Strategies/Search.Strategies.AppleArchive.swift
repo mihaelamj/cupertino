@@ -2,6 +2,7 @@ import Foundation
 import Logging
 import SharedConstants
 import SharedModels
+import SearchModels
 
 // MARK: - AppleArchiveStrategy
 
@@ -103,7 +104,7 @@ extension Search {
                 }
 
                 do {
-                    try await index.indexDocument(
+                    try await index.indexDocument(Search.Index.IndexDocumentParams(
                         uri: uri,
                         source: source,
                         framework: framework,
@@ -117,8 +118,8 @@ extension Search {
                         minTvOS: availability.minTvOS,
                         minWatchOS: availability.minWatchOS,
                         minVisionOS: availability.minVisionOS,
-                        availabilitySource: availability.minIOS != nil ? "framework" : nil
-                    )
+                        availabilitySource: availability.minIOS != nil ? "framework" : nil,
+                    ))
                     indexed += 1
                 } catch {
                     Logging.Log.error(

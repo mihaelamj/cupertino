@@ -1,6 +1,7 @@
 import CoreProtocols
 import Foundation
 import Logging
+import SearchModels
 import SharedConstants
 
 // MARK: - SwiftPackagesStrategy

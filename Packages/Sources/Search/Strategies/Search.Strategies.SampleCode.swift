@@ -3,6 +3,7 @@ import Foundation
 import Logging
 import SharedConstants
 import SharedModels
+import SearchModels
 
 // MARK: - SampleCodeStrategy
 

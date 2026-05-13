@@ -1,5 +1,6 @@
 import Foundation
 @testable import Search
+import SearchModels
 import SharedConstants
 import Testing
 
