@@ -181,7 +181,7 @@ extension Shared.Constants {
         public static let userAgent = "CupertinoCrawler/1.0"
 
         /// Current version
-        public static let version = "1.1.0"
+        public static let version = "1.2.0"
 
         /// Database version - separate from CLI version, only bump when schema/content changes.
         /// Controls the cupertino-docs release tag that `cupertino setup` downloads from.

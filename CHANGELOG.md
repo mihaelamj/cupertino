@@ -40,6 +40,41 @@ _On #199: empirical investigation against the post-merge corpus shows `id` is de
 
 ---
 
+## 1.2.0 — 2026-05-13
+
+_Second refactor release in the v1.x line. No new user-visible features, no schema change. `databaseVersion` stays at `1.0.2` — `cupertino setup` from a v1.2.0 binary continues to download `cupertino-databases-v1.0.2.zip`. The work consolidates the entire DI epic (#381) middle ring: every internal package now stands independently of every other package's behavioural surface via protocol seams and factory-injected concrete actors at the composition root. The pre-1.2 cross-package shape (Services importing Search, MCPSupport importing Search, Core test target depending on Crawler + Search) is gone. New SPM target `SearchModels` is the value-type / protocol foundation that makes the new shape possible._
+
+### Changed
+
+- **DI epic (#381) closes 22 of 27 children**: every foundation-tier and mid-tier package meets the "stand independently" acceptance — own test target with deps `= [Target, TestSupport]` only, no behavioural cross-package imports. Foundation tier (`SharedConstants`, `SharedUtils`, `SharedModels`, `Resources`, `CoreProtocols`, `Logging`, `SharedCore`, `SharedConfiguration`, `MCPSharedTools`) and mid-tier (`ASTIndexer`, `CoreJSONParser`, `CorePackageIndexing`, `Cleanup`, `Distribution`, `Diagnostics`, `Availability`) all closed via PRs #435 – #447. Heavy-tier already-clean packages (`RemoteSync`, `SampleIndex`, `Ingest`, the renamed-away `MCP`, `MCPClient`) closed without code changes after an explicit audit.
+- **`Services` target (#402) drops every `import Search`** across 10 PRs (#454 – #464). New SPM target `SearchModels` hosts the value types (`Search.Result`, `Search.MatchedSymbol`, `Search.PlatformAvailability`, `Search.DocumentFormat`, `Search.SymbolSearchResult`, `Search.CandidateFetcher` protocol, `Search.SmartCandidate`, `Search.AvailabilityFilter`) plus the new `Search.Database` protocol covering the read surface `Services` needs (`search`, `getDocumentContent`, `listFrameworks`, `documentCount`, `disconnect`, plus the four `#408` semantic-search methods). `Search.Index` becomes a one-line conformance witness (`extension Search.Index: Search.Database {}`). The composition root (CLI) injects a `MakeSearchDatabase = @Sendable (URL) async throws -> any Search.Database` factory closure plus a `PackageFileLookup` closure for `Search.PackageQuery.fileContent` operations. Net: `Services` compiles against `SharedConstants` / `SharedUtils` / `SharedModels` / `SharedCore` / `SharedConfiguration` / `SampleIndex` / `SearchModels` / `MCPCore` / `MCPSharedTools` / `Logging` / `Foundation` only.
+- **`MCPSupport` (#406)** drops `import Search` via `MarkdownLookup` closure injection on `DocsResourceProvider` (PR #453).
+- **`Core` test target (#394)** drops `Crawler` + `Search` deps; tests that target `Crawler` types redirect to `CrawlerTests` (PR #448).
+- **`SearchToolProvider` (#408, partial)** drops `import Search` via protocol-typed `searchIndex: (any Search.Database)?` field and lifted `Search.SymbolSearchResult` (PR #465). Remaining `SampleIndex` + `Services` import drops deferred (see "Still open" below).
+- **Namespace anchors moved to folder roots** (PR #450): `MCP.swift` from `Sources/MCP/Core/` to `Sources/MCP/`; `Shared.swift` and `Sample.swift` from `Sources/Shared/Constants/` to `Sources/Shared/`. The agent rule (`mihaela-agents/Rules/swift/code-style.md`) updated globally with three coupled rules: `.`-not-`+` filename separator, strict one non-private type per file, namespace anchor at the owning folder root.
+- **`Search.Index.indexDocument(...)` 18-arg signature wrapped into `IndexDocumentParams` struct** (#321, PR #470). Future indexer-column additions land as defaulted struct fields; existing callers compile unchanged.
+- **`Shared.Utils.SQL.countRows(in:)` helper** (#323, PR #469): 11 inline `SELECT COUNT(*) FROM <table>` literals across `Search` / `SampleIndex` / `CLI.Doctor` swept to one canonical builder.
+
+### Fixed
+
+- **`Availability.Fetcher.buildAPIURL` force-unwrap** (#317, PR #468) replaced with non-trapping `URL(string:)?` — a mis-configured `apiBaseURL` or exotic future path character now degrades to local-content availability extraction instead of trapping the process.
+- **Last stray `print()` in production code** (#322, PR #466): `Core.PackageIndexing.PriorityPackagesCatalog.mergeUserSelectedWithEmbedded` switched to `Logging.ConsoleLogger.info(...)`. Acceptance grep (`grep -rn '^\s*print(' Packages/Sources/`) returns no production hits.
+- **`Services.ServiceContainer` dead instance state removed**: the actor + init + `getDocsService` / `getHIGService` / `getSampleService` / `disconnectAll` had zero external callers. Converted to a caseless `enum` hosting only the static `with*Service` factories (PR #464); drops ~50 lines of dead code.
+
+### Internal
+
+- **Test suite grew from 1346 to 1414 tests across 157 suites** (+68 since v1.1.0). Every closed DI leaf added a smoke test pinning its public surface.
+- **`EmptyParams` deduped** (#319, PR #471): three near-identical declarations (`MCP.Client.swift`, `MockAIAgent/main.swift`, `MockAIAgentTests.swift`) replaced by one canonical `MCP.Core.Protocols.EmptyParams: Codable, Sendable` in `MCPCore`.
+- **Empty `Apps/` placeholder removed** (#324 partial, PR #467). The CLI binaries live under `Packages/Sources/<Name>/` as SPM executable targets; no plan revives an `Apps/` folder.
+
+### Still open
+
+The DI epic ring is not 100% closed. Three children remain, all heavy-tier:
+
+- **#400 Search** (producer-side standalone): lifting more value types out of `CorePackageIndexing` (`ExtractedFile`, `ResolvedPackage`, `PackageArchiveExtractor.Result`, `PackageAvailabilityAnnotator.AnnotationResult`) plus protocol-injecting `Core.JSONParser.MarkdownToStructuredPage` and `Sample.Core.Catalog`. Multi-PR architectural slice.
+- **#403 Indexer**: six distinct protocol seams (`Search.Index`, `Search.IndexBuilder`, `Search.PackageIndex`, `Search.PackageIndexer`, `Sample.Index.Database`, `Sample.Index.Builder`) — same factory-injection pattern `Services` received.
+- **#408 SearchToolProvider** (remaining): the `SampleIndex` and `Services` import drops require lifting `Sample.Index.Database`'s read surface into a protocol (mirrors the `Search.Database` move).
+
 ## 1.1.0 — 2026-05-13
 
 _Refactor release. No new user-visible features, no schema change. `databaseVersion` stays at `1.0.2` — `cupertino setup` from a v1.1.0 binary downloads the same `cupertino-databases-v1.0.2.zip` bundle. The work folds in the namespacing / per-type-file pass across every SPM target, the `Crawler` extract into its own target, the `MCP` → `MCPCore` target rename, and the first two leaves of the DI epic (`SharedConstants` + `SharedUtils` standalone test targets). Two prior `main` fixes are also captured at their new file locations: SPA no-content gate (#432) at `Core.Parser.HTML.looksLikeJavaScriptFallback` + `Crawler.AppleDocs.State.RejectionReason`, and search URL sub-page dash/underscore normalisation (#286) at `Shared.Models.URLUtilities.normalizeDocPath`._
