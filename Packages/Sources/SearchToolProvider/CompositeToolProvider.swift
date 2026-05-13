@@ -298,7 +298,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         case Shared.Constants.Search.toolSearchConformances:
             return try await handleSearchConformances(args: args)
         default:
-            throw ToolError.unknownTool(name)
+            throw Shared.Core.ToolError.unknownTool(name)
         }
     }
 
@@ -417,7 +417,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         minVisionOS: String?
     ) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let docsService else {
-            throw ToolError.invalidArgument("source", "Documentation index not available")
+            throw Shared.Core.ToolError.invalidArgument("source", "Documentation index not available")
         }
 
         // Use service layer (same as CLI)
@@ -507,7 +507,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         limit: Int
     ) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let sampleService else {
-            throw ToolError.invalidArgument("source", "Sample code database not available")
+            throw Shared.Core.ToolError.invalidArgument("source", "Sample code database not available")
         }
 
         // Use service layer (same as CLI)
@@ -541,7 +541,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         limit: Int
     ) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let docsService else {
-            throw ToolError.invalidArgument("source", "Documentation index not available")
+            throw Shared.Core.ToolError.invalidArgument("source", "Documentation index not available")
         }
 
         // Use service layer (same as CLI)
@@ -600,7 +600,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     private func handleListFrameworks() async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
-            throw ToolError.invalidArgument("index", "Documentation index not available")
+            throw Shared.Core.ToolError.invalidArgument("index", "Documentation index not available")
         }
 
         let frameworks = try await searchIndex.listFrameworks()
@@ -616,7 +616,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     private func handleReadDocument(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
-            throw ToolError.invalidArgument("index", "Documentation index not available")
+            throw Shared.Core.ToolError.invalidArgument("index", "Documentation index not available")
         }
 
         let uri: String = try args.require(Shared.Constants.Search.schemaParamURI)
@@ -625,7 +625,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             ? .markdown : .json
 
         guard let documentContent = try await searchIndex.getDocumentContent(uri: uri, format: format) else {
-            throw ToolError.invalidArgument(
+            throw Shared.Core.ToolError.invalidArgument(
                 Shared.Constants.Search.schemaParamURI,
                 "Document not found: \(uri)"
             )
@@ -638,7 +638,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     private func handleListSamples(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let sampleDatabase else {
-            throw ToolError.invalidArgument("database", "Sample code database not available")
+            throw Shared.Core.ToolError.invalidArgument("database", "Sample code database not available")
         }
 
         let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
@@ -677,13 +677,13 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     private func handleReadSample(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let sampleDatabase else {
-            throw ToolError.invalidArgument("database", "Sample code database not available")
+            throw Shared.Core.ToolError.invalidArgument("database", "Sample code database not available")
         }
 
         let projectId: String = try args.require(Shared.Constants.Search.schemaParamProjectId)
 
         guard let project = try await sampleDatabase.getProject(id: projectId) else {
-            throw ToolError.invalidArgument(
+            throw Shared.Core.ToolError.invalidArgument(
                 Shared.Constants.Search.schemaParamProjectId,
                 "Project not found: \(projectId)"
             )
@@ -731,14 +731,14 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     private func handleReadSampleFile(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let sampleDatabase else {
-            throw ToolError.invalidArgument("database", "Sample code database not available")
+            throw Shared.Core.ToolError.invalidArgument("database", "Sample code database not available")
         }
 
         let projectId: String = try args.require(Shared.Constants.Search.schemaParamProjectId)
         let filePath: String = try args.require(Shared.Constants.Search.schemaParamFilePath)
 
         guard let file = try await sampleDatabase.getFile(projectId: projectId, path: filePath) else {
-            throw ToolError.invalidArgument(
+            throw Shared.Core.ToolError.invalidArgument(
                 Shared.Constants.Search.schemaParamFilePath,
                 "File not found: \(filePath) in project \(projectId)"
             )
@@ -765,7 +765,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     private func handleSearchSymbols(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
-            throw ToolError.invalidArgument("index", "Documentation index not available")
+            throw Shared.Core.ToolError.invalidArgument("index", "Documentation index not available")
         }
 
         let query = args.optional(Shared.Constants.Search.schemaParamQuery)
@@ -794,7 +794,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     private func handleSearchPropertyWrappers(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
-            throw ToolError.invalidArgument("index", "Documentation index not available")
+            throw Shared.Core.ToolError.invalidArgument("index", "Documentation index not available")
         }
 
         let wrapper: String = try args.require(Shared.Constants.Search.schemaParamWrapper)
@@ -820,7 +820,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     private func handleSearchConcurrency(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
-            throw ToolError.invalidArgument("index", "Documentation index not available")
+            throw Shared.Core.ToolError.invalidArgument("index", "Documentation index not available")
         }
 
         let pattern: String = try args.require(Shared.Constants.Search.schemaParamPattern)
@@ -845,7 +845,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     private func handleSearchConformances(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
-            throw ToolError.invalidArgument("index", "Documentation index not available")
+            throw Shared.Core.ToolError.invalidArgument("index", "Documentation index not available")
         }
 
         let protocolName: String = try args.require(Shared.Constants.Search.schemaParamProtocol)

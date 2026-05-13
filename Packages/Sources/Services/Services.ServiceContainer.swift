@@ -59,7 +59,7 @@ extension Services {
             }
 
             guard let dbPath = sampleDbPath else {
-                throw ToolError.noData("Sample database path not configured")
+                throw Shared.Core.ToolError.noData("Sample database path not configured")
             }
 
             let service = try await Sample.Search.Service(dbPath: dbPath)
@@ -97,7 +97,7 @@ extension Services {
             let resolvedPath = Shared.Utils.PathResolver.searchDatabase(dbPath)
 
             guard Shared.Utils.PathResolver.exists(resolvedPath) else {
-                throw ToolError.noData("Search database not found at \(resolvedPath.path). Run 'cupertino save' to build the index.")
+                throw Shared.Core.ToolError.noData("Search database not found at \(resolvedPath.path). Run 'cupertino save' to build the index.")
             }
 
             let service = try await Services.DocsSearchService(dbPath: resolvedPath)
@@ -118,7 +118,7 @@ extension Services {
             let resolvedPath = Shared.Utils.PathResolver.searchDatabase(dbPath)
 
             guard Shared.Utils.PathResolver.exists(resolvedPath) else {
-                throw ToolError.noData("Search database not found at \(resolvedPath.path). Run 'cupertino save' to build the index.")
+                throw Shared.Core.ToolError.noData("Search database not found at \(resolvedPath.path). Run 'cupertino save' to build the index.")
             }
 
             let index = try await Search.Index(dbPath: resolvedPath)
@@ -138,7 +138,7 @@ extension Services {
             operation: (Sample.Search.Service) async throws -> T
         ) async throws -> T {
             guard Shared.Utils.PathResolver.exists(dbPath) else {
-                throw ToolError.noData("Sample database not found at \(dbPath.path). Run 'cupertino save --samples' to build the index.")
+                throw Shared.Core.ToolError.noData("Sample database not found at \(dbPath.path). Run 'cupertino save --samples' to build the index.")
             }
 
             let service = try await Sample.Search.Service(dbPath: dbPath)
