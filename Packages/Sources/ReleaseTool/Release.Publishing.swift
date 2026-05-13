@@ -24,7 +24,7 @@ extension Release {
         }
 
         static func readCurrentVersion(from root: URL) throws -> Release.Version {
-            let constantsPath = root.appendingPathComponent("Packages/Sources/Shared/Constants.swift")
+            let constantsPath = root.appendingPathComponent("Packages/Sources/Shared/Constants/Shared.Constants.swift")
             let content = try String(contentsOf: constantsPath, encoding: .utf8)
             // Read databaseVersion, not CLI version — the two are decoupled and
             // database releases follow the database axis.

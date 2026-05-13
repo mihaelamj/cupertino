@@ -26,7 +26,7 @@ extension Release.Command {
 
         mutating func run() async throws {
             let root = try findRepoRoot()
-            let constantsPath = root.appendingPathComponent("Packages/Sources/Shared/Constants.swift")
+            let constantsPath = root.appendingPathComponent("Packages/Sources/Shared/Constants/Shared.Constants.swift")
 
             // Get version from Constants.swift or argument
             let tagVersion: Release.Version

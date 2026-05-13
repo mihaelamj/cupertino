@@ -110,7 +110,7 @@ extension Release.Command {
         }
 
         private func readCurrentVersion(from root: URL) throws -> Release.Version {
-            let constantsPath = root.appendingPathComponent("Packages/Sources/Shared/Constants.swift")
+            let constantsPath = root.appendingPathComponent("Packages/Sources/Shared/Constants/Shared.Constants.swift")
             let content = try String(contentsOf: constantsPath, encoding: .utf8)
             let pattern = #"public\s+static\s+let\s+version\s*=\s*"(\d+\.\d+\.\d+)""#
             guard let regex = try? NSRegularExpression(pattern: pattern),

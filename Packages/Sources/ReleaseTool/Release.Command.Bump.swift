@@ -28,7 +28,7 @@ extension Release.Command {
             let deployment: URL
 
             init(root: URL) {
-                constants = root.appendingPathComponent("Packages/Sources/Shared/Constants.swift")
+                constants = root.appendingPathComponent("Packages/Sources/Shared/Constants/Shared.Constants.swift")
                 readme = root.appendingPathComponent("README.md")
                 changelog = root.appendingPathComponent("CHANGELOG.md")
                 deployment = root.appendingPathComponent("docs/DEPLOYMENT.md")
@@ -149,8 +149,8 @@ extension Release.Command {
         private func updateReadme(at url: URL, to version: Release.Version) throws {
             var content = try String(contentsOf: url, encoding: .utf8)
 
-            // Update **Release.Version:** X.Y.Z
-            let pattern = #"(\*\*Release.Version:\*\*\s*)\d+\.\d+\.\d+"#
+            // Update **Version:** X.Y.Z
+            let pattern = #"(\*\*Version:\*\*\s*)\d+\.\d+\.\d+"#
             guard let regex = try? NSRegularExpression(pattern: pattern) else {
                 throw BumpError.updateFailed(url.path)
             }
@@ -208,8 +208,8 @@ extension Release.Command {
         private func updateDeployment(at url: URL, to version: Release.Version) throws {
             var content = try String(contentsOf: url, encoding: .utf8)
 
-            // Update **Release.Version:** X.Y.Z
-            let pattern = #"(\*\*Release.Version:\*\*\s*)\d+\.\d+\.\d+"#
+            // Update **Version:** X.Y.Z
+            let pattern = #"(\*\*Version:\*\*\s*)\d+\.\d+\.\d+"#
             guard let regex = try? NSRegularExpression(pattern: pattern) else {
                 throw BumpError.updateFailed(url.path)
             }
