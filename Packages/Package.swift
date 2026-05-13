@@ -118,6 +118,10 @@ let targets: [Target] = {
         dependencies: ["SharedConstants"],
         path: "Sources/Shared/Utils"
     )
+    let sharedUtilsTestsTarget = Target.testTarget(
+        name: "SharedUtilsTests",
+        dependencies: ["SharedUtils", "SharedConstants"]
+    )
 
     // ---------- SharedModels (v1.1 refactor 1.5: extracts the Models/ folder from Shared) ----------
     let sharedModelsTarget = Target.target(
@@ -510,6 +514,7 @@ let targets: [Target] = {
         sharedConstantsTarget,
         sharedConstantsTestsTarget,
         sharedUtilsTarget,
+        sharedUtilsTestsTarget,
         sharedModelsTarget,
         sharedCoreTarget,
         sharedCoreTestsTarget,
