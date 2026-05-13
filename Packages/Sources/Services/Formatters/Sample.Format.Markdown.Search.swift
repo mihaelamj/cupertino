@@ -59,7 +59,7 @@ extension Sample.Format.Markdown {
             }
 
             // Footer: tips and guidance
-            let footer = SearchFooter.singleSource(
+            let footer = Services.Formatter.Footer.Search.singleSource(
                 Shared.Constants.SourcePrefix.samples,
                 teasers: teasers
             )
@@ -108,7 +108,7 @@ extension Sample.Format.Markdown {
             }
 
             // Footer: tips and guidance
-            let footer = SearchFooter.singleSource(Shared.Constants.SourcePrefix.samples)
+            let footer = Services.Formatter.Footer.Search.singleSource(Shared.Constants.SourcePrefix.samples)
             output += footer.formatMarkdown()
 
             return output
@@ -134,7 +134,7 @@ extension Sample.Format.Markdown {
             }
 
             // Footer: tips and guidance
-            let footer = SearchFooter.singleSource(Shared.Constants.SourcePrefix.samples)
+            let footer = Services.Formatter.Footer.Search.singleSource(Shared.Constants.SourcePrefix.samples)
             output += footer.formatMarkdown()
 
             return output
@@ -163,7 +163,7 @@ extension Sample.Format.Markdown {
             output += "```\(language)\n\(file.content)\n```\n"
 
             // Footer: tips and guidance
-            let footer = SearchFooter.singleSource(Shared.Constants.SourcePrefix.samples)
+            let footer = Services.Formatter.Footer.Search.singleSource(Shared.Constants.SourcePrefix.samples)
             output += footer.formatMarkdown()
 
             return output

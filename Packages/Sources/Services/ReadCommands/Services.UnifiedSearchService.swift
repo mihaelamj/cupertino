@@ -42,7 +42,7 @@ extension Services {
             query: String,
             framework: String?,
             limit: Int
-        ) async -> UnifiedSearchInput {
+        ) async -> Services.Formatter.Unified.Input {
             async let docResults = searchSource(
                 query: query,
                 source: Shared.Constants.SourcePrefix.appleDocs,
@@ -99,7 +99,7 @@ extension Services {
                 limit: limit
             )
 
-            return await UnifiedSearchInput(
+            return await Services.Formatter.Unified.Input(
                 docResults: docResults,
                 archiveResults: archiveResults,
                 sampleResults: sampleResults,

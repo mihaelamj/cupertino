@@ -45,17 +45,17 @@ extension CLI.Command.Search {
 
         switch format {
         case .text:
-            let formatter = Services.Formatter.TextSearchResultFormatter(
+            let formatter = Services.Formatter.Text(
                 query: query,
                 source: source,
                 teasers: teasers
             )
             Logging.Log.output(formatter.format(results))
         case .json:
-            let formatter = Services.Formatter.JSONSearchResultFormatter()
+            let formatter = Services.Formatter.JSON()
             Logging.Log.output(formatter.format(results))
         case .markdown:
-            let formatter = MarkdownSearchResultFormatter(
+            let formatter = Services.Formatter.Markdown(
                 query: query,
                 filters: Services.SearchFilters(
                     source: source,
@@ -200,13 +200,13 @@ extension CLI.Command.Search {
 
         switch format {
         case .text:
-            let formatter = Services.Formatter.HIGTextFormatter(query: higQuery, teasers: teasers)
+            let formatter = Services.Formatter.HIG.Text(query: higQuery, teasers: teasers)
             Logging.Log.output(formatter.format(results))
         case .json:
-            let formatter = Services.Formatter.HIGJSONFormatter(query: higQuery)
+            let formatter = Services.Formatter.HIG.JSON(query: higQuery)
             Logging.Log.output(formatter.format(results))
         case .markdown:
-            let formatter = HIGMarkdownFormatter(query: higQuery, config: .cliDefault, teasers: teasers)
+            let formatter = Services.Formatter.HIG.Markdown(query: higQuery, config: .cliDefault, teasers: teasers)
             Logging.Log.output(formatter.format(results))
         }
     }

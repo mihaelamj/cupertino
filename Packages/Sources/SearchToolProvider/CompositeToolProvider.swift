@@ -456,9 +456,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         )
 
         // Configure empty message to suggest archive if not already searching it
-        var config = Services.Formatter.SearchResultFormatConfig.mcpDefault
+        var config = Services.Formatter.Config.mcpDefault
         if results.isEmpty, !includeArchive, source != Shared.Constants.SourcePrefix.appleArchive {
-            config = Services.Formatter.SearchResultFormatConfig(
+            config = Services.Formatter.Config(
                 showScore: true,
                 showWordCount: true,
                 showSource: false,
@@ -468,7 +468,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             )
         }
 
-        let formatter = MarkdownSearchResultFormatter(
+        let formatter = Services.Formatter.Markdown(
             query: query,
             filters: filters,
             config: config,
@@ -564,7 +564,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
         // Use shared formatter
         let higQuery = Services.HIGQuery(text: query, platform: nil, category: nil)
-        let formatter = HIGMarkdownFormatter(query: higQuery, config: .mcpDefault, teasers: teasers)
+        let formatter = Services.Formatter.HIG.Markdown(query: higQuery, config: .mcpDefault, teasers: teasers)
         let markdown = formatter.format(results)
 
         return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
@@ -586,7 +586,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         )
 
         // Use shared formatter (identical to CLI --format markdown output)
-        let formatter = UnifiedSearchMarkdownFormatter(
+        let formatter = Services.Formatter.Unified.Markdown(
             query: query,
             framework: framework,
             config: .mcpDefault
@@ -606,7 +606,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let frameworks = try await searchIndex.listFrameworks()
         let totalDocs = try await searchIndex.documentCount()
 
-        let formatter = FrameworksMarkdownFormatter(totalDocs: totalDocs)
+        let formatter = Services.Formatter.Frameworks.Markdown(totalDocs: totalDocs)
         let markdown = formatter.format(frameworks)
 
         return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
