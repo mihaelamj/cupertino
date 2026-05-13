@@ -17,7 +17,7 @@ import SharedUtils
 /// command parses flags, runs the preflight prompt, dispatches to the
 /// requested scope, and renders progress.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension Command {
+extension CLI.Command {
     struct Save: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "save",
@@ -135,7 +135,7 @@ extension Command {
             }
         }
 
-        // MARK: - Indexer dispatchers moved to Command.Save+Indexers.swift (#244)
+        // MARK: - Indexer dispatchers moved to CLI.Command.Save+Indexers.swift (#244)
 
         // MARK: - Preflight
 
@@ -195,7 +195,7 @@ extension Command {
 /// `RemoteSync.Indexer` interface is heavily UI-coupled (animated progress
 /// bar, framework-by-framework status). Stays here until that pipeline
 /// gets a callback-based shape.
-extension Command.Save {
+extension CLI.Command.Save {
     private func runRemote() async throws {
         Logging.ConsoleLogger.info("🚀 Building Search Index from Remote\n")
 

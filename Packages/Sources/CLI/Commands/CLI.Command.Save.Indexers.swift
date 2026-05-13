@@ -8,12 +8,12 @@ import SharedUtils
 
 // MARK: - Indexer dispatch + progress rendering (#244)
 
-/// Per-source indexer dispatchers split out of `Command.Save.swift` so the
+/// Per-source indexer dispatchers split out of `CLI.Command.Save.swift` so the
 /// struct body stays under SwiftLint's `type_body_length` 300-line
 /// ceiling. Each dispatcher converts CLI flags into an
 /// `Indexer.<X>Service.Request`, runs the service, renders progress
 /// events to the terminal, and prints a final summary.
-extension Command.Save {
+extension CLI.Command.Save {
     // MARK: - Docs
 
     func runDocsIndexer(effectiveBase: URL) async throws {
@@ -71,7 +71,7 @@ extension Command.Save {
         Logging.ConsoleLogger.info("   Total documents: \(outcome.documentCount)")
         Logging.ConsoleLogger.info("   Frameworks: \(outcome.frameworkCount)")
         Logging.ConsoleLogger.info("   Database: \(outcome.searchDBPath.path)")
-        Logging.ConsoleLogger.info("   Size: \(Command.Save.formatFileSize(outcome.searchDBPath))")
+        Logging.ConsoleLogger.info("   Size: \(CLI.Command.Save.formatFileSize(outcome.searchDBPath))")
         Logging.ConsoleLogger.info(
             "\n💡 Tip: Start the MCP server with '\(Shared.Constants.App.commandName) serve' to enable search"
         )
@@ -220,7 +220,7 @@ extension Command.Save {
         Logging.Log.output("   Symbols extracted: \(outcome.symbolsTotal)")
         Logging.Log.output("   Imports captured: \(outcome.importsTotal)")
         Logging.Log.output("   Duration: \(Int(outcome.durationSeconds))s")
-        Logging.Log.output("   Database: \(Command.Save.formatFileSize(outcome.samplesDBPath))")
+        Logging.Log.output("   Database: \(CLI.Command.Save.formatFileSize(outcome.samplesDBPath))")
     }
 
     /// Class wrapper so `@Sendable` callbacks can mutate `lastPercent`.

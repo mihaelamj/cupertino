@@ -21,12 +21,12 @@ extension Shared.DiscoveryMode: ExpressibleByArgument {}
 // MARK: - Fetch Command
 
 // swiftlint:disable type_body_length file_length function_body_length
-// Justification: Command.Fetch handles 10+ different fetch types (docs, evolution, packages, code, etc.)
+// Justification: CLI.Command.Fetch handles 10+ different fetch types (docs, evolution, packages, code, etc.)
 // Each type has distinct configuration, progress reporting, and error handling.
 // Splitting into separate commands would duplicate shared options and break the unified fetch interface.
 
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension Command {
+extension CLI.Command {
     struct Fetch: AsyncParsableCommand {
         typealias FetchType = Cupertino.FetchType
 
@@ -257,7 +257,7 @@ extension Command {
 
         private static func fetchSingleType(
             _ fetchType: FetchType,
-            baseCommand: Command.Fetch
+            baseCommand: CLI.Command.Fetch
         ) async -> (FetchType, Result<Void, Error>) {
             Logging.ConsoleLogger.info("🚀 Starting \(fetchType.displayName)...")
             var fetchCommand = baseCommand

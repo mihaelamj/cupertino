@@ -26,7 +26,7 @@ private struct CorpusEntry {
     let fetchType: String
 }
 
-extension Command {
+extension CLI.Command {
     struct Doctor: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "doctor",

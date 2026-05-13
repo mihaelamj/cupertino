@@ -226,7 +226,7 @@ struct TeaserResultsResilienceTests {
 
     @Test("Caller swallowing withTeaserService error → empty TeaserResults works")
     func callerCanFallBackOnEmpty() async {
-        // Replicates the resilience pattern in Command.Search.runSampleSearch:
+        // Replicates the resilience pattern in CLI.Command.Search.runSampleSearch:
         // catch the throw, fall back to TeaserResults(). Verifies the
         // fallback contract (empty + iterable) so future changes don't
         // accidentally make the empty struct require parameters.
