@@ -276,6 +276,73 @@ public actor CrawlerState {
         metadata.lastCrawl
     }
 
+    // MARK: - Rejected URL Tracking (#284)
+
+    /// Why a URL was rejected by one of the crawler's content-quality gates.
+    /// String raw values so the on-disk JSONL file stays human-greppable.
+    public enum RejectionReason: String, Codable, Sendable {
+        /// `HTMLToMarkdown.looksLikeHTTPErrorPage` tripped — Apple's CDN
+        /// served a styled 403/404/502 page at HTTP 200.
+        case httpErrorTemplate = "http_error_template"
+        /// `HTMLToMarkdown.looksLikeJavaScriptFallback` tripped — Apple's
+        /// React SPA rendered its "page can't be found" / "unknown error"
+        /// sub-view at HTTP 200 (the internal doc-loader returned 404).
+        case javaScriptFallback = "js_fallback"
+    }
+
+    /// One row of the rejected-URLs log. Append-only JSONL so an interrupted
+    /// crawl preserves every prior write.
+    public struct RejectedURLRecord: Codable, Sendable {
+        public let url: String
+        public let framework: String
+        public let reason: RejectionReason
+        public let timestamp: Date
+    }
+
+    /// Append a single rejection record to the session's rejected-URLs log
+    /// at `<outputDirectory>/.cupertino-rejected-urls.jsonl`. Each call writes
+    /// one JSON line + a `\n` terminator so a crash mid-write loses at most
+    /// the in-flight record. The file is plain text + line-delimited so
+    /// operators can `grep` / `jq` / `wc -l` it without parsing the metadata.
+    ///
+    /// Failure to append is logged but does not propagate — a missing log
+    /// row must never block a crawl that is otherwise making progress.
+    public func recordRejection(
+        url: URL,
+        framework: String,
+        reason: RejectionReason,
+        outputDirectory: URL
+    ) {
+        let record = RejectedURLRecord(
+            url: url.absoluteString,
+            framework: framework,
+            reason: reason,
+            timestamp: Date()
+        )
+        let logFile = outputDirectory.appendingPathComponent(".cupertino-rejected-urls.jsonl")
+        do {
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let line = try encoder.encode(record) + Data("\n".utf8)
+            if FileManager.default.fileExists(atPath: logFile.path) {
+                let handle = try FileHandle(forWritingTo: logFile)
+                defer { try? handle.close() }
+                try handle.seekToEnd()
+                try handle.write(contentsOf: line)
+            } else {
+                try FileManager.default.createDirectory(
+                    at: outputDirectory,
+                    withIntermediateDirectories: true
+                )
+                try line.write(to: logFile)
+            }
+        } catch {
+            Logging.Logger.crawler.warning(
+                "⚠️ Failed to record rejected URL \(url.absoluteString): \(error.localizedDescription)"
+            )
+        }
+    }
+
     // MARK: - Session State Management
 
     /// Save current crawl session state

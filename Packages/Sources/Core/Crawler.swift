@@ -315,6 +315,24 @@ extension Core {
                     let html = try await loadPage(url: url)
                     if HTMLToMarkdown.looksLikeHTTPErrorPage(html: html) {
                         logInfo("   ⛔ HTTP error template detected, skipping (#284)")
+                        await state.recordRejection(
+                            url: url,
+                            framework: framework,
+                            reason: .httpErrorTemplate,
+                            outputDirectory: configuration.outputDirectory
+                        )
+                        await state.updateStatistics { $0.errors += 1 }
+                        await state.updateStatistics { $0.totalPages += 1 }
+                        return
+                    }
+                    if HTMLToMarkdown.looksLikeJavaScriptFallback(html: html) {
+                        logInfo("   ⛔ Apple SPA no-content sub-view detected, skipping (#284)")
+                        await state.recordRejection(
+                            url: url,
+                            framework: framework,
+                            reason: .javaScriptFallback,
+                            outputDirectory: configuration.outputDirectory
+                        )
                         await state.updateStatistics { $0.errors += 1 }
                         await state.updateStatistics { $0.totalPages += 1 }
                         return
@@ -332,6 +350,24 @@ extension Core {
                 let html = try await loadPage(url: url)
                 if HTMLToMarkdown.looksLikeHTTPErrorPage(html: html) {
                     logInfo("   ⛔ HTTP error template detected, skipping (#284)")
+                    await state.recordRejection(
+                        url: url,
+                        framework: framework,
+                        reason: .httpErrorTemplate,
+                        outputDirectory: configuration.outputDirectory
+                    )
+                    await state.updateStatistics { $0.errors += 1 }
+                    await state.updateStatistics { $0.totalPages += 1 }
+                    return
+                }
+                if HTMLToMarkdown.looksLikeJavaScriptFallback(html: html) {
+                    logInfo("   ⛔ Apple SPA no-content sub-view detected, skipping (#284)")
+                    await state.recordRejection(
+                        url: url,
+                        framework: framework,
+                        reason: .javaScriptFallback,
+                        outputDirectory: configuration.outputDirectory
+                    )
                     await state.updateStatistics { $0.errors += 1 }
                     await state.updateStatistics { $0.totalPages += 1 }
                     return

@@ -129,6 +129,35 @@ public struct HTMLToMarkdown: ContentTransformer, @unchecked Sendable {
         return looksLikeHTTPErrorPage(title: title, html: html)
     }
 
+    /// Returns true if `html` is Apple's React SPA shell served without a
+    /// rendered page body. Apple's developer-docs site is a client-rendered
+    /// React app; when its internal doc-loader endpoint returns 404 (or
+    /// some other failure) for a given URL, the page returns HTTP 200 OK
+    /// with the shell HTML and one of two sub-view templates as the visible
+    /// body: "The page you're looking for can't be found." (Apple's 404
+    /// sub-view) or "An unknown error occurred." (generic error sub-view).
+    /// Neither is an HTTP error, so `looksLikeHTTPErrorPage` lets them
+    /// through; without this gate, ~1,300 such files landed on disk during
+    /// the v1.0.0–v1.0.2 crawls and propagated into every bundle.
+    ///
+    /// The indexer-side `pageLooksLikeJavaScriptFallback` (#284) catches
+    /// the same shape post-conversion, but only on the apple-docs index
+    /// path — and even then, the poison files still sit in the source
+    /// corpus. This crawler-side gate stops them at write time so neither
+    /// the corpus nor the indexer's other code paths see them.
+    public static func looksLikeJavaScriptFallback(html: String) -> Bool {
+        // Apple's specific React sub-view phrases. Pinned literals because
+        // they are unique to the React app's no-content states; real Apple
+        // documentation pages do not quote either sentence.
+        if html.contains("The page you're looking for can't be found") {
+            return true
+        }
+        if html.contains("An unknown error occurred") {
+            return true
+        }
+        return false
+    }
+
     /// Pure decision over a pre-extracted `title` + the surrounding `html`.
     /// Split out so unit tests can exercise the rule against synthetic
     /// inputs without round-tripping through the full HTML title-extractor.
