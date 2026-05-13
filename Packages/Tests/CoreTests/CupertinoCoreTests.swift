@@ -1,6 +1,7 @@
 import AppKit
 @testable import Core
 @testable import CorePackageIndexing
+import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
 import SharedConfiguration
@@ -281,6 +282,7 @@ struct TestError: Error, CustomStringConvertible {
         message
     }
 }
+
 @Test("HashUtilities sha256 produces consistent hashes")
 func hashUtilitiesSHA256Consistency() {
     let content1 = "Hello, World!"
@@ -636,7 +638,7 @@ struct PackageAvailabilityAnnotatorTests {
         #expect(result.fileAvailability.count == 1)
         #expect(result.fileAvailability.first?.relpath == "Sources/Foo/Foo.swift")
 
-        let outURL = dir.appendingPathComponent(Core.PackageIndexing.PackageAvailabilityAnnotator.outputFilename)
+        let outURL = dir.appendingPathComponent(Core.PackageIndexing.availabilityFilename)
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let reloaded = try decoder.decode(

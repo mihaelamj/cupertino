@@ -1,4 +1,5 @@
 import ASTIndexer
+import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
 import SharedCore
@@ -19,7 +20,10 @@ extension Core.PackageIndexing {
     public actor PackageAvailabilityAnnotator {
         public init() {}
 
-        public static let outputFilename = "availability.json"
+        // `outputFilename` lifted to
+        // `Core.PackageIndexing.availabilityFilename` in
+        // `CorePackageIndexingModels`. Internally reference the same
+        // value via the lifted constant to keep one source of truth.
 
         public struct AnnotationResult: Codable, Sendable, Equatable {
             public let version: String
@@ -112,7 +116,7 @@ extension Core.PackageIndexing {
                 )
             )
 
-            let outputURL = packageDirectory.appendingPathComponent(Self.outputFilename)
+            let outputURL = packageDirectory.appendingPathComponent(Core.PackageIndexing.availabilityFilename)
             try Self.write(result, to: outputURL)
             return result
         }

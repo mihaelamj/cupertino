@@ -1,4 +1,4 @@
-import CorePackageIndexing
+import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
 import SearchModels
@@ -110,7 +110,7 @@ extension Search {
         /// duplicate-row issues. All SQL runs in one transaction per package.
         public func index(
             resolved: Core.PackageIndexing.ResolvedPackage,
-            extraction: Core.PackageIndexing.PackageArchiveExtractor.Result,
+            extraction: Core.PackageIndexing.PackageExtractionResult,
             stars: Int? = nil,
             hostedDocumentationURL: URL? = nil,
             availability: AvailabilityPayload? = nil
@@ -335,7 +335,7 @@ extension Search {
 
         private func insertMetadata(
             resolved: Core.PackageIndexing.ResolvedPackage,
-            extraction: Core.PackageIndexing.PackageArchiveExtractor.Result,
+            extraction: Core.PackageIndexing.PackageExtractionResult,
             stars: Int?,
             hostedDocumentationURL: URL?,
             availability: AvailabilityPayload?
