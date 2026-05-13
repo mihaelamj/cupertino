@@ -1,9 +1,10 @@
 import Core
+import CoreSampleCode
 import Foundation
 import Logging
+import SearchModels
 import SharedConstants
 import SharedModels
-import SearchModels
 
 // MARK: - SampleCodeStrategy
 

@@ -230,6 +230,27 @@ let targets: [Target] = {
         dependencies: ["CorePackageIndexing", "CoreProtocols", "TestSupport"]
     )
 
+    // ---------- CoreSampleCode (#305: Apple sample-code subsystem extracted out of Core) ----------
+    // Hosts Sample.Core.{Catalog, Downloader, Downloader.Error, GitHubFetcher,
+    // Progress, Statistics}. Pure foundation-layer deps. Core stays for the
+    // documentation-side concerns; consumers that touch sample code
+    // (`SampleIndex`, `Search/Strategies/Search.Strategies.SampleCode`,
+    // `Indexer.SamplesService`, `CLI.Command.Fetch`) take an explicit
+    // `import CoreSampleCode` instead of getting it transitively via Core.
+    let coreSampleCodeTarget = Target.target(
+        name: "CoreSampleCode",
+        dependencies: [
+            "SharedConstants",
+            "SharedUtils",
+            "SharedCore",
+            "Logging",
+        ]
+    )
+    let coreSampleCodeTestsTarget = Target.testTarget(
+        name: "CoreSampleCodeTests",
+        dependencies: ["CoreSampleCode", "SharedConstants", "TestSupport"]
+    )
+
     let coreTarget = Target.target(
         name: "Core",
         dependencies: [
@@ -329,7 +350,7 @@ let targets: [Target] = {
         // the Strategies/ folder moves to Sources/SearchStrategies/ and gets its own
         // SPM target with deps: [SearchIndexCore, CoreJSONParser, CorePackageIndexing,
         // Core, SharedModels, SharedConstants, Resources, Logging].
-        dependencies: ["SearchModels", "SharedCore", "SharedConstants", "SharedModels", "Logging", "CoreProtocols", "CoreJSONParser", "CorePackageIndexing", "Core", "ASTIndexer"]
+        dependencies: ["SearchModels", "SharedCore", "SharedConstants", "SharedModels", "Logging", "CoreProtocols", "CoreJSONParser", "CorePackageIndexing", "CoreSampleCode", "Core", "ASTIndexer"]
     )
     let searchTestsTarget = Target.testTarget(
         name: "SearchTests",
@@ -441,7 +462,7 @@ let targets: [Target] = {
     // ---------- Indexer (#244: SaveCommand indexer + preflight lift) ----------
     let indexerTarget = Target.target(
         name: "Indexer",
-        dependencies: ["SharedCore", "SharedConstants", "SharedUtils", "Search", "SampleIndex", "CoreProtocols", "Core", "Logging"]
+        dependencies: ["SharedCore", "SharedConstants", "SharedUtils", "Search", "SampleIndex", "CoreProtocols", "Core", "CoreSampleCode", "Logging"]
     )
     let indexerTestsTarget = Target.testTarget(
         name: "IndexerTests",
@@ -466,7 +487,7 @@ let targets: [Target] = {
             "SharedConstants",
             "SharedModels",
             "SharedUtils",
-            "CoreProtocols", "CoreJSONParser", "CorePackageIndexing", "Core",
+            "CoreProtocols", "CoreJSONParser", "CorePackageIndexing", "Core", "CoreSampleCode",
             "Crawler",
             "Cleanup",
             "Search",
@@ -597,6 +618,8 @@ let targets: [Target] = {
         corePackageIndexingTestsTarget,
         resourcesTarget,
         resourcesTestsTarget,
+        coreSampleCodeTarget,
+        coreSampleCodeTestsTarget,
         coreTarget,
         coreTestsTarget,
         crawlerTarget,

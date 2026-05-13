@@ -1,9 +1,9 @@
-@testable import Core
-import CoreProtocols
+@testable import CoreSampleCode
 import Foundation
 import SharedConstants
 @testable import SharedCore
 import Testing
+import TestSupport
 
 // MARK: - Sample Code Downloader Tests
 

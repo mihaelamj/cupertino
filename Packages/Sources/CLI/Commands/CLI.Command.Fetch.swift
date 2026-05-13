@@ -3,17 +3,18 @@ import Availability
 import Core
 import CorePackageIndexing
 import CoreProtocols
+import CoreSampleCode
 import Crawler
 import Foundation
 import Ingest
 import Logging
 import Search
+import SearchModels
 import SharedConfiguration
 import SharedConstants
 import SharedCore
 import SharedModels
 import SharedUtils
-import SearchModels
 
 /// Lets ArgumentParser parse `--discovery-mode <mode>` directly into the
 /// shared enum. The conformance lives here (not in Shared) so the Shared
