@@ -1,5 +1,4 @@
-@testable import Core
-import CoreProtocols
+@testable import CoreSampleCode
 import Foundation
 import SharedConstants
 import Testing
