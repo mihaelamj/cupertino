@@ -73,7 +73,7 @@ struct MCPMessageEncodingTests {
             jsonrpc: "2.0",
             id: .int(42),
             method: "tools/list",
-            params: EmptyParams()
+            params: MCP.Core.Protocols.EmptyParams()
         )
 
         let encoder = JSONEncoder()
@@ -384,4 +384,4 @@ struct MCPToolCallTests {
 
 // MARK: - Helper Types
 
-struct EmptyParams: Codable {}
+// EmptyParams moved to MCP.Core.Protocols.EmptyParams in MCPCore (#319).
