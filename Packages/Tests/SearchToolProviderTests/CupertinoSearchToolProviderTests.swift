@@ -31,7 +31,7 @@ func createMultiSourceSearchIndex() async throws -> (index: Search.Index, cleanu
     let (index, cleanup) = try await createTestSearchIndex()
 
     // Apple docs
-    try await index.indexDocument(
+    try await index.indexDocument(Search.Index.IndexDocumentParams(
         uri: "apple-docs://swiftui/animation",
         source: Shared.Constants.SourcePrefix.appleDocs,
         framework: "swiftui",
@@ -40,11 +40,11 @@ func createMultiSourceSearchIndex() async throws -> (index: Search.Index, cleanu
         filePath: "/test/animation.md",
         contentHash: "hash1",
         lastCrawled: Date(),
-        sourceType: "apple"
-    )
+        sourceType: "apple",
+        ))
 
     // Apple archive
-    try await index.indexDocument(
+    try await index.indexDocument(Search.Index.IndexDocumentParams(
         uri: "apple-archive://coreanim/animation",
         source: Shared.Constants.SourcePrefix.appleArchive,
         framework: "coreanimation",
@@ -53,11 +53,11 @@ func createMultiSourceSearchIndex() async throws -> (index: Search.Index, cleanu
         filePath: "/test/coreanimation.md",
         contentHash: "hash2",
         lastCrawled: Date(),
-        sourceType: "archive"
-    )
+        sourceType: "archive",
+        ))
 
     // HIG
-    try await index.indexDocument(
+    try await index.indexDocument(Search.Index.IndexDocumentParams(
         uri: "hig://motion/animation",
         source: Shared.Constants.SourcePrefix.hig,
         framework: nil,
@@ -66,11 +66,11 @@ func createMultiSourceSearchIndex() async throws -> (index: Search.Index, cleanu
         filePath: "/test/hig-motion.md",
         contentHash: "hash3",
         lastCrawled: Date(),
-        sourceType: "hig"
-    )
+        sourceType: "hig",
+        ))
 
     // Swift Evolution
-    try await index.indexDocument(
+    try await index.indexDocument(Search.Index.IndexDocumentParams(
         uri: "swift-evolution://SE-0392",
         source: Shared.Constants.SourcePrefix.swiftEvolution,
         framework: nil,
@@ -79,11 +79,11 @@ func createMultiSourceSearchIndex() async throws -> (index: Search.Index, cleanu
         filePath: "/test/se-0392.md",
         contentHash: "hash4",
         lastCrawled: Date(),
-        sourceType: "swift-evolution"
-    )
+        sourceType: "swift-evolution",
+        ))
 
     // Swift.org
-    try await index.indexDocument(
+    try await index.indexDocument(Search.Index.IndexDocumentParams(
         uri: "swift-org://docs/animation",
         source: Shared.Constants.SourcePrefix.swiftOrg,
         framework: nil,
@@ -92,11 +92,11 @@ func createMultiSourceSearchIndex() async throws -> (index: Search.Index, cleanu
         filePath: "/test/swift-org-animation.md",
         contentHash: "hash5",
         lastCrawled: Date(),
-        sourceType: "swift-org"
-    )
+        sourceType: "swift-org",
+        ))
 
     // Swift Book
-    try await index.indexDocument(
+    try await index.indexDocument(Search.Index.IndexDocumentParams(
         uri: "swift-book://chapter/animation",
         source: Shared.Constants.SourcePrefix.swiftBook,
         framework: nil,
@@ -105,11 +105,11 @@ func createMultiSourceSearchIndex() async throws -> (index: Search.Index, cleanu
         filePath: "/test/swift-book-animation.md",
         contentHash: "hash6",
         lastCrawled: Date(),
-        sourceType: "swift-book"
-    )
+        sourceType: "swift-book",
+        ))
 
     // Packages
-    try await index.indexDocument(
+    try await index.indexDocument(Search.Index.IndexDocumentParams(
         uri: "packages://swift-animations",
         source: Shared.Constants.SourcePrefix.packages,
         framework: nil,
@@ -118,8 +118,8 @@ func createMultiSourceSearchIndex() async throws -> (index: Search.Index, cleanu
         filePath: "/test/packages-animation.md",
         contentHash: "hash7",
         lastCrawled: Date(),
-        sourceType: "packages"
-    )
+        sourceType: "packages",
+        ))
 
     return (index, cleanup)
 }
@@ -477,7 +477,7 @@ struct UnifiedSearchTests {
         defer { try? cleanup() }
 
         // Only index apple-docs
-        try await index.indexDocument(
+        try await index.indexDocument(Search.Index.IndexDocumentParams(
             uri: "apple-docs://swift/string",
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: "swift",
@@ -486,8 +486,8 @@ struct UnifiedSearchTests {
             filePath: "/test/string.md",
             contentHash: "hash",
             lastCrawled: Date(),
-            sourceType: "apple"
-        )
+            sourceType: "apple",
+            ))
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
         let args: [String: MCP.Core.Protocols.AnyCodable] = [
@@ -545,7 +545,7 @@ struct TeaserResultsTests {
 
         // Add multiple archive docs
         for docNumber in 1...5 {
-            try await index.indexDocument(
+            try await index.indexDocument(Search.Index.IndexDocumentParams(
                 uri: "apple-archive://doc\(docNumber)",
                 source: Shared.Constants.SourcePrefix.appleArchive,
                 framework: nil,
@@ -554,12 +554,12 @@ struct TeaserResultsTests {
                 filePath: "/test/archive\(docNumber).md",
                 contentHash: "hash\(docNumber)",
                 lastCrawled: Date(),
-                sourceType: "archive"
-            )
+                sourceType: "archive",
+                ))
         }
 
         // Add apple-docs to search
-        try await index.indexDocument(
+        try await index.indexDocument(Search.Index.IndexDocumentParams(
             uri: "apple-docs://animation",
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: "swiftui",
@@ -568,8 +568,8 @@ struct TeaserResultsTests {
             filePath: "/test/swiftui.md",
             contentHash: "hashMain",
             lastCrawled: Date(),
-            sourceType: "apple"
-        )
+            sourceType: "apple",
+            ))
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
         let args: [String: MCP.Core.Protocols.AnyCodable] = [
@@ -600,7 +600,7 @@ struct TeaserResultsTests {
         defer { try? cleanup() }
 
         // Add docs for "networking" query
-        try await index.indexDocument(
+        try await index.indexDocument(Search.Index.IndexDocumentParams(
             uri: "apple-docs://networking",
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: "foundation",
@@ -609,11 +609,11 @@ struct TeaserResultsTests {
             filePath: "/test/networking.md",
             contentHash: "hash1",
             lastCrawled: Date(),
-            sourceType: "apple"
-        )
+            sourceType: "apple",
+            ))
 
         // Add archive doc that matches "networking"
-        try await index.indexDocument(
+        try await index.indexDocument(Search.Index.IndexDocumentParams(
             uri: "apple-archive://network-guide",
             source: Shared.Constants.SourcePrefix.appleArchive,
             framework: nil,
@@ -622,11 +622,11 @@ struct TeaserResultsTests {
             filePath: "/test/archive-network.md",
             contentHash: "hash2",
             lastCrawled: Date(),
-            sourceType: "archive"
-        )
+            sourceType: "archive",
+            ))
 
         // Add archive doc about "graphics" - completely different topic
-        try await index.indexDocument(
+        try await index.indexDocument(Search.Index.IndexDocumentParams(
             uri: "apple-archive://graphics-guide",
             source: Shared.Constants.SourcePrefix.appleArchive,
             framework: nil,
@@ -635,8 +635,8 @@ struct TeaserResultsTests {
             filePath: "/test/archive-graphics.md",
             contentHash: "hash3",
             lastCrawled: Date(),
-            sourceType: "archive"
-        )
+            sourceType: "archive",
+            ))
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
 
@@ -688,7 +688,7 @@ struct TeaserResultsTests {
         defer { try? cleanup() }
 
         // Only add apple-docs
-        try await index.indexDocument(
+        try await index.indexDocument(Search.Index.IndexDocumentParams(
             uri: "apple-docs://unique-topic",
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: "foundation",
@@ -697,8 +697,8 @@ struct TeaserResultsTests {
             filePath: "/test/unique.md",
             contentHash: "hash",
             lastCrawled: Date(),
-            sourceType: "apple"
-        )
+            sourceType: "apple",
+            ))
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
         let args: [String: MCP.Core.Protocols.AnyCodable] = [
@@ -725,7 +725,7 @@ struct SearchFilteringTests {
         let (index, cleanup) = try await createTestSearchIndex()
         defer { try? cleanup() }
 
-        try await index.indexDocument(
+        try await index.indexDocument(Search.Index.IndexDocumentParams(
             uri: "apple-docs://swiftui/view",
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: "swiftui",
@@ -734,10 +734,10 @@ struct SearchFilteringTests {
             filePath: "/test/view.md",
             contentHash: "hash1",
             lastCrawled: Date(),
-            sourceType: "apple"
-        )
+            sourceType: "apple",
+            ))
 
-        try await index.indexDocument(
+        try await index.indexDocument(Search.Index.IndexDocumentParams(
             uri: "apple-docs://uikit/view",
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: "uikit",
@@ -746,8 +746,8 @@ struct SearchFilteringTests {
             filePath: "/test/uiview.md",
             contentHash: "hash2",
             lastCrawled: Date(),
-            sourceType: "apple"
-        )
+            sourceType: "apple",
+            ))
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
         let args: [String: MCP.Core.Protocols.AnyCodable] = [
@@ -772,7 +772,7 @@ struct SearchFilteringTests {
 
         // Add multiple docs
         for docNumber in 1...10 {
-            try await index.indexDocument(
+            try await index.indexDocument(Search.Index.IndexDocumentParams(
                 uri: "apple-docs://swift\(docNumber)",
                 source: Shared.Constants.SourcePrefix.appleDocs,
                 framework: "swift",
@@ -781,8 +781,8 @@ struct SearchFilteringTests {
                 filePath: "/test/swift\(docNumber).md",
                 contentHash: "hash\(docNumber)",
                 lastCrawled: Date(),
-                sourceType: "apple"
-            )
+                sourceType: "apple",
+                ))
         }
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
@@ -810,7 +810,7 @@ struct SearchFilteringTests {
         let (index, cleanup) = try await createTestSearchIndex()
         defer { try? cleanup() }
 
-        try await index.indexDocument(
+        try await index.indexDocument(Search.Index.IndexDocumentParams(
             uri: "apple-docs://swift/string",
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: "swift",
@@ -819,10 +819,10 @@ struct SearchFilteringTests {
             filePath: "/test/string.md",
             contentHash: "hash1",
             lastCrawled: Date(),
-            sourceType: "apple"
-        )
+            sourceType: "apple",
+            ))
 
-        try await index.indexDocument(
+        try await index.indexDocument(Search.Index.IndexDocumentParams(
             uri: "apple-archive://string-guide",
             source: Shared.Constants.SourcePrefix.appleArchive,
             framework: nil,
@@ -831,8 +831,8 @@ struct SearchFilteringTests {
             filePath: "/test/archive-string.md",
             contentHash: "hash2",
             lastCrawled: Date(),
-            sourceType: "archive"
-        )
+            sourceType: "archive",
+            ))
 
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
 

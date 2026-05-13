@@ -12,30 +12,38 @@ import SearchModels
 // rationale carries forward to the per-concern slices.
 
 extension Search.Index {
-    ///   - jsonData: Optional JSON representation of document
-    public func indexDocument(
-        uri: String,
-        source: String,
-        framework: String?,
-        language: String? = nil,
-        title: String,
-        content: String,
-        filePath: String,
-        contentHash: String,
-        lastCrawled: Date,
-        sourceType: String = Shared.Constants.Database.defaultSourceTypeApple,
-        packageId: Int? = nil,
-        jsonData: String? = nil,
-        minIOS: String? = nil,
-        minMacOS: String? = nil,
-        minTvOS: String? = nil,
-        minWatchOS: String? = nil,
-        minVisionOS: String? = nil,
-        availabilitySource: String? = nil
-    ) async throws {
+    /// Index a document for searching.
+    ///
+    /// All per-page values flow through `Search.Index.IndexDocumentParams`
+    /// so adding a new column (the indexer learns new sources / metadata
+    /// over time) doesn't touch every call site — the struct's init
+    /// gains a defaulted parameter and existing callers compile unchanged.
+    public func indexDocument(_ params: IndexDocumentParams) async throws {
         guard let database else {
             throw Search.Error.databaseNotInitialized
         }
+
+        // Unpack params once at the top so the function body reads as it
+        // did before the bundling. Avoids `params.` prefixing every site
+        // in the ~130-line body below.
+        let uri = params.uri
+        let source = params.source
+        let framework = params.framework
+        let language = params.language
+        let title = params.title
+        let content = params.content
+        let filePath = params.filePath
+        let contentHash = params.contentHash
+        let lastCrawled = params.lastCrawled
+        let sourceType = params.sourceType
+        let packageId = params.packageId
+        let jsonData = params.jsonData
+        let minIOS = params.minIOS
+        let minMacOS = params.minMacOS
+        let minTvOS = params.minTvOS
+        let minWatchOS = params.minWatchOS
+        let minVisionOS = params.minVisionOS
+        let availabilitySource = params.availabilitySource
 
         // Extract summary (first 500 chars, stop at sentence)
         let summary = extractSummary(from: content)
@@ -156,7 +164,7 @@ extension Search.Index {
         // Get the indexer for this source
         guard let indexer = Search.IndexerRegistry.indexer(for: item.source) else {
             // Fall back to generic indexing if no specific indexer
-            try await indexDocument(
+            try await indexDocument(IndexDocumentParams(
                 uri: item.uri,
                 source: item.source,
                 framework: item.framework,
@@ -174,8 +182,8 @@ extension Search.Index {
                 minTvOS: item.minTvOS,
                 minWatchOS: item.minWatchOS,
                 minVisionOS: item.minVisionOS,
-                availabilitySource: item.availabilitySource
-            )
+                availabilitySource: item.availabilitySource,
+            ))
             return
         }
 
@@ -188,7 +196,7 @@ extension Search.Index {
         let processedItem = indexer.preprocess(item)
 
         // Index the document
-        try await indexDocument(
+        try await indexDocument(IndexDocumentParams(
             uri: processedItem.uri,
             source: processedItem.source,
             framework: processedItem.framework,
@@ -206,8 +214,8 @@ extension Search.Index {
             minTvOS: processedItem.minTvOS,
             minWatchOS: processedItem.minWatchOS,
             minVisionOS: processedItem.minVisionOS,
-            availabilitySource: processedItem.availabilitySource
-        )
+            availabilitySource: processedItem.availabilitySource,
+        ))
 
         // Extract and index AST symbols if enabled
         if extractSymbols {
