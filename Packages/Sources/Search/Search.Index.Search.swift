@@ -1,6 +1,7 @@
 import Foundation
 import SharedConstants
 import SharedCore
+import SearchRanking
 import SQLite3
 
 // swiftlint:disable function_body_length file_length
@@ -158,6 +159,11 @@ extension Search.Index {
         // passes limit=10) still over-fetches enough to include them.
         let fetchLimit = min(max(limit * 20, 1000), 2000)
         sql += " ORDER BY rank LIMIT ?;"
+
+        // Pre-calculate query words for ranking heuristics (#81)
+        let queryWords = query.lowercased()
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty && $0.count > 1 } // Filter noise words
 
         var statement: OpaquePointer?
         defer { sqlite3_finalize(statement) }
@@ -346,254 +352,28 @@ extension Search.Index {
             }()
 
             // Apply kind-based ranking multiplier
-            // BM25 scores are NEGATIVE (lower = better match)
-            // Core types (protocol, class, struct, framework) get boosted (divide to make smaller/better)
-            // Member docs (property, method) get penalized (multiply to make larger/worse)
-            let kindMultiplier: Double = {
-                switch kind {
-                case "protocol", "class", "struct", "framework":
-                    return 0.5 // Divide to boost (smaller negative = better rank)
-                case "property", "method":
-                    return 2.0 // Multiply to penalize (larger negative = worse rank)
-                default:
-                    return 1.0
-                }
-            }()
+            let kindMultiplier = self.kindMultiplier(for: kind)
 
             // Apply source-based ranking multiplier with intent-aware boosting (#81)
-            // Uses queryIntent to determine which sources should be prioritized
-            typealias SourcePrefix = Shared.Constants.SourcePrefix
-            let sourceMultiplier: Double = {
-                // Penalize release notes - they match almost every query but rarely what user wants
-                if uri.contains("release-notes") {
-                    return 2.5 // Strong penalty - release notes pollute general searches
-                }
-
-                // Convert source string to Search.Source for intent matching
-                let searchSource = Search.Source(rawValue: source)
-
-                // Check if this source is boosted for the detected intent
-                let isIntentBoosted = searchSource.map { queryIntent.boostedSources.contains($0) } ?? false
-
-                // Get SourceProperties for quality-based scoring (#81)
-                // Uses empirical data from SourceRegistry (single source of truth)
-                let sourceProps = searchSource.flatMap { Search.SourceRegistry.properties(for: $0.rawValue) }
-
-                // Calculate base multiplier from SourceProperties or fallback to static values
-                let baseMultiplier: Double = {
-                    if let props = sourceProps {
-                        // Use searchQuality to create multiplier
-                        // searchQuality 1.0 → multiplier 0.5 (2x boost)
-                        // searchQuality 0.5 → multiplier 1.0 (no boost)
-                        // searchQuality 0.0 → multiplier 1.5 (penalty)
-                        return 1.5 - (props.searchQuality * 1.0)
-                    }
-                    // Fallback for unknown sources
-                    if source == SourcePrefix.appleDocs {
-                        return 1.0 // Baseline - modern docs
-                    } else if source == SourcePrefix.appleArchive {
-                        return 1.5 // Slight penalty - archived guides
-                    } else if source == SourcePrefix.swiftEvolution {
-                        return 1.3 // Slight penalty - proposals
-                    } else if source == SourcePrefix.swiftBook || source == SourcePrefix.swiftOrg {
-                        return 0.9 // Slight boost - official Swift docs
-                    } else {
-                        return 1.0
-                    }
-                }()
-
-                // Apply intent-aware scoring using SourceProperties.scoreFor(intent:)
-                // This gives a weighted score based on how well the source fits the intent
-                let intentScore: Double = {
-                    guard let props = sourceProps else { return 1.0 }
-                    // scoreFor returns 0.0-1.0, higher = better fit
-                    // Convert to multiplier: 1.0 → 0.6 (boost), 0.5 → 0.8, 0.0 → 1.0
-                    return 1.0 - (props.scoreFor(intent: queryIntent) * 0.4)
-                }()
-
-                // Combine: base quality * intent fit * intent boost
-                var multiplier = baseMultiplier * intentScore
-                if isIntentBoosted {
-                    multiplier *= 0.5 // Additional 2x boost for intent-matched sources
-                }
-                return multiplier
-            }()
+            let sourceMultiplier = self.sourceMultiplier(for: source, uri: uri, queryIntent: queryIntent)
 
             // Apply intelligent title and query matching heuristics
-            let combinedBoost: Double = {
-                // Use original query for semantic matching (not sanitized)
-                let queryWords = query.lowercased()
-                    .components(separatedBy: .whitespacesAndNewlines)
-                    .filter { !$0.isEmpty && $0.count > 1 } // Filter noise words
+            let combinedBoost = self.combinedBoost(
+                uri: uri,
+                query: query,
+                queryWords: queryWords,
+                title: title,
+                kind: kind,
+                framework: framework
+            )
 
-                let titleLower = title.lowercased()
-                let titleWords = titleLower.components(separatedBy: .whitespacesAndNewlines)
-                    .filter { !$0.isEmpty }
-
-                var boost = 1.0
-
-                // FRAMEWORK ROOT BOOST: Framework root page match (#81)
-                // If user types "SwiftUI" and this is the SwiftUI framework page = definitely what they want
-                // Framework roots often have title "X | Apple Developer Documentation" and kind "article"
-                // Detect by: URI pattern "apple-docs://X/documentation_X" where X matches query
-                let queryLowerJoined = queryWords.joined(separator: " ")
-
-                // Extract framework from URI: apple-docs://swiftui/documentation_swiftui → swiftui
-                let uriLower = uri.lowercased()
-                let isFrameworkRoot: Bool = {
-                    // Pattern: apple-docs://FRAMEWORK/documentation_FRAMEWORK
-                    if uriLower.hasPrefix("apple-docs://") {
-                        let parts = uriLower
-                            .replacingOccurrences(of: "apple-docs://", with: "")
-                            .components(separatedBy: "/")
-                        if parts.count == 2,
-                           parts[1] == "documentation_\(parts[0])" {
-                            // This is a framework root page, check if query matches
-                            return parts[0] == queryLowerJoined
-                        }
-                    }
-                    return false
-                }()
-
-                let titleWithoutSuffix = titleLower
-                    .replacingOccurrences(of: " | apple developer documentation", with: "")
-                    .trimmingCharacters(in: .whitespaces)
-
-                if isFrameworkRoot {
-                    boost *= 0.01 // 100x boost for framework root page match
-                } else if kind == "framework", titleWithoutSuffix == queryLowerJoined {
-                    boost *= 0.05 // 20x boost for explicit framework kind match
-                }
-
-                // HEURISTIC 1: Short query exact title match (user knows what they want)
-                // "View" searching for "View" protocol = almost certainly what they want.
-                //
-                // Compare against `titleWithoutSuffix` (boilerplate stripped) so the
-                // ~28% of apple-docs pages whose `<title>` includes the
-                // " | Apple Developer Documentation" suffix still trigger this boost.
-                // Without this, BM25 field-length normalization buries canonical
-                // type pages (`Task`, `View`, `URLSession`) under shorter clean-titled
-                // siblings (kernel `task_*` C functions, devicemanagement `View`,
-                // foundation `urlprotocol/task` property, etc.).
-                //
-                // The suffix itself is a signal: Apple writes
-                // "<canonical type name> | Apple Developer Documentation" only for
-                // the parent/landing page of a type. Sub-symbols (properties,
-                // methods, nested types) get clean titles. Canonical pages still
-                // lose raw BM25 to clean-titled siblings (their suffix dilutes
-                // term frequency over field length), so the equal 20x boost here
-                // wasn't enough to flip the order. Give canonical pages 50x and
-                // clean-titled pages 20x so the canonical answer wins decisively.
-                if queryWords.count <= 3, titleWithoutSuffix == queryLowerJoined {
-                    if titleLower != titleWithoutSuffix {
-                        boost *= 0.02 // 50x boost - canonical Apple-curated page
-                    } else {
-                        boost *= 0.05 // 20x boost - user typed exact name
-                    }
-
-                    // HEURISTIC 1.5: Tiebreak inside exact-title peers (#256)
-                    //
-                    // After the boost above fires, multiple apple-docs rows can
-                    // still tie — `Result` matches Swift's enum, Vision's
-                    // associated type ON `VisionRequest`, and Installer JS's
-                    // runtime type, and all three carry title "Result".
-                    // BM25F then decides among them, and BM25F has no opinion
-                    // about which framework is canonical for a bare type name.
-                    //
-                    // Two orthogonal signals separate canonical from peer:
-                    //
-                    // (1) URI simplicity. `documentation_FRAMEWORK_QUERY`
-                    //     exactly is the framework's top-level type page;
-                    //     anything deeper is a sub-symbol whose title happens
-                    //     to shadow a top-level type elsewhere.
-                    //
-                    // (2) Framework authority (`frameworkAuthority` map).
-                    //     Only consulted in this narrow branch — exact-title
-                    //     match in apple-docs.
-                    //
-                    // Out of scope: when corpus `kind` extraction improves,
-                    // an enum/struct/class/protocol tier slots ahead of these.
-                    // Today ~49% of apple-docs rows have kind=unknown
-                    // (depending on metadata extraction), so kind alone can't
-                    // separate canonical from sub-symbol.
-                    if uriLower.hasPrefix("apple-docs://") {
-                        let pathPart = uriLower
-                            .replacingOccurrences(of: "apple-docs://", with: "")
-                        let parts = pathPart.components(separatedBy: "/")
-                        if parts.count == 2 {
-                            let docPrefix = "documentation_\(parts[0])_"
-                            let queryAsIdent = queryLowerJoined
-                                .replacingOccurrences(of: " ", with: "")
-                            if parts[1].hasPrefix(docPrefix),
-                               String(parts[1].dropFirst(docPrefix.count)) == queryAsIdent {
-                                boost *= 0.6 // ~1.7x: top-level type page beats sub-symbols
-                            }
-                        }
-                        boost *= Self.frameworkAuthority[framework.lowercased()] ?? 1.0
-                    }
-                }
-                // First word exact match (very strong signal)
-                else if !titleWords.isEmpty, !queryWords.isEmpty, titleWords[0] == queryWords[0] {
-                    boost *= 0.15 // 6-7x boost - title starts with query word
-                }
-                // All query words in title
-                else if queryWords.allSatisfy({ titleLower.contains($0) }) {
-                    boost *= 0.3 // 3x boost - all terms match
-                }
-                // Any query word in title
-                else if queryWords.contains(where: { titleLower.contains($0) }) {
-                    boost *= 0.6 // ~1.5x boost - partial match
-                }
-
-                // HEURISTIC: Penalize nested types when searching for parent type
-                // Problem: "Text" query returns "Text.Scale" before "Text"
-                // Reason: "Text.Scale" starts with "Text" and gets the 0.15 boost
-                // Solution: If query has no dot but title does, apply penalty
-                let queryLower = query.lowercased()
-                if !queryLower.contains("."), titleLower.contains(".") {
-                    boost *= 2.0 // Penalty: nested types should rank below parent types
-                }
-
-                // HEURISTIC 2: Query pattern analysis
-                let queryText = query.lowercased()
-
-                // "X protocol" pattern → boost protocols more
-                if queryText.contains("protocol"), kind == "protocol" {
-                    boost *= 0.4 // Extra 2.5x for protocols when user asks for protocols
-                }
-                // "X class" pattern → boost classes
-                else if queryText.contains("class"), kind == "class" {
-                    boost *= 0.4
-                }
-                // "X struct" pattern → boost structs
-                else if queryText.contains("struct"), kind == "struct" {
-                    boost *= 0.4
-                }
-
-                // HEURISTIC 3: Context-aware kind boosting
-                // Single-word queries with framework filter = looking for core type
-                if queryWords.count == 1, framework == "swiftui" {
-                    switch kind {
-                    case "protocol", "class", "struct":
-                        boost *= 0.5 // Additional 2x for core types with short queries
-                    default:
-                        break
-                    }
-                }
-
-                // HEURISTIC 4: Penalize overly verbose titles for short queries
-                // If query is short but title is long, it's probably not what user wants
-                if queryWords.count <= 2, title.count > 50 {
-                    boost *= 1.3 // Slight penalty for verbose titles vs short queries
-                }
-
-                return boost
-            }()
-
-            // CRITICAL: BM25 scores are negative, LOWER = better
-            // To boost (improve rank), we need to make MORE negative
-            // So we DIVIDE by multipliers (smaller multiplier = larger negative number)
-            let adjustedRank = bm25Rank / (kindMultiplier * sourceMultiplier * combinedBoost)
+            // Calculate final adjusted rank
+            let adjustedRank = Self.computeRank(
+                bm25Rank: bm25Rank,
+                kindMultiplier: kindMultiplier,
+                sourceMultiplier: sourceMultiplier,
+                combinedBoost: combinedBoost
+            )
 
             results.append(
                 Search.Result(
@@ -617,108 +397,28 @@ extension Search.Index {
         // This enables semantic search for @Observable, async, Sendable, etc.
         let symbolMatchURIs = try await searchSymbolsForURIs(query: sanitizedQuery, limit: 500)
         if !symbolMatchURIs.isEmpty {
-            results = results.map { result in
-                if symbolMatchURIs.contains(result.uri) {
-                    // BM25 ranks are negative; lower (more negative) is better.
-                    // To make a symbol match rank better, multiply by a value
-                    // greater than 1 so the result is more negative. The
-                    // previous `* 0.3` made rank LESS negative (demotion),
-                    // which silently hurt canonical apple-docs pages whose
-                    // AST symbols were indexed in `doc_symbols`. Kernel C
-                    // pages have no AST symbols, so they kept their rank
-                    // and won the comparison.
-                    return Search.Result(
-                        id: result.id,
-                        uri: result.uri,
-                        source: result.source,
-                        framework: result.framework,
-                        title: result.title,
-                        summary: result.summary,
-                        filePath: result.filePath,
-                        wordCount: result.wordCount,
-                        rank: result.rank * 3.0, // 3x boost: more-negative rank
-                        availability: result.availability
-                    )
-                }
-                return result
-            }
+            results = self.boostSymbolMatches(results: results, symbolMatchURIs: symbolMatchURIs)
             // Re-sort after symbol boosting
             results.sort { $0.rank < $1.rank }
         }
 
         // Apply platform version filters (proper semantic version comparison)
         // SQL already filtered for IS NOT NULL, now we do proper version compare
-        if let effectiveMinIOS {
-            results = results.filter { result in
-                guard let version = result.minimumiOS else { return false }
-                return Self.isVersion(version, lessThanOrEqualTo: effectiveMinIOS)
-            }
-        }
-        if let effectiveMinMacOS {
-            results = results.filter { result in
-                guard let version = result.minimumMacOS else { return false }
-                return Self.isVersion(version, lessThanOrEqualTo: effectiveMinMacOS)
-            }
-        }
-        if let effectiveMinTvOS {
-            results = results.filter { result in
-                guard let version = result.minimumTvOS else { return false }
-                return Self.isVersion(version, lessThanOrEqualTo: effectiveMinTvOS)
-            }
-        }
-        if let effectiveMinWatchOS {
-            results = results.filter { result in
-                guard let version = result.minimumWatchOS else { return false }
-                return Self.isVersion(version, lessThanOrEqualTo: effectiveMinWatchOS)
-            }
-        }
-        if let effectiveMinVisionOS {
-            results = results.filter { result in
-                guard let version = result.minimumVisionOS else { return false }
-                return Self.isVersion(version, lessThanOrEqualTo: effectiveMinVisionOS)
-            }
-        }
+        results = self.filterByPlatformAvailability(
+            results: results,
+            minIOS: effectiveMinIOS,
+            minMacOS: effectiveMinMacOS,
+            minTvOS: effectiveMinTvOS,
+            minWatchOS: effectiveMinWatchOS,
+            minVisionOS: effectiveMinVisionOS
+        )
 
-        // (#81) Ensure framework root page appears at top for single-word framework queries
-        // This bypasses BM25 limitations for framework names like "SwiftUI", "Foundation", etc.
-        // Only apply for apple-docs source or when no source filter is specified
-        let shouldFetchFrameworkRoot = effectiveSource == nil ||
-            effectiveSource == Shared.Constants.SourcePrefix.appleDocs
-        if shouldFetchFrameworkRoot,
-           let frameworkRoot = try await fetchFrameworkRoot(query: query) {
-            // Remove duplicate if it exists in results
-            results.removeAll { $0.uri == frameworkRoot.uri }
-            // Insert at top
-            results.insert(frameworkRoot, at: 0)
-        }
-
-        // (#256 follow-on) Force-include canonical type pages for top-tier frameworks.
-        //
-        // Plain BM25 buries some canonical type parent pages past the
-        // 1000-row fetchLimit (Foundation `URL` lands at raw rank 1017 on
-        // the v1.0 corpus, Foundation `Data` and Swift `Identifiable`
-        // land past 2500). Once outside the candidate set, no post-rank
-        // multiplier can save them. This is a separate problem from
-        // ranking inside the set: increasing fetchLimit alone can't fix
-        // it without paying a per-query cost on every search.
-        //
-        // Hand-fetch by URI shape `apple-docs://FRAMEWORK/documentation_FRAMEWORK_QUERY`
-        // for the same top-tier frameworks already given a positive
-        // `frameworkAuthority` weight (swift, swiftui, foundation). O(1)
-        // per probe; three probes per single-token query. Only fires for
-        // single-word, ASCII-identifier-shaped queries — same rough
-        // shape that HEURISTIC 1 + 1.5 already gate on.
-        if shouldFetchFrameworkRoot {
-            let canonicals = try await fetchCanonicalTypePages(query: query)
-            if !canonicals.isEmpty {
-                let canonicalURIs = Set(canonicals.map(\.uri))
-                results.removeAll { canonicalURIs.contains($0.uri) }
-                // Preserve authority order from `canonicalTypePageFrameworks`
-                // (swift > swiftui > foundation) — `fetchCanonicalTypePages`
-                // returns hits in that order, so prepend en bloc.
-                results.insert(contentsOf: canonicals, at: 0)
-            }
-        }
+        // (#81 & #256) Ensure framework root and canonical type pages appear at top
+        results = try await self.forceIncludeCanonicalPages(
+            results: results,
+            query: query,
+            effectiveSource: effectiveSource
+        )
 
         // (#81) Attach matching symbols to results that have them
         if !symbolMatchURIs.isEmpty {
