@@ -36,7 +36,8 @@ extension Services {
                 return service
             }
 
-            let service = try await Services.DocsSearchService(dbPath: searchDbPath)
+            let index = try await Search.Index(dbPath: searchDbPath)
+            let service = Services.DocsSearchService(database: index)
             docsService = service
             return service
         }
@@ -101,7 +102,8 @@ extension Services {
                 throw Shared.Core.ToolError.noData("Search database not found at \(resolvedPath.path). Run 'cupertino save' to build the index.")
             }
 
-            let service = try await Services.DocsSearchService(dbPath: resolvedPath)
+            let index = try await Search.Index(dbPath: resolvedPath)
+            let service = Services.DocsSearchService(database: index)
             defer {
                 Task {
                     await service.disconnect()

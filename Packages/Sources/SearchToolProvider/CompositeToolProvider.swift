@@ -28,7 +28,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
         // Wrap databases with services for search operations
         if let searchIndex {
-            docsService = Services.DocsSearchService(index: searchIndex)
+            docsService = Services.DocsSearchService(database: searchIndex)
         } else {
             docsService = nil
         }
