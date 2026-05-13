@@ -1,6 +1,5 @@
 import Foundation
 import SampleIndex
-import Search
 import SharedConstants
 import SharedCore
 import SearchModels
