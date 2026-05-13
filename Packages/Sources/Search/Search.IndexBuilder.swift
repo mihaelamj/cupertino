@@ -6,6 +6,7 @@ import Logging
 import SharedConstants
 import SharedCore
 import SharedModels
+import SearchModels
 
 // MARK: - Search Index Builder
 

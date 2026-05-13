@@ -1,6 +1,7 @@
 import Foundation
 import SharedConstants
 import SharedCore
+import SearchModels
 
 // MARK: - Source Definition
 

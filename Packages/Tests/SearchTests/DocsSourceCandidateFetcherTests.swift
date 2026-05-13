@@ -1,6 +1,7 @@
-import Foundation
-@testable import Search
 import Testing
+import Foundation
+import SearchModels
+@testable import Search
 
 // Covers H5 from #192: `DocsSourceCandidateFetcher` against a fixture
 // search.db. Verifies that the fetcher scopes to its source, adapts

@@ -1,3 +1,4 @@
+import SearchModels
 import AppKit
 @testable import Core
 import CoreProtocols

@@ -2,6 +2,7 @@ import Foundation
 import Search
 import SharedConstants
 import SharedCore
+import SearchModels
 
 extension Indexer {
     /// Build `packages.db` from extracted package archives at

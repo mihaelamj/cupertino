@@ -2,6 +2,7 @@ import Foundation
 import SharedConstants
 import SharedCore
 import SQLite3
+import SearchModels
 
 extension Search {
     // MARK: - Public API

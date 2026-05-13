@@ -1,6 +1,7 @@
 import Foundation
 import Search
 import SharedCore
+import SearchModels
 
 // MARK: - HIG JSON Formatter
 

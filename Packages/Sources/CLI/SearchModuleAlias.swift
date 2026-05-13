@@ -1,4 +1,5 @@
 import Search
+import SearchModels
 
 // MARK: - Search Module Disambiguator
 

@@ -1,3 +1,4 @@
+import SearchModels
 import Foundation
 @testable import Search
 import SQLite3

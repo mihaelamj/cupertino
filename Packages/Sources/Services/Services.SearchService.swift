@@ -2,6 +2,7 @@ import Foundation
 import Search
 import SharedConstants
 import SharedCore
+import SearchModels
 
 // MARK: - Search Service Protocol
 
@@ -13,7 +14,7 @@ extension Services {
         func search(_ query: SearchQuery) async throws -> [Search.Result]
 
         /// Get document content by URI
-        func read(uri: String, format: Search.Index.DocumentFormat) async throws -> String?
+        func read(uri: String, format: Search.DocumentFormat) async throws -> String?
 
         /// List all available frameworks with document counts
         func listFrameworks() async throws -> [String: Int]

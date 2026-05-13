@@ -5,6 +5,7 @@ import Foundation
 import SharedConstants
 import SharedCore
 import SharedModels
+import SearchModels
 
 extension Search {
     /// Reads downloaded-and-extracted package trees from

@@ -1,14 +1,15 @@
+import TestSupport
+import SharedConstants
+import Testing
 // swiftlint:disable file_length
 import Foundation
 import MCPCore
+import SearchModels
 @testable import SampleIndex
 @testable import Search
 @testable import SearchToolProvider
 @testable import Services
-import SharedConstants
 @testable import SharedCore
-import Testing
-import TestSupport
 
 // MARK: - Test Helpers
 
