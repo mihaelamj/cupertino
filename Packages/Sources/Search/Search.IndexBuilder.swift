@@ -195,7 +195,7 @@ extension Search {
 
                 // Index document (Apple docs from /docs folder)
                 do {
-                    try await searchIndex.indexDocument(
+                    try await searchIndex.indexDocument(Search.Index.IndexDocumentParams(
                         uri: uri,
                         source: Shared.Constants.SourcePrefix.appleDocs,
                         framework: pageMetadata.framework,
@@ -203,8 +203,8 @@ extension Search {
                         content: content,
                         filePath: pageMetadata.filePath,
                         contentHash: pageMetadata.contentHash,
-                        lastCrawled: pageMetadata.lastCrawled
-                    )
+                        lastCrawled: pageMetadata.lastCrawled,
+                    ))
                     indexed += 1
                 } catch {
                     logError("Failed to index \(uri): \(error)")
@@ -617,7 +617,7 @@ extension Search {
             let availability = mapSwiftVersionToAvailability(status)
 
             // Swift Evolution source - no framework, just source
-            try await searchIndex.indexDocument(
+            try await searchIndex.indexDocument(Search.Index.IndexDocumentParams(
                 uri: uri,
                 source: Shared.Constants.SourcePrefix.swiftEvolution,
                 framework: nil,
@@ -628,8 +628,8 @@ extension Search {
                 lastCrawled: modDate,
                 minIOS: availability.iOS,
                 minMacOS: availability.macOS,
-                availabilitySource: availability.iOS != nil ? "swift-version" : nil
-            )
+                availabilitySource: availability.iOS != nil ? "swift-version" : nil,
+            ))
         }
 
         /// Map Swift version to iOS/macOS availability
@@ -946,7 +946,7 @@ extension Search {
 
                 do {
                     // Apple Archive source with framework (or book title as fallback)
-                    try await searchIndex.indexDocument(
+                    try await searchIndex.indexDocument(Search.Index.IndexDocumentParams(
                         uri: uri,
                         source: "apple-archive",
                         framework: framework,
@@ -960,8 +960,8 @@ extension Search {
                         minTvOS: availability.minTvOS,
                         minWatchOS: availability.minWatchOS,
                         minVisionOS: availability.minVisionOS,
-                        availabilitySource: availability.minIOS != nil ? "framework" : nil
-                    )
+                        availabilitySource: availability.minIOS != nil ? "framework" : nil,
+                    ))
                     indexed += 1
                 } catch {
                     logError("Failed to index \(uri): \(error)")
@@ -1027,7 +1027,7 @@ extension Search {
                 do {
                     // HIG source with category as framework
                     // HIG is universal - applies to all Apple platforms
-                    try await searchIndex.indexDocument(
+                    try await searchIndex.indexDocument(Search.Index.IndexDocumentParams(
                         uri: uri,
                         source: Shared.Constants.SourcePrefix.hig,
                         framework: category,
@@ -1041,8 +1041,8 @@ extension Search {
                         minTvOS: "9.0",
                         minWatchOS: "2.0",
                         minVisionOS: "1.0",
-                        availabilitySource: "universal"
-                    )
+                        availabilitySource: "universal",
+                    ))
                     indexed += 1
                 } catch {
                     logError("Failed to index \(uri): \(error)")

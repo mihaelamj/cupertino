@@ -76,7 +76,7 @@ private func countImportRows(at dbPath: URL, uri: String) throws -> Int {
 }
 
 private func seedDoc(index: Search.Index, uri: String) async throws {
-    try await index.indexDocument(
+    try await index.indexDocument(Search.Index.IndexDocumentParams(
         uri: uri,
         source: "apple-docs",
         framework: "swiftui",
@@ -84,8 +84,8 @@ private func seedDoc(index: Search.Index, uri: String) async throws {
         content: "placeholder body",
         filePath: "/tmp/x",
         contentHash: "h",
-        lastCrawled: Date()
-    )
+        lastCrawled: Date(),
+    ))
 }
 
 @Suite("Search.Index.extractCodeExampleSymbols (#192 D)")
