@@ -152,6 +152,10 @@ let targets: [Target] = {
         dependencies: ["SharedConstants", "SharedUtils"],
         path: "Sources/Shared/Configuration"
     )
+    let sharedConfigurationTestsTarget = Target.testTarget(
+        name: "SharedConfigurationTests",
+        dependencies: ["SharedConfiguration", "SharedConstants", "SharedUtils"]
+    )
 
     // ---------- MCPSharedTools (v1.1 refactor 1.1: extracts MCP.SharedTools.ArgumentExtractor + MCP-protocol-output constants from Shared) ----------
     let mcpSharedToolsTarget = Target.target(
@@ -528,6 +532,7 @@ let targets: [Target] = {
         sharedCoreTarget,
         sharedCoreTestsTarget,
         sharedConfigurationTarget,
+        sharedConfigurationTestsTarget,
         mcpSharedToolsTarget,
         mcpSharedToolsTestsTarget,
         coreProtocolsTarget,
