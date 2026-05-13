@@ -1,4 +1,5 @@
 import CorePackageIndexing
+import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
 import SearchModels
@@ -65,7 +66,7 @@ extension Search {
                 onProgress?(label, idx + 1, packageDirs.count)
                 do {
                     let (resolved, files, tarballBytes) = try loadPackage(at: dir)
-                    let result = Core.PackageIndexing.PackageArchiveExtractor.Result(
+                    let result = Core.PackageIndexing.PackageExtractionResult(
                         branch: resolved.branchFromManifest ?? "HEAD",
                         files: files,
                         totalBytes: files.reduce(Int64(0)) { $0 + Int64($1.byteSize) },
@@ -176,7 +177,7 @@ extension Search {
         /// pass `availability: nil` and the new columns stay NULL — caller
         /// can still distinguish "not annotated" from "annotated but empty".
         nonisolated static func loadAvailability(at dir: URL) -> PackageIndex.AvailabilityPayload? {
-            let url = dir.appendingPathComponent(Core.PackageIndexing.PackageAvailabilityAnnotator.outputFilename)
+            let url = dir.appendingPathComponent(Core.PackageIndexing.availabilityFilename)
             guard FileManager.default.fileExists(atPath: url.path) else { return nil }
             guard let data = try? Data(contentsOf: url) else { return nil }
             let decoder = JSONDecoder()
@@ -221,7 +222,7 @@ extension Search {
                 // user-authored content.
                 if name == ".archive.tar.gz"
                     || name == "manifest.json"
-                    || name == Core.PackageIndexing.PackageAvailabilityAnnotator.outputFilename {
+                    || name == Core.PackageIndexing.availabilityFilename {
                     continue
                 }
 

@@ -219,15 +219,36 @@ let targets: [Target] = {
         dependencies: ["CoreJSONParser", "CoreProtocols", "TestSupport"]
     )
 
-    // ---------- CorePackageIndexing (v1.2 refactor 2.4: Resolver + Fetcher + Archive Extractor + Annotator + FileKind + ManifestCache + Store + DocDownloader) ----------
+    // ---------- CorePackageIndexingModels (#400: value types + namespace anchor lifted out
+    // of CorePackageIndexing so consumers (Search, TUI, CLI) can hold ResolvedPackage /
+    // ExtractedFile / PackageExtractionResult / availabilityFilename without depending on
+    // the full indexer + extractor + annotator + manifest-cache surface). Mirrors the
+    // SearchModels / SampleIndexModels / CoreSampleCode split pattern. Hosts:
+    // - `Core.PackageIndexing` namespace anchor
+    // - `Core.PackageIndexing.ResolvedPackage` (value struct)
+    // - `Core.PackageIndexing.PackageFileKind` enum + `ExtractedFile` struct + classifier
+    // - `Core.PackageIndexing.PackageExtractionResult` (lifted from being nested inside
+    //   PackageArchiveExtractor.Result)
+    // - `Core.PackageIndexing.availabilityFilename` (lifted from
+    //   PackageAvailabilityAnnotator.outputFilename)
+    let corePackageIndexingModelsTarget = Target.target(
+        name: "CorePackageIndexingModels",
+        dependencies: ["CoreProtocols", "SharedConstants", "SharedModels"]
+    )
+    let corePackageIndexingModelsTestsTarget = Target.testTarget(
+        name: "CorePackageIndexingModelsTests",
+        dependencies: ["CorePackageIndexingModels", "CoreProtocols", "SharedConstants", "SharedModels", "TestSupport"]
+    )
+
+    // ---------- CorePackageIndexing (v1.2 refactor 2.4: Resolver + Fetcher + Archive Extractor + Annotator + ManifestCache + Store + DocDownloader) ----------
     let corePackageIndexingTarget = Target.target(
         name: "CorePackageIndexing",
-        dependencies: ["CoreProtocols", "SharedCore", "SharedModels", "SharedConstants", "SharedUtils", "Logging", "ASTIndexer", "Resources"],
+        dependencies: ["CorePackageIndexingModels", "CoreProtocols", "SharedCore", "SharedModels", "SharedConstants", "SharedUtils", "Logging", "ASTIndexer", "Resources"],
         path: "Sources/Core/PackageIndexing"
     )
     let corePackageIndexingTestsTarget = Target.testTarget(
         name: "CorePackageIndexingTests",
-        dependencies: ["CorePackageIndexing", "CoreProtocols", "TestSupport"]
+        dependencies: ["CorePackageIndexing", "CorePackageIndexingModels", "CoreProtocols", "TestSupport"]
     )
 
     // ---------- CoreSampleCode (#305: Apple sample-code subsystem extracted out of Core) ----------
@@ -274,6 +295,7 @@ let targets: [Target] = {
             "CoreProtocols",
             "CoreJSONParser",
             "CorePackageIndexing",
+            "CorePackageIndexingModels",
             "Core",
             "SharedCore",
             "SharedConstants",
@@ -350,11 +372,11 @@ let targets: [Target] = {
         // the Strategies/ folder moves to Sources/SearchStrategies/ and gets its own
         // SPM target with deps: [SearchIndexCore, CoreJSONParser, CorePackageIndexing,
         // Core, SharedModels, SharedConstants, Resources, Logging].
-        dependencies: ["SearchModels", "SharedCore", "SharedConstants", "SharedModels", "Logging", "CoreProtocols", "CoreJSONParser", "CorePackageIndexing", "CoreSampleCode", "Core", "ASTIndexer"]
+        dependencies: ["SearchModels", "SharedCore", "SharedConstants", "SharedModels", "Logging", "CoreProtocols", "CoreJSONParser", "CorePackageIndexing", "CorePackageIndexingModels", "CoreSampleCode", "Core", "ASTIndexer"]
     )
     let searchTestsTarget = Target.testTarget(
         name: "SearchTests",
-        dependencies: ["Search", "SearchModels", "SharedCore", "SharedConstants", "SharedModels", "SharedUtils", "TestSupport", "CorePackageIndexing", "ASTIndexer", "SampleIndex"]
+        dependencies: ["Search", "SearchModels", "SharedCore", "SharedConstants", "SharedModels", "SharedUtils", "TestSupport", "CorePackageIndexing", "CorePackageIndexingModels", "ASTIndexer", "SampleIndex"]
     )
 
     let sampleIndexTarget = Target.target(
@@ -487,7 +509,7 @@ let targets: [Target] = {
             "SharedConstants",
             "SharedModels",
             "SharedUtils",
-            "CoreProtocols", "CoreJSONParser", "CorePackageIndexing", "Core", "CoreSampleCode",
+            "CoreProtocols", "CoreJSONParser", "CorePackageIndexing", "CorePackageIndexingModels", "Core", "CoreSampleCode",
             "Crawler",
             "Cleanup",
             "Search",
@@ -614,6 +636,8 @@ let targets: [Target] = {
         coreProtocolsTestsTarget,
         coreJSONParserTarget,
         coreJSONParserTestsTarget,
+        corePackageIndexingModelsTarget,
+        corePackageIndexingModelsTestsTarget,
         corePackageIndexingTarget,
         corePackageIndexingTestsTarget,
         resourcesTarget,

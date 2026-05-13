@@ -2,6 +2,7 @@ import ArgumentParser
 import Availability
 import Core
 import CorePackageIndexing
+import CorePackageIndexingModels
 import CoreProtocols
 import CoreSampleCode
 import Crawler
@@ -808,7 +809,7 @@ extension CLI.Command {
 
         private func writePackageManifest(
             resolved: Core.PackageIndexing.ResolvedPackage,
-            extraction: Core.PackageIndexing.PackageArchiveExtractor.Result,
+            extraction: Core.PackageIndexing.PackageExtractionResult,
             destination: URL
         ) throws {
             struct Manifest: Encodable {

@@ -1,3 +1,4 @@
+import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
 import SharedConstants
@@ -13,24 +14,9 @@ extension Core.PackageIndexing {
     /// into the dependency graph; macOS's bsdtar reads `.tar.gz` directly. The scratch
     /// directory used for extraction is wiped before returning.
     public actor PackageArchiveExtractor {
-        public struct Result: Sendable {
-            public let branch: String
-            public let files: [ExtractedFile]
-            public let totalBytes: Int64
-            public let tarballBytes: Int
-
-            public init(
-                branch: String,
-                files: [ExtractedFile],
-                totalBytes: Int64,
-                tarballBytes: Int
-            ) {
-                self.branch = branch
-                self.files = files
-                self.totalBytes = totalBytes
-                self.tarballBytes = tarballBytes
-            }
-        }
+        // `Result` lifted to `Core.PackageIndexing.PackageExtractionResult`
+        // in `CorePackageIndexingModels` so consumers (Search, CLI) don't
+        // need the full extractor target.
 
         public enum ExtractError: Error {
             case tarballNotFound
@@ -67,7 +53,7 @@ extension Core.PackageIndexing {
             owner: String,
             repo: String,
             destination: URL
-        ) async throws -> Result {
+        ) async throws -> PackageExtractionResult {
             for ref in candidateRefs {
                 switch await downloadTarball(owner: owner, repo: repo, ref: ref) {
                 case .success(let data):
@@ -119,7 +105,7 @@ extension Core.PackageIndexing {
             data: Data,
             branch: String,
             destination: URL
-        ) throws -> Result {
+        ) throws -> PackageExtractionResult {
             // Clean destination for a predictable re-extract. Hidden `.archive.tar.gz`
             // will be rewritten below.
             if FileManager.default.fileExists(atPath: destination.path) {
@@ -149,7 +135,7 @@ extension Core.PackageIndexing {
                 at: destination,
                 includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey]
             ) else {
-                return Result(branch: branch, files: [], totalBytes: 0, tarballBytes: data.count)
+                return PackageExtractionResult(branch: branch, files: [], totalBytes: 0, tarballBytes: data.count)
             }
 
             while let candidate = enumerator.nextObject() as? URL {
@@ -182,7 +168,7 @@ extension Core.PackageIndexing {
                 totalBytes += Int64(size)
             }
 
-            return Result(
+            return PackageExtractionResult(
                 branch: branch,
                 files: files,
                 totalBytes: totalBytes,
