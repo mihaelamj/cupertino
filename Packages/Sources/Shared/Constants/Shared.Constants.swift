@@ -185,14 +185,21 @@ extension Shared.Constants {
 
         /// Database version - separate from CLI version, only bump when schema/content changes.
         /// Controls the cupertino-docs release tag that `cupertino setup` downloads from.
-        /// v1.0.2 bumps from v1.0.0 to ship a re-indexed bundle: the v1.0.0 search.db
+        /// v1.0.2 bumped from v1.0.0 to ship a re-indexed bundle: the v1.0.0 search.db
         /// carried 61,257 case-axis duplicate clusters covering 122,522 rows (#283), and
-        /// the prior v1.0.1 "verified clean" claim used the wrong query column. The new
+        /// the prior v1.0.1 "verified clean" claim used the wrong query column. The
         /// v1.0.2 bundle was built with the post-#283 `URLUtilities.filename(_:)` against
         /// the full 404,729-page corpus (Studio v1.0.0 base + Claw fresh overlay) and
         /// verified: 277,640 documents, `GROUP BY LOWER(url) HAVING COUNT > 1` returns
         /// zero, schema `user_version` stamped 13.
-        public static let databaseVersion = "1.0.2"
+        ///
+        /// v1.1.0 keeps the same SQLite schema (`user_version` still 13) but ships a
+        /// re-built bundle against the post-cleanup corpus (`cupertino-docs@v1.1.0`):
+        /// 285,735 documents across 420 frameworks, 0 poison rows under all 13 audit
+        /// categories, includes the 43 markdown gap-fillers converted to canonical
+        /// `StructuredDocumentationPage` JSON, and benefits from the crawler-side
+        /// JS-fallback gate added in PR #432.
+        public static let databaseVersion = "1.1.0"
 
         /// Base URL for cupertino-docs release downloads. As of v1.0.0 the
         /// single `cupertino-databases-vX.zip` artifact bundles search.db,
