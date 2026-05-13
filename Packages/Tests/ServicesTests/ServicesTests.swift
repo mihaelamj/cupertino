@@ -1,8 +1,9 @@
-import Foundation
-@testable import Services
 import SharedConstants
-@testable import SharedCore
 import Testing
+import Foundation
+import SearchModels
+@testable import Services
+@testable import SharedCore
 
 // MARK: - Services Tests
 

@@ -6,6 +6,7 @@ import Services
 import SharedConstants
 import SharedCore
 import SharedUtils
+import SearchModels
 
 // MARK: - Per-source runners
 

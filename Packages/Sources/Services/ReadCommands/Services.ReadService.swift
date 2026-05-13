@@ -3,6 +3,7 @@ import SampleIndex
 import Search
 import SharedConstants
 import SharedCore
+import SearchModels
 
 // MARK: - Unified read service
 
@@ -77,7 +78,7 @@ extension Services {
         public static func read(
             identifier: String,
             explicit: Source?,
-            format: Search.Index.DocumentFormat,
+            format: Search.DocumentFormat,
             searchDB: URL?,
             samplesDB: URL?,
             packagesDB: URL?
@@ -136,7 +137,7 @@ extension Services {
         private static func readFrom(
             source: Source,
             identifier: String,
-            format: Search.Index.DocumentFormat,
+            format: Search.DocumentFormat,
             searchDB: URL?,
             samplesDB: URL?,
             packagesDB: URL?,
@@ -166,7 +167,7 @@ extension Services {
 
         private static func readFromDocs(
             identifier: String,
-            format: Search.Index.DocumentFormat,
+            format: Search.DocumentFormat,
             searchDB: URL?
         ) async throws -> Result {
             let content = try await Services.ServiceContainer.withDocsService(

@@ -7,6 +7,7 @@ import Services
 import SharedConstants
 import SharedCore
 import SharedUtils
+import SearchModels
 
 // MARK: - SmartQuery fan-out helpers (#239)
 

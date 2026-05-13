@@ -3,6 +3,7 @@ import Logging
 import Search
 import SharedConstants
 import SharedCore
+import SearchModels
 
 extension Indexer {
     /// Build `search.db` from on-disk corpus (apple-docs JSON, swift

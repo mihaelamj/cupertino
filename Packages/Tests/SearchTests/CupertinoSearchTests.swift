@@ -1,9 +1,9 @@
-import Foundation
-@testable import Search
 import SharedConstants
-@testable import SharedCore
 import Testing
-import TestSupport
+import Foundation
+import SearchModels
+@testable import Search
+@testable import SharedCore
 
 // MARK: - Test Helpers
 

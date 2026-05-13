@@ -12,6 +12,7 @@ import SearchToolProvider
 import SharedConfiguration
 import SharedConstants
 import SharedCore
+import SearchModels
 
 // MARK: - Serve Command
 

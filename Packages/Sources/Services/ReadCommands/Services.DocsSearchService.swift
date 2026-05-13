@@ -2,6 +2,7 @@ import Foundation
 import Search
 import SharedConstants
 import SharedCore
+import SearchModels
 
 // MARK: - Documentation Search Service
 
@@ -40,7 +41,7 @@ extension Services {
             )
         }
 
-        public func read(uri: String, format: Search.Index.DocumentFormat) async throws -> String? {
+        public func read(uri: String, format: Search.DocumentFormat) async throws -> String? {
             try await index.getDocumentContent(uri: uri, format: format)
         }
 

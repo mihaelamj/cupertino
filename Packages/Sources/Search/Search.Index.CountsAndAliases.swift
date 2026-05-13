@@ -1,6 +1,7 @@
 import Foundation
 import SharedCore
 import SQLite3
+import SearchModels
 
 extension Search.Index {
     public func symbolCount() async throws -> Int {

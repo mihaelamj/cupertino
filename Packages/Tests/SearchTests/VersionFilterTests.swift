@@ -1,6 +1,7 @@
-import Foundation
-@testable import Search
 import Testing
+import Foundation
+import SearchModels
+@testable import Search
 
 // MARK: - Release.Version Filter Tests
 

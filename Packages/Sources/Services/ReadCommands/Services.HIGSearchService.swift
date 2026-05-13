@@ -2,6 +2,7 @@ import Foundation
 import Search
 import SharedConstants
 import SharedCore
+import SearchModels
 
 // MARK: - HIG Search Query
 
@@ -92,7 +93,7 @@ extension Services {
         // MARK: - Document Access
 
         /// Read a HIG document by URI
-        public func read(uri: String, format: Search.Index.DocumentFormat = .json) async throws -> String? {
+        public func read(uri: String, format: Search.DocumentFormat = .json) async throws -> String? {
             try await docsService.read(uri: uri, format: format)
         }
 

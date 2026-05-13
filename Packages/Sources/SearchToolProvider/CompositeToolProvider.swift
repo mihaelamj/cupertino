@@ -7,6 +7,7 @@ import Services
 import SharedConstants
 import SharedCore
 import SharedUtils
+import SearchModels
 
 // MARK: - Unified Cupertino Tool Provider
 
@@ -621,7 +622,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
         let uri: String = try args.require(Shared.Constants.Search.schemaParamURI)
         let formatString = args.format()
-        let format: Search.Index.DocumentFormat = formatString == Shared.Constants.Search.formatValueMarkdown
+        let format: Search.DocumentFormat = formatString == Shared.Constants.Search.formatValueMarkdown
             ? .markdown : .json
 
         guard let documentContent = try await searchIndex.getDocumentContent(uri: uri, format: format) else {

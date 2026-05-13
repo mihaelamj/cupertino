@@ -3,6 +3,7 @@ import SharedConstants
 import SharedCore
 import SharedModels
 import SQLite3
+import SearchModels
 
 // swiftlint:disable function_body_length
 // Justification: extracted from SearchIndex.swift; the original 4598-line
@@ -93,11 +94,9 @@ extension Search.Index {
         return results
     }
 
-    /// Output format for document content
-    public enum DocumentFormat: Sendable {
-        case json // Return full structured JSON
-        case markdown // Return rendered markdown from rawMarkdown
-    }
+    // Output format for document content lives in SearchModels as
+    // `Search.DocumentFormat` so resource-rendering consumers can pass
+    // the value without taking a behavioural dep on Search.
 
     /// Get document content by URI from database
     /// - Parameters:
@@ -107,7 +106,7 @@ extension Search.Index {
     ///       abstract, overview, sections, codeExamples, platforms, module, conformsTo, rawMarkdown)
     ///     - `.markdown`: Returns the rawMarkdown field for human-readable display
     /// - Returns: Document content in requested format, or nil if not found
-    public func getDocumentContent(uri: String, format: DocumentFormat = .json) async throws -> String? {
+    public func getDocumentContent(uri: String, format: Search.DocumentFormat = .json) async throws -> String? {
         guard let database else {
             throw Search.Error.databaseNotInitialized
         }
@@ -170,7 +169,7 @@ extension Search.Index {
     }
 
     /// Get content from the FTS table as a fallback
-    func getContentFromFTS(uri: String, format: DocumentFormat) async throws -> String? {
+    func getContentFromFTS(uri: String, format: Search.DocumentFormat) async throws -> String? {
         guard let database else {
             return nil
         }

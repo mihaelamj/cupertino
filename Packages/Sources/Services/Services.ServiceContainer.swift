@@ -4,6 +4,7 @@ import Search
 import SharedConstants
 import SharedCore
 import SharedUtils
+import SearchModels
 
 // MARK: - Service Container
 

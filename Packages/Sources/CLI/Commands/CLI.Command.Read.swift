@@ -6,6 +6,7 @@ import Search
 import Services
 import SharedCore
 import SharedUtils
+import SearchModels
 
 // MARK: - Read Command (unified, #239 follow-up)
 
@@ -64,7 +65,7 @@ extension CLI.Command {
         var packagesDb: String?
 
         mutating func run() async throws {
-            let documentFormat: SearchModule.Index.DocumentFormat = format == .markdown
+            let documentFormat: SearchModels.Search.DocumentFormat = format == .markdown
                 ? .markdown
                 : .json
 

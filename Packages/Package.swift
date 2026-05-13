@@ -292,13 +292,26 @@ let targets: [Target] = {
         dependencies: ["Cleanup", "TestSupport"]
     )
 
+    // ---------- SearchModels (#402a: value types lifted out of Search so result-consuming
+    // layers — Services formatters, MCPSupport, CLI rendering — render hits without
+    // taking a behavioural dep on Search). Hosts the `Search` namespace anchor +
+    // Search.Result, Search.MatchedSymbol, Search.PlatformAvailability, Search.DocumentFormat.
+    let searchModelsTarget = Target.target(
+        name: "SearchModels",
+        dependencies: ["SharedCore", "SharedConstants", "SharedModels"]
+    )
+    let searchModelsTestsTarget = Target.testTarget(
+        name: "SearchModelsTests",
+        dependencies: ["SearchModels", "SharedConstants", "TestSupport"]
+    )
+
     let searchTarget = Target.target(
         name: "Search",
-        dependencies: ["SharedCore", "SharedConstants", "SharedModels", "Logging", "CoreProtocols", "CoreJSONParser", "CorePackageIndexing", "Core", "ASTIndexer"]
+        dependencies: ["SearchModels", "SharedCore", "SharedConstants", "SharedModels", "Logging", "CoreProtocols", "CoreJSONParser", "CorePackageIndexing", "Core", "ASTIndexer"]
     )
     let searchTestsTarget = Target.testTarget(
         name: "SearchTests",
-        dependencies: ["Search", "SharedCore", "SharedConstants", "SharedModels", "SharedUtils", "TestSupport", "CorePackageIndexing", "ASTIndexer", "SampleIndex"]
+        dependencies: ["Search", "SearchModels", "SharedCore", "SharedConstants", "SharedModels", "SharedUtils", "TestSupport", "CorePackageIndexing", "ASTIndexer", "SampleIndex"]
     )
 
     let sampleIndexTarget = Target.target(
@@ -317,7 +330,7 @@ let targets: [Target] = {
     )
     let servicesTestsTarget = Target.testTarget(
         name: "ServicesTests",
-        dependencies: ["Services", "TestSupport"]
+        dependencies: ["Services", "SearchModels", "TestSupport"]
     )
 
     let mcpSupportTarget = Target.target(
@@ -337,7 +350,7 @@ let targets: [Target] = {
     )
     let searchToolProviderTestsTarget = Target.testTarget(
         name: "SearchToolProviderTests",
-        dependencies: ["SearchToolProvider", "MCPSharedTools", "TestSupport"]
+        dependencies: ["SearchToolProvider", "SearchModels", "MCPSharedTools", "TestSupport"]
     )
 
     let mcpClientTarget = Target.target(
@@ -499,13 +512,13 @@ let targets: [Target] = {
     // CLI Command Test Targets
     let serveTestsTarget = Target.testTarget(
         name: "ServeTests",
-        dependencies: ["CLI", "Crawler", "MCPCore", "MCPSupport", "Search", "SearchToolProvider", "SharedCore", "TestSupport"],
+        dependencies: ["CLI", "Crawler", "MCPCore", "MCPSupport", "Search", "SearchModels", "SearchToolProvider", "SharedCore", "TestSupport"],
         path: "Tests/CLICommandTests/ServeTests"
     )
 
     let doctorTestsTarget = Target.testTarget(
         name: "DoctorTests",
-        dependencies: ["CLI", "Diagnostics", "MCPCore", "MCPSupport", "Search", "SharedCore", "TestSupport"],
+        dependencies: ["CLI", "Diagnostics", "MCPCore", "MCPSupport", "Search", "SearchModels", "SharedCore", "TestSupport"],
         path: "Tests/CLICommandTests/DoctorTests"
     )
 
@@ -517,7 +530,7 @@ let targets: [Target] = {
 
     let saveTestsTarget = Target.testTarget(
         name: "SaveTests",
-        dependencies: ["CLI", "CoreProtocols", "Core", "Crawler", "Indexer", "Search", "SharedCore", "TestSupport"],
+        dependencies: ["CLI", "CoreProtocols", "Core", "Crawler", "Indexer", "Search", "SearchModels", "SharedCore", "TestSupport"],
         path: "Tests/CLICommandTests/SaveTests"
     )
 
@@ -568,6 +581,8 @@ let targets: [Target] = {
         crawlerTestsTarget,
         cleanupTarget,
         cleanupTestsTarget,
+        searchModelsTarget,
+        searchModelsTestsTarget,
         searchTarget,
         searchTestsTarget,
         sampleIndexTarget,
