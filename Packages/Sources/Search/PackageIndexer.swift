@@ -1,4 +1,3 @@
-import CorePackageIndexing
 import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
@@ -183,7 +182,7 @@ extension Search {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             guard let result = try? decoder.decode(
-                Core.PackageIndexing.PackageAvailabilityAnnotator.AnnotationResult.self,
+                Core.PackageIndexing.AnnotationResult.self,
                 from: data
             ) else { return nil }
 

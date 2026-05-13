@@ -642,7 +642,7 @@ struct PackageAvailabilityAnnotatorTests {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let reloaded = try decoder.decode(
-            Core.PackageIndexing.PackageAvailabilityAnnotator.AnnotationResult.self,
+            Core.PackageIndexing.AnnotationResult.self,
             from: Data(contentsOf: outURL)
         )
         #expect(reloaded.deploymentTargets == result.deploymentTargets)

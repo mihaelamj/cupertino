@@ -233,11 +233,11 @@ let targets: [Target] = {
     //   PackageAvailabilityAnnotator.outputFilename)
     let corePackageIndexingModelsTarget = Target.target(
         name: "CorePackageIndexingModels",
-        dependencies: ["CoreProtocols", "SharedConstants", "SharedModels"]
+        dependencies: ["ASTIndexer", "CoreProtocols", "SharedConstants", "SharedModels"]
     )
     let corePackageIndexingModelsTestsTarget = Target.testTarget(
         name: "CorePackageIndexingModelsTests",
-        dependencies: ["CorePackageIndexingModels", "CoreProtocols", "SharedConstants", "SharedModels", "TestSupport"]
+        dependencies: ["CorePackageIndexingModels", "ASTIndexer", "CoreProtocols", "SharedConstants", "SharedModels", "TestSupport"]
     )
 
     // ---------- CorePackageIndexing (v1.2 refactor 2.4: Resolver + Fetcher + Archive Extractor + Annotator + ManifestCache + Store + DocDownloader) ----------
@@ -372,11 +372,11 @@ let targets: [Target] = {
         // the Strategies/ folder moves to Sources/SearchStrategies/ and gets its own
         // SPM target with deps: [SearchIndexCore, CoreJSONParser, CorePackageIndexing,
         // Core, SharedModels, SharedConstants, Resources, Logging].
-        dependencies: ["SearchModels", "SharedCore", "SharedConstants", "SharedModels", "Logging", "CoreProtocols", "CoreJSONParser", "CorePackageIndexing", "CorePackageIndexingModels", "CoreSampleCode", "Core", "ASTIndexer"]
+        dependencies: ["SearchModels", "SharedCore", "SharedConstants", "SharedModels", "Logging", "CoreProtocols", "CoreJSONParser", "CorePackageIndexingModels", "CoreSampleCode", "Core", "ASTIndexer"]
     )
     let searchTestsTarget = Target.testTarget(
         name: "SearchTests",
-        dependencies: ["Search", "SearchModels", "SharedCore", "SharedConstants", "SharedModels", "SharedUtils", "TestSupport", "CorePackageIndexing", "CorePackageIndexingModels", "ASTIndexer", "SampleIndex"]
+        dependencies: ["Search", "SearchModels", "SharedCore", "SharedConstants", "SharedModels", "SharedUtils", "TestSupport", "CorePackageIndexingModels", "ASTIndexer", "SampleIndex"]
     )
 
     let sampleIndexTarget = Target.target(
