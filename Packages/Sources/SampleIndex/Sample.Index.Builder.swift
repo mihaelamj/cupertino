@@ -1,6 +1,7 @@
 import ASTIndexer
 import Foundation
 import OSLog
+import SampleIndexModels
 import SharedConstants
 import SharedCore
 

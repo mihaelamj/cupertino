@@ -1,5 +1,6 @@
 import Foundation
 import SampleIndex
+import SampleIndexModels
 import SharedConstants
 import SharedCore
 
@@ -45,7 +46,7 @@ private struct FileSearchJSONOutput: Encodable {
     let snippet: String
     let rank: Double
 
-    init(from result: Sample.Index.Database.FileSearchResult) {
+    init(from result: Sample.Index.FileSearchResult) {
         projectId = result.projectId
         path = result.path
         filename = result.filename

@@ -1,5 +1,6 @@
 import Foundation
 import SampleIndex
+import SampleIndexModels
 import SharedConstants
 import SharedCore
 
@@ -43,9 +44,9 @@ extension Sample.Search {
 extension Sample.Search {
     public struct Result: Sendable {
         public let projects: [Sample.Index.Project]
-        public let files: [Sample.Index.Database.FileSearchResult]
+        public let files: [Sample.Index.FileSearchResult]
 
-        public init(projects: [Sample.Index.Project], files: [Sample.Index.Database.FileSearchResult]) {
+        public init(projects: [Sample.Index.Project], files: [Sample.Index.FileSearchResult]) {
             self.projects = projects
             self.files = files
         }
@@ -68,14 +69,20 @@ extension Sample.Search {
 /// Wraps Sample.Index.Database with a clean interface.
 extension Sample.Search {
     public actor Service {
-        private let database: Sample.Index.Database
+        private let database: any Sample.Index.Reader
 
-        /// Initialize with an existing database
-        public init(database: Sample.Index.Database) {
+        /// Initialize with an existing database. Accepts any
+        /// `Sample.Index.Reader` so this layer doesn't depend on the
+        /// concrete `Sample.Index.Database` actor — the composition
+        /// root supplies it.
+        public init(database: any Sample.Index.Reader) {
             self.database = database
         }
 
-        /// Initialize with a database path
+        /// Initialize with a database path. Keeps the convenience init
+        /// that wraps `Sample.Index.Database` in callers that want a
+        /// one-line construct-and-use; the typed-against-protocol field
+        /// above means upper layers don't see this concrete dep.
         public init(dbPath: URL) async throws {
             database = try await Sample.Index.Database(dbPath: dbPath)
         }
@@ -90,11 +97,12 @@ extension Sample.Search {
                 limit: query.limit
             )
 
-            var files: [Sample.Index.Database.FileSearchResult] = []
+            var files: [Sample.Index.FileSearchResult] = []
             if query.searchFiles {
                 files = try await database.searchFiles(
                     query: query.text,
                     projectId: nil,
+                    fileExtension: nil,
                     limit: query.limit,
                     platform: query.platform,
                     minVersion: query.minVersion
