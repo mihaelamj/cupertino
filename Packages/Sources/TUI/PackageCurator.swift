@@ -1,7 +1,10 @@
 import Core
+import CorePackageIndexing
+import CoreProtocols
 import Foundation
 import Resources
-import Shared
+import SharedConstants
+import SharedCore
 
 // swiftlint:disable type_body_length function_body_length
 // Justification: PackageCuratorApp is a self-contained CLI tool for curating Swift packages.
@@ -20,7 +23,7 @@ struct PackageCuratorApp {
         }
 
         // Load packages
-        let packages = await SwiftPackagesCatalog.allPackages
+        let packages = await Core.Protocols.SwiftPackagesCatalog.allPackages
 
         // Load user selections first, fall back to bundled priority packages
         let userSelectedURLs = loadUserSelectedPackageURLs()
@@ -28,7 +31,7 @@ struct PackageCuratorApp {
         if !userSelectedURLs.isEmpty {
             priorityURLs = userSelectedURLs
         } else {
-            priorityURLs = await Set(PriorityPackagesCatalog.allPackages.map(\.url))
+            priorityURLs = await Set(Core.PackageIndexing.PriorityPackagesCatalog.allPackages.map(\.url))
         }
 
         // Load configuration first

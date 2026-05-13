@@ -1,5 +1,7 @@
 // swiftlint:disable use_data_constructor_over_string_member non_optional_string_data_conversion
 @testable import Core
+@testable import CorePackageIndexing
+import CoreProtocols
 import Foundation
 import Testing
 
@@ -7,80 +9,80 @@ import Testing
 
 @Test("parseGitHubRepo: plain https URL")
 func parseGitHubRepoPlainHTTPS() {
-    let parsed = Core.PackageDependencyResolver.parseGitHubRepo("https://github.com/apple/swift-nio")
+    let parsed = Core.PackageIndexing.PackageDependencyResolver.parseGitHubRepo("https://github.com/apple/swift-nio")
     #expect(parsed?.owner == "apple")
     #expect(parsed?.repo == "swift-nio")
 }
 
 @Test("parseGitHubRepo: strips trailing .git")
 func parseGitHubRepoStripsGitSuffix() {
-    let parsed = Core.PackageDependencyResolver.parseGitHubRepo("https://github.com/apple/swift-nio.git")
+    let parsed = Core.PackageIndexing.PackageDependencyResolver.parseGitHubRepo("https://github.com/apple/swift-nio.git")
     #expect(parsed?.owner == "apple")
     #expect(parsed?.repo == "swift-nio")
 }
 
 @Test("parseGitHubRepo: SSH form")
 func parseGitHubRepoSSHForm() {
-    let parsed = Core.PackageDependencyResolver.parseGitHubRepo("git@github.com:apple/swift-nio.git")
+    let parsed = Core.PackageIndexing.PackageDependencyResolver.parseGitHubRepo("git@github.com:apple/swift-nio.git")
     #expect(parsed?.owner == "apple")
     #expect(parsed?.repo == "swift-nio")
 }
 
 @Test("parseGitHubRepo: trailing slash ignored")
 func parseGitHubRepoTrailingSlash() {
-    let parsed = Core.PackageDependencyResolver.parseGitHubRepo("https://github.com/apple/swift-nio/")
+    let parsed = Core.PackageIndexing.PackageDependencyResolver.parseGitHubRepo("https://github.com/apple/swift-nio/")
     #expect(parsed?.owner == "apple")
     #expect(parsed?.repo == "swift-nio")
 }
 
 @Test("parseGitHubRepo: strips tree/blob paths")
 func parseGitHubRepoStripsTreePath() {
-    let parsed = Core.PackageDependencyResolver.parseGitHubRepo("https://github.com/apple/swift-nio/tree/main")
+    let parsed = Core.PackageIndexing.PackageDependencyResolver.parseGitHubRepo("https://github.com/apple/swift-nio/tree/main")
     #expect(parsed?.owner == "apple")
     #expect(parsed?.repo == "swift-nio")
 }
 
 @Test("parseGitHubRepo: preserves case")
 func parseGitHubRepoPreservesCase() {
-    let parsed = Core.PackageDependencyResolver.parseGitHubRepo("https://github.com/Apple/Swift-NIO")
+    let parsed = Core.PackageIndexing.PackageDependencyResolver.parseGitHubRepo("https://github.com/Apple/Swift-NIO")
     #expect(parsed?.owner == "Apple")
     #expect(parsed?.repo == "Swift-NIO")
 }
 
 @Test("parseGitHubRepo: leading/trailing whitespace trimmed")
 func parseGitHubRepoTrimsWhitespace() {
-    let parsed = Core.PackageDependencyResolver.parseGitHubRepo("  https://github.com/apple/swift-nio  ")
+    let parsed = Core.PackageIndexing.PackageDependencyResolver.parseGitHubRepo("  https://github.com/apple/swift-nio  ")
     #expect(parsed?.owner == "apple")
     #expect(parsed?.repo == "swift-nio")
 }
 
 @Test("parseGitHubRepo: rejects GitLab")
 func parseGitHubRepoRejectsGitLab() {
-    let parsed = Core.PackageDependencyResolver.parseGitHubRepo("https://gitlab.com/foo/bar")
+    let parsed = Core.PackageIndexing.PackageDependencyResolver.parseGitHubRepo("https://gitlab.com/foo/bar")
     #expect(parsed == nil)
 }
 
 @Test("parseGitHubRepo: rejects Bitbucket")
 func parseGitHubRepoRejectsBitbucket() {
-    let parsed = Core.PackageDependencyResolver.parseGitHubRepo("https://bitbucket.org/foo/bar")
+    let parsed = Core.PackageIndexing.PackageDependencyResolver.parseGitHubRepo("https://bitbucket.org/foo/bar")
     #expect(parsed == nil)
 }
 
 @Test("parseGitHubRepo: rejects URL with missing repo")
 func parseGitHubRepoRejectsMissingRepo() {
-    let parsed = Core.PackageDependencyResolver.parseGitHubRepo("https://github.com/apple")
+    let parsed = Core.PackageIndexing.PackageDependencyResolver.parseGitHubRepo("https://github.com/apple")
     #expect(parsed == nil)
 }
 
 @Test("parseGitHubRepo: rejects empty path")
 func parseGitHubRepoRejectsEmptyPath() {
-    let parsed = Core.PackageDependencyResolver.parseGitHubRepo("https://github.com/")
+    let parsed = Core.PackageIndexing.PackageDependencyResolver.parseGitHubRepo("https://github.com/")
     #expect(parsed == nil)
 }
 
 @Test("parseGitHubRepo: rejects invalid characters in slug")
 func parseGitHubRepoRejectsInvalidCharacters() {
-    let parsed = Core.PackageDependencyResolver.parseGitHubRepo("https://github.com/apple/swift nio")
+    let parsed = Core.PackageIndexing.PackageDependencyResolver.parseGitHubRepo("https://github.com/apple/swift nio")
     #expect(parsed == nil)
 }
 
@@ -97,7 +99,7 @@ func parseResolvedV2() throws {
       "version": 2
     }
     """.data(using: .utf8)!
-    let locations = try #require(Core.PackageDependencyResolver.parsePackageResolvedLocations(json))
+    let locations = try #require(Core.PackageIndexing.PackageDependencyResolver.parsePackageResolvedLocations(json))
     #expect(locations == [
         "https://github.com/apple/swift-nio",
         "https://github.com/apple/swift-log.git",
@@ -117,7 +119,7 @@ func parseResolvedV1NestedPins() throws {
       "version": 1
     }
     """.data(using: .utf8)!
-    let locations = try #require(Core.PackageDependencyResolver.parsePackageResolvedLocations(json))
+    let locations = try #require(Core.PackageIndexing.PackageDependencyResolver.parsePackageResolvedLocations(json))
     #expect(locations == ["https://github.com/apple/swift-nio"])
 }
 
@@ -131,7 +133,7 @@ func parseResolvedV1RootPins() throws {
       "version": 1
     }
     """.data(using: .utf8)!
-    let locations = try #require(Core.PackageDependencyResolver.parsePackageResolvedLocations(json))
+    let locations = try #require(Core.PackageIndexing.PackageDependencyResolver.parsePackageResolvedLocations(json))
     #expect(locations == ["https://github.com/apple/swift-nio"])
 }
 
@@ -145,7 +147,7 @@ func parseResolvedNestedObject() throws {
       "version": 1
     }
     """.data(using: .utf8)!
-    let locations = try #require(Core.PackageDependencyResolver.parsePackageResolvedLocations(json))
+    let locations = try #require(Core.PackageIndexing.PackageDependencyResolver.parsePackageResolvedLocations(json))
     #expect(locations == ["https://github.com/apple/swift-nio"])
 }
 
@@ -159,7 +161,7 @@ func parseResolvedMixedShapes() throws {
       ]
     }
     """.data(using: .utf8)!
-    let locations = try #require(Core.PackageDependencyResolver.parsePackageResolvedLocations(json))
+    let locations = try #require(Core.PackageIndexing.PackageDependencyResolver.parsePackageResolvedLocations(json))
     #expect(locations == [
         "https://github.com/apple/swift-nio",
         "https://github.com/apple/swift-log",
@@ -171,7 +173,7 @@ func parseResolvedEmptyPins() throws {
     let json = """
     {"pins": []}
     """.data(using: .utf8)!
-    let locations = try #require(Core.PackageDependencyResolver.parsePackageResolvedLocations(json))
+    let locations = try #require(Core.PackageIndexing.PackageDependencyResolver.parsePackageResolvedLocations(json))
     #expect(locations.isEmpty)
 }
 
@@ -180,19 +182,19 @@ func parseResolvedMissingPins() {
     let json = """
     {"version": 2}
     """.data(using: .utf8)!
-    #expect(Core.PackageDependencyResolver.parsePackageResolvedLocations(json) == nil)
+    #expect(Core.PackageIndexing.PackageDependencyResolver.parsePackageResolvedLocations(json) == nil)
 }
 
 @Test("parsePackageResolvedLocations: non-dict root returns nil")
 func parseResolvedNonDictRoot() {
     let json = "[]".data(using: .utf8)!
-    #expect(Core.PackageDependencyResolver.parsePackageResolvedLocations(json) == nil)
+    #expect(Core.PackageIndexing.PackageDependencyResolver.parsePackageResolvedLocations(json) == nil)
 }
 
 @Test("parsePackageResolvedLocations: malformed JSON returns nil")
 func parseResolvedMalformedJSON() {
     let junk = Data([0x00, 0xff, 0x42])
-    #expect(Core.PackageDependencyResolver.parsePackageResolvedLocations(junk) == nil)
+    #expect(Core.PackageIndexing.PackageDependencyResolver.parsePackageResolvedLocations(junk) == nil)
 }
 
 @Test("parsePackageResolvedLocations: pin without any URL key is skipped")
@@ -205,7 +207,7 @@ func parseResolvedPinWithoutURL() throws {
       ]
     }
     """.data(using: .utf8)!
-    let locations = try #require(Core.PackageDependencyResolver.parsePackageResolvedLocations(json))
+    let locations = try #require(Core.PackageIndexing.PackageDependencyResolver.parsePackageResolvedLocations(json))
     #expect(locations == ["https://github.com/apple/swift-nio"])
 }
 
@@ -224,7 +226,7 @@ func parsePackageSwiftSimple() {
         ]
     )
     """.data(using: .utf8)!
-    let urls = Core.PackageDependencyResolver.parsePackageSwiftURLs(source)
+    let urls = Core.PackageIndexing.PackageDependencyResolver.parsePackageSwiftURLs(source)
     #expect(urls == ["https://github.com/apple/swift-nio"])
 }
 
@@ -241,7 +243,7 @@ func parsePackageSwiftMultiLineNested() {
         ]
     )
     """.data(using: .utf8)!
-    let urls = Core.PackageDependencyResolver.parsePackageSwiftURLs(source)
+    let urls = Core.PackageIndexing.PackageDependencyResolver.parsePackageSwiftURLs(source)
     #expect(urls == ["https://github.com/apple/swift-log"])
 }
 
@@ -254,7 +256,7 @@ func parsePackageSwiftMultiple() {
         .package(url: "https://github.com/apple/swift-metrics", exact: "2.0.0"),
     ]
     """.data(using: .utf8)!
-    let urls = Core.PackageDependencyResolver.parsePackageSwiftURLs(source)
+    let urls = Core.PackageIndexing.PackageDependencyResolver.parsePackageSwiftURLs(source)
     #expect(urls == [
         "https://github.com/apple/swift-nio",
         "https://github.com/apple/swift-log",
@@ -269,7 +271,7 @@ func parsePackageSwiftLegacyNamedForm() {
         .package(name: "SwiftNIO", url: "https://github.com/apple/swift-nio", from: "2.0.0"),
     ]
     """.data(using: .utf8)!
-    let urls = Core.PackageDependencyResolver.parsePackageSwiftURLs(source)
+    let urls = Core.PackageIndexing.PackageDependencyResolver.parsePackageSwiftURLs(source)
     #expect(urls == ["https://github.com/apple/swift-nio"])
 }
 
@@ -281,7 +283,7 @@ func parsePackageSwiftLocalPathIgnored() {
         .package(url: "https://github.com/apple/swift-nio", from: "2.0.0"),
     ]
     """.data(using: .utf8)!
-    let urls = Core.PackageDependencyResolver.parsePackageSwiftURLs(source)
+    let urls = Core.PackageIndexing.PackageDependencyResolver.parsePackageSwiftURLs(source)
     #expect(urls == ["https://github.com/apple/swift-nio"])
 }
 
@@ -293,7 +295,7 @@ func parsePackageSwiftCommentSkipped() {
         .package(url: "https://github.com/apple/swift-nio", from: "2.0.0"),
     ]
     """.data(using: .utf8)!
-    let urls = Core.PackageDependencyResolver.parsePackageSwiftURLs(source)
+    let urls = Core.PackageIndexing.PackageDependencyResolver.parsePackageSwiftURLs(source)
     #expect(urls == ["https://github.com/apple/swift-nio"])
 }
 
@@ -307,20 +309,20 @@ func parsePackageSwiftNoDependencies() {
         targets: [.target(name: "Example")]
     )
     """.data(using: .utf8)!
-    let urls = Core.PackageDependencyResolver.parsePackageSwiftURLs(source)
+    let urls = Core.PackageIndexing.PackageDependencyResolver.parsePackageSwiftURLs(source)
     #expect(urls.isEmpty)
 }
 
 @Test("parsePackageSwiftURLs: empty file")
 func parsePackageSwiftEmpty() {
-    let urls = Core.PackageDependencyResolver.parsePackageSwiftURLs(Data())
+    let urls = Core.PackageIndexing.PackageDependencyResolver.parsePackageSwiftURLs(Data())
     #expect(urls.isEmpty)
 }
 
 @Test("parsePackageSwiftURLs: non-UTF8 bytes yields empty")
 func parsePackageSwiftBinaryInput() {
     let bytes = Data([0xff, 0xfe, 0xfd])
-    let urls = Core.PackageDependencyResolver.parsePackageSwiftURLs(bytes)
+    let urls = Core.PackageIndexing.PackageDependencyResolver.parsePackageSwiftURLs(bytes)
     #expect(urls.isEmpty)
 }
 
@@ -331,7 +333,7 @@ func parsePackageSwiftRangeVersion() {
         .package(url: "https://github.com/apple/swift-nio", "2.0.0"..<"3.0.0"),
     ]
     """.data(using: .utf8)!
-    let urls = Core.PackageDependencyResolver.parsePackageSwiftURLs(source)
+    let urls = Core.PackageIndexing.PackageDependencyResolver.parsePackageSwiftURLs(source)
     #expect(urls == ["https://github.com/apple/swift-nio"])
 }
 
@@ -344,27 +346,27 @@ func parsePackageSwiftInlineCommentRespectsStringLiteral() {
         .package(url: "https://github.com/apple/swift-nio", from: "2.0.0"), // TODO: upgrade
     ]
     """.data(using: .utf8)!
-    let urls = Core.PackageDependencyResolver.parsePackageSwiftURLs(source)
+    let urls = Core.PackageIndexing.PackageDependencyResolver.parsePackageSwiftURLs(source)
     #expect(urls == ["https://github.com/apple/swift-nio"])
 }
 
 @Test("stripLineComment: preserves // inside string literal")
 func stripLineCommentPreservesURLInString() {
     let input: Substring = #"    .package(url: "https://github.com/apple/swift-nio", from: "2.0.0")"#[...]
-    let stripped = Core.PackageDependencyResolver.stripLineComment(input)
+    let stripped = Core.PackageIndexing.PackageDependencyResolver.stripLineComment(input)
     #expect(stripped == String(input))
 }
 
 @Test("stripLineComment: strips trailing // comment")
 func stripLineCommentStripsTrailing() {
     let input: Substring = #"    let x = 5  // this is a comment"#[...]
-    let stripped = Core.PackageDependencyResolver.stripLineComment(input)
+    let stripped = Core.PackageIndexing.PackageDependencyResolver.stripLineComment(input)
     #expect(stripped == "    let x = 5  ")
 }
 
 @Test("stripLineComment: strips whole-line // comment")
 func stripLineCommentStripsWholeLine() {
     let input: Substring = "// entirely a comment"[...]
-    let stripped = Core.PackageDependencyResolver.stripLineComment(input)
+    let stripped = Core.PackageIndexing.PackageDependencyResolver.stripLineComment(input)
     #expect(stripped == "")
 }

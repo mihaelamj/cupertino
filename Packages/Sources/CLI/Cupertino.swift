@@ -1,6 +1,7 @@
 import ArgumentParser
 import Darwin
-import Shared
+import SharedConstants
+import SharedCore
 
 // MARK: - Cupertino CLI
 
@@ -12,22 +13,22 @@ struct Cupertino: AsyncParsableCommand {
         abstract: "MCP Server for Apple Documentation, Swift Evolution, and Swift Packages",
         version: Shared.Constants.App.version,
         subcommands: [
-            SetupCommand.self,
-            FetchCommand.self,
-            SaveCommand.self,
-            ServeCommand.self,
-            SearchCommand.self,
-            ReadCommand.self,
-            ListFrameworksCommand.self,
-            ListSamplesCommand.self,
-            ReadSampleCommand.self,
-            ReadSampleFileCommand.self,
-            DoctorCommand.self,
-            CleanupCommand.self,
-            PackageSearchCommand.self,
-            ResolveRefsCommand.self,
+            CLI.Command.Setup.self,
+            CLI.Command.Fetch.self,
+            CLI.Command.Save.self,
+            CLI.Command.Serve.self,
+            CLI.Command.Search.self,
+            CLI.Command.Read.self,
+            CLI.Command.ListFrameworks.self,
+            CLI.Command.ListSamples.self,
+            CLI.Command.ReadSample.self,
+            CLI.Command.ReadSampleFile.self,
+            CLI.Command.Doctor.self,
+            CLI.Command.Cleanup.self,
+            CLI.Command.PackageSearch.self,
+            CLI.Command.ResolveRefs.self,
         ],
-        defaultSubcommand: ServeCommand.self
+        defaultSubcommand: CLI.Command.Serve.self
     )
 
     /// Force stdout to line-buffered mode before any subcommand runs. By

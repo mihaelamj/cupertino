@@ -1,13 +1,13 @@
 @testable import ReleaseTool
 import Testing
 
-// MARK: - Version Parsing Tests
+// MARK: - Release.Version Parsing Tests
 
-@Suite("Version Parsing")
+@Suite("Release.Version Parsing")
 struct VersionParsingTests {
     @Test("Parse valid version string")
     func parseValidVersion() {
-        let version = Version("1.2.3")
+        let version = Release.Version("1.2.3")
         #expect(version != nil)
         #expect(version?.major == 1)
         #expect(version?.minor == 2)
@@ -16,7 +16,7 @@ struct VersionParsingTests {
 
     @Test("Parse version with v prefix")
     func parseVersionWithPrefix() {
-        let version = Version("v1.2.3")
+        let version = Release.Version("v1.2.3")
         #expect(version != nil)
         #expect(version?.major == 1)
         #expect(version?.minor == 2)
@@ -25,33 +25,33 @@ struct VersionParsingTests {
 
     @Test("Reject invalid version string")
     func rejectInvalidVersion() {
-        #expect(Version("invalid") == nil)
-        #expect(Version("1.2") == nil)
-        #expect(Version("1.2.3.4") == nil)
-        #expect(Version("") == nil)
-        #expect(Version("a.b.c") == nil)
+        #expect(Release.Version("invalid") == nil)
+        #expect(Release.Version("1.2") == nil)
+        #expect(Release.Version("1.2.3.4") == nil)
+        #expect(Release.Version("") == nil)
+        #expect(Release.Version("a.b.c") == nil)
     }
 
-    @Test("Version description")
+    @Test("Release.Version description")
     func versionDescription() {
-        let version = Version(major: 1, minor: 2, patch: 3)
+        let version = Release.Version(major: 1, minor: 2, patch: 3)
         #expect(version.description == "1.2.3")
     }
 
-    @Test("Version tag")
+    @Test("Release.Version tag")
     func versionTag() {
-        let version = Version(major: 1, minor: 2, patch: 3)
+        let version = Release.Version(major: 1, minor: 2, patch: 3)
         #expect(version.tag == "v1.2.3")
     }
 }
 
-// MARK: - Version Bumping Tests
+// MARK: - Release.Version Bumping Tests
 
-@Suite("Version Bumping")
+@Suite("Release.Version Bumping")
 struct VersionBumpingTests {
     @Test("Bump patch version")
     func bumpPatch() {
-        let version = Version(major: 1, minor: 2, patch: 3)
+        let version = Release.Version(major: 1, minor: 2, patch: 3)
         let bumped = version.bumped(.patch)
         #expect(bumped.major == 1)
         #expect(bumped.minor == 2)
@@ -60,7 +60,7 @@ struct VersionBumpingTests {
 
     @Test("Bump minor version resets patch")
     func bumpMinor() {
-        let version = Version(major: 1, minor: 2, patch: 3)
+        let version = Release.Version(major: 1, minor: 2, patch: 3)
         let bumped = version.bumped(.minor)
         #expect(bumped.major == 1)
         #expect(bumped.minor == 3)
@@ -69,7 +69,7 @@ struct VersionBumpingTests {
 
     @Test("Bump major version resets minor and patch")
     func bumpMajor() {
-        let version = Version(major: 1, minor: 2, patch: 3)
+        let version = Release.Version(major: 1, minor: 2, patch: 3)
         let bumped = version.bumped(.major)
         #expect(bumped.major == 2)
         #expect(bumped.minor == 0)
@@ -78,7 +78,7 @@ struct VersionBumpingTests {
 
     @Test("Bump from zero version")
     func bumpFromZero() {
-        let version = Version(major: 0, minor: 0, patch: 0)
+        let version = Release.Version(major: 0, minor: 0, patch: 0)
 
         let patchBumped = version.bumped(.patch)
         #expect(patchBumped.description == "0.0.1")
@@ -91,21 +91,21 @@ struct VersionBumpingTests {
     }
 }
 
-// MARK: - BumpType Tests
+// MARK: - Release.Version.BumpType Tests
 
-@Suite("BumpType Parsing")
+@Suite("Release.Version.BumpType Parsing")
 struct BumpTypeTests {
     @Test("Parse bump types from strings")
     func parseBumpTypes() {
-        #expect(BumpType(rawValue: "major") == .major)
-        #expect(BumpType(rawValue: "minor") == .minor)
-        #expect(BumpType(rawValue: "patch") == .patch)
+        #expect(Release.Version.BumpType(rawValue: "major") == .major)
+        #expect(Release.Version.BumpType(rawValue: "minor") == .minor)
+        #expect(Release.Version.BumpType(rawValue: "patch") == .patch)
     }
 
     @Test("Reject invalid bump type")
     func rejectInvalidBumpType() {
-        #expect(BumpType(rawValue: "invalid") == nil)
-        #expect(BumpType(rawValue: "") == nil)
-        #expect(BumpType(rawValue: "MAJOR") == nil) // case sensitive
+        #expect(Release.Version.BumpType(rawValue: "invalid") == nil)
+        #expect(Release.Version.BumpType(rawValue: "") == nil)
+        #expect(Release.Version.BumpType(rawValue: "MAJOR") == nil) // case sensitive
     }
 }

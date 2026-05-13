@@ -74,7 +74,7 @@ enum ServeReaper {
         var size: UInt32 = 4096
         var buf = [CChar](repeating: 0, count: Int(size))
         guard _NSGetExecutablePath(&buf, &size) == 0 else { return nil }
-        return resolveSymlinks(in: String(cString: buf))
+        return resolveSymlinks(in: nullTerminatedString(from: buf))
     }
 
     /// Resolved absolute path of the binary running as `pid`, or nil if
@@ -86,7 +86,14 @@ enum ServeReaper {
         var buf = [CChar](repeating: 0, count: bufLen)
         let result = proc_pidpath(pid, &buf, UInt32(bufLen))
         guard result > 0 else { return nil }
-        return resolveSymlinks(in: String(cString: buf))
+        return resolveSymlinks(in: nullTerminatedString(from: buf))
+    }
+
+    /// Decode a null-terminated `[CChar]` buffer as a Swift String.
+    /// Replaces the deprecated `String(cString:)` initializer.
+    private static func nullTerminatedString(from buf: [CChar]) -> String {
+        let bytes: [UInt8] = buf.prefix(while: { $0 != 0 }).map { UInt8(bitPattern: $0) }
+        return String(bytes: bytes, encoding: .utf8) ?? ""
     }
 
     private static func resolveSymlinks(in path: String) -> String {
@@ -117,7 +124,7 @@ enum ServeReaper {
     /// asking for it directly is the only correct answer.
     private static func argvOf(pid: pid_t) -> [String]? {
         var mib: [Int32] = [CTL_KERN, KERN_PROCARGS2, pid]
-        var size: Int = 0
+        var size = 0
 
         // Probe for the buffer size first.
         guard mib.withUnsafeMutableBufferPointer({ ptr in

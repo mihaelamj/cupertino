@@ -1,36 +1,39 @@
 import Foundation
-import MCP
+import MCPCore
+import MCPSharedTools
 import SampleIndex
 import Search
 import Services
-import Shared
+import SharedConstants
+import SharedCore
+import SharedUtils
 
 // MARK: - Unified Cupertino Tool Provider
 
 /// Composite tool provider that provides unified search across all documentation sources.
 /// Handles `search_docs` with `source` parameter to search docs, samples, HIG, archive, etc.
-public actor CompositeToolProvider: ToolProvider {
+public actor CompositeToolProvider: MCP.Core.ToolProvider {
     // Use service layer for consistency with CLI
-    private let docsService: DocsSearchService?
-    private let sampleService: SampleSearchService?
+    private let docsService: Services.DocsSearchService?
+    private let sampleService: Sample.Search.Service?
 
     // Keep direct access for low-level operations (list frameworks, read document)
     private let searchIndex: Search.Index?
-    private let sampleDatabase: SampleIndex.Database?
+    private let sampleDatabase: Sample.Index.Database?
 
-    public init(searchIndex: Search.Index?, sampleDatabase: SampleIndex.Database?) {
+    public init(searchIndex: Search.Index?, sampleDatabase: Sample.Index.Database?) {
         self.searchIndex = searchIndex
         self.sampleDatabase = sampleDatabase
 
         // Wrap databases with services for search operations
         if let searchIndex {
-            docsService = DocsSearchService(index: searchIndex)
+            docsService = Services.DocsSearchService(index: searchIndex)
         } else {
             docsService = nil
         }
 
         if let sampleDatabase {
-            sampleService = SampleSearchService(database: sampleDatabase)
+            sampleService = Sample.Search.Service(database: sampleDatabase)
         } else {
             sampleService = nil
         }
@@ -38,10 +41,10 @@ public actor CompositeToolProvider: ToolProvider {
 
     // MARK: - ToolProvider
 
-    public func listTools(cursor: String?) async throws -> ListToolsResult {
-        var allTools: [Tool] = []
+    public func listTools(cursor: String?) async throws -> MCP.Core.Protocols.ListToolsResult {
+        var allTools: [MCP.Core.Protocols.Tool] = []
 
-        let searchProperties: [String: AnyCodable] = [
+        let searchProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamQuery: stringSchema(
                 description: "Search query string."
             ),
@@ -89,7 +92,7 @@ public actor CompositeToolProvider: ToolProvider {
             ),
         ]
 
-        let readDocumentProperties: [String: AnyCodable] = [
+        let readDocumentProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamURI: stringSchema(
                 description: "Document URI to read."
             ),
@@ -102,13 +105,13 @@ public actor CompositeToolProvider: ToolProvider {
             ),
         ]
 
-        let readSampleProperties: [String: AnyCodable] = [
+        let readSampleProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamProjectId: stringSchema(
                 description: "Sample project identifier."
             ),
         ]
 
-        let readSampleFileProperties: [String: AnyCodable] = [
+        let readSampleFileProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamProjectId: stringSchema(
                 description: "Sample project identifier."
             ),
@@ -117,7 +120,7 @@ public actor CompositeToolProvider: ToolProvider {
             ),
         ]
 
-        let searchSymbolsProperties: [String: AnyCodable] = [
+        let searchSymbolsProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamQuery: stringSchema(
                 description: "Symbol name pattern (partial match)."
             ),
@@ -135,7 +138,7 @@ public actor CompositeToolProvider: ToolProvider {
             ),
         ]
 
-        let searchPropertyWrappersProperties: [String: AnyCodable] = [
+        let searchPropertyWrappersProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamWrapper: stringSchema(
                 description: "Property wrapper name (with or without @)."
             ),
@@ -147,7 +150,7 @@ public actor CompositeToolProvider: ToolProvider {
             ),
         ]
 
-        let searchConcurrencyProperties: [String: AnyCodable] = [
+        let searchConcurrencyProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamPattern: stringSchema(
                 description: "Concurrency pattern (async, actor, sendable, mainactor, task, asyncsequence)."
             ),
@@ -159,7 +162,7 @@ public actor CompositeToolProvider: ToolProvider {
             ),
         ]
 
-        let searchConformancesProperties: [String: AnyCodable] = [
+        let searchConformancesProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamProtocol: stringSchema(
                 description: "Protocol name to search for (e.g. View, Codable)."
             ),
@@ -173,9 +176,9 @@ public actor CompositeToolProvider: ToolProvider {
 
         // Unified search tool (replaces search_docs, search_hig, search_all, search_samples)
         if searchIndex != nil || sampleDatabase != nil {
-            allTools.append(Tool(
+            allTools.append(MCP.Core.Protocols.Tool(
                 name: Shared.Constants.Search.toolSearch,
-                description: Shared.Constants.Search.toolSearchDescription,
+                description: MCP.SharedTools.Copy.toolSearchDescription,
                 inputSchema: objectSchema(
                     properties: searchProperties,
                     required: [Shared.Constants.Search.schemaParamQuery]
@@ -185,15 +188,15 @@ public actor CompositeToolProvider: ToolProvider {
 
         // List frameworks tool
         if searchIndex != nil {
-            allTools.append(Tool(
+            allTools.append(MCP.Core.Protocols.Tool(
                 name: Shared.Constants.Search.toolListFrameworks,
-                description: Shared.Constants.Search.toolListFrameworksDescription,
+                description: MCP.SharedTools.Copy.toolListFrameworksDescription,
                 inputSchema: objectSchema(properties: [:])
             ))
 
-            allTools.append(Tool(
+            allTools.append(MCP.Core.Protocols.Tool(
                 name: Shared.Constants.Search.toolReadDocument,
-                description: Shared.Constants.Search.toolReadDocumentDescription,
+                description: MCP.SharedTools.Copy.toolReadDocumentDescription,
                 inputSchema: objectSchema(
                     properties: readDocumentProperties,
                     required: [Shared.Constants.Search.schemaParamURI]
@@ -203,24 +206,24 @@ public actor CompositeToolProvider: ToolProvider {
 
         // Sample code tools
         if sampleDatabase != nil {
-            allTools.append(Tool(
+            allTools.append(MCP.Core.Protocols.Tool(
                 name: Shared.Constants.Search.toolListSamples,
-                description: Shared.Constants.Search.toolListSamplesDescription,
+                description: MCP.SharedTools.Copy.toolListSamplesDescription,
                 inputSchema: objectSchema(properties: [:])
             ))
 
-            allTools.append(Tool(
+            allTools.append(MCP.Core.Protocols.Tool(
                 name: Shared.Constants.Search.toolReadSample,
-                description: Shared.Constants.Search.toolReadSampleDescription,
+                description: MCP.SharedTools.Copy.toolReadSampleDescription,
                 inputSchema: objectSchema(
                     properties: readSampleProperties,
                     required: [Shared.Constants.Search.schemaParamProjectId]
                 )
             ))
 
-            allTools.append(Tool(
+            allTools.append(MCP.Core.Protocols.Tool(
                 name: Shared.Constants.Search.toolReadSampleFile,
-                description: Shared.Constants.Search.toolReadSampleFileDescription,
+                description: MCP.SharedTools.Copy.toolReadSampleFileDescription,
                 inputSchema: objectSchema(
                     properties: readSampleFileProperties,
                     required: [
@@ -233,33 +236,33 @@ public actor CompositeToolProvider: ToolProvider {
 
         // Semantic search tools (#81)
         if searchIndex != nil {
-            allTools.append(Tool(
+            allTools.append(MCP.Core.Protocols.Tool(
                 name: Shared.Constants.Search.toolSearchSymbols,
-                description: Shared.Constants.Search.toolSearchSymbolsDescription,
+                description: MCP.SharedTools.Copy.toolSearchSymbolsDescription,
                 inputSchema: objectSchema(properties: searchSymbolsProperties)
             ))
 
-            allTools.append(Tool(
+            allTools.append(MCP.Core.Protocols.Tool(
                 name: Shared.Constants.Search.toolSearchPropertyWrappers,
-                description: Shared.Constants.Search.toolSearchPropertyWrappersDescription,
+                description: MCP.SharedTools.Copy.toolSearchPropertyWrappersDescription,
                 inputSchema: objectSchema(
                     properties: searchPropertyWrappersProperties,
                     required: [Shared.Constants.Search.schemaParamWrapper]
                 )
             ))
 
-            allTools.append(Tool(
+            allTools.append(MCP.Core.Protocols.Tool(
                 name: Shared.Constants.Search.toolSearchConcurrency,
-                description: Shared.Constants.Search.toolSearchConcurrencyDescription,
+                description: MCP.SharedTools.Copy.toolSearchConcurrencyDescription,
                 inputSchema: objectSchema(
                     properties: searchConcurrencyProperties,
                     required: [Shared.Constants.Search.schemaParamPattern]
                 )
             ))
 
-            allTools.append(Tool(
+            allTools.append(MCP.Core.Protocols.Tool(
                 name: Shared.Constants.Search.toolSearchConformances,
-                description: Shared.Constants.Search.toolSearchConformancesDescription,
+                description: MCP.SharedTools.Copy.toolSearchConformancesDescription,
                 inputSchema: objectSchema(
                     properties: searchConformancesProperties,
                     required: [Shared.Constants.Search.schemaParamProtocol]
@@ -267,11 +270,11 @@ public actor CompositeToolProvider: ToolProvider {
             ))
         }
 
-        return ListToolsResult(tools: allTools)
+        return MCP.Core.Protocols.ListToolsResult(tools: allTools)
     }
 
-    public func callTool(name: String, arguments: [String: AnyCodable]?) async throws -> CallToolResult {
-        let args = ArgumentExtractor(arguments)
+    public func callTool(name: String, arguments: [String: MCP.Core.Protocols.AnyCodable]?) async throws -> MCP.Core.Protocols.CallToolResult {
+        let args = MCP.SharedTools.ArgumentExtractor(arguments)
 
         switch name {
         case Shared.Constants.Search.toolSearch:
@@ -295,52 +298,52 @@ public actor CompositeToolProvider: ToolProvider {
         case Shared.Constants.Search.toolSearchConformances:
             return try await handleSearchConformances(args: args)
         default:
-            throw ToolError.unknownTool(name)
+            throw Shared.Core.ToolError.unknownTool(name)
         }
     }
 
     private func objectSchema(
-        properties: [String: AnyCodable]?,
+        properties: [String: MCP.Core.Protocols.AnyCodable]?,
         required: [String] = []
-    ) -> JSONSchema {
-        JSONSchema(
+    ) -> MCP.Core.Protocols.JSONSchema {
+        MCP.Core.Protocols.JSONSchema(
             type: Shared.Constants.Search.schemaTypeObject,
             properties: properties,
             required: required
         )
     }
 
-    private func stringSchema(description: String? = nil, enumValues: [String]? = nil) -> AnyCodable {
-        var schema: [String: AnyCodable] = ["type": AnyCodable("string")]
+    private func stringSchema(description: String? = nil, enumValues: [String]? = nil) -> MCP.Core.Protocols.AnyCodable {
+        var schema: [String: MCP.Core.Protocols.AnyCodable] = ["type": MCP.Core.Protocols.AnyCodable("string")]
         if let description {
-            schema["description"] = AnyCodable(description)
+            schema["description"] = MCP.Core.Protocols.AnyCodable(description)
         }
         if let enumValues {
-            let values = enumValues.map { AnyCodable($0) }
-            schema["enum"] = AnyCodable(values)
+            let values = enumValues.map { MCP.Core.Protocols.AnyCodable($0) }
+            schema["enum"] = MCP.Core.Protocols.AnyCodable(values)
         }
-        return AnyCodable(schema)
+        return MCP.Core.Protocols.AnyCodable(schema)
     }
 
-    private func boolSchema(description: String? = nil) -> AnyCodable {
-        var schema: [String: AnyCodable] = ["type": AnyCodable("boolean")]
+    private func boolSchema(description: String? = nil) -> MCP.Core.Protocols.AnyCodable {
+        var schema: [String: MCP.Core.Protocols.AnyCodable] = ["type": MCP.Core.Protocols.AnyCodable("boolean")]
         if let description {
-            schema["description"] = AnyCodable(description)
+            schema["description"] = MCP.Core.Protocols.AnyCodable(description)
         }
-        return AnyCodable(schema)
+        return MCP.Core.Protocols.AnyCodable(schema)
     }
 
-    private func intSchema(description: String? = nil) -> AnyCodable {
-        var schema: [String: AnyCodable] = ["type": AnyCodable("integer")]
+    private func intSchema(description: String? = nil) -> MCP.Core.Protocols.AnyCodable {
+        var schema: [String: MCP.Core.Protocols.AnyCodable] = ["type": MCP.Core.Protocols.AnyCodable("integer")]
         if let description {
-            schema["description"] = AnyCodable(description)
+            schema["description"] = MCP.Core.Protocols.AnyCodable(description)
         }
-        return AnyCodable(schema)
+        return MCP.Core.Protocols.AnyCodable(schema)
     }
 
     // MARK: - Unified Search Handler
 
-    private func handleSearch(args: ArgumentExtractor) async throws -> CallToolResult {
+    private func handleSearch(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         let query: String = try args.require(Shared.Constants.Search.schemaParamQuery)
         let source = args.optional(Shared.Constants.Search.schemaParamSource)
         let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
@@ -412,13 +415,13 @@ public actor CompositeToolProvider: ToolProvider {
         minTvOS: String?,
         minWatchOS: String?,
         minVisionOS: String?
-    ) async throws -> CallToolResult {
+    ) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let docsService else {
-            throw ToolError.invalidArgument("source", "Documentation index not available")
+            throw Shared.Core.ToolError.invalidArgument("source", "Documentation index not available")
         }
 
         // Use service layer (same as CLI)
-        let results = try await docsService.search(SearchQuery(
+        let results = try await docsService.search(Services.SearchQuery(
             text: query,
             source: source,
             framework: framework,
@@ -441,7 +444,7 @@ public actor CompositeToolProvider: ToolProvider {
         )
 
         // Use shared formatter
-        let filters = SearchFilters(
+        let filters = Services.SearchFilters(
             source: source,
             framework: framework,
             language: language,
@@ -453,9 +456,9 @@ public actor CompositeToolProvider: ToolProvider {
         )
 
         // Configure empty message to suggest archive if not already searching it
-        var config = SearchResultFormatConfig.mcpDefault
+        var config = Services.Formatter.Config.mcpDefault
         if results.isEmpty, !includeArchive, source != Shared.Constants.SourcePrefix.appleArchive {
-            config = SearchResultFormatConfig(
+            config = Services.Formatter.Config(
                 showScore: true,
                 showWordCount: true,
                 showSource: false,
@@ -465,7 +468,7 @@ public actor CompositeToolProvider: ToolProvider {
             )
         }
 
-        let formatter = MarkdownSearchResultFormatter(
+        let formatter = Services.Formatter.Markdown(
             query: query,
             filters: filters,
             config: config,
@@ -473,12 +476,12 @@ public actor CompositeToolProvider: ToolProvider {
         )
         let markdown = formatter.format(results)
 
-        return CallToolResult(content: [.text(TextContent(text: markdown))])
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
     }
 
     // MARK: - Teaser Results
 
-    // Uses shared TeaserService from Services module
+    // Uses shared Services.TeaserService from Services module
 
     /// Fetch teaser results from all sources the user didn't search
     private func fetchAllTeasers(
@@ -486,8 +489,8 @@ public actor CompositeToolProvider: ToolProvider {
         framework: String?,
         currentSource: String?,
         includeArchive: Bool
-    ) async -> Services.TeaserResults {
-        let teaserService = TeaserService(searchIndex: searchIndex, sampleDatabase: sampleDatabase)
+    ) async -> Services.Formatter.TeaserResults {
+        let teaserService = Services.TeaserService(searchIndex: searchIndex, sampleDatabase: sampleDatabase)
         return await teaserService.fetchAllTeasers(
             query: query,
             framework: framework,
@@ -502,13 +505,13 @@ public actor CompositeToolProvider: ToolProvider {
         query: String,
         framework: String?,
         limit: Int
-    ) async throws -> CallToolResult {
+    ) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let sampleService else {
-            throw ToolError.invalidArgument("source", "Sample code database not available")
+            throw Shared.Core.ToolError.invalidArgument("source", "Sample code database not available")
         }
 
         // Use service layer (same as CLI)
-        let result = try await sampleService.search(SampleQuery(
+        let result = try await sampleService.search(Sample.Search.Query(
             text: query,
             framework: framework,
             searchFiles: true,
@@ -524,10 +527,10 @@ public actor CompositeToolProvider: ToolProvider {
         )
 
         // Use shared formatter
-        let formatter = SampleSearchMarkdownFormatter(query: query, framework: framework, teasers: teasers)
+        let formatter = Sample.Format.Markdown.Search(query: query, framework: framework, teasers: teasers)
         let markdown = formatter.format(result)
 
-        return CallToolResult(content: [.text(TextContent(text: markdown))])
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
     }
 
     // MARK: - HIG Search
@@ -536,13 +539,13 @@ public actor CompositeToolProvider: ToolProvider {
         query: String,
         framework: String?,
         limit: Int
-    ) async throws -> CallToolResult {
+    ) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let docsService else {
-            throw ToolError.invalidArgument("source", "Documentation index not available")
+            throw Shared.Core.ToolError.invalidArgument("source", "Documentation index not available")
         }
 
         // Use service layer (same as CLI)
-        let results = try await docsService.search(SearchQuery(
+        let results = try await docsService.search(Services.SearchQuery(
             text: query,
             source: Shared.Constants.SourcePrefix.hig,
             framework: framework,
@@ -560,11 +563,11 @@ public actor CompositeToolProvider: ToolProvider {
         )
 
         // Use shared formatter
-        let higQuery = HIGQuery(text: query, platform: nil, category: nil)
-        let formatter = HIGMarkdownFormatter(query: higQuery, config: .mcpDefault, teasers: teasers)
+        let higQuery = Services.HIGQuery(text: query, platform: nil, category: nil)
+        let formatter = Services.Formatter.HIG.Markdown(query: higQuery, config: .mcpDefault, teasers: teasers)
         let markdown = formatter.format(results)
 
-        return CallToolResult(content: [.text(TextContent(text: markdown))])
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
     }
 
     // MARK: - Unified Search (All Sources)
@@ -573,9 +576,9 @@ public actor CompositeToolProvider: ToolProvider {
         query: String,
         framework: String?,
         limit: Int
-    ) async throws -> CallToolResult {
-        // Use UnifiedSearchService to search all 8 sources
-        let unifiedService = UnifiedSearchService(searchIndex: searchIndex, sampleDatabase: sampleDatabase)
+    ) async throws -> MCP.Core.Protocols.CallToolResult {
+        // Use Services.UnifiedSearchService to search all 8 sources
+        let unifiedService = Services.UnifiedSearchService(searchIndex: searchIndex, sampleDatabase: sampleDatabase)
         let input = await unifiedService.searchAll(
             query: query,
             framework: framework,
@@ -583,37 +586,37 @@ public actor CompositeToolProvider: ToolProvider {
         )
 
         // Use shared formatter (identical to CLI --format markdown output)
-        let formatter = UnifiedSearchMarkdownFormatter(
+        let formatter = Services.Formatter.Unified.Markdown(
             query: query,
             framework: framework,
             config: .mcpDefault
         )
         let markdown = formatter.format(input)
 
-        return CallToolResult(content: [.text(TextContent(text: markdown))])
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
     }
 
     // MARK: - List Frameworks
 
-    private func handleListFrameworks() async throws -> CallToolResult {
+    private func handleListFrameworks() async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
-            throw ToolError.invalidArgument("index", "Documentation index not available")
+            throw Shared.Core.ToolError.invalidArgument("index", "Documentation index not available")
         }
 
         let frameworks = try await searchIndex.listFrameworks()
         let totalDocs = try await searchIndex.documentCount()
 
-        let formatter = FrameworksMarkdownFormatter(totalDocs: totalDocs)
+        let formatter = Services.Formatter.Frameworks.Markdown(totalDocs: totalDocs)
         let markdown = formatter.format(frameworks)
 
-        return CallToolResult(content: [.text(TextContent(text: markdown))])
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
     }
 
     // MARK: - Read Document
 
-    private func handleReadDocument(args: ArgumentExtractor) async throws -> CallToolResult {
+    private func handleReadDocument(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
-            throw ToolError.invalidArgument("index", "Documentation index not available")
+            throw Shared.Core.ToolError.invalidArgument("index", "Documentation index not available")
         }
 
         let uri: String = try args.require(Shared.Constants.Search.schemaParamURI)
@@ -622,20 +625,20 @@ public actor CompositeToolProvider: ToolProvider {
             ? .markdown : .json
 
         guard let documentContent = try await searchIndex.getDocumentContent(uri: uri, format: format) else {
-            throw ToolError.invalidArgument(
+            throw Shared.Core.ToolError.invalidArgument(
                 Shared.Constants.Search.schemaParamURI,
                 "Document not found: \(uri)"
             )
         }
 
-        return CallToolResult(content: [.text(TextContent(text: documentContent))])
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: documentContent))])
     }
 
     // MARK: - Sample Code Tools
 
-    private func handleListSamples(args: ArgumentExtractor) async throws -> CallToolResult {
+    private func handleListSamples(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let sampleDatabase else {
-            throw ToolError.invalidArgument("database", "Sample code database not available")
+            throw Shared.Core.ToolError.invalidArgument("database", "Sample code database not available")
         }
 
         let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
@@ -669,18 +672,18 @@ public actor CompositeToolProvider: ToolProvider {
             markdown += "\n"
         }
 
-        return CallToolResult(content: [.text(TextContent(text: markdown))])
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
     }
 
-    private func handleReadSample(args: ArgumentExtractor) async throws -> CallToolResult {
+    private func handleReadSample(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let sampleDatabase else {
-            throw ToolError.invalidArgument("database", "Sample code database not available")
+            throw Shared.Core.ToolError.invalidArgument("database", "Sample code database not available")
         }
 
         let projectId: String = try args.require(Shared.Constants.Search.schemaParamProjectId)
 
         guard let project = try await sampleDatabase.getProject(id: projectId) else {
-            throw ToolError.invalidArgument(
+            throw Shared.Core.ToolError.invalidArgument(
                 Shared.Constants.Search.schemaParamProjectId,
                 "Project not found: \(projectId)"
             )
@@ -697,7 +700,7 @@ public actor CompositeToolProvider: ToolProvider {
         markdown += "## Metadata\n\n"
         markdown += "- **Frameworks:** \(project.frameworks.joined(separator: ", "))\n"
         markdown += "- **Files:** \(project.fileCount)\n"
-        markdown += "- **Size:** \(Shared.Formatting.formatBytes(project.totalSize))\n"
+        markdown += "- **Size:** \(Shared.Utils.Formatting.formatBytes(project.totalSize))\n"
         if !project.webURL.isEmpty {
             markdown += "- **Apple Developer:** \(project.webURL)\n"
         }
@@ -723,19 +726,19 @@ public actor CompositeToolProvider: ToolProvider {
             markdown += "💡 Use `read_sample_file` with project_id and file_path to view source code.\n"
         }
 
-        return CallToolResult(content: [.text(TextContent(text: markdown))])
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
     }
 
-    private func handleReadSampleFile(args: ArgumentExtractor) async throws -> CallToolResult {
+    private func handleReadSampleFile(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let sampleDatabase else {
-            throw ToolError.invalidArgument("database", "Sample code database not available")
+            throw Shared.Core.ToolError.invalidArgument("database", "Sample code database not available")
         }
 
         let projectId: String = try args.require(Shared.Constants.Search.schemaParamProjectId)
         let filePath: String = try args.require(Shared.Constants.Search.schemaParamFilePath)
 
         guard let file = try await sampleDatabase.getFile(projectId: projectId, path: filePath) else {
-            throw ToolError.invalidArgument(
+            throw Shared.Core.ToolError.invalidArgument(
                 Shared.Constants.Search.schemaParamFilePath,
                 "File not found: \(filePath) in project \(projectId)"
             )
@@ -744,7 +747,7 @@ public actor CompositeToolProvider: ToolProvider {
         var markdown = "# \(file.filename)\n\n"
         markdown += "**Project:** `\(file.projectId)`\n"
         markdown += "**Path:** `\(file.path)`\n"
-        markdown += "**Size:** \(Shared.Formatting.formatBytes(file.size))\n\n"
+        markdown += "**Size:** \(Shared.Utils.Formatting.formatBytes(file.size))\n\n"
 
         let language = languageForExtension(file.fileExtension)
 
@@ -755,14 +758,14 @@ public actor CompositeToolProvider: ToolProvider {
         }
         markdown += "```\n"
 
-        return CallToolResult(content: [.text(TextContent(text: markdown))])
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
     }
 
     // MARK: - Semantic Search Handlers (#81)
 
-    private func handleSearchSymbols(args: ArgumentExtractor) async throws -> CallToolResult {
+    private func handleSearchSymbols(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
-            throw ToolError.invalidArgument("index", "Documentation index not available")
+            throw Shared.Core.ToolError.invalidArgument("index", "Documentation index not available")
         }
 
         let query = args.optional(Shared.Constants.Search.schemaParamQuery)
@@ -786,12 +789,12 @@ public actor CompositeToolProvider: ToolProvider {
             filters: ["kind": kind, "is_async": isAsync.map { String($0) }, "framework": framework]
         )
 
-        return CallToolResult(content: [.text(TextContent(text: markdown))])
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
     }
 
-    private func handleSearchPropertyWrappers(args: ArgumentExtractor) async throws -> CallToolResult {
+    private func handleSearchPropertyWrappers(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
-            throw ToolError.invalidArgument("index", "Documentation index not available")
+            throw Shared.Core.ToolError.invalidArgument("index", "Documentation index not available")
         }
 
         let wrapper: String = try args.require(Shared.Constants.Search.schemaParamWrapper)
@@ -812,12 +815,12 @@ public actor CompositeToolProvider: ToolProvider {
             filters: ["wrapper": wrapper, "framework": framework]
         )
 
-        return CallToolResult(content: [.text(TextContent(text: markdown))])
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
     }
 
-    private func handleSearchConcurrency(args: ArgumentExtractor) async throws -> CallToolResult {
+    private func handleSearchConcurrency(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
-            throw ToolError.invalidArgument("index", "Documentation index not available")
+            throw Shared.Core.ToolError.invalidArgument("index", "Documentation index not available")
         }
 
         let pattern: String = try args.require(Shared.Constants.Search.schemaParamPattern)
@@ -837,12 +840,12 @@ public actor CompositeToolProvider: ToolProvider {
             filters: ["pattern": pattern, "framework": framework]
         )
 
-        return CallToolResult(content: [.text(TextContent(text: markdown))])
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
     }
 
-    private func handleSearchConformances(args: ArgumentExtractor) async throws -> CallToolResult {
+    private func handleSearchConformances(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
-            throw ToolError.invalidArgument("index", "Documentation index not available")
+            throw Shared.Core.ToolError.invalidArgument("index", "Documentation index not available")
         }
 
         let protocolName: String = try args.require(Shared.Constants.Search.schemaParamProtocol)
@@ -862,7 +865,7 @@ public actor CompositeToolProvider: ToolProvider {
             filters: ["protocol": protocolName, "framework": framework]
         )
 
-        return CallToolResult(content: [.text(TextContent(text: markdown))])
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
     }
 
     /// Format symbol search results as markdown

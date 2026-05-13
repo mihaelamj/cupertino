@@ -1,28 +1,29 @@
 @testable import Core
+import CoreProtocols
 import Foundation
 import Testing
 
-// Coverage for the `HTMLToMarkdown.looksLikeHTTPErrorPage(...)` helper
+// Coverage for the `Core.Parser.HTML.looksLikeHTTPErrorPage(...)` helper
 // added in #284. The helper gates the crawler's WebView fallback path
 // from persisting Apple's CDN-served error templates as if they were
 // documentation pages. The shipped v1.0.2 search.db carries 68 such
 // poison rows (23 × 403 + 45 × 502) that this helper would have caught
 // at crawl time.
 
-@Suite("HTMLToMarkdown.looksLikeHTTPErrorPage (#284)")
+@Suite("Core.Parser.HTML.looksLikeHTTPErrorPage (#284)")
 struct HTMLToMarkdownErrorPageDetectionTests {
     // MARK: HTTP-status-prefix titles
 
     @Test("'403 Forbidden' title trips the gate")
     func detectsForbidden() {
         let html = "<html><head><title>403 Forbidden</title></head><body><p>Forbidden.</p></body></html>"
-        #expect(HTMLToMarkdown.looksLikeHTTPErrorPage(html: html) == true)
+        #expect(Core.Parser.HTML.looksLikeHTTPErrorPage(html: html) == true)
     }
 
     @Test("'502 Bad Gateway' title trips the gate")
     func detectsBadGateway() {
         let html = "<html><head><title>502 Bad Gateway</title></head><body><p>Server error.</p></body></html>"
-        #expect(HTMLToMarkdown.looksLikeHTTPErrorPage(html: html) == true)
+        #expect(Core.Parser.HTML.looksLikeHTTPErrorPage(html: html) == true)
     }
 
     @Test(
@@ -39,7 +40,7 @@ struct HTMLToMarkdownErrorPageDetectionTests {
     )
     func detectsAllStatusPrefixes(title: String) {
         let html = "<html><head><title>\(title)</title></head><body><p>err</p></body></html>"
-        #expect(HTMLToMarkdown.looksLikeHTTPErrorPage(html: html) == true)
+        #expect(Core.Parser.HTML.looksLikeHTTPErrorPage(html: html) == true)
     }
 
     // MARK: Real Apple titles that LOOK error-adjacent must NOT trip
@@ -61,7 +62,7 @@ struct HTMLToMarkdownErrorPageDetectionTests {
         wants to communicate that constraint visually.</p>
         </body></html>
         """
-        #expect(HTMLToMarkdown.looksLikeHTTPErrorPage(html: html) == false)
+        #expect(Core.Parser.HTML.looksLikeHTTPErrorPage(html: html) == false)
     }
 
     @Test("Real Apple symbol page named 'Routing404Type' is not flagged")
@@ -73,7 +74,7 @@ struct HTMLToMarkdownErrorPageDetectionTests {
         observed in the request. Used by the routing layer to differentiate
         legitimate not-found cases from misconfigured routes.</p></body></html>
         """
-        #expect(HTMLToMarkdown.looksLikeHTTPErrorPage(html: html) == false)
+        #expect(Core.Parser.HTML.looksLikeHTTPErrorPage(html: html) == false)
     }
 
     // MARK: word-count defense-in-depth
@@ -81,7 +82,7 @@ struct HTMLToMarkdownErrorPageDetectionTests {
     @Test("Short body + 'Service Unavailable' phrase trips the defense-in-depth gate")
     func shortBodyServiceUnavailableTrips() {
         let html = "<html><head><title>Service Unavailable</title></head><body><p>Try again later.</p></body></html>"
-        #expect(HTMLToMarkdown.looksLikeHTTPErrorPage(html: html) == true)
+        #expect(Core.Parser.HTML.looksLikeHTTPErrorPage(html: html) == true)
     }
 
     @Test("Long body containing 'Bad Gateway' phrase in title is NOT flagged once it has real content")
@@ -91,7 +92,7 @@ struct HTMLToMarkdownErrorPageDetectionTests {
         // incorrectly skipping it.
         let body = String(repeating: "word ", count: 50) // 50 whitespace-separated tokens
         let html = "<html><head><title>Handling Bad Gateway Responses</title></head><body><p>\(body)</p></body></html>"
-        #expect(HTMLToMarkdown.looksLikeHTTPErrorPage(html: html) == false)
+        #expect(Core.Parser.HTML.looksLikeHTTPErrorPage(html: html) == false)
     }
 
     // MARK: degenerate inputs
@@ -99,11 +100,11 @@ struct HTMLToMarkdownErrorPageDetectionTests {
     @Test("Title-less HTML returns false (the existing nil-title gate handles it)")
     func noTitleReturnsFalse() {
         let html = "<html><body><p>Just a body, no head, no title.</p></body></html>"
-        #expect(HTMLToMarkdown.looksLikeHTTPErrorPage(html: html) == false)
+        #expect(Core.Parser.HTML.looksLikeHTTPErrorPage(html: html) == false)
     }
 
     @Test("Empty HTML returns false")
     func emptyHTMLReturnsFalse() {
-        #expect(HTMLToMarkdown.looksLikeHTTPErrorPage(html: "") == false)
+        #expect(Core.Parser.HTML.looksLikeHTTPErrorPage(html: "") == false)
     }
 }

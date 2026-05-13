@@ -1,12 +1,9 @@
 import Foundation
-import Shared
+import SharedConstants
+import SharedCore
+import SharedUtils
 
-struct ArtifactInfo {
-    let name: String
-    let path: URL
-    let itemCount: Int
-    let sizeBytes: Int64
-}
+// ArtifactInfo moved to ArtifactInfo.swift
 
 struct LibraryView {
     func render(artifacts: [ArtifactInfo], cursor: Int, width: Int, height: Int) -> String {
@@ -59,7 +56,7 @@ struct LibraryView {
         let icon = "*"
         let name = artifact.name
         let itemsText = "\(artifact.itemCount) items"
-        let sizeText = Shared.Formatting.formatBytes(artifact.sizeBytes)
+        let sizeText = Shared.Utils.Formatting.formatBytes(artifact.sizeBytes)
 
         // Calculate widths (no emojis)
         let iconWidth = icon.count

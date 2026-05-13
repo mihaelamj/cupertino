@@ -1,6 +1,9 @@
 import Foundation
 @testable import Search
-import Shared
+import SharedConstants
+import SharedCore
+import SharedModels
+import SharedUtils
 import Testing
 
 // Truth-table coverage for `Search.IndexBuilder.titleLooksLikeHTTPErrorTemplate`,
@@ -118,12 +121,12 @@ struct IndexBuilderJavaScriptFallbackDefenseTests {
 
     private static func makePage(
         title: String = "AVCustomMediaSelectionScheme",
-        kind: StructuredDocumentationPage.Kind = .class,
-        source: StructuredDocumentationPage.Source = .appleJSON,
+        kind: Shared.Models.StructuredDocumentationPage.Kind = .class,
+        source: Shared.Models.StructuredDocumentationPage.Source = .appleJSON,
         overview: String? = nil,
         rawMarkdown: String? = nil
-    ) -> StructuredDocumentationPage {
-        StructuredDocumentationPage(
+    ) -> Shared.Models.StructuredDocumentationPage {
+        Shared.Models.StructuredDocumentationPage(
             url: URL.knownGood("https://developer.apple.com/documentation/test"),
             title: title,
             kind: kind,

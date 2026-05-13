@@ -1,14 +1,16 @@
 @testable import Cleanup
 import Foundation
-@testable import Shared
+import SharedConstants
+@testable import SharedCore
+import SharedModels
 import Testing
 import TestSupport
 
-// MARK: - SampleCodeCleaner Tests
+// MARK: - Sample.Cleanup.Cleaner Tests
 
 @Test("CleanupProgress percentage calculation")
 func cleanupProgressPercentage() {
-    let progress = CleanupProgress(
+    let progress = Shared.Models.CleanupProgress(
         current: 50,
         total: 100,
         currentFile: "test.zip",
@@ -22,7 +24,7 @@ func cleanupProgressPercentage() {
 
 @Test("CleanupProgress handles zero total")
 func cleanupProgressZeroTotal() {
-    let progress = CleanupProgress(
+    let progress = Shared.Models.CleanupProgress(
         current: 0,
         total: 0,
         currentFile: "test.zip",
@@ -36,7 +38,7 @@ func cleanupProgressZeroTotal() {
 
 @Test("CleanupStatistics space saved calculation")
 func cleanupStatisticsSpaceSaved() {
-    let stats = CleanupStatistics(
+    let stats = Shared.Models.CleanupStatistics(
         totalArchives: 10,
         cleanedArchives: 8,
         skippedArchives: 2,
@@ -52,7 +54,7 @@ func cleanupStatisticsSpaceSaved() {
 
 @Test("CleanupStatistics handles zero original size")
 func cleanupStatisticsZeroSize() {
-    let stats = CleanupStatistics(
+    let stats = Shared.Models.CleanupStatistics(
         totalArchives: 0,
         cleanedArchives: 0,
         skippedArchives: 0,
@@ -68,7 +70,7 @@ func cleanupStatisticsZeroSize() {
 
 @Test("CleanupResult initialization")
 func cleanupResultInit() {
-    let result = CleanupResult(
+    let result = Shared.Models.CleanupResult(
         filename: "test.zip",
         originalSize: 1000,
         cleanedSize: 500,
@@ -87,7 +89,7 @@ func cleanupResultInit() {
 
 @Test("CleanupResult with error")
 func cleanupResultWithError() {
-    let result = CleanupResult(
+    let result = Shared.Models.CleanupResult(
         filename: "test.zip",
         originalSize: 1000,
         cleanedSize: 1000,

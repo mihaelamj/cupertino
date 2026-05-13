@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
-import Shared
+import SharedConstants
+import SharedCore
 
 // MARK: - Supporting Types
 
@@ -61,7 +62,7 @@ extension Cupertino {
         }
 
         /// Per-type default output dir. Routes through `Shared.Constants.default*`
-        /// getters so the path resolves via `Shared.BinaryConfig` (#211) like
+        /// getters so the path resolves via `Shared.Constants.BinaryConfig` (#211) like
         /// every other default does. The earlier manual construction
         /// (`homeDir + baseDirectoryName + Directory.<x>`) bypassed BinaryConfig
         /// and silently wrote to `~/.cupertino/<x>` even when a binary-co-located

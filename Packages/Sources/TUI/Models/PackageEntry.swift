@@ -1,8 +1,9 @@
 import Core
+import CoreProtocols
 import Foundation
 
 struct PackageEntry {
-    let package: SwiftPackageEntry
+    let package: Core.Protocols.SwiftPackageEntry
     var isSelected: Bool
     var isDownloaded: Bool = false
     /// True when the resolver pulled this package in via a seed's dependency graph
@@ -13,8 +14,4 @@ struct PackageEntry {
     var isExcluded: Bool = false
 }
 
-enum SortMode: String {
-    case stars = "Stars ▼"
-    case name = "Name ▲"
-    case recent = "Recent ▼"
-}
+// SortMode moved to SortMode.swift

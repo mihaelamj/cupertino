@@ -1,6 +1,7 @@
 import Foundation
 @testable import Search
-import Shared
+import SharedConstants
+import SharedCore
 import Testing
 
 // Intent routing for cross-source smart query (#254).
@@ -144,7 +145,7 @@ struct SmartQueryIntentRoutingTests {
 
     @Test("Source-scoped fall-through: caller passes only apple-archive — symbol query still runs it")
     func sourceScopedFallThrough() async {
-        // PackageSearchCommand and `--source apple-archive` paths construct
+        // CLI.Command.PackageSearch and `--source apple-archive` paths construct
         // SmartQuery with a single fetcher of a non-allowlisted source.
         // Intent routing must not silence that fetcher; otherwise scoped
         // queries return zero results.

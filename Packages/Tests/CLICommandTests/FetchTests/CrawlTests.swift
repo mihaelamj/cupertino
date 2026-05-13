@@ -1,9 +1,14 @@
 import AppKit
 @testable import CLI
 @testable import Core
+import CoreProtocols
+import Crawler
 import Foundation
 @testable import Search
-@testable import Shared
+import SharedConfiguration
+import SharedConstants
+@testable import SharedCore
+import SharedModels
 import Testing
 import TestSupport
 
@@ -25,20 +30,20 @@ struct WebCrawlTests {
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let config = try Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(
+            crawler: Shared.Configuration.Crawler(
                 startURL: #require(URL(string: "https://developer.apple.com/documentation/swift")),
                 maxPages: 1,
                 maxDepth: 0,
                 outputDirectory: tempDir
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true, outputDirectory: tempDir),
-            output: Shared.OutputConfiguration(format: .markdown)
+            changeDetection: Shared.Configuration.ChangeDetection(forceRecrawl: true, outputDirectory: tempDir),
+            output: Shared.Configuration.Output(format: .markdown)
         )
 
         print("🧪 Test: Fetch single page")
         print("   URL: \(config.crawler.startURL)")
 
-        let crawler = await Core.Crawler(configuration: config)
+        let crawler = await Crawler.AppleDocs(configuration: config)
         let stats = try await crawler.crawl()
 
         // Verify stats
@@ -66,7 +71,7 @@ struct WebCrawlTests {
         let metadataFile = tempDir.appendingPathComponent("metadata.json")
         #expect(FileManager.default.fileExists(atPath: metadataFile.path), "Metadata should exist")
 
-        let metadata = try CrawlMetadata.load(from: metadataFile)
+        let metadata = try Shared.Models.CrawlMetadata.load(from: metadataFile)
         #expect(!metadata.pages.isEmpty, "Metadata should contain pages")
         #expect(metadata.stats.totalPages == 1, "Metadata stats should match")
 
@@ -83,29 +88,29 @@ struct WebCrawlTests {
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let config = try Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(
+            crawler: Shared.Configuration.Crawler(
                 startURL: #require(URL(string: "https://developer.apple.com/documentation/swift")),
                 maxPages: 1,
                 maxDepth: 0,
                 outputDirectory: tempDir
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(
+            changeDetection: Shared.Configuration.ChangeDetection(
                 enabled: true,
                 forceRecrawl: false,
                 outputDirectory: tempDir
             ),
-            output: Shared.OutputConfiguration(format: .markdown)
+            output: Shared.Configuration.Output(format: .markdown)
         )
 
         print("🧪 Test: Fetch with resume")
 
         // First fetch
-        let crawler1 = await Core.Crawler(configuration: config)
+        let crawler1 = await Crawler.AppleDocs(configuration: config)
         let stats1 = try await crawler1.crawl()
         #expect(stats1.newPages == 1, "First fetch should have 1 new page")
 
         // Second fetch (should skip unchanged)
-        let crawler2 = await Core.Crawler(configuration: config)
+        let crawler2 = await Crawler.AppleDocs(configuration: config)
         let stats2 = try await crawler2.crawl()
         #expect(stats2.skippedPages == 1, "Second fetch should skip unchanged page")
         #expect(stats2.newPages == 0, "Second fetch should have no new pages")
@@ -124,7 +129,7 @@ struct WebCrawlTests {
 
         print("🧪 Test: Fetch Swift Evolution proposal")
 
-        let crawler = Core.EvolutionCrawler(
+        let crawler = Crawler.Evolution(
             outputDirectory: tempDir,
             onlyAccepted: true
         )

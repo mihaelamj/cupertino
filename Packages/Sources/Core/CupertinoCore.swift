@@ -11,14 +11,16 @@
 @_exported import WebKit
 #endif
 
-@_exported import Shared
+import SharedConfiguration
+import SharedConstants
+@_exported import SharedCore
 
 // MARK: - Usage Example
 
 /*
  // Create configuration
  let config = Shared.Configuration(
-     crawler: Shared.CrawlerConfiguration(
+     crawler: Shared.Configuration.Crawler(
          startURL: URL(string: "\(Shared.Constants.BaseURL.appleDeveloperDocs)swiftui")!,
          maxPages: 100
      )

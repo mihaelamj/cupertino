@@ -1,0 +1,158 @@
+import Foundation
+import SampleIndex
+import SharedConstants
+import SharedCore
+
+// MARK: - Sample Search Query
+
+/// Query parameters for sample code searches
+extension Sample.Search {
+    public struct Query: Sendable {
+        public let text: String
+        public let framework: String?
+        public let searchFiles: Bool
+        public let limit: Int
+        /// Optional platform filter (#233). When set together with
+        /// `minVersion`, restricts results to projects whose
+        /// `min_<platform>` column is non-NULL and lex-≤ the requested
+        /// version. nil on either disables the filter.
+        public let platform: String?
+        public let minVersion: String?
+
+        public init(
+            text: String,
+            framework: String? = nil,
+            searchFiles: Bool = true,
+            limit: Int = Shared.Constants.Limit.defaultSearchLimit,
+            platform: String? = nil,
+            minVersion: String? = nil
+        ) {
+            self.text = text
+            self.framework = framework
+            self.searchFiles = searchFiles
+            self.limit = min(limit, Shared.Constants.Limit.maxSearchLimit)
+            self.platform = platform
+            self.minVersion = minVersion
+        }
+    }
+}
+
+// MARK: - Sample Search Result
+
+/// Combined result from project and file searches
+extension Sample.Search {
+    public struct Result: Sendable {
+        public let projects: [Sample.Index.Project]
+        public let files: [Sample.Index.Database.FileSearchResult]
+
+        public init(projects: [Sample.Index.Project], files: [Sample.Index.Database.FileSearchResult]) {
+            self.projects = projects
+            self.files = files
+        }
+
+        /// Check if the result is empty
+        public var isEmpty: Bool {
+            projects.isEmpty && files.isEmpty
+        }
+
+        /// Total count of results
+        public var totalCount: Int {
+            projects.count + files.count
+        }
+    }
+}
+
+// MARK: - Sample Search Service
+
+/// Service for searching Apple sample code projects and files.
+/// Wraps Sample.Index.Database with a clean interface.
+extension Sample.Search {
+    public actor Service {
+        private let database: Sample.Index.Database
+
+        /// Initialize with an existing database
+        public init(database: Sample.Index.Database) {
+            self.database = database
+        }
+
+        /// Initialize with a database path
+        public init(dbPath: URL) async throws {
+            database = try await Sample.Index.Database(dbPath: dbPath)
+        }
+
+        // MARK: - Search Methods
+
+        /// Search with a specialized query
+        public func search(_ query: Sample.Search.Query) async throws -> Sample.Search.Result {
+            let projects = try await database.searchProjects(
+                query: query.text,
+                framework: query.framework,
+                limit: query.limit
+            )
+
+            var files: [Sample.Index.Database.FileSearchResult] = []
+            if query.searchFiles {
+                files = try await database.searchFiles(
+                    query: query.text,
+                    projectId: nil,
+                    limit: query.limit,
+                    platform: query.platform,
+                    minVersion: query.minVersion
+                )
+            }
+
+            return Sample.Search.Result(projects: projects, files: files)
+        }
+
+        /// Simple text search
+        public func search(text: String, limit: Int = Shared.Constants.Limit.defaultSearchLimit) async throws -> Sample.Search.Result {
+            try await search(Sample.Search.Query(text: text, limit: limit))
+        }
+
+        /// Search within a specific framework
+        public func search(text: String, framework: String, limit: Int = Shared.Constants.Limit.defaultSearchLimit) async throws -> Sample.Search.Result {
+            try await search(Sample.Search.Query(text: text, framework: framework, limit: limit))
+        }
+
+        // MARK: - Project Access
+
+        /// Get a project by ID
+        public func getProject(id: String) async throws -> Sample.Index.Project? {
+            try await database.getProject(id: id)
+        }
+
+        /// List all projects
+        public func listProjects(framework: String? = nil, limit: Int = 50) async throws -> [Sample.Index.Project] {
+            try await database.listProjects(framework: framework, limit: limit)
+        }
+
+        /// Get total project count
+        public func projectCount() async throws -> Int {
+            try await database.projectCount()
+        }
+
+        // MARK: - File Access
+
+        /// Get a file by project ID and path
+        public func getFile(projectId: String, path: String) async throws -> Sample.Index.File? {
+            try await database.getFile(projectId: projectId, path: path)
+        }
+
+        /// List files in a project
+        public func listFiles(projectId: String, folder: String? = nil) async throws -> [Sample.Index.File] {
+            try await database.listFiles(projectId: projectId, folder: folder)
+        }
+
+        /// Get total file count
+        public func fileCount() async throws -> Int {
+            try await database.fileCount()
+        }
+
+        // MARK: - Lifecycle
+
+        /// Disconnect from the database
+        public func disconnect() async {
+            await database.disconnect()
+        }
+    }
+}

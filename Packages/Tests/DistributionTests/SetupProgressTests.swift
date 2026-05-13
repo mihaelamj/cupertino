@@ -1,5 +1,7 @@
 import Foundation
-@testable import Shared
+import SharedConstants
+@testable import SharedCore
+import SharedUtils
 import Testing
 
 // MARK: - Progress Output Capture
@@ -123,9 +125,9 @@ struct SetupProgressFormatTests {
     @Test("Byte formatting")
     func byteFormatting() {
         // Test the shared formatting utility
-        let kb = Shared.Formatting.formatBytes(1024)
-        let mb = Shared.Formatting.formatBytes(1024 * 1024)
-        let gb = Shared.Formatting.formatBytes(1024 * 1024 * 1024)
+        let kb = Shared.Utils.Formatting.formatBytes(1024)
+        let mb = Shared.Utils.Formatting.formatBytes(1024 * 1024)
+        let gb = Shared.Utils.Formatting.formatBytes(1024 * 1024 * 1024)
 
         #expect(kb.contains("KB") || kb.contains("1"))
         #expect(mb.contains("MB") || mb.contains("1"))
@@ -322,7 +324,7 @@ private final class TestDownloadDelegate: NSObject, URLSessionDownloadDelegate, 
 
         // If size unknown, show indeterminate progress
         guard totalBytesExpectedToWrite > 0 else {
-            let downloaded = Shared.Formatting.formatBytes(totalBytesWritten)
+            let downloaded = Shared.Utils.Formatting.formatBytes(totalBytesWritten)
             let output = "\(clearLine)   \(currentSpinner) Downloading... \(downloaded)"
             onProgress(output)
             return
@@ -334,8 +336,8 @@ private final class TestDownloadDelegate: NSObject, URLSessionDownloadDelegate, 
 
         let bar = String(repeating: "█", count: filled) + String(repeating: "░", count: empty)
         let percent = String(format: "%3.0f%%", progress * 100)
-        let downloaded = Shared.Formatting.formatBytes(totalBytesWritten)
-        let total = Shared.Formatting.formatBytes(totalBytesExpectedToWrite)
+        let downloaded = Shared.Utils.Formatting.formatBytes(totalBytesWritten)
+        let total = Shared.Utils.Formatting.formatBytes(totalBytesExpectedToWrite)
 
         let output = "\(clearLine)   \(currentSpinner) [\(bar)] \(percent) (\(downloaded)/\(total))"
         onProgress(output)

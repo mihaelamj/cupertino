@@ -2,11 +2,11 @@ import Foundation
 @testable import Search
 import Testing
 
-// MARK: - Version Filter Tests
+// MARK: - Release.Version Filter Tests
 
-@Suite("Version Filter Tests", .serialized)
+@Suite("Release.Version Filter Tests", .serialized)
 struct VersionFilterTests {
-    // MARK: - Basic Version Comparison
+    // MARK: - Basic Release.Version Comparison
 
     @Test("Equal versions match")
     func equalVersions() async throws {
@@ -50,7 +50,7 @@ struct VersionFilterTests {
         #expect(results.isEmpty)
     }
 
-    // MARK: - Semantic Version Comparison (Critical)
+    // MARK: - Semantic Release.Version Comparison (Critical)
 
     @Test("10.13 vs 10.2: semantic comparison handles double-digit minor")
     func semanticVersionDoubleDigitMinor() async throws {
@@ -112,14 +112,14 @@ struct VersionFilterTests {
 
     // MARK: - Platform-Specific Filters (Parameterized)
 
-    struct PlatformTestCase: Sendable {
+    struct PlatformTestCase {
         let name: String
         let platform: Platform
         let apiVersion: String
         let excludedTarget: String
         let matchingTarget: String
 
-        enum Platform: Sendable {
+        enum Platform {
             case iOS, macOS, tvOS, watchOS, visionOS
         }
     }
@@ -271,7 +271,7 @@ struct VersionFilterTests {
         #expect(results.isEmpty)
     }
 
-    // MARK: - Malformed Version Edge Cases
+    // MARK: - Malformed Release.Version Edge Cases
 
     @Test("Empty version string treated as no filter")
     func emptyVersionString() async throws {
@@ -304,7 +304,7 @@ struct VersionFilterTests {
         #expect(results.isEmpty, "Invalid version 'abc' parses as 0, excluding iOS 15 API")
     }
 
-    @Test("Version with many components")
+    @Test("Release.Version with many components")
     func manyComponentVersion() async throws {
         let (index, cleanup) = try await Self.createVersionedDoc(
             uri: "test://ios15",

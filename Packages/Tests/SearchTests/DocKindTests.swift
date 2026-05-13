@@ -1,7 +1,8 @@
 // swiftlint:disable identifier_name
 import Foundation
 @testable import Search
-@testable import Shared
+import SharedConstants
+@testable import SharedCore
 import Testing
 
 // MARK: - DocKind taxonomy (#192 section C1)

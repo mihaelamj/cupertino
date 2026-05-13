@@ -1,12 +1,15 @@
 // swiftlint:disable type_body_length
 @testable import Core
+import CoreProtocols
+@testable import Crawler
 import Foundation
-@testable import Shared
+import SharedConstants
+@testable import SharedCore
 import Testing
 
 // MARK: - Swift Evolution Crawler Tests
 
-// Tests for the Core.EvolutionCrawler
+// Tests for the Crawler.Evolution
 // Tests proposal ID extraction, status parsing, and filtering logic
 
 @Suite("Swift Evolution Crawler")
@@ -19,7 +22,7 @@ struct SwiftEvolutionCrawlerTests {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 
-        let crawler = Core.EvolutionCrawler(outputDirectory: tempDir)
+        let crawler = Crawler.Evolution(outputDirectory: tempDir)
 
         // If we get here without crashing, initialization worked
         _ = crawler
@@ -34,7 +37,7 @@ struct SwiftEvolutionCrawlerTests {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 
-        let crawler = Core.EvolutionCrawler(
+        let crawler = Crawler.Evolution(
             outputDirectory: tempDir,
             onlyAccepted: true
         )
@@ -211,11 +214,11 @@ struct SwiftEvolutionCrawlerTests {
         #expect(isAccepted == false)
     }
 
-    // MARK: - EvolutionStatistics Tests
+    // MARK: - Crawler.Evolution.Statistics Tests
 
-    @Test("EvolutionStatistics initializes with zeros")
+    @Test("Crawler.Evolution.Statistics initializes with zeros")
     func statisticsInitializesWithZeros() {
-        let stats = EvolutionStatistics()
+        let stats = Crawler.Evolution.Statistics()
 
         #expect(stats.totalProposals == 0)
         #expect(stats.newProposals == 0)
@@ -223,9 +226,9 @@ struct SwiftEvolutionCrawlerTests {
         #expect(stats.errors == 0)
     }
 
-    @Test("EvolutionStatistics tracks counts")
+    @Test("Crawler.Evolution.Statistics tracks counts")
     func statisticsTracksCounts() {
-        var stats = EvolutionStatistics(startTime: Date())
+        var stats = Crawler.Evolution.Statistics(startTime: Date())
         stats.totalProposals = 400
         stats.newProposals = 350
         stats.updatedProposals = 50
@@ -237,21 +240,21 @@ struct SwiftEvolutionCrawlerTests {
         #expect(stats.errors == 0)
     }
 
-    @Test("EvolutionStatistics calculates duration")
+    @Test("Crawler.Evolution.Statistics calculates duration")
     func statisticsCalculatesDuration() {
-        var stats = EvolutionStatistics(startTime: Date())
+        var stats = Crawler.Evolution.Statistics(startTime: Date())
         stats.endTime = stats.startTime?.addingTimeInterval(3600) // 1 hour
 
         let duration = stats.duration
         #expect(duration == 3600.0)
     }
 
-    // MARK: - EvolutionProgress Tests
+    // MARK: - Crawler.Evolution.Progress Tests
 
-    @Test("EvolutionProgress tracks progress")
+    @Test("Crawler.Evolution.Progress tracks progress")
     func progressTracksProgress() {
-        let stats = EvolutionStatistics()
-        let progress = EvolutionProgress(
+        let stats = Crawler.Evolution.Statistics()
+        let progress = Crawler.Evolution.Progress(
             current: 100,
             total: 400,
             proposalID: "SE-0100",
@@ -264,11 +267,11 @@ struct SwiftEvolutionCrawlerTests {
         #expect(progress.percentage == 25.0)
     }
 
-    // MARK: - ProposalMetadata Tests
+    // MARK: - Crawler.Evolution.ProposalMetadata Tests
 
-    @Test("ProposalMetadata stores proposal info")
+    @Test("Crawler.Evolution.ProposalMetadata stores proposal info")
     func proposalMetadataStoresInfo() {
-        let metadata = ProposalMetadata(
+        let metadata = Crawler.Evolution.ProposalMetadata(
             id: "SE-0001",
             filename: "0001-keywords-as-argument-labels.md",
             downloadURL: "https://raw.githubusercontent.com/swiftlang/swift-evolution/main/proposals/0001-keywords-as-argument-labels.md"
@@ -279,14 +282,14 @@ struct SwiftEvolutionCrawlerTests {
         #expect(metadata.downloadURL.contains("raw.githubusercontent.com"))
     }
 
-    @Test("ProposalMetadata can be sorted by ID")
+    @Test("Crawler.Evolution.ProposalMetadata can be sorted by ID")
     func proposalMetadataCanBeSorted() {
-        let proposal1 = ProposalMetadata(
+        let proposal1 = Crawler.Evolution.ProposalMetadata(
             id: "SE-0001",
             filename: "0001-test.md",
             downloadURL: "https://example.com/1"
         )
-        let proposal2 = ProposalMetadata(
+        let proposal2 = Crawler.Evolution.ProposalMetadata(
             id: "SE-0002",
             filename: "0002-test.md",
             downloadURL: "https://example.com/2"
@@ -320,9 +323,9 @@ struct SwiftEvolutionCrawlerTests {
         }
     }
 
-    @Test("ProposalMetadata stores ST proposal info")
+    @Test("Crawler.Evolution.ProposalMetadata stores ST proposal info")
     func stProposalMetadataStoresInfo() {
-        let metadata = ProposalMetadata(
+        let metadata = Crawler.Evolution.ProposalMetadata(
             id: "ST-0001",
             filename: "0001-refactor-bug-inits.md",
             downloadURL: "https://raw.githubusercontent.com/swiftlang/swift-evolution/main/proposals/testing/0001-refactor-bug-inits.md"
@@ -336,10 +339,10 @@ struct SwiftEvolutionCrawlerTests {
     @Test("Mixed SE and ST proposals sort correctly")
     func mixedSEAndSTProposalsSortCorrectly() {
         let proposals = [
-            ProposalMetadata(id: "ST-0001", filename: "0001-test.md", downloadURL: "https://example.com/st1"),
-            ProposalMetadata(id: "SE-0002", filename: "0002-test.md", downloadURL: "https://example.com/se2"),
-            ProposalMetadata(id: "SE-0001", filename: "0001-test.md", downloadURL: "https://example.com/se1"),
-            ProposalMetadata(id: "ST-0002", filename: "0002-test.md", downloadURL: "https://example.com/st2"),
+            Crawler.Evolution.ProposalMetadata(id: "ST-0001", filename: "0001-test.md", downloadURL: "https://example.com/st1"),
+            Crawler.Evolution.ProposalMetadata(id: "SE-0002", filename: "0002-test.md", downloadURL: "https://example.com/se2"),
+            Crawler.Evolution.ProposalMetadata(id: "SE-0001", filename: "0001-test.md", downloadURL: "https://example.com/se1"),
+            Crawler.Evolution.ProposalMetadata(id: "ST-0002", filename: "0002-test.md", downloadURL: "https://example.com/st2"),
         ]
 
         let sorted = proposals.sorted { $0.id < $1.id }
@@ -349,10 +352,10 @@ struct SwiftEvolutionCrawlerTests {
         #expect(sorted[3].id == "ST-0002")
     }
 
-    @Test("EvolutionProgress works with ST proposal ID")
+    @Test("Crawler.Evolution.Progress works with ST proposal ID")
     func progressWithSTProposalID() {
-        let stats = EvolutionStatistics()
-        let progress = EvolutionProgress(
+        let stats = Crawler.Evolution.Statistics()
+        let progress = Crawler.Evolution.Progress(
             current: 1,
             total: 10,
             proposalID: "ST-0001",
@@ -371,7 +374,7 @@ struct SwiftEvolutionCrawlerTests {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let crawler = Core.EvolutionCrawler(outputDirectory: tempDir)
+        let crawler = Crawler.Evolution(outputDirectory: tempDir)
 
         // Bare-numbered filename with ST prefix
         let stID = crawler.extractProposalID(from: "0001-refactor-bug-inits.md", prefix: "ST")
@@ -392,7 +395,7 @@ struct SwiftEvolutionCrawlerTests {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let crawler = Core.EvolutionCrawler(outputDirectory: tempDir)
+        let crawler = Crawler.Evolution(outputDirectory: tempDir)
 
         // Missing status is NOT accepted (proposals rely on this to skip)
         #expect(crawler.isAcceptedStatus(nil) == false)
@@ -404,7 +407,7 @@ struct SwiftEvolutionCrawlerTests {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let crawler = Core.EvolutionCrawler(outputDirectory: tempDir)
+        let crawler = Crawler.Evolution(outputDirectory: tempDir)
 
         // ST-style markdown with no status header
         let markdown = """
@@ -430,7 +433,7 @@ struct SwiftEvolutionCrawlerTests {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let crawler = Core.EvolutionCrawler(outputDirectory: tempDir)
+        let crawler = Crawler.Evolution(outputDirectory: tempDir)
 
         let markdown = """
         # Some ST Proposal
@@ -459,7 +462,7 @@ struct SwiftEvolutionCrawlerTests {
         try? FileManager.default.removeItem(at: tempDir)
         #expect(!FileManager.default.fileExists(atPath: tempDir.path))
 
-        let crawler = Core.EvolutionCrawler(outputDirectory: tempDir)
+        let crawler = Crawler.Evolution(outputDirectory: tempDir)
 
         // Note: We're not actually calling crawl() to avoid network calls
         // Just verify the crawler can be instantiated

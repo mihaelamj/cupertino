@@ -1,8 +1,9 @@
 @testable import Core
+import CoreProtocols
 import Foundation
 import Testing
 
-// Coverage for `HTMLToMarkdown.looksLikeJavaScriptFallback(...)` — the
+// Coverage for `Core.Parser.HTML.looksLikeJavaScriptFallback(...)` — the
 // crawler-side gate added on top of #284 to catch Apple's React SPA
 // "no-content" sub-views. Apple's developer-docs site is a client-rendered
 // React app; when its internal doc-loader endpoint returns 404 (or some
@@ -17,7 +18,7 @@ import Testing
 // them at write time so neither the corpus nor any downstream code sees
 // them.
 
-@Suite("HTMLToMarkdown.looksLikeJavaScriptFallback (#284 crawler-side)")
+@Suite("Core.Parser.HTML.looksLikeJavaScriptFallback (#284 crawler-side)")
 struct HTMLToMarkdownJavaScriptFallbackTests {
     // MARK: 404 sub-view ("page can't be found")
 
@@ -34,7 +35,7 @@ struct HTMLToMarkdownJavaScriptFallbackTests {
         <input placeholder="Search developer.apple.com">
         </body></html>
         """
-        #expect(HTMLToMarkdown.looksLikeJavaScriptFallback(html: html) == true)
+        #expect(Core.Parser.HTML.looksLikeJavaScriptFallback(html: html) == true)
     }
 
     @Test("Sub-view phrase embedded in a paragraph still trips")
@@ -42,7 +43,7 @@ struct HTMLToMarkdownJavaScriptFallbackTests {
         let html = """
         <html><body><p>The page you're looking for can't be found.</p></body></html>
         """
-        #expect(HTMLToMarkdown.looksLikeJavaScriptFallback(html: html) == true)
+        #expect(Core.Parser.HTML.looksLikeJavaScriptFallback(html: html) == true)
     }
 
     // MARK: generic error sub-view
@@ -57,7 +58,7 @@ struct HTMLToMarkdownJavaScriptFallbackTests {
         <h1>An unknown error occurred.</h1>
         </body></html>
         """
-        #expect(HTMLToMarkdown.looksLikeJavaScriptFallback(html: html) == true)
+        #expect(Core.Parser.HTML.looksLikeJavaScriptFallback(html: html) == true)
     }
 
     // MARK: real Apple pages must NOT trip
@@ -74,7 +75,7 @@ struct HTMLToMarkdownJavaScriptFallbackTests {
         your app's needs.</p>
         </body></html>
         """
-        #expect(HTMLToMarkdown.looksLikeJavaScriptFallback(html: html) == false)
+        #expect(Core.Parser.HTML.looksLikeJavaScriptFallback(html: html) == false)
     }
 
     @Test("Real page legitimately discussing JavaScript APIs is not flagged")
@@ -94,7 +95,7 @@ struct HTMLToMarkdownJavaScriptFallbackTests {
         page must therefore not be flagged.</p>
         </body></html>
         """
-        #expect(HTMLToMarkdown.looksLikeJavaScriptFallback(html: html) == false)
+        #expect(Core.Parser.HTML.looksLikeJavaScriptFallback(html: html) == false)
     }
 
     @Test("Real page that mentions a similar phrase mid-prose is not flagged")
@@ -108,19 +109,19 @@ struct HTMLToMarkdownJavaScriptFallbackTests {
         a NotFoundError, not silently drop the request.</p>
         </body></html>
         """
-        #expect(HTMLToMarkdown.looksLikeJavaScriptFallback(html: html) == false)
+        #expect(Core.Parser.HTML.looksLikeJavaScriptFallback(html: html) == false)
     }
 
     // MARK: degenerate inputs
 
     @Test("Empty HTML returns false")
     func emptyHTMLReturnsFalse() {
-        #expect(HTMLToMarkdown.looksLikeJavaScriptFallback(html: "") == false)
+        #expect(Core.Parser.HTML.looksLikeJavaScriptFallback(html: "") == false)
     }
 
     @Test("HTML with only a title returns false")
     func titleOnlyReturnsFalse() {
         let html = "<html><head><title>Apple Developer Documentation</title></head></html>"
-        #expect(HTMLToMarkdown.looksLikeJavaScriptFallback(html: html) == false)
+        #expect(Core.Parser.HTML.looksLikeJavaScriptFallback(html: html) == false)
     }
 }

@@ -1,6 +1,7 @@
 import Foundation
-import MCP
-import Shared
+import MCPCore
+import SharedConstants
+import SharedCore
 
 // MARK: - Mock AI Agent
 
@@ -228,23 +229,23 @@ actor MCPClient {
         // Try each supported version, starting with newest
         var lastError: Error?
         for version in MCPProtocolVersionsSupported {
-            let request = MCPRequest(
+            let request = MCP.Core.Protocols.Request(
                 jsonrpc: "2.0",
                 id: .int(nextMessageID()),
                 method: "initialize",
-                params: InitializeParams(
+                params: MCP.Core.Protocols.InitializeParams(
                     protocolVersion: version,
-                    capabilities: ClientCapabilities(
+                    capabilities: MCP.Core.Protocols.ClientCapabilities(
                         experimental: nil,
                         sampling: nil,
-                        roots: RootsCapability(listChanged: true)
+                        roots: MCP.Core.Protocols.RootsCapability(listChanged: true)
                     ),
-                    clientInfo: Implementation(name: "Mock AI Agent", version: "1.0.0")
+                    clientInfo: MCP.Core.Protocols.Implementation(name: "Mock AI Agent", version: "1.0.0")
                 )
             )
 
             do {
-                let response: InitializeResult = try await sendRequest(request) as InitializeResult
+                let response: MCP.Core.Protocols.InitializeResult = try await sendRequest(request) as MCP.Core.Protocols.InitializeResult
 
                 print()
                 print("📬 SERVER → CLIENT: initialize response")
@@ -284,14 +285,14 @@ actor MCPClient {
         print("📨 CLIENT → SERVER: tools/list")
         print("-".repeating(80))
 
-        let request = MCPRequest(
+        let request = MCP.Core.Protocols.Request(
             jsonrpc: "2.0",
             id: .int(nextMessageID()),
             method: "tools/list",
             params: EmptyParams()
         )
 
-        let response: ListToolsResult = try await sendRequest(request)
+        let response: MCP.Core.Protocols.ListToolsResult = try await sendRequest(request)
 
         print()
         print("📬 SERVER → CLIENT: tools/list response")
@@ -317,20 +318,20 @@ actor MCPClient {
         print("   Query: \"\(query)\"")
         print()
 
-        let arguments: [String: AnyCodable] = [
-            "query": AnyCodable(query),
+        let arguments: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable(query),
         ]
 
-        let request = MCPRequest(
+        let request = MCP.Core.Protocols.Request(
             jsonrpc: "2.0",
             id: .int(nextMessageID()),
             method: "tools/call",
-            params: CallToolParams(name: "search_nodes", arguments: arguments)
+            params: MCP.Core.Protocols.CallToolParams(name: "search_nodes", arguments: arguments)
         )
 
         logRequestJSON(request)
 
-        let response: CallToolResult = try await sendRequest(request)
+        let response: MCP.Core.Protocols.CallToolResult = try await sendRequest(request)
 
         print()
         print("📬 SERVER → CLIENT: tools/call response")
@@ -361,27 +362,30 @@ actor MCPClient {
     }
 
     private func callSearchTool(query: String) async throws {
-        typealias MCP = Shared.Constants.Search
-        print("📨 CLIENT → SERVER: tools/call (\(MCP.toolSearch))")
+        // Local alias kept narrow — the prior `typealias MCP = Shared.Constants.Search`
+        // shadowed the MCP module inside this function and broke `MCP.Core.Protocols.*`
+        // references.
+        typealias SearchConst = Shared.Constants.Search
+        print("📨 CLIENT → SERVER: tools/call (\(SearchConst.toolSearch))")
         print("-".repeating(80))
         print("   Query: \"\(query)\"")
         print()
 
-        let arguments: [String: AnyCodable] = [
-            "query": AnyCodable(query),
-            "limit": AnyCodable(5),
+        let arguments: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable(query),
+            "limit": MCP.Core.Protocols.AnyCodable(5),
         ]
 
-        let request = MCPRequest(
+        let request = MCP.Core.Protocols.Request(
             jsonrpc: "2.0",
             id: .int(nextMessageID()),
             method: "tools/call",
-            params: CallToolParams(name: MCP.toolSearch, arguments: arguments)
+            params: MCP.Core.Protocols.CallToolParams(name: SearchConst.toolSearch, arguments: arguments)
         )
 
         logRequestJSON(request)
 
-        let response: CallToolResult = try await sendRequest(request)
+        let response: MCP.Core.Protocols.CallToolResult = try await sendRequest(request)
 
         print()
         print("📬 SERVER → CLIENT: tools/call response")
@@ -415,14 +419,14 @@ actor MCPClient {
         print("📨 CLIENT → SERVER: resources/list")
         print("-".repeating(80))
 
-        let request = MCPRequest(
+        let request = MCP.Core.Protocols.Request(
             jsonrpc: "2.0",
             id: .int(nextMessageID()),
             method: "resources/list",
             params: EmptyParams()
         )
 
-        let response: ListResourcesResult = try await sendRequest(request)
+        let response: MCP.Core.Protocols.ListResourcesResult = try await sendRequest(request)
 
         print()
         print("📬 SERVER → CLIENT: resources/list response")
@@ -449,16 +453,16 @@ actor MCPClient {
         print("   URI: \(uri)")
         print()
 
-        let request = MCPRequest(
+        let request = MCP.Core.Protocols.Request(
             jsonrpc: "2.0",
             id: .int(nextMessageID()),
             method: "resources/read",
-            params: ReadResourceParams(uri: uri)
+            params: MCP.Core.Protocols.ReadResourceParams(uri: uri)
         )
 
         logRequestJSON(request)
 
-        let response: ReadResourceResult = try await sendRequest(request)
+        let response: MCP.Core.Protocols.ReadResourceResult = try await sendRequest(request)
 
         print()
         print("📬 SERVER → CLIENT: resources/read response")
@@ -490,7 +494,7 @@ actor MCPClient {
         print("📨 CLIENT → SERVER: shutdown (notification)")
         print("-".repeating(80))
 
-        let notification = JSONRPCNotification(
+        let notification = MCP.Core.Protocols.JSONRPCNotification(
             method: "notifications/cancelled",
             params: nil
         )
@@ -502,7 +506,7 @@ actor MCPClient {
 
     // MARK: - Low-level Communication
 
-    private func sendRequest<R: Decodable>(_ request: MCPRequest<some Codable & Sendable>) async throws -> R {
+    private func sendRequest<R: Decodable>(_ request: MCP.Core.Protocols.Request<some Codable & Sendable>) async throws -> R {
         guard let stdin, let stdout else {
             throw MCPClientError.notConnected
         }
@@ -555,20 +559,20 @@ actor MCPClient {
         }
 
         // Try to decode as error first
-        if let errorResponse = try? JSONDecoder().decode(JSONRPCError.self, from: responseData) {
+        if let errorResponse = try? JSONDecoder().decode(MCP.Core.Protocols.JSONRPCError.self, from: responseData) {
             throw MCPClientError.serverError(errorResponse.error.message)
         }
 
         // Decode as success response
         let decoder = JSONDecoder()
-        let response = try decoder.decode(JSONRPCResponse.self, from: responseData)
+        let response = try decoder.decode(MCP.Core.Protocols.JSONRPCResponse.self, from: responseData)
 
         // Convert result dictionary to our specific type
         let resultData = try JSONEncoder().encode(response.result)
         return try JSONDecoder().decode(R.self, from: resultData)
     }
 
-    private func sendNotification(_ notification: JSONRPCNotification) throws {
+    private func sendNotification(_ notification: MCP.Core.Protocols.JSONRPCNotification) throws {
         guard let stdin else {
             throw MCPClientError.notConnected
         }
@@ -652,7 +656,7 @@ actor MCPClient {
         )
     }
 
-    private func logRequestJSON(_ request: MCPRequest<some Codable & Sendable>) {
+    private func logRequestJSON(_ request: MCP.Core.Protocols.Request<some Codable & Sendable>) {
         print()
         print("📤 Request JSON:")
         logJSON(request)
@@ -661,11 +665,11 @@ actor MCPClient {
 
 // MARK: - Helper Types
 
-struct EmptyParams: Codable, Sendable {}
+private struct EmptyParams: Codable {}
 
 // MARK: - Errors
 
-enum MCPClientError: Error, CustomStringConvertible {
+private enum MCPClientError: Error, CustomStringConvertible {
     case notConnected
     case encodingFailed
     case decodingFailed

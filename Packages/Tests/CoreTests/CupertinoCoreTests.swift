@@ -1,18 +1,24 @@
 import AppKit
 @testable import Core
+@testable import CorePackageIndexing
+import CoreProtocols
+import Crawler
 import Foundation
 @testable import Search
-@testable import Shared
+import SharedConfiguration
+import SharedConstants
+@testable import SharedCore
+import SharedModels
 import Testing
 import TestSupport
 
 @Test func hTMLToMarkdown() throws {
     let html = "<h1>Title</h1><p>Content</p>"
-    let markdown = try HTMLToMarkdown.convert(html, url: #require(URL(string: "https://example.com")))
+    let markdown = try Core.Parser.HTML.convert(html, url: #require(URL(string: "https://example.com")))
     #expect(markdown.contains("# Title"))
 }
 
-// MARK: - SampleCodeCatalog Tests
+// MARK: - Sample.Core.Catalog Tests
 
 //
 // The 5 legacy tests in this section assumed the embedded catalog was
@@ -31,7 +37,7 @@ import TestSupport
 
 @Test("SwiftPackagesCatalog loads from JSON resource")
 func swiftPackagesCatalogLoadsFromJSON() async {
-    let count = await SwiftPackagesCatalog.count
+    let count = await Core.Protocols.SwiftPackagesCatalog.count
     #expect(count > 9000, "Should have thousands of Swift packages")
     #expect(count < 15000, "Package count should be reasonable")
     print("   ✅ Loaded \(count) Swift packages")
@@ -39,20 +45,20 @@ func swiftPackagesCatalogLoadsFromJSON() async {
 
 @Test("SwiftPackagesCatalog has correct metadata")
 func swiftPackagesCatalogMetadata() async {
-    let version = await SwiftPackagesCatalog.version
-    let lastCrawled = await SwiftPackagesCatalog.lastCrawled
-    let source = await SwiftPackagesCatalog.source
+    let version = await Core.Protocols.SwiftPackagesCatalog.version
+    let lastCrawled = await Core.Protocols.SwiftPackagesCatalog.lastCrawled
+    let source = await Core.Protocols.SwiftPackagesCatalog.source
 
-    #expect(!version.isEmpty, "Version should not be empty")
+    #expect(!version.isEmpty, "Release.Version should not be empty")
     #expect(!lastCrawled.isEmpty, "Last crawled date should not be empty")
     #expect(!source.isEmpty, "Source should not be empty")
-    print("   ✅ Version: \(version), Last crawled: \(lastCrawled)")
+    print("   ✅ Release.Version: \(version), Last crawled: \(lastCrawled)")
     print("   ✅ Source: \(source)")
 }
 
 @Test("SwiftPackagesCatalog entries have required fields")
 func swiftPackagesCatalogEntriesValid() async {
-    let packages = await SwiftPackagesCatalog.allPackages
+    let packages = await Core.Protocols.SwiftPackagesCatalog.allPackages
     #expect(!packages.isEmpty, "Should have at least one package")
 
     // Verify first entry has all required fields
@@ -70,7 +76,7 @@ func swiftPackagesCatalogEntriesValid() async {
 
 @Test("SwiftPackagesCatalog search works")
 func swiftPackagesCatalogSearch() async {
-    let results = await SwiftPackagesCatalog.search("SwiftUI")
+    let results = await Core.Protocols.SwiftPackagesCatalog.search("SwiftUI")
     #expect(!results.isEmpty, "Search for 'SwiftUI' should return results")
 
     print("   ✅ Found \(results.count) results for 'SwiftUI'")
@@ -81,14 +87,14 @@ func swiftPackagesCatalogSearch() async {
 // longer carries. Once packages.db lands in v1.0.0, those queries should come
 // from the DB; test coverage will move there.
 
-// MARK: - PriorityPackagesCatalog Tests
+// MARK: - Core.PackageIndexing.PriorityPackagesCatalog Tests
 
-@Test("PriorityPackagesCatalog loads from JSON resource")
+@Test("Core.PackageIndexing.PriorityPackagesCatalog loads from JSON resource")
 func priorityPackagesCatalogLoadsFromJSON() async {
     // Use bundled file for consistent test results (not user's selected-packages.json)
-    await PriorityPackagesCatalog.setUseBundledOnly(true)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(true)
 
-    let stats = await PriorityPackagesCatalog.stats
+    let stats = await Core.PackageIndexing.PriorityPackagesCatalog.stats
     #expect(stats.totalPriorityPackages > 100, "Should have 100+ priority packages after the catalog expansion")
     #expect(stats.totalPriorityPackages < 500, "Priority package count should still be bounded")
     // These fields are optional to support TUI-generated files (which may not have them)
@@ -104,32 +110,32 @@ func priorityPackagesCatalogLoadsFromJSON() async {
     #expect(stats.totalPriorityPackages == expectedTotal, "Total should equal sum")
     print("   ✅ Loaded \(stats.totalPriorityPackages) priority packages")
 
-    await PriorityPackagesCatalog.setUseBundledOnly(false)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 }
 
-@Test("PriorityPackagesCatalog has correct metadata")
+@Test("Core.PackageIndexing.PriorityPackagesCatalog has correct metadata")
 func priorityPackagesCatalogMetadata() async {
     // Use bundled file for consistent test results
-    await PriorityPackagesCatalog.setUseBundledOnly(true)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(true)
 
-    let version = await PriorityPackagesCatalog.version
-    let lastUpdated = await PriorityPackagesCatalog.lastUpdated
-    let description = await PriorityPackagesCatalog.description
+    let version = await Core.PackageIndexing.PriorityPackagesCatalog.version
+    let lastUpdated = await Core.PackageIndexing.PriorityPackagesCatalog.lastUpdated
+    let description = await Core.PackageIndexing.PriorityPackagesCatalog.description
 
-    #expect(!version.isEmpty, "Version should not be empty")
+    #expect(!version.isEmpty, "Release.Version should not be empty")
     #expect(!lastUpdated.isEmpty, "Last updated date should not be empty")
     #expect(!description.isEmpty, "Description should not be empty")
-    print("   ✅ Version: \(version), Last updated: \(lastUpdated)")
+    print("   ✅ Release.Version: \(version), Last updated: \(lastUpdated)")
 
-    await PriorityPackagesCatalog.setUseBundledOnly(false)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 }
 
-@Test("PriorityPackagesCatalog Apple packages are valid")
+@Test("Core.PackageIndexing.PriorityPackagesCatalog Apple packages are valid")
 func priorityPackagesCatalogApplePackages() async {
     // Use bundled file for consistent test results
-    await PriorityPackagesCatalog.setUseBundledOnly(true)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(true)
 
-    let applePackages = await PriorityPackagesCatalog.applePackages
+    let applePackages = await Core.PackageIndexing.PriorityPackagesCatalog.applePackages
     #expect(applePackages.count > 40, "Should have 40+ Apple packages after expansion")
     #expect(applePackages.count < 100, "Apple package count should still be bounded")
 
@@ -141,15 +147,15 @@ func priorityPackagesCatalogApplePackages() async {
 
     print("   ✅ Apple packages validated")
 
-    await PriorityPackagesCatalog.setUseBundledOnly(false)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 }
 
-@Test("PriorityPackagesCatalog ecosystem packages are valid")
+@Test("Core.PackageIndexing.PriorityPackagesCatalog ecosystem packages are valid")
 func priorityPackagesCatalogEcosystemPackages() async {
     // Use bundled file for consistent test results
-    await PriorityPackagesCatalog.setUseBundledOnly(true)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(true)
 
-    let ecosystemPackages = await PriorityPackagesCatalog.ecosystemPackages
+    let ecosystemPackages = await Core.PackageIndexing.PriorityPackagesCatalog.ecosystemPackages
     #expect(!ecosystemPackages.isEmpty, "Should have ecosystem packages")
     #expect(ecosystemPackages.count > 50, "Ecosystem package count should reflect the expansion")
     #expect(ecosystemPackages.count < 500, "Ecosystem package count should still be bounded")
@@ -161,43 +167,43 @@ func priorityPackagesCatalogEcosystemPackages() async {
 
     print("   ✅ Ecosystem packages validated")
 
-    await PriorityPackagesCatalog.setUseBundledOnly(false)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 }
 
-@Test("PriorityPackagesCatalog priority check works")
+@Test("Core.PackageIndexing.PriorityPackagesCatalog priority check works")
 func priorityPackagesCatalogPriorityCheck() async {
     // Use bundled file for consistent test results
-    await PriorityPackagesCatalog.setUseBundledOnly(true)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(true)
 
     // Test known priority packages
-    let isSwiftPriority = await PriorityPackagesCatalog.isPriority(owner: "apple", repo: "swift")
-    let isNIOPriority = await PriorityPackagesCatalog.isPriority(owner: "apple", repo: "swift-nio")
-    let isVaporPriority = await PriorityPackagesCatalog.isPriority(owner: "vapor", repo: "vapor")
+    let isSwiftPriority = await Core.PackageIndexing.PriorityPackagesCatalog.isPriority(owner: "apple", repo: "swift")
+    let isNIOPriority = await Core.PackageIndexing.PriorityPackagesCatalog.isPriority(owner: "apple", repo: "swift-nio")
+    let isVaporPriority = await Core.PackageIndexing.PriorityPackagesCatalog.isPriority(owner: "vapor", repo: "vapor")
 
     #expect(isSwiftPriority, "swift should be priority")
     #expect(isNIOPriority, "swift-nio should be priority")
     #expect(isVaporPriority, "vapor should be priority")
 
     // Test non-priority package
-    let isRandomPriority = await PriorityPackagesCatalog.isPriority(owner: "random", repo: "package")
+    let isRandomPriority = await Core.PackageIndexing.PriorityPackagesCatalog.isPriority(owner: "random", repo: "package")
     #expect(!isRandomPriority, "random package should not be priority")
 
     print("   ✅ Priority check working correctly")
 
-    await PriorityPackagesCatalog.setUseBundledOnly(false)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 }
 
-@Test("PriorityPackagesCatalog package lookup works")
+@Test("Core.PackageIndexing.PriorityPackagesCatalog package lookup works")
 func priorityPackagesCatalogPackageLookup() async {
     // Use bundled file for consistent test results
-    await PriorityPackagesCatalog.setUseBundledOnly(true)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(true)
 
     do {
-        let swiftPackage = await PriorityPackagesCatalog.package(named: "swift")
+        let swiftPackage = await Core.PackageIndexing.PriorityPackagesCatalog.package(named: "swift")
         #expect(swiftPackage != nil, "Should find swift package")
         #expect(swiftPackage?.repo == "swift", "Package repo should match")
 
-        let vaporPackage = await PriorityPackagesCatalog.package(named: "vapor")
+        let vaporPackage = await Core.PackageIndexing.PriorityPackagesCatalog.package(named: "vapor")
         #expect(vaporPackage != nil, "Should find vapor package")
         #expect(vaporPackage?.owner == "vapor", "Vapor owner should be vapor")
 
@@ -205,17 +211,17 @@ func priorityPackagesCatalogPackageLookup() async {
     }
 
     // Reset after test - must await to avoid race condition
-    await PriorityPackagesCatalog.setUseBundledOnly(false)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 }
 
-@Test("PriorityPackagesCatalog loads user file when available")
+@Test("Core.PackageIndexing.PriorityPackagesCatalog loads user file when available")
 func priorityPackagesCatalogLoadsUserFile() async throws {
     // This test verifies issue #107 fix: user file takes precedence over bundled
     let userFileURL = Shared.Constants.defaultBaseDirectory
         .appendingPathComponent(Shared.Constants.FileName.selectedPackages)
 
     // Clear cache and ensure we're NOT using bundled-only mode
-    await PriorityPackagesCatalog.setUseBundledOnly(false)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 
     // Check if user file exists
     guard FileManager.default.fileExists(atPath: userFileURL.path) else {
@@ -229,7 +235,7 @@ func priorityPackagesCatalogLoadsUserFile() async throws {
     // which under #218 additively merges new embedded entries into the
     // user file. Read the file AFTER allPackages so the user-file count
     // reflects the post-merge state.
-    let allPackages = await PriorityPackagesCatalog.allPackages
+    let allPackages = await Core.PackageIndexing.PriorityPackagesCatalog.allPackages
 
     // Read user file to get expected count (post-merge).
     let data = try Data(contentsOf: userFileURL)
@@ -263,7 +269,7 @@ func priorityPackagesCatalogLoadsUserFile() async throws {
     print("   ✅ User file loaded: \(allPackages.count) packages (user file has \(userPackageCount))")
 
     // Restore bundled-only for other tests
-    await PriorityPackagesCatalog.setUseBundledOnly(true)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(true)
 }
 
 /// Custom test error
@@ -294,7 +300,7 @@ func downloadRealAppleDocPage() async throws {
     let config = createTestConfiguration(outputDirectory: tempDir)
     logTestStart(config: config)
 
-    let crawler = await Core.Crawler(configuration: config)
+    let crawler = await Crawler.AppleDocs(configuration: config)
     let stats = try await crawler.crawl()
 
     try verifyBasicStats(stats)
@@ -316,14 +322,14 @@ private func cleanupTempDirectory(_ tempDir: URL) {
 
 private func createTestConfiguration(outputDirectory: URL) -> Shared.Configuration {
     Shared.Configuration(
-        crawler: Shared.CrawlerConfiguration(
+        crawler: Shared.Configuration.Crawler(
             startURL: URL(string: "https://developer.apple.com/documentation/swift")!,
             maxPages: 1,
             maxDepth: 1,
             outputDirectory: outputDirectory
         ),
-        changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true),
-        output: Shared.OutputConfiguration(format: .markdown)
+        changeDetection: Shared.Configuration.ChangeDetection(forceRecrawl: true),
+        output: Shared.Configuration.Output(format: .markdown)
     )
 }
 
@@ -333,7 +339,7 @@ private func logTestStart(config: Shared.Configuration) {
     print("   Output: \(config.crawler.outputDirectory.path)")
 }
 
-private func verifyBasicStats(_ stats: CrawlStatistics) throws {
+private func verifyBasicStats(_ stats: Shared.Models.CrawlStatistics) throws {
     #expect(stats.totalPages > 0, "Should have crawled at least 1 page")
     #expect(stats.newPages > 0, "Should have at least 1 new page")
     print("   ✅ Crawled \(stats.totalPages) page(s)")
@@ -389,33 +395,33 @@ private func verifyMetadata(_ metadataFile: URL) throws {
     #expect(FileManager.default.fileExists(atPath: metadataFile.path), "Metadata file should be created")
 
     if FileManager.default.fileExists(atPath: metadataFile.path) {
-        let metadata = try CrawlMetadata.load(from: metadataFile)
+        let metadata = try Shared.Models.CrawlMetadata.load(from: metadataFile)
         #expect(!metadata.pages.isEmpty, "Metadata should contain page information")
         print("   ✅ Metadata created with \(metadata.pages.count) page(s)")
     }
 }
 
-// MARK: - CrawlerState Change Detection Tests
+// MARK: - Crawler.AppleDocs.State Change Detection Tests
 
-@Test("CrawlerState initializes with empty metadata")
+@Test("Crawler.AppleDocs.State initializes with empty metadata")
 func crawlerStateInitialization() async {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
 
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: tempDir.appendingPathComponent("metadata.json"),
         forceRecrawl: false
     )
 
-    let state = CrawlerState(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config)
     let pageCount = await state.getPageCount()
 
     #expect(pageCount == 0)
-    print("   ✅ CrawlerState initialized with empty metadata")
+    print("   ✅ Crawler.AppleDocs.State initialized with empty metadata")
 }
 
-@Test("CrawlerState loads existing metadata on initialization")
+@Test("Crawler.AppleDocs.State loads existing metadata on initialization")
 func crawlerStateLoadsExistingMetadata() async throws {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -431,15 +437,15 @@ func crawlerStateLoadsExistingMetadata() async throws {
     try "# Doc 2".write(to: doc2Path, atomically: true, encoding: .utf8)
 
     // Create initial metadata with some pages (file paths must match real files)
-    var metadata = CrawlMetadata()
-    metadata.pages["https://example.com/doc1"] = PageMetadata(
+    var metadata = Shared.Models.CrawlMetadata()
+    metadata.pages["https://example.com/doc1"] = Shared.Models.PageMetadata(
         url: "https://example.com/doc1",
         framework: "test",
         filePath: doc1Path.path,
         contentHash: "hash1",
         depth: 0
     )
-    metadata.pages["https://example.com/doc2"] = PageMetadata(
+    metadata.pages["https://example.com/doc2"] = Shared.Models.PageMetadata(
         url: "https://example.com/doc2",
         framework: "test",
         filePath: doc2Path.path,
@@ -449,30 +455,30 @@ func crawlerStateLoadsExistingMetadata() async throws {
     try metadata.save(to: metadataFile)
 
     // Initialize state - should load existing metadata
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: metadataFile,
         forceRecrawl: false
     )
-    let state = CrawlerState(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config)
     let pageCount = await state.getPageCount()
 
     #expect(pageCount == 2)
-    print("   ✅ CrawlerState loaded existing metadata with \(pageCount) pages")
+    print("   ✅ Crawler.AppleDocs.State loaded existing metadata with \(pageCount) pages")
 }
 
-@Test("CrawlerState shouldRecrawl detects new pages")
+@Test("Crawler.AppleDocs.State shouldRecrawl detects new pages")
 func crawlerStateShouldRecrawlNewPage() async {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
 
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: tempDir.appendingPathComponent("metadata.json"),
         forceRecrawl: false
     )
 
-    let state = CrawlerState(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config)
 
     // New page should be recrawled
     let shouldRecrawl = await state.shouldRecrawl(
@@ -485,7 +491,7 @@ func crawlerStateShouldRecrawlNewPage() async {
     print("   ✅ New page correctly identified for crawling")
 }
 
-@Test("CrawlerState shouldRecrawl detects content changes")
+@Test("Crawler.AppleDocs.State shouldRecrawl detects content changes")
 func crawlerStateShouldRecrawlContentChanged() async throws {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -498,8 +504,8 @@ func crawlerStateShouldRecrawlContentChanged() async throws {
     // Create file and metadata
     try "Original content".write(to: outputFile, atomically: true, encoding: .utf8)
 
-    var metadata = CrawlMetadata()
-    metadata.pages["https://example.com/doc"] = PageMetadata(
+    var metadata = Shared.Models.CrawlMetadata()
+    metadata.pages["https://example.com/doc"] = Shared.Models.PageMetadata(
         url: "https://example.com/doc",
         framework: "test",
         filePath: outputFile.path,
@@ -508,12 +514,12 @@ func crawlerStateShouldRecrawlContentChanged() async throws {
     )
     try metadata.save(to: metadataFile)
 
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: metadataFile,
         forceRecrawl: false
     )
-    let state = CrawlerState(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config)
 
     // Same URL but different hash should trigger recrawl
     let shouldRecrawl = await state.shouldRecrawl(
@@ -526,7 +532,7 @@ func crawlerStateShouldRecrawlContentChanged() async throws {
     print("   ✅ Content change correctly detected")
 }
 
-@Test("CrawlerState shouldRecrawl skips unchanged pages")
+@Test("Crawler.AppleDocs.State shouldRecrawl skips unchanged pages")
 func crawlerStateShouldRecrawlSkipsUnchanged() async throws {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -539,8 +545,8 @@ func crawlerStateShouldRecrawlSkipsUnchanged() async throws {
     // Create file and metadata
     try "Content".write(to: outputFile, atomically: true, encoding: .utf8)
 
-    var metadata = CrawlMetadata()
-    metadata.pages["https://example.com/doc"] = PageMetadata(
+    var metadata = Shared.Models.CrawlMetadata()
+    metadata.pages["https://example.com/doc"] = Shared.Models.PageMetadata(
         url: "https://example.com/doc",
         framework: "test",
         filePath: outputFile.path,
@@ -549,12 +555,12 @@ func crawlerStateShouldRecrawlSkipsUnchanged() async throws {
     )
     try metadata.save(to: metadataFile)
 
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: metadataFile,
         forceRecrawl: false
     )
-    let state = CrawlerState(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config)
 
     // Same URL, same hash, file exists - should skip
     let shouldRecrawl = await state.shouldRecrawl(
@@ -567,7 +573,7 @@ func crawlerStateShouldRecrawlSkipsUnchanged() async throws {
     print("   ✅ Unchanged page correctly skipped")
 }
 
-@Test("CrawlerState shouldRecrawl detects missing files")
+@Test("Crawler.AppleDocs.State shouldRecrawl detects missing files")
 func crawlerStateShouldRecrawlMissingFile() async throws {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -578,8 +584,8 @@ func crawlerStateShouldRecrawlMissingFile() async throws {
     let outputFile = tempDir.appendingPathComponent("missing.md")
 
     // Create metadata but NOT the file
-    var metadata = CrawlMetadata()
-    metadata.pages["https://example.com/doc"] = PageMetadata(
+    var metadata = Shared.Models.CrawlMetadata()
+    metadata.pages["https://example.com/doc"] = Shared.Models.PageMetadata(
         url: "https://example.com/doc",
         framework: "test",
         filePath: outputFile.path,
@@ -588,12 +594,12 @@ func crawlerStateShouldRecrawlMissingFile() async throws {
     )
     try metadata.save(to: metadataFile)
 
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: metadataFile,
         forceRecrawl: false
     )
-    let state = CrawlerState(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config)
 
     // File missing should trigger recrawl
     let shouldRecrawl = await state.shouldRecrawl(
@@ -606,7 +612,7 @@ func crawlerStateShouldRecrawlMissingFile() async throws {
     print("   ✅ Missing file correctly detected")
 }
 
-@Test("CrawlerState respects forceRecrawl flag")
+@Test("Crawler.AppleDocs.State respects forceRecrawl flag")
 func crawlerStateForceRecrawl() async throws {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -619,8 +625,8 @@ func crawlerStateForceRecrawl() async throws {
     // Create file and metadata
     try "Content".write(to: outputFile, atomically: true, encoding: .utf8)
 
-    var metadata = CrawlMetadata()
-    metadata.pages["https://example.com/doc"] = PageMetadata(
+    var metadata = Shared.Models.CrawlMetadata()
+    metadata.pages["https://example.com/doc"] = Shared.Models.PageMetadata(
         url: "https://example.com/doc",
         framework: "test",
         filePath: outputFile.path,
@@ -629,12 +635,12 @@ func crawlerStateForceRecrawl() async throws {
     )
     try metadata.save(to: metadataFile)
 
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: metadataFile,
         forceRecrawl: true // Force recrawl
     )
-    let state = CrawlerState(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config)
 
     // Even with same hash and existing file, should recrawl when forced
     let shouldRecrawl = await state.shouldRecrawl(
@@ -647,7 +653,7 @@ func crawlerStateForceRecrawl() async throws {
     print("   ✅ forceRecrawl flag correctly enforced")
 }
 
-@Test("CrawlerState respects disabled change detection")
+@Test("Crawler.AppleDocs.State respects disabled change detection")
 func crawlerStateDisabledChangeDetection() async throws {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -660,8 +666,8 @@ func crawlerStateDisabledChangeDetection() async throws {
     // Create file and metadata
     try "Content".write(to: outputFile, atomically: true, encoding: .utf8)
 
-    var metadata = CrawlMetadata()
-    metadata.pages["https://example.com/doc"] = PageMetadata(
+    var metadata = Shared.Models.CrawlMetadata()
+    metadata.pages["https://example.com/doc"] = Shared.Models.PageMetadata(
         url: "https://example.com/doc",
         framework: "test",
         filePath: outputFile.path,
@@ -670,12 +676,12 @@ func crawlerStateDisabledChangeDetection() async throws {
     )
     try metadata.save(to: metadataFile)
 
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: false, // Disabled
         metadataFile: metadataFile,
         forceRecrawl: false
     )
-    let state = CrawlerState(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config)
 
     // With change detection disabled, should always recrawl
     let shouldRecrawl = await state.shouldRecrawl(
@@ -688,18 +694,18 @@ func crawlerStateDisabledChangeDetection() async throws {
     print("   ✅ Disabled change detection correctly handled")
 }
 
-@Test("CrawlerState updatePage adds page metadata")
+@Test("Crawler.AppleDocs.State updatePage adds page metadata")
 func crawlerStateUpdatePage() async {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
 
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: tempDir.appendingPathComponent("metadata.json"),
         forceRecrawl: false
     )
 
-    let state = CrawlerState(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config)
 
     let initialCount = await state.getPageCount()
     #expect(initialCount == 0)
@@ -718,18 +724,18 @@ func crawlerStateUpdatePage() async {
     print("   ✅ Page metadata successfully added")
 }
 
-@Test("CrawlerState updateStatistics modifies stats")
+@Test("Crawler.AppleDocs.State updateStatistics modifies stats")
 func crawlerStateUpdateStatistics() async {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
 
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: tempDir.appendingPathComponent("metadata.json"),
         forceRecrawl: false
     )
 
-    let state = CrawlerState(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config)
 
     await state.updateStatistics { stats in
         stats.totalPages = 10
@@ -748,20 +754,20 @@ func crawlerStateUpdateStatistics() async {
     print("   ✅ Statistics successfully updated")
 }
 
-@Test("CrawlerState session state management")
+@Test("Crawler.AppleDocs.State session state management")
 func crawlerStateSessionManagement() async throws {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
 
     try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: tempDir.appendingPathComponent("metadata.json"),
         forceRecrawl: false
     )
 
-    let state = CrawlerState(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config)
 
     // Initially no active session
     let hasActiveSession1 = await state.hasActiveSession()
@@ -799,7 +805,7 @@ func crawlerStateSessionManagement() async throws {
     print("   ✅ Session state management working correctly")
 }
 
-@Test("CrawlerState finalizeCrawl saves metadata")
+@Test("Crawler.AppleDocs.State finalizeCrawl saves metadata")
 func crawlerStateFinalizeAndSave() async throws {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -807,13 +813,13 @@ func crawlerStateFinalizeAndSave() async throws {
     try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
     let metadataFile = tempDir.appendingPathComponent("metadata.json")
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: metadataFile,
         forceRecrawl: false
     )
 
-    let state = CrawlerState(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config)
 
     // Update some data
     await state.updatePage(
@@ -824,7 +830,7 @@ func crawlerStateFinalizeAndSave() async throws {
         depth: 0
     )
 
-    let stats = CrawlStatistics(
+    let stats = Shared.Models.CrawlStatistics(
         totalPages: 5,
         newPages: 3,
         updatedPages: 1,
@@ -841,7 +847,7 @@ func crawlerStateFinalizeAndSave() async throws {
     #expect(FileManager.default.fileExists(atPath: metadataFile.path))
 
     // Verify we can load it back
-    let loadedMetadata = try CrawlMetadata.load(from: metadataFile)
+    let loadedMetadata = try Shared.Models.CrawlMetadata.load(from: metadataFile)
     #expect(loadedMetadata.pages.count == 1)
     #expect(loadedMetadata.stats.totalPages == 5)
     #expect(loadedMetadata.lastCrawl != nil)
@@ -849,7 +855,7 @@ func crawlerStateFinalizeAndSave() async throws {
     print("   ✅ Metadata finalized and saved correctly")
 }
 
-@Test("CrawlerState autoSaveIfNeeded respects interval")
+@Test("Crawler.AppleDocs.State autoSaveIfNeeded respects interval")
 func crawlerStateAutoSaveInterval() async throws {
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -857,13 +863,13 @@ func crawlerStateAutoSaveInterval() async throws {
     try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
     let metadataFile = tempDir.appendingPathComponent("metadata.json")
-    let config = Shared.ChangeDetectionConfiguration(
+    let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: metadataFile,
         forceRecrawl: false
     )
 
-    let state = CrawlerState(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config)
 
     let visited = Set(["https://example.com/1"])
     let queue = try [(url: #require(URL(string: "https://example.com/2")), depth: 1)]
@@ -916,9 +922,9 @@ func hashUtilitiesSHA256Consistency() {
     let content2 = "Hello, World!"
     let content3 = "Different content"
 
-    let hash1 = HashUtilities.sha256(of: content1)
-    let hash2 = HashUtilities.sha256(of: content2)
-    let hash3 = HashUtilities.sha256(of: content3)
+    let hash1 = Shared.Models.HashUtilities.sha256(of: content1)
+    let hash2 = Shared.Models.HashUtilities.sha256(of: content2)
+    let hash3 = Shared.Models.HashUtilities.sha256(of: content3)
 
     // Same content should produce same hash
     #expect(hash1 == hash2)
@@ -932,13 +938,13 @@ func hashUtilitiesSHA256Consistency() {
     print("   ✅ SHA-256 hashing working correctly")
 }
 
-// MARK: - PriorityPackagesCatalog merge tests (#218)
+// MARK: - Core.PackageIndexing.PriorityPackagesCatalog merge tests (#218)
 
 /// Coverage for #218: an existing user file at
 /// `~/.cupertino/selected-packages.json` should additively pick up new
-/// entries from `PriorityPackagesEmbedded.swift` instead of being frozen at
+/// entries from `Resources.Embedded.PriorityPackages.swift` instead of being frozen at
 /// whichever priority list it was first seeded with.
-@Suite("PriorityPackagesCatalog embedded-entry merge (#218)")
+@Suite("Core.PackageIndexing.PriorityPackagesCatalog embedded-entry merge (#218)")
 struct PriorityPackagesMergeTests {
     @Test("Adds new ecosystem entries while preserving existing ones")
     func mergeAddsNewEcosystem() throws {
@@ -987,13 +993,13 @@ struct PriorityPackagesMergeTests {
         }
         """
 
-        PriorityPackagesCatalog.mergeNewEmbeddedEntries(
+        Core.PackageIndexing.PriorityPackagesCatalog.mergeNewEmbeddedEntries(
             into: userFile,
             from: Data(embedded.utf8)
         )
 
         let merged = try JSONDecoder().decode(
-            PriorityPackagesCatalogJSON.self,
+            Core.PackageIndexing.PriorityPackagesCatalogJSON.self,
             from: Data(contentsOf: userFile)
         )
         let repos = merged.tiers.ecosystem.packages.map(\.repo)
@@ -1028,11 +1034,11 @@ struct PriorityPackagesMergeTests {
         """
         try payload.write(to: userFile, atomically: true, encoding: .utf8)
 
-        PriorityPackagesCatalog.mergeNewEmbeddedEntries(into: userFile, from: Data(payload.utf8))
-        PriorityPackagesCatalog.mergeNewEmbeddedEntries(into: userFile, from: Data(payload.utf8))
+        Core.PackageIndexing.PriorityPackagesCatalog.mergeNewEmbeddedEntries(into: userFile, from: Data(payload.utf8))
+        Core.PackageIndexing.PriorityPackagesCatalog.mergeNewEmbeddedEntries(into: userFile, from: Data(payload.utf8))
 
         let merged = try JSONDecoder().decode(
-            PriorityPackagesCatalogJSON.self,
+            Core.PackageIndexing.PriorityPackagesCatalogJSON.self,
             from: Data(contentsOf: userFile)
         )
         #expect(merged.tiers.ecosystem.packages.count == 1)
@@ -1076,7 +1082,7 @@ struct PriorityPackagesMergeTests {
         }
         """
 
-        PriorityPackagesCatalog.mergeNewEmbeddedEntries(
+        Core.PackageIndexing.PriorityPackagesCatalog.mergeNewEmbeddedEntries(
             into: userFile,
             from: Data(embedded.utf8)
         )
@@ -1088,7 +1094,7 @@ struct PriorityPackagesMergeTests {
         // If "sticky deletions" become a real requirement we'll need a
         // separate "removed" list. (#218 deliberately picked simple set-diff.)
         let merged = try JSONDecoder().decode(
-            PriorityPackagesCatalogJSON.self,
+            Core.PackageIndexing.PriorityPackagesCatalogJSON.self,
             from: Data(contentsOf: userFile)
         )
         #expect(merged.tiers.ecosystem.packages.map(\.repo) == ["vapor"])
@@ -1139,13 +1145,13 @@ struct PriorityPackagesMergeTests {
         }
         """
 
-        PriorityPackagesCatalog.mergeNewEmbeddedEntries(
+        Core.PackageIndexing.PriorityPackagesCatalog.mergeNewEmbeddedEntries(
             into: userFile,
             from: Data(embedded.utf8)
         )
 
         let merged = try JSONDecoder().decode(
-            PriorityPackagesCatalogJSON.self,
+            Core.PackageIndexing.PriorityPackagesCatalogJSON.self,
             from: Data(contentsOf: userFile)
         )
         #expect(merged.tiers.ecosystem.packages.count == 1, "URL-derived owner should match explicit owner")
@@ -1179,7 +1185,7 @@ struct PackageAvailabilityAnnotatorTests {
             products: []
         )
         """
-        let result = Core.PackageAvailabilityAnnotator.parsePlatforms(from: manifest)
+        let result = Core.PackageIndexing.PackageAvailabilityAnnotator.parsePlatforms(from: manifest)
         #expect(result["macOS"] == "10.15")
         #expect(result["iOS"] == "13.0")
         #expect(result["tvOS"] == "13.0")
@@ -1192,7 +1198,7 @@ struct PackageAvailabilityAnnotatorTests {
         import PackageDescription
         let package = Package(name: "Foo", products: [])
         """
-        #expect(Core.PackageAvailabilityAnnotator.parsePlatforms(from: manifest).isEmpty)
+        #expect(Core.PackageIndexing.PackageAvailabilityAnnotator.parsePlatforms(from: manifest).isEmpty)
     }
 
     @Test("parsePlatforms handles multi-digit minor like .v10_15_4")
@@ -1200,7 +1206,7 @@ struct PackageAvailabilityAnnotatorTests {
         let manifest = """
         platforms: [.macOS(.v10_15_4)],
         """
-        let result = Core.PackageAvailabilityAnnotator.parsePlatforms(from: manifest)
+        let result = Core.PackageIndexing.PackageAvailabilityAnnotator.parsePlatforms(from: manifest)
         #expect(result["macOS"] == "10.15.4")
     }
 
@@ -1210,7 +1216,7 @@ struct PackageAvailabilityAnnotatorTests {
         platforms: [.iOS(.v16)],
         targets: [.target(name: "Foo")]
         """
-        let result = Core.PackageAvailabilityAnnotator.parsePlatforms(from: manifest)
+        let result = Core.PackageIndexing.PackageAvailabilityAnnotator.parsePlatforms(from: manifest)
         #expect(result == ["iOS": "16.0"])
     }
 
@@ -1222,7 +1228,7 @@ struct PackageAvailabilityAnnotatorTests {
             func bar() {}
         }
         """
-        let attrs = Core.PackageAvailabilityAnnotator.extractAvailability(from: source)
+        let attrs = Core.PackageIndexing.PackageAvailabilityAnnotator.extractAvailability(from: source)
         #expect(attrs.count == 1)
         #expect(attrs.first?.line == 2)
         #expect(attrs.first?.raw == "(iOS 16.0, macOS 13.0, *)")
@@ -1240,7 +1246,7 @@ struct PackageAvailabilityAnnotatorTests {
         @available(*, noasync, message: "Sync only")
         func syncFoo() {}
         """
-        let attrs = Core.PackageAvailabilityAnnotator.extractAvailability(from: source)
+        let attrs = Core.PackageIndexing.PackageAvailabilityAnnotator.extractAvailability(from: source)
         #expect(attrs.count == 2)
         #expect(attrs[0].platforms.contains("deprecated"))
         #expect(attrs[1].platforms.contains("noasync"))
@@ -1248,7 +1254,7 @@ struct PackageAvailabilityAnnotatorTests {
 
     @Test("extractAvailability returns empty array on plain source")
     func availabilityEmpty() {
-        #expect(Core.PackageAvailabilityAnnotator.extractAvailability(from: "let x = 1").isEmpty)
+        #expect(Core.PackageIndexing.PackageAvailabilityAnnotator.extractAvailability(from: "let x = 1").isEmpty)
     }
 
     @Test("annotate writes availability.json with deployment targets + file attrs")
@@ -1256,7 +1262,7 @@ struct PackageAvailabilityAnnotatorTests {
         let dir = try Self.makeTempPackage()
         defer { try? FileManager.default.removeItem(at: dir) }
 
-        let annotator = Core.PackageAvailabilityAnnotator()
+        let annotator = Core.PackageIndexing.PackageAvailabilityAnnotator()
         let result = try await annotator.annotate(packageDirectory: dir)
 
         #expect(result.deploymentTargets["iOS"] == "16.0")
@@ -1265,11 +1271,11 @@ struct PackageAvailabilityAnnotatorTests {
         #expect(result.fileAvailability.count == 1)
         #expect(result.fileAvailability.first?.relpath == "Sources/Foo/Foo.swift")
 
-        let outURL = dir.appendingPathComponent(Core.PackageAvailabilityAnnotator.outputFilename)
+        let outURL = dir.appendingPathComponent(Core.PackageIndexing.PackageAvailabilityAnnotator.outputFilename)
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let reloaded = try decoder.decode(
-            Core.PackageAvailabilityAnnotator.AnnotationResult.self,
+            Core.PackageIndexing.PackageAvailabilityAnnotator.AnnotationResult.self,
             from: Data(contentsOf: outURL)
         )
         #expect(reloaded.deploymentTargets == result.deploymentTargets)
@@ -1279,8 +1285,8 @@ struct PackageAvailabilityAnnotatorTests {
     @Test("annotate throws when package directory missing")
     func annotateMissingDir() async throws {
         let bogus = URL(fileURLWithPath: "/tmp/nope-\(UUID().uuidString)")
-        let annotator = Core.PackageAvailabilityAnnotator()
-        await #expect(throws: Core.PackageAvailabilityAnnotator.AnnotationError.self) {
+        let annotator = Core.PackageIndexing.PackageAvailabilityAnnotator()
+        await #expect(throws: Core.PackageIndexing.PackageAvailabilityAnnotator.AnnotationError.self) {
             _ = try await annotator.annotate(packageDirectory: bogus)
         }
     }
@@ -1290,7 +1296,7 @@ struct PackageAvailabilityAnnotatorTests {
         let dir = try Self.makeTempPackage()
         defer { try? FileManager.default.removeItem(at: dir) }
 
-        let annotator = Core.PackageAvailabilityAnnotator()
+        let annotator = Core.PackageIndexing.PackageAvailabilityAnnotator()
         let first = try await annotator.annotate(packageDirectory: dir)
         let second = try await annotator.annotate(packageDirectory: dir)
         // Stats and content stable; only annotatedAt differs.

@@ -1,11 +1,17 @@
 @testable import Core
+@testable import CoreJSONParser
+import CoreProtocols
+@testable import Crawler
 import Foundation
-@testable import Shared
+import SharedConfiguration
+import SharedConstants
+@testable import SharedCore
+import SharedModels
 import Testing
 
 // MARK: - Crawler Tests
 
-// Tests for the Core.Crawler web crawling engine
+// Tests for the Crawler.AppleDocs web crawling engine
 // Note: These are integration tests that use real WKWebView
 
 @Suite("Crawler")
@@ -19,19 +25,19 @@ struct CrawlerTests {
             .appendingPathComponent(UUID().uuidString)
 
         let config = try Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(
+            crawler: Shared.Configuration.Crawler(
                 startURL: #require(URL(string: "https://developer.apple.com")),
                 maxPages: 5,
                 outputDirectory: tempDir
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(
+            changeDetection: Shared.Configuration.ChangeDetection(
                 enabled: false,
                 metadataFile: tempDir.appendingPathComponent("metadata.json")
             ),
-            output: Shared.OutputConfiguration()
+            output: Shared.Configuration.Output()
         )
 
-        let crawler = await Core.Crawler(configuration: config)
+        let crawler = await Crawler.AppleDocs(configuration: config)
 
         // If we get here without crashing, initialization worked
         _ = crawler
@@ -45,7 +51,7 @@ struct CrawlerTests {
     @Test("URLUtilities normalize preserves path but removes trailing slash")
     func urlNormalizePreservesPath() throws {
         let url = try #require(URL(string: "https://example.com/path/"))
-        let normalized = URLUtilities.normalize(url)
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         // Normalization removes fragments, query params, and trailing slashes
         #expect(normalized?.path == "/path")
@@ -54,7 +60,7 @@ struct CrawlerTests {
     @Test("URLUtilities normalize removes fragments")
     func urlNormalizeRemovesFragments() throws {
         let url = try #require(URL(string: "https://example.com/path#section"))
-        let normalized = URLUtilities.normalize(url)
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         #expect(normalized?.fragment == nil)
         #expect(try !#require(normalized?.absoluteString.contains("#")))
@@ -63,7 +69,7 @@ struct CrawlerTests {
     @Test("URLUtilities normalize removes query parameters")
     func urlNormalizeRemovesQueryParams() throws {
         let url = try #require(URL(string: "https://example.com/path?param=value"))
-        let normalized = URLUtilities.normalize(url)
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         #expect(normalized?.query == nil)
         #expect(try !#require(normalized?.absoluteString.contains("?")))
@@ -71,18 +77,18 @@ struct CrawlerTests {
 
     @Test("URLUtilities normalize lowercases Apple documentation paths")
     func urlNormalizeLowercasesAppleDocumentationPaths() throws {
-        let uppercase = URL(string: "https://developer.apple.com/documentation/Cinematic/CNAssetInfo-2ata2")!
-        let lowercase = URL(string: "https://developer.apple.com/documentation/cinematic/cnassetinfo-2ata2")!
+        let uppercase = try #require(URL(string: "https://developer.apple.com/documentation/Cinematic/CNAssetInfo-2ata2"))
+        let lowercase = try #require(URL(string: "https://developer.apple.com/documentation/cinematic/cnassetinfo-2ata2"))
 
-        #expect(URLUtilities.normalize(uppercase) == URLUtilities.normalize(lowercase))
-        #expect(URLUtilities.normalize(uppercase)?.path == "/documentation/cinematic/cnassetinfo-2ata2")
+        #expect(Shared.Models.URLUtilities.normalize(uppercase) == Shared.Models.URLUtilities.normalize(lowercase))
+        #expect(Shared.Models.URLUtilities.normalize(uppercase)?.path == "/documentation/cinematic/cnassetinfo-2ata2")
     }
 
     @Test("URLUtilities normalize preserves method disambiguator dashes")
     func urlNormalizePreservesMethodDisambiguatorDashes() throws {
-        let url = URL(string: "https://developer.apple.com/documentation/Cinematic/CNAssetInfo-2ata2")!
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/Cinematic/CNAssetInfo-2ata2"))
 
-        #expect(URLUtilities.normalize(url)?.lastPathComponent == "cnassetinfo-2ata2")
+        #expect(Shared.Models.URLUtilities.normalize(url)?.lastPathComponent == "cnassetinfo-2ata2")
     }
 
     @Test("URLUtilities normalize keeps underscores intact (installer_js safety)")
@@ -92,8 +98,8 @@ struct CrawlerTests {
         // underscore→dash collapse in URLUtilities would silently break the
         // entire installer_js framework on every crawl. Verify we never make
         // that change.
-        let url = URL(string: "https://developer.apple.com/documentation/installer_js/license")!
-        let normalized = URLUtilities.normalize(url)
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/installer_js/license"))
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/documentation/installer_js/license")
         #expect(try !#require(normalized?.absoluteString.contains("installer-js")))
@@ -101,8 +107,8 @@ struct CrawlerTests {
 
     @Test("URLUtilities normalize converts underscore sub-page slug to dash")
     func urlNormalizeConvertsUnderscoreSubpageToDash() throws {
-        let url = URL(string: "https://developer.apple.com/documentation/corelocation/getting_heading_and_course_information")!
-        let normalized = URLUtilities.normalize(url)
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/corelocation/getting_heading_and_course_information"))
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/documentation/corelocation/getting-heading-and-course-information")
     }
@@ -112,32 +118,32 @@ struct CrawlerTests {
         // driverkit/driverkit_constants is one of the 31 duplicate-cluster pairs from #285.
         // The framework slug "driverkit" at depth 2 must be left untouched;
         // only "driverkit_constants" at depth 3 is collapsed to dashes.
-        let url = URL(string: "https://developer.apple.com/documentation/driverkit/driverkit_constants")!
-        let normalized = URLUtilities.normalize(url)
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/driverkit/driverkit_constants"))
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/documentation/driverkit/driverkit-constants")
     }
 
     @Test("URLUtilities normalize converts underscores at multiple sub-page depths")
     func urlNormalizeConvertsUnderscoresAtMultipleDepths() throws {
-        let url = URL(string: "https://developer.apple.com/documentation/swiftui/some_class/some_method")!
-        let normalized = URLUtilities.normalize(url)
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/some_class/some_method"))
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/documentation/swiftui/some-class/some-method")
     }
 
     @Test("URLUtilities normalize does not touch non-documentation URL underscores")
     func urlNormalizeDoesNotTouchNonDocsPaths() throws {
-        let url = URL(string: "https://developer.apple.com/videos/play/wwdc2023/10_video")!
-        let normalized = URLUtilities.normalize(url)
+        let url = try #require(URL(string: "https://developer.apple.com/videos/play/wwdc2023/10_video"))
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/videos/play/wwdc2023/10_video")
     }
 
     @Test("URLUtilities normalize strips fragment and query and collapses sub-page underscore")
     func urlNormalizeStripsFragmentQueryAndNormalizesUnderscore() throws {
-        let url = URL(string: "https://developer.apple.com/documentation/swiftui/some_method?foo=1#bar")!
-        let normalized = URLUtilities.normalize(url)
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/some_method?foo=1#bar"))
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/documentation/swiftui/some-method")
         #expect(normalized?.query == nil)
@@ -146,8 +152,8 @@ struct CrawlerTests {
 
     @Test("URLUtilities normalize lowercases before collapsing underscore to dash")
     func urlNormalizeLowercasesBeforeCollapsingUnderscore() throws {
-        let url = URL(string: "https://developer.apple.com/documentation/SwiftUI/Some_Method")!
-        let normalized = URLUtilities.normalize(url)
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/SwiftUI/Some_Method"))
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/documentation/swiftui/some-method")
     }
@@ -156,8 +162,8 @@ struct CrawlerTests {
     func urlNormalizeHandlesDocumentationOnlyPath() throws {
         // Regression: normalizeDocPath used to trap with "Range requires lowerBound <= upperBound"
         // when documentation was found but had fewer than 2 following path segments.
-        let url = URL(string: "https://developer.apple.com/documentation")!
-        let normalized = URLUtilities.normalize(url)
+        let url = try #require(URL(string: "https://developer.apple.com/documentation"))
+        let normalized = Shared.Models.URLUtilities.normalize(url)
 
         #expect(normalized?.path == "/documentation")
     }
@@ -167,7 +173,7 @@ struct CrawlerTests {
     @Test("URLUtilities extracts framework from Apple docs URL")
     func extractFrameworkFromAppleDocs() throws {
         let url = try #require(URL(string: "https://developer.apple.com/documentation/swift/array"))
-        let framework = URLUtilities.extractFramework(from: url)
+        let framework = Shared.Models.URLUtilities.extractFramework(from: url)
 
         #expect(framework == "swift")
     }
@@ -175,7 +181,7 @@ struct CrawlerTests {
     @Test("URLUtilities extracts framework from nested path")
     func extractFrameworkFromNestedPath() throws {
         let url = try #require(URL(string: "https://developer.apple.com/documentation/uikit/uiview/animator"))
-        let framework = URLUtilities.extractFramework(from: url)
+        let framework = Shared.Models.URLUtilities.extractFramework(from: url)
 
         #expect(framework == "uikit")
     }
@@ -183,7 +189,7 @@ struct CrawlerTests {
     @Test("URLUtilities returns root for non-documentation URLs")
     func extractFrameworkReturnsRootForNonDocs() throws {
         let url = try #require(URL(string: "https://example.com/some/path"))
-        let framework = URLUtilities.extractFramework(from: url)
+        let framework = Shared.Models.URLUtilities.extractFramework(from: url)
 
         #expect(framework == "root")
     }
@@ -193,7 +199,7 @@ struct CrawlerTests {
     @Test("URLUtilities generates filename from URL")
     func generateFilenameFromURL() throws {
         let url = try #require(URL(string: "https://developer.apple.com/documentation/swift/array"))
-        let filename = URLUtilities.filename(from: url)
+        let filename = Shared.Models.URLUtilities.filename(from: url)
 
         #expect(filename.contains("array"))
         #expect(!filename.contains("/")) // No slashes in filename
@@ -202,7 +208,7 @@ struct CrawlerTests {
     @Test("URLUtilities handles complex paths in filename")
     func generateFilenameFromComplexPath() throws {
         let url = try #require(URL(string: "https://developer.apple.com/documentation/uikit/uiview/1622417-addsubview"))
-        let filename = URLUtilities.filename(from: url)
+        let filename = Shared.Models.URLUtilities.filename(from: url)
 
         #expect(!filename.isEmpty)
         #expect(!filename.contains("/"))
@@ -214,8 +220,8 @@ struct CrawlerTests {
     func hashUtilitiesConsistentHash() {
         let content = "Test content for hashing"
 
-        let hash1 = HashUtilities.sha256(of: content)
-        let hash2 = HashUtilities.sha256(of: content)
+        let hash1 = Shared.Models.HashUtilities.sha256(of: content)
+        let hash2 = Shared.Models.HashUtilities.sha256(of: content)
 
         #expect(hash1 == hash2)
         #expect(hash1.count == 64) // SHA256 produces 64 hex characters
@@ -226,15 +232,15 @@ struct CrawlerTests {
         let content1 = "Content A"
         let content2 = "Content B"
 
-        let hash1 = HashUtilities.sha256(of: content1)
-        let hash2 = HashUtilities.sha256(of: content2)
+        let hash1 = Shared.Models.HashUtilities.sha256(of: content1)
+        let hash2 = Shared.Models.HashUtilities.sha256(of: content2)
 
         #expect(hash1 != hash2)
     }
 
     @Test("HashUtilities SHA256 handles empty string")
     func hashUtilitiesEmptyString() {
-        let hash = HashUtilities.sha256(of: "")
+        let hash = Shared.Models.HashUtilities.sha256(of: "")
 
         #expect(!hash.isEmpty)
         #expect(hash.count == 64)
@@ -244,7 +250,7 @@ struct CrawlerTests {
 
     @Test("CrawlStatistics initializes with zeros")
     func statisticsInitializesWithZeros() {
-        let stats = CrawlStatistics()
+        let stats = Shared.Models.CrawlStatistics()
 
         #expect(stats.totalPages == 0)
         #expect(stats.newPages == 0)
@@ -255,7 +261,7 @@ struct CrawlerTests {
 
     @Test("CrawlStatistics is Codable")
     func statisticsIsCodable() throws {
-        var stats = CrawlStatistics()
+        var stats = Shared.Models.CrawlStatistics()
         stats.totalPages = 100
         stats.newPages = 50
         stats.updatedPages = 30
@@ -268,7 +274,7 @@ struct CrawlerTests {
         let data = try encoder.encode(stats)
 
         let decoder = JSONDecoder()
-        let decoded = try decoder.decode(CrawlStatistics.self, from: data)
+        let decoded = try decoder.decode(Shared.Models.CrawlStatistics.self, from: data)
 
         #expect(decoded.totalPages == 100)
         #expect(decoded.newPages == 50)
@@ -277,12 +283,12 @@ struct CrawlerTests {
         #expect(decoded.errors == 5)
     }
 
-    // MARK: - CrawlProgress Tests
+    // MARK: - Crawler.AppleDocs.Progress Tests
 
-    @Test("CrawlProgress calculates percentage")
+    @Test("Crawler.AppleDocs.Progress calculates percentage")
     func progressCalculatesPercentage() throws {
-        let stats = CrawlStatistics()
-        let progress = try CrawlProgress(
+        let stats = Shared.Models.CrawlStatistics()
+        let progress = try Crawler.AppleDocs.Progress(
             currentURL: #require(URL(string: "https://example.com")),
             visitedCount: 10,
             totalPages: 100,
@@ -303,20 +309,20 @@ struct CrawlerTests {
             .appendingPathComponent(UUID().uuidString)
 
         let config = try Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(
+            crawler: Shared.Configuration.Crawler(
                 startURL: #require(URL(string: "https://example.com")),
                 maxPages: 1, // Limit to 1 page
                 outputDirectory: tempDir,
                 requestDelay: 0.1
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(
+            changeDetection: Shared.Configuration.ChangeDetection(
                 enabled: false,
                 metadataFile: tempDir.appendingPathComponent("metadata.json")
             ),
-            output: Shared.OutputConfiguration()
+            output: Shared.Configuration.Output()
         )
 
-        let crawler = await Core.Crawler(configuration: config)
+        let crawler = await Crawler.AppleDocs(configuration: config)
 
         // Note: This may fail to load the actual page (network required),
         // but it tests that the crawler can be instantiated and attempt to crawl
@@ -343,20 +349,20 @@ struct CrawlerTests {
         #expect(!FileManager.default.fileExists(atPath: tempDir.path))
 
         let config = try Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(
+            crawler: Shared.Configuration.Crawler(
                 startURL: #require(URL(string: "https://example.com")),
                 maxPages: 1,
                 outputDirectory: tempDir,
                 requestDelay: 0.1
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(
+            changeDetection: Shared.Configuration.ChangeDetection(
                 enabled: false,
                 metadataFile: tempDir.appendingPathComponent("metadata.json")
             ),
-            output: Shared.OutputConfiguration()
+            output: Shared.Configuration.Output()
         )
 
-        let crawler = await Core.Crawler(configuration: config)
+        let crawler = await Crawler.AppleDocs(configuration: config)
 
         do {
             _ = try await crawler.crawl()
@@ -383,16 +389,16 @@ struct CrawlerTests {
         let lapackURL = try #require(URL(string: "https://developer.apple.com/documentation/accelerate/lapack-functions"))
 
         // The URL should normalize correctly
-        let normalized = URLUtilities.normalize(lapackURL)
+        let normalized = Shared.Models.URLUtilities.normalize(lapackURL)
         #expect(normalized != nil)
         #expect(normalized?.absoluteString == "https://developer.apple.com/documentation/accelerate/lapack-functions")
 
         // Framework extraction should work
-        let framework = URLUtilities.extractFramework(from: lapackURL)
+        let framework = Shared.Models.URLUtilities.extractFramework(from: lapackURL)
         #expect(framework == "accelerate")
 
         // Filename generation should work
-        let filename = URLUtilities.filename(from: lapackURL)
+        let filename = Shared.Models.URLUtilities.filename(from: lapackURL)
         #expect(filename.contains("lapack-functions") || filename.contains("lapack_functions"))
     }
 
@@ -420,7 +426,7 @@ struct CrawlerTests {
         let jsonAPIURL = try #require(
             URL(string: "https://developer.apple.com/tutorials/data/documentation/professional-video-applications/overview.json")
         )
-        let docURL = AppleJSONToMarkdown.documentationURL(from: jsonAPIURL)
+        let docURL = Core.JSONParser.AppleJSONToMarkdown.documentationURL(from: jsonAPIURL)
 
         #expect(docURL?.absoluteString == "https://developer.apple.com/documentation/professional-video-applications/overview")
     }
@@ -430,8 +436,8 @@ struct CrawlerTests {
         let original = try #require(
             URL(string: "https://developer.apple.com/documentation/professional-video-applications/overview")
         )
-        let jsonURL = try #require(AppleJSONToMarkdown.jsonAPIURL(from: original))
-        let reversed = try #require(AppleJSONToMarkdown.documentationURL(from: jsonURL))
+        let jsonURL = try #require(Core.JSONParser.AppleJSONToMarkdown.jsonAPIURL(from: original))
+        let reversed = try #require(Core.JSONParser.AppleJSONToMarkdown.documentationURL(from: jsonURL))
 
         #expect(reversed.absoluteString == original.absoluteString)
     }
@@ -442,11 +448,11 @@ struct CrawlerTests {
         let docURL = try #require(
             URL(string: "https://developer.apple.com/documentation/swift/array")
         )
-        #expect(AppleJSONToMarkdown.documentationURL(from: docURL) == nil)
+        #expect(Core.JSONParser.AppleJSONToMarkdown.documentationURL(from: docURL) == nil)
 
         // A non-Apple URL should return nil
         let externalURL = try #require(URL(string: "https://example.com/tutorials/data/documentation/foo.json"))
-        #expect(AppleJSONToMarkdown.documentationURL(from: externalURL) == nil)
+        #expect(Core.JSONParser.AppleJSONToMarkdown.documentationURL(from: externalURL) == nil)
     }
 
     @Test("documentationURL(from:) handles the professional_video_applications slug migration")
@@ -456,7 +462,7 @@ struct CrawlerTests {
         let redirectedJSONURL = try #require(
             URL(string: "https://developer.apple.com/tutorials/data/documentation/professional-video-applications.json")
         )
-        let canonical = try #require(AppleJSONToMarkdown.documentationURL(from: redirectedJSONURL))
+        let canonical = try #require(Core.JSONParser.AppleJSONToMarkdown.documentationURL(from: redirectedJSONURL))
 
         #expect(canonical.absoluteString == "https://developer.apple.com/documentation/professional-video-applications")
         // Confirm the canonical URL uses dashes (not underscores), so the corpus stores
@@ -488,7 +494,7 @@ struct CrawlerTests {
 
     @Test("CrawlerConfiguration htmlLinkAugmentation defaults to true")
     func htmlLinkAugmentationDefaultsToTrue() throws {
-        let config = try Shared.CrawlerConfiguration(
+        let config = try Shared.Configuration.Crawler(
             startURL: #require(URL(string: "https://developer.apple.com/documentation")),
             outputDirectory: FileManager.default.temporaryDirectory
         )
@@ -497,7 +503,7 @@ struct CrawlerTests {
 
     @Test("CrawlerConfiguration htmlLinkAugmentationMaxRefs defaults to 10")
     func htmlLinkAugmentationMaxRefsDefaultsToTen() throws {
-        let config = try Shared.CrawlerConfiguration(
+        let config = try Shared.Configuration.Crawler(
             startURL: #require(URL(string: "https://developer.apple.com/documentation")),
             outputDirectory: FileManager.default.temporaryDirectory
         )
@@ -506,7 +512,7 @@ struct CrawlerTests {
 
     @Test("CrawlerConfiguration htmlLinkAugmentation can be disabled explicitly")
     func htmlLinkAugmentationCanBeDisabled() throws {
-        let config = try Shared.CrawlerConfiguration(
+        let config = try Shared.Configuration.Crawler(
             startURL: #require(URL(string: "https://developer.apple.com/documentation")),
             outputDirectory: FileManager.default.temporaryDirectory,
             htmlLinkAugmentation: false
@@ -516,7 +522,7 @@ struct CrawlerTests {
 
     @Test("CrawlerConfiguration htmlLinkAugmentationMaxRefs can be raised to disable the heuristic")
     func htmlLinkAugmentationMaxRefsCanBeRaised() throws {
-        let config = try Shared.CrawlerConfiguration(
+        let config = try Shared.Configuration.Crawler(
             startURL: #require(URL(string: "https://developer.apple.com/documentation")),
             outputDirectory: FileManager.default.temporaryDirectory,
             htmlLinkAugmentationMaxRefs: .max
@@ -539,7 +545,7 @@ struct CrawlerTests {
         }
         """
         let data = try #require(Data(json.utf8))
-        let config = try JSONDecoder().decode(Shared.CrawlerConfiguration.self, from: data)
+        let config = try JSONDecoder().decode(Shared.Configuration.Crawler.self, from: data)
         #expect(config.htmlLinkAugmentation == true)
         #expect(config.htmlLinkAugmentationMaxRefs == 10)
     }
@@ -561,21 +567,21 @@ struct CrawlerTests {
         }
         """
         let data = try #require(Data(json.utf8))
-        let config = try JSONDecoder().decode(Shared.CrawlerConfiguration.self, from: data)
+        let config = try JSONDecoder().decode(Shared.Configuration.Crawler.self, from: data)
         #expect(config.htmlLinkAugmentation == false)
         #expect(config.htmlLinkAugmentationMaxRefs == 25)
     }
 
     @Test("CrawlerConfiguration encode + decode round-trips the augmentation fields")
     func htmlLinkAugmentationRoundTripsThroughEncode() throws {
-        let original = try Shared.CrawlerConfiguration(
+        let original = try Shared.Configuration.Crawler(
             startURL: #require(URL(string: "https://developer.apple.com/documentation")),
             outputDirectory: FileManager.default.temporaryDirectory,
             htmlLinkAugmentation: false,
             htmlLinkAugmentationMaxRefs: 5
         )
         let data = try JSONEncoder().encode(original)
-        let decoded = try JSONDecoder().decode(Shared.CrawlerConfiguration.self, from: data)
+        let decoded = try JSONDecoder().decode(Shared.Configuration.Crawler.self, from: data)
         #expect(decoded.htmlLinkAugmentation == false)
         #expect(decoded.htmlLinkAugmentationMaxRefs == 5)
     }

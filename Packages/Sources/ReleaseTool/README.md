@@ -82,7 +82,7 @@ The `bump` command updates:
 
 | File | Field |
 |------|-------|
-| `Packages/Sources/Shared/Constants.swift` | `version = "X.Y.Z"` |
+| `Packages/Sources/Shared/Constants/Shared.Constants.swift` | `version = "X.Y.Z"` |
 | `README.md` | `**Version:** X.Y.Z` |
 | `CHANGELOG.md` | Adds `## X.Y.Z` section |
 | `docs/DEPLOYMENT.md` | `**Version:** X.Y.Z` |

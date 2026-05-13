@@ -1,11 +1,16 @@
 import AppKit
 @testable import Core
+import CoreProtocols
+import Crawler
 import Foundation
-@testable import MCP
+@testable import MCPCore
 @testable import MCPSupport
 @testable import Search
 @testable import SearchToolProvider
-@testable import Shared
+import SharedConfiguration
+import SharedConstants
+@testable import SharedCore
+import SharedModels
 import Testing
 import TestSupport
 
@@ -20,7 +25,7 @@ struct MCPCommandTests {
     func serverInitialization() {
         print("🧪 Test: MCP server initialization")
 
-        _ = MCPServer(name: "test-server", version: "1.0.0")
+        _ = MCP.Core.Server(name: "test-server", version: "1.0.0")
 
         // Verify server is created (server is a non-optional actor)
         // Simply checking it was instantiated successfully
@@ -47,24 +52,24 @@ struct MCPCommandTests {
         try "# Swift\n\nTest content about Swift language.".write(to: testFile, atomically: true, encoding: .utf8)
 
         // Create metadata.json for the test file
-        let pageMetadata = PageMetadata(
+        let pageMetadata = Shared.Models.PageMetadata(
             url: "https://developer.apple.com/documentation/swift",
             framework: "swift",
             filePath: testFile.path,
             contentHash: "test-hash",
             depth: 0
         )
-        let metadata = CrawlMetadata(pages: [pageMetadata.url: pageMetadata])
+        let metadata = Shared.Models.CrawlMetadata(pages: [pageMetadata.url: pageMetadata])
         let metadataFile = tempDir.appendingPathComponent("metadata.json")
         try metadata.save(to: metadataFile)
 
-        let server = MCPServer(name: "test-server", version: "1.0.0")
+        let server = MCP.Core.Server(name: "test-server", version: "1.0.0")
         let config = Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(outputDirectory: tempDir),
-            changeDetection: Shared.ChangeDetectionConfiguration(outputDirectory: tempDir),
-            output: Shared.OutputConfiguration()
+            crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
+            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
+            output: Shared.Configuration.Output()
         )
-        let provider = DocsResourceProvider(configuration: config)
+        let provider = MCP.Support.DocsResourceProvider(configuration: config)
 
         await server.registerResourceProvider(provider)
 
@@ -104,11 +109,11 @@ struct MCPCommandTests {
         try testContent.write(to: testFile, atomically: true, encoding: .utf8)
 
         let config = Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(outputDirectory: tempDir),
-            changeDetection: Shared.ChangeDetectionConfiguration(),
-            output: Shared.OutputConfiguration()
+            crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
+            changeDetection: Shared.Configuration.ChangeDetection(),
+            output: Shared.Configuration.Output()
         )
-        let provider = DocsResourceProvider(configuration: config)
+        let provider = MCP.Support.DocsResourceProvider(configuration: config)
 
         // Read resource
         let result = try await provider.readResource(uri: "apple-docs://swift/documentation_swift")
@@ -152,7 +157,7 @@ struct MCPCommandTests {
             lastCrawled: Date()
         )
 
-        let server = MCPServer(name: "test-server", version: "1.0.0")
+        let server = MCP.Core.Server(name: "test-server", version: "1.0.0")
         let provider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: nil)
 
         await server.registerToolProvider(provider)
@@ -200,9 +205,9 @@ struct MCPCommandTests {
         let provider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: nil)
 
         // Execute search
-        let arguments: [String: AnyCodable] = [
-            "query": AnyCodable("array"),
-            "limit": AnyCodable(5),
+        let arguments: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("array"),
+            "limit": MCP.Core.Protocols.AnyCodable(5),
         ]
 
         let result = try await provider.callTool(name: "search", arguments: arguments)
@@ -234,11 +239,11 @@ struct MCPCommandTests {
         try testProposal.write(to: testFile, atomically: true, encoding: .utf8)
 
         let config = Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(outputDirectory: tempDir),
-            changeDetection: Shared.ChangeDetectionConfiguration(),
-            output: Shared.OutputConfiguration()
+            crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
+            changeDetection: Shared.Configuration.ChangeDetection(),
+            output: Shared.Configuration.Output()
         )
-        let provider = DocsResourceProvider(configuration: config, evolutionDirectory: tempDir)
+        let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir)
 
         // List resources
         let listResult = try await provider.listResources(cursor: nil as String?)
@@ -286,11 +291,11 @@ struct MCPCommandTests {
         try stProposal.write(to: stFile, atomically: true, encoding: .utf8)
 
         let config = Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(outputDirectory: tempDir),
-            changeDetection: Shared.ChangeDetectionConfiguration(),
-            output: Shared.OutputConfiguration()
+            crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
+            changeDetection: Shared.Configuration.ChangeDetection(),
+            output: Shared.Configuration.Output()
         )
-        let provider = DocsResourceProvider(configuration: config, evolutionDirectory: tempDir)
+        let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir)
 
         // List resources — should include both SE and ST
         let listResult = try await provider.listResources(cursor: nil as String?)
@@ -322,14 +327,14 @@ struct MCPCommandTests {
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let config = Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(outputDirectory: tempDir),
-            changeDetection: Shared.ChangeDetectionConfiguration(),
-            output: Shared.OutputConfiguration()
+            crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
+            changeDetection: Shared.Configuration.ChangeDetection(),
+            output: Shared.Configuration.Output()
         )
-        let provider = DocsResourceProvider(configuration: config)
+        let provider = MCP.Support.DocsResourceProvider(configuration: config)
 
         // Try to read non-existent resource
-        await #expect(throws: ToolError.self) {
+        await #expect(throws: Shared.Core.ToolError.self) {
             _ = try await provider.readResource(uri: "apple-docs://nonexistent/file")
         }
 
@@ -361,17 +366,17 @@ struct MCPServerIntegrationTests {
         // Step 1: Crawl
         print("\n   📥 Step 1: Crawling documentation...")
         let config = try Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(
+            crawler: Shared.Configuration.Crawler(
                 startURL: #require(URL(string: "https://developer.apple.com/documentation/swift")),
                 maxPages: 1,
                 maxDepth: 0,
                 outputDirectory: tempDir
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true, outputDirectory: tempDir),
-            output: Shared.OutputConfiguration(format: .markdown)
+            changeDetection: Shared.Configuration.ChangeDetection(forceRecrawl: true, outputDirectory: tempDir),
+            output: Shared.Configuration.Output(format: .markdown)
         )
 
-        let crawler = await Core.Crawler(configuration: config)
+        let crawler = await Crawler.AppleDocs(configuration: config)
         let stats = try await crawler.crawl()
         #expect(stats.totalPages > 0, "Should have crawled pages")
         print("   ✅ Crawled \(stats.totalPages) page(s)")
@@ -381,7 +386,7 @@ struct MCPServerIntegrationTests {
         let searchDbPath = tempDir.appendingPathComponent("search.db")
         let searchIndex = try await Search.Index(dbPath: searchDbPath)
 
-        let metadata = try CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
+        let metadata = try Shared.Models.CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
         let builder = Search.IndexBuilder(
             searchIndex: searchIndex,
             metadata: metadata,
@@ -393,15 +398,15 @@ struct MCPServerIntegrationTests {
 
         // Step 3: Initialize MCP server
         print("\n   🚀 Step 3: Starting MCP server...")
-        let server = MCPServer(name: "test-server", version: "1.0.0")
+        let server = MCP.Core.Server(name: "test-server", version: "1.0.0")
 
         // Register providers
         let mcpConfig = Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(outputDirectory: tempDir),
-            changeDetection: Shared.ChangeDetectionConfiguration(),
-            output: Shared.OutputConfiguration()
+            crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
+            changeDetection: Shared.Configuration.ChangeDetection(),
+            output: Shared.Configuration.Output()
         )
-        let docsProvider = DocsResourceProvider(configuration: mcpConfig)
+        let docsProvider = MCP.Support.DocsResourceProvider(configuration: mcpConfig)
         let searchProvider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: nil)
 
         await server.registerResourceProvider(docsProvider)
@@ -410,9 +415,9 @@ struct MCPServerIntegrationTests {
 
         // Step 4: Search via tool
         print("\n   🔎 Step 4: Searching via MCP tool...")
-        let searchArgs: [String: AnyCodable] = [
-            "query": AnyCodable("swift"),
-            "limit": AnyCodable(5),
+        let searchArgs: [String: MCP.Core.Protocols.AnyCodable] = [
+            "query": MCP.Core.Protocols.AnyCodable("swift"),
+            "limit": MCP.Core.Protocols.AnyCodable(5),
         ]
         let searchResults = try await searchProvider.callTool(name: "search", arguments: searchArgs)
         #expect(!searchResults.content.isEmpty, "Search should return results")

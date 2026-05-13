@@ -1,9 +1,15 @@
 import AppKit
 @testable import CLI
 @testable import Core
+import CoreProtocols
+import Crawler
 import Foundation
 @testable import Search
-@testable import Shared
+import SharedConfiguration
+import SharedConstants
+@testable import SharedCore
+import SharedModels
+import SharedUtils
 import Testing
 import TestSupport
 
@@ -27,24 +33,24 @@ struct SaveCommandTests {
 
         // First, fetch a page to have data
         let config = try Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(
+            crawler: Shared.Configuration.Crawler(
                 startURL: #require(URL(string: "https://developer.apple.com/documentation/swift")),
                 maxPages: 1,
                 maxDepth: 0,
                 outputDirectory: tempDir
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true, outputDirectory: tempDir),
-            output: Shared.OutputConfiguration(format: .markdown)
+            changeDetection: Shared.Configuration.ChangeDetection(forceRecrawl: true, outputDirectory: tempDir),
+            output: Shared.Configuration.Output(format: .markdown)
         )
 
-        let crawler = await Core.Crawler(configuration: config)
+        let crawler = await Crawler.AppleDocs(configuration: config)
         _ = try await crawler.crawl()
 
         // Build search index
         let searchDbPath = tempDir.appendingPathComponent("search.db")
         let searchIndex = try await Search.Index(dbPath: searchDbPath)
 
-        let metadata = try CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
+        let metadata = try Shared.Models.CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
         let builder = Search.IndexBuilder(
             searchIndex: searchIndex,
             metadata: metadata,
@@ -82,23 +88,23 @@ struct SaveCommandTests {
 
         // Fetch and save
         let config = try Shared.Configuration(
-            crawler: Shared.CrawlerConfiguration(
+            crawler: Shared.Configuration.Crawler(
                 startURL: #require(URL(string: "https://developer.apple.com/documentation/swift")),
                 maxPages: 1,
                 maxDepth: 0,
                 outputDirectory: tempDir
             ),
-            changeDetection: Shared.ChangeDetectionConfiguration(forceRecrawl: true, outputDirectory: tempDir),
-            output: Shared.OutputConfiguration(format: .markdown)
+            changeDetection: Shared.Configuration.ChangeDetection(forceRecrawl: true, outputDirectory: tempDir),
+            output: Shared.Configuration.Output(format: .markdown)
         )
 
-        let crawler = await Core.Crawler(configuration: config)
+        let crawler = await Crawler.AppleDocs(configuration: config)
         _ = try await crawler.crawl()
 
         let searchDbPath = tempDir.appendingPathComponent("search.db")
         let searchIndex = try await Search.Index(dbPath: searchDbPath)
 
-        let metadata = try CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
+        let metadata = try Shared.Models.CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
         let builder = Search.IndexBuilder(
             searchIndex: searchIndex,
             metadata: metadata,
@@ -137,7 +143,7 @@ struct SaveCommandTests {
         let searchIndex = try await Search.Index(dbPath: searchDbPath)
 
         // Create empty metadata
-        let emptyMetadata = CrawlMetadata()
+        let emptyMetadata = Shared.Models.CrawlMetadata()
         let metadataFile = tempDir.appendingPathComponent("metadata.json")
         try emptyMetadata.save(to: metadataFile)
 
@@ -174,7 +180,7 @@ struct SaveCommandTests {
         try FileManager.default.createDirectory(at: evolutionDir, withIntermediateDirectories: true)
 
         // Create minimal metadata
-        let metadata = CrawlMetadata()
+        let metadata = Shared.Models.CrawlMetadata()
         let metadataFile = baseDir.appendingPathComponent("metadata.json")
         try metadata.save(to: metadataFile)
 
@@ -229,7 +235,7 @@ struct SaveCommandTests {
         try FileManager.default.createDirectory(at: swiftDir, withIntermediateDirectories: true)
 
         // Create test JSON files (StructuredDocumentationPage format)
-        let arrayPage = try StructuredDocumentationPage(
+        let arrayPage = try Shared.Models.StructuredDocumentationPage(
             url: #require(URL(string: "https://developer.apple.com/documentation/swift/array")),
             title: "Array",
             kind: .struct,
@@ -238,9 +244,9 @@ struct SaveCommandTests {
             rawMarkdown: "# Array\n\nAn ordered collection of elements."
         )
         let arrayDoc = swiftDir.appendingPathComponent("array.json")
-        try JSONCoding.encode(arrayPage, to: arrayDoc)
+        try Shared.Utils.JSONCoding.encode(arrayPage, to: arrayDoc)
 
-        let dictPage = try StructuredDocumentationPage(
+        let dictPage = try Shared.Models.StructuredDocumentationPage(
             url: #require(URL(string: "https://developer.apple.com/documentation/swift/dictionary")),
             title: "Dictionary",
             kind: .struct,
@@ -249,13 +255,13 @@ struct SaveCommandTests {
             rawMarkdown: "# Dictionary\n\nA collection of key-value pairs."
         )
         let dictDoc = swiftDir.appendingPathComponent("dictionary.json")
-        try JSONCoding.encode(dictPage, to: dictDoc)
+        try Shared.Utils.JSONCoding.encode(dictPage, to: dictDoc)
 
         // Create swiftui directory
         let swiftuiDir = tempDir.appendingPathComponent("docs/swiftui")
         try FileManager.default.createDirectory(at: swiftuiDir, withIntermediateDirectories: true)
 
-        let viewPage = try StructuredDocumentationPage(
+        let viewPage = try Shared.Models.StructuredDocumentationPage(
             url: #require(URL(string: "https://developer.apple.com/documentation/swiftui/view")),
             title: "View",
             kind: .protocol,
@@ -264,7 +270,7 @@ struct SaveCommandTests {
             rawMarkdown: "# View\n\nA piece of user interface."
         )
         let viewDoc = swiftuiDir.appendingPathComponent("view.json")
-        try JSONCoding.encode(viewPage, to: viewDoc)
+        try Shared.Utils.JSONCoding.encode(viewPage, to: viewDoc)
 
         // Build index WITHOUT metadata.json
         let searchDbPath = tempDir.appendingPathComponent("search.db")
@@ -309,7 +315,7 @@ struct SaveCommandTests {
         let nestedDir = tempDir.appendingPathComponent("docs/foundation/collections")
         try FileManager.default.createDirectory(at: nestedDir, withIntermediateDirectories: true)
 
-        let nestedPage = try StructuredDocumentationPage(
+        let nestedPage = try Shared.Models.StructuredDocumentationPage(
             url: #require(URL(string: "https://developer.apple.com/documentation/foundation/nsarray")),
             title: "NSArray",
             kind: .class,
@@ -318,7 +324,7 @@ struct SaveCommandTests {
             rawMarkdown: "# NSArray\n\nFoundation array class."
         )
         let nestedDoc = nestedDir.appendingPathComponent("array.json")
-        try JSONCoding.encode(nestedPage, to: nestedDoc)
+        try Shared.Utils.JSONCoding.encode(nestedPage, to: nestedDoc)
 
         // Build index
         let searchDbPath = tempDir.appendingPathComponent("search.db")
@@ -345,7 +351,7 @@ struct SaveCommandTests {
 
     // The two sample-code SaveTests cases that lived here previously
     // ("Index sample code catalog from bundled resources" + "Sample code
-    // catalog respects framework filter") assumed `SampleCodeCatalog`
+    // catalog respects framework filter") assumed `Sample.Core.Catalog`
     // always returned ~600 entries from the embedded blob. After #215
     // deleted that blob, the catalog only exists when
     // `<sample-code-dir>/catalog.json` is present, so a CI machine with
@@ -355,7 +361,7 @@ struct SaveCommandTests {
     //  - Disk-fixture loading + format invariants:
     //    `Tests/CoreTests/SampleCodeCatalogTests.swift`
     //  - Save→search-of-sample-code integration: deferred until we have a
-    //    test seam for injecting a sample-code dir into `SampleCodeCatalog`
+    //    test seam for injecting a sample-code dir into `Sample.Core.Catalog`
     //    (the cached load currently reads from
     //    `Shared.Constants.defaultSampleCodeDirectory` directly, so a test
     //    can't sandbox without polluting user data).

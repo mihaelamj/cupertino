@@ -1,7 +1,8 @@
 import Foundation
-@testable import MCP
+@testable import MCPCore
 @testable import SampleIndex
-@testable import Shared
+import SharedConstants
+@testable import SharedCore
 import Testing
 @testable import TestSupport
 
@@ -78,12 +79,12 @@ struct MCPIntegrationTests {
 
         let lines = buffer.split(separator: "\n", omittingEmptySubsequences: true)
         let firstLine = try #require(lines.first.map(String.init), "Should receive at least one response line")
-        let responseJSON = try JSONDecoder().decode(JSONRPCResponse.self, from: Data(firstLine.utf8))
+        let responseJSON = try JSONDecoder().decode(MCP.Core.Protocols.JSONRPCResponse.self, from: Data(firstLine.utf8))
 
         #expect(responseJSON.id == .int(1))
 
         let resultData = try JSONEncoder().encode(responseJSON.result)
-        let initResult = try JSONDecoder().decode(InitializeResult.self, from: resultData)
+        let initResult = try JSONDecoder().decode(MCP.Core.Protocols.InitializeResult.self, from: resultData)
 
         #expect(MCPProtocolVersionsSupported.contains(initResult.protocolVersion))
         #expect(initResult.serverInfo.name == "cupertino")
@@ -154,9 +155,9 @@ struct MCPIntegrationTests {
             "Should find tools/list response"
         )
 
-        let toolsResponse = try JSONDecoder().decode(JSONRPCResponse.self, from: Data(String(toolsLine).utf8))
+        let toolsResponse = try JSONDecoder().decode(MCP.Core.Protocols.JSONRPCResponse.self, from: Data(String(toolsLine).utf8))
         let resultData = try JSONEncoder().encode(toolsResponse.result)
-        let toolsResult = try JSONDecoder().decode(ListToolsResult.self, from: resultData)
+        let toolsResult = try JSONDecoder().decode(MCP.Core.Protocols.ListToolsResult.self, from: resultData)
 
         // Cupertino exposes tools based on available databases:
         // - Without search DB: 4 tools (search, list_samples, read_sample, read_sample_file)
@@ -209,7 +210,7 @@ struct MCPIntegrationTests {
 
         #expect(throws: Error.self) {
             let data = Data(malformedResponse.utf8)
-            _ = try JSONDecoder().decode(JSONRPCResponse.self, from: data)
+            _ = try JSONDecoder().decode(MCP.Core.Protocols.JSONRPCResponse.self, from: data)
         }
     }
 
@@ -246,7 +247,7 @@ struct MCPIntegrationTests {
         // The server would only see the first line: "{"
         let firstLine = try #require(prettyJSON.split(separator: "\n", omittingEmptySubsequences: true).first)
         #expect(throws: Error.self) {
-            _ = try JSONDecoder().decode(JSONRPCRequest.self, from: Data(String(firstLine).utf8))
+            _ = try JSONDecoder().decode(MCP.Core.Protocols.JSONRPCRequest.self, from: Data(String(firstLine).utf8))
         }
     }
 
@@ -261,7 +262,7 @@ struct MCPIntegrationTests {
 
         // Should parse successfully
         let data = Data(compactJSON.utf8)
-        let request = try JSONDecoder().decode(JSONRPCRequest.self, from: data)
+        let request = try JSONDecoder().decode(MCP.Core.Protocols.JSONRPCRequest.self, from: data)
         #expect(request.method == "initialize")
     }
 
@@ -292,7 +293,7 @@ struct MCPIntegrationTests {
         // All should parse successfully
         for (index, line) in lines.enumerated() {
             let data = Data(String(line).utf8)
-            let response = try JSONDecoder().decode(JSONRPCResponse.self, from: data)
+            let response = try JSONDecoder().decode(MCP.Core.Protocols.JSONRPCResponse.self, from: data)
             #expect(response.id == .int(index + 1))
         }
     }
@@ -337,14 +338,14 @@ struct TimeoutError: Error {}
 ///    `~/.cupertino-dev/`. That keeps day-to-day development data away
 ///    from the production `~/.cupertino/`. Integration tests run inside a
 ///    test bundle where `Bundle.main.executableURL` is the test runner
-///    (not cupertino), so `Shared.BinaryConfig.shared` resolves to
+///    (not cupertino), so `Shared.Constants.BinaryConfig.shared` resolves to
 ///    `~/.cupertino/`. The path mismatch makes the test create a
 ///    fixture DB at `~/.cupertino/samples.db` while the spawned cupertino
 ///    looks for `~/.cupertino-dev/samples.db`. This fixture moves the
 ///    config aside for the duration of the test so both processes agree
 ///    on `~/.cupertino/`.
 ///
-/// 2. `ServeCommand.checkForData` exits with the welcome-guide message
+/// 2. `CLI.Command.Serve.checkForData` exits with the welcome-guide message
 ///    if neither `~/.cupertino/samples.db` nor `~/.cupertino/search.db`
 ///    exists. Creating an empty samples.db (the same code path
 ///    `cupertino save --samples` uses) is enough to make
@@ -367,9 +368,9 @@ struct CupertinoServerFixture {
         }
 
         // Ensure samples.db exists at the production path so
-        // `ServeCommand.checkForData()` sees data. Empty schema is fine —
+        // `CLI.Command.Serve.checkForData()` sees data. Empty schema is fine —
         // these tests check MCP framing, not query results.
-        let sampleDBPath = SampleIndex.defaultDatabasePath
+        let sampleDBPath = Sample.Index.defaultDatabasePath
         if !FileManager.default.fileExists(atPath: sampleDBPath.path) {
             // Synchronous setup of the schema via a blocking task hop.
             // Swift Testing's @Test functions are async, so we can spin up
@@ -377,7 +378,7 @@ struct CupertinoServerFixture {
             // cupertino reads it. Use a dispatch semaphore.
             let sem = DispatchSemaphore(value: 0)
             Task {
-                if let db = try? await SampleIndex.Database(dbPath: sampleDBPath) {
+                if let db = try? await Sample.Index.Database(dbPath: sampleDBPath) {
                     await db.disconnect()
                 }
                 sem.signal()

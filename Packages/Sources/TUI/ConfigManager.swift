@@ -1,5 +1,7 @@
 import Foundation
-import Shared
+import SharedConstants
+import SharedCore
+import SharedUtils
 
 /// Manages TUI configuration persistence
 enum ConfigManager {

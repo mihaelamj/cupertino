@@ -1,12 +1,10 @@
 import Foundation
-import Shared
+import SharedConstants
+import SharedCore
+import SharedUtils
 
-struct MenuItem {
-    let key: String
-    let icon: String
-    let title: String
-    let subtitle: String
-}
+// MenuItem moved to MenuItem.swift
+// HomeStats moved to HomeStats.swift
 
 struct HomeView {
     func render(cursor: Int, width: Int, height: Int, stats: HomeStats) -> String {
@@ -32,7 +30,7 @@ struct HomeView {
         result += renderPaddedLine("Quick Stats", width: width)
         let selected = " \(stats.selectedPackages) pkgs"
         let downloaded = " \(stats.downloadedPackages) dl"
-        let totalSize = " \(Shared.Formatting.formatBytes(stats.totalSize))"
+        let totalSize = " \(Shared.Utils.Formatting.formatBytes(stats.totalSize))"
         let statsLine = "•\(selected) •\(downloaded) •\(totalSize)"
         result += renderPaddedLine(statsLine, width: width)
         result += Box.teeRight + String(repeating: Box.horizontal, count: width - 2) + Box.teeLeft + "\r\n"
@@ -113,13 +111,4 @@ struct HomeView {
 
         return result
     }
-}
-
-struct HomeStats {
-    let totalPackages: Int
-    let selectedPackages: Int
-    let downloadedPackages: Int
-    let artifactCount: Int
-    let archiveGuideCount: Int
-    let totalSize: Int64
 }

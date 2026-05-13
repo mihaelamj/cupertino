@@ -1,6 +1,7 @@
 @testable import Distribution
 import Foundation
-@testable import Shared
+import SharedConstants
+@testable import SharedCore
 import Testing
 
 // MARK: - Status classification (#168, lifted to Distribution in #246)
@@ -95,7 +96,7 @@ struct InstalledVersionStatusTests {
     }
 }
 
-// MARK: - Version file read/write
+// MARK: - Release.Version file read/write
 
 @Suite("Distribution.InstalledVersion file helpers")
 struct InstalledVersionFileTests {

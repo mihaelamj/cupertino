@@ -738,8 +738,8 @@ For development setup, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Project Status
 
-**Version:** 1.0.2
-**Status:** ✅ Released 2026-05-11 (re-indexed bundle on top of v1.0.0 "First Light")
+**Version:** 1.1.0
+**Status:** ✅ Released 2026-05-13 (refactor release: namespacing + Crawler extract + DI epic kickoff; bundle stays at v1.0.2)
 
 - ✅ All core functionality working
 - ✅ 1,234 tests across 135 suites passing (100% pass rate)

@@ -1,4 +1,5 @@
 @testable import Core
+import CoreProtocols
 import Foundation
 import Testing
 import TestSupport
@@ -462,7 +463,7 @@ func inputHandlerToggleSelection() {
     let state = AppState()
     state.viewMode = .packages
 
-    let pkg = SwiftPackageEntry(
+    let pkg = Core.Protocols.SwiftPackageEntry(
         owner: "apple",
         repo: "swift",
         url: "https://github.com/apple/swift",
@@ -548,7 +549,7 @@ func inputHandlerPackageCursorMovement() {
     state.viewMode = .packages
     state.cursor = 5
 
-    let pkg = SwiftPackageEntry(
+    let pkg = Core.Protocols.SwiftPackageEntry(
         owner: "test",
         repo: "test",
         url: "https://github.com/test/test",
@@ -598,7 +599,7 @@ func inputHandlerPageNavigation() {
     state.viewMode = .packages
     state.cursor = 0
 
-    let pkg = SwiftPackageEntry(
+    let pkg = Core.Protocols.SwiftPackageEntry(
         owner: "test",
         repo: "test",
         url: "https://github.com/test/test",

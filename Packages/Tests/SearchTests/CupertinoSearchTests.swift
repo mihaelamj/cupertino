@@ -1,6 +1,7 @@
 import Foundation
 @testable import Search
-@testable import Shared
+import SharedConstants
+@testable import SharedCore
 import Testing
 import TestSupport
 
@@ -284,7 +285,7 @@ struct CupertinoSearchTests {
         defer { try? cleanup() }
 
         // Empty query should throw invalidQuery error
-        await #expect(throws: SearchError.self) {
+        await #expect(throws: Search.Error.self) {
             try await index.search(query: "", framework: nil, limit: 10)
         }
 
@@ -297,7 +298,7 @@ struct CupertinoSearchTests {
         defer { try? cleanup() }
 
         // Whitespace query should throw invalidQuery error
-        await #expect(throws: SearchError.self) {
+        await #expect(throws: Search.Error.self) {
             try await index.search(query: "   ", framework: nil, limit: 10)
         }
 

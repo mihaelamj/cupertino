@@ -40,6 +40,21 @@ _On #199: empirical investigation against the post-merge corpus shows `id` is de
 
 ---
 
+## 1.1.0 — 2026-05-13
+
+_Refactor release. No new user-visible features, no schema change. `databaseVersion` stays at `1.0.2` — `cupertino setup` from a v1.1.0 binary downloads the same `cupertino-databases-v1.0.2.zip` bundle. The work folds in the namespacing / per-type-file pass across every SPM target, the `Crawler` extract into its own target, the `MCP` → `MCPCore` target rename, and the first two leaves of the DI epic (`SharedConstants` + `SharedUtils` standalone test targets). Two prior `main` fixes are also captured at their new file locations: SPA no-content gate (#432) at `Core.Parser.HTML.looksLikeJavaScriptFallback` + `Crawler.AppleDocs.State.RejectionReason`, and search URL sub-page dash/underscore normalisation (#286) at `Shared.Models.URLUtilities.normalizeDocPath`._
+
+### Changed
+
+- **Structural refactor across every SPM target**: one non-private type per file, every file named `<Namespace>.<Type>.swift`, every cross-cutting type nested under a Swift `enum` namespace. `Core` types moved into `Core.<Sub>` (`Core.Parser.HTML`, `Core.Parser.XML`, `Core.JSONParser.*`, `Core.PackageIndexing.*`, `Core.WKWebCrawler`). `Shared` split into 5 targets (`SharedConstants`, `SharedUtils`, `SharedModels`, `SharedCore`, `SharedConfiguration`) with the same naming. `Services`, `RemoteSync`, `TUI`, `ReleaseTool`, `CLI.Command`, `Sample.Core` all folded the same way. `<Namespace>+<Type>.swift` files were renamed to `<Namespace>.<Type>.swift` to make the dot-separated form the single convention.
+- **`Crawler` extracted into its own SPM target** (#425, #430, #431): every web-crawling concern now lives in `Packages/Sources/Crawler/` as `Crawler.AppleDocs`, `Crawler.AppleArchive`, `Crawler.HIG`, `Crawler.Evolution`, `Crawler.WebKit.{Engine, ContentFetcher}`, `Crawler.TechnologiesIndex`, and `Crawler.ArchiveGuideCatalog`. Concrete crawlers conform to `Core.Protocols.CrawlerEngine` via a `Crawler.Engine` typealias so a higher-level dispatcher can drive any of them through the same interface.
+- **`MCP` SPM target renamed to `MCPCore`** (#426, #434): the bare `MCP` name was confusable with the `MCP` namespace; the target is now `MCPCore` with no behavioural change.
+- **DI leaf-first epic kicked off** (#381): `SharedConstants` (#382) and `SharedUtils` (#383) each gained a standalone test target with deps `["SharedConstants"]` and `["SharedUtils", "SharedConstants"]` respectively. Smoke tests pin the public namespace surface against accidental renames. The acceptance criterion is zero internal-cupertino behavioural imports per leaf, verified by `grep -rln '^import ' Packages/Sources/<Target>/`.
+
+### Fixed
+
+- **`cupertino-rel` constants path was stale** (release-time chore): six call sites in `Packages/Sources/ReleaseTool/` pointed at the pre-split `Packages/Sources/Shared/Constants.swift` and would fail every bump / tag / homebrew / docs-update flow with "no such file". Repointed at `Packages/Sources/Shared/Constants/Shared.Constants.swift`. The README/DEPLOYMENT version-badge regex literal `\*\*Version:\*\*` had also been incorrectly rewritten to `\*\*Release.Version:\*\*` during the namespacing sweep, so the bump succeeded silently against the markdown files but didn't actually patch them. Both regex literals restored.
+
 ## 1.0.1 — 2026-05-08
 
 _Binary-only bug-fix release on top of v1.0.0 "First Light". `databaseVersion` stays at `1.0.0`: `cupertino setup` from a v1.0.1 binary downloads the same `cupertino-databases-v1.0.0.zip` bundle. The #200 fix is preventive going forward — verified that the shipped v1.0.0 `search.db` has zero case-axis duplicate pairs (a `GROUP BY LOWER(uri) HAVING variants > 1` returned empty across 405,782 docs); Apple's JSON references during the v1.0.0 crawl happened to be uniformly lowercase, so the bug was dodged. Re-index would be ~12 h locally with no observable benefit on the existing corpus; future crawls would have hit the bug and v1.0.1 prevents that going forward. If a refreshed bundle is wanted later, ship as v1.0.1.1._

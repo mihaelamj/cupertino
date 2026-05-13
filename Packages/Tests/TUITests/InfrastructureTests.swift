@@ -1,4 +1,5 @@
 @testable import Core
+import CoreProtocols
 import Foundation
 import Testing
 import TestSupport

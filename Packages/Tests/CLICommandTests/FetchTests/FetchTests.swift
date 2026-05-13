@@ -2,8 +2,10 @@ import AppKit
 import ArgumentParser
 @testable import CLI
 @testable import Core
+@testable import CorePackageIndexing
+import CoreProtocols
 import Foundation
-@testable import Shared
+@testable import SharedCore
 import Testing
 import TestSupport
 
@@ -24,7 +26,7 @@ struct FetchCommandTests {
 
         print("🧪 Test: Fetch Swift packages")
 
-        _ = Core.PackageFetcher(
+        _ = Core.PackageIndexing.PackageFetcher(
             outputDirectory: tempDir
         )
 
@@ -46,21 +48,21 @@ struct FetchCommandTests {
 struct FetchPackagesMergeTests {
     @Test("--skip-metadata parses to true; archives flag defaults to false")
     func skipMetadataParses() throws {
-        let cmd = try FetchCommand.parse(["--type", "packages", "--skip-metadata"])
+        let cmd = try CLI.Command.Fetch.parse(["--type", "packages", "--skip-metadata"])
         #expect(cmd.skipMetadata == true)
         #expect(cmd.skipArchives == false)
     }
 
     @Test("--skip-archives parses to true; metadata flag defaults to false")
     func skipArchivesParses() throws {
-        let cmd = try FetchCommand.parse(["--type", "packages", "--skip-archives"])
+        let cmd = try CLI.Command.Fetch.parse(["--type", "packages", "--skip-archives"])
         #expect(cmd.skipMetadata == false)
         #expect(cmd.skipArchives == true)
     }
 
     @Test("Default --type packages invocation has both skip flags false")
     func defaultsAreFalse() throws {
-        let cmd = try FetchCommand.parse(["--type", "packages"])
+        let cmd = try CLI.Command.Fetch.parse(["--type", "packages"])
         #expect(cmd.skipMetadata == false)
         #expect(cmd.skipArchives == false)
     }
@@ -73,7 +75,7 @@ struct FetchPackagesMergeTests {
             .appendingPathComponent("cupertino-fetch-skipboth-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        var cmd = try FetchCommand.parse([
+        var cmd = try CLI.Command.Fetch.parse([
             "--type", "packages",
             "--skip-metadata",
             "--skip-archives",
@@ -89,7 +91,7 @@ struct FetchPackagesMergeTests {
     func packageDocsRejected() {
         // ArgumentParser surfaces invalid enum values as ValidationError.
         #expect(throws: (any Error).self) {
-            _ = try FetchCommand.parse(["--type", "package-docs"])
+            _ = try CLI.Command.Fetch.parse(["--type", "package-docs"])
         }
     }
 }

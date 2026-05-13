@@ -1,19 +1,9 @@
 import Core
+import CoreProtocols
 import Foundation
 
-enum FilterMode: String {
-    case all = "All"
-    case selected = "Selected"
-    case downloaded = "Downloaded"
-}
-
-enum ViewMode {
-    case home
-    case packages
-    case library
-    case archive
-    case settings
-}
+// FilterMode moved to FilterMode.swift
+// ViewMode moved to ViewMode.swift
 
 /// App state for TUI
 /// Note: @MainActor because TUI runs on main thread and state is shared across async calls

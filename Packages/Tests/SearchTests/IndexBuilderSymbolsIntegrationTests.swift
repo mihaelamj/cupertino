@@ -1,8 +1,11 @@
 import Core
+import CoreProtocols
 import Foundation
 import Logging
 @testable import Search
-import Shared
+import SharedConstants
+import SharedCore
+import SharedModels
 import SQLite3
 import Testing
 
@@ -81,13 +84,13 @@ private func writeFixtureDoc(framework: String, name: String, into directory: UR
     let frameworkDir = directory.appendingPathComponent(framework)
     try FileManager.default.createDirectory(at: frameworkDir, withIntermediateDirectories: true)
 
-    let page = StructuredDocumentationPage(
+    let page = Shared.Models.StructuredDocumentationPage(
         url: URL(string: "https://developer.apple.com/documentation/\(framework)/\(name)")!,
         title: "Sample page",
         kind: .protocol,
         source: .appleJSON,
         abstract: "An example doc with both a declaration and a Swift code block.",
-        declaration: StructuredDocumentationPage.Declaration(code: "public protocol DeclaredProtocol {}"),
+        declaration: Shared.Models.StructuredDocumentationPage.Declaration(code: "public protocol DeclaredProtocol {}"),
         overview: "Overview text.",
         sections: [],
         codeExamples: [

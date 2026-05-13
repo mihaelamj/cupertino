@@ -1,11 +1,12 @@
 @testable import CLI
 import Core
+import CoreProtocols
 import Diagnostics
 import Foundation
-import MCP
+import MCPCore
 import MCPSupport
 import Search
-import Shared
+import SharedCore
 import SQLite3
 import Testing
 import TestSupport

@@ -5,7 +5,8 @@ import ASTIndexer
 import Foundation
 import SampleIndex
 import Search
-import Shared
+import SharedConstants
+import SharedCore
 import Testing
 
 // MARK: - Search.db Symbol Integration Tests
@@ -31,7 +32,7 @@ struct SearchDbSymbolIntegrationTests {
 
     @Test("Extraction produces searchable symbol text")
     func extractionProducesSearchableText() {
-        let extractor = ASTIndexer.SwiftSourceExtractor()
+        let extractor = ASTIndexer.Extractor()
 
         let source = """
         @Observable
@@ -67,7 +68,7 @@ struct SearchDbSymbolIntegrationTests {
 
     @Test("FTS text generation includes all searchable content")
     func ftsTextGeneration() {
-        let extractor = ASTIndexer.SwiftSourceExtractor()
+        let extractor = ASTIndexer.Extractor()
 
         let source = """
         import SwiftUI
@@ -128,13 +129,13 @@ struct SearchDbSymbolIntegrationTests {
 @Suite("Samples.db Symbol Integration", .serialized)
 struct SamplesDbSymbolIntegrationTests {
     /// Create a test sample database
-    private func createTestSampleDatabase() async throws -> (SampleIndex.Database, () -> Void) {
+    private func createTestSampleDatabase() async throws -> (Sample.Index.Database, () -> Void) {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("sample-symbol-test-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let dbPath = tempDir.appendingPathComponent("samples.db")
-        let database = try await SampleIndex.Database(dbPath: dbPath)
+        let database = try await Sample.Index.Database(dbPath: dbPath)
 
         let cleanup: () -> Void = {
             try? FileManager.default.removeItem(at: tempDir)
@@ -149,7 +150,7 @@ struct SamplesDbSymbolIntegrationTests {
         defer { cleanup() }
 
         // Create project
-        let project = SampleIndex.Project(
+        let project = Sample.Index.Project(
             id: "observable-sample",
             title: "Observable Sample",
             description: "Sample showing @Observable usage",
@@ -182,7 +183,7 @@ struct SamplesDbSymbolIntegrationTests {
         }
         """
 
-        let file = SampleIndex.File(
+        let file = Sample.Index.File(
             projectId: "observable-sample",
             path: "Sources/AppState.swift",
             content: swiftSource
@@ -190,7 +191,7 @@ struct SamplesDbSymbolIntegrationTests {
         try await database.indexFile(file)
 
         // Extract symbols
-        let extractor = ASTIndexer.SwiftSourceExtractor()
+        let extractor = ASTIndexer.Extractor()
         let result = extractor.extract(from: swiftSource)
 
         // Index symbols if file ID is available
@@ -220,7 +221,7 @@ struct SamplesDbSymbolIntegrationTests {
         let (database, cleanup) = try await createTestSampleDatabase()
         defer { cleanup() }
 
-        let project = SampleIndex.Project(
+        let project = Sample.Index.Project(
             id: "multi-file-sample",
             title: "Multi-File Sample",
             description: "Sample with multiple Swift files",
@@ -266,11 +267,11 @@ struct SamplesDbSymbolIntegrationTests {
             """),
         ]
 
-        let extractor = ASTIndexer.SwiftSourceExtractor()
+        let extractor = ASTIndexer.Extractor()
         var totalSymbols = 0
 
         for (path, content) in files {
-            let file = SampleIndex.File(
+            let file = Sample.Index.File(
                 projectId: "multi-file-sample",
                 path: path,
                 content: content
@@ -301,7 +302,7 @@ struct SamplesDbSymbolIntegrationTests {
 struct SemanticSearchDemoTests {
     @Test("Demonstrate semantic search capabilities")
     func semanticSearchDemo() {
-        let extractor = ASTIndexer.SwiftSourceExtractor()
+        let extractor = ASTIndexer.Extractor()
 
         // Sample representing typical Apple documentation code example
         let sampleCode = """

@@ -1,6 +1,9 @@
 import Core
+import CorePackageIndexing
+import CoreProtocols
 import Foundation
-import Shared
+import SharedConstants
+import SharedCore
 import SQLite3
 
 // MARK: - Package Index (separate DB)
@@ -21,14 +24,14 @@ extension Search {
     /// - `kind` is stored `UNINDEXED` so it survives in SELECTs but doesn't bloat
     ///   the FTS index. Callers filter on it via the plain-column path.
     public actor PackageIndex {
-        // Bumped 1 → 2 in the #219 follow-up: added six availability
-        // columns to `package_metadata` (`min_ios`, `min_macos`,
-        // `min_tvos`, `min_watchos`, `min_visionos`,
-        // `availability_source`) and one column to `package_files`
-        // (`available_attrs_json`). Mirrors the SearchIndex docs_metadata
-        // pattern (#192 sec. C). Existing v1 DBs migrate via
-        // `ALTER TABLE ADD COLUMN`; fresh installs land them inline via
-        // `createTables`. No destructive migration.
+        /// Bumped 1 → 2 in the #219 follow-up: added six availability
+        /// columns to `package_metadata` (`min_ios`, `min_macos`,
+        /// `min_tvos`, `min_watchos`, `min_visionos`,
+        /// `availability_source`) and one column to `package_files`
+        /// (`available_attrs_json`). Mirrors the SearchIndex docs_metadata
+        /// pattern (#192 sec. C). Existing v1 DBs migrate via
+        /// `ALTER TABLE ADD COLUMN`; fresh installs land them inline via
+        /// `createTables`. No destructive migration.
         public static let schemaVersion: Int32 = 2
 
         private var database: OpaquePointer?
@@ -105,8 +108,8 @@ extension Search {
         /// (owner, repo) first so re-indexes converge cleanly without FTS5
         /// duplicate-row issues. All SQL runs in one transaction per package.
         public func index(
-            resolved: Core.ResolvedPackage,
-            extraction: Core.PackageArchiveExtractor.Result,
+            resolved: Core.PackageIndexing.ResolvedPackage,
+            extraction: Core.PackageIndexing.PackageArchiveExtractor.Result,
             stars: Int? = nil,
             hostedDocumentationURL: URL? = nil,
             availability: AvailabilityPayload? = nil
@@ -330,8 +333,8 @@ extension Search {
         }
 
         private func insertMetadata(
-            resolved: Core.ResolvedPackage,
-            extraction: Core.PackageArchiveExtractor.Result,
+            resolved: Core.PackageIndexing.ResolvedPackage,
+            extraction: Core.PackageIndexing.PackageArchiveExtractor.Result,
             stars: Int?,
             hostedDocumentationURL: URL?,
             availability: AvailabilityPayload?
@@ -371,7 +374,7 @@ extension Search {
             }
             sqlite3_bind_text(statement, 12, parentsJSON, -1, SQLITE_TRANSIENT)
 
-            // Availability columns 13-18 (#219)
+            /// Availability columns 13-18 (#219)
             func bindMin(_ pos: Int32, _ key: String) {
                 if let value = availability?.deploymentTargets[key] {
                     sqlite3_bind_text(statement, pos, value, -1, SQLITE_TRANSIENT)
@@ -398,8 +401,8 @@ extension Search {
 
         private func insertFile(
             packageId: Int64,
-            resolved: Core.ResolvedPackage,
-            file: Core.ExtractedFile,
+            resolved: Core.PackageIndexing.ResolvedPackage,
+            file: Core.PackageIndexing.ExtractedFile,
             availability: AvailabilityPayload?
         ) throws {
             guard database != nil else { throw PackageIndexError.databaseNotInitialized }
@@ -596,7 +599,7 @@ extension Search {
         }
     }
 
-    public enum PackageIndexError: Error, LocalizedError {
+    public enum PackageIndexError: Swift.Error, LocalizedError {
         case databaseNotInitialized
         case sqliteError(String)
 

@@ -2,13 +2,13 @@ import Foundation
 @testable import RemoteSync
 import Testing
 
-// MARK: - RemoteIndexState Tests
+// MARK: - RemoteSync.IndexState Tests
 
-@Suite("RemoteIndexState Tests")
+@Suite("RemoteSync.IndexState Tests")
 struct RemoteIndexStateTests {
     @Test("Initial state has correct defaults")
     func initialState() {
-        let state = RemoteIndexState(version: "1.0.0")
+        let state = RemoteSync.IndexState(version: "1.0.0")
 
         #expect(state.version == "1.0.0")
         #expect(state.phase == .docs)
@@ -22,7 +22,7 @@ struct RemoteIndexStateTests {
 
     @Test("Starting phase updates state correctly")
     func testStartingPhase() {
-        let state = RemoteIndexState(version: "1.0.0")
+        let state = RemoteSync.IndexState(version: "1.0.0")
         let newState = state.startingPhase(.docs, frameworksTotal: 248)
 
         #expect(newState.phase == .docs)
@@ -33,7 +33,7 @@ struct RemoteIndexStateTests {
 
     @Test("Starting framework updates state correctly")
     func testStartingFramework() {
-        let state = RemoteIndexState(version: "1.0.0")
+        let state = RemoteSync.IndexState(version: "1.0.0")
             .startingPhase(.docs, frameworksTotal: 248)
             .startingFramework("swiftui", filesTotal: 1000)
 
@@ -44,7 +44,7 @@ struct RemoteIndexStateTests {
 
     @Test("Updating file index preserves other state")
     func testUpdatingFileIndex() {
-        let state = RemoteIndexState(version: "1.0.0")
+        let state = RemoteSync.IndexState(version: "1.0.0")
             .startingPhase(.docs, frameworksTotal: 248)
             .startingFramework("swiftui", filesTotal: 1000)
             .updatingFileIndex(456)
@@ -56,7 +56,7 @@ struct RemoteIndexStateTests {
 
     @Test("Completing framework adds to completed list")
     func testCompletingFramework() {
-        let state = RemoteIndexState(version: "1.0.0")
+        let state = RemoteSync.IndexState(version: "1.0.0")
             .startingPhase(.docs, frameworksTotal: 248)
             .startingFramework("swiftui", filesTotal: 1000)
             .updatingFileIndex(1000)
@@ -69,7 +69,7 @@ struct RemoteIndexStateTests {
 
     @Test("Completing phase adds to completed list")
     func testCompletingPhase() {
-        let state = RemoteIndexState(version: "1.0.0")
+        let state = RemoteSync.IndexState(version: "1.0.0")
             .startingPhase(.docs, frameworksTotal: 1)
             .startingFramework("foundation", filesTotal: 100)
             .completingFramework()
@@ -81,11 +81,11 @@ struct RemoteIndexStateTests {
     @Test("Overall progress calculation")
     func testOverallProgress() {
         // Empty state = 0%
-        let emptyState = RemoteIndexState(version: "1.0.0")
+        let emptyState = RemoteSync.IndexState(version: "1.0.0")
         #expect(emptyState.overallProgress == 0.0)
 
         // One phase done out of 5 = 20%
-        let onePhaseComplete = RemoteIndexState(
+        let onePhaseComplete = RemoteSync.IndexState(
             version: "1.0.0",
             phase: .evolution,
             phasesCompleted: [.docs]
@@ -103,16 +103,16 @@ struct RemoteIndexStateTests {
             try? FileManager.default.removeItem(at: stateURL)
         }
 
-        let original = RemoteIndexState(version: "1.0.0")
+        let original = RemoteSync.IndexState(version: "1.0.0")
             .startingPhase(.docs, frameworksTotal: 248)
             .startingFramework("swiftui", filesTotal: 1000)
             .updatingFileIndex(456)
 
         try original.save(to: stateURL)
 
-        #expect(RemoteIndexState.exists(at: stateURL))
+        #expect(RemoteSync.IndexState.exists(at: stateURL))
 
-        let loaded = try RemoteIndexState.load(from: stateURL)
+        let loaded = try RemoteSync.IndexState.load(from: stateURL)
 
         #expect(loaded.version == original.version)
         #expect(loaded.phase == original.phase)
@@ -126,25 +126,25 @@ struct RemoteIndexStateTests {
         let tempDir = FileManager.default.temporaryDirectory
         let stateURL = tempDir.appendingPathComponent("test-delete-\(UUID().uuidString).json")
 
-        let state = RemoteIndexState(version: "1.0.0")
+        let state = RemoteSync.IndexState(version: "1.0.0")
         try state.save(to: stateURL)
 
-        #expect(RemoteIndexState.exists(at: stateURL))
+        #expect(RemoteSync.IndexState.exists(at: stateURL))
 
-        try RemoteIndexState.delete(at: stateURL)
+        try RemoteSync.IndexState.delete(at: stateURL)
 
-        #expect(!RemoteIndexState.exists(at: stateURL))
+        #expect(!RemoteSync.IndexState.exists(at: stateURL))
     }
 }
 
-// MARK: - RemoteSyncProgress Tests
+// MARK: - RemoteSync.Progress Tests
 
-@Suite("RemoteSyncProgress Tests")
+@Suite("RemoteSync.Progress Tests")
 struct RemoteSyncProgressTests {
     @Test("Progress ETA calculation")
     func progressETA() throws {
         // 50% done in 60 seconds = ~60 seconds remaining
-        let progress = RemoteSyncProgress(
+        let progress = RemoteSync.Progress(
             phase: .docs,
             framework: "swiftui",
             frameworkIndex: 124,
@@ -163,7 +163,7 @@ struct RemoteSyncProgressTests {
 
     @Test("Progress ETA nil for early progress")
     func progressETAEarly() {
-        let progress = RemoteSyncProgress(
+        let progress = RemoteSync.Progress(
             phase: .docs,
             framework: nil,
             frameworkIndex: 0,
@@ -178,14 +178,14 @@ struct RemoteSyncProgressTests {
     }
 }
 
-// MARK: - AnimatedProgress Tests
+// MARK: - RemoteSync.AnimatedProgress Tests
 
-@Suite("AnimatedProgress Tests")
+@Suite("RemoteSync.AnimatedProgress Tests")
 struct AnimatedProgressTests {
     @Test("Progress bar rendering")
     func progressBarRendering() {
-        let display = AnimatedProgress(barWidth: 10, useEmoji: false)
-        let progress = RemoteSyncProgress(
+        let display = RemoteSync.AnimatedProgress(barWidth: 10, useEmoji: false)
+        let progress = RemoteSync.Progress(
             phase: .docs,
             framework: "swiftui",
             frameworkIndex: 5,
@@ -206,8 +206,8 @@ struct AnimatedProgressTests {
 
     @Test("Compact rendering")
     func compactRendering() {
-        let display = AnimatedProgress(barWidth: 10, useEmoji: false)
-        let progress = RemoteSyncProgress(
+        let display = RemoteSync.AnimatedProgress(barWidth: 10, useEmoji: false)
+        let progress = RemoteSync.Progress(
             phase: .docs,
             framework: "foundation",
             frameworkIndex: 3,
@@ -226,16 +226,16 @@ struct AnimatedProgressTests {
     }
 }
 
-// MARK: - GitHubFetcher Tests
+// MARK: - RemoteSync.GitHubFetcher Tests
 
-@Suite("GitHubFetcher Tests")
+@Suite("RemoteSync.GitHubFetcher Tests")
 struct GitHubFetcherTests {
     // Note: Using apple/swift-evolution as test repo (NOT cupertino-docs)
     // This is a public repo that won't change structure unexpectedly
 
     @Test("Fetcher initialization with custom repo")
     func fetcherInitialization() async {
-        let fetcher = GitHubFetcher(
+        let fetcher = RemoteSync.GitHubFetcher(
             repository: "apple/swift-evolution",
             branch: "main"
         )
@@ -248,11 +248,11 @@ struct GitHubFetcherTests {
         #expect(branch == "main")
     }
 
-    @Test("GitHubFileInfo equality")
+    @Test("RemoteSync.GitHubFetcher.FileInfo equality")
     func gitHubFileInfoEquality() {
-        let info1 = GitHubFileInfo(name: "test.json", path: "/docs/test.json", size: 1024)
-        let info2 = GitHubFileInfo(name: "test.json", path: "/docs/test.json", size: 1024)
-        let info3 = GitHubFileInfo(name: "other.json", path: "/docs/other.json", size: 2048)
+        let info1 = RemoteSync.GitHubFetcher.FileInfo(name: "test.json", path: "/docs/test.json", size: 1024)
+        let info2 = RemoteSync.GitHubFetcher.FileInfo(name: "test.json", path: "/docs/test.json", size: 1024)
+        let info3 = RemoteSync.GitHubFetcher.FileInfo(name: "other.json", path: "/docs/other.json", size: 2048)
 
         #expect(info1 == info2)
         #expect(info1 != info3)
@@ -262,31 +262,31 @@ struct GitHubFetcherTests {
     func errorDescriptions() throws {
         let url = try #require(URL(string: "https://example.com/test"))
 
-        let notFound = GitHubFetcherError.notFound(url: url)
+        let notFound = RemoteSync.GitHubFetcher.Error.notFound(url: url)
         #expect(notFound.description.contains("Not found"))
 
-        let rateLimited = GitHubFetcherError.rateLimited
+        let rateLimited = RemoteSync.GitHubFetcher.Error.rateLimited
         #expect(rateLimited.description.contains("rate limit"))
 
-        let httpError = GitHubFetcherError.httpError(statusCode: 500, url: url)
+        let httpError = RemoteSync.GitHubFetcher.Error.httpError(statusCode: 500, url: url)
         #expect(httpError.description.contains("500"))
 
-        let invalidEncoding = GitHubFetcherError.invalidEncoding(path: "/test.json")
+        let invalidEncoding = RemoteSync.GitHubFetcher.Error.invalidEncoding(path: "/test.json")
         #expect(invalidEncoding.description.contains("encoding"))
     }
 }
 
-// MARK: - RemoteIndexer Tests
+// MARK: - RemoteSync.Indexer Tests
 
-@Suite("RemoteIndexer Tests")
+@Suite("RemoteSync.Indexer Tests")
 struct RemoteIndexerTests {
     @Test("Indexer initialization")
     func indexerInitialization() async {
         let tempDir = FileManager.default.temporaryDirectory
         let stateURL = tempDir.appendingPathComponent("test-indexer-\(UUID().uuidString).json")
 
-        let indexer = RemoteIndexer(
-            fetcher: GitHubFetcher(repository: "apple/swift-evolution"),
+        let indexer = RemoteSync.Indexer(
+            fetcher: RemoteSync.GitHubFetcher(repository: "apple/swift-evolution"),
             stateFileURL: stateURL,
             appVersion: "1.0.0"
         )
@@ -309,15 +309,15 @@ struct RemoteIndexerTests {
         }
 
         // Create and save state externally
-        let existingState = RemoteIndexState(version: "1.0.0")
+        let existingState = RemoteSync.IndexState(version: "1.0.0")
             .startingPhase(.docs, frameworksTotal: 100)
             .startingFramework("test", filesTotal: 50)
             .updatingFileIndex(25)
         try existingState.save(to: stateURL)
 
         // Create indexer and check it detects resumable state
-        let indexer = RemoteIndexer(
-            fetcher: GitHubFetcher(repository: "apple/swift-evolution"),
+        let indexer = RemoteSync.Indexer(
+            fetcher: RemoteSync.GitHubFetcher(repository: "apple/swift-evolution"),
             stateFileURL: stateURL,
             appVersion: "1.0.0"
         )
@@ -339,7 +339,7 @@ struct RemoteIndexerTests {
 
     @Test("IndexResult creation")
     func indexResult() {
-        let success = RemoteIndexer.IndexResult(
+        let success = RemoteSync.Indexer.IndexResult(
             uri: "apple-docs://swiftui/View",
             title: "View",
             success: true
@@ -347,7 +347,7 @@ struct RemoteIndexerTests {
         #expect(success.success)
         #expect(success.error == nil)
 
-        let failure = RemoteIndexer.IndexResult(
+        let failure = RemoteSync.Indexer.IndexResult(
             uri: "apple-docs://swiftui/View",
             title: "View",
             success: false,
@@ -358,20 +358,20 @@ struct RemoteIndexerTests {
     }
 }
 
-// MARK: - RemoteIndexerError Tests
+// MARK: - RemoteSync.Indexer.Error Tests
 
-@Suite("RemoteIndexerError Tests")
+@Suite("RemoteSync.Indexer.Error Tests")
 struct RemoteIndexerErrorTests {
     @Test("Error descriptions")
     func testErrorDescriptions() {
-        let versionMismatch = RemoteIndexerError.stateVersionMismatch(expected: "1.0.0", found: "0.9.0")
+        let versionMismatch = RemoteSync.Indexer.Error.stateVersionMismatch(expected: "1.0.0", found: "0.9.0")
         #expect(versionMismatch.description.contains("1.0.0"))
         #expect(versionMismatch.description.contains("0.9.0"))
 
-        let phaseNotFound = RemoteIndexerError.phaseNotFound("unknown")
+        let phaseNotFound = RemoteSync.Indexer.Error.phaseNotFound("unknown")
         #expect(phaseNotFound.description.contains("unknown"))
 
-        let indexingFailed = RemoteIndexerError.indexingFailed(uri: "test://uri", underlying: "timeout")
+        let indexingFailed = RemoteSync.Indexer.Error.indexingFailed(uri: "test://uri", underlying: "timeout")
         #expect(indexingFailed.description.contains("test://uri"))
         #expect(indexingFailed.description.contains("timeout"))
     }
@@ -384,7 +384,7 @@ struct IntegrationTests {
     @Test("Fetch directory listing from GitHub")
     func fetchDirectoryListing() async throws {
         // Using swift-evolution repo (NOT cupertino-docs)
-        let fetcher = GitHubFetcher(
+        let fetcher = RemoteSync.GitHubFetcher(
             repository: "apple/swift-evolution",
             branch: "main"
         )
@@ -397,7 +397,7 @@ struct IntegrationTests {
 
     @Test("Fetch file content from GitHub")
     func fetchFileContent() async throws {
-        let fetcher = GitHubFetcher(
+        let fetcher = RemoteSync.GitHubFetcher(
             repository: "apple/swift-evolution",
             branch: "main"
         )

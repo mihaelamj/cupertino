@@ -1,7 +1,10 @@
 import Core
+import CorePackageIndexing
+import CoreProtocols
 import Foundation
 import Resources
-import Shared
+import SharedConstants
+import SharedCore
 
 /// Open a package's GitHub page in the default browser
 @MainActor
@@ -70,7 +73,7 @@ func saveSelections(state: AppState) throws {
 
     // Convert to priority package format
     let priorityPackages = selected.map { pkg in
-        PriorityPackage(owner: pkg.owner, repo: pkg.repo, url: pkg.url)
+        Core.PackageIndexing.PriorityPackage(owner: pkg.owner, repo: pkg.repo, url: pkg.url)
     }
 
     // Create catalog JSON structure matching PriorityPackagesCatalogJSON format
@@ -127,7 +130,7 @@ private var userExclusionsURL: URL {
 /// Load excluded "owner/repo" entries from disk; empty set if absent/malformed.
 @MainActor
 func loadExcludedPackages() -> Set<String> {
-    Core.ExclusionList.load()
+    Core.Protocols.ExclusionList.load()
 }
 
 /// Load the resolved closure's non-seed entries so the TUI can flag them as
@@ -136,7 +139,7 @@ func loadExcludedPackages() -> Set<String> {
 func loadDiscoveredPackages() -> Set<String> {
     let fileURL = Shared.Constants.defaultBaseDirectory
         .appendingPathComponent(Shared.Constants.FileName.resolvedPackages)
-    guard let store = Core.ResolvedPackagesStore.load(from: fileURL) else {
+    guard let store = Core.PackageIndexing.ResolvedPackagesStore.load(from: fileURL) else {
         return []
     }
     var out = Set<String>()

@@ -1,17 +1,18 @@
 import Foundation
 @testable import Services
-@testable import Shared
+import SharedConstants
+@testable import SharedCore
 import Testing
 
 // MARK: - Services Tests
 
 @Suite("Services Module Tests")
 struct ServicesTests {
-    // MARK: - SearchQuery Tests
+    // MARK: - Services.SearchQuery Tests
 
-    @Test("SearchQuery initializes with defaults")
+    @Test("Services.SearchQuery initializes with defaults")
     func searchQueryDefaults() {
-        let query = SearchQuery(text: "View")
+        let query = Services.SearchQuery(text: "View")
 
         #expect(query.text == "View")
         #expect(query.source == nil)
@@ -21,16 +22,16 @@ struct ServicesTests {
         #expect(query.includeArchive == false)
     }
 
-    @Test("SearchQuery clamps limit to max")
+    @Test("Services.SearchQuery clamps limit to max")
     func searchQueryClampsLimit() {
-        let query = SearchQuery(text: "View", limit: 1000)
+        let query = Services.SearchQuery(text: "View", limit: 1000)
 
         #expect(query.limit == Shared.Constants.Limit.maxSearchLimit)
     }
 
-    @Test("SearchQuery accepts all parameters")
+    @Test("Services.SearchQuery accepts all parameters")
     func searchQueryAllParams() {
-        let query = SearchQuery(
+        let query = Services.SearchQuery(
             text: "Button",
             source: "apple-docs",
             framework: "swiftui",
@@ -47,28 +48,28 @@ struct ServicesTests {
         #expect(query.includeArchive == true)
     }
 
-    // MARK: - SearchFilters Tests
+    // MARK: - Services.SearchFilters Tests
 
-    @Test("SearchFilters detects active filters")
+    @Test("Services.SearchFilters detects active filters")
     func searchFiltersActiveDetection() {
-        let noFilters = SearchFilters()
+        let noFilters = Services.SearchFilters()
         #expect(noFilters.hasActiveFilters == false)
 
-        let withSource = SearchFilters(source: "apple-docs")
+        let withSource = Services.SearchFilters(source: "apple-docs")
         #expect(withSource.hasActiveFilters == true)
 
-        let withFramework = SearchFilters(framework: "swiftui")
+        let withFramework = Services.SearchFilters(framework: "swiftui")
         #expect(withFramework.hasActiveFilters == true)
 
-        let withLanguage = SearchFilters(language: "swift")
+        let withLanguage = Services.SearchFilters(language: "swift")
         #expect(withLanguage.hasActiveFilters == true)
     }
 
-    // MARK: - HIGQuery Tests
+    // MARK: - Services.HIGQuery Tests
 
-    @Test("HIGQuery initializes with defaults")
+    @Test("Services.HIGQuery initializes with defaults")
     func higQueryDefaults() {
-        let query = HIGQuery(text: "buttons")
+        let query = Services.HIGQuery(text: "buttons")
 
         #expect(query.text == "buttons")
         #expect(query.platform == nil)
@@ -76,9 +77,9 @@ struct ServicesTests {
         #expect(query.limit == Shared.Constants.Limit.defaultSearchLimit)
     }
 
-    @Test("HIGQuery accepts platform and category")
+    @Test("Services.HIGQuery accepts platform and category")
     func higQueryWithFilters() {
-        let query = HIGQuery(
+        let query = Services.HIGQuery(
             text: "navigation",
             platform: "iOS",
             category: "patterns",
@@ -91,11 +92,11 @@ struct ServicesTests {
         #expect(query.limit == 30)
     }
 
-    // MARK: - SampleQuery Tests
+    // MARK: - Sample.Search.Query Tests
 
-    @Test("SampleQuery initializes with defaults")
+    @Test("Sample.Search.Query initializes with defaults")
     func sampleQueryDefaults() {
-        let query = SampleQuery(text: "SwiftUI")
+        let query = Sample.Search.Query(text: "SwiftUI")
 
         #expect(query.text == "SwiftUI")
         #expect(query.framework == nil)
@@ -103,9 +104,9 @@ struct ServicesTests {
         #expect(query.limit == Shared.Constants.Limit.defaultSearchLimit)
     }
 
-    @Test("SampleSearchResult isEmpty check")
+    @Test("Sample.Search.Result isEmpty check")
     func sampleSearchResultIsEmpty() {
-        let empty = SampleSearchResult(projects: [], files: [])
+        let empty = Sample.Search.Result(projects: [], files: [])
         #expect(empty.isEmpty == true)
         #expect(empty.totalCount == 0)
     }
@@ -117,8 +118,8 @@ struct ServicesTests {
 struct FormatConfigTests {
     @Test("CLI and MCP configs are identical")
     func configsAreIdentical() {
-        let cli = SearchResultFormatConfig.cliDefault
-        let mcp = SearchResultFormatConfig.mcpDefault
+        let cli = Services.Formatter.Config.cliDefault
+        let mcp = Services.Formatter.Config.mcpDefault
 
         // CLI and MCP must produce identical output
         #expect(cli.showScore == mcp.showScore)
@@ -131,7 +132,7 @@ struct FormatConfigTests {
 
     @Test("Shared config has expected values")
     func sharedConfigValues() {
-        let config = SearchResultFormatConfig.shared
+        let config = Services.Formatter.Config.shared
 
         #expect(config.showScore == true)
         #expect(config.showWordCount == true)
@@ -142,9 +143,9 @@ struct FormatConfigTests {
     }
 }
 
-// MARK: - SampleCandidateFetcher (#230)
+// MARK: - Sample.Services.CandidateFetcher (#230)
 
-@Suite("SampleCandidateFetcher (#230)")
+@Suite("Sample.Services.CandidateFetcher (#230)")
 struct SampleCandidateFetcherTests {
     @Test("sourceName matches the canonical samples prefix")
     func sourceNameIsSamples() async throws {
@@ -155,10 +156,10 @@ struct SampleCandidateFetcherTests {
             .appendingPathComponent("samples-fetcher-test-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let service = try await Services.SampleSearchService(dbPath: tempDB)
+        let service = try await Sample.Search.Service(dbPath: tempDB)
         defer { Task { await service.disconnect() } }
 
-        let fetcher = Services.SampleCandidateFetcher(service: service)
+        let fetcher = Sample.Services.CandidateFetcher(service: service)
         #expect(fetcher.sourceName == Shared.Constants.SourcePrefix.samples)
     }
 
@@ -168,10 +169,10 @@ struct SampleCandidateFetcherTests {
             .appendingPathComponent("samples-fetcher-test-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let service = try await Services.SampleSearchService(dbPath: tempDB)
+        let service = try await Sample.Search.Service(dbPath: tempDB)
         defer { Task { await service.disconnect() } }
 
-        let fetcher = Services.SampleCandidateFetcher(service: service)
+        let fetcher = Sample.Services.CandidateFetcher(service: service)
         let candidates = try await fetcher.fetch(question: "swiftui list", limit: 5)
         #expect(candidates.isEmpty)
     }
@@ -183,7 +184,7 @@ struct SampleCandidateFetcherTests {
 struct TeaserResultsResilienceTests {
     @Test("TeaserResults() default is empty")
     func defaultIsEmpty() {
-        let results = TeaserResults()
+        let results = Services.Formatter.TeaserResults()
         #expect(results.isEmpty)
         #expect(results.appleDocs.isEmpty)
         #expect(results.samples.isEmpty)
@@ -225,11 +226,11 @@ struct TeaserResultsResilienceTests {
 
     @Test("Caller swallowing withTeaserService error → empty TeaserResults works")
     func callerCanFallBackOnEmpty() async {
-        // Replicates the resilience pattern in SearchCommand.runSampleSearch:
+        // Replicates the resilience pattern in CLI.Command.Search.runSampleSearch:
         // catch the throw, fall back to TeaserResults(). Verifies the
         // fallback contract (empty + iterable) so future changes don't
         // accidentally make the empty struct require parameters.
-        let teasers: TeaserResults
+        let teasers: Services.Formatter.TeaserResults
         do {
             teasers = try await Services.ServiceContainer.withTeaserService(
                 searchDbPath: "/var/empty/intentionally-broken-search.db.\(UUID().uuidString)",
@@ -243,7 +244,7 @@ struct TeaserResultsResilienceTests {
                 )
             }
         } catch {
-            teasers = TeaserResults()
+            teasers = Services.Formatter.TeaserResults()
         }
         #expect(teasers.isEmpty || !teasers.isEmpty) // either path is OK
         #expect(teasers.allSources.isEmpty || !teasers.allSources.isEmpty)
