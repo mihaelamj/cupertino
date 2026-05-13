@@ -1,7 +1,6 @@
 import SearchModels
 
 // swiftlint:disable identifier_name
-@testable import Core
 import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
