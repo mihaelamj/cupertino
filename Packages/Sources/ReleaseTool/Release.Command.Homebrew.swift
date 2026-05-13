@@ -10,7 +10,7 @@ extension Release.Command {
             abstract: "Update Homebrew formula with new version"
         )
 
-        @Option(name: .long, help: "Version to release (e.g., 0.5.0)")
+        @Option(name: .long, help: "Release.Version to release (e.g., 0.5.0)")
         var version: String?
 
         @Flag(name: .long, help: "Preview changes without modifying files")
@@ -31,9 +31,9 @@ extension Release.Command {
             let root = try findRepoRoot()
 
             // Get version
-            let releaseVersion: Version
+            let releaseVersion: Release.Version
             if let versionString = version {
-                guard let parsed = Version(versionString) else {
+                guard let parsed = Release.Version(versionString) else {
                     throw HomebrewError.invalidVersion(versionString)
                 }
                 releaseVersion = parsed
@@ -41,52 +41,52 @@ extension Release.Command {
                 releaseVersion = try readCurrentVersion(from: root)
             }
 
-            Console.info("🍺 Updating Homebrew formula for version \(releaseVersion)")
+            Release.Console.info("🍺 Updating Homebrew formula for version \(releaseVersion)")
 
             // Get SHA256 from GitHub release
-            Console.step(1, "Fetching SHA256 from GitHub release...")
+            Release.Console.step(1, "Fetching SHA256 from GitHub release...")
             let sha256 = try await fetchSHA256(version: releaseVersion)
-            Console.substep("SHA256: \(sha256)")
+            Release.Console.substep("SHA256: \(sha256)")
 
             // Clone or update tap repository
             let tapURL: URL
             if let path = tapPath {
                 tapURL = URL(fileURLWithPath: path)
             } else {
-                Console.step(2, "Cloning homebrew-tap repository...")
+                Release.Console.step(2, "Cloning homebrew-tap repository...")
                 tapURL = try cloneTap()
             }
 
             let formulaPath = tapURL.appendingPathComponent("Formula/cupertino.rb")
 
             // Update formula
-            Console.step(3, "Updating formula...")
+            Release.Console.step(3, "Updating formula...")
             if dryRun {
-                Console.substep("Would update: \(formulaPath.path)")
-                Console.substep("  url → .../\(releaseVersion.tag)/cupertino-\(releaseVersion.tag)-macos-universal.tar.gz")
-                Console.substep("  sha256 → \(sha256)")
-                Console.substep("  version → \(releaseVersion)")
+                Release.Console.substep("Would update: \(formulaPath.path)")
+                Release.Console.substep("  url → .../\(releaseVersion.tag)/cupertino-\(releaseVersion.tag)-macos-universal.tar.gz")
+                Release.Console.substep("  sha256 → \(sha256)")
+                Release.Console.substep("  version → \(releaseVersion)")
             } else {
                 try updateFormula(at: formulaPath, version: releaseVersion, sha256: sha256)
-                Console.substep("✓ Formula updated")
+                Release.Console.substep("✓ Formula updated")
             }
 
             // Commit and push
-            Console.step(4, "Committing changes...")
+            Release.Console.step(4, "Committing changes...")
             if dryRun {
-                Console.substep("Would run: git add Formula/cupertino.rb")
-                Console.substep("Would run: git commit -m \"chore: bump cupertino to \(releaseVersion)\"")
-                Console.substep("Would run: git push")
+                Release.Console.substep("Would run: git add Formula/cupertino.rb")
+                Release.Console.substep("Would run: git commit -m \"chore: bump cupertino to \(releaseVersion)\"")
+                Release.Console.substep("Would run: git push")
             } else {
                 let originalDir = FileManager.default.currentDirectoryPath
                 FileManager.default.changeCurrentDirectoryPath(tapURL.path)
 
-                try Shell.run("git add Formula/cupertino.rb")
-                try Shell.run("git commit -m \"chore: bump cupertino to \(releaseVersion)\"")
-                try Shell.run("git push")
+                try Release.Shell.run("git add Formula/cupertino.rb")
+                try Release.Shell.run("git commit -m \"chore: bump cupertino to \(releaseVersion)\"")
+                try Release.Shell.run("git push")
 
                 FileManager.default.changeCurrentDirectoryPath(originalDir)
-                Console.substep("✓ Changes pushed to homebrew-tap")
+                Release.Console.substep("✓ Changes pushed to homebrew-tap")
             }
 
             // Cleanup temp directory if we cloned
@@ -94,9 +94,9 @@ extension Release.Command {
                 try? FileManager.default.removeItem(at: tapURL)
             }
 
-            Console.success("Homebrew formula updated to \(releaseVersion)")
-            Console.info("\nUsers can now run:")
-            Console.info("  brew update && brew upgrade cupertino")
+            Release.Console.success("Homebrew formula updated to \(releaseVersion)")
+            Release.Console.info("\nUsers can now run:")
+            Release.Console.info("  brew update && brew upgrade cupertino")
         }
 
         // MARK: - Helpers
@@ -105,24 +105,24 @@ extension Release.Command {
             if let root = repoRoot {
                 return URL(fileURLWithPath: root)
             }
-            let output = try Shell.run("git rev-parse --show-toplevel")
+            let output = try Release.Shell.run("git rev-parse --show-toplevel")
             return URL(fileURLWithPath: output)
         }
 
-        private func readCurrentVersion(from root: URL) throws -> Version {
+        private func readCurrentVersion(from root: URL) throws -> Release.Version {
             let constantsPath = root.appendingPathComponent("Packages/Sources/Shared/Constants.swift")
             let content = try String(contentsOf: constantsPath, encoding: .utf8)
             let pattern = #"public\s+static\s+let\s+version\s*=\s*"(\d+\.\d+\.\d+)""#
             guard let regex = try? NSRegularExpression(pattern: pattern),
                   let match = regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)),
                   let versionRange = Range(match.range(at: 1), in: content),
-                  let version = Version(String(content[versionRange])) else {
+                  let version = Release.Version(String(content[versionRange])) else {
                 throw HomebrewError.versionNotFound
             }
             return version
         }
 
-        private func fetchSHA256(version: Version) async throws -> String {
+        private func fetchSHA256(version: Release.Version) async throws -> String {
             let sha256URL = URL.knownGood(
                 "https://github.com/\(repo)/releases/download/\(version.tag)/cupertino-\(version.tag)-macos-universal.tar.gz.sha256"
             )
@@ -143,11 +143,11 @@ extension Release.Command {
 
         private func cloneTap() throws -> URL {
             let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("homebrew-tap-\(UUID().uuidString)")
-            try Shell.run("git clone https://github.com/mihaelamj/homebrew-tap.git \(tempDir.path)")
+            try Release.Shell.run("git clone https://github.com/mihaelamj/homebrew-tap.git \(tempDir.path)")
             return tempDir
         }
 
-        private func updateFormula(at url: URL, version: Version, sha256: String) throws {
+        private func updateFormula(at url: URL, version: Release.Version, sha256: String) throws {
             var content = try String(contentsOf: url, encoding: .utf8)
 
             // Update URL

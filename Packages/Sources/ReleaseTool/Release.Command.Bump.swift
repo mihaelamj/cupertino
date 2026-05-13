@@ -47,50 +47,50 @@ extension Release.Command {
 
             // Get current version
             let currentVersion = try readCurrentVersion(from: paths.constants)
-            Console.info("📦 Current version: \(currentVersion)")
+            Release.Console.info("📦 Current version: \(currentVersion)")
 
             // Determine new version
-            let newVersion: Version
-            if let bumpType = BumpType(rawValue: versionOrType.lowercased()) {
+            let newVersion: Release.Version
+            if let bumpType = Release.Version.BumpType(rawValue: versionOrType.lowercased()) {
                 newVersion = currentVersion.bumped(bumpType)
-            } else if let explicit = Version(versionOrType) {
+            } else if let explicit = Release.Version(versionOrType) {
                 newVersion = explicit
             } else {
                 throw BumpError.invalidVersion(versionOrType)
             }
 
-            Console.info("🎯 New version: \(newVersion)")
+            Release.Console.info("🎯 New version: \(newVersion)")
 
             if dryRun {
-                Console.info("\n🏃 Dry run - would update:")
-                Console.substep("Constants.swift: \(currentVersion) → \(newVersion)")
-                Console.substep("README.md: Version badge")
-                Console.substep("CHANGELOG.md: Add \(newVersion) section")
-                Console.substep("DEPLOYMENT.md: Version header")
+                Release.Console.info("\n🏃 Dry run - would update:")
+                Release.Console.substep("Constants.swift: \(currentVersion) → \(newVersion)")
+                Release.Console.substep("README.md: Release.Version badge")
+                Release.Console.substep("CHANGELOG.md: Add \(newVersion) section")
+                Release.Console.substep("DEPLOYMENT.md: Release.Version header")
                 return
             }
 
             // Update files
-            Console.step(1, "Updating Constants.swift...")
+            Release.Console.step(1, "Updating Constants.swift...")
             try updateConstants(at: paths.constants, to: newVersion)
-            Console.substep("✓ Updated version = \"\(newVersion)\"")
+            Release.Console.substep("✓ Updated version = \"\(newVersion)\"")
 
-            Console.step(2, "Updating README.md...")
+            Release.Console.step(2, "Updating README.md...")
             try updateReadme(at: paths.readme, to: newVersion)
-            Console.substep("✓ Updated Version: \(newVersion)")
+            Release.Console.substep("✓ Updated Release.Version: \(newVersion)")
 
-            Console.step(3, "Updating CHANGELOG.md...")
+            Release.Console.step(3, "Updating CHANGELOG.md...")
             try updateChangelog(at: paths.changelog, version: newVersion)
-            Console.substep("✓ Added ## \(newVersion) section")
+            Release.Console.substep("✓ Added ## \(newVersion) section")
 
-            Console.step(4, "Updating DEPLOYMENT.md...")
+            Release.Console.step(4, "Updating DEPLOYMENT.md...")
             try updateDeployment(at: paths.deployment, to: newVersion)
-            Console.substep("✓ Updated Version: \(newVersion)")
+            Release.Console.substep("✓ Updated Release.Version: \(newVersion)")
 
-            Console.success("Version bumped to \(newVersion)")
-            Console.info("\nNext steps:")
-            Console.info("  1. Edit CHANGELOG.md to add release notes")
-            Console.info("  2. Run: cupertino-rel tag --version \(newVersion)")
+            Release.Console.success("Release.Version bumped to \(newVersion)")
+            Release.Console.info("\nNext steps:")
+            Release.Console.info("  1. Edit CHANGELOG.md to add release notes")
+            Release.Console.info("  2. Run: cupertino-rel tag --version \(newVersion)")
         }
 
         // MARK: - Find Repo Root
@@ -101,13 +101,13 @@ extension Release.Command {
             }
 
             // Try to find git root
-            let output = try Shell.run("git rev-parse --show-toplevel")
+            let output = try Release.Shell.run("git rev-parse --show-toplevel")
             return URL(fileURLWithPath: output)
         }
 
-        // MARK: - Read Current Version
+        // MARK: - Read Current Release.Version
 
-        private func readCurrentVersion(from url: URL) throws -> Version {
+        private func readCurrentVersion(from url: URL) throws -> Release.Version {
             let content = try String(contentsOf: url, encoding: .utf8)
 
             // Match: public static let version = "X.Y.Z"
@@ -118,7 +118,7 @@ extension Release.Command {
                 throw BumpError.versionNotFound(url.path)
             }
 
-            guard let version = Version(String(content[versionRange])) else {
+            guard let version = Release.Version(String(content[versionRange])) else {
                 throw BumpError.invalidVersion(String(content[versionRange]))
             }
 
@@ -127,7 +127,7 @@ extension Release.Command {
 
         // MARK: - Update Constants.swift
 
-        private func updateConstants(at url: URL, to version: Version) throws {
+        private func updateConstants(at url: URL, to version: Release.Version) throws {
             var content = try String(contentsOf: url, encoding: .utf8)
 
             let pattern = #"(public\s+static\s+let\s+version\s*=\s*")(\d+\.\d+\.\d+)(")"#
@@ -146,11 +146,11 @@ extension Release.Command {
 
         // MARK: - Update README.md
 
-        private func updateReadme(at url: URL, to version: Version) throws {
+        private func updateReadme(at url: URL, to version: Release.Version) throws {
             var content = try String(contentsOf: url, encoding: .utf8)
 
-            // Update **Version:** X.Y.Z
-            let pattern = #"(\*\*Version:\*\*\s*)\d+\.\d+\.\d+"#
+            // Update **Release.Version:** X.Y.Z
+            let pattern = #"(\*\*Release.Version:\*\*\s*)\d+\.\d+\.\d+"#
             guard let regex = try? NSRegularExpression(pattern: pattern) else {
                 throw BumpError.updateFailed(url.path)
             }
@@ -166,7 +166,7 @@ extension Release.Command {
 
         // MARK: - Update CHANGELOG.md
 
-        private func updateChangelog(at url: URL, version: Version) throws {
+        private func updateChangelog(at url: URL, version: Release.Version) throws {
             var content = try String(contentsOf: url, encoding: .utf8)
 
             // Find first ## heading (existing version) and insert new section before it
@@ -205,11 +205,11 @@ extension Release.Command {
 
         // MARK: - Update DEPLOYMENT.md
 
-        private func updateDeployment(at url: URL, to version: Version) throws {
+        private func updateDeployment(at url: URL, to version: Release.Version) throws {
             var content = try String(contentsOf: url, encoding: .utf8)
 
-            // Update **Version:** X.Y.Z
-            let pattern = #"(\*\*Version:\*\*\s*)\d+\.\d+\.\d+"#
+            // Update **Release.Version:** X.Y.Z
+            let pattern = #"(\*\*Release.Version:\*\*\s*)\d+\.\d+\.\d+"#
             guard let regex = try? NSRegularExpression(pattern: pattern) else {
                 throw BumpError.updateFailed(url.path)
             }

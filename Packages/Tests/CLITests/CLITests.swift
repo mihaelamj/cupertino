@@ -50,7 +50,7 @@ struct CommandRegistrationTests {
         #expect(config.commandName == "cupertino")
     }
 
-    @Test("Version string is not empty")
+    @Test("Release.Version string is not empty")
     func versionNotEmpty() {
         let config = Cupertino.configuration
         #expect(!config.version.isEmpty)

@@ -96,7 +96,7 @@ struct InstalledVersionStatusTests {
     }
 }
 
-// MARK: - Version file read/write
+// MARK: - Release.Version file read/write
 
 @Suite("Distribution.InstalledVersion file helpers")
 struct InstalledVersionFileTests {

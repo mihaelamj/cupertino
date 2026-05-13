@@ -38,25 +38,25 @@ extension Release.Command {
             let currentVersion = try readCurrentVersion(from: constantsPath)
 
             // Determine new version
-            let newVersion: Version
-            if let bumpType = BumpType(rawValue: versionOrType.lowercased()) {
+            let newVersion: Release.Version
+            if let bumpType = Release.Version.BumpType(rawValue: versionOrType.lowercased()) {
                 newVersion = currentVersion.bumped(bumpType)
-            } else if let explicit = Version(versionOrType) {
+            } else if let explicit = Release.Version(versionOrType) {
                 newVersion = explicit
             } else {
                 throw FullReleaseError.invalidVersion(versionOrType)
             }
 
-            Console.info("🚀 Cupertino Release Workflow")
-            Console.info("   Current: \(currentVersion) → New: \(newVersion)")
-            Console.info("")
+            Release.Console.info("🚀 Cupertino Release Workflow")
+            Release.Console.info("   Current: \(currentVersion) → New: \(newVersion)")
+            Release.Console.info("")
 
             if dryRun {
-                Console.warning("DRY RUN - No changes will be made\n")
+                Release.Console.warning("DRY RUN - No changes will be made\n")
             }
 
             // Step 1: Bump version
-            Console.step(1, "Bump version in all files")
+            Release.Console.step(1, "Bump version in all files")
             var bumpCmd = Release.Command.Bump()
             bumpCmd.versionOrType = newVersion.description
             bumpCmd.dryRun = dryRun
@@ -64,17 +64,17 @@ extension Release.Command {
             try await bumpCmd.run()
 
             // Step 2: Edit changelog (prompt user)
-            Console.step(2, "Edit CHANGELOG.md")
+            Release.Console.step(2, "Edit CHANGELOG.md")
             if !dryRun {
-                Console.info("    Please edit CHANGELOG.md to add release notes.")
-                Console.info("    Press Enter when done...")
+                Release.Console.info("    Please edit CHANGELOG.md to add release notes.")
+                Release.Console.info("    Press Enter when done...")
                 _ = readLine()
             } else {
-                Console.substep("Would prompt user to edit CHANGELOG.md")
+                Release.Console.substep("Would prompt user to edit CHANGELOG.md")
             }
 
             // Step 3: Create tag and push
-            Console.step(3, "Create git tag and push")
+            Release.Console.step(3, "Create git tag and push")
             var tagCmd = Release.Command.Tag()
             tagCmd.version = newVersion.description
             tagCmd.dryRun = dryRun
@@ -84,47 +84,47 @@ extension Release.Command {
 
             // Step 4: Wait for GitHub Actions
             if !skipWait {
-                Console.step(4, "Wait for GitHub Actions build")
+                Release.Console.step(4, "Wait for GitHub Actions build")
                 if dryRun {
-                    Console.substep("Would wait for GitHub Actions to complete")
+                    Release.Console.substep("Would wait for GitHub Actions to complete")
                 } else {
                     try await waitForGitHubActions(version: newVersion)
                 }
             } else {
-                Console.step(4, "Skipping GitHub Actions wait (--skip-wait)")
+                Release.Console.step(4, "Skipping GitHub Actions wait (--skip-wait)")
             }
 
             // Step 5: Upload databases
             if !skipDatabases {
-                Console.step(5, "Upload databases to cupertino-docs")
+                Release.Console.step(5, "Upload databases to cupertino-docs")
                 var dbCmd = Release.Command.Database()
                 dbCmd.dryRun = dryRun
                 dbCmd.repoRoot = root.path
                 try await dbCmd.run()
             } else {
-                Console.step(5, "Skipping database upload (--skip-databases)")
+                Release.Console.step(5, "Skipping database upload (--skip-databases)")
             }
 
             // Step 6: Update Homebrew
             if !skipHomebrew {
-                Console.step(6, "Update Homebrew formula")
+                Release.Console.step(6, "Update Homebrew formula")
                 var brewCmd = Release.Command.Homebrew()
                 brewCmd.version = newVersion.description
                 brewCmd.dryRun = dryRun
                 brewCmd.repoRoot = root.path
                 try await brewCmd.run()
             } else {
-                Console.step(6, "Skipping Homebrew update (--skip-homebrew)")
+                Release.Console.step(6, "Skipping Homebrew update (--skip-homebrew)")
             }
 
             // Done
-            Console.info("")
-            Console.success("Release \(newVersion) complete!")
-            Console.info("")
-            Console.info("Verify:")
-            Console.info("  • GitHub Release: https://github.com/mihaelamj/cupertino/releases/tag/\(newVersion.tag)")
-            Console.info("  • Databases: https://github.com/mihaelamj/cupertino-docs/releases/tag/\(newVersion.tag)")
-            Console.info("  • Homebrew: brew info cupertino")
+            Release.Console.info("")
+            Release.Console.success("Release \(newVersion) complete!")
+            Release.Console.info("")
+            Release.Console.info("Verify:")
+            Release.Console.info("  • GitHub Release: https://github.com/mihaelamj/cupertino/releases/tag/\(newVersion.tag)")
+            Release.Console.info("  • Databases: https://github.com/mihaelamj/cupertino-docs/releases/tag/\(newVersion.tag)")
+            Release.Console.info("  • Homebrew: brew info cupertino")
         }
 
         // MARK: - Helpers
@@ -133,24 +133,24 @@ extension Release.Command {
             if let root = repoRoot {
                 return URL(fileURLWithPath: root)
             }
-            let output = try Shell.run("git rev-parse --show-toplevel")
+            let output = try Release.Shell.run("git rev-parse --show-toplevel")
             return URL(fileURLWithPath: output)
         }
 
-        private func readCurrentVersion(from url: URL) throws -> Version {
+        private func readCurrentVersion(from url: URL) throws -> Release.Version {
             let content = try String(contentsOf: url, encoding: .utf8)
             let pattern = #"public\s+static\s+let\s+version\s*=\s*"(\d+\.\d+\.\d+)""#
             guard let regex = try? NSRegularExpression(pattern: pattern),
                   let match = regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)),
                   let versionRange = Range(match.range(at: 1), in: content),
-                  let version = Version(String(content[versionRange])) else {
+                  let version = Release.Version(String(content[versionRange])) else {
                 throw FullReleaseError.versionNotFound
             }
             return version
         }
 
-        private func waitForGitHubActions(version: Version) async throws {
-            Console.substep("Waiting for GitHub Actions to build \(version.tag)...")
+        private func waitForGitHubActions(version: Release.Version) async throws {
+            Release.Console.substep("Waiting for GitHub Actions to build \(version.tag)...")
 
             let maxAttempts = 60 // 30 minutes max
             let delaySeconds: UInt64 = 30
@@ -167,12 +167,12 @@ extension Release.Command {
                 let (_, response) = try await URLSession.shared.data(for: request)
                 if let httpResponse = response as? HTTPURLResponse,
                    httpResponse.statusCode == 200 {
-                    Console.substep("✓ Build complete!")
+                    Release.Console.substep("✓ Build complete!")
                     return
                 }
 
                 if attempt < maxAttempts {
-                    Console.substep("Attempt \(attempt)/\(maxAttempts) - build not ready, waiting 30s...")
+                    Release.Console.substep("Attempt \(attempt)/\(maxAttempts) - build not ready, waiting 30s...")
                     try await Task.sleep(nanoseconds: delaySeconds * 1000000000)
                 }
             }
