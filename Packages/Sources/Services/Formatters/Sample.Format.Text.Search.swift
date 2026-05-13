@@ -7,12 +7,12 @@ import SharedCore
 
 /// Formats sample search results as plain text for CLI output
 extension Sample.Format.Text {
-    public struct Search: Services.Formatters.ResultFormatter {
+    public struct Search: Services.Formatter.Result {
         private let query: String
         private let framework: String?
-        private let teasers: Services.Formatters.TeaserResults?
+        private let teasers: Services.Formatter.TeaserResults?
 
-        public init(query: String, framework: String? = nil, teasers: Services.Formatters.TeaserResults? = nil) {
+        public init(query: String, framework: String? = nil, teasers: Services.Formatter.TeaserResults? = nil) {
             self.query = query
             self.framework = framework
             self.teasers = teasers
@@ -76,7 +76,7 @@ extension Sample.Format.Text {
 
 /// Formats sample project list as plain text for CLI output
 extension Sample.Format.Text {
-    public struct List: Services.Formatters.ResultFormatter {
+    public struct List: Services.Formatter.Result {
         private let totalCount: Int
 
         public init(totalCount: Int) {
@@ -110,7 +110,7 @@ extension Sample.Format.Text {
 
 /// Formats a single sample project as plain text
 extension Sample.Format.Text {
-    public struct Project: Services.Formatters.ResultFormatter {
+    public struct Project: Services.Formatter.Result {
         public init() {}
 
         public func format(_ project: Sample.Index.Project) -> String {

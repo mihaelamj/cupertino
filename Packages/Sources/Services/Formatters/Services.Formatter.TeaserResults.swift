@@ -8,7 +8,7 @@ import SharedCore
 
 /// Container for teaser results from alternate sources.
 /// Used by both MCP and CLI to show hints about other sources.
-extension Services.Formatters {
+extension Services.Formatter {
     public struct TeaserResults: Sendable {
         public var appleDocs: [Search.Result]
         public var samples: [Sample.Index.Project]

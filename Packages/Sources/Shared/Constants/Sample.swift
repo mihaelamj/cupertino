@@ -23,7 +23,7 @@ import Foundation
 ///                          Search.SampleCodeIndexer).
 /// - `Sample.Atom`        — `ResultAtom` conformance for sample search
 ///                          hits (was Search.SampleAtom).
-/// - `Sample.Format.*`    — sample-flavoured `ResultFormatter`s in
+/// - `Sample.Format.*`    — sample-flavoured `Result`s in
 ///                          Markdown / JSON / Text.
 ///
 /// Sub-namespaces are declared as empty enums here so any SPM target that
@@ -53,7 +53,7 @@ public enum Sample {
     /// availability sidecar.
     public enum Index {}
 
-    /// Sample-flavoured `ResultFormatter`s. Sub-namespaces split by output
+    /// Sample-flavoured `Result`s. Sub-namespaces split by output
     /// medium: `Sample.Format.Markdown.*`, `Sample.Format.JSON.*`,
     /// `Sample.Format.Text.*`.
     public enum Format {

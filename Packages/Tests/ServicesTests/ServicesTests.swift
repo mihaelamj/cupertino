@@ -118,8 +118,8 @@ struct ServicesTests {
 struct FormatConfigTests {
     @Test("CLI and MCP configs are identical")
     func configsAreIdentical() {
-        let cli = Services.Formatters.SearchResultFormatConfig.cliDefault
-        let mcp = Services.Formatters.SearchResultFormatConfig.mcpDefault
+        let cli = Services.Formatter.SearchResultFormatConfig.cliDefault
+        let mcp = Services.Formatter.SearchResultFormatConfig.mcpDefault
 
         // CLI and MCP must produce identical output
         #expect(cli.showScore == mcp.showScore)
@@ -132,7 +132,7 @@ struct FormatConfigTests {
 
     @Test("Shared config has expected values")
     func sharedConfigValues() {
-        let config = Services.Formatters.SearchResultFormatConfig.shared
+        let config = Services.Formatter.SearchResultFormatConfig.shared
 
         #expect(config.showScore == true)
         #expect(config.showWordCount == true)
@@ -184,7 +184,7 @@ struct SampleCandidateFetcherTests {
 struct TeaserResultsResilienceTests {
     @Test("TeaserResults() default is empty")
     func defaultIsEmpty() {
-        let results = Services.Formatters.TeaserResults()
+        let results = Services.Formatter.TeaserResults()
         #expect(results.isEmpty)
         #expect(results.appleDocs.isEmpty)
         #expect(results.samples.isEmpty)
@@ -230,7 +230,7 @@ struct TeaserResultsResilienceTests {
         // catch the throw, fall back to TeaserResults(). Verifies the
         // fallback contract (empty + iterable) so future changes don't
         // accidentally make the empty struct require parameters.
-        let teasers: Services.Formatters.TeaserResults
+        let teasers: Services.Formatter.TeaserResults
         do {
             teasers = try await Services.ServiceContainer.withTeaserService(
                 searchDbPath: "/var/empty/intentionally-broken-search.db.\(UUID().uuidString)",
@@ -244,7 +244,7 @@ struct TeaserResultsResilienceTests {
                 )
             }
         } catch {
-            teasers = Services.Formatters.TeaserResults()
+            teasers = Services.Formatter.TeaserResults()
         }
         #expect(teasers.isEmpty || !teasers.isEmpty) // either path is OK
         #expect(teasers.allSources.isEmpty || !teasers.allSources.isEmpty)

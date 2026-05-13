@@ -6,8 +6,8 @@ import SharedCore
 // MARK: - HIG Text Formatter
 
 /// Formats HIG search results as plain text for CLI output
-extension Services.Formatters {
-    public struct HIGTextFormatter: Services.Formatters.ResultFormatter {
+extension Services.Formatter {
+    public struct HIGTextFormatter: Services.Formatter.Result {
         private let query: Services.HIGQuery
         private let teasers: TeaserResults?
 
@@ -66,8 +66,8 @@ extension Services.Formatters {
 // MARK: - HIG JSON Formatter
 
 /// Formats HIG search results as JSON for programmatic access
-extension Services.Formatters {
-    public struct HIGJSONFormatter: Services.Formatters.ResultFormatter {
+extension Services.Formatter {
+    public struct HIGJSONFormatter: Services.Formatter.Result {
         private let query: Services.HIGQuery
 
         public init(query: Services.HIGQuery) {

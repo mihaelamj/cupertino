@@ -4,9 +4,9 @@ import SharedCore
 
 // MARK: - Result Formatter Protocol
 
-extension Services.Formatters {
+extension Services.Formatter {
     /// Protocol for formatting search results to different output formats
-    public protocol ResultFormatter {
+    public protocol Result {
         associatedtype Input
         func format(_ input: Input) -> String
     }
@@ -14,7 +14,7 @@ extension Services.Formatters {
 
 // MARK: - Search Result Format Configuration
 
-extension Services.Formatters {
+extension Services.Formatter {
     /// Configuration for search result formatting
     public struct SearchResultFormatConfig: Sendable {
         public let showScore: Bool
