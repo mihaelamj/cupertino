@@ -85,7 +85,16 @@ extension CLI.Command {
                     format: documentFormat,
                     searchDB: searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath },
                     samplesDB: sampleDb.map { URL(fileURLWithPath: $0).expandingTildeInPath },
-                    packagesDB: packagesDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+                    packagesDB: packagesDb.map { URL(fileURLWithPath: $0).expandingTildeInPath },
+                    packageFileLookup: { dbURL, owner, repo, relpath in
+                        // The Search.PackageQuery actor is the production
+                        // packages.db reader. CLI wires it in here so
+                        // Services.ReadService doesn't need to import the
+                        // Search target.
+                        let query = try await SearchModule.PackageQuery(dbPath: dbURL)
+                        defer { Task { await query.disconnect() } }
+                        return try await query.fileContent(owner: owner, repo: repo, relpath: relpath)
+                    }
                 )
             } catch Services.ReadService.ReadError.docsNotFound(let id) {
                 Logging.Log.error("Document not found in search.db: \(id)")
