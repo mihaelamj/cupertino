@@ -1,12 +1,11 @@
-import Core
 import CorePackageIndexing
 import CoreProtocols
 import Foundation
-import SharedUtils
+import SearchModels
 import SharedConstants
 import SharedCore
+import SharedUtils
 import SQLite3
-import SearchModels
 
 // MARK: - Package Index (separate DB)
 
