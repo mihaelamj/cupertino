@@ -32,7 +32,7 @@ extension Release.Command {
 
         mutating func run() async throws {
             let root = try findRepoRoot()
-            let constantsPath = root.appendingPathComponent("Packages/Sources/Shared/Constants.swift")
+            let constantsPath = root.appendingPathComponent("Packages/Sources/Shared/Constants/Shared.Constants.swift")
 
             // Get current version
             let currentVersion = try readCurrentVersion(from: constantsPath)
