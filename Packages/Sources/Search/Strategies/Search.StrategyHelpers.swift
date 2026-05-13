@@ -1,8 +1,7 @@
-import CoreJSONParser
 import Foundation
+import SearchModels
 import SharedConstants
 import SharedModels
-import SearchModels
 
 // MARK: - StrategyHelpers
 
@@ -193,12 +192,12 @@ extension Search {
         /// - Returns: The proposal ID (e.g., `"SE-0001"`), or `nil` if the pattern is absent.
         public static func extractProposalID(from filename: String) -> String? {
             guard let regex = try? NSRegularExpression(
-                      pattern: Shared.Constants.Pattern.evolutionReference, options: []
-                  ),
-                  let match = regex.firstMatch(
-                      in: filename, range: NSRange(filename.startIndex..., in: filename)
-                  ),
-                  let range = Range(match.range(at: 1), in: filename)
+                pattern: Shared.Constants.Pattern.evolutionReference, options: []
+            ),
+                let match = regex.firstMatch(
+                    in: filename, range: NSRange(filename.startIndex..., in: filename)
+                ),
+                let range = Range(match.range(at: 1), in: filename)
             else { return nil }
             return String(filename[range])
         }
@@ -230,24 +229,24 @@ extension Search {
             let minor = parts.dropFirst().first.flatMap { Int($0) } ?? 0
 
             switch (major, minor) {
-            case (6, _):  return ("18.0", "15.0")
+            case (6, _): return ("18.0", "15.0")
             case (5, 10): return ("17.4", "14.4")
-            case (5, 9):  return ("17.0", "14.0")
-            case (5, 8):  return ("16.4", "13.3")
-            case (5, 7):  return ("16.0", "13.0")
-            case (5, 6):  return ("15.4", "12.3")
-            case (5, 5):  return ("15.0", "12.0")
-            case (5, 4):  return ("14.5", "11.3")
-            case (5, 3):  return ("14.0", "11.0")
-            case (5, 2):  return ("13.4", "10.15.4")
-            case (5, 1):  return ("13.0", "10.15")
-            case (5, 0):  return ("12.2", "10.14.4")
-            case (4, 2):  return ("12.0", "10.14")
-            case (4, 1):  return ("11.3", "10.13.4")
-            case (4, 0):  return ("11.0", "10.13")
-            case (3, _):  return ("10.0", "10.12")
-            case (2, _):  return ("9.0", "10.11")
-            default:      return ("8.0", "10.9")
+            case (5, 9): return ("17.0", "14.0")
+            case (5, 8): return ("16.4", "13.3")
+            case (5, 7): return ("16.0", "13.0")
+            case (5, 6): return ("15.4", "12.3")
+            case (5, 5): return ("15.0", "12.0")
+            case (5, 4): return ("14.5", "11.3")
+            case (5, 3): return ("14.0", "11.0")
+            case (5, 2): return ("13.4", "10.15.4")
+            case (5, 1): return ("13.0", "10.15")
+            case (5, 0): return ("12.2", "10.14.4")
+            case (4, 2): return ("12.0", "10.14")
+            case (4, 1): return ("11.3", "10.13.4")
+            case (4, 0): return ("11.0", "10.13")
+            case (3, _): return ("10.0", "10.12")
+            case (2, _): return ("9.0", "10.11")
+            default: return ("8.0", "10.9")
             }
         }
 
@@ -408,7 +407,7 @@ extension Search {
                 of: #"^(403|404|429|500|502|503|504)(\s|$)"#,
                 options: .regularExpression
             ) != nil { return true }
-            let standalone: Set<String> = [
+            let standalone: Set = [
                 "Forbidden", "Bad Gateway", "Not Found",
                 "Service Unavailable", "Gateway Timeout",
                 "Too Many Requests", "Internal Server Error",
@@ -457,7 +456,7 @@ extension Search {
             if lowerTitle == "not found" || lowerTitle.contains("404") { return true }
             let lowerContent = content.lowercased()
             if lowerContent.contains("the requested url was not found") ||
-               lowerContent.contains("404 not found") { return true }
+                lowerContent.contains("404 not found") { return true }
             if content.count < 500, lowerContent.contains("page not found") { return true }
             return false
         }
