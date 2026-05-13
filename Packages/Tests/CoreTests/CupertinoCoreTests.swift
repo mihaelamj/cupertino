@@ -86,14 +86,14 @@ func swiftPackagesCatalogSearch() async {
 // longer carries. Once packages.db lands in v1.0.0, those queries should come
 // from the DB; test coverage will move there.
 
-// MARK: - PriorityPackagesCatalog Tests
+// MARK: - Core.PackageIndexing.PriorityPackagesCatalog Tests
 
-@Test("PriorityPackagesCatalog loads from JSON resource")
+@Test("Core.PackageIndexing.PriorityPackagesCatalog loads from JSON resource")
 func priorityPackagesCatalogLoadsFromJSON() async {
     // Use bundled file for consistent test results (not user's selected-packages.json)
-    await PriorityPackagesCatalog.setUseBundledOnly(true)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(true)
 
-    let stats = await PriorityPackagesCatalog.stats
+    let stats = await Core.PackageIndexing.PriorityPackagesCatalog.stats
     #expect(stats.totalPriorityPackages > 100, "Should have 100+ priority packages after the catalog expansion")
     #expect(stats.totalPriorityPackages < 500, "Priority package count should still be bounded")
     // These fields are optional to support TUI-generated files (which may not have them)
@@ -109,32 +109,32 @@ func priorityPackagesCatalogLoadsFromJSON() async {
     #expect(stats.totalPriorityPackages == expectedTotal, "Total should equal sum")
     print("   ✅ Loaded \(stats.totalPriorityPackages) priority packages")
 
-    await PriorityPackagesCatalog.setUseBundledOnly(false)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 }
 
-@Test("PriorityPackagesCatalog has correct metadata")
+@Test("Core.PackageIndexing.PriorityPackagesCatalog has correct metadata")
 func priorityPackagesCatalogMetadata() async {
     // Use bundled file for consistent test results
-    await PriorityPackagesCatalog.setUseBundledOnly(true)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(true)
 
-    let version = await PriorityPackagesCatalog.version
-    let lastUpdated = await PriorityPackagesCatalog.lastUpdated
-    let description = await PriorityPackagesCatalog.description
+    let version = await Core.PackageIndexing.PriorityPackagesCatalog.version
+    let lastUpdated = await Core.PackageIndexing.PriorityPackagesCatalog.lastUpdated
+    let description = await Core.PackageIndexing.PriorityPackagesCatalog.description
 
     #expect(!version.isEmpty, "Version should not be empty")
     #expect(!lastUpdated.isEmpty, "Last updated date should not be empty")
     #expect(!description.isEmpty, "Description should not be empty")
     print("   ✅ Version: \(version), Last updated: \(lastUpdated)")
 
-    await PriorityPackagesCatalog.setUseBundledOnly(false)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 }
 
-@Test("PriorityPackagesCatalog Apple packages are valid")
+@Test("Core.PackageIndexing.PriorityPackagesCatalog Apple packages are valid")
 func priorityPackagesCatalogApplePackages() async {
     // Use bundled file for consistent test results
-    await PriorityPackagesCatalog.setUseBundledOnly(true)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(true)
 
-    let applePackages = await PriorityPackagesCatalog.applePackages
+    let applePackages = await Core.PackageIndexing.PriorityPackagesCatalog.applePackages
     #expect(applePackages.count > 40, "Should have 40+ Apple packages after expansion")
     #expect(applePackages.count < 100, "Apple package count should still be bounded")
 
@@ -146,15 +146,15 @@ func priorityPackagesCatalogApplePackages() async {
 
     print("   ✅ Apple packages validated")
 
-    await PriorityPackagesCatalog.setUseBundledOnly(false)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 }
 
-@Test("PriorityPackagesCatalog ecosystem packages are valid")
+@Test("Core.PackageIndexing.PriorityPackagesCatalog ecosystem packages are valid")
 func priorityPackagesCatalogEcosystemPackages() async {
     // Use bundled file for consistent test results
-    await PriorityPackagesCatalog.setUseBundledOnly(true)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(true)
 
-    let ecosystemPackages = await PriorityPackagesCatalog.ecosystemPackages
+    let ecosystemPackages = await Core.PackageIndexing.PriorityPackagesCatalog.ecosystemPackages
     #expect(!ecosystemPackages.isEmpty, "Should have ecosystem packages")
     #expect(ecosystemPackages.count > 50, "Ecosystem package count should reflect the expansion")
     #expect(ecosystemPackages.count < 500, "Ecosystem package count should still be bounded")
@@ -166,43 +166,43 @@ func priorityPackagesCatalogEcosystemPackages() async {
 
     print("   ✅ Ecosystem packages validated")
 
-    await PriorityPackagesCatalog.setUseBundledOnly(false)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 }
 
-@Test("PriorityPackagesCatalog priority check works")
+@Test("Core.PackageIndexing.PriorityPackagesCatalog priority check works")
 func priorityPackagesCatalogPriorityCheck() async {
     // Use bundled file for consistent test results
-    await PriorityPackagesCatalog.setUseBundledOnly(true)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(true)
 
     // Test known priority packages
-    let isSwiftPriority = await PriorityPackagesCatalog.isPriority(owner: "apple", repo: "swift")
-    let isNIOPriority = await PriorityPackagesCatalog.isPriority(owner: "apple", repo: "swift-nio")
-    let isVaporPriority = await PriorityPackagesCatalog.isPriority(owner: "vapor", repo: "vapor")
+    let isSwiftPriority = await Core.PackageIndexing.PriorityPackagesCatalog.isPriority(owner: "apple", repo: "swift")
+    let isNIOPriority = await Core.PackageIndexing.PriorityPackagesCatalog.isPriority(owner: "apple", repo: "swift-nio")
+    let isVaporPriority = await Core.PackageIndexing.PriorityPackagesCatalog.isPriority(owner: "vapor", repo: "vapor")
 
     #expect(isSwiftPriority, "swift should be priority")
     #expect(isNIOPriority, "swift-nio should be priority")
     #expect(isVaporPriority, "vapor should be priority")
 
     // Test non-priority package
-    let isRandomPriority = await PriorityPackagesCatalog.isPriority(owner: "random", repo: "package")
+    let isRandomPriority = await Core.PackageIndexing.PriorityPackagesCatalog.isPriority(owner: "random", repo: "package")
     #expect(!isRandomPriority, "random package should not be priority")
 
     print("   ✅ Priority check working correctly")
 
-    await PriorityPackagesCatalog.setUseBundledOnly(false)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 }
 
-@Test("PriorityPackagesCatalog package lookup works")
+@Test("Core.PackageIndexing.PriorityPackagesCatalog package lookup works")
 func priorityPackagesCatalogPackageLookup() async {
     // Use bundled file for consistent test results
-    await PriorityPackagesCatalog.setUseBundledOnly(true)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(true)
 
     do {
-        let swiftPackage = await PriorityPackagesCatalog.package(named: "swift")
+        let swiftPackage = await Core.PackageIndexing.PriorityPackagesCatalog.package(named: "swift")
         #expect(swiftPackage != nil, "Should find swift package")
         #expect(swiftPackage?.repo == "swift", "Package repo should match")
 
-        let vaporPackage = await PriorityPackagesCatalog.package(named: "vapor")
+        let vaporPackage = await Core.PackageIndexing.PriorityPackagesCatalog.package(named: "vapor")
         #expect(vaporPackage != nil, "Should find vapor package")
         #expect(vaporPackage?.owner == "vapor", "Vapor owner should be vapor")
 
@@ -210,17 +210,17 @@ func priorityPackagesCatalogPackageLookup() async {
     }
 
     // Reset after test - must await to avoid race condition
-    await PriorityPackagesCatalog.setUseBundledOnly(false)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 }
 
-@Test("PriorityPackagesCatalog loads user file when available")
+@Test("Core.PackageIndexing.PriorityPackagesCatalog loads user file when available")
 func priorityPackagesCatalogLoadsUserFile() async throws {
     // This test verifies issue #107 fix: user file takes precedence over bundled
     let userFileURL = Shared.Constants.defaultBaseDirectory
         .appendingPathComponent(Shared.Constants.FileName.selectedPackages)
 
     // Clear cache and ensure we're NOT using bundled-only mode
-    await PriorityPackagesCatalog.setUseBundledOnly(false)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 
     // Check if user file exists
     guard FileManager.default.fileExists(atPath: userFileURL.path) else {
@@ -234,7 +234,7 @@ func priorityPackagesCatalogLoadsUserFile() async throws {
     // which under #218 additively merges new embedded entries into the
     // user file. Read the file AFTER allPackages so the user-file count
     // reflects the post-merge state.
-    let allPackages = await PriorityPackagesCatalog.allPackages
+    let allPackages = await Core.PackageIndexing.PriorityPackagesCatalog.allPackages
 
     // Read user file to get expected count (post-merge).
     let data = try Data(contentsOf: userFileURL)
@@ -268,7 +268,7 @@ func priorityPackagesCatalogLoadsUserFile() async throws {
     print("   ✅ User file loaded: \(allPackages.count) packages (user file has \(userPackageCount))")
 
     // Restore bundled-only for other tests
-    await PriorityPackagesCatalog.setUseBundledOnly(true)
+    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(true)
 }
 
 /// Custom test error
@@ -937,13 +937,13 @@ func hashUtilitiesSHA256Consistency() {
     print("   ✅ SHA-256 hashing working correctly")
 }
 
-// MARK: - PriorityPackagesCatalog merge tests (#218)
+// MARK: - Core.PackageIndexing.PriorityPackagesCatalog merge tests (#218)
 
 /// Coverage for #218: an existing user file at
 /// `~/.cupertino/selected-packages.json` should additively pick up new
 /// entries from `Resources.Embedded.PriorityPackages.swift` instead of being frozen at
 /// whichever priority list it was first seeded with.
-@Suite("PriorityPackagesCatalog embedded-entry merge (#218)")
+@Suite("Core.PackageIndexing.PriorityPackagesCatalog embedded-entry merge (#218)")
 struct PriorityPackagesMergeTests {
     @Test("Adds new ecosystem entries while preserving existing ones")
     func mergeAddsNewEcosystem() throws {
@@ -992,13 +992,13 @@ struct PriorityPackagesMergeTests {
         }
         """
 
-        PriorityPackagesCatalog.mergeNewEmbeddedEntries(
+        Core.PackageIndexing.PriorityPackagesCatalog.mergeNewEmbeddedEntries(
             into: userFile,
             from: Data(embedded.utf8)
         )
 
         let merged = try JSONDecoder().decode(
-            PriorityPackagesCatalogJSON.self,
+            Core.PackageIndexing.PriorityPackagesCatalogJSON.self,
             from: Data(contentsOf: userFile)
         )
         let repos = merged.tiers.ecosystem.packages.map(\.repo)
@@ -1033,11 +1033,11 @@ struct PriorityPackagesMergeTests {
         """
         try payload.write(to: userFile, atomically: true, encoding: .utf8)
 
-        PriorityPackagesCatalog.mergeNewEmbeddedEntries(into: userFile, from: Data(payload.utf8))
-        PriorityPackagesCatalog.mergeNewEmbeddedEntries(into: userFile, from: Data(payload.utf8))
+        Core.PackageIndexing.PriorityPackagesCatalog.mergeNewEmbeddedEntries(into: userFile, from: Data(payload.utf8))
+        Core.PackageIndexing.PriorityPackagesCatalog.mergeNewEmbeddedEntries(into: userFile, from: Data(payload.utf8))
 
         let merged = try JSONDecoder().decode(
-            PriorityPackagesCatalogJSON.self,
+            Core.PackageIndexing.PriorityPackagesCatalogJSON.self,
             from: Data(contentsOf: userFile)
         )
         #expect(merged.tiers.ecosystem.packages.count == 1)
@@ -1081,7 +1081,7 @@ struct PriorityPackagesMergeTests {
         }
         """
 
-        PriorityPackagesCatalog.mergeNewEmbeddedEntries(
+        Core.PackageIndexing.PriorityPackagesCatalog.mergeNewEmbeddedEntries(
             into: userFile,
             from: Data(embedded.utf8)
         )
@@ -1093,7 +1093,7 @@ struct PriorityPackagesMergeTests {
         // If "sticky deletions" become a real requirement we'll need a
         // separate "removed" list. (#218 deliberately picked simple set-diff.)
         let merged = try JSONDecoder().decode(
-            PriorityPackagesCatalogJSON.self,
+            Core.PackageIndexing.PriorityPackagesCatalogJSON.self,
             from: Data(contentsOf: userFile)
         )
         #expect(merged.tiers.ecosystem.packages.map(\.repo) == ["vapor"])
@@ -1144,13 +1144,13 @@ struct PriorityPackagesMergeTests {
         }
         """
 
-        PriorityPackagesCatalog.mergeNewEmbeddedEntries(
+        Core.PackageIndexing.PriorityPackagesCatalog.mergeNewEmbeddedEntries(
             into: userFile,
             from: Data(embedded.utf8)
         )
 
         let merged = try JSONDecoder().decode(
-            PriorityPackagesCatalogJSON.self,
+            Core.PackageIndexing.PriorityPackagesCatalogJSON.self,
             from: Data(contentsOf: userFile)
         )
         #expect(merged.tiers.ecosystem.packages.count == 1, "URL-derived owner should match explicit owner")
@@ -1184,7 +1184,7 @@ struct PackageAvailabilityAnnotatorTests {
             products: []
         )
         """
-        let result = Core.PackageAvailabilityAnnotator.parsePlatforms(from: manifest)
+        let result = Core.PackageIndexing.PackageAvailabilityAnnotator.parsePlatforms(from: manifest)
         #expect(result["macOS"] == "10.15")
         #expect(result["iOS"] == "13.0")
         #expect(result["tvOS"] == "13.0")
@@ -1197,7 +1197,7 @@ struct PackageAvailabilityAnnotatorTests {
         import PackageDescription
         let package = Package(name: "Foo", products: [])
         """
-        #expect(Core.PackageAvailabilityAnnotator.parsePlatforms(from: manifest).isEmpty)
+        #expect(Core.PackageIndexing.PackageAvailabilityAnnotator.parsePlatforms(from: manifest).isEmpty)
     }
 
     @Test("parsePlatforms handles multi-digit minor like .v10_15_4")
@@ -1205,7 +1205,7 @@ struct PackageAvailabilityAnnotatorTests {
         let manifest = """
         platforms: [.macOS(.v10_15_4)],
         """
-        let result = Core.PackageAvailabilityAnnotator.parsePlatforms(from: manifest)
+        let result = Core.PackageIndexing.PackageAvailabilityAnnotator.parsePlatforms(from: manifest)
         #expect(result["macOS"] == "10.15.4")
     }
 
@@ -1215,7 +1215,7 @@ struct PackageAvailabilityAnnotatorTests {
         platforms: [.iOS(.v16)],
         targets: [.target(name: "Foo")]
         """
-        let result = Core.PackageAvailabilityAnnotator.parsePlatforms(from: manifest)
+        let result = Core.PackageIndexing.PackageAvailabilityAnnotator.parsePlatforms(from: manifest)
         #expect(result == ["iOS": "16.0"])
     }
 
@@ -1227,7 +1227,7 @@ struct PackageAvailabilityAnnotatorTests {
             func bar() {}
         }
         """
-        let attrs = Core.PackageAvailabilityAnnotator.extractAvailability(from: source)
+        let attrs = Core.PackageIndexing.PackageAvailabilityAnnotator.extractAvailability(from: source)
         #expect(attrs.count == 1)
         #expect(attrs.first?.line == 2)
         #expect(attrs.first?.raw == "(iOS 16.0, macOS 13.0, *)")
@@ -1245,7 +1245,7 @@ struct PackageAvailabilityAnnotatorTests {
         @available(*, noasync, message: "Sync only")
         func syncFoo() {}
         """
-        let attrs = Core.PackageAvailabilityAnnotator.extractAvailability(from: source)
+        let attrs = Core.PackageIndexing.PackageAvailabilityAnnotator.extractAvailability(from: source)
         #expect(attrs.count == 2)
         #expect(attrs[0].platforms.contains("deprecated"))
         #expect(attrs[1].platforms.contains("noasync"))
@@ -1253,7 +1253,7 @@ struct PackageAvailabilityAnnotatorTests {
 
     @Test("extractAvailability returns empty array on plain source")
     func availabilityEmpty() {
-        #expect(Core.PackageAvailabilityAnnotator.extractAvailability(from: "let x = 1").isEmpty)
+        #expect(Core.PackageIndexing.PackageAvailabilityAnnotator.extractAvailability(from: "let x = 1").isEmpty)
     }
 
     @Test("annotate writes availability.json with deployment targets + file attrs")
@@ -1261,7 +1261,7 @@ struct PackageAvailabilityAnnotatorTests {
         let dir = try Self.makeTempPackage()
         defer { try? FileManager.default.removeItem(at: dir) }
 
-        let annotator = Core.PackageAvailabilityAnnotator()
+        let annotator = Core.PackageIndexing.PackageAvailabilityAnnotator()
         let result = try await annotator.annotate(packageDirectory: dir)
 
         #expect(result.deploymentTargets["iOS"] == "16.0")
@@ -1270,11 +1270,11 @@ struct PackageAvailabilityAnnotatorTests {
         #expect(result.fileAvailability.count == 1)
         #expect(result.fileAvailability.first?.relpath == "Sources/Foo/Foo.swift")
 
-        let outURL = dir.appendingPathComponent(Core.PackageAvailabilityAnnotator.outputFilename)
+        let outURL = dir.appendingPathComponent(Core.PackageIndexing.PackageAvailabilityAnnotator.outputFilename)
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let reloaded = try decoder.decode(
-            Core.PackageAvailabilityAnnotator.AnnotationResult.self,
+            Core.PackageIndexing.PackageAvailabilityAnnotator.AnnotationResult.self,
             from: Data(contentsOf: outURL)
         )
         #expect(reloaded.deploymentTargets == result.deploymentTargets)
@@ -1284,8 +1284,8 @@ struct PackageAvailabilityAnnotatorTests {
     @Test("annotate throws when package directory missing")
     func annotateMissingDir() async throws {
         let bogus = URL(fileURLWithPath: "/tmp/nope-\(UUID().uuidString)")
-        let annotator = Core.PackageAvailabilityAnnotator()
-        await #expect(throws: Core.PackageAvailabilityAnnotator.AnnotationError.self) {
+        let annotator = Core.PackageIndexing.PackageAvailabilityAnnotator()
+        await #expect(throws: Core.PackageIndexing.PackageAvailabilityAnnotator.AnnotationError.self) {
             _ = try await annotator.annotate(packageDirectory: bogus)
         }
     }
@@ -1295,7 +1295,7 @@ struct PackageAvailabilityAnnotatorTests {
         let dir = try Self.makeTempPackage()
         defer { try? FileManager.default.removeItem(at: dir) }
 
-        let annotator = Core.PackageAvailabilityAnnotator()
+        let annotator = Core.PackageIndexing.PackageAvailabilityAnnotator()
         let first = try await annotator.annotate(packageDirectory: dir)
         let second = try await annotator.annotate(packageDirectory: dir)
         // Stats and content stable; only annotatedAt differs.

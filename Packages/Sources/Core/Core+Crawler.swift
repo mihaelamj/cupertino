@@ -651,7 +651,7 @@ extension Core {
                 .deletingLastPathComponent()
                 .appendingPathComponent(Shared.Constants.FileName.priorityPackages)
 
-            let generator = PriorityPackageGenerator(
+            let generator = Core.PackageIndexing.PriorityPackageGenerator(
                 swiftOrgDocsPath: configuration.outputDirectory,
                 outputPath: outputPath
             )

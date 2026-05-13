@@ -3,7 +3,7 @@ import CoreProtocols
 import Foundation
 import SharedCore
 
-extension Core {
+extension Core.PackageIndexing {
     /// Walks a downloaded package on disk and writes an `availability.json`
     /// alongside its `manifest.json`, capturing:
     ///

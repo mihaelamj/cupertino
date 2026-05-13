@@ -115,13 +115,13 @@ struct PackageIndexTests {
         let dbPath = tempDir.appendingPathComponent("packages.db")
 
         let index = try await Search.PackageIndex(dbPath: dbPath)
-        let resolved = Core.ResolvedPackage(
+        let resolved = Core.PackageIndexing.ResolvedPackage(
             owner: "apple", repo: "swift-log",
             url: "https://github.com/apple/swift-log",
             priority: .appleOfficial,
             parents: ["apple/swift-log"]
         )
-        let files: [Core.ExtractedFile] = [
+        let files: [Core.PackageIndexing.ExtractedFile] = [
             .init(
                 relpath: "README.md",
                 kind: .readme,
@@ -139,7 +139,7 @@ struct PackageIndexTests {
         ]
         _ = try await index.index(
             resolved: resolved,
-            extraction: Core.PackageArchiveExtractor.Result(
+            extraction: Core.PackageIndexing.PackageArchiveExtractor.Result(
                 branch: "HEAD", files: files, totalBytes: 150, tarballBytes: 1000
             )
         )
@@ -190,14 +190,14 @@ struct PackageIndexTests {
         let index = try await Search.PackageIndex(dbPath: dbPath)
         defer { Task { await index.disconnect() } }
 
-        let resolved = Core.ResolvedPackage(
+        let resolved = Core.PackageIndexing.ResolvedPackage(
             owner: "apple",
             repo: "swift-log",
             url: "https://github.com/apple/swift-log",
             priority: .appleOfficial,
             parents: ["apple/swift-log"]
         )
-        let files: [Core.ExtractedFile] = [
+        let files: [Core.PackageIndexing.ExtractedFile] = [
             .init(
                 relpath: "README.md",
                 kind: .readme,
@@ -213,7 +213,7 @@ struct PackageIndexTests {
                 byteSize: 60
             ),
         ]
-        let extraction = Core.PackageArchiveExtractor.Result(
+        let extraction = Core.PackageIndexing.PackageArchiveExtractor.Result(
             branch: "HEAD",
             files: files,
             totalBytes: 100,

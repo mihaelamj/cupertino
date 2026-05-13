@@ -65,7 +65,7 @@ extension Search {
                 onProgress?(label, idx + 1, packageDirs.count)
                 do {
                     let (resolved, files, tarballBytes) = try loadPackage(at: dir)
-                    let result = Core.PackageArchiveExtractor.Result(
+                    let result = Core.PackageIndexing.PackageArchiveExtractor.Result(
                         branch: resolved.branchFromManifest ?? "HEAD",
                         files: files,
                         totalBytes: files.reduce(Int64(0)) { $0 + Int64($1.byteSize) },
@@ -128,11 +128,11 @@ extension Search {
         }
 
         private struct LoadedPackage {
-            let resolvedPackage: Core.ResolvedPackage
+            let resolvedPackage: Core.PackageIndexing.ResolvedPackage
             let branchFromManifest: String?
         }
 
-        private func loadPackage(at dir: URL) throws -> (LoadedPackage, [Core.ExtractedFile], Int?) {
+        private func loadPackage(at dir: URL) throws -> (LoadedPackage, [Core.PackageIndexing.ExtractedFile], Int?) {
             let manifestURL = dir.appendingPathComponent("manifest.json")
             guard FileManager.default.fileExists(atPath: manifestURL.path) else {
                 throw IndexerError.manifestMissing(manifestURL)
@@ -154,7 +154,7 @@ extension Search {
                 priority = .ecosystem
             }
 
-            let resolved = Core.ResolvedPackage(
+            let resolved = Core.PackageIndexing.ResolvedPackage(
                 owner: manifest.owner,
                 repo: manifest.repo,
                 url: manifest.url,
@@ -176,13 +176,13 @@ extension Search {
         /// pass `availability: nil` and the new columns stay NULL — caller
         /// can still distinguish "not annotated" from "annotated but empty".
         nonisolated static func loadAvailability(at dir: URL) -> PackageIndex.AvailabilityPayload? {
-            let url = dir.appendingPathComponent(Core.PackageAvailabilityAnnotator.outputFilename)
+            let url = dir.appendingPathComponent(Core.PackageIndexing.PackageAvailabilityAnnotator.outputFilename)
             guard FileManager.default.fileExists(atPath: url.path) else { return nil }
             guard let data = try? Data(contentsOf: url) else { return nil }
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             guard let result = try? decoder.decode(
-                Core.PackageAvailabilityAnnotator.AnnotationResult.self,
+                Core.PackageIndexing.PackageAvailabilityAnnotator.AnnotationResult.self,
                 from: data
             ) else { return nil }
 
@@ -203,8 +203,8 @@ extension Search {
             )
         }
 
-        private nonisolated func walkDirectoryForFiles(dir: URL) -> [Core.ExtractedFile] {
-            var files: [Core.ExtractedFile] = []
+        private nonisolated func walkDirectoryForFiles(dir: URL) -> [Core.PackageIndexing.ExtractedFile] {
+            var files: [Core.PackageIndexing.ExtractedFile] = []
             let rootComponents = dir.resolvingSymlinksInPath().pathComponents
 
             guard let enumerator = FileManager.default.enumerator(
@@ -221,7 +221,7 @@ extension Search {
                 // user-authored content.
                 if name == ".archive.tar.gz"
                     || name == "manifest.json"
-                    || name == Core.PackageAvailabilityAnnotator.outputFilename {
+                    || name == Core.PackageIndexing.PackageAvailabilityAnnotator.outputFilename {
                     continue
                 }
 
@@ -237,10 +237,10 @@ extension Search {
                     .dropFirst(rootComponents.count)
                     .joined(separator: "/")
 
-                guard let classified = Core.PackageFileKindClassifier.classify(relpath: relpath) else { continue }
+                guard let classified = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: relpath) else { continue }
                 guard let content = try? String(contentsOf: candidate, encoding: .utf8) else { continue }
 
-                files.append(Core.ExtractedFile(
+                files.append(Core.PackageIndexing.ExtractedFile(
                     relpath: relpath,
                     kind: classified.kind,
                     module: classified.module,

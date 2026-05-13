@@ -388,9 +388,9 @@ extension Command {
             }
 
             // Show priority packages source
-            let allPackages = await PriorityPackagesCatalog.allPackages
-            let appleCount = await PriorityPackagesCatalog.applePackages.count
-            let ecosystemCount = await PriorityPackagesCatalog.ecosystemPackages.count
+            let allPackages = await Core.PackageIndexing.PriorityPackagesCatalog.allPackages
+            let appleCount = await Core.PackageIndexing.PriorityPackagesCatalog.applePackages.count
+            let ecosystemCount = await Core.PackageIndexing.PriorityPackagesCatalog.ecosystemPackages.count
             Logging.Log.output("   ℹ  Priority packages: \(allPackages.count) total")
             Logging.Log.output("     Apple: \(appleCount), Ecosystem: \(ecosystemCount)")
 

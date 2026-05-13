@@ -73,7 +73,7 @@ func saveSelections(state: AppState) throws {
 
     // Convert to priority package format
     let priorityPackages = selected.map { pkg in
-        PriorityPackage(owner: pkg.owner, repo: pkg.repo, url: pkg.url)
+        Core.PackageIndexing.PriorityPackage(owner: pkg.owner, repo: pkg.repo, url: pkg.url)
     }
 
     // Create catalog JSON structure matching PriorityPackagesCatalogJSON format
@@ -139,7 +139,7 @@ func loadExcludedPackages() -> Set<String> {
 func loadDiscoveredPackages() -> Set<String> {
     let fileURL = Shared.Constants.defaultBaseDirectory
         .appendingPathComponent(Shared.Constants.FileName.resolvedPackages)
-    guard let store = Core.ResolvedPackagesStore.load(from: fileURL) else {
+    guard let store = Core.PackageIndexing.ResolvedPackagesStore.load(from: fileURL) else {
         return []
     }
     var out = Set<String>()

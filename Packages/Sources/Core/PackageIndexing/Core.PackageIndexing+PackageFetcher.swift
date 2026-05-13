@@ -15,7 +15,7 @@ import SharedUtils
 // Disabling: file_length (400 line limit), type_body_length (250 line limit)
 
 /// Fetches Swift packages from SwiftPackageIndex and enriches with GitHub metadata
-extension Core {
+extension Core.PackageIndexing {
     public actor PackageFetcher {
         private let packageListURL = URL.knownGood(Shared.Constants.BaseURL.swiftPackageList)
         private let outputDirectory: URL
@@ -33,9 +33,9 @@ extension Core {
 
         /// Fetch packages and enrich with GitHub metadata
         public func fetch(
-            onProgress: (@Sendable (PackageFetchProgress) -> Void)? = nil
-        ) async throws -> PackageFetchStatistics {
-            var stats = PackageFetchStatistics(startTime: Date())
+            onProgress: (@Sendable (Progress) -> Void)? = nil
+        ) async throws -> Statistics {
+            var stats = Statistics(startTime: Date())
 
             try setupOutputDirectory()
             let packageURLs = try await fetchAndSortPackageList()
@@ -88,8 +88,8 @@ extension Core {
 
         private func processPackages(
             _ packageURLs: [String],
-            stats: inout PackageFetchStatistics,
-            onProgress: (@Sendable (PackageFetchProgress) -> Void)?
+            stats: inout Statistics,
+            onProgress: (@Sendable (Progress) -> Void)?
         ) async throws -> ([PackageInfo], Bool) {
             var packages = try loadCheckpointIfNeeded()
             let startIndex = packages.count
@@ -114,14 +114,14 @@ extension Core {
                     let packageInfo = try await fetchGitHubMetadata(owner: owner, repo: repo)
                     packages.append(packageInfo)
                     stats.successfulFetches += 1
-                } catch PackageFetchError.rateLimited {
+                } catch Error.rateLimited {
                     rateLimited = try handleRateLimit(packages: packages, index: index, total: totalToProcess)
                     break
                 } catch {
                     try handleFetchError(error, owner: owner, repo: repo, packages: &packages, stats: &stats)
                 }
 
-                onProgress?(PackageFetchProgress(
+                onProgress?(Progress(
                     current: index + 1,
                     total: totalToProcess,
                     packageName: "\(owner)/\(repo)",
@@ -164,13 +164,13 @@ extension Core {
         }
 
         private func handleFetchError(
-            _ error: Error,
+            _ error: Swift.Error,
             owner: String,
             repo: String,
             packages: inout [PackageInfo],
-            stats: inout PackageFetchStatistics
+            stats: inout Statistics
         ) throws {
-            let errorType = (error as? PackageFetchError == .notFound) ? "not_found" : "fetch_failed"
+            let errorType = (error as? Error == .notFound) ? "not_found" : "fetch_failed"
             if errorType == "fetch_failed" {
                 logError("Failed to fetch \(owner)/\(repo): \(error)")
             }
@@ -200,7 +200,7 @@ extension Core {
         }
 
         private func saveResults(_ packages: [PackageInfo], processedCount: Int, errors: Int) throws {
-            let output = PackageFetchOutput(
+            let output = FetchOutput(
                 totalPackages: packages.count,
                 totalProcessed: processedCount,
                 errors: errors,
@@ -212,7 +212,7 @@ extension Core {
             try saveJSON(output, to: outputFile)
         }
 
-        private func logCompletionSummary(_ packages: [PackageInfo], stats: PackageFetchStatistics) {
+        private func logCompletionSummary(_ packages: [PackageInfo], stats: Statistics) {
             logInfo("\n✅ Fetch completed!")
             logInfo("   Total packages: \(packages.count)")
             logInfo("   Successful: \(stats.successfulFetches)")
@@ -245,7 +245,7 @@ extension Core {
 
             guard FileManager.default.fileExists(atPath: priorityFile.path),
                   let data = try? Data(contentsOf: priorityFile),
-                  let priorityList = try? JSONDecoder().decode(PriorityPackageList.self, from: data) else {
+                  let priorityList = try? JSONDecoder().decode(PriorityPackageGenerator.PriorityPackageList.self, from: data) else {
                 return []
             }
 
@@ -358,7 +358,7 @@ extension Core {
             let (data, response) = try await URLSession.shared.data(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                throw PackageFetchError.invalidResponse
+                throw Error.invalidResponse
             }
 
             try validateHTTPResponse(httpResponse)
@@ -389,16 +389,16 @@ extension Core {
             case 200:
                 return
             case 404:
-                throw PackageFetchError.notFound
+                throw Error.notFound
             case 403:
                 if let remaining = response.value(forHTTPHeaderField: "X-RateLimit-Remaining"),
                    let remainingInt = Int(remaining),
                    remainingInt == 0 {
-                    throw PackageFetchError.rateLimited
+                    throw Error.rateLimited
                 }
-                throw PackageFetchError.forbidden
+                throw Error.forbidden
             default:
-                throw PackageFetchError.httpError(response.statusCode)
+                throw Error.httpError(response.statusCode)
             }
         }
 
@@ -422,14 +422,14 @@ extension Core {
             )
         }
 
-        private func loadCheckpoint() throws -> PackageFetchCheckpoint {
+        private func loadCheckpoint() throws -> Checkpoint {
             let checkpointFile = outputDirectory.appendingPathComponent(Shared.Constants.FileName.checkpoint)
             let data = try Data(contentsOf: checkpointFile)
-            return try JSONDecoder().decode(PackageFetchCheckpoint.self, from: data)
+            return try JSONDecoder().decode(Checkpoint.self, from: data)
         }
 
         private func saveCheckpoint(packages: [PackageInfo], processedCount: Int) throws {
-            let checkpoint = PackageFetchCheckpoint(
+            let checkpoint = Checkpoint(
                 processedCount: processedCount,
                 packages: packages,
                 timestamp: Date()
@@ -460,81 +460,91 @@ extension Core {
 
 // MARK: - Models
 
-public struct PackageInfo: Codable, Sendable {
-    public let owner: String
-    public let repo: String
-    public let stars: Int
-    public let description: String?
-    public let url: String
-    public let archived: Bool
-    public let fork: Bool
-    public let updatedAt: String?
-    public let language: String?
-    public let license: String?
-    public let error: String?
+extension Core.PackageIndexing.PackageFetcher {
+    public struct PackageInfo: Codable, Sendable {
+        public let owner: String
+        public let repo: String
+        public let stars: Int
+        public let description: String?
+        public let url: String
+        public let archived: Bool
+        public let fork: Bool
+        public let updatedAt: String?
+        public let language: String?
+        public let license: String?
+        public let error: String?
 
-    public init(
-        owner: String,
-        repo: String,
-        stars: Int,
-        description: String?,
-        url: String,
-        archived: Bool,
-        fork: Bool,
-        updatedAt: String?,
-        language: String?,
-        license: String?,
-        error: String? = nil
-    ) {
-        self.owner = owner
-        self.repo = repo
-        self.stars = stars
-        self.description = description
-        self.url = url
-        self.archived = archived
-        self.fork = fork
-        self.updatedAt = updatedAt
-        self.language = language
-        self.license = license
-        self.error = error
+        public init(
+            owner: String,
+            repo: String,
+            stars: Int,
+            description: String?,
+            url: String,
+            archived: Bool,
+            fork: Bool,
+            updatedAt: String?,
+            language: String?,
+            license: String?,
+            error: String? = nil
+        ) {
+            self.owner = owner
+            self.repo = repo
+            self.stars = stars
+            self.description = description
+            self.url = url
+            self.archived = archived
+            self.fork = fork
+            self.updatedAt = updatedAt
+            self.language = language
+            self.license = license
+            self.error = error
+        }
     }
-}
 
-public struct PackageFetchOutput: Codable, Sendable {
-    public let totalPackages: Int
-    public let totalProcessed: Int
-    public let errors: Int
-    public let generatedAt: Date
-    public let packages: [PackageInfo]
-}
-
-public struct PackageFetchCheckpoint: Codable, Sendable {
-    public let processedCount: Int
-    public let packages: [PackageInfo]
-    public let timestamp: Date
-}
-
-public struct PackageFetchStatistics: Sendable {
-    public var totalPackages: Int = 0
-    public var successfulFetches: Int = 0
-    public var errors: Int = 0
-    public var startTime: Date?
-    public var endTime: Date?
-
-    public var duration: TimeInterval? {
-        guard let start = startTime, let end = endTime else { return nil }
-        return end.timeIntervalSince(start)
+    public struct FetchOutput: Codable, Sendable {
+        public let totalPackages: Int
+        public let totalProcessed: Int
+        public let errors: Int
+        public let generatedAt: Date
+        public let packages: [PackageInfo]
     }
-}
 
-public struct PackageFetchProgress: Sendable {
-    public let current: Int
-    public let total: Int
-    public let packageName: String
-    public let stats: PackageFetchStatistics
+    public struct Checkpoint: Codable, Sendable {
+        public let processedCount: Int
+        public let packages: [PackageInfo]
+        public let timestamp: Date
+    }
 
-    public var percentage: Double {
-        Double(current) / Double(total) * 100
+    public struct Statistics: Sendable {
+        public var totalPackages: Int = 0
+        public var successfulFetches: Int = 0
+        public var errors: Int = 0
+        public var startTime: Date?
+        public var endTime: Date?
+
+        public var duration: TimeInterval? {
+            guard let start = startTime, let end = endTime else { return nil }
+            return end.timeIntervalSince(start)
+        }
+    }
+
+    public struct Progress: Sendable {
+        public let current: Int
+        public let total: Int
+        public let packageName: String
+        public let stats: Statistics
+
+        public var percentage: Double {
+            Double(current) / Double(total) * 100
+        }
+    }
+
+    enum Error: Swift.Error, Equatable {
+        case rateLimited
+        case notFound
+        case forbidden
+        case invalidResponse
+        case httpError(Int)
     }
 }
 
@@ -553,14 +563,4 @@ private struct GitHubRepository: Codable {
 
 private struct GitHubLicense: Codable {
     let spdxId: String
-}
-
-// MARK: - Errors
-
-enum PackageFetchError: Error, Equatable {
-    case rateLimited
-    case notFound
-    case forbidden
-    case invalidResponse
-    case httpError(Int)
 }

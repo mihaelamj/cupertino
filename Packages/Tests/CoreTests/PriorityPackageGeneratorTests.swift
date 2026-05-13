@@ -7,16 +7,16 @@ import Testing
 
 // MARK: - Priority Package Generator Tests
 
-// Comprehensive tests for PriorityPackageGenerator
+// Comprehensive tests for Core.PackageIndexing.PriorityPackageGenerator
 // Tests URL extraction, package categorization, tier selection, and output generation
 
 @Suite("Priority Package Generator")
 struct PriorityPackageGeneratorTests {
     // MARK: - Model Tests
 
-    @Test("PriorityPackageInfo initializes correctly")
+    @Test("Core.PackageIndexing.PriorityPackageGenerator.PriorityPackageInfo initializes correctly")
     func priorityPackageInfoInitialization() {
-        let pkg = PriorityPackageInfo(
+        let pkg = Core.PackageIndexing.PriorityPackageGenerator.PriorityPackageInfo(
             owner: "apple",
             repo: "swift",
             url: "https://github.com/apple/swift"
@@ -27,11 +27,11 @@ struct PriorityPackageGeneratorTests {
         #expect(pkg.url == "https://github.com/apple/swift")
     }
 
-    @Test("PriorityPackageInfo is Hashable")
+    @Test("Core.PackageIndexing.PriorityPackageGenerator.PriorityPackageInfo is Hashable")
     func priorityPackageInfoHashable() {
-        let pkg1 = PriorityPackageInfo(owner: "apple", repo: "swift", url: "https://github.com/apple/swift")
-        let pkg2 = PriorityPackageInfo(owner: "apple", repo: "swift", url: "https://github.com/apple/swift")
-        let pkg3 = PriorityPackageInfo(owner: "vapor", repo: "vapor", url: "https://github.com/vapor/vapor")
+        let pkg1 = Core.PackageIndexing.PriorityPackageGenerator.PriorityPackageInfo(owner: "apple", repo: "swift", url: "https://github.com/apple/swift")
+        let pkg2 = Core.PackageIndexing.PriorityPackageGenerator.PriorityPackageInfo(owner: "apple", repo: "swift", url: "https://github.com/apple/swift")
+        let pkg3 = Core.PackageIndexing.PriorityPackageGenerator.PriorityPackageInfo(owner: "vapor", repo: "vapor", url: "https://github.com/vapor/vapor")
 
         #expect(pkg1 == pkg2)
         #expect(pkg1 != pkg3)
@@ -40,14 +40,14 @@ struct PriorityPackageGeneratorTests {
         #expect(set.count == 2) // pkg1 and pkg2 are duplicates
     }
 
-    @Test("TierInfo encodes and decodes")
+    @Test("Core.PackageIndexing.PriorityPackageGenerator.TierInfo encodes and decodes")
     func tierInfoEncodesAndDecodes() throws {
         let packages = [
-            PriorityPackageInfo(owner: "apple", repo: "swift", url: "https://github.com/apple/swift"),
-            PriorityPackageInfo(owner: "vapor", repo: "vapor", url: "https://github.com/vapor/vapor"),
+            Core.PackageIndexing.PriorityPackageGenerator.PriorityPackageInfo(owner: "apple", repo: "swift", url: "https://github.com/apple/swift"),
+            Core.PackageIndexing.PriorityPackageGenerator.PriorityPackageInfo(owner: "vapor", repo: "vapor", url: "https://github.com/vapor/vapor"),
         ]
 
-        let tierInfo = TierInfo(
+        let tierInfo = Core.PackageIndexing.PriorityPackageGenerator.TierInfo(
             description: "Test tier",
             packages: packages
         )
@@ -56,16 +56,16 @@ struct PriorityPackageGeneratorTests {
         let data = try encoder.encode(tierInfo)
 
         let decoder = JSONDecoder()
-        let decoded = try decoder.decode(TierInfo.self, from: data)
+        let decoded = try decoder.decode(Core.PackageIndexing.PriorityPackageGenerator.TierInfo.self, from: data)
 
         #expect(decoded.description == "Test tier")
         #expect(decoded.packages.count == 2)
         #expect(decoded.packages[0].owner == "apple")
     }
 
-    @Test("PackageStats encodes with snake_case")
+    @Test("Core.PackageIndexing.PriorityPackageGenerator.PackageStats encodes with snake_case")
     func packageStatsEncodesWithSnakeCase() throws {
-        let stats = PackageStats(
+        let stats = Core.PackageIndexing.PriorityPackageGenerator.PackageStats(
             totalApplePackagesInSwiftorg: 10,
             totalSwiftlangPackagesInSwiftorg: 5,
             totalEcosystemPackagesInSwiftorg: 3,
@@ -85,10 +85,10 @@ struct PriorityPackageGeneratorTests {
         #expect(json.contains("source_files_scanned"))
     }
 
-    @Test("PriorityLevels encodes with snake_case")
+    @Test("Core.PackageIndexing.PriorityPackageGenerator.PriorityLevels encodes with snake_case")
     func priorityLevelsEncodesWithSnakeCase() throws {
-        let tier = TierInfo(description: "Test", packages: [])
-        let levels = PriorityLevels(
+        let tier = Core.PackageIndexing.PriorityPackageGenerator.TierInfo(description: "Test", packages: [])
+        let levels = Core.PackageIndexing.PriorityPackageGenerator.PriorityLevels(
             tier1AppleOfficial: tier,
             tier2Swiftlang: tier,
             tier3SwiftServer: tier,
@@ -106,17 +106,17 @@ struct PriorityPackageGeneratorTests {
         #expect(json.contains("tier4_ecosystem"))
     }
 
-    @Test("PriorityPackageList encodes completely")
+    @Test("Core.PackageIndexing.PriorityPackageGenerator.PriorityPackageList encodes completely")
     func priorityPackageListEncodes() throws {
-        let pkg = PriorityPackageInfo(owner: "apple", repo: "swift", url: "https://github.com/apple/swift")
-        let tier = TierInfo(description: "Test tier", packages: [pkg])
-        let levels = PriorityLevels(
+        let pkg = Core.PackageIndexing.PriorityPackageGenerator.PriorityPackageInfo(owner: "apple", repo: "swift", url: "https://github.com/apple/swift")
+        let tier = Core.PackageIndexing.PriorityPackageGenerator.TierInfo(description: "Test tier", packages: [pkg])
+        let levels = Core.PackageIndexing.PriorityPackageGenerator.PriorityLevels(
             tier1AppleOfficial: tier,
             tier2Swiftlang: tier,
             tier3SwiftServer: tier,
             tier4Ecosystem: tier
         )
-        let stats = PackageStats(
+        let stats = Core.PackageIndexing.PriorityPackageGenerator.PackageStats(
             totalApplePackagesInSwiftorg: 1,
             totalSwiftlangPackagesInSwiftorg: 0,
             totalEcosystemPackagesInSwiftorg: 0,
@@ -124,7 +124,7 @@ struct PriorityPackageGeneratorTests {
             sourceFilesScanned: 10
         )
 
-        let list = PriorityPackageList(
+        let list = Core.PackageIndexing.PriorityPackageGenerator.PriorityPackageList(
             version: "1.0",
             generatedAt: "2025-01-01T00:00:00Z",
             description: "Test list",
@@ -140,7 +140,7 @@ struct PriorityPackageGeneratorTests {
         let data = try encoder.encode(list)
 
         let decoder = JSONDecoder()
-        let decoded = try decoder.decode(PriorityPackageList.self, from: data)
+        let decoded = try decoder.decode(Core.PackageIndexing.PriorityPackageGenerator.PriorityPackageList.self, from: data)
 
         #expect(decoded.version == "1.0")
         #expect(decoded.description == "Test list")
@@ -149,9 +149,9 @@ struct PriorityPackageGeneratorTests {
 
     // MARK: - Error Tests
 
-    @Test("PriorityPackageError provides description")
+    @Test("Core.PackageIndexing.PriorityPackageGenerator.Error provides description")
     func errorProvidesDescription() {
-        let error = PriorityPackageError.cannotReadDirectory("/path/to/dir")
+        let error = Core.PackageIndexing.PriorityPackageGenerator.Error.cannotReadDirectory("/path/to/dir")
         let description = error.description
 
         #expect(description.contains("/path/to/dir"))
@@ -160,12 +160,12 @@ struct PriorityPackageGeneratorTests {
 
     // MARK: - Helper Methods
 
-    private func createTestGenerator() async -> PriorityPackageGenerator {
+    private func createTestGenerator() async -> Core.PackageIndexing.PriorityPackageGenerator {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("priority-test-\(UUID().uuidString)")
         let outputFile = tempDir.appendingPathComponent("output.json")
 
-        return await PriorityPackageGenerator(
+        return await Core.PackageIndexing.PriorityPackageGenerator(
             swiftOrgDocsPath: tempDir,
             outputPath: outputFile
         )

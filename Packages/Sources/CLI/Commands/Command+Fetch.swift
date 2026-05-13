@@ -495,7 +495,7 @@ extension Command {
         /// `--skip-archives`. The two were separate fetch types until #217;
         /// merged because they always ran back-to-back, shared the output dir,
         /// and the `package-docs` name was misleading (it fetches whole archives,
-        /// not READMEs). Stage 2 reads `PriorityPackagesCatalog`, not the
+        /// not READMEs). Stage 2 reads `Core.PackageIndexing.PriorityPackagesCatalog`, not the
         /// metadata catalog, so the stages are independent.
         private func runPackageFetch() async throws {
             let defaultPath = Shared.Constants.defaultPackagesDirectory.path
@@ -555,7 +555,7 @@ extension Command {
                 .filter { !$0.lastPathComponent.hasPrefix(".") }
                 ?? []
 
-            let annotator = Core.PackageAvailabilityAnnotator()
+            let annotator = Core.PackageIndexing.PackageAvailabilityAnnotator()
             var packagesAnnotated = 0
             var totalAttrs = 0
             let startedAt = Date()
@@ -593,7 +593,7 @@ extension Command {
         private func runPackageMetadataStage(outputURL: URL) async throws {
             Logging.ConsoleLogger.info("📇 Stage 1/2 — Refreshing Swift Package Index metadata")
 
-            let fetcher = Core.PackageFetcher(
+            let fetcher = Core.PackageIndexing.PackageFetcher(
                 outputDirectory: outputURL,
                 limit: limit,
                 resume: !startClean
@@ -619,7 +619,7 @@ extension Command {
             Logging.ConsoleLogger.info("📦 Stage 2/2 — Downloading priority package archives")
 
             // Load priority packages
-            let priorityPackages = await PriorityPackagesCatalog.allPackages
+            let priorityPackages = await Core.PackageIndexing.PriorityPackagesCatalog.allPackages
 
             guard !priorityPackages.isEmpty else {
                 let priorityPackagesPath = Shared.Constants.defaultPackagesDirectory
@@ -664,17 +664,17 @@ extension Command {
             }
 
             let exclusions = Core.Protocols.ExclusionList.load()
-            let seedChecksum = Core.ResolvedPackagesStore.checksum(seeds: seedRefs, exclusions: exclusions)
+            let seedChecksum = Core.PackageIndexing.ResolvedPackagesStore.checksum(seeds: seedRefs, exclusions: exclusions)
             let resolvedStoreURL = Shared.Constants.defaultBaseDirectory
                 .appendingPathComponent(Shared.Constants.FileName.resolvedPackages)
             let canonicalCacheURL = Shared.Constants.defaultBaseDirectory
                 .appendingPathComponent(".cache")
                 .appendingPathComponent(Shared.Constants.FileName.canonicalOwnersCache)
 
-            let resolvedPackages: [Core.ResolvedPackage]
+            let resolvedPackages: [Core.PackageIndexing.ResolvedPackage]
             if recurse {
                 if !refresh,
-                   let cached = Core.ResolvedPackagesStore.load(from: resolvedStoreURL),
+                   let cached = Core.PackageIndexing.ResolvedPackagesStore.load(from: resolvedStoreURL),
                    cached.seedChecksum == seedChecksum {
                     Logging.ConsoleLogger.info("🔗 Using cached closure from resolved-packages.json (\(cached.packages.count) packages, generated \(cached.generatedAt))")
                     resolvedPackages = cached.packages
@@ -688,12 +688,12 @@ extension Command {
                         Logging.ConsoleLogger.info("   Exclusion list in effect: \(exclusions.count) entries")
                     }
                     let canonicalizer = Core.Protocols.GitHubCanonicalizer(cacheURL: canonicalCacheURL)
-                    let manifestCache = Core.ManifestCache(
+                    let manifestCache = Core.PackageIndexing.ManifestCache(
                         rootDirectory: Shared.Constants.defaultBaseDirectory
                             .appendingPathComponent(".cache")
                             .appendingPathComponent("manifests")
                     )
-                    let resolver = Core.PackageDependencyResolver(
+                    let resolver = Core.PackageIndexing.PackageDependencyResolver(
                         canonicalizer: canonicalizer,
                         exclusions: exclusions,
                         manifestCache: manifestCache
@@ -713,7 +713,7 @@ extension Command {
                     Logging.ConsoleLogger.info("   Malformed manifest: \(resolverStats.malformedManifest)")
                     Logging.ConsoleLogger.info("   Resolver duration: \(Int(resolverStats.duration))s")
 
-                    let store = Core.ResolvedPackagesStore(
+                    let store = Core.PackageIndexing.ResolvedPackagesStore(
                         cupertinoVersion: Shared.Constants.App.version,
                         seedChecksum: seedChecksum,
                         packages: resolved
@@ -727,7 +727,7 @@ extension Command {
                 }
             } else {
                 resolvedPackages = seedRefs.map { ref in
-                    Core.ResolvedPackage(
+                    Core.PackageIndexing.ResolvedPackage(
                         owner: ref.owner,
                         repo: ref.repo,
                         url: ref.url,
@@ -743,7 +743,7 @@ extension Command {
 
             Logging.ConsoleLogger.info("📦 Fetching \(resolvedPackages.count) archives into \(outputURL.path)...")
 
-            let extractor = Core.PackageArchiveExtractor()
+            let extractor = Core.PackageIndexing.PackageArchiveExtractor()
             let startedAt = Date()
             var stats = Shared.Models.PackageDownloadStatistics(
                 totalPackages: resolvedPackages.count,
@@ -770,10 +770,10 @@ extension Command {
                     stats.totalBytesSaved += extraction.totalBytes
                     let kb = extraction.totalBytes / 1024
                     Logging.ConsoleLogger.info("  ✅ \(label) — \(extraction.files.count) files, \(kb) KB")
-                } catch Core.PackageArchiveExtractor.ExtractError.tarballNotFound {
+                } catch Core.PackageIndexing.PackageArchiveExtractor.ExtractError.tarballNotFound {
                     stats.errors += 1
                     Logging.ConsoleLogger.error("  ✗ \(label) — archive not found on any ref")
-                } catch Core.PackageArchiveExtractor.ExtractError.tarballTooLarge(let bytes) {
+                } catch Core.PackageIndexing.PackageArchiveExtractor.ExtractError.tarballTooLarge(let bytes) {
                     stats.errors += 1
                     Logging.ConsoleLogger.error("  ✗ \(label) — archive too large (\(bytes / 1024 / 1024) MB)")
                 } catch {
@@ -804,8 +804,8 @@ extension Command {
         }
 
         private func writePackageManifest(
-            resolved: Core.ResolvedPackage,
-            extraction: Core.PackageArchiveExtractor.Result,
+            resolved: Core.PackageIndexing.ResolvedPackage,
+            extraction: Core.PackageIndexing.PackageArchiveExtractor.Result,
             destination: URL
         ) throws {
             struct Manifest: Encodable {

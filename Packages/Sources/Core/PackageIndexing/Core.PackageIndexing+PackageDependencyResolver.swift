@@ -9,7 +9,7 @@ import SharedCore
 import SharedModels
 import SharedUtils
 
-extension Core {
+extension Core.PackageIndexing {
     /// Walks each seed repo's dependency graph via raw.githubusercontent.com and returns
     /// the transitive closure of GitHub-hosted Swift package references.
     ///
