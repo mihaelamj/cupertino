@@ -436,7 +436,7 @@ extension Core.JSONParser {
 
 // MARK: - JSON Models for Apple Documentation API
 
-struct AppleDocumentation: Codable {
+private struct AppleDocumentation: Codable {
     let identifier: Identifier?
     let metadata: Metadata
     let abstract: [InlineContent]?
@@ -469,7 +469,7 @@ struct AppleDocumentation: Codable {
     }
 }
 
-struct InlineContent: Codable {
+private struct InlineContent: Codable {
     let type: String
     let text: String?
     let code: String?
@@ -478,7 +478,7 @@ struct InlineContent: Codable {
     let inlineContent: [InlineContent]?
 }
 
-struct PrimaryContentSection: Codable {
+private struct PrimaryContentSection: Codable {
     let kind: String
     let declarations: [Declaration]?
     let parameters: [Parameter]?
@@ -500,7 +500,7 @@ struct PrimaryContentSection: Codable {
     }
 }
 
-struct ContentBlock: Codable {
+private struct ContentBlock: Codable {
     let type: String
     let inlineContent: [InlineContent]?
     let code: [String]?
@@ -514,18 +514,18 @@ struct ContentBlock: Codable {
     }
 }
 
-struct TopicSection: Codable {
+private struct TopicSection: Codable {
     let title: String
     let identifiers: [String]
 }
 
-struct RelationshipSection: Codable {
+private struct RelationshipSection: Codable {
     let title: String
     let identifiers: [String]
     let kind: String?
 }
 
-struct Reference: Codable {
+private struct Reference: Codable {
     let title: String?
     let abstract: [InlineContent]?
     let role: String?
