@@ -14,7 +14,7 @@ import WebKit
 extension Crawler.WebKit {
     #if canImport(WebKit)
     @MainActor
-    public final class Engine: @preconcurrency Core.Protocols.CrawlerEngine {
+    public final class Engine: @preconcurrency Crawler.Engine {
         private let fetcher: Crawler.WebKit.ContentFetcher
 
         public init(
