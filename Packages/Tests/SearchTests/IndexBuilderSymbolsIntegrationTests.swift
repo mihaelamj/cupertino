@@ -1,5 +1,4 @@
 import SearchModels
-import Core
 import CoreProtocols
 import Foundation
 import Logging

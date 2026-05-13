@@ -1,4 +1,3 @@
-import Core
 import CoreSampleCode
 import Foundation
 import Logging
