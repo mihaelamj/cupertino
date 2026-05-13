@@ -2,6 +2,7 @@ import CoreJSONParser
 import Foundation
 import SharedConstants
 import SharedModels
+import SearchModels
 
 // MARK: - StrategyHelpers
 

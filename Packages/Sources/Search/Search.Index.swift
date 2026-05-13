@@ -4,6 +4,7 @@ import SharedConstants
 import SharedCore
 import SharedModels
 import SQLite3
+import SearchModels
 
 // MARK: - Search Index
 

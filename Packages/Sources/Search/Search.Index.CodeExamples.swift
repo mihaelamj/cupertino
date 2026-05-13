@@ -1,7 +1,9 @@
 import Foundation
+import SharedUtils
 import SharedConstants
 import SharedCore
 import SQLite3
+import SearchModels
 
 // swiftlint:disable function_body_length
 // Justification: extracted from SearchIndex.swift; the original 4598-line
@@ -53,7 +55,7 @@ extension Search.Index {
             throw Search.Error.databaseNotInitialized
         }
 
-        let sql = "SELECT COUNT(*) FROM doc_code_examples;"
+        let sql = Shared.Utils.SQL.countRows(in: "doc_code_examples")
         var statement: OpaquePointer?
         defer { sqlite3_finalize(statement) }
 

@@ -2,7 +2,6 @@ import Foundation
 import Logging
 import MCPCore
 import MCPSharedTools
-import Search
 import SharedConfiguration
 import SharedConstants
 import SharedCore
@@ -12,24 +11,37 @@ import SharedUtils
 // MARK: - Documentation Resource Provider
 
 extension MCP.Support {
-    /// Provides crawled documentation as MCP resources
+    /// Provides crawled documentation as MCP resources.
+    ///
+    /// The provider's database lookup is injected as a closure rather than a
+    /// concrete `Search.Index` value, so this target stays free of any
+    /// behavioural dependency on Search. Consumers wire the closure at the
+    /// call site (CLI/MCP entrypoint) — typically a small adapter around
+    /// `Search.Index.getDocumentContent(uri:format:)`.
     public actor DocsResourceProvider: MCP.Core.ResourceProvider {
+        /// Closure signature for resolving a resource URI to pre-rendered
+        /// markdown out of a search-index database (or any other source).
+        /// Returns `nil` if the URI is not present; throws if the lookup
+        /// itself fails. The provider treats either as a fall-back trigger
+        /// to read from the filesystem.
+        public typealias MarkdownLookup = @Sendable (String) async throws -> String?
+
         private let configuration: Shared.Configuration
         private var metadata: Shared.Models.CrawlMetadata?
         private let evolutionDirectory: URL
         private let archiveDirectory: URL
-        private let searchIndex: Search.Index?
+        private let markdownLookup: MarkdownLookup?
 
         public init(
             configuration: Shared.Configuration,
             evolutionDirectory: URL? = nil,
             archiveDirectory: URL? = nil,
-            searchIndex: Search.Index? = nil
+            markdownLookup: MarkdownLookup? = nil
         ) {
             self.configuration = configuration
             self.evolutionDirectory = evolutionDirectory ?? Shared.Constants.defaultSwiftEvolutionDirectory
             self.archiveDirectory = archiveDirectory ?? Shared.Constants.defaultArchiveDirectory
-            self.searchIndex = searchIndex
+            self.markdownLookup = markdownLookup
             // Metadata will be loaded lazily on first access
         }
 
@@ -114,9 +126,9 @@ extension MCP.Support {
         public func readResource(uri: String) async throws -> MCP.Core.Protocols.ReadResourceResult {
             let markdown: String
 
-            // Try database first if search index is available
-            if let searchIndex {
-                if let dbContent = try await searchIndex.getDocumentContent(uri: uri, format: .markdown) {
+            // Try database first if a markdown lookup was injected
+            if let markdownLookup {
+                if let dbContent = try await markdownLookup(uri) {
                     // Found in database - return markdown
                     let contents = MCP.Core.Protocols.ResourceContents.text(
                         MCP.Core.Protocols.TextResourceContents(

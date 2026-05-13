@@ -1,3 +1,4 @@
+import SearchModels
 @testable import CLI
 import Core
 import CoreProtocols

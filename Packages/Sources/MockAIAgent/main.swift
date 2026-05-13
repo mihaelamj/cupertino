@@ -62,7 +62,7 @@ struct MockAIAgent {
 
 // MARK: - MCP Client
 
-actor MCPClient {
+private actor MCPClient {
     private var process: Process?
     private var stdin: FileHandle?
     private var stdout: FileHandle?
@@ -289,7 +289,7 @@ actor MCPClient {
             jsonrpc: "2.0",
             id: .int(nextMessageID()),
             method: "tools/list",
-            params: EmptyParams()
+            params: MCP.Core.Protocols.EmptyParams()
         )
 
         let response: MCP.Core.Protocols.ListToolsResult = try await sendRequest(request)
@@ -423,7 +423,7 @@ actor MCPClient {
             jsonrpc: "2.0",
             id: .int(nextMessageID()),
             method: "resources/list",
-            params: EmptyParams()
+            params: MCP.Core.Protocols.EmptyParams()
         )
 
         let response: MCP.Core.Protocols.ListResourcesResult = try await sendRequest(request)
@@ -665,7 +665,7 @@ actor MCPClient {
 
 // MARK: - Helper Types
 
-private struct EmptyParams: Codable {}
+// EmptyParams moved to MCP.Core.Protocols.EmptyParams in MCPCore (#319).
 
 // MARK: - Errors
 

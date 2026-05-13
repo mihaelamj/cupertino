@@ -7,6 +7,7 @@ import Services
 import SharedConstants
 import SharedCore
 import SharedUtils
+import SearchModels
 
 // MARK: - SmartQuery fan-out helpers (#239)
 
@@ -50,10 +51,10 @@ extension CLI.Command.Search {
     /// Validate the `--platform` / `--min-version` pair into an
     /// `AvailabilityFilter`. Either both flags or neither — anything else
     /// errors out with `ExitCode.failure` so the user sees a clean message.
-    func resolveAvailabilityFilter() throws -> SearchModule.PackageQuery.AvailabilityFilter? {
+    func resolveAvailabilityFilter() throws -> SearchModels.Search.AvailabilityFilter? {
         switch (platform, minVersion) {
         case let (platform?, minVersion?):
-            return SearchModule.PackageQuery.AvailabilityFilter(
+            return SearchModels.Search.AvailabilityFilter(
                 platform: platform,
                 minVersion: minVersion
             )
@@ -71,7 +72,7 @@ extension CLI.Command.Search {
     /// or unopenable DBs log a one-line info note and are silently dropped
     /// from the fan-out (mirrors the resilience that `cupertino ask` had).
     func buildFetchers(
-        availabilityFilter: SearchModule.PackageQuery.AvailabilityFilter?
+        availabilityFilter: SearchModels.Search.AvailabilityFilter?
     ) async -> FetcherPlan {
         var fetchers: [any Search.CandidateFetcher] = []
 
@@ -106,7 +107,7 @@ extension CLI.Command.Search {
     private static func openDocsFetchers(
         override: String?,
         skip: Bool,
-        availability: SearchModule.PackageQuery.AvailabilityFilter?,
+        availability: SearchModels.Search.AvailabilityFilter?,
         into fetchers: inout [any Search.CandidateFetcher]
     ) async -> SearchModule.Index? {
         guard !skip else { return nil }
@@ -140,7 +141,7 @@ extension CLI.Command.Search {
     private static func openPackagesFetcher(
         override: String?,
         skip: Bool,
-        availability: SearchModule.PackageQuery.AvailabilityFilter?,
+        availability: SearchModels.Search.AvailabilityFilter?,
         into fetchers: inout [any Search.CandidateFetcher]
     ) {
         guard !skip else { return }
@@ -161,7 +162,7 @@ extension CLI.Command.Search {
     private static func openSamplesFetcher(
         override: String?,
         skip: Bool,
-        availability: SearchModule.PackageQuery.AvailabilityFilter?,
+        availability: SearchModels.Search.AvailabilityFilter?,
         into fetchers: inout [any Search.CandidateFetcher]
     ) async -> Sample.Search.Service? {
         guard !skip else { return nil }

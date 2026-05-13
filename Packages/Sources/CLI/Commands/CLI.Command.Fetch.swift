@@ -13,6 +13,7 @@ import SharedConstants
 import SharedCore
 import SharedModels
 import SharedUtils
+import SearchModels
 
 /// Lets ArgumentParser parse `--discovery-mode <mode>` directly into the
 /// shared enum. The conformance lives here (not in Shared) so the Shared

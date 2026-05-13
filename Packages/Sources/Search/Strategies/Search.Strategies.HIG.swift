@@ -2,6 +2,7 @@ import Foundation
 import Logging
 import SharedConstants
 import SharedModels
+import SearchModels
 
 // MARK: - HIGStrategy
 
@@ -92,7 +93,7 @@ extension Search {
 
                 do {
                     // HIG applies universally to all Apple platforms.
-                    try await index.indexDocument(
+                    try await index.indexDocument(Search.Index.IndexDocumentParams(
                         uri: uri,
                         source: source,
                         framework: category,
@@ -106,8 +107,8 @@ extension Search {
                         minTvOS: "9.0",
                         minWatchOS: "2.0",
                         minVisionOS: "1.0",
-                        availabilitySource: "universal"
-                    )
+                        availabilitySource: "universal",
+                    ))
                     indexed += 1
                 } catch {
                     Logging.Log.error(

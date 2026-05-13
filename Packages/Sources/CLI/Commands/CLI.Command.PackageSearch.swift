@@ -5,6 +5,7 @@ import Search
 import SharedConstants
 import SharedCore
 import SharedUtils
+import SearchModels
 
 // MARK: - Package Search Command (hidden)
 
@@ -77,10 +78,10 @@ extension CLI.Command {
             // to calling `PackageQuery.answer` directly — but it goes through the
             // exact same code path as `cupertino ask`, which means future ranking
             // tweaks land in one place.
-            let availabilityFilter: SearchModule.PackageQuery.AvailabilityFilter?
+            let availabilityFilter: SearchModels.Search.AvailabilityFilter?
             switch (platform, minVersion) {
             case let (platform?, minVersion?):
-                availabilityFilter = SearchModule.PackageQuery.AvailabilityFilter(
+                availabilityFilter = SearchModels.Search.AvailabilityFilter(
                     platform: platform,
                     minVersion: minVersion
                 )

@@ -1,6 +1,7 @@
-import Foundation
-@testable import Search
 import Testing
+import Foundation
+import SearchModels
+@testable import Search
 
 // MARK: - Release.Version Filter Tests
 
@@ -237,7 +238,7 @@ struct VersionFilterTests {
         }
 
         // Index document WITHOUT availability data
-        try await index.indexDocument(
+        try await index.indexDocument(Search.Index.IndexDocumentParams(
             uri: "test://noavail",
             source: "apple-docs",
             framework: "test",
@@ -246,8 +247,8 @@ struct VersionFilterTests {
             filePath: "/test.md",
             contentHash: "hash",
             lastCrawled: Date(),
-            sourceType: "test"
-        )
+            sourceType: "test",
+            ))
 
         // Without availability, should not appear in filtered results
         let filtered = try await index.search(query: "Availability", minIOS: "15.0")
@@ -370,7 +371,7 @@ struct VersionFilterTests {
             .appendingPathComponent("test-\(UUID().uuidString).db")
         let index = try await Search.Index(dbPath: tempDB)
 
-        try await index.indexDocument(
+        try await index.indexDocument(Search.Index.IndexDocumentParams(
             uri: uri,
             source: "apple-docs",
             framework: "test",
@@ -384,8 +385,8 @@ struct VersionFilterTests {
             minMacOS: minMacOS,
             minTvOS: minTvOS,
             minWatchOS: minWatchOS,
-            minVisionOS: minVisionOS
-        )
+            minVisionOS: minVisionOS,
+            ))
 
         let cleanup: @Sendable () -> Void = {
             Task { await index.disconnect() }

@@ -1,6 +1,6 @@
 import Foundation
 import SampleIndex
-import Search
+import SearchModels
 import SharedConstants
 import SharedCore
 import SharedUtils
@@ -11,22 +11,25 @@ import SharedUtils
 /// Consolidates search logic previously duplicated between CLI and MCP.
 extension Services {
     public actor UnifiedSearchService {
-        private let searchIndex: Search.Index?
+        private let searchIndex: (any Search.Database)?
         private let sampleDatabase: Sample.Index.Database?
 
-        /// Initialize with existing database connections
-        public init(searchIndex: Search.Index?, sampleDatabase: Sample.Index.Database?) {
+        /// Initialize with existing database connections. The concrete
+        /// `Search.Index?` form continues to compile because `Search.Index`
+        /// conforms to `Search.Database`.
+        public init(searchIndex: (any Search.Database)?, sampleDatabase: Sample.Index.Database?) {
             self.searchIndex = searchIndex
             self.sampleDatabase = sampleDatabase
         }
 
-        /// Initialize with database paths (creates connections)
-        public init(searchDbPath: URL?, sampleDbPath: URL?) async throws {
-            if let searchDbPath, Shared.Utils.PathResolver.exists(searchDbPath) {
-                searchIndex = try await Search.Index(dbPath: searchDbPath)
-            } else {
-                searchIndex = nil
-            }
+        /// Initialize with a sample-database path. The search-side
+        /// database is injected via `searchIndex:` because constructing
+        /// a `Search.Index` requires the Search target — which Services
+        /// no longer imports. The composition root
+        /// (`withUnifiedSearchService` in `Services.ServiceContainer`)
+        /// wires both sides.
+        public init(searchIndex: (any Search.Database)?, sampleDbPath: URL?) async throws {
+            self.searchIndex = searchIndex
 
             if let sampleDbPath, Shared.Utils.PathResolver.exists(sampleDbPath) {
                 sampleDatabase = try await Sample.Index.Database(dbPath: sampleDbPath)
@@ -167,23 +170,7 @@ extension Services {
     }
 }
 
-// MARK: - Services.ServiceContainer Extension
-
-extension Services.ServiceContainer {
-    /// Execute an operation with a unified search service
-    public static func withUnifiedSearchService<T: Sendable>(
-        searchDbPath: String? = nil,
-        sampleDbPath: URL? = nil,
-        operation: (Services.UnifiedSearchService) async throws -> T
-    ) async throws -> T {
-        let resolvedSearchPath = Shared.Utils.PathResolver.searchDatabase(searchDbPath)
-        let resolvedSamplePath = sampleDbPath ?? Sample.Index.defaultDatabasePath
-
-        let service = try await Services.UnifiedSearchService(
-            searchDbPath: Shared.Utils.PathResolver.exists(resolvedSearchPath) ? resolvedSearchPath : nil,
-            sampleDbPath: Shared.Utils.PathResolver.exists(resolvedSamplePath) ? resolvedSamplePath : nil
-        )
-
-        return try await operation(service)
-    }
-}
+// The `withUnifiedSearchService` factory lives in
+// `Services.ServiceContainer.swift` alongside the other `with*Service`
+// factories — that file keeps `import Search` for the Search.Index
+// instantiation; this file no longer needs it.

@@ -1,6 +1,7 @@
 import Foundation
 import SharedCore
 import SQLite3
+import SearchModels
 
 // swiftlint:disable function_body_length
 // Justification: extracted from SearchIndex.swift; the original 4598-line

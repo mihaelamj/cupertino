@@ -1,7 +1,7 @@
 import Foundation
-import Search
 import SharedConstants
 import SharedCore
+import SearchModels
 
 // MARK: - Markdown Search Result Formatter
 

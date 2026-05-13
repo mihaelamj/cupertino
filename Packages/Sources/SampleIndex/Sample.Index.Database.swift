@@ -1028,7 +1028,7 @@ extension Sample.Index {
                 throw Sample.Index.Error.databaseNotInitialized
             }
 
-            let sql = "SELECT COUNT(*) FROM projects;"
+            let sql = Shared.Utils.SQL.countRows(in: "projects")
 
             var statement: OpaquePointer?
             defer { sqlite3_finalize(statement) }
@@ -1047,7 +1047,7 @@ extension Sample.Index {
                 throw Sample.Index.Error.databaseNotInitialized
             }
 
-            let sql = "SELECT COUNT(*) FROM files;"
+            let sql = Shared.Utils.SQL.countRows(in: "files")
 
             var statement: OpaquePointer?
             defer { sqlite3_finalize(statement) }
@@ -1066,7 +1066,7 @@ extension Sample.Index {
                 throw Sample.Index.Error.databaseNotInitialized
             }
 
-            let sql = "SELECT COUNT(*) FROM file_symbols;"
+            let sql = Shared.Utils.SQL.countRows(in: "file_symbols")
 
             var statement: OpaquePointer?
             defer { sqlite3_finalize(statement) }
@@ -1085,7 +1085,7 @@ extension Sample.Index {
                 throw Sample.Index.Error.databaseNotInitialized
             }
 
-            let sql = "SELECT COUNT(*) FROM file_imports;"
+            let sql = Shared.Utils.SQL.countRows(in: "file_imports")
 
             var statement: OpaquePointer?
             defer { sqlite3_finalize(statement) }

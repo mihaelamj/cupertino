@@ -18,6 +18,7 @@ import Foundation
 import SharedConstants
 import SharedCore
 import SharedModels
+import SearchModels
 
 extension Search {
     /// High-level document-shape taxonomy stored per row in `docs_metadata`.

@@ -1,6 +1,7 @@
-import Foundation
-@testable import Search
 import Testing
+import Foundation
+import SearchModels
+@testable import Search
 
 // Covers H5 from #192: `DocsSourceCandidateFetcher` against a fixture
 // search.db. Verifies that the fetcher scopes to its source, adapts
@@ -14,7 +15,7 @@ private func seedIndex() async throws -> (Search.Index, URL) {
 
     // Two docs in apple-docs source, plus one in swift-evolution so we can
     // verify source scoping.
-    try await index.indexDocument(
+    try await index.indexDocument(Search.Index.IndexDocumentParams(
         uri: "apple-docs://swiftui/view",
         source: "apple-docs",
         framework: "swiftui",
@@ -22,9 +23,9 @@ private func seedIndex() async throws -> (Search.Index, URL) {
         content: "A SwiftUI view protocol.",
         filePath: "/tmp/view.md",
         contentHash: "h1",
-        lastCrawled: Date()
-    )
-    try await index.indexDocument(
+        lastCrawled: Date(),
+        ))
+    try await index.indexDocument(Search.Index.IndexDocumentParams(
         uri: "apple-docs://swiftui/animation",
         source: "apple-docs",
         framework: "swiftui",
@@ -32,9 +33,9 @@ private func seedIndex() async throws -> (Search.Index, URL) {
         content: "SwiftUI animation APIs.",
         filePath: "/tmp/anim.md",
         contentHash: "h2",
-        lastCrawled: Date()
-    )
-    try await index.indexDocument(
+        lastCrawled: Date(),
+        ))
+    try await index.indexDocument(Search.Index.IndexDocumentParams(
         uri: "swift-evolution://SE-0306",
         source: "swift-evolution",
         framework: nil,
@@ -42,8 +43,8 @@ private func seedIndex() async throws -> (Search.Index, URL) {
         content: "Swift actors proposal.",
         filePath: "/tmp/se306.md",
         contentHash: "h3",
-        lastCrawled: Date()
-    )
+        lastCrawled: Date(),
+        ))
     return (index, dbPath)
 }
 

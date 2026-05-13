@@ -1,3 +1,4 @@
+import SearchModels
 import Foundation
 @testable import Search
 import Testing
@@ -34,7 +35,7 @@ private func indexPage(
     title: String,
     content: String
 ) async throws {
-    try await idx.indexDocument(
+    try await idx.indexDocument(Search.Index.IndexDocumentParams(
         uri: uri,
         source: "apple-docs",
         framework: framework,
@@ -42,8 +43,8 @@ private func indexPage(
         content: content,
         filePath: "/tmp/\(framework)",
         contentHash: framework,
-        lastCrawled: Date()
-    )
+        lastCrawled: Date(),
+        ))
 }
 
 @Suite("Exact title peer tiebreak (#256)")

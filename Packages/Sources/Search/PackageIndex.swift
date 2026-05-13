@@ -2,9 +2,11 @@ import Core
 import CorePackageIndexing
 import CoreProtocols
 import Foundation
+import SharedUtils
 import SharedConstants
 import SharedCore
 import SQLite3
+import SearchModels
 
 // MARK: - Package Index (separate DB)
 
@@ -157,8 +159,8 @@ extension Search {
             guard let database else {
                 throw PackageIndexError.databaseNotInitialized
             }
-            let packages = try Int(selectScalar("SELECT COUNT(*) FROM package_metadata"))
-            let files = try Int(selectScalar("SELECT COUNT(*) FROM package_files"))
+            let packages = try Int(selectScalar(Shared.Utils.SQL.countRows(in: "package_metadata")))
+            let files = try Int(selectScalar(Shared.Utils.SQL.countRows(in: "package_files")))
             let bytes = try selectScalar("SELECT IFNULL(SUM(size_bytes), 0) FROM package_files")
             _ = database
             return Summary(packageCount: packages, fileCount: files, bytesIndexed: bytes)

@@ -380,7 +380,7 @@ extension Availability {
             let apiURL = buildAPIURL(from: docURL)
 
             // Fetch availability from API
-            var availability = await fetchAvailability(from: apiURL)
+            var availability: Availability.Info? = await fetchAvailability(from: apiURL)
             var inherited = false
             var derivedFromRefs = false
 

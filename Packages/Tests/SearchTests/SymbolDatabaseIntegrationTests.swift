@@ -1,3 +1,4 @@
+import SearchModels
 // SymbolDatabaseIntegrationTests.swift
 // Integration tests for AST symbol storage and search (#81)
 

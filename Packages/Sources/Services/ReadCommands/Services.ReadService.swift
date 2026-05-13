@@ -1,6 +1,6 @@
 import Foundation
 import SampleIndex
-import Search
+import SearchModels
 import SharedConstants
 import SharedCore
 
@@ -70,6 +70,13 @@ extension Services {
             }
         }
 
+        /// Closure that resolves a file inside `packages.db` to its raw
+        /// content. Production composition root (CLI) wires this as a
+        /// thin wrapper around `Search.PackageQuery(dbPath:).fileContent(...)`,
+        /// then `disconnect()`. ReadService doesn't import the Search
+        /// target, so the actor stays opaque behind this seam.
+        public typealias PackageFileLookup = @Sendable (_ dbURL: URL, _ owner: String, _ repo: String, _ relpath: String) async throws -> String?
+
         /// Read a document by identifier. When `explicit` is provided the
         /// matching backend is used; otherwise we infer:
         /// 1. URI scheme present → docs.
@@ -77,10 +84,12 @@ extension Services {
         public static func read(
             identifier: String,
             explicit: Source?,
-            format: Search.Index.DocumentFormat,
+            format: Search.DocumentFormat,
             searchDB: URL?,
             samplesDB: URL?,
-            packagesDB: URL?
+            packagesDB: URL?,
+            makeSearchDatabase: Services.ServiceContainer.MakeSearchDatabase,
+            packageFileLookup: PackageFileLookup,
         ) async throws -> Result {
             if let explicit {
                 return try await readFrom(
@@ -90,7 +99,9 @@ extension Services {
                     searchDB: searchDB,
                     samplesDB: samplesDB,
                     packagesDB: packagesDB,
-                    allowFallback: false
+                    allowFallback: false,
+                    makeSearchDatabase: makeSearchDatabase,
+                    packageFileLookup: packageFileLookup,
                 )
             }
 
@@ -102,7 +113,9 @@ extension Services {
                     searchDB: searchDB,
                     samplesDB: samplesDB,
                     packagesDB: packagesDB,
-                    allowFallback: false
+                    allowFallback: false,
+                    makeSearchDatabase: makeSearchDatabase,
+                    packageFileLookup: packageFileLookup,
                 )
             }
 
@@ -114,7 +127,9 @@ extension Services {
                     searchDB: searchDB,
                     samplesDB: samplesDB,
                     packagesDB: packagesDB,
-                    allowFallback: true
+                    allowFallback: true,
+                    makeSearchDatabase: makeSearchDatabase,
+                    packageFileLookup: packageFileLookup,
                 )
             } catch ReadError.samplesNotFound, ReadError.packagesNotFound,
                 ReadError.packagesIdentifierInvalid {
@@ -127,7 +142,9 @@ extension Services {
                 searchDB: searchDB,
                 samplesDB: samplesDB,
                 packagesDB: packagesDB,
-                allowFallback: false
+                allowFallback: false,
+                makeSearchDatabase: makeSearchDatabase,
+                packageFileLookup: packageFileLookup,
             )
         }
 
@@ -136,41 +153,48 @@ extension Services {
         private static func readFrom(
             source: Source,
             identifier: String,
-            format: Search.Index.DocumentFormat,
+            format: Search.DocumentFormat,
             searchDB: URL?,
             samplesDB: URL?,
             packagesDB: URL?,
-            allowFallback: Bool
+            allowFallback: Bool,
+            makeSearchDatabase: Services.ServiceContainer.MakeSearchDatabase,
+            packageFileLookup: PackageFileLookup,
         ) async throws -> Result {
             switch source {
             case .docs:
                 return try await readFromDocs(
                     identifier: identifier,
                     format: format,
-                    searchDB: searchDB
+                    searchDB: searchDB,
+                    makeSearchDatabase: makeSearchDatabase,
                 )
             case .samples:
                 return try await readFromSamples(
                     identifier: identifier,
                     samplesDB: samplesDB,
                     allowFallback: allowFallback,
-                    packagesDB: packagesDB
+                    packagesDB: packagesDB,
+                    packageFileLookup: packageFileLookup,
                 )
             case .packages:
                 return try await readFromPackages(
                     identifier: identifier,
-                    packagesDB: packagesDB
+                    packagesDB: packagesDB,
+                    packageFileLookup: packageFileLookup,
                 )
             }
         }
 
         private static func readFromDocs(
             identifier: String,
-            format: Search.Index.DocumentFormat,
-            searchDB: URL?
+            format: Search.DocumentFormat,
+            searchDB: URL?,
+            makeSearchDatabase: Services.ServiceContainer.MakeSearchDatabase,
         ) async throws -> Result {
             let content = try await Services.ServiceContainer.withDocsService(
-                dbPath: searchDB?.path
+                dbPath: searchDB?.path,
+                makeSearchDatabase: makeSearchDatabase,
             ) { service in
                 try await service.read(uri: identifier, format: format)
             }
@@ -184,14 +208,16 @@ extension Services {
             identifier: String,
             samplesDB: URL?,
             allowFallback: Bool,
-            packagesDB: URL?
+            packagesDB: URL?,
+            packageFileLookup: PackageFileLookup,
         ) async throws -> Result {
             let dbURL = samplesDB ?? Sample.Index.defaultDatabasePath
             guard FileManager.default.fileExists(atPath: dbURL.path) else {
                 if allowFallback {
                     return try await readFromPackages(
                         identifier: identifier,
-                        packagesDB: packagesDB
+                        packagesDB: packagesDB,
+                        packageFileLookup: packageFileLookup,
                     )
                 }
                 throw ReadError.samplesNotFound(identifier: identifier)
@@ -221,7 +247,8 @@ extension Services {
             if allowFallback {
                 return try await readFromPackages(
                     identifier: identifier,
-                    packagesDB: packagesDB
+                    packagesDB: packagesDB,
+                    packageFileLookup: packageFileLookup,
                 )
             }
             throw ReadError.samplesNotFound(identifier: identifier)
@@ -229,7 +256,8 @@ extension Services {
 
         private static func readFromPackages(
             identifier: String,
-            packagesDB: URL?
+            packagesDB: URL?,
+            packageFileLookup: PackageFileLookup,
         ) async throws -> Result {
             // Identifier shape: `<owner>/<repo>/<relpath>`. Anything else is
             // not a valid package identifier — auto-source mode bails here.
@@ -246,17 +274,9 @@ extension Services {
                 throw ReadError.packagesNotFound(identifier: identifier)
             }
 
-            let query: Search.PackageQuery
-            do {
-                query = try await Search.PackageQuery(dbPath: dbURL)
-            } catch {
-                throw ReadError.backendFailed("Could not open packages.db: \(error.localizedDescription)")
-            }
-            defer { Task { await query.disconnect() } }
-
             let content: String?
             do {
-                content = try await query.fileContent(owner: owner, repo: repo, relpath: relpath)
+                content = try await packageFileLookup(dbURL, owner, repo, relpath)
             } catch {
                 throw ReadError.backendFailed("packages.db query failed: \(error.localizedDescription)")
             }

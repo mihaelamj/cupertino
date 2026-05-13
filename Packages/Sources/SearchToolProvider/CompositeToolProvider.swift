@@ -2,7 +2,7 @@ import Foundation
 import MCPCore
 import MCPSharedTools
 import SampleIndex
-import Search
+import SearchModels
 import Services
 import SharedConstants
 import SharedCore
@@ -17,17 +17,19 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     private let docsService: Services.DocsSearchService?
     private let sampleService: Sample.Search.Service?
 
-    // Keep direct access for low-level operations (list frameworks, read document)
-    private let searchIndex: Search.Index?
+    // Keep direct access for low-level operations (list frameworks, read
+    // document, semantic-symbol searches). Protocol-typed so this file
+    // doesn't import the Search target.
+    private let searchIndex: (any Search.Database)?
     private let sampleDatabase: Sample.Index.Database?
 
-    public init(searchIndex: Search.Index?, sampleDatabase: Sample.Index.Database?) {
+    public init(searchIndex: (any Search.Database)?, sampleDatabase: Sample.Index.Database?) {
         self.searchIndex = searchIndex
         self.sampleDatabase = sampleDatabase
 
         // Wrap databases with services for search operations
         if let searchIndex {
-            docsService = Services.DocsSearchService(index: searchIndex)
+            docsService = Services.DocsSearchService(database: searchIndex)
         } else {
             docsService = nil
         }
@@ -621,7 +623,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
         let uri: String = try args.require(Shared.Constants.Search.schemaParamURI)
         let formatString = args.format()
-        let format: Search.Index.DocumentFormat = formatString == Shared.Constants.Search.formatValueMarkdown
+        let format: Search.DocumentFormat = formatString == Shared.Constants.Search.formatValueMarkdown
             ? .markdown : .json
 
         guard let documentContent = try await searchIndex.getDocumentContent(uri: uri, format: format) else {
@@ -870,7 +872,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     /// Format symbol search results as markdown
     private func formatSymbolResults(
-        results: [Search.Index.SymbolSearchResult],
+        results: [Search.SymbolSearchResult],
         title: String,
         query: String?,
         filters: [String: String?]
@@ -896,7 +898,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         markdown += "Found **\(results.count)** symbols:\n\n"
 
         // Group by document for better organization
-        var byDocument: [String: [(Search.Index.SymbolSearchResult, Int)]] = [:]
+        var byDocument: [String: [(Search.SymbolSearchResult, Int)]] = [:]
         for (index, result) in results.enumerated() {
             byDocument[result.docUri, default: []].append((result, index))
         }

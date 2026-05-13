@@ -1,3 +1,4 @@
+import SearchModels
 import Foundation
 @testable import Search
 import Testing
@@ -29,7 +30,7 @@ private func indexPage(
     title: String,
     content: String
 ) async throws {
-    try await idx.indexDocument(
+    try await idx.indexDocument(Search.Index.IndexDocumentParams(
         uri: uri,
         source: "apple-docs",
         framework: framework,
@@ -37,8 +38,8 @@ private func indexPage(
         content: content,
         filePath: "/tmp/\(framework)-\(UUID().uuidString)",
         contentHash: UUID().uuidString,
-        lastCrawled: Date()
-    )
+        lastCrawled: Date(),
+        ))
 }
 
 @Suite("Canonical type ranking (#254 + #256)")

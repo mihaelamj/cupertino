@@ -1,3 +1,4 @@
+import SearchModels
 import AppKit
 @testable import CLI
 @testable import Core

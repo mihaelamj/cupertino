@@ -1,3 +1,4 @@
+import SearchModels
 import Foundation
 @testable import Search
 import SQLite3
@@ -70,7 +71,7 @@ struct BM25TitleWeightingTests {
         let idx = try await Search.Index(dbPath: dbPath)
 
         // A: query term lives in the title, body is unrelated.
-        try await idx.indexDocument(
+        try await idx.indexDocument(Search.Index.IndexDocumentParams(
             uri: "apple-docs://swift/task",
             source: "apple-docs",
             framework: "Swift",
@@ -78,11 +79,11 @@ struct BM25TitleWeightingTests {
             content: "An asynchronous unit of work without the query term repeated.",
             filePath: "/tmp/a",
             contentHash: "a",
-            lastCrawled: Date()
-        )
+            lastCrawled: Date(),
+            ))
 
         // B: query term appears only in the body, title is unrelated.
-        try await idx.indexDocument(
+        try await idx.indexDocument(Search.Index.IndexDocumentParams(
             uri: "apple-docs://kernel/task-info",
             source: "apple-docs",
             framework: "Kernel",
@@ -90,8 +91,8 @@ struct BM25TitleWeightingTests {
             content: "A mach task contains threads and memory regions. Task accounting is reported here.",
             filePath: "/tmp/b",
             contentHash: "b",
-            lastCrawled: Date()
-        )
+            lastCrawled: Date(),
+            ))
 
         await idx.disconnect()
 
@@ -114,7 +115,7 @@ struct BM25TitleWeightingTests {
         let idx = try await Search.Index(dbPath: dbPath)
 
         // A: query term appears in the first sentence (becomes the summary).
-        try await idx.indexDocument(
+        try await idx.indexDocument(Search.Index.IndexDocumentParams(
             uri: "apple-docs://foundation/bundle",
             source: "apple-docs",
             framework: "Foundation",
@@ -122,12 +123,12 @@ struct BM25TitleWeightingTests {
             content: "Bundle is the entry point for resource lookup. " + String(repeating: "Filler sentence. ", count: 40),
             filePath: "/tmp/s1",
             contentHash: "s1",
-            lastCrawled: Date()
-        )
+            lastCrawled: Date(),
+            ))
 
         // B: query term only appears deep in the body, past the summary cut.
         let bodyB = String(repeating: "Unrelated padding text. ", count: 60) + " Bundle is mentioned only here at the end."
-        try await idx.indexDocument(
+        try await idx.indexDocument(Search.Index.IndexDocumentParams(
             uri: "apple-docs://misc/other",
             source: "apple-docs",
             framework: "Misc",
@@ -135,8 +136,8 @@ struct BM25TitleWeightingTests {
             content: bodyB,
             filePath: "/tmp/s2",
             contentHash: "s2",
-            lastCrawled: Date()
-        )
+            lastCrawled: Date(),
+            ))
 
         await idx.disconnect()
 

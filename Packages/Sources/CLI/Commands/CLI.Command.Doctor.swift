@@ -14,6 +14,7 @@ import SearchToolProvider
 import SharedConstants
 import SharedCore
 import SharedUtils
+import SearchModels
 
 // MARK: - Doctor Command
 
@@ -298,9 +299,9 @@ extension CLI.Command {
             Logging.Log.output("   ✓ Database: \(samplesDBURL.path)")
             Logging.Log.output("   ✓ Size: \(Shared.Utils.Formatting.formatBytes(Int64(fileSize)))")
 
-            let projectCount = Diagnostics.Probes.rowCount(at: samplesDBURL, sql: "SELECT COUNT(*) FROM projects;")
-            let fileCount = Diagnostics.Probes.rowCount(at: samplesDBURL, sql: "SELECT COUNT(*) FROM files;")
-            let symbolCount = Diagnostics.Probes.rowCount(at: samplesDBURL, sql: "SELECT COUNT(*) FROM file_symbols;")
+            let projectCount = Diagnostics.Probes.rowCount(at: samplesDBURL, sql: Shared.Utils.SQL.countRows(in: "projects"))
+            let fileCount = Diagnostics.Probes.rowCount(at: samplesDBURL, sql: Shared.Utils.SQL.countRows(in: "files"))
+            let symbolCount = Diagnostics.Probes.rowCount(at: samplesDBURL, sql: Shared.Utils.SQL.countRows(in: "file_symbols"))
             if let projectCount { Logging.Log.output("   ✓ Projects: \(projectCount)") }
             if let fileCount { Logging.Log.output("   ✓ Indexed files: \(fileCount)") }
             if let symbolCount { Logging.Log.output("   ✓ Indexed symbols: \(symbolCount)") }
@@ -330,8 +331,8 @@ extension CLI.Command {
             Logging.Log.output("   ✓ Database: \(packagesDBURL.path)")
             Logging.Log.output("   ✓ Size: \(Shared.Utils.Formatting.formatBytes(Int64(fileSize)))")
 
-            let packageCount = Diagnostics.Probes.rowCount(at: packagesDBURL, sql: "SELECT COUNT(*) FROM packages;")
-            let fileCount = Diagnostics.Probes.rowCount(at: packagesDBURL, sql: "SELECT COUNT(*) FROM package_files;")
+            let packageCount = Diagnostics.Probes.rowCount(at: packagesDBURL, sql: Shared.Utils.SQL.countRows(in: "packages"))
+            let fileCount = Diagnostics.Probes.rowCount(at: packagesDBURL, sql: Shared.Utils.SQL.countRows(in: "package_files"))
             if let packageCount { Logging.Log.output("   ✓ Packages: \(packageCount)") }
             if let fileCount { Logging.Log.output("   ✓ Indexed files: \(fileCount)") }
             Logging.Log.output("   ℹ  Bundled version: \(Shared.Constants.App.databaseVersion)")

@@ -1,3 +1,4 @@
+import SearchModels
 import Foundation
 @testable import Search
 import SQLite3
@@ -139,7 +140,7 @@ struct IndexDocumentKindTests {
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
         let idx = try await Search.Index(dbPath: dbPath)
-        try await idx.indexDocument(
+        try await idx.indexDocument(Search.Index.IndexDocumentParams(
             uri: uri,
             source: source,
             framework: framework,
@@ -147,8 +148,8 @@ struct IndexDocumentKindTests {
             content: "Some content for the test.",
             filePath: "/tmp/x",
             contentHash: "h",
-            lastCrawled: Date()
-        )
+            lastCrawled: Date(),
+            ))
         await idx.disconnect()
 
         return try readColumn(at: dbPath, column: "kind", forURI: uri)
@@ -207,7 +208,7 @@ struct SymbolsColumnTests {
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
         let idx = try await Search.Index(dbPath: dbPath)
-        try await idx.indexDocument(
+        try await idx.indexDocument(Search.Index.IndexDocumentParams(
             uri: "test://nosym",
             source: "swift-book",
             framework: nil,
@@ -215,8 +216,8 @@ struct SymbolsColumnTests {
             content: "Body",
             filePath: "/tmp/x",
             contentHash: "h",
-            lastCrawled: Date()
-        )
+            lastCrawled: Date(),
+            ))
         await idx.disconnect()
 
         // Column exists, value is NULL — readColumn returns nil for NULL.

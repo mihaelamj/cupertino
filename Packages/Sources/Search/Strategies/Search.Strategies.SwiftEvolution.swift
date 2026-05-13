@@ -2,6 +2,7 @@ import Foundation
 import Logging
 import SharedConstants
 import SharedModels
+import SearchModels
 
 // MARK: - SwiftEvolutionStrategy
 
@@ -153,7 +154,7 @@ extension Search {
             let status = Search.StrategyHelpers.extractProposalStatus(from: content)
             let availability = Search.StrategyHelpers.mapSwiftVersionToAvailability(status)
 
-            try await index.indexDocument(
+            try await index.indexDocument(Search.Index.IndexDocumentParams(
                 uri: uri,
                 source: source,
                 framework: nil,
@@ -164,8 +165,8 @@ extension Search {
                 lastCrawled: modDate,
                 minIOS: availability.iOS,
                 minMacOS: availability.macOS,
-                availabilitySource: availability.iOS != nil ? "swift-version" : nil
-            )
+                availabilitySource: availability.iOS != nil ? "swift-version" : nil,
+            ))
         }
     }
 }

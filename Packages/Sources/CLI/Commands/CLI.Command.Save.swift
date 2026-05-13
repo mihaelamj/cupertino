@@ -8,6 +8,7 @@ import Search
 import SharedConstants
 import SharedCore
 import SharedUtils
+import SearchModels
 
 // MARK: - Save Command
 
@@ -238,7 +239,7 @@ extension CLI.Command.Save {
         Logging.ConsoleLogger.output("")
         try await indexer.run(
             indexDocument: { uri, source, framework, title, content, jsonData in
-                try await searchIndex.indexDocument(
+                try await searchIndex.indexDocument(Search.Index.IndexDocumentParams(
                     uri: uri,
                     source: source,
                     framework: framework,
@@ -250,8 +251,8 @@ extension CLI.Command.Save {
                     lastCrawled: Date(),
                     sourceType: source,
                     packageId: nil,
-                    jsonData: jsonData
-                )
+                    jsonData: jsonData,
+                ))
             },
             onProgress: { progress in
                 reporter.update(progress)

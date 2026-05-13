@@ -1,6 +1,7 @@
 import Foundation
 import SharedConstants
 import SharedCore
+import SearchModels
 
 // MARK: - Smart-query abstraction (#192 section E)
 
@@ -17,64 +18,6 @@ import SharedCore
 // the ranker's job, not the fetcher's — this keeps implementations trivial
 // to add for new sources (WWDC transcripts #58, Swift Forums #89, etc.).
 
-extension Search {
-    /// A single candidate surfaced by a `CandidateFetcher`. Scores are
-    /// source-local and not comparable across fetchers — `SmartQuery` does the
-    /// cross-source ranking via rank fusion.
-    public struct SmartCandidate: Sendable, Hashable {
-        /// Source identifier, e.g. `"packages"`, `"apple-docs"`, `"swift-evolution"`.
-        public let source: String
-        /// Canonical identifier for the candidate. Format is source-dependent:
-        /// `owner/repo/relpath` for packages, the URI for docs rows.
-        public let identifier: String
-        /// Display title — what a UI should surface as the heading.
-        public let title: String
-        /// Excerpt to show the user. Expected to be already chunked/truncated.
-        public let chunk: String
-        /// Source-local score. Higher is better, but scales differ between
-        /// fetchers; only useful for within-source ordering.
-        public let rawScore: Double
-        /// Optional tag — DocKind raw value for docs, PackageFileKind raw value
-        /// for packages. Nil for sources without a kind taxonomy.
-        public let kind: String?
-        /// Free-form attribution metadata (framework, owner/repo, language, etc.).
-        public let metadata: [String: String]
-
-        public init(
-            source: String,
-            identifier: String,
-            title: String,
-            chunk: String,
-            rawScore: Double,
-            kind: String? = nil,
-            metadata: [String: String] = [:]
-        ) {
-            self.source = source
-            self.identifier = identifier
-            self.title = title
-            self.chunk = chunk
-            self.rawScore = rawScore
-            self.kind = kind
-            self.metadata = metadata
-        }
-    }
-
-    /// Produce ranked candidates for a free-text question.
-    ///
-    /// Implementations should return candidates already ordered best-first.
-    /// `limit` is an advisory cap; fetchers may return fewer results but
-    /// should not exceed it. Network/DB-missing conditions should surface as
-    /// thrown errors so `SmartQuery` can attribute failures; returning an
-    /// empty array signals "query ran, nothing matched".
-    public protocol CandidateFetcher: Sendable {
-        /// Short human-readable name, used for logs + attribution headers.
-        var sourceName: String { get }
-
-        /// Fetch candidates for the given question, capped at `limit`.
-        func fetch(question: String, limit: Int) async throws -> [SmartCandidate]
-    }
-}
-
 // MARK: - Package FTS fetcher (wraps Search.PackageQuery)
 
 extension Search {
@@ -86,11 +29,11 @@ extension Search {
         public let sourceName = Shared.Constants.SourcePrefix.packages
 
         private let dbPath: URL
-        private let availability: Search.PackageQuery.AvailabilityFilter?
+        private let availability: Search.AvailabilityFilter?
 
         public init(
             dbPath: URL = Shared.Constants.defaultPackagesDatabase,
-            availability: Search.PackageQuery.AvailabilityFilter? = nil
+            availability: Search.AvailabilityFilter? = nil
         ) {
             self.dbPath = dbPath
             self.availability = availability
@@ -139,7 +82,7 @@ extension Search {
 
         private let searchIndex: Search.Index
         private let includeArchive: Bool
-        private let availability: Search.PackageQuery.AvailabilityFilter?
+        private let availability: Search.AvailabilityFilter?
 
         /// Sources whose content uses a different availability axis from
         /// iOS / macOS / etc. — Swift language version (#225). When the
@@ -168,7 +111,7 @@ extension Search {
             searchIndex: Search.Index,
             source: String,
             includeArchive: Bool = false,
-            availability: Search.PackageQuery.AvailabilityFilter? = nil
+            availability: Search.AvailabilityFilter? = nil
         ) {
             self.searchIndex = searchIndex
             sourceName = source

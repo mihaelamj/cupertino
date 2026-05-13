@@ -1,5 +1,5 @@
 import Foundation
-import Search
+import SearchModels
 import SharedConstants
 import SharedCore
 
@@ -35,20 +35,15 @@ extension Services {
     public actor HIGSearchService {
         private let docsService: Services.DocsSearchService
 
-        /// Initialize with an existing docs service
+        /// Initialize with an existing docs service.
         public init(docsService: Services.DocsSearchService) {
             self.docsService = docsService
         }
 
-        /// Initialize with a search index
-        public init(index: Search.Index) {
-            docsService = Services.DocsSearchService(index: index)
-        }
-
-        /// Initialize with a database path
-        public init(dbPath: URL) async throws {
-            let index = try await Search.Index(dbPath: dbPath)
-            docsService = Services.DocsSearchService(index: index)
+        /// Initialize with any `Search.Database` conformer.
+        /// Production: pass a `Search.Index`; tests pass a mock.
+        public init(database: any Search.Database) {
+            docsService = Services.DocsSearchService(database: database)
         }
 
         // MARK: - Search Methods
@@ -92,7 +87,7 @@ extension Services {
         // MARK: - Document Access
 
         /// Read a HIG document by URI
-        public func read(uri: String, format: Search.Index.DocumentFormat = .json) async throws -> String? {
+        public func read(uri: String, format: Search.DocumentFormat = .json) async throws -> String? {
             try await docsService.read(uri: uri, format: format)
         }
 

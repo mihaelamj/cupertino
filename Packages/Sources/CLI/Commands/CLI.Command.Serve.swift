@@ -12,6 +12,7 @@ import SearchToolProvider
 import SharedConfiguration
 import SharedConstants
 import SharedCore
+import SearchModels
 
 // MARK: - Serve Command
 
@@ -123,11 +124,23 @@ extension CLI.Command {
             // Initialize search index if available
             let searchIndex: SearchModule.Index? = await loadSearchIndex(searchDBURL: searchDBURL)
 
-            // Register resource provider with optional search index
+            // Register resource provider with optional search-index markdown
+            // lookup. The provider doesn't see the Search target — it just
+            // gets a closure that returns markdown for a URI, or nil if the
+            // URI isn't indexed. This keeps MCPSupport free of the Search
+            // import per the DI epic (#406).
+            let markdownLookup: MCP.Support.DocsResourceProvider.MarkdownLookup?
+            if let searchIndex {
+                markdownLookup = { uri in
+                    try await searchIndex.getDocumentContent(uri: uri, format: .markdown)
+                }
+            } else {
+                markdownLookup = nil
+            }
             let resourceProvider = MCP.Support.DocsResourceProvider(
                 configuration: config,
                 evolutionDirectory: evolutionURL,
-                searchIndex: searchIndex
+                markdownLookup: markdownLookup
             )
             await server.registerResourceProvider(resourceProvider)
 

@@ -2,6 +2,7 @@ import Foundation
 import SharedConstants
 import SharedCore
 import SQLite3
+import SearchModels
 
 extension Search {
     // MARK: - Public API
@@ -88,22 +89,6 @@ extension Search {
             guard sqlite3_step(statement) == SQLITE_ROW else { return nil }
             guard let ptr = sqlite3_column_text(statement, 0) else { return nil }
             return String(cString: ptr)
-        }
-
-        /// Optional platform-availability filter (#220).
-        /// `platform` is one of `iOS`, `macOS`, `tvOS`, `watchOS`, `visionOS`
-        /// (case-insensitive). `minVersion` is a dotted decimal like
-        /// `"16.0"` or `"10.15"`. Both must be set to filter; otherwise the
-        /// flag is ignored. NULL `min_<platform>` rows in `package_metadata`
-        /// are dropped when a filter is active (no annotation = unknown =
-        /// excluded from a platform-specific query).
-        public struct AvailabilityFilter: Sendable {
-            public let platform: String
-            public let minVersion: String
-            public init(platform: String, minVersion: String) {
-                self.platform = platform
-                self.minVersion = minVersion
-            }
         }
 
         public func answer(

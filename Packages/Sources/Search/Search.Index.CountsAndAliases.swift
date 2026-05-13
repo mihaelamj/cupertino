@@ -1,6 +1,9 @@
 import Foundation
+import SharedConstants
+import SharedUtils
 import SharedCore
 import SQLite3
+import SearchModels
 
 extension Search.Index {
     public func symbolCount() async throws -> Int {
@@ -8,7 +11,7 @@ extension Search.Index {
             throw Search.Error.databaseNotInitialized
         }
 
-        let sql = "SELECT COUNT(*) FROM doc_symbols;"
+        let sql = Shared.Utils.SQL.countRows(in: "doc_symbols")
 
         var statement: OpaquePointer?
         defer { sqlite3_finalize(statement) }
@@ -252,7 +255,7 @@ extension Search.Index {
             throw Search.Error.databaseNotInitialized
         }
 
-        let sql = "SELECT COUNT(*) FROM docs_metadata;"
+        let sql = Shared.Utils.SQL.countRows(in: "docs_metadata")
 
         var statement: OpaquePointer?
         defer { sqlite3_finalize(statement) }
@@ -274,7 +277,7 @@ extension Search.Index {
             throw Search.Error.databaseNotInitialized
         }
 
-        let sql = "SELECT COUNT(*) FROM sample_code_metadata;"
+        let sql = Shared.Utils.SQL.countRows(in: "sample_code_metadata")
 
         var statement: OpaquePointer?
         defer { sqlite3_finalize(statement) }
@@ -296,7 +299,7 @@ extension Search.Index {
             throw Search.Error.databaseNotInitialized
         }
 
-        let sql = "SELECT COUNT(*) FROM packages;"
+        let sql = Shared.Utils.SQL.countRows(in: "packages")
 
         var statement: OpaquePointer?
         defer { sqlite3_finalize(statement) }

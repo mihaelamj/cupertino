@@ -4,6 +4,7 @@ import Foundation
 import Logging
 import SharedConstants
 import SharedModels
+import SearchModels
 
 // MARK: - AppleDocsStrategy
 
@@ -315,7 +316,7 @@ extension Search {
                           "\(Shared.Models.URLUtilities.filename(from: parsedURL))"
 
                 do {
-                    try await index.indexDocument(
+                    try await index.indexDocument(Search.Index.IndexDocumentParams(
                         uri: uri,
                         source: source,
                         framework: pageMetadata.framework,
@@ -323,8 +324,8 @@ extension Search {
                         content: content,
                         filePath: pageMetadata.filePath,
                         contentHash: pageMetadata.contentHash,
-                        lastCrawled: pageMetadata.lastCrawled
-                    )
+                        lastCrawled: pageMetadata.lastCrawled,
+                    ))
                     indexed += 1
                 } catch {
                     Logging.Log.error(

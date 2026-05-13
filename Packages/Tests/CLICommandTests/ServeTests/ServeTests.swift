@@ -1,3 +1,4 @@
+import SearchModels
 import AppKit
 @testable import Core
 import CoreProtocols
@@ -146,7 +147,7 @@ struct MCPCommandTests {
         let searchIndex = try await Search.Index(dbPath: searchDbPath)
 
         // Index a test document
-        try await searchIndex.indexDocument(
+        try await searchIndex.indexDocument(Search.Index.IndexDocumentParams(
             uri: "https://developer.apple.com/documentation/swift",
             source: "apple-docs",
             framework: "swift",
@@ -154,8 +155,8 @@ struct MCPCommandTests {
             content: "Swift is a powerful programming language for iOS, macOS, and more.",
             filePath: "/test/swift.md",
             contentHash: "test-hash",
-            lastCrawled: Date()
-        )
+            lastCrawled: Date(),
+            ))
 
         let server = MCP.Core.Server(name: "test-server", version: "1.0.0")
         let provider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: nil)
@@ -191,7 +192,7 @@ struct MCPCommandTests {
         let searchDbPath = tempDir.appendingPathComponent("search.db")
         let searchIndex = try await Search.Index(dbPath: searchDbPath)
 
-        try await searchIndex.indexDocument(
+        try await searchIndex.indexDocument(Search.Index.IndexDocumentParams(
             uri: "https://developer.apple.com/documentation/swift/array",
             source: "apple-docs",
             framework: "swift",
@@ -199,8 +200,8 @@ struct MCPCommandTests {
             content: "An ordered, random-access collection of elements.",
             filePath: "/test/array.md",
             contentHash: "test-hash-array",
-            lastCrawled: Date()
-        )
+            lastCrawled: Date(),
+            ))
 
         let provider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: nil)
 

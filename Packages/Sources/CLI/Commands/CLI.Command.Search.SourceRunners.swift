@@ -6,6 +6,7 @@ import Services
 import SharedConstants
 import SharedCore
 import SharedUtils
+import SearchModels
 
 // MARK: - Per-source runners
 
@@ -15,7 +16,7 @@ import SharedUtils
 /// `CLI.Command.Search+SmartReport.swift` (#239).
 extension CLI.Command.Search {
     func runDocsSearch() async throws {
-        let results = try await Services.ServiceContainer.withDocsService(dbPath: searchDb) { service in
+        let results = try await Services.ServiceContainer.withDocsService(dbPath: searchDb, makeSearchDatabase: makeSearchDatabase) { service in
             try await service.search(Services.SearchQuery(
                 text: query,
                 source: source,
@@ -33,7 +34,8 @@ extension CLI.Command.Search {
 
         let teasers = try await Services.ServiceContainer.withTeaserService(
             searchDbPath: searchDb,
-            sampleDbPath: resolveSampleDbPath()
+            sampleDbPath: resolveSampleDbPath(),
+            makeSearchDatabase: makeSearchDatabase,
         ) { service in
             await service.fetchAllTeasers(
                 query: query,
@@ -94,7 +96,8 @@ extension CLI.Command.Search {
         do {
             teasers = try await Services.ServiceContainer.withTeaserService(
                 searchDbPath: searchDb,
-                sampleDbPath: resolveSampleDbPath()
+                sampleDbPath: resolveSampleDbPath(),
+                makeSearchDatabase: makeSearchDatabase,
             ) { service in
                 await service.fetchAllTeasers(
                     query: query,
@@ -173,7 +176,7 @@ extension CLI.Command.Search {
     }
 
     func runHIGSearch() async throws {
-        let results = try await Services.ServiceContainer.withDocsService(dbPath: searchDb) { service in
+        let results = try await Services.ServiceContainer.withDocsService(dbPath: searchDb, makeSearchDatabase: makeSearchDatabase) { service in
             try await service.search(Services.SearchQuery(
                 text: query,
                 source: Shared.Constants.SourcePrefix.hig,
@@ -186,7 +189,8 @@ extension CLI.Command.Search {
 
         let teasers = try await Services.ServiceContainer.withTeaserService(
             searchDbPath: searchDb,
-            sampleDbPath: resolveSampleDbPath()
+            sampleDbPath: resolveSampleDbPath(),
+            makeSearchDatabase: makeSearchDatabase,
         ) { service in
             await service.fetchAllTeasers(
                 query: query,

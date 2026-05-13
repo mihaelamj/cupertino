@@ -1,24 +1,27 @@
 import Foundation
-import Search
+import SearchModels
 import SharedConstants
 import SharedCore
 
 // MARK: - Documentation Search Service
 
-/// Service for searching Apple documentation, Swift Evolution, and other indexed sources.
-/// Wraps Search.Index with a clean interface for both CLI and MCP consumers.
+/// Service for searching Apple documentation, Swift Evolution, and other
+/// indexed sources. Internally holds an `any Search.Database` so the
+/// service can be driven by the production `Search.Index` actor or by a
+/// test stub conforming to `Search.Database`. The composition root
+/// (CLI / MCP / TUI) constructs the database and passes it in via
+/// `init(database:)`; this file no longer takes a behavioural dependency
+/// on the Search target.
 extension Services {
     public actor DocsSearchService: Services.SearchService {
-        private let index: Search.Index
+        private let index: any Search.Database
 
-        /// Initialize with an existing search index
-        public init(index: Search.Index) {
-            self.index = index
-        }
-
-        /// Initialize with a database path, creating a new index connection
-        public init(dbPath: URL) async throws {
-            index = try await Search.Index(dbPath: dbPath)
+        /// Initialize with any `Search.Database` conformer. Production:
+        /// pass a `Search.Index` from the Search target — it conforms to
+        /// `Search.Database`, so the actor flows through this protocol-
+        /// typed init unchanged. Tests pass a mock.
+        public init(database: any Search.Database) {
+            self.index = database
         }
 
         // MARK: - Services.SearchService Protocol
@@ -40,7 +43,7 @@ extension Services {
             )
         }
 
-        public func read(uri: String, format: Search.Index.DocumentFormat) async throws -> String? {
+        public func read(uri: String, format: Search.DocumentFormat) async throws -> String? {
             try await index.getDocumentContent(uri: uri, format: format)
         }
 

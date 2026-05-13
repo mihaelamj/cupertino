@@ -1,7 +1,6 @@
 import Foundation
 import MCPCore
 @testable import MCPSupport
-import Search
 import SharedConfiguration
 import SharedConstants
 import SharedCore
@@ -31,7 +30,7 @@ struct DocsResourceProviderMalformedURLSkipTests {
             configuration: Shared.Configuration(),
             evolutionDirectory: evolutionDir,
             archiveDirectory: archiveDir,
-            searchIndex: nil
+            markdownLookup: nil
         )
     }
 

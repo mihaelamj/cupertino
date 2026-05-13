@@ -2,6 +2,7 @@ import Foundation
 import SharedConstants
 import SharedCore
 import SQLite3
+import SearchModels
 
 // swiftlint:disable function_body_length file_length
 // Justification: extracted from SearchIndex.swift; the original 4598-line
@@ -1073,19 +1074,10 @@ extension Search.Index {
 
     // MARK: - Semantic Symbol Search (#81)
 
-    /// Symbol search result with document context
-    public struct SymbolSearchResult: Sendable {
-        public let docUri: String
-        public let docTitle: String
-        public let framework: String
-        public let symbolName: String
-        public let symbolKind: String
-        public let signature: String?
-        public let attributes: String?
-        public let conformances: String?
-        public let isAsync: Bool
-        public let isPublic: Bool
-    }
+    // `SymbolSearchResult` lives in SearchModels as `Search.SymbolSearchResult`
+    // so consumers (SearchToolProvider, MCP responders) can render symbol
+    // hits without importing the Search target. The semantic-search
+    // methods below produce values of that lifted type.
 
     // Search symbols by name pattern and optional filters
     // - Parameters:
