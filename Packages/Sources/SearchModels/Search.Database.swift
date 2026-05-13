@@ -57,6 +57,40 @@ extension Search {
         /// Close the database connection. Idempotent; safe to call from a
         /// `defer` even when the actor has already shut down.
         func disconnect() async
+
+        // MARK: - Semantic Symbol Search (#81)
+
+        /// Semantic search across AST-extracted symbols by name pattern + kind.
+        func searchSymbols(
+            query: String?,
+            kind: String?,
+            isAsync: Bool?,
+            framework: String?,
+            limit: Int,
+        ) async throws -> [Search.SymbolSearchResult]
+
+        /// Semantic search for property-wrapper attributes (e.g. `@Observable`,
+        /// `@State`, `@MainActor`).
+        func searchPropertyWrappers(
+            wrapper: String,
+            framework: String?,
+            limit: Int,
+        ) async throws -> [Search.SymbolSearchResult]
+
+        /// Semantic search for Swift concurrency patterns
+        /// (`async`, `actor`, `sendable`, `mainactor`, `task`, `asyncsequence`).
+        func searchConcurrencyPatterns(
+            pattern: String,
+            framework: String?,
+            limit: Int,
+        ) async throws -> [Search.SymbolSearchResult]
+
+        /// Semantic search for types by protocol conformance.
+        func searchConformances(
+            protocolName: String,
+            framework: String?,
+            limit: Int,
+        ) async throws -> [Search.SymbolSearchResult]
     }
 }
 

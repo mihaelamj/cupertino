@@ -16,7 +16,7 @@ extension Search.Index {
         isAsync: Bool? = nil,
         framework: String? = nil,
         limit: Int = Shared.Constants.Limit.defaultSearchLimit
-    ) async throws -> [SymbolSearchResult] {
+    ) async throws -> [Search.SymbolSearchResult] {
         guard let database else {
             throw Search.Error.databaseNotInitialized
         }
@@ -82,7 +82,7 @@ extension Search.Index {
         }
         sqlite3_bind_int(statement, paramIndex, Int32(limit))
 
-        var results: [SymbolSearchResult] = []
+        var results: [Search.SymbolSearchResult] = []
         while sqlite3_step(statement) == SQLITE_ROW {
             let docUri = sqlite3_column_text(statement, 0).map { String(cString: $0) } ?? ""
             let docTitle = sqlite3_column_text(statement, 1).map { String(cString: $0) } ?? ""
@@ -95,7 +95,7 @@ extension Search.Index {
             let isAsync = sqlite3_column_int(statement, 8) != 0
             let isPublic = sqlite3_column_int(statement, 9) != 0
 
-            results.append(SymbolSearchResult(
+            results.append(Search.SymbolSearchResult(
                 docUri: docUri,
                 docTitle: docTitle,
                 framework: framework,
@@ -122,7 +122,7 @@ extension Search.Index {
         wrapper: String,
         framework: String? = nil,
         limit: Int = Shared.Constants.Limit.defaultSearchLimit
-    ) async throws -> [SymbolSearchResult] {
+    ) async throws -> [Search.SymbolSearchResult] {
         guard let database else {
             throw Search.Error.databaseNotInitialized
         }
@@ -176,7 +176,7 @@ extension Search.Index {
         }
         sqlite3_bind_int(statement, paramIndex, Int32(limit))
 
-        var results: [SymbolSearchResult] = []
+        var results: [Search.SymbolSearchResult] = []
         while sqlite3_step(statement) == SQLITE_ROW {
             let docUri = sqlite3_column_text(statement, 0).map { String(cString: $0) } ?? ""
             let docTitle = sqlite3_column_text(statement, 1).map { String(cString: $0) } ?? ""
@@ -189,7 +189,7 @@ extension Search.Index {
             let isAsync = sqlite3_column_int(statement, 8) != 0
             let isPublic = sqlite3_column_int(statement, 9) != 0
 
-            results.append(SymbolSearchResult(
+            results.append(Search.SymbolSearchResult(
                 docUri: docUri,
                 docTitle: docTitle,
                 framework: framework,
@@ -216,7 +216,7 @@ extension Search.Index {
         pattern: String,
         framework: String? = nil,
         limit: Int = Shared.Constants.Limit.defaultSearchLimit
-    ) async throws -> [SymbolSearchResult] {
+    ) async throws -> [Search.SymbolSearchResult] {
         guard let database else {
             throw Search.Error.databaseNotInitialized
         }
@@ -289,7 +289,7 @@ extension Search.Index {
         }
         sqlite3_bind_int(statement, paramIndex, Int32(limit))
 
-        var results: [SymbolSearchResult] = []
+        var results: [Search.SymbolSearchResult] = []
         while sqlite3_step(statement) == SQLITE_ROW {
             let docUri = sqlite3_column_text(statement, 0).map { String(cString: $0) } ?? ""
             let docTitle = sqlite3_column_text(statement, 1).map { String(cString: $0) } ?? ""
@@ -302,7 +302,7 @@ extension Search.Index {
             let isAsync = sqlite3_column_int(statement, 8) != 0
             let isPublic = sqlite3_column_int(statement, 9) != 0
 
-            results.append(SymbolSearchResult(
+            results.append(Search.SymbolSearchResult(
                 docUri: docUri,
                 docTitle: docTitle,
                 framework: framework,
@@ -329,7 +329,7 @@ extension Search.Index {
         protocolName: String,
         framework: String? = nil,
         limit: Int = Shared.Constants.Limit.defaultSearchLimit
-    ) async throws -> [SymbolSearchResult] {
+    ) async throws -> [Search.SymbolSearchResult] {
         guard let database else {
             throw Search.Error.databaseNotInitialized
         }
@@ -381,7 +381,7 @@ extension Search.Index {
         }
         sqlite3_bind_int(statement, paramIndex, Int32(limit))
 
-        var results: [SymbolSearchResult] = []
+        var results: [Search.SymbolSearchResult] = []
         while sqlite3_step(statement) == SQLITE_ROW {
             let docUri = sqlite3_column_text(statement, 0).map { String(cString: $0) } ?? ""
             let docTitle = sqlite3_column_text(statement, 1).map { String(cString: $0) } ?? ""
@@ -394,7 +394,7 @@ extension Search.Index {
             let isAsync = sqlite3_column_int(statement, 8) != 0
             let isPublic = sqlite3_column_int(statement, 9) != 0
 
-            results.append(SymbolSearchResult(
+            results.append(Search.SymbolSearchResult(
                 docUri: docUri,
                 docTitle: docTitle,
                 framework: framework,
