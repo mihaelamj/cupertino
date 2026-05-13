@@ -132,6 +132,53 @@ extension Crawler.AppleDocs {
             }
         }
 
+        // MARK: - Rejected URL Log (#284 follow-up)
+
+        /// Append a single rejection record to the session's rejected-URLs log
+        /// at `<outputDirectory>/.cupertino-rejected-urls.jsonl`. Each call writes
+        /// one JSON line + a `\n` terminator so a crash mid-write loses at most
+        /// the in-flight record. The file is plain text + line-delimited so
+        /// operators can `grep` / `jq` / `wc -l` it without parsing the metadata.
+        ///
+        /// Failure to append is logged but does not propagate — a missing log
+        /// row must never block a crawl that is otherwise making progress.
+        public func recordRejection(
+            url: URL,
+            framework: String,
+            reason: RejectionReason,
+            outputDirectory: URL
+        ) {
+            let record = RejectedURLRecord(
+                url: url.absoluteString,
+                framework: framework,
+                reason: reason,
+                timestamp: Date()
+            )
+            let logFile = outputDirectory.appendingPathComponent(".cupertino-rejected-urls.jsonl")
+            do {
+                let encoder = JSONEncoder()
+                encoder.dateEncodingStrategy = .iso8601
+                let line = try encoder.encode(record) + Data("\n".utf8)
+                if FileManager.default.fileExists(atPath: logFile.path) {
+                    let handle = try FileHandle(forWritingTo: logFile)
+                    defer { try? handle.close() }
+                    try handle.seekToEnd()
+                    try handle.write(contentsOf: line)
+                } else {
+                    try FileManager.default.createDirectory(
+                        at: outputDirectory,
+                        withIntermediateDirectories: true
+                    )
+                    try line.write(to: logFile)
+                }
+            } catch {
+                Logging.Log.warning(
+                    "⚠️ Failed to record rejected URL \(url.absoluteString): \(error.localizedDescription)",
+                    category: .crawler
+                )
+            }
+        }
+
         // MARK: - Change Detection
 
         /// Check if a page should be recrawled
