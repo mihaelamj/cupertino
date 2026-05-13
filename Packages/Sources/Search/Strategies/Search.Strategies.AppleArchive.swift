@@ -1,0 +1,144 @@
+import Foundation
+import Logging
+import SharedConstants
+import SharedModels
+
+// MARK: - AppleArchiveStrategy
+
+extension Search {
+    /// Indexes Apple Archive legacy documentation into the search index.
+    ///
+    /// The Apple Archive source contains older developer documentation in Markdown format,
+    /// organised by guide UID (book identifier).  Each file's YAML front matter supplies
+    /// the title, book title, and optional framework name used for availability look-up.
+    ///
+    /// URI scheme: `apple-archive://{guideUID}/{filename}`
+    ///
+    /// ## Example
+    /// ```swift
+    /// let strategy = Search.AppleArchiveStrategy(archiveDirectory: archiveDir)
+    /// let stats = try await strategy.indexItems(into: index, progress: nil)
+    /// ```
+    public struct AppleArchiveStrategy: SourceIndexingStrategy {
+        /// The source identifier written into the FTS index.
+        public let source = "apple-archive"
+
+        /// Root directory containing the Apple Archive Markdown files.
+        public let archiveDirectory: URL
+
+        /// Create a strategy for indexing Apple Archive documentation.
+        ///
+        /// - Parameter archiveDirectory: The root directory of the archive corpus.
+        public init(archiveDirectory: URL) {
+            self.archiveDirectory = archiveDirectory
+        }
+
+        /// Index all Apple Archive Markdown files found under ``archiveDirectory``.
+        ///
+        /// Each file's framework availability is looked up from the search index and
+        /// cached per framework to avoid redundant database round-trips.
+        ///
+        /// - Parameters:
+        ///   - index: The ``Search/Index`` to write into.
+        ///   - progress: Optional progress callback, called every 100 items.
+        /// - Returns: ``Search/IndexStats`` with indexed and skipped counts.
+        public func indexItems(
+            into index: Search.Index,
+            progress: Search.IndexingProgressCallback?
+        ) async throws -> Search.IndexStats {
+            guard FileManager.default.fileExists(atPath: archiveDirectory.path) else {
+                Logging.Log.info(
+                    "⚠️  Archive directory not found: \(archiveDirectory.path)",
+                    category: .search
+                )
+                return IndexStats(source: source, indexed: 0, skipped: 0)
+            }
+
+            let markdownFiles = try Search.StrategyHelpers.findMarkdownFiles(in: archiveDirectory)
+            guard !markdownFiles.isEmpty else {
+                Logging.Log.info("⚠️  No Apple Archive documentation found", category: .search)
+                return IndexStats(source: source, indexed: 0, skipped: 0)
+            }
+
+            Logging.Log.info(
+                "📜 Indexing \(markdownFiles.count) Apple Archive documentation pages...",
+                category: .search
+            )
+
+            var indexed = 0
+            var skipped = 0
+            var frameworkAvailabilityCache: [String: Search.FrameworkAvailability] = [:]
+
+            for (idx, file) in markdownFiles.enumerated() {
+                guard let content = try? String(contentsOf: file, encoding: .utf8) else {
+                    skipped += 1
+                    continue
+                }
+
+                let guideID = Search.StrategyHelpers.extractFrameworkFromPath(
+                    file, relativeTo: archiveDirectory
+                ) ?? "unknown"
+
+                let metadata = Search.StrategyHelpers.extractArchiveMetadata(from: content)
+                let title = metadata["title"]
+                    ?? Search.StrategyHelpers.extractTitle(from: content)
+                    ?? file.deletingPathExtension().lastPathComponent
+                let bookTitle = metadata["book"] ?? guideID
+                let baseFramework = metadata["framework"] ?? bookTitle
+                let framework = Search.StrategyHelpers.expandFrameworkSynonyms(baseFramework)
+
+                let filename = file.deletingPathExtension().lastPathComponent
+                let uri = "apple-archive://\(guideID)/\(filename)"
+
+                let contentHash = Shared.Models.HashUtilities.sha256(of: content)
+                let attrs = try? FileManager.default.attributesOfItem(atPath: file.path)
+                let modDate = attrs?[.modificationDate] as? Date ?? Date()
+
+                let availability: Search.FrameworkAvailability
+                if let cached = frameworkAvailabilityCache[framework] {
+                    availability = cached
+                } else {
+                    availability = await index.getFrameworkAvailability(framework: framework)
+                    frameworkAvailabilityCache[framework] = availability
+                }
+
+                do {
+                    try await index.indexDocument(
+                        uri: uri,
+                        source: source,
+                        framework: framework,
+                        title: title,
+                        content: content,
+                        filePath: file.path,
+                        contentHash: contentHash,
+                        lastCrawled: modDate,
+                        minIOS: availability.minIOS,
+                        minMacOS: availability.minMacOS,
+                        minTvOS: availability.minTvOS,
+                        minWatchOS: availability.minWatchOS,
+                        minVisionOS: availability.minVisionOS,
+                        availabilitySource: availability.minIOS != nil ? "framework" : nil
+                    )
+                    indexed += 1
+                } catch {
+                    Logging.Log.error(
+                        "❌ Failed to index \(uri): \(error)", category: .search
+                    )
+                    skipped += 1
+                }
+
+                if (idx + 1) % Shared.Constants.Interval.progressLogEvery == 0 {
+                    progress?(idx + 1, markdownFiles.count)
+                    Logging.Log.info(
+                        "   Progress: \(idx + 1)/\(markdownFiles.count)", category: .search
+                    )
+                }
+            }
+
+            Logging.Log.info(
+                "   Apple Archive: \(indexed) indexed, \(skipped) skipped", category: .search
+            )
+            return IndexStats(source: source, indexed: indexed, skipped: skipped)
+        }
+    }
+}
