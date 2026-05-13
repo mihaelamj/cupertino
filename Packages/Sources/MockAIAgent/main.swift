@@ -665,11 +665,11 @@ actor MCPClient {
 
 // MARK: - Helper Types
 
-struct EmptyParams: Codable {}
+private struct EmptyParams: Codable {}
 
 // MARK: - Errors
 
-enum MCPClientError: Error, CustomStringConvertible {
+private enum MCPClientError: Error, CustomStringConvertible {
     case notConnected
     case encodingFailed
     case decodingFailed

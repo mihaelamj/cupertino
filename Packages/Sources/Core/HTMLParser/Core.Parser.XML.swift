@@ -48,7 +48,7 @@ extension Core.Parser {
 // MARK: - XML to Markdown Parser
 
 /// Parses XML and converts to Markdown format
-final class XMLToMarkdownParser: NSObject, XMLParserDelegate {
+private final class XMLToMarkdownParser: NSObject, XMLParserDelegate {
     private let parser: XMLParser
     private let sourceURL: URL
 
@@ -180,7 +180,7 @@ final class XMLToMarkdownParser: NSObject, XMLParserDelegate {
 // MARK: - XML Link Extractor
 
 /// Extracts links from XML content (sitemaps, RSS feeds, etc.)
-final class XMLLinkExtractor: NSObject, XMLParserDelegate {
+private final class XMLLinkExtractor: NSObject, XMLParserDelegate {
     private let parser: XMLParser
     private var links: [URL] = []
     private var currentElement: String = ""
