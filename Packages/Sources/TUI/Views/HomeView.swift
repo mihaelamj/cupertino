@@ -3,12 +3,8 @@ import SharedConstants
 import SharedCore
 import SharedUtils
 
-struct MenuItem {
-    let key: String
-    let icon: String
-    let title: String
-    let subtitle: String
-}
+// MenuItem moved to MenuItem.swift
+// HomeStats moved to HomeStats.swift
 
 struct HomeView {
     func render(cursor: Int, width: Int, height: Int, stats: HomeStats) -> String {
@@ -115,13 +111,4 @@ struct HomeView {
 
         return result
     }
-}
-
-struct HomeStats {
-    let totalPackages: Int
-    let selectedPackages: Int
-    let downloadedPackages: Int
-    let artifactCount: Int
-    let archiveGuideCount: Int
-    let totalSize: Int64
 }

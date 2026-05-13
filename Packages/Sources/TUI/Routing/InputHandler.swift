@@ -5,12 +5,7 @@ import Foundation
 // It handles: navigation, selection, filtering, pagination, and view-specific actions.
 // The switch statement covers all input cases for consistent keyboard handling.
 
-/// Result of input handling - either continue running, quit, or request render
-enum InputResult {
-    case continueRunning
-    case quit
-    case render
-}
+// InputResult moved to InputResult.swift
 
 /// Handles all keyboard input and state mutations
 @MainActor

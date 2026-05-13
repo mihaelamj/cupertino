@@ -3,12 +3,7 @@ import SharedConstants
 import SharedCore
 import SharedUtils
 
-struct ArtifactInfo {
-    let name: String
-    let path: URL
-    let itemCount: Int
-    let sizeBytes: Int64
-}
+// ArtifactInfo moved to ArtifactInfo.swift
 
 struct LibraryView {
     func render(artifacts: [ArtifactInfo], cursor: Int, width: Int, height: Int) -> String {

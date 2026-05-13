@@ -2,11 +2,7 @@ import Foundation
 import SharedConstants
 import SharedCore
 
-struct SettingItem {
-    let label: String
-    let value: String
-    let editable: Bool
-}
+// SettingItem moved to SettingItem.swift
 
 struct SettingsView {
     // swiftlint:disable:next function_parameter_count
