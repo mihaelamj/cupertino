@@ -301,7 +301,7 @@ let targets: [Target] = {
 
     let availabilityTarget = Target.target(
         name: "Availability",
-        dependencies: []
+        dependencies: ["SharedConstants"]
     )
     let availabilityTestsTarget = Target.testTarget(
         name: "AvailabilityTests",

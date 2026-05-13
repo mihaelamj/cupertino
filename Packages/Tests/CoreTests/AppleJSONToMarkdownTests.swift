@@ -4,13 +4,13 @@ import CoreProtocols
 import Foundation
 import Testing
 
-@Suite("AppleJSONToMarkdown.extractLinks coverage")
+@Suite("Core.JSONParser.AppleJSONToMarkdown.extractLinks coverage")
 struct AppleJSONToMarkdownExtractLinksTests {
     // MARK: - Helpers
 
     private func extract(_ json: String) -> [String] {
         let data = Data(json.utf8)
-        return AppleJSONToMarkdown.extractLinks(from: data).map(\.absoluteString)
+        return Core.JSONParser.AppleJSONToMarkdown.extractLinks(from: data).map(\.absoluteString)
     }
 
     private func loadFixture(_ name: String) throws -> Data {
@@ -258,7 +258,7 @@ struct AppleJSONToMarkdownExtractLinksTests {
 
     @Test("Fixture: AnyBidirectionalCollection — all 5 hash-disambiguated init overloads extracted")
     func fixtureAnyBidirectionalCollection_initOverloads() throws {
-        let urls = try AppleJSONToMarkdown.extractLinks(from: loadFixture("AnyBidirectionalCollection")).map(\.absoluteString)
+        let urls = try Core.JSONParser.AppleJSONToMarkdown.extractLinks(from: loadFixture("AnyBidirectionalCollection")).map(\.absoluteString)
         let expected = [
             "https://developer.apple.com/documentation/swift/anybidirectionalcollection/init(_:)-1hwm5",
             "https://developer.apple.com/documentation/swift/anybidirectionalcollection/init(_:)-2kvez",
@@ -273,7 +273,7 @@ struct AppleJSONToMarkdownExtractLinksTests {
 
     @Test("Fixture: AnyBidirectionalCollection — all 3 -implementations URLs extracted")
     func fixtureAnyBidirectionalCollection_implementationsIndexes() throws {
-        let urls = try AppleJSONToMarkdown.extractLinks(from: loadFixture("AnyBidirectionalCollection")).map(\.absoluteString)
+        let urls = try Core.JSONParser.AppleJSONToMarkdown.extractLinks(from: loadFixture("AnyBidirectionalCollection")).map(\.absoluteString)
         let expected = [
             "https://developer.apple.com/documentation/swift/anybidirectionalcollection/sequence-implementations",
             "https://developer.apple.com/documentation/swift/anybidirectionalcollection/collection-implementations",
@@ -286,7 +286,7 @@ struct AppleJSONToMarkdownExtractLinksTests {
 
     @Test("Fixture: Kernel/AppleLabel — all 8 al_* numeric-ID struct fields extracted")
     func fixtureKernelAppleLabel_structFields() throws {
-        let urls = try AppleJSONToMarkdown.extractLinks(from: loadFixture("Kernel_AppleLabel")).map(\.absoluteString)
+        let urls = try Core.JSONParser.AppleJSONToMarkdown.extractLinks(from: loadFixture("Kernel_AppleLabel")).map(\.absoluteString)
         let expected = [
             "https://developer.apple.com/documentation/kernel/applelabel/1476100-al_boot0",
             "https://developer.apple.com/documentation/kernel/applelabel/1476102-al_boot1",
@@ -304,7 +304,7 @@ struct AppleJSONToMarkdownExtractLinksTests {
 
     @Test("Fixture: Swift/Actor — both withSerialExecutor disambiguated overloads extracted")
     func fixtureSwiftActor_withSerialExecutorVariants() throws {
-        let urls = try AppleJSONToMarkdown.extractLinks(from: loadFixture("Swift_Actor")).map(\.absoluteString)
+        let urls = try Core.JSONParser.AppleJSONToMarkdown.extractLinks(from: loadFixture("Swift_Actor")).map(\.absoluteString)
         let expected = [
             "https://developer.apple.com/documentation/swift/actor/withserialexecutor(_:)-4ucv5",
             "https://developer.apple.com/documentation/swift/actor/withserialexecutor(_:)-4ff11",
@@ -316,7 +316,7 @@ struct AppleJSONToMarkdownExtractLinksTests {
 
     @Test("Fixture: Foundation/NSCalendar — discovers ≥ 100 documentation URLs")
     func fixtureNSCalendar_yieldsLargeURLSet() throws {
-        let urls = try AppleJSONToMarkdown.extractLinks(from: loadFixture("Foundation_NSCalendar")).map(\.absoluteString)
+        let urls = try Core.JSONParser.AppleJSONToMarkdown.extractLinks(from: loadFixture("Foundation_NSCalendar")).map(\.absoluteString)
         // NSCalendar references dict has 103 /documentation/ URLs;
         // dedup should keep us above 100 even after collapsing duplicates.
         #expect(urls.count >= 100, "got only \(urls.count) URLs")
@@ -325,14 +325,14 @@ struct AppleJSONToMarkdownExtractLinksTests {
 
     @Test("Fixture: CoreFoundation root — all topicSections framework children discovered")
     func fixtureCoreFoundationRoot_subFrameworkLinks() throws {
-        let urls = try AppleJSONToMarkdown.extractLinks(from: loadFixture("CoreFoundation_Root")).map(\.absoluteString)
+        let urls = try Core.JSONParser.AppleJSONToMarkdown.extractLinks(from: loadFixture("CoreFoundation_Root")).map(\.absoluteString)
         // Should find at least 90 doc URLs; refs has 95.
         #expect(urls.count >= 90, "got only \(urls.count) URLs")
     }
 
     @Test("Fixture: Swift/Sequence — protocol page yields ≥ 150 URLs")
     func fixtureSwiftSequence_protocolPageYieldsManyURLs() throws {
-        let urls = try AppleJSONToMarkdown.extractLinks(from: loadFixture("Swift_Sequence")).map(\.absoluteString)
+        let urls = try Core.JSONParser.AppleJSONToMarkdown.extractLinks(from: loadFixture("Swift_Sequence")).map(\.absoluteString)
         #expect(urls.count >= 150, "got only \(urls.count) URLs")
     }
 
@@ -346,7 +346,7 @@ struct AppleJSONToMarkdownExtractLinksTests {
             "CoreFoundation_Root",
             "Swift_Sequence",
         ] {
-            let urls = try AppleJSONToMarkdown.extractLinks(from: loadFixture(name)).map(\.absoluteString)
+            let urls = try Core.JSONParser.AppleJSONToMarkdown.extractLinks(from: loadFixture(name)).map(\.absoluteString)
             for url in urls {
                 #expect(
                     url.hasPrefix("https://developer.apple.com/documentation/"),
@@ -366,7 +366,7 @@ struct AppleJSONToMarkdownExtractLinksTests {
             "CoreFoundation_Root",
             "Swift_Sequence",
         ] {
-            let urls = try AppleJSONToMarkdown.extractLinks(from: loadFixture(name)).map(\.absoluteString)
+            let urls = try Core.JSONParser.AppleJSONToMarkdown.extractLinks(from: loadFixture(name)).map(\.absoluteString)
             #expect(
                 urls.count == Set(urls).count,
                 "\(name) returned duplicates: \(urls.count) total, \(Set(urls).count) unique"
@@ -387,7 +387,7 @@ struct AppleJSONToMarkdownExtractLinksTests {
             "Swift_Sequence",
         ] {
             let data = try loadFixture(name)
-            let extracted = Set(AppleJSONToMarkdown.extractLinks(from: data).map(\.absoluteString))
+            let extracted = Set(Core.JSONParser.AppleJSONToMarkdown.extractLinks(from: data).map(\.absoluteString))
 
             // Re-decode raw JSON to enumerate references manually and form the
             // expected set: every reference URL that starts with /documentation/.
@@ -413,12 +413,12 @@ struct AppleJSONToMarkdownExtractLinksTests {
 
 // MARK: - jsonAPIURL host-guard
 
-@Suite("AppleJSONToMarkdown.jsonAPIURL host guard")
+@Suite("Core.JSONParser.AppleJSONToMarkdown.jsonAPIURL host guard")
 struct JSONAPIURLHostGuardTests {
     @Test("Returns the data URL for a developer.apple.com /documentation path")
     func appleHostResolves() throws {
         let url = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/view"))
-        let result = try #require(AppleJSONToMarkdown.jsonAPIURL(from: url))
+        let result = try #require(Core.JSONParser.AppleJSONToMarkdown.jsonAPIURL(from: url))
         #expect(result.absoluteString == "https://developer.apple.com/tutorials/data/documentation/swiftui/view.json")
     }
 
@@ -436,7 +436,7 @@ struct JSONAPIURLHostGuardTests {
         ]
         for raw in cases {
             let url = try #require(URL(string: raw))
-            #expect(AppleJSONToMarkdown.jsonAPIURL(from: url) == nil, "\(raw) should not resolve to a JSON API URL")
+            #expect(Core.JSONParser.AppleJSONToMarkdown.jsonAPIURL(from: url) == nil, "\(raw) should not resolve to a JSON API URL")
         }
     }
 
@@ -449,7 +449,7 @@ struct JSONAPIURLHostGuardTests {
         ]
         for raw in cases {
             let url = try #require(URL(string: raw))
-            #expect(AppleJSONToMarkdown.jsonAPIURL(from: url) == nil)
+            #expect(Core.JSONParser.AppleJSONToMarkdown.jsonAPIURL(from: url) == nil)
         }
     }
 }

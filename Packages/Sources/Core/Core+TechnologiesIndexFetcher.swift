@@ -1,5 +1,6 @@
 import CoreProtocols
 import Foundation
+import SharedConstants
 import SharedCore
 import SharedUtils
 
@@ -11,7 +12,7 @@ extension Core {
     /// See: https://github.com/mihaelamj/cupertino/issues/160
     public enum TechnologiesIndexFetcher {
         private static let indexURL = URL.knownGood(
-            "https://developer.apple.com/tutorials/data/documentation/technologies.json"
+            "\(Shared.Constants.BaseURL.appleTutorialsDocs)/technologies.json"
         )
 
         /// Fetch all active framework root URLs from Apple's technology index
@@ -75,7 +76,7 @@ extension Core {
             }
 
             let path = String(identifier[range.lowerBound...]).lowercased()
-            return URL(string: "https://developer.apple.com\(path)")
+            return URL(string: "\(Shared.Constants.BaseURL.appleDeveloper)\(path)")
         }
     }
 }

@@ -5,19 +5,20 @@ import SharedCore
 // MARK: - Apple JSON Crawler Engine
 
 /// Complete crawler engine for Apple documentation using JSON API
-/// Uses JSONContentFetcher for fetching and AppleJSONToMarkdown for transformation
-extension JSONCrawler {
-    public final class AppleJSONCrawlerEngine: Core.Protocols.CrawlerEngine, @unchecked Sendable {
-        private let fetcher: JSONContentFetcher
+/// Uses Core.JSONParser.ContentFetcher for fetching and
+/// Core.JSONParser.AppleJSONToMarkdown for transformation.
+extension Core.JSONParser {
+    public final class Engine: Core.Protocols.CrawlerEngine, @unchecked Sendable {
+        private let fetcher: ContentFetcher
 
         public init(timeout: TimeInterval = 30) {
-            fetcher = JSONContentFetcher(timeout: timeout)
+            fetcher = ContentFetcher(timeout: timeout)
         }
 
         public func crawl(url: URL) async throws -> Core.Protocols.TransformResult {
             // Convert documentation URL to JSON API URL
             guard let jsonURL = apiURL(from: url) else {
-                throw JSONCrawlerError.invalidURL
+                throw Error.invalidURL
             }
 
             // Fetch JSON content; result.url is the post-redirect JSON API URL
@@ -32,7 +33,7 @@ extension JSONCrawler {
 
             // Also generate markdown (optional output format)
             guard let markdown = AppleJSONToMarkdown.convert(data, url: canonicalURL) else {
-                throw JSONCrawlerError.transformFailed
+                throw Error.transformFailed
             }
 
             // Extract links using AppleJSONToMarkdown
@@ -92,18 +93,20 @@ extension JSONCrawler {
     }
 }
 
-// MARK: - JSON Crawler Errors
+// MARK: - JSON Crawler Engine Errors
 
-public enum JSONCrawlerError: Error, LocalizedError {
-    case invalidURL
-    case transformFailed
+extension Core.JSONParser.Engine {
+    public enum Error: Swift.Error, LocalizedError, Sendable {
+        case invalidURL
+        case transformFailed
 
-    public var errorDescription: String? {
-        switch self {
-        case .invalidURL:
-            return "Invalid documentation URL - cannot convert to JSON API URL"
-        case .transformFailed:
-            return "Failed to transform JSON content to Markdown"
+        public var errorDescription: String? {
+            switch self {
+            case .invalidURL:
+                return "Invalid documentation URL - cannot convert to JSON API URL"
+            case .transformFailed:
+                return "Failed to transform JSON content to Markdown"
+            }
         }
     }
 }

@@ -11,8 +11,10 @@ extension Core {
     /// Curated catalog of essential Apple Archive documentation guides
     /// These are classic guides that contain foundational knowledge not available elsewhere
     public enum ArchiveGuideCatalog {
-        /// Base URL for Apple's documentation archive
-        private static let baseURL = "https://developer.apple.com/library/archive/documentation"
+        /// Base URL for Apple's documentation archive (no trailing slash;
+        /// derived from `Shared.Constants.BaseURL.appleArchiveDocs` so the
+        /// canonical form lives in one place).
+        private static let baseURL = String(Shared.Constants.BaseURL.appleArchiveDocs.dropLast())
 
         /// User-writable location for selected guides: ~/.cupertino/selected-archive-guides.json
         private static var userSelectionsURL: URL {

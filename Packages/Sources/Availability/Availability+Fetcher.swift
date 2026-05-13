@@ -1,4 +1,5 @@
 import Foundation
+import SharedConstants
 
 #if canImport(FoundationNetworking)
 import FoundationNetworking
@@ -34,7 +35,7 @@ extension Availability {
                 concurrency: Int = 50,
                 timeout: TimeInterval = 1.0,
                 skipExisting: Bool = false,
-                apiBaseURL: String = "https://developer.apple.com/tutorials/data/documentation"
+                apiBaseURL: String = Shared.Constants.BaseURL.appleTutorialsDocs
             ) {
                 self.concurrency = concurrency
                 self.timeout = timeout

@@ -276,8 +276,8 @@ extension Search {
                         continue
                     }
 
-                    let pageURL = URL(string: "https://developer.apple.com/documentation/\(framework)/\(file.deletingPathExtension().lastPathComponent)")
-                    guard let converted = MarkdownToStructuredPage.convert(mdContent, url: pageURL) else {
+                    let pageURL = URL(string: "\(Shared.Constants.BaseURL.appleDeveloperDocs)\(framework)/\(file.deletingPathExtension().lastPathComponent)")
+                    guard let converted = Core.JSONParser.MarkdownToStructuredPage.convert(mdContent, url: pageURL) else {
                         logError("Failed to convert \(file.lastPathComponent) to structured page")
                         skipped += 1
                         continue
@@ -473,7 +473,7 @@ extension Search {
 
             let framework = canonicalPathComponent(rawFramework)
             let filename = canonicalPathComponent(file.deletingPathExtension().lastPathComponent)
-            return "https://developer.apple.com/documentation/\(framework)/\(filename)"
+            return "\(Shared.Constants.BaseURL.appleDeveloperDocs)\(framework)/\(filename)"
         }
 
         func documentationCrawledAt(for file: URL) -> Date? {
@@ -799,7 +799,7 @@ extension Search {
                     }
 
                     let pageURL = URL(string: "https://www.swift.org/documentation/\(file.deletingPathExtension().lastPathComponent)")
-                    guard let converted = MarkdownToStructuredPage.convert(mdContent, url: pageURL) else {
+                    guard let converted = Core.JSONParser.MarkdownToStructuredPage.convert(mdContent, url: pageURL) else {
                         logError("Failed to convert \(file.lastPathComponent) to structured page")
                         skipped += 1
                         continue

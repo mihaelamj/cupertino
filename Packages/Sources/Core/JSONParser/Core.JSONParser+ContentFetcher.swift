@@ -5,8 +5,8 @@ import Foundation
 
 /// Fetches JSON content from Apple's documentation API
 /// Uses URLSession for direct HTTP requests, avoiding WKWebView memory issues
-extension JSONCrawler {
-    public struct JSONContentFetcher: Core.Protocols.ContentFetcher, @unchecked Sendable {
+extension Core.JSONParser {
+    public struct ContentFetcher: Core.Protocols.ContentFetcher, @unchecked Sendable {
         public typealias RawContent = Data
 
         private let session: URLSession
@@ -24,11 +24,11 @@ extension JSONCrawler {
             let (data, response) = try await session.data(from: url)
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                throw JSONFetcherError.invalidResponse
+                throw Error.invalidResponse
             }
 
             guard httpResponse.statusCode == 200 else {
-                throw JSONFetcherError.httpError(statusCode: httpResponse.statusCode)
+                throw Error.httpError(statusCode: httpResponse.statusCode)
             }
 
             let finalURL = response.url ?? url
@@ -37,21 +37,23 @@ extension JSONCrawler {
     }
 }
 
-// MARK: - JSON Fetcher Errors
+// MARK: - JSON Content Fetcher Errors
 
-public enum JSONFetcherError: Error, LocalizedError {
-    case invalidResponse
-    case httpError(statusCode: Int)
-    case invalidJSON
+extension Core.JSONParser.ContentFetcher {
+    public enum Error: Swift.Error, LocalizedError, Sendable {
+        case invalidResponse
+        case httpError(statusCode: Int)
+        case invalidJSON
 
-    public var errorDescription: String? {
-        switch self {
-        case .invalidResponse:
-            return "Invalid HTTP response"
-        case let .httpError(statusCode):
-            return "HTTP error: \(statusCode)"
-        case .invalidJSON:
-            return "Invalid JSON data"
+        public var errorDescription: String? {
+            switch self {
+            case .invalidResponse:
+                return "Invalid HTTP response"
+            case let .httpError(statusCode):
+                return "HTTP error: \(statusCode)"
+            case .invalidJSON:
+                return "Invalid JSON data"
+            }
         }
     }
 }

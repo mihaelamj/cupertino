@@ -425,7 +425,7 @@ struct CrawlerTests {
         let jsonAPIURL = try #require(
             URL(string: "https://developer.apple.com/tutorials/data/documentation/professional-video-applications/overview.json")
         )
-        let docURL = AppleJSONToMarkdown.documentationURL(from: jsonAPIURL)
+        let docURL = Core.JSONParser.AppleJSONToMarkdown.documentationURL(from: jsonAPIURL)
 
         #expect(docURL?.absoluteString == "https://developer.apple.com/documentation/professional-video-applications/overview")
     }
@@ -435,8 +435,8 @@ struct CrawlerTests {
         let original = try #require(
             URL(string: "https://developer.apple.com/documentation/professional-video-applications/overview")
         )
-        let jsonURL = try #require(AppleJSONToMarkdown.jsonAPIURL(from: original))
-        let reversed = try #require(AppleJSONToMarkdown.documentationURL(from: jsonURL))
+        let jsonURL = try #require(Core.JSONParser.AppleJSONToMarkdown.jsonAPIURL(from: original))
+        let reversed = try #require(Core.JSONParser.AppleJSONToMarkdown.documentationURL(from: jsonURL))
 
         #expect(reversed.absoluteString == original.absoluteString)
     }
@@ -447,11 +447,11 @@ struct CrawlerTests {
         let docURL = try #require(
             URL(string: "https://developer.apple.com/documentation/swift/array")
         )
-        #expect(AppleJSONToMarkdown.documentationURL(from: docURL) == nil)
+        #expect(Core.JSONParser.AppleJSONToMarkdown.documentationURL(from: docURL) == nil)
 
         // A non-Apple URL should return nil
         let externalURL = try #require(URL(string: "https://example.com/tutorials/data/documentation/foo.json"))
-        #expect(AppleJSONToMarkdown.documentationURL(from: externalURL) == nil)
+        #expect(Core.JSONParser.AppleJSONToMarkdown.documentationURL(from: externalURL) == nil)
     }
 
     @Test("documentationURL(from:) handles the professional_video_applications slug migration")
@@ -461,7 +461,7 @@ struct CrawlerTests {
         let redirectedJSONURL = try #require(
             URL(string: "https://developer.apple.com/tutorials/data/documentation/professional-video-applications.json")
         )
-        let canonical = try #require(AppleJSONToMarkdown.documentationURL(from: redirectedJSONURL))
+        let canonical = try #require(Core.JSONParser.AppleJSONToMarkdown.documentationURL(from: redirectedJSONURL))
 
         #expect(canonical.absoluteString == "https://developer.apple.com/documentation/professional-video-applications")
         // Confirm the canonical URL uses dashes (not underscores), so the corpus stores
