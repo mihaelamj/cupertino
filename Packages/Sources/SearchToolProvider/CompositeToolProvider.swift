@@ -456,9 +456,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         )
 
         // Configure empty message to suggest archive if not already searching it
-        var config = Services.Formatters.SearchResultFormatConfig.mcpDefault
+        var config = Services.Formatter.SearchResultFormatConfig.mcpDefault
         if results.isEmpty, !includeArchive, source != Shared.Constants.SourcePrefix.appleArchive {
-            config = Services.Formatters.SearchResultFormatConfig(
+            config = Services.Formatter.SearchResultFormatConfig(
                 showScore: true,
                 showWordCount: true,
                 showSource: false,
@@ -489,7 +489,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         framework: String?,
         currentSource: String?,
         includeArchive: Bool
-    ) async -> Services.Formatters.TeaserResults {
+    ) async -> Services.Formatter.TeaserResults {
         let teaserService = Services.TeaserService(searchIndex: searchIndex, sampleDatabase: sampleDatabase)
         return await teaserService.fetchAllTeasers(
             query: query,

@@ -7,12 +7,12 @@ import SharedCore
 // MARK: - Text Formatter for Unified Search
 
 /// Formats unified search results as plain text for CLI output
-public struct UnifiedSearchTextFormatter: Services.Formatters.ResultFormatter {
+public struct UnifiedSearchTextFormatter: Services.Formatter.Result {
     private let query: String
     private let framework: String?
-    private let config: Services.Formatters.SearchResultFormatConfig
+    private let config: Services.Formatter.SearchResultFormatConfig
 
-    public init(query: String, framework: String?, config: Services.Formatters.SearchResultFormatConfig = .cliDefault) {
+    public init(query: String, framework: String?, config: Services.Formatter.SearchResultFormatConfig = .cliDefault) {
         self.query = query
         self.framework = framework
         self.config = config
@@ -112,7 +112,7 @@ public struct UnifiedSearchTextFormatter: Services.Formatters.ResultFormatter {
 // MARK: - JSON Formatter for Unified Search
 
 /// Formats unified search results as JSON for programmatic access
-public struct UnifiedSearchJSONFormatter: Services.Formatters.ResultFormatter {
+public struct UnifiedSearchJSONFormatter: Services.Formatter.Result {
     private let query: String
     private let framework: String?
 

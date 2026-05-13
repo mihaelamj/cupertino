@@ -7,18 +7,18 @@ import SharedCore
 // MARK: - Markdown Search Result Formatter
 
 /// Formats search results as markdown for MCP tools and CLI --format markdown
-public struct MarkdownSearchResultFormatter: Services.Formatters.ResultFormatter {
+public struct MarkdownSearchResultFormatter: Services.Formatter.Result {
     private let query: String
     private let filters: Services.SearchFilters?
-    private let config: Services.Formatters.SearchResultFormatConfig
-    private let teasers: Services.Formatters.TeaserResults?
+    private let config: Services.Formatter.SearchResultFormatConfig
+    private let teasers: Services.Formatter.TeaserResults?
     private let showPlatformTip: Bool
 
     public init(
         query: String,
         filters: Services.SearchFilters? = nil,
-        config: Services.Formatters.SearchResultFormatConfig = .mcpDefault,
-        teasers: Services.Formatters.TeaserResults? = nil,
+        config: Services.Formatter.SearchResultFormatConfig = .mcpDefault,
+        teasers: Services.Formatter.TeaserResults? = nil,
         showPlatformTip: Bool = true
     ) {
         self.query = query
@@ -119,15 +119,15 @@ public struct MarkdownSearchResultFormatter: Services.Formatters.ResultFormatter
 // MARK: - HIG Markdown Formatter
 
 /// Formats HIG search results as markdown
-public struct HIGMarkdownFormatter: Services.Formatters.ResultFormatter {
+public struct HIGMarkdownFormatter: Services.Formatter.Result {
     private let query: Services.HIGQuery
-    private let config: Services.Formatters.SearchResultFormatConfig
-    private let teasers: Services.Formatters.TeaserResults?
+    private let config: Services.Formatter.SearchResultFormatConfig
+    private let teasers: Services.Formatter.TeaserResults?
 
     public init(
         query: Services.HIGQuery,
-        config: Services.Formatters.SearchResultFormatConfig = .mcpDefault,
-        teasers: Services.Formatters.TeaserResults? = nil
+        config: Services.Formatter.SearchResultFormatConfig = .mcpDefault,
+        teasers: Services.Formatter.TeaserResults? = nil
     ) {
         self.query = query
         self.config = config
@@ -196,7 +196,7 @@ public struct HIGMarkdownFormatter: Services.Formatters.ResultFormatter {
 // MARK: - Frameworks Markdown Formatter
 
 /// Formats framework list as markdown
-public struct FrameworksMarkdownFormatter: Services.Formatters.ResultFormatter {
+public struct FrameworksMarkdownFormatter: Services.Formatter.Result {
     private let totalDocs: Int
 
     public init(totalDocs: Int) {
@@ -378,15 +378,15 @@ public struct UnifiedSearchInput: Sendable {
 }
 
 /// Formats unified search results (ALL sources) as markdown
-public struct UnifiedSearchMarkdownFormatter: Services.Formatters.ResultFormatter {
+public struct UnifiedSearchMarkdownFormatter: Services.Formatter.Result {
     private let query: String
     private let framework: String?
-    private let config: Services.Formatters.SearchResultFormatConfig
+    private let config: Services.Formatter.SearchResultFormatConfig
 
     public init(
         query: String,
         framework: String? = nil,
-        config: Services.Formatters.SearchResultFormatConfig = .mcpDefault
+        config: Services.Formatter.SearchResultFormatConfig = .mcpDefault
     ) {
         self.query = query
         self.framework = framework

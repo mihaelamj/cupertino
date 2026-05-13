@@ -43,8 +43,8 @@ extension Services {
             framework: String?,
             currentSource: String?,
             includeArchive: Bool
-        ) async -> Services.Formatters.TeaserResults {
-            var teasers = Services.Formatters.TeaserResults()
+        ) async -> Services.Formatter.TeaserResults {
+            var teasers = Services.Formatter.TeaserResults()
             let source = currentSource ?? Shared.Constants.SourcePrefix.appleDocs
 
             // Apple Documentation teaser (unless searching apple-docs)

@@ -45,14 +45,14 @@ extension CLI.Command.Search {
 
         switch format {
         case .text:
-            let formatter = Services.Formatters.TextSearchResultFormatter(
+            let formatter = Services.Formatter.TextSearchResultFormatter(
                 query: query,
                 source: source,
                 teasers: teasers
             )
             Logging.Log.output(formatter.format(results))
         case .json:
-            let formatter = Services.Formatters.JSONSearchResultFormatter()
+            let formatter = Services.Formatter.JSONSearchResultFormatter()
             Logging.Log.output(formatter.format(results))
         case .markdown:
             let formatter = MarkdownSearchResultFormatter(
@@ -90,7 +90,7 @@ extension CLI.Command.Search {
         // another process running `cupertino save --docs`) or missing, log
         // and fall back to empty teasers rather than aborting the samples
         // query (#237).
-        let teasers: Services.Formatters.TeaserResults
+        let teasers: Services.Formatter.TeaserResults
         do {
             teasers = try await Services.ServiceContainer.withTeaserService(
                 searchDbPath: searchDb,
@@ -109,7 +109,7 @@ extension CLI.Command.Search {
                     + "(common when another process is writing search.db). "
                     + "Continuing with samples results only."
             )
-            teasers = Services.Formatters.TeaserResults()
+            teasers = Services.Formatter.TeaserResults()
         }
 
         switch format {
@@ -200,10 +200,10 @@ extension CLI.Command.Search {
 
         switch format {
         case .text:
-            let formatter = Services.Formatters.HIGTextFormatter(query: higQuery, teasers: teasers)
+            let formatter = Services.Formatter.HIGTextFormatter(query: higQuery, teasers: teasers)
             Logging.Log.output(formatter.format(results))
         case .json:
-            let formatter = Services.Formatters.HIGJSONFormatter(query: higQuery)
+            let formatter = Services.Formatter.HIGJSONFormatter(query: higQuery)
             Logging.Log.output(formatter.format(results))
         case .markdown:
             let formatter = HIGMarkdownFormatter(query: higQuery, config: .cliDefault, teasers: teasers)

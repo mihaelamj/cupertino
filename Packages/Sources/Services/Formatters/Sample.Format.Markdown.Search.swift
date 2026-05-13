@@ -7,12 +7,12 @@ import SharedCore
 
 /// Formats sample search results as markdown
 extension Sample.Format.Markdown {
-    public struct Search: Services.Formatters.ResultFormatter {
+    public struct Search: Services.Formatter.Result {
         private let query: String
         private let framework: String?
-        private let teasers: Services.Formatters.TeaserResults?
+        private let teasers: Services.Formatter.TeaserResults?
 
-        public init(query: String, framework: String? = nil, teasers: Services.Formatters.TeaserResults? = nil) {
+        public init(query: String, framework: String? = nil, teasers: Services.Formatter.TeaserResults? = nil) {
             self.query = query
             self.framework = framework
             self.teasers = teasers
@@ -74,7 +74,7 @@ extension Sample.Format.Markdown {
 
 /// Formats sample project list as markdown
 extension Sample.Format.Markdown {
-    public struct List: Services.Formatters.ResultFormatter {
+    public struct List: Services.Formatter.Result {
         private let totalCount: Int
         private let framework: String?
 
@@ -120,7 +120,7 @@ extension Sample.Format.Markdown {
 
 /// Formats a single sample project as markdown
 extension Sample.Format.Markdown {
-    public struct Project: Services.Formatters.ResultFormatter {
+    public struct Project: Services.Formatter.Result {
         public init() {}
 
         public func format(_ project: Sample.Index.Project) -> String {
@@ -146,7 +146,7 @@ extension Sample.Format.Markdown {
 
 /// Formats a sample file as markdown
 extension Sample.Format.Markdown {
-    public struct File: Services.Formatters.ResultFormatter {
+    public struct File: Services.Formatter.Result {
         public init() {}
 
         public func format(_ file: Sample.Index.File) -> String {

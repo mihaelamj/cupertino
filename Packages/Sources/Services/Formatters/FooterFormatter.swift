@@ -51,7 +51,7 @@ public struct SearchFooter: Sendable, FooterProvider {
     public let currentSource: String?
 
     /// Teaser results from other sources
-    public let teasers: Services.Formatters.TeaserResults?
+    public let teasers: Services.Formatter.TeaserResults?
 
     /// Whether to show semantic search tip
     public let showSemanticTip: Bool
@@ -64,7 +64,7 @@ public struct SearchFooter: Sendable, FooterProvider {
 
     public init(
         currentSource: String? = nil,
-        teasers: Services.Formatters.TeaserResults? = nil,
+        teasers: Services.Formatter.TeaserResults? = nil,
         showSemanticTip: Bool = true,
         showPlatformTip: Bool = true,
         customItems: [FooterItem] = []
@@ -123,7 +123,7 @@ public struct SearchFooter: Sendable, FooterProvider {
         return items
     }
 
-    private func makeTeaserItems(_ teasers: Services.Formatters.TeaserResults) -> [FooterItem] {
+    private func makeTeaserItems(_ teasers: Services.Formatter.TeaserResults) -> [FooterItem] {
         teasers.allSources.map { source in
             let titleList = source.titles.map { "- \($0)" }.joined(separator: "\n")
             return FooterItem(
@@ -239,7 +239,7 @@ public extension SearchFooter {
     /// Create footer for single-source search
     static func singleSource(
         _ source: String,
-        teasers: Services.Formatters.TeaserResults? = nil,
+        teasers: Services.Formatter.TeaserResults? = nil,
         showSemanticTip: Bool = true,
         showPlatformTip: Bool = true
     ) -> SearchFooter {
