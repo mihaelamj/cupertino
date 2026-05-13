@@ -1,8 +1,7 @@
 import Foundation
-import Search
+import SearchModels
 import SharedConstants
 import SharedCore
-import SearchModels
 
 // MARK: - HIG Search Query
 
@@ -36,25 +35,15 @@ extension Services {
     public actor HIGSearchService {
         private let docsService: Services.DocsSearchService
 
-        /// Initialize with an existing docs service
+        /// Initialize with an existing docs service.
         public init(docsService: Services.DocsSearchService) {
             self.docsService = docsService
         }
 
-        /// Initialize with a search index.
-        public init(index: Search.Index) {
-            docsService = Services.DocsSearchService(index: index)
-        }
-
         /// Initialize with any `Search.Database` conformer.
+        /// Production: pass a `Search.Index`; tests pass a mock.
         public init(database: any Search.Database) {
             docsService = Services.DocsSearchService(database: database)
-        }
-
-        /// Initialize with a database path.
-        public init(dbPath: URL) async throws {
-            let index = try await Search.Index(dbPath: dbPath)
-            docsService = Services.DocsSearchService(index: index)
         }
 
         // MARK: - Search Methods
