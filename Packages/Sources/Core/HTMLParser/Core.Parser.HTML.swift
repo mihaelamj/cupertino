@@ -118,6 +118,24 @@ extension Core.Parser {
 
         // MARK: - Error-page detection (#284)
 
+        /// Returns true if `html` looks like Apple's React SPA rendering a
+        /// no-content sub-view (HTTP 200 OK with the SPA shell but the inner
+        /// doc-loader returned 404). These slip past `looksLikeHTTPErrorPage`
+        /// because the HTTP status IS 200; we catch them with their
+        /// distinctive React-app strings (#284 follow-up).
+        public static func looksLikeJavaScriptFallback(html: String) -> Bool {
+            // Apple's specific React sub-view phrases. Pinned literals because
+            // they are unique to the React app's no-content states; real Apple
+            // documentation pages do not quote either sentence.
+            if html.contains("The page you're looking for can't be found") {
+                return true
+            }
+            if html.contains("An unknown error occurred") {
+                return true
+            }
+            return false
+        }
+
         /// Returns true if `html` looks like an HTTP error response template
         /// (Apple's CDN sometimes serves a styled 403/404/502 page with HTTP
         /// 200 status, which then gets indexed as if it were documentation).
