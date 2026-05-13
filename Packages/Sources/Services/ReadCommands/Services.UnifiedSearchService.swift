@@ -1,5 +1,6 @@
 import Foundation
 import SampleIndex
+import SampleIndexModels
 import SearchModels
 import SharedConstants
 import SharedCore
@@ -12,12 +13,13 @@ import SharedUtils
 extension Services {
     public actor UnifiedSearchService {
         private let searchIndex: (any Search.Database)?
-        private let sampleDatabase: Sample.Index.Database?
+        private let sampleDatabase: (any Sample.Index.Reader)?
 
         /// Initialize with existing database connections. The concrete
         /// `Search.Index?` form continues to compile because `Search.Index`
-        /// conforms to `Search.Database`.
-        public init(searchIndex: (any Search.Database)?, sampleDatabase: Sample.Index.Database?) {
+        /// conforms to `Search.Database`; same for `Sample.Index.Database`
+        /// conforming to `Sample.Index.Reader`.
+        public init(searchIndex: (any Search.Database)?, sampleDatabase: (any Sample.Index.Reader)?) {
             self.searchIndex = searchIndex
             self.sampleDatabase = sampleDatabase
         }

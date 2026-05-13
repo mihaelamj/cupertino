@@ -1,7 +1,7 @@
 import Foundation
 import MCPCore
 import MCPSharedTools
-import SampleIndex
+import SampleIndexModels
 import SearchModels
 import Services
 import SharedConstants
@@ -19,11 +19,12 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     // Keep direct access for low-level operations (list frameworks, read
     // document, semantic-symbol searches). Protocol-typed so this file
-    // doesn't import the Search target.
+    // doesn't import the Search or SampleIndex targets — it pulls only
+    // the abstractions from SearchModels + SampleIndexModels.
     private let searchIndex: (any Search.Database)?
-    private let sampleDatabase: Sample.Index.Database?
+    private let sampleDatabase: (any Sample.Index.Reader)?
 
-    public init(searchIndex: (any Search.Database)?, sampleDatabase: Sample.Index.Database?) {
+    public init(searchIndex: (any Search.Database)?, sampleDatabase: (any Sample.Index.Reader)?) {
         self.searchIndex = searchIndex
         self.sampleDatabase = sampleDatabase
 
@@ -715,7 +716,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         }
 
         // List some files
-        let files = try await sampleDatabase.listFiles(projectId: projectId)
+        let files = try await sampleDatabase.listFiles(projectId: projectId, folder: nil)
         if !files.isEmpty {
             markdown += "## Files (\(files.count) total)\n\n"
             for file in files.prefix(30) {

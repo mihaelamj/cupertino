@@ -1,6 +1,6 @@
 import Foundation
-import SharedCore
 import SearchModels
+import SharedCore
 
 // MARK: - JSON Search Result Formatter
 

@@ -1,5 +1,6 @@
 import ASTIndexer
 import Foundation
+import SampleIndexModels
 import SharedConstants
 import SharedCore
 import SharedUtils
@@ -657,14 +658,10 @@ extension Sample.Index {
 
         // MARK: - Search Files
 
-        /// Search result for file search
-        public struct FileSearchResult: Sendable {
-            public let projectId: String
-            public let path: String
-            public let filename: String
-            public let snippet: String
-            public let rank: Double
-        }
+        // `FileSearchResult` lifted to `Sample.Index.FileSearchResult`
+        // in the `SampleIndexModels` target so the
+        // `Sample.Index.Reader` protocol can return it without a
+        // cyclic dep on `SampleIndex`.
 
         /// Search files by content
         public func searchFiles(
@@ -674,7 +671,7 @@ extension Sample.Index {
             limit: Int = 20,
             platform: String? = nil,
             minVersion: String? = nil
-        ) async throws -> [FileSearchResult] {
+        ) async throws -> [Sample.Index.FileSearchResult] {
             guard let database else {
                 throw Sample.Index.Error.databaseNotInitialized
             }
@@ -758,7 +755,7 @@ extension Sample.Index {
 
             sqlite3_bind_int(statement, paramIndex, Int32(limit))
 
-            var results: [FileSearchResult] = []
+            var results: [Sample.Index.FileSearchResult] = []
 
             while sqlite3_step(statement) == SQLITE_ROW {
                 guard let projectIdPtr = sqlite3_column_text(statement, 0),
@@ -769,7 +766,7 @@ extension Sample.Index {
                     continue
                 }
 
-                results.append(FileSearchResult(
+                results.append(Sample.Index.FileSearchResult(
                     projectId: String(cString: projectIdPtr),
                     path: String(cString: pathPtr),
                     filename: String(cString: filenamePtr),

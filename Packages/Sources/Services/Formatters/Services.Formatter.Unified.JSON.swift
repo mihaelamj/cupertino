@@ -1,8 +1,9 @@
 import Foundation
 import SampleIndex
+import SampleIndexModels
+import SearchModels
 import SharedConstants
 import SharedCore
-import SearchModels
 
 // MARK: - Unified Search JSON Formatter
 

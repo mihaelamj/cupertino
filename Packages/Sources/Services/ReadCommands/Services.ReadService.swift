@@ -89,7 +89,7 @@ extension Services {
             samplesDB: URL?,
             packagesDB: URL?,
             makeSearchDatabase: Services.ServiceContainer.MakeSearchDatabase,
-            packageFileLookup: PackageFileLookup,
+            packageFileLookup: PackageFileLookup
         ) async throws -> Result {
             if let explicit {
                 return try await readFrom(
@@ -101,7 +101,7 @@ extension Services {
                     packagesDB: packagesDB,
                     allowFallback: false,
                     makeSearchDatabase: makeSearchDatabase,
-                    packageFileLookup: packageFileLookup,
+                    packageFileLookup: packageFileLookup
                 )
             }
 
@@ -115,7 +115,7 @@ extension Services {
                     packagesDB: packagesDB,
                     allowFallback: false,
                     makeSearchDatabase: makeSearchDatabase,
-                    packageFileLookup: packageFileLookup,
+                    packageFileLookup: packageFileLookup
                 )
             }
 
@@ -129,7 +129,7 @@ extension Services {
                     packagesDB: packagesDB,
                     allowFallback: true,
                     makeSearchDatabase: makeSearchDatabase,
-                    packageFileLookup: packageFileLookup,
+                    packageFileLookup: packageFileLookup
                 )
             } catch ReadError.samplesNotFound, ReadError.packagesNotFound,
                 ReadError.packagesIdentifierInvalid {
@@ -144,7 +144,7 @@ extension Services {
                 packagesDB: packagesDB,
                 allowFallback: false,
                 makeSearchDatabase: makeSearchDatabase,
-                packageFileLookup: packageFileLookup,
+                packageFileLookup: packageFileLookup
             )
         }
 
@@ -159,7 +159,7 @@ extension Services {
             packagesDB: URL?,
             allowFallback: Bool,
             makeSearchDatabase: Services.ServiceContainer.MakeSearchDatabase,
-            packageFileLookup: PackageFileLookup,
+            packageFileLookup: PackageFileLookup
         ) async throws -> Result {
             switch source {
             case .docs:
@@ -167,7 +167,7 @@ extension Services {
                     identifier: identifier,
                     format: format,
                     searchDB: searchDB,
-                    makeSearchDatabase: makeSearchDatabase,
+                    makeSearchDatabase: makeSearchDatabase
                 )
             case .samples:
                 return try await readFromSamples(
@@ -175,13 +175,13 @@ extension Services {
                     samplesDB: samplesDB,
                     allowFallback: allowFallback,
                     packagesDB: packagesDB,
-                    packageFileLookup: packageFileLookup,
+                    packageFileLookup: packageFileLookup
                 )
             case .packages:
                 return try await readFromPackages(
                     identifier: identifier,
                     packagesDB: packagesDB,
-                    packageFileLookup: packageFileLookup,
+                    packageFileLookup: packageFileLookup
                 )
             }
         }
@@ -190,11 +190,11 @@ extension Services {
             identifier: String,
             format: Search.DocumentFormat,
             searchDB: URL?,
-            makeSearchDatabase: Services.ServiceContainer.MakeSearchDatabase,
+            makeSearchDatabase: Services.ServiceContainer.MakeSearchDatabase
         ) async throws -> Result {
             let content = try await Services.ServiceContainer.withDocsService(
                 dbPath: searchDB?.path,
-                makeSearchDatabase: makeSearchDatabase,
+                makeSearchDatabase: makeSearchDatabase
             ) { service in
                 try await service.read(uri: identifier, format: format)
             }
@@ -209,7 +209,7 @@ extension Services {
             samplesDB: URL?,
             allowFallback: Bool,
             packagesDB: URL?,
-            packageFileLookup: PackageFileLookup,
+            packageFileLookup: PackageFileLookup
         ) async throws -> Result {
             let dbURL = samplesDB ?? Sample.Index.defaultDatabasePath
             guard FileManager.default.fileExists(atPath: dbURL.path) else {
@@ -217,7 +217,7 @@ extension Services {
                     return try await readFromPackages(
                         identifier: identifier,
                         packagesDB: packagesDB,
-                        packageFileLookup: packageFileLookup,
+                        packageFileLookup: packageFileLookup
                     )
                 }
                 throw ReadError.samplesNotFound(identifier: identifier)
@@ -248,7 +248,7 @@ extension Services {
                 return try await readFromPackages(
                     identifier: identifier,
                     packagesDB: packagesDB,
-                    packageFileLookup: packageFileLookup,
+                    packageFileLookup: packageFileLookup
                 )
             }
             throw ReadError.samplesNotFound(identifier: identifier)
@@ -257,7 +257,7 @@ extension Services {
         private static func readFromPackages(
             identifier: String,
             packagesDB: URL?,
-            packageFileLookup: PackageFileLookup,
+            packageFileLookup: PackageFileLookup
         ) async throws -> Result {
             // Identifier shape: `<owner>/<repo>/<relpath>`. Anything else is
             // not a valid package identifier — auto-source mode bails here.
