@@ -1,8 +1,7 @@
 import Foundation
-import Search
+import SearchModels
 import SharedConstants
 import SharedCore
-import SearchModels
 
 // MARK: - Search Service Protocol
 
