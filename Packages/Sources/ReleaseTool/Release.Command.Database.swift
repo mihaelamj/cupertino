@@ -50,10 +50,10 @@ extension Release.Command {
         private static let packagesDBFilename = Shared.Constants.FileName.packagesIndexDatabase
 
         mutating func run() async throws {
-            let root = try ReleasePublishing.findRepoRoot(override: repoRoot)
-            let version = try ReleasePublishing.readCurrentVersion(from: root)
+            let root = try Release.Publishing.findRepoRoot(override: repoRoot)
+            let version = try Release.Publishing.readCurrentVersion(from: root)
 
-            Console.info("📦 Database Release \(version.tag)\n")
+            Release.Console.info("📦 Database Release \(version.tag)\n")
 
             let baseURL = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
                 ?? Shared.Constants.defaultBaseDirectory
@@ -66,27 +66,27 @@ extension Release.Command {
             let packagesDBURL = baseURL.appendingPathComponent(Self.packagesDBFilename)
 
             guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
-                throw ReleasePublishingError.missingDatabase(Self.searchDBFilename, baseURL.path)
+                throw Release.Publishing.Error.missingDatabase(Self.searchDBFilename, baseURL.path)
             }
             guard FileManager.default.fileExists(atPath: samplesDBURL.path) else {
-                throw ReleasePublishingError.missingDatabase(Self.samplesDBFilename, baseURL.path)
+                throw Release.Publishing.Error.missingDatabase(Self.samplesDBFilename, baseURL.path)
             }
             let packagesDBPresent = FileManager.default.fileExists(atPath: packagesDBURL.path)
             if !packagesDBPresent, !allowMissingPackages {
-                throw ReleasePublishingError.missingDatabase(Self.packagesDBFilename, baseURL.path)
+                throw Release.Publishing.Error.missingDatabase(Self.packagesDBFilename, baseURL.path)
             }
 
             // Sizes (informational)
-            let searchSize = try ReleasePublishing.fileSize(at: searchDBURL)
-            let samplesSize = try ReleasePublishing.fileSize(at: samplesDBURL)
-            let packagesSize = try packagesDBPresent ? (ReleasePublishing.fileSize(at: packagesDBURL)) : 0
-            Console.info("📊 Database sizes:")
-            Console.substep("search.db:   \(Shared.Utils.Formatting.formatBytes(searchSize))")
-            Console.substep("samples.db:  \(Shared.Utils.Formatting.formatBytes(samplesSize))")
+            let searchSize = try Release.Publishing.fileSize(at: searchDBURL)
+            let samplesSize = try Release.Publishing.fileSize(at: samplesDBURL)
+            let packagesSize = try packagesDBPresent ? (Release.Publishing.fileSize(at: packagesDBURL)) : 0
+            Release.Console.info("📊 Database sizes:")
+            Release.Console.substep("search.db:   \(Shared.Utils.Formatting.formatBytes(searchSize))")
+            Release.Console.substep("samples.db:  \(Shared.Utils.Formatting.formatBytes(samplesSize))")
             if packagesDBPresent {
-                Console.substep("packages.db: \(Shared.Utils.Formatting.formatBytes(packagesSize))")
+                Release.Console.substep("packages.db: \(Shared.Utils.Formatting.formatBytes(packagesSize))")
             } else {
-                Console.warning("packages.db: missing (continuing because --allow-missing-packages was passed)")
+                Release.Console.warning("packages.db: missing (continuing because --allow-missing-packages was passed)")
             }
 
             // Bundle. The zip name still uses the historical "cupertino-databases-"
@@ -97,34 +97,34 @@ extension Release.Command {
             }
             let zipFilename = "cupertino-databases-\(version.tag).zip"
             let zipURL = baseURL.appendingPathComponent(zipFilename)
-            Console.info("\n📁 Creating \(zipFilename)...")
-            try ReleasePublishing.createZip(containing: bundled, at: zipURL)
+            Release.Console.info("\n📁 Creating \(zipFilename)...")
+            try Release.Publishing.createZip(containing: bundled, at: zipURL)
 
-            let zipSize = try ReleasePublishing.fileSize(at: zipURL)
-            Console.substep("✓ Created (\(Shared.Utils.Formatting.formatBytes(zipSize)))")
+            let zipSize = try Release.Publishing.fileSize(at: zipURL)
+            Release.Console.substep("✓ Created (\(Shared.Utils.Formatting.formatBytes(zipSize)))")
 
-            Console.info("\n🔐 Calculating SHA256...")
-            let sha256 = try ReleasePublishing.calculateSHA256(of: zipURL)
-            Console.substep(sha256)
+            Release.Console.info("\n🔐 Calculating SHA256...")
+            let sha256 = try Release.Publishing.calculateSHA256(of: zipURL)
+            Release.Console.substep(sha256)
 
             if dryRun {
-                Console.info("\n🏃 Dry run - skipping upload")
-                Console.substep("Zip file: \(zipURL.path)")
+                Release.Console.info("\n🏃 Dry run - skipping upload")
+                Release.Console.substep("Zip file: \(zipURL.path)")
                 return
             }
 
-            let token = try ReleasePublishing.resolveToken()
+            let token = try Release.Publishing.resolveToken()
 
-            Console.info("\n🔍 Checking for existing release...")
-            let releaseExists = try await ReleasePublishing.checkReleaseExists(
+            Release.Console.info("\n🔍 Checking for existing release...")
+            let releaseExists = try await Release.Publishing.checkReleaseExists(
                 repo: repo, tag: version.tag, token: token
             )
             if releaseExists {
-                Console.substep("Release \(version.tag) exists, updating...")
-                try await ReleasePublishing.deleteRelease(repo: repo, tag: version.tag, token: token)
+                Release.Console.substep("Release \(version.tag) exists, updating...")
+                try await Release.Publishing.deleteRelease(repo: repo, tag: version.tag, token: token)
             }
 
-            Console.info("\n🚀 Creating release \(version.tag)...")
+            Release.Console.info("\n🚀 Creating release \(version.tag)...")
             let bundledNames = bundled.map(\.lastPathComponent).joined(separator: ", ")
             let body = """
             Pre-built databases for instant Cupertino setup. Bundled: \(bundledNames).
@@ -141,28 +141,28 @@ extension Release.Command {
             \(sha256)  \(zipFilename)
             ```
             """
-            let uploadURL = try await ReleasePublishing.createRelease(
+            let uploadURL = try await Release.Publishing.createRelease(
                 repo: repo,
                 tag: version.tag,
                 token: token,
                 name: "Pre-built Databases \(version.tag) (\(bundledNames))",
                 body: body
             )
-            Console.substep("✓ Release created")
+            Release.Console.substep("✓ Release created")
 
-            Console.info("\n⬆️  Uploading \(zipFilename)...")
-            try await ReleasePublishing.uploadAsset(
+            Release.Console.info("\n⬆️  Uploading \(zipFilename)...")
+            try await Release.Publishing.uploadAsset(
                 uploadURL: uploadURL,
                 file: zipURL,
                 filename: zipFilename,
                 token: token
             )
-            Console.substep("✓ Upload complete")
+            Release.Console.substep("✓ Upload complete")
 
             try? FileManager.default.removeItem(at: zipURL)
 
-            Console.success("Release \(version.tag) published!")
-            Console.info("   https://github.com/\(repo)/releases/tag/\(version.tag)")
+            Release.Console.success("Release \(version.tag) published!")
+            Release.Console.info("   https://github.com/\(repo)/releases/tag/\(version.tag)")
         }
     }
 }

@@ -48,10 +48,10 @@ func swiftPackagesCatalogMetadata() async {
     let lastCrawled = await Core.Protocols.SwiftPackagesCatalog.lastCrawled
     let source = await Core.Protocols.SwiftPackagesCatalog.source
 
-    #expect(!version.isEmpty, "Version should not be empty")
+    #expect(!version.isEmpty, "Release.Version should not be empty")
     #expect(!lastCrawled.isEmpty, "Last crawled date should not be empty")
     #expect(!source.isEmpty, "Source should not be empty")
-    print("   ✅ Version: \(version), Last crawled: \(lastCrawled)")
+    print("   ✅ Release.Version: \(version), Last crawled: \(lastCrawled)")
     print("   ✅ Source: \(source)")
 }
 
@@ -121,10 +121,10 @@ func priorityPackagesCatalogMetadata() async {
     let lastUpdated = await Core.PackageIndexing.PriorityPackagesCatalog.lastUpdated
     let description = await Core.PackageIndexing.PriorityPackagesCatalog.description
 
-    #expect(!version.isEmpty, "Version should not be empty")
+    #expect(!version.isEmpty, "Release.Version should not be empty")
     #expect(!lastUpdated.isEmpty, "Last updated date should not be empty")
     #expect(!description.isEmpty, "Description should not be empty")
-    print("   ✅ Version: \(version), Last updated: \(lastUpdated)")
+    print("   ✅ Release.Version: \(version), Last updated: \(lastUpdated)")
 
     await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 }

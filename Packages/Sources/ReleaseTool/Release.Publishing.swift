@@ -13,34 +13,36 @@ import SharedUtils
 
 // MARK: - Repo root + version
 
-enum ReleasePublishing {
-    static func findRepoRoot(override: String?) throws -> URL {
-        if let override {
-            return URL(fileURLWithPath: override)
+extension Release {
+    enum Publishing {
+        static func findRepoRoot(override: String?) throws -> URL {
+            if let override {
+                return URL(fileURLWithPath: override)
+            }
+            let output = try Release.Shell.run("git rev-parse --show-toplevel")
+            return URL(fileURLWithPath: output)
         }
-        let output = try Shell.run("git rev-parse --show-toplevel")
-        return URL(fileURLWithPath: output)
-    }
 
-    static func readCurrentVersion(from root: URL) throws -> Version {
-        let constantsPath = root.appendingPathComponent("Packages/Sources/Shared/Constants.swift")
-        let content = try String(contentsOf: constantsPath, encoding: .utf8)
-        // Read databaseVersion, not CLI version — the two are decoupled and
-        // database releases follow the database axis.
-        let pattern = #"public\s+static\s+let\s+databaseVersion\s*=\s*"(\d+\.\d+\.\d+)""#
-        guard let regex = try? NSRegularExpression(pattern: pattern),
-              let match = regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)),
-              let versionRange = Range(match.range(at: 1), in: content),
-              let version = Version(String(content[versionRange])) else {
-            throw ReleasePublishingError.versionNotFound
+        static func readCurrentVersion(from root: URL) throws -> Release.Version {
+            let constantsPath = root.appendingPathComponent("Packages/Sources/Shared/Constants.swift")
+            let content = try String(contentsOf: constantsPath, encoding: .utf8)
+            // Read databaseVersion, not CLI version — the two are decoupled and
+            // database releases follow the database axis.
+            let pattern = #"public\s+static\s+let\s+databaseVersion\s*=\s*"(\d+\.\d+\.\d+)""#
+            guard let regex = try? NSRegularExpression(pattern: pattern),
+                  let match = regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)),
+                  let versionRange = Range(match.range(at: 1), in: content),
+                  let version = Release.Version(String(content[versionRange])) else {
+                throw Release.Publishing.Error.versionNotFound
+            }
+            return version
         }
-        return version
     }
 }
 
 // MARK: - Filesystem
 
-extension ReleasePublishing {
+extension Release.Publishing {
     static func fileSize(at url: URL) throws -> Int64 {
         let attrs = try FileManager.default.attributesOfItem(atPath: url.path)
         return attrs[.size] as? Int64 ?? 0
@@ -76,7 +78,7 @@ extension ReleasePublishing {
         printProgress("\(clearLine)")
 
         guard process.terminationStatus == 0 else {
-            throw ReleasePublishingError.zipFailed
+            throw Release.Publishing.Error.zipFailed
         }
     }
 
@@ -94,7 +96,7 @@ extension ReleasePublishing {
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         guard let output = String(data: data, encoding: .utf8),
               let hash = output.split(separator: " ").first else {
-            throw ReleasePublishingError.sha256Failed
+            throw Release.Publishing.Error.sha256Failed
         }
 
         return String(hash)
@@ -108,7 +110,7 @@ extension ReleasePublishing {
 
 // MARK: - Token resolution
 
-extension ReleasePublishing {
+extension Release.Publishing {
     /// Resolves a GitHub token from the environment.
     /// Tries `CUPERTINO_DOCS_TOKEN` first, falls back to `GITHUB_TOKEN`.
     static func resolveToken() throws -> String {
@@ -119,13 +121,13 @@ extension ReleasePublishing {
         if let ghToken = env[Shared.Constants.EnvVar.githubToken] {
             return ghToken
         }
-        throw ReleasePublishingError.missingToken
+        throw Release.Publishing.Error.missingToken
     }
 }
 
 // MARK: - GitHub API
 
-extension ReleasePublishing {
+extension Release.Publishing {
     /// Constructs a URLRequest authenticated for GitHub's API.
     static func githubRequest(url: URL, token: String, method: String = "GET") -> URLRequest {
         var request = URLRequest(url: url)
@@ -155,7 +157,7 @@ extension ReleasePublishing {
         let (data, _) = try await URLSession.shared.data(for: getRequest)
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let releaseId = json["id"] as? Int else {
-            throw ReleasePublishingError.apiError("Failed to get release ID")
+            throw Release.Publishing.Error.apiError("Failed to get release ID")
         }
 
         let deleteURL = URL.knownGood("https://api.github.com/repos/\(repo)/releases/\(releaseId)")
@@ -164,7 +166,7 @@ extension ReleasePublishing {
         let (_, response) = try await URLSession.shared.data(for: deleteRequest)
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 204 else {
-            throw ReleasePublishingError.apiError("Failed to delete release")
+            throw Release.Publishing.Error.apiError("Failed to delete release")
         }
 
         // Best-effort tag cleanup; missing tag is fine.
@@ -199,14 +201,14 @@ extension ReleasePublishing {
               httpResponse.statusCode == 201 else {
             if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let message = errorJson["message"] as? String {
-                throw ReleasePublishingError.apiError(message)
+                throw Release.Publishing.Error.apiError(message)
             }
-            throw ReleasePublishingError.apiError("Failed to create release")
+            throw Release.Publishing.Error.apiError("Failed to create release")
         }
 
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let uploadURL = json["upload_url"] as? String else {
-            throw ReleasePublishingError.apiError("Missing upload_url in response")
+            throw Release.Publishing.Error.apiError("Missing upload_url in response")
         }
 
         return uploadURL.replacingOccurrences(of: "{?name,label}", with: "")
@@ -219,7 +221,7 @@ extension ReleasePublishing {
         token: String
     ) async throws {
         guard let url = URL(string: "\(uploadURL)?name=\(filename)") else {
-            throw ReleasePublishingError.apiError("Invalid upload URL")
+            throw Release.Publishing.Error.apiError("Invalid upload URL")
         }
 
         var request = githubRequest(url: url, token: token, method: "POST")
@@ -238,9 +240,9 @@ extension ReleasePublishing {
               httpResponse.statusCode == 201 else {
             if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let message = errorJson["message"] as? String {
-                throw ReleasePublishingError.apiError(message)
+                throw Release.Publishing.Error.apiError(message)
             }
-            throw ReleasePublishingError.apiError("Failed to upload asset")
+            throw Release.Publishing.Error.apiError("Failed to upload asset")
         }
     }
 }
@@ -295,36 +297,4 @@ private final class UploadProgressDelegate: NSObject, URLSessionTaskDelegate, @u
     }
 }
 
-// MARK: - Errors
-
-enum ReleasePublishingError: Error, CustomStringConvertible {
-    case missingDatabase(String, String)
-    case zipFailed
-    case sha256Failed
-    case missingToken
-    case versionNotFound
-    case apiError(String)
-
-    var description: String {
-        switch self {
-        case let .missingDatabase(filename, dir):
-            "Database not found: \(filename) in \(dir)"
-        case .zipFailed:
-            "Failed to create zip file"
-        case .sha256Failed:
-            "Failed to calculate SHA256"
-        case .missingToken:
-            """
-            No GitHub token found.
-
-            Set CUPERTINO_DOCS_TOKEN (preferred) or GITHUB_TOKEN:
-            Create a token at: https://github.com/settings/tokens
-            Then: export CUPERTINO_DOCS_TOKEN=your_token
-            """
-        case .versionNotFound:
-            "Could not find databaseVersion in Constants.swift"
-        case let .apiError(message):
-            "GitHub API error: \(message)"
-        }
-    }
-}
+// Error moved to Release.Publishing.Error.swift

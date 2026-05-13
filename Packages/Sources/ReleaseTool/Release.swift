@@ -9,7 +9,7 @@ import ArgumentParser
 /// The root `ReleaseCLI` (the `AsyncParsableCommand` that holds
 /// `subcommands: [...]`) stays at file scope in `ReleaseCLI.swift` — it's
 /// the dispatcher, not a subcommand. The helper enums
-/// `ReleasePublishing` and `ReleasePublishingError` also stay where they
+/// `Release.Publishing` and `Release.Publishing.Error` also stay where they
 /// are for now (a follow-up may fold them into `Release.Publishing.*`).
 enum Release {
     /// Sub-namespace for `AsyncParsableCommand` subcommands of `cupertino-rel`:
