@@ -41,12 +41,17 @@ extension Services {
             self.docsService = docsService
         }
 
-        /// Initialize with a search index
+        /// Initialize with a search index.
         public init(index: Search.Index) {
             docsService = Services.DocsSearchService(index: index)
         }
 
-        /// Initialize with a database path
+        /// Initialize with any `Search.Database` conformer.
+        public init(database: any Search.Database) {
+            docsService = Services.DocsSearchService(database: database)
+        }
+
+        /// Initialize with a database path.
         public init(dbPath: URL) async throws {
             let index = try await Search.Index(dbPath: dbPath)
             docsService = Services.DocsSearchService(index: index)
