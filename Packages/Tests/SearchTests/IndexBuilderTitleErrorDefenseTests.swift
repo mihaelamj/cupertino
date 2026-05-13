@@ -18,7 +18,7 @@ import Testing
 
 @Suite("Search.IndexBuilder.titleLooksLikeHTTPErrorTemplate (#284 indexer defense)")
 struct IndexBuilderTitleErrorDefenseTests {
-    typealias SUT = Search.IndexBuilder
+    typealias SUT = Search.StrategyHelpers
 
     // MARK: status-prefix form
 
@@ -118,7 +118,7 @@ struct IndexBuilderTitleErrorDefenseTests {
 
 @Suite("Search.IndexBuilder.pageLooksLikeJavaScriptFallback (#284 JS-fallback defense)")
 struct IndexBuilderJavaScriptFallbackDefenseTests {
-    typealias SUT = Search.IndexBuilder
+    typealias SUT = Search.StrategyHelpers
 
     private static func makePage(
         title: String = "AVCustomMediaSelectionScheme",

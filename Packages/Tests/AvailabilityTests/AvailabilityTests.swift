@@ -1,4 +1,4 @@
-import Availability
+@testable import Availability
 import Foundation
 import Testing
 
@@ -571,5 +571,49 @@ struct AvailabilityAnnotationParserTests {
         #expect(result != nil)
         #expect(result?.minimumiOS == "17.0")
         #expect(result?.minimumMacOS == "14.0")
+    }
+}
+
+// MARK: - Availability.Fetcher.buildAPIURL Tests
+
+@Suite("Availability.Fetcher.buildAPIURL Tests")
+struct FetcherBuildAPIURLTests {
+    private let defaultFetcher = Availability.Fetcher(
+        docsDirectory: URL(fileURLWithPath: "/tmp")
+    )
+
+    @Test("strips /documentation/ prefix, lowercases path, and appends .json")
+    func stripsDocumentationPrefix() async {
+        let docURL = URL(string: "https://developer.apple.com/documentation/SwiftUI/View")!
+        let result = await defaultFetcher.buildAPIURL(from: docURL)
+        #expect(result.absoluteString == "https://developer.apple.com/tutorials/data/documentation/swiftui/view.json")
+    }
+
+    @Test("handles mixed-case framework and symbol names")
+    func mixedCasePath() async {
+        let docURL = URL(string: "https://developer.apple.com/documentation/Foundation/URL")!
+        let result = await defaultFetcher.buildAPIURL(from: docURL)
+        #expect(result.absoluteString == "https://developer.apple.com/tutorials/data/documentation/foundation/url.json")
+    }
+
+    @Test("custom apiBaseURL is used in constructed URL")
+    func customBaseURL() async {
+        let config = Availability.Fetcher.Configuration(
+            apiBaseURL: "https://custom.example.com/data/documentation"
+        )
+        let fetcher = Availability.Fetcher(
+            docsDirectory: URL(fileURLWithPath: "/tmp"),
+            configuration: config
+        )
+        let docURL = URL(string: "https://developer.apple.com/documentation/Combine/Publisher")!
+        let result = await fetcher.buildAPIURL(from: docURL)
+        #expect(result.absoluteString == "https://custom.example.com/data/documentation/combine/publisher.json")
+    }
+
+    @Test("always produces a URL ending in .json")
+    func alwaysEndsInJSON() async {
+        let docURL = URL(string: "https://developer.apple.com/documentation/SwiftUI")!
+        let result = await defaultFetcher.buildAPIURL(from: docURL)
+        #expect(result.absoluteString.hasSuffix(".json"))
     }
 }

@@ -6,15 +6,15 @@ import SharedCore
 import SharedModels
 import Testing
 
-// Regression coverage for `Search.IndexBuilder.deduplicateDocFilesByCanonicalURL`
-// (#200). The dedup helper reads `crawledAt` out of saved
+// Regression coverage for `Search.StrategyHelpers.deduplicateDocFilesByCanonicalURL`
+// (#200).  The dedup helper reads `crawledAt` out of saved
 // `StructuredDocumentationPage` JSON files to break ties between case-axis
-// URL duplicates. If the JSON decoder isn't configured with `.iso8601` the
+// URL duplicates.  If the JSON decoder isn't configured with `.iso8601` the
 // decode silently fails, the helper falls back to filesystem mtime, and
 // dedup picks the wrong file when mtime and crawledAt diverge (e.g. after
 // a corpus copy or git checkout that shuffles mtimes).
 
-@Suite("Search.IndexBuilder.deduplicateDocFilesByCanonicalURL (#200)", .serialized)
+@Suite("Search.StrategyHelpers.deduplicateDocFilesByCanonicalURL (#200)", .serialized)
 struct IndexBuilderDeduplicationTests {
     @Test("Two files with same canonical URL: keeps the one with newer crawledAt even when its mtime is older")
     func keepsNewestByCrawledAtNotMtime() async throws {
@@ -27,13 +27,12 @@ struct IndexBuilderDeduplicationTests {
         try FileManager.default.createDirectory(at: docsDir, withIntermediateDirectories: true)
 
         // Two distinct on-disk files that both point to the same canonical
-        // Apple URL via their `page.url` field. This simulates the real
+        // Apple URL via their `page.url` field.  This simulates the real
         // production case where successive crawls or a URL-canonicalization
-        // change left two on-disk copies of the same page (e.g. underscore
-        // vs dash framework variants pre-fix). Distinct filenames so the test
-        // is FS-case-insensitivity-independent (macOS HFS+ default would
-        // otherwise collapse them before dedup runs).
-        let sharedCanonicalURL = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/list"))
+        // change left two on-disk copies of the same page.
+        let sharedCanonicalURL = try #require(
+            URL(string: "https://developer.apple.com/documentation/swiftui/list")
+        )
 
         let older = try writeFixtureDoc(
             url: sharedCanonicalURL,
@@ -51,26 +50,18 @@ struct IndexBuilderDeduplicationTests {
         )
 
         // Sabotage filesystem mtime: bump the older file's mtime to be newer
-        // than the actually-newer file's mtime. If dedup falls back to mtime
+        // than the actually-newer file's mtime.  If dedup falls back to mtime
         // (i.e. the JSON decode silently fails because `.iso8601` isn't set),
-        // it would now incorrectly keep `older`. With `.iso8601` working,
-        // dedup reads `crawledAt` from the JSON directly and keeps `newer`.
+        // it would incorrectly keep `older`.  With `.iso8601` working, dedup
+        // reads `crawledAt` from JSON directly and keeps `newer`.
         let inFuture = Date().addingTimeInterval(86400)
         try FileManager.default.setAttributes(
-            [.modificationDate: inFuture],
-            ofItemAtPath: older.path
+            [.modificationDate: inFuture], ofItemAtPath: older.path
         )
 
-        let dbPath = tempRoot.appendingPathComponent("search.db")
-        let index = try await Search.Index(dbPath: dbPath)
-        let builder = Search.IndexBuilder(
-            searchIndex: index,
-            metadata: nil,
-            docsDirectory: docsDir,
-            indexSampleCode: false
+        let result = Search.StrategyHelpers.deduplicateDocFilesByCanonicalURL(
+            [older, newer], docsDirectory: docsDir
         )
-
-        let result = try await builder.deduplicateDocFilesByCanonicalURL([older, newer])
         #expect(result == [newer])
     }
 
@@ -92,16 +83,9 @@ struct IndexBuilderDeduplicationTests {
             name: "list"
         )
 
-        let dbPath = tempRoot.appendingPathComponent("search.db")
-        let index = try await Search.Index(dbPath: dbPath)
-        let builder = Search.IndexBuilder(
-            searchIndex: index,
-            metadata: nil,
-            docsDirectory: docsDir,
-            indexSampleCode: false
+        let result = Search.StrategyHelpers.deduplicateDocFilesByCanonicalURL(
+            [file], docsDirectory: docsDir
         )
-
-        let result = try await builder.deduplicateDocFilesByCanonicalURL([file])
         #expect(result == [file])
     }
 
@@ -130,16 +114,9 @@ struct IndexBuilderDeduplicationTests {
             name: "textfield"
         )
 
-        let dbPath = tempRoot.appendingPathComponent("search.db")
-        let index = try await Search.Index(dbPath: dbPath)
-        let builder = Search.IndexBuilder(
-            searchIndex: index,
-            metadata: nil,
-            docsDirectory: docsDir,
-            indexSampleCode: false
+        let result = Search.StrategyHelpers.deduplicateDocFilesByCanonicalURL(
+            [listView, textField], docsDirectory: docsDir
         )
-
-        let result = try await builder.deduplicateDocFilesByCanonicalURL([listView, textField])
         #expect(Set(result) == Set([listView, textField]))
     }
 
@@ -162,20 +139,14 @@ struct IndexBuilderDeduplicationTests {
             name: "view"
         )
 
-        let dbPath = tempRoot.appendingPathComponent("search.db")
-        let index = try await Search.Index(dbPath: dbPath)
-        let builder = Search.IndexBuilder(
-            searchIndex: index,
-            metadata: nil,
-            docsDirectory: docsDir,
-            indexSampleCode: false
-        )
-
-        let page = try #require(await builder.loadStructuredPage(from: file))
+        let page = try #require(Search.StrategyHelpers.loadStructuredPage(from: file))
         #expect(page.crawledAt == knownDate)
-        // canonicalDocumentationURL should also use the page.url branch, not
-        // the path-based fallback. Asserting it returns the lowercased Apple URL.
-        let canonical = await builder.canonicalDocumentationURL(for: file)
+
+        // canonicalDocumentationURL should use the page.url branch, not the path-based
+        // fallback.  Assert it returns the lowercased Apple URL.
+        let canonical = Search.StrategyHelpers.canonicalDocumentationURL(
+            for: file, docsDirectory: docsDir
+        )
         #expect(canonical == "https://developer.apple.com/documentation/swiftui/view")
     }
 }

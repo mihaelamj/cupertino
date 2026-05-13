@@ -1,5 +1,6 @@
 import Foundation
 import SharedConstants
+import SharedUtils
 
 #if canImport(FoundationNetworking)
 import FoundationNetworking
@@ -376,18 +377,10 @@ extension Availability {
             // Build API URL from doc URL
             // https://developer.apple.com/documentation/SwiftUI/View
             // -> https://developer.apple.com/tutorials/data/documentation/swiftui/view.json
-            //
-            // If URL construction fails (malformed apiBaseURL or weird
-            // path characters), skip the network fetch entirely — the
-            // local-content fallback below handles availability extraction
-            // from the embedded JSON.
             let apiURL = buildAPIURL(from: docURL)
 
             // Fetch availability from API
-            var availability: Availability.Info?
-            if let apiURL {
-                availability = await fetchAvailability(from: apiURL)
-            }
+            var availability: Availability.Info? = await fetchAvailability(from: apiURL)
             var inherited = false
             var derivedFromRefs = false
 
@@ -562,8 +555,8 @@ extension Availability {
             return false // Equal versions
         }
 
-        private func buildAPIURL(from docURL: URL) -> URL? {
-            // Extract path after /documentation/.
+        func buildAPIURL(from docURL: URL) -> URL {
+            // Extract path after /documentation/
             let path = docURL.path.lowercased()
             let apiPath: String
 
@@ -573,15 +566,7 @@ extension Availability {
                 apiPath = path
             }
 
-            // `Availability` deliberately has no `Shared` dependency, so the
-            // `URL.knownGood`-style helpers used elsewhere in the codebase
-            // aren't available here. Use the throwing `URL(string:)` and
-            // let the caller skip the network fetch when construction fails
-            // (mis-configured apiBaseURL, exotic path characters Apple
-            // hasn't shipped yet). The caller falls back to local-content
-            // availability extraction, so a nil here just degrades
-            // gracefully instead of trapping the process.
-            return URL(string: "\(configuration.apiBaseURL)/\(apiPath).json")
+            return URL.knownGood("\(configuration.apiBaseURL)/\(apiPath).json")
         }
 
         private func fetchAvailability(from url: URL) async -> Availability.Info? {

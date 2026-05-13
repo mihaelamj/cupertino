@@ -307,6 +307,14 @@ let targets: [Target] = {
 
     let searchTarget = Target.target(
         name: "Search",
+        // Sources/Search/Strategies/ contains SourceIndexingStrategy, StrategyHelpers,
+        // and the 7 concrete strategy types (refactor-plan §3.6 / ADR-CUPERTINO-0002).
+        // They remain in the Search target for now because a clean `SearchStrategies`
+        // package extraction requires SearchIndexCore (§3.5) to be done first —
+        // strategies need Search.Index which is still in this target.  Once §3.5 lands,
+        // the Strategies/ folder moves to Sources/SearchStrategies/ and gets its own
+        // SPM target with deps: [SearchIndexCore, CoreJSONParser, CorePackageIndexing,
+        // Core, SharedModels, SharedConstants, Resources, Logging].
         dependencies: ["SearchModels", "SharedCore", "SharedConstants", "SharedModels", "Logging", "CoreProtocols", "CoreJSONParser", "CorePackageIndexing", "Core", "ASTIndexer"]
     )
     let searchTestsTarget = Target.testTarget(
@@ -375,7 +383,7 @@ let targets: [Target] = {
 
     let availabilityTarget = Target.target(
         name: "Availability",
-        dependencies: ["SharedConstants"]
+        dependencies: ["SharedConstants", "SharedUtils"]
     )
     let availabilityTestsTarget = Target.testTarget(
         name: "AvailabilityTests",
