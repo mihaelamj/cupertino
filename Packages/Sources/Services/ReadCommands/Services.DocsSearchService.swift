@@ -1,5 +1,4 @@
 import Foundation
-import Search
 import SearchModels
 import SharedConstants
 import SharedCore
@@ -9,28 +8,20 @@ import SharedCore
 /// Service for searching Apple documentation, Swift Evolution, and other
 /// indexed sources. Internally holds an `any Search.Database` so the
 /// service can be driven by the production `Search.Index` actor or by a
-/// test stub conforming to `Search.Database`.
+/// test stub conforming to `Search.Database`. The composition root
+/// (CLI / MCP / TUI) constructs the database and passes it in via
+/// `init(database:)`; this file no longer takes a behavioural dependency
+/// on the Search target.
 extension Services {
     public actor DocsSearchService: Services.SearchService {
         private let index: any Search.Database
 
-        /// Initialize with an existing search index. Callers passing a
-        /// concrete `Search.Index` continue to compile unchanged because
-        /// `Search.Index` conforms to `Search.Database`.
-        public init(index: Search.Index) {
-            self.index = index
-        }
-
-        /// Initialize with any `Search.Database` conformer. Tests pass a
-        /// mock; CLI / MCP composition roots can opt into this overload
-        /// to avoid threading the concrete actor type through their wiring.
+        /// Initialize with any `Search.Database` conformer. Production:
+        /// pass a `Search.Index` from the Search target — it conforms to
+        /// `Search.Database`, so the actor flows through this protocol-
+        /// typed init unchanged. Tests pass a mock.
         public init(database: any Search.Database) {
             self.index = database
-        }
-
-        /// Initialize with a database path, creating a new index connection.
-        public init(dbPath: URL) async throws {
-            index = try await Search.Index(dbPath: dbPath)
         }
 
         // MARK: - Services.SearchService Protocol
