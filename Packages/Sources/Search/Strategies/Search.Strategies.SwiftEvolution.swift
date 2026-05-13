@@ -114,7 +114,7 @@ extension Search {
         ///
         /// - Parameter directory: The Swift Evolution proposals directory.
         /// - Returns: A list of matching file URLs.
-        private func getProposalFiles(from directory: URL) throws -> [URL] {
+        func getProposalFiles(from directory: URL) throws -> [URL] {
             let files = try FileManager.default.contentsOfDirectory(
                 at: directory,
                 includingPropertiesForKeys: [.contentModificationDateKey],

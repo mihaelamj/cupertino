@@ -1,4 +1,5 @@
 import CoreJSONParser
+import CoreProtocols
 import Foundation
 import Logging
 import SharedConstants

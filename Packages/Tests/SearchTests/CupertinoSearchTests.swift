@@ -631,8 +631,8 @@ struct CupertinoSearchTests {
 
     // MARK: - IndexBuilder ST File Discovery and Filtering Tests
 
-    @Test("IndexBuilder getProposalFiles discovers both SE and ST files")
-    func indexBuilderGetProposalFilesDiscoversBothPrefixes() async throws {
+    @Test("SwiftEvolutionStrategy getProposalFiles discovers both SE and ST files")
+    func indexBuilderGetProposalFilesDiscoversBothPrefixes() throws {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("cupertino-st-discovery-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -651,56 +651,24 @@ struct CupertinoSearchTests {
             to: tempDir.appendingPathComponent("README.md"), atomically: true, encoding: .utf8
         )
 
-        let (index, cleanup) = try await createTestSearchIndex()
-        defer { try? cleanup() }
-
-        let builder = Search.IndexBuilder(
-            searchIndex: index,
-            metadata: nil,
-            docsDirectory: tempDir,
-            evolutionDirectory: tempDir
-        )
-
-        let files = try await builder.getProposalFiles(from: tempDir)
+        let strategy = Search.SwiftEvolutionStrategy(evolutionDirectory: tempDir)
+        let files = try strategy.getProposalFiles(from: tempDir)
         let filenames = Set(files.map(\.lastPathComponent))
 
         #expect(filenames.contains("SE-0302.md"), "Should discover SE proposal")
         #expect(filenames.contains("ST-0001.md"), "Should discover ST proposal")
         #expect(!filenames.contains("README.md"), "Should exclude non-proposal files")
         #expect(filenames.count == 2)
-
-        await index.disconnect()
     }
 
-    @Test("IndexBuilder isAcceptedProposal returns false for missing status")
-    func indexBuilderIsAcceptedProposalMissing() async throws {
-        let (index, cleanup) = try await createTestSearchIndex()
-        defer { try? cleanup() }
-
-        let builder = Search.IndexBuilder(
-            searchIndex: index,
-            metadata: nil,
-            docsDirectory: FileManager.default.temporaryDirectory
-        )
-
+    @Test("StrategyHelpers isAcceptedProposal returns false for missing status")
+    func indexBuilderIsAcceptedProposalMissing() {
         // Missing status is NOT accepted — proposals rely on this to skip
-        let result = await builder.isAcceptedProposal(nil)
-        #expect(result == false)
-
-        await index.disconnect()
+        #expect(Search.StrategyHelpers.isAcceptedProposal(nil) == false)
     }
 
-    @Test("IndexBuilder extractProposalStatus returns nil for markdown without status header")
-    func indexBuilderExtractProposalStatusMissing() async throws {
-        let (index, cleanup) = try await createTestSearchIndex()
-        defer { try? cleanup() }
-
-        let builder = Search.IndexBuilder(
-            searchIndex: index,
-            metadata: nil,
-            docsDirectory: FileManager.default.temporaryDirectory
-        )
-
+    @Test("StrategyHelpers extractProposalStatus returns nil for markdown without status header")
+    func indexBuilderExtractProposalStatusMissing() {
         let markdown = """
         # Refactor Bug Inits
 
@@ -710,26 +678,15 @@ struct CupertinoSearchTests {
         This proposal refactors bug initializers.
         """
 
-        let status = await builder.extractProposalStatus(from: markdown)
+        let status = Search.StrategyHelpers.extractProposalStatus(from: markdown)
         #expect(status == nil)
 
         // With nil status: isAcceptedProposal(nil) == false → proposals would be skipped
-        #expect(await builder.isAcceptedProposal(status) == false)
-
-        await index.disconnect()
+        #expect(Search.StrategyHelpers.isAcceptedProposal(status) == false)
     }
 
-    @Test("IndexBuilder extractProposalStatus and isAcceptedProposal handle hyphen-style ST status")
-    func indexBuilderExtractProposalStatusHyphenStyleST() async throws {
-        let (index, cleanup) = try await createTestSearchIndex()
-        defer { try? cleanup() }
-
-        let builder = Search.IndexBuilder(
-            searchIndex: index,
-            metadata: nil,
-            docsDirectory: FileManager.default.temporaryDirectory
-        )
-
+    @Test("StrategyHelpers extractProposalStatus and isAcceptedProposal handle hyphen-style ST status")
+    func indexBuilderExtractProposalStatusHyphenStyleST() {
         let markdown = """
         # Some Swift Testing Proposal
 
@@ -740,11 +697,9 @@ struct CupertinoSearchTests {
         This is an example ST proposal using hyphen-style status.
         """
 
-        let status = await builder.extractProposalStatus(from: markdown)
+        let status = Search.StrategyHelpers.extractProposalStatus(from: markdown)
         #expect(status == "Accepted")
-        #expect(await builder.isAcceptedProposal(status) == true)
-
-        await index.disconnect()
+        #expect(Search.StrategyHelpers.isAcceptedProposal(status) == true)
     }
 
     @Test("Evolution reference pattern matches both SE and ST proposal IDs")

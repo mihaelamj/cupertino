@@ -85,7 +85,7 @@ extension Search {
         ///   - archiveDirectory: Optional directory containing Apple Archive documentation.
         ///   - higDirectory: Optional directory containing Human Interface Guidelines files.
         ///   - indexSampleCode: Whether to include the sample code catalog. Defaults to `true`.
-        public convenience init(
+        public init(
             searchIndex: Search.Index,
             metadata: Shared.Models.CrawlMetadata?,
             docsDirectory: URL,
