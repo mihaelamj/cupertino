@@ -279,7 +279,7 @@ let targets: [Target] = {
     )
     let searchTestsTarget = Target.testTarget(
         name: "SearchTests",
-        dependencies: ["Search", "SharedCore", "SharedConstants", "SharedModels", "SharedUtils", "TestSupport", "CorePackageIndexing"]
+        dependencies: ["Search", "SharedCore", "SharedConstants", "SharedModels", "SharedUtils", "TestSupport", "CorePackageIndexing", "ASTIndexer", "SampleIndex"]
     )
 
     let sampleIndexTarget = Target.target(
@@ -361,7 +361,7 @@ let targets: [Target] = {
     )
     let astIndexerTestsTarget = Target.testTarget(
         name: "ASTIndexerTests",
-        dependencies: ["ASTIndexer", "Search", "SampleIndex", "TestSupport"]
+        dependencies: ["ASTIndexer", "TestSupport"]
     )
 
     // ---------- Distribution (#246: SetupCommand lift) ----------
