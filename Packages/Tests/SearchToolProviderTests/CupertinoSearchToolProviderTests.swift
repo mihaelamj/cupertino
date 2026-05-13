@@ -1,6 +1,6 @@
 // swiftlint:disable file_length
 import Foundation
-import MCP
+import MCPCore
 @testable import SampleIndex
 @testable import Search
 @testable import SearchToolProvider

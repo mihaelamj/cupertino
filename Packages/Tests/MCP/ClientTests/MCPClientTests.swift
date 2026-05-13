@@ -1,5 +1,5 @@
-import MCP
 @testable import MCPClient
+import MCPCore
 import Testing
 
 @Suite("MCPClient Tests")

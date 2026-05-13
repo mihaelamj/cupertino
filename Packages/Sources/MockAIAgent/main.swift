@@ -1,5 +1,5 @@
 import Foundation
-import MCP
+import MCPCore
 import SharedConstants
 import SharedCore
 

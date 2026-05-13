@@ -1,5 +1,5 @@
 import Foundation
-import MCP
+import MCPCore
 import MCPSharedTools
 import SampleIndex
 import Search

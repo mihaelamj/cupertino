@@ -1,5 +1,5 @@
 import Foundation
-@testable import MCP
+@testable import MCPCore
 import Testing
 
 // MARK: - Mock AI Agent Tests

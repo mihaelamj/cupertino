@@ -1,6 +1,6 @@
 // swiftlint:disable use_data_constructor_over_string_member non_optional_string_data_conversion
 import Foundation
-@testable import MCP
+@testable import MCPCore
 import Testing
 
 // MARK: - MCP Framework Tests

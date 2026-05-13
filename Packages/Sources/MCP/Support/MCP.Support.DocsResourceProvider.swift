@@ -1,6 +1,6 @@
 import Foundation
 import Logging
-import MCP
+import MCPCore
 import MCPSharedTools
 import Search
 import SharedConfiguration
