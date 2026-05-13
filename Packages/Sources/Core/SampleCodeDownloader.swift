@@ -208,7 +208,7 @@ public final class SampleCodeDownloader {
             }
 
             let zipFilename = "\(framework.lowercased().replacingOccurrences(of: "_", with: "-"))-\(slug).zip"
-            let webURL = "https://developer.apple.com\(urlString)"
+            let webURL = "\(Shared.Constants.BaseURL.appleDeveloper)\(urlString)"
 
             entries.append(Sample.Core.Entry(
                 title: title,

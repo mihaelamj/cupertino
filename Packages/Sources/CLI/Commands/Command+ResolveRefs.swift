@@ -68,10 +68,10 @@ extension Command {
             }
 
             Logging.Log.info("Resolving doc:// markers in \(dir.path)")
-            let resolver = RefResolver(inputDirectory: dir)
+            let resolver = Core.JSONParser.RefResolver(inputDirectory: dir)
 
             let fetcher = try await makeFetcher()
-            let (stats, unresolved): (RefResolver.Stats, Set<String>)
+            let (stats, unresolved): (Core.JSONParser.RefResolver.Stats, Set<String>)
             if let fetcher {
                 (stats, unresolved) = try await resolver.runWithFetcher(fetcher) { done, total in
                     if done % 50 == 0 || done == total {
@@ -114,14 +114,14 @@ extension Command {
         private struct ResolveReport: Codable {
             let generatedAt: Date
             let inputDirectory: String
-            let stats: RefResolver.Stats
+            let stats: Core.JSONParser.RefResolver.Stats
             let unresolvedMarkers: [String]
         }
 
         /// Build the title-fetcher chain based on `--use-network` /
         /// `--use-webview` flags. Returns nil when no network resolution
         /// should happen (default behaviour).
-        private func makeFetcher() async throws -> (any RefResolver.TitleFetcher)? {
+        private func makeFetcher() async throws -> (any Core.JSONParser.RefResolver.TitleFetcher)? {
             guard useNetwork else {
                 if useWebview {
                     Logging.Log.error("--use-webview requires --use-network")
@@ -130,7 +130,7 @@ extension Command {
                 return nil
             }
 
-            let json = AppleJSONAPITitleFetcher()
+            let json = Core.JSONParser.AppleJSONAPITitleFetcher()
             guard useWebview else {
                 return json
             }
@@ -140,12 +140,12 @@ extension Command {
             // navigation observer never fires). The same bootstrap the auth
             // flow in SampleCodeDownloader uses, but headless — we don't
             // surface a Dock icon for a background resolve pass.
-            let webView = await MainActor.run { () -> any RefResolver.TitleFetcher in
+            let webView = await MainActor.run { () -> any Core.JSONParser.RefResolver.TitleFetcher in
                 NSApplication.shared.setActivationPolicy(.prohibited)
                 NSApplication.shared.finishLaunching()
-                return WKWebViewTitleFetcher()
+                return Core.JSONParser.WKWebViewTitleFetcher()
             }
-            return CompositeTitleFetcher(primary: json, fallback: webView)
+            return Core.JSONParser.CompositeTitleFetcher(primary: json, fallback: webView)
             #else
             Logging.Log.error("--use-webview is only supported on macOS")
             throw ExitCode.failure

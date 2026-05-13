@@ -270,7 +270,7 @@ extension Core {
             var storageURL = url
 
             // Check if this URL could have a JSON API endpoint (Apple docs)
-            let hasJSONEndpoint = AppleJSONToMarkdown.jsonAPIURL(from: url) != nil
+            let hasJSONEndpoint = Core.JSONParser.AppleJSONToMarkdown.jsonAPIURL(from: url) != nil
 
             // The HTML→markdown / link extraction calls below are synchronous
             // and allocate heavily through Foundation (NSString operations,
@@ -461,7 +461,7 @@ extension Core {
             links: [URL],
             canonicalURL: URL
         ) {
-            guard let jsonURL = AppleJSONToMarkdown.jsonAPIURL(from: url) else {
+            guard let jsonURL = Core.JSONParser.AppleJSONToMarkdown.jsonAPIURL(from: url) else {
                 throw Error.invalidState
             }
 
@@ -480,7 +480,7 @@ extension Core {
             // professional-video-applications), response.url reflects the final JSON API URL;
             // reversing it gives us the storage key that matches the canonical doc URL.
             let responseJSONURL = response.url ?? jsonURL
-            let canonicalURL = AppleJSONToMarkdown.documentationURL(from: responseJSONURL) ?? url
+            let canonicalURL = Core.JSONParser.AppleJSONToMarkdown.documentationURL(from: responseJSONURL) ?? url
 
             if canonicalURL.absoluteString != url.absoluteString {
                 logInfo("   🔀 Redirect detected: storing under \(canonicalURL.lastPathComponent)")
@@ -492,11 +492,11 @@ extension Core {
             // accumulating in the implicit Task-scoped pool. See the comment
             // in the main crawl loop for the multi-day-crawl rationale.
             return try autoreleasepool {
-                let structuredPage = AppleJSONToMarkdown.toStructuredPage(data, url: canonicalURL, depth: depth)
-                guard let markdown = AppleJSONToMarkdown.convert(data, url: canonicalURL) else {
+                let structuredPage = Core.JSONParser.AppleJSONToMarkdown.toStructuredPage(data, url: canonicalURL, depth: depth)
+                guard let markdown = Core.JSONParser.AppleJSONToMarkdown.convert(data, url: canonicalURL) else {
                     throw Error.invalidHTML
                 }
-                let links = AppleJSONToMarkdown.extractLinks(from: data)
+                let links = Core.JSONParser.AppleJSONToMarkdown.extractLinks(from: data)
                 return (structuredPage, markdown, links, canonicalURL)
             }
         }

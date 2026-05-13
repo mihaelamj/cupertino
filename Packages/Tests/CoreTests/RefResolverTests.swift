@@ -11,7 +11,7 @@ import Testing
 
 @Test("canonicalPath strips doc:// prefix and bundle, lowercases path")
 func canonicalPathStripsBundle() {
-    let key = RefResolver.canonicalPath(
+    let key = Core.JSONParser.RefResolver.canonicalPath(
         forDocURI: "doc://com.apple.storekit/documentation/StoreKit/AnyTransaction"
     )
     #expect(key == "/documentation/storekit/anytransaction")
@@ -19,7 +19,7 @@ func canonicalPathStripsBundle() {
 
 @Test("canonicalPath handles fragment by stripping it")
 func canonicalPathStripsFragment() {
-    let key = RefResolver.canonicalPath(
+    let key = Core.JSONParser.RefResolver.canonicalPath(
         forDocURI: "doc://com.apple.storekit/documentation/StoreKit/billing#Detect-a-Refund"
     )
     #expect(key == "/documentation/storekit/billing")
@@ -27,7 +27,7 @@ func canonicalPathStripsFragment() {
 
 @Test("canonicalPath handles the apple-documentation generic bundle")
 func canonicalPathHandlesGenericBundle() {
-    let key = RefResolver.canonicalPath(
+    let key = Core.JSONParser.RefResolver.canonicalPath(
         forDocURI: "doc://com.apple.documentation/documentation/AppStoreServerNotifications"
     )
     #expect(key == "/documentation/appstoreservernotifications")
@@ -35,15 +35,15 @@ func canonicalPathHandlesGenericBundle() {
 
 @Test("canonicalPath returns nil for non-doc URIs")
 func canonicalPathRejectsNonDocURI() {
-    #expect(RefResolver.canonicalPath(forDocURI: "https://example.com/x") == nil)
-    #expect(RefResolver.canonicalPath(forDocURI: "doc://") == nil) // no path
-    #expect(RefResolver.canonicalPath(forDocURI: "doc:something") == nil)
+    #expect(Core.JSONParser.RefResolver.canonicalPath(forDocURI: "https://example.com/x") == nil)
+    #expect(Core.JSONParser.RefResolver.canonicalPath(forDocURI: "doc://") == nil) // no path
+    #expect(Core.JSONParser.RefResolver.canonicalPath(forDocURI: "doc:something") == nil)
 }
 
 @Test("canonicalPath(forURL:) lowercases the URL path")
 func canonicalPathFromURL() throws {
     let url = try #require(URL(string: "https://developer.apple.com/documentation/StoreKit/AnyTransaction"))
-    #expect(RefResolver.canonicalPath(forURL: url) == "/documentation/storekit/anytransaction")
+    #expect(Core.JSONParser.RefResolver.canonicalPath(forURL: url) == "/documentation/storekit/anytransaction")
 }
 
 // MARK: - rewriteMarkdown — markdown link form
@@ -52,7 +52,7 @@ func canonicalPathFromURL() throws {
 func rewriteMarkdownPreservesLabel() {
     let map = ["/documentation/storekit/anytransaction": "AnyTransaction"]
     let input = "See [a transaction](doc://com.apple.storekit/documentation/StoreKit/AnyTransaction) here."
-    let result = RefResolver.rewriteMarkdown(input, with: map)
+    let result = Core.JSONParser.RefResolver.rewriteMarkdown(input, with: map)
     #expect(result.rewritten == "See [a transaction] here.")
     #expect(result.resolvedCount == 1)
     #expect(result.unresolvedMarkers.isEmpty)
@@ -62,7 +62,7 @@ func rewriteMarkdownPreservesLabel() {
 func rewriteMarkdownFallsBackToTitle() {
     let map = ["/documentation/storekit/anytransaction": "AnyTransaction"]
     let input = "See [](doc://com.apple.storekit/documentation/StoreKit/AnyTransaction) here."
-    let result = RefResolver.rewriteMarkdown(input, with: map)
+    let result = Core.JSONParser.RefResolver.rewriteMarkdown(input, with: map)
     #expect(result.rewritten == "See [AnyTransaction] here.")
 }
 
@@ -72,7 +72,7 @@ func rewriteMarkdownFallsBackToTitle() {
 func rewriteMarkdownBareBracket() {
     let map = ["/documentation/storekit/anytransaction": "AnyTransaction"]
     let input = "Use [doc://com.apple.storekit/documentation/StoreKit/AnyTransaction] for any."
-    let result = RefResolver.rewriteMarkdown(input, with: map)
+    let result = Core.JSONParser.RefResolver.rewriteMarkdown(input, with: map)
     #expect(result.rewritten == "Use [AnyTransaction] for any.")
     #expect(result.resolvedCount == 1)
 }
@@ -81,7 +81,7 @@ func rewriteMarkdownBareBracket() {
 func rewriteMarkdownBareParen() {
     let map = ["/documentation/storekit/anytransaction": "AnyTransaction"]
     let input = "(doc://com.apple.storekit/documentation/StoreKit/AnyTransaction)"
-    let result = RefResolver.rewriteMarkdown(input, with: map)
+    let result = Core.JSONParser.RefResolver.rewriteMarkdown(input, with: map)
     #expect(result.rewritten == "(AnyTransaction)")
 }
 
@@ -97,7 +97,7 @@ func rewriteMarkdownMultipleMarkers() {
     See [link a](doc://com.apple.storekit/documentation/StoreKit/AnyTransaction) and \
     [doc://com.apple.storekit/documentation/StoreKit/Billing] for more.
     """
-    let result = RefResolver.rewriteMarkdown(input, with: map)
+    let result = Core.JSONParser.RefResolver.rewriteMarkdown(input, with: map)
     #expect(result.rewritten.contains("[link a]"))
     #expect(result.rewritten.contains("[Billing]"))
     #expect(result.resolvedCount == 2)
@@ -110,7 +110,7 @@ func rewriteMarkdownTracksUnresolved() {
     let map: [String: String] = [:]
     let unknown = "doc://com.apple.storekit/documentation/StoreKit/Unknown"
     let input = "Look at [doc](\(unknown)) over there."
-    let result = RefResolver.rewriteMarkdown(input, with: map)
+    let result = Core.JSONParser.RefResolver.rewriteMarkdown(input, with: map)
     #expect(result.rewritten == input)
     #expect(result.resolvedCount == 0)
     #expect(result.unresolvedMarkers == [unknown])
@@ -120,7 +120,7 @@ func rewriteMarkdownTracksUnresolved() {
 func rewriteMarkdownIdempotent() {
     let map = ["/documentation/storekit/anytransaction": "AnyTransaction"]
     let input = "See [AnyTransaction] here."
-    let result = RefResolver.rewriteMarkdown(input, with: map)
+    let result = Core.JSONParser.RefResolver.rewriteMarkdown(input, with: map)
     #expect(result.rewritten == input)
     #expect(result.resolvedCount == 0)
     #expect(result.unresolvedMarkers.isEmpty)
@@ -128,7 +128,7 @@ func rewriteMarkdownIdempotent() {
 
 // MARK: - End-to-end harvest+rewrite on a fixture corpus
 
-@Suite("RefResolver end-to-end")
+@Suite("Core.JSONParser.RefResolver end-to-end")
 struct RefResolverEndToEnd {
     /// Spin up a temp directory with a small synthetic corpus, run
     /// resolve, then return the temp directory and the rewritten pages.
@@ -187,7 +187,7 @@ struct RefResolverEndToEnd {
         let tmp = try Self.makeFixture()
         defer { try? FileManager.default.removeItem(at: tmp) }
 
-        let resolver = RefResolver(inputDirectory: tmp)
+        let resolver = Core.JSONParser.RefResolver(inputDirectory: tmp)
         let (stats, unresolved) = try resolver.run()
 
         #expect(stats.pagesScanned == 2)
@@ -213,7 +213,7 @@ struct RefResolverEndToEnd {
         let tmp = try Self.makeFixture()
         defer { try? FileManager.default.removeItem(at: tmp) }
 
-        let resolver = RefResolver(inputDirectory: tmp)
+        let resolver = Core.JSONParser.RefResolver(inputDirectory: tmp)
         let firstRun = try resolver.run()
         let secondRun = try resolver.run()
         // Second run finds the same markers but resolves the same one — so
@@ -228,7 +228,7 @@ struct RefResolverEndToEnd {
         let tmp = try Self.makeFixture()
         defer { try? FileManager.default.removeItem(at: tmp) }
 
-        let resolver = RefResolver(inputDirectory: tmp)
+        let resolver = Core.JSONParser.RefResolver(inputDirectory: tmp)
         let pages = try resolver.collectPageFiles()
         #expect(pages.count == 2)
         #expect(pages.allSatisfy { $0.lastPathComponent != "metadata.json" })
@@ -237,9 +237,9 @@ struct RefResolverEndToEnd {
 
 // MARK: - Network fetcher integration
 
-/// Test double for `RefResolver.TitleFetcher`: returns canned titles
+/// Test double for `Core.JSONParser.RefResolver.TitleFetcher`: returns canned titles
 /// for specific URL paths, nil for everything else. Records call count.
-private final class MockTitleFetcher: RefResolver.TitleFetcher, @unchecked Sendable {
+private final class MockTitleFetcher: Core.JSONParser.RefResolver.TitleFetcher, @unchecked Sendable {
     let map: [String: String]
     private let queue = DispatchQueue(label: "mock-title-fetcher")
     private var _callCount = 0
@@ -257,7 +257,7 @@ private final class MockTitleFetcher: RefResolver.TitleFetcher, @unchecked Senda
     }
 }
 
-@Suite("RefResolver with network fallback")
+@Suite("Core.JSONParser.RefResolver with network fallback")
 struct RefResolverNetwork {
     @Test("network fetcher fills in unresolved markers")
     func networkFetcherFillsTheGap() async throws {
@@ -266,7 +266,7 @@ struct RefResolverNetwork {
 
         let phantomPath = "/documentation/storekit/phantom"
         let fetcher = MockTitleFetcher([phantomPath: "Phantom"])
-        let resolver = RefResolver(inputDirectory: tmp)
+        let resolver = Core.JSONParser.RefResolver(inputDirectory: tmp)
 
         let (stats, unresolved) = try await resolver.runWithFetcher(fetcher)
 
@@ -287,7 +287,7 @@ struct RefResolverNetwork {
         defer { try? FileManager.default.removeItem(at: tmp) }
 
         let fetcher = MockTitleFetcher([:]) // never finds anything
-        let resolver = RefResolver(inputDirectory: tmp)
+        let resolver = Core.JSONParser.RefResolver(inputDirectory: tmp)
 
         let (stats, unresolved) = try await resolver.runWithFetcher(fetcher)
 
@@ -296,11 +296,11 @@ struct RefResolverNetwork {
         #expect(fetcher.callCount == 1)
     }
 
-    @Test("CompositeTitleFetcher tries fallback when primary returns nil")
+    @Test("Core.JSONParser.CompositeTitleFetcher tries fallback when primary returns nil")
     func compositeChainsFallback() async throws {
         let primary = MockTitleFetcher([:])
         let fallback = MockTitleFetcher(["/documentation/x/y": "Y"])
-        let composite = CompositeTitleFetcher(primary: primary, fallback: fallback)
+        let composite = Core.JSONParser.CompositeTitleFetcher(primary: primary, fallback: fallback)
         let url = try #require(URL(string: "https://developer.apple.com/documentation/X/Y"))
 
         let title = await composite.resolveTitle(for: url)
@@ -309,11 +309,11 @@ struct RefResolverNetwork {
         #expect(fallback.callCount == 1)
     }
 
-    @Test("CompositeTitleFetcher does not call fallback when primary succeeds")
+    @Test("Core.JSONParser.CompositeTitleFetcher does not call fallback when primary succeeds")
     func compositeShortCircuits() async throws {
         let primary = MockTitleFetcher(["/documentation/x/y": "Y"])
         let fallback = MockTitleFetcher([:])
-        let composite = CompositeTitleFetcher(primary: primary, fallback: fallback)
+        let composite = Core.JSONParser.CompositeTitleFetcher(primary: primary, fallback: fallback)
         let url = try #require(URL(string: "https://developer.apple.com/documentation/X/Y"))
 
         let title = await composite.resolveTitle(for: url)
@@ -324,7 +324,7 @@ struct RefResolverNetwork {
 
     @Test("documentationURL(forDocURI:) builds the canonical https URL")
     func documentationURLBuilder() {
-        let url = RefResolver.documentationURL(
+        let url = Core.JSONParser.RefResolver.documentationURL(
             forDocURI: "doc://com.apple.storekit/documentation/StoreKit/AnyTransaction"
         )
         #expect(url?.absoluteString == "https://developer.apple.com/documentation/storekit/anytransaction")

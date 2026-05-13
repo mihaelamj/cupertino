@@ -462,8 +462,11 @@ extension Shared.Constants {
         /// Apple Developer Documentation
         public static let appleDeveloperDocs = "https://developer.apple.com/documentation/"
 
-        /// Apple Archive Documentation
+        /// Apple Archive root (`/library/archive/`)
         public static let appleArchive = "https://developer.apple.com/library/archive/"
+
+        /// Apple Archive Documentation root (`/library/archive/documentation/`)
+        public static let appleArchiveDocs = "https://developer.apple.com/library/archive/documentation/"
 
         /// Apple Human Interface Guidelines
         public static let appleHIG = "https://developer.apple.com/design/human-interface-guidelines/"
@@ -477,6 +480,14 @@ extension Shared.Constants {
         /// indexes from on-disk freshness instead of the embedded
         /// snapshot (#214).
         public static let appleSampleCodeJSON = "https://developer.apple.com/tutorials/data/documentation/samplecode.json"
+
+        /// Apple DocC tutorials-data root. Used to compose JSON-API URLs
+        /// (`appleTutorialsData + "/documentation/<framework>/<symbol>.json"`).
+        public static let appleTutorialsData = "https://developer.apple.com/tutorials/data"
+
+        /// Apple DocC tutorials-data documentation root.
+        /// Used by AvailabilityFetcher and friends as the JSON-API base.
+        public static let appleTutorialsDocs = "https://developer.apple.com/tutorials/data/documentation"
 
         /// Apple Developer Account
         public static let appleDeveloperAccount = "https://developer.apple.com/account/"

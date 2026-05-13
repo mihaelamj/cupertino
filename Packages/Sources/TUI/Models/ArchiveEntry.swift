@@ -16,7 +16,7 @@ struct ArchiveEntry {
 
     /// Full URL to the archive guide
     var url: URL? {
-        URL(string: "https://developer.apple.com/library/archive/documentation/\(path)")
+        URL(string: "\(Shared.Constants.BaseURL.appleArchiveDocs)\(path)")
     }
 }
 

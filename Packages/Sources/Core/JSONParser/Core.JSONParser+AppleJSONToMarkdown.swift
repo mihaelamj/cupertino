@@ -1,0 +1,784 @@
+import CoreProtocols
+import Foundation
+import SharedConstants
+import SharedCore
+import SharedModels
+
+// MARK: - Apple Documentation JSON to Markdown Converter
+
+extension Core.JSONParser {
+    /// Converts Apple's documentation JSON API response to Markdown
+    /// This is a lightweight alternative to WKWebView rendering that avoids memory issues
+    /// with large index pages like lapack-functions (1600+ items)
+    public struct AppleJSONToMarkdown: Core.Protocols.ContentTransformer, @unchecked Sendable {
+        public typealias RawContent = Data
+
+        public init() {}
+
+        // MARK: - ContentTransformer Protocol
+
+        /// Transform JSON content to Markdown (protocol conformance)
+        public func transform(_ content: Data, url: URL) -> String? {
+            Self.convert(content, url: url)
+        }
+
+        /// Extract links from JSON content (protocol conformance)
+        public func extractLinks(from content: Data) -> [URL] {
+            Self.extractLinks(from: content)
+        }
+
+        // MARK: - Static API (backwards compatible)
+
+        /// Convert Apple documentation JSON to Markdown
+        public static func convert(_ json: Data, url: URL) -> String? {
+            guard let doc = try? JSONDecoder().decode(AppleDocumentation.self, from: json) else {
+                return nil
+            }
+
+            var markdown = ""
+
+            // Add front matter with metadata
+            markdown += "---\n"
+            markdown += "source: \(url.absoluteString)\n"
+            markdown += "crawled: \(ISO8601DateFormatter().string(from: Date()))\n"
+            markdown += "---\n\n"
+
+            // Title
+            markdown += "# \(doc.metadata.title)\n\n"
+
+            // Role heading (e.g., "Protocol", "Structure", "API Collection")
+            if let roleHeading = doc.metadata.roleHeading {
+                markdown += "**\(roleHeading)**\n\n"
+            }
+
+            // Abstract
+            if let abstract = doc.abstract, !abstract.isEmpty {
+                markdown += renderInlineContent(abstract)
+                markdown += "\n\n"
+            }
+
+            // Primary content sections (declarations, parameters, return values, etc.)
+            if let sections = doc.primaryContentSections {
+                for section in sections {
+                    markdown += renderPrimaryContentSection(section)
+                }
+            }
+
+            // Topic sections (grouped APIs)
+            if let topics = doc.topicSections {
+                for topic in topics {
+                    markdown += renderTopicSection(topic, references: doc.references)
+                }
+            }
+
+            // See Also sections
+            if let seeAlso = doc.seeAlsoSections {
+                for section in seeAlso {
+                    markdown += renderTopicSection(section, references: doc.references)
+                }
+            }
+
+            // Relationships
+            if let relationships = doc.relationshipsSections {
+                for section in relationships {
+                    markdown += renderRelationshipSection(section, references: doc.references)
+                }
+            }
+
+            return markdown
+        }
+
+        /// Get the JSON API URL from a documentation URL.
+        ///
+        /// Only resolves for `developer.apple.com` (the Apple Developer
+        /// Documentation site, which serves DocC JSON under /tutorials/data/...).
+        /// Returns nil for any other host (Swift.org, swift.org book, etc.) so
+        /// the crawler falls through to its HTML path. Previously this method
+        /// constructed a `developer.apple.com/tutorials/data/...json` URL
+        /// regardless of input host, which on a Swift.org crawl returned
+        /// Apple's docs index — references all pointing at apple.com — and
+        /// then `shouldVisit` filtered them out as outside the swift.org
+        /// allowed-prefix set, leaving the crawl with 0 enqueued children.
+        public static func jsonAPIURL(from documentationURL: URL) -> URL? {
+            guard documentationURL.host == "developer.apple.com" else { return nil }
+            let path = documentationURL.path
+            guard path.hasPrefix("/documentation") else { return nil }
+            return URL(string: "\(Shared.Constants.BaseURL.appleTutorialsData)\(path).json")
+        }
+
+        /// Reverse of `jsonAPIURL(from:)`: derives the canonical documentation URL from a JSON API URL.
+        /// Returns nil if the input is not a JSON API URL for developer.apple.com.
+        public static func documentationURL(from jsonAPIURL: URL) -> URL? {
+            guard jsonAPIURL.host == "developer.apple.com" else { return nil }
+            var path = jsonAPIURL.path // e.g. /tutorials/data/documentation/foo.json
+            guard path.hasPrefix("/tutorials/data/documentation") else { return nil }
+            path = String(path.dropFirst("/tutorials/data".count)) // /documentation/foo.json
+            if path.hasSuffix(".json") {
+                path = String(path.dropLast(5))
+            }
+            return URL(string: "\(Shared.Constants.BaseURL.appleDeveloper)\(path)")
+        }
+
+        /// Extract the interface language from the JSON response (swift, objc, etc.)
+        public static func extractLanguage(from json: Data) -> String {
+            guard let doc = try? JSONDecoder().decode(AppleDocumentation.self, from: json) else {
+                return "swift"
+            }
+            return doc.interfaceLanguage
+        }
+
+        /// Extract linked documentation URLs from the JSON response.
+        ///
+        /// Primary source is `doc.references`, the canonical link table that DocC
+        /// populates with the URL of every identifier the page mentions in any
+        /// section, prose, hierarchy, or disambiguator variant. The per-section
+        /// walks (topic / seeAlso / relationships / defaultImplementations) act
+        /// as belt-and-braces for partial responses where `references` is absent
+        /// or truncated, and they fall back to `documentationURLFromIdentifier`
+        /// when an identifier is missing from `references`.
+        public static func extractLinks(from json: Data) -> [URL] {
+            guard let doc = try? JSONDecoder().decode(AppleDocumentation.self, from: json) else {
+                return []
+            }
+
+            var seen = Set<String>()
+            var urls: [URL] = []
+
+            func appendIfNew(_ url: URL) {
+                if seen.insert(url.absoluteString).inserted {
+                    urls.append(url)
+                }
+            }
+
+            // Primary: every reference on the page.
+            if let refs = doc.references {
+                for ref in refs.values {
+                    guard let url = absoluteDocumentationURL(from: ref.url) else { continue }
+                    appendIfNew(url)
+                }
+            }
+
+            // Belt-and-braces walks. Each section's identifiers resolve via the
+            // references dict when possible, else fall back to identifier parsing.
+            let allIdentifierSources: [[String]] = [
+                (doc.topicSections ?? []).flatMap(\.identifiers),
+                (doc.seeAlsoSections ?? []).flatMap(\.identifiers),
+                (doc.defaultImplementationsSections ?? []).flatMap(\.identifiers),
+                (doc.relationshipsSections ?? []).flatMap(\.identifiers),
+            ]
+            for ids in allIdentifierSources {
+                for identifier in ids {
+                    guard let url = url(for: identifier, references: doc.references) else { continue }
+                    appendIfNew(url)
+                }
+            }
+
+            // Inline cross-references inside primary content prose. These are
+            // `{ "type": "reference", "identifier": "..." }` items embedded in
+            // paragraph text and are otherwise invisible to section walks.
+            if let primary = doc.primaryContentSections {
+                for section in primary {
+                    if let blocks = section.content {
+                        for block in blocks {
+                            for identifier in inlineReferenceIdentifiers(in: block) {
+                                guard let url = url(for: identifier, references: doc.references) else { continue }
+                                appendIfNew(url)
+                            }
+                        }
+                    }
+                }
+            }
+
+            return urls
+        }
+
+        /// Resolve an identifier to a URL, preferring the canonical URL stored in
+        /// the `references` dict, falling back to deriving from the `doc://` URI.
+        private static func url(for identifier: String, references: [String: Reference]?) -> URL? {
+            if let path = references?[identifier]?.url,
+               let url = absoluteDocumentationURL(from: path) {
+                return url
+            }
+            return documentationURLFromIdentifier(identifier)
+        }
+
+        /// Build an absolute developer.apple.com URL from a relative DocC path.
+        /// Filters out asset / archive references (images, .html guides, etc.)
+        /// to keep `extractLinks` results focused on documentation pages.
+        private static func absoluteDocumentationURL(from relativePath: String?) -> URL? {
+            guard let path = relativePath, path.hasPrefix("/documentation/") else { return nil }
+            return URL(string: "\(Shared.Constants.BaseURL.appleDeveloper)\(path)")
+        }
+
+        /// Recursively collect identifiers from inline `type: "reference"` items
+        /// embedded in paragraph content. Walks nested `inlineContent` and lists.
+        private static func inlineReferenceIdentifiers(in block: ContentBlock) -> [String] {
+            var ids: [String] = []
+            if let inline = block.inlineContent {
+                collectInlineReferences(inline, into: &ids)
+            }
+            if let items = block.items {
+                for item in items {
+                    guard let nested = item.content else { continue }
+                    for child in nested {
+                        ids.append(contentsOf: inlineReferenceIdentifiers(in: child))
+                    }
+                }
+            }
+            return ids
+        }
+
+        private static func collectInlineReferences(
+            _ items: [InlineContent],
+            into ids: inout [String]
+        ) {
+            for item in items {
+                if item.type == "reference", let id = item.identifier {
+                    ids.append(id)
+                }
+                if let nested = item.inlineContent {
+                    collectInlineReferences(nested, into: &ids)
+                }
+            }
+        }
+
+        // MARK: - Private Rendering Methods
+
+        private static func renderInlineContent(_ content: [InlineContent]) -> String {
+            content.map { item -> String in
+                switch item.type {
+                case "text":
+                    return item.text ?? ""
+                case "codeVoice":
+                    return "`\(item.code ?? "")`"
+                case "reference":
+                    if let identifier = item.identifier {
+                        let title = item.title ?? identifier
+                        return "[\(title)]"
+                    }
+                    return ""
+                case "emphasis":
+                    if let inlineContent = item.inlineContent {
+                        return "*\(renderInlineContent(inlineContent))*"
+                    }
+                    return ""
+                case "strong":
+                    if let inlineContent = item.inlineContent {
+                        return "**\(renderInlineContent(inlineContent))**"
+                    }
+                    return ""
+                default:
+                    return item.text ?? ""
+                }
+            }.joined()
+        }
+
+        private static func renderPrimaryContentSection(_ section: PrimaryContentSection) -> String {
+            var result = ""
+
+            switch section.kind {
+            case "declarations":
+                if let declarations = section.declarations {
+                    result += "## Declaration\n\n"
+                    for declaration in declarations {
+                        if let tokens = declaration.tokens {
+                            result += "```swift\n"
+                            result += tokens.map(\.text).joined()
+                            result += "\n```\n\n"
+                        }
+                    }
+                }
+
+            case "parameters":
+                if let parameters = section.parameters {
+                    result += "## Parameters\n\n"
+                    for param in parameters {
+                        result += "- **\(param.name)**: "
+                        if let content = param.content {
+                            result += renderContentBlocks(content)
+                        }
+                        result += "\n"
+                    }
+                    result += "\n"
+                }
+
+            case "content":
+                if let content = section.content {
+                    result += renderContentBlocks(content)
+                    result += "\n\n"
+                }
+
+            default:
+                break
+            }
+
+            return result
+        }
+
+        private static func renderContentBlocks(_ blocks: [ContentBlock]) -> String {
+            blocks.map { block -> String in
+                switch block.type {
+                case "paragraph":
+                    if let inlineContent = block.inlineContent {
+                        return renderInlineContent(inlineContent)
+                    }
+                    return ""
+
+                case "codeListing":
+                    var code = "```"
+                    if let syntax = block.syntax {
+                        code += syntax
+                    }
+                    code += "\n"
+                    if let lines = block.code {
+                        code += lines.joined(separator: "\n")
+                    }
+                    code += "\n```"
+                    return code
+
+                case "unorderedList":
+                    if let items = block.items {
+                        return items.map { item -> String in
+                            if let content = item.content {
+                                return "- " + renderContentBlocks(content)
+                            }
+                            return ""
+                        }.joined(separator: "\n")
+                    }
+                    return ""
+
+                case "orderedList":
+                    if let items = block.items {
+                        return items.enumerated().map { index, item -> String in
+                            if let content = item.content {
+                                return "\(index + 1). " + renderContentBlocks(content)
+                            }
+                            return ""
+                        }.joined(separator: "\n")
+                    }
+                    return ""
+
+                case "heading":
+                    let level = block.level ?? 2
+                    let prefix = String(repeating: "#", count: level)
+                    if let text = block.text {
+                        return "\(prefix) \(text)"
+                    }
+                    return ""
+
+                default:
+                    return ""
+                }
+            }.joined(separator: "\n\n")
+        }
+
+        private static func renderTopicSection(
+            _ section: TopicSection,
+            references: [String: Reference]?
+        ) -> String {
+            var result = "## \(section.title)\n\n"
+
+            for identifier in section.identifiers {
+                if let ref = references?[identifier] {
+                    let title = ref.title ?? identifier
+                    let abstract = ref.abstract.map { renderInlineContent($0) } ?? ""
+                    result += "- **\(title)**"
+                    if !abstract.isEmpty {
+                        result += ": \(abstract)"
+                    }
+                    result += "\n"
+                } else {
+                    // Just show the identifier if no reference found
+                    let shortName = identifier.components(separatedBy: "/").last ?? identifier
+                    result += "- \(shortName)\n"
+                }
+            }
+
+            result += "\n"
+            return result
+        }
+
+        private static func renderRelationshipSection(
+            _ section: RelationshipSection,
+            references: [String: Reference]?
+        ) -> String {
+            var result = "## \(section.title)\n\n"
+
+            for identifier in section.identifiers {
+                if let ref = references?[identifier] {
+                    result += "- \(ref.title ?? identifier)\n"
+                } else {
+                    let shortName = identifier.components(separatedBy: "/").last ?? identifier
+                    result += "- \(shortName)\n"
+                }
+            }
+
+            result += "\n"
+            return result
+        }
+
+        private static func documentationURLFromIdentifier(_ identifier: String) -> URL? {
+            // Identifier format: doc://com.apple.SwiftUI/documentation/SwiftUI/View
+            // Output: https://developer.apple.com/documentation/SwiftUI/View
+            guard identifier.hasPrefix("doc://") else { return nil }
+
+            let components = identifier
+                .replacingOccurrences(of: "doc://", with: "")
+                .components(separatedBy: "/documentation/")
+
+            guard components.count == 2 else { return nil }
+
+            let path = components[1]
+            return URL(string: "\(Shared.Constants.BaseURL.appleDeveloperDocs)\(path)")
+        }
+    }
+}
+
+// MARK: - JSON Models for Apple Documentation API
+
+struct AppleDocumentation: Codable {
+    let identifier: Identifier?
+    let metadata: Metadata
+    let abstract: [InlineContent]?
+    let primaryContentSections: [PrimaryContentSection]?
+    let topicSections: [TopicSection]?
+    let seeAlsoSections: [TopicSection]?
+    let defaultImplementationsSections: [TopicSection]?
+    let relationshipsSections: [RelationshipSection]?
+    let references: [String: Reference]?
+
+    struct Identifier: Codable {
+        let interfaceLanguage: String?
+        let url: String?
+    }
+
+    struct Metadata: Codable {
+        let title: String
+        let role: String?
+        let roleHeading: String?
+        let modules: [Module]?
+
+        struct Module: Codable {
+            let name: String
+        }
+    }
+
+    /// Get the interface language (swift, objc, etc.)
+    var interfaceLanguage: String {
+        identifier?.interfaceLanguage ?? "swift"
+    }
+}
+
+struct InlineContent: Codable {
+    let type: String
+    let text: String?
+    let code: String?
+    let identifier: String?
+    let title: String?
+    let inlineContent: [InlineContent]?
+}
+
+struct PrimaryContentSection: Codable {
+    let kind: String
+    let declarations: [Declaration]?
+    let parameters: [Parameter]?
+    let content: [ContentBlock]?
+
+    struct Declaration: Codable {
+        let platforms: [String]?
+        let tokens: [Token]?
+
+        struct Token: Codable {
+            let kind: String
+            let text: String
+        }
+    }
+
+    struct Parameter: Codable {
+        let name: String
+        let content: [ContentBlock]?
+    }
+}
+
+struct ContentBlock: Codable {
+    let type: String
+    let inlineContent: [InlineContent]?
+    let code: [String]?
+    let syntax: String?
+    let items: [ListItem]?
+    let level: Int?
+    let text: String?
+
+    struct ListItem: Codable {
+        let content: [ContentBlock]?
+    }
+}
+
+struct TopicSection: Codable {
+    let title: String
+    let identifiers: [String]
+}
+
+struct RelationshipSection: Codable {
+    let title: String
+    let identifiers: [String]
+    let kind: String?
+}
+
+struct Reference: Codable {
+    let title: String?
+    let abstract: [InlineContent]?
+    let role: String?
+    let url: String?
+}
+
+// MARK: - Apple JSON to StructuredDocumentationPage Converter
+
+extension Core.JSONParser.AppleJSONToMarkdown {
+    /// Convert Apple documentation JSON to a StructuredDocumentationPage
+    public static func toStructuredPage(
+        _ json: Data,
+        url: URL,
+        depth: Int? = nil
+    ) -> Shared.Models.StructuredDocumentationPage? {
+        guard let doc = try? JSONDecoder().decode(AppleDocumentation.self, from: json) else {
+            return nil
+        }
+
+        // Extract kind from roleHeading
+        let kind = parseKind(from: doc.metadata.roleHeading, role: doc.metadata.role)
+
+        // Extract abstract
+        let abstract: String?
+        if let absInline = doc.abstract, !absInline.isEmpty {
+            abstract = renderInlineContent(absInline)
+        } else {
+            abstract = nil
+        }
+
+        // Extract declaration
+        let declaration = extractDeclaration(from: doc.primaryContentSections)
+
+        // Extract overview (content sections)
+        let overview = extractOverview(from: doc.primaryContentSections)
+
+        // Extract code examples
+        let codeExamples = extractCodeExamples(from: doc.primaryContentSections)
+
+        // Extract sections (topics, see also)
+        var sections: [Shared.Models.StructuredDocumentationPage.Section] = []
+
+        if let topics = doc.topicSections {
+            for topic in topics {
+                sections.append(convertTopicSection(topic, references: doc.references))
+            }
+        }
+
+        if let seeAlso = doc.seeAlsoSections {
+            for section in seeAlso {
+                sections.append(convertTopicSection(section, references: doc.references))
+            }
+        }
+
+        // Extract relationships (conforms to, inherited by, conforming types)
+        var conformsTo: [String]?
+        var inheritedBy: [String]?
+        var conformingTypes: [String]?
+
+        if let relationships = doc.relationshipsSections {
+            for section in relationships {
+                let types = section.identifiers.compactMap { id -> String? in
+                    if let ref = doc.references?[id] {
+                        return ref.title
+                    }
+                    return id.components(separatedBy: "/").last
+                }
+
+                switch section.title.lowercased() {
+                case "conforms to":
+                    conformsTo = types
+                case "inherited by":
+                    inheritedBy = types
+                case "conforming types":
+                    conformingTypes = types
+                default:
+                    // Add as a section
+                    sections.append(Shared.Models.StructuredDocumentationPage.Section(
+                        title: section.title,
+                        items: types.map { .init(name: $0) }
+                    ))
+                }
+            }
+        }
+
+        // Extract platforms from declarations
+        let platforms = extractPlatforms(from: doc.primaryContentSections)
+
+        // Extract module name
+        let module = doc.metadata.modules?.first?.name
+
+        // Generate markdown representation (derived from structured fields)
+        let markdown = convert(json, url: url)
+
+        // Hash canonical structured fields, not raw `json` — Apple's response
+        // includes volatile cache/build metadata that doesn't reach our parsed
+        // output, so `sha256(of: json)` is non-deterministic across runs (#199).
+        let page = Shared.Models.StructuredDocumentationPage(
+            id: Shared.Models.StructuredDocumentationPage.deterministicID(for: url),
+            url: url,
+            title: doc.metadata.title,
+            kind: kind,
+            source: .appleJSON,
+            abstract: abstract,
+            declaration: declaration,
+            overview: overview,
+            sections: sections,
+            codeExamples: codeExamples,
+            language: doc.interfaceLanguage,
+            platforms: platforms,
+            module: module,
+            conformsTo: conformsTo,
+            inheritedBy: inheritedBy,
+            conformingTypes: conformingTypes,
+            rawMarkdown: markdown,
+            crawledAt: Date(),
+            contentHash: "",
+            crawlDepth: depth
+        )
+        return page.with(contentHash: page.canonicalContentHash)
+    }
+
+    // MARK: - Private Helpers for Structured Page
+
+    private static func parseKind(
+        from roleHeading: String?,
+        role: String?
+    ) -> Shared.Models.StructuredDocumentationPage.Kind {
+        let heading = roleHeading?.lowercased() ?? ""
+        let roleStr = role?.lowercased() ?? ""
+
+        switch heading {
+        case "protocol": return .protocol
+        case "class": return .class
+        case "structure": return .struct
+        case "enumeration": return .enum
+        case "function": return .function
+        case "property", "instance property", "type property": return .property
+        case "method", "instance method", "type method": return .method
+        case "operator": return .operator
+        case "type alias": return .typeAlias
+        case "macro": return .macro
+        case "article": return .article
+        case "tutorial": return .tutorial
+        case "api collection", "collection": return .collection
+        case "framework": return .framework
+        default:
+            // Fallback to role
+            if roleStr.contains("collection") { return .collection }
+            if roleStr.contains("article") { return .article }
+            return .unknown
+        }
+    }
+
+    private static func extractDeclaration(
+        from sections: [PrimaryContentSection]?
+    ) -> Shared.Models.StructuredDocumentationPage.Declaration? {
+        guard let sections else { return nil }
+
+        for section in sections where section.kind == "declarations" {
+            if let declarations = section.declarations,
+               let first = declarations.first,
+               let tokens = first.tokens {
+                let code = tokens.map(\.text).joined()
+                return Shared.Models.StructuredDocumentationPage.Declaration(code: code, language: "swift")
+            }
+        }
+        return nil
+    }
+
+    private static func extractOverview(from sections: [PrimaryContentSection]?) -> String? {
+        guard let sections else { return nil }
+
+        var overviewParts: [String] = []
+
+        for section in sections where section.kind == "content" {
+            if let content = section.content {
+                // Only include paragraphs and headings, not code listings
+                let textContent = content.compactMap { block -> String? in
+                    switch block.type {
+                    case "paragraph":
+                        if let inline = block.inlineContent {
+                            return renderInlineContent(inline)
+                        }
+                    case "heading":
+                        let level = block.level ?? 2
+                        let prefix = String(repeating: "#", count: level)
+                        if let text = block.text {
+                            return "\(prefix) \(text)"
+                        }
+                    default:
+                        return nil
+                    }
+                    return nil
+                }
+                overviewParts.append(contentsOf: textContent)
+            }
+        }
+
+        return overviewParts.isEmpty ? nil : overviewParts.joined(separator: "\n\n")
+    }
+
+    private static func extractCodeExamples(
+        from sections: [PrimaryContentSection]?
+    ) -> [Shared.Models.StructuredDocumentationPage.CodeExample] {
+        guard let sections else { return [] }
+
+        var examples: [Shared.Models.StructuredDocumentationPage.CodeExample] = []
+
+        for section in sections where section.kind == "content" {
+            if let content = section.content {
+                for block in content where block.type == "codeListing" {
+                    if let code = block.code {
+                        examples.append(Shared.Models.StructuredDocumentationPage.CodeExample(
+                            code: code.joined(separator: "\n"),
+                            language: block.syntax
+                        ))
+                    }
+                }
+            }
+        }
+
+        return examples
+    }
+
+    private static func extractPlatforms(from sections: [PrimaryContentSection]?) -> [String]? {
+        guard let sections else { return nil }
+
+        for section in sections where section.kind == "declarations" {
+            if let declarations = section.declarations,
+               let first = declarations.first,
+               let platforms = first.platforms, !platforms.isEmpty {
+                return platforms
+            }
+        }
+        return nil
+    }
+
+    private static func convertTopicSection(
+        _ section: TopicSection,
+        references: [String: Reference]?
+    ) -> Shared.Models.StructuredDocumentationPage.Section {
+        let items = section.identifiers.compactMap { identifier -> Shared.Models.StructuredDocumentationPage.Section.Item? in
+            let ref = references?[identifier]
+            let name = ref?.title ?? identifier.components(separatedBy: "/").last ?? identifier
+            let description = ref?.abstract.map { renderInlineContent($0) }
+            let itemURL = documentationURLFromIdentifier(identifier)
+            return Shared.Models.StructuredDocumentationPage.Section.Item(
+                name: name,
+                description: description,
+                url: itemURL
+            )
+        }
+        return Shared.Models.StructuredDocumentationPage.Section(title: section.title, items: items)
+    }
+}
