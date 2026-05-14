@@ -64,7 +64,8 @@ private func makeProvider(
     markdownLookup: (any MCP.Support.MarkdownLookupStrategy)? = nil
 ) -> MCP.Support.DocsResourceProvider {
     let crawler = Shared.Configuration.Crawler(outputDirectory: crawlOutputDirectory)
-    let config = Shared.Configuration(crawler: crawler)
+    let changeDetection = Shared.Configuration.ChangeDetection(outputDirectory: crawlOutputDirectory)
+    let config = Shared.Configuration(crawler: crawler, changeDetection: changeDetection)
     return MCP.Support.DocsResourceProvider(
         configuration: config,
         evolutionDirectory: evolutionDir,

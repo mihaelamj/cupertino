@@ -39,7 +39,7 @@ extension Shared.Configuration {
             allowedPrefixes: [String]? = nil,
             maxPages: Int = Shared.Constants.Limit.defaultMaxPages,
             maxDepth: Int = 15,
-            outputDirectory: URL = Shared.Constants.defaultDocsDirectory,
+            outputDirectory: URL,
             logFile: URL? = nil,
             requestDelay: TimeInterval = 0.05,
             retryAttempts: Int = 3,

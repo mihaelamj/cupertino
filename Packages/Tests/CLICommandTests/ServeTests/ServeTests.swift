@@ -127,7 +127,7 @@ struct MCPCommandTests {
 
         let config = Shared.Configuration(
             crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
-            changeDetection: Shared.Configuration.ChangeDetection(),
+            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
         let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir, archiveDirectory: tempDir, logger: Logging.NoopRecording())
@@ -257,7 +257,7 @@ struct MCPCommandTests {
 
         let config = Shared.Configuration(
             crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
-            changeDetection: Shared.Configuration.ChangeDetection(),
+            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
         let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir, archiveDirectory: tempDir, logger: Logging.NoopRecording())
@@ -309,7 +309,7 @@ struct MCPCommandTests {
 
         let config = Shared.Configuration(
             crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
-            changeDetection: Shared.Configuration.ChangeDetection(),
+            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
         let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir, archiveDirectory: tempDir, logger: Logging.NoopRecording())
@@ -345,7 +345,7 @@ struct MCPCommandTests {
 
         let config = Shared.Configuration(
             crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
-            changeDetection: Shared.Configuration.ChangeDetection(),
+            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
         let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir, archiveDirectory: tempDir, logger: Logging.NoopRecording())
@@ -436,7 +436,7 @@ struct MCPServerIntegrationTests {
         // production ~/.cupertino layout.
         let mcpConfig = Shared.Configuration(
             crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
-            changeDetection: Shared.Configuration.ChangeDetection(),
+            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
         let seededDocsPath = tempDir

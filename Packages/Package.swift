@@ -461,7 +461,7 @@ let targets: [Target] = {
     )
     let searchToolProviderTestsTarget = Target.testTarget(
         name: "SearchToolProviderTests",
-        dependencies: ["SearchToolProvider", "SearchModels", "SampleIndex", "SampleIndexModels", "Services", "ServicesModels", "MCPSharedTools", "TestSupport"]
+        dependencies: ["SearchToolProvider", "Search", "SearchModels", "SampleIndex", "SampleIndexModels", "Services", "ServicesModels", "MCPSharedTools", "TestSupport"]
     )
 
     let mcpClientTarget = Target.target(

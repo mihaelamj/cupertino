@@ -77,6 +77,9 @@ extension CLIImpl.Command {
             let config = Shared.Configuration(
                 crawler: Shared.Configuration.Crawler(
                     outputDirectory: paths.docsDirectory
+                ),
+                changeDetection: Shared.Configuration.ChangeDetection(
+                    outputDirectory: paths.docsDirectory
                 )
             )
 
