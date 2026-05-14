@@ -1,5 +1,5 @@
 import Foundation
-import Logging
+import LoggingModels
 import SharedCore
 import WebKit
 #if canImport(AppKit)
@@ -49,6 +49,12 @@ extension Sample.Core {
         private let visibleBrowser: Bool
         private let sampleCodeListURL = Shared.Constants.BaseURL.appleSampleCode
         private let cookiesPath: URL
+        /// GoF Strategy seam for log emission (1994 p. 315). Declared
+        /// `nonisolated` because the WKNavigationDelegate callbacks
+        /// (e.g. `webView(_:didFail:withError:)`) are also `nonisolated`
+        /// and need direct access without an actor hop. Safe because
+        /// `Logging.Recording` is `Sendable`.
+        nonisolated private let logger: any LoggingModels.Logging.Recording
 
         private var sharedWebView: WKWebView?
 
@@ -56,12 +62,14 @@ extension Sample.Core {
             outputDirectory: URL,
             maxSamples: Int? = nil,
             forceDownload: Bool = false,
-            visibleBrowser: Bool = false
+            visibleBrowser: Bool = false,
+            logger: any LoggingModels.Logging.Recording
         ) {
             self.outputDirectory = outputDirectory
             self.maxSamples = maxSamples
             self.forceDownload = forceDownload
             self.visibleBrowser = visibleBrowser
+            self.logger = logger
 
             // Store cookies in output directory
             cookiesPath = outputDirectory.appendingPathComponent(Shared.Constants.FileName.authCookies)
@@ -557,19 +565,19 @@ extension Sample.Core {
             window.makeKeyAndOrderFront(nil)
             NSApplication.shared.activate(ignoringOtherApps: true)
 
-            // Surface progress on stdout (bypasses Logging.Log.info's category router
+            // Surface progress on stdout (bypasses logger.info's category router
             // which in visible-browser invocations wasn't reaching stdout).
-            Logging.ConsoleLogger.info("✅ Browser window opened")
-            Logging.ConsoleLogger.info("   Sign in to your Apple Developer account")
+            logger.info("✅ Browser window opened")
+            logger.info("   Sign in to your Apple Developer account")
             if Self.isInteractiveStdin() {
-                Logging.ConsoleLogger.info("   The window closes automatically when sign-in is detected.")
-                Logging.ConsoleLogger.info("   (Or close the window / press Enter here to finish.)")
+                logger.info("   The window closes automatically when sign-in is detected.")
+                logger.info("   (Or close the window / press Enter here to finish.)")
             } else {
-                Logging.ConsoleLogger.info("   The window closes automatically when sign-in is detected.")
-                Logging.ConsoleLogger.info("   (Or close the window to finish — stdin is not a TTY.)")
+                logger.info("   The window closes automatically when sign-in is detected.")
+                logger.info("   (Or close the window to finish — stdin is not a TTY.)")
             }
 
-            let outcome = await Self.awaitAuthOutcome(webView: webView, window: window, initialURL: loginURL)
+            let outcome = await Self.awaitAuthOutcome(webView: webView, window: window, initialURL: loginURL, logger: logger)
 
             await saveCookies(from: webView)
             window.close()
@@ -627,12 +635,16 @@ extension Sample.Core {
         private static func awaitAuthOutcome(
             webView: WKWebView,
             window: NSWindow,
-            initialURL: URL
+            initialURL: URL,
+            logger: any LoggingModels.Logging.Recording
         ) async -> AuthOutcome {
             await withCheckedContinuation { (continuation: CheckedContinuation<AuthOutcome, Never>) in
-                let coordinator = AuthFlowCoordinator { outcome in
-                    continuation.resume(returning: outcome)
-                }
+                let coordinator = AuthFlowCoordinator(
+                    onComplete: { outcome in
+                        continuation.resume(returning: outcome)
+                    },
+                    logger: logger
+                )
                 webView.navigationDelegate = coordinator
 
                 // (2) Terminal Enter — only if stdin is interactive.
@@ -743,12 +755,12 @@ extension Sample.Core {
         // MARK: - Logging
 
         private func logInfo(_ message: String) {
-            Logging.Log.info(message, category: .samples)
+            logger.info(message, category: .samples)
         }
 
         private func logError(_ message: String) {
             let errorMessage = "❌ \(message)"
-            Logging.Log.error(errorMessage, category: .samples)
+            logger.error(errorMessage, category: .samples)
         }
 
         private func logStatistics(_ stats: Sample.Core.Statistics) {
@@ -764,7 +776,7 @@ extension Sample.Core {
             ]
 
             for message in messages where !message.isEmpty {
-                Logging.Log.info(message, category: .samples)
+                logger.info(message, category: .samples)
             }
         }
     }
@@ -808,8 +820,17 @@ private final class AuthFlowCoordinator: NSObject, WKNavigationDelegate {
     /// tear down the notification observer and nil out the webView delegate.
     var onFinish: (() -> Void)?
 
-    init(onComplete: @escaping (Sample.Core.Downloader.AuthOutcome) -> Void) {
+    /// GoF Strategy seam for log emission (1994 p. 315). Declared
+    /// `nonisolated` because the WKNavigationDelegate callbacks fire
+    /// outside main-actor isolation; `Logging.Recording` is `Sendable`.
+    nonisolated let logger: any LoggingModels.Logging.Recording
+
+    init(
+        onComplete: @escaping (Sample.Core.Downloader.AuthOutcome) -> Void,
+        logger: any LoggingModels.Logging.Recording
+    ) {
         self.onComplete = onComplete
+        self.logger = logger
     }
 
     // MARK: WKNavigationDelegate
@@ -836,7 +857,7 @@ private final class AuthFlowCoordinator: NSObject, WKNavigationDelegate {
     }
 
     nonisolated func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        Logging.ConsoleLogger.error("🔐 Auth WebView navigation failed: \(error.localizedDescription)")
+        logger.error("🔐 Auth WebView navigation failed: \(error.localizedDescription)")
     }
 
     nonisolated func webView(
@@ -844,7 +865,7 @@ private final class AuthFlowCoordinator: NSObject, WKNavigationDelegate {
         didFailProvisionalNavigation navigation: WKNavigation!,
         withError error: Error
     ) {
-        Logging.ConsoleLogger.error("🔐 Auth WebView provisional navigation failed: \(error.localizedDescription)")
+        logger.error("🔐 Auth WebView provisional navigation failed: \(error.localizedDescription)")
     }
 
     // MARK: Explicit signals

@@ -1,4 +1,5 @@
 import Foundation
+import LoggingModels
 @testable import Search
 import SearchModels
 import SQLite3
@@ -68,7 +69,7 @@ struct BM25TitleWeightingTests {
         let dbPath = makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
-        let idx = try await Search.Index(dbPath: dbPath)
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
 
         // A: query term lives in the title, body is unrelated.
         try await idx.indexDocument(Search.Index.IndexDocumentParams(
@@ -112,7 +113,7 @@ struct BM25TitleWeightingTests {
         let dbPath = makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
-        let idx = try await Search.Index(dbPath: dbPath)
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
 
         // A: query term appears in the first sentence (becomes the summary).
         try await idx.indexDocument(Search.Index.IndexDocumentParams(

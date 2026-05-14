@@ -1,5 +1,5 @@
 import Foundation
-import Logging
+import LoggingModels
 import SearchModels
 import SharedConstants
 import SharedModels
@@ -35,14 +35,21 @@ extension Search {
         /// adapter over `Sample.Core.Catalog`.
         private let sampleCatalogProvider: any Search.SampleCatalogProvider
 
+        /// GoF Strategy seam for log emission (1994 p. 315).
+        private let logger: any LoggingModels.Logging.Recording
+
         /// Create a strategy for indexing the sample code catalog.
         ///
         /// - Parameter sampleCatalogProvider: Conformer that returns
         ///   the `Search.SampleCatalogState` to index. Injected at the
         ///   composition root so the strategy can read the catalog
         ///   without depending on the `CoreSampleCode` target directly.
-        public init(sampleCatalogProvider: any Search.SampleCatalogProvider) {
+        public init(
+            sampleCatalogProvider: any Search.SampleCatalogProvider,
+            logger: any LoggingModels.Logging.Recording
+        ) {
             self.sampleCatalogProvider = sampleCatalogProvider
+            self.logger = logger
         }
 
         /// Index all sample code entries from the catalog fetch closure.
@@ -63,17 +70,17 @@ extension Search {
             let entries: [Search.SampleCatalogEntry]
             switch state {
             case .loaded(let loadedEntries):
-                Logging.Log.info(
+                logger.info(
                     "📦 Indexing sample code catalog from on-disk catalog.json (#214)...",
                     category: .search
                 )
                 entries = loadedEntries
             case .missing(let onDiskPath):
-                Logging.Log.info(
+                logger.info(
                     "⚠️  No sample-code catalog at \(onDiskPath) — skipping sample-code indexing.",
                     category: .search
                 )
-                Logging.Log.info(
+                logger.info(
                     "    Run `cupertino fetch --type code` to populate the catalog, then re-run save.",
                     category: .search
                 )
@@ -81,14 +88,14 @@ extension Search {
             }
 
             guard !entries.isEmpty else {
-                Logging.Log.info(
+                logger.info(
                     "⚠️  Sample-code catalog parsed but contained zero entries; skipping.",
                     category: .search
                 )
                 return IndexStats(source: source, indexed: 0, skipped: 0)
             }
 
-            Logging.Log.info(
+            logger.info(
                 "📚 Indexing \(entries.count) sample code entries...", category: .search
             )
 
@@ -123,7 +130,7 @@ extension Search {
                     )
                     indexed += 1
                 } catch {
-                    Logging.Log.error(
+                    logger.error(
                         "❌ Failed to index sample code \(entry.title): \(error)",
                         category: .search
                     )
@@ -132,13 +139,13 @@ extension Search {
 
                 if (idx + 1) % 100 == 0 {
                     progress?(idx + 1, entries.count)
-                    Logging.Log.info(
+                    logger.info(
                         "   Progress: \(idx + 1)/\(entries.count)", category: .search
                     )
                 }
             }
 
-            Logging.Log.info(
+            logger.info(
                 "   Sample Code: \(indexed) indexed, \(skipped) skipped", category: .search
             )
             return IndexStats(source: source, indexed: indexed, skipped: skipped)

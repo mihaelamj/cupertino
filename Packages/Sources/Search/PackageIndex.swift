@@ -1,7 +1,7 @@
 import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
-import Logging
+import LoggingModels
 import SearchModels
 import SharedConstants
 import SharedCore
@@ -39,11 +39,15 @@ extension Search {
         private var database: OpaquePointer?
         private let dbPath: URL
         private var isInitialized = false
+        /// GoF Strategy seam for log emission (1994 p. 315).
+        private let logger: any LoggingModels.Logging.Recording
 
         public init(
-            dbPath: URL = Shared.Constants.defaultPackagesDatabase
+            dbPath: URL = Shared.Constants.defaultPackagesDatabase,
+            logger: any LoggingModels.Logging.Recording
         ) async throws {
             self.dbPath = dbPath
+            self.logger = logger
             let directory = dbPath.deletingLastPathComponent()
             try FileManager.default.createDirectory(
                 at: directory,
@@ -570,7 +574,7 @@ extension Search {
             // continue on failure.
             if sqlite3_exec(dbPointer, "PRAGMA journal_mode = WAL", nil, nil, nil) != SQLITE_OK {
                 let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
-                Logging.Log.warning(
+                logger.warning(
                     "Failed to enable WAL on \(dbPath.lastPathComponent): \(errorMessage)",
                     category: .packages
                 )
@@ -581,7 +585,7 @@ extension Search {
             // https://www.sqlite.org/pragma.html#pragma_synchronous.
             if sqlite3_exec(dbPointer, "PRAGMA synchronous = NORMAL", nil, nil, nil) != SQLITE_OK {
                 let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
-                Logging.Log.warning(
+                logger.warning(
                     "Failed to set synchronous=NORMAL on \(dbPath.lastPathComponent): \(errorMessage)",
                     category: .packages
                 )
@@ -592,7 +596,7 @@ extension Search {
             // file without bound. Default is -1 (unlimited).
             if sqlite3_exec(dbPointer, "PRAGMA journal_size_limit = 67108864", nil, nil, nil) != SQLITE_OK {
                 let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
-                Logging.Log.warning(
+                logger.warning(
                     "Failed to set journal_size_limit on \(dbPath.lastPathComponent): \(errorMessage)",
                     category: .packages
                 )

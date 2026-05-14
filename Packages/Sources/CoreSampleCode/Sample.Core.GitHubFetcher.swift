@@ -1,5 +1,5 @@
 import Foundation
-import Logging
+import LoggingModels
 import SharedConstants
 import SharedCore
 
@@ -13,9 +13,15 @@ extension Sample.Core {
         private let repoOwner = "mihaelamj"
         private let repoName = "cupertino-sample-code"
         private let branch = "main"
+        /// GoF Strategy seam for log emission (1994 p. 315).
+        private let logger: any LoggingModels.Logging.Recording
 
-        public init(outputDirectory: URL) {
+        public init(
+            outputDirectory: URL,
+            logger: any LoggingModels.Logging.Recording
+        ) {
             self.outputDirectory = outputDirectory
+            self.logger = logger
         }
 
         // MARK: - Public API
@@ -206,7 +212,7 @@ extension Sample.Core {
         // MARK: - Logging
 
         private func logInfo(_ message: String) {
-            Logging.Log.info(message, category: .samples)
+            logger.info(message, category: .samples)
         }
 
         private func logStatistics(_ stats: FetchStatistics, repoPath: URL) {
@@ -220,7 +226,7 @@ extension Sample.Core {
             ]
 
             for message in messages where !message.isEmpty {
-                Logging.Log.info(message, category: .samples)
+                logger.info(message, category: .samples)
             }
         }
     }

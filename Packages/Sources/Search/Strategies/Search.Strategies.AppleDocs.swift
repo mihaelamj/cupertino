@@ -1,6 +1,6 @@
 import CoreProtocols
 import Foundation
-import Logging
+import LoggingModels
 import SearchModels
 import SharedConstants
 import SharedModels
@@ -48,20 +48,17 @@ extension Search {
         /// `Core.JSONParser.MarkdownToStructuredPage.convert`.
         private let markdownStrategy: any Search.MarkdownToStructuredPageStrategy
 
-        /// Create a strategy for indexing Apple Developer Documentation.
-        ///
-        /// - Parameters:
-        ///   - docsDirectory: Root directory of the crawled documentation.
-        ///   - markdownStrategy: Conformer that converts raw markdown into a
-        ///     `Shared.Models.StructuredDocumentationPage`. Injected at the
-        ///     composition root so the strategy can parse `.md` pages without
-        ///     depending on the `CoreJSONParser` target directly.
+        /// GoF Strategy seam for log emission (1994 p. 315).
+        private let logger: any LoggingModels.Logging.Recording
+
         public init(
             docsDirectory: URL,
-            markdownStrategy: any Search.MarkdownToStructuredPageStrategy
+            markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
+            logger: any LoggingModels.Logging.Recording
         ) {
             self.docsDirectory = docsDirectory
             self.markdownStrategy = markdownStrategy
+            self.logger = logger
         }
 
         /// Index all Apple documentation pages by scanning ``docsDirectory``.
@@ -99,13 +96,13 @@ extension Search {
             progress: Search.IndexingProgressCallback?
         ) async throws -> Search.IndexStats {
             guard FileManager.default.fileExists(atPath: docsDirectory.path) else {
-                Logging.Log.info(
+                logger.info(
                     "⚠️  Docs directory not found: \(docsDirectory.path)", category: .search
                 )
                 return IndexStats(source: source, indexed: 0, skipped: 0)
             }
 
-            Logging.Log.info(
+            logger.info(
                 "📂 Scanning directory for documentation (no metadata.json)...",
                 category: .search
             )
@@ -116,14 +113,14 @@ extension Search {
             )
 
             guard !docFiles.isEmpty else {
-                Logging.Log.info(
+                logger.info(
                     "⚠️  No documentation files found in \(docsDirectory.path)",
                     category: .search
                 )
                 return IndexStats(source: source, indexed: 0, skipped: 0)
             }
 
-            Logging.Log.info(
+            logger.info(
                 "📚 Indexing \(docFiles.count) documentation pages from directory...",
                 category: .search
             )
@@ -135,7 +132,7 @@ extension Search {
                 guard let rawFramework = Search.StrategyHelpers.extractFrameworkFromPath(
                     file, relativeTo: docsDirectory
                 ) else {
-                    Logging.Log.error(
+                    logger.error(
                         "❌ Could not extract framework from path: \(file.path) " +
                             "(relative to \(docsDirectory.path))",
                         category: .search
@@ -158,7 +155,7 @@ extension Search {
                             Shared.Models.StructuredDocumentationPage.self, from: jsonData
                         )
                     } catch {
-                        Logging.Log.error(
+                        logger.error(
                             "❌ Failed to decode \(file.lastPathComponent): \(error)",
                             category: .search
                         )
@@ -175,7 +172,7 @@ extension Search {
                             "\(file.deletingPathExtension().lastPathComponent)"
                     )
                     guard let converted = markdownStrategy.convert(markdown: mdContent, url: pageURL) else {
-                        Logging.Log.error(
+                        logger.error(
                             "❌ Failed to convert \(file.lastPathComponent) to structured page",
                             category: .search
                         )
@@ -187,7 +184,7 @@ extension Search {
                     encoder.dateEncodingStrategy = .iso8601
                     guard let jsonData = try? encoder.encode(structuredPage),
                           let json = String(data: jsonData, encoding: .utf8) else {
-                        Logging.Log.error(
+                        logger.error(
                             "❌ Failed to encode \(file.lastPathComponent) to JSON",
                             category: .search
                         )
@@ -199,7 +196,7 @@ extension Search {
 
                 // #284 indexer-side defences.
                 if Search.StrategyHelpers.titleLooksLikeHTTPErrorTemplate(structuredPage.title) {
-                    Logging.Log.error(
+                    logger.error(
                         "⛔ Skipping HTTP-error-template page (#284 indexer defence): " +
                             "title=\(structuredPage.title.prefix(60)) " +
                             "file=\(file.lastPathComponent)",
@@ -209,7 +206,7 @@ extension Search {
                     continue
                 }
                 if Search.StrategyHelpers.pageLooksLikeJavaScriptFallback(structuredPage) {
-                    Logging.Log.error(
+                    logger.error(
                         "⛔ Skipping JS-disabled-fallback page (#284 indexer defence): " +
                             "title=\(structuredPage.title.prefix(60)) " +
                             "file=\(file.lastPathComponent)",
@@ -247,7 +244,7 @@ extension Search {
                     }
                     indexed += 1
                 } catch {
-                    Logging.Log.error(
+                    logger.error(
                         "❌ Failed to index \(uri): \(error)", category: .search
                     )
                     skipped += 1
@@ -255,7 +252,7 @@ extension Search {
 
                 if (idx + 1) % 100 == 0 {
                     progress?(idx + 1, docFiles.count)
-                    Logging.Log.info(
+                    logger.info(
                         "   Progress: \(idx + 1)/\(docFiles.count) " +
                             "(\(indexed) indexed, \(skipped) skipped)",
                         category: .search
@@ -263,7 +260,7 @@ extension Search {
                 }
             }
 
-            Logging.Log.info(
+            logger.info(
                 "   Directory scan: \(indexed) indexed, \(skipped) skipped", category: .search
             )
             return IndexStats(source: source, indexed: indexed, skipped: skipped)
@@ -292,13 +289,13 @@ extension Search {
         ) async throws -> Search.IndexStats {
             let total = metadata.pages.count
             guard total > 0 else {
-                Logging.Log.info(
+                logger.info(
                     "⚠️  No Apple documentation found in metadata", category: .search
                 )
                 return IndexStats(source: source, indexed: 0, skipped: 0)
             }
 
-            Logging.Log.info(
+            logger.info(
                 "📚 Indexing \(total) Apple documentation pages from metadata...",
                 category: .search
             )
@@ -340,7 +337,7 @@ extension Search {
                     ))
                     indexed += 1
                 } catch {
-                    Logging.Log.error(
+                    logger.error(
                         "❌ Failed to index \(uri): \(error)", category: .search
                     )
                     skipped += 1
@@ -349,7 +346,7 @@ extension Search {
                 processed += 1
                 if processed % 100 == 0 {
                     progress?(processed, total)
-                    Logging.Log.info(
+                    logger.info(
                         "   Progress: \(processed)/\(total) " +
                             "(\(indexed) indexed, \(skipped) skipped)",
                         category: .search
@@ -357,7 +354,7 @@ extension Search {
                 }
             }
 
-            Logging.Log.info(
+            logger.info(
                 "   Apple Docs: \(indexed) indexed, \(skipped) skipped", category: .search
             )
             return IndexStats(source: source, indexed: indexed, skipped: skipped)

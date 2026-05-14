@@ -1,5 +1,5 @@
 import Foundation
-import Logging
+import LoggingModels
 import SearchModels
 import SharedConstants
 import SharedModels
@@ -27,11 +27,18 @@ extension Search {
         /// Root directory containing the Apple Archive Markdown files.
         public let archiveDirectory: URL
 
+        /// GoF Strategy seam for log emission (1994 p. 315).
+        private let logger: any LoggingModels.Logging.Recording
+
         /// Create a strategy for indexing Apple Archive documentation.
         ///
         /// - Parameter archiveDirectory: The root directory of the archive corpus.
-        public init(archiveDirectory: URL) {
+        public init(
+            archiveDirectory: URL,
+            logger: any LoggingModels.Logging.Recording
+        ) {
             self.archiveDirectory = archiveDirectory
+            self.logger = logger
         }
 
         /// Index all Apple Archive Markdown files found under ``archiveDirectory``.
@@ -48,7 +55,7 @@ extension Search {
             progress: Search.IndexingProgressCallback?
         ) async throws -> Search.IndexStats {
             guard FileManager.default.fileExists(atPath: archiveDirectory.path) else {
-                Logging.Log.info(
+                logger.info(
                     "⚠️  Archive directory not found: \(archiveDirectory.path)",
                     category: .search
                 )
@@ -57,11 +64,11 @@ extension Search {
 
             let markdownFiles = try Search.StrategyHelpers.findMarkdownFiles(in: archiveDirectory)
             guard !markdownFiles.isEmpty else {
-                Logging.Log.info("⚠️  No Apple Archive documentation found", category: .search)
+                logger.info("⚠️  No Apple Archive documentation found", category: .search)
                 return IndexStats(source: source, indexed: 0, skipped: 0)
             }
 
-            Logging.Log.info(
+            logger.info(
                 "📜 Indexing \(markdownFiles.count) Apple Archive documentation pages...",
                 category: .search
             )
@@ -122,7 +129,7 @@ extension Search {
                     ))
                     indexed += 1
                 } catch {
-                    Logging.Log.error(
+                    logger.error(
                         "❌ Failed to index \(uri): \(error)", category: .search
                     )
                     skipped += 1
@@ -130,13 +137,13 @@ extension Search {
 
                 if (idx + 1) % Shared.Constants.Interval.progressLogEvery == 0 {
                     progress?(idx + 1, markdownFiles.count)
-                    Logging.Log.info(
+                    logger.info(
                         "   Progress: \(idx + 1)/\(markdownFiles.count)", category: .search
                     )
                 }
             }
 
-            Logging.Log.info(
+            logger.info(
                 "   Apple Archive: \(indexed) indexed, \(skipped) skipped", category: .search
             )
             return IndexStats(source: source, indexed: indexed, skipped: skipped)

@@ -3,6 +3,7 @@ import Core
 import CoreProtocols
 import Darwin
 import Foundation
+import LoggingModels
 import Logging
 import MCPCore
 import MCPSupport
@@ -194,7 +195,7 @@ extension CLI.Command {
             }
 
             do {
-                return try await Sample.Index.Database(dbPath: sampleDBURL)
+                return try await Sample.Index.Database(dbPath: sampleDBURL, logger: Logging.LiveRecording())
             } catch {
                 let errorMsg = "⚠️  Failed to load sample index: \(error)"
                 let cmd = "\(Shared.Constants.App.commandName) index"
@@ -214,7 +215,7 @@ extension CLI.Command {
             }
 
             do {
-                return try await SearchModule.Index(dbPath: searchDBURL)
+                return try await SearchModule.Index(dbPath: searchDBURL, logger: Logging.LiveRecording())
             } catch {
                 let errorMsg = "⚠️  Failed to load search index: \(error)"
                 let cmd = "\(Shared.Constants.App.commandName) save"

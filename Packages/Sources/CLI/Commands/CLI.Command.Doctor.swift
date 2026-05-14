@@ -4,6 +4,7 @@ import CorePackageIndexing
 import CoreProtocols
 import Diagnostics
 import Foundation
+import LoggingModels
 import Indexer
 import Logging
 import MCPCore
@@ -293,7 +294,7 @@ extension CLI.Command {
             }
 
             do {
-                let searchIndex = try await SearchModule.Index(dbPath: searchDBURL)
+                let searchIndex = try await SearchModule.Index(dbPath: searchDBURL, logger: Logging.LiveRecording())
                 let frameworks = try await searchIndex.listFrameworks()
                 Logging.Log.output("   ✓ Frameworks: \(frameworks.count)")
                 await searchIndex.disconnect()

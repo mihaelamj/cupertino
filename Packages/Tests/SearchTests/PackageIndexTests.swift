@@ -4,6 +4,7 @@ import SearchModels
 import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
+import LoggingModels
 @testable import Search
 import SharedCore
 import SQLite3
@@ -115,7 +116,7 @@ struct PackageIndexTests {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         let dbPath = tempDir.appendingPathComponent("packages.db")
 
-        let index = try await Search.PackageIndex(dbPath: dbPath)
+        let index = try await Search.PackageIndex(dbPath: dbPath, logger: Logging.NoopRecording())
         let resolved = Core.PackageIndexing.ResolvedPackage(
             owner: "apple", repo: "swift-log",
             url: "https://github.com/apple/swift-log",
@@ -188,7 +189,7 @@ struct PackageIndexTests {
         defer { try? FileManager.default.removeItem(at: tempDir) }
         let dbPath = tempDir.appendingPathComponent("packages.db")
 
-        let index = try await Search.PackageIndex(dbPath: dbPath)
+        let index = try await Search.PackageIndex(dbPath: dbPath, logger: Logging.NoopRecording())
         defer { Task { await index.disconnect() } }
 
         let resolved = Core.PackageIndexing.ResolvedPackage(

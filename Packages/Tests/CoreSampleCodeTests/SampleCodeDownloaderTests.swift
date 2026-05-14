@@ -1,5 +1,6 @@
 @testable import CoreSampleCode
 import Foundation
+import LoggingModels
 import SharedConstants
 @testable import SharedCore
 import Testing
@@ -20,7 +21,7 @@ struct SampleCodeDownloaderTests {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 
-        let downloader = Sample.Core.Downloader(outputDirectory: tempDir)
+        let downloader = Sample.Core.Downloader(outputDirectory: tempDir, logger: Logging.NoopRecording())
 
         // If we get here without crashing, initialization worked
         _ = downloader
@@ -37,7 +38,7 @@ struct SampleCodeDownloaderTests {
 
         let downloader = Sample.Core.Downloader(
             outputDirectory: tempDir,
-            maxSamples: 10
+            maxSamples: 10, logger: Logging.NoopRecording()
         )
 
         _ = downloader
@@ -54,7 +55,7 @@ struct SampleCodeDownloaderTests {
 
         let downloader = Sample.Core.Downloader(
             outputDirectory: tempDir,
-            forceDownload: true
+            forceDownload: true, logger: Logging.NoopRecording()
         )
 
         _ = downloader
@@ -71,7 +72,8 @@ struct SampleCodeDownloaderTests {
 
         let downloader = Sample.Core.Downloader(
             outputDirectory: tempDir,
-            visibleBrowser: false // Don't actually show browser in tests
+            visibleBrowser: false, // Don't actually show browser in tests
+            logger: Logging.NoopRecording()
         )
 
         _ = downloader
@@ -245,7 +247,7 @@ struct SampleCodeDownloaderTests {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 
-        let downloader = Sample.Core.Downloader(outputDirectory: tempDir)
+        let downloader = Sample.Core.Downloader(outputDirectory: tempDir, logger: Logging.NoopRecording())
 
         // Cookie path should be: outputDirectory/auth-cookies.json
         let expectedPath = tempDir.appendingPathComponent(Shared.Constants.FileName.authCookies)
@@ -288,7 +290,7 @@ struct SampleCodeDownloaderTests {
         try? FileManager.default.removeItem(at: tempDir)
         #expect(!FileManager.default.fileExists(atPath: tempDir.path))
 
-        let downloader = Sample.Core.Downloader(outputDirectory: tempDir)
+        let downloader = Sample.Core.Downloader(outputDirectory: tempDir, logger: Logging.NoopRecording())
 
         // Note: We're not actually calling download() to avoid network calls
         // Just verify the downloader can be instantiated

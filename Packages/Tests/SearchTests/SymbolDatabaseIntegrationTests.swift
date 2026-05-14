@@ -5,6 +5,7 @@ import SearchModels
 
 import ASTIndexer
 import Foundation
+import LoggingModels
 import SampleIndex
 import Search
 import SharedConstants
@@ -22,7 +23,7 @@ struct SearchDbSymbolIntegrationTests {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let dbPath = tempDir.appendingPathComponent("search.db")
-        let index = try await Search.Index(dbPath: dbPath)
+        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
 
         let cleanup = {
             Task { await index.disconnect() }
@@ -137,7 +138,7 @@ struct SamplesDbSymbolIntegrationTests {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let dbPath = tempDir.appendingPathComponent("samples.db")
-        let database = try await Sample.Index.Database(dbPath: dbPath)
+        let database = try await Sample.Index.Database(dbPath: dbPath, logger: Logging.NoopRecording())
 
         let cleanup: () -> Void = {
             try? FileManager.default.removeItem(at: tempDir)

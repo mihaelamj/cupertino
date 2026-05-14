@@ -1,5 +1,5 @@
 import Foundation
-import Logging
+import LoggingModels
 import SearchModels
 import SharedConstants
 import SharedModels
@@ -27,11 +27,18 @@ extension Search {
         /// Root directory containing the Swift Evolution proposal Markdown files.
         public let evolutionDirectory: URL
 
+        /// GoF Strategy seam for log emission (1994 p. 315).
+        private let logger: any LoggingModels.Logging.Recording
+
         /// Create a strategy for indexing Swift Evolution proposals.
         ///
         /// - Parameter evolutionDirectory: Directory containing the proposal `.md` files.
-        public init(evolutionDirectory: URL) {
+        public init(
+            evolutionDirectory: URL,
+            logger: any LoggingModels.Logging.Recording
+        ) {
             self.evolutionDirectory = evolutionDirectory
+            self.logger = logger
         }
 
         /// Index all accepted Swift Evolution proposals found in ``evolutionDirectory``.
@@ -49,7 +56,7 @@ extension Search {
             progress: Search.IndexingProgressCallback?
         ) async throws -> Search.IndexStats {
             guard FileManager.default.fileExists(atPath: evolutionDirectory.path) else {
-                Logging.Log.info(
+                logger.info(
                     "⚠️  Swift Evolution directory not found: \(evolutionDirectory.path)",
                     category: .search
                 )
@@ -58,11 +65,11 @@ extension Search {
 
             let proposalFiles = try getProposalFiles(from: evolutionDirectory)
             guard !proposalFiles.isEmpty else {
-                Logging.Log.info("⚠️  No Swift Evolution proposals found", category: .search)
+                logger.info("⚠️  No Swift Evolution proposals found", category: .search)
                 return IndexStats(source: source, indexed: 0, skipped: 0)
             }
 
-            Logging.Log.info(
+            logger.info(
                 "📋 Indexing \(proposalFiles.count) Swift Evolution proposals...",
                 category: .search
             )
@@ -86,7 +93,7 @@ extension Search {
                     try await indexProposal(file: file, content: content, into: index)
                     indexed += 1
                 } catch {
-                    Logging.Log.error(
+                    logger.error(
                         "❌ Failed to index \(file.lastPathComponent): \(error)",
                         category: .search
                     )
@@ -94,13 +101,13 @@ extension Search {
                 }
 
                 if (idx + 1) % Shared.Constants.Interval.progressLogEvery == 0 {
-                    Logging.Log.info(
+                    logger.info(
                         "   Progress: \(idx + 1)/\(proposalFiles.count)", category: .search
                     )
                 }
             }
 
-            Logging.Log.info(
+            logger.info(
                 "   Swift Evolution: \(indexed) indexed, \(skipped) skipped", category: .search
             )
             return IndexStats(source: source, indexed: indexed, skipped: skipped)

@@ -1,4 +1,5 @@
 import Foundation
+import LoggingModels
 import SampleIndex
 import SampleIndexModels
 import SearchModels
@@ -181,7 +182,7 @@ struct SampleCandidateFetcherTests {
             .appendingPathComponent("samples-fetcher-test-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let database = try await Sample.Index.Database(dbPath: tempDB)
+        let database = try await Sample.Index.Database(dbPath: tempDB, logger: Logging.NoopRecording())
         let service = Sample.Search.Service(database: database)
         defer { Task { await service.disconnect() } }
 
@@ -195,7 +196,7 @@ struct SampleCandidateFetcherTests {
             .appendingPathComponent("samples-fetcher-test-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let database = try await Sample.Index.Database(dbPath: tempDB)
+        let database = try await Sample.Index.Database(dbPath: tempDB, logger: Logging.NoopRecording())
         let service = Sample.Search.Service(database: database)
         defer { Task { await service.disconnect() } }
 

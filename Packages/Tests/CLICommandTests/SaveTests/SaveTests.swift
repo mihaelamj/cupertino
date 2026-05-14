@@ -71,7 +71,7 @@ struct SaveCommandTests {
 
         // Build search index
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath)
+        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
 
         let metadata = try Shared.Models.CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
         let builder = Search.IndexBuilder(
@@ -80,7 +80,7 @@ struct SaveCommandTests {
             docsDirectory: tempDir,
             evolutionDirectory: nil,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogProvider: MissingSampleCatalogProvider()
+            sampleCatalogProvider: MissingSampleCatalogProvider(), logger: Logging.NoopRecording()
         )
 
         try await builder.buildIndex()
@@ -133,7 +133,7 @@ struct SaveCommandTests {
         _ = try await crawler.crawl()
 
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath)
+        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
 
         let metadata = try Shared.Models.CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
         let builder = Search.IndexBuilder(
@@ -142,7 +142,7 @@ struct SaveCommandTests {
             docsDirectory: tempDir,
             evolutionDirectory: nil,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogProvider: MissingSampleCatalogProvider()
+            sampleCatalogProvider: MissingSampleCatalogProvider(), logger: Logging.NoopRecording()
         )
         try await builder.buildIndex()
 
@@ -173,7 +173,7 @@ struct SaveCommandTests {
         print("🧪 Test: Save empty directory")
 
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath)
+        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
 
         // Create empty metadata
         let emptyMetadata = Shared.Models.CrawlMetadata()
@@ -186,7 +186,7 @@ struct SaveCommandTests {
             docsDirectory: tempDir,
             evolutionDirectory: nil,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogProvider: MissingSampleCatalogProvider()
+            sampleCatalogProvider: MissingSampleCatalogProvider(), logger: Logging.NoopRecording()
         )
 
         // Should not throw, just save 0 documents
@@ -240,14 +240,14 @@ struct SaveCommandTests {
         print("   ✅ Base directory paths verified!")
 
         // Test that index builds successfully with base-dir structure
-        let searchIndex = try await Search.Index(dbPath: searchDbPath)
+        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
         let builder = Search.IndexBuilder(
             searchIndex: searchIndex,
             metadata: metadata,
             docsDirectory: docsDir,
             evolutionDirectory: evolutionDir,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogProvider: MissingSampleCatalogProvider()
+            sampleCatalogProvider: MissingSampleCatalogProvider(), logger: Logging.NoopRecording()
         )
 
         try await builder.buildIndex()
@@ -311,7 +311,7 @@ struct SaveCommandTests {
 
         // Build index WITHOUT metadata.json
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath)
+        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
 
         let builder = Search.IndexBuilder(
             searchIndex: searchIndex,
@@ -319,7 +319,7 @@ struct SaveCommandTests {
             docsDirectory: tempDir.appendingPathComponent("docs"),
             evolutionDirectory: nil,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogProvider: MissingSampleCatalogProvider()
+            sampleCatalogProvider: MissingSampleCatalogProvider(), logger: Logging.NoopRecording()
         )
 
         try await builder.buildIndex()
@@ -367,7 +367,7 @@ struct SaveCommandTests {
 
         // Build index
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath)
+        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
 
         let builder = Search.IndexBuilder(
             searchIndex: searchIndex,
@@ -375,7 +375,7 @@ struct SaveCommandTests {
             docsDirectory: tempDir.appendingPathComponent("docs"),
             evolutionDirectory: nil,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogProvider: MissingSampleCatalogProvider()
+            sampleCatalogProvider: MissingSampleCatalogProvider(), logger: Logging.NoopRecording()
         )
 
         try await builder.buildIndex()
@@ -418,7 +418,7 @@ struct SaveCommandTests {
         print("🧪 Test: Index packages catalog")
 
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath)
+        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
 
         let builder = Search.IndexBuilder(
             searchIndex: searchIndex,
@@ -426,7 +426,7 @@ struct SaveCommandTests {
             docsDirectory: tempDir,
             evolutionDirectory: nil,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogProvider: MissingSampleCatalogProvider()
+            sampleCatalogProvider: MissingSampleCatalogProvider(), logger: Logging.NoopRecording()
         )
 
         try await builder.buildIndex()
@@ -452,7 +452,7 @@ struct SaveCommandTests {
         print("🧪 Test: Package catalog metadata")
 
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath)
+        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
 
         let builder = Search.IndexBuilder(
             searchIndex: searchIndex,
@@ -460,7 +460,7 @@ struct SaveCommandTests {
             docsDirectory: tempDir,
             evolutionDirectory: nil,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogProvider: MissingSampleCatalogProvider()
+            sampleCatalogProvider: MissingSampleCatalogProvider(), logger: Logging.NoopRecording()
         )
 
         try await builder.buildIndex()
