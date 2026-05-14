@@ -56,7 +56,8 @@ struct SaveCommandTests {
             searchIndex: searchIndex,
             metadata: metadata,
             docsDirectory: tempDir,
-            evolutionDirectory: nil
+            evolutionDirectory: nil,
+            markdownToStructuredPage: { _, _ in nil }
         )
 
         try await builder.buildIndex()
@@ -110,7 +111,8 @@ struct SaveCommandTests {
             searchIndex: searchIndex,
             metadata: metadata,
             docsDirectory: tempDir,
-            evolutionDirectory: nil
+            evolutionDirectory: nil,
+            markdownToStructuredPage: { _, _ in nil }
         )
         try await builder.buildIndex()
 
@@ -152,7 +154,8 @@ struct SaveCommandTests {
             searchIndex: searchIndex,
             metadata: emptyMetadata,
             docsDirectory: tempDir,
-            evolutionDirectory: nil
+            evolutionDirectory: nil,
+            markdownToStructuredPage: { _, _ in nil }
         )
 
         // Should not throw, just save 0 documents
@@ -211,7 +214,8 @@ struct SaveCommandTests {
             searchIndex: searchIndex,
             metadata: metadata,
             docsDirectory: docsDir,
-            evolutionDirectory: evolutionDir
+            evolutionDirectory: evolutionDir,
+            markdownToStructuredPage: { _, _ in nil }
         )
 
         try await builder.buildIndex()
@@ -281,7 +285,8 @@ struct SaveCommandTests {
             searchIndex: searchIndex,
             metadata: nil, // No metadata!
             docsDirectory: tempDir.appendingPathComponent("docs"),
-            evolutionDirectory: nil
+            evolutionDirectory: nil,
+            markdownToStructuredPage: { _, _ in nil }
         )
 
         try await builder.buildIndex()
@@ -335,7 +340,8 @@ struct SaveCommandTests {
             searchIndex: searchIndex,
             metadata: nil,
             docsDirectory: tempDir.appendingPathComponent("docs"),
-            evolutionDirectory: nil
+            evolutionDirectory: nil,
+            markdownToStructuredPage: { _, _ in nil }
         )
 
         try await builder.buildIndex()
@@ -384,7 +390,8 @@ struct SaveCommandTests {
             searchIndex: searchIndex,
             metadata: nil,
             docsDirectory: tempDir,
-            evolutionDirectory: nil
+            evolutionDirectory: nil,
+            markdownToStructuredPage: { _, _ in nil }
         )
 
         try await builder.buildIndex()
@@ -416,7 +423,8 @@ struct SaveCommandTests {
             searchIndex: searchIndex,
             metadata: nil,
             docsDirectory: tempDir,
-            evolutionDirectory: nil
+            evolutionDirectory: nil,
+            markdownToStructuredPage: { _, _ in nil }
         )
 
         try await builder.buildIndex()

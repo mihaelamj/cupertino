@@ -372,7 +372,7 @@ let targets: [Target] = {
         // the Strategies/ folder moves to Sources/SearchStrategies/ and gets its own
         // SPM target with deps: [SearchIndexCore, CoreJSONParser, CorePackageIndexing,
         // Core, SharedModels, SharedConstants, Resources, Logging].
-        dependencies: ["SearchModels", "SharedCore", "SharedConstants", "SharedModels", "Logging", "CoreProtocols", "CoreJSONParser", "CorePackageIndexingModels", "CoreSampleCode", "ASTIndexer"]
+        dependencies: ["SearchModels", "SharedCore", "SharedConstants", "SharedModels", "Logging", "CoreProtocols", "CorePackageIndexingModels", "CoreSampleCode", "ASTIndexer"]
     )
     let searchTestsTarget = Target.testTarget(
         name: "SearchTests",

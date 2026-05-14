@@ -66,7 +66,10 @@ struct IndexBuilderMalformedURLSkipTests {
 
         let dbPath = tempRoot.appendingPathComponent("search.db")
         let index = try await Search.Index(dbPath: dbPath)
-        let strategy = Search.AppleDocsStrategy(docsDirectory: docsDir)
+        let strategy = Search.AppleDocsStrategy(
+            docsDirectory: docsDir,
+            markdownToStructuredPage: { _, _ in nil }
+        )
 
         let stats = try await strategy.indexFromMetadata(
             into: index, metadata: crawlMetadata, progress: nil
@@ -104,7 +107,10 @@ struct IndexBuilderMalformedURLSkipTests {
 
         let dbPath = tempRoot.appendingPathComponent("search.db")
         let index = try await Search.Index(dbPath: dbPath)
-        let strategy = Search.AppleDocsStrategy(docsDirectory: docsDir)
+        let strategy = Search.AppleDocsStrategy(
+            docsDirectory: docsDir,
+            markdownToStructuredPage: { _, _ in nil }
+        )
 
         let stats = try await strategy.indexFromMetadata(
             into: index, metadata: crawlMetadata, progress: nil

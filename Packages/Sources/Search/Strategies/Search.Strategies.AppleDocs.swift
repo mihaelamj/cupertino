@@ -1,10 +1,9 @@
-import CoreJSONParser
 import CoreProtocols
 import Foundation
 import Logging
+import SearchModels
 import SharedConstants
 import SharedModels
-import SearchModels
 
 // MARK: - AppleDocsStrategy
 
@@ -43,11 +42,26 @@ extension Search {
         /// Root directory containing the crawled Apple documentation files.
         public let docsDirectory: URL
 
+        /// Closure that converts raw markdown to a structured page.
+        /// Injected so this target doesn't depend on `CoreJSONParser`;
+        /// the composition root supplies
+        /// `Core.JSONParser.MarkdownToStructuredPage.convert`.
+        private let markdownToStructuredPage: Search.MarkdownToStructuredPage
+
         /// Create a strategy for indexing Apple Developer Documentation.
         ///
-        /// - Parameter docsDirectory: Root directory of the crawled documentation.
-        public init(docsDirectory: URL) {
+        /// - Parameters:
+        ///   - docsDirectory: Root directory of the crawled documentation.
+        ///   - markdownToStructuredPage: Closure that converts raw markdown into a
+        ///     `Shared.Models.StructuredDocumentationPage`. Injected at the
+        ///     composition root so the strategy can parse `.md` pages without
+        ///     depending on the `CoreJSONParser` target directly.
+        public init(
+            docsDirectory: URL,
+            markdownToStructuredPage: @escaping Search.MarkdownToStructuredPage
+        ) {
             self.docsDirectory = docsDirectory
+            self.markdownToStructuredPage = markdownToStructuredPage
         }
 
         /// Index all Apple documentation pages by scanning ``docsDirectory``.
@@ -160,9 +174,7 @@ extension Search {
                         string: "\(Shared.Constants.BaseURL.appleDeveloperDocs)\(framework)/" +
                                 "\(file.deletingPathExtension().lastPathComponent)"
                     )
-                    guard let converted = Core.JSONParser.MarkdownToStructuredPage.convert(
-                        mdContent, url: pageURL
-                    ) else {
+                    guard let converted = markdownToStructuredPage(mdContent, pageURL) else {
                         Logging.Log.error(
                             "❌ Failed to convert \(file.lastPathComponent) to structured page",
                             category: .search

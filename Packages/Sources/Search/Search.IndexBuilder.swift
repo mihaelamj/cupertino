@@ -94,7 +94,8 @@ extension Search {
             swiftOrgDirectory: URL? = nil,
             archiveDirectory: URL? = nil,
             higDirectory: URL? = nil,
-            indexSampleCode: Bool = true
+            indexSampleCode: Bool = true,
+            markdownToStructuredPage: @escaping Search.MarkdownToStructuredPage
         ) {
             self.init(
                 searchIndex: searchIndex,
@@ -105,7 +106,8 @@ extension Search {
                     swiftOrgDirectory: swiftOrgDirectory,
                     archiveDirectory: archiveDirectory,
                     higDirectory: higDirectory,
-                    indexSampleCode: indexSampleCode
+                    indexSampleCode: indexSampleCode,
+                    markdownToStructuredPage: markdownToStructuredPage
                 )
             )
         }
@@ -177,16 +179,23 @@ extension Search {
             swiftOrgDirectory: URL? = nil,
             archiveDirectory: URL? = nil,
             higDirectory: URL? = nil,
-            indexSampleCode: Bool = true
+            indexSampleCode: Bool = true,
+            markdownToStructuredPage: @escaping Search.MarkdownToStructuredPage
         ) -> [any Search.SourceIndexingStrategy] {
             var strategies: [any Search.SourceIndexingStrategy] = [
-                Search.AppleDocsStrategy(docsDirectory: docsDirectory),
+                Search.AppleDocsStrategy(
+                    docsDirectory: docsDirectory,
+                    markdownToStructuredPage: markdownToStructuredPage
+                ),
             ]
             if let dir = evolutionDirectory {
                 strategies.append(Search.SwiftEvolutionStrategy(evolutionDirectory: dir))
             }
             if let dir = swiftOrgDirectory {
-                strategies.append(Search.SwiftOrgStrategy(swiftOrgDirectory: dir))
+                strategies.append(Search.SwiftOrgStrategy(
+                    swiftOrgDirectory: dir,
+                    markdownToStructuredPage: markdownToStructuredPage
+                ))
             }
             if let dir = archiveDirectory {
                 strategies.append(Search.AppleArchiveStrategy(archiveDirectory: dir))
