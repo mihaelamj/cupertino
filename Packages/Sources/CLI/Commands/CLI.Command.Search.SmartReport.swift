@@ -61,7 +61,7 @@ extension CLI.Command.Search {
                 minVersion: minVersion
             )
         case (.some, nil), (nil, .some):
-            Logging.ConsoleLogger.error(
+            Logging.LiveRecording().error(
                 "❌ --platform and --min-version must be used together."
             )
             throw ExitCode.failure
@@ -116,7 +116,7 @@ extension CLI.Command.Search {
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? Shared.Constants.defaultSearchDatabase
         guard FileManager.default.fileExists(atPath: url.path) else {
-            Logging.ConsoleLogger.info(
+            Logging.LiveRecording().info(
                 "ℹ️  search.db not found at \(url.path) — skipping doc sources."
             )
             return nil
@@ -133,7 +133,7 @@ extension CLI.Command.Search {
             }
             return index
         } catch {
-            Logging.ConsoleLogger.error(
+            Logging.LiveRecording().error(
                 "⚠️  Could not open search.db: \(error.localizedDescription)"
             )
             return nil
@@ -150,7 +150,7 @@ extension CLI.Command.Search {
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? Shared.Constants.defaultPackagesDatabase
         guard FileManager.default.fileExists(atPath: url.path) else {
-            Logging.ConsoleLogger.info(
+            Logging.LiveRecording().info(
                 "ℹ️  packages.db not found at \(url.path) — skipping packages."
             )
             return
@@ -171,7 +171,7 @@ extension CLI.Command.Search {
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? Sample.Index.defaultDatabasePath
         guard FileManager.default.fileExists(atPath: url.path) else {
-            Logging.ConsoleLogger.info(
+            Logging.LiveRecording().info(
                 "ℹ️  samples.db not found at \(url.path) — skipping samples."
             )
             return nil
@@ -185,7 +185,7 @@ extension CLI.Command.Search {
             ))
             return service
         } catch {
-            Logging.ConsoleLogger.error(
+            Logging.LiveRecording().error(
                 "⚠️  Could not open samples.db: \(error.localizedDescription)"
             )
             return nil
@@ -472,7 +472,7 @@ extension CLI.Command.Search {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         if let data = try? encoder.encode(report),
            let json = String(data: data, encoding: .utf8) {
-            Logging.Log.output(json)
+            Logging.LiveRecording().output(json)
         }
     }
 

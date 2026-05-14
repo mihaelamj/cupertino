@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import Logging
+import LoggingModels
 import SampleIndex
 import Services
 import ServicesModels
@@ -45,8 +46,8 @@ extension CLI.Command {
             // Use Services.ServiceContainer for managed lifecycle
             let (project, files) = try await Services.ServiceContainer.withSampleService(dbPath: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
                 guard let project = try await service.getProject(id: projectId) else {
-                    Logging.Log.error("Project not found: \(projectId)")
-                    Logging.Log.output("Use 'cupertino list-samples' or 'cupertino search --source samples' to find valid project IDs.")
+                    Logging.LiveRecording().error("Project not found: \(projectId)")
+                    Logging.LiveRecording().output("Use 'cupertino list-samples' or 'cupertino search --source samples' to find valid project IDs.")
                     throw ExitCode.failure
                 }
 
@@ -77,44 +78,44 @@ extension CLI.Command {
         // MARK: - Output Formatting
 
         private func outputText(_ project: Sample.Index.Project, files: [Sample.Index.File]) {
-            Logging.Log.output(project.title)
-            Logging.Log.output(String(repeating: "=", count: project.title.count))
-            Logging.Log.output("")
-            Logging.Log.output("Project ID: \(project.id)")
-            Logging.Log.output("Frameworks: \(project.frameworks.joined(separator: ", "))")
-            Logging.Log.output("Files: \(project.fileCount)")
-            Logging.Log.output("Size: \(Shared.Utils.Formatting.formatBytes(project.totalSize))")
+            Logging.LiveRecording().output(project.title)
+            Logging.LiveRecording().output(String(repeating: "=", count: project.title.count))
+            Logging.LiveRecording().output("")
+            Logging.LiveRecording().output("Project ID: \(project.id)")
+            Logging.LiveRecording().output("Frameworks: \(project.frameworks.joined(separator: ", "))")
+            Logging.LiveRecording().output("Files: \(project.fileCount)")
+            Logging.LiveRecording().output("Size: \(Shared.Utils.Formatting.formatBytes(project.totalSize))")
 
             if !project.webURL.isEmpty {
-                Logging.Log.output("Apple Developer: \(project.webURL)")
+                Logging.LiveRecording().output("Apple Developer: \(project.webURL)")
             }
 
-            Logging.Log.output("")
+            Logging.LiveRecording().output("")
 
             if !project.description.isEmpty {
-                Logging.Log.output("Description:")
-                Logging.Log.output(project.description)
-                Logging.Log.output("")
+                Logging.LiveRecording().output("Description:")
+                Logging.LiveRecording().output(project.description)
+                Logging.LiveRecording().output("")
             }
 
             if let readme = project.readme, !readme.isEmpty {
-                Logging.Log.output("README:")
-                Logging.Log.output(readme)
-                Logging.Log.output("")
+                Logging.LiveRecording().output("README:")
+                Logging.LiveRecording().output(readme)
+                Logging.LiveRecording().output("")
             }
 
             if !files.isEmpty {
-                Logging.Log.output("Files (\(files.count) total):")
+                Logging.LiveRecording().output("Files (\(files.count) total):")
                 for file in files.prefix(30) {
-                    Logging.Log.output("  - \(file.path)")
+                    Logging.LiveRecording().output("  - \(file.path)")
                 }
                 if files.count > 30 {
-                    Logging.Log.output("  ... and \(files.count - 30) more files")
+                    Logging.LiveRecording().output("  ... and \(files.count - 30) more files")
                 }
             }
 
-            Logging.Log.output("")
-            Logging.Log.output("Tip: Use 'cupertino read-sample-file \(project.id) <path>' to view source code")
+            Logging.LiveRecording().output("")
+            Logging.LiveRecording().output("Tip: Use 'cupertino read-sample-file \(project.id) <path>' to view source code")
         }
 
         private func outputJSON(_ project: Sample.Index.Project, files: [Sample.Index.File]) {
@@ -148,46 +149,46 @@ extension CLI.Command {
             do {
                 let data = try encoder.encode(output)
                 if let jsonString = String(data: data, encoding: .utf8) {
-                    Logging.Log.output(jsonString)
+                    Logging.LiveRecording().output(jsonString)
                 }
             } catch {
-                Logging.Log.error("Error encoding JSON: \(error)")
+                Logging.LiveRecording().error("Error encoding JSON: \(error)")
             }
         }
 
         private func outputMarkdown(_ project: Sample.Index.Project, files: [Sample.Index.File]) {
-            Logging.Log.output("# \(project.title)\n")
-            Logging.Log.output("**Project ID:** `\(project.id)`\n")
+            Logging.LiveRecording().output("# \(project.title)\n")
+            Logging.LiveRecording().output("**Project ID:** `\(project.id)`\n")
 
             if !project.description.isEmpty {
-                Logging.Log.output("## Description\n")
-                Logging.Log.output("\(project.description)\n")
+                Logging.LiveRecording().output("## Description\n")
+                Logging.LiveRecording().output("\(project.description)\n")
             }
 
-            Logging.Log.output("## Metadata\n")
-            Logging.Log.output("- **Frameworks:** \(project.frameworks.joined(separator: ", "))")
-            Logging.Log.output("- **Files:** \(project.fileCount)")
-            Logging.Log.output("- **Size:** \(Shared.Utils.Formatting.formatBytes(project.totalSize))")
+            Logging.LiveRecording().output("## Metadata\n")
+            Logging.LiveRecording().output("- **Frameworks:** \(project.frameworks.joined(separator: ", "))")
+            Logging.LiveRecording().output("- **Files:** \(project.fileCount)")
+            Logging.LiveRecording().output("- **Size:** \(Shared.Utils.Formatting.formatBytes(project.totalSize))")
 
             if !project.webURL.isEmpty {
-                Logging.Log.output("- **Apple Developer:** \(project.webURL)")
+                Logging.LiveRecording().output("- **Apple Developer:** \(project.webURL)")
             }
 
-            Logging.Log.output("")
+            Logging.LiveRecording().output("")
 
             if let readme = project.readme, !readme.isEmpty {
-                Logging.Log.output("## README\n")
-                Logging.Log.output(readme)
-                Logging.Log.output("")
+                Logging.LiveRecording().output("## README\n")
+                Logging.LiveRecording().output(readme)
+                Logging.LiveRecording().output("")
             }
 
             if !files.isEmpty {
-                Logging.Log.output("## Files (\(files.count) total)\n")
+                Logging.LiveRecording().output("## Files (\(files.count) total)\n")
                 for file in files.prefix(30) {
-                    Logging.Log.output("- `\(file.path)`")
+                    Logging.LiveRecording().output("- `\(file.path)`")
                 }
                 if files.count > 30 {
-                    Logging.Log.output("- _... and \(files.count - 30) more files_")
+                    Logging.LiveRecording().output("- _... and \(files.count - 30) more files_")
                 }
             }
         }

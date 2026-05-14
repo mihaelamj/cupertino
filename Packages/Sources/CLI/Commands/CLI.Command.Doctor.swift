@@ -73,20 +73,20 @@ extension CLI.Command {
             // it. Identical output to what `cupertino save` would print as
             // its preflight summary.
             if save {
-                Logging.Log.output("🔍 `cupertino save` preflight check\n")
+                Logging.LiveRecording().output("🔍 `cupertino save` preflight check\n")
                 let lines = Indexer.Preflight.preflightLines(
                     buildDocs: true,
                     buildPackages: true,
                     buildSamples: true
                 )
                 for line in lines {
-                    Logging.Log.output(line)
+                    Logging.LiveRecording().output(line)
                 }
                 return
             }
 
-            Logging.Log.output("🏥 MCP Server Health Check")
-            Logging.Log.output("")
+            Logging.LiveRecording().output("🏥 MCP Server Health Check")
+            Logging.LiveRecording().output("")
 
             var allChecks = true
 
@@ -115,11 +115,11 @@ extension CLI.Command {
             printSchemaVersions()
 
             // Summary
-            Logging.Log.output("")
+            Logging.LiveRecording().output("")
             if allChecks {
-                Logging.Log.output("✅ All checks passed - MCP server ready")
+                Logging.LiveRecording().output("✅ All checks passed - MCP server ready")
             } else {
-                Logging.Log.output("⚠️  Some checks failed - see above for details")
+                Logging.LiveRecording().output("⚠️  Some checks failed - see above for details")
                 throw ExitCode(1)
             }
         }
@@ -131,9 +131,9 @@ extension CLI.Command {
         /// fail the check — they're already covered by the per-DB sections
         /// above.
         private func printSchemaVersions() {
-            Logging.Log.output("")
-            Logging.Log.output("8. Schema versions (#234)")
-            Logging.Log.output("")
+            Logging.LiveRecording().output("")
+            Logging.LiveRecording().output("8. Schema versions (#234)")
+            Logging.LiveRecording().output("")
             let entries: [(String, URL)] = [
                 ("search.db", URL(fileURLWithPath: searchDB).expandingTildeInPath),
                 ("packages.db", Shared.Constants.defaultPackagesDatabase),
@@ -141,7 +141,7 @@ extension CLI.Command {
             ]
             for (label, url) in entries {
                 guard FileManager.default.fileExists(atPath: url.path) else {
-                    Logging.Log.output("   ⚠ \(label): not built")
+                    Logging.LiveRecording().output("   ⚠ \(label): not built")
                     continue
                 }
                 let version = Diagnostics.Probes.userVersion(at: url) ?? 0
@@ -204,7 +204,7 @@ extension CLI.Command {
                 // corruption guide).
                 let volumeNote = volumeWarning(for: url)
 
-                Logging.Log.output("   ✓ \(label): \(formatted), journal=\(journalNote)\(walNote)\(volumeNote)")
+                Logging.LiveRecording().output("   ✓ \(label): \(formatted), journal=\(journalNote)\(walNote)\(volumeNote)")
             }
         }
 
@@ -227,11 +227,11 @@ extension CLI.Command {
         }
 
         private func checkServerInitialization() -> Bool {
-            Logging.Log.output("✅ MCP Server")
-            Logging.Log.output("   ✓ Server can initialize")
-            Logging.Log.output("   ✓ Transport: stdio")
-            Logging.Log.output("   ✓ Protocol version: \(MCPProtocolVersion)")
-            Logging.Log.output("")
+            Logging.LiveRecording().output("✅ MCP Server")
+            Logging.LiveRecording().output("   ✓ Server can initialize")
+            Logging.LiveRecording().output("   ✓ Transport: stdio")
+            Logging.LiveRecording().output("   ✓ Protocol version: \(MCPProtocolVersion)")
+            Logging.LiveRecording().output("")
             return true
         }
 
@@ -248,7 +248,7 @@ extension CLI.Command {
             let swiftOrgURL = Shared.Constants.defaultSwiftOrgDirectory
             let archiveURL = Shared.Constants.defaultArchiveDirectory
 
-            Logging.Log.output("📂 Raw corpus directories (input for `cupertino save`)")
+            Logging.LiveRecording().output("📂 Raw corpus directories (input for `cupertino save`)")
 
             let entries: [CorpusEntry] = [
                 CorpusEntry(label: "Apple docs", url: docsURL, suffix: "files", fetchType: "docs"),
@@ -261,14 +261,14 @@ extension CLI.Command {
             for entry in entries {
                 if FileManager.default.fileExists(atPath: entry.url.path) {
                     let count = Diagnostics.Probes.countCorpusFiles(in: entry.url)
-                    Logging.Log.output("   ✓ \(entry.label): \(entry.url.path) (\(count) \(entry.suffix))")
+                    Logging.LiveRecording().output("   ✓ \(entry.label): \(entry.url.path) (\(count) \(entry.suffix))")
                 } else {
-                    Logging.Log.output("   ⚠  \(entry.label): \(entry.url.path) (not found)")
-                    Logging.Log.output("     → Run: cupertino fetch --type \(entry.fetchType)  (only needed to rebuild from scratch)")
+                    Logging.LiveRecording().output("   ⚠  \(entry.label): \(entry.url.path) (not found)")
+                    Logging.LiveRecording().output("     → Run: cupertino fetch --type \(entry.fetchType)  (only needed to rebuild from scratch)")
                 }
             }
 
-            Logging.Log.output("")
+            Logging.LiveRecording().output("")
             // Filesystem state is informational. The hard fail is whether
             // search.db has indexed data, which `checkSearchDatabase` enforces.
             return true
@@ -277,18 +277,18 @@ extension CLI.Command {
         private func checkSearchDatabase() async -> Bool {
             let searchDBURL = URL(fileURLWithPath: searchDB).expandingTildeInPath
 
-            Logging.Log.output("🔍 Search Index")
+            Logging.LiveRecording().output("🔍 Search Index")
 
             guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
-                Logging.Log.output("   ✗ Database: \(searchDBURL.path) (not found)")
-                Logging.Log.output("     → Run: cupertino setup  (or `cupertino save` if building locally)")
-                Logging.Log.output("")
+                Logging.LiveRecording().output("   ✗ Database: \(searchDBURL.path) (not found)")
+                Logging.LiveRecording().output("     → Run: cupertino setup  (or `cupertino save` if building locally)")
+                Logging.LiveRecording().output("")
                 return false
             }
 
             let fileSize = (try? FileManager.default.attributesOfItem(atPath: searchDBURL.path)[.size] as? UInt64) ?? 0
-            Logging.Log.output("   ✓ Database: \(searchDBURL.path)")
-            Logging.Log.output("   ✓ Size: \(Shared.Utils.Formatting.formatBytes(Int64(fileSize)))")
+            Logging.LiveRecording().output("   ✓ Database: \(searchDBURL.path)")
+            Logging.LiveRecording().output("   ✓ Size: \(Shared.Utils.Formatting.formatBytes(Int64(fileSize)))")
 
             if !reportSchemaVersion(at: searchDBURL) {
                 return false
@@ -297,13 +297,13 @@ extension CLI.Command {
             do {
                 let searchIndex = try await SearchModule.Index(dbPath: searchDBURL, logger: Logging.LiveRecording())
                 let frameworks = try await searchIndex.listFrameworks()
-                Logging.Log.output("   ✓ Frameworks: \(frameworks.count)")
+                Logging.LiveRecording().output("   ✓ Frameworks: \(frameworks.count)")
                 await searchIndex.disconnect()
                 return reportIndexedSources(at: searchDBURL)
             } catch {
-                Logging.Log.output("   ✗ Database error: \(error)")
-                Logging.Log.output("     → rm \(searchDBURL.path) && cupertino save")
-                Logging.Log.output("")
+                Logging.LiveRecording().output("   ✗ Database error: \(error)")
+                Logging.LiveRecording().output("     → rm \(searchDBURL.path) && cupertino save")
+                Logging.LiveRecording().output("")
                 return false
             }
         }
@@ -317,21 +317,21 @@ extension CLI.Command {
             let onDiskVersion = Diagnostics.Probes.userVersion(at: searchDBURL)
             let expected = SearchModule.Index.schemaVersion
             guard let onDiskVersion else {
-                Logging.Log.output("   ⚠  Schema version: could not read PRAGMA user_version")
+                Logging.LiveRecording().output("   ⚠  Schema version: could not read PRAGMA user_version")
                 return true
             }
             if onDiskVersion == expected {
-                Logging.Log.output("   ✓ Schema version: \(onDiskVersion) (matches installed binary)")
+                Logging.LiveRecording().output("   ✓ Schema version: \(onDiskVersion) (matches installed binary)")
                 return true
             }
             if onDiskVersion < expected {
-                Logging.Log.output("   ✗ Schema version: \(onDiskVersion) (binary expects \(expected), rebuild required)")
-                Logging.Log.output("     → rm \(searchDBURL.path) && cupertino save")
+                Logging.LiveRecording().output("   ✗ Schema version: \(onDiskVersion) (binary expects \(expected), rebuild required)")
+                Logging.LiveRecording().output("     → rm \(searchDBURL.path) && cupertino save")
             } else {
-                Logging.Log.output("   ✗ Schema version: \(onDiskVersion) (newer than binary — expected \(expected))")
-                Logging.Log.output("     → Upgrade cupertino: brew upgrade cupertino")
+                Logging.LiveRecording().output("   ✗ Schema version: \(onDiskVersion) (newer than binary — expected \(expected))")
+                Logging.LiveRecording().output("     → Upgrade cupertino: brew upgrade cupertino")
             }
-            Logging.Log.output("")
+            Logging.LiveRecording().output("")
             return false
         }
 
@@ -341,17 +341,17 @@ extension CLI.Command {
         private func reportIndexedSources(at searchDBURL: URL) -> Bool {
             let perSource = Diagnostics.Probes.perSourceCounts(at: searchDBURL)
             if !perSource.isEmpty {
-                Logging.Log.output("   📚 Indexed sources:")
+                Logging.LiveRecording().output("   📚 Indexed sources:")
                 for (source, count) in perSource {
-                    Logging.Log.output("     ✓ \(source): \(count) entries")
+                    Logging.LiveRecording().output("     ✓ \(source): \(count) entries")
                 }
             }
-            Logging.Log.output("")
+            Logging.LiveRecording().output("")
             let totalIndexed = perSource.reduce(0) { $0 + $1.count }
             if totalIndexed == 0 {
-                Logging.Log.output("   ✗ Search index is empty (0 rows in docs_metadata)")
-                Logging.Log.output("     → Rebuild: rm \(searchDBURL.path) && cupertino setup")
-                Logging.Log.output("")
+                Logging.LiveRecording().output("   ✗ Search index is empty (0 rows in docs_metadata)")
+                Logging.LiveRecording().output("     → Rebuild: rm \(searchDBURL.path) && cupertino setup")
+                Logging.LiveRecording().output("")
                 return false
             }
             return true
@@ -364,26 +364,26 @@ extension CLI.Command {
         private func checkSamplesDatabase() {
             let samplesDBURL = Sample.Index.defaultDatabasePath
 
-            Logging.Log.output("🧪 Sample Code Index (samples.db)")
+            Logging.LiveRecording().output("🧪 Sample Code Index (samples.db)")
 
             guard FileManager.default.fileExists(atPath: samplesDBURL.path) else {
-                Logging.Log.output("   ⚠  Database: \(samplesDBURL.path) (not found)")
-                Logging.Log.output("     → Run: cupertino fetch --type samples && cupertino cleanup && cupertino save --samples")
-                Logging.Log.output("")
+                Logging.LiveRecording().output("   ⚠  Database: \(samplesDBURL.path) (not found)")
+                Logging.LiveRecording().output("     → Run: cupertino fetch --type samples && cupertino cleanup && cupertino save --samples")
+                Logging.LiveRecording().output("")
                 return
             }
 
             let fileSize = (try? FileManager.default.attributesOfItem(atPath: samplesDBURL.path)[.size] as? UInt64) ?? 0
-            Logging.Log.output("   ✓ Database: \(samplesDBURL.path)")
-            Logging.Log.output("   ✓ Size: \(Shared.Utils.Formatting.formatBytes(Int64(fileSize)))")
+            Logging.LiveRecording().output("   ✓ Database: \(samplesDBURL.path)")
+            Logging.LiveRecording().output("   ✓ Size: \(Shared.Utils.Formatting.formatBytes(Int64(fileSize)))")
 
             let projectCount = Diagnostics.Probes.rowCount(at: samplesDBURL, sql: Shared.Utils.SQL.countRows(in: "projects"))
             let fileCount = Diagnostics.Probes.rowCount(at: samplesDBURL, sql: Shared.Utils.SQL.countRows(in: "files"))
             let symbolCount = Diagnostics.Probes.rowCount(at: samplesDBURL, sql: Shared.Utils.SQL.countRows(in: "file_symbols"))
-            if let projectCount { Logging.Log.output("   ✓ Projects: \(projectCount)") }
-            if let fileCount { Logging.Log.output("   ✓ Indexed files: \(fileCount)") }
-            if let symbolCount { Logging.Log.output("   ✓ Indexed symbols: \(symbolCount)") }
-            Logging.Log.output("")
+            if let projectCount { Logging.LiveRecording().output("   ✓ Projects: \(projectCount)") }
+            if let fileCount { Logging.LiveRecording().output("   ✓ Indexed files: \(fileCount)") }
+            if let symbolCount { Logging.LiveRecording().output("   ✓ Indexed symbols: \(symbolCount)") }
+            Logging.LiveRecording().output("")
         }
 
         /// #192 F1. Report `packages.db` presence, size, and row counts (packages,
@@ -393,28 +393,28 @@ extension CLI.Command {
         private func checkPackagesDatabase() -> Bool {
             let packagesDBURL = Shared.Constants.defaultPackagesDatabase
 
-            Logging.Log.output("📦 Packages Index (packages.db)")
+            Logging.LiveRecording().output("📦 Packages Index (packages.db)")
 
             guard FileManager.default.fileExists(atPath: packagesDBURL.path) else {
-                Logging.Log.output("   ⚠  Database: \(packagesDBURL.path) (not found)")
-                Logging.Log.output("     → Run: cupertino setup  (downloads the pre-built packages index)")
-                Logging.Log.output("     Expected version: \(Shared.Constants.App.databaseVersion)")
-                Logging.Log.output("")
+                Logging.LiveRecording().output("   ⚠  Database: \(packagesDBURL.path) (not found)")
+                Logging.LiveRecording().output("     → Run: cupertino setup  (downloads the pre-built packages index)")
+                Logging.LiveRecording().output("     Expected version: \(Shared.Constants.App.databaseVersion)")
+                Logging.LiveRecording().output("")
                 // Missing packages.db is a warning, not a failure — server still
                 // runs, just without the packages tool. Doctor summary stays green.
                 return true
             }
 
             let fileSize = (try? FileManager.default.attributesOfItem(atPath: packagesDBURL.path)[.size] as? UInt64) ?? 0
-            Logging.Log.output("   ✓ Database: \(packagesDBURL.path)")
-            Logging.Log.output("   ✓ Size: \(Shared.Utils.Formatting.formatBytes(Int64(fileSize)))")
+            Logging.LiveRecording().output("   ✓ Database: \(packagesDBURL.path)")
+            Logging.LiveRecording().output("   ✓ Size: \(Shared.Utils.Formatting.formatBytes(Int64(fileSize)))")
 
             let packageCount = Diagnostics.Probes.rowCount(at: packagesDBURL, sql: Shared.Utils.SQL.countRows(in: "packages"))
             let fileCount = Diagnostics.Probes.rowCount(at: packagesDBURL, sql: Shared.Utils.SQL.countRows(in: "package_files"))
-            if let packageCount { Logging.Log.output("   ✓ Packages: \(packageCount)") }
-            if let fileCount { Logging.Log.output("   ✓ Indexed files: \(fileCount)") }
-            Logging.Log.output("   ℹ  Bundled version: \(Shared.Constants.App.databaseVersion)")
-            Logging.Log.output("")
+            if let packageCount { Logging.LiveRecording().output("   ✓ Packages: \(packageCount)") }
+            if let fileCount { Logging.LiveRecording().output("   ✓ Indexed files: \(fileCount)") }
+            Logging.LiveRecording().output("   ℹ  Bundled version: \(Shared.Constants.App.databaseVersion)")
+            Logging.LiveRecording().output("")
             return true
         }
 
@@ -423,19 +423,19 @@ extension CLI.Command {
             let userSelectionsURL = Shared.Constants.defaultBaseDirectory
                 .appendingPathComponent(Shared.Constants.FileName.selectedPackages)
 
-            Logging.Log.output("📦 Swift Packages")
+            Logging.LiveRecording().output("📦 Swift Packages")
 
             // Load selected URLs once and derive the canonical "owner/repo" key
             // set so we can compare against on-disk READMEs by NAME, not by count.
             let selectedURLs: Set<String>
             if FileManager.default.fileExists(atPath: userSelectionsURL.path) {
                 selectedURLs = Diagnostics.Probes.userSelectedPackageURLs(from: userSelectionsURL)
-                Logging.Log.output("   ✓ User selections: \(userSelectionsURL.path)")
-                Logging.Log.output("     \(selectedURLs.count) packages selected")
+                Logging.LiveRecording().output("   ✓ User selections: \(userSelectionsURL.path)")
+                Logging.LiveRecording().output("     \(selectedURLs.count) packages selected")
             } else {
                 selectedURLs = []
-                Logging.Log.output("   ⚠  User selections: not configured")
-                Logging.Log.output("     → Use TUI to select packages, or will use bundled defaults")
+                Logging.LiveRecording().output("   ⚠  User selections: not configured")
+                Logging.LiveRecording().output("     → Use TUI to select packages, or will use bundled defaults")
             }
             let selectedKeys = Set(selectedURLs.compactMap(Diagnostics.Probes.ownerRepoKey(forGitHubURL:)))
 
@@ -445,42 +445,42 @@ extension CLI.Command {
             if FileManager.default.fileExists(atPath: packagesDir.path) {
                 let readmeKeys = Diagnostics.Probes.packageREADMEKeys(in: packagesDir)
                 if readmeKeys.isEmpty {
-                    Logging.Log.output("   ⚠  Package docs: directory exists but no package files")
+                    Logging.LiveRecording().output("   ⚠  Package docs: directory exists but no package files")
                 } else {
-                    Logging.Log.output("   ✓ Downloaded READMEs: \(readmeKeys.count) packages")
-                    Logging.Log.output("     \(packagesDir.path)")
+                    Logging.LiveRecording().output("   ✓ Downloaded READMEs: \(readmeKeys.count) packages")
+                    Logging.LiveRecording().output("     \(packagesDir.path)")
 
                     if !selectedKeys.isEmpty {
                         let orphans = readmeKeys.subtracting(selectedKeys)
                         let missing = selectedKeys.subtracting(readmeKeys)
                         if !orphans.isEmpty {
-                            Logging.Log.output("   ⚠  Orphaned READMEs: \(orphans.count) (downloaded but no longer selected)")
+                            Logging.LiveRecording().output("   ⚠  Orphaned READMEs: \(orphans.count) (downloaded but no longer selected)")
                         }
                         if !missing.isEmpty {
-                            Logging.Log.output("   ⚠  Missing READMEs: \(missing.count) (selected but not yet downloaded)")
-                            Logging.Log.output("     → Run: cupertino fetch --type packages")
+                            Logging.LiveRecording().output("   ⚠  Missing READMEs: \(missing.count) (selected but not yet downloaded)")
+                            Logging.LiveRecording().output("     → Run: cupertino fetch --type packages")
                         }
                     }
                 }
             } else {
-                Logging.Log.output("   ⚠  Package docs: not downloaded")
+                Logging.LiveRecording().output("   ⚠  Package docs: not downloaded")
             }
 
             // Show priority packages source
             let allPackages = await Core.PackageIndexing.PriorityPackagesCatalog.allPackages
             let appleCount = await Core.PackageIndexing.PriorityPackagesCatalog.applePackages.count
             let ecosystemCount = await Core.PackageIndexing.PriorityPackagesCatalog.ecosystemPackages.count
-            Logging.Log.output("   ℹ  Priority packages: \(allPackages.count) total")
-            Logging.Log.output("     Apple: \(appleCount), Ecosystem: \(ecosystemCount)")
+            Logging.LiveRecording().output("   ℹ  Priority packages: \(allPackages.count) total")
+            Logging.LiveRecording().output("     Apple: \(appleCount), Ecosystem: \(ecosystemCount)")
 
-            Logging.Log.output("")
+            Logging.LiveRecording().output("")
         }
 
         private func checkResourceProviders() -> Bool {
-            Logging.Log.output("🔧 Providers")
-            Logging.Log.output("   ✓ MCP.Support.DocsResourceProvider: available")
-            Logging.Log.output("   ✓ SearchToolProvider: available")
-            Logging.Log.output("")
+            Logging.LiveRecording().output("🔧 Providers")
+            Logging.LiveRecording().output("   ✓ MCP.Support.DocsResourceProvider: available")
+            Logging.LiveRecording().output("   ✓ SearchToolProvider: available")
+            Logging.LiveRecording().output("")
             return true
         }
     }

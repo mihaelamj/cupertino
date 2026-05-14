@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import Logging
+import LoggingModels
 import SampleIndex
 import Services
 import ServicesModels
@@ -83,26 +84,26 @@ extension CLI.Command {
         // MARK: - Output Formatting
 
         private func outputText(_ projects: [Sample.Index.Project], totalProjects: Int, totalFiles: Int) {
-            Logging.Log.output("Sample Code Projects")
-            Logging.Log.output("Total: \(totalProjects) projects, \(totalFiles) files")
+            Logging.LiveRecording().output("Sample Code Projects")
+            Logging.LiveRecording().output("Total: \(totalProjects) projects, \(totalFiles) files")
 
             if let framework {
-                Logging.Log.output("Filtered by: \(framework)")
+                Logging.LiveRecording().output("Filtered by: \(framework)")
             }
 
-            Logging.Log.output("")
+            Logging.LiveRecording().output("")
 
             if projects.isEmpty {
-                Logging.Log.output("No projects found. Run 'cupertino save --samples' to index sample code.")
+                Logging.LiveRecording().output("No projects found. Run 'cupertino save --samples' to index sample code.")
                 return
             }
 
             for (index, project) in projects.enumerated() {
-                Logging.Log.output("[\(index + 1)] \(project.title)")
-                Logging.Log.output("    ID: \(project.id)")
-                Logging.Log.output("    Frameworks: \(project.frameworks.joined(separator: ", "))")
-                Logging.Log.output("    Files: \(project.fileCount)")
-                Logging.Log.output("")
+                Logging.LiveRecording().output("[\(index + 1)] \(project.title)")
+                Logging.LiveRecording().output("    ID: \(project.id)")
+                Logging.LiveRecording().output("    Frameworks: \(project.frameworks.joined(separator: ", "))")
+                Logging.LiveRecording().output("    Files: \(project.fileCount)")
+                Logging.LiveRecording().output("")
             }
         }
 
@@ -143,32 +144,32 @@ extension CLI.Command {
             do {
                 let data = try encoder.encode(output)
                 if let jsonString = String(data: data, encoding: .utf8) {
-                    Logging.Log.output(jsonString)
+                    Logging.LiveRecording().output(jsonString)
                 }
             } catch {
-                Logging.Log.error("Error encoding JSON: \(error)")
+                Logging.LiveRecording().error("Error encoding JSON: \(error)")
             }
         }
 
         private func outputMarkdown(_ projects: [Sample.Index.Project], totalProjects: Int, totalFiles: Int) {
-            Logging.Log.output("# Sample Code Projects\n")
-            Logging.Log.output("Total: **\(totalProjects)** projects, **\(totalFiles)** files\n")
+            Logging.LiveRecording().output("# Sample Code Projects\n")
+            Logging.LiveRecording().output("Total: **\(totalProjects)** projects, **\(totalFiles)** files\n")
 
             if let framework {
-                Logging.Log.output("_Filtered to framework: **\(framework)**_\n")
+                Logging.LiveRecording().output("_Filtered to framework: **\(framework)**_\n")
             }
 
             if projects.isEmpty {
-                Logging.Log.output("_No projects found. Run `cupertino save --samples` to index sample code._")
+                Logging.LiveRecording().output("_No projects found. Run `cupertino save --samples` to index sample code._")
                 return
             }
 
-            Logging.Log.output("| Project | Frameworks | Files |")
-            Logging.Log.output("|---------|-----------|------:|")
+            Logging.LiveRecording().output("| Project | Frameworks | Files |")
+            Logging.LiveRecording().output("|---------|-----------|------:|")
 
             for project in projects {
                 let frameworks = project.frameworks.joined(separator: ", ")
-                Logging.Log.output("| `\(project.id)` | \(frameworks) | \(project.fileCount) |")
+                Logging.LiveRecording().output("| `\(project.id)` | \(frameworks) | \(project.fileCount) |")
             }
         }
     }

@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import Logging
+import LoggingModels
 import Search
 import SearchModels
 import SharedConstants
@@ -62,14 +63,14 @@ extension CLI.Command {
                 ?? Shared.Constants.defaultPackagesDatabase
 
             guard FileManager.default.fileExists(atPath: dbURL.path) else {
-                Logging.ConsoleLogger.error("❌ packages.db not found at \(dbURL.path)")
-                Logging.ConsoleLogger.error("   Run `cupertino fetch --type packages` then `cupertino save --packages` first.")
+                Logging.LiveRecording().error("❌ packages.db not found at \(dbURL.path)")
+                Logging.LiveRecording().error("   Run `cupertino fetch --type packages` then `cupertino save --packages` first.")
                 throw ExitCode.failure
             }
 
             let trimmed = question.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else {
-                Logging.ConsoleLogger.error("❌ Question cannot be empty.")
+                Logging.LiveRecording().error("❌ Question cannot be empty.")
                 throw ExitCode.failure
             }
 
@@ -86,7 +87,7 @@ extension CLI.Command {
                     minVersion: minVersion
                 )
             case (.some, nil), (nil, .some):
-                Logging.ConsoleLogger.error(
+                Logging.LiveRecording().error(
                     "❌ --platform and --min-version must be used together."
                 )
                 throw ExitCode.failure
@@ -101,7 +102,7 @@ extension CLI.Command {
             let result = await smart.answer(question: trimmed, limit: limit, perFetcherLimit: max(20, limit))
 
             if result.candidates.isEmpty {
-                Logging.ConsoleLogger.info("No matches for: \(trimmed)")
+                Logging.LiveRecording().info("No matches for: \(trimmed)")
                 return
             }
 

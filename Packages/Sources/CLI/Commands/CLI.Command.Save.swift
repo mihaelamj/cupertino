@@ -132,7 +132,7 @@ extension CLI.Command {
                 buildPackages: buildPackages,
                 buildSamples: buildSamples
             ) {
-                Logging.ConsoleLogger.info("Aborted by user.")
+                Logging.LiveRecording().info("Aborted by user.")
                 return
             }
 
@@ -167,21 +167,21 @@ extension CLI.Command {
                 docsDir: docsDir,
                 samplesDir: samplesDir
             )
-            Logging.ConsoleLogger.info("🔍 Preflight check for `cupertino save`\n")
+            Logging.LiveRecording().info("🔍 Preflight check for `cupertino save`\n")
             for line in lines {
-                Logging.ConsoleLogger.info(line)
+                Logging.LiveRecording().info(line)
             }
-            Logging.ConsoleLogger.info("")
+            Logging.LiveRecording().info("")
 
             if yes {
-                Logging.ConsoleLogger.info("--yes: skipping confirmation, continuing.\n")
+                Logging.LiveRecording().info("--yes: skipping confirmation, continuing.\n")
                 return true
             }
             guard isatty(fileno(stdin)) != 0 else {
                 return true
             }
 
-            Logging.ConsoleLogger.info("Continue? [Y/n] ")
+            Logging.LiveRecording().info("Continue? [Y/n] ")
             guard let response = readLine() else { return true }
             let normalized = response.trimmingCharacters(in: .whitespaces).lowercased()
             return normalized.isEmpty || normalized == "y" || normalized == "yes"
@@ -212,7 +212,7 @@ extension CLI.Command {
 /// gets a callback-based shape.
 extension CLI.Command.Save {
     private func runRemote() async throws {
-        Logging.ConsoleLogger.info("🚀 Building Search Index from Remote\n")
+        Logging.LiveRecording().info("🚀 Building Search Index from Remote\n")
 
         let effectiveBase = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? Shared.Constants.defaultBaseDirectory
@@ -233,11 +233,11 @@ extension CLI.Command.Save {
                 searchDBURL: searchDBURL
             )
         } else if FileManager.default.fileExists(atPath: searchDBURL.path) {
-            Logging.ConsoleLogger.info("🗑️  Removing existing database for clean re-index...")
+            Logging.LiveRecording().info("🗑️  Removing existing database for clean re-index...")
             try FileManager.default.removeItem(at: searchDBURL)
         }
 
-        Logging.ConsoleLogger.info("🗄️  Initializing search database...")
+        Logging.LiveRecording().info("🗄️  Initializing search database...")
         let searchIndex = try await SearchModule.Index(dbPath: searchDBURL, logger: Logging.LiveRecording())
 
         let progressDisplay = RemoteSync.AnimatedProgress(barWidth: 20, useEmoji: true)
@@ -250,7 +250,7 @@ extension CLI.Command.Save {
         let stats = StatsTracker()
         let startTime = Date()
 
-        Logging.ConsoleLogger.output("")
+        Logging.LiveRecording().output("")
         try await indexer.run(
             indexDocument: { uri, source, framework, title, content, jsonData in
                 try await searchIndex.indexDocument(Search.Index.IndexDocumentParams(
@@ -285,15 +285,15 @@ extension CLI.Command.Save {
         let frameworks = try await searchIndex.listFrameworks()
 
         reporter.finish(message: "")
-        Logging.ConsoleLogger.output("")
-        Logging.ConsoleLogger.info("✅ Remote sync completed!")
-        Logging.ConsoleLogger.info("   Total documents: \(docCount)")
-        Logging.ConsoleLogger.info("   Frameworks: \(frameworks.count)")
-        Logging.ConsoleLogger.info("   Indexed: \(stats.successCount) | Errors: \(stats.errorCount)")
-        Logging.ConsoleLogger.info("   Time: \(Shared.Utils.Formatting.formatDuration(elapsed))")
-        Logging.ConsoleLogger.info("   Database: \(searchDBURL.path)")
-        Logging.ConsoleLogger.info("   Size: \(Self.formatFileSize(searchDBURL))")
-        Logging.ConsoleLogger.info(
+        Logging.LiveRecording().output("")
+        Logging.LiveRecording().info("✅ Remote sync completed!")
+        Logging.LiveRecording().info("   Total documents: \(docCount)")
+        Logging.LiveRecording().info("   Frameworks: \(frameworks.count)")
+        Logging.LiveRecording().info("   Indexed: \(stats.successCount) | Errors: \(stats.errorCount)")
+        Logging.LiveRecording().info("   Time: \(Shared.Utils.Formatting.formatDuration(elapsed))")
+        Logging.LiveRecording().info("   Database: \(searchDBURL.path)")
+        Logging.LiveRecording().info("   Size: \(Self.formatFileSize(searchDBURL))")
+        Logging.LiveRecording().info(
             "\n💡 Tip: Start the MCP server with '\(Shared.Constants.App.commandName) serve' to enable search"
         )
     }
@@ -307,25 +307,25 @@ extension CLI.Command.Save {
         let total = state.frameworksTotal
         let framework = state.currentFramework ?? "unknown"
 
-        Logging.ConsoleLogger.info("📋 Found previous session")
-        Logging.ConsoleLogger.info("   Phase: \(state.phase.rawValue)")
-        Logging.ConsoleLogger.info("   Progress: \(completedCount)/\(total) frameworks")
+        Logging.LiveRecording().info("📋 Found previous session")
+        Logging.LiveRecording().info("   Phase: \(state.phase.rawValue)")
+        Logging.LiveRecording().info("   Progress: \(completedCount)/\(total) frameworks")
         if let current = state.currentFramework {
-            Logging.ConsoleLogger.info(
+            Logging.LiveRecording().info(
                 "   Current: \(current) (\(state.currentFileIndex)/\(state.filesTotal) files)"
             )
         }
-        Logging.ConsoleLogger.output("")
+        Logging.LiveRecording().output("")
 
         print("Resume from \(framework)? [Y/n] ", terminator: "")
         if let response = readLine()?.lowercased(), response == "n" || response == "no" {
-            Logging.ConsoleLogger.info("🔄 Starting fresh...")
+            Logging.LiveRecording().info("🔄 Starting fresh...")
             try await indexer.clearState()
             if FileManager.default.fileExists(atPath: searchDBURL.path) {
                 try FileManager.default.removeItem(at: searchDBURL)
             }
         } else {
-            Logging.ConsoleLogger.info("▶️  Resuming...")
+            Logging.LiveRecording().info("▶️  Resuming...")
         }
     }
 }

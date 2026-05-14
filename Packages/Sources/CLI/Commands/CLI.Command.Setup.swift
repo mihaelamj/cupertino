@@ -2,6 +2,7 @@ import ArgumentParser
 import Distribution
 import Foundation
 import Logging
+import LoggingModels
 import SharedConstants
 import SharedCore
 import SharedUtils
@@ -27,7 +28,7 @@ extension CLI.Command {
         var keepExisting: Bool = false
 
         mutating func run() async throws {
-            Logging.ConsoleLogger.info("📦 Cupertino Setup\n")
+            Logging.LiveRecording().info("📦 Cupertino Setup\n")
 
             let baseURL = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
                 ?? Shared.Constants.defaultBaseDirectory
@@ -44,7 +45,7 @@ extension CLI.Command {
                 }
                 renderer.printFinalSummary(outcome: outcome)
             } catch {
-                Logging.ConsoleLogger.error("❌ Setup failed: \(error)")
+                Logging.LiveRecording().error("❌ Setup failed: \(error)")
                 throw ExitCode.failure
             }
         }
@@ -73,12 +74,12 @@ private final class SetupRenderer: @unchecked Sendable {
             printPriorStatus(status)
 
         case .dbBackedUp(let filename, _, let backupURL):
-            Logging.ConsoleLogger.info(
+            Logging.LiveRecording().info(
                 "💾 Backed up \(filename) → \(backupURL.lastPathComponent)"
             )
 
         case .downloadStart(let label):
-            Logging.ConsoleLogger.info("⬇️  Downloading \(label)...")
+            Logging.LiveRecording().info("⬇️  Downloading \(label)...")
 
         case .downloadProgress(_, let progress):
             renderProgress(progress: progress)
@@ -86,17 +87,17 @@ private final class SetupRenderer: @unchecked Sendable {
         case .downloadComplete(let label, let bytes):
             printRaw("\n")
             let size = Shared.Utils.Formatting.formatBytes(bytes)
-            Logging.ConsoleLogger.info("   ✓ \(label) (\(size))")
+            Logging.LiveRecording().info("   ✓ \(label) (\(size))")
 
         case .extractStart(let label):
-            Logging.ConsoleLogger.info("📂 Extracting \(label.lowercased())...")
+            Logging.LiveRecording().info("📂 Extracting \(label.lowercased())...")
 
         case .extractTick:
             renderExtractTick()
 
         case .extractComplete:
             printRaw("\(clearLine)")
-            Logging.ConsoleLogger.info("   ✓ Extracted")
+            Logging.LiveRecording().info("   ✓ Extracted")
 
         case .finished:
             break
@@ -104,17 +105,17 @@ private final class SetupRenderer: @unchecked Sendable {
     }
 
     func printFinalSummary(outcome: Distribution.SetupService.Outcome) {
-        Logging.ConsoleLogger.output("")
+        Logging.LiveRecording().output("")
         if outcome.skippedDownload {
-            Logging.ConsoleLogger.info("✅ Databases already exist (keeping them, per --keep-existing)")
+            Logging.LiveRecording().info("✅ Databases already exist (keeping them, per --keep-existing)")
         } else {
-            Logging.ConsoleLogger.info("✅ Setup complete!")
+            Logging.LiveRecording().info("✅ Setup complete!")
         }
-        Logging.ConsoleLogger.info("   Documentation: \(outcome.searchDBPath.path)")
-        Logging.ConsoleLogger.info("   Sample code:   \(outcome.samplesDBPath.path)")
-        Logging.ConsoleLogger.info("   Packages:      \(outcome.packagesDBPath.path)")
-        Logging.ConsoleLogger.info("   Version:       \(outcome.docsVersionWritten)")
-        Logging.ConsoleLogger.info("\n💡 Start the server with: cupertino serve")
+        Logging.LiveRecording().info("   Documentation: \(outcome.searchDBPath.path)")
+        Logging.LiveRecording().info("   Sample code:   \(outcome.samplesDBPath.path)")
+        Logging.LiveRecording().info("   Packages:      \(outcome.packagesDBPath.path)")
+        Logging.LiveRecording().info("   Version:       \(outcome.docsVersionWritten)")
+        Logging.LiveRecording().info("\n💡 Start the server with: cupertino serve")
     }
 
     // MARK: - Rendering helpers
@@ -158,18 +159,18 @@ private final class SetupRenderer: @unchecked Sendable {
         case .missing:
             return
         case .current(let version):
-            Logging.ConsoleLogger.info(
+            Logging.LiveRecording().info(
                 "ℹ️  Currently installed: v\(version) (same as the binary's expected version)."
             )
-            Logging.ConsoleLogger.info(
+            Logging.LiveRecording().info(
                 "   Re-downloading v\(version). This is a refresh, not an upgrade."
             )
-            Logging.ConsoleLogger.info("   Tip: pass --keep-existing to skip this download.\n")
+            Logging.LiveRecording().info("   Tip: pass --keep-existing to skip this download.\n")
         case .stale(let installed, let current):
-            Logging.ConsoleLogger.info("⬆️  Upgrading databases: v\(installed) → v\(current).\n")
+            Logging.LiveRecording().info("⬆️  Upgrading databases: v\(installed) → v\(current).\n")
         case .unknown(let current):
-            Logging.ConsoleLogger.info("ℹ️  Databases exist but their version is unknown (legacy install).")
-            Logging.ConsoleLogger.info("   Downloading v\(current) and stamping the version file.\n")
+            Logging.LiveRecording().info("ℹ️  Databases exist but their version is unknown (legacy install).")
+            Logging.LiveRecording().info("   Downloading v\(current) and stamping the version file.\n")
         }
     }
 }

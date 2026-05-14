@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import Logging
+import LoggingModels
 import SampleIndex
 import Search
 import SearchModels
@@ -231,14 +232,14 @@ extension CLI.Command {
         private func runUnifiedSearch() async throws {
             let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else {
-                Logging.ConsoleLogger.error("❌ Query cannot be empty.")
+                Logging.LiveRecording().error("❌ Query cannot be empty.")
                 throw ExitCode.failure
             }
 
             let availabilityFilter = try resolveAvailabilityFilter()
             let plan = await buildFetchers(availabilityFilter: availabilityFilter)
             guard !plan.fetchers.isEmpty else {
-                Logging.ConsoleLogger.error(
+                Logging.LiveRecording().error(
                     "❌ No data sources available. Run `cupertino setup` to populate them."
                 )
                 throw ExitCode.failure

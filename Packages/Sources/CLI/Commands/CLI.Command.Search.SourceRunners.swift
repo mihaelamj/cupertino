@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import Logging
+import LoggingModels
 import Search
 import SearchModels
 import Services
@@ -61,10 +62,10 @@ extension CLI.Command.Search {
                 source: source,
                 teasers: teasers
             )
-            Logging.Log.output(formatter.format(results))
+            Logging.LiveRecording().output(formatter.format(results))
         case .json:
             let formatter = Services.Formatter.JSON()
-            Logging.Log.output(formatter.format(results))
+            Logging.LiveRecording().output(formatter.format(results))
         case .markdown:
             let formatter = Services.Formatter.Markdown(
                 query: query,
@@ -81,7 +82,7 @@ extension CLI.Command.Search {
                 config: .cliDefault,
                 teasers: teasers
             )
-            Logging.Log.output(formatter.format(results))
+            Logging.LiveRecording().output(formatter.format(results))
         }
     }
 
@@ -121,7 +122,7 @@ extension CLI.Command.Search {
                 )
             }
         } catch {
-            Logging.Log.info(
+            Logging.LiveRecording().info(
                 "ℹ️  Teaser results from other sources unavailable: \(error.localizedDescription) "
                     + "(common when another process is writing search.db). "
                     + "Continuing with samples results only."
@@ -132,13 +133,13 @@ extension CLI.Command.Search {
         switch format {
         case .text:
             let formatter = Sample.Format.Text.Search(query: query, framework: framework, teasers: teasers)
-            Logging.Log.output(formatter.format(result))
+            Logging.LiveRecording().output(formatter.format(result))
         case .json:
             let formatter = Sample.Format.JSON.Search(query: query, framework: framework)
-            Logging.Log.output(formatter.format(result))
+            Logging.LiveRecording().output(formatter.format(result))
         case .markdown:
             let formatter = Sample.Format.Markdown.Search(query: query, framework: framework, teasers: teasers)
-            Logging.Log.output(formatter.format(result))
+            Logging.LiveRecording().output(formatter.format(result))
         }
     }
 
@@ -153,7 +154,7 @@ extension CLI.Command.Search {
     func runPackageSearch() async throws {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            Logging.ConsoleLogger.error("❌ Query cannot be empty.")
+            Logging.LiveRecording().error("❌ Query cannot be empty.")
             throw ExitCode.failure
         }
 
@@ -161,8 +162,8 @@ extension CLI.Command.Search {
             ?? Shared.Constants.defaultPackagesDatabase
 
         guard FileManager.default.fileExists(atPath: dbURL.path) else {
-            Logging.ConsoleLogger.error("❌ packages.db not found at \(dbURL.path)")
-            Logging.ConsoleLogger.error("   Run `cupertino setup` to download it, or `cupertino save --packages` to build locally.")
+            Logging.LiveRecording().error("❌ packages.db not found at \(dbURL.path)")
+            Logging.LiveRecording().error("   Run `cupertino setup` to download it, or `cupertino save --packages` to build locally.")
             throw ExitCode.failure
         }
 
@@ -224,13 +225,13 @@ extension CLI.Command.Search {
         switch format {
         case .text:
             let formatter = Services.Formatter.HIG.Text(query: higQuery, teasers: teasers)
-            Logging.Log.output(formatter.format(results))
+            Logging.LiveRecording().output(formatter.format(results))
         case .json:
             let formatter = Services.Formatter.HIG.JSON(query: higQuery)
-            Logging.Log.output(formatter.format(results))
+            Logging.LiveRecording().output(formatter.format(results))
         case .markdown:
             let formatter = Services.Formatter.HIG.Markdown(query: higQuery, config: .cliDefault, teasers: teasers)
-            Logging.Log.output(formatter.format(results))
+            Logging.LiveRecording().output(formatter.format(results))
         }
     }
 }

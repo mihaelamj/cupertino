@@ -63,7 +63,14 @@ extension CLI.Command {
             ServeReaper.reapSiblings()
 
             if isatty(STDOUT_FILENO) == 0 {
+                // Silence stdout from BOTH static and actor logger paths so
+                // the JSON-RPC stream stays parseable. `Logging.Log` is the
+                // legacy sync static surface; `Logging.Unified.shared` is
+                // the actor backing `Logging.LiveRecording()` — both must
+                // be muted because they each carry their own
+                // `options.consoleEnabled` flag.
                 Logging.Log.disableConsole()
+                await Logging.Unified.shared.disableConsole()
             }
 
             let config = Shared.Configuration(
@@ -176,11 +183,11 @@ extension CLI.Command {
             // Log availability of each index
             if searchIndex != nil {
                 let message = "✅ Documentation search enabled (index found)"
-                Logging.Log.info(message, category: .mcp)
+                Logging.LiveRecording().info(message, category: .mcp)
             }
             if sampleIndex != nil {
                 let message = "✅ Sample code search enabled (index found)"
-                Logging.Log.info(message, category: .mcp)
+                Logging.LiveRecording().info(message, category: .mcp)
             }
         }
 
@@ -190,7 +197,7 @@ extension CLI.Command {
                 let infoMsg = "ℹ️  Sample code index not found at: \(sampleDBURL.path)"
                 let cmd = "\(Shared.Constants.App.commandName) save --samples"
                 let hintMsg = "   Sample tools will not be available. Run '\(cmd)' to enable."
-                Logging.Log.info("\(infoMsg) \(hintMsg)", category: .mcp)
+                Logging.LiveRecording().info("\(infoMsg) \(hintMsg)", category: .mcp)
                 return nil
             }
 
@@ -200,7 +207,7 @@ extension CLI.Command {
                 let errorMsg = "⚠️  Failed to load sample index: \(error)"
                 let cmd = "\(Shared.Constants.App.commandName) save --samples"
                 let hintMsg = "   Sample tools will not be available. Run '\(cmd)' to create the index."
-                Logging.Log.warning("\(errorMsg) \(hintMsg)", category: .mcp)
+                Logging.LiveRecording().warning("\(errorMsg) \(hintMsg)", category: .mcp)
                 return nil
             }
         }
@@ -210,7 +217,7 @@ extension CLI.Command {
                 let infoMsg = "ℹ️  Search index not found at: \(searchDBURL.path)"
                 let cmd = "\(Shared.Constants.App.commandName) save"
                 let hintMsg = "   Tools will not be available. Run '\(cmd)' to enable search."
-                Logging.Log.info("\(infoMsg) \(hintMsg)", category: .mcp)
+                Logging.LiveRecording().info("\(infoMsg) \(hintMsg)", category: .mcp)
                 return nil
             }
 
@@ -220,7 +227,7 @@ extension CLI.Command {
                 let errorMsg = "⚠️  Failed to load search index: \(error)"
                 let cmd = "\(Shared.Constants.App.commandName) save"
                 let hintMsg = "   Tools will not be available. Run '\(cmd)' to create the index."
-                Logging.Log.warning("\(errorMsg) \(hintMsg)", category: .mcp)
+                Logging.LiveRecording().warning("\(errorMsg) \(hintMsg)", category: .mcp)
                 return nil
             }
         }
@@ -242,7 +249,7 @@ extension CLI.Command {
             messages.append("   Waiting for client connection...")
 
             for message in messages {
-                Logging.Log.info(message, category: .mcp)
+                Logging.LiveRecording().info(message, category: .mcp)
             }
         }
 
