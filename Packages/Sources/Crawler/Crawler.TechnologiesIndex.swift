@@ -2,8 +2,6 @@ import CoreProtocols
 import CrawlerModels
 import Foundation
 import SharedConstants
-import SharedUtils
-
 // MARK: - Technologies Index Fetcher
 
 extension Crawler {

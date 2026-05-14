@@ -3,8 +3,6 @@ import CrawlerModels
 import Foundation
 import Resources
 import SharedConstants
-import SharedUtils
-
 // MARK: - Archive Guide Catalog
 
 extension Crawler {

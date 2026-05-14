@@ -4,8 +4,6 @@ import Foundation
 import Logging
 import LoggingModels
 import SharedConstants
-import SharedUtils
-
 // MARK: - Setup Command
 
 /// Thin CLI wrapper around `Distribution.SetupService` (#246). The

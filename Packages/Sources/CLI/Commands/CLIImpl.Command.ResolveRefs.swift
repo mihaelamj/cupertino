@@ -10,7 +10,6 @@ import AppKit
 import CoreJSONParser
 import CoreProtocols
 import SharedModels
-import SharedUtils
 import WebKit
 #endif
 

@@ -14,8 +14,6 @@ import Search
 import SearchModels
 import SearchToolProvider
 import SharedConstants
-import SharedUtils
-
 // MARK: - Doctor Command
 
 /// One row in the raw-corpus directory check. Replaces a 4-tuple to

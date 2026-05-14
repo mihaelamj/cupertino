@@ -5,8 +5,6 @@ import LoggingModels
 import Search
 import SearchModels
 import SharedConstants
-import SharedUtils
-
 // MARK: - Package Search Command (hidden)
 
 /// Hidden packages-only smart query. Invoked as:

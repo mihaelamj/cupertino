@@ -6,8 +6,6 @@ import SampleIndex
 import Services
 import ServicesModels
 import SharedConstants
-import SharedUtils
-
 // MARK: - Read Sample File Command
 
 /// CLI command for reading a specific file from a sample project - mirrors MCP tool functionality.

@@ -9,8 +9,6 @@ import SampleIndex
 import Search
 import SearchModels
 import SharedConstants
-import SharedUtils
-
 // MARK: - Indexer dispatch + progress rendering (#244)
 
 /// Per-source indexer dispatchers split out of `CLIImpl.Command.Save.swift` so the

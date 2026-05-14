@@ -1,7 +1,5 @@
 import Foundation
 import SharedConstants
-import SharedUtils
-
 /// Manages TUI configuration persistence
 enum ConfigManager {
     private static let configFile = Shared.Paths.live().baseDirectory

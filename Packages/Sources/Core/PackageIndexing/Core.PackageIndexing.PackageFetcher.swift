@@ -3,8 +3,6 @@ import CoreProtocols
 import Foundation
 import LoggingModels
 import SharedConstants
-import SharedUtils
-
 // MARK: - Package Fetcher
 
 // swiftlint:disable type_body_length

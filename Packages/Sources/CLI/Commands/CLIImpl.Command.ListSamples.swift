@@ -6,8 +6,6 @@ import SampleIndex
 import Services
 import ServicesModels
 import SharedConstants
-import SharedUtils
-
 // MARK: - List Samples Command
 
 /// CLI command for listing sample code projects - mirrors MCP tool functionality.

@@ -4,7 +4,6 @@ import Foundation
 import LoggingModels
 import SearchModels
 import SharedConstants
-import SharedUtils
 import SQLite3
 
 // MARK: - Package Index (separate DB)

@@ -5,8 +5,6 @@ import SampleIndexModels
 import SearchModels
 import ServicesModels
 import SharedConstants
-import SharedUtils
-
 // MARK: - Unified Cupertino Tool Provider
 
 /// Composite tool provider that provides unified search across all documentation sources.

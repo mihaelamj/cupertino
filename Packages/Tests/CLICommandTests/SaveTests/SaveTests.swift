@@ -11,7 +11,6 @@ import SearchModels
 import SharedConfiguration
 import SharedConstants
 import SharedModels
-import SharedUtils
 import Testing
 import TestSupport
 

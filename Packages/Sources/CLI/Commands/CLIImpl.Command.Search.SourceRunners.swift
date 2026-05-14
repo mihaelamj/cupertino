@@ -7,8 +7,6 @@ import SearchModels
 import Services
 import ServicesModels
 import SharedConstants
-import SharedUtils
-
 // MARK: - Per-source runners
 
 /// `--source <name>` paths split out of `CLIImpl.Command.Search` so the struct body

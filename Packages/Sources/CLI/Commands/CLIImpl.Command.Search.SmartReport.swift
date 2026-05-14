@@ -8,8 +8,6 @@ import SearchModels
 import Services
 import ServicesModels
 import SharedConstants
-import SharedUtils
-
 // MARK: - SmartQuery fan-out helpers (#239)
 
 /// Helpers for `CLIImpl.Command.Search`'s default (no `--source`) path: building the
