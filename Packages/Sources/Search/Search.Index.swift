@@ -78,6 +78,44 @@ extension Search {
             }
         }
 
+        /// Inspect `PRAGMA synchronous` on the actor's own connection
+        /// (returns 0..3, matching SQLite's enum: 0=OFF, 1=NORMAL,
+        /// 2=FULL, 3=EXTRA). The setting is per-connection and not
+        /// persistent in the file header, so this is the only honest
+        /// way to assert what the writer is actually using —
+        /// `Diagnostics.Probes` opens its own connection and would
+        /// see SQLite's defaults instead. Test-facing.
+        public func currentSynchronousMode() -> Int32? {
+            readIntegerPragma("PRAGMA synchronous;")
+        }
+
+        /// Inspect `PRAGMA journal_size_limit` on the actor's own
+        /// connection (bytes, or -1 for unlimited). Same per-connection
+        /// caveat as `currentSynchronousMode`.
+        public func currentJournalSizeLimit() -> Int64? {
+            guard let database else { return nil }
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            guard sqlite3_prepare_v2(database, "PRAGMA journal_size_limit;", -1, &stmt, nil) == SQLITE_OK,
+                  sqlite3_step(stmt) == SQLITE_ROW
+            else {
+                return nil
+            }
+            return sqlite3_column_int64(stmt, 0)
+        }
+
+        private func readIntegerPragma(_ pragma: String) -> Int32? {
+            guard let database else { return nil }
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            guard sqlite3_prepare_v2(database, pragma, -1, &stmt, nil) == SQLITE_OK,
+                  sqlite3_step(stmt) == SQLITE_ROW
+            else {
+                return nil
+            }
+            return sqlite3_column_int(stmt, 0)
+        }
+
         // MARK: - Database Setup
 
         private func openDatabase() async throws {
@@ -109,6 +147,49 @@ extension Search {
                 let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
                 Logging.Log.warning(
                     "Failed to enable WAL on \(dbPath.lastPathComponent): \(errorMessage)",
+                    category: .search
+                )
+            }
+
+            // #236 follow-up: SQLite docs explicitly recommend
+            // `synchronous=NORMAL` paired with WAL mode.
+            //
+            //   "The synchronous=NORMAL setting provides the best
+            //    balance between performance and safety for most
+            //    applications running in WAL mode. You lose
+            //    durability across power loss with synchronous
+            //    NORMAL in WAL mode, but that is not important for
+            //    most applications. Transactions are still atomic,
+            //    consistent, and isolated."
+            //   — https://www.sqlite.org/pragma.html#pragma_synchronous
+            //
+            // Default is FULL (sync at every transaction). NORMAL
+            // syncs only at checkpoint boundaries. The DB stays
+            // consistent at all times; only the very last commit
+            // before a power loss might roll back. Cupertino's data
+            // is rebuildable, so this is the right tradeoff.
+            // Per-connection PRAGMA — set on every open.
+            if sqlite3_exec(dbPointer, "PRAGMA synchronous = NORMAL", nil, nil, nil) != SQLITE_OK {
+                let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
+                Logging.Log.warning(
+                    "Failed to set synchronous=NORMAL on \(dbPath.lastPathComponent): \(errorMessage)",
+                    category: .search
+                )
+            }
+
+            // #236 follow-up: cap the WAL sidecar size. Default is
+            // -1 (unlimited). SQLite docs flag three scenarios that
+            // grow the WAL without bound (disabled auto-checkpoint,
+            // reader starvation, very large transactions); a 64 MB
+            // cap is 16× the default 1000-page (~4 MB) auto-
+            // checkpoint threshold, so a healthy steady state never
+            // hits it, while a pathological case truncates back to
+            // 64 MB at the next checkpoint instead of growing
+            // forever.
+            if sqlite3_exec(dbPointer, "PRAGMA journal_size_limit = 67108864", nil, nil, nil) != SQLITE_OK {
+                let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
+                Logging.Log.warning(
+                    "Failed to set journal_size_limit on \(dbPath.lastPathComponent): \(errorMessage)",
                     category: .search
                 )
             }

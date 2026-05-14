@@ -83,4 +83,35 @@ struct WALJournalModeTests {
         await second.disconnect()
         #expect(Diagnostics.Probes.journalMode(at: tempDB) == "wal")
     }
+
+    @Test("Search.Index sets synchronous=NORMAL on its own connection")
+    func searchIndexSetsSynchronousNormal() async throws {
+        let tempDB = FileManager.default.temporaryDirectory
+            .appendingPathComponent("wal-sync-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: tempDB) }
+
+        let index = try await Search.Index(dbPath: tempDB)
+        let mode = await index.currentSynchronousMode()
+        await index.disconnect()
+
+        // SQLite enum: 0=OFF, 1=NORMAL, 2=FULL, 3=EXTRA. The default
+        // is FULL (2); the #236 follow-up flips writers to NORMAL (1).
+        #expect(mode == 1, "Search.Index should set synchronous=NORMAL on its own connection (got \(mode ?? -1))")
+    }
+
+    @Test("Search.Index sets journal_size_limit=64MB on its own connection")
+    func searchIndexSetsJournalSizeLimit() async throws {
+        let tempDB = FileManager.default.temporaryDirectory
+            .appendingPathComponent("wal-jsl-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: tempDB) }
+
+        let index = try await Search.Index(dbPath: tempDB)
+        let limit = await index.currentJournalSizeLimit()
+        await index.disconnect()
+
+        // Cap is 64 MiB so pathological reader-starvation cases can't
+        // grow the .db-wal sidecar without bound (the SQLite default
+        // is -1 = unlimited).
+        #expect(limit == 67108864, "Search.Index should set journal_size_limit=64 MiB (got \(limit ?? -1))")
+    }
 }
