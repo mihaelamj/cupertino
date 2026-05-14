@@ -23,7 +23,7 @@ extension Sample.Index {
 
         public init(
             database: Database,
-            sampleCodeDirectory: URL = Sample.Index.defaultSampleCodeDirectory
+            sampleCodeDirectory: URL
         ) {
             self.database = database
             self.sampleCodeDirectory = sampleCodeDirectory

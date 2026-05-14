@@ -43,7 +43,7 @@ extension Search {
         private let logger: any LoggingModels.Logging.Recording
 
         public init(
-            dbPath: URL = Shared.Constants.defaultPackagesDatabase,
+            dbPath: URL,
             logger: any LoggingModels.Logging.Recording
         ) async throws {
             self.dbPath = dbPath

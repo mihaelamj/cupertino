@@ -3,9 +3,9 @@ import SharedConstants
 
 // MARK: - Cleanup Module Disambiguator
 
-// `CLI.Command.Cleanup` (the subcommand struct under `Sources/CLI/Commands/`)
+// `CLIImpl.Command.Cleanup` (the subcommand struct under `Sources/CLI/Commands/`)
 // and the `Cleanup` SPM target share a name. From inside any
-// `extension CLI.Command` scope, bare `Cleanup.<Type>` resolves to the nested
+// `extension CLIImpl.Command` scope, bare `Cleanup.<Type>` resolves to the nested
 // subcommand struct, not the SPM target — Swift's name lookup checks
 // enclosing types before imported modules.
 //

@@ -18,7 +18,7 @@ extension Indexer {
 
             public init(
                 packagesRoot: URL,
-                packagesDB: URL = Shared.Constants.defaultPackagesDatabase,
+                packagesDB: URL,
                 clear: Bool = false
             ) {
                 self.packagesRoot = packagesRoot

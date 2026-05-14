@@ -5,14 +5,14 @@ import SharedUtils
 
 /// Manages TUI configuration persistence
 enum ConfigManager {
-    private static let configFile = Shared.Constants.defaultBaseDirectory
+    private static let configFile = Shared.Paths.live().baseDirectory
         .appendingPathComponent(Shared.Constants.FileName.tuiConfig)
 
     struct TUIConfig: Codable {
         var baseDirectory: String
 
         static let `default` = TUIConfig(
-            baseDirectory: Shared.Constants.defaultBaseDirectory.path
+            baseDirectory: Shared.Paths.live().baseDirectory.path
         )
     }
 

@@ -12,39 +12,36 @@ import Testing
 struct SampleCodeCatalogTests {
     // MARK: - loadFromDisk
 
-    @Test("loadFromDisk returns nil when no file exists at the path")
+    @Test("hasParseableCatalog returns false when no file exists at the path")
     func diskMissing() throws {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
-        #expect(Sample.Core.Catalog.loadFromDisk(at: dir) == nil)
+        #expect(!Sample.Core.Catalog.hasParseableCatalog(at: dir))
     }
 
-    @Test("loadFromDisk returns nil when catalog.json is malformed")
+    @Test("hasParseableCatalog returns false when catalog.json is malformed")
     func diskMalformed() throws {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         try Self.writeCatalog(in: dir, contents: "{ this is not valid json")
-        #expect(Sample.Core.Catalog.loadFromDisk(at: dir) == nil)
+        #expect(!Sample.Core.Catalog.hasParseableCatalog(at: dir))
     }
 
-    @Test("loadFromDisk decodes a valid catalog.json")
-    func diskValid() throws {
+    @Test("Catalog actor decodes a valid catalog.json")
+    func diskValid() async throws {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         try Self.writeCatalog(in: dir, contents: Self.validCatalogJSON(count: 2))
-        let catalog = Sample.Core.Catalog.loadFromDisk(at: dir)
-        #expect(catalog != nil)
-        #expect(catalog?.count == 2)
-        #expect(catalog?.entries.count == 2)
-        #expect(catalog?.entries.first?.title == "Sample One")
-        #expect(catalog?.entries.first?.framework == "Foundation")
-    }
-
-    @Test("loadFromDisk uses default sample-code dir when no path is provided")
-    func diskDefaultPath() {
-        // Just exercise the default-arg overload — no file there in test env,
-        // expect nil rather than a crash.
-        _ = Sample.Core.Catalog.loadFromDisk()
+        // Post-#535: catalog is an actor; verify end-to-end via the
+        // public surface rather than reaching for the internal
+        // SampleCodeCatalogJSON shape.
+        let catalog = Sample.Core.Catalog(sampleCodeDirectory: dir)
+        let count = await catalog.count
+        let entries = await catalog.allEntries
+        #expect(count == 2)
+        #expect(entries.count == 2)
+        #expect(entries.first?.title == "Sample One")
+        #expect(entries.first?.framework == "Foundation")
     }
 
     // MARK: - loadCatalog (end-to-end via allEntries)
@@ -54,21 +51,16 @@ struct SampleCodeCatalogTests {
     // → empty entries + .missing source.
 
     @Test("allEntries returns empty + .missing source when no on-disk catalog")
-    func endToEndMissing() async {
-        await Sample.Core.Catalog.resetCache()
-        // The test machine MAY have ~/.cupertino-dev/sample-code/catalog.json,
-        // in which case loadedSource is .onDisk and entries is non-empty.
-        // On a fresh CI machine it should be .missing with no entries.
-        let entries = await Sample.Core.Catalog.allEntries
-        let source = await Sample.Core.Catalog.loadedSource
-        switch source {
-        case .onDisk:
-            #expect(!entries.isEmpty)
-        case .missing:
-            #expect(entries.isEmpty)
-        case .none:
-            Issue.record("loadedSource should be set after first allEntries access")
-        }
+    func endToEndMissing() async throws {
+        // Post-#535: construct a catalog with an explicit empty tempDir
+        // so the test is isolated from any real ~/.cupertino state.
+        let dir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let catalog = Sample.Core.Catalog(sampleCodeDirectory: dir)
+        let entries = await catalog.allEntries
+        let source = await catalog.loadedSource
+        #expect(entries.isEmpty)
+        #expect(source == .missing)
     }
 
     // MARK: - Sample.Core.Downloader.transformAppleListingToCatalog
@@ -127,7 +119,7 @@ struct SampleCodeCatalogTests {
     // MARK: - Sample.Core.Downloader.writeCatalog (extracted disk-write step)
 
     @Test("writeCatalog round-trips through disk")
-    func writeCatalogRoundTrip() throws {
+    func writeCatalogRoundTrip() async throws {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let catalogURL = dir.appendingPathComponent(Sample.Core.Catalog.onDiskCatalogFilename)
@@ -144,15 +136,17 @@ struct SampleCodeCatalogTests {
         let attrs = try FileManager.default.attributesOfItem(atPath: catalogURL.path)
         #expect((attrs[.size] as? Int ?? 0) > 0)
 
-        // Re-load through Sample.Core.Catalog.loadFromDisk → byte-equivalent catalog
-        let reloaded = try #require(Sample.Core.Catalog.loadFromDisk(at: dir))
-        #expect(reloaded.count == original.count)
-        #expect(reloaded.entries.map(\.title) == original.entries.map(\.title))
-        #expect(reloaded.entries.map(\.framework) == original.entries.map(\.framework))
+        // Re-load through Sample.Core.Catalog actor → byte-equivalent catalog
+        let reloaded = Sample.Core.Catalog(sampleCodeDirectory: dir)
+        let reloadedCount = await reloaded.count
+        let reloadedEntries = await reloaded.allEntries
+        #expect(reloadedCount == original.count)
+        #expect(reloadedEntries.map(\.title) == original.entries.map(\.title))
+        #expect(reloadedEntries.map(\.framework) == original.entries.map(\.framework))
     }
 
     @Test("writeCatalog overwrites existing catalog.json atomically")
-    func writeCatalogOverwrite() throws {
+    func writeCatalogOverwrite() async throws {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let catalogURL = dir.appendingPathComponent(Sample.Core.Catalog.onDiskCatalogFilename)
@@ -170,42 +164,41 @@ struct SampleCodeCatalogTests {
         try Sample.Core.Downloader.writeCatalog(real, to: catalogURL)
 
         // Old content gone, new content parses
-        let reloaded = try #require(Sample.Core.Catalog.loadFromDisk(at: dir))
-        #expect(!reloaded.entries.isEmpty)
+        let reloaded = Sample.Core.Catalog(sampleCodeDirectory: dir)
+        let entries = await reloaded.allEntries
+        #expect(!entries.isEmpty)
     }
 
-    // MARK: - allEntries with test-override directory (#215 integration)
+    // MARK: - allEntries with per-instance directory (#215 / #535 integration)
+    //
+    // Pre-#535 these tests used `setTestOverrideDirectory` on a process-wide
+    // singleton. Post-#535 the catalog is per-instance — each test just
+    // constructs an actor with the directory it wants.
 
-    @Test("allEntries picks up the override directory's catalog.json")
+    @Test("Catalog actor picks up an on-disk catalog.json from its sample-code dir")
     func endToEndOverrideHit() async throws {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         try Self.writeCatalog(in: dir, contents: Self.validCatalogJSON(count: 2))
 
-        await Sample.Core.Catalog.setTestOverrideDirectory(dir)
-        await Sample.Core.Catalog.resetCache()
-        defer { Task { await Sample.Core.Catalog.setTestOverrideDirectory(nil); await Sample.Core.Catalog.resetCache() } }
-
-        let entries = await Sample.Core.Catalog.allEntries
-        let source = await Sample.Core.Catalog.loadedSource
+        let catalog = Sample.Core.Catalog(sampleCodeDirectory: dir)
+        let entries = await catalog.allEntries
+        let source = await catalog.loadedSource
 
         #expect(entries.count == 2)
         #expect(source == .onDisk)
         #expect(entries.first?.title == "Sample One")
     }
 
-    @Test("allEntries reports .missing when override directory has no catalog")
+    @Test("Catalog actor reports .missing when its sample-code dir has no catalog")
     func endToEndOverrideMiss() async throws {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         // Intentionally no catalog.json written
 
-        await Sample.Core.Catalog.setTestOverrideDirectory(dir)
-        await Sample.Core.Catalog.resetCache()
-        defer { Task { await Sample.Core.Catalog.setTestOverrideDirectory(nil); await Sample.Core.Catalog.resetCache() } }
-
-        let entries = await Sample.Core.Catalog.allEntries
-        let source = await Sample.Core.Catalog.loadedSource
+        let catalog = Sample.Core.Catalog(sampleCodeDirectory: dir)
+        let entries = await catalog.allEntries
+        let source = await catalog.loadedSource
 
         #expect(entries.isEmpty)
         #expect(source == .missing)

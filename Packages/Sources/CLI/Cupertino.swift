@@ -43,22 +43,22 @@ struct Cupertino: AsyncParsableCommand {
         """,
         version: Shared.Constants.App.version,
         subcommands: [
-            CLI.Command.Setup.self,
-            CLI.Command.Fetch.self,
-            CLI.Command.Save.self,
-            CLI.Command.Serve.self,
-            CLI.Command.Search.self,
-            CLI.Command.Read.self,
-            CLI.Command.ListFrameworks.self,
-            CLI.Command.ListSamples.self,
-            CLI.Command.ReadSample.self,
-            CLI.Command.ReadSampleFile.self,
-            CLI.Command.Doctor.self,
-            CLI.Command.Cleanup.self,
-            CLI.Command.PackageSearch.self,
-            CLI.Command.ResolveRefs.self,
+            CLIImpl.Command.Setup.self,
+            CLIImpl.Command.Fetch.self,
+            CLIImpl.Command.Save.self,
+            CLIImpl.Command.Serve.self,
+            CLIImpl.Command.Search.self,
+            CLIImpl.Command.Read.self,
+            CLIImpl.Command.ListFrameworks.self,
+            CLIImpl.Command.ListSamples.self,
+            CLIImpl.Command.ReadSample.self,
+            CLIImpl.Command.ReadSampleFile.self,
+            CLIImpl.Command.Doctor.self,
+            CLIImpl.Command.Cleanup.self,
+            CLIImpl.Command.PackageSearch.self,
+            CLIImpl.Command.ResolveRefs.self,
         ],
-        defaultSubcommand: CLI.Command.Serve.self
+        defaultSubcommand: CLIImpl.Command.Serve.self
     )
 
     /// Force stdout to line-buffered mode before any subcommand runs. By

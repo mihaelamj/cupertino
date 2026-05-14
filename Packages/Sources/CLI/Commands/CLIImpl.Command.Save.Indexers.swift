@@ -14,12 +14,12 @@ import SharedUtils
 
 // MARK: - Indexer dispatch + progress rendering (#244)
 
-/// Per-source indexer dispatchers split out of `CLI.Command.Save.swift` so the
+/// Per-source indexer dispatchers split out of `CLIImpl.Command.Save.swift` so the
 /// struct body stays under SwiftLint's `type_body_length` 300-line
 /// ceiling. Each dispatcher converts CLI flags into an
 /// `Indexer.<X>Service.Request`, runs the service, renders progress
 /// events to the terminal, and prints a final summary.
-extension CLI.Command.Save {
+extension CLIImpl.Command.Save {
     // MARK: - Docs
 
     func runDocsIndexer(effectiveBase: URL) async throws {
@@ -36,11 +36,17 @@ extension CLI.Command.Save {
             clear: clear
         )
 
+        // Path-DI composition sub-root (#535): catalog actor takes
+        // the resolved sample-code directory at construction.
+        let sampleCatalogActor = Sample.Core.Catalog(
+            sampleCodeDirectory: Shared.Paths.live().sampleCodeDirectory
+        )
+
         let tracker = ProgressTracker()
         let outcome = try await Indexer.DocsService.run(
             request,
             markdownStrategy: LiveMarkdownToStructuredPageStrategy(),
-            sampleCatalogProvider: LiveSampleCatalogProvider(),
+            sampleCatalogProvider: LiveSampleCatalogProvider(catalog: sampleCatalogActor),
             docsIndexingRunner: LiveDocsIndexingRunner()
         ) { event in
             Self.handleDocsEvent(event, tracker: tracker)
@@ -96,14 +102,16 @@ extension CLI.Command.Save {
     // MARK: - Sample catalog adapter
 
     /// Concrete `Search.SampleCatalogProvider` (GoF Strategy) that
-    /// bridges `Sample.Core.Catalog` (the CoreSampleCode singleton)
+    /// bridges `Sample.Core.Catalog` (a per-install actor, post-#535)
     /// to the catalog-state shape the Search `SampleCodeStrategy`
     /// reads. Lives at the CLI composition root so neither Search nor
     /// Indexer needs to import `CoreSampleCode`.
     struct LiveSampleCatalogProvider: Search.SampleCatalogProvider {
+        let catalog: Sample.Core.Catalog
+
         func fetch() async -> Search.SampleCatalogState {
-            let entries = await Sample.Core.Catalog.allEntries
-            let loaded = await Sample.Core.Catalog.loadedSource ?? .missing
+            let entries = await catalog.allEntries
+            let loaded = await catalog.loadedSource ?? .missing
             switch loaded {
             case .onDisk:
                 let mapped = entries.map { entry in
@@ -118,7 +126,7 @@ extension CLI.Command.Save {
                 }
                 return .loaded(entries: mapped)
             case .missing:
-                let path = Shared.Constants.defaultSampleCodeDirectory
+                let path = Shared.Paths.live().sampleCodeDirectory
                     .appendingPathComponent(Sample.Core.Catalog.onDiskCatalogFilename)
                     .path
                 return .missing(onDiskPath: path)
@@ -160,7 +168,7 @@ extension CLI.Command.Save {
         Logging.LiveRecording().info("   Total documents: \(outcome.documentCount)")
         Logging.LiveRecording().info("   Frameworks: \(outcome.frameworkCount)")
         Logging.LiveRecording().info("   Database: \(outcome.searchDBPath.path)")
-        Logging.LiveRecording().info("   Size: \(CLI.Command.Save.formatFileSize(outcome.searchDBPath))")
+        Logging.LiveRecording().info("   Size: \(CLIImpl.Command.Save.formatFileSize(outcome.searchDBPath))")
         Logging.LiveRecording().info(
             "\n💡 Tip: Start the MCP server with '\(Shared.Constants.App.commandName) serve' to enable search"
         )
@@ -182,8 +190,10 @@ extension CLI.Command.Save {
     }
 
     func runPackagesIndexer(packagesRoot: URL) async throws {
+        let paths = Shared.Paths.live()
         let request = Indexer.PackagesService.Request(
             packagesRoot: packagesRoot,
+            packagesDB: paths.packagesDatabase,
             clear: clear
         )
 
@@ -258,8 +268,10 @@ extension CLI.Command.Save {
     // MARK: - Samples
 
     func runSamplesIndexerSafely() async throws {
+        // Path-DI composition sub-root (#535).
+        let baseDir = Shared.Paths.live().baseDirectory
         let sampleCodeURL = samplesDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Sample.Index.defaultSampleCodeDirectory
+            ?? Sample.Index.sampleCodeDirectory(baseDirectory: baseDir)
         guard FileManager.default.fileExists(atPath: sampleCodeURL.path) else {
             Logging.LiveRecording().info(
                 "ℹ️  sample-code directory not found at \(sampleCodeURL.path) — skipping samples step. "
@@ -271,8 +283,9 @@ extension CLI.Command.Save {
     }
 
     func runSamplesIndexer(sampleCodeURL: URL) async throws {
+        // Path-DI composition sub-root (#535).
         let dbURL = samplesDB.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Sample.Index.defaultDatabasePath
+            ?? Sample.Index.databasePath(baseDirectory: Shared.Paths.live().baseDirectory)
 
         let request = Indexer.SamplesService.Request(
             sampleCodeDir: sampleCodeURL,
@@ -313,7 +326,10 @@ extension CLI.Command.Save {
             }
 
             onPhase(.loadingCatalog)
-            let catalogEntries = await Sample.Core.Catalog.allEntries
+            // Path-DI (#535): construct catalog actor with the input's
+            // sample-code directory rather than reaching for the singleton.
+            let catalog = Sample.Core.Catalog(sampleCodeDirectory: input.sampleCodeDir)
+            let catalogEntries = await catalog.allEntries
             onPhase(.catalogLoaded(entryCount: catalogEntries.count))
 
             let entries = catalogEntries.map { entry in
@@ -425,7 +441,7 @@ extension CLI.Command.Save {
         Logging.LiveRecording().output("   Symbols extracted: \(outcome.symbolsTotal)")
         Logging.LiveRecording().output("   Imports captured: \(outcome.importsTotal)")
         Logging.LiveRecording().output("   Duration: \(Int(outcome.durationSeconds))s")
-        Logging.LiveRecording().output("   Database: \(CLI.Command.Save.formatFileSize(outcome.samplesDBPath))")
+        Logging.LiveRecording().output("   Database: \(CLIImpl.Command.Save.formatFileSize(outcome.samplesDBPath))")
     }
 
     /// Class wrapper so `@Sendable` callbacks can mutate `lastPercent`.

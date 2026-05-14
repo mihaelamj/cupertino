@@ -13,7 +13,7 @@ import SharedUtils
 
 /// CLI command for reading a specific file from a sample project - mirrors MCP tool functionality.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension CLI.Command {
+extension CLIImpl.Command {
     struct ReadSampleFile: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "read-sample-file",
@@ -47,7 +47,7 @@ extension CLI.Command {
             let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
 
             // Use Services.ServiceContainer for managed lifecycle
-            let file = try await Services.ServiceContainer.withSampleService(dbPath: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
+            let file = try await Services.ServiceContainer.withSampleService(samplesDB: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
                 guard let file = try await service.getFile(projectId: projectId, path: filePath) else {
                     Logging.LiveRecording().error("File not found: \(filePath) in project \(projectId)")
                     Logging.LiveRecording().output("Use 'cupertino read-sample \(projectId)' to list available files.")
@@ -75,7 +75,8 @@ extension CLI.Command {
             if let sampleDb {
                 return URL(fileURLWithPath: sampleDb).expandingTildeInPath
             }
-            return Sample.Index.defaultDatabasePath
+            // Path-DI composition sub-root (#535).
+            return Sample.Index.databasePath(baseDirectory: Shared.Paths.live().baseDirectory)
         }
 
         // MARK: - Output Formatting
@@ -92,7 +93,7 @@ extension CLI.Command {
 
 // MARK: - Output Format
 
-extension CLI.Command.ReadSampleFile {
+extension CLIImpl.Command.ReadSampleFile {
     enum OutputFormat: String, ExpressibleByArgument, CaseIterable {
         case text
         case json

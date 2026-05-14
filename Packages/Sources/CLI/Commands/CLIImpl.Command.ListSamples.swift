@@ -13,7 +13,7 @@ import SharedUtils
 
 /// CLI command for listing sample code projects - mirrors MCP tool functionality.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension CLI.Command {
+extension CLIImpl.Command {
     struct ListSamples: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "list-samples",
@@ -54,7 +54,7 @@ extension CLI.Command {
 
             // Use Services.ServiceContainer for managed lifecycle
             let (projects, totalProjects, totalFiles) = try await Services.ServiceContainer
-                .withSampleService(dbPath: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
+                .withSampleService(samplesDB: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
                     let projects = try await service.listProjects(framework: framework, limit: limit)
                     let totalProjects = try await service.projectCount()
                     let totalFiles = try await service.fileCount()
@@ -78,7 +78,8 @@ extension CLI.Command {
             if let sampleDb {
                 return URL(fileURLWithPath: sampleDb).expandingTildeInPath
             }
-            return Sample.Index.defaultDatabasePath
+            // Path-DI composition sub-root (#535).
+            return Sample.Index.databasePath(baseDirectory: Shared.Paths.live().baseDirectory)
         }
 
         // MARK: - Output Formatting
@@ -177,7 +178,7 @@ extension CLI.Command {
 
 // MARK: - Output Format
 
-extension CLI.Command.ListSamples {
+extension CLIImpl.Command.ListSamples {
     enum OutputFormat: String, ExpressibleByArgument, CaseIterable {
         case text
         case json

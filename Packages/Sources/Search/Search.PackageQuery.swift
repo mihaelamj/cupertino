@@ -36,7 +36,7 @@ extension Search {
         private var database: OpaquePointer?
         private let dbPath: URL
 
-        public init(dbPath: URL = Shared.Constants.defaultPackagesDatabase) async throws {
+        public init(dbPath: URL) async throws {
             self.dbPath = dbPath
             var dbPointer: OpaquePointer?
             guard sqlite3_open_v2(dbPath.path, &dbPointer, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {

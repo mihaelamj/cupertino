@@ -63,12 +63,16 @@ struct SharedConfigurationPublicSurfaceTests {
 
     // MARK: ChangeDetection
 
-    @Test("Shared.Configuration.ChangeDetection default uses Shared.Constants.defaultMetadataFile")
+    @Test("Shared.Configuration.ChangeDetection derives metadata path from required outputDirectory")
     func changeDetectionDefaultMetadataFile() {
-        let detection = Shared.Configuration.ChangeDetection()
+        // Post-#535: outputDirectory is required; the previous nil-default
+        // that fell back to Shared.Constants.defaultMetadataFile (a Service
+        // Locator reach into BinaryConfig.shared) is gone.
+        let outDir = URL(fileURLWithPath: "/tmp/cupertino-change-detection-default")
+        let detection = Shared.Configuration.ChangeDetection(outputDirectory: outDir)
         #expect(detection.enabled == true)
         #expect(detection.forceRecrawl == false)
-        #expect(detection.metadataFile == Shared.Constants.defaultMetadataFile)
+        #expect(detection.metadataFile == outDir.appendingPathComponent(Shared.Constants.FileName.metadata))
     }
 
     @Test("Shared.Configuration.ChangeDetection derives metadata path from outputDirectory")
@@ -93,7 +97,12 @@ struct SharedConfigurationPublicSurfaceTests {
 
     @Test("Shared.Configuration.Crawler default startURL is Apple Developer Docs")
     func crawlerDefaultStartURL() {
-        let crawler = Shared.Configuration.Crawler()
+        // Post-#535: outputDirectory is required (the previous nil-default
+        // routed through BinaryConfig.shared.resolvedBaseDirectory). Pass
+        // an explicit stub so the remaining defaults can be pinned.
+        let crawler = Shared.Configuration.Crawler(
+            outputDirectory: URL(fileURLWithPath: "/tmp/cupertino-crawler-default")
+        )
         #expect(crawler.startURL.absoluteString.contains("developer.apple.com/documentation"))
         // requestDelay default backs every crawl's rate-limiting; pin it
         // so an accidental change to ".5" or "5.0" doesn't ship.
@@ -116,9 +125,10 @@ struct SharedConfigurationPublicSurfaceTests {
 
     @Test("Shared.Configuration round-trips through JSON encode/decode")
     func configurationRoundTrip() throws {
+        let outDir = URL(fileURLWithPath: "/tmp/cupertino-round-trip")
         let original = Shared.Configuration(
-            crawler: Shared.Configuration.Crawler(),
-            changeDetection: Shared.Configuration.ChangeDetection(),
+            crawler: Shared.Configuration.Crawler(outputDirectory: outDir),
+            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: outDir),
             output: Shared.Configuration.Output(format: .markdown, includeMarkdown: true)
         )
         let encoder = JSONEncoder()
@@ -139,7 +149,11 @@ struct SharedConfigurationPublicSurfaceTests {
             .appendingPathComponent("cupertino-config-\(UUID().uuidString).json")
         defer { try? FileManager.default.removeItem(at: tmp) }
 
-        let original = Shared.Configuration()
+        let outDir = URL(fileURLWithPath: "/tmp/cupertino-disk-round-trip")
+        let original = Shared.Configuration(
+            crawler: Shared.Configuration.Crawler(outputDirectory: outDir),
+            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: outDir)
+        )
         try original.save(to: tmp)
         #expect(FileManager.default.fileExists(atPath: tmp.path))
 
@@ -156,14 +170,15 @@ struct SharedConfigurationPublicSurfaceTests {
 
         // Write a sentinel non-default config first; createDefaultIfNeeded
         // must leave it untouched.
+        let outDir = URL(fileURLWithPath: "/tmp/cupertino-create-default-noop")
         let sentinel = Shared.Configuration(
-            crawler: Shared.Configuration.Crawler(),
-            changeDetection: Shared.Configuration.ChangeDetection(),
+            crawler: Shared.Configuration.Crawler(outputDirectory: outDir),
+            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: outDir),
             output: Shared.Configuration.Output(format: .html, includeMarkdown: true)
         )
         try sentinel.save(to: tmp)
 
-        try Shared.Configuration.createDefaultIfNeeded(at: tmp)
+        try Shared.Configuration.createDefaultIfNeeded(at: tmp, outputDirectory: outDir)
         let after = try Shared.Configuration.load(from: tmp)
         #expect(after.output.format == .html) // sentinel preserved
     }
@@ -174,13 +189,17 @@ struct SharedConfigurationPublicSurfaceTests {
             .appendingPathComponent("cupertino-config-\(UUID().uuidString).json")
         defer { try? FileManager.default.removeItem(at: tmp) }
 
+        let outDir = URL(fileURLWithPath: "/tmp/cupertino-create-default-write")
         #expect(!FileManager.default.fileExists(atPath: tmp.path))
-        try Shared.Configuration.createDefaultIfNeeded(at: tmp)
+        try Shared.Configuration.createDefaultIfNeeded(at: tmp, outputDirectory: outDir)
         #expect(FileManager.default.fileExists(atPath: tmp.path))
 
         let written = try Shared.Configuration.load(from: tmp)
-        // Defaults must match the parameterless init.
-        let expected = Shared.Configuration()
+        // Defaults must match what createDefaultIfNeeded constructs.
+        let expected = Shared.Configuration(
+            crawler: Shared.Configuration.Crawler(outputDirectory: outDir),
+            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: outDir)
+        )
         #expect(written.output.format == expected.output.format)
         #expect(written.changeDetection.enabled == expected.changeDetection.enabled)
     }

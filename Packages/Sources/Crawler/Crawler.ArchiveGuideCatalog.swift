@@ -10,32 +10,41 @@ import SharedUtils
 
 extension Crawler {
     /// Curated catalog of essential Apple Archive documentation guides
-    /// These are classic guides that contain foundational knowledge not available elsewhere
+    /// These are classic guides that contain foundational knowledge not available elsewhere.
+    ///
+    /// Post-#535: every accessor that touches the user-writable selections
+    /// file takes a `baseDirectory: URL` parameter so callers thread the
+    /// resolved per-install base directory from their composition root
+    /// (`Shared.Paths.live().baseDirectory` in CLI, an explicit `tempDir`
+    /// in tests). The previous shape used `Shared.Constants.defaultBaseDirectory`
+    /// internally, which routed through `BinaryConfig.shared` (Service
+    /// Locator). Pure accessors that need no on-disk path (`testGuides`,
+    /// `getRequiredGuidePaths`) keep their argumentless surface.
     public enum ArchiveGuideCatalog {
         /// Base URL for Apple's documentation archive (no trailing slash;
         /// derived from `Shared.Constants.BaseURL.appleArchiveDocs` so the
         /// canonical form lives in one place).
         private static let baseURL = String(Shared.Constants.BaseURL.appleArchiveDocs.dropLast())
 
-        /// User-writable location for selected guides: ~/.cupertino/selected-archive-guides.json
-        private static var userSelectionsURL: URL {
-            Shared.Constants.defaultBaseDirectory.appendingPathComponent("selected-archive-guides.json")
+        /// User-writable location for selected guides under the supplied base directory.
+        private static func userSelectionsURL(baseDirectory: URL) -> URL {
+            baseDirectory.appendingPathComponent("selected-archive-guides.json")
         }
 
         /// Essential programming guides worth crawling
-        /// Always reads from user-writable location (creates from bundled if missing)
-        public static var essentialGuides: [URL] {
-            essentialGuidesWithInfo.map(\.url)
+        /// Always reads from user-writable location (creates from bundled if missing).
+        public static func essentialGuides(baseDirectory: URL) -> [URL] {
+            essentialGuidesWithInfo(baseDirectory: baseDirectory).map(\.url)
         }
 
         /// Essential guides with full info (URL + framework)
-        /// Always reads from user-writable location (creates from bundled if missing)
-        public static var essentialGuidesWithInfo: [AppleArchive.GuideInfo] {
+        /// Always reads from user-writable location (creates from bundled if missing).
+        public static func essentialGuidesWithInfo(baseDirectory: URL) -> [AppleArchive.GuideInfo] {
             // Ensure user selections file exists (creates from bundled if missing)
-            ensureUserSelectionsFileExists()
+            ensureUserSelectionsFileExists(baseDirectory: baseDirectory)
 
             // Load from user selections file
-            if let selectedGuides = loadUserSelectedGuides(), !selectedGuides.isEmpty {
+            if let selectedGuides = loadUserSelectedGuides(baseDirectory: baseDirectory), !selectedGuides.isEmpty {
                 return selectedGuides.compactMap { guide in
                     guard let url = URL(string: "\(baseURL)/\(guide.path)") else { return nil }
                     return AppleArchive.GuideInfo(url: url, framework: guide.framework)
@@ -50,8 +59,8 @@ extension Crawler {
         }
 
         /// Load selected guides with full info from user file
-        private static func loadUserSelectedGuides() -> [SelectedGuideJSON]? {
-            let selectedURL = userSelectionsURL
+        private static func loadUserSelectedGuides(baseDirectory: URL) -> [SelectedGuideJSON]? {
+            let selectedURL = userSelectionsURL(baseDirectory: baseDirectory)
 
             guard FileManager.default.fileExists(atPath: selectedURL.path) else {
                 return nil
@@ -67,8 +76,8 @@ extension Crawler {
         }
 
         /// Ensure user selections file exists, creating from bundled catalog if missing
-        private static func ensureUserSelectionsFileExists() {
-            let selectedURL = userSelectionsURL
+        private static func ensureUserSelectionsFileExists(baseDirectory: URL) {
+            let selectedURL = userSelectionsURL(baseDirectory: baseDirectory)
 
             // If file already exists, nothing to do
             if FileManager.default.fileExists(atPath: selectedURL.path) {
@@ -81,10 +90,9 @@ extension Crawler {
             }
 
             do {
-                // Ensure ~/.cupertino directory exists
-                let baseDir = Shared.Constants.defaultBaseDirectory
-                if !FileManager.default.fileExists(atPath: baseDir.path) {
-                    try FileManager.default.createDirectory(at: baseDir, withIntermediateDirectories: true)
+                // Ensure the base directory exists
+                if !FileManager.default.fileExists(atPath: baseDirectory.path) {
+                    try FileManager.default.createDirectory(at: baseDirectory, withIntermediateDirectories: true)
                 }
 
                 let catalog = try JSONDecoder().decode(ArchiveGuidesCatalogJSON.self, from: data)
@@ -115,9 +123,9 @@ extension Crawler {
             }
         }
 
-        /// Load selected guides from user-writable location (~/.cupertino/selected-archive-guides.json)
-        private static func loadUserSelectedGuidePaths() -> [String]? {
-            let selectedURL = userSelectionsURL
+        /// Load selected guides from the user-writable location under the supplied base directory.
+        private static func loadUserSelectedGuidePaths(baseDirectory: URL) -> [String]? {
+            let selectedURL = userSelectionsURL(baseDirectory: baseDirectory)
 
             guard FileManager.default.fileExists(atPath: selectedURL.path) else {
                 return nil
@@ -313,20 +321,21 @@ extension Crawler {
 
         // MARK: - Testing Support
 
-        /// Check if user selections file exists
-        public static var userSelectionsFileExists: Bool {
-            FileManager.default.fileExists(atPath: userSelectionsURL.path)
+        /// Check if user selections file exists under the supplied base directory.
+        public static func userSelectionsFileExists(baseDirectory: URL) -> Bool {
+            FileManager.default.fileExists(atPath: userSelectionsURL(baseDirectory: baseDirectory).path)
         }
 
-        /// Get the user selections file URL (for testing)
-        public static var userSelectionsFileURL: URL {
-            userSelectionsURL
+        /// Get the user selections file URL (for testing) under the supplied base directory.
+        public static func userSelectionsFileURL(baseDirectory: URL) -> URL {
+            userSelectionsURL(baseDirectory: baseDirectory)
         }
 
-        /// Delete the user selections file (for testing cleanup)
-        public static func deleteUserSelectionsFile() throws {
-            if FileManager.default.fileExists(atPath: userSelectionsURL.path) {
-                try FileManager.default.removeItem(at: userSelectionsURL)
+        /// Delete the user selections file (for testing cleanup) under the supplied base directory.
+        public static func deleteUserSelectionsFile(baseDirectory: URL) throws {
+            let url = userSelectionsURL(baseDirectory: baseDirectory)
+            if FileManager.default.fileExists(atPath: url.path) {
+                try FileManager.default.removeItem(at: url)
             }
         }
 

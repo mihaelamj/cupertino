@@ -18,7 +18,7 @@ import SharedUtils
 /// reads live there so the MCP layer (and any future agent-shell adapter)
 /// can share one implementation.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension CLI.Command {
+extension CLIImpl.Command {
     struct Read: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "read",
@@ -90,15 +90,24 @@ extension CLI.Command {
                 throw ExitCode.failure
             }
 
+            // Path-DI composition sub-root (#535).
+            let paths = Shared.Paths.live()
+            let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+                ?? paths.searchDatabase
+            let samplesDBURL = sampleDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+                ?? Sample.Index.databasePath(baseDirectory: paths.baseDirectory)
+            let packagesDBURL = packagesDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+                ?? paths.packagesDatabase
+
             let result: Services.ReadService.Result
             do {
                 result = try await Services.ReadService.read(
                     identifier: identifier,
                     explicit: explicit,
                     format: documentFormat,
-                    searchDB: searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath },
-                    samplesDB: sampleDb.map { URL(fileURLWithPath: $0).expandingTildeInPath },
-                    packagesDB: packagesDb.map { URL(fileURLWithPath: $0).expandingTildeInPath },
+                    searchDB: searchDBURL,
+                    samplesDB: samplesDBURL,
+                    packagesDB: packagesDBURL,
                     searchDatabaseFactory: searchDatabaseFactory,
                     sampleDatabaseFactory: sampleDatabaseFactory,
                     packageFileLookup: LivePackageFileLookupStrategy()
@@ -134,7 +143,7 @@ extension CLI.Command {
 
 // MARK: - Output Format
 
-extension CLI.Command.Read {
+extension CLIImpl.Command.Read {
     enum OutputFormat: String, ExpressibleByArgument, CaseIterable {
         case json
         case markdown

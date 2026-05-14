@@ -12,7 +12,7 @@ extension Core.PackageIndexing {
     ///
     /// Lifted from `CorePackageIndexing` into this `CorePackageIndexingModels`
     /// value-types target so consumers (`Search.PackageIndex`,
-    /// `Search.PackageIndexer`, `TUI.PackageActions`, `CLI.Command.Fetch`) can
+    /// `Search.PackageIndexer`, `TUI.PackageActions`, `CLIImpl.Command.Fetch`) can
     /// reference it without pulling in the full indexer + extractor + annotator
     /// surface. The companion `ResolvedPackagesStore` writer / loader stays in
     /// `CorePackageIndexing` because it touches the filesystem.

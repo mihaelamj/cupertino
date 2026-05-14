@@ -22,13 +22,17 @@ import Testing
 @Suite("MCP.Support.DocsResourceProvider malformed-URL skip", .serialized)
 struct DocsResourceProviderMalformedURLSkipTests {
     private func makeProvider(in tempRoot: URL) -> MCP.Support.DocsResourceProvider {
-        // All-defaults Configuration is fine: we inject metadata via the
-        // test seam, so the provider never touches the on-disk paths the
-        // configuration would otherwise point at.
+        // Configuration is wired explicitly post-#535. We inject metadata
+        // via the test seam, so the provider never touches the on-disk
+        // paths the configuration would otherwise point at.
         let evolutionDir = tempRoot.appendingPathComponent("swift-evolution")
         let archiveDir = tempRoot.appendingPathComponent("archive")
+        let config = Shared.Configuration(
+            crawler: Shared.Configuration.Crawler(outputDirectory: tempRoot),
+            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempRoot)
+        )
         return MCP.Support.DocsResourceProvider(
-            configuration: Shared.Configuration(),
+            configuration: config,
             evolutionDirectory: evolutionDir,
             archiveDirectory: archiveDir,
             markdownLookup: nil,

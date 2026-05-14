@@ -20,7 +20,7 @@ import SharedCore
 
 // MARK: - Serve Command
 
-extension CLI.Command {
+extension CLIImpl.Command {
     struct Serve: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "serve",
@@ -72,20 +72,28 @@ extension CLI.Command {
                 await Logging.Unified.shared.disableConsole()
             }
 
+            // Path-DI composition sub-root (#535).
+            let paths = Shared.Paths.live()
             let config = Shared.Configuration(
                 crawler: Shared.Configuration.Crawler(
-                    outputDirectory: Shared.Constants.defaultDocsDirectory
+                    outputDirectory: paths.docsDirectory
+                ),
+                changeDetection: Shared.Configuration.ChangeDetection(
+                    outputDirectory: paths.docsDirectory
                 )
             )
 
-            let evolutionURL = Shared.Constants.defaultSwiftEvolutionDirectory
-            let searchDBURL = Shared.Constants.defaultSearchDatabase
+            let evolutionURL = paths.swiftEvolutionDirectory
+            let archiveURL = paths.archiveDirectory
+            let searchDBURL = paths.searchDatabase
+            let sampleDBURL = Sample.Index.databasePath(baseDirectory: paths.baseDirectory)
 
             // Check if there's anything to serve
             let hasData = checkForData(
                 docsDir: config.crawler.outputDirectory,
                 evolutionDir: evolutionURL,
-                searchDB: searchDBURL
+                searchDB: searchDBURL,
+                sampleDB: sampleDBURL
             )
 
             if !hasData {
@@ -110,10 +118,17 @@ extension CLI.Command {
                 server: server,
                 config: config,
                 evolutionURL: evolutionURL,
-                searchDBURL: searchDBURL
+                archiveURL: archiveURL,
+                searchDBURL: searchDBURL,
+                sampleDBURL: sampleDBURL
             )
 
-            printStartupMessages(config: config, evolutionURL: evolutionURL, searchDBURL: searchDBURL)
+            printStartupMessages(
+                config: config,
+                evolutionURL: evolutionURL,
+                searchDBURL: searchDBURL,
+                sampleDBURL: sampleDBURL
+            )
 
             let transport = MCP.Core.Transport.Stdio()
             try await server.connect(transport)
@@ -128,7 +143,9 @@ extension CLI.Command {
             server: MCP.Core.Server,
             config: Shared.Configuration,
             evolutionURL: URL,
-            searchDBURL: URL
+            archiveURL: URL,
+            searchDBURL: URL,
+            sampleDBURL: URL
         ) async {
             // Initialize search index if available
             let searchIndex: SearchModule.Index? = await loadSearchIndex(searchDBURL: searchDBURL)
@@ -147,13 +164,14 @@ extension CLI.Command {
             let resourceProvider = MCP.Support.DocsResourceProvider(
                 configuration: config,
                 evolutionDirectory: evolutionURL,
+                archiveDirectory: archiveURL,
                 markdownLookup: markdownLookup,
-            logger: Logging.LiveRecording()
+                logger: Logging.LiveRecording()
             )
             await server.registerResourceProvider(resourceProvider)
 
             // Initialize sample code index if available
-            let sampleIndex = await loadSampleIndex()
+            let sampleIndex = await loadSampleIndex(sampleDBURL: sampleDBURL)
 
             // Register composite tool provider with both indexes. The
             // service-layer wrappers are constructed here at the
@@ -190,8 +208,7 @@ extension CLI.Command {
             }
         }
 
-        private func loadSampleIndex() async -> Sample.Index.Database? {
-            let sampleDBURL = Sample.Index.defaultDatabasePath
+        private func loadSampleIndex(sampleDBURL: URL) async -> Sample.Index.Database? {
             guard FileManager.default.fileExists(atPath: sampleDBURL.path) else {
                 let infoMsg = "ℹ️  Sample code index not found at: \(sampleDBURL.path)"
                 let cmd = "\(Shared.Constants.App.commandName) save --samples"
@@ -231,7 +248,12 @@ extension CLI.Command {
             }
         }
 
-        private func printStartupMessages(config _: Shared.Configuration, evolutionURL _: URL, searchDBURL: URL) {
+        private func printStartupMessages(
+            config _: Shared.Configuration,
+            evolutionURL _: URL,
+            searchDBURL: URL,
+            sampleDBURL: URL
+        ) {
             var messages = ["🚀 Cupertino MCP Server starting..."]
 
             // Add search DB path if it exists
@@ -240,7 +262,6 @@ extension CLI.Command {
             }
 
             // Add samples DB path if it exists
-            let sampleDBURL = Sample.Index.defaultDatabasePath
             if FileManager.default.fileExists(atPath: sampleDBURL.path) {
                 messages.append("   Samples DB: \(sampleDBURL.path)")
             }
@@ -252,12 +273,12 @@ extension CLI.Command {
             }
         }
 
-        private func checkForData(docsDir _: URL, evolutionDir _: URL, searchDB: URL) -> Bool {
+        private func checkForData(docsDir _: URL, evolutionDir _: URL, searchDB: URL, sampleDB: URL) -> Bool {
             let fileManager = FileManager.default
 
             // Check if either database exists
             let hasSearchDB = fileManager.fileExists(atPath: searchDB.path)
-            let hasSamplesDB = fileManager.fileExists(atPath: Sample.Index.defaultDatabasePath.path)
+            let hasSamplesDB = fileManager.fileExists(atPath: sampleDB.path)
 
             return hasSearchDB || hasSamplesDB
         }

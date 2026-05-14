@@ -5,27 +5,30 @@ import SharedCore
 import Testing
 
 /// Companion to `BasePathDerivationTests` in SharedTests, covering the
-/// SampleIndex-side defaults. Asserts that the samples database path and the
-/// sample-code directory both sit under `Shared.Constants.defaultBaseDirectory`,
-/// so the binary-co-located config (#211) redirects them uniformly.
-@Suite("SampleIndex default paths derive from defaultBaseDirectory (#211)")
+/// SampleIndex-side path builders. Post-#535 the static-default accessors
+/// (`Shared.Constants.defaultBaseDirectory`, `Sample.Index.defaultDatabasePath`,
+/// `Sample.Index.defaultSampleCodeDirectory`) are gone — they routed through
+/// the `BinaryConfig.shared` Singleton (Service Locator). The replacement is
+/// `Sample.Index.databasePath(baseDirectory:)` / `sampleCodeDirectory(baseDirectory:)`,
+/// which take an explicit base directory threaded from the composition root.
+@Suite("SampleIndex path builders derive from explicit baseDirectory (#535)")
 struct SampleIndexBasePathDerivationTests {
-    private let base = Shared.Constants.defaultBaseDirectory
+    private let base = URL(fileURLWithPath: "/tmp/cupertino-sample-index-base-test")
 
     private var basePrefix: String {
         base.path.hasSuffix("/") ? base.path : base.path + "/"
     }
 
-    @Test("Sample.Index.defaultDatabasePath sits under defaultBaseDirectory")
+    @Test("Sample.Index.databasePath(baseDirectory:) sits under the supplied base")
     func samplesDatabaseUnderBase() {
-        let path = Sample.Index.defaultDatabasePath
+        let path = Sample.Index.databasePath(baseDirectory: base)
         #expect(path.path.hasPrefix(basePrefix))
         #expect(path.lastPathComponent == "samples.db")
     }
 
-    @Test("Sample.Index.defaultSampleCodeDirectory sits under defaultBaseDirectory")
+    @Test("Sample.Index.sampleCodeDirectory(baseDirectory:) sits under the supplied base")
     func sampleCodeDirUnderBase() {
-        let path = Sample.Index.defaultSampleCodeDirectory
+        let path = Sample.Index.sampleCodeDirectory(baseDirectory: base)
         #expect(path.path.hasPrefix(basePrefix))
         #expect(path.lastPathComponent == "sample-code")
     }

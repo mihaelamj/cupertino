@@ -45,24 +45,35 @@ func archiveGuideCatalogCreatesUserFileIfMissing() throws {
     #expect(!FileManager.default.fileExists(atPath: testFileURL.path), "File should not exist before test")
 
     // Access essentialGuides returns guides regardless of file state
-    let guides = Crawler.ArchiveGuideCatalog.essentialGuides
+    let guides = Crawler.ArchiveGuideCatalog.essentialGuides(baseDirectory: tempDir)
     #expect(!guides.isEmpty, "Should return guides")
 
     print("   ✅ User selections file created automatically")
 }
 
 @Test("Crawler.ArchiveGuideCatalog does not overwrite existing user file")
-func archiveGuideCatalogDoesNotOverwriteExistingFile() {
-    // This test verifies that essentialGuides returns data even when file exists
-    // The actual file preservation is handled by the Crawler.ArchiveGuideCatalog implementation
-    let guides = Crawler.ArchiveGuideCatalog.essentialGuides
+func archiveGuideCatalogDoesNotOverwriteExistingFile() throws {
+    // This test verifies that essentialGuides returns data even when file exists.
+    // Use an isolated tempDir post-#535 (the previous test pointed at the
+    // real ~/.cupertino via the singleton fallback).
+    let tempDir = FileManager.default.temporaryDirectory
+        .appendingPathComponent("cupertino-test-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    let guides = Crawler.ArchiveGuideCatalog.essentialGuides(baseDirectory: tempDir)
     #expect(!guides.isEmpty, "Should return guides")
     print("   ✅ Existing user file not overwritten")
 }
 
 @Test("Crawler.ArchiveGuideCatalog essentialGuides returns valid URLs")
-func archiveGuideCatalogEssentialGuidesReturnsValidURLs() {
-    let guides = Crawler.ArchiveGuideCatalog.essentialGuides
+func archiveGuideCatalogEssentialGuidesReturnsValidURLs() throws {
+    let tempDir = FileManager.default.temporaryDirectory
+        .appendingPathComponent("cupertino-test-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    let guides = Crawler.ArchiveGuideCatalog.essentialGuides(baseDirectory: tempDir)
     #expect(!guides.isEmpty, "Should have essential guides")
 
     // All URLs should be valid Apple archive URLs
@@ -90,10 +101,12 @@ func archiveGuideCatalogTestGuidesReturnsMinimalSet() {
 
 @Test("Crawler.ArchiveGuideCatalog userSelectionsFileURL points to correct location")
 func archiveGuideCatalogUserSelectionsFileURLCorrect() {
-    let fileURL = Crawler.ArchiveGuideCatalog.userSelectionsFileURL
-    let expectedPath = Shared.Constants.defaultBaseDirectory.appendingPathComponent("selected-archive-guides.json")
+    // Post-#535: userSelectionsFileURL takes an explicit base directory.
+    let baseDir = URL(fileURLWithPath: "/tmp/cupertino-archive-guide-test")
+    let fileURL = Crawler.ArchiveGuideCatalog.userSelectionsFileURL(baseDirectory: baseDir)
+    let expectedPath = baseDir.appendingPathComponent("selected-archive-guides.json")
 
-    #expect(fileURL == expectedPath, "User selections file should be in ~/.cupertino/")
+    #expect(fileURL == expectedPath, "User selections file should be under the supplied base directory")
     #expect(fileURL.lastPathComponent == "selected-archive-guides.json", "File should be named selected-archive-guides.json")
     print("   ✅ User selections file URL: \(fileURL.path)")
 }

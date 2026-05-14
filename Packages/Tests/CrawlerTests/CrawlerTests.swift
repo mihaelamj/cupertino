@@ -34,7 +34,8 @@ struct CrawlerTests {
             ),
             changeDetection: Shared.Configuration.ChangeDetection(
                 enabled: false,
-                metadataFile: tempDir.appendingPathComponent("metadata.json")
+                metadataFile: tempDir.appendingPathComponent("metadata.json"),
+                outputDirectory: tempDir
             ),
             output: Shared.Configuration.Output()
         )
@@ -325,7 +326,8 @@ struct CrawlerTests {
             ),
             changeDetection: Shared.Configuration.ChangeDetection(
                 enabled: false,
-                metadataFile: tempDir.appendingPathComponent("metadata.json")
+                metadataFile: tempDir.appendingPathComponent("metadata.json"),
+                outputDirectory: tempDir
             ),
             output: Shared.Configuration.Output()
         )
@@ -371,7 +373,8 @@ struct CrawlerTests {
             ),
             changeDetection: Shared.Configuration.ChangeDetection(
                 enabled: false,
-                metadataFile: tempDir.appendingPathComponent("metadata.json")
+                metadataFile: tempDir.appendingPathComponent("metadata.json"),
+                outputDirectory: tempDir
             ),
             output: Shared.Configuration.Output()
         )

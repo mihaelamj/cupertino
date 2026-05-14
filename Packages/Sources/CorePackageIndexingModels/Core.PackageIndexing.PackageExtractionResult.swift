@@ -8,7 +8,7 @@ import Foundation
 /// Previously nested as `Core.PackageIndexing.PackageArchiveExtractor.Result`
 /// inside the concrete actor. Lifted to a top-level value type under
 /// `Core.PackageIndexing.*` so consumer targets (`Search.PackageIndex`,
-/// `Search.PackageIndexer`, `CLI.Command.Fetch`) can reference it without
+/// `Search.PackageIndexer`, `CLIImpl.Command.Fetch`) can reference it without
 /// pulling in the full extractor + indexer + annotator surface.
 ///
 /// Callers that previously wrote

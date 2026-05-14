@@ -12,11 +12,11 @@ import SharedUtils
 
 // MARK: - Per-source runners
 
-/// `--source <name>` paths split out of `CLI.Command.Search` so the struct body
+/// `--source <name>` paths split out of `CLIImpl.Command.Search` so the struct body
 /// stays under SwiftLint's `type_body_length` ceiling. The default
 /// (no `--source`) fan-out + chunked report lives in
-/// `CLI.Command.Search+SmartReport.swift` (#239).
-extension CLI.Command.Search {
+/// `CLIImpl.Command.Search+SmartReport.swift` (#239).
+extension CLIImpl.Command.Search {
     func runDocsSearch() async throws {
         // GoF Factory Method (1994 p. 107): the search command's
         // composition sub-root. Each per-source runner constructs its
@@ -25,7 +25,11 @@ extension CLI.Command.Search {
         let searchDatabaseFactory: any SearchModule.DatabaseFactory = LiveSearchDatabaseFactory()
         let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
 
-        let results = try await Services.ServiceContainer.withDocsService(dbPath: searchDb, searchDatabaseFactory: searchDatabaseFactory) { service in
+        // Path-DI composition sub-root (#535).
+        let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+            ?? Shared.Paths.live().searchDatabase
+
+        let results = try await Services.ServiceContainer.withDocsService(searchDB: searchDBURL, searchDatabaseFactory: searchDatabaseFactory) { service in
             try await service.search(Services.SearchQuery(
                 text: query,
                 source: source,
@@ -42,8 +46,8 @@ extension CLI.Command.Search {
         }
 
         let teasers = try await Services.ServiceContainer.withTeaserService(
-            searchDbPath: searchDb,
-            sampleDbPath: resolveSampleDbPath(),
+            searchDB: searchDBURL,
+            samplesDB: resolveSampleDbPath(),
             searchDatabaseFactory: searchDatabaseFactory,
             sampleDatabaseFactory: sampleDatabaseFactory
         ) { service in
@@ -93,7 +97,7 @@ extension CLI.Command.Search {
 
         let dbPath = resolveSampleDbPath()
 
-        let result = try await Services.ServiceContainer.withSampleService(dbPath: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
+        let result = try await Services.ServiceContainer.withSampleService(samplesDB: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
             try await service.search(Sample.Search.Query(
                 text: query,
                 framework: framework,
@@ -108,9 +112,11 @@ extension CLI.Command.Search {
         // query (#237).
         let teasers: Services.Formatter.TeaserResults
         do {
+            let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+                ?? Shared.Paths.live().searchDatabase
             teasers = try await Services.ServiceContainer.withTeaserService(
-                searchDbPath: searchDb,
-                sampleDbPath: resolveSampleDbPath(),
+                searchDB: searchDBURL,
+                samplesDB: resolveSampleDbPath(),
                 searchDatabaseFactory: searchDatabaseFactory,
                 sampleDatabaseFactory: sampleDatabaseFactory
             ) { service in
@@ -159,7 +165,7 @@ extension CLI.Command.Search {
         }
 
         let dbURL = packagesDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Shared.Constants.defaultPackagesDatabase
+            ?? Shared.Paths.live().packagesDatabase
 
         guard FileManager.default.fileExists(atPath: dbURL.path) else {
             Logging.LiveRecording().error("❌ packages.db not found at \(dbURL.path)")
@@ -195,7 +201,11 @@ extension CLI.Command.Search {
         let searchDatabaseFactory: any SearchModule.DatabaseFactory = LiveSearchDatabaseFactory()
         let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
 
-        let results = try await Services.ServiceContainer.withDocsService(dbPath: searchDb, searchDatabaseFactory: searchDatabaseFactory) { service in
+        // Path-DI composition sub-root (#535).
+        let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+            ?? Shared.Paths.live().searchDatabase
+
+        let results = try await Services.ServiceContainer.withDocsService(searchDB: searchDBURL, searchDatabaseFactory: searchDatabaseFactory) { service in
             try await service.search(Services.SearchQuery(
                 text: query,
                 source: Shared.Constants.SourcePrefix.hig,
@@ -207,8 +217,8 @@ extension CLI.Command.Search {
         }
 
         let teasers = try await Services.ServiceContainer.withTeaserService(
-            searchDbPath: searchDb,
-            sampleDbPath: resolveSampleDbPath(),
+            searchDB: searchDBURL,
+            samplesDB: resolveSampleDbPath(),
             searchDatabaseFactory: searchDatabaseFactory,
             sampleDatabaseFactory: sampleDatabaseFactory
         ) { service in

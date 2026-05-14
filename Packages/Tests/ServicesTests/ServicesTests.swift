@@ -243,8 +243,8 @@ struct TeaserResultsResilienceTests {
         let throwingFactory = ThrowingSearchDatabaseFactory()
         await #expect(throws: (any Error).self) {
             try await Services.ServiceContainer.withTeaserService(
-                searchDbPath: tempDir.path,
-                sampleDbPath: nil,
+                searchDB: tempDir,
+                samplesDB: tempDir.appendingPathComponent("nonexistent-samples.db"),
                 searchDatabaseFactory: throwingFactory,
                 sampleDatabaseFactory: ThrowingSampleDatabaseFactory()
             ) { service in
@@ -260,7 +260,7 @@ struct TeaserResultsResilienceTests {
 
     @Test("Caller swallowing withTeaserService error → empty TeaserResults works")
     func callerCanFallBackOnEmpty() async {
-        // Replicates the resilience pattern in CLI.Command.Search.runSampleSearch:
+        // Replicates the resilience pattern in CLIImpl.Command.Search.runSampleSearch:
         // catch the throw, fall back to TeaserResults(). Verifies the
         // fallback contract (empty + iterable) so future changes don't
         // accidentally make the empty struct require parameters.
@@ -268,8 +268,8 @@ struct TeaserResultsResilienceTests {
         let teasers: Services.Formatter.TeaserResults
         do {
             teasers = try await Services.ServiceContainer.withTeaserService(
-                searchDbPath: "/var/empty/intentionally-broken-search.db.\(UUID().uuidString)",
-                sampleDbPath: nil,
+                searchDB: URL(fileURLWithPath: "/var/empty/intentionally-broken-search.db.\(UUID().uuidString)"),
+                samplesDB: URL(fileURLWithPath: "/var/empty/intentionally-broken-samples.db.\(UUID().uuidString)"),
                 searchDatabaseFactory: throwingFactory,
                 sampleDatabaseFactory: ThrowingSampleDatabaseFactory()
             ) { service in

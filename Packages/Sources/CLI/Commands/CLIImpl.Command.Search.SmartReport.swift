@@ -13,12 +13,12 @@ import SharedUtils
 
 // MARK: - SmartQuery fan-out helpers (#239)
 
-/// Helpers for `CLI.Command.Search`'s default (no `--source`) path: building the
+/// Helpers for `CLIImpl.Command.Search`'s default (no `--source`) path: building the
 /// per-DB `CandidateFetcher` list, then printing the fused result in
-/// text / markdown / json. Lifted out of `CLI.Command.Search.swift` so the
+/// text / markdown / json. Lifted out of `CLIImpl.Command.Search.swift` so the
 /// struct body stays under SwiftLint's `type_body_length` ceiling and so
 /// the printers don't need access to instance-level CLI options.
-extension CLI.Command.Search {
+extension CLIImpl.Command.Search {
     /// Bundle returned by `buildFetchers`. The `searchIndex` and
     /// `sampleService` references are kept so the caller can disconnect
     /// them once the SmartQuery has run — the fetchers don't own those
@@ -114,7 +114,7 @@ extension CLI.Command.Search {
     ) async -> SearchModule.Index? {
         guard !skip else { return nil }
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Shared.Constants.defaultSearchDatabase
+            ?? Shared.Paths.live().searchDatabase
         guard FileManager.default.fileExists(atPath: url.path) else {
             Logging.LiveRecording().info(
                 "ℹ️  search.db not found at \(url.path) — skipping doc sources."
@@ -148,7 +148,7 @@ extension CLI.Command.Search {
     ) {
         guard !skip else { return }
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Shared.Constants.defaultPackagesDatabase
+            ?? Shared.Paths.live().packagesDatabase
         guard FileManager.default.fileExists(atPath: url.path) else {
             Logging.LiveRecording().info(
                 "ℹ️  packages.db not found at \(url.path) — skipping packages."
@@ -169,7 +169,7 @@ extension CLI.Command.Search {
     ) async -> Sample.Search.Service? {
         guard !skip else { return nil }
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Sample.Index.defaultDatabasePath
+            ?? Sample.Index.databasePath(baseDirectory: Shared.Paths.live().baseDirectory)
         guard FileManager.default.fileExists(atPath: url.path) else {
             Logging.LiveRecording().info(
                 "ℹ️  samples.db not found at \(url.path) — skipping samples."

@@ -22,7 +22,7 @@ import SharedUtils
 /// single-source `--source <name>` path still runs the source-specific
 /// list-style formatters.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension CLI.Command {
+extension CLIImpl.Command {
     struct Search: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "search",
@@ -222,7 +222,7 @@ extension CLI.Command {
             }
         }
 
-        // MARK: - Per-source runners moved to CLI.Command.Search+SourceRunners.swift
+        // MARK: - Per-source runners moved to CLIImpl.Command.Search+SourceRunners.swift
 
         // MARK: - Unified Search (All Sources, fan-out + RRF) (#239)
 
@@ -276,14 +276,15 @@ extension CLI.Command {
             if let sampleDb {
                 return URL(fileURLWithPath: sampleDb).expandingTildeInPath
             }
-            return Sample.Index.defaultDatabasePath
+            // Path-DI composition sub-root (#535).
+            return Sample.Index.databasePath(baseDirectory: Shared.Paths.live().baseDirectory)
         }
     }
 }
 
 // MARK: - Output Format
 
-extension CLI.Command.Search {
+extension CLIImpl.Command.Search {
     enum OutputFormat: String, ExpressibleByArgument, CaseIterable {
         case text
         case json

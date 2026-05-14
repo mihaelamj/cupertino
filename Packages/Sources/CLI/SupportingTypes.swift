@@ -61,31 +61,37 @@ extension Cupertino {
             }
         }
 
-        /// Per-type default output dir. Routes through `Shared.Constants.default*`
-        /// getters so the path resolves via `Shared.Constants.BinaryConfig` (#211) like
-        /// every other default does. The earlier manual construction
-        /// (`homeDir + baseDirectoryName + Directory.<x>`) bypassed BinaryConfig
-        /// and silently wrote to `~/.cupertino/<x>` even when a binary-co-located
-        /// config redirected the base elsewhere — the bug reported on
-        /// 2026-05-03 against `cupertino fetch --type swift`.
-        var defaultOutputDir: String {
+        /// Per-type default output dir, resolved against an explicit
+        /// `Shared.Paths` rather than the static `Shared.Constants.default*`
+        /// accessors. The caller (a CLI command's `run()`) constructs
+        /// `Shared.Paths.live()` once at its composition sub-root and
+        /// passes it here — same pattern as the other live concretes
+        /// from #521 / #527 / etc. The earlier manual construction
+        /// (`homeDir + baseDirectoryName + Directory.<x>`) bypassed
+        /// BinaryConfig and silently wrote to `~/.cupertino/<x>` even
+        /// when a binary-co-located config redirected the base elsewhere
+        /// — the bug reported on 2026-05-03 against `cupertino fetch
+        /// --type swift`. Routing through `Shared.Paths` preserves the
+        /// fix while replacing the Service-Locator-shaped static reach
+        /// (#535).
+        func defaultOutputDir(paths: Shared.Paths) -> String {
             switch self {
             case .docs, .availability:
-                return Shared.Constants.defaultDocsDirectory.path
+                return paths.docsDirectory.path
             case .swift:
-                return Shared.Constants.defaultSwiftOrgDirectory.path
+                return paths.swiftOrgDirectory.path
             case .evolution:
-                return Shared.Constants.defaultSwiftEvolutionDirectory.path
+                return paths.swiftEvolutionDirectory.path
             case .packages:
-                return Shared.Constants.defaultPackagesDirectory.path
+                return paths.packagesDirectory.path
             case .code, .samples:
-                return Shared.Constants.defaultSampleCodeDirectory.path
+                return paths.sampleCodeDirectory.path
             case .archive:
-                return Shared.Constants.defaultArchiveDirectory.path
+                return paths.archiveDirectory.path
             case .hig:
-                return Shared.Constants.defaultHIGDirectory.path
+                return paths.higDirectory.path
             case .all:
-                return Shared.Constants.defaultBaseDirectory.path
+                return paths.baseDirectory.path
             }
         }
 

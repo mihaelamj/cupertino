@@ -6,7 +6,7 @@ import Testing
 import TestSupport
 
 @Test func configuration() {
-    let config = Shared.Configuration.Crawler()
+    let config = Shared.Configuration.Crawler(outputDirectory: URL(fileURLWithPath: "/tmp/cupertino-test"))
     #expect(config.maxPages > 0)
 }
 

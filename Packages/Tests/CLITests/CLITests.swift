@@ -1,5 +1,6 @@
 @testable import CLI
 import Foundation
+import SharedConstants
 import Testing
 
 // MARK: - CLI Tests
@@ -22,26 +23,26 @@ struct CommandRegistrationTests {
         // into `search` in #239 (default fan-out path produces the same
         // chunked output as `ask` did).
         #expect(config.subcommands.count == 14)
-        #expect(config.subcommands.contains { $0 == CLI.Command.Setup.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.Fetch.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.Save.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.Serve.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.Search.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.Read.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.ListFrameworks.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.ListSamples.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.ReadSample.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.ReadSampleFile.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.Doctor.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.Cleanup.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.PackageSearch.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.ResolveRefs.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Setup.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Fetch.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Save.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Serve.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Search.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Read.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.ListFrameworks.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.ListSamples.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.ReadSample.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.ReadSampleFile.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Doctor.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Cleanup.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.PackageSearch.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.ResolveRefs.self })
     }
 
-    @Test("Default subcommand is CLI.Command.Serve")
+    @Test("Default subcommand is CLIImpl.Command.Serve")
     func defaultSubcommand() {
         let config = Cupertino.configuration
-        #expect(config.defaultSubcommand == CLI.Command.Serve.self)
+        #expect(config.defaultSubcommand == CLIImpl.Command.Serve.self)
     }
 
     @Test("Command name is set correctly")
@@ -94,9 +95,13 @@ struct FetchTypeTests {
 
     @Test("Output directories use home directory")
     func outputDirectoriesUseHome() {
+        // Path-DI migration (#535): pass a stub `Shared.Paths` rooted under the
+        // current user's home directory so the assertion still has something
+        // to compare against.
         let homeDir = FileManager.default.homeDirectoryForCurrentUser.path
+        let stubPaths = Shared.Paths(baseDirectory: URL(fileURLWithPath: homeDir).appendingPathComponent(".cupertino"))
         for fetchType in Self.allTypes {
-            let outputDir = fetchType.defaultOutputDir
+            let outputDir = fetchType.defaultOutputDir(paths: stubPaths)
             #expect(
                 outputDir.hasPrefix(homeDir),
                 "FetchType.\(fetchType) output dir should start with home directory"
@@ -106,8 +111,10 @@ struct FetchTypeTests {
 
     @Test("Output directories contain base directory name")
     func outputDirectoriesContainBase() {
+        // Path-DI migration (#535): see uniqueOutputDirectories for the rationale.
+        let stubPaths = Shared.Paths(baseDirectory: URL(fileURLWithPath: "/tmp/.cupertino"))
         for fetchType in Self.allTypes {
-            let outputDir = fetchType.defaultOutputDir
+            let outputDir = fetchType.defaultOutputDir(paths: stubPaths)
             #expect(
                 outputDir.contains("cupertino"),
                 "FetchType.\(fetchType) output dir should contain 'cupertino'"
@@ -206,7 +213,10 @@ struct FetchTypeTests {
             .code,
         ]
 
-        let directories = Set(types.map(\.defaultOutputDir))
+        // Path-DI migration (#535): defaultOutputDir takes a `Shared.Paths` injection,
+        // so it's a method now rather than a computed property — pass a stub.
+        let stubPaths = Shared.Paths(baseDirectory: URL(fileURLWithPath: "/tmp/cupertino-test-stub"))
+        let directories = Set(types.map { $0.defaultOutputDir(paths: stubPaths) })
         #expect(directories.count == types.count, "Each type should have a unique output directory")
     }
 

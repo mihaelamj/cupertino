@@ -20,7 +20,7 @@ import SharedUtils
 /// specifically want packages-only results without typing `--skip-docs
 /// --skip-samples`.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension CLI.Command {
+extension CLIImpl.Command {
     struct PackageSearch: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "package-search",
@@ -59,8 +59,10 @@ extension CLI.Command {
         var minVersion: String?
 
         mutating func run() async throws {
+            // Path-DI composition sub-root (#535).
+            let paths = Shared.Paths.live()
             let dbURL = db.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-                ?? Shared.Constants.defaultPackagesDatabase
+                ?? paths.packagesDatabase
 
             guard FileManager.default.fileExists(atPath: dbURL.path) else {
                 Logging.LiveRecording().error("❌ packages.db not found at \(dbURL.path)")

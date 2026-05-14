@@ -13,7 +13,7 @@ import SharedUtils
 
 /// CLI command for reading a sample project's README - mirrors MCP tool functionality.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension CLI.Command {
+extension CLIImpl.Command {
     struct ReadSample: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "read-sample",
@@ -44,7 +44,7 @@ extension CLI.Command {
             let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
 
             // Use Services.ServiceContainer for managed lifecycle
-            let (project, files) = try await Services.ServiceContainer.withSampleService(dbPath: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
+            let (project, files) = try await Services.ServiceContainer.withSampleService(samplesDB: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
                 guard let project = try await service.getProject(id: projectId) else {
                     Logging.LiveRecording().error("Project not found: \(projectId)")
                     Logging.LiveRecording().output("Use 'cupertino list-samples' or 'cupertino search --source samples' to find valid project IDs.")
@@ -72,7 +72,8 @@ extension CLI.Command {
             if let sampleDb {
                 return URL(fileURLWithPath: sampleDb).expandingTildeInPath
             }
-            return Sample.Index.defaultDatabasePath
+            // Path-DI composition sub-root (#535).
+            return Sample.Index.databasePath(baseDirectory: Shared.Paths.live().baseDirectory)
         }
 
         // MARK: - Output Formatting
@@ -197,7 +198,7 @@ extension CLI.Command {
 
 // MARK: - Output Format
 
-extension CLI.Command.ReadSample {
+extension CLIImpl.Command.ReadSample {
     enum OutputFormat: String, ExpressibleByArgument, CaseIterable {
         case text
         case json

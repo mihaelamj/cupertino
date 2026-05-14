@@ -27,12 +27,12 @@ extension Shared.Configuration.DiscoveryMode: ExpressibleByArgument {}
 // MARK: - Fetch Command
 
 // swiftlint:disable type_body_length file_length function_body_length
-// Justification: CLI.Command.Fetch handles 10+ different fetch types (docs, evolution, packages, code, etc.)
+// Justification: CLIImpl.Command.Fetch handles 10+ different fetch types (docs, evolution, packages, code, etc.)
 // Each type has distinct configuration, progress reporting, and error handling.
 // Splitting into separate commands would duplicate shared options and break the unified fetch interface.
 
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension CLI.Command {
+extension CLIImpl.Command {
     struct Fetch: AsyncParsableCommand {
         typealias FetchType = Cupertino.FetchType
 
@@ -261,7 +261,7 @@ extension CLI.Command {
             // Print the resolved output directory at startup so #212-style
             // BinaryConfig misrouting is immediately visible.
             let resolvedOutputDir = outputDir.flatMap { URL(fileURLWithPath: $0).expandingTildeInPath.path }
-                ?? type.defaultOutputDir
+                ?? type.defaultOutputDir(paths: Shared.Paths.live())
             Logging.LiveRecording().info("   Output: \(resolvedOutputDir)\n")
         }
 
@@ -283,12 +283,12 @@ extension CLI.Command {
 
         private static func fetchSingleType(
             _ fetchType: FetchType,
-            baseCommand: CLI.Command.Fetch
+            baseCommand: CLIImpl.Command.Fetch
         ) async -> (FetchType, Result<Void, Error>) {
             Logging.LiveRecording().info("🚀 Starting \(fetchType.displayName)...")
             var fetchCommand = baseCommand
             fetchCommand.type = fetchType
-            fetchCommand.outputDir = fetchType.defaultOutputDir
+            fetchCommand.outputDir = fetchType.defaultOutputDir(paths: Shared.Paths.live())
 
             do {
                 try await fetchCommand.run()
@@ -397,14 +397,16 @@ extension CLI.Command {
                 return URL(fileURLWithPath: outputDir).expandingTildeInPath
             }
             return try await findExistingSession(for: url)
-                ?? URL(fileURLWithPath: type.defaultOutputDir).expandingTildeInPath
+                ?? URL(fileURLWithPath: type.defaultOutputDir(paths: Shared.Paths.live())).expandingTildeInPath
         }
 
         private func findExistingSession(for url: URL) async throws -> URL? {
+            // Path-DI composition sub-root (#535).
+            let paths = Shared.Paths.live()
             let candidates = [
-                Shared.Constants.defaultDocsDirectory,
-                Shared.Constants.defaultSwiftOrgDirectory,
-                Shared.Constants.defaultSwiftBookDirectory,
+                paths.docsDirectory,
+                paths.swiftOrgDirectory,
+                paths.swiftBookDirectory,
             ]
 
             for candidate in candidates {
@@ -419,7 +421,7 @@ extension CLI.Command {
         // checkForSession lifted to Ingest.Session.checkForSession (#247)
 
         private func scanCupertinoDirectory(for url: URL) async throws -> URL? {
-            let cupertinoDir = Shared.Constants.defaultBaseDirectory
+            let cupertinoDir = Shared.Paths.live().baseDirectory
 
             guard let contents = try? FileManager.default.contentsOfDirectory(
                 at: cupertinoDir,
@@ -515,7 +517,7 @@ extension CLI.Command {
         }
 
         private func runEvolutionCrawl() async throws {
-            let defaultPath = Shared.Constants.defaultSwiftEvolutionDirectory.path
+            let defaultPath = Shared.Paths.live().swiftEvolutionDirectory.path
             let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
             let logger: any LoggingModels.Logging.Recording = Logging.LiveRecording()
 
@@ -549,7 +551,7 @@ extension CLI.Command {
         /// not READMEs). Stage 2 reads `Core.PackageIndexing.PriorityPackagesCatalog`, not the
         /// metadata catalog, so the stages are independent.
         private func runPackageFetch() async throws {
-            let defaultPath = Shared.Constants.defaultPackagesDirectory.path
+            let defaultPath = Shared.Paths.live().packagesDirectory.path
             let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
 
             try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
@@ -670,11 +672,19 @@ extension CLI.Command {
         private func runPackageArchivesStage(outputURL: URL) async throws {
             Logging.LiveRecording().info("📦 Stage 2/2 — Downloading priority package archives")
 
+            // Path-DI arc (#535): construct a `Shared.Paths` at the
+            // function's composition sub-root and pass explicit URLs.
+            let paths = Shared.Paths.live()
+
+            // Construct the priority-packages catalog with the resolved
+            // base directory (#535: catalog is now an actor, not a singleton).
+            let priorityCatalog = Core.PackageIndexing.PriorityPackagesCatalog(baseDirectory: paths.baseDirectory)
+
             // Load priority packages
-            let priorityPackages = await Core.PackageIndexing.PriorityPackagesCatalog.allPackages
+            let priorityPackages = await priorityCatalog.allPackages
 
             guard !priorityPackages.isEmpty else {
-                let priorityPackagesPath = Shared.Constants.defaultPackagesDirectory
+                let priorityPackagesPath = paths.packagesDirectory
                     .appendingPathComponent(Shared.Constants.FileName.priorityPackages)
                     .path
                 Logging.LiveRecording().error("❌ Error: No priority packages found")
@@ -715,11 +725,11 @@ extension CLI.Command {
                 )
             }
 
-            let exclusions = Core.Protocols.ExclusionList.load()
+            let exclusions = Core.Protocols.ExclusionList.load(from: paths.baseDirectory)
             let seedChecksum = Core.PackageIndexing.ResolvedPackagesStore.checksum(seeds: seedRefs, exclusions: exclusions)
-            let resolvedStoreURL = Shared.Constants.defaultBaseDirectory
+            let resolvedStoreURL = paths.baseDirectory
                 .appendingPathComponent(Shared.Constants.FileName.resolvedPackages)
-            let canonicalCacheURL = Shared.Constants.defaultBaseDirectory
+            let canonicalCacheURL = paths.baseDirectory
                 .appendingPathComponent(".cache")
                 .appendingPathComponent(Shared.Constants.FileName.canonicalOwnersCache)
 
@@ -741,7 +751,7 @@ extension CLI.Command {
                     }
                     let canonicalizer = Core.Protocols.GitHubCanonicalizer(cacheURL: canonicalCacheURL)
                     let manifestCache = Core.PackageIndexing.ManifestCache(
-                        rootDirectory: Shared.Constants.defaultBaseDirectory
+                        rootDirectory: paths.baseDirectory
                             .appendingPathComponent(".cache")
                             .appendingPathComponent("manifests")
                     )
@@ -852,7 +862,7 @@ extension CLI.Command {
                 Logging.LiveRecording().info("   Duration: \(Int(duration))s")
             }
             Logging.LiveRecording().info("   📁 \(outputURL.path)")
-            Logging.LiveRecording().info("   Next: index them into \(Shared.Constants.defaultPackagesDatabase.path) via `save --packages`")
+            Logging.LiveRecording().info("   Next: index them into \(paths.packagesDatabase.path) via `save --packages`")
         }
 
         private func writePackageManifest(
@@ -892,7 +902,7 @@ extension CLI.Command {
         }
 
         private func runCodeFetch() async throws {
-            let defaultPath = Shared.Constants.defaultSampleCodeDirectory.path
+            let defaultPath = Shared.Paths.live().sampleCodeDirectory.path
             let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
 
             try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
@@ -920,7 +930,7 @@ extension CLI.Command {
         }
 
         private func runSamplesFetch() async throws {
-            let defaultPath = Shared.Constants.defaultSampleCodeDirectory.path
+            let defaultPath = Shared.Paths.live().sampleCodeDirectory.path
             let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
 
             let fetcher = Sample.Core.GitHubFetcher(outputDirectory: outputURL, logger: Logging.LiveRecording())
@@ -940,7 +950,7 @@ extension CLI.Command {
         }
 
         private func runArchiveCrawl() async throws {
-            let defaultPath = Shared.Constants.defaultArchiveDirectory.path
+            let defaultPath = Shared.Paths.live().archiveDirectory.path
             let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
 
             try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
@@ -985,7 +995,7 @@ extension CLI.Command {
         }
 
         private func runHIGCrawl() async throws {
-            let defaultPath = Shared.Constants.defaultHIGDirectory.path
+            let defaultPath = Shared.Paths.live().higDirectory.path
             let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
 
             try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
@@ -1025,12 +1035,14 @@ extension CLI.Command {
             }
 
             // Otherwise use the curated list of essential archive guides with framework info
-            return Crawler.ArchiveGuideCatalog.essentialGuidesWithInfo
+            return Crawler.ArchiveGuideCatalog.essentialGuidesWithInfo(
+                baseDirectory: Shared.Paths.live().baseDirectory
+            )
         }
 
         private func runAvailabilityFetch() async throws {
             let docsDir = outputDir.map { URL(fileURLWithPath: $0) }
-                ?? Shared.Constants.defaultDocsDirectory
+                ?? Shared.Paths.live().docsDirectory
 
             guard FileManager.default.fileExists(atPath: docsDir.path) else {
                 Logging.LiveRecording().error("❌ Documentation directory not found: \(docsDir.path)")

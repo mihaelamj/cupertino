@@ -19,7 +19,7 @@ import SharedUtils
 /// command parses flags, runs the preflight prompt, dispatches to the
 /// requested scope, and renders progress.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension CLI.Command {
+extension CLIImpl.Command {
     struct Save: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "save",
@@ -137,7 +137,7 @@ extension CLI.Command {
             }
 
             let effectiveBase = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-                ?? Shared.Constants.defaultBaseDirectory
+                ?? Shared.Paths.live().baseDirectory
 
             if buildDocs {
                 try await runDocsIndexer(effectiveBase: effectiveBase)
@@ -150,7 +150,7 @@ extension CLI.Command {
             }
         }
 
-        // MARK: - Indexer dispatchers moved to CLI.Command.Save+Indexers.swift (#244)
+        // MARK: - Indexer dispatchers moved to CLIImpl.Command.Save+Indexers.swift (#244)
 
         // MARK: - Preflight
 
@@ -160,6 +160,7 @@ extension CLI.Command {
             buildSamples: Bool
         ) -> Bool {
             let lines = Indexer.Preflight.preflightLines(
+                paths: Shared.Paths.live(),
                 buildDocs: buildDocs,
                 buildPackages: buildPackages,
                 buildSamples: buildSamples,
@@ -210,12 +211,12 @@ extension CLI.Command {
 /// `RemoteSync.Indexer` interface is heavily UI-coupled (animated progress
 /// bar, framework-by-framework status). Stays here until that pipeline
 /// gets a callback-based shape.
-extension CLI.Command.Save {
+extension CLIImpl.Command.Save {
     private func runRemote() async throws {
         Logging.LiveRecording().info("🚀 Building Search Index from Remote\n")
 
         let effectiveBase = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Shared.Constants.defaultBaseDirectory
+            ?? Shared.Paths.live().baseDirectory
         let searchDBURL = searchDB.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? effectiveBase.appendingPathComponent(Shared.Constants.FileName.searchDatabase)
         let stateFileURL = effectiveBase.appendingPathComponent("remote-save-state.json")

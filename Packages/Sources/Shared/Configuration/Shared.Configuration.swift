@@ -13,9 +13,16 @@ extension Shared {
         public let changeDetection: ChangeDetection
         public let output: Output
 
+        /// Strict-DI memberwise initialiser (#535). The previous shape
+        /// defaulted `Crawler()` / `ChangeDetection()` / `Output()` which
+        /// each reached for `Shared.Constants.defaultX` through
+        /// `BinaryConfig.shared` (Service Locator). The caller now passes
+        /// each sub-configuration explicitly; the composition root resolves
+        /// `outputDirectory` once via `Shared.Paths.live().docsDirectory`
+        /// and threads it down.
         public init(
-            crawler: Crawler = Crawler(),
-            changeDetection: ChangeDetection = ChangeDetection(),
+            crawler: Crawler,
+            changeDetection: ChangeDetection,
             output: Output = Output()
         ) {
             self.crawler = crawler
@@ -38,13 +45,21 @@ extension Shared {
             try data.write(to: url)
         }
 
-        /// Create default configuration file if it doesn't exist
-        public static func createDefaultIfNeeded(at url: URL) throws {
+        /// Create default configuration file if it doesn't exist.
+        ///
+        /// `outputDirectory` is the per-install docs base — the resolved
+        /// path the composition root would otherwise pass to
+        /// `Crawler(outputDirectory:)`. Pre-#535 this defaulted to the
+        /// `BinaryConfig.shared` Singleton path; now the caller supplies it.
+        public static func createDefaultIfNeeded(at url: URL, outputDirectory: URL) throws {
             guard !FileManager.default.fileExists(atPath: url.path) else {
                 return
             }
 
-            let defaultConfig = Configuration()
+            let defaultConfig = Configuration(
+                crawler: Crawler(outputDirectory: outputDirectory),
+                changeDetection: ChangeDetection(outputDirectory: outputDirectory)
+            )
             try defaultConfig.save(to: url)
         }
     }

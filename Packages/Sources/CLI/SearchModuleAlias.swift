@@ -20,8 +20,8 @@ import SharedModels
 
 // MARK: - Search Module Disambiguator
 
-// `CLI.Command.Search` (the subcommand struct under `Sources/CLI/Commands/`) and
-// the `Search` SPM target share a name. From inside any `extension CLI.Command`
+// `CLIImpl.Command.Search` (the subcommand struct under `Sources/CLI/Commands/`) and
+// the `Search` SPM target share a name. From inside any `extension CLIImpl.Command`
 // scope, bare `Search.<Type>` resolves to the nested subcommand struct, not
 // the SPM target — Swift's name lookup checks enclosing types before
 // imported modules, so the local match wins.

@@ -4,13 +4,14 @@ import Logging
 import LoggingModels
 import Services
 import ServicesModels
+import SharedConstants
 import SharedCore
 
 // MARK: - List Frameworks Command
 
 /// CLI command for listing available frameworks - mirrors MCP tool functionality.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension CLI.Command {
+extension CLIImpl.Command {
     struct ListFrameworks: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "list-frameworks",
@@ -37,8 +38,12 @@ extension CLI.Command {
             // semantics that stateless empty structs don't require.
             let searchDatabaseFactory: any SearchModule.DatabaseFactory = LiveSearchDatabaseFactory()
 
+            // Path-DI composition sub-root (#535).
+            let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+                ?? Shared.Paths.live().searchDatabase
+
             // Use Services.ServiceContainer for managed lifecycle
-            let (frameworks, totalDocs) = try await Services.ServiceContainer.withDocsService(dbPath: searchDb, searchDatabaseFactory: searchDatabaseFactory) { service in
+            let (frameworks, totalDocs) = try await Services.ServiceContainer.withDocsService(searchDB: searchDBURL, searchDatabaseFactory: searchDatabaseFactory) { service in
                 let frameworks = try await service.listFrameworks()
                 let totalDocs = try await service.documentCount()
                 return (frameworks, totalDocs)
@@ -62,7 +67,7 @@ extension CLI.Command {
 
 // MARK: - Output Format
 
-extension CLI.Command.ListFrameworks {
+extension CLIImpl.Command.ListFrameworks {
     enum OutputFormat: String, ExpressibleByArgument, CaseIterable {
         case text
         case json
