@@ -44,7 +44,7 @@ extension CLI.Command {
             let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
 
             // Use Services.ServiceContainer for managed lifecycle
-            let (project, files) = try await Services.ServiceContainer.withSampleService(dbPath: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
+            let (project, files) = try await Services.ServiceContainer.withSampleService(samplesDB: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
                 guard let project = try await service.getProject(id: projectId) else {
                     Logging.LiveRecording().error("Project not found: \(projectId)")
                     Logging.LiveRecording().output("Use 'cupertino list-samples' or 'cupertino search --source samples' to find valid project IDs.")

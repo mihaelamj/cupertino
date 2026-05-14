@@ -4,6 +4,7 @@ import Logging
 import LoggingModels
 import Services
 import ServicesModels
+import SharedConstants
 import SharedCore
 
 // MARK: - List Frameworks Command
@@ -37,8 +38,12 @@ extension CLI.Command {
             // semantics that stateless empty structs don't require.
             let searchDatabaseFactory: any SearchModule.DatabaseFactory = LiveSearchDatabaseFactory()
 
+            // Path-DI composition sub-root (#535).
+            let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+                ?? Shared.Paths.live().searchDatabase
+
             // Use Services.ServiceContainer for managed lifecycle
-            let (frameworks, totalDocs) = try await Services.ServiceContainer.withDocsService(dbPath: searchDb, searchDatabaseFactory: searchDatabaseFactory) { service in
+            let (frameworks, totalDocs) = try await Services.ServiceContainer.withDocsService(searchDB: searchDBURL, searchDatabaseFactory: searchDatabaseFactory) { service in
                 let frameworks = try await service.listFrameworks()
                 let totalDocs = try await service.documentCount()
                 return (frameworks, totalDocs)

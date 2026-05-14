@@ -243,8 +243,8 @@ struct TeaserResultsResilienceTests {
         let throwingFactory = ThrowingSearchDatabaseFactory()
         await #expect(throws: (any Error).self) {
             try await Services.ServiceContainer.withTeaserService(
-                searchDbPath: tempDir.path,
-                sampleDbPath: nil,
+                searchDB: tempDir,
+                samplesDB: tempDir.appendingPathComponent("nonexistent-samples.db"),
                 searchDatabaseFactory: throwingFactory,
                 sampleDatabaseFactory: ThrowingSampleDatabaseFactory()
             ) { service in
@@ -268,8 +268,8 @@ struct TeaserResultsResilienceTests {
         let teasers: Services.Formatter.TeaserResults
         do {
             teasers = try await Services.ServiceContainer.withTeaserService(
-                searchDbPath: "/var/empty/intentionally-broken-search.db.\(UUID().uuidString)",
-                sampleDbPath: nil,
+                searchDB: URL(fileURLWithPath: "/var/empty/intentionally-broken-search.db.\(UUID().uuidString)"),
+                samplesDB: URL(fileURLWithPath: "/var/empty/intentionally-broken-samples.db.\(UUID().uuidString)"),
                 searchDatabaseFactory: throwingFactory,
                 sampleDatabaseFactory: ThrowingSampleDatabaseFactory()
             ) { service in

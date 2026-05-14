@@ -47,7 +47,7 @@ extension CLI.Command {
             let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
 
             // Use Services.ServiceContainer for managed lifecycle
-            let file = try await Services.ServiceContainer.withSampleService(dbPath: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
+            let file = try await Services.ServiceContainer.withSampleService(samplesDB: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
                 guard let file = try await service.getFile(projectId: projectId, path: filePath) else {
                     Logging.LiveRecording().error("File not found: \(filePath) in project \(projectId)")
                     Logging.LiveRecording().output("Use 'cupertino read-sample \(projectId)' to list available files.")

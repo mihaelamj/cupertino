@@ -90,15 +90,24 @@ extension CLI.Command {
                 throw ExitCode.failure
             }
 
+            // Path-DI composition sub-root (#535).
+            let paths = Shared.Paths.live()
+            let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+                ?? paths.searchDatabase
+            let samplesDBURL = sampleDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+                ?? Sample.Index.databasePath(baseDirectory: paths.baseDirectory)
+            let packagesDBURL = packagesDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+                ?? paths.packagesDatabase
+
             let result: Services.ReadService.Result
             do {
                 result = try await Services.ReadService.read(
                     identifier: identifier,
                     explicit: explicit,
                     format: documentFormat,
-                    searchDB: searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath },
-                    samplesDB: sampleDb.map { URL(fileURLWithPath: $0).expandingTildeInPath },
-                    packagesDB: packagesDb.map { URL(fileURLWithPath: $0).expandingTildeInPath },
+                    searchDB: searchDBURL,
+                    samplesDB: samplesDBURL,
+                    packagesDB: packagesDBURL,
                     searchDatabaseFactory: searchDatabaseFactory,
                     sampleDatabaseFactory: sampleDatabaseFactory,
                     packageFileLookup: LivePackageFileLookupStrategy()
