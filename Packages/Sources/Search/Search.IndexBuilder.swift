@@ -95,7 +95,7 @@ extension Search {
             archiveDirectory: URL? = nil,
             higDirectory: URL? = nil,
             indexSampleCode: Bool = true,
-            markdownToStructuredPage: @escaping Search.MarkdownToStructuredPage,
+            markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
             sampleCatalogFetch: @escaping Search.SampleCatalogFetch
         ) {
             self.init(
@@ -108,7 +108,7 @@ extension Search {
                     archiveDirectory: archiveDirectory,
                     higDirectory: higDirectory,
                     indexSampleCode: indexSampleCode,
-                    markdownToStructuredPage: markdownToStructuredPage,
+                    markdownStrategy: markdownStrategy,
                     sampleCatalogFetch: sampleCatalogFetch
                 )
             )
@@ -182,13 +182,13 @@ extension Search {
             archiveDirectory: URL? = nil,
             higDirectory: URL? = nil,
             indexSampleCode: Bool = true,
-            markdownToStructuredPage: @escaping Search.MarkdownToStructuredPage,
+            markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
             sampleCatalogFetch: @escaping Search.SampleCatalogFetch
         ) -> [any Search.SourceIndexingStrategy] {
             var strategies: [any Search.SourceIndexingStrategy] = [
                 Search.AppleDocsStrategy(
                     docsDirectory: docsDirectory,
-                    markdownToStructuredPage: markdownToStructuredPage
+                    markdownStrategy: markdownStrategy
                 ),
             ]
             if let dir = evolutionDirectory {
@@ -197,7 +197,7 @@ extension Search {
             if let dir = swiftOrgDirectory {
                 strategies.append(Search.SwiftOrgStrategy(
                     swiftOrgDirectory: dir,
-                    markdownToStructuredPage: markdownToStructuredPage
+                    markdownStrategy: markdownStrategy
                 ))
             }
             if let dir = archiveDirectory {

@@ -60,7 +60,7 @@ extension Indexer {
 
         public static func run(
             _ request: Request,
-            markdownToStructuredPage: @escaping Search.MarkdownToStructuredPage,
+            markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
             sampleCatalogFetch: @escaping Search.SampleCatalogFetch,
             docsIndexingRun: Search.DocsIndexingRun,
             handler: @escaping @Sendable (Event) -> Void = { _ in }
@@ -104,7 +104,7 @@ extension Indexer {
                 archiveDirectory: archiveDirToUse,
                 higDirectory: higDirToUse,
                 clearExisting: request.clear,
-                markdownToStructuredPage: markdownToStructuredPage,
+                markdownStrategy: markdownStrategy,
                 sampleCatalogFetch: sampleCatalogFetch
             )
 
