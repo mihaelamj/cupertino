@@ -424,11 +424,11 @@ let targets: [Target] = {
 
     let searchToolProviderTarget = Target.target(
         name: "SearchToolProvider",
-        dependencies: ["MCPCore", "MCPSharedTools", "SearchModels", "SampleIndexModels", "ServicesModels", "SharedCore", "SharedConstants", "SharedUtils", "Services"]
+        dependencies: ["MCPCore", "MCPSharedTools", "SearchModels", "SampleIndexModels", "ServicesModels", "SharedCore", "SharedConstants", "SharedUtils"]
     )
     let searchToolProviderTestsTarget = Target.testTarget(
         name: "SearchToolProviderTests",
-        dependencies: ["SearchToolProvider", "SearchModels", "SampleIndexModels", "ServicesModels", "MCPSharedTools", "TestSupport"]
+        dependencies: ["SearchToolProvider", "SearchModels", "SampleIndex", "SampleIndexModels", "Services", "ServicesModels", "MCPSharedTools", "TestSupport"]
     )
 
     let mcpClientTarget = Target.target(
@@ -591,7 +591,7 @@ let targets: [Target] = {
     // CLI Command Test Targets
     let serveTestsTarget = Target.testTarget(
         name: "ServeTests",
-        dependencies: ["CLI", "Crawler", "MCPCore", "MCPSupport", "Search", "SearchModels", "SearchToolProvider", "SharedCore", "TestSupport"],
+        dependencies: ["CLI", "Crawler", "MCPCore", "MCPSupport", "Search", "SearchModels", "SearchToolProvider", "SampleIndex", "SampleIndexModels", "Services", "ServicesModels", "SharedCore", "SharedConstants", "TestSupport"],
         path: "Tests/CLICommandTests/ServeTests"
     )
 
