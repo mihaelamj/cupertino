@@ -9,10 +9,10 @@ import SharedModels
 extension Search {
     /// Indexes the Apple sample code catalog into the search index.
     ///
-    /// The catalog is provided via the injected `sampleCatalogFetch` closure,
-    /// which the composition root (the CLI binary) backs with
-    /// `Sample.Core.Catalog`. Test harnesses pass a closure that returns a
-    /// `Search.SampleCatalogState` fixture directly.
+    /// The catalog is provided via the injected `sampleCatalogProvider`
+    /// conformer, which the composition root (the CLI binary) backs with
+    /// `Sample.Core.Catalog`. Test harnesses pass a struct that returns
+    /// a `Search.SampleCatalogState` fixture directly.
     ///
     /// Each entry's framework availability is looked up from the search
     /// index and cached to avoid redundant database round-trips.
@@ -22,27 +22,27 @@ extension Search {
     ///
     /// ## Example
     /// ```swift
-    /// let strategy = Search.SampleCodeStrategy(sampleCatalogFetch: { /* … */ })
+    /// let strategy = Search.SampleCodeStrategy(sampleCatalogProvider: MyProvider())
     /// let stats = try await strategy.indexItems(into: index, progress: nil)
     /// ```
     public struct SampleCodeStrategy: SourceIndexingStrategy {
         /// The source identifier written into the FTS index.
         public let source = "sample-code"
 
-        /// Closure that returns the current state of the Apple sample-code
-        /// catalog. Injected so this target doesn't depend on
-        /// `CoreSampleCode`; the composition root supplies the adapter
-        /// over `Sample.Core.Catalog`.
-        private let sampleCatalogFetch: Search.SampleCatalogFetch
+        /// Conformer that returns the current state of the Apple
+        /// sample-code catalog. Injected so this target doesn't depend
+        /// on `CoreSampleCode`; the composition root supplies the
+        /// adapter over `Sample.Core.Catalog`.
+        private let sampleCatalogProvider: any Search.SampleCatalogProvider
 
         /// Create a strategy for indexing the sample code catalog.
         ///
-        /// - Parameter sampleCatalogFetch: Closure that returns the
-        ///   `Search.SampleCatalogState` to index. Injected at the
+        /// - Parameter sampleCatalogProvider: Conformer that returns
+        ///   the `Search.SampleCatalogState` to index. Injected at the
         ///   composition root so the strategy can read the catalog
         ///   without depending on the `CoreSampleCode` target directly.
-        public init(sampleCatalogFetch: @escaping Search.SampleCatalogFetch) {
-            self.sampleCatalogFetch = sampleCatalogFetch
+        public init(sampleCatalogProvider: any Search.SampleCatalogProvider) {
+            self.sampleCatalogProvider = sampleCatalogProvider
         }
 
         /// Index all sample code entries from the catalog fetch closure.
@@ -58,7 +58,7 @@ extension Search {
             into index: Search.Index,
             progress: Search.IndexingProgressCallback?
         ) async throws -> Search.IndexStats {
-            let state = await sampleCatalogFetch()
+            let state = await sampleCatalogProvider.fetch()
 
             let entries: [Search.SampleCatalogEntry]
             switch state {

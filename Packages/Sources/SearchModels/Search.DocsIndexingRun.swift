@@ -41,7 +41,7 @@ public extension Search {
         public let higDirectory: URL?
         public let clearExisting: Bool
         public let markdownStrategy: any Search.MarkdownToStructuredPageStrategy
-        public let sampleCatalogFetch: Search.SampleCatalogFetch
+        public let sampleCatalogProvider: any Search.SampleCatalogProvider
 
         public init(
             searchDBPath: URL,
@@ -52,7 +52,7 @@ public extension Search {
             higDirectory: URL?,
             clearExisting: Bool,
             markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
-            sampleCatalogFetch: @escaping Search.SampleCatalogFetch
+            sampleCatalogProvider: any Search.SampleCatalogProvider
         ) {
             self.searchDBPath = searchDBPath
             self.docsDirectory = docsDirectory
@@ -62,7 +62,7 @@ public extension Search {
             self.higDirectory = higDirectory
             self.clearExisting = clearExisting
             self.markdownStrategy = markdownStrategy
-            self.sampleCatalogFetch = sampleCatalogFetch
+            self.sampleCatalogProvider = sampleCatalogProvider
         }
     }
 }
