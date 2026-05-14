@@ -371,7 +371,12 @@ struct CupertinoServerFixture {
         // Ensure samples.db exists at the production path so
         // `CLIImpl.Command.Serve.checkForData()` sees data. Empty schema is fine —
         // these tests check MCP framing, not query results.
-        let sampleDBPath = Sample.Index.defaultDatabasePath
+        // Path-DI (#535): the previous Sample.Index.defaultDatabasePath
+        // singleton accessor is deleted; resolve through the explicit
+        // Shared.Paths.live() base directory that the cupertino binary uses.
+        let sampleDBPath = Sample.Index.databasePath(
+            baseDirectory: Shared.Paths.live().baseDirectory
+        )
         if !FileManager.default.fileExists(atPath: sampleDBPath.path) {
             // Synchronous setup of the schema via a blocking task hop.
             // Swift Testing's @Test functions are async, so we can spin up

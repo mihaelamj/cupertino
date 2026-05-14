@@ -93,77 +93,15 @@ extension Shared.Constants {
     }
 
     // MARK: - Default Paths
-
-    /// Default base directory path: ~/.cupertino, unless overridden by a
-    /// `cupertino.config.json` sitting next to the running executable
-    /// (see `Shared.Constants.BinaryConfig`, #211).
-    public static var defaultBaseDirectory: URL {
-        if let override = Shared.Constants.BinaryConfig.shared.resolvedBaseDirectory {
-            return override
-        }
-        return FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(baseDirectoryName)
-    }
-
-    /// Default docs directory: ~/.cupertino/docs
-    public static var defaultDocsDirectory: URL {
-        defaultBaseDirectory.appendingPathComponent(Directory.docs)
-    }
-
-    /// Default Swift Evolution directory: ~/.cupertino/swift-evolution
-    public static var defaultSwiftEvolutionDirectory: URL {
-        defaultBaseDirectory.appendingPathComponent(Directory.swiftEvolution)
-    }
-
-    /// Default Swift.org directory: ~/.cupertino/swift-org
-    public static var defaultSwiftOrgDirectory: URL {
-        defaultBaseDirectory.appendingPathComponent(Directory.swiftOrg)
-    }
-
-    /// Default Swift Book directory: ~/.cupertino/swift-book
-    public static var defaultSwiftBookDirectory: URL {
-        defaultBaseDirectory.appendingPathComponent(Directory.swiftBook)
-    }
-
-    /// Default packages directory: ~/.cupertino/packages
-    public static var defaultPackagesDirectory: URL {
-        defaultBaseDirectory.appendingPathComponent(Directory.packages)
-    }
-
-    /// Default sample code directory: ~/.cupertino/sample-code
-    public static var defaultSampleCodeDirectory: URL {
-        defaultBaseDirectory.appendingPathComponent(Directory.sampleCode)
-    }
-
-    /// Default archive directory: ~/.cupertino/archive
-    public static var defaultArchiveDirectory: URL {
-        defaultBaseDirectory.appendingPathComponent(Directory.archive)
-    }
-
-    /// Default HIG directory: ~/.cupertino/hig
-    public static var defaultHIGDirectory: URL {
-        defaultBaseDirectory.appendingPathComponent(Directory.hig)
-    }
-
-    /// Default metadata file: ~/.cupertino/metadata.json
-    public static var defaultMetadataFile: URL {
-        defaultBaseDirectory.appendingPathComponent(FileName.metadata)
-    }
-
-    /// Default config file: ~/.cupertino/config.json
-    public static var defaultConfigFile: URL {
-        defaultBaseDirectory.appendingPathComponent(FileName.config)
-    }
-
-    /// Default search database: ~/.cupertino/search.db
-    public static var defaultSearchDatabase: URL {
-        defaultBaseDirectory.appendingPathComponent(FileName.searchDatabase)
-    }
-
-    /// Default package-index database: ~/.cupertino/packages.db
-    public static var defaultPackagesDatabase: URL {
-        defaultBaseDirectory.appendingPathComponent(FileName.packagesIndexDatabase)
-    }
+    //
+    // Post-#535: every `Shared.Constants.defaultX` static accessor is
+    // deleted. Each one was a Service Locator reach into
+    // `BinaryConfig.shared.resolvedBaseDirectory` (Seemann 2011 ch. 5)
+    // disguised as an innocuous constant. Callers now resolve paths
+    // through `Shared.Paths` constructed at the composition root, e.g.
+    // `Shared.Paths.live().docsDirectory`. The composition root loads
+    // `BinaryConfig.load(from: BinaryConfig.executableDirectory)` once
+    // and threads explicit URLs downstream — no shared mutable handle.
 
     // MARK: - Application Info
 

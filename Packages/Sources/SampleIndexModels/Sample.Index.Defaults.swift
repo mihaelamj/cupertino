@@ -30,23 +30,12 @@ extension Sample.Index {
         baseDirectory.appendingPathComponent(Shared.Constants.Directory.sampleCode)
     }
 
-    /// Legacy static accessor — kept temporarily during the path-DI arc
-    /// (#535) so existing callers keep compiling while they're migrated
-    /// one at a time to `databasePath(baseDirectory:)`. Reaches for
-    /// `Shared.Constants.defaultBaseDirectory` (which itself reaches for
-    /// the `BinaryConfig.shared` Singleton); both are scheduled for
-    /// deletion at the end of the arc.
-    @available(*, deprecated, message: "Path-DI migration (#535): use Sample.Index.databasePath(baseDirectory:) with an explicit base directory threaded from the composition root.")
-    public static var defaultDatabasePath: URL {
-        Self.databasePath(baseDirectory: Shared.Constants.defaultBaseDirectory)
-    }
-
-    /// Legacy static accessor — see `defaultDatabasePath` for the
-    /// migration plan. Scheduled for deletion at the end of #535.
-    @available(*, deprecated, message: "Path-DI migration (#535): use Sample.Index.sampleCodeDirectory(baseDirectory:) with an explicit base directory threaded from the composition root.")
-    public static var defaultSampleCodeDirectory: URL {
-        Self.sampleCodeDirectory(baseDirectory: Shared.Constants.defaultBaseDirectory)
-    }
+    // Deprecated `defaultDatabasePath` / `defaultSampleCodeDirectory`
+    // wrappers deleted in #535 phase 11. They routed through
+    // `Shared.Constants.defaultBaseDirectory` → `BinaryConfig.shared`,
+    // both of which are also gone. Migration: pass an explicit
+    // `baseDirectory:` resolved from `Shared.Paths.live().baseDirectory`
+    // at the composition root.
 
     /// Map a user-facing platform name (case-insensitive) to the
     /// `projects.min_<x>` column on `samples.db`. Returns nil for

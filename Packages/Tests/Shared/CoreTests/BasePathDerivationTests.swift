@@ -3,14 +3,16 @@ import SharedConstants
 @testable import SharedCore
 import Testing
 
-/// Contract test for #211: every default path Cupertino exposes must derive
-/// from `Shared.Constants.defaultBaseDirectory`. If a command starts hardcoding
-/// `~/.cupertino` directly (or accessing `homeDirectoryForCurrentUser` itself),
-/// the binary-co-located config override breaks for that command. These tests
-/// assert the wiring stays intact.
-@Suite("Default paths derive from defaultBaseDirectory (#211)")
+/// Contract test for #535: every derived path on `Shared.Paths` must sit
+/// under the supplied `baseDirectory`. Post-#535 the previous
+/// `Shared.Constants.defaultX` static accessors (which routed through
+/// `BinaryConfig.shared` — Service Locator) are deleted. The test
+/// asserts the same wiring guarantee but against the explicit
+/// `Shared.Paths(baseDirectory:)` value.
+@Suite("Shared.Paths derives every subpath from its baseDirectory (#535)")
 struct BasePathDerivationTests {
-    private let base = Shared.Constants.defaultBaseDirectory
+    private let base = URL(fileURLWithPath: "/tmp/cupertino-base-path-derivation-test")
+    private var paths: Shared.Paths { Shared.Paths(baseDirectory: base) }
 
     private var basePrefix: String {
         // Trailing slash so "/foo" is not accepted as prefix of "/foobar".
@@ -24,76 +26,73 @@ struct BasePathDerivationTests {
 
     // MARK: - Subdirectories
 
-    @Test("defaultDocsDirectory")
+    @Test("docsDirectory")
     func docs() {
-        assertUnderBase(Shared.Constants.defaultDocsDirectory, expectedLeaf: "docs")
+        assertUnderBase(paths.docsDirectory, expectedLeaf: "docs")
     }
 
-    @Test("defaultSwiftEvolutionDirectory")
+    @Test("swiftEvolutionDirectory")
     func swiftEvolution() {
-        assertUnderBase(Shared.Constants.defaultSwiftEvolutionDirectory, expectedLeaf: "swift-evolution")
+        assertUnderBase(paths.swiftEvolutionDirectory, expectedLeaf: "swift-evolution")
     }
 
-    @Test("defaultSwiftOrgDirectory")
+    @Test("swiftOrgDirectory")
     func swiftOrg() {
-        assertUnderBase(Shared.Constants.defaultSwiftOrgDirectory, expectedLeaf: "swift-org")
+        assertUnderBase(paths.swiftOrgDirectory, expectedLeaf: "swift-org")
     }
 
-    @Test("defaultSwiftBookDirectory")
+    @Test("swiftBookDirectory")
     func swiftBook() {
-        assertUnderBase(Shared.Constants.defaultSwiftBookDirectory, expectedLeaf: "swift-book")
+        assertUnderBase(paths.swiftBookDirectory, expectedLeaf: "swift-book")
     }
 
-    @Test("defaultPackagesDirectory")
+    @Test("packagesDirectory")
     func packagesDir() {
-        assertUnderBase(Shared.Constants.defaultPackagesDirectory, expectedLeaf: "packages")
+        assertUnderBase(paths.packagesDirectory, expectedLeaf: "packages")
     }
 
-    @Test("defaultSampleCodeDirectory")
+    @Test("sampleCodeDirectory")
     func sampleCodeDir() {
-        assertUnderBase(Shared.Constants.defaultSampleCodeDirectory, expectedLeaf: "sample-code")
+        assertUnderBase(paths.sampleCodeDirectory, expectedLeaf: "sample-code")
     }
 
-    @Test("defaultArchiveDirectory")
+    @Test("archiveDirectory")
     func archive() {
-        assertUnderBase(Shared.Constants.defaultArchiveDirectory, expectedLeaf: "archive")
+        assertUnderBase(paths.archiveDirectory, expectedLeaf: "archive")
     }
 
-    @Test("defaultHIGDirectory")
+    @Test("higDirectory")
     func hig() {
-        assertUnderBase(Shared.Constants.defaultHIGDirectory, expectedLeaf: "hig")
+        assertUnderBase(paths.higDirectory, expectedLeaf: "hig")
     }
 
     // MARK: - Files
 
-    @Test("defaultMetadataFile")
+    @Test("metadataFile")
     func metadata() {
-        assertUnderBase(Shared.Constants.defaultMetadataFile, expectedLeaf: "metadata.json")
+        assertUnderBase(paths.metadataFile, expectedLeaf: "metadata.json")
     }
 
-    @Test("defaultConfigFile")
+    @Test("configFile")
     func configFile() {
-        assertUnderBase(Shared.Constants.defaultConfigFile, expectedLeaf: "config.json")
+        assertUnderBase(paths.configFile, expectedLeaf: "config.json")
     }
 
-    @Test("defaultSearchDatabase")
+    @Test("searchDatabase")
     func searchDB() {
-        assertUnderBase(Shared.Constants.defaultSearchDatabase, expectedLeaf: "search.db")
+        assertUnderBase(paths.searchDatabase, expectedLeaf: "search.db")
     }
 
-    @Test("defaultPackagesDatabase")
+    @Test("packagesDatabase")
     func packagesDB() {
-        assertUnderBase(Shared.Constants.defaultPackagesDatabase, expectedLeaf: "packages.db")
+        assertUnderBase(paths.packagesDatabase, expectedLeaf: "packages.db")
     }
 
     // MARK: - Sanity
 
-    @Test("defaultBaseDirectory ends in the expected leaf or BinaryConfig override")
+    @Test("baseDirectory round-trips through Shared.Paths init")
     func baseSanity() {
-        // Either we hit the standard fallback (".cupertino") or BinaryConfig
-        // returned a custom override URL. Both are valid; we just need a
-        // non-empty path.
-        #expect(!base.path.isEmpty)
+        #expect(paths.baseDirectory == base)
         #expect(base.isFileURL)
     }
 }

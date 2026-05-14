@@ -243,67 +243,65 @@ func priorityPackagesCatalogPackageLookup() async {
     // Reset after test - must await to avoid race condition
 }
 
-@Test("Core.PackageIndexing.PriorityPackagesCatalog loads user file when available")
+@Test("Core.PackageIndexing.PriorityPackagesCatalog reads user-selections file under its baseDirectory")
 func priorityPackagesCatalogLoadsUserFile() async throws {
-    // Path-DI migration (#535): PriorityPackagesCatalog is now an actor.
+    // Path-DI migration (#535): PriorityPackagesCatalog is now an actor
+    // constructed with an explicit baseDirectory. Pre-#535 this test
+    // checked the user file at ~/.cupertino/selected-packages.json via
+    // the BinaryConfig.shared singleton — that path is gone. Rewritten
+    // to verify the same precedence (user file wins over bundled) but
+    // against a per-test tempDir baseDirectory.
     let tempDir = FileManager.default.temporaryDirectory
-        .appendingPathComponent("priority-test-\(UUID().uuidString)")
-    let priorityCatalog = Core.PackageIndexing.PriorityPackagesCatalog(
-        baseDirectory: tempDir,
-        useBundledOnly: true
-    )
-    // This test verifies issue #107 fix: user file takes precedence over bundled
-    let userFileURL = Shared.Constants.defaultBaseDirectory
-        .appendingPathComponent(Shared.Constants.FileName.selectedPackages)
+        .appendingPathComponent("priority-loads-user-file-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: tempDir) }
 
-    // Clear cache and ensure we're NOT using bundled-only mode
-
-    // Check if user file exists
-    guard FileManager.default.fileExists(atPath: userFileURL.path) else {
-        // No user file - skip this test (falls back to bundled which is tested elsewhere)
-        print("   ⚠️  Skipped: No user selections file at \(userFileURL.path)")
-        return
-    }
-
-    // Get packages from catalog (should read user file).
-    // Calling allPackages also triggers `ensureUserSelectionsFileExists`,
-    // which under #218 additively merges new embedded entries into the
-    // user file. Read the file AFTER allPackages so the user-file count
-    // reflects the post-merge state.
-    let allPackages = await priorityCatalog.allPackages
-
-    // Read user file to get expected count (post-merge).
-    let data = try Data(contentsOf: userFileURL)
-    guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-          let tiers = json["tiers"] as? [String: Any] else {
-        throw TestError("Failed to parse user selections file")
-    }
-
-    var userPackageCount = 0
-    for (_, tierValue) in tiers {
-        if let tier = tierValue as? [String: Any],
-           let packages = tier["packages"] as? [[String: Any]] {
-            userPackageCount += packages.count
+    // Write a deliberately minimal user selections file. The actor's
+    // ensureUserSelectionsFileExists() will additively merge embedded
+    // entries on top (the #218 behaviour); we just need to confirm the
+    // user file is read at all by checking the post-load count is
+    // non-zero AND derives from the on-disk version + merge.
+    let userFileURL = tempDir.appendingPathComponent(Shared.Constants.FileName.selectedPackages)
+    let minimalJSON = #"""
+    {
+        "version": "test",
+        "lastUpdated": "2026-05-15T00:00:00Z",
+        "description": "test fixture",
+        "tiers": {
+            "apple_official": {
+                "description": "Apple test tier",
+                "count": 1,
+                "packages": [
+                    {"owner": "apple", "repo": "swift", "url": "https://github.com/apple/swift"}
+                ]
+            },
+            "ecosystem": {
+                "description": "Ecosystem test tier",
+                "count": 0,
+                "packages": []
+            }
+        },
+        "stats": {
+            "totalPriorityPackages": 1
         }
     }
+    """#
+    try minimalJSON.write(to: userFileURL, atomically: true, encoding: .utf8)
 
-    // Verify catalog loaded user file (count should match)
-    #expect(
-        allPackages.count == userPackageCount,
-        "Catalog should load \(userPackageCount) packages from user file, got \(allPackages.count)"
+    let priorityCatalog = Core.PackageIndexing.PriorityPackagesCatalog(
+        baseDirectory: tempDir,
+        useBundledOnly: false
     )
+    let allPackages = await priorityCatalog.allPackages
 
-    // Bundled file has 36 packages - if we got more, we're reading user file
-    if userPackageCount > 36 {
-        #expect(
-            allPackages.count > 36,
-            "User file has \(userPackageCount) packages, should not fall back to bundled 36"
-        )
-    }
-
-    print("   ✅ User file loaded: \(allPackages.count) packages (user file has \(userPackageCount))")
-
-    // Restore bundled-only for other tests
+    // Catalog must include the apple/swift entry from the user file
+    // (whether or not #218 merge added more from the embedded list).
+    #expect(
+        allPackages.contains { $0.repo == "swift" && ($0.owner ?? "") == "apple" },
+        "Catalog should load the user file's apple/swift entry"
+    )
+    #expect(!allPackages.isEmpty, "Catalog should load at least one package")
+    print("   ✅ User file loaded: \(allPackages.count) packages")
 }
 
 /// Custom test error
