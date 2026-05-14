@@ -3,7 +3,6 @@ import MCPCore
 import MCPSharedTools
 import SampleIndexModels
 import SearchModels
-import Services
 import ServicesModels
 import SharedConstants
 import SharedCore
@@ -49,34 +48,11 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         self.unifiedService = unifiedService
     }
 
-    /// Convenience init that wraps both indexes with the default service
-    /// implementations. Kept for test harnesses + back-compat with code
-    /// that constructed `CompositeToolProvider` with just the two
-    /// database references. Composition-root code (the CLI's
-    /// `serve` command) should prefer the explicit init above.
-    public init(searchIndex: (any Search.Database)?, sampleDatabase: (any Sample.Index.Reader)?) {
-        let docs = searchIndex.map(Services.DocsSearchService.init(database:))
-        let sample = sampleDatabase.map(Sample.Search.Service.init(database:))
-        // TeaserService + UnifiedSearchService take both seams (some
-        // sources are docs-side, others sample-side). Always constructible
-        // — they internally short-circuit when both inputs are nil.
-        let teaser = Services.TeaserService(
-            searchIndex: searchIndex,
-            sampleDatabase: sampleDatabase
-        )
-        let unified = Services.UnifiedSearchService(
-            searchIndex: searchIndex,
-            sampleDatabase: sampleDatabase
-        )
-        self.init(
-            searchIndex: searchIndex,
-            sampleDatabase: sampleDatabase,
-            docsService: docs,
-            sampleService: sample,
-            teaserService: teaser,
-            unifiedService: unified
-        )
-    }
+    // The two-argument convenience init that constructed concrete
+    // service actors from the index seams moved to the
+    // SearchToolProviderTests target (`CompositeToolProvider+ServicesWiring.swift`).
+    // Production code calls the explicit six-argument init above; that
+    // shape keeps `import Services` out of this file.
 
     // MARK: - ToolProvider
 
