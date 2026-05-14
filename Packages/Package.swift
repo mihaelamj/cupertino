@@ -308,6 +308,10 @@ let targets: [Target] = {
         name: "CrawlerModels",
         dependencies: ["SharedConstants", "SharedModels"]
     )
+    let crawlerModelsTestsTarget = Target.testTarget(
+        name: "CrawlerModelsTests",
+        dependencies: ["CrawlerModels", "SharedConstants", "SharedModels"]
+    )
     let crawlerTarget = Target.target(
         name: "Crawler",
         dependencies: [
@@ -701,6 +705,7 @@ let targets: [Target] = {
         coreTarget,
         coreTestsTarget,
         crawlerModelsTarget,
+        crawlerModelsTestsTarget,
         crawlerTarget,
         crawlerTestsTarget,
         cleanupTarget,
