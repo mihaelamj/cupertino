@@ -2,6 +2,7 @@ import Foundation
 import SharedConstants
 import SharedCore
 import SharedUtils
+import SQLite3
 
 // MARK: - Shared publishing helpers
 
@@ -46,6 +47,103 @@ extension Release.Publishing {
     static func fileSize(at url: URL) throws -> Int64 {
         let attrs = try FileManager.default.attributesOfItem(atPath: url.path)
         return attrs[.size] as? Int64 ?? 0
+    }
+
+    // MARK: - WAL checkpoint (#236)
+
+    /// Outcome of a `wal_checkpoint(TRUNCATE)` on a SQLite file.
+    /// `framesWritten` is the number of WAL frames moved into the
+    /// main DB; `framesTotal` is the total WAL frame count before
+    /// the checkpoint started. A `busy` return means at least one
+    /// reader or writer was still using the WAL when the checkpoint
+    /// ran — TRUNCATE blocks on readers, so for a release flow where
+    /// nothing else should be touching the DB this would be a sign
+    /// the host machine has a stray cupertino process.
+    struct CheckpointOutcome {
+        let busy: Bool
+        let framesWritten: Int32
+        let framesTotal: Int32
+        let walFileExisted: Bool
+        let walSizeAfter: Int64
+    }
+
+    enum CheckpointError: Swift.Error, CustomStringConvertible {
+        case openFailed(path: String, message: String)
+        case checkpointFailed(path: String, message: String)
+        case walNotTruncated(path: String, sizeBytes: Int64)
+
+        var description: String {
+            switch self {
+            case .openFailed(let path, let message):
+                "Could not open \(path) for checkpoint: \(message)"
+            case .checkpointFailed(let path, let message):
+                "PRAGMA wal_checkpoint(TRUNCATE) failed on \(path): \(message)"
+            case .walNotTruncated(let path, let size):
+                "WAL sidecar at \(path) remained \(size) bytes after checkpoint — refusing to zip a partial bundle."
+            }
+        }
+    }
+
+    /// Run `PRAGMA wal_checkpoint(TRUNCATE)` on the SQLite file at
+    /// `dbURL`, fold any WAL pages into the main file, and confirm
+    /// the `.db-wal` sidecar is gone (or shrunk to zero bytes).
+    ///
+    /// Used by `Release.Command.Database` before zipping each
+    /// cupertino DB for the GitHub Release. The bundled `.db` files
+    /// users download via `cupertino setup` MUST contain all data —
+    /// any pages still in a `.db-wal` sidecar at zip time would
+    /// silently be missing from the user's installed corpus.
+    /// See #236 and `docs/artifacts/folders/*.db.md`.
+    @discardableResult
+    static func checkpointTruncate(at dbURL: URL) throws -> CheckpointOutcome {
+        var db: OpaquePointer?
+        guard sqlite3_open(dbURL.path, &db) == SQLITE_OK else {
+            let message = db.flatMap { String(cString: sqlite3_errmsg($0)) } ?? "unknown sqlite3 error"
+            sqlite3_close(db)
+            throw CheckpointError.openFailed(path: dbURL.path, message: message)
+        }
+        defer { sqlite3_close(db) }
+
+        // sqlite3_wal_checkpoint_v2 returns the busy / frame counts
+        // we need; the PRAGMA-string form swallows them. Per the
+        // SQLite docs:
+        //   pnLog out: Size of WAL log in frames
+        //   pnCkpt out: Total number of frames checkpointed
+        // Both are -1 if not in WAL mode.
+        var framesLog: Int32 = 0
+        var framesCheckpointed: Int32 = 0
+        let rc = sqlite3_wal_checkpoint_v2(db, nil, SQLITE_CHECKPOINT_TRUNCATE, &framesLog, &framesCheckpointed)
+        // SQLITE_OK (0) or SQLITE_BUSY (5). Both are non-fatal in
+        // theory; SQLITE_BUSY here would be very surprising in a
+        // release flow.
+        guard rc == SQLITE_OK || rc == SQLITE_BUSY else {
+            let message = String(cString: sqlite3_errmsg(db))
+            throw CheckpointError.checkpointFailed(path: dbURL.path, message: "rc=\(rc) \(message)")
+        }
+
+        let walURL = URL(fileURLWithPath: dbURL.path + "-wal")
+        let walExists = FileManager.default.fileExists(atPath: walURL.path)
+        let walSize: Int64
+        if walExists {
+            walSize = (try? fileSize(at: walURL)) ?? 0
+        } else {
+            walSize = 0
+        }
+
+        // TRUNCATE either deletes the sidecar or shrinks it to 0.
+        // Anything else means data is still trapped in the WAL —
+        // refuse to ship a partial bundle.
+        if walSize > 0 {
+            throw CheckpointError.walNotTruncated(path: walURL.path, sizeBytes: walSize)
+        }
+
+        return CheckpointOutcome(
+            busy: rc == SQLITE_BUSY,
+            framesWritten: framesCheckpointed,
+            framesTotal: framesLog,
+            walFileExisted: walExists,
+            walSizeAfter: walSize
+        )
     }
 
     static func createZip(containing files: [URL], at destination: URL) throws {
