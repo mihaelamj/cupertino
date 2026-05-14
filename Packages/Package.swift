@@ -484,7 +484,7 @@ let targets: [Target] = {
     // ---------- Indexer (#244: SaveCommand indexer + preflight lift) ----------
     let indexerTarget = Target.target(
         name: "Indexer",
-        dependencies: ["SharedCore", "SharedConstants", "SharedUtils", "Search", "SampleIndex", "CoreProtocols", "Core", "CoreSampleCode", "Logging"]
+        dependencies: ["SharedCore", "SharedConstants", "SharedUtils", "Search", "SampleIndex", "CoreSampleCode", "Logging"]
     )
     let indexerTestsTarget = Target.testTarget(
         name: "IndexerTests",
