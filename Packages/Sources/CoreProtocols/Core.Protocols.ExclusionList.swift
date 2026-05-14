@@ -10,7 +10,7 @@ extension Core.Protocols {
         /// Load the exclusion set from the standard location. Missing or malformed
         /// files return an empty set — hand-editing mistakes shouldn't brick the fetch.
         public static func load(
-            from directory: URL = Shared.Constants.defaultBaseDirectory
+            from directory: URL
         ) -> Set<String> {
             let fileURL = directory.appendingPathComponent(Shared.Constants.FileName.excludedPackages)
             guard FileManager.default.fileExists(atPath: fileURL.path) else {

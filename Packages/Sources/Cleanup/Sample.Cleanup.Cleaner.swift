@@ -31,7 +31,7 @@ extension Sample.Cleanup {
         ]
 
         public init(
-            sampleCodeDirectory: URL = Shared.Constants.defaultSampleCodeDirectory,
+            sampleCodeDirectory: URL,
             dryRun: Bool = false,
             keepOriginals: Bool = false,
             logger: any LoggingModels.Logging.Recording

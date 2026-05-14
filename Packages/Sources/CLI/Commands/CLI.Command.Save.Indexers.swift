@@ -182,8 +182,10 @@ extension CLI.Command.Save {
     }
 
     func runPackagesIndexer(packagesRoot: URL) async throws {
+        let paths = Shared.Paths.live()
         let request = Indexer.PackagesService.Request(
             packagesRoot: packagesRoot,
+            packagesDB: paths.packagesDatabase,
             clear: clear
         )
 

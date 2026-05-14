@@ -128,9 +128,11 @@ private var userExclusionsURL: URL {
 }
 
 /// Load excluded "owner/repo" entries from disk; empty set if absent/malformed.
+/// TUI is a composition root binary, so resolving the base directory via
+/// `Shared.Paths.live()` here is the right shape (per the path-DI arc, #535).
 @MainActor
 func loadExcludedPackages() -> Set<String> {
-    Core.Protocols.ExclusionList.load()
+    Core.Protocols.ExclusionList.load(from: Shared.Paths.live().baseDirectory)
 }
 
 /// Load the resolved closure's non-seed entries so the TUI can flag them as

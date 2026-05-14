@@ -39,7 +39,7 @@ extension Search {
         private let index: PackageIndex
 
         public init(
-            rootDirectory: URL = Shared.Constants.defaultPackagesDirectory,
+            rootDirectory: URL,
             index: PackageIndex
         ) {
             self.rootDirectory = rootDirectory

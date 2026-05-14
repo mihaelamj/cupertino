@@ -32,7 +32,7 @@ extension Search {
         private let availability: Search.AvailabilityFilter?
 
         public init(
-            dbPath: URL = Shared.Constants.defaultPackagesDatabase,
+            dbPath: URL,
             availability: Search.AvailabilityFilter? = nil
         ) {
             self.dbPath = dbPath

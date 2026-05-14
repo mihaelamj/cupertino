@@ -715,11 +715,14 @@ extension CLI.Command {
                 )
             }
 
-            let exclusions = Core.Protocols.ExclusionList.load()
+            // Path-DI arc (#535): construct a `Shared.Paths` at the
+            // command's composition sub-root and pass explicit URLs.
+            let paths = Shared.Paths.live()
+            let exclusions = Core.Protocols.ExclusionList.load(from: paths.baseDirectory)
             let seedChecksum = Core.PackageIndexing.ResolvedPackagesStore.checksum(seeds: seedRefs, exclusions: exclusions)
-            let resolvedStoreURL = Shared.Constants.defaultBaseDirectory
+            let resolvedStoreURL = paths.baseDirectory
                 .appendingPathComponent(Shared.Constants.FileName.resolvedPackages)
-            let canonicalCacheURL = Shared.Constants.defaultBaseDirectory
+            let canonicalCacheURL = paths.baseDirectory
                 .appendingPathComponent(".cache")
                 .appendingPathComponent(Shared.Constants.FileName.canonicalOwnersCache)
 
