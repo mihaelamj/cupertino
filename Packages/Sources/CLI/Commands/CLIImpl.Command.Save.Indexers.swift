@@ -36,11 +36,17 @@ extension CLIImpl.Command.Save {
             clear: clear
         )
 
+        // Path-DI composition sub-root (#535): catalog actor takes
+        // the resolved sample-code directory at construction.
+        let sampleCatalogActor = Sample.Core.Catalog(
+            sampleCodeDirectory: Shared.Paths.live().sampleCodeDirectory
+        )
+
         let tracker = ProgressTracker()
         let outcome = try await Indexer.DocsService.run(
             request,
             markdownStrategy: LiveMarkdownToStructuredPageStrategy(),
-            sampleCatalogProvider: LiveSampleCatalogProvider(),
+            sampleCatalogProvider: LiveSampleCatalogProvider(catalog: sampleCatalogActor),
             docsIndexingRunner: LiveDocsIndexingRunner()
         ) { event in
             Self.handleDocsEvent(event, tracker: tracker)
@@ -96,14 +102,16 @@ extension CLIImpl.Command.Save {
     // MARK: - Sample catalog adapter
 
     /// Concrete `Search.SampleCatalogProvider` (GoF Strategy) that
-    /// bridges `Sample.Core.Catalog` (the CoreSampleCode singleton)
+    /// bridges `Sample.Core.Catalog` (a per-install actor, post-#535)
     /// to the catalog-state shape the Search `SampleCodeStrategy`
     /// reads. Lives at the CLI composition root so neither Search nor
     /// Indexer needs to import `CoreSampleCode`.
     struct LiveSampleCatalogProvider: Search.SampleCatalogProvider {
+        let catalog: Sample.Core.Catalog
+
         func fetch() async -> Search.SampleCatalogState {
-            let entries = await Sample.Core.Catalog.allEntries
-            let loaded = await Sample.Core.Catalog.loadedSource ?? .missing
+            let entries = await catalog.allEntries
+            let loaded = await catalog.loadedSource ?? .missing
             switch loaded {
             case .onDisk:
                 let mapped = entries.map { entry in
@@ -318,7 +326,10 @@ extension CLIImpl.Command.Save {
             }
 
             onPhase(.loadingCatalog)
-            let catalogEntries = await Sample.Core.Catalog.allEntries
+            // Path-DI (#535): construct catalog actor with the input's
+            // sample-code directory rather than reaching for the singleton.
+            let catalog = Sample.Core.Catalog(sampleCodeDirectory: input.sampleCodeDir)
+            let catalogEntries = await catalog.allEntries
             onPhase(.catalogLoaded(entryCount: catalogEntries.count))
 
             let entries = catalogEntries.map { entry in
