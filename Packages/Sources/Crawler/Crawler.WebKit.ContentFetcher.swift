@@ -1,3 +1,4 @@
+import CrawlerModels
 import Foundation
 import SharedCore
 #if canImport(WebKit)

@@ -306,12 +306,15 @@ let targets: [Target] = {
     )
 
     // ---------- Crawler (v1.2 refactor 2.5: extracted from Core — web crawlers + WebKit fetcher) ----------
+    let crawlerModelsTarget = Target.target(
+        name: "CrawlerModels",
+        dependencies: ["SharedConstants", "SharedModels"]
+    )
     let crawlerTarget = Target.target(
         name: "Crawler",
         dependencies: [
+            "CrawlerModels",
             "CoreProtocols",
-            "CoreJSONParser",
-            "Core",
             "SharedCore",
             "SharedConfiguration",
             "SharedConstants",
@@ -323,7 +326,7 @@ let targets: [Target] = {
     )
     let crawlerTestsTarget = Target.testTarget(
         name: "CrawlerTests",
-        dependencies: ["Crawler", "Core", "SharedCore", "SharedConstants", "SharedModels", "TestSupport"]
+        dependencies: ["Crawler", "CrawlerModels", "Core", "CoreJSONParser", "CorePackageIndexing", "SharedCore", "SharedConstants", "SharedModels", "TestSupport"]
     )
 
     let cleanupTarget = Target.target(
@@ -629,13 +632,26 @@ let targets: [Target] = {
 
     let fetchTestsTarget = Target.testTarget(
         name: "FetchTests",
-        dependencies: ["CLI", "CoreProtocols", "CorePackageIndexing", "Core", "Crawler", "Ingest", "SharedCore", "TestSupport"],
+        dependencies: ["CLI", "CoreProtocols", "CorePackageIndexing", "CoreJSONParser", "Core", "Crawler", "CrawlerModels", "Ingest", "SharedCore", "TestSupport"],
         path: "Tests/CLICommandTests/FetchTests"
     )
 
     let saveTestsTarget = Target.testTarget(
         name: "SaveTests",
-        dependencies: ["CLI", "CoreProtocols", "Core", "Crawler", "Indexer", "Search", "SearchModels", "SharedCore", "TestSupport"],
+        dependencies: [
+            "CLI",
+            "CoreProtocols",
+            "Core",
+            "CoreJSONParser",
+            "CorePackageIndexing",
+            "Crawler",
+            "CrawlerModels",
+            "Indexer",
+            "Search",
+            "SearchModels",
+            "SharedCore",
+            "TestSupport",
+        ],
         path: "Tests/CLICommandTests/SaveTests"
     )
 
@@ -686,6 +702,7 @@ let targets: [Target] = {
         coreSampleCodeTestsTarget,
         coreTarget,
         coreTestsTarget,
+        crawlerModelsTarget,
         crawlerTarget,
         crawlerTestsTarget,
         cleanupTarget,

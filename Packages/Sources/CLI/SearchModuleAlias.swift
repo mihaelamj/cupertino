@@ -1,3 +1,9 @@
+import Core
+import CoreJSONParser
+import CorePackageIndexing
+import CoreProtocols
+import Crawler
+import CrawlerModels
 import Foundation
 import MCPCore
 import MCPSupport
@@ -8,6 +14,7 @@ import SearchModels
 import Services
 import ServicesModels
 import SharedConstants
+import SharedModels
 
 // MARK: - Search Module Disambiguator
 
@@ -98,3 +105,89 @@ struct LiveSampleIndexDatabaseFactory: Sample.Index.DatabaseFactory {
 }
 
 let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
+
+// MARK: - Production Crawler Strategies (#505)
+
+// Concrete `Crawler.HTMLParserStrategy` (GoF Strategy) — wraps
+// `Core.Parser.HTML` pure static methods. Crawler doesn't import
+// `Core`; only this composition root does. Same shape as
+// `LiveMarkdownToStructuredPageStrategy` (#496).
+
+struct LiveHTMLParserStrategy: Crawler.HTMLParserStrategy {
+    func convert(html: String, url: URL) -> String {
+        Core.Parser.HTML.convert(html, url: url)
+    }
+
+    func toStructuredPage(
+        html: String,
+        url: URL,
+        source: Shared.Models.StructuredDocumentationPage.Source,
+        depth: Int?
+    ) -> Shared.Models.StructuredDocumentationPage? {
+        Core.Parser.HTML.toStructuredPage(html, url: url, source: source, depth: depth)
+    }
+
+    func looksLikeHTTPErrorPage(html: String) -> Bool {
+        Core.Parser.HTML.looksLikeHTTPErrorPage(html: html)
+    }
+
+    func looksLikeJavaScriptFallback(html: String) -> Bool {
+        Core.Parser.HTML.looksLikeJavaScriptFallback(html: html)
+    }
+}
+
+let htmlParserStrategy: any Crawler.HTMLParserStrategy = LiveHTMLParserStrategy()
+
+// Concrete `Crawler.AppleJSONParserStrategy` — wraps
+// `Core.JSONParser.AppleJSONToMarkdown` pure static methods.
+
+struct LiveAppleJSONParserStrategy: Crawler.AppleJSONParserStrategy {
+    func convert(json: Data, url: URL) -> String? {
+        Core.JSONParser.AppleJSONToMarkdown.convert(json, url: url)
+    }
+
+    func toStructuredPage(
+        json: Data,
+        url: URL,
+        depth: Int?
+    ) -> Shared.Models.StructuredDocumentationPage? {
+        Core.JSONParser.AppleJSONToMarkdown.toStructuredPage(json, url: url, depth: depth)
+    }
+
+    func jsonAPIURL(from documentationURL: URL) -> URL? {
+        Core.JSONParser.AppleJSONToMarkdown.jsonAPIURL(from: documentationURL)
+    }
+
+    func documentationURL(from jsonAPIURL: URL) -> URL? {
+        Core.JSONParser.AppleJSONToMarkdown.documentationURL(from: jsonAPIURL)
+    }
+
+    func extractLinks(from json: Data) -> [URL] {
+        Core.JSONParser.AppleJSONToMarkdown.extractLinks(from: json)
+    }
+}
+
+let appleJSONParserStrategy: any Crawler.AppleJSONParserStrategy = LiveAppleJSONParserStrategy()
+
+// Concrete `Crawler.PriorityPackageStrategy` — wraps
+// `Core.PackageIndexing.PriorityPackageGenerator` (an actor). Used
+// only when a Swift.org crawl completes and the priority-package
+// catalog needs regenerating.
+
+struct LivePriorityPackageStrategy: Crawler.PriorityPackageStrategy {
+    func generate(
+        swiftOrgDocsPath: URL,
+        outputPath: URL
+    ) async throws -> Crawler.PriorityPackageOutcome {
+        let generator = Core.PackageIndexing.PriorityPackageGenerator(
+            swiftOrgDocsPath: swiftOrgDocsPath,
+            outputPath: outputPath
+        )
+        let list = try await generator.generate()
+        return Crawler.PriorityPackageOutcome(
+            totalUniqueReposFound: list.stats.totalUniqueReposFound
+        )
+    }
+}
+
+let priorityPackageStrategy: any Crawler.PriorityPackageStrategy = LivePriorityPackageStrategy()

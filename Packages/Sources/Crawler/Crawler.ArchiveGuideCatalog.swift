@@ -1,4 +1,5 @@
 import CoreProtocols
+import CrawlerModels
 import Foundation
 import Resources
 import SharedConstants

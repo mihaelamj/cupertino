@@ -89,13 +89,9 @@ EXEMPT_TARGETS=(
 # from these targets still fail; the goal is to migrate each
 # grandfathered target out of this list as its leaks are cleaned up.
 #
-# Crawler: imports Core, CoreJSONParser, CorePackageIndexing. The
-#   crawl pipeline pulls together every part of the corpus-shaping
-#   stack; carving its Models companion is a Phase B follow-up
-#   tracked at #505.
-GRANDFATHERED_TARGETS=(
-    Crawler
-)
+# Empty after #505 closed: Crawler routed its three concrete-Core
+# deps through Strategy protocols in CrawlerModels.
+GRANDFATHERED_TARGETS=()
 
 is_exempt() {
     local target="$1"

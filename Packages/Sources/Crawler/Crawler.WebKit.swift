@@ -1,4 +1,5 @@
 import CoreProtocols
+import CrawlerModels
 import Foundation
 
 // MARK: - Crawler.WebKit anchor details
