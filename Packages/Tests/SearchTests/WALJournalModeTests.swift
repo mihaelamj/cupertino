@@ -114,4 +114,90 @@ struct WALJournalModeTests {
         // is -1 = unlimited).
         #expect(limit == 67108864, "Search.Index should set journal_size_limit=64 MiB (got \(limit ?? -1))")
     }
+
+    // MARK: - Search.PackageIndex per-connection PRAGMAs
+
+    @Test("Search.PackageIndex sets synchronous=NORMAL on its own connection")
+    func packageIndexSetsSynchronousNormal() async throws {
+        let tempDB = FileManager.default.temporaryDirectory
+            .appendingPathComponent("wal-pkg-sync-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: tempDB) }
+
+        let index = try await Search.PackageIndex(dbPath: tempDB)
+        let mode = await index.currentSynchronousMode()
+        await index.disconnect()
+
+        #expect(mode == 1, "Search.PackageIndex should set synchronous=NORMAL (got \(mode ?? -1))")
+    }
+
+    @Test("Search.PackageIndex sets journal_size_limit=64MB on its own connection")
+    func packageIndexSetsJournalSizeLimit() async throws {
+        let tempDB = FileManager.default.temporaryDirectory
+            .appendingPathComponent("wal-pkg-jsl-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: tempDB) }
+
+        let index = try await Search.PackageIndex(dbPath: tempDB)
+        let limit = await index.currentJournalSizeLimit()
+        await index.disconnect()
+
+        #expect(limit == 67108864, "Search.PackageIndex should set journal_size_limit=64 MiB (got \(limit ?? -1))")
+    }
+
+    @Test("Re-opening an already-WAL packages.db stays in WAL (idempotent PRAGMA)")
+    func packageIndexReopenIsIdempotent() async throws {
+        let tempDB = FileManager.default.temporaryDirectory
+            .appendingPathComponent("wal-pkg-reopen-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: tempDB) }
+
+        let first = try await Search.PackageIndex(dbPath: tempDB)
+        await first.disconnect()
+        #expect(Diagnostics.Probes.journalMode(at: tempDB) == "wal")
+
+        let second = try await Search.PackageIndex(dbPath: tempDB)
+        await second.disconnect()
+        #expect(Diagnostics.Probes.journalMode(at: tempDB) == "wal")
+    }
+
+    // MARK: - Sample.Index.Database per-connection PRAGMAs
+
+    @Test("Sample.Index.Database sets synchronous=NORMAL on its own connection")
+    func sampleIndexSetsSynchronousNormal() async throws {
+        let tempDB = FileManager.default.temporaryDirectory
+            .appendingPathComponent("wal-sample-sync-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: tempDB) }
+
+        let database = try await Sample.Index.Database(dbPath: tempDB)
+        let mode = await database.currentSynchronousMode()
+        await database.disconnect()
+
+        #expect(mode == 1, "Sample.Index.Database should set synchronous=NORMAL (got \(mode ?? -1))")
+    }
+
+    @Test("Sample.Index.Database sets journal_size_limit=64MB on its own connection")
+    func sampleIndexSetsJournalSizeLimit() async throws {
+        let tempDB = FileManager.default.temporaryDirectory
+            .appendingPathComponent("wal-sample-jsl-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: tempDB) }
+
+        let database = try await Sample.Index.Database(dbPath: tempDB)
+        let limit = await database.currentJournalSizeLimit()
+        await database.disconnect()
+
+        #expect(limit == 67108864, "Sample.Index.Database should set journal_size_limit=64 MiB (got \(limit ?? -1))")
+    }
+
+    @Test("Re-opening an already-WAL samples.db stays in WAL (idempotent PRAGMA)")
+    func sampleIndexReopenIsIdempotent() async throws {
+        let tempDB = FileManager.default.temporaryDirectory
+            .appendingPathComponent("wal-sample-reopen-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: tempDB) }
+
+        let first = try await Sample.Index.Database(dbPath: tempDB)
+        await first.disconnect()
+        #expect(Diagnostics.Probes.journalMode(at: tempDB) == "wal")
+
+        let second = try await Sample.Index.Database(dbPath: tempDB)
+        await second.disconnect()
+        #expect(Diagnostics.Probes.journalMode(at: tempDB) == "wal")
+    }
 }
