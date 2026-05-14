@@ -160,7 +160,7 @@ struct MCPCommandTests {
 
         // Create search index with test data
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath)
+        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
 
         // Index a test document
         try await searchIndex.indexDocument(Search.Index.IndexDocumentParams(
@@ -206,7 +206,7 @@ struct MCPCommandTests {
 
         // Create and populate search index
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath)
+        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
 
         try await searchIndex.indexDocument(Search.Index.IndexDocumentParams(
             uri: "https://developer.apple.com/documentation/swift/array",
@@ -407,7 +407,7 @@ struct MCPServerIntegrationTests {
         // Step 2: Build index
         print("\n   🔍 Step 2: Building search index...")
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath)
+        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
 
         let metadata = try Shared.Models.CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
         let builder = Search.IndexBuilder(
@@ -416,7 +416,7 @@ struct MCPServerIntegrationTests {
             docsDirectory: tempDir,
             evolutionDirectory: nil,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogProvider: MissingSampleCatalogProvider()
+            sampleCatalogProvider: MissingSampleCatalogProvider(), logger: Logging.NoopRecording()
         )
         try await builder.buildIndex()
         print("   ✅ Index built")

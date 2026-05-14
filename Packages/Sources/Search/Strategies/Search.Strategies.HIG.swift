@@ -1,5 +1,5 @@
 import Foundation
-import Logging
+import LoggingModels
 import SearchModels
 import SharedConstants
 import SharedModels
@@ -27,11 +27,18 @@ extension Search {
         /// Root directory containing the HIG Markdown files.
         public let higDirectory: URL
 
+        /// GoF Strategy seam for log emission (1994 p. 315).
+        private let logger: any LoggingModels.Logging.Recording
+
         /// Create a strategy for indexing Human Interface Guidelines documentation.
         ///
         /// - Parameter higDirectory: The root directory of the HIG corpus.
-        public init(higDirectory: URL) {
+        public init(
+            higDirectory: URL,
+            logger: any LoggingModels.Logging.Recording
+        ) {
             self.higDirectory = higDirectory
+            self.logger = logger
         }
 
         /// Index all HIG Markdown files found under ``higDirectory``.
@@ -48,7 +55,7 @@ extension Search {
             progress: Search.IndexingProgressCallback?
         ) async throws -> Search.IndexStats {
             guard FileManager.default.fileExists(atPath: higDirectory.path) else {
-                Logging.Log.info(
+                logger.info(
                     "⚠️  HIG directory not found: \(higDirectory.path)",
                     category: .search
                 )
@@ -57,11 +64,11 @@ extension Search {
 
             let markdownFiles = try Search.StrategyHelpers.findMarkdownFiles(in: higDirectory)
             guard !markdownFiles.isEmpty else {
-                Logging.Log.info("⚠️  No HIG documentation found", category: .search)
+                logger.info("⚠️  No HIG documentation found", category: .search)
                 return IndexStats(source: source, indexed: 0, skipped: 0)
             }
 
-            Logging.Log.info(
+            logger.info(
                 "🎨 Indexing \(markdownFiles.count) Human Interface Guidelines pages...",
                 category: .search
             )
@@ -111,7 +118,7 @@ extension Search {
                     ))
                     indexed += 1
                 } catch {
-                    Logging.Log.error(
+                    logger.error(
                         "❌ Failed to index \(uri): \(error)", category: .search
                     )
                     skipped += 1
@@ -119,13 +126,13 @@ extension Search {
 
                 if (idx + 1) % Shared.Constants.Interval.progressLogEvery == 0 {
                     progress?(idx + 1, markdownFiles.count)
-                    Logging.Log.info(
+                    logger.info(
                         "   Progress: \(idx + 1)/\(markdownFiles.count)", category: .search
                     )
                 }
             }
 
-            Logging.Log.info(
+            logger.info(
                 "   HIG: \(indexed) indexed, \(skipped) skipped", category: .search
             )
             return IndexStats(source: source, indexed: indexed, skipped: skipped)

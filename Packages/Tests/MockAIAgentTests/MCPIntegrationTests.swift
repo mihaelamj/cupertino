@@ -1,4 +1,5 @@
 import Foundation
+import LoggingModels
 @testable import MCPCore
 @testable import SampleIndex
 import SharedConstants
@@ -378,7 +379,7 @@ struct CupertinoServerFixture {
             // cupertino reads it. Use a dispatch semaphore.
             let sem = DispatchSemaphore(value: 0)
             Task {
-                if let db = try? await Sample.Index.Database(dbPath: sampleDBPath) {
+                if let db = try? await Sample.Index.Database(dbPath: sampleDBPath, logger: Logging.NoopRecording()) {
                     await db.disconnect()
                 }
                 sem.signal()

@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import LoggingModels
 import Indexer
 import Logging
 import RemoteSync
@@ -224,7 +225,7 @@ extension CLI.Command.Save {
         }
 
         Logging.ConsoleLogger.info("🗄️  Initializing search database...")
-        let searchIndex = try await SearchModule.Index(dbPath: searchDBURL)
+        let searchIndex = try await SearchModule.Index(dbPath: searchDBURL, logger: Logging.LiveRecording())
 
         let progressDisplay = RemoteSync.AnimatedProgress(barWidth: 20, useEmoji: true)
         let reporter = RemoteSync.ProgressReporter(display: progressDisplay)

@@ -879,7 +879,7 @@ extension CLI.Command {
             let crawler = await Sample.Core.Downloader(
                 outputDirectory: outputURL,
                 maxSamples: limit,
-                forceDownload: force
+                forceDownload: force, logger: Logging.LiveRecording()
             )
 
             let stats = try await crawler.download { progress in
@@ -902,7 +902,7 @@ extension CLI.Command {
             let defaultPath = Shared.Constants.defaultSampleCodeDirectory.path
             let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
 
-            let fetcher = Sample.Core.GitHubFetcher(outputDirectory: outputURL)
+            let fetcher = Sample.Core.GitHubFetcher(outputDirectory: outputURL, logger: Logging.LiveRecording())
 
             let stats = try await fetcher.fetch { progress in
                 Logging.ConsoleLogger.output("   \(progress.message)")

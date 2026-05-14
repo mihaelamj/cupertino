@@ -5,6 +5,7 @@ import TestSupport
 
 // swiftlint:disable file_length
 import Foundation
+import LoggingModels
 import MCPCore
 @testable import SampleIndex
 @testable import Search
@@ -19,7 +20,7 @@ import SearchModels
 /// - Returns: A tuple containing the search index and cleanup function
 func createTestSearchIndex() async throws -> (index: Search.Index, cleanup: () throws -> Void) {
     let tempDB = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString).db")
-    let index = try await Search.Index(dbPath: tempDB)
+    let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording())
 
     let cleanup = {
         try FileManager.default.removeItem(at: tempDB)
@@ -132,7 +133,7 @@ func createTestSampleDatabase() async throws -> (database: Sample.Index.Database
     try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
     let dbPath = tempDir.appendingPathComponent("samples.db")
-    let database = try await Sample.Index.Database(dbPath: dbPath)
+    let database = try await Sample.Index.Database(dbPath: dbPath, logger: Logging.NoopRecording())
 
     // Add sample project using correct API
     let project = Sample.Index.Project(

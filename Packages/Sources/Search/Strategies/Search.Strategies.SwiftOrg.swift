@@ -1,6 +1,6 @@
 import CoreProtocols
 import Foundation
-import Logging
+import LoggingModels
 import SearchModels
 import SharedConstants
 import SharedModels
@@ -43,6 +43,9 @@ extension Search {
         /// `Core.JSONParser.MarkdownToStructuredPage.convert`.
         private let markdownStrategy: any Search.MarkdownToStructuredPageStrategy
 
+        /// GoF Strategy seam for log emission (1994 p. 315).
+        private let logger: any LoggingModels.Logging.Recording
+
         /// Create a strategy for indexing Swift.org documentation.
         ///
         /// - Parameters:
@@ -53,10 +56,12 @@ extension Search {
         ///     depending on the `CoreJSONParser` target directly.
         public init(
             swiftOrgDirectory: URL,
-            markdownStrategy: any Search.MarkdownToStructuredPageStrategy
+            markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
+            logger: any LoggingModels.Logging.Recording
         ) {
             self.swiftOrgDirectory = swiftOrgDirectory
             self.markdownStrategy = markdownStrategy
+            self.logger = logger
         }
 
         /// Index all Swift.org documentation pages found under ``swiftOrgDirectory``.
@@ -74,7 +79,7 @@ extension Search {
             progress: Search.IndexingProgressCallback?
         ) async throws -> Search.IndexStats {
             guard FileManager.default.fileExists(atPath: swiftOrgDirectory.path) else {
-                Logging.Log.info(
+                logger.info(
                     "⚠️  Swift.org directory not found: \(swiftOrgDirectory.path)",
                     category: .search
                 )
@@ -83,11 +88,11 @@ extension Search {
 
             let docFiles = try Search.StrategyHelpers.findDocFiles(in: swiftOrgDirectory)
             guard !docFiles.isEmpty else {
-                Logging.Log.info("⚠️  No Swift.org documentation found", category: .search)
+                logger.info("⚠️  No Swift.org documentation found", category: .search)
                 return IndexStats(source: source, indexed: 0, skipped: 0)
             }
 
-            Logging.Log.info(
+            logger.info(
                 "🔶 Indexing \(docFiles.count) Swift.org documentation pages...",
                 category: .search
             )
@@ -113,7 +118,7 @@ extension Search {
                             Shared.Models.StructuredDocumentationPage.self, from: jsonData
                         )
                     } catch {
-                        Logging.Log.error(
+                        logger.error(
                             "❌ Failed to decode \(file.lastPathComponent): \(error)",
                             category: .search
                         )
@@ -130,7 +135,7 @@ extension Search {
                             "\(file.deletingPathExtension().lastPathComponent)"
                     )
                     guard let converted = markdownStrategy.convert(markdown: mdContent, url: pageURL) else {
-                        Logging.Log.error(
+                        logger.error(
                             "❌ Failed to convert \(file.lastPathComponent) to structured page",
                             category: .search
                         )
@@ -142,7 +147,7 @@ extension Search {
                     encoder.dateEncodingStrategy = .iso8601
                     guard let jsonData = try? encoder.encode(structuredPage),
                           let json = String(data: jsonData, encoding: .utf8) else {
-                        Logging.Log.error(
+                        logger.error(
                             "❌ Failed to encode \(file.lastPathComponent) to JSON",
                             category: .search
                         )
@@ -191,20 +196,20 @@ extension Search {
                     }
                     indexed += 1
                 } catch {
-                    Logging.Log.error(
+                    logger.error(
                         "❌ Failed to index \(uri): \(error)", category: .search
                     )
                     skipped += 1
                 }
 
                 if (idx + 1) % Shared.Constants.Interval.progressLogEvery == 0 {
-                    Logging.Log.info(
+                    logger.info(
                         "   Progress: \(idx + 1)/\(docFiles.count)", category: .search
                     )
                 }
             }
 
-            Logging.Log.info(
+            logger.info(
                 "   Swift.org: \(indexed) indexed, \(skipped) skipped", category: .search
             )
             return IndexStats(source: source, indexed: indexed, skipped: skipped)

@@ -120,7 +120,7 @@ let targets: [Target] = {
     )
     let loggingTestsTarget = Target.testTarget(
         name: "LoggingTests",
-        dependencies: ["Logging", "LoggingModels", "TestSupport"]
+        dependencies: ["LoggingModels", "LoggingModels", "TestSupport"]
     )
 
     // ---------- SharedConstants (v1.1 refactor 1.3: extracts Constants.swift + the Shared namespace enum out of Shared) ----------
@@ -280,7 +280,7 @@ let targets: [Target] = {
             "SharedConstants",
             "SharedUtils",
             "SharedCore",
-            "Logging",
+            "LoggingModels",
         ]
     )
     let coreSampleCodeTestsTarget = Target.testTarget(
@@ -392,7 +392,7 @@ let targets: [Target] = {
         // the Strategies/ folder moves to Sources/SearchStrategies/ and gets its own
         // SPM target with deps: [SearchIndexCore, CoreJSONParser, CorePackageIndexing,
         // Core, SharedModels, SharedConstants, Resources, Logging].
-        dependencies: ["SearchModels", "SharedCore", "SharedConstants", "SharedModels", "Logging", "CoreProtocols", "CorePackageIndexingModels", "ASTIndexer"]
+        dependencies: ["SearchModels", "SharedCore", "SharedConstants", "SharedModels", "LoggingModels", "CoreProtocols", "CorePackageIndexingModels", "ASTIndexer"]
     )
     let searchTestsTarget = Target.testTarget(
         name: "SearchTests",
@@ -414,7 +414,7 @@ let targets: [Target] = {
 
     let sampleIndexTarget = Target.target(
         name: "SampleIndex",
-        dependencies: ["SampleIndexModels", "SharedCore", "SharedConstants", "SharedUtils", "Logging", "ASTIndexer"]
+        dependencies: ["SampleIndexModels", "SharedCore", "SharedConstants", "SharedUtils", "LoggingModels", "ASTIndexer"]
     )
     let sampleIndexTestsTarget = Target.testTarget(
         name: "SampleIndexTests",

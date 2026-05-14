@@ -51,7 +51,7 @@ typealias SearchModule = Search
 
 struct LiveSearchDatabaseFactory: Search.DatabaseFactory {
     func openDatabase(at url: URL) async throws -> any Search.Database {
-        try await SearchModule.Index(dbPath: url)
+        try await SearchModule.Index(dbPath: url, logger: Logging.LiveRecording())
     }
 }
 
@@ -106,7 +106,7 @@ struct LivePackageFileLookupStrategy: Services.ReadService.PackageFileLookupStra
 
 struct LiveSampleIndexDatabaseFactory: Sample.Index.DatabaseFactory {
     func openDatabase(at url: URL) async throws -> any Sample.Index.Reader {
-        try await Sample.Index.Database(dbPath: url)
+        try await Sample.Index.Database(dbPath: url, logger: Logging.LiveRecording())
     }
 }
 

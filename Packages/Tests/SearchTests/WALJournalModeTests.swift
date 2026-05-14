@@ -1,5 +1,6 @@
 import Diagnostics
 import Foundation
+import LoggingModels
 import SampleIndex
 import SampleIndexModels
 @testable import Search
@@ -32,7 +33,7 @@ struct WALJournalModeTests {
             try? FileManager.default.removeItem(at: tempDB.appendingPathExtension("wal-shm"))
         }
 
-        let index = try await Search.Index(dbPath: tempDB)
+        let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording())
         await index.disconnect()
 
         let mode = Diagnostics.Probes.journalMode(at: tempDB)
@@ -45,7 +46,7 @@ struct WALJournalModeTests {
             .appendingPathComponent("wal-packages-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let index = try await Search.PackageIndex(dbPath: tempDB)
+        let index = try await Search.PackageIndex(dbPath: tempDB, logger: Logging.NoopRecording())
         await index.disconnect()
 
         let mode = Diagnostics.Probes.journalMode(at: tempDB)
@@ -58,7 +59,7 @@ struct WALJournalModeTests {
             .appendingPathComponent("wal-samples-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let database = try await Sample.Index.Database(dbPath: tempDB)
+        let database = try await Sample.Index.Database(dbPath: tempDB, logger: Logging.NoopRecording())
         await database.disconnect()
 
         let mode = Diagnostics.Probes.journalMode(at: tempDB)
@@ -72,14 +73,14 @@ struct WALJournalModeTests {
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
         // First init switches the journal to WAL.
-        let first = try await Search.Index(dbPath: tempDB)
+        let first = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording())
         await first.disconnect()
         #expect(Diagnostics.Probes.journalMode(at: tempDB) == "wal")
 
         // Second init on the same file should leave the mode unchanged.
         // The PRAGMA is idempotent and persists in the file header, so
         // re-running it on a WAL file is a no-op.
-        let second = try await Search.Index(dbPath: tempDB)
+        let second = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording())
         await second.disconnect()
         #expect(Diagnostics.Probes.journalMode(at: tempDB) == "wal")
     }
@@ -90,7 +91,7 @@ struct WALJournalModeTests {
             .appendingPathComponent("wal-sync-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let index = try await Search.Index(dbPath: tempDB)
+        let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording())
         let mode = await index.currentSynchronousMode()
         await index.disconnect()
 
@@ -105,7 +106,7 @@ struct WALJournalModeTests {
             .appendingPathComponent("wal-jsl-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let index = try await Search.Index(dbPath: tempDB)
+        let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording())
         let limit = await index.currentJournalSizeLimit()
         await index.disconnect()
 
@@ -123,7 +124,7 @@ struct WALJournalModeTests {
             .appendingPathComponent("wal-pkg-sync-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let index = try await Search.PackageIndex(dbPath: tempDB)
+        let index = try await Search.PackageIndex(dbPath: tempDB, logger: Logging.NoopRecording())
         let mode = await index.currentSynchronousMode()
         await index.disconnect()
 
@@ -136,7 +137,7 @@ struct WALJournalModeTests {
             .appendingPathComponent("wal-pkg-jsl-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let index = try await Search.PackageIndex(dbPath: tempDB)
+        let index = try await Search.PackageIndex(dbPath: tempDB, logger: Logging.NoopRecording())
         let limit = await index.currentJournalSizeLimit()
         await index.disconnect()
 
@@ -149,11 +150,11 @@ struct WALJournalModeTests {
             .appendingPathComponent("wal-pkg-reopen-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let first = try await Search.PackageIndex(dbPath: tempDB)
+        let first = try await Search.PackageIndex(dbPath: tempDB, logger: Logging.NoopRecording())
         await first.disconnect()
         #expect(Diagnostics.Probes.journalMode(at: tempDB) == "wal")
 
-        let second = try await Search.PackageIndex(dbPath: tempDB)
+        let second = try await Search.PackageIndex(dbPath: tempDB, logger: Logging.NoopRecording())
         await second.disconnect()
         #expect(Diagnostics.Probes.journalMode(at: tempDB) == "wal")
     }
@@ -166,7 +167,7 @@ struct WALJournalModeTests {
             .appendingPathComponent("wal-sample-sync-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let database = try await Sample.Index.Database(dbPath: tempDB)
+        let database = try await Sample.Index.Database(dbPath: tempDB, logger: Logging.NoopRecording())
         let mode = await database.currentSynchronousMode()
         await database.disconnect()
 
@@ -179,7 +180,7 @@ struct WALJournalModeTests {
             .appendingPathComponent("wal-sample-jsl-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let database = try await Sample.Index.Database(dbPath: tempDB)
+        let database = try await Sample.Index.Database(dbPath: tempDB, logger: Logging.NoopRecording())
         let limit = await database.currentJournalSizeLimit()
         await database.disconnect()
 
@@ -192,11 +193,11 @@ struct WALJournalModeTests {
             .appendingPathComponent("wal-sample-reopen-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let first = try await Sample.Index.Database(dbPath: tempDB)
+        let first = try await Sample.Index.Database(dbPath: tempDB, logger: Logging.NoopRecording())
         await first.disconnect()
         #expect(Diagnostics.Probes.journalMode(at: tempDB) == "wal")
 
-        let second = try await Sample.Index.Database(dbPath: tempDB)
+        let second = try await Sample.Index.Database(dbPath: tempDB, logger: Logging.NoopRecording())
         await second.disconnect()
         #expect(Diagnostics.Probes.journalMode(at: tempDB) == "wal")
     }

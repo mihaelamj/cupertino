@@ -1,6 +1,6 @@
 import CoreProtocols
 import Foundation
-import Logging
+import LoggingModels
 import SearchModels
 import SharedConstants
 
@@ -22,8 +22,13 @@ extension Search {
         /// The source identifier written into the FTS index.
         public let source = "swift-packages"
 
+        /// GoF Strategy seam for log emission (1994 p. 315).
+        private let logger: any LoggingModels.Logging.Recording
+
         /// Create a strategy for indexing the bundled Swift Packages catalog.
-        public init() {}
+        public init(logger: any LoggingModels.Logging.Recording) {
+            self.logger = logger
+        }
 
         /// Index all packages from the bundled catalog.
         ///
@@ -38,18 +43,18 @@ extension Search {
             into index: Search.Index,
             progress: Search.IndexingProgressCallback?
         ) async throws -> Search.IndexStats {
-            Logging.Log.info(
+            logger.info(
                 "📦 Indexing Swift packages catalog from bundled resources...",
                 category: .search
             )
 
             let packages = await Core.Protocols.SwiftPackagesCatalog.allPackages
             guard !packages.isEmpty else {
-                Logging.Log.info("⚠️  No packages found in catalog", category: .search)
+                logger.info("⚠️  No packages found in catalog", category: .search)
                 return IndexStats(source: source, indexed: 0, skipped: 0)
             }
 
-            Logging.Log.info(
+            logger.info(
                 "📚 Indexing \(packages.count) Swift packages...", category: .search
             )
 
@@ -69,7 +74,7 @@ extension Search {
                     )
                     indexed += 1
                 } catch {
-                    Logging.Log.error(
+                    logger.error(
                         "❌ Failed to index package \(package.repo): \(error)",
                         category: .search
                     )
@@ -78,13 +83,13 @@ extension Search {
 
                 if (idx + 1) % 500 == 0 {
                     progress?(idx + 1, packages.count)
-                    Logging.Log.info(
+                    logger.info(
                         "   Progress: \(idx + 1)/\(packages.count)", category: .search
                     )
                 }
             }
 
-            Logging.Log.info(
+            logger.info(
                 "   Packages: \(indexed) indexed, \(skipped) skipped", category: .search
             )
             return IndexStats(source: source, indexed: indexed, skipped: skipped)
