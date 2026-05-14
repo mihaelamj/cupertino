@@ -2,6 +2,7 @@
 @testable import CorePackageIndexing
 import CoreProtocols
 import Foundation
+import LoggingModels
 import SharedCore
 import Testing
 
@@ -167,7 +168,8 @@ struct PriorityPackageGeneratorTests {
 
         return await Core.PackageIndexing.PriorityPackageGenerator(
             swiftOrgDocsPath: tempDir,
-            outputPath: outputFile
+            outputPath: outputFile,
+            logger: Logging.NoopRecording()
         )
     }
 

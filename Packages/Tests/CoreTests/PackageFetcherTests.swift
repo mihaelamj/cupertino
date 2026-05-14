@@ -2,6 +2,7 @@
 @testable import CorePackageIndexing
 import CoreProtocols
 import Foundation
+import LoggingModels
 import SharedCore
 import Testing
 
@@ -242,7 +243,7 @@ struct PackageFetcherTests {
     private func createTestFetcher() async -> Core.PackageIndexing.PackageFetcher {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("package-fetcher-test-\(UUID().uuidString)")
-        return await Core.PackageIndexing.PackageFetcher(outputDirectory: tempDir)
+        return await Core.PackageIndexing.PackageFetcher(outputDirectory: tempDir, logger: Logging.NoopRecording())
     }
 
     private func createTempDirectory() -> URL {

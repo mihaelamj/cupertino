@@ -1,7 +1,6 @@
 import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
-import Logging
 import SharedConstants
 import SharedCore
 import SharedModels

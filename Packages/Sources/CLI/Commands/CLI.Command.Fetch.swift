@@ -626,7 +626,8 @@ extension CLI.Command {
             let fetcher = Core.PackageIndexing.PackageFetcher(
                 outputDirectory: outputURL,
                 limit: limit,
-                resume: !startClean
+                resume: !startClean,
+                logger: Logging.LiveRecording()
             )
 
             let stats = try await fetcher.fetch { progress in
