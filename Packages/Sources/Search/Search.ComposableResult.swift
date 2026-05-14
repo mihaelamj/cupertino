@@ -1,7 +1,7 @@
 // swiftlint:disable function_body_length
 import Foundation
-import SharedConstants
 import SearchModels
+import SharedConstants
 
 /// Sample.Search (in SharedConstants) shadows the Search SPM target inside any
 /// extension Sample {} scope. Pin the SPM target so Sample.Atom.source can still

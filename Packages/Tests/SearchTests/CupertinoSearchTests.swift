@@ -1,9 +1,9 @@
-import SharedConstants
-import Testing
 import Foundation
-import SearchModels
 @testable import Search
+import SearchModels
+import SharedConstants
 @testable import SharedCore
+import Testing
 
 // MARK: - Test Helpers
 
@@ -47,8 +47,8 @@ func createTestSearchIndexWithDocument(
         filePath: "/test.md",
         contentHash: "test-hash",
         lastCrawled: Date(),
-        sourceType: "test",
-        ))
+        sourceType: "test"
+    ))
 
     return (index, cleanup)
 }
@@ -159,8 +159,8 @@ struct CupertinoSearchTests {
             filePath: "/test.md",
             contentHash: "test-hash",
             lastCrawled: Date(),
-            sourceType: "apple",
-            ))
+            sourceType: "apple"
+        ))
 
         try await index.indexDocument(Search.Index.IndexDocumentParams(
             uri: "uikit://array",
@@ -171,8 +171,8 @@ struct CupertinoSearchTests {
             filePath: "/test.md",
             contentHash: "test-hash",
             lastCrawled: Date(),
-            sourceType: "apple",
-            ))
+            sourceType: "apple"
+        ))
 
         // Search with framework filter
         let swiftResults = try await index.search(query: "array", framework: "swift", limit: 10)
@@ -207,8 +207,8 @@ struct CupertinoSearchTests {
                 filePath: "/test.md",
                 contentHash: "test-hash",
                 lastCrawled: Date(),
-                sourceType: "apple",
-                ))
+                sourceType: "apple"
+            ))
         }
 
         // Search with limit
@@ -251,8 +251,8 @@ struct CupertinoSearchTests {
             filePath: "/test.md",
             contentHash: "hash1",
             lastCrawled: Date(),
-            sourceType: "apple",
-            ))
+            sourceType: "apple"
+        ))
 
         // Update document
         try await index.indexDocument(Search.Index.IndexDocumentParams(
@@ -264,8 +264,8 @@ struct CupertinoSearchTests {
             filePath: "/test.md",
             contentHash: "hash2",
             lastCrawled: Date(),
-            sourceType: "apple",
-            ))
+            sourceType: "apple"
+        ))
 
         // Search for new content
         let results = try await index.search(query: "dictionaries", framework: nil, limit: 10)
@@ -323,8 +323,8 @@ struct CupertinoSearchTests {
             filePath: "/test.md",
             contentHash: "test-hash",
             lastCrawled: Date(),
-            sourceType: "apple",
-            ))
+            sourceType: "apple"
+        ))
 
         // Doc 2: Content match only (lower relevance)
         try await index.indexDocument(Search.Index.IndexDocumentParams(
@@ -336,8 +336,8 @@ struct CupertinoSearchTests {
             filePath: "/test.md",
             contentHash: "test-hash",
             lastCrawled: Date(),
-            sourceType: "apple",
-            ))
+            sourceType: "apple"
+        ))
 
         // Doc 3: Single content match (lowest relevance)
         try await index.indexDocument(Search.Index.IndexDocumentParams(
@@ -349,8 +349,8 @@ struct CupertinoSearchTests {
             filePath: "/test.md",
             contentHash: "test-hash",
             lastCrawled: Date(),
-            sourceType: "apple",
-            ))
+            sourceType: "apple"
+        ))
 
         let results = try await index.search(query: "SwiftUI", framework: nil, limit: 10)
 
@@ -391,8 +391,8 @@ struct CupertinoSearchTests {
             filePath: "/test.md",
             contentHash: "test-hash",
             lastCrawled: Date(),
-            sourceType: "apple",
-            ))
+            sourceType: "apple"
+        ))
 
         try await index.indexDocument(Search.Index.IndexDocumentParams(
             uri: "evolution://SE-0001",
@@ -403,8 +403,8 @@ struct CupertinoSearchTests {
             filePath: "/test.md",
             contentHash: "test-hash",
             lastCrawled: Date(),
-            sourceType: "swift-evolution",
-            ))
+            sourceType: "swift-evolution"
+        ))
 
         let results = try await index.search(query: "documentation", framework: nil, limit: 10)
         #expect(results.count == 2)
@@ -429,8 +429,8 @@ struct CupertinoSearchTests {
             filePath: "/test.md",
             contentHash: "test-hash",
             lastCrawled: Date(),
-            sourceType: "apple",
-            ))
+            sourceType: "apple"
+        ))
 
         try await index.indexDocument(Search.Index.IndexDocumentParams(
             uri: "swift-evolution://SE-0302",
@@ -441,8 +441,8 @@ struct CupertinoSearchTests {
             filePath: "/test.md",
             contentHash: "test-hash",
             lastCrawled: Date(),
-            sourceType: "swift-evolution",
-            ))
+            sourceType: "swift-evolution"
+        ))
 
         try await index.indexDocument(Search.Index.IndexDocumentParams(
             uri: "swift-book://concurrency",
@@ -453,8 +453,8 @@ struct CupertinoSearchTests {
             filePath: "/test.md",
             contentHash: "test-hash",
             lastCrawled: Date(),
-            sourceType: "swift-book",
-            ))
+            sourceType: "swift-book"
+        ))
 
         // Search all sources with common keyword
         let allResults = try await index.search(query: "swift", source: nil, framework: nil, limit: 10)
@@ -501,8 +501,8 @@ struct CupertinoSearchTests {
             contentHash: "test-hash",
             lastCrawled: Date(),
             sourceType: "swift-book",
-            jsonData: "{\"title\":\"Concurrency\",\"rawMarkdown\":null,\"url\":\"\(uri)\"}",
-            ))
+            jsonData: "{\"title\":\"Concurrency\",\"rawMarkdown\":null,\"url\":\"\(uri)\"}"
+        ))
 
         // Get content as markdown - should fall back to FTS content
         let content = try await index.getDocumentContent(uri: uri, format: .markdown)
@@ -545,8 +545,8 @@ struct CupertinoSearchTests {
             contentHash: "test-hash",
             lastCrawled: Date(),
             sourceType: "apple",
-            jsonData: jsonData,
-            ))
+            jsonData: jsonData
+        ))
 
         // Get content as JSON
         let content = try await index.getDocumentContent(uri: uri, format: .json)
@@ -574,8 +574,8 @@ struct CupertinoSearchTests {
             filePath: "/test/ST-0001.md",
             contentHash: "st-hash",
             lastCrawled: Date(),
-            sourceType: "swift-evolution",
-            ))
+            sourceType: "swift-evolution"
+        ))
 
         // Search should find it
         let results = try await index.search(query: "refactor bug", source: "swift-evolution", framework: nil, limit: 10)
@@ -602,8 +602,8 @@ struct CupertinoSearchTests {
             filePath: "/test/SE-0302.md",
             contentHash: "se-hash",
             lastCrawled: Date(),
-            sourceType: "swift-evolution",
-            ))
+            sourceType: "swift-evolution"
+        ))
 
         // Index an ST proposal (accepted)
         try await index.indexDocument(Search.Index.IndexDocumentParams(
@@ -615,8 +615,8 @@ struct CupertinoSearchTests {
             filePath: "/test/ST-0001.md",
             contentHash: "st-hash",
             lastCrawled: Date(),
-            sourceType: "swift-evolution",
-            ))
+            sourceType: "swift-evolution"
+        ))
 
         // Both should be findable under swift-evolution source
         let allResults = try await index.search(query: "swift", source: "swift-evolution", framework: nil, limit: 10)
@@ -745,8 +745,8 @@ struct CupertinoSearchTests {
             contentHash: "test-hash",
             lastCrawled: Date(),
             sourceType: "swift-book",
-            jsonData: "{\"title\":\"The Basics\",\"rawMarkdown\":null}",
-            ))
+            jsonData: "{\"title\":\"The Basics\",\"rawMarkdown\":null}"
+        ))
 
         // Get content as JSON - should return the original JSON (since it exists in metadata)
         // Note: FTS fallback only happens when metadata doesn't exist or can't be decoded

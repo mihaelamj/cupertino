@@ -2,7 +2,16 @@ import Foundation
 @testable import Search
 import SearchModels
 import SharedConstants
+import SharedModels
 import Testing
+
+// MARK: - Test Doubles
+
+private struct NoopMarkdownStrategy: Search.MarkdownToStructuredPageStrategy {
+    func convert(markdown: String, url: URL?) -> Shared.Models.StructuredDocumentationPage? {
+        nil
+    }
+}
 
 // Unit tests for the "directory not found" fast path of each concrete
 // SourceIndexingStrategy type.  These tests exercise the guard at the top of
@@ -39,7 +48,10 @@ struct StrategyMissingDirectoryTests {
 
         let missingDir = tempRoot.appendingPathComponent("docs")
         let index = try await makeIndex(in: tempRoot)
-        let strategy = Search.AppleDocsStrategy(docsDirectory: missingDir)
+        let strategy = Search.AppleDocsStrategy(
+            docsDirectory: missingDir,
+            markdownStrategy: NoopMarkdownStrategy()
+        )
 
         let stats = try await strategy.indexItems(into: index, progress: nil)
 
@@ -56,7 +68,10 @@ struct StrategyMissingDirectoryTests {
         let emptyDir = tempRoot.appendingPathComponent("docs")
         try FileManager.default.createDirectory(at: emptyDir, withIntermediateDirectories: true)
         let index = try await makeIndex(in: tempRoot)
-        let strategy = Search.AppleDocsStrategy(docsDirectory: emptyDir)
+        let strategy = Search.AppleDocsStrategy(
+            docsDirectory: emptyDir,
+            markdownStrategy: NoopMarkdownStrategy()
+        )
 
         let stats = try await strategy.indexItems(into: index, progress: nil)
 
@@ -151,7 +166,10 @@ struct StrategyMissingDirectoryTests {
 
         let missingDir = tempRoot.appendingPathComponent("swift-org")
         let index = try await makeIndex(in: tempRoot)
-        let strategy = Search.SwiftOrgStrategy(swiftOrgDirectory: missingDir)
+        let strategy = Search.SwiftOrgStrategy(
+            swiftOrgDirectory: missingDir,
+            markdownStrategy: NoopMarkdownStrategy()
+        )
 
         let stats = try await strategy.indexItems(into: index, progress: nil)
 

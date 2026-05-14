@@ -1,14 +1,30 @@
-import SearchModels
-import Core
 import CoreProtocols
 import Foundation
 import Logging
 @testable import Search
+import SearchModels
 import SharedConstants
 import SharedCore
 import SharedModels
 import SQLite3
 import Testing
+
+// MARK: - Test Doubles
+
+private struct NoopMarkdownStrategy: Search.MarkdownToStructuredPageStrategy {
+    func convert(markdown: String, url: URL?) -> Shared.Models.StructuredDocumentationPage? {
+        nil
+    }
+}
+
+/// `Search.SampleCatalogProvider` test double that reports the catalog
+/// as missing. Used by indexer tests that don't need to exercise the
+/// sample-code indexing path.
+private struct MissingSampleCatalogProvider: Search.SampleCatalogProvider {
+    func fetch() async -> Search.SampleCatalogState {
+        .missing(onDiskPath: "")
+    }
+}
 
 // End-to-end test that a real `Search.IndexBuilder` run on a fixture
 // directory of structured JSON docs produces populated `doc_symbols` rows,
@@ -135,7 +151,9 @@ struct IndexBuilderSymbolsIntegrationTests {
             searchIndex: index,
             metadata: nil,
             docsDirectory: docsDir,
-            indexSampleCode: false
+            indexSampleCode: false,
+            markdownStrategy: NoopMarkdownStrategy(),
+            sampleCatalogProvider: MissingSampleCatalogProvider()
         )
 
         try await builder.buildIndex(clearExisting: true)

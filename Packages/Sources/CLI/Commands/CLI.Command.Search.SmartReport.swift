@@ -3,11 +3,12 @@ import Foundation
 import Logging
 import SampleIndex
 import Search
+import SearchModels
 import Services
+import ServicesModels
 import SharedConstants
 import SharedCore
 import SharedUtils
-import SearchModels
 
 // MARK: - SmartQuery fan-out helpers (#239)
 
@@ -175,7 +176,8 @@ extension CLI.Command.Search {
             return nil
         }
         do {
-            let service = try await Sample.Search.Service(dbPath: url)
+            let database = try await Sample.Index.Database(dbPath: url)
+            let service = Sample.Search.Service(database: database)
             fetchers.append(Sample.Services.CandidateFetcher(
                 service: service,
                 availability: availability

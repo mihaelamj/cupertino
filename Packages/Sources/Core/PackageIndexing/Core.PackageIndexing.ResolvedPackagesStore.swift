@@ -1,35 +1,16 @@
+import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
 import SharedConstants
 import SharedCore
 import SharedModels
 
+// `ResolvedPackage` (the per-entry value type) lifted to
+// `CorePackageIndexingModels` so downstream consumers (Search, TUI, CLI)
+// can reference it without depending on the full indexer surface. The
+// store + I/O code stays here because it touches the filesystem.
+
 extension Core.PackageIndexing {
-    /// One entry in the resolved closure. Seeds list themselves as their own parent;
-    /// transitively-discovered packages list every seed whose dependency graph reached
-    /// them (can be multiple, which is how the store records a shared dependency).
-    public struct ResolvedPackage: Codable, Sendable, Hashable {
-        public let owner: String
-        public let repo: String
-        public let url: String
-        public let priority: Shared.Models.PackagePriority
-        public let parents: [String]
-
-        public init(
-            owner: String,
-            repo: String,
-            url: String,
-            priority: Shared.Models.PackagePriority,
-            parents: [String]
-        ) {
-            self.owner = owner
-            self.repo = repo
-            self.url = url
-            self.priority = priority
-            self.parents = parents
-        }
-    }
-
     /// Persisted cache of the last transitive resolution. Lives at
     /// `~/.cupertino/resolved-packages.json`. The seed checksum invalidates the cache
     /// automatically on any edit to `selected-packages.json` or `excluded-packages.json`;

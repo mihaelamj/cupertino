@@ -3,11 +3,12 @@ import Foundation
 import Logging
 import SampleIndex
 import Search
+import SearchModels
 import Services
+import ServicesModels
 import SharedConstants
 import SharedCore
 import SharedUtils
-import SearchModels
 
 // MARK: - Search Command
 

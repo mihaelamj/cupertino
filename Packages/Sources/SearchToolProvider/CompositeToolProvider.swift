@@ -1,9 +1,9 @@
 import Foundation
 import MCPCore
 import MCPSharedTools
-import SampleIndex
+import SampleIndexModels
 import SearchModels
-import Services
+import ServicesModels
 import SharedConstants
 import SharedCore
 import SharedUtils
@@ -13,33 +13,46 @@ import SharedUtils
 /// Composite tool provider that provides unified search across all documentation sources.
 /// Handles `search_docs` with `source` parameter to search docs, samples, HIG, archive, etc.
 public actor CompositeToolProvider: MCP.Core.ToolProvider {
-    // Use service layer for consistency with CLI
-    private let docsService: Services.DocsSearchService?
-    private let sampleService: Sample.Search.Service?
+    // Protocol-typed so this file doesn't import the Search, SampleIndex,
+    // or Services behavioural targets — every cross-package surface is
+    // an abstraction from a Models target. The CLI composition root
+    // constructs the concrete actors and passes them across the seam.
 
-    // Keep direct access for low-level operations (list frameworks, read
-    // document, semantic-symbol searches). Protocol-typed so this file
-    // doesn't import the Search target.
+    private let docsService: (any Services.DocsSearcher)?
+    private let sampleService: (any Sample.Search.Searcher)?
+    private let teaserService: (any Services.Teaser)?
+    private let unifiedService: (any Services.UnifiedSearcher)?
+
+    // Kept for low-level operations (list frameworks, read document,
+    // semantic-symbol searches) that don't have a service-layer wrapper.
     private let searchIndex: (any Search.Database)?
-    private let sampleDatabase: Sample.Index.Database?
+    private let sampleDatabase: (any Sample.Index.Reader)?
 
-    public init(searchIndex: (any Search.Database)?, sampleDatabase: Sample.Index.Database?) {
+    /// Primary init used by the CLI composition root. Each cross-package
+    /// surface arrives pre-wired as a protocol-typed value so this file
+    /// doesn't have to import the Search / SampleIndex / Services
+    /// behavioural targets to do any wiring of its own.
+    public init(
+        searchIndex: (any Search.Database)?,
+        sampleDatabase: (any Sample.Index.Reader)?,
+        docsService: (any Services.DocsSearcher)?,
+        sampleService: (any Sample.Search.Searcher)?,
+        teaserService: (any Services.Teaser)?,
+        unifiedService: (any Services.UnifiedSearcher)?
+    ) {
         self.searchIndex = searchIndex
         self.sampleDatabase = sampleDatabase
-
-        // Wrap databases with services for search operations
-        if let searchIndex {
-            docsService = Services.DocsSearchService(database: searchIndex)
-        } else {
-            docsService = nil
-        }
-
-        if let sampleDatabase {
-            sampleService = Sample.Search.Service(database: sampleDatabase)
-        } else {
-            sampleService = nil
-        }
+        self.docsService = docsService
+        self.sampleService = sampleService
+        self.teaserService = teaserService
+        self.unifiedService = unifiedService
     }
+
+    // The two-argument convenience init that constructed concrete
+    // service actors from the index seams moved to the
+    // SearchToolProviderTests target (`CompositeToolProvider+ServicesWiring.swift`).
+    // Production code calls the explicit six-argument init above; that
+    // shape keeps `import Services` out of this file.
 
     // MARK: - ToolProvider
 
@@ -492,7 +505,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         currentSource: String?,
         includeArchive: Bool
     ) async -> Services.Formatter.TeaserResults {
-        let teaserService = Services.TeaserService(searchIndex: searchIndex, sampleDatabase: sampleDatabase)
+        guard let teaserService else { return Services.Formatter.TeaserResults() }
         return await teaserService.fetchAllTeasers(
             query: query,
             framework: framework,
@@ -579,8 +592,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         framework: String?,
         limit: Int
     ) async throws -> MCP.Core.Protocols.CallToolResult {
-        // Use Services.UnifiedSearchService to search all 8 sources
-        let unifiedService = Services.UnifiedSearchService(searchIndex: searchIndex, sampleDatabase: sampleDatabase)
+        guard let unifiedService else {
+            throw Shared.Core.ToolError.invalidArgument("source", "No indexes available for unified search")
+        }
         let input = await unifiedService.searchAll(
             query: query,
             framework: framework,
@@ -715,7 +729,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         }
 
         // List some files
-        let files = try await sampleDatabase.listFiles(projectId: projectId)
+        let files = try await sampleDatabase.listFiles(projectId: projectId, folder: nil)
         if !files.isEmpty {
             markdown += "## Files (\(files.count) total)\n\n"
             for file in files.prefix(30) {

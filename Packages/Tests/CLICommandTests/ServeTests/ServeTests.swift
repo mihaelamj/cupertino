@@ -1,12 +1,13 @@
-import SearchModels
 import AppKit
 @testable import Core
 import CoreProtocols
 import Crawler
+import CrawlerModels
 import Foundation
 @testable import MCPCore
 @testable import MCPSupport
 @testable import Search
+import SearchModels
 @testable import SearchToolProvider
 import SharedConfiguration
 import SharedConstants
@@ -14,6 +15,20 @@ import SharedConstants
 import SharedModels
 import Testing
 import TestSupport
+
+// MARK: - Test Doubles
+
+private struct NoopMarkdownStrategy: Search.MarkdownToStructuredPageStrategy {
+    func convert(markdown: String, url: URL?) -> Shared.Models.StructuredDocumentationPage? {
+        nil
+    }
+}
+
+private struct MissingSampleCatalogProvider: Search.SampleCatalogProvider {
+    func fetch() async -> Search.SampleCatalogState {
+        .missing(onDiskPath: "")
+    }
+}
 
 // MARK: - MCP Command Tests
 
@@ -155,8 +170,8 @@ struct MCPCommandTests {
             content: "Swift is a powerful programming language for iOS, macOS, and more.",
             filePath: "/test/swift.md",
             contentHash: "test-hash",
-            lastCrawled: Date(),
-            ))
+            lastCrawled: Date()
+        ))
 
         let server = MCP.Core.Server(name: "test-server", version: "1.0.0")
         let provider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: nil)
@@ -200,8 +215,8 @@ struct MCPCommandTests {
             content: "An ordered, random-access collection of elements.",
             filePath: "/test/array.md",
             contentHash: "test-hash-array",
-            lastCrawled: Date(),
-            ))
+            lastCrawled: Date()
+        ))
 
         let provider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: nil)
 
@@ -377,7 +392,12 @@ struct MCPServerIntegrationTests {
             output: Shared.Configuration.Output(format: .markdown)
         )
 
-        let crawler = await Crawler.AppleDocs(configuration: config)
+        let crawler = await Crawler.AppleDocs(
+            configuration: config,
+            htmlParser: Crawler.NoopHTMLParserStrategy(),
+            appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
+            priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy()
+        )
         let stats = try await crawler.crawl()
         #expect(stats.totalPages > 0, "Should have crawled pages")
         print("   ✅ Crawled \(stats.totalPages) page(s)")
@@ -392,7 +412,9 @@ struct MCPServerIntegrationTests {
             searchIndex: searchIndex,
             metadata: metadata,
             docsDirectory: tempDir,
-            evolutionDirectory: nil
+            evolutionDirectory: nil,
+            markdownStrategy: NoopMarkdownStrategy(),
+            sampleCatalogProvider: MissingSampleCatalogProvider()
         )
         try await builder.buildIndex()
         print("   ✅ Index built")

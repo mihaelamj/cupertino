@@ -1,3 +1,4 @@
+import CrawlerModels
 import Foundation
 
 // MARK: - Rejection Reason

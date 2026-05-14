@@ -1,38 +1,54 @@
-import Core
 import Foundation
 import Logging
+import SearchModels
 import SharedConstants
 import SharedModels
-import SearchModels
 
 // MARK: - SampleCodeStrategy
 
 extension Search {
     /// Indexes the Apple sample code catalog into the search index.
     ///
-    /// The sample code catalog is loaded from the on-disk `catalog.json` file written by
-    /// `cupertino fetch --type code`.  Each entry's framework availability is looked up
-    /// from the search index and cached to avoid redundant database round-trips.
+    /// The catalog is provided via the injected `sampleCatalogProvider`
+    /// conformer, which the composition root (the CLI binary) backs with
+    /// `Sample.Core.Catalog`. Test harnesses pass a struct that returns
+    /// a `Search.SampleCatalogState` fixture directly.
     ///
-    /// If the catalog is missing this strategy logs a helpful message and returns cleanly
-    /// rather than raising an error.
+    /// Each entry's framework availability is looked up from the search
+    /// index and cached to avoid redundant database round-trips.
+    ///
+    /// If the catalog is missing this strategy logs a helpful message and
+    /// returns cleanly rather than raising an error.
     ///
     /// ## Example
     /// ```swift
-    /// let strategy = Search.SampleCodeStrategy()
+    /// let strategy = Search.SampleCodeStrategy(sampleCatalogProvider: MyProvider())
     /// let stats = try await strategy.indexItems(into: index, progress: nil)
     /// ```
     public struct SampleCodeStrategy: SourceIndexingStrategy {
         /// The source identifier written into the FTS index.
         public let source = "sample-code"
 
-        /// Create a strategy for indexing the sample code catalog.
-        public init() {}
+        /// Conformer that returns the current state of the Apple
+        /// sample-code catalog. Injected so this target doesn't depend
+        /// on `CoreSampleCode`; the composition root supplies the
+        /// adapter over `Sample.Core.Catalog`.
+        private let sampleCatalogProvider: any Search.SampleCatalogProvider
 
-        /// Index all sample code entries from the on-disk catalog.
+        /// Create a strategy for indexing the sample code catalog.
         ///
-        /// Reads entries via ``Sample/Core/Catalog/allEntries``.  When the catalog
-        /// is absent, logs a user-friendly message and returns with zero counts.
+        /// - Parameter sampleCatalogProvider: Conformer that returns
+        ///   the `Search.SampleCatalogState` to index. Injected at the
+        ///   composition root so the strategy can read the catalog
+        ///   without depending on the `CoreSampleCode` target directly.
+        public init(sampleCatalogProvider: any Search.SampleCatalogProvider) {
+            self.sampleCatalogProvider = sampleCatalogProvider
+        }
+
+        /// Index all sample code entries from the catalog fetch closure.
+        ///
+        /// When the catalog is absent, logs a user-friendly message and
+        /// returns with zero counts.
         ///
         /// - Parameters:
         ///   - index: The ``Search/Index`` to write into.
@@ -42,21 +58,19 @@ extension Search {
             into index: Search.Index,
             progress: Search.IndexingProgressCallback?
         ) async throws -> Search.IndexStats {
-            let entries = await Sample.Core.Catalog.allEntries
-            let catalogSource = await Sample.Core.Catalog.loadedSource ?? .missing
+            let state = await sampleCatalogProvider.fetch()
 
-            switch catalogSource {
-            case .onDisk:
+            let entries: [Search.SampleCatalogEntry]
+            switch state {
+            case .loaded(let loadedEntries):
                 Logging.Log.info(
                     "📦 Indexing sample code catalog from on-disk catalog.json (#214)...",
                     category: .search
                 )
-            case .missing:
-                let path = Shared.Constants.defaultSampleCodeDirectory
-                    .appendingPathComponent(Sample.Core.Catalog.onDiskCatalogFilename)
-                    .path
+                entries = loadedEntries
+            case .missing(let onDiskPath):
                 Logging.Log.info(
-                    "⚠️  No sample-code catalog at \(path) — skipping sample-code indexing.",
+                    "⚠️  No sample-code catalog at \(onDiskPath) — skipping sample-code indexing.",
                     category: .search
                 )
                 Logging.Log.info(

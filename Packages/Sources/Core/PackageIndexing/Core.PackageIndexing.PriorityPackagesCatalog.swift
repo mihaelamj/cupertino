@@ -2,6 +2,7 @@
 // Supports user-selected packages from ~/.cupertino/selected-packages.json
 // Falls back to bundled priority-packages.json if user file doesn't exist
 
+import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
 import Logging

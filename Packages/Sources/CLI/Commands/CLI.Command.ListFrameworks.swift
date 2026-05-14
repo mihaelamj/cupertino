@@ -2,6 +2,7 @@ import ArgumentParser
 import Foundation
 import Logging
 import Services
+import ServicesModels
 import SharedCore
 
 // MARK: - List Frameworks Command
@@ -29,7 +30,7 @@ extension CLI.Command {
 
         mutating func run() async throws {
             // Use Services.ServiceContainer for managed lifecycle
-            let (frameworks, totalDocs) = try await Services.ServiceContainer.withDocsService(dbPath: searchDb, makeSearchDatabase: makeSearchDatabase) { service in
+            let (frameworks, totalDocs) = try await Services.ServiceContainer.withDocsService(dbPath: searchDb, searchDatabaseFactory: searchDatabaseFactory) { service in
                 let frameworks = try await service.listFrameworks()
                 let totalDocs = try await service.documentCount()
                 return (frameworks, totalDocs)

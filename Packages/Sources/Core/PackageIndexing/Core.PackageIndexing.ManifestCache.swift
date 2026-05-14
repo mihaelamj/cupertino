@@ -1,3 +1,4 @@
+import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
 import SharedCore

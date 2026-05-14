@@ -1,5 +1,7 @@
 import ASTIndexer
 import Foundation
+import Logging
+import SampleIndexModels
 import SharedConstants
 import SharedCore
 import SharedUtils
@@ -78,6 +80,35 @@ extension Sample.Index {
             }
         }
 
+        /// Inspect `PRAGMA synchronous` on the actor's own connection
+        /// (0..3, matching SQLite's enum: 0=OFF, 1=NORMAL, 2=FULL,
+        /// 3=EXTRA). Per-connection; not header-persistent. Test-facing.
+        public func currentSynchronousMode() -> Int32? {
+            guard let database else { return nil }
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            guard sqlite3_prepare_v2(database, "PRAGMA synchronous;", -1, &stmt, nil) == SQLITE_OK,
+                  sqlite3_step(stmt) == SQLITE_ROW
+            else {
+                return nil
+            }
+            return sqlite3_column_int(stmt, 0)
+        }
+
+        /// Inspect `PRAGMA journal_size_limit` on the actor's own
+        /// connection (bytes, -1 = unlimited). Per-connection.
+        public func currentJournalSizeLimit() -> Int64? {
+            guard let database else { return nil }
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            guard sqlite3_prepare_v2(database, "PRAGMA journal_size_limit;", -1, &stmt, nil) == SQLITE_OK,
+                  sqlite3_step(stmt) == SQLITE_ROW
+            else {
+                return nil
+            }
+            return sqlite3_column_int64(stmt, 0)
+        }
+
         // MARK: - Database Setup
 
         private func openDatabase() async throws {
@@ -87,6 +118,41 @@ extension Sample.Index {
                 let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
                 sqlite3_close(dbPointer)
                 throw Sample.Index.Error.sqliteError("Failed to open database: \(errorMessage)")
+            }
+
+            // #236: WAL journal mode lets readers (`cupertino read-sample`,
+            // `cupertino list-samples`, `cupertino doctor`) proceed while
+            // a `cupertino save --samples` writer holds the DB. PRAGMA is
+            // idempotent and persists in the file header. Log and
+            // continue on failure.
+            if sqlite3_exec(dbPointer, "PRAGMA journal_mode = WAL", nil, nil, nil) != SQLITE_OK {
+                let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
+                Logging.Log.warning(
+                    "Failed to enable WAL on \(dbPath.lastPathComponent): \(errorMessage)",
+                    category: .samples
+                )
+            }
+
+            // #236 follow-up: SQLite-recommended `synchronous=NORMAL`
+            // paired with WAL. Per-connection. See
+            // https://www.sqlite.org/pragma.html#pragma_synchronous.
+            if sqlite3_exec(dbPointer, "PRAGMA synchronous = NORMAL", nil, nil, nil) != SQLITE_OK {
+                let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
+                Logging.Log.warning(
+                    "Failed to set synchronous=NORMAL on \(dbPath.lastPathComponent): \(errorMessage)",
+                    category: .samples
+                )
+            }
+
+            // #236 follow-up: cap the WAL sidecar at 64 MB so
+            // pathological reader-starvation cases don't grow the
+            // file without bound. Default is -1 (unlimited).
+            if sqlite3_exec(dbPointer, "PRAGMA journal_size_limit = 67108864", nil, nil, nil) != SQLITE_OK {
+                let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
+                Logging.Log.warning(
+                    "Failed to set journal_size_limit on \(dbPath.lastPathComponent): \(errorMessage)",
+                    category: .samples
+                )
             }
 
             database = dbPointer
@@ -657,14 +723,10 @@ extension Sample.Index {
 
         // MARK: - Search Files
 
-        /// Search result for file search
-        public struct FileSearchResult: Sendable {
-            public let projectId: String
-            public let path: String
-            public let filename: String
-            public let snippet: String
-            public let rank: Double
-        }
+        // `FileSearchResult` lifted to `Sample.Index.FileSearchResult`
+        // in the `SampleIndexModels` target so the
+        // `Sample.Index.Reader` protocol can return it without a
+        // cyclic dep on `SampleIndex`.
 
         /// Search files by content
         public func searchFiles(
@@ -674,7 +736,7 @@ extension Sample.Index {
             limit: Int = 20,
             platform: String? = nil,
             minVersion: String? = nil
-        ) async throws -> [FileSearchResult] {
+        ) async throws -> [Sample.Index.FileSearchResult] {
             guard let database else {
                 throw Sample.Index.Error.databaseNotInitialized
             }
@@ -758,7 +820,7 @@ extension Sample.Index {
 
             sqlite3_bind_int(statement, paramIndex, Int32(limit))
 
-            var results: [FileSearchResult] = []
+            var results: [Sample.Index.FileSearchResult] = []
 
             while sqlite3_step(statement) == SQLITE_ROW {
                 guard let projectIdPtr = sqlite3_column_text(statement, 0),
@@ -769,7 +831,7 @@ extension Sample.Index {
                     continue
                 }
 
-                results.append(FileSearchResult(
+                results.append(Sample.Index.FileSearchResult(
                     projectId: String(cString: projectIdPtr),
                     path: String(cString: pathPtr),
                     filename: String(cString: filenamePtr),

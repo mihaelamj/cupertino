@@ -3,6 +3,7 @@ import Foundation
 import Logging
 import SampleIndex
 import Services
+import ServicesModels
 import SharedConstants
 import SharedCore
 import SharedUtils
@@ -38,14 +39,14 @@ extension CLI.Command {
             let dbPath = resolveSampleDbPath()
 
             // Use Services.ServiceContainer for managed lifecycle
-            let (project, files) = try await Services.ServiceContainer.withSampleService(dbPath: dbPath) { service in
+            let (project, files) = try await Services.ServiceContainer.withSampleService(dbPath: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
                 guard let project = try await service.getProject(id: projectId) else {
                     Logging.Log.error("Project not found: \(projectId)")
                     Logging.Log.output("Use 'cupertino list-samples' or 'cupertino search --source samples' to find valid project IDs.")
                     throw ExitCode.failure
                 }
 
-                let files = try await service.listFiles(projectId: projectId)
+                let files = try await service.listFiles(projectId: projectId, folder: nil)
                 return (project, files)
             }
 

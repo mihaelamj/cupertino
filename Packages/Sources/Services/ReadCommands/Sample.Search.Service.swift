@@ -1,66 +1,15 @@
 import Foundation
-import SampleIndex
+import SampleIndexModels
 import SharedConstants
 import SharedCore
 
-// MARK: - Sample Search Query
+// MARK: - Sample Search
 
-/// Query parameters for sample code searches
-extension Sample.Search {
-    public struct Query: Sendable {
-        public let text: String
-        public let framework: String?
-        public let searchFiles: Bool
-        public let limit: Int
-        /// Optional platform filter (#233). When set together with
-        /// `minVersion`, restricts results to projects whose
-        /// `min_<platform>` column is non-NULL and lex-≤ the requested
-        /// version. nil on either disables the filter.
-        public let platform: String?
-        public let minVersion: String?
-
-        public init(
-            text: String,
-            framework: String? = nil,
-            searchFiles: Bool = true,
-            limit: Int = Shared.Constants.Limit.defaultSearchLimit,
-            platform: String? = nil,
-            minVersion: String? = nil
-        ) {
-            self.text = text
-            self.framework = framework
-            self.searchFiles = searchFiles
-            self.limit = min(limit, Shared.Constants.Limit.maxSearchLimit)
-            self.platform = platform
-            self.minVersion = minVersion
-        }
-    }
-}
-
-// MARK: - Sample Search Result
-
-/// Combined result from project and file searches
-extension Sample.Search {
-    public struct Result: Sendable {
-        public let projects: [Sample.Index.Project]
-        public let files: [Sample.Index.Database.FileSearchResult]
-
-        public init(projects: [Sample.Index.Project], files: [Sample.Index.Database.FileSearchResult]) {
-            self.projects = projects
-            self.files = files
-        }
-
-        /// Check if the result is empty
-        public var isEmpty: Bool {
-            projects.isEmpty && files.isEmpty
-        }
-
-        /// Total count of results
-        public var totalCount: Int {
-            projects.count + files.count
-        }
-    }
-}
+// `Sample.Search.Query` and `Sample.Search.Result` lifted to the
+// `SampleIndexModels` target so callers (`SearchToolProvider` and
+// future MCP / CLI surfaces) can construct queries without importing
+// the full `Services` target. The actor below stays here because it
+// holds behaviour over `any Sample.Index.Reader`.
 
 // MARK: - Sample Search Service
 
@@ -68,16 +17,14 @@ extension Sample.Search {
 /// Wraps Sample.Index.Database with a clean interface.
 extension Sample.Search {
     public actor Service {
-        private let database: Sample.Index.Database
+        private let database: any Sample.Index.Reader
 
-        /// Initialize with an existing database
-        public init(database: Sample.Index.Database) {
+        /// Initialize with an existing database. Accepts any
+        /// `Sample.Index.Reader` so this layer doesn't depend on the
+        /// concrete `Sample.Index.Database` actor — the composition
+        /// root supplies it.
+        public init(database: any Sample.Index.Reader) {
             self.database = database
-        }
-
-        /// Initialize with a database path
-        public init(dbPath: URL) async throws {
-            database = try await Sample.Index.Database(dbPath: dbPath)
         }
 
         // MARK: - Search Methods
@@ -90,11 +37,12 @@ extension Sample.Search {
                 limit: query.limit
             )
 
-            var files: [Sample.Index.Database.FileSearchResult] = []
+            var files: [Sample.Index.FileSearchResult] = []
             if query.searchFiles {
                 files = try await database.searchFiles(
                     query: query.text,
                     projectId: nil,
+                    fileExtension: nil,
                     limit: query.limit,
                     platform: query.platform,
                     minVersion: query.minVersion

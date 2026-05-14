@@ -1,10 +1,9 @@
-import CoreJSONParser
 import CoreProtocols
 import Foundation
 import Logging
+import SearchModels
 import SharedConstants
 import SharedModels
-import SearchModels
 
 // MARK: - SwiftOrgStrategy
 
@@ -38,11 +37,26 @@ extension Search {
         /// Root directory containing the Swift.org documentation files.
         public let swiftOrgDirectory: URL
 
+        /// Strategy for converting raw markdown to a structured page.
+        /// Injected so this target doesn't depend on `CoreJSONParser`;
+        /// the composition root supplies a concrete conformer wrapping
+        /// `Core.JSONParser.MarkdownToStructuredPage.convert`.
+        private let markdownStrategy: any Search.MarkdownToStructuredPageStrategy
+
         /// Create a strategy for indexing Swift.org documentation.
         ///
-        /// - Parameter swiftOrgDirectory: Root directory of the Swift.org corpus.
-        public init(swiftOrgDirectory: URL) {
+        /// - Parameters:
+        ///   - swiftOrgDirectory: Root directory of the Swift.org corpus.
+        ///   - markdownStrategy: Conformer that converts raw markdown into a
+        ///     `Shared.Models.StructuredDocumentationPage`. Injected at the
+        ///     composition root so the strategy can parse `.md` pages without
+        ///     depending on the `CoreJSONParser` target directly.
+        public init(
+            swiftOrgDirectory: URL,
+            markdownStrategy: any Search.MarkdownToStructuredPageStrategy
+        ) {
             self.swiftOrgDirectory = swiftOrgDirectory
+            self.markdownStrategy = markdownStrategy
         }
 
         /// Index all Swift.org documentation pages found under ``swiftOrgDirectory``.
@@ -113,11 +127,9 @@ extension Search {
                     }
                     let pageURL = URL(
                         string: "https://www.swift.org/documentation/" +
-                                "\(file.deletingPathExtension().lastPathComponent)"
+                            "\(file.deletingPathExtension().lastPathComponent)"
                     )
-                    guard let converted = Core.JSONParser.MarkdownToStructuredPage.convert(
-                        mdContent, url: pageURL
-                    ) else {
+                    guard let converted = markdownStrategy.convert(markdown: mdContent, url: pageURL) else {
                         Logging.Log.error(
                             "❌ Failed to convert \(file.lastPathComponent) to structured page",
                             category: .search

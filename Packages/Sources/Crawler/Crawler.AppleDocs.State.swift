@@ -1,4 +1,5 @@
 import CoreProtocols
+import CrawlerModels
 import Foundation
 import Logging
 import SharedConfiguration

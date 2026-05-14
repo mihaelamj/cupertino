@@ -1,5 +1,6 @@
 import Foundation
 import SearchModels
+import ServicesModels
 import SharedConstants
 import SharedCore
 
@@ -21,7 +22,7 @@ extension Services {
         /// `Search.Database`, so the actor flows through this protocol-
         /// typed init unchanged. Tests pass a mock.
         public init(database: any Search.Database) {
-            self.index = database
+            index = database
         }
 
         // MARK: - Services.SearchService Protocol

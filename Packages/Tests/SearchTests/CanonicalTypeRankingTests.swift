@@ -1,6 +1,6 @@
-import SearchModels
 import Foundation
 @testable import Search
+import SearchModels
 import Testing
 
 // Wide canonical-type ranking battery covering #254 + #256 acceptance.
@@ -38,8 +38,8 @@ private func indexPage(
         content: content,
         filePath: "/tmp/\(framework)-\(UUID().uuidString)",
         contentHash: UUID().uuidString,
-        lastCrawled: Date(),
-        ))
+        lastCrawled: Date()
+    ))
 }
 
 @Suite("Canonical type ranking (#254 + #256)")

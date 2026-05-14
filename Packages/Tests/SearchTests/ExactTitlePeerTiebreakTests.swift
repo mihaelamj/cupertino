@@ -1,6 +1,6 @@
-import SearchModels
 import Foundation
 @testable import Search
+import SearchModels
 import Testing
 
 // Exact-title peer tiebreak inside HEURISTIC 1 (#256).
@@ -43,8 +43,8 @@ private func indexPage(
         content: content,
         filePath: "/tmp/\(framework)",
         contentHash: framework,
-        lastCrawled: Date(),
-        ))
+        lastCrawled: Date()
+    ))
 }
 
 @Suite("Exact title peer tiebreak (#256)")

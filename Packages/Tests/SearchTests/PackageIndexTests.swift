@@ -1,7 +1,7 @@
 import SearchModels
+
 // swiftlint:disable identifier_name
-@testable import Core
-@testable import CorePackageIndexing
+import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
 @testable import Search
@@ -140,7 +140,7 @@ struct PackageIndexTests {
         ]
         _ = try await index.index(
             resolved: resolved,
-            extraction: Core.PackageIndexing.PackageArchiveExtractor.Result(
+            extraction: Core.PackageIndexing.PackageExtractionResult(
                 branch: "HEAD", files: files, totalBytes: 150, tarballBytes: 1000
             )
         )
@@ -214,7 +214,7 @@ struct PackageIndexTests {
                 byteSize: 60
             ),
         ]
-        let extraction = Core.PackageIndexing.PackageArchiveExtractor.Result(
+        let extraction = Core.PackageIndexing.PackageExtractionResult(
             branch: "HEAD",
             files: files,
             totalBytes: 100,

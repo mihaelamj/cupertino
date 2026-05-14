@@ -7,27 +7,27 @@ All public types now live under the `Services` namespace (per the namespacing sw
 ## Architecture
 
 ```
-                       ┌──────────────────────────────┐
-                       │  Services.ServiceContainer   │
-                       │      (Lifecycle Mgmt)        │
-                       └──────────────┬───────────────┘
-                                      │
-        ┌─────────────────────────────┼─────────────────────────────┐
-        │                             │                             │
-        ▼                             ▼                             ▼
-┌──────────────────┐         ┌──────────────────┐         ┌──────────────────────┐
-│ DocsSearchService│         │  HIGSearchService│         │ Sample.Search.Service│
-│   (Search.Index) │         │    (delegates)   │         │     (Sample.Index)   │
-└──────────────────┘         └──────────────────┘         └──────────────────────┘
-        │                             │                             │
-        └─────────────────────────────┼─────────────────────────────┘
-                                      │
-                                      ▼
-                       ┌──────────────────────────────┐
-                       │     Services.Formatters      │
-                       │ + Sample.Format.{Md,JSON,Txt}│
-                       │      (Text/JSON/Markdown)    │
-                       └──────────────────────────────┘
+                        ┌──────────────────────────────┐
+                        │  Services.ServiceContainer   │
+                        │      (Lifecycle Mgmt)        │
+                        └──────────────┬───────────────┘
+                                       │
+           ┌───────────────────────────┼───────────────────────────┐
+           │                           │                           │
+           ▼                           ▼                           ▼
+┌──────────────────────┐    ┌──────────────────────┐    ┌──────────────────────┐
+│   DocsSearchService  │    │   HIGSearchService   │    │ Sample.Search.Service│
+│    (Search.Index)    │    │     (delegates)      │    │    (Sample.Index)    │
+└──────────────────────┘    └──────────────────────┘    └──────────────────────┘
+           │                           │                           │
+           └───────────────────────────┼───────────────────────────┘
+                                       │
+                                       ▼
+                        ┌──────────────────────────────┐
+                        │     Services.Formatters      │
+                        │ + Sample.Format.{Md,JSON,Txt}│
+                        │     (Text/JSON/Markdown)     │
+                        └──────────────────────────────┘
 ```
 
 ## Services

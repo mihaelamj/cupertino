@@ -2,18 +2,21 @@ import ArgumentParser
 import Availability
 import Core
 import CorePackageIndexing
+import CorePackageIndexingModels
 import CoreProtocols
+import CoreSampleCode
 import Crawler
+import CrawlerModels
 import Foundation
 import Ingest
 import Logging
 import Search
+import SearchModels
 import SharedConfiguration
 import SharedConstants
 import SharedCore
 import SharedModels
 import SharedUtils
-import SearchModels
 
 /// Lets ArgumentParser parse `--discovery-mode <mode>` directly into the
 /// shared enum. The conformance lives here (not in Shared) so the Shared
@@ -445,7 +448,12 @@ extension CLI.Command {
         }
 
         private func executeCrawl(with config: Shared.Configuration) async throws {
-            let crawler = await Crawler.AppleDocs(configuration: config)
+            let crawler = await Crawler.AppleDocs(
+                configuration: config,
+                htmlParser: htmlParserStrategy,
+                appleJSONParser: appleJSONParserStrategy,
+                priorityPackageStrategy: priorityPackageStrategy
+            )
             let stats = try await crawler.crawl { progress in
                 let percentage = String(format: "%.1f", progress.percentage)
                 let urlComponent = progress.currentURL.lastPathComponent
@@ -807,7 +815,7 @@ extension CLI.Command {
 
         private func writePackageManifest(
             resolved: Core.PackageIndexing.ResolvedPackage,
-            extraction: Core.PackageIndexing.PackageArchiveExtractor.Result,
+            extraction: Core.PackageIndexing.PackageExtractionResult,
             destination: URL
         ) throws {
             struct Manifest: Encodable {

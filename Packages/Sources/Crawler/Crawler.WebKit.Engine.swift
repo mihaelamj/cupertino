@@ -1,7 +1,7 @@
+import CrawlerModels
 import Foundation
 import SharedCore
 #if canImport(WebKit)
-import Core
 import CoreProtocols
 import SharedConstants
 import WebKit
@@ -9,18 +9,24 @@ import WebKit
 
 // MARK: - WKWeb Crawler Engine
 
-/// Complete crawler engine using WKWebView for JavaScript-rendered pages
-/// Uses Crawler.WebKit.ContentFetcher for fetching and Core.Parser.HTML for transformation.
+/// Complete crawler engine using WKWebView for JavaScript-rendered pages.
+/// Uses `Crawler.WebKit.ContentFetcher` for fetching and an injected
+/// `Crawler.HTMLParserStrategy` for HTML→markdown transformation —
+/// composition root supplies the strategy so this target doesn't
+/// import the concrete `Core` HTML parser.
 extension Crawler.WebKit {
     #if canImport(WebKit)
     @MainActor
     public final class Engine: @preconcurrency Crawler.Engine {
         private let fetcher: Crawler.WebKit.ContentFetcher
+        private let htmlParser: any Crawler.HTMLParserStrategy
 
         public init(
+            htmlParser: any Crawler.HTMLParserStrategy,
             pageLoadTimeout: Duration = Shared.Constants.Timeout.pageLoad,
             javascriptWaitTime: Duration = Shared.Constants.Timeout.javascriptWait
         ) {
+            self.htmlParser = htmlParser
             fetcher = Crawler.WebKit.ContentFetcher(
                 pageLoadTimeout: pageLoadTimeout,
                 javascriptWaitTime: javascriptWaitTime
@@ -33,8 +39,8 @@ extension Crawler.WebKit {
             let html = result.content
             let finalURL = result.url
 
-            // Transform to markdown using Core.Parser.HTML
-            let markdown = Core.Parser.HTML.convert(html, url: finalURL)
+            // Transform to markdown via the injected HTML parser strategy
+            let markdown = htmlParser.convert(html: html, url: finalURL)
 
             // Extract links from HTML
             let links = extractLinks(from: html, baseURL: finalURL)

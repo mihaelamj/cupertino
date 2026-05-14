@@ -6,6 +6,13 @@ SQLite database with Full-Text Search (FTS5) index for fast Swift package code s
 
 **Default**: `~/.cupertino/packages.db`
 
+When `cupertino save --packages` or any reader is connected, two sidecar files appear next to the main file:
+
+- `packages.db-wal` — write-ahead log (#236; lets readers and writers proceed concurrently).
+- `packages.db-shm` — shared-memory index for the WAL.
+
+Copy all three together, or run `PRAGMA wal_checkpoint(TRUNCATE)` first to fold the WAL into the main file before the copy. Release bundles are always checkpoint-truncated before zipping.
+
 ## Created By
 
 ```bash

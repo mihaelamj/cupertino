@@ -10,11 +10,11 @@ import MCPCore
 import MCPSupport
 import SampleIndex
 import Search
+import SearchModels
 import SearchToolProvider
 import SharedConstants
 import SharedCore
 import SharedUtils
-import SearchModels
 
 // MARK: - Doctor Command
 
@@ -144,8 +144,84 @@ extension CLI.Command {
                 }
                 let version = Diagnostics.Probes.userVersion(at: url) ?? 0
                 let formatted = Diagnostics.SchemaVersion.format(version)
-                Logging.Log.output("   ✓ \(label): \(formatted)")
+                // #236: surface the journal mode alongside the schema
+                // version so a DB stuck in default rollback mode jumps
+                // out. WAL is the expected value — anything else means
+                // the init code never switched, and concurrent readers
+                // will block on writers.
+                let journal = Diagnostics.Probes.journalMode(at: url) ?? "?"
+                // #236: anything other than `wal` is a flag, but the
+                // root cause varies. The volume check below catches
+                // the network-FS case (silent-WAL-fail per the docs)
+                // separately, so this note stays minimal — the
+                // remaining causes are: (1) DB predates the WAL
+                // enablement and hasn't been re-opened by the
+                // writing actor since, or (2) the writer's PRAGMA
+                // failed for some unrelated reason and got logged
+                // at warning level.
+                let journalNote = if journal == "wal" {
+                    "wal"
+                } else {
+                    "\(journal) ⚠ (expected wal — run `cupertino save` for this DB, or check logs for a WAL PRAGMA failure)"
+                }
+
+                // #236 follow-up: surface the WAL sidecar size +
+                // warn when it suggests checkpoint starvation. The
+                // SQLite docs say read performance "deteriorates as
+                // the WAL file grows in size" but don't give a
+                // discrete threshold; 16 MiB is 4× the default
+                // auto-checkpoint threshold (4 MiB), so above that a
+                // healthy single-process workload would have already
+                // checkpointed multiple times. Persistent overshoot
+                // suggests a long-lived reader (e.g. an MCP session)
+                // is blocking the checkpoint.
+                let walURL = URL(fileURLWithPath: url.path + "-wal")
+                let walNote: String
+                if let attrs = try? FileManager.default.attributesOfItem(atPath: walURL.path),
+                   let walSize = attrs[.size] as? Int64 {
+                    if walSize > 16 * 1024 * 1024 {
+                        walNote = ", wal=\(Shared.Utils.Formatting.formatBytes(walSize)) ⚠ (checkpoint starvation? long-lived reader holding the DB)"
+                    } else if walSize > 0 {
+                        walNote = ", wal=\(Shared.Utils.Formatting.formatBytes(walSize))"
+                    } else {
+                        walNote = ""
+                    }
+                } else {
+                    walNote = ""
+                }
+
+                // #236 follow-up: warn when the DB lives on a
+                // non-local volume. SQLite WAL does not work over
+                // network filesystems (NFS / SMB / AFP) — quoting
+                // the docs: "All processes using a database must be
+                // on the same host computer; WAL does not work over
+                // a network filesystem." On non-local mounts the
+                // journal-mode switch silently fails, but symbols
+                // pile up at the surface (DB might also corrupt due
+                // to NFS advisory-locking bugs noted in the SQLite
+                // corruption guide).
+                let volumeNote = volumeWarning(for: url)
+
+                Logging.Log.output("   ✓ \(label): \(formatted), journal=\(journalNote)\(walNote)\(volumeNote)")
             }
+        }
+
+        /// Returns a warning suffix if the DB at `url` lives on a
+        /// non-local volume. Empty string for local volumes (the
+        /// happy path). Uses Foundation's `volumeIsLocalKey` resource
+        /// value — true for local mounted volumes (APFS / HFS+
+        /// internal or external), false for NFS / SMB / AFP /
+        /// FUSE-mounted network shares.
+        private func volumeWarning(for url: URL) -> String {
+            let resolved = url.resolvingSymlinksInPath()
+            guard let values = try? resolved.resourceValues(forKeys: [.volumeIsLocalKey]),
+                  let isLocal = values.volumeIsLocal else {
+                return ""
+            }
+            if isLocal {
+                return ""
+            }
+            return ", volume=non-local ⚠ (SQLite WAL doesn't work over NFS/SMB/AFP; risk of corruption per sqlite.org/wal.html)"
         }
 
         private func checkServerInitialization() -> Bool {

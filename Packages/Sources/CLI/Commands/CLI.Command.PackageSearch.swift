@@ -2,10 +2,10 @@ import ArgumentParser
 import Foundation
 import Logging
 import Search
+import SearchModels
 import SharedConstants
 import SharedCore
 import SharedUtils
-import SearchModels
 
 // MARK: - Package Search Command (hidden)
 

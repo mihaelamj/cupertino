@@ -7,12 +7,15 @@ import Logging
 import MCPCore
 import MCPSupport
 import SampleIndex
+import SampleIndexModels
 import Search
+import SearchModels
 import SearchToolProvider
+import Services
+import ServicesModels
 import SharedConfiguration
 import SharedConstants
 import SharedCore
-import SearchModels
 
 // MARK: - Serve Command
 
@@ -126,14 +129,12 @@ extension CLI.Command {
 
             // Register resource provider with optional search-index markdown
             // lookup. The provider doesn't see the Search target — it just
-            // gets a closure that returns markdown for a URI, or nil if the
+            // gets a strategy that returns markdown for a URI, or nil if the
             // URI isn't indexed. This keeps MCPSupport free of the Search
             // import per the DI epic (#406).
-            let markdownLookup: MCP.Support.DocsResourceProvider.MarkdownLookup?
+            let markdownLookup: (any MCP.Support.MarkdownLookupStrategy)?
             if let searchIndex {
-                markdownLookup = { uri in
-                    try await searchIndex.getDocumentContent(uri: uri, format: .markdown)
-                }
+                markdownLookup = LiveMarkdownLookupStrategy(searchIndex: searchIndex)
             } else {
                 markdownLookup = nil
             }
@@ -147,8 +148,28 @@ extension CLI.Command {
             // Initialize sample code index if available
             let sampleIndex = await loadSampleIndex()
 
-            // Register composite tool provider with both indexes
-            let toolProvider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: sampleIndex)
+            // Register composite tool provider with both indexes. The
+            // service-layer wrappers are constructed here at the
+            // composition root and passed across the protocol seam so
+            // SearchToolProvider doesn't have to construct them itself.
+            let docsService: (any Services.DocsSearcher)? = searchIndex.map(Services.DocsSearchService.init(database:))
+            let sampleService: (any Sample.Search.Searcher)? = sampleIndex.map(Sample.Search.Service.init(database:))
+            let teaserService: (any Services.Teaser)? =
+                (searchIndex == nil && sampleIndex == nil)
+                    ? nil
+                    : Services.TeaserService(searchIndex: searchIndex, sampleDatabase: sampleIndex)
+            let unifiedService: (any Services.UnifiedSearcher)? =
+                (searchIndex == nil && sampleIndex == nil)
+                    ? nil
+                    : Services.UnifiedSearchService(searchIndex: searchIndex, sampleDatabase: sampleIndex)
+            let toolProvider = CompositeToolProvider(
+                searchIndex: searchIndex,
+                sampleDatabase: sampleIndex,
+                docsService: docsService,
+                sampleService: sampleService,
+                teaserService: teaserService,
+                unifiedService: unifiedService
+            )
             await server.registerToolProvider(toolProvider)
 
             // Log availability of each index

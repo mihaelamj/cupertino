@@ -3,6 +3,7 @@ import Foundation
 import Logging
 import SampleIndex
 import Services
+import ServicesModels
 import SharedConstants
 import SharedCore
 import SharedUtils
@@ -47,12 +48,13 @@ extension CLI.Command {
             let dbPath = resolveSampleDbPath()
 
             // Use Services.ServiceContainer for managed lifecycle
-            let (projects, totalProjects, totalFiles) = try await Services.ServiceContainer.withSampleService(dbPath: dbPath) { service in
-                let projects = try await service.listProjects(framework: framework, limit: limit)
-                let totalProjects = try await service.projectCount()
-                let totalFiles = try await service.fileCount()
-                return (projects, totalProjects, totalFiles)
-            }
+            let (projects, totalProjects, totalFiles) = try await Services.ServiceContainer
+                .withSampleService(dbPath: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
+                    let projects = try await service.listProjects(framework: framework, limit: limit)
+                    let totalProjects = try await service.projectCount()
+                    let totalFiles = try await service.fileCount()
+                    return (projects, totalProjects, totalFiles)
+                }
 
             // Output results
             switch format {

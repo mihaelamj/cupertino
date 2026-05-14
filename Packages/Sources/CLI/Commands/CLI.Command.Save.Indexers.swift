@@ -1,7 +1,12 @@
+import CoreJSONParser
+import CoreProtocols
+import CoreSampleCode
 import Foundation
 import Indexer
 import Logging
 import SampleIndex
+import Search
+import SearchModels
 import SharedConstants
 import SharedCore
 import SharedUtils
@@ -31,10 +36,93 @@ extension CLI.Command.Save {
         )
 
         let tracker = ProgressTracker()
-        let outcome = try await Indexer.DocsService.run(request) { event in
+        let outcome = try await Indexer.DocsService.run(
+            request,
+            markdownStrategy: LiveMarkdownToStructuredPageStrategy(),
+            sampleCatalogProvider: LiveSampleCatalogProvider(),
+            docsIndexingRunner: LiveDocsIndexingRunner()
+        ) { event in
             Self.handleDocsEvent(event, tracker: tracker)
         }
         Self.printDocsSummary(outcome: outcome)
+    }
+
+    /// Concrete `Search.DocsIndexingRunner` (GoF Strategy) used by
+    /// `Indexer.DocsService`. Wraps `Search.Index` + `Search.IndexBuilder`.
+    /// Lives at the CLI composition root so Indexer doesn't need
+    /// `import Search` for these actor types.
+    struct LiveDocsIndexingRunner: Search.DocsIndexingRunner {
+        func run(
+            input: Search.DocsIndexingInput,
+            onProgress: @escaping @Sendable (Int, Int) -> Void
+        ) async throws -> Search.DocsIndexingOutcome {
+            let searchIndex = try await Search.Index(dbPath: input.searchDBPath)
+            let builder = Search.IndexBuilder(
+                searchIndex: searchIndex,
+                metadata: nil,
+                docsDirectory: input.docsDirectory,
+                evolutionDirectory: input.evolutionDirectory,
+                swiftOrgDirectory: input.swiftOrgDirectory,
+                archiveDirectory: input.archiveDirectory,
+                higDirectory: input.higDirectory,
+                markdownStrategy: input.markdownStrategy,
+                sampleCatalogProvider: input.sampleCatalogProvider
+            )
+            try await builder.buildIndex(clearExisting: input.clearExisting, onProgress: onProgress)
+            let docCount = try await searchIndex.documentCount()
+            let frameworks = try await searchIndex.listFrameworks()
+            await searchIndex.disconnect()
+            return Search.DocsIndexingOutcome(
+                documentCount: docCount,
+                frameworkCount: frameworks.count
+            )
+        }
+    }
+
+    // MARK: - Markdown strategy adapter
+
+    /// Concrete `Search.MarkdownToStructuredPageStrategy` (GoF Strategy)
+    /// wrapping the `Core.JSONParser.MarkdownToStructuredPage.convert`
+    /// static method. Lives at the CLI composition root so neither
+    /// Search nor Indexer needs to import `CoreJSONParser` —
+    /// the Search target sees only the protocol from SearchModels.
+    struct LiveMarkdownToStructuredPageStrategy: Search.MarkdownToStructuredPageStrategy {
+        func convert(markdown: String, url: URL?) -> Shared.Models.StructuredDocumentationPage? {
+            Core.JSONParser.MarkdownToStructuredPage.convert(markdown, url: url)
+        }
+    }
+
+    // MARK: - Sample catalog adapter
+
+    /// Concrete `Search.SampleCatalogProvider` (GoF Strategy) that
+    /// bridges `Sample.Core.Catalog` (the CoreSampleCode singleton)
+    /// to the catalog-state shape the Search `SampleCodeStrategy`
+    /// reads. Lives at the CLI composition root so neither Search nor
+    /// Indexer needs to import `CoreSampleCode`.
+    struct LiveSampleCatalogProvider: Search.SampleCatalogProvider {
+        func fetch() async -> Search.SampleCatalogState {
+            let entries = await Sample.Core.Catalog.allEntries
+            let loaded = await Sample.Core.Catalog.loadedSource ?? .missing
+            switch loaded {
+            case .onDisk:
+                let mapped = entries.map { entry in
+                    Search.SampleCatalogEntry(
+                        title: entry.title,
+                        url: entry.url,
+                        framework: entry.framework,
+                        description: entry.description,
+                        zipFilename: entry.zipFilename,
+                        webURL: entry.webURL
+                    )
+                }
+                return .loaded(entries: mapped)
+            case .missing:
+                let path = Shared.Constants.defaultSampleCodeDirectory
+                    .appendingPathComponent(Sample.Core.Catalog.onDiskCatalogFilename)
+                    .path
+                return .missing(onDiskPath: path)
+            }
+        }
     }
 
     static func handleDocsEvent(
@@ -98,8 +186,42 @@ extension CLI.Command.Save {
             clear: clear
         )
 
-        _ = try await Indexer.PackagesService.run(request) { event in
+        _ = try await Indexer.PackagesService.run(
+            request,
+            packageIndexingRunner: LivePackageIndexingRunner()
+        ) { event in
             Self.handlePackagesEvent(event)
+        }
+    }
+
+    /// Concrete `Search.PackageIndexingRunner` (GoF Strategy) used by
+    /// `Indexer.PackagesService`. Wraps `Search.PackageIndex` +
+    /// `Search.PackageIndexer`. Lives at the CLI composition root so
+    /// the Indexer SPM target doesn't import `Search` for these types.
+    struct LivePackageIndexingRunner: Search.PackageIndexingRunner {
+        func run(
+            packagesRoot: URL,
+            packagesDB: URL,
+            onProgress: @escaping @Sendable (String, Int, Int) -> Void
+        ) async throws -> Search.PackageIndexingOutcome {
+            let startedAt = Date()
+            let index = try await Search.PackageIndex(dbPath: packagesDB)
+            let indexer = Search.PackageIndexer(rootDirectory: packagesRoot, index: index)
+            let stats = try await indexer.indexAll { name, done, total in
+                onProgress(name, done, total)
+            }
+            let summary = try await index.summary()
+            await index.disconnect()
+            return Search.PackageIndexingOutcome(
+                packagesIndexed: stats.packagesIndexed,
+                packagesFailed: stats.packagesFailed,
+                totalFiles: stats.totalFiles,
+                totalBytes: stats.totalBytes,
+                durationSeconds: Date().timeIntervalSince(startedAt),
+                totalPackagesInDB: summary.packageCount,
+                totalFilesInDB: summary.fileCount,
+                totalBytesInDB: summary.bytesIndexed
+            )
         }
     }
 
@@ -159,8 +281,90 @@ extension CLI.Command.Save {
         )
 
         let tracker = ProgressTracker()
-        _ = try await Indexer.SamplesService.run(request) { event in
+        _ = try await Indexer.SamplesService.run(
+            request,
+            samplesIndexingRunner: LiveSamplesIndexingRunner()
+        ) { event in
             Self.handleSamplesEvent(event, tracker: tracker)
+        }
+    }
+
+    /// Concrete `Sample.Index.SamplesIndexingRunner` (GoF Strategy)
+    /// used by `Indexer.SamplesService`. Wraps `Sample.Index.Database` +
+    /// `Sample.Index.Builder` + `Sample.Core.Catalog`. Lives at the
+    /// CLI composition root so the Indexer SPM target doesn't import
+    /// SampleIndex or CoreSampleCode for these types.
+    struct LiveSamplesIndexingRunner: Sample.Index.SamplesIndexingRunner {
+        func run(
+            input: Sample.Index.SamplesIndexingInput,
+            onPhase: @escaping @Sendable (Sample.Index.SamplesIndexingPhase) -> Void
+        ) async throws -> Sample.Index.SamplesIndexingOutcome {
+            let database = try await Sample.Index.Database(dbPath: input.samplesDB)
+            if input.clear {
+                onPhase(.clearingExistingIndex)
+                try await database.clearAll()
+            }
+
+            let existingProjects = try await database.projectCount()
+            let existingFiles = try await database.fileCount()
+            if existingProjects > 0, !input.force, !input.clear {
+                onPhase(.existingIndexNotice(projects: existingProjects, files: existingFiles))
+            }
+
+            onPhase(.loadingCatalog)
+            let catalogEntries = await Sample.Core.Catalog.allEntries
+            onPhase(.catalogLoaded(entryCount: catalogEntries.count))
+
+            let entries = catalogEntries.map { entry in
+                Sample.Index.SampleCodeEntryInfo(
+                    title: entry.title,
+                    description: entry.description,
+                    frameworks: [entry.framework],
+                    webURL: entry.webURL,
+                    zipFilename: entry.zipFilename
+                )
+            }
+
+            onPhase(.indexingStart)
+            let builder = Sample.Index.Builder(
+                database: database,
+                sampleCodeDirectory: input.sampleCodeDir
+            )
+
+            let startTime = Date()
+            let indexed = try await builder.indexAll(
+                entries: entries,
+                forceReindex: input.force
+            ) { progress in
+                let phase: Sample.Index.SamplesIndexingPhase.ProgressPhase
+                switch progress.status {
+                case .extracting: phase = .extracting
+                case .indexingFiles: phase = .indexingFiles
+                case .completed: phase = .completed
+                case .failed: phase = .failed
+                }
+                onPhase(.projectProgress(
+                    name: progress.currentProject,
+                    percent: progress.percentComplete,
+                    phase: phase
+                ))
+            }
+
+            let duration = Date().timeIntervalSince(startTime)
+
+            let finalProjects = try await database.projectCount()
+            let finalFiles = try await database.fileCount()
+            let finalSymbols = try await database.symbolCount()
+            let finalImports = try await database.importCount()
+
+            return Sample.Index.SamplesIndexingOutcome(
+                projectsIndexedThisRun: indexed,
+                projectsTotal: finalProjects,
+                filesTotal: finalFiles,
+                symbolsTotal: finalSymbols,
+                importsTotal: finalImports,
+                durationSeconds: duration
+            )
         }
     }
 

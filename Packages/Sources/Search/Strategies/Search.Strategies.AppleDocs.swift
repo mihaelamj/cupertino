@@ -1,10 +1,9 @@
-import CoreJSONParser
 import CoreProtocols
 import Foundation
 import Logging
+import SearchModels
 import SharedConstants
 import SharedModels
-import SearchModels
 
 // MARK: - AppleDocsStrategy
 
@@ -43,11 +42,26 @@ extension Search {
         /// Root directory containing the crawled Apple documentation files.
         public let docsDirectory: URL
 
+        /// Strategy for converting raw markdown to a structured page.
+        /// Injected so this target doesn't depend on `CoreJSONParser`;
+        /// the composition root supplies a concrete conformer wrapping
+        /// `Core.JSONParser.MarkdownToStructuredPage.convert`.
+        private let markdownStrategy: any Search.MarkdownToStructuredPageStrategy
+
         /// Create a strategy for indexing Apple Developer Documentation.
         ///
-        /// - Parameter docsDirectory: Root directory of the crawled documentation.
-        public init(docsDirectory: URL) {
+        /// - Parameters:
+        ///   - docsDirectory: Root directory of the crawled documentation.
+        ///   - markdownStrategy: Conformer that converts raw markdown into a
+        ///     `Shared.Models.StructuredDocumentationPage`. Injected at the
+        ///     composition root so the strategy can parse `.md` pages without
+        ///     depending on the `CoreJSONParser` target directly.
+        public init(
+            docsDirectory: URL,
+            markdownStrategy: any Search.MarkdownToStructuredPageStrategy
+        ) {
             self.docsDirectory = docsDirectory
+            self.markdownStrategy = markdownStrategy
         }
 
         /// Index all Apple documentation pages by scanning ``docsDirectory``.
@@ -65,7 +79,7 @@ extension Search {
             progress: Search.IndexingProgressCallback?
         ) async throws -> Search.IndexStats {
             // Always use the directory-scan path; metadata is for crawling, not indexing.
-            return try await indexFromDirectory(into: index, progress: progress)
+            try await indexFromDirectory(into: index, progress: progress)
         }
 
         // MARK: - Directory-Scan Path
@@ -123,7 +137,7 @@ extension Search {
                 ) else {
                     Logging.Log.error(
                         "❌ Could not extract framework from path: \(file.path) " +
-                        "(relative to \(docsDirectory.path))",
+                            "(relative to \(docsDirectory.path))",
                         category: .search
                     )
                     skipped += 1
@@ -158,11 +172,9 @@ extension Search {
                     }
                     let pageURL = URL(
                         string: "\(Shared.Constants.BaseURL.appleDeveloperDocs)\(framework)/" +
-                                "\(file.deletingPathExtension().lastPathComponent)"
+                            "\(file.deletingPathExtension().lastPathComponent)"
                     )
-                    guard let converted = Core.JSONParser.MarkdownToStructuredPage.convert(
-                        mdContent, url: pageURL
-                    ) else {
+                    guard let converted = markdownStrategy.convert(markdown: mdContent, url: pageURL) else {
                         Logging.Log.error(
                             "❌ Failed to convert \(file.lastPathComponent) to structured page",
                             category: .search
@@ -189,8 +201,8 @@ extension Search {
                 if Search.StrategyHelpers.titleLooksLikeHTTPErrorTemplate(structuredPage.title) {
                     Logging.Log.error(
                         "⛔ Skipping HTTP-error-template page (#284 indexer defence): " +
-                        "title=\(structuredPage.title.prefix(60)) " +
-                        "file=\(file.lastPathComponent)",
+                            "title=\(structuredPage.title.prefix(60)) " +
+                            "file=\(file.lastPathComponent)",
                         category: .search
                     )
                     skipped += 1
@@ -199,8 +211,8 @@ extension Search {
                 if Search.StrategyHelpers.pageLooksLikeJavaScriptFallback(structuredPage) {
                     Logging.Log.error(
                         "⛔ Skipping JS-disabled-fallback page (#284 indexer defence): " +
-                        "title=\(structuredPage.title.prefix(60)) " +
-                        "file=\(file.lastPathComponent)",
+                            "title=\(structuredPage.title.prefix(60)) " +
+                            "file=\(file.lastPathComponent)",
                         category: .search
                     )
                     skipped += 1
@@ -245,7 +257,7 @@ extension Search {
                     progress?(idx + 1, docFiles.count)
                     Logging.Log.info(
                         "   Progress: \(idx + 1)/\(docFiles.count) " +
-                        "(\(indexed) indexed, \(skipped) skipped)",
+                            "(\(indexed) indexed, \(skipped) skipped)",
                         category: .search
                     )
                 }
@@ -313,7 +325,7 @@ extension Search {
                 let title = Search.StrategyHelpers.extractTitle(from: content)
                     ?? Shared.Models.URLUtilities.filename(from: parsedURL)
                 let uri = "apple-docs://\(pageMetadata.framework)/" +
-                          "\(Shared.Models.URLUtilities.filename(from: parsedURL))"
+                    "\(Shared.Models.URLUtilities.filename(from: parsedURL))"
 
                 do {
                     try await index.indexDocument(Search.Index.IndexDocumentParams(
@@ -324,7 +336,7 @@ extension Search {
                         content: content,
                         filePath: pageMetadata.filePath,
                         contentHash: pageMetadata.contentHash,
-                        lastCrawled: pageMetadata.lastCrawled,
+                        lastCrawled: pageMetadata.lastCrawled
                     ))
                     indexed += 1
                 } catch {
@@ -339,7 +351,7 @@ extension Search {
                     progress?(processed, total)
                     Logging.Log.info(
                         "   Progress: \(processed)/\(total) " +
-                        "(\(indexed) indexed, \(skipped) skipped)",
+                            "(\(indexed) indexed, \(skipped) skipped)",
                         category: .search
                     )
                 }

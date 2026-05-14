@@ -2,6 +2,7 @@ import AppKit
 @testable import Core
 import CoreProtocols
 import Crawler
+import CrawlerModels
 import Foundation
 import SharedConfiguration
 import SharedConstants
@@ -26,7 +27,6 @@ import TestSupport
 // CupertinoCoreTests pre-extraction is preserved verbatim. No
 // behavioural change.
 
-
 // MARK: - Integration Tests
 
 /// Integration test: Downloads a real Apple documentation page
@@ -43,7 +43,12 @@ func downloadRealAppleDocPage() async throws {
     let config = createTestConfiguration(outputDirectory: tempDir)
     logTestStart(config: config)
 
-    let crawler = await Crawler.AppleDocs(configuration: config)
+    let crawler = await Crawler.AppleDocs(
+        configuration: config,
+        htmlParser: LiveTestHTMLParserStrategy(),
+        appleJSONParser: LiveTestAppleJSONParserStrategy(),
+        priorityPackageStrategy: LiveTestPriorityPackageStrategy()
+    )
     let stats = try await crawler.crawl()
 
     try verifyBasicStats(stats)
@@ -658,4 +663,3 @@ func crawlerStateAutoSaveInterval() async throws {
     #expect(modDate1 == modDate2)
     print("   ✅ Auto-save respects interval (file not modified)")
 }
-

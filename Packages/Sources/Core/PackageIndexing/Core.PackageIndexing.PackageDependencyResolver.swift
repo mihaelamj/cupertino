@@ -1,3 +1,4 @@
+import CorePackageIndexingModels
 import CoreProtocols
 
 // swiftlint:disable identifier_name

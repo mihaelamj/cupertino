@@ -1,11 +1,12 @@
-import SearchModels
 import AppKit
 @testable import CLI
 @testable import Core
 import CoreProtocols
 import Crawler
+import CrawlerModels
 import Foundation
 @testable import Search
+import SearchModels
 import SharedConfiguration
 import SharedConstants
 @testable import SharedCore
@@ -13,6 +14,20 @@ import SharedModels
 import SharedUtils
 import Testing
 import TestSupport
+
+// MARK: - Test Doubles
+
+private struct NoopMarkdownStrategy: Search.MarkdownToStructuredPageStrategy {
+    func convert(markdown: String, url: URL?) -> Shared.Models.StructuredDocumentationPage? {
+        nil
+    }
+}
+
+private struct MissingSampleCatalogProvider: Search.SampleCatalogProvider {
+    func fetch() async -> Search.SampleCatalogState {
+        .missing(onDiskPath: "")
+    }
+}
 
 // MARK: - Save Command Tests
 
@@ -44,7 +59,12 @@ struct SaveCommandTests {
             output: Shared.Configuration.Output(format: .markdown)
         )
 
-        let crawler = await Crawler.AppleDocs(configuration: config)
+        let crawler = await Crawler.AppleDocs(
+            configuration: config,
+            htmlParser: LiveTestHTMLParserStrategy(),
+            appleJSONParser: LiveTestAppleJSONParserStrategy(),
+            priorityPackageStrategy: LiveTestPriorityPackageStrategy()
+        )
         _ = try await crawler.crawl()
 
         // Build search index
@@ -56,7 +76,9 @@ struct SaveCommandTests {
             searchIndex: searchIndex,
             metadata: metadata,
             docsDirectory: tempDir,
-            evolutionDirectory: nil
+            evolutionDirectory: nil,
+            markdownStrategy: NoopMarkdownStrategy(),
+            sampleCatalogProvider: MissingSampleCatalogProvider()
         )
 
         try await builder.buildIndex()
@@ -99,7 +121,12 @@ struct SaveCommandTests {
             output: Shared.Configuration.Output(format: .markdown)
         )
 
-        let crawler = await Crawler.AppleDocs(configuration: config)
+        let crawler = await Crawler.AppleDocs(
+            configuration: config,
+            htmlParser: LiveTestHTMLParserStrategy(),
+            appleJSONParser: LiveTestAppleJSONParserStrategy(),
+            priorityPackageStrategy: LiveTestPriorityPackageStrategy()
+        )
         _ = try await crawler.crawl()
 
         let searchDbPath = tempDir.appendingPathComponent("search.db")
@@ -110,7 +137,9 @@ struct SaveCommandTests {
             searchIndex: searchIndex,
             metadata: metadata,
             docsDirectory: tempDir,
-            evolutionDirectory: nil
+            evolutionDirectory: nil,
+            markdownStrategy: NoopMarkdownStrategy(),
+            sampleCatalogProvider: MissingSampleCatalogProvider()
         )
         try await builder.buildIndex()
 
@@ -152,7 +181,9 @@ struct SaveCommandTests {
             searchIndex: searchIndex,
             metadata: emptyMetadata,
             docsDirectory: tempDir,
-            evolutionDirectory: nil
+            evolutionDirectory: nil,
+            markdownStrategy: NoopMarkdownStrategy(),
+            sampleCatalogProvider: MissingSampleCatalogProvider()
         )
 
         // Should not throw, just save 0 documents
@@ -211,7 +242,9 @@ struct SaveCommandTests {
             searchIndex: searchIndex,
             metadata: metadata,
             docsDirectory: docsDir,
-            evolutionDirectory: evolutionDir
+            evolutionDirectory: evolutionDir,
+            markdownStrategy: NoopMarkdownStrategy(),
+            sampleCatalogProvider: MissingSampleCatalogProvider()
         )
 
         try await builder.buildIndex()
@@ -281,7 +314,9 @@ struct SaveCommandTests {
             searchIndex: searchIndex,
             metadata: nil, // No metadata!
             docsDirectory: tempDir.appendingPathComponent("docs"),
-            evolutionDirectory: nil
+            evolutionDirectory: nil,
+            markdownStrategy: NoopMarkdownStrategy(),
+            sampleCatalogProvider: MissingSampleCatalogProvider()
         )
 
         try await builder.buildIndex()
@@ -335,7 +370,9 @@ struct SaveCommandTests {
             searchIndex: searchIndex,
             metadata: nil,
             docsDirectory: tempDir.appendingPathComponent("docs"),
-            evolutionDirectory: nil
+            evolutionDirectory: nil,
+            markdownStrategy: NoopMarkdownStrategy(),
+            sampleCatalogProvider: MissingSampleCatalogProvider()
         )
 
         try await builder.buildIndex()
@@ -384,7 +421,9 @@ struct SaveCommandTests {
             searchIndex: searchIndex,
             metadata: nil,
             docsDirectory: tempDir,
-            evolutionDirectory: nil
+            evolutionDirectory: nil,
+            markdownStrategy: NoopMarkdownStrategy(),
+            sampleCatalogProvider: MissingSampleCatalogProvider()
         )
 
         try await builder.buildIndex()
@@ -416,7 +455,9 @@ struct SaveCommandTests {
             searchIndex: searchIndex,
             metadata: nil,
             docsDirectory: tempDir,
-            evolutionDirectory: nil
+            evolutionDirectory: nil,
+            markdownStrategy: NoopMarkdownStrategy(),
+            sampleCatalogProvider: MissingSampleCatalogProvider()
         )
 
         try await builder.buildIndex()

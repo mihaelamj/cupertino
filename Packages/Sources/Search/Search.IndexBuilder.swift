@@ -94,7 +94,9 @@ extension Search {
             swiftOrgDirectory: URL? = nil,
             archiveDirectory: URL? = nil,
             higDirectory: URL? = nil,
-            indexSampleCode: Bool = true
+            indexSampleCode: Bool = true,
+            markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
+            sampleCatalogProvider: any Search.SampleCatalogProvider
         ) {
             self.init(
                 searchIndex: searchIndex,
@@ -105,7 +107,9 @@ extension Search {
                     swiftOrgDirectory: swiftOrgDirectory,
                     archiveDirectory: archiveDirectory,
                     higDirectory: higDirectory,
-                    indexSampleCode: indexSampleCode
+                    indexSampleCode: indexSampleCode,
+                    markdownStrategy: markdownStrategy,
+                    sampleCatalogProvider: sampleCatalogProvider
                 )
             )
         }
@@ -177,16 +181,24 @@ extension Search {
             swiftOrgDirectory: URL? = nil,
             archiveDirectory: URL? = nil,
             higDirectory: URL? = nil,
-            indexSampleCode: Bool = true
+            indexSampleCode: Bool = true,
+            markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
+            sampleCatalogProvider: any Search.SampleCatalogProvider
         ) -> [any Search.SourceIndexingStrategy] {
             var strategies: [any Search.SourceIndexingStrategy] = [
-                Search.AppleDocsStrategy(docsDirectory: docsDirectory),
+                Search.AppleDocsStrategy(
+                    docsDirectory: docsDirectory,
+                    markdownStrategy: markdownStrategy
+                ),
             ]
             if let dir = evolutionDirectory {
                 strategies.append(Search.SwiftEvolutionStrategy(evolutionDirectory: dir))
             }
             if let dir = swiftOrgDirectory {
-                strategies.append(Search.SwiftOrgStrategy(swiftOrgDirectory: dir))
+                strategies.append(Search.SwiftOrgStrategy(
+                    swiftOrgDirectory: dir,
+                    markdownStrategy: markdownStrategy
+                ))
             }
             if let dir = archiveDirectory {
                 strategies.append(Search.AppleArchiveStrategy(archiveDirectory: dir))
@@ -195,7 +207,7 @@ extension Search {
                 strategies.append(Search.HIGStrategy(higDirectory: dir))
             }
             if indexSampleCode {
-                strategies.append(Search.SampleCodeStrategy())
+                strategies.append(Search.SampleCodeStrategy(sampleCatalogProvider: sampleCatalogProvider))
             }
             strategies.append(Search.SwiftPackagesStrategy())
             return strategies

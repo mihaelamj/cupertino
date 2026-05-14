@@ -1,7 +1,7 @@
-import Testing
 import Foundation
-import SearchModels
 @testable import Search
+import SearchModels
+import Testing
 
 // Reciprocal rank fusion (#192 section E4). Covered with a deterministic
 // in-memory `MockFetcher` so the fusion math is guarded independently of

@@ -1,4 +1,5 @@
 import ASTIndexer
+import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
 import SharedCore
@@ -19,30 +20,16 @@ extension Core.PackageIndexing {
     public actor PackageAvailabilityAnnotator {
         public init() {}
 
-        public static let outputFilename = "availability.json"
+        // `outputFilename` lifted to
+        // `Core.PackageIndexing.availabilityFilename` in
+        // `CorePackageIndexingModels`. Internally reference the same
+        // value via the lifted constant to keep one source of truth.
 
-        public struct AnnotationResult: Codable, Sendable, Equatable {
-            public let version: String
-            public let annotatedAt: Date
-            public let deploymentTargets: [String: String]
-            public let fileAvailability: [FileAvailability]
-            public let stats: Stats
-
-            public struct Stats: Codable, Sendable, Equatable {
-                public let filesScanned: Int
-                public let filesWithAvailability: Int
-                public let totalAttributes: Int
-            }
-        }
-
-        public struct FileAvailability: Codable, Sendable, Equatable {
-            public let relpath: String
-            public let attributes: [Attribute]
-        }
-
-        /// Re-exported under the original public name for source/binary
-        /// stability after the parser helpers moved to ASTIndexer (#228).
-        public typealias Attribute = ASTIndexer.AvailabilityParsers.Attribute
+        // `AnnotationResult` / `FileAvailability` / `Attribute` lifted to
+        // top-level under `Core.PackageIndexing.*` in
+        // `CorePackageIndexingModels` so `Search.PackageIndexer` can hold
+        // them without depending on the full `CorePackageIndexing`
+        // target.
 
         public enum AnnotationError: Error, Sendable, Equatable {
             case missingPackageDirectory(URL)
@@ -112,7 +99,7 @@ extension Core.PackageIndexing {
                 )
             )
 
-            let outputURL = packageDirectory.appendingPathComponent(Self.outputFilename)
+            let outputURL = packageDirectory.appendingPathComponent(Core.PackageIndexing.availabilityFilename)
             try Self.write(result, to: outputURL)
             return result
         }

@@ -15,10 +15,10 @@
 // and a corresponding case to `DocKind`.
 
 import Foundation
+import SearchModels
 import SharedConstants
 import SharedCore
 import SharedModels
-import SearchModels
 
 extension Search {
     /// High-level document-shape taxonomy stored per row in `docs_metadata`.

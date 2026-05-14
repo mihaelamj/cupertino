@@ -1,6 +1,6 @@
-import SearchModels
 import Foundation
 @testable import Search
+import SearchModels
 import SQLite3
 import Testing
 
@@ -79,8 +79,8 @@ struct BM25TitleWeightingTests {
             content: "An asynchronous unit of work without the query term repeated.",
             filePath: "/tmp/a",
             contentHash: "a",
-            lastCrawled: Date(),
-            ))
+            lastCrawled: Date()
+        ))
 
         // B: query term appears only in the body, title is unrelated.
         try await idx.indexDocument(Search.Index.IndexDocumentParams(
@@ -91,8 +91,8 @@ struct BM25TitleWeightingTests {
             content: "A mach task contains threads and memory regions. Task accounting is reported here.",
             filePath: "/tmp/b",
             contentHash: "b",
-            lastCrawled: Date(),
-            ))
+            lastCrawled: Date()
+        ))
 
         await idx.disconnect()
 
@@ -123,8 +123,8 @@ struct BM25TitleWeightingTests {
             content: "Bundle is the entry point for resource lookup. " + String(repeating: "Filler sentence. ", count: 40),
             filePath: "/tmp/s1",
             contentHash: "s1",
-            lastCrawled: Date(),
-            ))
+            lastCrawled: Date()
+        ))
 
         // B: query term only appears deep in the body, past the summary cut.
         let bodyB = String(repeating: "Unrelated padding text. ", count: 60) + " Bundle is mentioned only here at the end."
@@ -136,8 +136,8 @@ struct BM25TitleWeightingTests {
             content: bodyB,
             filePath: "/tmp/s2",
             contentHash: "s2",
-            lastCrawled: Date(),
-            ))
+            lastCrawled: Date()
+        ))
 
         await idx.disconnect()
 

@@ -1,13 +1,15 @@
 import Foundation
-import Search
+import SearchModels
 import SharedConstants
 import SharedCore
-import SearchModels
 
 extension Indexer {
     /// Build `packages.db` from extracted package archives at
-    /// `~/.cupertino/packages/<owner>/<repo>/`. Wraps
-    /// `Search.PackageIndexer` and emits progress events.
+    /// `~/.cupertino/packages/<owner>/<repo>/`. Wraps an injected
+    /// `Search.PackageIndexingRunner` conformer with event-emission
+    /// so this target doesn't import `Search` directly — the CLI
+    /// composition root supplies a `LivePackageIndexingRunner` backed
+    /// by `Search.PackageIndex` + `Search.PackageIndexer`.
     public enum PackagesService {
         public struct Request: Sendable {
             public let packagesRoot: URL
@@ -45,6 +47,7 @@ extension Indexer {
 
         public static func run(
             _ request: Request,
+            packageIndexingRunner: any Search.PackageIndexingRunner,
             handler: @escaping @Sendable (Event) -> Void = { _ in }
         ) async throws -> Outcome {
             handler(.starting(
@@ -57,25 +60,22 @@ extension Indexer {
                 try FileManager.default.removeItem(at: request.packagesDB)
             }
 
-            let index = try await Search.PackageIndex()
-            let indexer = Search.PackageIndexer(rootDirectory: request.packagesRoot, index: index)
-
-            let stats = try await indexer.indexAll { name, done, total in
+            let result = try await packageIndexingRunner.run(
+                packagesRoot: request.packagesRoot,
+                packagesDB: request.packagesDB
+            ) { name, done, total in
                 handler(.progress(name: name, done: done, total: total))
             }
 
-            let summary = try await index.summary()
-            await index.disconnect()
-
             let outcome = Outcome(
-                packagesIndexed: stats.packagesIndexed,
-                packagesFailed: stats.packagesFailed,
-                totalFiles: stats.totalFiles,
-                totalBytes: stats.totalBytes,
-                durationSeconds: stats.durationSeconds,
-                totalPackagesInDB: summary.packageCount,
-                totalFilesInDB: summary.fileCount,
-                totalBytesInDB: summary.bytesIndexed
+                packagesIndexed: result.packagesIndexed,
+                packagesFailed: result.packagesFailed,
+                totalFiles: result.totalFiles,
+                totalBytes: result.totalBytes,
+                durationSeconds: result.durationSeconds,
+                totalPackagesInDB: result.totalPackagesInDB,
+                totalFilesInDB: result.totalFilesInDB,
+                totalBytesInDB: result.totalBytesInDB
             )
             handler(.finished(outcome))
             return outcome

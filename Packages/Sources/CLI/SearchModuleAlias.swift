@@ -1,7 +1,20 @@
+import Core
+import CoreJSONParser
+import CorePackageIndexing
+import CoreProtocols
+import Crawler
+import CrawlerModels
 import Foundation
+import MCPCore
+import MCPSupport
+import SampleIndex
+import SampleIndexModels
 import Search
 import SearchModels
 import Services
+import ServicesModels
+import SharedConstants
+import SharedModels
 
 // MARK: - Search Module Disambiguator
 
@@ -18,13 +31,163 @@ import Services
 
 typealias SearchModule = Search
 
-// MARK: - Production Search.Database Factory
+// MARK: - Production Search.DatabaseFactory
 
-// The factory closure CLI threads into every `Services.ServiceContainer.with*Service`
-// call. Production wiring: open a `SearchModule.Index` at the resolved path —
-// `Search.Index` conforms to `Search.Database` (the protocol in SearchModels) so
-// the concrete actor flows through Services' protocol-typed inits unchanged.
-// One declaration covers every with*Service call site in CLI.
-let makeSearchDatabase: Services.ServiceContainer.MakeSearchDatabase = { dbURL in
-    try await SearchModule.Index(dbPath: dbURL)
+// Concrete `Search.DatabaseFactory` (GoF Factory Method) wired into every
+// `Services.ServiceContainer.with*Service` and `Services.ReadService` call.
+// Production wiring opens a `SearchModule.Index` at the resolved path —
+// `Search.Index` conforms to `Search.Database` (the protocol in SearchModels)
+// so the concrete actor flows through Services' protocol-typed inits
+// unchanged. One declaration covers every callsite in CLI; tests substitute a
+// mock conforming to `Search.DatabaseFactory`.
+
+struct LiveSearchDatabaseFactory: Search.DatabaseFactory {
+    func openDatabase(at url: URL) async throws -> any Search.Database {
+        try await SearchModule.Index(dbPath: url)
+    }
 }
+
+let searchDatabaseFactory: any Search.DatabaseFactory = LiveSearchDatabaseFactory()
+
+// MARK: - Production MarkdownLookupStrategy
+
+// Concrete `MCP.Support.DocsResourceProvider.MarkdownLookupStrategy`
+// wrapping a `SearchModule.Index` actor's `getDocumentContent(uri:format:)`.
+// Wired by `cupertino serve` when a search.db is available so the MCP
+// resource provider can fall back to indexed markdown before going to
+// the filesystem. MCPSupport stays free of `import Search`; only the
+// CLI composition root reaches the actor.
+
+struct LiveMarkdownLookupStrategy: MCP.Support.MarkdownLookupStrategy {
+    let searchIndex: SearchModule.Index
+
+    func lookup(uri: String) async throws -> String? {
+        try await searchIndex.getDocumentContent(uri: uri, format: .markdown)
+    }
+}
+
+// MARK: - Production PackageFileLookupStrategy
+
+// Concrete `Services.ReadService.PackageFileLookupStrategy` (GoF Strategy)
+// wrapping the `SearchModule.PackageQuery` actor. Lives at the CLI
+// composition root so `Services` doesn't need `import Search`.
+// `cupertino read` wires one of these into every `Services.ReadService.read`
+// call.
+
+struct LivePackageFileLookupStrategy: Services.ReadService.PackageFileLookupStrategy {
+    func fileContent(
+        dbURL: URL,
+        owner: String,
+        repo: String,
+        relpath: String
+    ) async throws -> String? {
+        let query = try await SearchModule.PackageQuery(dbPath: dbURL)
+        defer { Task { await query.disconnect() } }
+        return try await query.fileContent(owner: owner, repo: repo, relpath: relpath)
+    }
+}
+
+// MARK: - Production Sample.Index.DatabaseFactory
+
+// Concrete `Sample.Index.DatabaseFactory` (GoF Factory Method) wired
+// into every `Services.ServiceContainer.with*SampleService` /
+// `withTeaserService` / `withUnifiedSearchService` call. Parallel to
+// `LiveSearchDatabaseFactory` on the docs side: opens a real
+// `Sample.Index.Database` at the resolved path. `Services` builds the
+// `Sample.Search.Service` wrapper internally — the composition root
+// only knows about the low-level DB factory. `Services` no longer
+// imports `SampleIndex`; the concrete actor is reached only here.
+
+struct LiveSampleIndexDatabaseFactory: Sample.Index.DatabaseFactory {
+    func openDatabase(at url: URL) async throws -> any Sample.Index.Reader {
+        try await Sample.Index.Database(dbPath: url)
+    }
+}
+
+let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
+
+// MARK: - Production Crawler Strategies (#505)
+
+// Concrete `Crawler.HTMLParserStrategy` (GoF Strategy) — wraps
+// `Core.Parser.HTML` pure static methods. Crawler doesn't import
+// `Core`; only this composition root does. Same shape as
+// `LiveMarkdownToStructuredPageStrategy` (#496).
+
+struct LiveHTMLParserStrategy: Crawler.HTMLParserStrategy {
+    func convert(html: String, url: URL) -> String {
+        Core.Parser.HTML.convert(html, url: url)
+    }
+
+    func toStructuredPage(
+        html: String,
+        url: URL,
+        source: Shared.Models.StructuredDocumentationPage.Source,
+        depth: Int?
+    ) -> Shared.Models.StructuredDocumentationPage? {
+        Core.Parser.HTML.toStructuredPage(html, url: url, source: source, depth: depth)
+    }
+
+    func looksLikeHTTPErrorPage(html: String) -> Bool {
+        Core.Parser.HTML.looksLikeHTTPErrorPage(html: html)
+    }
+
+    func looksLikeJavaScriptFallback(html: String) -> Bool {
+        Core.Parser.HTML.looksLikeJavaScriptFallback(html: html)
+    }
+}
+
+let htmlParserStrategy: any Crawler.HTMLParserStrategy = LiveHTMLParserStrategy()
+
+// Concrete `Crawler.AppleJSONParserStrategy` — wraps
+// `Core.JSONParser.AppleJSONToMarkdown` pure static methods.
+
+struct LiveAppleJSONParserStrategy: Crawler.AppleJSONParserStrategy {
+    func convert(json: Data, url: URL) -> String? {
+        Core.JSONParser.AppleJSONToMarkdown.convert(json, url: url)
+    }
+
+    func toStructuredPage(
+        json: Data,
+        url: URL,
+        depth: Int?
+    ) -> Shared.Models.StructuredDocumentationPage? {
+        Core.JSONParser.AppleJSONToMarkdown.toStructuredPage(json, url: url, depth: depth)
+    }
+
+    func jsonAPIURL(from documentationURL: URL) -> URL? {
+        Core.JSONParser.AppleJSONToMarkdown.jsonAPIURL(from: documentationURL)
+    }
+
+    func documentationURL(from jsonAPIURL: URL) -> URL? {
+        Core.JSONParser.AppleJSONToMarkdown.documentationURL(from: jsonAPIURL)
+    }
+
+    func extractLinks(from json: Data) -> [URL] {
+        Core.JSONParser.AppleJSONToMarkdown.extractLinks(from: json)
+    }
+}
+
+let appleJSONParserStrategy: any Crawler.AppleJSONParserStrategy = LiveAppleJSONParserStrategy()
+
+// Concrete `Crawler.PriorityPackageStrategy` — wraps
+// `Core.PackageIndexing.PriorityPackageGenerator` (an actor). Used
+// only when a Swift.org crawl completes and the priority-package
+// catalog needs regenerating.
+
+struct LivePriorityPackageStrategy: Crawler.PriorityPackageStrategy {
+    func generate(
+        swiftOrgDocsPath: URL,
+        outputPath: URL
+    ) async throws -> Crawler.PriorityPackageOutcome {
+        let generator = Core.PackageIndexing.PriorityPackageGenerator(
+            swiftOrgDocsPath: swiftOrgDocsPath,
+            outputPath: outputPath
+        )
+        let list = try await generator.generate()
+        return Crawler.PriorityPackageOutcome(
+            totalUniqueReposFound: list.stats.totalUniqueReposFound
+        )
+    }
+}
+
+let priorityPackageStrategy: any Crawler.PriorityPackageStrategy = LivePriorityPackageStrategy()

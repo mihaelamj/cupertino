@@ -1,6 +1,7 @@
 import Foundation
-import SampleIndex
+import SampleIndexModels
 import SearchModels
+import ServicesModels
 import SharedConstants
 import SharedCore
 
@@ -70,12 +71,31 @@ extension Services {
             }
         }
 
-        /// Closure that resolves a file inside `packages.db` to its raw
-        /// content. Production composition root (CLI) wires this as a
-        /// thin wrapper around `Search.PackageQuery(dbPath:).fileContent(...)`,
-        /// then `disconnect()`. ReadService doesn't import the Search
-        /// target, so the actor stays opaque behind this seam.
-        public typealias PackageFileLookup = @Sendable (_ dbURL: URL, _ owner: String, _ repo: String, _ relpath: String) async throws -> String?
+        /// Strategy for resolving a file inside `packages.db` to its
+        /// raw content. GoF Strategy pattern (Gamma et al, 1994):
+        /// production composition root (CLI) wires a
+        /// `LivePackageFileLookupStrategy` that wraps
+        /// `Search.PackageQuery(dbPath:).fileContent(...)` + a
+        /// matching `disconnect()`. ReadService doesn't import the
+        /// Search target, so the actor stays opaque behind this seam.
+        ///
+        /// Replaces the previous
+        /// `PackageFileLookup = @Sendable (URL, String, String, String) async throws -> String?`
+        /// closure typealias. The protocol form names the contract at
+        /// the constructor site, makes captured-state explicit, and
+        /// produces one-line test mocks.
+        public protocol PackageFileLookupStrategy: Sendable {
+            /// Look up the raw content of a file inside `packages.db`.
+            /// Returns `nil` when the identifier doesn't resolve;
+            /// throws if the lookup itself fails (DB open error,
+            /// SQL error, etc.).
+            func fileContent(
+                dbURL: URL,
+                owner: String,
+                repo: String,
+                relpath: String
+            ) async throws -> String?
+        }
 
         /// Read a document by identifier. When `explicit` is provided the
         /// matching backend is used; otherwise we infer:
@@ -88,8 +108,9 @@ extension Services {
             searchDB: URL?,
             samplesDB: URL?,
             packagesDB: URL?,
-            makeSearchDatabase: Services.ServiceContainer.MakeSearchDatabase,
-            packageFileLookup: PackageFileLookup,
+            searchDatabaseFactory: any Search.DatabaseFactory,
+            sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
+            packageFileLookup: any PackageFileLookupStrategy
         ) async throws -> Result {
             if let explicit {
                 return try await readFrom(
@@ -100,8 +121,9 @@ extension Services {
                     samplesDB: samplesDB,
                     packagesDB: packagesDB,
                     allowFallback: false,
-                    makeSearchDatabase: makeSearchDatabase,
-                    packageFileLookup: packageFileLookup,
+                    searchDatabaseFactory: searchDatabaseFactory,
+                    sampleDatabaseFactory: sampleDatabaseFactory,
+                    packageFileLookup: packageFileLookup
                 )
             }
 
@@ -114,8 +136,9 @@ extension Services {
                     samplesDB: samplesDB,
                     packagesDB: packagesDB,
                     allowFallback: false,
-                    makeSearchDatabase: makeSearchDatabase,
-                    packageFileLookup: packageFileLookup,
+                    searchDatabaseFactory: searchDatabaseFactory,
+                    sampleDatabaseFactory: sampleDatabaseFactory,
+                    packageFileLookup: packageFileLookup
                 )
             }
 
@@ -128,8 +151,9 @@ extension Services {
                     samplesDB: samplesDB,
                     packagesDB: packagesDB,
                     allowFallback: true,
-                    makeSearchDatabase: makeSearchDatabase,
-                    packageFileLookup: packageFileLookup,
+                    searchDatabaseFactory: searchDatabaseFactory,
+                    sampleDatabaseFactory: sampleDatabaseFactory,
+                    packageFileLookup: packageFileLookup
                 )
             } catch ReadError.samplesNotFound, ReadError.packagesNotFound,
                 ReadError.packagesIdentifierInvalid {
@@ -143,8 +167,9 @@ extension Services {
                 samplesDB: samplesDB,
                 packagesDB: packagesDB,
                 allowFallback: false,
-                makeSearchDatabase: makeSearchDatabase,
-                packageFileLookup: packageFileLookup,
+                searchDatabaseFactory: searchDatabaseFactory,
+                sampleDatabaseFactory: sampleDatabaseFactory,
+                packageFileLookup: packageFileLookup
             )
         }
 
@@ -158,8 +183,9 @@ extension Services {
             samplesDB: URL?,
             packagesDB: URL?,
             allowFallback: Bool,
-            makeSearchDatabase: Services.ServiceContainer.MakeSearchDatabase,
-            packageFileLookup: PackageFileLookup,
+            searchDatabaseFactory: any Search.DatabaseFactory,
+            sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
+            packageFileLookup: any PackageFileLookupStrategy
         ) async throws -> Result {
             switch source {
             case .docs:
@@ -167,7 +193,7 @@ extension Services {
                     identifier: identifier,
                     format: format,
                     searchDB: searchDB,
-                    makeSearchDatabase: makeSearchDatabase,
+                    searchDatabaseFactory: searchDatabaseFactory
                 )
             case .samples:
                 return try await readFromSamples(
@@ -175,13 +201,14 @@ extension Services {
                     samplesDB: samplesDB,
                     allowFallback: allowFallback,
                     packagesDB: packagesDB,
-                    packageFileLookup: packageFileLookup,
+                    sampleDatabaseFactory: sampleDatabaseFactory,
+                    packageFileLookup: packageFileLookup
                 )
             case .packages:
                 return try await readFromPackages(
                     identifier: identifier,
                     packagesDB: packagesDB,
-                    packageFileLookup: packageFileLookup,
+                    packageFileLookup: packageFileLookup
                 )
             }
         }
@@ -190,11 +217,11 @@ extension Services {
             identifier: String,
             format: Search.DocumentFormat,
             searchDB: URL?,
-            makeSearchDatabase: Services.ServiceContainer.MakeSearchDatabase,
+            searchDatabaseFactory: any Search.DatabaseFactory
         ) async throws -> Result {
             let content = try await Services.ServiceContainer.withDocsService(
                 dbPath: searchDB?.path,
-                makeSearchDatabase: makeSearchDatabase,
+                searchDatabaseFactory: searchDatabaseFactory
             ) { service in
                 try await service.read(uri: identifier, format: format)
             }
@@ -209,7 +236,8 @@ extension Services {
             samplesDB: URL?,
             allowFallback: Bool,
             packagesDB: URL?,
-            packageFileLookup: PackageFileLookup,
+            sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
+            packageFileLookup: any PackageFileLookupStrategy
         ) async throws -> Result {
             let dbURL = samplesDB ?? Sample.Index.defaultDatabasePath
             guard FileManager.default.fileExists(atPath: dbURL.path) else {
@@ -217,7 +245,7 @@ extension Services {
                     return try await readFromPackages(
                         identifier: identifier,
                         packagesDB: packagesDB,
-                        packageFileLookup: packageFileLookup,
+                        packageFileLookup: packageFileLookup
                     )
                 }
                 throw ReadError.samplesNotFound(identifier: identifier)
@@ -226,14 +254,20 @@ extension Services {
             if let slashIdx = identifier.firstIndex(of: "/") {
                 let projectId = String(identifier[..<slashIdx])
                 let path = String(identifier[identifier.index(after: slashIdx)...])
-                let file = try await Services.ServiceContainer.withSampleService(dbPath: dbURL) { service in
+                let file = try await Services.ServiceContainer.withSampleService(
+                    dbPath: dbURL,
+                    sampleDatabaseFactory: sampleDatabaseFactory
+                ) { service in
                     try await service.getFile(projectId: projectId, path: path)
                 }
                 if let file {
                     return Result(content: file.content, resolvedSource: .samples)
                 }
             } else {
-                let project = try await Services.ServiceContainer.withSampleService(dbPath: dbURL) { service in
+                let project = try await Services.ServiceContainer.withSampleService(
+                    dbPath: dbURL,
+                    sampleDatabaseFactory: sampleDatabaseFactory
+                ) { service in
                     try await service.getProject(id: identifier)
                 }
                 if let project {
@@ -248,7 +282,7 @@ extension Services {
                 return try await readFromPackages(
                     identifier: identifier,
                     packagesDB: packagesDB,
-                    packageFileLookup: packageFileLookup,
+                    packageFileLookup: packageFileLookup
                 )
             }
             throw ReadError.samplesNotFound(identifier: identifier)
@@ -257,7 +291,7 @@ extension Services {
         private static func readFromPackages(
             identifier: String,
             packagesDB: URL?,
-            packageFileLookup: PackageFileLookup,
+            packageFileLookup: any PackageFileLookupStrategy
         ) async throws -> Result {
             // Identifier shape: `<owner>/<repo>/<relpath>`. Anything else is
             // not a valid package identifier — auto-source mode bails here.
@@ -276,7 +310,7 @@ extension Services {
 
             let content: String?
             do {
-                content = try await packageFileLookup(dbURL, owner, repo, relpath)
+                content = try await packageFileLookup.fileContent(dbURL: dbURL, owner: owner, repo: repo, relpath: relpath)
             } catch {
                 throw ReadError.backendFailed("packages.db query failed: \(error.localizedDescription)")
             }

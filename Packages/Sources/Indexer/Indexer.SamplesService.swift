@@ -1,14 +1,17 @@
-import Core
-import CoreProtocols
 import Foundation
-import SampleIndex
+import SampleIndexModels
 import SharedConstants
 import SharedCore
 
 extension Indexer {
     /// Build `samples.db` from extracted sample-code zips at
-    /// `~/.cupertino/sample-code/`. Wraps `Sample.Index.Builder` and emits
-    /// progress events.
+    /// `~/.cupertino/sample-code/`. Wraps an injected
+    /// `Sample.Index.SamplesIndexingRunner` conformer with
+    /// event-emission so this target doesn't import `SampleIndex`
+    /// or `CoreSampleCode` directly — the CLI composition root
+    /// supplies a `LiveSamplesIndexingRunner` backed by
+    /// `Sample.Index.Database` + `Sample.Index.Builder` +
+    /// `Sample.Core.Catalog`.
     public enum SamplesService {
         public struct Request: Sendable {
             public let sampleCodeDir: URL
@@ -17,8 +20,8 @@ extension Indexer {
             public let force: Bool
 
             public init(
-                sampleCodeDir: URL = Sample.Index.defaultSampleCodeDirectory,
-                samplesDB: URL = Sample.Index.defaultDatabasePath,
+                sampleCodeDir: URL,
+                samplesDB: URL,
                 clear: Bool = false,
                 force: Bool = false
             ) {
@@ -71,6 +74,7 @@ extension Indexer {
 
         public static func run(
             _ request: Request,
+            samplesIndexingRunner: any Sample.Index.SamplesIndexingRunner,
             handler: @escaping @Sendable (Event) -> Void = { _ in }
         ) async throws -> Outcome {
             handler(.starting(
@@ -89,72 +93,45 @@ extension Indexer {
                 try FileManager.default.removeItem(at: request.samplesDB)
             }
 
-            let database = try await Sample.Index.Database(dbPath: request.samplesDB)
-            if request.clear {
-                handler(.clearingExistingIndex)
-                try await database.clearAll()
-            }
-
-            let existingProjects = try await database.projectCount()
-            let existingFiles = try await database.fileCount()
-            if existingProjects > 0, !request.force, !request.clear {
-                handler(.existingIndexNotice(projects: existingProjects, files: existingFiles))
-            }
-
-            handler(.loadingCatalog)
-            let catalogEntries = await Sample.Core.Catalog.allEntries
-            handler(.catalogLoaded(entryCount: catalogEntries.count))
-
-            let entries = catalogEntries.map { entry in
-                Sample.Index.SampleCodeEntryInfo(
-                    title: entry.title,
-                    description: entry.description,
-                    frameworks: [entry.framework],
-                    webURL: entry.webURL,
-                    zipFilename: entry.zipFilename
-                )
-            }
-
-            handler(.indexingStart)
-            let builder = Sample.Index.Builder(
-                database: database,
-                sampleCodeDirectory: request.sampleCodeDir
+            let input = Sample.Index.SamplesIndexingInput(
+                sampleCodeDir: request.sampleCodeDir,
+                samplesDB: request.samplesDB,
+                clear: request.clear,
+                force: request.force
             )
 
-            let startTime = Date()
-            let indexed = try await builder.indexAll(
-                entries: entries,
-                forceReindex: request.force
-            ) { progress in
-                let phase: Event.Phase
-                switch progress.status {
-                case .extracting: phase = .extracting
-                case .indexingFiles: phase = .indexingFiles
-                case .completed: phase = .completed
-                case .failed: phase = .failed
+            let result = try await samplesIndexingRunner.run(input: input) { phase in
+                switch phase {
+                case .clearingExistingIndex:
+                    handler(.clearingExistingIndex)
+                case .existingIndexNotice(let projects, let files):
+                    handler(.existingIndexNotice(projects: projects, files: files))
+                case .loadingCatalog:
+                    handler(.loadingCatalog)
+                case .catalogLoaded(let entryCount):
+                    handler(.catalogLoaded(entryCount: entryCount))
+                case .indexingStart:
+                    handler(.indexingStart)
+                case .projectProgress(let name, let percent, let p):
+                    let mapped: Event.Phase
+                    switch p {
+                    case .extracting: mapped = .extracting
+                    case .indexingFiles: mapped = .indexingFiles
+                    case .completed: mapped = .completed
+                    case .failed: mapped = .failed
+                    }
+                    handler(.projectProgress(name: name, percent: percent, phase: mapped))
                 }
-                handler(.projectProgress(
-                    name: progress.currentProject,
-                    percent: progress.percentComplete,
-                    phase: phase
-                ))
             }
-
-            let duration = Date().timeIntervalSince(startTime)
-
-            let finalProjects = try await database.projectCount()
-            let finalFiles = try await database.fileCount()
-            let finalSymbols = try await database.symbolCount()
-            let finalImports = try await database.importCount()
 
             let outcome = Outcome(
                 samplesDBPath: request.samplesDB,
-                projectsIndexedThisRun: indexed,
-                projectsTotal: finalProjects,
-                filesTotal: finalFiles,
-                symbolsTotal: finalSymbols,
-                importsTotal: finalImports,
-                durationSeconds: duration
+                projectsIndexedThisRun: result.projectsIndexedThisRun,
+                projectsTotal: result.projectsTotal,
+                filesTotal: result.filesTotal,
+                symbolsTotal: result.symbolsTotal,
+                importsTotal: result.importsTotal,
+                durationSeconds: result.durationSeconds
             )
             handler(.finished(outcome))
             return outcome
