@@ -120,7 +120,7 @@ let targets: [Target] = {
     )
     let loggingTestsTarget = Target.testTarget(
         name: "LoggingTests",
-        dependencies: ["Logging", "TestSupport"]
+        dependencies: ["Logging", "LoggingModels", "TestSupport"]
     )
 
     // ---------- SharedConstants (v1.1 refactor 1.3: extracts Constants.swift + the Shared namespace enum out of Shared) ----------
