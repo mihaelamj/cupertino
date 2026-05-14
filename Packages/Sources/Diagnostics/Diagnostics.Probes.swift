@@ -54,6 +54,32 @@ extension Diagnostics {
             return sqlite3_column_int(stmt, 0)
         }
 
+        /// Read `PRAGMA journal_mode` from a SQLite file using a
+        /// read-only connection. Used by `cupertino doctor` to verify
+        /// each local DB is in WAL mode (#236) — anything else (`delete`,
+        /// `truncate`, `persist`, `memory`, `off`) is a red flag that
+        /// the init code didn't switch the file.
+        ///
+        /// Returns the mode as a lowercase string (sqlite's own
+        /// canonical form), or nil for unreadable / unopenable files.
+        public static func journalMode(at dbPath: URL) -> String? {
+            var db: OpaquePointer?
+            guard sqlite3_open_v2(dbPath.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+                return nil
+            }
+            defer { sqlite3_close(db) }
+
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            guard sqlite3_prepare_v2(db, "PRAGMA journal_mode;", -1, &stmt, nil) == SQLITE_OK,
+                  sqlite3_step(stmt) == SQLITE_ROW,
+                  let cString = sqlite3_column_text(stmt, 0)
+            else {
+                return nil
+            }
+            return String(cString: cString)
+        }
+
         /// Run a `SELECT COUNT(*) ...` read-only against any sqlite DB.
         /// Returns nil on failure (most commonly because the table
         /// doesn't exist — surface that as blank rather than crash).

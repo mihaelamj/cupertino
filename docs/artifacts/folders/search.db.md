@@ -6,6 +6,13 @@ SQLite database with Full-Text Search (FTS5) index for fast documentation search
 
 **Default**: `~/.cupertino/search.db`
 
+When `cupertino save` or any reader is connected, two sidecar files appear next to the main file:
+
+- `search.db-wal` — write-ahead log (#236; lets readers and writers proceed concurrently).
+- `search.db-shm` — shared-memory index for the WAL.
+
+Tooling that copies or distributes `search.db` must copy all three files together, or run `PRAGMA wal_checkpoint(TRUNCATE)` first to fold the WAL into the main file before the copy. The bundled DBs uploaded to GitHub Releases for `cupertino setup` are always checkpoint-truncated before zipping.
+
 ## Created By
 
 ```bash

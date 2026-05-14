@@ -1,5 +1,6 @@
 import ASTIndexer
 import Foundation
+import Logging
 import SearchModels
 import SharedConstants
 import SharedCore
@@ -95,6 +96,22 @@ extension Search {
             // writes (`PRAGMA user_version`, `CREATE TABLE IF NOT EXISTS`)
             // when a sibling process is doing the same.
             sqlite3_busy_timeout(dbPointer, 5000)
+
+            // #236: WAL journal mode lets readers (`cupertino search`,
+            // `cupertino ask`, `cupertino doctor`) proceed while a
+            // `cupertino save --docs` writer holds the DB. PRAGMA is
+            // idempotent — re-setting on an already-WAL DB is a no-op,
+            // and the mode persists in the file header so subsequent
+            // connections inherit it without setting again. Log and
+            // continue on failure: the DB is still usable in whatever
+            // mode it ended up in (default rollback journal).
+            if sqlite3_exec(dbPointer, "PRAGMA journal_mode = WAL", nil, nil, nil) != SQLITE_OK {
+                let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
+                Logging.Log.warning(
+                    "Failed to enable WAL on \(dbPath.lastPathComponent): \(errorMessage)",
+                    category: .search
+                )
+            }
 
             database = dbPointer
         }

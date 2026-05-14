@@ -1,6 +1,7 @@
 import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
+import Logging
 import SearchModels
 import SharedConstants
 import SharedCore
@@ -529,6 +530,20 @@ extension Search {
                 sqlite3_close(dbPointer)
                 throw PackageIndexError.sqliteError("Failed to open \(dbPath.lastPathComponent): \(message)")
             }
+
+            // #236: WAL journal mode lets readers (`cupertino search
+            // --source packages`, `cupertino doctor`) proceed while a
+            // `cupertino save --packages` writer holds the DB. PRAGMA is
+            // idempotent and persists in the file header. Log and
+            // continue on failure.
+            if sqlite3_exec(dbPointer, "PRAGMA journal_mode = WAL", nil, nil, nil) != SQLITE_OK {
+                let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
+                Logging.Log.warning(
+                    "Failed to enable WAL on \(dbPath.lastPathComponent): \(errorMessage)",
+                    category: .packages
+                )
+            }
+
             database = dbPointer
         }
 
