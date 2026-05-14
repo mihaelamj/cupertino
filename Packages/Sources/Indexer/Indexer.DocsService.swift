@@ -1,14 +1,16 @@
 import Foundation
 import Logging
-import Search
+import SearchModels
 import SharedConstants
 import SharedCore
-import SearchModels
 
 extension Indexer {
     /// Build `search.db` from on-disk corpus (apple-docs JSON, swift
-    /// evolution markdown, swift.org, archive, HIG). Wraps
-    /// `Search.IndexBuilder` and emits progress + completion events.
+    /// evolution markdown, swift.org, archive, HIG). Wraps an injected
+    /// `Search.DocsIndexingRun` closure with event-emission so this
+    /// target doesn't import `Search` directly — the CLI composition
+    /// root supplies a closure backed by `Search.Index` +
+    /// `Search.IndexBuilder`.
     public enum DocsService {
         public struct Request: Sendable {
             public let baseDir: URL
@@ -60,6 +62,7 @@ extension Indexer {
             _ request: Request,
             markdownToStructuredPage: @escaping Search.MarkdownToStructuredPage,
             sampleCatalogFetch: @escaping Search.SampleCatalogFetch,
+            docsIndexingRun: Search.DocsIndexingRun,
             handler: @escaping @Sendable (Event) -> Void = { _ in }
         ) async throws -> Outcome {
             let docsURL = request.docsDir
@@ -83,7 +86,6 @@ extension Indexer {
             }
 
             handler(.initializingIndex)
-            let searchIndex = try await Search.Index(dbPath: searchDBURL)
 
             let evolutionDirToUse = optionalDir(evolutionURL, label: "Swift Evolution", handler: handler)
             let swiftOrgDirToUse = optionalDir(swiftOrgURL, label: "Swift.org", handler: handler)
@@ -94,31 +96,27 @@ extension Indexer {
                 handler(.availabilityMissing)
             }
 
-            let builder = Search.IndexBuilder(
-                searchIndex: searchIndex,
-                metadata: nil,
+            let input = Search.DocsIndexingInput(
+                searchDBPath: searchDBURL,
                 docsDirectory: docsURL,
                 evolutionDirectory: evolutionDirToUse,
                 swiftOrgDirectory: swiftOrgDirToUse,
                 archiveDirectory: archiveDirToUse,
                 higDirectory: higDirToUse,
+                clearExisting: request.clear,
                 markdownToStructuredPage: markdownToStructuredPage,
                 sampleCatalogFetch: sampleCatalogFetch
             )
 
-            try await builder.buildIndex(clearExisting: request.clear) { processed, total in
+            let result = try await docsIndexingRun(input) { processed, total in
                 let percent = Double(processed) / Double(total) * 100
                 handler(.progress(processed: processed, total: total, percent: percent))
             }
 
-            let docCount = try await searchIndex.documentCount()
-            let frameworks = try await searchIndex.listFrameworks()
-            await searchIndex.disconnect()
-
             let outcome = Outcome(
                 searchDBPath: searchDBURL,
-                documentCount: docCount,
-                frameworkCount: frameworks.count
+                documentCount: result.documentCount,
+                frameworkCount: result.frameworkCount
             )
             handler(.finished(outcome))
             return outcome

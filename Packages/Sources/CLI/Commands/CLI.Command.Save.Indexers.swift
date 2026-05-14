@@ -39,11 +39,39 @@ extension CLI.Command.Save {
         let outcome = try await Indexer.DocsService.run(
             request,
             markdownToStructuredPage: Core.JSONParser.MarkdownToStructuredPage.convert,
-            sampleCatalogFetch: CLI.Command.Save.sampleCatalogFetch
+            sampleCatalogFetch: CLI.Command.Save.sampleCatalogFetch,
+            docsIndexingRun: CLI.Command.Save.docsIndexingRun
         ) { event in
             Self.handleDocsEvent(event, tracker: tracker)
         }
         Self.printDocsSummary(outcome: outcome)
+    }
+
+    /// Concrete implementation of `Search.DocsIndexingRun` used by
+    /// `Indexer.DocsService`. Wraps `Search.Index` + `Search.IndexBuilder`.
+    /// Lives at the CLI composition root so Indexer doesn't need
+    /// `import Search` for these actor types.
+    static let docsIndexingRun: Search.DocsIndexingRun = { input, onProgress in
+        let searchIndex = try await Search.Index(dbPath: input.searchDBPath)
+        let builder = Search.IndexBuilder(
+            searchIndex: searchIndex,
+            metadata: nil,
+            docsDirectory: input.docsDirectory,
+            evolutionDirectory: input.evolutionDirectory,
+            swiftOrgDirectory: input.swiftOrgDirectory,
+            archiveDirectory: input.archiveDirectory,
+            higDirectory: input.higDirectory,
+            markdownToStructuredPage: input.markdownToStructuredPage,
+            sampleCatalogFetch: input.sampleCatalogFetch
+        )
+        try await builder.buildIndex(clearExisting: input.clearExisting, onProgress: onProgress)
+        let docCount = try await searchIndex.documentCount()
+        let frameworks = try await searchIndex.listFrameworks()
+        await searchIndex.disconnect()
+        return Search.DocsIndexingOutcome(
+            documentCount: docCount,
+            frameworkCount: frameworks.count
+        )
     }
 
     // MARK: - Sample catalog adapter
