@@ -412,7 +412,7 @@ let targets: [Target] = {
     )
     let servicesModelsTestsTarget = Target.testTarget(
         name: "ServicesModelsTests",
-        dependencies: ["ServicesModels", "SearchModels", "SharedConstants", "TestSupport"]
+        dependencies: ["ServicesModels", "SearchModels", "SampleIndexModels", "SharedConstants"]
     )
 
     let servicesTarget = Target.target(
