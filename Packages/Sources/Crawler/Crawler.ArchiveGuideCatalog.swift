@@ -307,7 +307,7 @@ extension Crawler {
         public static var testGuides: [URL] {
             [
                 // Just the Objective-C Runtime Guide - well-structured, moderate size
-                URL.knownGood("\(baseURL)/Cocoa/Conceptual/ObjCRuntimeGuide"),
+                try! URL(knownGood: "\(baseURL)/Cocoa/Conceptual/ObjCRuntimeGuide"),
             ]
         }
 

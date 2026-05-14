@@ -66,7 +66,7 @@ extension Crawler {
             )
 
             // Start from HIG root
-            let rootURL = URL.knownGood(Shared.Constants.BaseURL.appleHIG)
+            let rootURL = try URL(knownGood: Shared.Constants.BaseURL.appleHIG)
 
             // Discover all HIG pages
             logInfo("Discovering HIG pages...")

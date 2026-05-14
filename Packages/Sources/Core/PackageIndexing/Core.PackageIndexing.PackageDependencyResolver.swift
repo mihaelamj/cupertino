@@ -305,8 +305,8 @@ extension Core.PackageIndexing {
             if let cache, let cached = await cache.read(owner: owner, repo: repo, branch: branch, file: file) {
                 return .hit(cached)
             }
-            let url = URL.knownGood("https://raw.githubusercontent.com/\(owner)/\(repo)/\(branch)/\(file)")
             do {
+                let url = try URL(knownGood: "https://raw.githubusercontent.com/\(owner)/\(repo)/\(branch)/\(file)")
                 let (data, response) = try await session.data(from: url)
                 guard let http = response as? HTTPURLResponse else {
                     return .transientError
