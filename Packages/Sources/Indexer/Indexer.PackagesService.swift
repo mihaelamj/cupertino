@@ -6,10 +6,10 @@ import SharedCore
 extension Indexer {
     /// Build `packages.db` from extracted package archives at
     /// `~/.cupertino/packages/<owner>/<repo>/`. Wraps an injected
-    /// `Search.PackageIndexingRun` closure with event-emission so this
-    /// target doesn't import `Search` directly — the CLI composition
-    /// root supplies a closure backed by `Search.PackageIndex` +
-    /// `Search.PackageIndexer`.
+    /// `Search.PackageIndexingRunner` conformer with event-emission
+    /// so this target doesn't import `Search` directly — the CLI
+    /// composition root supplies a `LivePackageIndexingRunner` backed
+    /// by `Search.PackageIndex` + `Search.PackageIndexer`.
     public enum PackagesService {
         public struct Request: Sendable {
             public let packagesRoot: URL
@@ -47,7 +47,7 @@ extension Indexer {
 
         public static func run(
             _ request: Request,
-            packageIndexingRun: Search.PackageIndexingRun,
+            packageIndexingRunner: any Search.PackageIndexingRunner,
             handler: @escaping @Sendable (Event) -> Void = { _ in }
         ) async throws -> Outcome {
             handler(.starting(
@@ -60,9 +60,9 @@ extension Indexer {
                 try FileManager.default.removeItem(at: request.packagesDB)
             }
 
-            let result = try await packageIndexingRun(
-                request.packagesRoot,
-                request.packagesDB
+            let result = try await packageIndexingRunner.run(
+                packagesRoot: request.packagesRoot,
+                packagesDB: request.packagesDB
             ) { name, done, total in
                 handler(.progress(name: name, done: done, total: total))
             }

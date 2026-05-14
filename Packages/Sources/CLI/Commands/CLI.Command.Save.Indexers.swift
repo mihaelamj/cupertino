@@ -183,35 +183,41 @@ extension CLI.Command.Save {
 
         _ = try await Indexer.PackagesService.run(
             request,
-            packageIndexingRun: Self.packageIndexingRun
+            packageIndexingRunner: LivePackageIndexingRunner()
         ) { event in
             Self.handlePackagesEvent(event)
         }
     }
 
-    /// Concrete implementation of `Search.PackageIndexingRun` used by
+    /// Concrete `Search.PackageIndexingRunner` (GoF Strategy) used by
     /// `Indexer.PackagesService`. Wraps `Search.PackageIndex` +
     /// `Search.PackageIndexer`. Lives at the CLI composition root so
     /// the Indexer SPM target doesn't import `Search` for these types.
-    static let packageIndexingRun: Search.PackageIndexingRun = { packagesRoot, packagesDB, onProgress in
-        let startedAt = Date()
-        let index = try await Search.PackageIndex(dbPath: packagesDB)
-        let indexer = Search.PackageIndexer(rootDirectory: packagesRoot, index: index)
-        let stats = try await indexer.indexAll { name, done, total in
-            onProgress(name, done, total)
+    struct LivePackageIndexingRunner: Search.PackageIndexingRunner {
+        func run(
+            packagesRoot: URL,
+            packagesDB: URL,
+            onProgress: @escaping @Sendable (String, Int, Int) -> Void
+        ) async throws -> Search.PackageIndexingOutcome {
+            let startedAt = Date()
+            let index = try await Search.PackageIndex(dbPath: packagesDB)
+            let indexer = Search.PackageIndexer(rootDirectory: packagesRoot, index: index)
+            let stats = try await indexer.indexAll { name, done, total in
+                onProgress(name, done, total)
+            }
+            let summary = try await index.summary()
+            await index.disconnect()
+            return Search.PackageIndexingOutcome(
+                packagesIndexed: stats.packagesIndexed,
+                packagesFailed: stats.packagesFailed,
+                totalFiles: stats.totalFiles,
+                totalBytes: stats.totalBytes,
+                durationSeconds: Date().timeIntervalSince(startedAt),
+                totalPackagesInDB: summary.packageCount,
+                totalFilesInDB: summary.fileCount,
+                totalBytesInDB: summary.bytesIndexed
+            )
         }
-        let summary = try await index.summary()
-        await index.disconnect()
-        return Search.PackageIndexingOutcome(
-            packagesIndexed: stats.packagesIndexed,
-            packagesFailed: stats.packagesFailed,
-            totalFiles: stats.totalFiles,
-            totalBytes: stats.totalBytes,
-            durationSeconds: Date().timeIntervalSince(startedAt),
-            totalPackagesInDB: summary.packageCount,
-            totalFilesInDB: summary.fileCount,
-            totalBytesInDB: summary.bytesIndexed
-        )
     }
 
     static func handlePackagesEvent(_ event: Indexer.PackagesService.Event) {
