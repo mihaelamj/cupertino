@@ -11,7 +11,6 @@
 @_exported import WebKit
 #endif
 
-import SharedConfiguration
 import SharedConstants
 // SharedCore was absorbed into SharedConstants in #536 phase 1a. The
 // `@_exported` here was reaching for the SharedCore module surface;

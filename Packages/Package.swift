@@ -19,7 +19,6 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Logging"),
     .singleTargetLibrary("LoggingModels"),
     .singleTargetLibrary("SharedConstants"),
-    .singleTargetLibrary("SharedConfiguration"),
     .singleTargetLibrary("MCPSharedTools"),
     .singleTargetLibrary("CoreProtocols"),
     .singleTargetLibrary("CoreJSONParser"),
@@ -124,13 +123,13 @@ let targets: [Target] = {
     // path is Sources/Shared/ (not Sources/Shared/Constants) so the `Shared`
     // and `Sample` namespace anchor files live at the Shared/ folder root next
     // to the sibling sub-target folders (Configuration / Core / Models / Utils).
-    // SharedConstants picks up Shared.swift + Sample.swift + the Constants/,
-    // Core/, Utils/, and Models/ subtrees; only Configuration/ remains
-    // excluded (still its own SPM target, will be absorbed in #536 phase 1d).
+    // SharedConstants picks up everything under Sources/Shared/. After #536
+    // phase 1d, no sub-folder is excluded — every Shared* sibling target
+    // has been absorbed.
     let sharedConstantsTarget = Target.target(
         name: "SharedConstants",
         dependencies: [],
-        path: "Sources/Shared",
+        path: "Sources/Shared"
         // Phase 1a of #536: SharedCore (`Shared.Core.ToolError`, the
         // `Shared.Core` namespace anchor, `CupertinoShared.swift` marker)
         // absorbed in.
@@ -142,7 +141,11 @@ let targets: [Target] = {
         // `Shared.Models.PackageReference`, `Shared.Models.URLUtilities`,
         // `Shared.Models.HashUtilities`, `Shared.Models.StructuredDocumentationPage`,
         // `Shared.Models.CleanupProgress`) absorbed in.
-        exclude: ["Configuration"]
+        // Phase 1d of #536: SharedConfiguration (`Shared.Configuration` +
+        // `Shared.Configuration.Crawler` / `ChangeDetection` /
+        // `Output` / `Output.Format` / `DiscoveryMode`) absorbed in.
+        // Phase 1 complete; the Shared layer is now a single foundation-only
+        // SharedConstants target.
     )
     let sharedConstantsTestsTarget = Target.testTarget(
         name: "SharedConstantsTests",
@@ -179,15 +182,13 @@ let targets: [Target] = {
         path: "Tests/Shared/CoreTests"
     )
 
-    // ---------- SharedConfiguration (v1.1 refactor 1.6: Configuration.swift moves out of Shared) ----------
-    let sharedConfigurationTarget = Target.target(
-        name: "SharedConfiguration",
-        dependencies: ["SharedConstants"],
-        path: "Sources/Shared/Configuration"
-    )
+    // SharedConfiguration was absorbed into SharedConstants in #536 phase 1d.
+    // The `Shared.Configuration` namespace + its `Crawler` / `ChangeDetection`
+    // / `Output` / `DiscoveryMode` value types now live inside SharedConstants.
+    // SharedConfigurationTests stays — re-pointed at SharedConstants only.
     let sharedConfigurationTestsTarget = Target.testTarget(
         name: "SharedConfigurationTests",
-        dependencies: ["SharedConfiguration", "SharedConstants"]
+        dependencies: ["SharedConstants"]
     )
 
     // ---------- MCPSharedTools (v1.1 refactor 1.1: extracts MCP.SharedTools.ArgumentExtractor + MCP-protocol-output constants from Shared) ----------
@@ -294,7 +295,6 @@ let targets: [Target] = {
         name: "Core",
         dependencies: [
             "CoreProtocols",
-            "SharedConfiguration",
             "SharedConstants",
             "Resources",
             "ASTIndexer",
@@ -329,7 +329,6 @@ let targets: [Target] = {
         dependencies: [
             "CrawlerModels",
             "CoreProtocols",
-            "SharedConfiguration",
             "SharedConstants",
             "LoggingModels",
             "Resources",
@@ -437,12 +436,12 @@ let targets: [Target] = {
 
     let mcpSupportTarget = Target.target(
         name: "MCPSupport",
-        dependencies: ["MCPCore", "MCPSharedTools", "SharedConfiguration", "SharedConstants", "LoggingModels"],
+        dependencies: ["MCPCore", "MCPSharedTools", "SharedConstants", "LoggingModels"],
         path: "Sources/MCP/Support"
     )
     let mcpSupportTestsTarget = Target.testTarget(
         name: "MCPSupportTests",
-        dependencies: ["MCPSupport", "MCPCore", "MCPSharedTools", "SharedConfiguration", "SharedConstants", "TestSupport"],
+        dependencies: ["MCPSupport", "MCPCore", "MCPSharedTools", "SharedConstants", "TestSupport"],
         path: "Tests/MCP/SupportTests"
     )
 
@@ -539,7 +538,6 @@ let targets: [Target] = {
     let cliTarget = Target.executableTarget(
         name: "CLI",
         dependencies: [
-            "SharedConfiguration",
             "SharedConstants",
             "CoreProtocols", "CoreJSONParser", "CorePackageIndexing", "CorePackageIndexingModels", "Core", "CoreSampleCode",
             "Crawler",
@@ -681,7 +679,6 @@ let targets: [Target] = {
         sharedUtilsTestsTarget,
         sharedModelsTestsTarget,
         sharedCoreTestsTarget,
-        sharedConfigurationTarget,
         sharedConfigurationTestsTarget,
         mcpSharedToolsTarget,
         mcpSharedToolsTestsTarget,

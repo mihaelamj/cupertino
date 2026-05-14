@@ -1,5 +1,4 @@
 import Foundation
-@testable import SharedConfiguration
 import SharedConstants
 import Testing
 
