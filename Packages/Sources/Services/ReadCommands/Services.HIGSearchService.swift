@@ -1,31 +1,12 @@
 import Foundation
 import SearchModels
+import ServicesModels
 import SharedConstants
 import SharedCore
 
-// MARK: - HIG Search Query
-
-/// Specialized query for Human Interface Guidelines searches
-extension Services {
-    public struct HIGQuery: Sendable {
-        public let text: String
-        public let platform: String? // iOS, macOS, watchOS, visionOS, tvOS
-        public let category: String? // foundations, patterns, components, technologies, inputs
-        public let limit: Int
-
-        public init(
-            text: String,
-            platform: String? = nil,
-            category: String? = nil,
-            limit: Int = Shared.Constants.Limit.defaultSearchLimit
-        ) {
-            self.text = text
-            self.platform = platform
-            self.category = category
-            self.limit = min(limit, Shared.Constants.Limit.maxSearchLimit)
-        }
-    }
-}
+// `Services.HIGQuery` value type lifted to the `ServicesModels` target
+// so callers can construct HIG queries without importing the full
+// `Services` target.
 
 // MARK: - HIG Search Service
 

@@ -388,14 +388,27 @@ let targets: [Target] = {
         dependencies: ["SampleIndex", "SampleIndexModels", "SharedCore", "SharedConstants", "TestSupport"]
     )
 
+    // ---------- ServicesModels (#408: value types + namespace anchor lifted out of Services
+    // so MCP and CLI surfaces can hold Services.SearchQuery / SearchFilters / HIGQuery /
+    // Formatter.Config without importing the full Services behavioural target). Mirrors the
+    // SearchModels / SampleIndexModels / CorePackageIndexingModels split pattern.
+    let servicesModelsTarget = Target.target(
+        name: "ServicesModels",
+        dependencies: ["SearchModels", "SharedCore", "SharedConstants", "SharedModels"]
+    )
+    let servicesModelsTestsTarget = Target.testTarget(
+        name: "ServicesModelsTests",
+        dependencies: ["ServicesModels", "SearchModels", "SharedConstants", "TestSupport"]
+    )
+
     let servicesTarget = Target.target(
         name: "Services",
-        dependencies: ["SharedCore", "SharedConstants", "SharedUtils", "Search", "SampleIndex", "SampleIndexModels"],
+        dependencies: ["ServicesModels", "SharedCore", "SharedConstants", "SharedUtils", "Search", "SampleIndex", "SampleIndexModels"],
         exclude: ["README.md"]
     )
     let servicesTestsTarget = Target.testTarget(
         name: "ServicesTests",
-        dependencies: ["Services", "SearchModels", "TestSupport"]
+        dependencies: ["Services", "ServicesModels", "SearchModels", "TestSupport"]
     )
 
     let mcpSupportTarget = Target.target(
@@ -411,11 +424,11 @@ let targets: [Target] = {
 
     let searchToolProviderTarget = Target.target(
         name: "SearchToolProvider",
-        dependencies: ["MCPCore", "MCPSharedTools", "SearchModels", "SampleIndexModels", "SharedCore", "SharedConstants", "SharedUtils", "Services"]
+        dependencies: ["MCPCore", "MCPSharedTools", "SearchModels", "SampleIndexModels", "ServicesModels", "SharedCore", "SharedConstants", "SharedUtils", "Services"]
     )
     let searchToolProviderTestsTarget = Target.testTarget(
         name: "SearchToolProviderTests",
-        dependencies: ["SearchToolProvider", "SearchModels", "SampleIndexModels", "MCPSharedTools", "TestSupport"]
+        dependencies: ["SearchToolProvider", "SearchModels", "SampleIndexModels", "ServicesModels", "MCPSharedTools", "TestSupport"]
     )
 
     let mcpClientTarget = Target.target(
@@ -515,6 +528,7 @@ let targets: [Target] = {
             "Search",
             "SampleIndex",
             "Services",
+            "ServicesModels",
             "Distribution",
             "Diagnostics",
             "Indexer",
@@ -658,6 +672,8 @@ let targets: [Target] = {
         searchTestsTarget,
         sampleIndexTarget,
         sampleIndexTestsTarget,
+        servicesModelsTarget,
+        servicesModelsTestsTarget,
         servicesTarget,
         servicesTestsTarget,
         distributionTarget,

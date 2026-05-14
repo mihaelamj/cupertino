@@ -1,3 +1,4 @@
+import ServicesModels
 import Foundation
 
 // MARK: - Footer Provider Protocol
