@@ -392,7 +392,8 @@ struct MCPServerIntegrationTests {
             searchIndex: searchIndex,
             metadata: metadata,
             docsDirectory: tempDir,
-            evolutionDirectory: nil
+            evolutionDirectory: nil,
+            markdownToStructuredPage: { _, _ in nil }
         )
         try await builder.buildIndex()
         print("   ✅ Index built")

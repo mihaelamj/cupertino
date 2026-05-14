@@ -1,3 +1,5 @@
+import CoreJSONParser
+import CoreProtocols
 import Foundation
 import Indexer
 import Logging
@@ -31,7 +33,10 @@ extension CLI.Command.Save {
         )
 
         let tracker = ProgressTracker()
-        let outcome = try await Indexer.DocsService.run(request) { event in
+        let outcome = try await Indexer.DocsService.run(
+            request,
+            markdownToStructuredPage: Core.JSONParser.MarkdownToStructuredPage.convert
+        ) { event in
             Self.handleDocsEvent(event, tracker: tracker)
         }
         Self.printDocsSummary(outcome: outcome)

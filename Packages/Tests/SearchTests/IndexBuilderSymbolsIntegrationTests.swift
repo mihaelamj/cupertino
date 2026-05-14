@@ -134,7 +134,8 @@ struct IndexBuilderSymbolsIntegrationTests {
             searchIndex: index,
             metadata: nil,
             docsDirectory: docsDir,
-            indexSampleCode: false
+            indexSampleCode: false,
+            markdownToStructuredPage: { _, _ in nil }
         )
 
         try await builder.buildIndex(clearExisting: true)

@@ -39,7 +39,10 @@ struct StrategyMissingDirectoryTests {
 
         let missingDir = tempRoot.appendingPathComponent("docs")
         let index = try await makeIndex(in: tempRoot)
-        let strategy = Search.AppleDocsStrategy(docsDirectory: missingDir)
+        let strategy = Search.AppleDocsStrategy(
+            docsDirectory: missingDir,
+            markdownToStructuredPage: { _, _ in nil }
+        )
 
         let stats = try await strategy.indexItems(into: index, progress: nil)
 
@@ -56,7 +59,10 @@ struct StrategyMissingDirectoryTests {
         let emptyDir = tempRoot.appendingPathComponent("docs")
         try FileManager.default.createDirectory(at: emptyDir, withIntermediateDirectories: true)
         let index = try await makeIndex(in: tempRoot)
-        let strategy = Search.AppleDocsStrategy(docsDirectory: emptyDir)
+        let strategy = Search.AppleDocsStrategy(
+            docsDirectory: emptyDir,
+            markdownToStructuredPage: { _, _ in nil }
+        )
 
         let stats = try await strategy.indexItems(into: index, progress: nil)
 
@@ -151,7 +157,10 @@ struct StrategyMissingDirectoryTests {
 
         let missingDir = tempRoot.appendingPathComponent("swift-org")
         let index = try await makeIndex(in: tempRoot)
-        let strategy = Search.SwiftOrgStrategy(swiftOrgDirectory: missingDir)
+        let strategy = Search.SwiftOrgStrategy(
+            swiftOrgDirectory: missingDir,
+            markdownToStructuredPage: { _, _ in nil }
+        )
 
         let stats = try await strategy.indexItems(into: index, progress: nil)
 

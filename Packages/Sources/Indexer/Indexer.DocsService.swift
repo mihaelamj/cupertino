@@ -58,6 +58,7 @@ extension Indexer {
 
         public static func run(
             _ request: Request,
+            markdownToStructuredPage: @escaping Search.MarkdownToStructuredPage,
             handler: @escaping @Sendable (Event) -> Void = { _ in }
         ) async throws -> Outcome {
             let docsURL = request.docsDir
@@ -99,7 +100,8 @@ extension Indexer {
                 evolutionDirectory: evolutionDirToUse,
                 swiftOrgDirectory: swiftOrgDirToUse,
                 archiveDirectory: archiveDirToUse,
-                higDirectory: higDirToUse
+                higDirectory: higDirToUse,
+                markdownToStructuredPage: markdownToStructuredPage
             )
 
             try await builder.buildIndex(clearExisting: request.clear) { processed, total in
