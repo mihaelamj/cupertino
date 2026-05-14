@@ -1,5 +1,5 @@
 import Foundation
-import SampleIndex
+import SampleIndexModels
 import SearchModels
 import ServicesModels
 import SharedConstants
@@ -109,6 +109,7 @@ extension Services {
             samplesDB: URL?,
             packagesDB: URL?,
             searchDatabaseFactory: any Search.DatabaseFactory,
+            sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
             packageFileLookup: any PackageFileLookupStrategy
         ) async throws -> Result {
             if let explicit {
@@ -121,6 +122,7 @@ extension Services {
                     packagesDB: packagesDB,
                     allowFallback: false,
                     searchDatabaseFactory: searchDatabaseFactory,
+                    sampleDatabaseFactory: sampleDatabaseFactory,
                     packageFileLookup: packageFileLookup
                 )
             }
@@ -135,6 +137,7 @@ extension Services {
                     packagesDB: packagesDB,
                     allowFallback: false,
                     searchDatabaseFactory: searchDatabaseFactory,
+                    sampleDatabaseFactory: sampleDatabaseFactory,
                     packageFileLookup: packageFileLookup
                 )
             }
@@ -149,6 +152,7 @@ extension Services {
                     packagesDB: packagesDB,
                     allowFallback: true,
                     searchDatabaseFactory: searchDatabaseFactory,
+                    sampleDatabaseFactory: sampleDatabaseFactory,
                     packageFileLookup: packageFileLookup
                 )
             } catch ReadError.samplesNotFound, ReadError.packagesNotFound,
@@ -164,6 +168,7 @@ extension Services {
                 packagesDB: packagesDB,
                 allowFallback: false,
                 searchDatabaseFactory: searchDatabaseFactory,
+                sampleDatabaseFactory: sampleDatabaseFactory,
                 packageFileLookup: packageFileLookup
             )
         }
@@ -179,6 +184,7 @@ extension Services {
             packagesDB: URL?,
             allowFallback: Bool,
             searchDatabaseFactory: any Search.DatabaseFactory,
+            sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
             packageFileLookup: any PackageFileLookupStrategy
         ) async throws -> Result {
             switch source {
@@ -195,6 +201,7 @@ extension Services {
                     samplesDB: samplesDB,
                     allowFallback: allowFallback,
                     packagesDB: packagesDB,
+                    sampleDatabaseFactory: sampleDatabaseFactory,
                     packageFileLookup: packageFileLookup
                 )
             case .packages:
@@ -229,6 +236,7 @@ extension Services {
             samplesDB: URL?,
             allowFallback: Bool,
             packagesDB: URL?,
+            sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
             packageFileLookup: any PackageFileLookupStrategy
         ) async throws -> Result {
             let dbURL = samplesDB ?? Sample.Index.defaultDatabasePath
@@ -246,14 +254,20 @@ extension Services {
             if let slashIdx = identifier.firstIndex(of: "/") {
                 let projectId = String(identifier[..<slashIdx])
                 let path = String(identifier[identifier.index(after: slashIdx)...])
-                let file = try await Services.ServiceContainer.withSampleService(dbPath: dbURL) { service in
+                let file = try await Services.ServiceContainer.withSampleService(
+                    dbPath: dbURL,
+                    sampleDatabaseFactory: sampleDatabaseFactory
+                ) { service in
                     try await service.getFile(projectId: projectId, path: path)
                 }
                 if let file {
                     return Result(content: file.content, resolvedSource: .samples)
                 }
             } else {
-                let project = try await Services.ServiceContainer.withSampleService(dbPath: dbURL) { service in
+                let project = try await Services.ServiceContainer.withSampleService(
+                    dbPath: dbURL,
+                    sampleDatabaseFactory: sampleDatabaseFactory
+                ) { service in
                     try await service.getProject(id: identifier)
                 }
                 if let project {

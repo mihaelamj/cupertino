@@ -1,5 +1,4 @@
 import Foundation
-import SampleIndex
 import SampleIndexModels
 import SharedConstants
 import SharedCore
@@ -26,14 +25,6 @@ extension Sample.Search {
         /// root supplies it.
         public init(database: any Sample.Index.Reader) {
             self.database = database
-        }
-
-        /// Initialize with a database path. Keeps the convenience init
-        /// that wraps `Sample.Index.Database` in callers that want a
-        /// one-line construct-and-use; the typed-against-protocol field
-        /// above means upper layers don't see this concrete dep.
-        public init(dbPath: URL) async throws {
-            database = try await Sample.Index.Database(dbPath: dbPath)
         }
 
         // MARK: - Search Methods

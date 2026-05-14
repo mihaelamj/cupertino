@@ -1,5 +1,5 @@
 import Foundation
-import SampleIndex
+import SampleIndexModels
 import SearchModels
 import ServicesModels
 import SharedConstants
@@ -49,19 +49,23 @@ extension Services {
         }
 
         /// Execute an operation with a sample service, handling lifecycle.
-        /// No `makeSearchDatabase` here: the sample service is backed by
-        /// `Sample.Search.Service`, which constructs its own
-        /// `Sample.Index.Database` — that's a SampleIndex-target concern,
-        /// not Search.
+        /// The sample database is opened through an injected
+        /// `Sample.Index.DatabaseFactory` (GoF Factory Method) —
+        /// symmetric with `Search.DatabaseFactory` on the docs side
+        /// (#494). This target builds the `Sample.Search.Service`
+        /// wrapper internally; the composition root never has to know
+        /// about it.
         public static func withSampleService<T: Sendable>(
             dbPath: URL,
-            operation: (Sample.Search.Service) async throws -> T
+            sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
+            operation: (any Sample.Search.Searcher) async throws -> T
         ) async throws -> T {
             guard Shared.Utils.PathResolver.exists(dbPath) else {
                 throw Shared.Core.ToolError.noData("Sample database not found at \(dbPath.path). Run 'cupertino save --samples' to build the index.")
             }
 
-            let service = try await Sample.Search.Service(dbPath: dbPath)
+            let database = try await sampleDatabaseFactory.openDatabase(at: dbPath)
+            let service = Sample.Search.Service(database: database)
             let result = try await operation(service)
             await service.disconnect()
             return result
@@ -76,6 +80,7 @@ extension Services {
             searchDbPath: String? = nil,
             sampleDbPath: URL? = nil,
             searchDatabaseFactory: any Search.DatabaseFactory,
+            sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
             operation: (Services.TeaserService) async throws -> T
         ) async throws -> T {
             let resolvedSearchPath = Shared.Utils.PathResolver.searchDatabase(searchDbPath)
@@ -88,9 +93,16 @@ extension Services {
                 searchIndex = nil
             }
 
-            let service = try await Services.TeaserService(
+            let sampleDatabase: (any Sample.Index.Reader)?
+            if Shared.Utils.PathResolver.exists(resolvedSamplePath) {
+                sampleDatabase = try await sampleDatabaseFactory.openDatabase(at: resolvedSamplePath)
+            } else {
+                sampleDatabase = nil
+            }
+
+            let service = Services.TeaserService(
                 searchIndex: searchIndex,
-                sampleDbPath: Shared.Utils.PathResolver.exists(resolvedSamplePath) ? resolvedSamplePath : nil
+                sampleDatabase: sampleDatabase
             )
 
             return try await operation(service)
@@ -102,6 +114,7 @@ extension Services {
             searchDbPath: String? = nil,
             sampleDbPath: URL? = nil,
             searchDatabaseFactory: any Search.DatabaseFactory,
+            sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
             operation: (Services.UnifiedSearchService) async throws -> T
         ) async throws -> T {
             let resolvedSearchPath = Shared.Utils.PathResolver.searchDatabase(searchDbPath)
@@ -114,9 +127,16 @@ extension Services {
                 searchIndex = nil
             }
 
-            let service = try await Services.UnifiedSearchService(
+            let sampleDatabase: (any Sample.Index.Reader)?
+            if Shared.Utils.PathResolver.exists(resolvedSamplePath) {
+                sampleDatabase = try await sampleDatabaseFactory.openDatabase(at: resolvedSamplePath)
+            } else {
+                sampleDatabase = nil
+            }
+
+            let service = Services.UnifiedSearchService(
                 searchIndex: searchIndex,
-                sampleDbPath: Shared.Utils.PathResolver.exists(resolvedSamplePath) ? resolvedSamplePath : nil
+                sampleDatabase: sampleDatabase
             )
 
             return try await operation(service)
