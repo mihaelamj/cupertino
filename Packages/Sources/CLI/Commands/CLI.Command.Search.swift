@@ -28,8 +28,8 @@ extension CLI.Command {
             abstract: "Search Apple documentation, samples, HIG, and more",
             discussion: """
             Unified search across all documentation sources. By default, searches ALL sources
-            in parallel and returns chunked excerpts ranked by reciprocal-rank fusion (#239:
-            absorbed from the removed `cupertino ask`). Use --source to narrow to one source
+            in parallel and returns chunked excerpts ranked by reciprocal-rank fusion
+            (absorbed from the removed `cupertino ask`). Use --source to narrow to one source
             and get the source-specific list view instead.
 
             SOURCES:
@@ -143,28 +143,25 @@ extension CLI.Command {
 
         @Option(
             name: .long,
-            help: """
-            Per-source candidate cap before reciprocal-rank fusion. \
-            Only applies in fan-out mode (no --source). Default 10. (#239)
-            """
+            help: "Per-source candidate cap before reciprocal-rank fusion. Only applies in fan-out mode (no --source). Default 10."
         )
         var perSource: Int = 10
 
         @Flag(
             name: .long,
-            help: "Skip every apple-docs-backed source. Fan-out mode only. (#239)"
+            help: "Skip every apple-docs-backed source. Fan-out mode only."
         )
         var skipDocs: Bool = false
 
         @Flag(
             name: .long,
-            help: "Skip the packages source. Fan-out mode only. (#239)"
+            help: "Skip the packages source. Fan-out mode only."
         )
         var skipPackages: Bool = false
 
         @Flag(
             name: .long,
-            help: "Skip the samples source. Fan-out mode only. (#239)"
+            help: "Skip the samples source. Fan-out mode only."
         )
         var skipSamples: Bool = false
 
@@ -173,8 +170,7 @@ extension CLI.Command {
             help: """
             Trim each result's excerpt to its first few lines for quick triage. \
             Read-full link, tips, and see-also still print. Fan-out mode + \
-            text/markdown only — JSON keeps full chunks for programmatic \
-            consumers. (#239)
+            text/markdown only — JSON keeps full chunks for programmatic consumers.
             """
         )
         var brief: Bool = false
@@ -183,7 +179,7 @@ extension CLI.Command {
             name: .long,
             help: """
             Restrict packages + samples + apple-docs results to the named platform's \
-            deployment target (#220, #233). Values: iOS, macOS, tvOS, watchOS, visionOS \
+            deployment target. Values: iOS, macOS, tvOS, watchOS, visionOS \
             (case-insensitive). Requires --min-version. Fan-out mode only.
             """
         )
@@ -191,10 +187,7 @@ extension CLI.Command {
 
         @Option(
             name: .long,
-            help: """
-            Minimum version for --platform, e.g. 16.0 / 13.0 / 10.15. Lex compare \
-            in SQL; correct for current Apple platforms. (#220)
-            """
+            help: "Minimum version for --platform, e.g. 16.0 / 13.0 / 10.15. Lexicographic compare in SQL."
         )
         var minVersion: String?
 

@@ -31,17 +31,20 @@ extension CLI.Command {
     struct Doctor: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "doctor",
-            abstract: "Check MCP server health and configuration",
+            abstract: "Check MCP server health, database state, and save readiness",
             discussion: """
-            Verifies that the MCP server can start and all required components
-            are available and properly configured.
+            Verifies that the MCP server can start and all required components are available.
 
             Checks:
             • Server initialization
-            • Resource providers
-            • Tool providers
-            • Database connectivity
-            • Documentation directories
+            • Resource and tool providers
+            • Database connectivity and schema versions
+            • Raw corpus directories (inputs for 'cupertino save')
+            • Swift package download state
+
+            Pass --save to run only the save preflight — prints which sources are present
+            and what would be built, without performing any health checks or DB writes.
+            Useful before running 'cupertino save' to confirm sources are ready.
             """
         )
 
@@ -57,10 +60,8 @@ extension CLI.Command {
         @Flag(
             name: .long,
             help: """
-            Run the `cupertino save` preflight check only — print which \
-            sources are present, which lack availability annotations, what \
-            would be skipped — without running the regular doctor health \
-            suite. Read-only, no DB writes. (#232)
+            Run the 'cupertino save' preflight check only — print which sources are present \
+            and what would be built — without running the regular health suite. Read-only, no DB writes.
             """
         )
         var save: Bool = false

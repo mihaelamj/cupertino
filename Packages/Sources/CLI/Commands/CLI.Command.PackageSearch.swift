@@ -40,7 +40,7 @@ extension CLI.Command {
             name: .long,
             help: """
             Restrict results to packages whose declared deployment target is \
-            compatible with the named platform (#220). Values: iOS, macOS, \
+            compatible with the named platform. Values: iOS, macOS, \
             tvOS, watchOS, visionOS (case-insensitive). Requires \
             --min-version. Packages with no annotation source are dropped.
             """
@@ -52,7 +52,7 @@ extension CLI.Command {
             help: """
             Minimum version for --platform, e.g. 16.0 / 13.0 / 10.15. \
             Lexicographic compare in SQL — works correctly for current Apple \
-            platform versions (iOS 13+, macOS 11+ etc.). #220
+            platform versions (iOS 13+, macOS 11+ etc.).
             """
         )
         var minVersion: String?
@@ -87,7 +87,7 @@ extension CLI.Command {
                 )
             case (.some, nil), (nil, .some):
                 Logging.ConsoleLogger.error(
-                    "❌ --platform and --min-version must be used together (#220)."
+                    "❌ --platform and --min-version must be used together."
                 )
                 throw ExitCode.failure
             case (nil, nil):

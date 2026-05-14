@@ -11,6 +11,36 @@ struct Cupertino: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: Shared.Constants.App.commandName,
         abstract: "MCP Server for Apple Documentation, Swift Evolution, and Swift Packages",
+        discussion: """
+        SETUP
+          setup            Download pre-built databases (search.db, samples.db, packages.db)
+
+        DATA COLLECTION
+          fetch            Download documentation, packages, and sample code from Apple / GitHub
+          cleanup          Remove downloaded sample-code archives after indexing
+
+        INDEXING
+          save             Index fetched content into search.db, packages.db, and samples.db
+
+        SERVER
+          serve            Start the MCP server (default when no subcommand is given)
+
+        QUERY
+          search           Search across all documentation sources
+          read             Read a full document by URI
+          list-frameworks  List indexed frameworks with document counts
+
+        SAMPLE CODE
+          list-samples     List indexed Apple sample projects
+          read-sample      Read a sample project README and metadata
+          read-sample-file Read a source file from a sample project
+
+        DIAGNOSTICS
+          doctor           Check server health, database state, and save readiness
+          resolve-refs     Rewrite unresolved doc:// markers in saved page content
+
+        Run 'cupertino <command> --help' for per-command options.
+        """,
         version: Shared.Constants.App.version,
         subcommands: [
             CLI.Command.Setup.self,

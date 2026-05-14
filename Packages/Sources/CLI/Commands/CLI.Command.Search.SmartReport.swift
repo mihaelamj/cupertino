@@ -61,7 +61,7 @@ extension CLI.Command.Search {
             )
         case (.some, nil), (nil, .some):
             Logging.ConsoleLogger.error(
-                "❌ --platform and --min-version must be used together (#220)."
+                "❌ --platform and --min-version must be used together."
             )
             throw ExitCode.failure
         case (nil, nil):
@@ -330,7 +330,7 @@ extension CLI.Command.Search {
             "ℹ️  --platform \(platform) --min-version \(minVersion) doesn't apply to "
                 + unfiltered.joined(separator: ", ")
                 + " — those sources use a different availability axis "
-                + "(Swift language version, see #225). apple-docs / apple-archive / hig / "
+                + "(Swift language version). apple-docs / apple-archive / hig / "
                 + "packages / samples results ARE filtered."
         )
     }
@@ -423,7 +423,7 @@ extension CLI.Command.Search {
         print(
             "> ℹ️ `--platform \(platform) --min-version \(minVersion)` doesn't apply "
                 + "to " + unfiltered.joined(separator: ", ")
-                + " (Swift language version axis, #225)."
+                + " (Swift language version axis)."
         )
     }
 
