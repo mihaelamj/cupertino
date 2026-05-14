@@ -1,9 +1,9 @@
+import CrawlerModels
 import Foundation
 import Logging
 import SharedCore
 
 #if canImport(WebKit)
-import Core
 import CoreProtocols
 import SharedConstants
 import SharedUtils

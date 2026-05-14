@@ -3,6 +3,7 @@ import AppKit
 @testable import Core
 import CoreProtocols
 import Crawler
+import CrawlerModels
 import Foundation
 @testable import Search
 import SearchModels
@@ -58,7 +59,12 @@ struct SaveCommandTests {
             output: Shared.Configuration.Output(format: .markdown)
         )
 
-        let crawler = await Crawler.AppleDocs(configuration: config)
+        let crawler = await Crawler.AppleDocs(
+            configuration: config,
+            htmlParser: LiveTestHTMLParserStrategy(),
+            appleJSONParser: LiveTestAppleJSONParserStrategy(),
+            priorityPackageStrategy: LiveTestPriorityPackageStrategy()
+        )
         _ = try await crawler.crawl()
 
         // Build search index
@@ -115,7 +121,12 @@ struct SaveCommandTests {
             output: Shared.Configuration.Output(format: .markdown)
         )
 
-        let crawler = await Crawler.AppleDocs(configuration: config)
+        let crawler = await Crawler.AppleDocs(
+            configuration: config,
+            htmlParser: LiveTestHTMLParserStrategy(),
+            appleJSONParser: LiveTestAppleJSONParserStrategy(),
+            priorityPackageStrategy: LiveTestPriorityPackageStrategy()
+        )
         _ = try await crawler.crawl()
 
         let searchDbPath = tempDir.appendingPathComponent("search.db")

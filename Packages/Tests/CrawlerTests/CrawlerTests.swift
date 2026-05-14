@@ -2,6 +2,7 @@
 @testable import CoreJSONParser
 import CoreProtocols
 @testable import Crawler
+import CrawlerModels
 import Foundation
 import SharedConfiguration
 import SharedConstants
@@ -37,7 +38,12 @@ struct CrawlerTests {
             output: Shared.Configuration.Output()
         )
 
-        let crawler = await Crawler.AppleDocs(configuration: config)
+        let crawler = await Crawler.AppleDocs(
+            configuration: config,
+            htmlParser: Crawler.NoopHTMLParserStrategy(),
+            appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
+            priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy()
+        )
 
         // If we get here without crashing, initialization worked
         _ = crawler
@@ -322,7 +328,12 @@ struct CrawlerTests {
             output: Shared.Configuration.Output()
         )
 
-        let crawler = await Crawler.AppleDocs(configuration: config)
+        let crawler = await Crawler.AppleDocs(
+            configuration: config,
+            htmlParser: Crawler.NoopHTMLParserStrategy(),
+            appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
+            priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy()
+        )
 
         // Note: This may fail to load the actual page (network required),
         // but it tests that the crawler can be instantiated and attempt to crawl
@@ -362,7 +373,12 @@ struct CrawlerTests {
             output: Shared.Configuration.Output()
         )
 
-        let crawler = await Crawler.AppleDocs(configuration: config)
+        let crawler = await Crawler.AppleDocs(
+            configuration: config,
+            htmlParser: Crawler.NoopHTMLParserStrategy(),
+            appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
+            priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy()
+        )
 
         do {
             _ = try await crawler.crawl()

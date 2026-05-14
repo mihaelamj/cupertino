@@ -3,6 +3,7 @@ import AppKit
 @testable import Core
 import CoreProtocols
 import Crawler
+import CrawlerModels
 import Foundation
 @testable import Search
 import SearchModels
@@ -44,7 +45,12 @@ struct WebCrawlTests {
         print("🧪 Test: Fetch single page")
         print("   URL: \(config.crawler.startURL)")
 
-        let crawler = await Crawler.AppleDocs(configuration: config)
+        let crawler = await Crawler.AppleDocs(
+            configuration: config,
+            htmlParser: LiveTestHTMLParserStrategy(),
+            appleJSONParser: LiveTestAppleJSONParserStrategy(),
+            priorityPackageStrategy: LiveTestPriorityPackageStrategy()
+        )
         let stats = try await crawler.crawl()
 
         // Verify stats
@@ -106,12 +112,22 @@ struct WebCrawlTests {
         print("🧪 Test: Fetch with resume")
 
         // First fetch
-        let crawler1 = await Crawler.AppleDocs(configuration: config)
+        let crawler1 = await Crawler.AppleDocs(
+            configuration: config,
+            htmlParser: LiveTestHTMLParserStrategy(),
+            appleJSONParser: LiveTestAppleJSONParserStrategy(),
+            priorityPackageStrategy: LiveTestPriorityPackageStrategy()
+        )
         let stats1 = try await crawler1.crawl()
         #expect(stats1.newPages == 1, "First fetch should have 1 new page")
 
         // Second fetch (should skip unchanged)
-        let crawler2 = await Crawler.AppleDocs(configuration: config)
+        let crawler2 = await Crawler.AppleDocs(
+            configuration: config,
+            htmlParser: LiveTestHTMLParserStrategy(),
+            appleJSONParser: LiveTestAppleJSONParserStrategy(),
+            priorityPackageStrategy: LiveTestPriorityPackageStrategy()
+        )
         let stats2 = try await crawler2.crawl()
         #expect(stats2.skippedPages == 1, "Second fetch should skip unchanged page")
         #expect(stats2.newPages == 0, "Second fetch should have no new pages")

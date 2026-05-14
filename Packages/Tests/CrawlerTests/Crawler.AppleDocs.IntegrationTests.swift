@@ -2,6 +2,7 @@ import AppKit
 @testable import Core
 import CoreProtocols
 import Crawler
+import CrawlerModels
 import Foundation
 import SharedConfiguration
 import SharedConstants
@@ -42,7 +43,12 @@ func downloadRealAppleDocPage() async throws {
     let config = createTestConfiguration(outputDirectory: tempDir)
     logTestStart(config: config)
 
-    let crawler = await Crawler.AppleDocs(configuration: config)
+    let crawler = await Crawler.AppleDocs(
+        configuration: config,
+        htmlParser: LiveTestHTMLParserStrategy(),
+        appleJSONParser: LiveTestAppleJSONParserStrategy(),
+        priorityPackageStrategy: LiveTestPriorityPackageStrategy()
+    )
     let stats = try await crawler.crawl()
 
     try verifyBasicStats(stats)

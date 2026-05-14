@@ -1,6 +1,7 @@
 @testable import Core
 import CoreProtocols
 import Crawler
+import CrawlerModels
 import Foundation
 import SharedConstants
 @testable import SharedCore

@@ -2,6 +2,7 @@
 @testable import Core
 import CoreProtocols
 @testable import Crawler
+import CrawlerModels
 import Foundation
 import Ingest
 import SharedConfiguration

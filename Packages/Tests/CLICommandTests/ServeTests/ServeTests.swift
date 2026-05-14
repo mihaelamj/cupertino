@@ -2,6 +2,7 @@ import AppKit
 @testable import Core
 import CoreProtocols
 import Crawler
+import CrawlerModels
 import Foundation
 @testable import MCPCore
 @testable import MCPSupport
@@ -391,7 +392,12 @@ struct MCPServerIntegrationTests {
             output: Shared.Configuration.Output(format: .markdown)
         )
 
-        let crawler = await Crawler.AppleDocs(configuration: config)
+        let crawler = await Crawler.AppleDocs(
+            configuration: config,
+            htmlParser: Crawler.NoopHTMLParserStrategy(),
+            appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
+            priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy()
+        )
         let stats = try await crawler.crawl()
         #expect(stats.totalPages > 0, "Should have crawled pages")
         print("   ✅ Crawled \(stats.totalPages) page(s)")

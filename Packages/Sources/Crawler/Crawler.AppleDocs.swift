@@ -1,7 +1,5 @@
-import Core
-import CoreJSONParser
-import CorePackageIndexing
 import CoreProtocols
+import CrawlerModels
 import Foundation
 import Logging
 import os
@@ -40,15 +38,33 @@ extension Crawler {
         private var enqueued = Set<String>()
         private var stats: Shared.Models.CrawlStatistics
 
+        // GoF Strategy seams (#505). Concrete implementations live in
+        // the CLI composition root and wrap `Core.Parser.HTML`,
+        // `Core.JSONParser.AppleJSONToMarkdown`,
+        // `Core.PackageIndexing.PriorityPackageGenerator`. The crawler
+        // target itself imports neither `Core` nor `CoreJSONParser`
+        // nor `CorePackageIndexing`.
+        private let htmlParser: any Crawler.HTMLParserStrategy
+        private let appleJSONParser: any Crawler.AppleJSONParserStrategy
+        private let priorityPackageStrategy: any Crawler.PriorityPackageStrategy
+
         private var onProgress: (@Sendable (Progress) -> Void)?
         private var logFileHandle: FileHandle?
 
-        public init(configuration: Shared.Configuration) async {
+        public init(
+            configuration: Shared.Configuration,
+            htmlParser: any Crawler.HTMLParserStrategy,
+            appleJSONParser: any Crawler.AppleJSONParserStrategy,
+            priorityPackageStrategy: any Crawler.PriorityPackageStrategy
+        ) async {
             self.configuration = configuration.crawler
             changeDetection = configuration.changeDetection
             output = configuration.output
             state = State(configuration: configuration.changeDetection)
             stats = Shared.Models.CrawlStatistics()
+            self.htmlParser = htmlParser
+            self.appleJSONParser = appleJSONParser
+            self.priorityPackageStrategy = priorityPackageStrategy
             super.init()
 
             // Initialize Crawler.WebKit.ContentFetcher from WKWebCrawler namespace
@@ -271,7 +287,7 @@ extension Crawler {
             var storageURL = url
 
             // Check if this URL could have a JSON API endpoint (Apple docs)
-            let hasJSONEndpoint = Core.JSONParser.AppleJSONToMarkdown.jsonAPIURL(from: url) != nil
+            let hasJSONEndpoint = appleJSONParser.jsonAPIURL(from: url) != nil
 
             // The HTML→markdown / link extraction calls below are synchronous
             // and allocate heavily through Foundation (NSString operations,
@@ -321,7 +337,7 @@ extension Crawler {
                     // JSON API failed, fall back to HTML
                     logInfo("   ⚠️ JSON API unavailable, using HTML fallback")
                     let html = try await loadPage(url: url)
-                    if Core.Parser.HTML.looksLikeHTTPErrorPage(html: html) {
+                    if htmlParser.looksLikeHTTPErrorPage(html: html) {
                         logInfo("   ⛔ HTTP error template detected, skipping (#284)")
                         await state.recordRejection(
                             url: url,
@@ -333,7 +349,7 @@ extension Crawler {
                         await state.updateStatistics { $0.totalPages += 1 }
                         return
                     }
-                    if Core.Parser.HTML.looksLikeJavaScriptFallback(html: html) {
+                    if htmlParser.looksLikeJavaScriptFallback(html: html) {
                         logInfo("   ⛔ Apple SPA no-content sub-view detected, skipping (#284)")
                         await state.recordRejection(
                             url: url,
@@ -347,16 +363,16 @@ extension Crawler {
                     }
                     (markdown, links, structuredPage) = autoreleasepool {
                         (
-                            Core.Parser.HTML.convert(html, url: url),
+                            htmlParser.convert(html: html, url: url),
                             extractLinks(from: html, baseURL: url),
-                            Core.Parser.HTML.toStructuredPage(html, url: url, depth: depth)
+                            htmlParser.toStructuredPage(html: html, url: url, source: .appleWebKit, depth: depth)
                         )
                     }
                 }
             } else {
                 // No JSON endpoint available, use HTML directly
                 let html = try await loadPage(url: url)
-                if Core.Parser.HTML.looksLikeHTTPErrorPage(html: html) {
+                if htmlParser.looksLikeHTTPErrorPage(html: html) {
                     logInfo("   ⛔ HTTP error template detected, skipping (#284)")
                     await state.recordRejection(
                         url: url,
@@ -368,7 +384,7 @@ extension Crawler {
                     await state.updateStatistics { $0.totalPages += 1 }
                     return
                 }
-                if Core.Parser.HTML.looksLikeJavaScriptFallback(html: html) {
+                if htmlParser.looksLikeJavaScriptFallback(html: html) {
                     logInfo("   ⛔ Apple SPA no-content sub-view detected, skipping (#284)")
                     await state.recordRejection(
                         url: url,
@@ -382,9 +398,9 @@ extension Crawler {
                 }
                 (markdown, links, structuredPage) = autoreleasepool {
                     (
-                        Core.Parser.HTML.convert(html, url: url),
+                        htmlParser.convert(html: html, url: url),
                         extractLinks(from: html, baseURL: url),
-                        Core.Parser.HTML.toStructuredPage(html, url: url, depth: depth)
+                        htmlParser.toStructuredPage(html: html, url: url, source: .appleWebKit, depth: depth)
                     )
                 }
             }
@@ -498,7 +514,7 @@ extension Crawler {
             links: [URL],
             canonicalURL: URL
         ) {
-            guard let jsonURL = Core.JSONParser.AppleJSONToMarkdown.jsonAPIURL(from: url) else {
+            guard let jsonURL = appleJSONParser.jsonAPIURL(from: url) else {
                 throw Error.invalidState
             }
 
@@ -517,7 +533,7 @@ extension Crawler {
             // professional-video-applications), response.url reflects the final JSON API URL;
             // reversing it gives us the storage key that matches the canonical doc URL.
             let responseJSONURL = response.url ?? jsonURL
-            let canonicalURL = Core.JSONParser.AppleJSONToMarkdown.documentationURL(from: responseJSONURL) ?? url
+            let canonicalURL = appleJSONParser.documentationURL(from: responseJSONURL) ?? url
 
             if canonicalURL.absoluteString != url.absoluteString {
                 logInfo("   🔀 Redirect detected: storing under \(canonicalURL.lastPathComponent)")
@@ -529,11 +545,11 @@ extension Crawler {
             // accumulating in the implicit Task-scoped pool. See the comment
             // in the main crawl loop for the multi-day-crawl rationale.
             return try autoreleasepool {
-                let structuredPage = Core.JSONParser.AppleJSONToMarkdown.toStructuredPage(data, url: canonicalURL, depth: depth)
-                guard let markdown = Core.JSONParser.AppleJSONToMarkdown.convert(data, url: canonicalURL) else {
+                let structuredPage = appleJSONParser.toStructuredPage(json: data, url: canonicalURL, depth: depth)
+                guard let markdown = appleJSONParser.convert(json: data, url: canonicalURL) else {
                     throw Error.invalidHTML
                 }
-                let links = Core.JSONParser.AppleJSONToMarkdown.extractLinks(from: data)
+                let links = appleJSONParser.extractLinks(from: data)
                 return (structuredPage, markdown, links, canonicalURL)
             }
         }
@@ -688,14 +704,12 @@ extension Crawler {
                 .deletingLastPathComponent()
                 .appendingPathComponent(Shared.Constants.FileName.priorityPackages)
 
-            let generator = Core.PackageIndexing.PriorityPackageGenerator(
+            let priorityList = try await priorityPackageStrategy.generate(
                 swiftOrgDocsPath: configuration.outputDirectory,
                 outputPath: outputPath
             )
 
-            let priorityList = try await generator.generate()
-
-            logInfo("   ✅ Found \(priorityList.stats.totalUniqueReposFound) unique packages")
+            logInfo("   ✅ Found \(priorityList.totalUniqueReposFound) unique packages")
             logInfo("   📁 Saved to: \(outputPath.path)")
             logInfo("   💡 This list will be used for prioritizing package documentation crawls")
         }

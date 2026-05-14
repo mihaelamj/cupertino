@@ -6,6 +6,7 @@ import CorePackageIndexingModels
 import CoreProtocols
 import CoreSampleCode
 import Crawler
+import CrawlerModels
 import Foundation
 import Ingest
 import Logging
@@ -447,7 +448,12 @@ extension CLI.Command {
         }
 
         private func executeCrawl(with config: Shared.Configuration) async throws {
-            let crawler = await Crawler.AppleDocs(configuration: config)
+            let crawler = await Crawler.AppleDocs(
+                configuration: config,
+                htmlParser: htmlParserStrategy,
+                appleJSONParser: appleJSONParserStrategy,
+                priorityPackageStrategy: priorityPackageStrategy
+            )
             let stats = try await crawler.crawl { progress in
                 let percentage = String(format: "%.1f", progress.percentage)
                 let urlComponent = progress.currentURL.lastPathComponent
