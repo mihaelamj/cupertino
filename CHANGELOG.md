@@ -1,4 +1,32 @@
-## Unreleased
+## Unreleased — staged for 1.2.0
+
+_Code on `origin/main` past the v1.1.0 tag. No binary tag yet — the v1.2.0 release is gated on the live `cupertino save --docs` WAL run captured in #514 (currently running against the post-Claw-merge 414,807-file corpus). All work below is mergeable, tested, and pre-flight-clean; the tag drops once #514 verifies the WAL concurrency win on the docs workload (the samples workload was already verified in PR #515)._
+
+_The v1.1.1 corpus tag exists on `cupertino-docs` only (not on this repo). It marks the post-Claw-merge source corpus snapshot: 414,807 source files, +2,285 new pages + 498 richer overwrites from Claw mini's 5.5-day crawl, with 153 React-SPA-404 poison files filtered out at the merge boundary. The 13-category poison audit returns zero matches on the merged corpus. The matching bundle (`cupertino-databases-v1.2.0.zip`) is rebuilt from the same source state when v1.2.0 ships._
+
+### Added
+
+- **GoF protocol-DI epic complete (#495, PRs #494–#502).** Eight cross-target closure typealiases converted to GoF Strategy / Factory Method protocols. Production `Live*` concretes live in CLI (the composition root) wrapping the underlying static / actor; consumer targets see only the protocol seam.
+  | # | Closure → Protocol | PR |
+  |---|---|---|
+  | 1 | `MakeSearchDatabase` → `Search.DatabaseFactory` | #494 |
+  | 2 | `Search.MarkdownToStructuredPage` → `Search.MarkdownToStructuredPageStrategy` | #496 |
+  | 3 | `Search.SampleCatalogFetch` → `Search.SampleCatalogProvider` | #497 |
+  | 4 | `Search.PackageIndexingRun` → `Search.PackageIndexingRunner` | #498 |
+  | 5 | `Search.DocsIndexingRun` → `Search.DocsIndexingRunner` | #499 |
+  | 6 | `Sample.Index.SamplesIndexingRun` → `Sample.Index.SamplesIndexingRunner` | #500 |
+  | 7 | `MarkdownLookup` → `MCP.Support.MarkdownLookupStrategy` | #501 |
+  | 8 | `Services.ReadService.PackageFileLookup` → `Services.ReadService.PackageFileLookupStrategy` | #502 |
+- **`CrawlerModels` SPM target** (#505, PR #508). Hosts `Crawler.HTMLParserStrategy`, `Crawler.AppleJSONParserStrategy`, `Crawler.PriorityPackageStrategy` protocols + `Noop*` test fixtures + the `Crawler` namespace anchor. `Crawler` now imports only Foundation / Shared / CrawlerModels / CoreProtocols / Logging / Resources / WebKit / os — no concrete-producer modules.
+- **WAL journal mode on all three local SQLite DBs** (#236, PRs #510–#513). `search.db`, `packages.db`, `samples.db` all open with `PRAGMA journal_mode = WAL`, `PRAGMA synchronous = NORMAL`, `PRAGMA journal_size_limit = 67108864` (64 MiB) per SQLite-docs recommendation. Releases finalize with `PRAGMA wal_checkpoint(TRUNCATE)` in `Release.Command.Database` so bundle zips never ship a partial DB. Net effect: readers (`cupertino search` / `read` / `doctor`) can run concurrently with a `save` writer without seeing `database is locked`. The original #236 symptom is observably gone on samples + verified live on docs at #514.
+- **`cupertino doctor` Schema versions section** (#513). Reports per-DB journal mode, WAL sidecar size with a 16 MiB starvation warning, and volume locality with NFS/SMB/AFP warnings. Audit-style block surfaces all four signals at a glance.
+- **`scripts/check-package-purity.sh`** CI guard (#506). Enforces the Phase B "no behavioural cross-package imports" rule. Empty `GRANDFATHERED_TARGETS` list after `Crawler` purification — every package stands alone.
+- **CLI help-text audit** (#241, PR #524). `cupertino --help` gains a purpose-grouped discussion block (setup / data-collection / indexing / server / query / sample-code / diagnostics) replacing the plain alphabetical list. `save`, `fetch`, and per-subcommand discussions updated to the post-#231 three-DB story; the two-stage `fetch --type packages` flow (`--skip-metadata` / `--skip-archives`) is now documented.
+
+### Changed
+
+- **`Services` drops `import SampleIndex`** (#503, PR #504) via new `Sample.Index.DatabaseFactory` protocol. The composition root injects a `Live*` factory; `Services` compiles against `SampleIndexModels` only.
+- **`URL.knownGood`** (#509). Replace `fatalError` with a throwing init. The codebase-wide `URL.knownGood(...)` helper now propagates the error to the call site instead of crashing the process on a malformed literal. Production callers pass string literals known good at compile time; tests and any runtime caller now have a recoverable failure path.
 
 ### Refactored
 
@@ -12,8 +40,17 @@
 
 ### Fixed
 
-- **WAL tuning follow-up: `synchronous=NORMAL` + 64 MiB `journal_size_limit` on all three local DBs** (#236 follow-up): with WAL already enabled (above entry), this layers two further PRAGMAs that the [SQLite docs](https://www.sqlite.org/pragma.html#pragma_synchronous) explicitly recommend for WAL mode. `synchronous=NORMAL` skips the per-transaction fsync (only the WAL is synced before each checkpoint and the main DB is synced after); the docs say "the synchronous=NORMAL setting provides the best balance between performance and safety for most applications running in WAL mode. You lose durability across power loss with synchronous NORMAL in WAL mode, but that is not important for most applications. Transactions are still atomic, consistent, and isolated." For cupertino's data (a search index over public Apple docs, fully rebuildable from source), the durability tradeoff is the right one — the DB stays consistent at all times; only the most recent commit before a power loss could roll back, and a `cupertino save` re-run replays it. Expected throughput win on save runs is 30–50%. `journal_size_limit = 67108864` caps `.db-wal` growth at 64 MiB (16× the default 4 MiB auto-checkpoint threshold); the SQLite default is unlimited, and pathological reader-starvation scenarios can otherwise grow the WAL without bound. Both pragmas are per-connection (not persistent in the file header), so they're set on every `openDatabase()` call. Verified per-connection via new `currentSynchronousMode()` + `currentJournalSizeLimit()` actor methods on `Search.Index`, exercised by two new tests in `WALJournalModeTests`. The default `wal_autocheckpoint=1000` is left untouched — the SQLite docs explicitly say "this strategy seems to work well in test applications on workstations," all auto-checkpoints are PASSIVE (non-blocking), and disabling auto-checkpoint is exactly how WAL files grow unbounded.
-- **WAL journal mode on all three local SQLite databases** ([#236](https://github.com/mihaelamj/cupertino/issues/236)): `cupertino save --docs`, `--packages`, and `--samples` previously held an `EXCLUSIVE` SQLite lock during their long write transactions because every DB opened in the default rollback-journal mode. That blocks every other connection — even read-only ones — so `cupertino ask` in a second terminal mid-save returned `database is locked`, `cupertino doctor` couldn't read `PRAGMA user_version`, and multi-process MCP clients (Claude Desktop + a CLI session) collided. After this fix, `Search.Index.openDatabase`, `Search.PackageIndex.openDatabase`, and `Sample.Index.Database.openDatabase` each run `PRAGMA journal_mode = WAL` right after `sqlite3_open` and `sqlite3_busy_timeout`. WAL is idempotent (re-running on an already-WAL file is a no-op) and persists in the SQLite header (subsequent connections inherit it without setting again). PRAGMA failures log and continue — the database stays usable in whatever mode it ended up in. `cupertino doctor` Schema versions section (#234) now surfaces each DB's journal mode (`journal=wal` is green; anything else gets a `⚠ (expected wal)` flag) via a new `Diagnostics.Probes.journalMode(at:)` read-only probe. 4 new tests in `WALJournalModeTests` cover all three DBs + PRAGMA idempotency on re-init. Note for release-script maintainers: before zipping `search.db` for the GitHub release, run `PRAGMA wal_checkpoint(TRUNCATE)` to fold WAL into the main file so users who only download `.db` don't lose data still in the WAL sidecar.
+- **`cupertino setup` URL build at v1.1.0** (#477, post-tag fix on 2026-05-14). The released v1.1.0 binary had `Shared.Constants.App.databaseVersion = "1.0.2"`, so `cupertino setup` built the cupertino-docs URL against v1.0.2 and downloaded the older bundle. Bumped to `"1.1.0"`, v1.1.0 git tag force-moved to the fix HEAD, GitHub Actions rebuilt + replaced the binary tarball asset on the v1.1.0 release, homebrew formula SHA bumped to match. End-to-end `brew upgrade cupertino && cupertino setup` now resolves the v1.1.0 bundle correctly.
+
+### Internal
+
+- **Test suite at 1,456 tests across 163 suites** (+31 since the v1.1.0 baseline of 1,425). WAL coverage adds 12 unit tests across all three DB actors (#512).
+- **PR #515** squash-merges the GoF DI arc + Phase B + WAL from `develop` into main as the staging step for v1.2.0. `xcrun swift build` clean, `xcrun swift test` green (1,456/1,456), `scripts/check-package-purity.sh` clean, `swiftformat .` no changes, `swiftlint` only pre-existing warnings.
+
+### Verified live (against the v1.2.0-staged binary, pre-tag)
+
+- **Samples WAL workload** (during #515 audit): `cupertino save --samples` (228 s, 185 MB indexed) running in background while `cupertino doctor` AND `cupertino search --source samples` ran in foreground. Zero `database is locked` errors. The original #236 symptom is observably gone on the samples workload.
+- **Docs WAL workload** (#514, in flight at tag-time): real-corpus `cupertino save --docs` against the 414,807-file post-Claw-merge corpus on this binary, with `doctor` / `search` / `read` test batches at +3 / +10 / +20 minutes from save start. All three batches returned exit 0 with zero `database is locked`. The full perf writeup will be posted to #514 when the save completes.
 
 ## 1.0.2 — 2026-05-11
 
