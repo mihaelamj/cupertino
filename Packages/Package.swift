@@ -390,6 +390,8 @@ let targets: [Target] = {
             "CorePackageIndexingModels",
             "ASTIndexer",
             "SampleIndex",
+            "SampleIndexModels",
+            "Diagnostics",
         ]
     )
 

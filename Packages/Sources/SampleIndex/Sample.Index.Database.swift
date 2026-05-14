@@ -1,5 +1,6 @@
 import ASTIndexer
 import Foundation
+import Logging
 import SampleIndexModels
 import SharedConstants
 import SharedCore
@@ -88,6 +89,19 @@ extension Sample.Index {
                 let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
                 sqlite3_close(dbPointer)
                 throw Sample.Index.Error.sqliteError("Failed to open database: \(errorMessage)")
+            }
+
+            // #236: WAL journal mode lets readers (`cupertino read-sample`,
+            // `cupertino list-samples`, `cupertino doctor`) proceed while
+            // a `cupertino save --samples` writer holds the DB. PRAGMA is
+            // idempotent and persists in the file header. Log and
+            // continue on failure.
+            if sqlite3_exec(dbPointer, "PRAGMA journal_mode = WAL", nil, nil, nil) != SQLITE_OK {
+                let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
+                Logging.Log.warning(
+                    "Failed to enable WAL on \(dbPath.lastPathComponent): \(errorMessage)",
+                    category: .samples
+                )
             }
 
             database = dbPointer

@@ -144,7 +144,14 @@ extension CLI.Command {
                 }
                 let version = Diagnostics.Probes.userVersion(at: url) ?? 0
                 let formatted = Diagnostics.SchemaVersion.format(version)
-                Logging.Log.output("   ✓ \(label): \(formatted)")
+                // #236: surface the journal mode alongside the schema
+                // version so a DB stuck in default rollback mode jumps
+                // out. WAL is the expected value — anything else means
+                // the init code never switched, and concurrent readers
+                // will block on writers.
+                let journal = Diagnostics.Probes.journalMode(at: url) ?? "?"
+                let journalNote = journal == "wal" ? "wal" : "\(journal) ⚠ (expected wal)"
+                Logging.Log.output("   ✓ \(label): \(formatted), journal=\(journalNote)")
             }
         }
 
