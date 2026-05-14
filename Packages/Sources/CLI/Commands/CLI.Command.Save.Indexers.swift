@@ -283,84 +283,89 @@ extension CLI.Command.Save {
         let tracker = ProgressTracker()
         _ = try await Indexer.SamplesService.run(
             request,
-            samplesIndexingRun: CLI.Command.Save.samplesIndexingRun
+            samplesIndexingRunner: LiveSamplesIndexingRunner()
         ) { event in
             Self.handleSamplesEvent(event, tracker: tracker)
         }
     }
 
-    /// Concrete implementation of `Sample.Index.SamplesIndexingRun` used
-    /// by `Indexer.SamplesService`. Wraps `Sample.Index.Database` +
-    /// `Sample.Index.Builder` + `Sample.Core.Catalog`. Lives at the CLI
-    /// composition root so the Indexer SPM target doesn't import
+    /// Concrete `Sample.Index.SamplesIndexingRunner` (GoF Strategy)
+    /// used by `Indexer.SamplesService`. Wraps `Sample.Index.Database` +
+    /// `Sample.Index.Builder` + `Sample.Core.Catalog`. Lives at the
+    /// CLI composition root so the Indexer SPM target doesn't import
     /// SampleIndex or CoreSampleCode for these types.
-    static let samplesIndexingRun: Sample.Index.SamplesIndexingRun = { input, onPhase in
-        let database = try await Sample.Index.Database(dbPath: input.samplesDB)
-        if input.clear {
-            onPhase(.clearingExistingIndex)
-            try await database.clearAll()
-        }
+    struct LiveSamplesIndexingRunner: Sample.Index.SamplesIndexingRunner {
+        func run(
+            input: Sample.Index.SamplesIndexingInput,
+            onPhase: @escaping @Sendable (Sample.Index.SamplesIndexingPhase) -> Void
+        ) async throws -> Sample.Index.SamplesIndexingOutcome {
+            let database = try await Sample.Index.Database(dbPath: input.samplesDB)
+            if input.clear {
+                onPhase(.clearingExistingIndex)
+                try await database.clearAll()
+            }
 
-        let existingProjects = try await database.projectCount()
-        let existingFiles = try await database.fileCount()
-        if existingProjects > 0, !input.force, !input.clear {
-            onPhase(.existingIndexNotice(projects: existingProjects, files: existingFiles))
-        }
+            let existingProjects = try await database.projectCount()
+            let existingFiles = try await database.fileCount()
+            if existingProjects > 0, !input.force, !input.clear {
+                onPhase(.existingIndexNotice(projects: existingProjects, files: existingFiles))
+            }
 
-        onPhase(.loadingCatalog)
-        let catalogEntries = await Sample.Core.Catalog.allEntries
-        onPhase(.catalogLoaded(entryCount: catalogEntries.count))
+            onPhase(.loadingCatalog)
+            let catalogEntries = await Sample.Core.Catalog.allEntries
+            onPhase(.catalogLoaded(entryCount: catalogEntries.count))
 
-        let entries = catalogEntries.map { entry in
-            Sample.Index.SampleCodeEntryInfo(
-                title: entry.title,
-                description: entry.description,
-                frameworks: [entry.framework],
-                webURL: entry.webURL,
-                zipFilename: entry.zipFilename
+            let entries = catalogEntries.map { entry in
+                Sample.Index.SampleCodeEntryInfo(
+                    title: entry.title,
+                    description: entry.description,
+                    frameworks: [entry.framework],
+                    webURL: entry.webURL,
+                    zipFilename: entry.zipFilename
+                )
+            }
+
+            onPhase(.indexingStart)
+            let builder = Sample.Index.Builder(
+                database: database,
+                sampleCodeDirectory: input.sampleCodeDir
+            )
+
+            let startTime = Date()
+            let indexed = try await builder.indexAll(
+                entries: entries,
+                forceReindex: input.force
+            ) { progress in
+                let phase: Sample.Index.SamplesIndexingPhase.ProgressPhase
+                switch progress.status {
+                case .extracting: phase = .extracting
+                case .indexingFiles: phase = .indexingFiles
+                case .completed: phase = .completed
+                case .failed: phase = .failed
+                }
+                onPhase(.projectProgress(
+                    name: progress.currentProject,
+                    percent: progress.percentComplete,
+                    phase: phase
+                ))
+            }
+
+            let duration = Date().timeIntervalSince(startTime)
+
+            let finalProjects = try await database.projectCount()
+            let finalFiles = try await database.fileCount()
+            let finalSymbols = try await database.symbolCount()
+            let finalImports = try await database.importCount()
+
+            return Sample.Index.SamplesIndexingOutcome(
+                projectsIndexedThisRun: indexed,
+                projectsTotal: finalProjects,
+                filesTotal: finalFiles,
+                symbolsTotal: finalSymbols,
+                importsTotal: finalImports,
+                durationSeconds: duration
             )
         }
-
-        onPhase(.indexingStart)
-        let builder = Sample.Index.Builder(
-            database: database,
-            sampleCodeDirectory: input.sampleCodeDir
-        )
-
-        let startTime = Date()
-        let indexed = try await builder.indexAll(
-            entries: entries,
-            forceReindex: input.force
-        ) { progress in
-            let phase: Sample.Index.SamplesIndexingPhase.ProgressPhase
-            switch progress.status {
-            case .extracting: phase = .extracting
-            case .indexingFiles: phase = .indexingFiles
-            case .completed: phase = .completed
-            case .failed: phase = .failed
-            }
-            onPhase(.projectProgress(
-                name: progress.currentProject,
-                percent: progress.percentComplete,
-                phase: phase
-            ))
-        }
-
-        let duration = Date().timeIntervalSince(startTime)
-
-        let finalProjects = try await database.projectCount()
-        let finalFiles = try await database.fileCount()
-        let finalSymbols = try await database.symbolCount()
-        let finalImports = try await database.importCount()
-
-        return Sample.Index.SamplesIndexingOutcome(
-            projectsIndexedThisRun: indexed,
-            projectsTotal: finalProjects,
-            filesTotal: finalFiles,
-            symbolsTotal: finalSymbols,
-            importsTotal: finalImports,
-            durationSeconds: duration
-        )
     }
 
     static func handleSamplesEvent(

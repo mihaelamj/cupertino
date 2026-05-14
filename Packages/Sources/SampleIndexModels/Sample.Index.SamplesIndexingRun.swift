@@ -1,33 +1,55 @@
 import Foundation
 import SharedConstants
 
-// MARK: - Sample.Index.SamplesIndexingRun
+// MARK: - Sample.Index.SamplesIndexingRunner
 
-/// Closure shape for running a complete `samples.db` indexing pass:
-/// open the database, optionally clear it, load the sample-code
-/// catalog, walk the on-disk sample ZIPs, write project + file +
-/// symbol rows, and close. The closure also emits lifecycle events
-/// through the supplied `onPhase` callback so `Indexer.SamplesService`
-/// can forward them to its `Event` API without inspecting the
-/// indexer's internals.
+/// Runner for a complete `samples.db` indexing pass: open the
+/// database, optionally clear it, load the sample-code catalog,
+/// walk the on-disk sample ZIPs, write project + file + symbol
+/// rows, and close. GoF Strategy pattern (Gamma et al, 1994): a
+/// family of algorithms (production `Sample.Index.Database` +
+/// `Sample.Index.Builder` + `Sample.Core.Catalog` pipeline, test
+/// fixture stubs) interchangeable behind a named protocol.
 ///
-/// `Indexer.SamplesService` accepts one of these instead of reaching
-/// directly into `Sample.Index.Database` / `Sample.Index.Builder` /
-/// `Sample.Core.Catalog`. The composition root (the CLI's `save`
-/// command) supplies the closure with the standard concrete wiring.
+/// The runner emits lifecycle events through the supplied `onPhase`
+/// callback so `Indexer.SamplesService` can forward them to its
+/// `Event` API without inspecting the indexer's internals.
 ///
-/// Mirrors the `Search.DocsIndexingRun` / `Search.PackageIndexingRun`
-/// pattern.
+/// `Indexer.SamplesService` accepts a conformer at run-time so the
+/// Indexer SPM target keeps its dependency graph free of the
+/// concrete sample-indexing actors. The composition root (the CLI's
+/// `save` command) supplies a `LiveSamplesIndexingRunner` backed by
+/// the standard concrete wiring.
+///
+/// This replaces the previous
+/// `Sample.Index.SamplesIndexingRun = @Sendable (Input, phaseCallback) async throws -> Outcome`
+/// closure typealias. The protocol form names the contract at the
+/// constructor site (`samplesIndexingRunner:`), makes captured-state
+/// surface explicit on the conforming type's stored properties, and
+/// produces one-line test mocks instead of multi-arg async closures.
+///
+/// The phase callback stays a closure — it's a genuine lifecycle
+/// event stream, not a strategy seam.
 public extension Sample.Index {
-    typealias SamplesIndexingRun = @Sendable (
-        _ input: SamplesIndexingInput,
-        _ onPhase: @escaping @Sendable (SamplesIndexingPhase) -> Void
-    ) async throws -> SamplesIndexingOutcome
+    protocol SamplesIndexingRunner: Sendable {
+        /// Run one full indexing pass and return its outcome.
+        ///
+        /// - Parameters:
+        ///   - input: Paths + clear / force flags.
+        ///   - onPhase: Callback that receives each lifecycle event
+        ///     (`.loadingCatalog`, `.projectProgress(...)`, …) so the
+        ///     caller can forward them to its event API.
+        /// - Returns: The aggregated `SamplesIndexingOutcome`.
+        func run(
+            input: SamplesIndexingInput,
+            onPhase: @escaping @Sendable (SamplesIndexingPhase) -> Void
+        ) async throws -> SamplesIndexingOutcome
+    }
 }
 
 // MARK: - Sample.Index.SamplesIndexingInput
 
-/// Parameter bundle for `Sample.Index.SamplesIndexingRun`. Mirrors
+/// Parameter bundle for `Sample.Index.SamplesIndexingRunner.run`. Mirrors
 /// `Indexer.SamplesService.Request` field-for-field; the Indexer
 /// service translates one to the other.
 public extension Sample.Index {
@@ -53,7 +75,7 @@ public extension Sample.Index {
 
 // MARK: - Sample.Index.SamplesIndexingPhase
 
-/// Lifecycle events emitted by a `Sample.Index.SamplesIndexingRun`
+/// Lifecycle events emitted by a `Sample.Index.SamplesIndexingRunner`
 /// closure. Indexer.SamplesService translates each phase into its
 /// matching public `Event` case (`.clearingExistingIndex`,
 /// `.existingIndexNotice(...)`, `.loadingCatalog`,
@@ -79,7 +101,7 @@ public extension Sample.Index {
 
 // MARK: - Sample.Index.SamplesIndexingOutcome
 
-/// Statistics emitted by a completed `Sample.Index.SamplesIndexingRun`.
+/// Statistics emitted by a completed `Sample.Index.SamplesIndexingRunner` run.
 public extension Sample.Index {
     struct SamplesIndexingOutcome: Sendable {
         public let projectsIndexedThisRun: Int
