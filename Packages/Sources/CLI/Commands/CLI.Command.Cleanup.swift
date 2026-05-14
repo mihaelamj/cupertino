@@ -32,7 +32,7 @@ extension CLI.Command {
 
         @Option(
             name: .long,
-            help: "Sample code directory to clean (default: \(Shared.Constants.defaultSampleCodeDirectory.path))"
+            help: "Sample code directory to clean (defaults to the sample-code/ subdirectory of the resolved base directory — typically ~/.cupertino/sample-code, unless overridden by cupertino.config.json)"
         )
         var sampleCodeDir: String?
 
@@ -49,11 +49,15 @@ extension CLI.Command {
         var keepOriginals: Bool = false
 
         mutating func run() async throws {
+            // Path-DI composition sub-root (#535): one `Shared.Paths`
+            // constructed at the top of run(); explicit URLs to every
+            // consumer below.
+            let paths = Shared.Paths.live()
             let directory: URL
             if let customDir = sampleCodeDir {
                 directory = URL(fileURLWithPath: customDir).expandingTildeInPath
             } else {
-                directory = Shared.Constants.defaultSampleCodeDirectory
+                directory = paths.sampleCodeDirectory
             }
 
             guard FileManager.default.fileExists(atPath: directory.path) else {

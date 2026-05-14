@@ -1,5 +1,6 @@
 @testable import CLI
 import Foundation
+import SharedConstants
 import Testing
 
 // MARK: - CLI Tests
@@ -94,9 +95,13 @@ struct FetchTypeTests {
 
     @Test("Output directories use home directory")
     func outputDirectoriesUseHome() {
+        // Path-DI migration (#535): pass a stub `Shared.Paths` rooted under the
+        // current user's home directory so the assertion still has something
+        // to compare against.
         let homeDir = FileManager.default.homeDirectoryForCurrentUser.path
+        let stubPaths = Shared.Paths(baseDirectory: URL(fileURLWithPath: homeDir).appendingPathComponent(".cupertino"))
         for fetchType in Self.allTypes {
-            let outputDir = fetchType.defaultOutputDir
+            let outputDir = fetchType.defaultOutputDir(paths: stubPaths)
             #expect(
                 outputDir.hasPrefix(homeDir),
                 "FetchType.\(fetchType) output dir should start with home directory"
@@ -106,8 +111,10 @@ struct FetchTypeTests {
 
     @Test("Output directories contain base directory name")
     func outputDirectoriesContainBase() {
+        // Path-DI migration (#535): see uniqueOutputDirectories for the rationale.
+        let stubPaths = Shared.Paths(baseDirectory: URL(fileURLWithPath: "/tmp/.cupertino"))
         for fetchType in Self.allTypes {
-            let outputDir = fetchType.defaultOutputDir
+            let outputDir = fetchType.defaultOutputDir(paths: stubPaths)
             #expect(
                 outputDir.contains("cupertino"),
                 "FetchType.\(fetchType) output dir should contain 'cupertino'"
@@ -206,7 +213,10 @@ struct FetchTypeTests {
             .code,
         ]
 
-        let directories = Set(types.map(\.defaultOutputDir))
+        // Path-DI migration (#535): defaultOutputDir takes a `Shared.Paths` injection,
+        // so it's a method now rather than a computed property — pass a stub.
+        let stubPaths = Shared.Paths(baseDirectory: URL(fileURLWithPath: "/tmp/cupertino-test-stub"))
+        let directories = Set(types.map { $0.defaultOutputDir(paths: stubPaths) })
         #expect(directories.count == types.count, "Each type should have a unique output directory")
     }
 

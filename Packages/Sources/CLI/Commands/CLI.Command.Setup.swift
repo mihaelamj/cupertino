@@ -30,8 +30,11 @@ extension CLI.Command {
         mutating func run() async throws {
             Logging.LiveRecording().info("📦 Cupertino Setup\n")
 
+            // Path-DI composition sub-root (#535): construct once at the top
+            // of run(), then thread explicit URLs into every consumer.
+            let paths = Shared.Paths.live()
             let baseURL = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-                ?? Shared.Constants.defaultBaseDirectory
+                ?? paths.baseDirectory
 
             let renderer = SetupRenderer()
             let request = Distribution.SetupService.Request(

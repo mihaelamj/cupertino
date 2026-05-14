@@ -118,7 +118,7 @@ extension CLI.Command.Save {
                 }
                 return .loaded(entries: mapped)
             case .missing:
-                let path = Shared.Constants.defaultSampleCodeDirectory
+                let path = Shared.Paths.live().sampleCodeDirectory
                     .appendingPathComponent(Sample.Core.Catalog.onDiskCatalogFilename)
                     .path
                 return .missing(onDiskPath: path)
@@ -260,8 +260,10 @@ extension CLI.Command.Save {
     // MARK: - Samples
 
     func runSamplesIndexerSafely() async throws {
+        // Path-DI composition sub-root (#535).
+        let baseDir = Shared.Paths.live().baseDirectory
         let sampleCodeURL = samplesDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Sample.Index.defaultSampleCodeDirectory
+            ?? Sample.Index.sampleCodeDirectory(baseDirectory: baseDir)
         guard FileManager.default.fileExists(atPath: sampleCodeURL.path) else {
             Logging.LiveRecording().info(
                 "ℹ️  sample-code directory not found at \(sampleCodeURL.path) — skipping samples step. "
@@ -273,8 +275,9 @@ extension CLI.Command.Save {
     }
 
     func runSamplesIndexer(sampleCodeURL: URL) async throws {
+        // Path-DI composition sub-root (#535).
         let dbURL = samplesDB.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Sample.Index.defaultDatabasePath
+            ?? Sample.Index.databasePath(baseDirectory: Shared.Paths.live().baseDirectory)
 
         let request = Indexer.SamplesService.Request(
             sampleCodeDir: sampleCodeURL,

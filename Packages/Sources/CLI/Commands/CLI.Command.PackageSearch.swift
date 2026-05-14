@@ -59,8 +59,10 @@ extension CLI.Command {
         var minVersion: String?
 
         mutating func run() async throws {
+            // Path-DI composition sub-root (#535).
+            let paths = Shared.Paths.live()
             let dbURL = db.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-                ?? Shared.Constants.defaultPackagesDatabase
+                ?? paths.packagesDatabase
 
             guard FileManager.default.fileExists(atPath: dbURL.path) else {
                 Logging.LiveRecording().error("❌ packages.db not found at \(dbURL.path)")

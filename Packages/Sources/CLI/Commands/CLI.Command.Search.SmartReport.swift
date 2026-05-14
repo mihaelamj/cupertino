@@ -114,7 +114,7 @@ extension CLI.Command.Search {
     ) async -> SearchModule.Index? {
         guard !skip else { return nil }
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Shared.Constants.defaultSearchDatabase
+            ?? Shared.Paths.live().searchDatabase
         guard FileManager.default.fileExists(atPath: url.path) else {
             Logging.LiveRecording().info(
                 "ℹ️  search.db not found at \(url.path) — skipping doc sources."
@@ -148,7 +148,7 @@ extension CLI.Command.Search {
     ) {
         guard !skip else { return }
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Shared.Constants.defaultPackagesDatabase
+            ?? Shared.Paths.live().packagesDatabase
         guard FileManager.default.fileExists(atPath: url.path) else {
             Logging.LiveRecording().info(
                 "ℹ️  packages.db not found at \(url.path) — skipping packages."
@@ -169,7 +169,7 @@ extension CLI.Command.Search {
     ) async -> Sample.Search.Service? {
         guard !skip else { return nil }
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Sample.Index.defaultDatabasePath
+            ?? Sample.Index.databasePath(baseDirectory: Shared.Paths.live().baseDirectory)
         guard FileManager.default.fileExists(atPath: url.path) else {
             Logging.LiveRecording().info(
                 "ℹ️  samples.db not found at \(url.path) — skipping samples."

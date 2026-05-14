@@ -137,7 +137,7 @@ extension CLI.Command {
             }
 
             let effectiveBase = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-                ?? Shared.Constants.defaultBaseDirectory
+                ?? Shared.Paths.live().baseDirectory
 
             if buildDocs {
                 try await runDocsIndexer(effectiveBase: effectiveBase)
@@ -215,7 +215,7 @@ extension CLI.Command.Save {
         Logging.LiveRecording().info("🚀 Building Search Index from Remote\n")
 
         let effectiveBase = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Shared.Constants.defaultBaseDirectory
+            ?? Shared.Paths.live().baseDirectory
         let searchDBURL = searchDB.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? effectiveBase.appendingPathComponent(Shared.Constants.FileName.searchDatabase)
         let stateFileURL = effectiveBase.appendingPathComponent("remote-save-state.json")

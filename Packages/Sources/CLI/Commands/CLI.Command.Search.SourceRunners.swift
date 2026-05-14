@@ -159,7 +159,7 @@ extension CLI.Command.Search {
         }
 
         let dbURL = packagesDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Shared.Constants.defaultPackagesDatabase
+            ?? Shared.Paths.live().packagesDatabase
 
         guard FileManager.default.fileExists(atPath: dbURL.path) else {
             Logging.LiveRecording().error("❌ packages.db not found at \(dbURL.path)")

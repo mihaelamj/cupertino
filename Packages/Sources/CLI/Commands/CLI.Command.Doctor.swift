@@ -50,13 +50,13 @@ extension CLI.Command {
         )
 
         @Option(name: .long, help: ArgumentHelp(Shared.Constants.HelpText.docsDir))
-        var docsDir: String = Shared.Constants.defaultDocsDirectory.path
+        var docsDir: String = Shared.Paths.live().docsDirectory.path
 
         @Option(name: .long, help: ArgumentHelp(Shared.Constants.HelpText.evolutionDir))
-        var evolutionDir: String = Shared.Constants.defaultSwiftEvolutionDirectory.path
+        var evolutionDir: String = Shared.Paths.live().swiftEvolutionDirectory.path
 
         @Option(name: .long, help: ArgumentHelp(Shared.Constants.HelpText.searchDB))
-        var searchDB: String = Shared.Constants.defaultSearchDatabase.path
+        var searchDB: String = Shared.Paths.live().searchDatabase.path
 
         @Flag(
             name: .long,
@@ -134,10 +134,12 @@ extension CLI.Command {
             Logging.LiveRecording().output("")
             Logging.LiveRecording().output("8. Schema versions (#234)")
             Logging.LiveRecording().output("")
+            // Path-DI composition sub-root (#535).
+            let paths = Shared.Paths.live()
             let entries: [(String, URL)] = [
                 ("search.db", URL(fileURLWithPath: searchDB).expandingTildeInPath),
-                ("packages.db", Shared.Constants.defaultPackagesDatabase),
-                ("samples.db", Sample.Index.defaultDatabasePath),
+                ("packages.db", paths.packagesDatabase),
+                ("samples.db", Sample.Index.databasePath(baseDirectory: paths.baseDirectory)),
             ]
             for (label, url) in entries {
                 guard FileManager.default.fileExists(atPath: url.path) else {
@@ -242,11 +244,13 @@ extension CLI.Command {
         /// fail doctor. The query-correctness truth lives in `search.db` and is
         /// reported by `checkSearchDatabase`.
         private func checkDocumentationDirectories() -> Bool {
+            // Path-DI composition sub-root (#535).
+            let paths = Shared.Paths.live()
             let docsURL = URL(fileURLWithPath: docsDir).expandingTildeInPath
             let evolutionURL = URL(fileURLWithPath: evolutionDir).expandingTildeInPath
-            let higURL = Shared.Constants.defaultHIGDirectory
-            let swiftOrgURL = Shared.Constants.defaultSwiftOrgDirectory
-            let archiveURL = Shared.Constants.defaultArchiveDirectory
+            let higURL = paths.higDirectory
+            let swiftOrgURL = paths.swiftOrgDirectory
+            let archiveURL = paths.archiveDirectory
 
             Logging.LiveRecording().output("📂 Raw corpus directories (input for `cupertino save`)")
 
@@ -362,7 +366,7 @@ extension CLI.Command {
         /// download + cleanup. Missing is a warning (server runs without it; the
         /// sample-code search just isn't available).
         private func checkSamplesDatabase() {
-            let samplesDBURL = Sample.Index.defaultDatabasePath
+            let samplesDBURL = Sample.Index.databasePath(baseDirectory: Shared.Paths.live().baseDirectory)
 
             Logging.LiveRecording().output("🧪 Sample Code Index (samples.db)")
 
@@ -391,7 +395,7 @@ extension CLI.Command {
         /// `Shared.Constants.App.databaseVersion` constant rather than a PRAGMA
         /// (packages.db is downloaded as part of the v1.0+ bundle, not migrated).
         private func checkPackagesDatabase() -> Bool {
-            let packagesDBURL = Shared.Constants.defaultPackagesDatabase
+            let packagesDBURL = Shared.Paths.live().packagesDatabase
 
             Logging.LiveRecording().output("📦 Packages Index (packages.db)")
 
@@ -419,8 +423,10 @@ extension CLI.Command {
         }
 
         private func checkPackages() async {
-            let packagesDir = Shared.Constants.defaultPackagesDirectory
-            let userSelectionsURL = Shared.Constants.defaultBaseDirectory
+            // Path-DI composition sub-root (#535).
+            let paths = Shared.Paths.live()
+            let packagesDir = paths.packagesDirectory
+            let userSelectionsURL = paths.baseDirectory
                 .appendingPathComponent(Shared.Constants.FileName.selectedPackages)
 
             Logging.LiveRecording().output("📦 Swift Packages")
