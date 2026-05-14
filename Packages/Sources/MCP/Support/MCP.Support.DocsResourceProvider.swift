@@ -11,32 +11,42 @@ import SharedUtils
 // MARK: - Documentation Resource Provider
 
 extension MCP.Support {
+    /// Strategy for resolving a resource URI to pre-rendered markdown
+    /// out of a search-index database (or any other source). GoF
+    /// Strategy pattern: returns `nil` if the URI is not present;
+    /// throws if the lookup itself fails. `DocsResourceProvider`
+    /// treats either as a fall-back trigger to read from the
+    /// filesystem.
+    ///
+    /// Replaces the previous
+    /// `MarkdownLookup = @Sendable (String) async throws -> String?`
+    /// closure typealias. Conforming types name the contract, make
+    /// captured state explicit, and produce one-line test mocks
+    /// instead of inline closures.
+    public protocol MarkdownLookupStrategy: Sendable {
+        func lookup(uri: String) async throws -> String?
+    }
+
     /// Provides crawled documentation as MCP resources.
     ///
-    /// The provider's database lookup is injected as a closure rather than a
-    /// concrete `Search.Index` value, so this target stays free of any
-    /// behavioural dependency on Search. Consumers wire the closure at the
-    /// call site (CLI/MCP entrypoint) — typically a small adapter around
-    /// `Search.Index.getDocumentContent(uri:format:)`.
+    /// The provider's database lookup is injected as a
+    /// `MarkdownLookupStrategy` conformer rather than a concrete
+    /// `Search.Index` value, so this target stays free of any
+    /// behavioural dependency on Search. Consumers wire the strategy
+    /// at the call site (CLI/MCP entrypoint) — typically a small
+    /// adapter around `Search.Index.getDocumentContent(uri:format:)`.
     public actor DocsResourceProvider: MCP.Core.ResourceProvider {
-        /// Closure signature for resolving a resource URI to pre-rendered
-        /// markdown out of a search-index database (or any other source).
-        /// Returns `nil` if the URI is not present; throws if the lookup
-        /// itself fails. The provider treats either as a fall-back trigger
-        /// to read from the filesystem.
-        public typealias MarkdownLookup = @Sendable (String) async throws -> String?
-
         private let configuration: Shared.Configuration
         private var metadata: Shared.Models.CrawlMetadata?
         private let evolutionDirectory: URL
         private let archiveDirectory: URL
-        private let markdownLookup: MarkdownLookup?
+        private let markdownLookup: (any MCP.Support.MarkdownLookupStrategy)?
 
         public init(
             configuration: Shared.Configuration,
             evolutionDirectory: URL? = nil,
             archiveDirectory: URL? = nil,
-            markdownLookup: MarkdownLookup? = nil
+            markdownLookup: (any MCP.Support.MarkdownLookupStrategy)? = nil
         ) {
             self.configuration = configuration
             self.evolutionDirectory = evolutionDirectory ?? Shared.Constants.defaultSwiftEvolutionDirectory
@@ -128,7 +138,7 @@ extension MCP.Support {
 
             // Try database first if a markdown lookup was injected
             if let markdownLookup {
-                if let dbContent = try await markdownLookup(uri) {
+                if let dbContent = try await markdownLookup.lookup(uri: uri) {
                     // Found in database - return markdown
                     let contents = MCP.Core.Protocols.ResourceContents.text(
                         MCP.Core.Protocols.TextResourceContents(
