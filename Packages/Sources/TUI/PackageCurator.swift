@@ -358,7 +358,7 @@ struct PackageCuratorApp {
 
     /// Scan library for artifacts
     static func scanLibraryArtifacts() -> [ArtifactInfo] {
-        scanLibraryArtifactsInDirectory(Shared.Constants.defaultBaseDirectory)
+        scanLibraryArtifactsInDirectory(Shared.Paths.live().baseDirectory)
     }
 
     /// Scan library for artifacts using a string path

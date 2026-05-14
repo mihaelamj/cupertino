@@ -229,7 +229,16 @@ extension Logging {
         // MARK: - File Setup
 
         private func setupFileLogging() {
-            let fileURL = options.fileURL ?? defaultLogFileURL()
+            // Post-#535: no implicit fallback to Shared.Constants.defaultBaseDirectory
+            // (which routed through BinaryConfig.shared — Service Locator). The
+            // caller must supply an explicit fileURL via `enableFileLogging(at:)`
+            // (or via the Options init) when file logging is desired. If
+            // fileEnabled is true but fileURL is nil, file logging is silently
+            // disabled — that's a programmer error, not a runtime fallback.
+            guard let fileURL = options.fileURL else {
+                fileHandle = nil
+                return
+            }
 
             // Create directory if needed
             let directory = fileURL.deletingLastPathComponent()
@@ -252,16 +261,6 @@ extension Logging {
                 // Silently fail - don't crash if logging fails
                 fileHandle = nil
             }
-        }
-
-        private func defaultLogFileURL() -> URL {
-            // Route through Shared.Constants.defaultBaseDirectory so BinaryConfig
-            // (#211) redirects the log file along with every other default path.
-            // The previous manual construction silently wrote to ~/.cupertino/...
-            // even when the binary was configured to use a different base — the
-            // bug reported in #212.
-            Shared.Constants.defaultBaseDirectory
-                .appendingPathComponent(Shared.Constants.FileName.logFile)
         }
 
         // MARK: - Logging Methods

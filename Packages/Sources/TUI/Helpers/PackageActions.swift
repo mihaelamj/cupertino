@@ -29,7 +29,7 @@ func openCurrentPackageInBrowser(state: AppState) {
 
 /// User-writable location for selected packages: ~/.cupertino/selected-packages.json
 private var userPackageSelectionsURL: URL {
-    Shared.Constants.defaultBaseDirectory
+    Shared.Paths.live().baseDirectory
         .appendingPathComponent(Shared.Constants.FileName.selectedPackages)
 }
 
@@ -106,7 +106,7 @@ func saveSelections(state: AppState) throws {
     ]
 
     // Ensure ~/.cupertino directory exists
-    let baseDir = Shared.Constants.defaultBaseDirectory
+    let baseDir = Shared.Paths.live().baseDirectory
     if !FileManager.default.fileExists(atPath: baseDir.path) {
         try FileManager.default.createDirectory(at: baseDir, withIntermediateDirectories: true)
     }
@@ -123,7 +123,7 @@ func saveSelections(state: AppState) throws {
 
 /// Location of the user exclusion list.
 private var userExclusionsURL: URL {
-    Shared.Constants.defaultBaseDirectory
+    Shared.Paths.live().baseDirectory
         .appendingPathComponent(Shared.Constants.FileName.excludedPackages)
 }
 
@@ -139,7 +139,7 @@ func loadExcludedPackages() -> Set<String> {
 /// "discovered via dependency walking" in the package list. Missing file → empty set.
 @MainActor
 func loadDiscoveredPackages() -> Set<String> {
-    let fileURL = Shared.Constants.defaultBaseDirectory
+    let fileURL = Shared.Paths.live().baseDirectory
         .appendingPathComponent(Shared.Constants.FileName.resolvedPackages)
     guard let store = Core.PackageIndexing.ResolvedPackagesStore.load(from: fileURL) else {
         return []
@@ -164,7 +164,7 @@ func saveExclusions(state: AppState) throws {
         "\($0.package.owner)/\($0.package.repo)"
     }.sorted()
 
-    let baseDir = Shared.Constants.defaultBaseDirectory
+    let baseDir = Shared.Paths.live().baseDirectory
     if !FileManager.default.fileExists(atPath: baseDir.path) {
         try FileManager.default.createDirectory(at: baseDir, withIntermediateDirectories: true)
     }

@@ -7,7 +7,7 @@ import SharedCore
 enum ArchiveGuidesCatalog {
     /// User-writable location for selected guides: ~/.cupertino/selected-archive-guides.json
     private static var userSelectionsURL: URL {
-        Shared.Constants.defaultBaseDirectory.appendingPathComponent("selected-archive-guides.json")
+        Shared.Paths.live().baseDirectory.appendingPathComponent("selected-archive-guides.json")
     }
 
     /// All archive guides from the embedded catalog (#161).
@@ -66,7 +66,7 @@ enum ArchiveGuidesCatalog {
 
         do {
             // Ensure ~/.cupertino directory exists
-            let baseDir = Shared.Constants.defaultBaseDirectory
+            let baseDir = Shared.Paths.live().baseDirectory
             if !FileManager.default.fileExists(atPath: baseDir.path) {
                 try FileManager.default.createDirectory(at: baseDir, withIntermediateDirectories: true)
             }
@@ -102,7 +102,7 @@ enum ArchiveGuidesCatalog {
     /// Save selected guides to user-writable location
     static func saveSelectedGuides(_ guides: [ArchiveEntry]) throws {
         // Ensure ~/.cupertino directory exists
-        let baseDir = Shared.Constants.defaultBaseDirectory
+        let baseDir = Shared.Paths.live().baseDirectory
         if !FileManager.default.fileExists(atPath: baseDir.path) {
             try FileManager.default.createDirectory(at: baseDir, withIntermediateDirectories: true)
         }
