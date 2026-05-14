@@ -14,33 +14,47 @@ import SharedUtils
 /// Composite tool provider that provides unified search across all documentation sources.
 /// Handles `search_docs` with `source` parameter to search docs, samples, HIG, archive, etc.
 public actor CompositeToolProvider: MCP.Core.ToolProvider {
-    // Use service layer for consistency with CLI
-    private let docsService: Services.DocsSearchService?
-    private let sampleService: Sample.Search.Service?
+    // Protocol-typed so this file doesn't import the Search, SampleIndex,
+    // or Services behavioural targets — every cross-package surface is
+    // an abstraction from a Models target. The CLI composition root
+    // constructs the concrete actors and passes them across the seam.
 
-    // Keep direct access for low-level operations (list frameworks, read
-    // document, semantic-symbol searches). Protocol-typed so this file
-    // doesn't import the Search or SampleIndex targets — it pulls only
-    // the abstractions from SearchModels + SampleIndexModels.
+    private let docsService: (any Services.DocsSearcher)?
+    private let sampleService: (any Sample.Search.Searcher)?
+
+    // Kept for low-level operations (list frameworks, read document,
+    // semantic-symbol searches) that don't have a service-layer wrapper.
     private let searchIndex: (any Search.Database)?
     private let sampleDatabase: (any Sample.Index.Reader)?
 
-    public init(searchIndex: (any Search.Database)?, sampleDatabase: (any Sample.Index.Reader)?) {
+    /// Primary init used by the CLI composition root. Each cross-package
+    /// surface arrives pre-wired as a protocol-typed value so this file
+    /// doesn't have to import the Search / SampleIndex / Services
+    /// behavioural targets to do any wiring of its own.
+    public init(
+        searchIndex: (any Search.Database)?,
+        sampleDatabase: (any Sample.Index.Reader)?,
+        docsService: (any Services.DocsSearcher)?,
+        sampleService: (any Sample.Search.Searcher)?
+    ) {
         self.searchIndex = searchIndex
         self.sampleDatabase = sampleDatabase
+        self.docsService = docsService
+        self.sampleService = sampleService
+    }
 
-        // Wrap databases with services for search operations
-        if let searchIndex {
-            docsService = Services.DocsSearchService(database: searchIndex)
-        } else {
-            docsService = nil
-        }
-
-        if let sampleDatabase {
-            sampleService = Sample.Search.Service(database: sampleDatabase)
-        } else {
-            sampleService = nil
-        }
+    /// Convenience init that wraps both indexes with the default service
+    /// implementations. Kept for test harnesses + back-compat with code
+    /// that constructed `CompositeToolProvider` with just the two
+    /// database references. Composition-root code (the CLI's
+    /// `serve` command) should prefer the explicit init above.
+    public init(searchIndex: (any Search.Database)?, sampleDatabase: (any Sample.Index.Reader)?) {
+        self.init(
+            searchIndex: searchIndex,
+            sampleDatabase: sampleDatabase,
+            docsService: searchIndex.map(Services.DocsSearchService.init(database:)),
+            sampleService: sampleDatabase.map(Sample.Search.Service.init(database:))
+        )
     }
 
     // MARK: - ToolProvider
