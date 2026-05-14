@@ -1,7 +1,5 @@
 import Foundation
 import SharedConstants
-import SharedModels
-
 // MARK: - Search.MarkdownToStructuredPageStrategy
 
 /// Strategy for converting raw markdown (with optional YAML / TOML

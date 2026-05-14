@@ -9,7 +9,6 @@ import AppKit
 #if canImport(WebKit)
 import CoreJSONParser
 import CoreProtocols
-import SharedModels
 import WebKit
 #endif
 

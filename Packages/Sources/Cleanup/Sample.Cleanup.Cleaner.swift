@@ -1,8 +1,6 @@
 import Foundation
 import LoggingModels
 import SharedConstants
-import SharedModels
-
 // MARK: - Sample Code Cleaner
 
 extension Sample.Cleanup {

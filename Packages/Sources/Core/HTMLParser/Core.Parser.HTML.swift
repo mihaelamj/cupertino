@@ -2,7 +2,6 @@ import Foundation
 #if canImport(WebKit)
 import CoreProtocols
 import SharedConstants
-import SharedModels
 import WebKit
 #endif
 

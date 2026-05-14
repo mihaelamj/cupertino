@@ -5,7 +5,6 @@ import LoggingModels
 import os
 import SharedConfiguration
 import SharedConstants
-import SharedModels
 // MARK: - Documentation Crawler
 
 // swiftlint:disable function_body_length type_body_length

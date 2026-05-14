@@ -16,8 +16,6 @@ import SearchModels
 import Services
 import ServicesModels
 import SharedConstants
-import SharedModels
-
 // MARK: - Search Module Disambiguator
 
 // `CLIImpl.Command.Search` (the subcommand struct under `Sources/CLI/Commands/`) and

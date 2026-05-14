@@ -3,7 +3,6 @@
 import CoreProtocols
 import Foundation
 import SharedConstants
-import SharedModels
 import Testing
 
 // MARK: - canonicalPath(forDocURI:)

@@ -3,8 +3,6 @@ import Foundation
 import LoggingModels
 import SearchModels
 import SharedConstants
-import SharedModels
-
 // MARK: - AppleDocsStrategy
 
 extension Search {

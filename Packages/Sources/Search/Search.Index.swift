@@ -3,7 +3,6 @@ import Foundation
 import LoggingModels
 import SearchModels
 import SharedConstants
-import SharedModels
 import SQLite3
 
 // MARK: - Search Index

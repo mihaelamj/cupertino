@@ -4,7 +4,6 @@ import MCPCore
 @testable import MCPSupport
 import SharedConfiguration
 import SharedConstants
-import SharedModels
 import Testing
 
 // Real behavioural coverage of `MCP.Support.DocsResourceProvider`. The

@@ -2,7 +2,6 @@
 import Foundation
 import Resources
 import SharedConstants
-import SharedModels
 import Testing
 
 // MARK: - CoreProtocols Public API Smoke Tests

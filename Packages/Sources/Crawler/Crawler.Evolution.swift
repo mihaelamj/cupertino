@@ -3,7 +3,6 @@ import CrawlerModels
 import Foundation
 import LoggingModels
 import SharedConstants
-import SharedModels
 // MARK: - Swift Evolution Crawler
 
 /// Crawls Swift Evolution proposals from GitHub
