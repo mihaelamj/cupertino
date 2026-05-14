@@ -2,7 +2,6 @@ import Foundation
 import LoggingModels
 import MCPCore
 @testable import MCPSupport
-import SharedConfiguration
 import SharedConstants
 import Testing
 

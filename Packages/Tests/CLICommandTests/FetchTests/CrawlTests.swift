@@ -8,7 +8,6 @@ import Foundation
 import LoggingModels
 @testable import Search
 import SearchModels
-import SharedConfiguration
 import SharedConstants
 import Testing
 import TestSupport

@@ -2,7 +2,6 @@ import Foundation
 import LoggingModels
 import MCPCore
 import MCPSharedTools
-import SharedConfiguration
 import SharedConstants
 // MARK: - Documentation Resource Provider
 
