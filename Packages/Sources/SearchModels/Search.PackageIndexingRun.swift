@@ -1,34 +1,52 @@
 import Foundation
 
-// MARK: - Search.PackageIndexingRun
+// MARK: - Search.PackageIndexingRunner
 
-/// Closure shape for running a complete `packages.db` indexing pass:
-/// open the index, walk the on-disk package tree, write every package
-/// row, summarise the resulting database, and disconnect.
+/// Runner for a complete `packages.db` indexing pass: open the index,
+/// walk the on-disk package tree, write every package row, summarise
+/// the resulting database, and disconnect. GoF Strategy pattern
+/// (Gamma et al, 1994): a family of algorithms (production
+/// `Search.PackageIndex` + `Search.PackageIndexer` pipeline, test
+/// fixture stubs) interchangeable behind a named protocol.
 ///
-/// `Indexer.PackagesService` accepts one of these instead of reaching
-/// directly into `Search.PackageIndex` + `Search.PackageIndexer`, so
-/// the Indexer SPM target keeps its dependency graph free of the
-/// concrete Search-target actors. The composition root (the CLI's
-/// `save` command) supplies the closure with the standard
-/// `Search.PackageIndex` + `Search.PackageIndexer` wiring.
+/// `Indexer.PackagesService` accepts a conformer at run-time so the
+/// Indexer SPM target keeps its dependency graph free of the concrete
+/// Search-target actors. The composition root (the CLI's `save`
+/// command) supplies a `LivePackageIndexingRunner` that wraps the
+/// standard `Search.PackageIndex` + `Search.PackageIndexer` wiring.
 ///
-/// Mirrors the `MakeSearchDatabase` / `MarkdownToStructuredPage` /
-/// `SampleCatalogFetch` closure-typealias pattern already in
-/// SearchModels: the abstraction lives in this value-types target,
-/// the implementation lives in the producer target, the wiring lives
-/// at the composition root.
+/// This replaces the previous
+/// `Search.PackageIndexingRun = @Sendable (URL, URL, callback) async throws -> Outcome`
+/// closure typealias. The protocol form names the contract at the
+/// constructor site (`packageIndexingRunner:`), makes captured-state
+/// surface explicit on the conforming type's stored properties, and
+/// produces one-line test mocks instead of multi-arg async closures.
+///
+/// The progress callback stays a closure — it's a genuine
+/// (name, done, total) callback, not a strategy seam.
 public extension Search {
-    typealias PackageIndexingRun = @Sendable (
-        _ packagesRoot: URL,
-        _ packagesDBPath: URL,
-        _ onProgress: @escaping @Sendable (String, Int, Int) -> Void
-    ) async throws -> PackageIndexingOutcome
+    protocol PackageIndexingRunner: Sendable {
+        /// Run one full indexing pass and return its outcome.
+        ///
+        /// - Parameters:
+        ///   - packagesRoot: On-disk root of extracted package archives
+        ///     (typically `~/.cupertino/packages/`).
+        ///   - packagesDB: Destination database file URL.
+        ///   - onProgress: Optional per-package progress callback,
+        ///     receiving the package name and the (done, total)
+        ///     counts.
+        /// - Returns: The aggregated `PackageIndexingOutcome`.
+        func run(
+            packagesRoot: URL,
+            packagesDB: URL,
+            onProgress: @escaping @Sendable (String, Int, Int) -> Void
+        ) async throws -> PackageIndexingOutcome
+    }
 }
 
 // MARK: - Search.PackageIndexingOutcome
 
-/// Statistics emitted by a `Search.PackageIndexingRun` closure.
+/// Statistics emitted by a `Search.PackageIndexingRunner` run.
 ///
 /// The Indexer translates this into its public
 /// `Indexer.PackagesService.Outcome` event payload (which keeps the
