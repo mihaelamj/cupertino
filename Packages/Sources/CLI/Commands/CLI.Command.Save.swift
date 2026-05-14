@@ -160,6 +160,7 @@ extension CLI.Command {
             buildSamples: Bool
         ) -> Bool {
             let lines = Indexer.Preflight.preflightLines(
+                paths: Shared.Paths.live(),
                 buildDocs: buildDocs,
                 buildPackages: buildPackages,
                 buildSamples: buildSamples,

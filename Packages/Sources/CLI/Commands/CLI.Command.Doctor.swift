@@ -75,6 +75,7 @@ extension CLI.Command {
             if save {
                 Logging.LiveRecording().output("🔍 `cupertino save` preflight check\n")
                 let lines = Indexer.Preflight.preflightLines(
+                    paths: Shared.Paths.live(),
                     buildDocs: true,
                     buildPackages: true,
                     buildSamples: true

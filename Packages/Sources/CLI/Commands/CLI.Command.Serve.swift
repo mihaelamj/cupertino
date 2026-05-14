@@ -81,6 +81,7 @@ extension CLI.Command {
             )
 
             let evolutionURL = paths.swiftEvolutionDirectory
+            let archiveURL = paths.archiveDirectory
             let searchDBURL = paths.searchDatabase
             let sampleDBURL = Sample.Index.databasePath(baseDirectory: paths.baseDirectory)
 
@@ -114,6 +115,7 @@ extension CLI.Command {
                 server: server,
                 config: config,
                 evolutionURL: evolutionURL,
+                archiveURL: archiveURL,
                 searchDBURL: searchDBURL,
                 sampleDBURL: sampleDBURL
             )
@@ -138,6 +140,7 @@ extension CLI.Command {
             server: MCP.Core.Server,
             config: Shared.Configuration,
             evolutionURL: URL,
+            archiveURL: URL,
             searchDBURL: URL,
             sampleDBURL: URL
         ) async {
@@ -158,8 +161,9 @@ extension CLI.Command {
             let resourceProvider = MCP.Support.DocsResourceProvider(
                 configuration: config,
                 evolutionDirectory: evolutionURL,
+                archiveDirectory: archiveURL,
                 markdownLookup: markdownLookup,
-            logger: Logging.LiveRecording()
+                logger: Logging.LiveRecording()
             )
             await server.registerResourceProvider(resourceProvider)
 
