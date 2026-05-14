@@ -18,26 +18,18 @@ extension URL {
     ///
     /// Use for URLs constructed from compile-time literals or from internal
     /// constants (e.g. `Shared.Constants.BaseURL.*`) interpolated with
-    /// sanitized components. Equivalent to `URL(string: s)!`, but:
+    /// sanitized components.
     ///
-    /// - communicates the "known-good" contract at the call site,
-    /// - crashes with a message naming the offending string and the source
-    ///   location, instead of a bare "unexpectedly found nil while unwrapping
-    ///   an Optional value",
-    /// - localizes the force-unwrap to a single audited place.
+    /// - Throws: `URLError(.badURL)` if the string cannot be parsed.
     ///
-    /// **Do not use for URLs sourced from external/runtime data** (parsed
-    /// JSON, HTTP responses, indexed page metadata): a malformed string is
-    /// a recoverable condition there, not a programmer error. Use plain
-    /// `URL(string:)` + `guard let` in those cases.
-    public static func knownGood(
-        _ string: String,
-        file: StaticString = #file,
-        line: UInt = #line
-    ) -> URL {
+    /// For truly known-good compile-time literals where `try` is unavailable
+    /// (stored properties, default parameters), `try! URL(knownGood:)` is
+    /// appropriate. For URLs sourced from external/runtime data, use plain
+    /// `URL(string:)` + `guard let` instead.
+    public init(knownGood string: String) throws {
         guard let url = URL(string: string) else {
-            fatalError("URL.knownGood: malformed URL string '\(string)'", file: file, line: line)
+            throw URLError(.badURL, userInfo: [NSURLErrorFailingURLStringErrorKey: string])
         }
-        return url
+        self = url
     }
 }

@@ -242,7 +242,7 @@ extension Sample.Core {
         private func fetchSampleList() async throws -> [SampleMetadata] {
             // Load the sample code listing page
             let webView = await createWebView()
-            _ = try await loadPage(webView, url: URL.knownGood(sampleCodeListURL))
+            _ = try await loadPage(webView, url: try URL(knownGood: sampleCodeListURL))
 
             // Wait extra time for dynamic content to load
             try await Task.sleep(for: Shared.Constants.Delay.sampleCodePageLoad)
@@ -546,7 +546,7 @@ extension Sample.Core {
             window.center()
             window.isReleasedWhenClosed = false
 
-            let loginURL = URL.knownGood(Shared.Constants.BaseURL.appleDeveloperAccount)
+            let loginURL = try URL(knownGood: Shared.Constants.BaseURL.appleDeveloperAccount)
 
             // NOTE: show the window BEFORE load()+delegate wiring so the user
             // immediately sees something; but do NOT call webView.load() here —

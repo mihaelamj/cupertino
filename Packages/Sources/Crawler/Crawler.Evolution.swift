@@ -116,7 +116,7 @@ extension Crawler {
             path: String,
             prefix: String
         ) async throws -> [ProposalMetadata] {
-            let url = URL.knownGood("\(githubAPI)/repos/\(repo)/contents/\(path)?ref=\(branch)")
+            let url = try URL(knownGood: "\(githubAPI)/repos/\(repo)/contents/\(path)?ref=\(branch)")
 
             var request = URLRequest(url: url)
             request.setValue(

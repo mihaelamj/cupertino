@@ -17,7 +17,7 @@ import SharedUtils
 /// Fetches Swift packages from SwiftPackageIndex and enriches with GitHub metadata
 extension Core.PackageIndexing {
     public actor PackageFetcher {
-        private let packageListURL = URL.knownGood(Shared.Constants.BaseURL.swiftPackageList)
+        private let packageListURL = try! URL(knownGood: Shared.Constants.BaseURL.swiftPackageList)
         private let outputDirectory: URL
         private let limit: Int?
         private let resumeFromCheckpoint: Bool
@@ -308,7 +308,7 @@ extension Core.PackageIndexing {
         }
 
         private func fetchStarCount(owner: String, repo: String) async throws -> Int {
-            let url = URL.knownGood("\(Shared.Constants.BaseURL.githubAPIRepos)/\(owner)/\(repo)")
+            let url = try URL(knownGood: "\(Shared.Constants.BaseURL.githubAPIRepos)/\(owner)/\(repo)")
 
             var request = URLRequest(url: url)
             request.setValue(Shared.Constants.HTTPHeader.githubAccept, forHTTPHeaderField: "Accept")
@@ -354,7 +354,7 @@ extension Core.PackageIndexing {
 
         private func fetchGitHubMetadata(owner: String, repo: String) async throws -> PackageInfo {
             let cacheKey = "\(owner)/\(repo)"
-            let request = createGitHubRequest(owner: owner, repo: repo)
+            let request = try createGitHubRequest(owner: owner, repo: repo)
             let (data, response) = try await URLSession.shared.data(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
@@ -371,8 +371,8 @@ extension Core.PackageIndexing {
             return createPackageInfo(owner: owner, repo: repo, repoData: repoData, stars: stars)
         }
 
-        private func createGitHubRequest(owner: String, repo: String) -> URLRequest {
-            let url = URL.knownGood("\(Shared.Constants.BaseURL.githubAPIRepos)/\(owner)/\(repo)")
+        private func createGitHubRequest(owner: String, repo: String) throws -> URLRequest {
+            let url = try URL(knownGood: "\(Shared.Constants.BaseURL.githubAPIRepos)/\(owner)/\(repo)")
             var request = URLRequest(url: url)
             request.setValue(Shared.Constants.HTTPHeader.githubAccept, forHTTPHeaderField: "Accept")
             request.setValue(Shared.Constants.App.userAgent, forHTTPHeaderField: "User-Agent")
