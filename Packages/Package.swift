@@ -338,7 +338,7 @@ let targets: [Target] = {
             "SharedConstants",
             "SharedModels",
             "SharedUtils",
-            "Logging",
+            "LoggingModels",
             "Resources",
         ]
     )

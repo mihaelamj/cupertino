@@ -4,6 +4,7 @@ import CoreProtocols
 @testable import Crawler
 import CrawlerModels
 import Foundation
+import LoggingModels
 import SharedConfiguration
 import SharedConstants
 @testable import SharedCore
@@ -42,7 +43,8 @@ struct CrawlerTests {
             configuration: config,
             htmlParser: Crawler.NoopHTMLParserStrategy(),
             appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
-            priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy()
+            priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy(),
+            logger: Logging.NoopRecording()
         )
 
         // If we get here without crashing, initialization worked
@@ -332,7 +334,8 @@ struct CrawlerTests {
             configuration: config,
             htmlParser: Crawler.NoopHTMLParserStrategy(),
             appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
-            priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy()
+            priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy(),
+            logger: Logging.NoopRecording()
         )
 
         // Note: This may fail to load the actual page (network required),
@@ -377,7 +380,8 @@ struct CrawlerTests {
             configuration: config,
             htmlParser: Crawler.NoopHTMLParserStrategy(),
             appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
-            priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy()
+            priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy(),
+            logger: Logging.NoopRecording()
         )
 
         do {

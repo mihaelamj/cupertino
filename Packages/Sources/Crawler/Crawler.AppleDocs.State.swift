@@ -1,7 +1,7 @@
 import CoreProtocols
 import CrawlerModels
 import Foundation
-import Logging
+import LoggingModels
 import SharedConfiguration
 import SharedConstants
 import SharedCore
@@ -16,9 +16,16 @@ extension Crawler.AppleDocs {
         private var metadata: Shared.Models.CrawlMetadata
         private var autoSaveInterval: TimeInterval = Shared.Constants.Interval.autoSave
         private var lastAutoSave: Date = .init()
+        /// GoF Strategy seam for log emission (1994 p. 315). Threaded
+        /// in from the owning `Crawler.AppleDocs` constructor.
+        private let logger: any LoggingModels.Logging.Recording
 
-        public init(configuration: Shared.Configuration.ChangeDetection) {
+        public init(
+            configuration: Shared.Configuration.ChangeDetection,
+            logger: any LoggingModels.Logging.Recording
+        ) {
             self.configuration = configuration
+            self.logger = logger
             metadata = Shared.Models.CrawlMetadata()
 
             // Load existing metadata if available
@@ -27,7 +34,7 @@ extension Crawler.AppleDocs {
                     var loadedMetadata = try Shared.Models.CrawlMetadata.load(from: configuration.metadataFile)
 
                     // Validate metadata by checking if files actually exist
-                    if Self.validateMetadata(loadedMetadata, metadataFile: configuration.metadataFile) {
+                    if Self.validateMetadata(loadedMetadata, metadataFile: configuration.metadataFile, logger: logger) {
                         // Cross-machine portability: PageMetadata.filePath is an
                         // absolute string captured on the writing host. After rsync
                         // to a machine with a different home dir, those strings
@@ -40,12 +47,12 @@ extension Crawler.AppleDocs {
                         Self.rebasePagePaths(in: &loadedMetadata, to: outputDir)
 
                         metadata = loadedMetadata
-                        Logging.Logger.crawler.info("✅ Loaded existing metadata: \(metadata.pages.count) pages")
+                        logger.info("✅ Loaded existing metadata: \(metadata.pages.count) pages", category: .crawler)
                     } else {
-                        Logging.Logger.crawler.warning("⚠️  Not trusting lying metadata - file counts don't match, starting fresh")
+                        logger.warning("⚠️  Not trusting lying metadata - file counts don't match, starting fresh", category: .crawler)
                     }
                 } catch {
-                    Logging.Logger.crawler.warning("⚠️  Failed to load metadata: \(error.localizedDescription), starting with fresh metadata")
+                    logger.warning("⚠️  Failed to load metadata: \(error.localizedDescription), starting with fresh metadata", category: .crawler)
                 }
             }
         }
@@ -56,7 +63,11 @@ extension Crawler.AppleDocs {
         /// the absolute path stored in `page.filePath` — that string was captured
         /// on the writing host and may point under the wrong home directory after
         /// the metadata has been rsynced between machines.
-        static func validateMetadata(_ metadata: Shared.Models.CrawlMetadata, metadataFile: URL) -> Bool {
+        static func validateMetadata(
+            _ metadata: Shared.Models.CrawlMetadata,
+            metadataFile: URL,
+            logger: any LoggingModels.Logging.Recording
+        ) -> Bool {
             // If metadata claims many pages, verify some actually exist
             guard !metadata.pages.isEmpty else { return true }
 
@@ -87,7 +98,7 @@ extension Crawler.AppleDocs {
             // If less than 50% of sampled files exist, metadata is lying
             let existenceRatio = Double(existingCount) / Double(samplesToCheck)
             if existenceRatio < 0.5 {
-                Logging.Logger.crawler.warning("⚠️  Only \(Int(existenceRatio * 100))% of metadata files exist")
+                logger.warning("⚠️  Only \(Int(existenceRatio * 100))% of metadata files exist", category: .crawler)
                 return false
             }
 
@@ -173,7 +184,7 @@ extension Crawler.AppleDocs {
                     try line.write(to: logFile)
                 }
             } catch {
-                Logging.Log.warning(
+                logger.warning(
                     "⚠️ Failed to record rejected URL \(url.absoluteString): \(error.localizedDescription)",
                     category: .crawler
                 )
@@ -353,7 +364,7 @@ extension Crawler.AppleDocs {
             try metadata.save(to: configuration.metadataFile)
             lastAutoSave = Date()
 
-            Logging.Logger.crawler.info("💾 Saved session state: \(visited.count) visited, \(queue.count) queued")
+            logger.info("💾 Saved session state: \(visited.count) visited, \(queue.count) queued", category: .crawler)
         }
 
         /// Check if auto-save is needed and perform it

@@ -4,6 +4,7 @@ import CoreProtocols
 import Crawler
 import CrawlerModels
 import Foundation
+import LoggingModels
 @testable import MCPCore
 @testable import MCPSupport
 @testable import Search
@@ -396,7 +397,8 @@ struct MCPServerIntegrationTests {
             configuration: config,
             htmlParser: Crawler.NoopHTMLParserStrategy(),
             appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
-            priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy()
+            priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy(),
+            logger: Logging.NoopRecording()
         )
         let stats = try await crawler.crawl()
         #expect(stats.totalPages > 0, "Should have crawled pages")

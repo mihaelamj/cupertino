@@ -4,6 +4,7 @@ import CoreProtocols
 @testable import Crawler
 import CrawlerModels
 import Foundation
+import LoggingModels
 import Ingest
 import SharedConfiguration
 import SharedConstants
@@ -515,7 +516,7 @@ struct ResumeAndStartCleanTests {
             metadataFile: file,
             outputDirectory: tempDir
         )
-        let state = Crawler.AppleDocs.State(configuration: config)
+        let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
 
         let hasSession = await state.hasActiveSession()
         #expect(hasSession, "auto-resume must observe isActive=true on disk")
@@ -542,7 +543,7 @@ struct ResumeAndStartCleanTests {
             metadataFile: file,
             outputDirectory: tempDir
         )
-        let state = Crawler.AppleDocs.State(configuration: config)
+        let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
 
         let hasSession = await state.hasActiveSession()
         #expect(!hasSession)
@@ -573,7 +574,7 @@ struct ResumeAndStartCleanTests {
             metadataFile: file,
             outputDirectory: tempDir
         )
-        let state = Crawler.AppleDocs.State(configuration: config)
+        let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
 
         let hasSession = await state.hasActiveSession()
         #expect(!hasSession, "--start-clean must leave no resumable session")
@@ -778,7 +779,7 @@ struct ResumeAndStartCleanTests {
         }
         try metadata.save(to: metadataFile)
 
-        let result = Crawler.AppleDocs.State.validateMetadata(metadata, metadataFile: metadataFile)
+        let result = Crawler.AppleDocs.State.validateMetadata(metadata, metadataFile: metadataFile, logger: Logging.NoopRecording())
         #expect(result, "validation must pass when the *portable* path (outputDir+framework+basename) resolves, even if filePath strings are foreign")
     }
 
@@ -801,7 +802,7 @@ struct ResumeAndStartCleanTests {
         let metadataFile = Self.metadataFile(in: outputDir)
         try metadata.save(to: metadataFile)
 
-        let result = Crawler.AppleDocs.State.validateMetadata(metadata, metadataFile: metadataFile)
+        let result = Crawler.AppleDocs.State.validateMetadata(metadata, metadataFile: metadataFile, logger: Logging.NoopRecording())
         #expect(!result, "validation must reject metadata claiming pages that don't exist on this host at all")
     }
 
@@ -903,7 +904,7 @@ struct ResumeAndStartCleanTests {
             metadataFile: metadataFile,
             outputDirectory: outputDir
         )
-        let state = Crawler.AppleDocs.State(configuration: config)
+        let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
 
         // The session must survive — it would have been wiped pre-fix because
         // validateMetadata couldn't find any files at the foreign paths.
@@ -928,7 +929,7 @@ struct ResumeAndStartCleanTests {
         )
 
         // Save through the real crawler API.
-        let writer = Crawler.AppleDocs.State(configuration: config)
+        let writer = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
         let visited: Set = [
             "http://127.0.0.1:1/v1",
             "http://127.0.0.1:1/v2",
@@ -947,7 +948,7 @@ struct ResumeAndStartCleanTests {
 
         // Read through a *fresh* Crawler.AppleDocs.State — the actual scenario when
         // the cupertino process is killed and re-launched.
-        let reader = Crawler.AppleDocs.State(configuration: config)
+        let reader = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
         let session = await reader.getSavedSession()
         #expect(session != nil)
         #expect(session?.isActive == true)
