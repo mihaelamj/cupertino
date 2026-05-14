@@ -23,6 +23,12 @@ private struct NoopMarkdownStrategy: Search.MarkdownToStructuredPageStrategy {
     }
 }
 
+private struct MissingSampleCatalogProvider: Search.SampleCatalogProvider {
+    func fetch() async -> Search.SampleCatalogState {
+        .missing(onDiskPath: "")
+    }
+}
+
 // MARK: - MCP Command Tests
 
 // Tests for the `cupertino serve` command
@@ -402,7 +408,7 @@ struct MCPServerIntegrationTests {
             docsDirectory: tempDir,
             evolutionDirectory: nil,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogFetch: { .missing(onDiskPath: "") }
+            sampleCatalogProvider: MissingSampleCatalogProvider()
         )
         try await builder.buildIndex()
         print("   ✅ Index built")

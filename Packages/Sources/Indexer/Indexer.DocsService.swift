@@ -61,7 +61,7 @@ extension Indexer {
         public static func run(
             _ request: Request,
             markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
-            sampleCatalogFetch: @escaping Search.SampleCatalogFetch,
+            sampleCatalogProvider: any Search.SampleCatalogProvider,
             docsIndexingRun: Search.DocsIndexingRun,
             handler: @escaping @Sendable (Event) -> Void = { _ in }
         ) async throws -> Outcome {
@@ -105,7 +105,7 @@ extension Indexer {
                 higDirectory: higDirToUse,
                 clearExisting: request.clear,
                 markdownStrategy: markdownStrategy,
-                sampleCatalogFetch: sampleCatalogFetch
+                sampleCatalogProvider: sampleCatalogProvider
             )
 
             let result = try await docsIndexingRun(input) { processed, total in

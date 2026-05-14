@@ -39,7 +39,7 @@ extension CLI.Command.Save {
         let outcome = try await Indexer.DocsService.run(
             request,
             markdownStrategy: LiveMarkdownToStructuredPageStrategy(),
-            sampleCatalogFetch: CLI.Command.Save.sampleCatalogFetch,
+            sampleCatalogProvider: LiveSampleCatalogProvider(),
             docsIndexingRun: CLI.Command.Save.docsIndexingRun
         ) { event in
             Self.handleDocsEvent(event, tracker: tracker)
@@ -62,7 +62,7 @@ extension CLI.Command.Save {
             archiveDirectory: input.archiveDirectory,
             higDirectory: input.higDirectory,
             markdownStrategy: input.markdownStrategy,
-            sampleCatalogFetch: input.sampleCatalogFetch
+            sampleCatalogProvider: input.sampleCatalogProvider
         )
         try await builder.buildIndex(clearExisting: input.clearExisting, onProgress: onProgress)
         let docCount = try await searchIndex.documentCount()
@@ -89,31 +89,34 @@ extension CLI.Command.Save {
 
     // MARK: - Sample catalog adapter
 
-    /// Bridges `Sample.Core.Catalog` (the CoreSampleCode singleton) over
-    /// to the `Search.SampleCatalogFetch` closure shape the Search
-    /// SampleCodeStrategy reads. Lives at the CLI composition root so
-    /// neither Search nor Indexer needs to import `CoreSampleCode`.
-    static let sampleCatalogFetch: @Sendable () async -> Search.SampleCatalogState = {
-        let entries = await Sample.Core.Catalog.allEntries
-        let loaded = await Sample.Core.Catalog.loadedSource ?? .missing
-        switch loaded {
-        case .onDisk:
-            let mapped = entries.map { entry in
-                Search.SampleCatalogEntry(
-                    title: entry.title,
-                    url: entry.url,
-                    framework: entry.framework,
-                    description: entry.description,
-                    zipFilename: entry.zipFilename,
-                    webURL: entry.webURL
-                )
+    /// Concrete `Search.SampleCatalogProvider` (GoF Strategy) that
+    /// bridges `Sample.Core.Catalog` (the CoreSampleCode singleton)
+    /// to the catalog-state shape the Search `SampleCodeStrategy`
+    /// reads. Lives at the CLI composition root so neither Search nor
+    /// Indexer needs to import `CoreSampleCode`.
+    struct LiveSampleCatalogProvider: Search.SampleCatalogProvider {
+        func fetch() async -> Search.SampleCatalogState {
+            let entries = await Sample.Core.Catalog.allEntries
+            let loaded = await Sample.Core.Catalog.loadedSource ?? .missing
+            switch loaded {
+            case .onDisk:
+                let mapped = entries.map { entry in
+                    Search.SampleCatalogEntry(
+                        title: entry.title,
+                        url: entry.url,
+                        framework: entry.framework,
+                        description: entry.description,
+                        zipFilename: entry.zipFilename,
+                        webURL: entry.webURL
+                    )
+                }
+                return .loaded(entries: mapped)
+            case .missing:
+                let path = Shared.Constants.defaultSampleCodeDirectory
+                    .appendingPathComponent(Sample.Core.Catalog.onDiskCatalogFilename)
+                    .path
+                return .missing(onDiskPath: path)
             }
-            return .loaded(entries: mapped)
-        case .missing:
-            let path = Shared.Constants.defaultSampleCodeDirectory
-                .appendingPathComponent(Sample.Core.Catalog.onDiskCatalogFilename)
-                .path
-            return .missing(onDiskPath: path)
         }
     }
 

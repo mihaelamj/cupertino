@@ -1,26 +1,34 @@
 import Foundation
 import SharedConstants
 
-// MARK: - Search.SampleCatalogFetch
+// MARK: - Search.SampleCatalogProvider
 
-/// Closure shape that returns the current state of the Apple sample-code
-/// catalog. The Search target's `SampleCodeStrategy` uses one of these
-/// instead of reaching into `CoreSampleCode` directly — that's how the
-/// strategy can index the sample catalog while the Search SPM target
-/// keeps a foundation-only dependency graph.
+/// Provider of the current sample-code catalog state for the Search
+/// indexer. GoF Strategy pattern (Gamma et al, 1994): a family of
+/// algorithms (load from on-disk JSON, embedded fallback, test
+/// fixture) interchangeable behind a named protocol.
 ///
-/// The composition root (the CLI binary) supplies the concrete closure
-/// which adapts from `Sample.Core.Catalog`'s static API into the
-/// `SampleCatalogState` shape declared below. Test harnesses pass a
-/// closure that returns a fixture state directly.
+/// The Search target's `SampleCodeStrategy` accepts a conformer at
+/// init so it can index the catalog without reaching into
+/// `CoreSampleCode` directly. The composition root (the CLI binary)
+/// supplies a concrete conformer that adapts from `Sample.Core.Catalog`'s
+/// static API into the `SampleCatalogState` shape declared below.
+/// Test harnesses pass a struct that returns a fixture state directly.
 ///
-/// Mirrors the `Search.Database` / `Search.MarkdownToStructuredPage` /
-/// `MakeSearchDatabase` / `PackageFileLookup` / `MarkdownLookup`
-/// closure-typealias pattern already in SearchModels: the abstraction
-/// lives in this value-types target, the implementation lives in the
-/// producer target, the wiring lives at the composition root.
+/// This replaces the previous
+/// `Search.SampleCatalogFetch = @Sendable () async -> SampleCatalogState`
+/// closure typealias. The protocol form names the contract at the
+/// constructor site (`sampleCatalogProvider:`), makes captured-state
+/// surface explicit on the conforming type's stored properties, and
+/// produces one-line test mocks instead of inline async closures.
 public extension Search {
-    typealias SampleCatalogFetch = @Sendable () async -> SampleCatalogState
+    protocol SampleCatalogProvider: Sendable {
+        /// Return the catalog state at the moment of call. The
+        /// concrete provider decides whether to read on-disk JSON,
+        /// hit an embedded fallback, or return a fixture; the Search
+        /// strategy doesn't care.
+        func fetch() async -> SampleCatalogState
+    }
 }
 
 // MARK: - Search.SampleCatalogState
@@ -50,9 +58,8 @@ public extension Search {
 /// `Sample.Core.Entry` lives.
 ///
 /// The composition root maps `Sample.Core.Entry` → this struct
-/// field-for-field when building the `SampleCatalogFetch` closure;
-/// the round-trip is lossless because both types carry the same six
-/// fields.
+/// field-for-field when building the catalog provider; the round-trip
+/// is lossless because both types carry the same six fields.
 public extension Search {
     struct SampleCatalogEntry: Sendable {
         public let title: String

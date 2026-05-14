@@ -22,6 +22,12 @@ private struct NoopMarkdownStrategy: Search.MarkdownToStructuredPageStrategy {
     }
 }
 
+private struct MissingSampleCatalogProvider: Search.SampleCatalogProvider {
+    func fetch() async -> Search.SampleCatalogState {
+        .missing(onDiskPath: "")
+    }
+}
+
 // MARK: - Save Command Tests
 
 // Tests for the `cupertino save` command
@@ -66,7 +72,7 @@ struct SaveCommandTests {
             docsDirectory: tempDir,
             evolutionDirectory: nil,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogFetch: { .missing(onDiskPath: "") }
+            sampleCatalogProvider: MissingSampleCatalogProvider()
         )
 
         try await builder.buildIndex()
@@ -122,7 +128,7 @@ struct SaveCommandTests {
             docsDirectory: tempDir,
             evolutionDirectory: nil,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogFetch: { .missing(onDiskPath: "") }
+            sampleCatalogProvider: MissingSampleCatalogProvider()
         )
         try await builder.buildIndex()
 
@@ -166,7 +172,7 @@ struct SaveCommandTests {
             docsDirectory: tempDir,
             evolutionDirectory: nil,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogFetch: { .missing(onDiskPath: "") }
+            sampleCatalogProvider: MissingSampleCatalogProvider()
         )
 
         // Should not throw, just save 0 documents
@@ -227,7 +233,7 @@ struct SaveCommandTests {
             docsDirectory: docsDir,
             evolutionDirectory: evolutionDir,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogFetch: { .missing(onDiskPath: "") }
+            sampleCatalogProvider: MissingSampleCatalogProvider()
         )
 
         try await builder.buildIndex()
@@ -299,7 +305,7 @@ struct SaveCommandTests {
             docsDirectory: tempDir.appendingPathComponent("docs"),
             evolutionDirectory: nil,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogFetch: { .missing(onDiskPath: "") }
+            sampleCatalogProvider: MissingSampleCatalogProvider()
         )
 
         try await builder.buildIndex()
@@ -355,7 +361,7 @@ struct SaveCommandTests {
             docsDirectory: tempDir.appendingPathComponent("docs"),
             evolutionDirectory: nil,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogFetch: { .missing(onDiskPath: "") }
+            sampleCatalogProvider: MissingSampleCatalogProvider()
         )
 
         try await builder.buildIndex()
@@ -406,7 +412,7 @@ struct SaveCommandTests {
             docsDirectory: tempDir,
             evolutionDirectory: nil,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogFetch: { .missing(onDiskPath: "") }
+            sampleCatalogProvider: MissingSampleCatalogProvider()
         )
 
         try await builder.buildIndex()
@@ -440,7 +446,7 @@ struct SaveCommandTests {
             docsDirectory: tempDir,
             evolutionDirectory: nil,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogFetch: { .missing(onDiskPath: "") }
+            sampleCatalogProvider: MissingSampleCatalogProvider()
         )
 
         try await builder.buildIndex()
