@@ -1,7 +1,7 @@
 import CoreProtocols
 import CrawlerModels
 import Foundation
-import Logging
+import LoggingModels
 import SharedConstants
 import SharedCore
 import SharedUtils
@@ -21,25 +21,30 @@ extension Crawler {
         private let outputDirectory: URL
         private let guides: [GuideInfo]
         private let forceRecrawl: Bool
+        /// GoF Strategy seam for log emission (1994 p. 315).
+        private let logger: any LoggingModels.Logging.Recording
 
         public init(
             outputDirectory: URL,
             guides: [GuideInfo],
-            forceRecrawl: Bool = false
+            forceRecrawl: Bool = false,
+            logger: any LoggingModels.Logging.Recording
         ) {
             self.outputDirectory = outputDirectory
             self.guides = guides
             self.forceRecrawl = forceRecrawl
+            self.logger = logger
         }
 
         /// Convenience initializer for backward compatibility (uses empty framework)
         public convenience init(
             outputDirectory: URL,
             guideURLs: [URL],
-            forceRecrawl: Bool = false
+            forceRecrawl: Bool = false,
+            logger: any LoggingModels.Logging.Recording
         ) {
             let guides = guideURLs.map { GuideInfo(url: $0, framework: "") }
-            self.init(outputDirectory: outputDirectory, guides: guides, forceRecrawl: forceRecrawl)
+            self.init(outputDirectory: outputDirectory, guides: guides, forceRecrawl: forceRecrawl, logger: logger)
         }
 
         // MARK: - Public API
@@ -543,11 +548,11 @@ extension Crawler {
         // MARK: - Logging
 
         private func logInfo(_ message: String) {
-            Logging.Log.info(message, category: .archive)
+            logger.info(message, category: .archive)
         }
 
         private func logError(_ message: String) {
-            Logging.Log.error("Error: \(message)", category: .archive)
+            logger.error("Error: \(message)", category: .archive)
         }
 
         private func logStatistics(_ stats: Statistics) {
@@ -565,7 +570,7 @@ extension Crawler {
             ]
 
             for message in messages where !message.isEmpty {
-                Logging.Log.info(message, category: .archive)
+                logger.info(message, category: .archive)
             }
         }
     }

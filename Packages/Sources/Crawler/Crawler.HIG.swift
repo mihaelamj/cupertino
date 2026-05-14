@@ -1,6 +1,6 @@
 import CrawlerModels
 import Foundation
-import Logging
+import LoggingModels
 import SharedCore
 
 #if canImport(WebKit)
@@ -25,6 +25,9 @@ extension Crawler {
         private let outputDirectory: URL
         private let forceRecrawl: Bool
         private let maxPages: Int
+        /// GoF Strategy seam for log emission (1994 p. 315). Threaded
+        /// in from the CLI composition root.
+        private let logger: any LoggingModels.Logging.Recording
 
         #if canImport(WebKit)
         private var fetcher: Crawler.WebKit.ContentFetcher?
@@ -33,11 +36,13 @@ extension Crawler {
         public init(
             outputDirectory: URL,
             forceRecrawl: Bool = false,
-            maxPages: Int = 500
+            maxPages: Int = 500,
+            logger: any LoggingModels.Logging.Recording
         ) {
             self.outputDirectory = outputDirectory
             self.forceRecrawl = forceRecrawl
             self.maxPages = maxPages
+            self.logger = logger
         }
 
         // MARK: - Public API
@@ -522,14 +527,14 @@ extension Crawler {
             #if canImport(WebKit)
             let memoryMB = fetcher?.getMemoryUsageMB() ?? 0
             let memoryMsg = "\(String(format: "%.1f", memoryMB))MB | \(message)"
-            Logging.Log.info(memoryMsg, category: .hig)
+            logger.info(memoryMsg, category: .hig)
             #else
-            Logging.Log.info(message, category: .hig)
+            logger.info(message, category: .hig)
             #endif
         }
 
         private func logError(_ message: String) {
-            Logging.Log.error("Error: \(message)", category: .hig)
+            logger.error("Error: \(message)", category: .hig)
         }
 
         private func logStatistics(_ stats: Statistics) {
@@ -546,7 +551,7 @@ extension Crawler {
             ]
 
             for message in messages where !message.isEmpty {
-                Logging.Log.info(message, category: .hig)
+                logger.info(message, category: .hig)
             }
         }
     }

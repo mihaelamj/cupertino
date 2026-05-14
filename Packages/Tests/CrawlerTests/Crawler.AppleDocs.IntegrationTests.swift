@@ -4,6 +4,7 @@ import CoreProtocols
 import Crawler
 import CrawlerModels
 import Foundation
+import LoggingModels
 import SharedConfiguration
 import SharedConstants
 @testable import SharedCore
@@ -47,7 +48,8 @@ func downloadRealAppleDocPage() async throws {
         configuration: config,
         htmlParser: LiveTestHTMLParserStrategy(),
         appleJSONParser: LiveTestAppleJSONParserStrategy(),
-        priorityPackageStrategy: LiveTestPriorityPackageStrategy()
+        priorityPackageStrategy: LiveTestPriorityPackageStrategy(),
+            logger: Logging.NoopRecording()
     )
     let stats = try await crawler.crawl()
 
@@ -162,7 +164,7 @@ func crawlerStateInitialization() async {
         forceRecrawl: false
     )
 
-    let state = Crawler.AppleDocs.State(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
     let pageCount = await state.getPageCount()
 
     #expect(pageCount == 0)
@@ -208,7 +210,7 @@ func crawlerStateLoadsExistingMetadata() async throws {
         metadataFile: metadataFile,
         forceRecrawl: false
     )
-    let state = Crawler.AppleDocs.State(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
     let pageCount = await state.getPageCount()
 
     #expect(pageCount == 2)
@@ -226,7 +228,7 @@ func crawlerStateShouldRecrawlNewPage() async {
         forceRecrawl: false
     )
 
-    let state = Crawler.AppleDocs.State(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
 
     // New page should be recrawled
     let shouldRecrawl = await state.shouldRecrawl(
@@ -267,7 +269,7 @@ func crawlerStateShouldRecrawlContentChanged() async throws {
         metadataFile: metadataFile,
         forceRecrawl: false
     )
-    let state = Crawler.AppleDocs.State(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
 
     // Same URL but different hash should trigger recrawl
     let shouldRecrawl = await state.shouldRecrawl(
@@ -308,7 +310,7 @@ func crawlerStateShouldRecrawlSkipsUnchanged() async throws {
         metadataFile: metadataFile,
         forceRecrawl: false
     )
-    let state = Crawler.AppleDocs.State(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
 
     // Same URL, same hash, file exists - should skip
     let shouldRecrawl = await state.shouldRecrawl(
@@ -347,7 +349,7 @@ func crawlerStateShouldRecrawlMissingFile() async throws {
         metadataFile: metadataFile,
         forceRecrawl: false
     )
-    let state = Crawler.AppleDocs.State(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
 
     // File missing should trigger recrawl
     let shouldRecrawl = await state.shouldRecrawl(
@@ -388,7 +390,7 @@ func crawlerStateForceRecrawl() async throws {
         metadataFile: metadataFile,
         forceRecrawl: true // Force recrawl
     )
-    let state = Crawler.AppleDocs.State(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
 
     // Even with same hash and existing file, should recrawl when forced
     let shouldRecrawl = await state.shouldRecrawl(
@@ -429,7 +431,7 @@ func crawlerStateDisabledChangeDetection() async throws {
         metadataFile: metadataFile,
         forceRecrawl: false
     )
-    let state = Crawler.AppleDocs.State(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
 
     // With change detection disabled, should always recrawl
     let shouldRecrawl = await state.shouldRecrawl(
@@ -453,7 +455,7 @@ func crawlerStateUpdatePage() async {
         forceRecrawl: false
     )
 
-    let state = Crawler.AppleDocs.State(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
 
     let initialCount = await state.getPageCount()
     #expect(initialCount == 0)
@@ -483,7 +485,7 @@ func crawlerStateUpdateStatistics() async {
         forceRecrawl: false
     )
 
-    let state = Crawler.AppleDocs.State(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
 
     await state.updateStatistics { stats in
         stats.totalPages = 10
@@ -515,7 +517,7 @@ func crawlerStateSessionManagement() async throws {
         forceRecrawl: false
     )
 
-    let state = Crawler.AppleDocs.State(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
 
     // Initially no active session
     let hasActiveSession1 = await state.hasActiveSession()
@@ -567,7 +569,7 @@ func crawlerStateFinalizeAndSave() async throws {
         forceRecrawl: false
     )
 
-    let state = Crawler.AppleDocs.State(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
 
     // Update some data
     await state.updatePage(
@@ -617,7 +619,7 @@ func crawlerStateAutoSaveInterval() async throws {
         forceRecrawl: false
     )
 
-    let state = Crawler.AppleDocs.State(configuration: config)
+    let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
 
     let visited = Set(["https://example.com/1"])
     let queue = try [(url: #require(URL(string: "https://example.com/2")), depth: 1)]

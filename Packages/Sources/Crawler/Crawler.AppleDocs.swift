@@ -1,7 +1,7 @@
 import CoreProtocols
 import CrawlerModels
 import Foundation
-import Logging
+import LoggingModels
 import os
 import SharedConfiguration
 import SharedConstants
@@ -48,6 +48,13 @@ extension Crawler {
         private let appleJSONParser: any Crawler.AppleJSONParserStrategy
         private let priorityPackageStrategy: any Crawler.PriorityPackageStrategy
 
+        /// GoF Strategy seam for log emission (1994 p. 315). Injected by
+        /// the CLI composition root via `Logging.LiveRecording()`. The
+        /// Crawler target imports `LoggingModels` (the foundation-layer
+        /// protocol surface) and never reaches for the `Logging.Log`
+        /// static.
+        private let logger: any LoggingModels.Logging.Recording
+
         private var onProgress: (@Sendable (Progress) -> Void)?
         private var logFileHandle: FileHandle?
 
@@ -55,16 +62,18 @@ extension Crawler {
             configuration: Shared.Configuration,
             htmlParser: any Crawler.HTMLParserStrategy,
             appleJSONParser: any Crawler.AppleJSONParserStrategy,
-            priorityPackageStrategy: any Crawler.PriorityPackageStrategy
+            priorityPackageStrategy: any Crawler.PriorityPackageStrategy,
+            logger: any LoggingModels.Logging.Recording
         ) async {
             self.configuration = configuration.crawler
             changeDetection = configuration.changeDetection
             output = configuration.output
-            state = State(configuration: configuration.changeDetection)
+            state = State(configuration: configuration.changeDetection, logger: logger)
             stats = Shared.Models.CrawlStatistics()
             self.htmlParser = htmlParser
             self.appleJSONParser = appleJSONParser
             self.priorityPackageStrategy = priorityPackageStrategy
+            self.logger = logger
             super.init()
 
             // Initialize Crawler.WebKit.ContentFetcher from WKWebCrawler namespace
@@ -608,13 +617,13 @@ extension Crawler {
 
         private func logInfo(_ message: String) {
             let memoryMsg = "\(String(format: "%.1f", getMemoryUsageMB()))MB | \(message)"
-            Logging.Log.info(memoryMsg, category: .crawler)
+            logger.info(memoryMsg, category: .crawler)
             logToFile(memoryMsg)
         }
 
         private func logError(_ message: String) {
             let errorMessage = "❌ \(message)"
-            Logging.Log.error(errorMessage, category: .crawler)
+            logger.error(errorMessage, category: .crawler)
         }
 
         private func logProgressUpdate() async {
@@ -638,7 +647,7 @@ extension Crawler {
             ]
 
             for message in messages {
-                Logging.Log.info(message, category: .crawler)
+                logger.info(message, category: .crawler)
             }
         }
 
@@ -657,7 +666,7 @@ extension Crawler {
             ]
 
             for message in messages where !message.isEmpty {
-                Logging.Log.info(message, category: .crawler)
+                logger.info(message, category: .crawler)
             }
         }
 

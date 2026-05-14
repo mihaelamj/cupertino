@@ -4,6 +4,7 @@ import CoreProtocols
 @testable import Crawler
 import CrawlerModels
 import Foundation
+import LoggingModels
 import SharedConstants
 @testable import SharedCore
 import Testing
@@ -23,7 +24,7 @@ struct SwiftEvolutionCrawlerTests {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 
-        let crawler = Crawler.Evolution(outputDirectory: tempDir)
+        let crawler = Crawler.Evolution(outputDirectory: tempDir, logger: Logging.NoopRecording())
 
         // If we get here without crashing, initialization worked
         _ = crawler
@@ -40,7 +41,8 @@ struct SwiftEvolutionCrawlerTests {
 
         let crawler = Crawler.Evolution(
             outputDirectory: tempDir,
-            onlyAccepted: true
+            onlyAccepted: true,
+            logger: Logging.NoopRecording()
         )
 
         _ = crawler
@@ -375,7 +377,7 @@ struct SwiftEvolutionCrawlerTests {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let crawler = Crawler.Evolution(outputDirectory: tempDir)
+        let crawler = Crawler.Evolution(outputDirectory: tempDir, logger: Logging.NoopRecording())
 
         // Bare-numbered filename with ST prefix
         let stID = crawler.extractProposalID(from: "0001-refactor-bug-inits.md", prefix: "ST")
@@ -396,7 +398,7 @@ struct SwiftEvolutionCrawlerTests {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let crawler = Crawler.Evolution(outputDirectory: tempDir)
+        let crawler = Crawler.Evolution(outputDirectory: tempDir, logger: Logging.NoopRecording())
 
         // Missing status is NOT accepted (proposals rely on this to skip)
         #expect(crawler.isAcceptedStatus(nil) == false)
@@ -408,7 +410,7 @@ struct SwiftEvolutionCrawlerTests {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let crawler = Crawler.Evolution(outputDirectory: tempDir)
+        let crawler = Crawler.Evolution(outputDirectory: tempDir, logger: Logging.NoopRecording())
 
         // ST-style markdown with no status header
         let markdown = """
@@ -434,7 +436,7 @@ struct SwiftEvolutionCrawlerTests {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let crawler = Crawler.Evolution(outputDirectory: tempDir)
+        let crawler = Crawler.Evolution(outputDirectory: tempDir, logger: Logging.NoopRecording())
 
         let markdown = """
         # Some ST Proposal
@@ -463,7 +465,7 @@ struct SwiftEvolutionCrawlerTests {
         try? FileManager.default.removeItem(at: tempDir)
         #expect(!FileManager.default.fileExists(atPath: tempDir.path))
 
-        let crawler = Crawler.Evolution(outputDirectory: tempDir)
+        let crawler = Crawler.Evolution(outputDirectory: tempDir, logger: Logging.NoopRecording())
 
         // Note: We're not actually calling crawl() to avoid network calls
         // Just verify the crawler can be instantiated

@@ -1,7 +1,7 @@
 import CoreProtocols
 import CrawlerModels
 import Foundation
-import Logging
+import LoggingModels
 import SharedConstants
 import SharedCore
 import SharedModels
@@ -19,10 +19,17 @@ extension Crawler {
         private let githubRaw = Shared.Constants.BaseURL.githubRaw
         private let repo = Shared.Constants.SwiftEvolution.repository
         private let branch = Shared.Constants.SwiftEvolution.branch
+        /// GoF Strategy seam for log emission (1994 p. 315).
+        private let logger: any LoggingModels.Logging.Recording
 
-        public init(outputDirectory: URL, onlyAccepted: Bool = false) {
+        public init(
+            outputDirectory: URL,
+            onlyAccepted: Bool = false,
+            logger: any LoggingModels.Logging.Recording
+        ) {
             self.outputDirectory = outputDirectory
             self.onlyAccepted = onlyAccepted
+            self.logger = logger
         }
 
         // MARK: - Public API
@@ -240,12 +247,12 @@ extension Crawler {
         // MARK: - Logging
 
         private func logInfo(_ message: String) {
-            Logging.Log.info(message, category: .evolution)
+            logger.info(message, category: .evolution)
         }
 
         private func logError(_ message: String) {
             let errorMessage = "❌ \(message)"
-            Logging.Log.error(errorMessage, category: .evolution)
+            logger.error(errorMessage, category: .evolution)
         }
 
         private func logStatistics(_ stats: Statistics) {
@@ -261,7 +268,7 @@ extension Crawler {
             ]
 
             for message in messages where !message.isEmpty {
-                Logging.Log.info(message, category: .evolution)
+                logger.info(message, category: .evolution)
             }
         }
     }

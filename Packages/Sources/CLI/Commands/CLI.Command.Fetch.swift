@@ -10,6 +10,7 @@ import CrawlerModels
 import Foundation
 import Ingest
 import Logging
+import LoggingModels
 import Search
 import SearchModels
 import SharedConfiguration
@@ -458,12 +459,18 @@ extension CLI.Command {
             let htmlParser: any Crawler.HTMLParserStrategy = LiveHTMLParserStrategy()
             let appleJSONParser: any Crawler.AppleJSONParserStrategy = LiveAppleJSONParserStrategy()
             let priorityPackageStrategy: any Crawler.PriorityPackageStrategy = LivePriorityPackageStrategy()
+            // GoF Strategy seam for log emission (1994 p. 315). The
+            // Crawler target imports only LoggingModels (the protocol
+            // surface); the production OSLog + console + file conformer
+            // is wired here at the composition sub-root.
+            let logger: any LoggingModels.Logging.Recording = Logging.LiveRecording()
 
             let crawler = await Crawler.AppleDocs(
                 configuration: config,
                 htmlParser: htmlParser,
                 appleJSONParser: appleJSONParser,
-                priorityPackageStrategy: priorityPackageStrategy
+                priorityPackageStrategy: priorityPackageStrategy,
+                logger: logger
             )
             let stats = try await crawler.crawl { progress in
                 let percentage = String(format: "%.1f", progress.percentage)
@@ -489,10 +496,12 @@ extension CLI.Command {
         private func runEvolutionCrawl() async throws {
             let defaultPath = Shared.Constants.defaultSwiftEvolutionDirectory.path
             let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
+            let logger: any LoggingModels.Logging.Recording = Logging.LiveRecording()
 
             let crawler = await Crawler.Evolution(
                 outputDirectory: outputURL,
-                onlyAccepted: onlyAccepted
+                onlyAccepted: onlyAccepted,
+                logger: logger
             )
 
             let stats = try await crawler.crawl { progress in
@@ -925,11 +934,13 @@ extension CLI.Command {
 
             Logging.ConsoleLogger.info("📚 Crawling \(guides.count) Apple Archive guides...")
             Logging.ConsoleLogger.info("   Output: \(outputURL.path)\n")
+            let logger: any LoggingModels.Logging.Recording = Logging.LiveRecording()
 
             let crawler = await Crawler.AppleArchive(
                 outputDirectory: outputURL,
                 guides: guides,
-                forceRecrawl: force
+                forceRecrawl: force,
+                logger: logger
             )
 
             let stats = try await crawler.crawl { progress in
@@ -959,10 +970,12 @@ extension CLI.Command {
 
             Logging.ConsoleLogger.info("📖 Crawling Human Interface Guidelines...")
             Logging.ConsoleLogger.info("   Output: \(outputURL.path)\n")
+            let logger: any LoggingModels.Logging.Recording = Logging.LiveRecording()
 
             let crawler = await Crawler.HIG(
                 outputDirectory: outputURL,
-                forceRecrawl: force
+                forceRecrawl: force,
+                logger: logger
             )
 
             let stats = try await crawler.crawl { progress in
