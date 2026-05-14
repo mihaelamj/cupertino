@@ -88,6 +88,7 @@ extension CLI.Command {
                     samplesDB: sampleDb.map { URL(fileURLWithPath: $0).expandingTildeInPath },
                     packagesDB: packagesDb.map { URL(fileURLWithPath: $0).expandingTildeInPath },
                     searchDatabaseFactory: searchDatabaseFactory,
+                    sampleDatabaseFactory: sampleDatabaseFactory,
                     packageFileLookup: LivePackageFileLookupStrategy()
                 )
             } catch Services.ReadService.ReadError.docsNotFound(let id) {

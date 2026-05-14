@@ -419,7 +419,7 @@ let targets: [Target] = {
     )
     let servicesTestsTarget = Target.testTarget(
         name: "ServicesTests",
-        dependencies: ["Services", "ServicesModels", "SearchModels", "TestSupport"]
+        dependencies: ["Services", "ServicesModels", "SearchModels", "SampleIndex", "SampleIndexModels", "TestSupport"]
     )
 
     let mcpSupportTarget = Target.target(

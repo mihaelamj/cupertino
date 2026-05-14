@@ -1,5 +1,4 @@
 import Foundation
-import SampleIndex
 import SampleIndexModels
 import SearchModels
 import ServicesModels
@@ -23,21 +22,6 @@ extension Services {
         public init(searchIndex: (any Search.Database)?, sampleDatabase: (any Sample.Index.Reader)?) {
             self.searchIndex = searchIndex
             self.sampleDatabase = sampleDatabase
-        }
-
-        /// Initialize with a sample-database path. The search-side database
-        /// is injected via `searchIndex:` because constructing a
-        /// `Search.Index` requires the Search target — which Services no
-        /// longer imports. The composition root (`withTeaserService` in
-        /// `Services.ServiceContainer`) wires both sides.
-        public init(searchIndex: (any Search.Database)?, sampleDbPath: URL?) async throws {
-            self.searchIndex = searchIndex
-
-            if let sampleDbPath, Shared.Utils.PathResolver.exists(sampleDbPath) {
-                sampleDatabase = try await Sample.Index.Database(dbPath: sampleDbPath)
-            } else {
-                sampleDatabase = nil
-            }
         }
 
         // MARK: - Fetch All Teasers

@@ -1,4 +1,6 @@
 import Foundation
+import SampleIndex
+import SampleIndexModels
 import SearchModels
 @testable import Services
 import ServicesModels
@@ -15,6 +17,15 @@ import Testing
 private struct ThrowingSearchDatabaseFactory: Search.DatabaseFactory {
     func openDatabase(at url: URL) async throws -> any Search.Database {
         throw NSError(domain: "ServicesTests.stub", code: 1)
+    }
+}
+
+/// `Sample.Index.DatabaseFactory` test double that always throws.
+/// Used to satisfy `withTeaserService` / `withUnifiedSearchService`
+/// signatures in tests that only exercise the search side.
+private struct ThrowingSampleDatabaseFactory: Sample.Index.DatabaseFactory {
+    func openDatabase(at url: URL) async throws -> any Sample.Index.Reader {
+        throw NSError(domain: "ServicesTests.stub", code: 2)
     }
 }
 
@@ -170,7 +181,8 @@ struct SampleCandidateFetcherTests {
             .appendingPathComponent("samples-fetcher-test-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let service = try await Sample.Search.Service(dbPath: tempDB)
+        let database = try await Sample.Index.Database(dbPath: tempDB)
+        let service = Sample.Search.Service(database: database)
         defer { Task { await service.disconnect() } }
 
         let fetcher = Sample.Services.CandidateFetcher(service: service)
@@ -183,7 +195,8 @@ struct SampleCandidateFetcherTests {
             .appendingPathComponent("samples-fetcher-test-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let service = try await Sample.Search.Service(dbPath: tempDB)
+        let database = try await Sample.Index.Database(dbPath: tempDB)
+        let service = Sample.Search.Service(database: database)
         defer { Task { await service.disconnect() } }
 
         let fetcher = Sample.Services.CandidateFetcher(service: service)
@@ -231,7 +244,8 @@ struct TeaserResultsResilienceTests {
             try await Services.ServiceContainer.withTeaserService(
                 searchDbPath: tempDir.path,
                 sampleDbPath: nil,
-                searchDatabaseFactory: throwingFactory
+                searchDatabaseFactory: throwingFactory,
+                sampleDatabaseFactory: ThrowingSampleDatabaseFactory()
             ) { service in
                 _ = await service.fetchAllTeasers(
                     query: "swiftui",
@@ -255,7 +269,8 @@ struct TeaserResultsResilienceTests {
             teasers = try await Services.ServiceContainer.withTeaserService(
                 searchDbPath: "/var/empty/intentionally-broken-search.db.\(UUID().uuidString)",
                 sampleDbPath: nil,
-                searchDatabaseFactory: throwingFactory
+                searchDatabaseFactory: throwingFactory,
+                sampleDatabaseFactory: ThrowingSampleDatabaseFactory()
             ) { service in
                 await service.fetchAllTeasers(
                     query: "swiftui",

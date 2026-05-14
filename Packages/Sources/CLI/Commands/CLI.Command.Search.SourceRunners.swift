@@ -36,7 +36,8 @@ extension CLI.Command.Search {
         let teasers = try await Services.ServiceContainer.withTeaserService(
             searchDbPath: searchDb,
             sampleDbPath: resolveSampleDbPath(),
-            searchDatabaseFactory: searchDatabaseFactory
+            searchDatabaseFactory: searchDatabaseFactory,
+            sampleDatabaseFactory: sampleDatabaseFactory
         ) { service in
             await service.fetchAllTeasers(
                 query: query,
@@ -80,7 +81,7 @@ extension CLI.Command.Search {
     func runSampleSearch() async throws {
         let dbPath = resolveSampleDbPath()
 
-        let result = try await Services.ServiceContainer.withSampleService(dbPath: dbPath) { service in
+        let result = try await Services.ServiceContainer.withSampleService(dbPath: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
             try await service.search(Sample.Search.Query(
                 text: query,
                 framework: framework,
@@ -98,7 +99,8 @@ extension CLI.Command.Search {
             teasers = try await Services.ServiceContainer.withTeaserService(
                 searchDbPath: searchDb,
                 sampleDbPath: resolveSampleDbPath(),
-                searchDatabaseFactory: searchDatabaseFactory
+                searchDatabaseFactory: searchDatabaseFactory,
+                sampleDatabaseFactory: sampleDatabaseFactory
             ) { service in
                 await service.fetchAllTeasers(
                     query: query,
@@ -191,7 +193,8 @@ extension CLI.Command.Search {
         let teasers = try await Services.ServiceContainer.withTeaserService(
             searchDbPath: searchDb,
             sampleDbPath: resolveSampleDbPath(),
-            searchDatabaseFactory: searchDatabaseFactory
+            searchDatabaseFactory: searchDatabaseFactory,
+            sampleDatabaseFactory: sampleDatabaseFactory
         ) { service in
             await service.fetchAllTeasers(
                 query: query,

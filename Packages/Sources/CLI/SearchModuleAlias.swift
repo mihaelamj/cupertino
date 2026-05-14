@@ -1,10 +1,13 @@
 import Foundation
 import MCPCore
 import MCPSupport
+import SampleIndex
+import SampleIndexModels
 import Search
 import SearchModels
 import Services
 import ServicesModels
+import SharedConstants
 
 // MARK: - Search Module Disambiguator
 
@@ -76,3 +79,22 @@ struct LivePackageFileLookupStrategy: Services.ReadService.PackageFileLookupStra
         return try await query.fileContent(owner: owner, repo: repo, relpath: relpath)
     }
 }
+
+// MARK: - Production Sample.Index.DatabaseFactory
+
+// Concrete `Sample.Index.DatabaseFactory` (GoF Factory Method) wired
+// into every `Services.ServiceContainer.with*SampleService` /
+// `withTeaserService` / `withUnifiedSearchService` call. Parallel to
+// `LiveSearchDatabaseFactory` on the docs side: opens a real
+// `Sample.Index.Database` at the resolved path. `Services` builds the
+// `Sample.Search.Service` wrapper internally — the composition root
+// only knows about the low-level DB factory. `Services` no longer
+// imports `SampleIndex`; the concrete actor is reached only here.
+
+struct LiveSampleIndexDatabaseFactory: Sample.Index.DatabaseFactory {
+    func openDatabase(at url: URL) async throws -> any Sample.Index.Reader {
+        try await Sample.Index.Database(dbPath: url)
+    }
+}
+
+let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
