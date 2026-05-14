@@ -129,14 +129,12 @@ extension CLI.Command {
 
             // Register resource provider with optional search-index markdown
             // lookup. The provider doesn't see the Search target — it just
-            // gets a closure that returns markdown for a URI, or nil if the
+            // gets a strategy that returns markdown for a URI, or nil if the
             // URI isn't indexed. This keeps MCPSupport free of the Search
             // import per the DI epic (#406).
-            let markdownLookup: MCP.Support.DocsResourceProvider.MarkdownLookup?
+            let markdownLookup: (any MCP.Support.MarkdownLookupStrategy)?
             if let searchIndex {
-                markdownLookup = { uri in
-                    try await searchIndex.getDocumentContent(uri: uri, format: .markdown)
-                }
+                markdownLookup = LiveMarkdownLookupStrategy(searchIndex: searchIndex)
             } else {
                 markdownLookup = nil
             }
