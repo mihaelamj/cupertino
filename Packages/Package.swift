@@ -17,6 +17,7 @@ let baseProducts: [Product] = [
 #if os(macOS)
 let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Logging"),
+    .singleTargetLibrary("LoggingModels"),
     .singleTargetLibrary("SharedCore"),
     .singleTargetLibrary("SharedConstants"),
     .singleTargetLibrary("SharedUtils"),
@@ -98,9 +99,24 @@ let targets: [Target] = {
 
     // ---------- Cupertino (Apple Docs Crawler → MCP Server - macOS only) ----------
     #if os(macOS)
+    // LoggingModels: GoF Strategy (1994 p. 315) protocol target paired with
+    // the concrete `Logging` target. Holds the `Logging` namespace anchor +
+    // `Logging.Recording` protocol + `Logging.Level` / `Logging.Category` /
+    // `Logging.NoopRecording`. Consumers take `any Logging.Recording` and
+    // never reach for a shared static. Foundation-only deps so any target
+    // can hold the protocol-typed seam without dragging the OSLog + file
+    // + console concrete in.
+    let loggingModelsTarget = Target.target(
+        name: "LoggingModels",
+        dependencies: []
+    )
+    let loggingModelsTestsTarget = Target.testTarget(
+        name: "LoggingModelsTests",
+        dependencies: ["LoggingModels"]
+    )
     let loggingTarget = Target.target(
         name: "Logging",
-        dependencies: ["SharedCore", "SharedConstants"]
+        dependencies: ["LoggingModels", "SharedCore", "SharedConstants"]
     )
     let loggingTestsTarget = Target.testTarget(
         name: "LoggingTests",
@@ -676,6 +692,8 @@ let targets: [Target] = {
     )
 
     let cupertinoTargets: [Target] = [
+        loggingModelsTarget,
+        loggingModelsTestsTarget,
         loggingTarget,
         loggingTestsTarget,
         sharedConstantsTarget,
