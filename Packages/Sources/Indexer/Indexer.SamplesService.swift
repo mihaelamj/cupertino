@@ -6,10 +6,11 @@ import SharedCore
 extension Indexer {
     /// Build `samples.db` from extracted sample-code zips at
     /// `~/.cupertino/sample-code/`. Wraps an injected
-    /// `Sample.Index.SamplesIndexingRun` closure with event-emission
-    /// so this target doesn't import `SampleIndex` or `CoreSampleCode`
-    /// directly — the CLI composition root supplies a closure backed
-    /// by `Sample.Index.Database` + `Sample.Index.Builder` +
+    /// `Sample.Index.SamplesIndexingRunner` conformer with
+    /// event-emission so this target doesn't import `SampleIndex`
+    /// or `CoreSampleCode` directly — the CLI composition root
+    /// supplies a `LiveSamplesIndexingRunner` backed by
+    /// `Sample.Index.Database` + `Sample.Index.Builder` +
     /// `Sample.Core.Catalog`.
     public enum SamplesService {
         public struct Request: Sendable {
@@ -73,7 +74,7 @@ extension Indexer {
 
         public static func run(
             _ request: Request,
-            samplesIndexingRun: Sample.Index.SamplesIndexingRun,
+            samplesIndexingRunner: any Sample.Index.SamplesIndexingRunner,
             handler: @escaping @Sendable (Event) -> Void = { _ in }
         ) async throws -> Outcome {
             handler(.starting(
@@ -99,7 +100,7 @@ extension Indexer {
                 force: request.force
             )
 
-            let result = try await samplesIndexingRun(input) { phase in
+            let result = try await samplesIndexingRunner.run(input: input) { phase in
                 switch phase {
                 case .clearingExistingIndex:
                     handler(.clearingExistingIndex)
