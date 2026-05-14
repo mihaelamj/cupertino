@@ -1,6 +1,6 @@
-import SearchModels
 import Foundation
 @testable import Search
+import SearchModels
 import SharedConstants
 import SharedCore
 import SharedModels
@@ -84,7 +84,7 @@ private func seedDoc(index: Search.Index, uri: String) async throws {
         content: "placeholder body",
         filePath: "/tmp/x",
         contentHash: "h",
-        lastCrawled: Date(),
+        lastCrawled: Date()
     ))
 }
 

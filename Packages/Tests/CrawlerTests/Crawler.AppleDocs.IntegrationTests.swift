@@ -26,7 +26,6 @@ import TestSupport
 // CupertinoCoreTests pre-extraction is preserved verbatim. No
 // behavioural change.
 
-
 // MARK: - Integration Tests
 
 /// Integration test: Downloads a real Apple documentation page
@@ -658,4 +657,3 @@ func crawlerStateAutoSaveInterval() async throws {
     #expect(modDate1 == modDate2)
     print("   ✅ Auto-save respects interval (file not modified)")
 }
-

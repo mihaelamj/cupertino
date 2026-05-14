@@ -1,8 +1,8 @@
 import ASTIndexer
 import Foundation
+import SearchModels
 import SharedConstants
 import SharedCore
-import SearchModels
 
 // MARK: - Source Item
 

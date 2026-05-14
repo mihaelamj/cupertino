@@ -1,6 +1,6 @@
-import SearchModels
 import Foundation
 @testable import Search
+import SearchModels
 import SharedConstants
 import SharedCore
 import SharedModels

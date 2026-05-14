@@ -1,6 +1,6 @@
 import Foundation
-import SharedConstants
 @testable import SharedConfiguration
+import SharedConstants
 import SharedUtils
 import Testing
 
@@ -84,7 +84,7 @@ struct SharedConfigurationPublicSurfaceTests {
         let outDir = URL(fileURLWithPath: "/tmp/cupertino-out")
         let detection = Shared.Configuration.ChangeDetection(
             metadataFile: explicit,
-            outputDirectory: outDir,
+            outputDirectory: outDir
         )
         #expect(detection.metadataFile == explicit)
     }
@@ -119,7 +119,7 @@ struct SharedConfigurationPublicSurfaceTests {
         let original = Shared.Configuration(
             crawler: Shared.Configuration.Crawler(),
             changeDetection: Shared.Configuration.ChangeDetection(),
-            output: Shared.Configuration.Output(format: .markdown, includeMarkdown: true),
+            output: Shared.Configuration.Output(format: .markdown, includeMarkdown: true)
         )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -159,7 +159,7 @@ struct SharedConfigurationPublicSurfaceTests {
         let sentinel = Shared.Configuration(
             crawler: Shared.Configuration.Crawler(),
             changeDetection: Shared.Configuration.ChangeDetection(),
-            output: Shared.Configuration.Output(format: .html, includeMarkdown: true),
+            output: Shared.Configuration.Output(format: .html, includeMarkdown: true)
         )
         try sentinel.save(to: tmp)
 

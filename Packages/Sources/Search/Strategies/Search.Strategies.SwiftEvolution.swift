@@ -1,8 +1,8 @@
 import Foundation
 import Logging
+import SearchModels
 import SharedConstants
 import SharedModels
-import SearchModels
 
 // MARK: - SwiftEvolutionStrategy
 
@@ -123,15 +123,16 @@ extension Search {
             )
             return files.filter {
                 $0.pathExtension == "md" &&
-                ($0.lastPathComponent.hasPrefix(Shared.Constants.Search.sePrefix) ||
-                 $0.lastPathComponent.hasPrefix(Shared.Constants.Search.stPrefix))
+                    ($0.lastPathComponent.hasPrefix(Shared.Constants.Search.sePrefix) ||
+                        $0.lastPathComponent.hasPrefix(Shared.Constants.Search.stPrefix))
             }
         }
 
         /// Write a single proposal to the index.
         ///
         /// Extracts the proposal ID from the filename, derives a Swift-version-based
-        /// availability range, and calls ``Search/Index/indexDocument(uri:source:framework:title:content:filePath:contentHash:lastCrawled:minIOS:minMacOS:minTvOS:minWatchOS:minVisionOS:availabilitySource:)``.
+        /// availability range, and calls
+        /// ``Search/Index/indexDocument(uri:source:framework:title:content:filePath:contentHash:lastCrawled:minIOS:minMacOS:minTvOS:minWatchOS:minVisionOS:availabilitySource:)``.
         ///
         /// - Parameters:
         ///   - file: The proposal `.md` file URL.
@@ -165,7 +166,7 @@ extension Search {
                 lastCrawled: modDate,
                 minIOS: availability.iOS,
                 minMacOS: availability.macOS,
-                availabilitySource: availability.iOS != nil ? "swift-version" : nil,
+                availabilitySource: availability.iOS != nil ? "swift-version" : nil
             ))
         }
     }

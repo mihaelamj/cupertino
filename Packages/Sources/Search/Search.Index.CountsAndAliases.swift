@@ -1,9 +1,9 @@
 import Foundation
-import SharedConstants
-import SharedUtils
-import SharedCore
-import SQLite3
 import SearchModels
+import SharedConstants
+import SharedCore
+import SharedUtils
+import SQLite3
 
 extension Search.Index {
     public func symbolCount() async throws -> Int {

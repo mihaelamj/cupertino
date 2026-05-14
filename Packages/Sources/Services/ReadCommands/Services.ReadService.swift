@@ -1,7 +1,7 @@
-import ServicesModels
 import Foundation
 import SampleIndex
 import SearchModels
+import ServicesModels
 import SharedConstants
 import SharedCore
 
@@ -89,7 +89,7 @@ extension Services {
             searchDB: URL?,
             samplesDB: URL?,
             packagesDB: URL?,
-            makeSearchDatabase: Services.ServiceContainer.MakeSearchDatabase,
+            searchDatabaseFactory: any Search.DatabaseFactory,
             packageFileLookup: PackageFileLookup
         ) async throws -> Result {
             if let explicit {
@@ -101,7 +101,7 @@ extension Services {
                     samplesDB: samplesDB,
                     packagesDB: packagesDB,
                     allowFallback: false,
-                    makeSearchDatabase: makeSearchDatabase,
+                    searchDatabaseFactory: searchDatabaseFactory,
                     packageFileLookup: packageFileLookup
                 )
             }
@@ -115,7 +115,7 @@ extension Services {
                     samplesDB: samplesDB,
                     packagesDB: packagesDB,
                     allowFallback: false,
-                    makeSearchDatabase: makeSearchDatabase,
+                    searchDatabaseFactory: searchDatabaseFactory,
                     packageFileLookup: packageFileLookup
                 )
             }
@@ -129,7 +129,7 @@ extension Services {
                     samplesDB: samplesDB,
                     packagesDB: packagesDB,
                     allowFallback: true,
-                    makeSearchDatabase: makeSearchDatabase,
+                    searchDatabaseFactory: searchDatabaseFactory,
                     packageFileLookup: packageFileLookup
                 )
             } catch ReadError.samplesNotFound, ReadError.packagesNotFound,
@@ -144,7 +144,7 @@ extension Services {
                 samplesDB: samplesDB,
                 packagesDB: packagesDB,
                 allowFallback: false,
-                makeSearchDatabase: makeSearchDatabase,
+                searchDatabaseFactory: searchDatabaseFactory,
                 packageFileLookup: packageFileLookup
             )
         }
@@ -159,7 +159,7 @@ extension Services {
             samplesDB: URL?,
             packagesDB: URL?,
             allowFallback: Bool,
-            makeSearchDatabase: Services.ServiceContainer.MakeSearchDatabase,
+            searchDatabaseFactory: any Search.DatabaseFactory,
             packageFileLookup: PackageFileLookup
         ) async throws -> Result {
             switch source {
@@ -168,7 +168,7 @@ extension Services {
                     identifier: identifier,
                     format: format,
                     searchDB: searchDB,
-                    makeSearchDatabase: makeSearchDatabase
+                    searchDatabaseFactory: searchDatabaseFactory
                 )
             case .samples:
                 return try await readFromSamples(
@@ -191,11 +191,11 @@ extension Services {
             identifier: String,
             format: Search.DocumentFormat,
             searchDB: URL?,
-            makeSearchDatabase: Services.ServiceContainer.MakeSearchDatabase
+            searchDatabaseFactory: any Search.DatabaseFactory
         ) async throws -> Result {
             let content = try await Services.ServiceContainer.withDocsService(
                 dbPath: searchDB?.path,
-                makeSearchDatabase: makeSearchDatabase
+                searchDatabaseFactory: searchDatabaseFactory
             ) { service in
                 try await service.read(uri: identifier, format: format)
             }

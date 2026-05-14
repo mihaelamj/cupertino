@@ -1,7 +1,7 @@
 import Foundation
+import SearchModels
 import SharedConstants
 import SharedCore
-import SearchModels
 
 // MARK: - Smart cross-source query (#192 section E)
 

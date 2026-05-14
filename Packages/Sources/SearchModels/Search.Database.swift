@@ -39,7 +39,7 @@ extension Search {
             minMacOS: String?,
             minTvOS: String?,
             minWatchOS: String?,
-            minVisionOS: String?,
+            minVisionOS: String?
         ) async throws -> [Search.Result]
 
         /// Fetch the pre-rendered document content for a URI.
@@ -66,7 +66,7 @@ extension Search {
             kind: String?,
             isAsync: Bool?,
             framework: String?,
-            limit: Int,
+            limit: Int
         ) async throws -> [Search.SymbolSearchResult]
 
         /// Semantic search for property-wrapper attributes (e.g. `@Observable`,
@@ -74,7 +74,7 @@ extension Search {
         func searchPropertyWrappers(
             wrapper: String,
             framework: String?,
-            limit: Int,
+            limit: Int
         ) async throws -> [Search.SymbolSearchResult]
 
         /// Semantic search for Swift concurrency patterns
@@ -82,14 +82,14 @@ extension Search {
         func searchConcurrencyPatterns(
             pattern: String,
             framework: String?,
-            limit: Int,
+            limit: Int
         ) async throws -> [Search.SymbolSearchResult]
 
         /// Semantic search for types by protocol conformance.
         func searchConformances(
             protocolName: String,
             framework: String?,
-            limit: Int,
+            limit: Int
         ) async throws -> [Search.SymbolSearchResult]
     }
 }
@@ -106,7 +106,7 @@ extension Search.Database {
         framework: String? = nil,
         language: String? = nil,
         limit: Int = Shared.Constants.Limit.defaultSearchLimit,
-        includeArchive: Bool = false,
+        includeArchive: Bool = false
     ) async throws -> [Search.Result] {
         try await search(
             query: query,
@@ -119,7 +119,7 @@ extension Search.Database {
             minMacOS: nil,
             minTvOS: nil,
             minWatchOS: nil,
-            minVisionOS: nil,
+            minVisionOS: nil
         )
     }
 }

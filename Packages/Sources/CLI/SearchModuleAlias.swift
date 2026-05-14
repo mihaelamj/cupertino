@@ -1,8 +1,8 @@
-import ServicesModels
 import Foundation
 import Search
 import SearchModels
 import Services
+import ServicesModels
 
 // MARK: - Search Module Disambiguator
 
@@ -19,13 +19,20 @@ import Services
 
 typealias SearchModule = Search
 
-// MARK: - Production Search.Database Factory
+// MARK: - Production Search.DatabaseFactory
 
-// The factory closure CLI threads into every `Services.ServiceContainer.with*Service`
-// call. Production wiring: open a `SearchModule.Index` at the resolved path —
-// `Search.Index` conforms to `Search.Database` (the protocol in SearchModels) so
-// the concrete actor flows through Services' protocol-typed inits unchanged.
-// One declaration covers every with*Service call site in CLI.
-let makeSearchDatabase: Services.ServiceContainer.MakeSearchDatabase = { dbURL in
-    try await SearchModule.Index(dbPath: dbURL)
+// Concrete `Search.DatabaseFactory` (GoF Factory Method) wired into every
+// `Services.ServiceContainer.with*Service` and `Services.ReadService` call.
+// Production wiring opens a `SearchModule.Index` at the resolved path —
+// `Search.Index` conforms to `Search.Database` (the protocol in SearchModels)
+// so the concrete actor flows through Services' protocol-typed inits
+// unchanged. One declaration covers every callsite in CLI; tests substitute a
+// mock conforming to `Search.DatabaseFactory`.
+
+struct LiveSearchDatabaseFactory: Search.DatabaseFactory {
+    func openDatabase(at url: URL) async throws -> any Search.Database {
+        try await SearchModule.Index(dbPath: url)
+    }
 }
+
+let searchDatabaseFactory: any Search.DatabaseFactory = LiveSearchDatabaseFactory()

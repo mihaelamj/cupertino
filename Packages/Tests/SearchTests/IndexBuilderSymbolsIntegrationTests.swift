@@ -1,8 +1,8 @@
-import SearchModels
 import CoreProtocols
 import Foundation
 import Logging
 @testable import Search
+import SearchModels
 import SharedConstants
 import SharedCore
 import SharedModels

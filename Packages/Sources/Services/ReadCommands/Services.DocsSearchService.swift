@@ -1,6 +1,6 @@
-import ServicesModels
 import Foundation
 import SearchModels
+import ServicesModels
 import SharedConstants
 import SharedCore
 

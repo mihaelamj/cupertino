@@ -1,13 +1,13 @@
-import ServicesModels
 import ArgumentParser
 import Foundation
 import Logging
 import Search
+import SearchModels
 import Services
+import ServicesModels
 import SharedConstants
 import SharedCore
 import SharedUtils
-import SearchModels
 
 // MARK: - Per-source runners
 
@@ -17,7 +17,7 @@ import SearchModels
 /// `CLI.Command.Search+SmartReport.swift` (#239).
 extension CLI.Command.Search {
     func runDocsSearch() async throws {
-        let results = try await Services.ServiceContainer.withDocsService(dbPath: searchDb, makeSearchDatabase: makeSearchDatabase) { service in
+        let results = try await Services.ServiceContainer.withDocsService(dbPath: searchDb, searchDatabaseFactory: searchDatabaseFactory) { service in
             try await service.search(Services.SearchQuery(
                 text: query,
                 source: source,
@@ -36,7 +36,7 @@ extension CLI.Command.Search {
         let teasers = try await Services.ServiceContainer.withTeaserService(
             searchDbPath: searchDb,
             sampleDbPath: resolveSampleDbPath(),
-            makeSearchDatabase: makeSearchDatabase,
+            searchDatabaseFactory: searchDatabaseFactory
         ) { service in
             await service.fetchAllTeasers(
                 query: query,
@@ -98,7 +98,7 @@ extension CLI.Command.Search {
             teasers = try await Services.ServiceContainer.withTeaserService(
                 searchDbPath: searchDb,
                 sampleDbPath: resolveSampleDbPath(),
-                makeSearchDatabase: makeSearchDatabase,
+                searchDatabaseFactory: searchDatabaseFactory
             ) { service in
                 await service.fetchAllTeasers(
                     query: query,
@@ -177,7 +177,7 @@ extension CLI.Command.Search {
     }
 
     func runHIGSearch() async throws {
-        let results = try await Services.ServiceContainer.withDocsService(dbPath: searchDb, makeSearchDatabase: makeSearchDatabase) { service in
+        let results = try await Services.ServiceContainer.withDocsService(dbPath: searchDb, searchDatabaseFactory: searchDatabaseFactory) { service in
             try await service.search(Services.SearchQuery(
                 text: query,
                 source: Shared.Constants.SourcePrefix.hig,
@@ -191,7 +191,7 @@ extension CLI.Command.Search {
         let teasers = try await Services.ServiceContainer.withTeaserService(
             searchDbPath: searchDb,
             sampleDbPath: resolveSampleDbPath(),
-            makeSearchDatabase: makeSearchDatabase,
+            searchDatabaseFactory: searchDatabaseFactory
         ) { service in
             await service.fetchAllTeasers(
                 query: query,

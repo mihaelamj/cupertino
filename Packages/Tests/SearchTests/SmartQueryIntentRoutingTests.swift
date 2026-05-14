@@ -1,8 +1,8 @@
+import Foundation
+@testable import Search
+import SearchModels
 import SharedConstants
 import Testing
-import Foundation
-import SearchModels
-@testable import Search
 
 // Intent routing for cross-source smart query (#254).
 //

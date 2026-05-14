@@ -1,5 +1,5 @@
-import CoreProtocols
 @testable import CoreJSONParser
+import CoreProtocols
 import Foundation
 import Testing
 

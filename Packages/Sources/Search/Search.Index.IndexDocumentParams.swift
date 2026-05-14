@@ -53,7 +53,7 @@ extension Search.Index {
             minTvOS: String? = nil,
             minWatchOS: String? = nil,
             minVisionOS: String? = nil,
-            availabilitySource: String? = nil,
+            availabilitySource: String? = nil
         ) {
             self.uri = uri
             self.source = source

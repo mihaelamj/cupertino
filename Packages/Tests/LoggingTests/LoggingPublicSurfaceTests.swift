@@ -141,7 +141,7 @@ struct LoggingPublicSurfaceTests {
             fileURL: URL(fileURLWithPath: "/tmp/cupertino-test.log"),
             minLevel: .warning,
             showTimestamps: false,
-            showCategory: true,
+            showCategory: true
         )
         #expect(opts.consoleEnabled == false)
         #expect(opts.fileEnabled == true)
@@ -166,7 +166,7 @@ struct LoggingPublicSurfaceTests {
             fileURL: nil,
             minLevel: .error,
             showTimestamps: false,
-            showCategory: false,
+            showCategory: false
         )
         await Logging.Unified.shared.configure(opts)
         // Reset to default so we don't pollute follow-on tests.

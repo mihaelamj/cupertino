@@ -18,7 +18,7 @@ extension Search {
             introducedAt: String? = nil,
             deprecated: Bool = false,
             unavailable: Bool = false,
-            beta: Bool = false,
+            beta: Bool = false
         ) {
             self.name = name
             self.introducedAt = introducedAt

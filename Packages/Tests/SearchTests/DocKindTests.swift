@@ -1,4 +1,5 @@
 import SearchModels
+
 // swiftlint:disable identifier_name
 import Foundation
 @testable import Search

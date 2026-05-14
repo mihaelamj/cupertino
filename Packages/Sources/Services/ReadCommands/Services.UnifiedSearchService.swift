@@ -1,8 +1,8 @@
-import ServicesModels
 import Foundation
 import SampleIndex
 import SampleIndexModels
 import SearchModels
+import ServicesModels
 import SharedConstants
 import SharedCore
 import SharedUtils
