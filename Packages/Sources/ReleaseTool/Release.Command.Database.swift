@@ -89,6 +89,25 @@ extension Release.Command {
                 Release.Console.warning("packages.db: missing (continuing because --allow-missing-packages was passed)")
             }
 
+            // #236: checkpoint-truncate each DB before bundling so
+            // any pages still in a `.db-wal` sidecar are folded into
+            // the main file. Without this step a release zip would
+            // ship a `.db` that's missing the most recent index
+            // pages, and `cupertino setup` users would silently
+            // search a stale corpus.
+            Release.Console.info("\n💾 Checkpoint-truncating WAL sidecars before bundle...")
+            for (label, url) in [
+                ("search.db", searchDBURL),
+                ("samples.db", samplesDBURL),
+            ] + (packagesDBPresent ? [("packages.db", packagesDBURL)] : []) {
+                let outcome = try Release.Publishing.checkpointTruncate(at: url)
+                let detail = outcome.walFileExisted
+                    ? "folded \(outcome.framesWritten)/\(outcome.framesTotal) frames"
+                    : "no WAL sidecar"
+                let busyNote = outcome.busy ? " ⚠ SQLITE_BUSY (was another process touching the DB?)" : ""
+                Release.Console.substep("✓ \(label): \(detail)\(busyNote)")
+            }
+
             // Bundle. The zip name still uses the historical "cupertino-databases-"
             // prefix so existing `cupertino setup` clients keep working.
             var bundled: [URL] = [searchDBURL, samplesDBURL]
