@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import Logging
+import LoggingModels
 import SampleIndex
 import Services
 import ServicesModels
@@ -48,8 +49,8 @@ extension CLI.Command {
             // Use Services.ServiceContainer for managed lifecycle
             let file = try await Services.ServiceContainer.withSampleService(dbPath: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
                 guard let file = try await service.getFile(projectId: projectId, path: filePath) else {
-                    Logging.Log.error("File not found: \(filePath) in project \(projectId)")
-                    Logging.Log.output("Use 'cupertino read-sample \(projectId)' to list available files.")
+                    Logging.LiveRecording().error("File not found: \(filePath) in project \(projectId)")
+                    Logging.LiveRecording().output("Use 'cupertino read-sample \(projectId)' to list available files.")
                     throw ExitCode.failure
                 }
                 return file
@@ -61,10 +62,10 @@ extension CLI.Command {
                 outputText(file)
             case .json:
                 let formatter = Sample.Format.JSON.File()
-                Logging.Log.output(formatter.format(file))
+                Logging.LiveRecording().output(formatter.format(file))
             case .markdown:
                 let formatter = Sample.Format.Markdown.File()
-                Logging.Log.output(formatter.format(file))
+                Logging.LiveRecording().output(formatter.format(file))
             }
         }
 
@@ -80,11 +81,11 @@ extension CLI.Command {
         // MARK: - Output Formatting
 
         private func outputText(_ file: Sample.Index.File) {
-            Logging.Log.output("// File: \(file.path)")
-            Logging.Log.output("// Project: \(file.projectId)")
-            Logging.Log.output("// Size: \(Shared.Utils.Formatting.formatBytes(file.size))")
-            Logging.Log.output("")
-            Logging.Log.output(file.content)
+            Logging.LiveRecording().output("// File: \(file.path)")
+            Logging.LiveRecording().output("// Project: \(file.projectId)")
+            Logging.LiveRecording().output("// Size: \(Shared.Utils.Formatting.formatBytes(file.size))")
+            Logging.LiveRecording().output("")
+            Logging.LiveRecording().output(file.content)
         }
     }
 }

@@ -257,16 +257,16 @@ extension CLI.Command {
             // and matches the start URL — no flag needed. We log "Fetching" here
             // unconditionally; the Crawler itself prints "🔄 Found resumable session"
             // when it actually loads saved state.
-            Logging.ConsoleLogger.info("🚀 Cupertino - Fetching \(type.displayName)")
+            Logging.LiveRecording().info("🚀 Cupertino - Fetching \(type.displayName)")
             // Print the resolved output directory at startup so #212-style
             // BinaryConfig misrouting is immediately visible.
             let resolvedOutputDir = outputDir.flatMap { URL(fileURLWithPath: $0).expandingTildeInPath.path }
                 ?? type.defaultOutputDir
-            Logging.ConsoleLogger.info("   Output: \(resolvedOutputDir)\n")
+            Logging.LiveRecording().info("   Output: \(resolvedOutputDir)\n")
         }
 
         private mutating func runAllFetches() async throws {
-            Logging.ConsoleLogger.info("📚 Fetching all documentation types in parallel:\n")
+            Logging.LiveRecording().info("📚 Fetching all documentation types in parallel:\n")
             let baseCommand = self
 
             try await withThrowingTaskGroup(of: (FetchType, Result<Void, Error>).self) { group in
@@ -285,7 +285,7 @@ extension CLI.Command {
             _ fetchType: FetchType,
             baseCommand: CLI.Command.Fetch
         ) async -> (FetchType, Result<Void, Error>) {
-            Logging.ConsoleLogger.info("🚀 Starting \(fetchType.displayName)...")
+            Logging.LiveRecording().info("🚀 Starting \(fetchType.displayName)...")
             var fetchCommand = baseCommand
             fetchCommand.type = fetchType
             fetchCommand.outputDir = fetchType.defaultOutputDir
@@ -307,9 +307,9 @@ extension CLI.Command {
                 let (fetchType, outcome) = result
                 switch outcome {
                 case .success:
-                    Logging.ConsoleLogger.info("✅ Completed \(fetchType.displayName)")
+                    Logging.LiveRecording().info("✅ Completed \(fetchType.displayName)")
                 case .failure(let error):
-                    Logging.ConsoleLogger.error("❌ Failed \(fetchType.displayName): \(error)")
+                    Logging.LiveRecording().error("❌ Failed \(fetchType.displayName): \(error)")
                 }
             }
             return results
@@ -322,9 +322,9 @@ extension CLI.Command {
             }
 
             if failures.isEmpty {
-                Logging.ConsoleLogger.info("\n✅ All documentation types fetched successfully!")
+                Logging.LiveRecording().info("\n✅ All documentation types fetched successfully!")
             } else {
-                Logging.ConsoleLogger.info("\n⚠️  Completed with \(failures.count) failure(s)")
+                Logging.LiveRecording().info("\n⚠️  Completed with \(failures.count) failure(s)")
                 throw ExitCode.failure
             }
         }
@@ -496,21 +496,21 @@ extension CLI.Command {
             let stats = try await crawler.crawl { progress in
                 let percentage = String(format: "%.1f", progress.percentage)
                 let urlComponent = progress.currentURL.lastPathComponent
-                Logging.ConsoleLogger.output("   Progress: \(percentage)% - \(urlComponent)")
+                Logging.LiveRecording().output("   Progress: \(percentage)% - \(urlComponent)")
             }
 
             logCrawlCompletion(stats)
         }
 
         private func logCrawlCompletion(_ stats: Shared.Models.CrawlStatistics) {
-            Logging.ConsoleLogger.output("")
-            Logging.ConsoleLogger.info("✅ Crawl completed!")
-            Logging.ConsoleLogger.info("   Total: \(stats.totalPages) pages")
-            Logging.ConsoleLogger.info("   New: \(stats.newPages)")
-            Logging.ConsoleLogger.info("   Updated: \(stats.updatedPages)")
-            Logging.ConsoleLogger.info("   Skipped: \(stats.skippedPages)")
+            Logging.LiveRecording().output("")
+            Logging.LiveRecording().info("✅ Crawl completed!")
+            Logging.LiveRecording().info("   Total: \(stats.totalPages) pages")
+            Logging.LiveRecording().info("   New: \(stats.newPages)")
+            Logging.LiveRecording().info("   Updated: \(stats.updatedPages)")
+            Logging.LiveRecording().info("   Skipped: \(stats.skippedPages)")
             if let duration = stats.duration {
-                Logging.ConsoleLogger.info("   Duration: \(Int(duration))s")
+                Logging.LiveRecording().info("   Duration: \(Int(duration))s")
             }
         }
 
@@ -527,17 +527,17 @@ extension CLI.Command {
 
             let stats = try await crawler.crawl { progress in
                 let percentage = String(format: "%.1f", progress.percentage)
-                Logging.ConsoleLogger.output("   Progress: \(percentage)% - \(progress.proposalID)")
+                Logging.LiveRecording().output("   Progress: \(percentage)% - \(progress.proposalID)")
             }
 
-            Logging.ConsoleLogger.output("")
-            Logging.ConsoleLogger.info("✅ Download completed!")
-            Logging.ConsoleLogger.info("   Total: \(stats.totalProposals) proposals")
-            Logging.ConsoleLogger.info("   New: \(stats.newProposals)")
-            Logging.ConsoleLogger.info("   Updated: \(stats.updatedProposals)")
-            Logging.ConsoleLogger.info("   Errors: \(stats.errors)")
+            Logging.LiveRecording().output("")
+            Logging.LiveRecording().info("✅ Download completed!")
+            Logging.LiveRecording().info("   Total: \(stats.totalProposals) proposals")
+            Logging.LiveRecording().info("   New: \(stats.newProposals)")
+            Logging.LiveRecording().info("   Updated: \(stats.updatedProposals)")
+            Logging.LiveRecording().info("   Errors: \(stats.errors)")
             if let duration = stats.duration {
-                Logging.ConsoleLogger.info("   Duration: \(Int(duration))s")
+                Logging.LiveRecording().info("   Duration: \(Int(duration))s")
             }
         }
 
@@ -555,29 +555,29 @@ extension CLI.Command {
             try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
 
             if skipMetadata, skipArchives, !annotateAvailability {
-                Logging.ConsoleLogger.error(
+                Logging.LiveRecording().error(
                     "❌ Both --skip-metadata and --skip-archives passed without --annotate-availability — nothing to do."
                 )
                 throw ExitCode.failure
             }
 
             if ProcessInfo.processInfo.environment[Shared.Constants.EnvVar.githubToken] == nil {
-                Logging.ConsoleLogger.info(Shared.Constants.Message.gitHubTokenTip)
-                Logging.ConsoleLogger.info("   \(Shared.Constants.Message.rateLimitWithoutToken)")
-                Logging.ConsoleLogger.info("   \(Shared.Constants.Message.rateLimitWithToken)")
-                Logging.ConsoleLogger.info("   \(Shared.Constants.Message.exportGitHubToken)\n")
+                Logging.LiveRecording().info(Shared.Constants.Message.gitHubTokenTip)
+                Logging.LiveRecording().info("   \(Shared.Constants.Message.rateLimitWithoutToken)")
+                Logging.LiveRecording().info("   \(Shared.Constants.Message.rateLimitWithToken)")
+                Logging.LiveRecording().info("   \(Shared.Constants.Message.exportGitHubToken)\n")
             }
 
             if !skipMetadata {
                 try await runPackageMetadataStage(outputURL: outputURL)
             } else {
-                Logging.ConsoleLogger.info("⏭  --skip-metadata: skipping Swift Package Index metadata refresh")
+                Logging.LiveRecording().info("⏭  --skip-metadata: skipping Swift Package Index metadata refresh")
             }
 
             if !skipArchives {
                 try await runPackageArchivesStage(outputURL: outputURL)
             } else {
-                Logging.ConsoleLogger.info("⏭  --skip-archives: skipping GitHub archive download")
+                Logging.LiveRecording().info("⏭  --skip-archives: skipping GitHub archive download")
             }
 
             if annotateAvailability {
@@ -591,11 +591,11 @@ extension CLI.Command {
         /// `Sources/` and `Tests/` trees. Pure on-disk pass — runs whether or
         /// not stage 2 just downloaded fresh archives. Idempotent.
         private func runPackageAnnotationStage(outputURL: URL) async throws {
-            Logging.ConsoleLogger.info("🏷  Stage 3 — Annotating availability metadata (#219)")
+            Logging.LiveRecording().info("🏷  Stage 3 — Annotating availability metadata (#219)")
 
             let fm = FileManager.default
             guard fm.fileExists(atPath: outputURL.path) else {
-                Logging.ConsoleLogger.error(
+                Logging.LiveRecording().error(
                     "❌ Packages directory \(outputURL.path) doesn't exist — run with stage 2 first."
                 )
                 throw ExitCode.failure
@@ -623,26 +623,26 @@ extension CLI.Command {
                         let result = try await annotator.annotate(packageDirectory: repoURL)
                         packagesAnnotated += 1
                         totalAttrs += result.stats.totalAttributes
-                        Logging.ConsoleLogger.info(
+                        Logging.LiveRecording().info(
                             "  ✅ \(label) — \(result.stats.totalAttributes) @available attrs across "
                                 + "\(result.stats.filesWithAvailability)/\(result.stats.filesScanned) files"
                         )
                     } catch {
-                        Logging.ConsoleLogger.error("  ✗ \(label) — \(error.localizedDescription)")
+                        Logging.LiveRecording().error("  ✗ \(label) — \(error.localizedDescription)")
                     }
                 }
             }
 
             let duration = Int(Date().timeIntervalSince(startedAt))
-            Logging.ConsoleLogger.output("")
-            Logging.ConsoleLogger.info("✅ Annotation completed")
-            Logging.ConsoleLogger.info("   Packages annotated: \(packagesAnnotated)")
-            Logging.ConsoleLogger.info("   Total @available attrs: \(totalAttrs)")
-            Logging.ConsoleLogger.info("   Duration: \(duration)s")
+            Logging.LiveRecording().output("")
+            Logging.LiveRecording().info("✅ Annotation completed")
+            Logging.LiveRecording().info("   Packages annotated: \(packagesAnnotated)")
+            Logging.LiveRecording().info("   Total @available attrs: \(totalAttrs)")
+            Logging.LiveRecording().info("   Duration: \(duration)s")
         }
 
         private func runPackageMetadataStage(outputURL: URL) async throws {
-            Logging.ConsoleLogger.info("📇 Stage 1/2 — Refreshing Swift Package Index metadata")
+            Logging.LiveRecording().info("📇 Stage 1/2 — Refreshing Swift Package Index metadata")
 
             let fetcher = Core.PackageIndexing.PackageFetcher(
                 outputDirectory: outputURL,
@@ -653,22 +653,22 @@ extension CLI.Command {
 
             let stats = try await fetcher.fetch { progress in
                 let percent = String(format: "%.1f", progress.percentage)
-                Logging.ConsoleLogger.output("   Progress: \(percent)% - \(progress.packageName)")
+                Logging.LiveRecording().output("   Progress: \(percent)% - \(progress.packageName)")
             }
 
-            Logging.ConsoleLogger.output("")
-            Logging.ConsoleLogger.info("✅ Metadata refresh completed")
-            Logging.ConsoleLogger.info("   Total packages: \(stats.totalPackages)")
-            Logging.ConsoleLogger.info("   Successful: \(stats.successfulFetches)")
-            Logging.ConsoleLogger.info("   Errors: \(stats.errors)")
+            Logging.LiveRecording().output("")
+            Logging.LiveRecording().info("✅ Metadata refresh completed")
+            Logging.LiveRecording().info("   Total packages: \(stats.totalPackages)")
+            Logging.LiveRecording().info("   Successful: \(stats.successfulFetches)")
+            Logging.LiveRecording().info("   Errors: \(stats.errors)")
             if let duration = stats.duration {
-                Logging.ConsoleLogger.info("   Duration: \(Int(duration))s")
+                Logging.LiveRecording().info("   Duration: \(Int(duration))s")
             }
-            Logging.ConsoleLogger.info("   📁 \(outputURL.path)/\(Shared.Constants.FileName.packagesWithStars)\n")
+            Logging.LiveRecording().info("   📁 \(outputURL.path)/\(Shared.Constants.FileName.packagesWithStars)\n")
         }
 
         private func runPackageArchivesStage(outputURL: URL) async throws {
-            Logging.ConsoleLogger.info("📦 Stage 2/2 — Downloading priority package archives")
+            Logging.LiveRecording().info("📦 Stage 2/2 — Downloading priority package archives")
 
             // Load priority packages
             let priorityPackages = await Core.PackageIndexing.PriorityPackagesCatalog.allPackages
@@ -677,12 +677,12 @@ extension CLI.Command {
                 let priorityPackagesPath = Shared.Constants.defaultPackagesDirectory
                     .appendingPathComponent(Shared.Constants.FileName.priorityPackages)
                     .path
-                Logging.ConsoleLogger.error("❌ Error: No priority packages found")
-                Logging.ConsoleLogger.error("   Searched:")
-                Logging.ConsoleLogger.error("   - \(priorityPackagesPath)")
-                Logging.ConsoleLogger.error("   - Shared.Constants.CriticalApplePackages")
-                Logging.ConsoleLogger.error("   - Shared.Constants.KnownEcosystemPackages")
-                Logging.ConsoleLogger.error("\n   Please ensure at least one package source is configured.")
+                Logging.LiveRecording().error("❌ Error: No priority packages found")
+                Logging.LiveRecording().error("   Searched:")
+                Logging.LiveRecording().error("   - \(priorityPackagesPath)")
+                Logging.LiveRecording().error("   - Shared.Constants.CriticalApplePackages")
+                Logging.LiveRecording().error("   - Shared.Constants.KnownEcosystemPackages")
+                Logging.LiveRecording().error("\n   Please ensure at least one package source is configured.")
                 throw ExitCode.failure
             }
 
@@ -728,16 +728,16 @@ extension CLI.Command {
                 if !refresh,
                    let cached = Core.PackageIndexing.ResolvedPackagesStore.load(from: resolvedStoreURL),
                    cached.seedChecksum == seedChecksum {
-                    Logging.ConsoleLogger.info("🔗 Using cached closure from resolved-packages.json (\(cached.packages.count) packages, generated \(cached.generatedAt))")
+                    Logging.LiveRecording().info("🔗 Using cached closure from resolved-packages.json (\(cached.packages.count) packages, generated \(cached.generatedAt))")
                     resolvedPackages = cached.packages
                 } else {
                     if refresh {
-                        Logging.ConsoleLogger.info("🔗 --refresh: discarding cached closure, re-walking dependency graphs...")
+                        Logging.LiveRecording().info("🔗 --refresh: discarding cached closure, re-walking dependency graphs...")
                     } else {
-                        Logging.ConsoleLogger.info("🔗 Resolving transitive dependencies for \(seedRefs.count) seed packages...")
+                        Logging.LiveRecording().info("🔗 Resolving transitive dependencies for \(seedRefs.count) seed packages...")
                     }
                     if !exclusions.isEmpty {
-                        Logging.ConsoleLogger.info("   Exclusion list in effect: \(exclusions.count) entries")
+                        Logging.LiveRecording().info("   Exclusion list in effect: \(exclusions.count) entries")
                     }
                     let canonicalizer = Core.Protocols.GitHubCanonicalizer(cacheURL: canonicalCacheURL)
                     let manifestCache = Core.PackageIndexing.ManifestCache(
@@ -752,18 +752,18 @@ extension CLI.Command {
                     )
                     let (resolved, resolverStats) = await resolver.resolve(seeds: seedRefs) { name, done, total in
                         if done == 1 || done % 10 == 0 || done == total {
-                            Logging.ConsoleLogger.output("   Resolving: \(done)/\(total) (\(name))")
+                            Logging.LiveRecording().output("   Resolving: \(done)/\(total) (\(name))")
                         }
                     }
                     resolvedPackages = resolved
-                    Logging.ConsoleLogger.info("   Seeds: \(resolverStats.seedCount)")
-                    Logging.ConsoleLogger.info("   Discovered via dependencies: \(resolverStats.discoveredCount)")
-                    Logging.ConsoleLogger.info("   Excluded: \(resolverStats.excludedCount)")
-                    Logging.ConsoleLogger.info("   Skipped (non-GitHub): \(resolverStats.skippedNonGitHub)")
-                    Logging.ConsoleLogger.info("   Skipped (SPM registry id): \(resolverStats.skippedRegistry)")
-                    Logging.ConsoleLogger.info("   Missing manifest: \(resolverStats.missingManifest)")
-                    Logging.ConsoleLogger.info("   Malformed manifest: \(resolverStats.malformedManifest)")
-                    Logging.ConsoleLogger.info("   Resolver duration: \(Int(resolverStats.duration))s")
+                    Logging.LiveRecording().info("   Seeds: \(resolverStats.seedCount)")
+                    Logging.LiveRecording().info("   Discovered via dependencies: \(resolverStats.discoveredCount)")
+                    Logging.LiveRecording().info("   Excluded: \(resolverStats.excludedCount)")
+                    Logging.LiveRecording().info("   Skipped (non-GitHub): \(resolverStats.skippedNonGitHub)")
+                    Logging.LiveRecording().info("   Skipped (SPM registry id): \(resolverStats.skippedRegistry)")
+                    Logging.LiveRecording().info("   Missing manifest: \(resolverStats.missingManifest)")
+                    Logging.LiveRecording().info("   Malformed manifest: \(resolverStats.malformedManifest)")
+                    Logging.LiveRecording().info("   Resolver duration: \(Int(resolverStats.duration))s")
 
                     let store = Core.PackageIndexing.ResolvedPackagesStore(
                         cupertinoVersion: Shared.Constants.App.version,
@@ -772,9 +772,9 @@ extension CLI.Command {
                     )
                     do {
                         try store.write(to: resolvedStoreURL)
-                        Logging.ConsoleLogger.info("   Saved closure to \(resolvedStoreURL.path)")
+                        Logging.LiveRecording().info("   Saved closure to \(resolvedStoreURL.path)")
                     } catch {
-                        Logging.ConsoleLogger.error("   ⚠️  Could not persist resolved-packages.json: \(error)")
+                        Logging.LiveRecording().error("   ⚠️  Could not persist resolved-packages.json: \(error)")
                     }
                 }
             } else {
@@ -787,13 +787,13 @@ extension CLI.Command {
                         parents: ["\(ref.owner.lowercased())/\(ref.repo.lowercased())"]
                     )
                 }
-                Logging.ConsoleLogger.info("🔗 Skipping dependency resolution (--no-recurse)")
+                Logging.LiveRecording().info("🔗 Skipping dependency resolution (--no-recurse)")
                 if !exclusions.isEmpty {
-                    Logging.ConsoleLogger.info("   Exclusion list ignored while --no-recurse is set")
+                    Logging.LiveRecording().info("   Exclusion list ignored while --no-recurse is set")
                 }
             }
 
-            Logging.ConsoleLogger.info("📦 Fetching \(resolvedPackages.count) archives into \(outputURL.path)...")
+            Logging.LiveRecording().info("📦 Fetching \(resolvedPackages.count) archives into \(outputURL.path)...")
 
             let extractor = Core.PackageIndexing.PackageArchiveExtractor()
             let startedAt = Date()
@@ -821,38 +821,38 @@ extension CLI.Command {
                     stats.totalFilesSaved += extraction.files.count
                     stats.totalBytesSaved += extraction.totalBytes
                     let kb = extraction.totalBytes / 1024
-                    Logging.ConsoleLogger.info("  ✅ \(label) — \(extraction.files.count) files, \(kb) KB")
+                    Logging.LiveRecording().info("  ✅ \(label) — \(extraction.files.count) files, \(kb) KB")
                 } catch Core.PackageIndexing.PackageArchiveExtractor.ExtractError.tarballNotFound {
                     stats.errors += 1
-                    Logging.ConsoleLogger.error("  ✗ \(label) — archive not found on any ref")
+                    Logging.LiveRecording().error("  ✗ \(label) — archive not found on any ref")
                 } catch Core.PackageIndexing.PackageArchiveExtractor.ExtractError.tarballTooLarge(let bytes) {
                     stats.errors += 1
-                    Logging.ConsoleLogger.error("  ✗ \(label) — archive too large (\(bytes / 1024 / 1024) MB)")
+                    Logging.LiveRecording().error("  ✗ \(label) — archive too large (\(bytes / 1024 / 1024) MB)")
                 } catch {
                     stats.errors += 1
-                    Logging.ConsoleLogger.error("  ✗ \(label) — \(error.localizedDescription)")
+                    Logging.LiveRecording().error("  ✗ \(label) — \(error.localizedDescription)")
                 }
 
                 if (idx + 1) % Shared.Constants.Interval.progressLogEvery == 0 || idx + 1 == resolvedPackages.count {
                     let percent = Double(idx + 1) / Double(resolvedPackages.count) * 100
-                    Logging.ConsoleLogger.output(
+                    Logging.LiveRecording().output(
                         String(format: "📊 Progress: %.1f%% (%d/%d)", percent, idx + 1, resolvedPackages.count)
                     )
                 }
             }
             stats.endTime = Date()
 
-            Logging.ConsoleLogger.output("")
-            Logging.ConsoleLogger.info("✅ Archive download completed")
-            Logging.ConsoleLogger.info("   New packages: \(stats.newPackages)")
-            Logging.ConsoleLogger.info("   Files saved: \(stats.totalFilesSaved)")
-            Logging.ConsoleLogger.info("   Bytes saved: \(stats.totalBytesSaved / 1024) KB")
-            Logging.ConsoleLogger.info("   Errors: \(stats.errors)")
+            Logging.LiveRecording().output("")
+            Logging.LiveRecording().info("✅ Archive download completed")
+            Logging.LiveRecording().info("   New packages: \(stats.newPackages)")
+            Logging.LiveRecording().info("   Files saved: \(stats.totalFilesSaved)")
+            Logging.LiveRecording().info("   Bytes saved: \(stats.totalBytesSaved / 1024) KB")
+            Logging.LiveRecording().info("   Errors: \(stats.errors)")
             if let duration = stats.duration {
-                Logging.ConsoleLogger.info("   Duration: \(Int(duration))s")
+                Logging.LiveRecording().info("   Duration: \(Int(duration))s")
             }
-            Logging.ConsoleLogger.info("   📁 \(outputURL.path)")
-            Logging.ConsoleLogger.info("   Next: index them into \(Shared.Constants.defaultPackagesDatabase.path) via `save --packages`")
+            Logging.LiveRecording().info("   📁 \(outputURL.path)")
+            Logging.LiveRecording().info("   Next: index them into \(Shared.Constants.defaultPackagesDatabase.path) via `save --packages`")
         }
 
         private func writePackageManifest(
@@ -905,17 +905,17 @@ extension CLI.Command {
 
             let stats = try await crawler.download { progress in
                 let percent = String(format: "%.1f", progress.percentage)
-                Logging.ConsoleLogger.output("   Progress: \(percent)% - \(progress.sampleName)")
+                Logging.LiveRecording().output("   Progress: \(percent)% - \(progress.sampleName)")
             }
 
-            Logging.ConsoleLogger.output("")
-            Logging.ConsoleLogger.info("✅ Download completed!")
-            Logging.ConsoleLogger.info("   Total: \(stats.totalSamples) samples")
-            Logging.ConsoleLogger.info("   Downloaded: \(stats.downloadedSamples)")
-            Logging.ConsoleLogger.info("   Skipped: \(stats.skippedSamples)")
-            Logging.ConsoleLogger.info("   Errors: \(stats.errors)")
+            Logging.LiveRecording().output("")
+            Logging.LiveRecording().info("✅ Download completed!")
+            Logging.LiveRecording().info("   Total: \(stats.totalSamples) samples")
+            Logging.LiveRecording().info("   Downloaded: \(stats.downloadedSamples)")
+            Logging.LiveRecording().info("   Skipped: \(stats.skippedSamples)")
+            Logging.LiveRecording().info("   Errors: \(stats.errors)")
             if let duration = stats.duration {
-                Logging.ConsoleLogger.info("   Duration: \(Int(duration))s")
+                Logging.LiveRecording().info("   Duration: \(Int(duration))s")
             }
         }
 
@@ -926,17 +926,17 @@ extension CLI.Command {
             let fetcher = Sample.Core.GitHubFetcher(outputDirectory: outputURL, logger: Logging.LiveRecording())
 
             let stats = try await fetcher.fetch { progress in
-                Logging.ConsoleLogger.output("   \(progress.message)")
+                Logging.LiveRecording().output("   \(progress.message)")
             }
 
-            Logging.ConsoleLogger.output("")
-            Logging.ConsoleLogger.info("✅ Fetch completed!")
-            Logging.ConsoleLogger.info("   Action: \(stats.action.description)")
-            Logging.ConsoleLogger.info("   Projects: \(stats.projectCount)")
+            Logging.LiveRecording().output("")
+            Logging.LiveRecording().info("✅ Fetch completed!")
+            Logging.LiveRecording().info("   Action: \(stats.action.description)")
+            Logging.LiveRecording().info("   Projects: \(stats.projectCount)")
             if let duration = stats.duration {
-                Logging.ConsoleLogger.info("   Duration: \(Int(duration))s")
+                Logging.LiveRecording().info("   Duration: \(Int(duration))s")
             }
-            Logging.ConsoleLogger.info("\n📁 Output: \(outputURL.path)/cupertino-sample-code")
+            Logging.LiveRecording().info("\n📁 Output: \(outputURL.path)/cupertino-sample-code")
         }
 
         private func runArchiveCrawl() async throws {
@@ -949,13 +949,13 @@ extension CLI.Command {
             let guides = try await loadArchiveGuides()
 
             guard !guides.isEmpty else {
-                Logging.ConsoleLogger.error("❌ No archive guides configured")
-                Logging.ConsoleLogger.info("   Use --start-url to specify guide URLs or configure the manifest")
+                Logging.LiveRecording().error("❌ No archive guides configured")
+                Logging.LiveRecording().info("   Use --start-url to specify guide URLs or configure the manifest")
                 throw ExitCode.failure
             }
 
-            Logging.ConsoleLogger.info("📚 Crawling \(guides.count) Apple Archive guides...")
-            Logging.ConsoleLogger.info("   Output: \(outputURL.path)\n")
+            Logging.LiveRecording().info("📚 Crawling \(guides.count) Apple Archive guides...")
+            Logging.LiveRecording().info("   Output: \(outputURL.path)\n")
             let logger: any LoggingModels.Logging.Recording = Logging.LiveRecording()
 
             let crawler = await Crawler.AppleArchive(
@@ -967,21 +967,21 @@ extension CLI.Command {
 
             let stats = try await crawler.crawl { progress in
                 let percent = String(format: "%.1f", progress.percentage)
-                Logging.ConsoleLogger.output("   Progress: \(percent)% - \(progress.currentItem)")
+                Logging.LiveRecording().output("   Progress: \(percent)% - \(progress.currentItem)")
             }
 
-            Logging.ConsoleLogger.output("")
-            Logging.ConsoleLogger.info("✅ Crawl completed!")
-            Logging.ConsoleLogger.info("   Total guides: \(stats.totalGuides)")
-            Logging.ConsoleLogger.info("   Total pages: \(stats.totalPages)")
-            Logging.ConsoleLogger.info("   New: \(stats.newPages)")
-            Logging.ConsoleLogger.info("   Updated: \(stats.updatedPages)")
-            Logging.ConsoleLogger.info("   Skipped: \(stats.skippedPages)")
-            Logging.ConsoleLogger.info("   Errors: \(stats.errors)")
+            Logging.LiveRecording().output("")
+            Logging.LiveRecording().info("✅ Crawl completed!")
+            Logging.LiveRecording().info("   Total guides: \(stats.totalGuides)")
+            Logging.LiveRecording().info("   Total pages: \(stats.totalPages)")
+            Logging.LiveRecording().info("   New: \(stats.newPages)")
+            Logging.LiveRecording().info("   Updated: \(stats.updatedPages)")
+            Logging.LiveRecording().info("   Skipped: \(stats.skippedPages)")
+            Logging.LiveRecording().info("   Errors: \(stats.errors)")
             if let duration = stats.duration {
-                Logging.ConsoleLogger.info("   Duration: \(Int(duration))s")
+                Logging.LiveRecording().info("   Duration: \(Int(duration))s")
             }
-            Logging.ConsoleLogger.info("\n📁 Output: \(outputURL.path)/")
+            Logging.LiveRecording().info("\n📁 Output: \(outputURL.path)/")
         }
 
         private func runHIGCrawl() async throws {
@@ -990,8 +990,8 @@ extension CLI.Command {
 
             try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
 
-            Logging.ConsoleLogger.info("📖 Crawling Human Interface Guidelines...")
-            Logging.ConsoleLogger.info("   Output: \(outputURL.path)\n")
+            Logging.LiveRecording().info("📖 Crawling Human Interface Guidelines...")
+            Logging.LiveRecording().info("   Output: \(outputURL.path)\n")
             let logger: any LoggingModels.Logging.Recording = Logging.LiveRecording()
 
             let crawler = await Crawler.HIG(
@@ -1002,20 +1002,20 @@ extension CLI.Command {
 
             let stats = try await crawler.crawl { progress in
                 let percent = String(format: "%.1f", progress.percentage)
-                Logging.ConsoleLogger.output("   Progress: \(percent)% - \(progress.currentItem)")
+                Logging.LiveRecording().output("   Progress: \(percent)% - \(progress.currentItem)")
             }
 
-            Logging.ConsoleLogger.output("")
-            Logging.ConsoleLogger.info("✅ Crawl completed!")
-            Logging.ConsoleLogger.info("   Total pages: \(stats.totalPages)")
-            Logging.ConsoleLogger.info("   New: \(stats.newPages)")
-            Logging.ConsoleLogger.info("   Updated: \(stats.updatedPages)")
-            Logging.ConsoleLogger.info("   Skipped: \(stats.skippedPages)")
-            Logging.ConsoleLogger.info("   Errors: \(stats.errors)")
+            Logging.LiveRecording().output("")
+            Logging.LiveRecording().info("✅ Crawl completed!")
+            Logging.LiveRecording().info("   Total pages: \(stats.totalPages)")
+            Logging.LiveRecording().info("   New: \(stats.newPages)")
+            Logging.LiveRecording().info("   Updated: \(stats.updatedPages)")
+            Logging.LiveRecording().info("   Skipped: \(stats.skippedPages)")
+            Logging.LiveRecording().info("   Errors: \(stats.errors)")
             if let duration = stats.duration {
-                Logging.ConsoleLogger.info("   Duration: \(Int(duration))s")
+                Logging.LiveRecording().info("   Duration: \(Int(duration))s")
             }
-            Logging.ConsoleLogger.info("\n📁 Output: \(outputURL.path)/")
+            Logging.LiveRecording().info("\n📁 Output: \(outputURL.path)/")
         }
 
         private func loadArchiveGuides() async throws -> [Crawler.AppleArchive.GuideInfo] {
@@ -1033,14 +1033,14 @@ extension CLI.Command {
                 ?? Shared.Constants.defaultDocsDirectory
 
             guard FileManager.default.fileExists(atPath: docsDir.path) else {
-                Logging.ConsoleLogger.error("❌ Documentation directory not found: \(docsDir.path)")
-                Logging.ConsoleLogger.info("   Run 'cupertino fetch --type docs' first to download documentation.")
+                Logging.LiveRecording().error("❌ Documentation directory not found: \(docsDir.path)")
+                Logging.LiveRecording().info("   Run 'cupertino fetch --type docs' first to download documentation.")
                 throw ExitCode.failure
             }
 
-            Logging.ConsoleLogger.info("📊 Fetching API availability data...")
-            Logging.ConsoleLogger.info("   Source: \(docsDir.path)")
-            Logging.ConsoleLogger.info("   API: developer.apple.com/tutorials/data/documentation\n")
+            Logging.LiveRecording().info("📊 Fetching API availability data...")
+            Logging.LiveRecording().info("   Source: \(docsDir.path)")
+            Logging.LiveRecording().info("   API: developer.apple.com/tutorials/data/documentation\n")
 
             let configuration: Availability.Fetcher.Configuration
             if fast {
@@ -1063,21 +1063,21 @@ extension CLI.Command {
                 let successRate = progress.completed > 0
                     ? String(format: "%.0f", Double(progress.successful) / Double(progress.completed) * 100)
                     : "0"
-                Logging.ConsoleLogger.output(
+                Logging.LiveRecording().output(
                     "   Progress: \(percent)% [\(progress.currentFramework)] \(successRate)% success"
                 )
             }
 
-            Logging.ConsoleLogger.output("")
-            Logging.ConsoleLogger.info("✅ Availability fetch completed!")
-            Logging.ConsoleLogger.info("   Documents scanned: \(stats.totalDocuments)")
-            Logging.ConsoleLogger.info("   Updated: \(stats.updatedDocuments)")
-            Logging.ConsoleLogger.info("   Skipped: \(stats.skippedDocuments)")
-            Logging.ConsoleLogger.info("   Failed: \(stats.failedFetches)")
-            Logging.ConsoleLogger.info("   Frameworks: \(stats.frameworksProcessed)")
-            Logging.ConsoleLogger.info("   Success rate: \(String(format: "%.1f", stats.successRate))%")
+            Logging.LiveRecording().output("")
+            Logging.LiveRecording().info("✅ Availability fetch completed!")
+            Logging.LiveRecording().info("   Documents scanned: \(stats.totalDocuments)")
+            Logging.LiveRecording().info("   Updated: \(stats.updatedDocuments)")
+            Logging.LiveRecording().info("   Skipped: \(stats.skippedDocuments)")
+            Logging.LiveRecording().info("   Failed: \(stats.failedFetches)")
+            Logging.LiveRecording().info("   Frameworks: \(stats.frameworksProcessed)")
+            Logging.LiveRecording().info("   Success rate: \(String(format: "%.1f", stats.successRate))%")
             if let duration = stats.duration {
-                Logging.ConsoleLogger.info("   Duration: \(Int(duration))s")
+                Logging.LiveRecording().info("   Duration: \(Int(duration))s")
             }
         }
     }

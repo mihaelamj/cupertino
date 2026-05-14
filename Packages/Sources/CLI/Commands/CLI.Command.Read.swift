@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import Logging
+import LoggingModels
 import SampleIndex
 import SampleIndexModels
 import Search
@@ -85,7 +86,7 @@ extension CLI.Command {
             do {
                 explicit = try Services.ReadService.resolveSource(source)
             } catch Services.ReadService.ReadError.unknownSource(let raw) {
-                Logging.Log.error("Unknown --source value: \(raw). See `cupertino read --help`.")
+                Logging.LiveRecording().error("Unknown --source value: \(raw). See `cupertino read --help`.")
                 throw ExitCode.failure
             }
 
@@ -103,30 +104,30 @@ extension CLI.Command {
                     packageFileLookup: LivePackageFileLookupStrategy()
                 )
             } catch Services.ReadService.ReadError.docsNotFound(let id) {
-                Logging.Log.error("Document not found in search.db: \(id)")
+                Logging.LiveRecording().error("Document not found in search.db: \(id)")
                 throw ExitCode.failure
             } catch Services.ReadService.ReadError.samplesNotFound(let id) {
-                Logging.Log.error("Not found in samples.db: \(id)")
+                Logging.LiveRecording().error("Not found in samples.db: \(id)")
                 throw ExitCode.failure
             } catch Services.ReadService.ReadError.packagesNotFound(let id) {
-                Logging.Log.error("Not found in packages.db: \(id)")
+                Logging.LiveRecording().error("Not found in packages.db: \(id)")
                 throw ExitCode.failure
             } catch Services.ReadService.ReadError.packagesIdentifierInvalid(let id) {
-                Logging.Log.error(
+                Logging.LiveRecording().error(
                     "Invalid package identifier: \(id) — expected `<owner>/<repo>/<relpath>`."
                 )
                 throw ExitCode.failure
             } catch Services.ReadService.ReadError.backendFailed(let msg) {
-                Logging.Log.error("Read failed: \(msg)")
+                Logging.LiveRecording().error("Read failed: \(msg)")
                 throw ExitCode.failure
             } catch Services.ReadService.ReadError.notFoundAnywhere(let id) {
-                Logging.Log.error(
+                Logging.LiveRecording().error(
                     "Tried docs, samples, and packages — no source matched. Identifier: \(id)"
                 )
                 throw ExitCode.failure
             }
 
-            Logging.Log.output(result.content)
+            Logging.LiveRecording().output(result.content)
         }
     }
 }

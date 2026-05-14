@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import Logging
+import LoggingModels
 import Services
 import ServicesModels
 import SharedCore
@@ -47,13 +48,13 @@ extension CLI.Command {
             switch format {
             case .text:
                 let formatter = Services.Formatter.Frameworks.Text(totalDocs: totalDocs)
-                Logging.Log.output(formatter.format(frameworks))
+                Logging.LiveRecording().output(formatter.format(frameworks))
             case .json:
                 let formatter = Services.Formatter.Frameworks.JSON()
-                Logging.Log.output(formatter.format(frameworks))
+                Logging.LiveRecording().output(formatter.format(frameworks))
             case .markdown:
                 let formatter = Services.Formatter.Frameworks.Markdown(totalDocs: totalDocs)
-                Logging.Log.output(formatter.format(frameworks))
+                Logging.LiveRecording().output(formatter.format(frameworks))
             }
         }
     }

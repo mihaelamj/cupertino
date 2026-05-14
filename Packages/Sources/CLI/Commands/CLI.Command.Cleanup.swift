@@ -57,27 +57,27 @@ extension CLI.Command {
             }
 
             guard FileManager.default.fileExists(atPath: directory.path) else {
-                Logging.Log.error("Sample code directory not found: \(directory.path)")
-                Logging.Log.error("Run 'cupertino fetch --type code' first to download sample code.")
+                Logging.LiveRecording().error("Sample code directory not found: \(directory.path)")
+                Logging.LiveRecording().error("Run 'cupertino fetch --type code' first to download sample code.")
                 throw ExitCode.failure
             }
 
             if dryRun {
-                Logging.Log.output("🔍 Cupertino - Cleanup Dry Run")
-                Logging.Log.output("")
-                Logging.Log.output("   Directory: \(directory.path)")
-                Logging.Log.output("   (No files will be modified)")
-                Logging.Log.output("")
+                Logging.LiveRecording().output("🔍 Cupertino - Cleanup Dry Run")
+                Logging.LiveRecording().output("")
+                Logging.LiveRecording().output("   Directory: \(directory.path)")
+                Logging.LiveRecording().output("   (No files will be modified)")
+                Logging.LiveRecording().output("")
             } else {
-                Logging.Log.output("🧹 Cupertino - Cleaning Sample Code Archives")
-                Logging.Log.output("")
-                Logging.Log.output("   Directory: \(directory.path)")
+                Logging.LiveRecording().output("🧹 Cupertino - Cleaning Sample Code Archives")
+                Logging.LiveRecording().output("")
+                Logging.LiveRecording().output("   Directory: \(directory.path)")
                 if keepOriginals {
-                    Logging.Log.output("   Mode: Keep originals (cleaned files saved as .cleaned.zip)")
+                    Logging.LiveRecording().output("   Mode: Keep originals (cleaned files saved as .cleaned.zip)")
                 } else {
-                    Logging.Log.output("   Mode: Replace originals")
+                    Logging.LiveRecording().output("   Mode: Replace originals")
                 }
-                Logging.Log.output("")
+                Logging.LiveRecording().output("")
             }
 
             let cleaner = Sample.Cleanup.Cleaner(
@@ -90,34 +90,34 @@ extension CLI.Command {
             let stats = try await cleaner.cleanup { progress in
                 let percent = String(format: "%.1f", progress.percentage)
                 let saved = Shared.Utils.Formatting.formatBytes(progress.originalSize - progress.cleanedSize)
-                Logging.Log.output("   [\(percent)%] \(progress.currentFile) (saved \(saved))")
+                Logging.LiveRecording().output("   [\(percent)%] \(progress.currentFile) (saved \(saved))")
             }
 
-            Logging.Log.output("")
+            Logging.LiveRecording().output("")
 
             if dryRun {
-                Logging.Log.output("📊 Dry Run Summary:")
+                Logging.LiveRecording().output("📊 Dry Run Summary:")
             } else {
-                Logging.Log.output("✅ Cleanup completed!")
+                Logging.LiveRecording().output("✅ Cleanup completed!")
             }
 
-            Logging.Log.output("   Total archives: \(stats.totalArchives)")
-            Logging.Log.output("   Cleaned: \(stats.cleanedArchives)")
-            Logging.Log.output("   Skipped (already clean): \(stats.skippedArchives)")
-            Logging.Log.output("   Errors: \(stats.errors)")
-            Logging.Log.output("   Items to remove: \(stats.totalItemsRemoved)")
-            Logging.Log.output("")
-            Logging.Log.output("   Original size: \(Shared.Utils.Formatting.formatBytes(stats.originalTotalSize))")
+            Logging.LiveRecording().output("   Total archives: \(stats.totalArchives)")
+            Logging.LiveRecording().output("   Cleaned: \(stats.cleanedArchives)")
+            Logging.LiveRecording().output("   Skipped (already clean): \(stats.skippedArchives)")
+            Logging.LiveRecording().output("   Errors: \(stats.errors)")
+            Logging.LiveRecording().output("   Items to remove: \(stats.totalItemsRemoved)")
+            Logging.LiveRecording().output("")
+            Logging.LiveRecording().output("   Original size: \(Shared.Utils.Formatting.formatBytes(stats.originalTotalSize))")
             if !dryRun {
-                Logging.Log.output("   Cleaned size: \(Shared.Utils.Formatting.formatBytes(stats.cleanedTotalSize))")
-                Logging.Log.output(
+                Logging.LiveRecording().output("   Cleaned size: \(Shared.Utils.Formatting.formatBytes(stats.cleanedTotalSize))")
+                Logging.LiveRecording().output(
                     "   Space saved: \(Shared.Utils.Formatting.formatBytes(stats.spaceSaved)) " +
                         "(\(String(format: "%.1f", stats.spaceSavedPercentage))%)"
                 )
             }
 
             if let duration = stats.duration {
-                Logging.Log.output("   Duration: \(Int(duration))s")
+                Logging.LiveRecording().output("   Duration: \(Int(duration))s")
             }
         }
     }
