@@ -211,7 +211,7 @@ let targets: [Target] = {
     // ---------- CoreJSONParser (v1.2 refactor 2.3: AppleJSONToMarkdown + MarkdownToStructuredPage + RefResolver + JSON engine) ----------
     let coreJSONParserTarget = Target.target(
         name: "CoreJSONParser",
-        dependencies: ["CoreProtocols", "SharedCore", "SharedModels", "SharedConstants", "SharedUtils", "Logging"],
+        dependencies: ["CoreProtocols", "SharedCore", "SharedModels", "SharedConstants"],
         path: "Sources/Core/JSONParser"
     )
     let coreJSONParserTestsTarget = Target.testTarget(
@@ -276,8 +276,6 @@ let targets: [Target] = {
         name: "Core",
         dependencies: [
             "CoreProtocols",
-            "CoreJSONParser",
-            "CorePackageIndexing",
             "SharedCore",
             "SharedConfiguration",
             "SharedConstants",
@@ -344,7 +342,7 @@ let targets: [Target] = {
     // Search.Result, Search.MatchedSymbol, Search.PlatformAvailability, Search.DocumentFormat.
     let searchModelsTarget = Target.target(
         name: "SearchModels",
-        dependencies: ["SharedCore", "SharedConstants", "SharedModels"]
+        dependencies: ["SharedConstants", "SharedModels"]
     )
     let searchModelsTestsTarget = Target.testTarget(
         name: "SearchModelsTests",
@@ -410,7 +408,7 @@ let targets: [Target] = {
     // SearchModels / SampleIndexModels / CorePackageIndexingModels split pattern.
     let servicesModelsTarget = Target.target(
         name: "ServicesModels",
-        dependencies: ["SearchModels", "SharedCore", "SharedConstants", "SharedModels"]
+        dependencies: ["SearchModels", "SharedCore", "SharedConstants"]
     )
     let servicesModelsTestsTarget = Target.testTarget(
         name: "ServicesModelsTests",
@@ -419,7 +417,7 @@ let targets: [Target] = {
 
     let servicesTarget = Target.target(
         name: "Services",
-        dependencies: ["ServicesModels", "SharedCore", "SharedConstants", "SharedUtils", "Search", "SampleIndex", "SampleIndexModels"],
+        dependencies: ["ServicesModels", "SearchModels", "SampleIndexModels", "SharedCore", "SharedConstants", "SharedUtils"],
         exclude: ["README.md"]
     )
     let servicesTestsTarget = Target.testTarget(
@@ -479,8 +477,6 @@ let targets: [Target] = {
     let astIndexerTarget = Target.target(
         name: "ASTIndexer",
         dependencies: [
-            "SharedCore",
-            "Logging",
             .product(name: "SwiftSyntax", package: "swift-syntax"),
             .product(name: "SwiftParser", package: "swift-syntax"),
         ]
