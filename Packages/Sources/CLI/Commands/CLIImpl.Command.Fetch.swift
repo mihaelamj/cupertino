@@ -676,8 +676,12 @@ extension CLIImpl.Command {
             // function's composition sub-root and pass explicit URLs.
             let paths = Shared.Paths.live()
 
+            // Construct the priority-packages catalog with the resolved
+            // base directory (#535: catalog is now an actor, not a singleton).
+            let priorityCatalog = Core.PackageIndexing.PriorityPackagesCatalog(baseDirectory: paths.baseDirectory)
+
             // Load priority packages
-            let priorityPackages = await Core.PackageIndexing.PriorityPackagesCatalog.allPackages
+            let priorityPackages = await priorityCatalog.allPackages
 
             guard !priorityPackages.isEmpty else {
                 let priorityPackagesPath = paths.packagesDirectory

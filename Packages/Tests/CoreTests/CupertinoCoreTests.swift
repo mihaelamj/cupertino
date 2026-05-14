@@ -90,10 +90,16 @@ func swiftPackagesCatalogSearch() async {
 
 @Test("Core.PackageIndexing.PriorityPackagesCatalog loads from JSON resource")
 func priorityPackagesCatalogLoadsFromJSON() async {
+    // Path-DI migration (#535): PriorityPackagesCatalog is now an actor.
+    let tempDir = FileManager.default.temporaryDirectory
+        .appendingPathComponent("priority-test-\(UUID().uuidString)")
+    let priorityCatalog = Core.PackageIndexing.PriorityPackagesCatalog(
+        baseDirectory: tempDir,
+        useBundledOnly: true
+    )
     // Use bundled file for consistent test results (not user's selected-packages.json)
-    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(true)
 
-    let stats = await Core.PackageIndexing.PriorityPackagesCatalog.stats
+    let stats = await priorityCatalog.stats
     #expect(stats.totalPriorityPackages > 100, "Should have 100+ priority packages after the catalog expansion")
     #expect(stats.totalPriorityPackages < 500, "Priority package count should still be bounded")
     // These fields are optional to support TUI-generated files (which may not have them)
@@ -109,32 +115,42 @@ func priorityPackagesCatalogLoadsFromJSON() async {
     #expect(stats.totalPriorityPackages == expectedTotal, "Total should equal sum")
     print("   ✅ Loaded \(stats.totalPriorityPackages) priority packages")
 
-    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 }
 
 @Test("Core.PackageIndexing.PriorityPackagesCatalog has correct metadata")
 func priorityPackagesCatalogMetadata() async {
+    // Path-DI migration (#535): PriorityPackagesCatalog is now an actor.
+    let tempDir = FileManager.default.temporaryDirectory
+        .appendingPathComponent("priority-test-\(UUID().uuidString)")
+    let priorityCatalog = Core.PackageIndexing.PriorityPackagesCatalog(
+        baseDirectory: tempDir,
+        useBundledOnly: true
+    )
     // Use bundled file for consistent test results
-    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(true)
 
-    let version = await Core.PackageIndexing.PriorityPackagesCatalog.version
-    let lastUpdated = await Core.PackageIndexing.PriorityPackagesCatalog.lastUpdated
-    let description = await Core.PackageIndexing.PriorityPackagesCatalog.description
+    let version = await priorityCatalog.version
+    let lastUpdated = await priorityCatalog.lastUpdated
+    let description = await priorityCatalog.description
 
     #expect(!version.isEmpty, "Release.Version should not be empty")
     #expect(!lastUpdated.isEmpty, "Last updated date should not be empty")
     #expect(!description.isEmpty, "Description should not be empty")
     print("   ✅ Release.Version: \(version), Last updated: \(lastUpdated)")
 
-    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 }
 
 @Test("Core.PackageIndexing.PriorityPackagesCatalog Apple packages are valid")
 func priorityPackagesCatalogApplePackages() async {
+    // Path-DI migration (#535): PriorityPackagesCatalog is now an actor.
+    let tempDir = FileManager.default.temporaryDirectory
+        .appendingPathComponent("priority-test-\(UUID().uuidString)")
+    let priorityCatalog = Core.PackageIndexing.PriorityPackagesCatalog(
+        baseDirectory: tempDir,
+        useBundledOnly: true
+    )
     // Use bundled file for consistent test results
-    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(true)
 
-    let applePackages = await Core.PackageIndexing.PriorityPackagesCatalog.applePackages
+    let applePackages = await priorityCatalog.applePackages
     #expect(applePackages.count > 40, "Should have 40+ Apple packages after expansion")
     #expect(applePackages.count < 100, "Apple package count should still be bounded")
 
@@ -146,15 +162,20 @@ func priorityPackagesCatalogApplePackages() async {
 
     print("   ✅ Apple packages validated")
 
-    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 }
 
 @Test("Core.PackageIndexing.PriorityPackagesCatalog ecosystem packages are valid")
 func priorityPackagesCatalogEcosystemPackages() async {
+    // Path-DI migration (#535): PriorityPackagesCatalog is now an actor.
+    let tempDir = FileManager.default.temporaryDirectory
+        .appendingPathComponent("priority-test-\(UUID().uuidString)")
+    let priorityCatalog = Core.PackageIndexing.PriorityPackagesCatalog(
+        baseDirectory: tempDir,
+        useBundledOnly: true
+    )
     // Use bundled file for consistent test results
-    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(true)
 
-    let ecosystemPackages = await Core.PackageIndexing.PriorityPackagesCatalog.ecosystemPackages
+    let ecosystemPackages = await priorityCatalog.ecosystemPackages
     #expect(!ecosystemPackages.isEmpty, "Should have ecosystem packages")
     #expect(ecosystemPackages.count > 50, "Ecosystem package count should reflect the expansion")
     #expect(ecosystemPackages.count < 500, "Ecosystem package count should still be bounded")
@@ -166,43 +187,53 @@ func priorityPackagesCatalogEcosystemPackages() async {
 
     print("   ✅ Ecosystem packages validated")
 
-    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 }
 
 @Test("Core.PackageIndexing.PriorityPackagesCatalog priority check works")
 func priorityPackagesCatalogPriorityCheck() async {
+    // Path-DI migration (#535): PriorityPackagesCatalog is now an actor.
+    let tempDir = FileManager.default.temporaryDirectory
+        .appendingPathComponent("priority-test-\(UUID().uuidString)")
+    let priorityCatalog = Core.PackageIndexing.PriorityPackagesCatalog(
+        baseDirectory: tempDir,
+        useBundledOnly: true
+    )
     // Use bundled file for consistent test results
-    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(true)
 
     // Test known priority packages
-    let isSwiftPriority = await Core.PackageIndexing.PriorityPackagesCatalog.isPriority(owner: "apple", repo: "swift")
-    let isNIOPriority = await Core.PackageIndexing.PriorityPackagesCatalog.isPriority(owner: "apple", repo: "swift-nio")
-    let isVaporPriority = await Core.PackageIndexing.PriorityPackagesCatalog.isPriority(owner: "vapor", repo: "vapor")
+    let isSwiftPriority = await priorityCatalog.isPriority(owner: "apple", repo: "swift")
+    let isNIOPriority = await priorityCatalog.isPriority(owner: "apple", repo: "swift-nio")
+    let isVaporPriority = await priorityCatalog.isPriority(owner: "vapor", repo: "vapor")
 
     #expect(isSwiftPriority, "swift should be priority")
     #expect(isNIOPriority, "swift-nio should be priority")
     #expect(isVaporPriority, "vapor should be priority")
 
     // Test non-priority package
-    let isRandomPriority = await Core.PackageIndexing.PriorityPackagesCatalog.isPriority(owner: "random", repo: "package")
+    let isRandomPriority = await priorityCatalog.isPriority(owner: "random", repo: "package")
     #expect(!isRandomPriority, "random package should not be priority")
 
     print("   ✅ Priority check working correctly")
 
-    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 }
 
 @Test("Core.PackageIndexing.PriorityPackagesCatalog package lookup works")
 func priorityPackagesCatalogPackageLookup() async {
+    // Path-DI migration (#535): PriorityPackagesCatalog is now an actor.
+    let tempDir = FileManager.default.temporaryDirectory
+        .appendingPathComponent("priority-test-\(UUID().uuidString)")
+    let priorityCatalog = Core.PackageIndexing.PriorityPackagesCatalog(
+        baseDirectory: tempDir,
+        useBundledOnly: true
+    )
     // Use bundled file for consistent test results
-    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(true)
 
     do {
-        let swiftPackage = await Core.PackageIndexing.PriorityPackagesCatalog.package(named: "swift")
+        let swiftPackage = await priorityCatalog.package(named: "swift")
         #expect(swiftPackage != nil, "Should find swift package")
         #expect(swiftPackage?.repo == "swift", "Package repo should match")
 
-        let vaporPackage = await Core.PackageIndexing.PriorityPackagesCatalog.package(named: "vapor")
+        let vaporPackage = await priorityCatalog.package(named: "vapor")
         #expect(vaporPackage != nil, "Should find vapor package")
         #expect(vaporPackage?.owner == "vapor", "Vapor owner should be vapor")
 
@@ -210,17 +241,22 @@ func priorityPackagesCatalogPackageLookup() async {
     }
 
     // Reset after test - must await to avoid race condition
-    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 }
 
 @Test("Core.PackageIndexing.PriorityPackagesCatalog loads user file when available")
 func priorityPackagesCatalogLoadsUserFile() async throws {
+    // Path-DI migration (#535): PriorityPackagesCatalog is now an actor.
+    let tempDir = FileManager.default.temporaryDirectory
+        .appendingPathComponent("priority-test-\(UUID().uuidString)")
+    let priorityCatalog = Core.PackageIndexing.PriorityPackagesCatalog(
+        baseDirectory: tempDir,
+        useBundledOnly: true
+    )
     // This test verifies issue #107 fix: user file takes precedence over bundled
     let userFileURL = Shared.Constants.defaultBaseDirectory
         .appendingPathComponent(Shared.Constants.FileName.selectedPackages)
 
     // Clear cache and ensure we're NOT using bundled-only mode
-    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(false)
 
     // Check if user file exists
     guard FileManager.default.fileExists(atPath: userFileURL.path) else {
@@ -234,7 +270,7 @@ func priorityPackagesCatalogLoadsUserFile() async throws {
     // which under #218 additively merges new embedded entries into the
     // user file. Read the file AFTER allPackages so the user-file count
     // reflects the post-merge state.
-    let allPackages = await Core.PackageIndexing.PriorityPackagesCatalog.allPackages
+    let allPackages = await priorityCatalog.allPackages
 
     // Read user file to get expected count (post-merge).
     let data = try Data(contentsOf: userFileURL)
@@ -268,7 +304,6 @@ func priorityPackagesCatalogLoadsUserFile() async throws {
     print("   ✅ User file loaded: \(allPackages.count) packages (user file has \(userPackageCount))")
 
     // Restore bundled-only for other tests
-    await Core.PackageIndexing.PriorityPackagesCatalog.setUseBundledOnly(true)
 }
 
 /// Custom test error

@@ -473,10 +473,13 @@ extension CLIImpl.Command {
                 Logging.LiveRecording().output("   ⚠  Package docs: not downloaded")
             }
 
-            // Show priority packages source
-            let allPackages = await Core.PackageIndexing.PriorityPackagesCatalog.allPackages
-            let appleCount = await Core.PackageIndexing.PriorityPackagesCatalog.applePackages.count
-            let ecosystemCount = await Core.PackageIndexing.PriorityPackagesCatalog.ecosystemPackages.count
+            // Show priority packages source. The catalog is constructed
+            // with the resolved base directory at the composition sub-root
+            // (#535: catalog is now an actor, not a singleton).
+            let priorityCatalog = Core.PackageIndexing.PriorityPackagesCatalog(baseDirectory: paths.baseDirectory)
+            let allPackages = await priorityCatalog.allPackages
+            let appleCount = await priorityCatalog.applePackages.count
+            let ecosystemCount = await priorityCatalog.ecosystemPackages.count
             Logging.LiveRecording().output("   ℹ  Priority packages: \(allPackages.count) total")
             Logging.LiveRecording().output("     Apple: \(appleCount), Ecosystem: \(ecosystemCount)")
 
