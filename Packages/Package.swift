@@ -376,7 +376,18 @@ let targets: [Target] = {
     )
     let searchTestsTarget = Target.testTarget(
         name: "SearchTests",
-        dependencies: ["Search", "SearchModels", "SharedCore", "SharedConstants", "SharedModels", "SharedUtils", "TestSupport", "CorePackageIndexingModels", "ASTIndexer", "SampleIndex"]
+        dependencies: [
+            "Search",
+            "SearchModels",
+            "SharedCore",
+            "SharedConstants",
+            "SharedModels",
+            "SharedUtils",
+            "TestSupport",
+            "CorePackageIndexingModels",
+            "ASTIndexer",
+            "SampleIndex",
+        ]
     )
 
     let sampleIndexTarget = Target.target(
@@ -591,7 +602,22 @@ let targets: [Target] = {
     // CLI Command Test Targets
     let serveTestsTarget = Target.testTarget(
         name: "ServeTests",
-        dependencies: ["CLI", "Crawler", "MCPCore", "MCPSupport", "Search", "SearchModels", "SearchToolProvider", "SampleIndex", "SampleIndexModels", "Services", "ServicesModels", "SharedCore", "SharedConstants", "TestSupport"],
+        dependencies: [
+            "CLI",
+            "Crawler",
+            "MCPCore",
+            "MCPSupport",
+            "Search",
+            "SearchModels",
+            "SearchToolProvider",
+            "SampleIndex",
+            "SampleIndexModels",
+            "Services",
+            "ServicesModels",
+            "SharedCore",
+            "SharedConstants",
+            "TestSupport",
+        ],
         path: "Tests/CLICommandTests/ServeTests"
     )
 

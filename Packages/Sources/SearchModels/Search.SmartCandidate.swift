@@ -37,7 +37,7 @@ extension Search {
             chunk: String,
             rawScore: Double,
             kind: String? = nil,
-            metadata: [String: String] = [:],
+            metadata: [String: String] = [:]
         ) {
             self.source = source
             self.identifier = identifier

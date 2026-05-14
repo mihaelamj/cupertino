@@ -1,10 +1,22 @@
-import ServicesModels
-import SharedConstants
-import Testing
 import Foundation
 import SearchModels
 @testable import Services
+import ServicesModels
+import SharedConstants
 @testable import SharedCore
+import Testing
+
+// MARK: - Test Doubles
+
+/// `Search.DatabaseFactory` test double whose `openDatabase` always throws.
+/// Used to verify `Services.ServiceContainer.withTeaserService` propagates
+/// factory failures (matches the resilience pattern in CLI search runners
+/// that catch and fall back to empty teasers).
+private struct ThrowingSearchDatabaseFactory: Search.DatabaseFactory {
+    func openDatabase(at url: URL) async throws -> any Search.Database {
+        throw NSError(domain: "ServicesTests.stub", code: 1)
+    }
+}
 
 // MARK: - Services Tests
 
@@ -214,14 +226,12 @@ struct TeaserResultsResilienceTests {
         // Stub factory: when withTeaserService finds a "path" that exists
         // (here a directory rather than a real .db), it calls the factory.
         // Our stub throws — the test verifies the outer call propagates it.
-        let throwingFactory: Services.ServiceContainer.MakeSearchDatabase = { _ in
-            throw NSError(domain: "ServicesTests.stub", code: 1)
-        }
+        let throwingFactory = ThrowingSearchDatabaseFactory()
         await #expect(throws: (any Error).self) {
             try await Services.ServiceContainer.withTeaserService(
                 searchDbPath: tempDir.path,
                 sampleDbPath: nil,
-                makeSearchDatabase: throwingFactory,
+                searchDatabaseFactory: throwingFactory
             ) { service in
                 _ = await service.fetchAllTeasers(
                     query: "swiftui",
@@ -239,15 +249,13 @@ struct TeaserResultsResilienceTests {
         // catch the throw, fall back to TeaserResults(). Verifies the
         // fallback contract (empty + iterable) so future changes don't
         // accidentally make the empty struct require parameters.
-        let throwingFactory: Services.ServiceContainer.MakeSearchDatabase = { _ in
-            throw NSError(domain: "ServicesTests.stub", code: 1)
-        }
+        let throwingFactory = ThrowingSearchDatabaseFactory()
         let teasers: Services.Formatter.TeaserResults
         do {
             teasers = try await Services.ServiceContainer.withTeaserService(
                 searchDbPath: "/var/empty/intentionally-broken-search.db.\(UUID().uuidString)",
                 sampleDbPath: nil,
-                makeSearchDatabase: throwingFactory,
+                searchDatabaseFactory: throwingFactory
             ) { service in
                 await service.fetchAllTeasers(
                     query: "swiftui",

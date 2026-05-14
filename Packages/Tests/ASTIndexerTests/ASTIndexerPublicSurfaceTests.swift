@@ -90,7 +90,7 @@ struct ASTIndexerPublicSurfaceTests {
             isStatic: false,
             attributes: ["@MainActor"],
             conformances: [],
-            genericParameters: [],
+            genericParameters: []
         )
         #expect(symbol.name == "View")
         #expect(symbol.kind == .protocol)

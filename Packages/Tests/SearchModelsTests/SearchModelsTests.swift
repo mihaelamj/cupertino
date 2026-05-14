@@ -33,7 +33,7 @@ struct SearchModelsPublicSurfaceTests {
             introducedAt: "15.0",
             deprecated: false,
             unavailable: false,
-            beta: false,
+            beta: false
         )
         #expect(availability.name == "iOS")
         #expect(availability.introducedAt == "15.0")
@@ -61,7 +61,7 @@ struct SearchModelsPublicSurfaceTests {
             kind: "func",
             name: "scaledFont",
             signature: "scaledFont(for:)",
-            isAsync: false,
+            isAsync: false
         )
         // The signature path is what fans out into search-result
         // rendering; pin the format so a refactor doesn't drop the
@@ -106,7 +106,7 @@ struct SearchModelsPublicSurfaceTests {
             wordCount: 100,
             rank: -1.5,
             availability: [availability],
-            matchedSymbols: [symbol],
+            matchedSymbols: [symbol]
         )
         #expect(result.uri == "apple-docs://swift/task")
         #expect(result.source == "apple-docs")
@@ -126,7 +126,7 @@ struct SearchModelsPublicSurfaceTests {
         // contract.
         let r = Search.Result(
             uri: "x", source: "y", framework: "z",
-            title: "t", summary: "s", filePath: "/", wordCount: 1, rank: -2.5,
+            title: "t", summary: "s", filePath: "/", wordCount: 1, rank: -2.5
         )
         #expect(r.score == 2.5)
     }
@@ -141,7 +141,7 @@ struct SearchModelsPublicSurfaceTests {
         let r = Search.Result(
             uri: "x", source: "y", framework: "z",
             title: "t", summary: "s", filePath: "/", wordCount: 1, rank: 0,
-            availability: platforms,
+            availability: platforms
         )
         let str = r.availabilityString ?? ""
         #expect(str.contains("iOS 15.0+"))
@@ -161,7 +161,7 @@ struct SearchModelsPublicSurfaceTests {
             filePath: "/tmp/task.json",
             wordCount: 100,
             rank: -1.5,
-            availability: [availability],
+            availability: [availability]
         )
         let data = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(Search.Result.self, from: data)

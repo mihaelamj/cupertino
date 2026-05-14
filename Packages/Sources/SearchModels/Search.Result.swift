@@ -35,7 +35,7 @@ extension Search {
             wordCount: Int,
             rank: Double,
             availability: [Search.PlatformAvailability]? = nil,
-            matchedSymbols: [MatchedSymbol]? = nil,
+            matchedSymbols: [MatchedSymbol]? = nil
         ) {
             self.id = id
             self.uri = uri

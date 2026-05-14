@@ -1,4 +1,3 @@
-import SearchModels
 import AppKit
 @testable import Core
 import CoreProtocols
@@ -7,6 +6,7 @@ import Foundation
 @testable import MCPCore
 @testable import MCPSupport
 @testable import Search
+import SearchModels
 @testable import SearchToolProvider
 import SharedConfiguration
 import SharedConstants
@@ -155,8 +155,8 @@ struct MCPCommandTests {
             content: "Swift is a powerful programming language for iOS, macOS, and more.",
             filePath: "/test/swift.md",
             contentHash: "test-hash",
-            lastCrawled: Date(),
-            ))
+            lastCrawled: Date()
+        ))
 
         let server = MCP.Core.Server(name: "test-server", version: "1.0.0")
         let provider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: nil)
@@ -200,8 +200,8 @@ struct MCPCommandTests {
             content: "An ordered, random-access collection of elements.",
             filePath: "/test/array.md",
             contentHash: "test-hash-array",
-            lastCrawled: Date(),
-            ))
+            lastCrawled: Date()
+        ))
 
         let provider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: nil)
 

@@ -1,6 +1,6 @@
-import SearchModels
 import Foundation
 @testable import Search
+import SearchModels
 import SharedConstants
 import SharedCore
 import SharedModels
@@ -17,7 +17,7 @@ import Testing
 @Suite("Search.StrategyHelpers.deduplicateDocFilesByCanonicalURL (#200)", .serialized)
 struct IndexBuilderDeduplicationTests {
     @Test("Two files with same canonical URL: keeps the one with newer crawledAt even when its mtime is older")
-    func keepsNewestByCrawledAtNotMtime() async throws {
+    func keepsNewestByCrawledAtNotMtime() throws {
         let tempRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent("cupertino-dedup-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
@@ -66,7 +66,7 @@ struct IndexBuilderDeduplicationTests {
     }
 
     @Test("Single file with no duplicates passes through unchanged")
-    func singleFilePassesThrough() async throws {
+    func singleFilePassesThrough() throws {
         let tempRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent("cupertino-dedup-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
@@ -90,7 +90,7 @@ struct IndexBuilderDeduplicationTests {
     }
 
     @Test("Distinct canonical URLs both survive (no false-positive dedup)")
-    func distinctURLsBothSurvive() async throws {
+    func distinctURLsBothSurvive() throws {
         let tempRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent("cupertino-dedup-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
@@ -121,7 +121,7 @@ struct IndexBuilderDeduplicationTests {
     }
 
     @Test("loadStructuredPage: decoder is configured with .iso8601 (regression for codex review on #264)")
-    func loadStructuredPageDecodesIso8601() async throws {
+    func loadStructuredPageDecodesIso8601() throws {
         let tempRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent("cupertino-dedup-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)

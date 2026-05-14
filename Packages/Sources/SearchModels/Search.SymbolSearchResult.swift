@@ -31,7 +31,7 @@ extension Search {
             attributes: String?,
             conformances: String?,
             isAsync: Bool,
-            isPublic: Bool,
+            isPublic: Bool
         ) {
             self.docUri = docUri
             self.docTitle = docTitle

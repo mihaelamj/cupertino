@@ -25,8 +25,8 @@ struct SampleIndexModelsTests {
             webURL: "https://developer.apple.com/sample/swiftui-essentials",
             zipFilename: "swiftui-essentials.zip",
             fileCount: 42,
-            totalSize: 1_234_567,
-            indexedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            totalSize: 1234567,
+            indexedAt: Date(timeIntervalSince1970: 1700000000),
             deploymentTargets: ["ios": "17.0", "macos": "14.0"],
             availabilitySource: "sample-swift"
         )

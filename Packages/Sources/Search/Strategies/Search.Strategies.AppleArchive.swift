@@ -1,8 +1,8 @@
 import Foundation
 import Logging
+import SearchModels
 import SharedConstants
 import SharedModels
-import SearchModels
 
 // MARK: - AppleArchiveStrategy
 
@@ -118,7 +118,7 @@ extension Search {
                         minTvOS: availability.minTvOS,
                         minWatchOS: availability.minWatchOS,
                         minVisionOS: availability.minVisionOS,
-                        availabilitySource: availability.minIOS != nil ? "framework" : nil,
+                        availabilitySource: availability.minIOS != nil ? "framework" : nil
                     ))
                     indexed += 1
                 } catch {

@@ -1,6 +1,6 @@
-import SearchModels
 import Foundation
 @testable import Search
+import SearchModels
 import SQLite3
 import Testing
 
@@ -148,8 +148,8 @@ struct IndexDocumentKindTests {
             content: "Some content for the test.",
             filePath: "/tmp/x",
             contentHash: "h",
-            lastCrawled: Date(),
-            ))
+            lastCrawled: Date()
+        ))
         await idx.disconnect()
 
         return try readColumn(at: dbPath, column: "kind", forURI: uri)
@@ -216,8 +216,8 @@ struct SymbolsColumnTests {
             content: "Body",
             filePath: "/tmp/x",
             contentHash: "h",
-            lastCrawled: Date(),
-            ))
+            lastCrawled: Date()
+        ))
         await idx.disconnect()
 
         // Column exists, value is NULL — readColumn returns nil for NULL.

@@ -10,11 +10,11 @@ import MCPCore
 import MCPSupport
 import SampleIndex
 import Search
+import SearchModels
 import SearchToolProvider
 import SharedConstants
 import SharedCore
 import SharedUtils
-import SearchModels
 
 // MARK: - Doctor Command
 

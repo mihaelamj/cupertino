@@ -1,10 +1,10 @@
 import ASTIndexer
 import Foundation
+import SearchModels
 import SharedConstants
 import SharedCore
 import SharedModels
 import SQLite3
-import SearchModels
 
 // swiftlint:disable function_body_length function_parameter_count
 // Justification: extracted from SearchIndex.swift; the original 4598-line
@@ -182,7 +182,7 @@ extension Search.Index {
                 minTvOS: item.minTvOS,
                 minWatchOS: item.minWatchOS,
                 minVisionOS: item.minVisionOS,
-                availabilitySource: item.availabilitySource,
+                availabilitySource: item.availabilitySource
             ))
             return
         }
@@ -214,7 +214,7 @@ extension Search.Index {
             minTvOS: processedItem.minTvOS,
             minWatchOS: processedItem.minWatchOS,
             minVisionOS: processedItem.minVisionOS,
-            availabilitySource: processedItem.availabilitySource,
+            availabilitySource: processedItem.availabilitySource
         ))
 
         // Extract and index AST symbols if enabled

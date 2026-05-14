@@ -1,7 +1,7 @@
-import Testing
 import Foundation
-import SearchModels
 @testable import Search
+import SearchModels
+import Testing
 
 // MARK: - Release.Version Filter Tests
 
@@ -247,8 +247,8 @@ struct VersionFilterTests {
             filePath: "/test.md",
             contentHash: "hash",
             lastCrawled: Date(),
-            sourceType: "test",
-            ))
+            sourceType: "test"
+        ))
 
         // Without availability, should not appear in filtered results
         let filtered = try await index.search(query: "Availability", minIOS: "15.0")
@@ -385,8 +385,8 @@ struct VersionFilterTests {
             minMacOS: minMacOS,
             minTvOS: minTvOS,
             minWatchOS: minWatchOS,
-            minVisionOS: minVisionOS,
-            ))
+            minVisionOS: minVisionOS
+        ))
 
         let cleanup: @Sendable () -> Void = {
             Task { await index.disconnect() }

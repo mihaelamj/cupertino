@@ -127,7 +127,7 @@ extension Search {
                     }
                     let pageURL = URL(
                         string: "https://www.swift.org/documentation/" +
-                                "\(file.deletingPathExtension().lastPathComponent)"
+                            "\(file.deletingPathExtension().lastPathComponent)"
                     )
                     guard let converted = markdownToStructuredPage(mdContent, pageURL) else {
                         Logging.Log.error(

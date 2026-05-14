@@ -1,8 +1,8 @@
 import Foundation
 import Logging
+import SearchModels
 import SharedConstants
 import SharedModels
-import SearchModels
 
 // MARK: - HIGStrategy
 
@@ -107,7 +107,7 @@ extension Search {
                         minTvOS: "9.0",
                         minWatchOS: "2.0",
                         minVisionOS: "1.0",
-                        availabilitySource: "universal",
+                        availabilitySource: "universal"
                     ))
                     indexed += 1
                 } catch {

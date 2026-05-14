@@ -1,6 +1,6 @@
-import SearchModels
 import Foundation
 @testable import Search
+import SearchModels
 import Testing
 
 // MARK: - is404Page heuristic (fix for #110)

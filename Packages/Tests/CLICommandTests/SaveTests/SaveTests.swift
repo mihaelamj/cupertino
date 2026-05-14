@@ -1,4 +1,3 @@
-import SearchModels
 import AppKit
 @testable import CLI
 @testable import Core
@@ -6,6 +5,7 @@ import CoreProtocols
 import Crawler
 import Foundation
 @testable import Search
+import SearchModels
 import SharedConfiguration
 import SharedConstants
 @testable import SharedCore

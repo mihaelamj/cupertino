@@ -1,5 +1,5 @@
-import Foundation
 @testable import CoreProtocols
+import Foundation
 import Resources
 import SharedConstants
 import SharedCore
@@ -47,7 +47,7 @@ struct CoreProtocolsPublicSurfaceTests {
         let result = Core.Protocols.FetchResult(
             content: "hello",
             url: url,
-            responseHeaders: ["Content-Type": "text/html"],
+            responseHeaders: ["Content-Type": "text/html"]
         )
         #expect(result.content == "hello")
         #expect(result.url == url)
@@ -71,14 +71,14 @@ struct CoreProtocolsPublicSurfaceTests {
             description: "Description",
             framework: "SwiftUI",
             platforms: ["iOS"],
-            isDeprecated: false,
+            isDeprecated: false
         )
         let url = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/view"))
         let result = Core.Protocols.TransformResult(
             markdown: "# View",
             links: [url],
             metadata: metadata,
-            structuredPage: nil,
+            structuredPage: nil
         )
         #expect(result.markdown == "# View")
         #expect(result.links == [url])
@@ -115,7 +115,7 @@ struct CoreProtocolsPublicSurfaceTests {
     }
 
     @Test("Core.Protocols.GitHubCanonicalizer primes and snapshots its cache")
-    func gitHubCanonicalizerCachePrimeAndSnapshot() async throws {
+    func gitHubCanonicalizerCachePrimeAndSnapshot() async {
         // Don't write to disk for a smoke test; the actor accepts any
         // cache URL and only persists on demand.
         let cacheURL = FileManager.default.temporaryDirectory
@@ -125,7 +125,7 @@ struct CoreProtocolsPublicSurfaceTests {
             inputOwner: "Mihaela",
             inputRepo: "Cupertino",
             canonicalOwner: "mihaelamj",
-            canonicalRepo: "cupertino",
+            canonicalRepo: "cupertino"
         )
         let snapshot = await canonicalizer.cacheSnapshot()
         // The snapshot key shape (input owner+repo lowercased) is an

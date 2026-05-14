@@ -5,10 +5,10 @@ import Logging
 import RemoteSync
 import SampleIndex
 import Search
+import SearchModels
 import SharedConstants
 import SharedCore
 import SharedUtils
-import SearchModels
 
 // MARK: - Save Command
 
@@ -251,7 +251,7 @@ extension CLI.Command.Save {
                     lastCrawled: Date(),
                     sourceType: source,
                     packageId: nil,
-                    jsonData: jsonData,
+                    jsonData: jsonData
                 ))
             },
             onProgress: { progress in
