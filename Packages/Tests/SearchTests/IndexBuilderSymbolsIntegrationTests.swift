@@ -135,7 +135,8 @@ struct IndexBuilderSymbolsIntegrationTests {
             metadata: nil,
             docsDirectory: docsDir,
             indexSampleCode: false,
-            markdownToStructuredPage: { _, _ in nil }
+            markdownToStructuredPage: { _, _ in nil },
+            sampleCatalogFetch: { .missing(onDiskPath: "") }
         )
 
         try await builder.buildIndex(clearExisting: true)

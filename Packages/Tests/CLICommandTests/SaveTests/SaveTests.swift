@@ -57,7 +57,8 @@ struct SaveCommandTests {
             metadata: metadata,
             docsDirectory: tempDir,
             evolutionDirectory: nil,
-            markdownToStructuredPage: { _, _ in nil }
+            markdownToStructuredPage: { _, _ in nil },
+            sampleCatalogFetch: { .missing(onDiskPath: "") }
         )
 
         try await builder.buildIndex()
@@ -112,7 +113,8 @@ struct SaveCommandTests {
             metadata: metadata,
             docsDirectory: tempDir,
             evolutionDirectory: nil,
-            markdownToStructuredPage: { _, _ in nil }
+            markdownToStructuredPage: { _, _ in nil },
+            sampleCatalogFetch: { .missing(onDiskPath: "") }
         )
         try await builder.buildIndex()
 
@@ -155,7 +157,8 @@ struct SaveCommandTests {
             metadata: emptyMetadata,
             docsDirectory: tempDir,
             evolutionDirectory: nil,
-            markdownToStructuredPage: { _, _ in nil }
+            markdownToStructuredPage: { _, _ in nil },
+            sampleCatalogFetch: { .missing(onDiskPath: "") }
         )
 
         // Should not throw, just save 0 documents
@@ -215,7 +218,8 @@ struct SaveCommandTests {
             metadata: metadata,
             docsDirectory: docsDir,
             evolutionDirectory: evolutionDir,
-            markdownToStructuredPage: { _, _ in nil }
+            markdownToStructuredPage: { _, _ in nil },
+            sampleCatalogFetch: { .missing(onDiskPath: "") }
         )
 
         try await builder.buildIndex()
@@ -286,7 +290,8 @@ struct SaveCommandTests {
             metadata: nil, // No metadata!
             docsDirectory: tempDir.appendingPathComponent("docs"),
             evolutionDirectory: nil,
-            markdownToStructuredPage: { _, _ in nil }
+            markdownToStructuredPage: { _, _ in nil },
+            sampleCatalogFetch: { .missing(onDiskPath: "") }
         )
 
         try await builder.buildIndex()
@@ -341,7 +346,8 @@ struct SaveCommandTests {
             metadata: nil,
             docsDirectory: tempDir.appendingPathComponent("docs"),
             evolutionDirectory: nil,
-            markdownToStructuredPage: { _, _ in nil }
+            markdownToStructuredPage: { _, _ in nil },
+            sampleCatalogFetch: { .missing(onDiskPath: "") }
         )
 
         try await builder.buildIndex()
@@ -391,7 +397,8 @@ struct SaveCommandTests {
             metadata: nil,
             docsDirectory: tempDir,
             evolutionDirectory: nil,
-            markdownToStructuredPage: { _, _ in nil }
+            markdownToStructuredPage: { _, _ in nil },
+            sampleCatalogFetch: { .missing(onDiskPath: "") }
         )
 
         try await builder.buildIndex()
@@ -424,7 +431,8 @@ struct SaveCommandTests {
             metadata: nil,
             docsDirectory: tempDir,
             evolutionDirectory: nil,
-            markdownToStructuredPage: { _, _ in nil }
+            markdownToStructuredPage: { _, _ in nil },
+            sampleCatalogFetch: { .missing(onDiskPath: "") }
         )
 
         try await builder.buildIndex()

@@ -1,9 +1,11 @@
 import CoreJSONParser
 import CoreProtocols
+import CoreSampleCode
 import Foundation
 import Indexer
 import Logging
 import SampleIndex
+import SearchModels
 import SharedConstants
 import SharedCore
 import SharedUtils
@@ -35,11 +37,42 @@ extension CLI.Command.Save {
         let tracker = ProgressTracker()
         let outcome = try await Indexer.DocsService.run(
             request,
-            markdownToStructuredPage: Core.JSONParser.MarkdownToStructuredPage.convert
+            markdownToStructuredPage: Core.JSONParser.MarkdownToStructuredPage.convert,
+            sampleCatalogFetch: CLI.Command.Save.sampleCatalogFetch
         ) { event in
             Self.handleDocsEvent(event, tracker: tracker)
         }
         Self.printDocsSummary(outcome: outcome)
+    }
+
+    // MARK: - Sample catalog adapter
+
+    /// Bridges `Sample.Core.Catalog` (the CoreSampleCode singleton) over
+    /// to the `Search.SampleCatalogFetch` closure shape the Search
+    /// SampleCodeStrategy reads. Lives at the CLI composition root so
+    /// neither Search nor Indexer needs to import `CoreSampleCode`.
+    static let sampleCatalogFetch: @Sendable () async -> Search.SampleCatalogState = {
+        let entries = await Sample.Core.Catalog.allEntries
+        let loaded = await Sample.Core.Catalog.loadedSource ?? .missing
+        switch loaded {
+        case .onDisk:
+            let mapped = entries.map { entry in
+                Search.SampleCatalogEntry(
+                    title: entry.title,
+                    url: entry.url,
+                    framework: entry.framework,
+                    description: entry.description,
+                    zipFilename: entry.zipFilename,
+                    webURL: entry.webURL
+                )
+            }
+            return .loaded(entries: mapped)
+        case .missing:
+            let path = Shared.Constants.defaultSampleCodeDirectory
+                .appendingPathComponent(Sample.Core.Catalog.onDiskCatalogFilename)
+                .path
+            return .missing(onDiskPath: path)
+        }
     }
 
     static func handleDocsEvent(

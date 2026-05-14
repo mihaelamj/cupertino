@@ -393,7 +393,8 @@ struct MCPServerIntegrationTests {
             metadata: metadata,
             docsDirectory: tempDir,
             evolutionDirectory: nil,
-            markdownToStructuredPage: { _, _ in nil }
+            markdownToStructuredPage: { _, _ in nil },
+            sampleCatalogFetch: { .missing(onDiskPath: "") }
         )
         try await builder.buildIndex()
         print("   ✅ Index built")
