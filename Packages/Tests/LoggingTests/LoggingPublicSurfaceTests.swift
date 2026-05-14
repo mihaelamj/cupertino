@@ -38,8 +38,13 @@ struct LoggingPublicSurfaceTests {
     func loggingNamespace() {
         _ = Logging.self
         _ = Logging.Logger.self
-        _ = Logging.ConsoleLogger.self
         _ = Logging.Unified.self
+        // Note: `Logging.ConsoleLogger` was deleted in the logging-DI
+        // arc (#534). The replacement is `Logging.LiveRecording`, the
+        // GoF Strategy concrete that conforms to
+        // `LoggingModels.Logging.Recording`. Its surface is covered by
+        // `Tests/LoggingTests/LiveRecordingTests.swift`.
+        _ = Logging.LiveRecording.self
     }
 
     // MARK: All 10 logger categories

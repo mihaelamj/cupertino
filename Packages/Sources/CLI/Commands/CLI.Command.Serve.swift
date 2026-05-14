@@ -63,13 +63,12 @@ extension CLI.Command {
             ServeReaper.reapSiblings()
 
             if isatty(STDOUT_FILENO) == 0 {
-                // Silence stdout from BOTH static and actor logger paths so
-                // the JSON-RPC stream stays parseable. `Logging.Log` is the
-                // legacy sync static surface; `Logging.Unified.shared` is
-                // the actor backing `Logging.LiveRecording()` — both must
-                // be muted because they each carry their own
-                // `options.consoleEnabled` flag.
-                Logging.Log.disableConsole()
+                // Silence stdout from the actor backing `Logging.LiveRecording`
+                // so the JSON-RPC stream stays parseable. `Logging.Unified` is
+                // the internal Singleton (GoF p. 127: legitimate
+                // "exactly one instance" — process-wide writer config); its
+                // `options.consoleEnabled` flag gates the print() inside
+                // `record()`.
                 await Logging.Unified.shared.disableConsole()
             }
 

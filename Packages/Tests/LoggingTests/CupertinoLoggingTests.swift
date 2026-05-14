@@ -1,4 +1,5 @@
 @testable import Logging
+import LoggingModels
 import Testing
 import TestSupport
 
@@ -20,10 +21,14 @@ func loggerConfiguration() {
     #expect(Bool(true))
 }
 
-@Test("ConsoleLogger outputs messages without crashing")
-func consoleLogger() {
-    // Basic smoke test - just verify these don't crash
-    Logging.ConsoleLogger.info("Test info message")
-    Logging.ConsoleLogger.error("Test error message")
-    Logging.ConsoleLogger.output("Test output message")
+@Test("LiveRecording outputs messages without crashing (replaces ConsoleLogger smoke test)")
+func liveRecordingSmoke() {
+    // The pre-#534 `Logging.ConsoleLogger.{info,error,output}` methods are gone;
+    // the equivalent post-arc smoke is to verify the GoF Strategy concrete
+    // (`Logging.LiveRecording`) handles the same three shapes without crashing.
+    // Replaces the old `consoleLogger` test verbatim — same coverage, new API.
+    let recorder: any LoggingModels.Logging.Recording = Logging.LiveRecording()
+    recorder.info("Test info message")
+    recorder.error("Test error message")
+    recorder.output("Test output message")
 }
