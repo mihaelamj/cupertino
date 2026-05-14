@@ -1,7 +1,6 @@
 import Foundation
 @testable import SampleIndex
 import SharedConstants
-import SharedCore
 import Testing
 
 /// Companion to `BasePathDerivationTests` in SharedTests, covering the

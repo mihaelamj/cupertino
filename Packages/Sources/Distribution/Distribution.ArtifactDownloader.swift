@@ -1,7 +1,5 @@
 import Foundation
 import SharedConstants
-import SharedCore
-
 extension Distribution {
     /// Async file downloader with a progress callback. The callback fires
     /// per `URLSessionDownloadDelegate.didWriteData` event (~10 Hz on a

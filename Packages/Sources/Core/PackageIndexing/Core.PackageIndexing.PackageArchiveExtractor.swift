@@ -2,8 +2,6 @@ import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
 import SharedConstants
-import SharedCore
-
 extension Core.PackageIndexing {
     /// Fetches a repo's source tarball from `codeload.github.com/<owner>/<repo>/tar.gz/<ref>`
     /// and returns its text content as `[ExtractedFile]` in memory. The caller (the

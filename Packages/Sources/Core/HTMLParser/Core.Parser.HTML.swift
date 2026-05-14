@@ -1,5 +1,4 @@
 import Foundation
-import SharedCore
 #if canImport(WebKit)
 import CoreProtocols
 import SharedConstants

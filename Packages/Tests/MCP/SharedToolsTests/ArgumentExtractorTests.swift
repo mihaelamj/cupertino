@@ -1,7 +1,6 @@
 import MCPCore
 import MCPSharedTools
 import SharedConstants
-import SharedCore
 import Testing
 
 @Suite("MCP.SharedTools.ArgumentExtractor")

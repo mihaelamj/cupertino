@@ -3,7 +3,6 @@
 import CoreProtocols
 import Foundation
 import LoggingModels
-import SharedCore
 import Testing
 
 // MARK: - Priority Package Generator Tests

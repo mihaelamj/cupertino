@@ -12,8 +12,6 @@ import MCPCore
 import SearchModels
 @testable import SearchToolProvider
 @testable import Services
-@testable import SharedCore
-
 // MARK: - Test Helpers
 
 /// Creates a temporary search index for testing

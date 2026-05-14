@@ -1,8 +1,6 @@
 import Foundation
 import SampleIndexModels
 import SharedConstants
-import SharedCore
-
 // MARK: - Sample Search Text Formatter
 
 /// Formats sample search results as plain text for CLI output

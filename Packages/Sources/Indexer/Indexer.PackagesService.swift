@@ -1,8 +1,6 @@
 import Foundation
 import SearchModels
 import SharedConstants
-import SharedCore
-
 extension Indexer {
     /// Build `packages.db` from extracted package archives at
     /// `~/.cupertino/packages/<owner>/<repo>/`. Wraps an injected

@@ -1,7 +1,6 @@
 import ASTIndexer
 import Foundation
 import SearchModels
-import SharedCore
 import SQLite3
 
 // swiftlint:disable function_parameter_count

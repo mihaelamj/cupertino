@@ -1,7 +1,6 @@
 @testable import Distribution
 import Foundation
 import SharedConstants
-@testable import SharedCore
 import Testing
 
 // MARK: - Backup-existing-DBs (#249)

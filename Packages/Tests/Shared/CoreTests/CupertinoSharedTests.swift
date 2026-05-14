@@ -1,7 +1,6 @@
 import Foundation
 import SharedConfiguration
 import SharedConstants
-@testable import SharedCore
 import Testing
 import TestSupport
 

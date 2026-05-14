@@ -1,6 +1,5 @@
 import Foundation
 import LoggingModels
-import SharedCore
 import WebKit
 #if canImport(AppKit)
 import AppKit

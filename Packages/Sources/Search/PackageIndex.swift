@@ -4,7 +4,6 @@ import Foundation
 import LoggingModels
 import SearchModels
 import SharedConstants
-import SharedCore
 import SharedUtils
 import SQLite3
 

@@ -2,7 +2,6 @@ import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
 import SharedConstants
-import SharedCore
 import SharedModels
 
 // `ResolvedPackage` (the per-entry value type) lifted to

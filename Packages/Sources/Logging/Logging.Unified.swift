@@ -2,8 +2,6 @@ import Foundation
 import LoggingModels
 import OSLog
 import SharedConstants
-import SharedCore
-
 // MARK: - Unified Logger
 
 extension Logging {

@@ -3,7 +3,6 @@ import LoggingModels
 @testable import Search
 import SearchModels
 import SharedConstants
-@testable import SharedCore
 import Testing
 
 // MARK: - Test Helpers

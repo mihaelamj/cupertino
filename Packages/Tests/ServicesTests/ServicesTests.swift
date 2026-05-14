@@ -6,7 +6,6 @@ import SearchModels
 @testable import Services
 import ServicesModels
 import SharedConstants
-@testable import SharedCore
 import Testing
 
 // MARK: - Test Doubles

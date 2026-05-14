@@ -1,6 +1,5 @@
 import Foundation
 import SearchModels
-import SharedCore
 import SharedModels
 import SQLite3
 

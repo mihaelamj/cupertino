@@ -1,7 +1,5 @@
 import Foundation
 import SharedConstants
-import SharedCore
-
 // MARK: - Archive Guide Entry
 
 /// Entry representing an archive guide in the TUI

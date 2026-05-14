@@ -2,8 +2,6 @@ import Foundation
 import SampleIndexModels
 import SearchModels
 import SharedConstants
-import SharedCore
-
 // MARK: - Sample candidate fetcher (#230)
 
 /// Adapter that bridges `Sample.Search.Service` into the

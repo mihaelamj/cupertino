@@ -1,8 +1,6 @@
 import Foundation
 import MCPCore
 import SharedConstants
-import SharedCore
-
 // MARK: - Argument Extractor
 
 extension MCP.SharedTools {

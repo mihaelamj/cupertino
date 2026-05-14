@@ -1,6 +1,5 @@
 import Foundation
 import SharedConstants
-@testable import SharedCore
 import Testing
 
 /// Contract test for #535: every derived path on `Shared.Paths` must sit

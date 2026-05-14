@@ -9,7 +9,6 @@ import LoggingModels
 import SampleIndex
 import Search
 import SharedConstants
-import SharedCore
 import Testing
 
 // MARK: - Search.db Symbol Integration Tests

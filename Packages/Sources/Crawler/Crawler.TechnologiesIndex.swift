@@ -2,7 +2,6 @@ import CoreProtocols
 import CrawlerModels
 import Foundation
 import SharedConstants
-import SharedCore
 import SharedUtils
 
 // MARK: - Technologies Index Fetcher

@@ -18,7 +18,6 @@ let baseProducts: [Product] = [
 let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Logging"),
     .singleTargetLibrary("LoggingModels"),
-    .singleTargetLibrary("SharedCore"),
     .singleTargetLibrary("SharedConstants"),
     .singleTargetLibrary("SharedUtils"),
     .singleTargetLibrary("SharedModels"),
@@ -116,11 +115,11 @@ let targets: [Target] = {
     )
     let loggingTarget = Target.target(
         name: "Logging",
-        dependencies: ["LoggingModels", "SharedCore", "SharedConstants"]
+        dependencies: ["LoggingModels", "SharedConstants"]
     )
     let loggingTestsTarget = Target.testTarget(
         name: "LoggingTests",
-        dependencies: ["LoggingModels", "LoggingModels", "TestSupport"]
+        dependencies: ["Logging", "LoggingModels", "TestSupport"]
     )
 
     // ---------- SharedConstants (v1.1 refactor 1.3: extracts Constants.swift + the Shared namespace enum out of Shared) ----------
@@ -128,13 +127,19 @@ let targets: [Target] = {
     // and `Sample` namespace anchor files live at the Shared/ folder root next
     // to the sibling sub-target folders (Configuration / Core / Models / Utils).
     // SharedConstants picks up Shared.swift + Sample.swift + the Constants/
-    // subtree; the four sibling folders are excluded because they are their
-    // own SPM targets.
+    // subtree + the Core/ subtree; the three remaining sibling folders are
+    // excluded because they are still their own SPM targets (until #536
+    // phase 1b/c/d absorbs them too).
     let sharedConstantsTarget = Target.target(
         name: "SharedConstants",
         dependencies: [],
         path: "Sources/Shared",
-        exclude: ["Configuration", "Core", "Models", "Utils"]
+        // Phase 1a of #536: SharedCore content (`Shared.Core.ToolError`, the
+        // `Shared.Core` namespace anchor, the empty `CupertinoShared.swift`
+        // marker) is absorbed into SharedConstants — the standalone
+        // SharedCore SPM target is gone. Same module surface, one fewer
+        // dependency edge. `Core/` no longer excluded.
+        exclude: ["Configuration", "Models", "Utils"]
     )
     let sharedConstantsTestsTarget = Target.testTarget(
         name: "SharedConstantsTests",
@@ -163,15 +168,13 @@ let targets: [Target] = {
         dependencies: ["SharedModels", "SharedConstants", "SharedUtils"]
     )
 
-    // ---------- SharedCore (v1.1 refactor 1.6: residue of Shared - ToolError + CupertinoShared marker) ----------
-    let sharedCoreTarget = Target.target(
-        name: "SharedCore",
-        dependencies: ["SharedConstants"],
-        path: "Sources/Shared/Core"
-    )
+    // SharedCore was absorbed into SharedConstants in #536 phase 1a; its
+    // `Shared.Core.ToolError` + `Shared.Core` namespace anchor now live inside
+    // SharedConstants. The SharedCoreTests target stays — re-pointed at
+    // SharedConstants — until phase 1d closes out the broader Shared layer.
     let sharedCoreTestsTarget = Target.testTarget(
         name: "SharedCoreTests",
-        dependencies: ["SharedCore", "SharedConstants", "SharedUtils", "SharedModels", "CoreProtocols", "TestSupport"],
+        dependencies: ["SharedConstants", "SharedUtils", "SharedModels", "CoreProtocols", "TestSupport"],
         path: "Tests/Shared/CoreTests"
     )
 
@@ -189,12 +192,12 @@ let targets: [Target] = {
     // ---------- MCPSharedTools (v1.1 refactor 1.1: extracts MCP.SharedTools.ArgumentExtractor + MCP-protocol-output constants from Shared) ----------
     let mcpSharedToolsTarget = Target.target(
         name: "MCPSharedTools",
-        dependencies: ["MCPCore", "SharedCore", "SharedConstants"],
+        dependencies: ["MCPCore", "SharedConstants"],
         path: "Sources/MCP/SharedTools"
     )
     let mcpSharedToolsTestsTarget = Target.testTarget(
         name: "MCPSharedToolsTests",
-        dependencies: ["MCPSharedTools", "MCPCore", "SharedCore", "SharedConstants", "TestSupport"],
+        dependencies: ["MCPSharedTools", "MCPCore", "SharedConstants", "TestSupport"],
         path: "Tests/MCP/SharedToolsTests"
     )
 
@@ -213,11 +216,11 @@ let targets: [Target] = {
     // ---------- CoreProtocols (v1.2 refactor 2.1: protocols + utilities + the Core namespace enum, lifted out of Core for downstream extraction) ----------
     let coreProtocolsTarget = Target.target(
         name: "CoreProtocols",
-        dependencies: ["SharedCore", "SharedConstants", "SharedModels", "Resources"]
+        dependencies: ["SharedConstants", "SharedModels", "Resources"]
     )
     let coreProtocolsTestsTarget = Target.testTarget(
         name: "CoreProtocolsTests",
-        dependencies: ["CoreProtocols", "SharedCore", "SharedConstants", "SharedModels", "Resources"]
+        dependencies: ["CoreProtocols", "SharedConstants", "SharedModels", "Resources"]
     )
 
     // CoreHTMLParser merged back into Core (HTMLToMarkdown -> Core.Parser.HTML,
@@ -227,7 +230,7 @@ let targets: [Target] = {
     // ---------- CoreJSONParser (v1.2 refactor 2.3: AppleJSONToMarkdown + MarkdownToStructuredPage + RefResolver + JSON engine) ----------
     let coreJSONParserTarget = Target.target(
         name: "CoreJSONParser",
-        dependencies: ["CoreProtocols", "SharedCore", "SharedModels", "SharedConstants"],
+        dependencies: ["CoreProtocols", "SharedModels", "SharedConstants"],
         path: "Sources/Core/JSONParser"
     )
     let coreJSONParserTestsTarget = Target.testTarget(
@@ -259,7 +262,7 @@ let targets: [Target] = {
     // ---------- CorePackageIndexing (v1.2 refactor 2.4: Resolver + Fetcher + Archive Extractor + Annotator + ManifestCache + Store + DocDownloader) ----------
     let corePackageIndexingTarget = Target.target(
         name: "CorePackageIndexing",
-        dependencies: ["CorePackageIndexingModels", "CoreProtocols", "SharedCore", "SharedModels", "SharedConstants", "SharedUtils", "LoggingModels", "ASTIndexer", "Resources"],
+        dependencies: ["CorePackageIndexingModels", "CoreProtocols", "SharedModels", "SharedConstants", "SharedUtils", "LoggingModels", "ASTIndexer", "Resources"],
         path: "Sources/Core/PackageIndexing"
     )
     let corePackageIndexingTestsTarget = Target.testTarget(
@@ -279,7 +282,6 @@ let targets: [Target] = {
         dependencies: [
             "SharedConstants",
             "SharedUtils",
-            "SharedCore",
             "LoggingModels",
         ]
     )
@@ -292,7 +294,6 @@ let targets: [Target] = {
         name: "Core",
         dependencies: [
             "CoreProtocols",
-            "SharedCore",
             "SharedConfiguration",
             "SharedConstants",
             "SharedModels",
@@ -310,7 +311,6 @@ let targets: [Target] = {
             "CorePackageIndexing",
             "CorePackageIndexingModels",
             "Core",
-            "SharedCore",
             "SharedConstants",
             "SharedModels",
             "TestSupport",
@@ -332,7 +332,6 @@ let targets: [Target] = {
         dependencies: [
             "CrawlerModels",
             "CoreProtocols",
-            "SharedCore",
             "SharedConfiguration",
             "SharedConstants",
             "SharedModels",
@@ -343,12 +342,12 @@ let targets: [Target] = {
     )
     let crawlerTestsTarget = Target.testTarget(
         name: "CrawlerTests",
-        dependencies: ["Crawler", "CrawlerModels", "Core", "CoreJSONParser", "CorePackageIndexing", "SharedCore", "SharedConstants", "SharedModels", "TestSupport"]
+        dependencies: ["Crawler", "CrawlerModels", "Core", "CoreJSONParser", "CorePackageIndexing", "SharedConstants", "SharedModels", "TestSupport"]
     )
 
     let cleanupTarget = Target.target(
         name: "Cleanup",
-        dependencies: ["SharedCore", "SharedConstants", "SharedModels", "LoggingModels"]
+        dependencies: ["SharedConstants", "SharedModels", "LoggingModels"]
     )
     let cleanupTestsTarget = Target.testTarget(
         name: "CleanupTests",
@@ -392,14 +391,13 @@ let targets: [Target] = {
         // the Strategies/ folder moves to Sources/SearchStrategies/ and gets its own
         // SPM target with deps: [SearchIndexCore, CoreJSONParser, CorePackageIndexing,
         // Core, SharedModels, SharedConstants, Resources, Logging].
-        dependencies: ["SearchModels", "SharedCore", "SharedConstants", "SharedModels", "LoggingModels", "CoreProtocols", "CorePackageIndexingModels", "ASTIndexer"]
+        dependencies: ["SearchModels", "SharedConstants", "SharedModels", "LoggingModels", "CoreProtocols", "CorePackageIndexingModels", "ASTIndexer"]
     )
     let searchTestsTarget = Target.testTarget(
         name: "SearchTests",
         dependencies: [
             "Search",
             "SearchModels",
-            "SharedCore",
             "SharedConstants",
             "SharedModels",
             "SharedUtils",
@@ -414,11 +412,11 @@ let targets: [Target] = {
 
     let sampleIndexTarget = Target.target(
         name: "SampleIndex",
-        dependencies: ["SampleIndexModels", "SharedCore", "SharedConstants", "SharedUtils", "LoggingModels", "ASTIndexer"]
+        dependencies: ["SampleIndexModels", "SharedConstants", "SharedUtils", "LoggingModels", "ASTIndexer"]
     )
     let sampleIndexTestsTarget = Target.testTarget(
         name: "SampleIndexTests",
-        dependencies: ["SampleIndex", "SampleIndexModels", "SharedCore", "SharedConstants", "TestSupport"]
+        dependencies: ["SampleIndex", "SampleIndexModels", "SharedConstants", "TestSupport"]
     )
 
     // ---------- ServicesModels (#408: value types + namespace anchor lifted out of Services
@@ -427,7 +425,7 @@ let targets: [Target] = {
     // SearchModels / SampleIndexModels / CorePackageIndexingModels split pattern.
     let servicesModelsTarget = Target.target(
         name: "ServicesModels",
-        dependencies: ["SearchModels", "SampleIndexModels", "SharedCore", "SharedConstants"]
+        dependencies: ["SearchModels", "SampleIndexModels", "SharedConstants"]
     )
     let servicesModelsTestsTarget = Target.testTarget(
         name: "ServicesModelsTests",
@@ -436,7 +434,7 @@ let targets: [Target] = {
 
     let servicesTarget = Target.target(
         name: "Services",
-        dependencies: ["ServicesModels", "SearchModels", "SampleIndexModels", "SharedCore", "SharedConstants", "SharedUtils"],
+        dependencies: ["ServicesModels", "SearchModels", "SampleIndexModels", "SharedConstants", "SharedUtils"],
         exclude: ["README.md"]
     )
     let servicesTestsTarget = Target.testTarget(
@@ -446,18 +444,18 @@ let targets: [Target] = {
 
     let mcpSupportTarget = Target.target(
         name: "MCPSupport",
-        dependencies: ["MCPCore", "MCPSharedTools", "SharedCore", "SharedConfiguration", "SharedConstants", "SharedModels", "SharedUtils", "LoggingModels"],
+        dependencies: ["MCPCore", "MCPSharedTools", "SharedConfiguration", "SharedConstants", "SharedModels", "SharedUtils", "LoggingModels"],
         path: "Sources/MCP/Support"
     )
     let mcpSupportTestsTarget = Target.testTarget(
         name: "MCPSupportTests",
-        dependencies: ["MCPSupport", "MCPCore", "MCPSharedTools", "SharedCore", "SharedConfiguration", "SharedConstants", "SharedModels", "TestSupport"],
+        dependencies: ["MCPSupport", "MCPCore", "MCPSharedTools", "SharedConfiguration", "SharedConstants", "SharedModels", "TestSupport"],
         path: "Tests/MCP/SupportTests"
     )
 
     let searchToolProviderTarget = Target.target(
         name: "SearchToolProvider",
-        dependencies: ["MCPCore", "MCPSharedTools", "SearchModels", "SampleIndexModels", "ServicesModels", "SharedCore", "SharedConstants", "SharedUtils"]
+        dependencies: ["MCPCore", "MCPSharedTools", "SearchModels", "SampleIndexModels", "ServicesModels", "SharedConstants", "SharedUtils"]
     )
     let searchToolProviderTestsTarget = Target.testTarget(
         name: "SearchToolProviderTests",
@@ -477,7 +475,7 @@ let targets: [Target] = {
 
     let remoteSyncTarget = Target.target(
         name: "RemoteSync",
-        dependencies: ["SharedCore", "SharedConstants", "SharedUtils"]
+        dependencies: ["SharedConstants", "SharedUtils"]
     )
     let remoteSyncTestsTarget = Target.testTarget(
         name: "RemoteSyncTests",
@@ -508,11 +506,11 @@ let targets: [Target] = {
     // ---------- Distribution (#246: SetupCommand lift) ----------
     let distributionTarget = Target.target(
         name: "Distribution",
-        dependencies: ["SharedCore", "SharedConstants"]
+        dependencies: ["SharedConstants"]
     )
     let distributionTestsTarget = Target.testTarget(
         name: "DistributionTests",
-        dependencies: ["Distribution", "SharedCore", "TestSupport"]
+        dependencies: ["Distribution", "TestSupport"]
     )
 
     // ---------- Diagnostics (#245: DoctorCommand probe lift) ----------
@@ -528,27 +526,26 @@ let targets: [Target] = {
     // ---------- Indexer (#244: SaveCommand indexer + preflight lift) ----------
     let indexerTarget = Target.target(
         name: "Indexer",
-        dependencies: ["SearchModels", "SampleIndexModels", "SharedCore", "SharedConstants", "SharedUtils"]
+        dependencies: ["SearchModels", "SampleIndexModels", "SharedConstants", "SharedUtils"]
     )
     let indexerTestsTarget = Target.testTarget(
         name: "IndexerTests",
-        dependencies: ["Indexer", "SharedCore", "TestSupport"]
+        dependencies: ["Indexer", "TestSupport"]
     )
 
     // ---------- Ingest (#247: FetchCommand session + pipelines lift) ----------
     let ingestTarget = Target.target(
         name: "Ingest",
-        dependencies: ["SharedCore", "SharedConstants", "SharedModels", "SharedUtils", "LoggingModels"]
+        dependencies: ["SharedConstants", "SharedModels", "SharedUtils", "LoggingModels"]
     )
     let ingestTestsTarget = Target.testTarget(
         name: "IngestTests",
-        dependencies: ["Ingest", "SharedCore", "TestSupport"]
+        dependencies: ["Ingest", "TestSupport"]
     )
 
     let cliTarget = Target.executableTarget(
         name: "CLI",
         dependencies: [
-            "SharedCore",
             "SharedConfiguration",
             "SharedConstants",
             "SharedModels",
@@ -578,7 +575,6 @@ let targets: [Target] = {
     let tuiTarget = Target.executableTarget(
         name: "TUI",
         dependencies: [
-            "SharedCore",
             "SharedConstants",
             "SharedUtils",
             "CoreProtocols", "CorePackageIndexing", "Core",
@@ -593,7 +589,6 @@ let targets: [Target] = {
         name: "MockAIAgent",
         dependencies: [
             "MCPCore",
-            "SharedCore",
             "SharedConstants",
             "Logging",
         ]
@@ -603,7 +598,6 @@ let targets: [Target] = {
         name: "ReleaseTool",
         dependencies: [
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
-            "SharedCore",
             "SharedConstants",
             "SharedUtils",
         ],
@@ -634,7 +628,6 @@ let targets: [Target] = {
             "SampleIndexModels",
             "Services",
             "ServicesModels",
-            "SharedCore",
             "SharedConstants",
             "TestSupport",
         ],
@@ -643,13 +636,13 @@ let targets: [Target] = {
 
     let doctorTestsTarget = Target.testTarget(
         name: "DoctorTests",
-        dependencies: ["CLI", "Diagnostics", "MCPCore", "MCPSupport", "Search", "SearchModels", "SharedCore", "TestSupport"],
+        dependencies: ["CLI", "Diagnostics", "MCPCore", "MCPSupport", "Search", "SearchModels", "TestSupport"],
         path: "Tests/CLICommandTests/DoctorTests"
     )
 
     let fetchTestsTarget = Target.testTarget(
         name: "FetchTests",
-        dependencies: ["CLI", "CoreProtocols", "CorePackageIndexing", "CoreJSONParser", "Core", "Crawler", "CrawlerModels", "Ingest", "SharedCore", "TestSupport"],
+        dependencies: ["CLI", "CoreProtocols", "CorePackageIndexing", "CoreJSONParser", "Core", "Crawler", "CrawlerModels", "Ingest", "TestSupport"],
         path: "Tests/CLICommandTests/FetchTests"
     )
 
@@ -666,7 +659,6 @@ let targets: [Target] = {
             "Indexer",
             "Search",
             "SearchModels",
-            "SharedCore",
             "TestSupport",
         ],
         path: "Tests/CLICommandTests/SaveTests"
@@ -674,7 +666,7 @@ let targets: [Target] = {
 
     let tuiTestsTarget = Target.testTarget(
         name: "TUITests",
-        dependencies: ["TUI", "CoreProtocols", "Core", "SharedCore", "TestSupport"],
+        dependencies: ["TUI", "CoreProtocols", "Core", "TestSupport"],
         exclude: [
             "TEST_SUMMARY.md",
             "HOW_TESTS_DETECT_BUGS.md",
@@ -687,7 +679,7 @@ let targets: [Target] = {
     )
     let mockAIAgentTestsTarget = Target.testTarget(
         name: "MockAIAgentTests",
-        dependencies: ["MCPCore", "SampleIndex", "SharedCore", "TestSupport"]
+        dependencies: ["MCPCore", "SampleIndex", "TestSupport"]
     )
 
     let cupertinoTargets: [Target] = [
@@ -701,7 +693,6 @@ let targets: [Target] = {
         sharedUtilsTestsTarget,
         sharedModelsTarget,
         sharedModelsTestsTarget,
-        sharedCoreTarget,
         sharedCoreTestsTarget,
         sharedConfigurationTarget,
         sharedConfigurationTestsTarget,

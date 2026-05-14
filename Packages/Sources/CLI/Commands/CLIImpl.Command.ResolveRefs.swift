@@ -3,7 +3,6 @@ import Core
 import Foundation
 import Logging
 import LoggingModels
-import SharedCore
 #if canImport(AppKit)
 import AppKit
 #endif

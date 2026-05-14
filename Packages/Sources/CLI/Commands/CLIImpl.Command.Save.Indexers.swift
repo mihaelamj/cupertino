@@ -9,7 +9,6 @@ import SampleIndex
 import Search
 import SearchModels
 import SharedConstants
-import SharedCore
 import SharedUtils
 
 // MARK: - Indexer dispatch + progress rendering (#244)

@@ -1,7 +1,5 @@
 import Foundation
 import SharedConstants
-import SharedCore
-
 // MARK: - Frameworks Text Formatter
 
 extension Services.Formatter.Frameworks {

@@ -8,8 +8,6 @@
 
 import Foundation
 import SharedConstants
-import SharedCore
-
 /// Represents a sample code project from Apple
 extension Sample.Core {
     public struct Entry: Codable, Sendable {

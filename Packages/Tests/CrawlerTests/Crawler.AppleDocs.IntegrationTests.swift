@@ -7,7 +7,6 @@ import Foundation
 import LoggingModels
 import SharedConfiguration
 import SharedConstants
-@testable import SharedCore
 import SharedModels
 import Testing
 import TestSupport

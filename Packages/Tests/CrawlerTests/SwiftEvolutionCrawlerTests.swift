@@ -6,7 +6,6 @@ import CrawlerModels
 import Foundation
 import LoggingModels
 import SharedConstants
-@testable import SharedCore
 import Testing
 
 // MARK: - Swift Evolution Crawler Tests

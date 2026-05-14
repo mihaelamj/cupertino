@@ -3,7 +3,6 @@ import LoggingModels
 @testable import MCPCore
 @testable import SampleIndex
 import SharedConstants
-@testable import SharedCore
 import Testing
 @testable import TestSupport
 

@@ -1,7 +1,5 @@
 import Foundation
 import SharedConstants
-import SharedCore
-
 extension RemoteSync {
     // MARK: - Indexing Context
 

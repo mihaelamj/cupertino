@@ -3,8 +3,6 @@ import SampleIndexModels
 import SearchModels
 import ServicesModels
 import SharedConstants
-import SharedCore
-
 // MARK: - Unified read service
 
 /// Cross-source document reader. Dispatches by either an explicit `--source`

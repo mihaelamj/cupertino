@@ -1,6 +1,5 @@
 import Foundation
 import SharedConstants
-import SharedCore
 import SharedUtils
 
 extension Indexer {

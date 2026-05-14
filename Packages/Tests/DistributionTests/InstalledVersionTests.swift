@@ -1,7 +1,6 @@
 @testable import Distribution
 import Foundation
 import SharedConstants
-@testable import SharedCore
 import Testing
 
 // MARK: - Status classification (#168, lifted to Distribution in #246)
