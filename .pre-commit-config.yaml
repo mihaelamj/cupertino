@@ -10,3 +10,13 @@ repos:
     hooks:
       - id: swiftformat
         args: [--quiet]
+
+  - repo: local
+    hooks:
+      - id: package-purity
+        name: Package purity (Phase B, #503)
+        entry: scripts/check-package-purity.sh
+        language: script
+        pass_filenames: false
+        # Only run when Swift sources or the script itself change.
+        files: '(Packages/Sources/.*\.swift|scripts/check-package-purity\.sh)$'
