@@ -130,7 +130,7 @@ private var userExclusionsURL: URL {
 /// `Shared.Paths.live()` here is the right shape (per the path-DI arc, #535).
 @MainActor
 func loadExcludedPackages() -> Set<String> {
-    Core.Protocols.ExclusionList.load(from: Shared.Paths.live().baseDirectory)
+    Core.PackageIndexing.ExclusionList.load(from: Shared.Paths.live().baseDirectory)
 }
 
 /// Load the resolved closure's non-seed entries so the TUI can flag them as
