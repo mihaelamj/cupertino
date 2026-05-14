@@ -1,6 +1,6 @@
 # 🍎📚 Cupertino
 
-> 🕯️ *v1.0.2 released on 2026-05-11.* Ships a re-indexed bundle with the URL case-canonicalization fix from [#283](https://github.com/mihaelamj/cupertino/issues/283). The v1.0.0 / v1.0.1 bundles carried 61,257 case-axis duplicate clusters (~30% of `docs_metadata`); v1.0.2 has zero. See the [release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.0.2).
+> 🕯️ *v1.1.0 released on 2026-05-13.* Refactor release: one type per file with `<Namespace>.<Type>.swift` naming across every SPM target, `Crawler` extracted into its own target, MCP target renamed to `MCPCore`, DI epic (#381) middle ring closed. `databaseVersion` jumps from `1.0.2` to `1.1.0`: `cupertino setup` from a v1.1.0 binary downloads a freshly-built `cupertino-databases-v1.1.0.zip` (685 MB compressed) carrying **285,735 indexed documents across 420 frameworks**, **0 poison rows** across the 13-category audit, and **+43 markdown gap-fillers** converted to canonical `StructuredDocumentationPage` JSON. See the [v1.1.0 release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.1.0).
 
 **Apple Documentation Crawler & MCP Server**
 
@@ -21,7 +21,7 @@ Cupertino is a local, structured, AI-ready documentation system for Apple platfo
 - **Crawls** Apple Developer documentation, Swift.org, Swift Evolution proposals, Human Interface Guidelines, Apple Archive legacy guides, and Swift package metadata
 - **Indexes** everything into a fast, searchable SQLite FTS5 database with field-weighted BM25 (BM25F) ranking and AST-extracted symbol columns
 - **Serves** documentation to AI agents like Claude via the Model Context Protocol
-- **Provides** offline access to 277,000+ documentation pages across 402 frameworks (v1.0.2 bundle, post-dedup)
+- **Provides** offline access to 285,735+ documentation pages across 420 frameworks (v1.1.0 bundle, post-dedup)
 
 ### Why Build This?
 
@@ -38,7 +38,7 @@ Cupertino is a local, structured, AI-ready documentation system for Apple platfo
 ### Requirements
 
 - macOS 15+ (Sequoia)
-- ~3.3 GB disk space for the full v1.0.2 bundle (search.db ~2.4 GB, packages.db ~940 MB, samples.db ~180 MB; compressed download is smaller)
+- ~3.5 GB disk space for the full v1.1.0 bundle (search.db ~2.4 GB, packages.db ~990 MB, samples.db ~185 MB; compressed download is ~685 MB)
 
 *Building from source additionally requires Swift 6.2+ and Xcode 16.0+*
 
@@ -379,7 +379,7 @@ cupertino list-samples --framework swiftui --format json
 All commands support `--format json` for structured output that agents can parse.
 
 **Available Sources:**
-- `apple-docs` - Official Apple documentation (~277,000+ pages indexed in v1.0.2)
+- `apple-docs` - Official Apple documentation (~285,735 pages indexed in v1.1.0)
 - `samples` - Apple sample code projects
 - `hig` - Human Interface Guidelines
 - `swift-evolution` - Swift Evolution proposals
@@ -431,7 +431,7 @@ A UIKit view controller that manages a SwiftUI view hierarchy.
 
 ### 1. Multi-Source Documentation Fetching
 
-- **Apple Developer Documentation** (~277,000+ indexed pages)
+- **Apple Developer Documentation** (~285,735 indexed pages in the v1.1.0 bundle)
   - JavaScript-aware rendering via WKWebView
   - HTML to Markdown conversion
   - Smart change detection
@@ -495,7 +495,7 @@ These catalogs are indexed during `cupertino save` and enable instant search wit
   - Platform availability filtering (iOS/macOS version)
   - Snippet generation
   - Sub-100ms query performance
-- **Size**: ~2.4 GB search.db + ~990 MB packages.db + ~185 MB samples.db for full documentation (277,000+ documents across 402 frameworks, v1.0.2 bundle)
+- **Size**: ~2.4 GB search.db + ~990 MB packages.db + ~185 MB samples.db for full documentation (285,735 documents across 420 frameworks, v1.1.0 bundle)
 - **Storage**: Database must be on local filesystem - SQLite does not work reliably on network drives (NFS/SMB)
 
 ### 4. Model Context Protocol Server
@@ -739,7 +739,7 @@ For development setup, see [DEVELOPMENT.md](DEVELOPMENT.md).
 ## Project Status
 
 **Version:** 1.1.0
-**Status:** ✅ Released 2026-05-13 (refactor release: namespacing + Crawler extract + DI epic kickoff; bundle stays at v1.0.2)
+**Status:** ✅ Released 2026-05-13 — refactor release: namespacing + Crawler extract + DI epic kickoff. `databaseVersion` is `1.1.0`; `cupertino setup` downloads the v1.1.0 bundle (285,735 documents across 420 frameworks, 0 poison rows).
 
 - ✅ All core functionality working
 - ✅ 1,234 tests across 135 suites passing (100% pass rate)
