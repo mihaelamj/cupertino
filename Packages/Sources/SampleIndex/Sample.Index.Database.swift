@@ -80,6 +80,35 @@ extension Sample.Index {
             }
         }
 
+        /// Inspect `PRAGMA synchronous` on the actor's own connection
+        /// (0..3, matching SQLite's enum: 0=OFF, 1=NORMAL, 2=FULL,
+        /// 3=EXTRA). Per-connection; not header-persistent. Test-facing.
+        public func currentSynchronousMode() -> Int32? {
+            guard let database else { return nil }
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            guard sqlite3_prepare_v2(database, "PRAGMA synchronous;", -1, &stmt, nil) == SQLITE_OK,
+                  sqlite3_step(stmt) == SQLITE_ROW
+            else {
+                return nil
+            }
+            return sqlite3_column_int(stmt, 0)
+        }
+
+        /// Inspect `PRAGMA journal_size_limit` on the actor's own
+        /// connection (bytes, -1 = unlimited). Per-connection.
+        public func currentJournalSizeLimit() -> Int64? {
+            guard let database else { return nil }
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            guard sqlite3_prepare_v2(database, "PRAGMA journal_size_limit;", -1, &stmt, nil) == SQLITE_OK,
+                  sqlite3_step(stmt) == SQLITE_ROW
+            else {
+                return nil
+            }
+            return sqlite3_column_int64(stmt, 0)
+        }
+
         // MARK: - Database Setup
 
         private func openDatabase() async throws {
