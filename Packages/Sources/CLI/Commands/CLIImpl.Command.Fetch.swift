@@ -1031,7 +1031,9 @@ extension CLIImpl.Command {
             }
 
             // Otherwise use the curated list of essential archive guides with framework info
-            return Crawler.ArchiveGuideCatalog.essentialGuidesWithInfo
+            return Crawler.ArchiveGuideCatalog.essentialGuidesWithInfo(
+                baseDirectory: Shared.Paths.live().baseDirectory
+            )
         }
 
         private func runAvailabilityFetch() async throws {
