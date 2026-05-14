@@ -1,7 +1,5 @@
 import Foundation
 import SharedConstants
-import SharedCore
-
 extension Core.Protocols {
     /// Canonicalizes `(owner, repo)` pairs using `api.github.com/repos/<owner>/<repo>`,
     /// resolving GitHub's silent redirects (e.g. `apple/swift-docc` → `swiftlang/swift-docc`)

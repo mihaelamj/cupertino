@@ -1,8 +1,6 @@
 import Foundation
 import SearchModels
 import SharedConstants
-import SharedCore
-
 extension Indexer {
     /// Build `search.db` from on-disk corpus (apple-docs JSON, swift
     /// evolution markdown, swift.org, archive, HIG). Wraps an injected

@@ -1,8 +1,6 @@
 import Foundation
 import SearchModels
 import SharedConstants
-import SharedCore
-
 // MARK: - HIG Text Formatter
 
 extension Services.Formatter.HIG {

@@ -6,7 +6,6 @@ import ArgumentParser
 import CoreProtocols
 import Foundation
 import LoggingModels
-@testable import SharedCore
 import Testing
 import TestSupport
 

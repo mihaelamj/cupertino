@@ -5,7 +5,6 @@ import LoggingModels
 import Search
 import SearchModels
 import SharedConstants
-import SharedCore
 import SharedUtils
 
 // MARK: - Package Search Command (hidden)

@@ -1,8 +1,6 @@
 import Foundation
 import Resources
 import SharedConstants
-import SharedCore
-
 /// Catalog of archive guides loaded from bundled JSON resource
 enum ArchiveGuidesCatalog {
     /// User-writable location for selected guides: ~/.cupertino/selected-archive-guides.json

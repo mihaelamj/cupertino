@@ -10,7 +10,6 @@ import LoggingModels
 import SearchModels
 import SharedConfiguration
 import SharedConstants
-@testable import SharedCore
 import SharedModels
 import SharedUtils
 import Testing

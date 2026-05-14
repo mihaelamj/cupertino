@@ -1,8 +1,6 @@
 import Foundation
 import LoggingModels
 import SharedConstants
-import SharedCore
-
 // MARK: - GitHub Sample Code Fetcher
 
 /// Fetches Apple sample code from the public GitHub repository

@@ -8,7 +8,6 @@ import SampleIndex
 import Search
 import SearchModels
 import SharedConstants
-import SharedCore
 import SharedUtils
 
 // MARK: - Save Command

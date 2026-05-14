@@ -3,7 +3,6 @@ import Foundation
 import LoggingModels
 import SampleIndexModels
 import SharedConstants
-import SharedCore
 import SharedUtils
 import SQLite3
 

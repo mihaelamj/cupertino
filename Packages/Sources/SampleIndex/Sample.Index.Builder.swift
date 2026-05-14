@@ -3,8 +3,6 @@ import Foundation
 import OSLog
 import SampleIndexModels
 import SharedConstants
-import SharedCore
-
 // MARK: - Sample Index Builder
 
 // swiftlint:disable type_body_length function_body_length

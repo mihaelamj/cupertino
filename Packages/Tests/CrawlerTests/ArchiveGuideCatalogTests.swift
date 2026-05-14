@@ -4,7 +4,6 @@ import Crawler
 import CrawlerModels
 import Foundation
 import SharedConstants
-@testable import SharedCore
 import Testing
 
 // MARK: - Crawler.ArchiveGuideCatalog Tests

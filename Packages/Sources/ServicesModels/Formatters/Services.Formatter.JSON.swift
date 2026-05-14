@@ -1,7 +1,5 @@
 import Foundation
 import SearchModels
-import SharedCore
-
 // MARK: - JSON Search Result Formatter
 
 extension Services.Formatter {

@@ -4,8 +4,6 @@ import CoreProtocols
 import Foundation
 import Resources
 import SharedConstants
-import SharedCore
-
 /// Open a package's GitHub page in the default browser
 @MainActor
 func openCurrentPackageInBrowser(state: AppState) {

@@ -3,7 +3,6 @@ import CoreProtocols
 import Foundation
 import SearchModels
 import SharedConstants
-import SharedCore
 import SharedModels
 
 extension Search {

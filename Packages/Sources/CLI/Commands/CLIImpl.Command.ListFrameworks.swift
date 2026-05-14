@@ -5,8 +5,6 @@ import LoggingModels
 import Services
 import ServicesModels
 import SharedConstants
-import SharedCore
-
 // MARK: - List Frameworks Command
 
 /// CLI command for listing available frameworks - mirrors MCP tool functionality.

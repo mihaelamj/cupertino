@@ -1,8 +1,6 @@
 import CrawlerModels
 import Foundation
 import LoggingModels
-import SharedCore
-
 #if canImport(WebKit)
 import CoreProtocols
 import SharedConstants

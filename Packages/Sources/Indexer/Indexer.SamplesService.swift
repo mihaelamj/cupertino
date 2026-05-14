@@ -1,8 +1,6 @@
 import Foundation
 import SampleIndexModels
 import SharedConstants
-import SharedCore
-
 extension Indexer {
     /// Build `samples.db` from extracted sample-code zips at
     /// `~/.cupertino/sample-code/`. Wraps an injected

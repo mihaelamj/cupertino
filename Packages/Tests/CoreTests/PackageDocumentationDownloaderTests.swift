@@ -2,7 +2,6 @@
 @testable import CorePackageIndexing
 import CoreProtocols
 import Foundation
-import SharedCore
 import Testing
 
 // MARK: - Package Documentation Downloader Tests

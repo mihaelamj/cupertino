@@ -2,8 +2,6 @@ import Foundation
 import LoggingModels
 import OSLog
 import SharedConstants
-import SharedCore
-
 // MARK: - Logger Infrastructure
 
 /// Centralized logging infrastructure for Cupertino using os.log

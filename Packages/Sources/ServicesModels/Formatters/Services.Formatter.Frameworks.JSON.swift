@@ -1,6 +1,4 @@
 import Foundation
-import SharedCore
-
 // MARK: - Frameworks JSON Formatter
 
 extension Services.Formatter.Frameworks {

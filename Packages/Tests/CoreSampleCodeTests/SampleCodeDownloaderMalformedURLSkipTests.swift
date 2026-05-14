@@ -2,7 +2,6 @@
 import Foundation
 import LoggingModels
 import SharedConstants
-import SharedCore
 import Testing
 
 // Covers the malformed-URL skip path added to

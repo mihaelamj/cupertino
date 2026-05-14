@@ -15,7 +15,6 @@ import Search
 import SearchModels
 import SharedConfiguration
 import SharedConstants
-import SharedCore
 import SharedModels
 import SharedUtils
 

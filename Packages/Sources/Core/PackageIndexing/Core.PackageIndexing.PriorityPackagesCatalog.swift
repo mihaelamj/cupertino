@@ -7,8 +7,6 @@ import CoreProtocols
 import Foundation
 import Resources
 import SharedConstants
-import SharedCore
-
 extension Core.PackageIndexing {
     /// Represents a priority package entry
     public struct PriorityPackage: Codable, Sendable {

@@ -1,7 +1,5 @@
 import Foundation
 import SearchModels
-import SharedCore
-
 // MARK: - Result Formatter Protocol
 
 extension Services.Formatter {

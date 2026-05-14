@@ -14,7 +14,6 @@ import Search
 import SearchModels
 import SearchToolProvider
 import SharedConstants
-import SharedCore
 import SharedUtils
 
 // MARK: - Doctor Command

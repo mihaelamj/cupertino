@@ -2,8 +2,6 @@ import Foundation
 import SearchModels
 import ServicesModels
 import SharedConstants
-import SharedCore
-
 // MARK: - Search Service Protocol
 
 /// Protocol for search operations across different documentation sources.

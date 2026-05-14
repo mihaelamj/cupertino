@@ -4,7 +4,6 @@ import SearchModels
 import Foundation
 @testable import Search
 import SharedConstants
-@testable import SharedCore
 import Testing
 
 // MARK: - DocKind taxonomy (#192 section C1)

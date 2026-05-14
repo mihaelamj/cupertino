@@ -8,7 +8,6 @@ import SearchModels
 import Services
 import ServicesModels
 import SharedConstants
-import SharedCore
 import SharedUtils
 
 // MARK: - Search Command
