@@ -5,7 +5,6 @@
 import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
-import Logging
 import Resources
 import SharedConstants
 import SharedCore
@@ -300,7 +299,18 @@ extension Core.PackageIndexing {
 
             do {
                 try mergedData.write(to: selectedURL)
-                Logging.ConsoleLogger.info("📥 selected-packages.json: added \(totalNew) new priority entries from embedded list (#218)")
+                // PriorityPackagesCatalog is a static-enum Singleton (GoF
+                // p. 127 — exactly-one-instance over an embedded
+                // resource). Static enums can't hold an injected
+                // logger without forcing every public accessor
+                // (allPackages, applePackages, etc.) to thread one
+                // through — that ripple would touch CLI + TUI.
+                // For the one-time migration notice fired here on a
+                // first-run upgrade, direct stdout is the GoF-honest
+                // boundary: no Service Locator reach, no Singleton
+                // logger leak, just the side-effect that already had
+                // to land somewhere observable.
+                print("📥 selected-packages.json: added \(totalNew) new priority entries from embedded list (#218)")
             } catch {
                 // Silently fail - we already have the user file from before
             }

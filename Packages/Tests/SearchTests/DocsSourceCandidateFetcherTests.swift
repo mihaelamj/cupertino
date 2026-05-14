@@ -1,4 +1,5 @@
 import Foundation
+import LoggingModels
 @testable import Search
 import SearchModels
 import Testing
@@ -11,7 +12,7 @@ import Testing
 private func seedIndex() async throws -> (Search.Index, URL) {
     let dbPath = FileManager.default.temporaryDirectory
         .appendingPathComponent("docs-fetcher-\(UUID().uuidString).db")
-    let index = try await Search.Index(dbPath: dbPath)
+    let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
 
     // Two docs in apple-docs source, plus one in swift-evolution so we can
     // verify source scoping.

@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import LoggingModels
 import Logging
 import SampleIndex
 import Search
@@ -121,7 +122,7 @@ extension CLI.Command.Search {
             return nil
         }
         do {
-            let index = try await SearchModule.Index(dbPath: url)
+            let index = try await SearchModule.Index(dbPath: url, logger: Logging.LiveRecording())
             for source in docsSources {
                 fetchers.append(Search.DocsSourceCandidateFetcher(
                     searchIndex: index,
@@ -176,7 +177,7 @@ extension CLI.Command.Search {
             return nil
         }
         do {
-            let database = try await Sample.Index.Database(dbPath: url)
+            let database = try await Sample.Index.Database(dbPath: url, logger: Logging.LiveRecording())
             let service = Sample.Search.Service(database: database)
             fetchers.append(Sample.Services.CandidateFetcher(
                 service: service,

@@ -1,4 +1,5 @@
 import Foundation
+import LoggingModels
 @testable import SampleIndex
 import SharedConstants
 import Testing
@@ -122,7 +123,7 @@ struct SamplesAvailabilityPersistenceTests {
             .appendingPathComponent("samples-roundtrip-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: dbURL) }
 
-        let database = try await Sample.Index.Database(dbPath: dbURL)
+        let database = try await Sample.Index.Database(dbPath: dbURL, logger: Logging.NoopRecording())
         defer { Task { await database.disconnect() } }
 
         let project = Sample.Index.Project(
@@ -151,7 +152,7 @@ struct SamplesAvailabilityPersistenceTests {
             .appendingPathComponent("samples-file-roundtrip-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: dbURL) }
 
-        let database = try await Sample.Index.Database(dbPath: dbURL)
+        let database = try await Sample.Index.Database(dbPath: dbURL, logger: Logging.NoopRecording())
         defer { Task { await database.disconnect() } }
 
         let project = Sample.Index.Project(

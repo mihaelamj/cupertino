@@ -4,6 +4,7 @@ import CoreProtocols
 import Crawler
 import CrawlerModels
 import Foundation
+import LoggingModels
 @testable import MCPCore
 @testable import MCPSupport
 @testable import Search
@@ -85,7 +86,7 @@ struct MCPCommandTests {
             changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
-        let provider = MCP.Support.DocsResourceProvider(configuration: config)
+        let provider = MCP.Support.DocsResourceProvider(configuration: config, logger: Logging.NoopRecording())
 
         await server.registerResourceProvider(provider)
 
@@ -129,7 +130,7 @@ struct MCPCommandTests {
             changeDetection: Shared.Configuration.ChangeDetection(),
             output: Shared.Configuration.Output()
         )
-        let provider = MCP.Support.DocsResourceProvider(configuration: config)
+        let provider = MCP.Support.DocsResourceProvider(configuration: config, logger: Logging.NoopRecording())
 
         // Read resource
         let result = try await provider.readResource(uri: "apple-docs://swift/documentation_swift")
@@ -159,7 +160,7 @@ struct MCPCommandTests {
 
         // Create search index with test data
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath)
+        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
 
         // Index a test document
         try await searchIndex.indexDocument(Search.Index.IndexDocumentParams(
@@ -205,7 +206,7 @@ struct MCPCommandTests {
 
         // Create and populate search index
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath)
+        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
 
         try await searchIndex.indexDocument(Search.Index.IndexDocumentParams(
             uri: "https://developer.apple.com/documentation/swift/array",
@@ -259,7 +260,7 @@ struct MCPCommandTests {
             changeDetection: Shared.Configuration.ChangeDetection(),
             output: Shared.Configuration.Output()
         )
-        let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir)
+        let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir, logger: Logging.NoopRecording())
 
         // List resources
         let listResult = try await provider.listResources(cursor: nil as String?)
@@ -311,7 +312,7 @@ struct MCPCommandTests {
             changeDetection: Shared.Configuration.ChangeDetection(),
             output: Shared.Configuration.Output()
         )
-        let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir)
+        let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir, logger: Logging.NoopRecording())
 
         // List resources — should include both SE and ST
         let listResult = try await provider.listResources(cursor: nil as String?)
@@ -347,7 +348,7 @@ struct MCPCommandTests {
             changeDetection: Shared.Configuration.ChangeDetection(),
             output: Shared.Configuration.Output()
         )
-        let provider = MCP.Support.DocsResourceProvider(configuration: config)
+        let provider = MCP.Support.DocsResourceProvider(configuration: config, logger: Logging.NoopRecording())
 
         // Try to read non-existent resource
         await #expect(throws: Shared.Core.ToolError.self) {
@@ -396,7 +397,8 @@ struct MCPServerIntegrationTests {
             configuration: config,
             htmlParser: Crawler.NoopHTMLParserStrategy(),
             appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
-            priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy()
+            priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy(),
+            logger: Logging.NoopRecording()
         )
         let stats = try await crawler.crawl()
         #expect(stats.totalPages > 0, "Should have crawled pages")
@@ -405,7 +407,7 @@ struct MCPServerIntegrationTests {
         // Step 2: Build index
         print("\n   🔍 Step 2: Building search index...")
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath)
+        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
 
         let metadata = try Shared.Models.CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
         let builder = Search.IndexBuilder(
@@ -414,7 +416,7 @@ struct MCPServerIntegrationTests {
             docsDirectory: tempDir,
             evolutionDirectory: nil,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogProvider: MissingSampleCatalogProvider()
+            sampleCatalogProvider: MissingSampleCatalogProvider(), logger: Logging.NoopRecording()
         )
         try await builder.buildIndex()
         print("   ✅ Index built")
@@ -429,7 +431,7 @@ struct MCPServerIntegrationTests {
             changeDetection: Shared.Configuration.ChangeDetection(),
             output: Shared.Configuration.Output()
         )
-        let docsProvider = MCP.Support.DocsResourceProvider(configuration: mcpConfig)
+        let docsProvider = MCP.Support.DocsResourceProvider(configuration: mcpConfig, logger: Logging.NoopRecording())
         let searchProvider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: nil)
 
         await server.registerResourceProvider(docsProvider)

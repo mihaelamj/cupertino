@@ -17,6 +17,13 @@ import SharedUtils
 /// `CLI.Command.Search+SmartReport.swift` (#239).
 extension CLI.Command.Search {
     func runDocsSearch() async throws {
+        // GoF Factory Method (1994 p. 107): the search command's
+        // composition sub-root. Each per-source runner constructs its
+        // own stateless factories so no caller has to reach for a
+        // shared module-scope handle.
+        let searchDatabaseFactory: any SearchModule.DatabaseFactory = LiveSearchDatabaseFactory()
+        let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
+
         let results = try await Services.ServiceContainer.withDocsService(dbPath: searchDb, searchDatabaseFactory: searchDatabaseFactory) { service in
             try await service.search(Services.SearchQuery(
                 text: query,
@@ -79,6 +86,10 @@ extension CLI.Command.Search {
     }
 
     func runSampleSearch() async throws {
+        // GoF Factory Method (1994 p. 107): composition sub-root.
+        let searchDatabaseFactory: any SearchModule.DatabaseFactory = LiveSearchDatabaseFactory()
+        let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
+
         let dbPath = resolveSampleDbPath()
 
         let result = try await Services.ServiceContainer.withSampleService(dbPath: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
@@ -179,6 +190,10 @@ extension CLI.Command.Search {
     }
 
     func runHIGSearch() async throws {
+        // GoF Factory Method (1994 p. 107): composition sub-root.
+        let searchDatabaseFactory: any SearchModule.DatabaseFactory = LiveSearchDatabaseFactory()
+        let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
+
         let results = try await Services.ServiceContainer.withDocsService(dbPath: searchDb, searchDatabaseFactory: searchDatabaseFactory) { service in
             try await service.search(Services.SearchQuery(
                 text: query,

@@ -1,5 +1,6 @@
 import CoreProtocols
 import Foundation
+import LoggingModels
 import Logging
 @testable import Search
 import SearchModels
@@ -146,14 +147,14 @@ struct IndexBuilderSymbolsIntegrationTests {
         _ = try writeFixtureDoc(framework: "swiftui", name: "sample", into: docsDir)
 
         let dbPath = tempRoot.appendingPathComponent("search.db")
-        let index = try await Search.Index(dbPath: dbPath)
+        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
         let builder = Search.IndexBuilder(
             searchIndex: index,
             metadata: nil,
             docsDirectory: docsDir,
             indexSampleCode: false,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogProvider: MissingSampleCatalogProvider()
+            sampleCatalogProvider: MissingSampleCatalogProvider(), logger: Logging.NoopRecording()
         )
 
         try await builder.buildIndex(clearExisting: true)

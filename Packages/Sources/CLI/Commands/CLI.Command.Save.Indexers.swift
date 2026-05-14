@@ -2,6 +2,7 @@ import CoreJSONParser
 import CoreProtocols
 import CoreSampleCode
 import Foundation
+import LoggingModels
 import Indexer
 import Logging
 import SampleIndex
@@ -56,7 +57,7 @@ extension CLI.Command.Save {
             input: Search.DocsIndexingInput,
             onProgress: @escaping @Sendable (Int, Int) -> Void
         ) async throws -> Search.DocsIndexingOutcome {
-            let searchIndex = try await Search.Index(dbPath: input.searchDBPath)
+            let searchIndex = try await Search.Index(dbPath: input.searchDBPath, logger: Logging.LiveRecording())
             let builder = Search.IndexBuilder(
                 searchIndex: searchIndex,
                 metadata: nil,
@@ -66,7 +67,7 @@ extension CLI.Command.Save {
                 archiveDirectory: input.archiveDirectory,
                 higDirectory: input.higDirectory,
                 markdownStrategy: input.markdownStrategy,
-                sampleCatalogProvider: input.sampleCatalogProvider
+                sampleCatalogProvider: input.sampleCatalogProvider, logger: Logging.LiveRecording()
             )
             try await builder.buildIndex(clearExisting: input.clearExisting, onProgress: onProgress)
             let docCount = try await searchIndex.documentCount()
@@ -205,7 +206,7 @@ extension CLI.Command.Save {
             onProgress: @escaping @Sendable (String, Int, Int) -> Void
         ) async throws -> Search.PackageIndexingOutcome {
             let startedAt = Date()
-            let index = try await Search.PackageIndex(dbPath: packagesDB)
+            let index = try await Search.PackageIndex(dbPath: packagesDB, logger: Logging.LiveRecording())
             let indexer = Search.PackageIndexer(rootDirectory: packagesRoot, index: index)
             let stats = try await indexer.indexAll { name, done, total in
                 onProgress(name, done, total)
@@ -299,7 +300,7 @@ extension CLI.Command.Save {
             input: Sample.Index.SamplesIndexingInput,
             onPhase: @escaping @Sendable (Sample.Index.SamplesIndexingPhase) -> Void
         ) async throws -> Sample.Index.SamplesIndexingOutcome {
-            let database = try await Sample.Index.Database(dbPath: input.samplesDB)
+            let database = try await Sample.Index.Database(dbPath: input.samplesDB, logger: Logging.LiveRecording())
             if input.clear {
                 onPhase(.clearingExistingIndex)
                 try await database.clearAll()

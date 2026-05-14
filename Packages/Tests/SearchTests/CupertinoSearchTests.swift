@@ -1,4 +1,5 @@
 import Foundation
+import LoggingModels
 @testable import Search
 import SearchModels
 import SharedConstants
@@ -12,7 +13,7 @@ import Testing
 /// - Note: Always call the cleanup function in a defer block
 func createTestSearchIndex() async throws -> (index: Search.Index, cleanup: () throws -> Void) {
     let tempDB = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString).db")
-    let index = try await Search.Index(dbPath: tempDB)
+    let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording())
 
     let cleanup = {
         try FileManager.default.removeItem(at: tempDB)
@@ -194,7 +195,7 @@ struct CupertinoSearchTests {
         let tempDB = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let index = try await Search.Index(dbPath: tempDB)
+        let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording())
 
         // Index multiple documents
         for docNumber in 1...10 {
@@ -237,7 +238,7 @@ struct CupertinoSearchTests {
         let tempDB = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let index = try await Search.Index(dbPath: tempDB)
+        let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording())
 
         let uri = "test://doc"
 
@@ -310,7 +311,7 @@ struct CupertinoSearchTests {
         let tempDB = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let index = try await Search.Index(dbPath: tempDB)
+        let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording())
 
         // Index documents with different relevance
         // Doc 1: Title match + multiple content matches (highest relevance)
@@ -379,7 +380,7 @@ struct CupertinoSearchTests {
         let tempDB = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let index = try await Search.Index(dbPath: tempDB)
+        let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording())
 
         // Index documents from different sources
         try await index.indexDocument(Search.Index.IndexDocumentParams(
@@ -417,7 +418,7 @@ struct CupertinoSearchTests {
         let tempDB = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let index = try await Search.Index(dbPath: tempDB)
+        let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording())
 
         // Index documents from different sources with common keyword "swift"
         try await index.indexDocument(Search.Index.IndexDocumentParams(
@@ -485,7 +486,7 @@ struct CupertinoSearchTests {
         let tempDB = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let index = try await Search.Index(dbPath: tempDB)
+        let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording())
 
         // Index a document with null rawMarkdown (simulating swift-book case)
         let uri = "swift-book://concurrency"
@@ -530,7 +531,7 @@ struct CupertinoSearchTests {
         let tempDB = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let index = try await Search.Index(dbPath: tempDB)
+        let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording())
 
         let uri = "apple-docs://swift/string"
         let jsonData = "{\"title\":\"String\",\"kind\":\"struct\",\"rawMarkdown\":\"# String\"}"
@@ -651,7 +652,7 @@ struct CupertinoSearchTests {
             to: tempDir.appendingPathComponent("README.md"), atomically: true, encoding: .utf8
         )
 
-        let strategy = Search.SwiftEvolutionStrategy(evolutionDirectory: tempDir)
+        let strategy = Search.SwiftEvolutionStrategy(evolutionDirectory: tempDir, logger: Logging.NoopRecording())
         let files = try strategy.getProposalFiles(from: tempDir)
         let filenames = Set(files.map(\.lastPathComponent))
 
@@ -729,7 +730,7 @@ struct CupertinoSearchTests {
         let tempDB = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: tempDB) }
 
-        let index = try await Search.Index(dbPath: tempDB)
+        let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording())
 
         // Index document with null rawMarkdown
         let uri = "swift-book://basics"

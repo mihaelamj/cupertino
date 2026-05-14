@@ -1,5 +1,5 @@
 import Foundation
-import Logging
+import LoggingModels
 import SearchModels
 import SharedConstants
 import SharedModels
@@ -49,6 +49,8 @@ extension Search {
     public actor IndexBuilder {
         private let searchIndex: Search.Index
         private let strategies: [any Search.SourceIndexingStrategy]
+        /// GoF Strategy seam for log emission (1994 p. 315).
+        private let logger: any LoggingModels.Logging.Recording
 
         // MARK: - Designated Initialiser
 
@@ -61,9 +63,15 @@ extension Search {
         /// - Parameters:
         ///   - searchIndex: The ``Search/Index`` to write into.
         ///   - strategies: The ordered list of strategies to execute.
-        public init(searchIndex: Search.Index, strategies: [any Search.SourceIndexingStrategy]) {
+        ///   - logger: GoF Strategy seam for log emission.
+        public init(
+            searchIndex: Search.Index,
+            strategies: [any Search.SourceIndexingStrategy],
+            logger: any LoggingModels.Logging.Recording
+        ) {
             self.searchIndex = searchIndex
             self.strategies = strategies
+            self.logger = logger
         }
 
         // MARK: - Convenience Initialiser
@@ -96,7 +104,8 @@ extension Search {
             higDirectory: URL? = nil,
             indexSampleCode: Bool = true,
             markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
-            sampleCatalogProvider: any Search.SampleCatalogProvider
+            sampleCatalogProvider: any Search.SampleCatalogProvider,
+            logger: any LoggingModels.Logging.Recording
         ) {
             self.init(
                 searchIndex: searchIndex,
@@ -109,8 +118,10 @@ extension Search {
                     higDirectory: higDirectory,
                     indexSampleCode: indexSampleCode,
                     markdownStrategy: markdownStrategy,
-                    sampleCatalogProvider: sampleCatalogProvider
-                )
+                    sampleCatalogProvider: sampleCatalogProvider,
+                    logger: logger
+                ),
+                logger: logger
             )
         }
 
@@ -132,11 +143,11 @@ extension Search {
             clearExisting: Bool = true,
             onProgress: Search.IndexingProgressCallback? = nil
         ) async throws {
-            Logging.Log.info("🔨 Building search index...", category: .search)
+            logger.info("🔨 Building search index...", category: .search)
 
             if clearExisting {
                 try await searchIndex.clearIndex()
-                Logging.Log.info("   Cleared existing index", category: .search)
+                logger.info("   Cleared existing index", category: .search)
             }
 
             var allStats: [Search.IndexStats] = []
@@ -150,13 +161,13 @@ extension Search {
             // Log per-source breakdown so operators can diagnose index-build issues
             // without having to re-run with verbose logging.
             for stats in allStats {
-                Logging.Log.info(
+                logger.info(
                     "   [\(stats.source)] indexed: \(stats.indexed), skipped: \(stats.skipped)",
                     category: .search
                 )
             }
             let count = try await searchIndex.documentCount()
-            Logging.Log.info("✅ Search index built: \(count) documents", category: .search)
+            logger.info("✅ Search index built: \(count) documents", category: .search)
         }
 
         // MARK: - Factory
@@ -183,33 +194,36 @@ extension Search {
             higDirectory: URL? = nil,
             indexSampleCode: Bool = true,
             markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
-            sampleCatalogProvider: any Search.SampleCatalogProvider
+            sampleCatalogProvider: any Search.SampleCatalogProvider,
+            logger: any LoggingModels.Logging.Recording
         ) -> [any Search.SourceIndexingStrategy] {
             var strategies: [any Search.SourceIndexingStrategy] = [
                 Search.AppleDocsStrategy(
                     docsDirectory: docsDirectory,
-                    markdownStrategy: markdownStrategy
+                    markdownStrategy: markdownStrategy,
+                    logger: logger
                 ),
             ]
             if let dir = evolutionDirectory {
-                strategies.append(Search.SwiftEvolutionStrategy(evolutionDirectory: dir))
+                strategies.append(Search.SwiftEvolutionStrategy(evolutionDirectory: dir, logger: logger))
             }
             if let dir = swiftOrgDirectory {
                 strategies.append(Search.SwiftOrgStrategy(
                     swiftOrgDirectory: dir,
-                    markdownStrategy: markdownStrategy
+                    markdownStrategy: markdownStrategy,
+                    logger: logger
                 ))
             }
             if let dir = archiveDirectory {
-                strategies.append(Search.AppleArchiveStrategy(archiveDirectory: dir))
+                strategies.append(Search.AppleArchiveStrategy(archiveDirectory: dir, logger: logger))
             }
             if let dir = higDirectory {
-                strategies.append(Search.HIGStrategy(higDirectory: dir))
+                strategies.append(Search.HIGStrategy(higDirectory: dir, logger: logger))
             }
             if indexSampleCode {
-                strategies.append(Search.SampleCodeStrategy(sampleCatalogProvider: sampleCatalogProvider))
+                strategies.append(Search.SampleCodeStrategy(sampleCatalogProvider: sampleCatalogProvider, logger: logger))
             }
-            strategies.append(Search.SwiftPackagesStrategy())
+            strategies.append(Search.SwiftPackagesStrategy(logger: logger))
             return strategies
         }
 

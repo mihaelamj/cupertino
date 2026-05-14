@@ -4,6 +4,7 @@ import CorePackageIndexing
 import CoreProtocols
 import CrawlerModels
 import Foundation
+import LoggingModels
 import SharedConstants
 import SharedModels
 
@@ -76,7 +77,8 @@ struct LiveTestPriorityPackageStrategy: Crawler.PriorityPackageStrategy {
     ) async throws -> Crawler.PriorityPackageOutcome {
         let generator = Core.PackageIndexing.PriorityPackageGenerator(
             swiftOrgDocsPath: swiftOrgDocsPath,
-            outputPath: outputPath
+            outputPath: outputPath,
+            logger: Logging.NoopRecording()
         )
         let list = try await generator.generate()
         return Crawler.PriorityPackageOutcome(

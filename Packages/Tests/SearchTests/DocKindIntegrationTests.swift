@@ -1,4 +1,5 @@
 import Foundation
+import LoggingModels
 @testable import Search
 import SearchModels
 import SQLite3
@@ -110,7 +111,7 @@ struct SchemaShapeTests {
     func freshDBStampedVersion() async throws {
         let dbPath = makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath)
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
         await idx.disconnect()
 
         #expect(try readSchemaVersion(at: dbPath) == 13)
@@ -120,7 +121,7 @@ struct SchemaShapeTests {
     func idxKindExists() async throws {
         let dbPath = makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath)
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
         await idx.disconnect()
 
         #expect(try indexExists(at: dbPath, name: "idx_kind"))
@@ -139,7 +140,7 @@ struct IndexDocumentKindTests {
         let dbPath = makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
-        let idx = try await Search.Index(dbPath: dbPath)
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
         try await idx.indexDocument(Search.Index.IndexDocumentParams(
             uri: uri,
             source: source,
@@ -207,7 +208,7 @@ struct SymbolsColumnTests {
         let dbPath = makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
-        let idx = try await Search.Index(dbPath: dbPath)
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
         try await idx.indexDocument(Search.Index.IndexDocumentParams(
             uri: "test://nosym",
             source: "swift-book",

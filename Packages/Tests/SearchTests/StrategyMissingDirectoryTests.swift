@@ -1,4 +1,5 @@
 import Foundation
+import LoggingModels
 @testable import Search
 import SearchModels
 import SharedConstants
@@ -29,7 +30,7 @@ struct StrategyMissingDirectoryTests {
 
     /// A temporary Search.Index backed by an in-memory-style path unique per test.
     private func makeIndex(in tempRoot: URL) async throws -> Search.Index {
-        try await Search.Index(dbPath: tempRoot.appendingPathComponent("search.db"))
+        try await Search.Index(dbPath: tempRoot.appendingPathComponent("search.db"), logger: Logging.NoopRecording())
     }
 
     private func makeTempRoot() throws -> URL {
@@ -50,7 +51,8 @@ struct StrategyMissingDirectoryTests {
         let index = try await makeIndex(in: tempRoot)
         let strategy = Search.AppleDocsStrategy(
             docsDirectory: missingDir,
-            markdownStrategy: NoopMarkdownStrategy()
+            markdownStrategy: NoopMarkdownStrategy(),
+            logger: Logging.NoopRecording()
         )
 
         let stats = try await strategy.indexItems(into: index, progress: nil)
@@ -70,7 +72,8 @@ struct StrategyMissingDirectoryTests {
         let index = try await makeIndex(in: tempRoot)
         let strategy = Search.AppleDocsStrategy(
             docsDirectory: emptyDir,
-            markdownStrategy: NoopMarkdownStrategy()
+            markdownStrategy: NoopMarkdownStrategy(),
+            logger: Logging.NoopRecording()
         )
 
         let stats = try await strategy.indexItems(into: index, progress: nil)
@@ -88,7 +91,7 @@ struct StrategyMissingDirectoryTests {
 
         let missingDir = tempRoot.appendingPathComponent("archive")
         let index = try await makeIndex(in: tempRoot)
-        let strategy = Search.AppleArchiveStrategy(archiveDirectory: missingDir)
+        let strategy = Search.AppleArchiveStrategy(archiveDirectory: missingDir, logger: Logging.NoopRecording())
 
         let stats = try await strategy.indexItems(into: index, progress: nil)
 
@@ -105,7 +108,7 @@ struct StrategyMissingDirectoryTests {
 
         let missingDir = tempRoot.appendingPathComponent("hig")
         let index = try await makeIndex(in: tempRoot)
-        let strategy = Search.HIGStrategy(higDirectory: missingDir)
+        let strategy = Search.HIGStrategy(higDirectory: missingDir, logger: Logging.NoopRecording())
 
         let stats = try await strategy.indexItems(into: index, progress: nil)
 
@@ -122,7 +125,7 @@ struct StrategyMissingDirectoryTests {
 
         let missingDir = tempRoot.appendingPathComponent("swift-evolution")
         let index = try await makeIndex(in: tempRoot)
-        let strategy = Search.SwiftEvolutionStrategy(evolutionDirectory: missingDir)
+        let strategy = Search.SwiftEvolutionStrategy(evolutionDirectory: missingDir, logger: Logging.NoopRecording())
 
         let stats = try await strategy.indexItems(into: index, progress: nil)
 
@@ -149,7 +152,7 @@ struct StrategyMissingDirectoryTests {
         )
 
         let index = try await makeIndex(in: tempRoot)
-        let strategy = Search.SwiftEvolutionStrategy(evolutionDirectory: evolutionDir)
+        let strategy = Search.SwiftEvolutionStrategy(evolutionDirectory: evolutionDir, logger: Logging.NoopRecording())
         let stats = try await strategy.indexItems(into: index, progress: nil)
 
         #expect(stats.skipped == 1)
@@ -168,7 +171,8 @@ struct StrategyMissingDirectoryTests {
         let index = try await makeIndex(in: tempRoot)
         let strategy = Search.SwiftOrgStrategy(
             swiftOrgDirectory: missingDir,
-            markdownStrategy: NoopMarkdownStrategy()
+            markdownStrategy: NoopMarkdownStrategy(),
+            logger: Logging.NoopRecording()
         )
 
         let stats = try await strategy.indexItems(into: index, progress: nil)

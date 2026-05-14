@@ -1,7 +1,7 @@
 import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
-import Logging
+import LoggingModels
 import SharedConstants
 import SharedCore
 
@@ -17,14 +17,25 @@ extension Core.PackageIndexing {
     public actor PriorityPackageGenerator {
         private let swiftOrgDocsPath: URL
         private let outputPath: URL
+        /// GoF Strategy seam for log emission (1994 p. 315). Injected by
+        /// the binary's composition root.
+        private let logger: any LoggingModels.Logging.Recording
 
-        public init(swiftOrgDocsPath: URL, outputPath: URL) {
+        public init(
+            swiftOrgDocsPath: URL,
+            outputPath: URL,
+            logger: any LoggingModels.Logging.Recording
+        ) {
             self.swiftOrgDocsPath = swiftOrgDocsPath
             self.outputPath = outputPath
+            self.logger = logger
         }
 
         public func generate() async throws -> PriorityPackageList {
-            Logging.ConsoleLogger.info("🔍 Scanning \(Shared.Constants.DisplayName.swiftOrg) documentation for package mentions...")
+            logger.info(
+                "🔍 Scanning \(Shared.Constants.DisplayName.swiftOrg) documentation for package mentions...",
+                category: .packages
+            )
 
             let packages = try await extractGitHubPackages()
 
@@ -36,11 +47,11 @@ extension Core.PackageIndexing {
                 !Shared.Constants.GitHubOrg.officialOrgs.contains($0.owner.lowercased())
             }
 
-            Logging.ConsoleLogger.info("📦 Found \(packages.count) unique GitHub repositories:")
-            Logging.ConsoleLogger.info("   • \(Shared.Constants.GitHubOrg.appleDisplay) packages: \(applePackages.count)")
-            Logging.ConsoleLogger.info("   • \(Shared.Constants.GitHubOrg.swiftlangDisplay) packages: \(swiftlangPackages.count)")
-            Logging.ConsoleLogger.info("   • \(Shared.Constants.GitHubOrg.swiftServerDisplay) packages: \(serverPackages.count)")
-            Logging.ConsoleLogger.info("   • Ecosystem packages: \(ecosystemPackages.count)")
+            logger.info("📦 Found \(packages.count) unique GitHub repositories:", category: .packages)
+            logger.info("   • \(Shared.Constants.GitHubOrg.appleDisplay) packages: \(applePackages.count)", category: .packages)
+            logger.info("   • \(Shared.Constants.GitHubOrg.swiftlangDisplay) packages: \(swiftlangPackages.count)", category: .packages)
+            logger.info("   • \(Shared.Constants.GitHubOrg.swiftServerDisplay) packages: \(serverPackages.count)", category: .packages)
+            logger.info("   • Ecosystem packages: \(ecosystemPackages.count)", category: .packages)
 
             // Build priority list
             let priorityList = try await PriorityPackageList(
@@ -83,7 +94,7 @@ extension Core.PackageIndexing {
             let data = try encoder.encode(priorityList)
             try data.write(to: outputPath)
 
-            Logging.ConsoleLogger.info("💾 Saved priority package list to: \(outputPath.path)")
+            logger.info("💾 Saved priority package list to: \(outputPath.path)", category: .packages)
 
             return priorityList
         }

@@ -1,5 +1,6 @@
 @testable import CoreSampleCode
 import Foundation
+import LoggingModels
 import SharedConstants
 import SharedCore
 import Testing
@@ -29,7 +30,7 @@ struct SampleCodeDownloaderMalformedURLSkipTests {
         let outputDir = try tempOutputDirectory()
         defer { try? FileManager.default.removeItem(at: outputDir) }
 
-        let downloader = Sample.Core.Downloader(outputDirectory: outputDir)
+        let downloader = Sample.Core.Downloader(outputDirectory: outputDir, logger: Logging.NoopRecording())
         var stats = Sample.Core.Statistics()
         let badSample = SampleMetadata(name: "Bad Sample", url: "", slug: "bad-sample")
 
@@ -58,7 +59,7 @@ struct SampleCodeDownloaderMalformedURLSkipTests {
         let outputDir = try tempOutputDirectory()
         defer { try? FileManager.default.removeItem(at: outputDir) }
 
-        let downloader = Sample.Core.Downloader(outputDirectory: outputDir)
+        let downloader = Sample.Core.Downloader(outputDirectory: outputDir, logger: Logging.NoopRecording())
         var stats = Sample.Core.Statistics()
         let badSample = SampleMetadata(name: "Bad Sample 2", url: "ht tp://x", slug: "bad-sample-2")
 
@@ -74,7 +75,7 @@ struct SampleCodeDownloaderMalformedURLSkipTests {
         let outputDir = try tempOutputDirectory()
         defer { try? FileManager.default.removeItem(at: outputDir) }
 
-        let downloader = Sample.Core.Downloader(outputDirectory: outputDir)
+        let downloader = Sample.Core.Downloader(outputDirectory: outputDir, logger: Logging.NoopRecording())
         var stats = Sample.Core.Statistics()
 
         try await downloader.downloadSample(

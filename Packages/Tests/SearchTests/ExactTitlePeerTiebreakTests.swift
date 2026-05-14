@@ -1,4 +1,5 @@
 import Foundation
+import LoggingModels
 @testable import Search
 import SearchModels
 import Testing
@@ -58,7 +59,7 @@ struct ExactTitlePeerTiebreakTests {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
-        let idx = try await Search.Index(dbPath: dbPath)
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
 
         try await indexPage(
             on: idx,
@@ -91,7 +92,7 @@ struct ExactTitlePeerTiebreakTests {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
-        let idx = try await Search.Index(dbPath: dbPath)
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
 
         try await indexPage(
             on: idx,
@@ -122,7 +123,7 @@ struct ExactTitlePeerTiebreakTests {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
-        let idx = try await Search.Index(dbPath: dbPath)
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
 
         try await indexPage(
             on: idx,
@@ -159,7 +160,7 @@ struct ExactTitlePeerTiebreakTests {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
-        let idx = try await Search.Index(dbPath: dbPath)
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
 
         try await indexPage(
             on: idx,

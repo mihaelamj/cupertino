@@ -17,6 +17,7 @@ let baseProducts: [Product] = [
 #if os(macOS)
 let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Logging"),
+    .singleTargetLibrary("LoggingModels"),
     .singleTargetLibrary("SharedCore"),
     .singleTargetLibrary("SharedConstants"),
     .singleTargetLibrary("SharedUtils"),
@@ -98,13 +99,28 @@ let targets: [Target] = {
 
     // ---------- Cupertino (Apple Docs Crawler → MCP Server - macOS only) ----------
     #if os(macOS)
+    // LoggingModels: GoF Strategy (1994 p. 315) protocol target paired with
+    // the concrete `Logging` target. Holds the `Logging` namespace anchor +
+    // `Logging.Recording` protocol + `Logging.Level` / `Logging.Category` /
+    // `Logging.NoopRecording`. Consumers take `any Logging.Recording` and
+    // never reach for a shared static. Foundation-only deps so any target
+    // can hold the protocol-typed seam without dragging the OSLog + file
+    // + console concrete in.
+    let loggingModelsTarget = Target.target(
+        name: "LoggingModels",
+        dependencies: []
+    )
+    let loggingModelsTestsTarget = Target.testTarget(
+        name: "LoggingModelsTests",
+        dependencies: ["LoggingModels"]
+    )
     let loggingTarget = Target.target(
         name: "Logging",
-        dependencies: ["SharedCore", "SharedConstants"]
+        dependencies: ["LoggingModels", "SharedCore", "SharedConstants"]
     )
     let loggingTestsTarget = Target.testTarget(
         name: "LoggingTests",
-        dependencies: ["Logging", "TestSupport"]
+        dependencies: ["LoggingModels", "LoggingModels", "TestSupport"]
     )
 
     // ---------- SharedConstants (v1.1 refactor 1.3: extracts Constants.swift + the Shared namespace enum out of Shared) ----------
@@ -211,7 +227,7 @@ let targets: [Target] = {
     // ---------- CoreJSONParser (v1.2 refactor 2.3: AppleJSONToMarkdown + MarkdownToStructuredPage + RefResolver + JSON engine) ----------
     let coreJSONParserTarget = Target.target(
         name: "CoreJSONParser",
-        dependencies: ["CoreProtocols", "SharedCore", "SharedModels", "SharedConstants", "SharedUtils", "Logging"],
+        dependencies: ["CoreProtocols", "SharedCore", "SharedModels", "SharedConstants"],
         path: "Sources/Core/JSONParser"
     )
     let coreJSONParserTestsTarget = Target.testTarget(
@@ -243,7 +259,7 @@ let targets: [Target] = {
     // ---------- CorePackageIndexing (v1.2 refactor 2.4: Resolver + Fetcher + Archive Extractor + Annotator + ManifestCache + Store + DocDownloader) ----------
     let corePackageIndexingTarget = Target.target(
         name: "CorePackageIndexing",
-        dependencies: ["CorePackageIndexingModels", "CoreProtocols", "SharedCore", "SharedModels", "SharedConstants", "SharedUtils", "Logging", "ASTIndexer", "Resources"],
+        dependencies: ["CorePackageIndexingModels", "CoreProtocols", "SharedCore", "SharedModels", "SharedConstants", "SharedUtils", "LoggingModels", "ASTIndexer", "Resources"],
         path: "Sources/Core/PackageIndexing"
     )
     let corePackageIndexingTestsTarget = Target.testTarget(
@@ -264,7 +280,7 @@ let targets: [Target] = {
             "SharedConstants",
             "SharedUtils",
             "SharedCore",
-            "Logging",
+            "LoggingModels",
         ]
     )
     let coreSampleCodeTestsTarget = Target.testTarget(
@@ -276,14 +292,11 @@ let targets: [Target] = {
         name: "Core",
         dependencies: [
             "CoreProtocols",
-            "CoreJSONParser",
-            "CorePackageIndexing",
             "SharedCore",
             "SharedConfiguration",
             "SharedConstants",
             "SharedModels",
             "SharedUtils",
-            "Logging",
             "Resources",
             "ASTIndexer",
         ],
@@ -310,6 +323,10 @@ let targets: [Target] = {
         name: "CrawlerModels",
         dependencies: ["SharedConstants", "SharedModels"]
     )
+    let crawlerModelsTestsTarget = Target.testTarget(
+        name: "CrawlerModelsTests",
+        dependencies: ["CrawlerModels", "SharedConstants", "SharedModels"]
+    )
     let crawlerTarget = Target.target(
         name: "Crawler",
         dependencies: [
@@ -320,7 +337,7 @@ let targets: [Target] = {
             "SharedConstants",
             "SharedModels",
             "SharedUtils",
-            "Logging",
+            "LoggingModels",
             "Resources",
         ]
     )
@@ -331,7 +348,7 @@ let targets: [Target] = {
 
     let cleanupTarget = Target.target(
         name: "Cleanup",
-        dependencies: ["SharedCore", "SharedConstants", "SharedModels", "Logging"]
+        dependencies: ["SharedCore", "SharedConstants", "SharedModels", "LoggingModels"]
     )
     let cleanupTestsTarget = Target.testTarget(
         name: "CleanupTests",
@@ -344,7 +361,7 @@ let targets: [Target] = {
     // Search.Result, Search.MatchedSymbol, Search.PlatformAvailability, Search.DocumentFormat.
     let searchModelsTarget = Target.target(
         name: "SearchModels",
-        dependencies: ["SharedCore", "SharedConstants", "SharedModels"]
+        dependencies: ["SharedConstants", "SharedModels"]
     )
     let searchModelsTestsTarget = Target.testTarget(
         name: "SearchModelsTests",
@@ -375,7 +392,7 @@ let targets: [Target] = {
         // the Strategies/ folder moves to Sources/SearchStrategies/ and gets its own
         // SPM target with deps: [SearchIndexCore, CoreJSONParser, CorePackageIndexing,
         // Core, SharedModels, SharedConstants, Resources, Logging].
-        dependencies: ["SearchModels", "SharedCore", "SharedConstants", "SharedModels", "Logging", "CoreProtocols", "CorePackageIndexingModels", "ASTIndexer"]
+        dependencies: ["SearchModels", "SharedCore", "SharedConstants", "SharedModels", "LoggingModels", "CoreProtocols", "CorePackageIndexingModels", "ASTIndexer"]
     )
     let searchTestsTarget = Target.testTarget(
         name: "SearchTests",
@@ -397,7 +414,7 @@ let targets: [Target] = {
 
     let sampleIndexTarget = Target.target(
         name: "SampleIndex",
-        dependencies: ["SampleIndexModels", "SharedCore", "SharedConstants", "SharedUtils", "Logging", "ASTIndexer"]
+        dependencies: ["SampleIndexModels", "SharedCore", "SharedConstants", "SharedUtils", "LoggingModels", "ASTIndexer"]
     )
     let sampleIndexTestsTarget = Target.testTarget(
         name: "SampleIndexTests",
@@ -410,16 +427,16 @@ let targets: [Target] = {
     // SearchModels / SampleIndexModels / CorePackageIndexingModels split pattern.
     let servicesModelsTarget = Target.target(
         name: "ServicesModels",
-        dependencies: ["SearchModels", "SharedCore", "SharedConstants", "SharedModels"]
+        dependencies: ["SearchModels", "SampleIndexModels", "SharedCore", "SharedConstants"]
     )
     let servicesModelsTestsTarget = Target.testTarget(
         name: "ServicesModelsTests",
-        dependencies: ["ServicesModels", "SearchModels", "SharedConstants", "TestSupport"]
+        dependencies: ["ServicesModels", "SearchModels", "SampleIndexModels", "SharedConstants"]
     )
 
     let servicesTarget = Target.target(
         name: "Services",
-        dependencies: ["ServicesModels", "SharedCore", "SharedConstants", "SharedUtils", "Search", "SampleIndex", "SampleIndexModels"],
+        dependencies: ["ServicesModels", "SearchModels", "SampleIndexModels", "SharedCore", "SharedConstants", "SharedUtils"],
         exclude: ["README.md"]
     )
     let servicesTestsTarget = Target.testTarget(
@@ -429,7 +446,7 @@ let targets: [Target] = {
 
     let mcpSupportTarget = Target.target(
         name: "MCPSupport",
-        dependencies: ["MCPCore", "MCPSharedTools", "SharedCore", "SharedConfiguration", "SharedConstants", "SharedModels", "SharedUtils", "Logging"],
+        dependencies: ["MCPCore", "MCPSharedTools", "SharedCore", "SharedConfiguration", "SharedConstants", "SharedModels", "SharedUtils", "LoggingModels"],
         path: "Sources/MCP/Support"
     )
     let mcpSupportTestsTarget = Target.testTarget(
@@ -479,8 +496,6 @@ let targets: [Target] = {
     let astIndexerTarget = Target.target(
         name: "ASTIndexer",
         dependencies: [
-            "SharedCore",
-            "Logging",
             .product(name: "SwiftSyntax", package: "swift-syntax"),
             .product(name: "SwiftParser", package: "swift-syntax"),
         ]
@@ -493,7 +508,7 @@ let targets: [Target] = {
     // ---------- Distribution (#246: SetupCommand lift) ----------
     let distributionTarget = Target.target(
         name: "Distribution",
-        dependencies: ["SharedCore", "SharedConstants", "Logging"]
+        dependencies: ["SharedCore", "SharedConstants"]
     )
     let distributionTestsTarget = Target.testTarget(
         name: "DistributionTests",
@@ -513,7 +528,7 @@ let targets: [Target] = {
     // ---------- Indexer (#244: SaveCommand indexer + preflight lift) ----------
     let indexerTarget = Target.target(
         name: "Indexer",
-        dependencies: ["SearchModels", "SampleIndexModels", "SharedCore", "SharedConstants", "SharedUtils", "Logging"]
+        dependencies: ["SearchModels", "SampleIndexModels", "SharedCore", "SharedConstants", "SharedUtils"]
     )
     let indexerTestsTarget = Target.testTarget(
         name: "IndexerTests",
@@ -523,7 +538,7 @@ let targets: [Target] = {
     // ---------- Ingest (#247: FetchCommand session + pipelines lift) ----------
     let ingestTarget = Target.target(
         name: "Ingest",
-        dependencies: ["SharedCore", "SharedConstants", "SharedModels", "SharedUtils", "Logging"]
+        dependencies: ["SharedCore", "SharedConstants", "SharedModels", "SharedUtils", "LoggingModels"]
     )
     let ingestTestsTarget = Target.testTarget(
         name: "IngestTests",
@@ -676,6 +691,8 @@ let targets: [Target] = {
     )
 
     let cupertinoTargets: [Target] = [
+        loggingModelsTarget,
+        loggingModelsTestsTarget,
         loggingTarget,
         loggingTestsTarget,
         sharedConstantsTarget,
@@ -705,6 +722,7 @@ let targets: [Target] = {
         coreTarget,
         coreTestsTarget,
         crawlerModelsTarget,
+        crawlerModelsTestsTarget,
         crawlerTarget,
         crawlerTestsTarget,
         cleanupTarget,

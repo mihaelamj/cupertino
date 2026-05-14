@@ -3,6 +3,7 @@ import Core
 import CoreProtocols
 import Diagnostics
 import Foundation
+import LoggingModels
 import MCPCore
 import MCPSupport
 import Search
@@ -56,7 +57,7 @@ struct MCPDoctorCommandTests {
         let searchDBURL = tempDir.appendingPathComponent("search.db")
 
         // Create a search database
-        let searchIndex = try await Search.Index(dbPath: searchDBURL)
+        let searchIndex = try await Search.Index(dbPath: searchDBURL, logger: Logging.NoopRecording())
         await searchIndex.disconnect()
 
         // Verify database file exists
@@ -74,7 +75,7 @@ struct MCPDoctorCommandTests {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let dbPath = tempDir.appendingPathComponent("search.db")
-        let idx = try await Search.Index(dbPath: dbPath)
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
         await idx.disconnect()
 
         // A fresh DB stamps user_version to the current schema version.
@@ -96,7 +97,7 @@ struct MCPDoctorCommandTests {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let dbPath = tempDir.appendingPathComponent("search.db")
-        let idx = try await Search.Index(dbPath: dbPath)
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
         await idx.disconnect()
 
         // `packages` is a packages.db table, not present in search.db.
@@ -111,7 +112,7 @@ struct MCPDoctorCommandTests {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let dbPath = tempDir.appendingPathComponent("search.db")
-        let idx = try await Search.Index(dbPath: dbPath)
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
         await idx.disconnect()
 
         let result = Diagnostics.Probes.rowCount(at: dbPath, sql: "SELECT COUNT(*) FROM docs_metadata;")
@@ -137,7 +138,7 @@ struct MCPDoctorCommandTests {
         let dbPath = tempDir.appendingPathComponent("search.db")
 
         // Create a sqlite file directly with PRAGMA user_version = 11. We
-        // can't go through `Search.Index(dbPath:)` to set this: its init
+        // can't go through `Search.Index(dbPath:, logger: Logging.NoopRecording())` to set this: its init
         // either fresh-stamps to the current `schemaVersion` or throws.
         // Use the sqlite3 C API directly so the file lands at the prior
         // version.
@@ -167,7 +168,7 @@ struct MCPDoctorCommandTests {
         // breaking-migration throw is what produces the "rebuild required"
         // user message.
         await #expect(throws: (any Error).self) {
-            _ = try await Search.Index(dbPath: dbPath)
+            _ = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
         }
     }
 }

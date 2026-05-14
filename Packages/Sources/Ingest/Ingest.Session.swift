@@ -1,5 +1,5 @@
 import Foundation
-import Logging
+import LoggingModels
 import SharedConstants
 import SharedCore
 import SharedModels
@@ -16,10 +16,10 @@ extension Ingest {
     public enum Session {
         /// Clear the saved crawl session at `outputDirectory`.
         /// `--start-clean` calls this before running the crawler.
-        public static func clearSavedSession(at outputDirectory: URL) throws {
+        public static func clearSavedSession(at outputDirectory: URL, logger: any LoggingModels.Logging.Recording) throws {
             let metadataFile = outputDirectory.appendingPathComponent(Shared.Constants.FileName.metadata)
             guard FileManager.default.fileExists(atPath: metadataFile.path) else {
-                Logging.ConsoleLogger.info(
+                logger.info(
                     "🧹 --start-clean: no saved session to clear at \(outputDirectory.path)"
                 )
                 return
@@ -27,7 +27,7 @@ extension Ingest {
             var metadata = try Shared.Models.CrawlMetadata.load(from: metadataFile)
             metadata.crawlState = nil
             try metadata.save(to: metadataFile)
-            Logging.ConsoleLogger.info(
+            logger.info(
                 "🧹 --start-clean: cleared saved session at \(metadataFile.path)"
             )
         }
@@ -38,17 +38,17 @@ extension Ingest {
         /// set and prepended to the queue at the configured `maxDepth`,
         /// so the resumed crawl retries them without re-discovering
         /// their children.
-        public static func requeueErroredURLs(at outputDirectory: URL, maxDepth: Int) throws {
+        public static func requeueErroredURLs(at outputDirectory: URL, maxDepth: Int, logger: any LoggingModels.Logging.Recording) throws {
             let metadataFile = outputDirectory.appendingPathComponent(Shared.Constants.FileName.metadata)
             guard FileManager.default.fileExists(atPath: metadataFile.path) else {
-                Logging.ConsoleLogger.info(
+                logger.info(
                     "🔁 --retry-errors: no metadata.json at \(outputDirectory.path)"
                 )
                 return
             }
             var metadata = try Shared.Models.CrawlMetadata.load(from: metadataFile)
             guard var crawlState = metadata.crawlState else {
-                Logging.ConsoleLogger.info(
+                logger.info(
                     "🔁 --retry-errors: no saved crawlState — nothing to retry"
                 )
                 return
@@ -57,7 +57,7 @@ extension Ingest {
             let savedURLs = Set(metadata.pages.keys)
             let errored = crawlState.visited.subtracting(savedURLs)
             guard !errored.isEmpty else {
-                Logging.ConsoleLogger.info(
+                logger.info(
                     "🔁 --retry-errors: no errored URLs to retry "
                         + "(every visited URL is in the pages dict)"
                 )
@@ -73,7 +73,7 @@ extension Ingest {
             metadata.crawlState = crawlState
             try metadata.save(to: metadataFile)
 
-            Logging.ConsoleLogger.info(
+            logger.info(
                 "🔁 --retry-errors: re-queued \(errored.count) errored URL(s) "
                     + "at depth \(maxDepth) (front of queue)"
             )
@@ -87,17 +87,18 @@ extension Ingest {
         public static func requeueFromBaseline(
             at outputDirectory: URL,
             baselineDir: URL,
-            maxDepth: Int
+            maxDepth: Int,
+            logger: any LoggingModels.Logging.Recording
         ) throws {
             let metadataFile = outputDirectory.appendingPathComponent(Shared.Constants.FileName.metadata)
             guard FileManager.default.fileExists(atPath: metadataFile.path) else {
-                Logging.ConsoleLogger.info(
+                logger.info(
                     "🩹 --baseline: no metadata.json at \(outputDirectory.path)"
                 )
                 return
             }
             guard FileManager.default.fileExists(atPath: baselineDir.path) else {
-                Logging.ConsoleLogger.info(
+                logger.info(
                     "🩹 --baseline: directory not found at \(baselineDir.path)"
                 )
                 return
@@ -105,7 +106,7 @@ extension Ingest {
 
             var metadata = try Shared.Models.CrawlMetadata.load(from: metadataFile)
             guard var crawlState = metadata.crawlState else {
-                Logging.ConsoleLogger.info(
+                logger.info(
                     "🩹 --baseline: no saved crawlState — run with auto-resume "
                         + "or --start-clean first"
                 )
@@ -114,7 +115,7 @@ extension Ingest {
 
             let baselineURLs = collectBaselineURLs(in: baselineDir)
             guard !baselineURLs.isEmpty else {
-                Logging.ConsoleLogger.info(
+                logger.info(
                     "🩹 --baseline: no URLs found in baseline at \(baselineDir.path)"
                 )
                 return
@@ -143,7 +144,7 @@ extension Ingest {
                 }
             }
             guard !missing.isEmpty else {
-                Logging.ConsoleLogger.info(
+                logger.info(
                     "🩹 --baseline: every baseline URL already known "
                         + "(\(baselineURLs.count) URLs checked)"
                 )
@@ -156,7 +157,7 @@ extension Ingest {
             metadata.crawlState = crawlState
             try metadata.save(to: metadataFile)
 
-            Logging.ConsoleLogger.info(
+            logger.info(
                 "🩹 --baseline: prepended \(missing.count) missing URL(s) "
                     + "from \(baselineURLs.count)-URL baseline at depth \(maxDepth)"
             )
@@ -170,7 +171,8 @@ extension Ingest {
             at outputDirectory: URL,
             urlsFile: URL,
             maxDepth: Int,
-            startURL: URL
+            startURL: URL,
+            logger: any LoggingModels.Logging.Recording
         ) throws {
             let lines = try String(contentsOf: urlsFile, encoding: .utf8)
                 .split(whereSeparator: \.isNewline)
@@ -178,7 +180,7 @@ extension Ingest {
                 .filter { !$0.isEmpty && !$0.hasPrefix("#") }
 
             guard !lines.isEmpty else {
-                Logging.ConsoleLogger.info(
+                logger.info(
                     "📥 --urls: file \(urlsFile.path) had no URLs to enqueue"
                 )
                 return
@@ -219,7 +221,7 @@ extension Ingest {
             metadata.crawlState = crawlState
             try metadata.save(to: metadataFile)
 
-            Logging.ConsoleLogger.info(
+            logger.info(
                 "📥 --urls: enqueued \(validURLs.count) URL(s) from "
                     + "\(urlsFile.lastPathComponent) at depth 0 "
                     + "(descent up to maxDepth=\(maxDepth))"
@@ -230,7 +232,7 @@ extension Ingest {
         /// matches the supplied `url`. Returns the directory itself
         /// (not the saved `outputDirectory` field) so the result works
         /// across rsynced corpora where the on-disk path drifts.
-        public static func checkForSession(at directory: URL, matching url: URL) -> URL? {
+        public static func checkForSession(at directory: URL, matching url: URL, logger: any LoggingModels.Logging.Recording) -> URL? {
             let metadataFile = directory.appendingPathComponent(Shared.Constants.FileName.metadata)
             guard FileManager.default.fileExists(atPath: metadataFile.path),
                   let data = try? Data(contentsOf: metadataFile),
@@ -241,7 +243,7 @@ extension Ingest {
             else {
                 return nil
             }
-            Logging.ConsoleLogger.info(
+            logger.info(
                 "📂 Found existing session, resuming to: \(directory.path)"
             )
             return directory

@@ -1,4 +1,5 @@
 import Foundation
+import LoggingModels
 import MCPCore
 @testable import MCPSupport
 import SharedConfiguration
@@ -30,7 +31,8 @@ struct DocsResourceProviderMalformedURLSkipTests {
             configuration: Shared.Configuration(),
             evolutionDirectory: evolutionDir,
             archiveDirectory: archiveDir,
-            markdownLookup: nil
+            markdownLookup: nil,
+            logger: Logging.NoopRecording()
         )
     }
 

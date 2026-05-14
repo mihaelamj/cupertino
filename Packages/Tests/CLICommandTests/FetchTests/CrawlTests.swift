@@ -5,6 +5,7 @@ import CoreProtocols
 import Crawler
 import CrawlerModels
 import Foundation
+import LoggingModels
 @testable import Search
 import SearchModels
 import SharedConfiguration
@@ -49,7 +50,8 @@ struct WebCrawlTests {
             configuration: config,
             htmlParser: LiveTestHTMLParserStrategy(),
             appleJSONParser: LiveTestAppleJSONParserStrategy(),
-            priorityPackageStrategy: LiveTestPriorityPackageStrategy()
+            priorityPackageStrategy: LiveTestPriorityPackageStrategy(),
+            logger: Logging.NoopRecording()
         )
         let stats = try await crawler.crawl()
 
@@ -116,7 +118,8 @@ struct WebCrawlTests {
             configuration: config,
             htmlParser: LiveTestHTMLParserStrategy(),
             appleJSONParser: LiveTestAppleJSONParserStrategy(),
-            priorityPackageStrategy: LiveTestPriorityPackageStrategy()
+            priorityPackageStrategy: LiveTestPriorityPackageStrategy(),
+            logger: Logging.NoopRecording()
         )
         let stats1 = try await crawler1.crawl()
         #expect(stats1.newPages == 1, "First fetch should have 1 new page")
@@ -126,7 +129,8 @@ struct WebCrawlTests {
             configuration: config,
             htmlParser: LiveTestHTMLParserStrategy(),
             appleJSONParser: LiveTestAppleJSONParserStrategy(),
-            priorityPackageStrategy: LiveTestPriorityPackageStrategy()
+            priorityPackageStrategy: LiveTestPriorityPackageStrategy(),
+            logger: Logging.NoopRecording()
         )
         let stats2 = try await crawler2.crawl()
         #expect(stats2.skippedPages == 1, "Second fetch should skip unchanged page")
@@ -148,7 +152,8 @@ struct WebCrawlTests {
 
         let crawler = Crawler.Evolution(
             outputDirectory: tempDir,
-            onlyAccepted: true
+            onlyAccepted: true,
+            logger: Logging.NoopRecording()
         )
 
         _ = try await crawler.crawl(limit: 3)

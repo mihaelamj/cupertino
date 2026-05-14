@@ -10,6 +10,7 @@ import CrawlerModels
 import Foundation
 import Ingest
 import Logging
+import LoggingModels
 import Search
 import SearchModels
 import SharedConfiguration
@@ -332,14 +333,14 @@ extension CLI.Command {
             let url = try validateStartURL()
             let outputDirectory = try await determineOutputDirectory(for: url)
             if startClean {
-                try Ingest.Session.clearSavedSession(at: outputDirectory)
+                try Ingest.Session.clearSavedSession(at: outputDirectory, logger: Logging.LiveRecording())
             }
             if retryErrors {
-                try Ingest.Session.requeueErroredURLs(at: outputDirectory, maxDepth: maxDepth)
+                try Ingest.Session.requeueErroredURLs(at: outputDirectory, maxDepth: maxDepth, logger: Logging.LiveRecording())
             }
             if let baselinePath = baseline {
                 let baselineURL = URL(fileURLWithPath: baselinePath).expandingTildeInPath
-                try Ingest.Session.requeueFromBaseline(at: outputDirectory, baselineDir: baselineURL, maxDepth: maxDepth)
+                try Ingest.Session.requeueFromBaseline(at: outputDirectory, baselineDir: baselineURL, maxDepth: maxDepth, logger: Logging.LiveRecording())
             }
             if let urlsPath = urls {
                 let urlsURL = URL(fileURLWithPath: urlsPath).expandingTildeInPath
@@ -347,7 +348,8 @@ extension CLI.Command {
                     at: outputDirectory,
                     urlsFile: urlsURL,
                     maxDepth: maxDepth,
-                    startURL: url
+                    startURL: url,
+            logger: Logging.LiveRecording()
                 )
             }
             let config = createConfiguration(url: url, outputDirectory: outputDirectory)
@@ -406,7 +408,7 @@ extension CLI.Command {
             ]
 
             for candidate in candidates {
-                if let sessionDir = Ingest.Session.checkForSession(at: candidate, matching: url) {
+                if let sessionDir = Ingest.Session.checkForSession(at: candidate, matching: url, logger: Logging.LiveRecording()) {
                     return sessionDir
                 }
             }
@@ -432,7 +434,7 @@ extension CLI.Command {
                 guard isDirectory == true else {
                     continue
                 }
-                if let sessionDir = Ingest.Session.checkForSession(at: dir, matching: url) {
+                if let sessionDir = Ingest.Session.checkForSession(at: dir, matching: url, logger: Logging.LiveRecording()) {
                     return sessionDir
                 }
             }
@@ -468,11 +470,28 @@ extension CLI.Command {
         }
 
         private func executeCrawl(with config: Shared.Configuration) async throws {
+            // GoF Strategy (1994 p. 315): the crawler's three injected
+            // algorithms (HTML → structured page, Apple-JSON → markdown,
+            // priority-package catalog generation) are constructed here,
+            // at the fetch command's composition sub-root. Each Live
+            // struct is stateless, so per-call construction is the right
+            // shape — Singleton (p. 127) would only be appropriate if a
+            // single-instance invariant mattered, which it doesn't here.
+            let htmlParser: any Crawler.HTMLParserStrategy = LiveHTMLParserStrategy()
+            let appleJSONParser: any Crawler.AppleJSONParserStrategy = LiveAppleJSONParserStrategy()
+            let priorityPackageStrategy: any Crawler.PriorityPackageStrategy = LivePriorityPackageStrategy()
+            // GoF Strategy seam for log emission (1994 p. 315). The
+            // Crawler target imports only LoggingModels (the protocol
+            // surface); the production OSLog + console + file conformer
+            // is wired here at the composition sub-root.
+            let logger: any LoggingModels.Logging.Recording = Logging.LiveRecording()
+
             let crawler = await Crawler.AppleDocs(
                 configuration: config,
-                htmlParser: htmlParserStrategy,
-                appleJSONParser: appleJSONParserStrategy,
-                priorityPackageStrategy: priorityPackageStrategy
+                htmlParser: htmlParser,
+                appleJSONParser: appleJSONParser,
+                priorityPackageStrategy: priorityPackageStrategy,
+                logger: logger
             )
             let stats = try await crawler.crawl { progress in
                 let percentage = String(format: "%.1f", progress.percentage)
@@ -498,10 +517,12 @@ extension CLI.Command {
         private func runEvolutionCrawl() async throws {
             let defaultPath = Shared.Constants.defaultSwiftEvolutionDirectory.path
             let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
+            let logger: any LoggingModels.Logging.Recording = Logging.LiveRecording()
 
             let crawler = await Crawler.Evolution(
                 outputDirectory: outputURL,
-                onlyAccepted: onlyAccepted
+                onlyAccepted: onlyAccepted,
+                logger: logger
             )
 
             let stats = try await crawler.crawl { progress in
@@ -626,7 +647,8 @@ extension CLI.Command {
             let fetcher = Core.PackageIndexing.PackageFetcher(
                 outputDirectory: outputURL,
                 limit: limit,
-                resume: !startClean
+                resume: !startClean,
+                logger: Logging.LiveRecording()
             )
 
             let stats = try await fetcher.fetch { progress in
@@ -878,7 +900,7 @@ extension CLI.Command {
             let crawler = await Sample.Core.Downloader(
                 outputDirectory: outputURL,
                 maxSamples: limit,
-                forceDownload: force
+                forceDownload: force, logger: Logging.LiveRecording()
             )
 
             let stats = try await crawler.download { progress in
@@ -901,7 +923,7 @@ extension CLI.Command {
             let defaultPath = Shared.Constants.defaultSampleCodeDirectory.path
             let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
 
-            let fetcher = Sample.Core.GitHubFetcher(outputDirectory: outputURL)
+            let fetcher = Sample.Core.GitHubFetcher(outputDirectory: outputURL, logger: Logging.LiveRecording())
 
             let stats = try await fetcher.fetch { progress in
                 Logging.ConsoleLogger.output("   \(progress.message)")
@@ -934,11 +956,13 @@ extension CLI.Command {
 
             Logging.ConsoleLogger.info("📚 Crawling \(guides.count) Apple Archive guides...")
             Logging.ConsoleLogger.info("   Output: \(outputURL.path)\n")
+            let logger: any LoggingModels.Logging.Recording = Logging.LiveRecording()
 
             let crawler = await Crawler.AppleArchive(
                 outputDirectory: outputURL,
                 guides: guides,
-                forceRecrawl: force
+                forceRecrawl: force,
+                logger: logger
             )
 
             let stats = try await crawler.crawl { progress in
@@ -968,10 +992,12 @@ extension CLI.Command {
 
             Logging.ConsoleLogger.info("📖 Crawling Human Interface Guidelines...")
             Logging.ConsoleLogger.info("   Output: \(outputURL.path)\n")
+            let logger: any LoggingModels.Logging.Recording = Logging.LiveRecording()
 
             let crawler = await Crawler.HIG(
                 outputDirectory: outputURL,
-                forceRecrawl: force
+                forceRecrawl: force,
+                logger: logger
             )
 
             let stats = try await crawler.crawl { progress in
