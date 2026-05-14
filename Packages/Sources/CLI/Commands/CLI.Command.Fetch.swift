@@ -313,14 +313,14 @@ extension CLI.Command {
             let url = try validateStartURL()
             let outputDirectory = try await determineOutputDirectory(for: url)
             if startClean {
-                try Ingest.Session.clearSavedSession(at: outputDirectory)
+                try Ingest.Session.clearSavedSession(at: outputDirectory, logger: Logging.LiveRecording())
             }
             if retryErrors {
-                try Ingest.Session.requeueErroredURLs(at: outputDirectory, maxDepth: maxDepth)
+                try Ingest.Session.requeueErroredURLs(at: outputDirectory, maxDepth: maxDepth, logger: Logging.LiveRecording())
             }
             if let baselinePath = baseline {
                 let baselineURL = URL(fileURLWithPath: baselinePath).expandingTildeInPath
-                try Ingest.Session.requeueFromBaseline(at: outputDirectory, baselineDir: baselineURL, maxDepth: maxDepth)
+                try Ingest.Session.requeueFromBaseline(at: outputDirectory, baselineDir: baselineURL, maxDepth: maxDepth, logger: Logging.LiveRecording())
             }
             if let urlsPath = urls {
                 let urlsURL = URL(fileURLWithPath: urlsPath).expandingTildeInPath
@@ -328,7 +328,8 @@ extension CLI.Command {
                     at: outputDirectory,
                     urlsFile: urlsURL,
                     maxDepth: maxDepth,
-                    startURL: url
+                    startURL: url,
+            logger: Logging.LiveRecording()
                 )
             }
             let config = createConfiguration(url: url, outputDirectory: outputDirectory)
@@ -387,7 +388,7 @@ extension CLI.Command {
             ]
 
             for candidate in candidates {
-                if let sessionDir = Ingest.Session.checkForSession(at: candidate, matching: url) {
+                if let sessionDir = Ingest.Session.checkForSession(at: candidate, matching: url, logger: Logging.LiveRecording()) {
                     return sessionDir
                 }
             }
@@ -413,7 +414,7 @@ extension CLI.Command {
                 guard isDirectory == true else {
                     continue
                 }
-                if let sessionDir = Ingest.Session.checkForSession(at: dir, matching: url) {
+                if let sessionDir = Ingest.Session.checkForSession(at: dir, matching: url, logger: Logging.LiveRecording()) {
                     return sessionDir
                 }
             }

@@ -348,7 +348,7 @@ let targets: [Target] = {
 
     let cleanupTarget = Target.target(
         name: "Cleanup",
-        dependencies: ["SharedCore", "SharedConstants", "SharedModels", "Logging"]
+        dependencies: ["SharedCore", "SharedConstants", "SharedModels", "LoggingModels"]
     )
     let cleanupTestsTarget = Target.testTarget(
         name: "CleanupTests",
@@ -446,7 +446,7 @@ let targets: [Target] = {
 
     let mcpSupportTarget = Target.target(
         name: "MCPSupport",
-        dependencies: ["MCPCore", "MCPSharedTools", "SharedCore", "SharedConfiguration", "SharedConstants", "SharedModels", "SharedUtils", "Logging"],
+        dependencies: ["MCPCore", "MCPSharedTools", "SharedCore", "SharedConfiguration", "SharedConstants", "SharedModels", "SharedUtils", "LoggingModels"],
         path: "Sources/MCP/Support"
     )
     let mcpSupportTestsTarget = Target.testTarget(
@@ -508,7 +508,7 @@ let targets: [Target] = {
     // ---------- Distribution (#246: SetupCommand lift) ----------
     let distributionTarget = Target.target(
         name: "Distribution",
-        dependencies: ["SharedCore", "SharedConstants", "Logging"]
+        dependencies: ["SharedCore", "SharedConstants"]
     )
     let distributionTestsTarget = Target.testTarget(
         name: "DistributionTests",
@@ -528,7 +528,7 @@ let targets: [Target] = {
     // ---------- Indexer (#244: SaveCommand indexer + preflight lift) ----------
     let indexerTarget = Target.target(
         name: "Indexer",
-        dependencies: ["SearchModels", "SampleIndexModels", "SharedCore", "SharedConstants", "SharedUtils", "Logging"]
+        dependencies: ["SearchModels", "SampleIndexModels", "SharedCore", "SharedConstants", "SharedUtils"]
     )
     let indexerTestsTarget = Target.testTarget(
         name: "IndexerTests",
@@ -538,7 +538,7 @@ let targets: [Target] = {
     // ---------- Ingest (#247: FetchCommand session + pipelines lift) ----------
     let ingestTarget = Target.target(
         name: "Ingest",
-        dependencies: ["SharedCore", "SharedConstants", "SharedModels", "SharedUtils", "Logging"]
+        dependencies: ["SharedCore", "SharedConstants", "SharedModels", "SharedUtils", "LoggingModels"]
     )
     let ingestTestsTarget = Target.testTarget(
         name: "IngestTests",

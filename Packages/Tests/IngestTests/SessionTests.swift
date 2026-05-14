@@ -1,4 +1,5 @@
 import Foundation
+import LoggingModels
 @testable import Ingest
 import SharedConstants
 @testable import SharedCore
@@ -22,7 +23,7 @@ struct ClearSavedSessionSmokeTests {
         defer { try? FileManager.default.removeItem(at: dir) }
 
         // Should not throw.
-        try Ingest.Session.clearSavedSession(at: dir)
+        try Ingest.Session.clearSavedSession(at: dir, logger: Logging.NoopRecording())
 
         // Should not have created metadata.json as a side effect.
         let metadataFile = dir.appendingPathComponent(Shared.Constants.FileName.metadata)
@@ -40,7 +41,7 @@ struct CheckForSessionSmokeTests {
         defer { try? FileManager.default.removeItem(at: dir) }
 
         let url = try #require(URL(string: "https://example.com/"))
-        #expect(Ingest.Session.checkForSession(at: dir, matching: url) == nil)
+        #expect(Ingest.Session.checkForSession(at: dir, matching: url, logger: Logging.NoopRecording()) == nil)
     }
 }
 

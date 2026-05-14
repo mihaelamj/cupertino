@@ -1,5 +1,5 @@
 import Foundation
-import Logging
+import LoggingModels
 import MCPCore
 import MCPSharedTools
 import SharedConfiguration
@@ -41,17 +41,21 @@ extension MCP.Support {
         private let evolutionDirectory: URL
         private let archiveDirectory: URL
         private let markdownLookup: (any MCP.Support.MarkdownLookupStrategy)?
+        /// GoF Strategy seam for log emission (1994 p. 315).
+        private let logger: any LoggingModels.Logging.Recording
 
         public init(
             configuration: Shared.Configuration,
             evolutionDirectory: URL? = nil,
             archiveDirectory: URL? = nil,
-            markdownLookup: (any MCP.Support.MarkdownLookupStrategy)? = nil
+            markdownLookup: (any MCP.Support.MarkdownLookupStrategy)? = nil,
+            logger: any LoggingModels.Logging.Recording
         ) {
             self.configuration = configuration
             self.evolutionDirectory = evolutionDirectory ?? Shared.Constants.defaultSwiftEvolutionDirectory
             self.archiveDirectory = archiveDirectory ?? Shared.Constants.defaultArchiveDirectory
             self.markdownLookup = markdownLookup
+            self.logger = logger
             // Metadata will be loaded lazily on first access
         }
 
@@ -71,7 +75,7 @@ extension MCP.Support {
                     // SampleCodeDownloader) log the skip; matching that here so
                     // a degraded listing doesn't go unnoticed.
                     guard let parsedURL = URL(string: url) else {
-                        Logging.Log.warning(
+                        logger.warning(
                             "Skipping malformed URL key in CrawlMetadata.pages: '\(url)' "
                                 + "(framework: \(pageMetadata.framework))",
                             category: .mcp
@@ -264,7 +268,7 @@ extension MCP.Support {
             do {
                 metadata = try Shared.Models.CrawlMetadata.load(from: metadataURL)
             } catch {
-                Logging.Log.warning("Failed to load metadata: \(error)", category: .mcp)
+                logger.warning("Failed to load metadata: \(error)", category: .mcp)
             }
         }
 
