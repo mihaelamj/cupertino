@@ -2,10 +2,12 @@ import ArgumentParser
 import Foundation
 import Logging
 import SampleIndex
+import SampleIndexModels
 import Search
 import SearchModels
 import Services
 import ServicesModels
+import SharedConstants
 import SharedCore
 import SharedUtils
 
@@ -66,6 +68,15 @@ extension CLI.Command {
         var packagesDb: String?
 
         mutating func run() async throws {
+            // GoF Factory Method (1994 p. 107) / Strategy (p. 315):
+            // construct concrete factories + strategy at the command's
+            // composition sub-root. Each Live struct is stateless, so
+            // per-call construction is free and avoids the Service
+            // Locator anti-pattern (Seemann 2011 ch. 5) of file-scope
+            // shared instances.
+            let searchDatabaseFactory: any SearchModule.DatabaseFactory = LiveSearchDatabaseFactory()
+            let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
+
             let documentFormat: SearchModels.Search.DocumentFormat = format == .markdown
                 ? .markdown
                 : .json

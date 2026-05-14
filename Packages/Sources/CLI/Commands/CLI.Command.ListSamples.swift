@@ -47,6 +47,10 @@ extension CLI.Command {
             // Resolve database path
             let dbPath = resolveSampleDbPath()
 
+            // GoF Factory Method (1994 p. 107): construct the concrete
+            // Creator at the command's composition sub-root.
+            let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
+
             // Use Services.ServiceContainer for managed lifecycle
             let (projects, totalProjects, totalFiles) = try await Services.ServiceContainer
                 .withSampleService(dbPath: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in

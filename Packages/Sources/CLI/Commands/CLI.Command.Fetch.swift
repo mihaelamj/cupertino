@@ -448,10 +448,21 @@ extension CLI.Command {
         }
 
         private func executeCrawl(with config: Shared.Configuration) async throws {
+            // GoF Strategy (1994 p. 315): the crawler's three injected
+            // algorithms (HTML → structured page, Apple-JSON → markdown,
+            // priority-package catalog generation) are constructed here,
+            // at the fetch command's composition sub-root. Each Live
+            // struct is stateless, so per-call construction is the right
+            // shape — Singleton (p. 127) would only be appropriate if a
+            // single-instance invariant mattered, which it doesn't here.
+            let htmlParser: any Crawler.HTMLParserStrategy = LiveHTMLParserStrategy()
+            let appleJSONParser: any Crawler.AppleJSONParserStrategy = LiveAppleJSONParserStrategy()
+            let priorityPackageStrategy: any Crawler.PriorityPackageStrategy = LivePriorityPackageStrategy()
+
             let crawler = await Crawler.AppleDocs(
                 configuration: config,
-                htmlParser: htmlParserStrategy,
-                appleJSONParser: appleJSONParserStrategy,
+                htmlParser: htmlParser,
+                appleJSONParser: appleJSONParser,
                 priorityPackageStrategy: priorityPackageStrategy
             )
             let stats = try await crawler.crawl { progress in

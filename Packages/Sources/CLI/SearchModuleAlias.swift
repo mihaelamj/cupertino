@@ -33,21 +33,25 @@ typealias SearchModule = Search
 
 // MARK: - Production Search.DatabaseFactory
 
-// Concrete `Search.DatabaseFactory` (GoF Factory Method) wired into every
-// `Services.ServiceContainer.with*Service` and `Services.ReadService` call.
-// Production wiring opens a `SearchModule.Index` at the resolved path —
-// `Search.Index` conforms to `Search.Database` (the protocol in SearchModels)
-// so the concrete actor flows through Services' protocol-typed inits
-// unchanged. One declaration covers every callsite in CLI; tests substitute a
-// mock conforming to `Search.DatabaseFactory`.
+// Concrete `Search.DatabaseFactory` (GoF Factory Method, 1994 p. 107)
+// wired into every `Services.ServiceContainer.with*Service` and
+// `Services.ReadService` call. Production wiring opens a
+// `SearchModule.Index` at the resolved path — `Search.Index` conforms
+// to `Search.Database` (the protocol in SearchModels) so the concrete
+// actor flows through Services' protocol-typed inits unchanged.
+//
+// Each command's `run()` method constructs a fresh instance at its
+// own composition sub-root rather than reaching for a shared
+// module-scope handle. The struct is stateless, so multiple instances
+// are equivalent and a Singleton (p. 127) would add no value while
+// pulling in the global-access drawback (Seemann, *Dependency
+// Injection*, 2011, ch. 5: Service Locator anti-pattern).
 
 struct LiveSearchDatabaseFactory: Search.DatabaseFactory {
     func openDatabase(at url: URL) async throws -> any Search.Database {
         try await SearchModule.Index(dbPath: url)
     }
 }
-
-let searchDatabaseFactory: any Search.DatabaseFactory = LiveSearchDatabaseFactory()
 
 // MARK: - Production MarkdownLookupStrategy
 
@@ -104,8 +108,6 @@ struct LiveSampleIndexDatabaseFactory: Sample.Index.DatabaseFactory {
     }
 }
 
-let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
-
 // MARK: - Production Crawler Strategies (#505)
 
 // Concrete `Crawler.HTMLParserStrategy` (GoF Strategy) — wraps
@@ -136,8 +138,6 @@ struct LiveHTMLParserStrategy: Crawler.HTMLParserStrategy {
     }
 }
 
-let htmlParserStrategy: any Crawler.HTMLParserStrategy = LiveHTMLParserStrategy()
-
 // Concrete `Crawler.AppleJSONParserStrategy` — wraps
 // `Core.JSONParser.AppleJSONToMarkdown` pure static methods.
 
@@ -167,8 +167,6 @@ struct LiveAppleJSONParserStrategy: Crawler.AppleJSONParserStrategy {
     }
 }
 
-let appleJSONParserStrategy: any Crawler.AppleJSONParserStrategy = LiveAppleJSONParserStrategy()
-
 // Concrete `Crawler.PriorityPackageStrategy` — wraps
 // `Core.PackageIndexing.PriorityPackageGenerator` (an actor). Used
 // only when a Swift.org crawl completes and the priority-package
@@ -189,5 +187,3 @@ struct LivePriorityPackageStrategy: Crawler.PriorityPackageStrategy {
         )
     }
 }
-
-let priorityPackageStrategy: any Crawler.PriorityPackageStrategy = LivePriorityPackageStrategy()
