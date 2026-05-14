@@ -1,36 +1,53 @@
 import Foundation
 
-// MARK: - Search.DocsIndexingRun
+// MARK: - Search.DocsIndexingRunner
 
-/// Closure shape for running a complete `search.db` documentation
-/// indexing pass: open the index, build the strategy array, walk every
-/// on-disk source directory (apple-docs JSON, Swift Evolution markdown,
+/// Runner for a complete `search.db` documentation indexing pass:
+/// open the index, build the strategy array, walk every on-disk
+/// source directory (apple-docs JSON, Swift Evolution markdown,
 /// Swift.org, Apple Archive, HIG), write rows, and disconnect.
+/// GoF Strategy pattern (Gamma et al, 1994): a family of algorithms
+/// (production `Search.Index` + `Search.IndexBuilder` pipeline,
+/// test fixture stubs) interchangeable behind a named protocol.
 ///
-/// `Indexer.DocsService` accepts one of these instead of reaching
-/// directly into `Search.Index` + `Search.IndexBuilder`, so the
+/// `Indexer.DocsService` accepts a conformer at run-time so the
 /// Indexer SPM target keeps its dependency graph free of the
 /// concrete Search-target actors. The composition root (the CLI's
-/// `save` command) supplies the closure with the standard
-/// `Search.Index` + `Search.IndexBuilder` wiring.
+/// `save` command) supplies a `LiveDocsIndexingRunner` backed by the
+/// standard `Search.Index` + `Search.IndexBuilder` wiring.
 ///
-/// Mirrors the `Search.PackageIndexingRun` /
-/// `Search.MarkdownToStructuredPage` / `Search.SampleCatalogFetch` /
-/// `MakeSearchDatabase` closure-typealias pattern already in
-/// SearchModels.
+/// This replaces the previous
+/// `Search.DocsIndexingRun = @Sendable (DocsIndexingInput, callback) async throws -> Outcome`
+/// closure typealias. The protocol form names the contract at the
+/// constructor site (`docsIndexingRunner:`), makes captured-state
+/// surface explicit on the conforming type's stored properties, and
+/// produces one-line test mocks instead of multi-arg async closures.
+///
+/// The progress callback stays a closure — it's a genuine
+/// (processed, total) callback, not a strategy seam.
 public extension Search {
-    typealias DocsIndexingRun = @Sendable (
-        _ input: DocsIndexingInput,
-        _ onProgress: @escaping @Sendable (Int, Int) -> Void
-    ) async throws -> DocsIndexingOutcome
+    protocol DocsIndexingRunner: Sendable {
+        /// Run one full indexing pass and return its outcome.
+        ///
+        /// - Parameters:
+        ///   - input: The full parameter bundle (paths + injected
+        ///     markdown strategy + injected sample-catalog provider).
+        ///   - onProgress: Optional `(processed, total)` callback,
+        ///     called periodically as the indexer makes progress.
+        /// - Returns: The aggregated `DocsIndexingOutcome`.
+        func run(
+            input: DocsIndexingInput,
+            onProgress: @escaping @Sendable (Int, Int) -> Void
+        ) async throws -> DocsIndexingOutcome
+    }
 }
 
 // MARK: - Search.DocsIndexingInput
 
-/// Parameter bundle for `Search.DocsIndexingRun`. Carries every URL
-/// the indexer needs to find the source corpus + the two markdown /
-/// sample-catalog closures the indexer threads down into its strategy
-/// implementations.
+/// Parameter bundle for `Search.DocsIndexingRunner.run`. Carries
+/// every URL the indexer needs to find the source corpus + the two
+/// strategy / provider conformers the indexer threads down into its
+/// strategy implementations.
 public extension Search {
     struct DocsIndexingInput: Sendable {
         public let searchDBPath: URL
@@ -69,9 +86,9 @@ public extension Search {
 
 // MARK: - Search.DocsIndexingOutcome
 
-/// Statistics emitted by a completed `Search.DocsIndexingRun`. The
-/// Indexer translates this into its public `Indexer.DocsService.Outcome`
-/// event payload.
+/// Statistics emitted by a completed `Search.DocsIndexingRunner` run.
+/// The Indexer translates this into its public
+/// `Indexer.DocsService.Outcome` event payload.
 public extension Search {
     struct DocsIndexingOutcome: Sendable {
         public let documentCount: Int

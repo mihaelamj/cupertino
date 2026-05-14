@@ -40,38 +40,43 @@ extension CLI.Command.Save {
             request,
             markdownStrategy: LiveMarkdownToStructuredPageStrategy(),
             sampleCatalogProvider: LiveSampleCatalogProvider(),
-            docsIndexingRun: CLI.Command.Save.docsIndexingRun
+            docsIndexingRunner: LiveDocsIndexingRunner()
         ) { event in
             Self.handleDocsEvent(event, tracker: tracker)
         }
         Self.printDocsSummary(outcome: outcome)
     }
 
-    /// Concrete implementation of `Search.DocsIndexingRun` used by
+    /// Concrete `Search.DocsIndexingRunner` (GoF Strategy) used by
     /// `Indexer.DocsService`. Wraps `Search.Index` + `Search.IndexBuilder`.
     /// Lives at the CLI composition root so Indexer doesn't need
     /// `import Search` for these actor types.
-    static let docsIndexingRun: Search.DocsIndexingRun = { input, onProgress in
-        let searchIndex = try await Search.Index(dbPath: input.searchDBPath)
-        let builder = Search.IndexBuilder(
-            searchIndex: searchIndex,
-            metadata: nil,
-            docsDirectory: input.docsDirectory,
-            evolutionDirectory: input.evolutionDirectory,
-            swiftOrgDirectory: input.swiftOrgDirectory,
-            archiveDirectory: input.archiveDirectory,
-            higDirectory: input.higDirectory,
-            markdownStrategy: input.markdownStrategy,
-            sampleCatalogProvider: input.sampleCatalogProvider
-        )
-        try await builder.buildIndex(clearExisting: input.clearExisting, onProgress: onProgress)
-        let docCount = try await searchIndex.documentCount()
-        let frameworks = try await searchIndex.listFrameworks()
-        await searchIndex.disconnect()
-        return Search.DocsIndexingOutcome(
-            documentCount: docCount,
-            frameworkCount: frameworks.count
-        )
+    struct LiveDocsIndexingRunner: Search.DocsIndexingRunner {
+        func run(
+            input: Search.DocsIndexingInput,
+            onProgress: @escaping @Sendable (Int, Int) -> Void
+        ) async throws -> Search.DocsIndexingOutcome {
+            let searchIndex = try await Search.Index(dbPath: input.searchDBPath)
+            let builder = Search.IndexBuilder(
+                searchIndex: searchIndex,
+                metadata: nil,
+                docsDirectory: input.docsDirectory,
+                evolutionDirectory: input.evolutionDirectory,
+                swiftOrgDirectory: input.swiftOrgDirectory,
+                archiveDirectory: input.archiveDirectory,
+                higDirectory: input.higDirectory,
+                markdownStrategy: input.markdownStrategy,
+                sampleCatalogProvider: input.sampleCatalogProvider
+            )
+            try await builder.buildIndex(clearExisting: input.clearExisting, onProgress: onProgress)
+            let docCount = try await searchIndex.documentCount()
+            let frameworks = try await searchIndex.listFrameworks()
+            await searchIndex.disconnect()
+            return Search.DocsIndexingOutcome(
+                documentCount: docCount,
+                frameworkCount: frameworks.count
+            )
+        }
     }
 
     // MARK: - Markdown strategy adapter

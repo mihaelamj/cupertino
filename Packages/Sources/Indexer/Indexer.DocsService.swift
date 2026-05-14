@@ -7,7 +7,7 @@ import SharedCore
 extension Indexer {
     /// Build `search.db` from on-disk corpus (apple-docs JSON, swift
     /// evolution markdown, swift.org, archive, HIG). Wraps an injected
-    /// `Search.DocsIndexingRun` closure with event-emission so this
+    /// `Search.DocsIndexingRunner` conformer with event-emission so this
     /// target doesn't import `Search` directly — the CLI composition
     /// root supplies a closure backed by `Search.Index` +
     /// `Search.IndexBuilder`.
@@ -62,7 +62,7 @@ extension Indexer {
             _ request: Request,
             markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
             sampleCatalogProvider: any Search.SampleCatalogProvider,
-            docsIndexingRun: Search.DocsIndexingRun,
+            docsIndexingRunner: any Search.DocsIndexingRunner,
             handler: @escaping @Sendable (Event) -> Void = { _ in }
         ) async throws -> Outcome {
             let docsURL = request.docsDir
@@ -108,7 +108,7 @@ extension Indexer {
                 sampleCatalogProvider: sampleCatalogProvider
             )
 
-            let result = try await docsIndexingRun(input) { processed, total in
+            let result = try await docsIndexingRunner.run(input: input) { processed, total in
                 let percent = Double(processed) / Double(total) * 100
                 handler(.progress(processed: processed, total: total, percent: percent))
             }
