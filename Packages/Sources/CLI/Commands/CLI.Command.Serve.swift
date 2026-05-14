@@ -156,11 +156,21 @@ extension CLI.Command {
             // SearchToolProvider doesn't have to construct them itself.
             let docsService: (any Services.DocsSearcher)? = searchIndex.map(Services.DocsSearchService.init(database:))
             let sampleService: (any Sample.Search.Searcher)? = sampleIndex.map(Sample.Search.Service.init(database:))
+            let teaserService: (any Services.Teaser)? =
+                (searchIndex == nil && sampleIndex == nil)
+                    ? nil
+                    : Services.TeaserService(searchIndex: searchIndex, sampleDatabase: sampleIndex)
+            let unifiedService: (any Services.UnifiedSearcher)? =
+                (searchIndex == nil && sampleIndex == nil)
+                    ? nil
+                    : Services.UnifiedSearchService(searchIndex: searchIndex, sampleDatabase: sampleIndex)
             let toolProvider = CompositeToolProvider(
                 searchIndex: searchIndex,
                 sampleDatabase: sampleIndex,
                 docsService: docsService,
-                sampleService: sampleService
+                sampleService: sampleService,
+                teaserService: teaserService,
+                unifiedService: unifiedService
             )
             await server.registerToolProvider(toolProvider)
 

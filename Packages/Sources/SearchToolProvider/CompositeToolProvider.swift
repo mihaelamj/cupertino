@@ -21,6 +21,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     private let docsService: (any Services.DocsSearcher)?
     private let sampleService: (any Sample.Search.Searcher)?
+    private let teaserService: (any Services.Teaser)?
+    private let unifiedService: (any Services.UnifiedSearcher)?
 
     // Kept for low-level operations (list frameworks, read document,
     // semantic-symbol searches) that don't have a service-layer wrapper.
@@ -35,12 +37,16 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         searchIndex: (any Search.Database)?,
         sampleDatabase: (any Sample.Index.Reader)?,
         docsService: (any Services.DocsSearcher)?,
-        sampleService: (any Sample.Search.Searcher)?
+        sampleService: (any Sample.Search.Searcher)?,
+        teaserService: (any Services.Teaser)?,
+        unifiedService: (any Services.UnifiedSearcher)?
     ) {
         self.searchIndex = searchIndex
         self.sampleDatabase = sampleDatabase
         self.docsService = docsService
         self.sampleService = sampleService
+        self.teaserService = teaserService
+        self.unifiedService = unifiedService
     }
 
     /// Convenience init that wraps both indexes with the default service
@@ -49,11 +55,26 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     /// database references. Composition-root code (the CLI's
     /// `serve` command) should prefer the explicit init above.
     public init(searchIndex: (any Search.Database)?, sampleDatabase: (any Sample.Index.Reader)?) {
+        let docs = searchIndex.map(Services.DocsSearchService.init(database:))
+        let sample = sampleDatabase.map(Sample.Search.Service.init(database:))
+        // TeaserService + UnifiedSearchService take both seams (some
+        // sources are docs-side, others sample-side). Always constructible
+        // — they internally short-circuit when both inputs are nil.
+        let teaser = Services.TeaserService(
+            searchIndex: searchIndex,
+            sampleDatabase: sampleDatabase
+        )
+        let unified = Services.UnifiedSearchService(
+            searchIndex: searchIndex,
+            sampleDatabase: sampleDatabase
+        )
         self.init(
             searchIndex: searchIndex,
             sampleDatabase: sampleDatabase,
-            docsService: searchIndex.map(Services.DocsSearchService.init(database:)),
-            sampleService: sampleDatabase.map(Sample.Search.Service.init(database:))
+            docsService: docs,
+            sampleService: sample,
+            teaserService: teaser,
+            unifiedService: unified
         )
     }
 
@@ -508,7 +529,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         currentSource: String?,
         includeArchive: Bool
     ) async -> Services.Formatter.TeaserResults {
-        let teaserService = Services.TeaserService(searchIndex: searchIndex, sampleDatabase: sampleDatabase)
+        guard let teaserService else { return Services.Formatter.TeaserResults() }
         return await teaserService.fetchAllTeasers(
             query: query,
             framework: framework,
@@ -595,8 +616,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         framework: String?,
         limit: Int
     ) async throws -> MCP.Core.Protocols.CallToolResult {
-        // Use Services.UnifiedSearchService to search all 8 sources
-        let unifiedService = Services.UnifiedSearchService(searchIndex: searchIndex, sampleDatabase: sampleDatabase)
+        guard let unifiedService else {
+            throw Shared.Core.ToolError.invalidArgument("source", "No indexes available for unified search")
+        }
         let input = await unifiedService.searchAll(
             query: query,
             framework: framework,
