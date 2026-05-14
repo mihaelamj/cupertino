@@ -720,7 +720,7 @@ extension CLIImpl.Command {
                 )
             }
 
-            let exclusions = Core.Protocols.ExclusionList.load(from: paths.baseDirectory)
+            let exclusions = Core.PackageIndexing.ExclusionList.load(from: paths.baseDirectory)
             let seedChecksum = Core.PackageIndexing.ResolvedPackagesStore.checksum(seeds: seedRefs, exclusions: exclusions)
             let resolvedStoreURL = paths.baseDirectory
                 .appendingPathComponent(Shared.Constants.FileName.resolvedPackages)
@@ -744,7 +744,7 @@ extension CLIImpl.Command {
                     if !exclusions.isEmpty {
                         Logging.LiveRecording().info("   Exclusion list in effect: \(exclusions.count) entries")
                     }
-                    let canonicalizer = Core.Protocols.GitHubCanonicalizer(cacheURL: canonicalCacheURL)
+                    let canonicalizer = Core.PackageIndexing.GitHubCanonicalizer(cacheURL: canonicalCacheURL)
                     let manifestCache = Core.PackageIndexing.ManifestCache(
                         rootDirectory: paths.baseDirectory
                             .appendingPathComponent(".cache")

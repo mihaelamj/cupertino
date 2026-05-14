@@ -9,8 +9,8 @@ import Foundation
 ///                       `CrawlerEngine`) and their companion result types
 ///                       (`FetchResult`, `TransformResult`, `TransformMetadata`).
 ///                       Also folds in the concrete utilities that ship in the
-///                       same SPM target (`Core.Protocols.ExclusionList`,
-///                       `Core.Protocols.GitHubCanonicalizer`,
+///                       same SPM target (`Core.PackageIndexing.ExclusionList`,
+///                       `Core.PackageIndexing.GitHubCanonicalizer`,
 ///                       `Core.Protocols.SwiftPackagesCatalog`,
 ///                       `Core.Protocols.SwiftPackageEntry`) so the namespace
 ///                       mirrors the folder on disk.
