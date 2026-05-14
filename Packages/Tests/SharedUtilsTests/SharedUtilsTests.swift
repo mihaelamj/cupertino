@@ -65,12 +65,11 @@ struct SharedUtilsPublicSurfaceTests {
         _ = Shared.Utils.SchemaVersion.self
     }
 
-    @Test("URL.knownGood produces a usable URL")
-    func urlKnownGoodExtension() {
-        // The URL.knownGood extension is the canonical Cupertino way to
-        // assert a literal URL is valid — used wherever a string literal
-        // is known to parse. Crash here would mean the extension is gone.
-        let url = URL.knownGood("https://developer.apple.com/documentation/")
+    @Test("URL(knownGood:) produces a usable URL")
+    func urlKnownGoodExtension() throws {
+        // URL(knownGood:) is the canonical Cupertino way to assert a literal
+        // URL is valid — used wherever a string literal is known to parse.
+        let url = try URL(knownGood: "https://developer.apple.com/documentation/")
         #expect(url.scheme == "https")
     }
 }

@@ -123,9 +123,7 @@ extension Release.Command {
         }
 
         private func fetchSHA256(version: Release.Version) async throws -> String {
-            let sha256URL = URL.knownGood(
-                "https://github.com/\(repo)/releases/download/\(version.tag)/cupertino-\(version.tag)-macos-universal.tar.gz.sha256"
-            )
+            let sha256URL = try URL(knownGood: "https://github.com/\(repo)/releases/download/\(version.tag)/cupertino-\(version.tag)-macos-universal.tar.gz.sha256")
 
             let (data, response) = try await URLSession.shared.data(from: sha256URL)
             guard let httpResponse = response as? HTTPURLResponse,

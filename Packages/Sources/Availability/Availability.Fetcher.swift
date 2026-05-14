@@ -566,7 +566,7 @@ extension Availability {
                 apiPath = path
             }
 
-            return URL.knownGood("\(configuration.apiBaseURL)/\(apiPath).json")
+            return try! URL(knownGood: "\(configuration.apiBaseURL)/\(apiPath).json")
         }
 
         private func fetchAvailability(from url: URL) async -> Availability.Info? {

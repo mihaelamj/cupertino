@@ -140,7 +140,7 @@ extension Release.Publishing {
     }
 
     static func checkReleaseExists(repo: String, tag: String, token: String) async throws -> Bool {
-        let url = URL.knownGood("https://api.github.com/repos/\(repo)/releases/tags/\(tag)")
+        let url = try URL(knownGood: "https://api.github.com/repos/\(repo)/releases/tags/\(tag)")
         let request = githubRequest(url: url, token: token)
 
         let (_, response) = try await URLSession.shared.data(for: request)
@@ -151,7 +151,7 @@ extension Release.Publishing {
     }
 
     static func deleteRelease(repo: String, tag: String, token: String) async throws {
-        let getURL = URL.knownGood("https://api.github.com/repos/\(repo)/releases/tags/\(tag)")
+        let getURL = try URL(knownGood: "https://api.github.com/repos/\(repo)/releases/tags/\(tag)")
         let getRequest = githubRequest(url: getURL, token: token)
 
         let (data, _) = try await URLSession.shared.data(for: getRequest)
@@ -160,7 +160,7 @@ extension Release.Publishing {
             throw Release.Publishing.Error.apiError("Failed to get release ID")
         }
 
-        let deleteURL = URL.knownGood("https://api.github.com/repos/\(repo)/releases/\(releaseId)")
+        let deleteURL = try URL(knownGood: "https://api.github.com/repos/\(repo)/releases/\(releaseId)")
         let deleteRequest = githubRequest(url: deleteURL, token: token, method: "DELETE")
 
         let (_, response) = try await URLSession.shared.data(for: deleteRequest)
@@ -170,7 +170,7 @@ extension Release.Publishing {
         }
 
         // Best-effort tag cleanup; missing tag is fine.
-        let tagURL = URL.knownGood("https://api.github.com/repos/\(repo)/git/refs/tags/\(tag)")
+        let tagURL = try URL(knownGood: "https://api.github.com/repos/\(repo)/git/refs/tags/\(tag)")
         let tagRequest = githubRequest(url: tagURL, token: token, method: "DELETE")
         _ = try? await URLSession.shared.data(for: tagRequest)
     }
@@ -183,7 +183,7 @@ extension Release.Publishing {
         name: String,
         body: String
     ) async throws -> String {
-        let url = URL.knownGood("https://api.github.com/repos/\(repo)/releases")
+        let url = try URL(knownGood: "https://api.github.com/repos/\(repo)/releases")
         var request = githubRequest(url: url, token: token, method: "POST")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 

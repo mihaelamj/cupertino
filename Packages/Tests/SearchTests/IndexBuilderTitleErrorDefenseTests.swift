@@ -128,7 +128,7 @@ struct IndexBuilderJavaScriptFallbackDefenseTests {
         rawMarkdown: String? = nil
     ) -> Shared.Models.StructuredDocumentationPage {
         Shared.Models.StructuredDocumentationPage(
-            url: URL.knownGood("https://developer.apple.com/documentation/test"),
+            url: try! URL(knownGood: "https://developer.apple.com/documentation/test"),
             title: title,
             kind: kind,
             source: source,

@@ -44,7 +44,7 @@ extension RemoteSync {
         private func ensureTreeLoaded() async throws {
             if cachedTree != nil { return }
 
-            let url = URL.knownGood("\(RemoteSync.gitHubAPIBaseURL)/repos/\(repository)/git/trees/\(branch)?recursive=1")
+            let url = try URL(knownGood: "\(RemoteSync.gitHubAPIBaseURL)/repos/\(repository)/git/trees/\(branch)?recursive=1")
             var request = URLRequest(url: url)
 
             // Add auth header if token available
@@ -106,7 +106,7 @@ extension RemoteSync {
 
         /// Fetch raw file content
         public func fetchFileContent(path: String) async throws -> Data {
-            let url = buildRawURL(path: path)
+            let url = try buildRawURL(path: path)
             let (data, response) = try await session.data(from: url)
 
             try validateResponse(response, for: url)
@@ -133,10 +133,10 @@ extension RemoteSync {
 
         // MARK: - URL Building
 
-        private func buildRawURL(path: String) -> URL {
+        private func buildRawURL(path: String) throws -> URL {
             let cleanPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
             let urlString = "\(RemoteSync.rawGitHubBaseURL)/\(repository)/\(branch)/\(cleanPath)"
-            return URL.knownGood(urlString)
+            return try URL(knownGood: urlString)
         }
 
         // MARK: - Response Validation

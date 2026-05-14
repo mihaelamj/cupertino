@@ -35,7 +35,7 @@ extension Shared.Configuration {
         public let htmlLinkAugmentationMaxRefs: Int
 
         public init(
-            startURL: URL = URL.knownGood(Shared.Constants.BaseURL.appleDeveloperDocs),
+            startURL: URL = try! URL(knownGood: Shared.Constants.BaseURL.appleDeveloperDocs),
             allowedPrefixes: [String]? = nil,
             maxPages: Int = Shared.Constants.Limit.defaultMaxPages,
             maxDepth: Int = 15,

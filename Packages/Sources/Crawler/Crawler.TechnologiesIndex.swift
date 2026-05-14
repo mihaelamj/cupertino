@@ -11,9 +11,7 @@ extension Crawler {
     /// Used to seed the crawler queue for complete framework coverage.
     /// See: https://github.com/mihaelamj/cupertino/issues/160
     public enum TechnologiesIndex {
-        private static let indexURL = URL.knownGood(
-            "\(Shared.Constants.BaseURL.appleTutorialsDocs)/technologies.json"
-        )
+        private static let indexURL = try! URL(knownGood: "\(Shared.Constants.BaseURL.appleTutorialsDocs)/technologies.json")
 
         /// Fetch all active framework root URLs from Apple's technology index
         public static func fetchFrameworkURLs() async throws -> [URL] {
