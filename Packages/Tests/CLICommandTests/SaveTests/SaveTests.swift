@@ -14,6 +14,14 @@ import SharedUtils
 import Testing
 import TestSupport
 
+// MARK: - Test Doubles
+
+private struct NoopMarkdownStrategy: Search.MarkdownToStructuredPageStrategy {
+    func convert(markdown: String, url: URL?) -> Shared.Models.StructuredDocumentationPage? {
+        nil
+    }
+}
+
 // MARK: - Save Command Tests
 
 // Tests for the `cupertino save` command
@@ -57,7 +65,7 @@ struct SaveCommandTests {
             metadata: metadata,
             docsDirectory: tempDir,
             evolutionDirectory: nil,
-            markdownToStructuredPage: { _, _ in nil },
+            markdownStrategy: NoopMarkdownStrategy(),
             sampleCatalogFetch: { .missing(onDiskPath: "") }
         )
 
@@ -113,7 +121,7 @@ struct SaveCommandTests {
             metadata: metadata,
             docsDirectory: tempDir,
             evolutionDirectory: nil,
-            markdownToStructuredPage: { _, _ in nil },
+            markdownStrategy: NoopMarkdownStrategy(),
             sampleCatalogFetch: { .missing(onDiskPath: "") }
         )
         try await builder.buildIndex()
@@ -157,7 +165,7 @@ struct SaveCommandTests {
             metadata: emptyMetadata,
             docsDirectory: tempDir,
             evolutionDirectory: nil,
-            markdownToStructuredPage: { _, _ in nil },
+            markdownStrategy: NoopMarkdownStrategy(),
             sampleCatalogFetch: { .missing(onDiskPath: "") }
         )
 
@@ -218,7 +226,7 @@ struct SaveCommandTests {
             metadata: metadata,
             docsDirectory: docsDir,
             evolutionDirectory: evolutionDir,
-            markdownToStructuredPage: { _, _ in nil },
+            markdownStrategy: NoopMarkdownStrategy(),
             sampleCatalogFetch: { .missing(onDiskPath: "") }
         )
 
@@ -290,7 +298,7 @@ struct SaveCommandTests {
             metadata: nil, // No metadata!
             docsDirectory: tempDir.appendingPathComponent("docs"),
             evolutionDirectory: nil,
-            markdownToStructuredPage: { _, _ in nil },
+            markdownStrategy: NoopMarkdownStrategy(),
             sampleCatalogFetch: { .missing(onDiskPath: "") }
         )
 
@@ -346,7 +354,7 @@ struct SaveCommandTests {
             metadata: nil,
             docsDirectory: tempDir.appendingPathComponent("docs"),
             evolutionDirectory: nil,
-            markdownToStructuredPage: { _, _ in nil },
+            markdownStrategy: NoopMarkdownStrategy(),
             sampleCatalogFetch: { .missing(onDiskPath: "") }
         )
 
@@ -397,7 +405,7 @@ struct SaveCommandTests {
             metadata: nil,
             docsDirectory: tempDir,
             evolutionDirectory: nil,
-            markdownToStructuredPage: { _, _ in nil },
+            markdownStrategy: NoopMarkdownStrategy(),
             sampleCatalogFetch: { .missing(onDiskPath: "") }
         )
 
@@ -431,7 +439,7 @@ struct SaveCommandTests {
             metadata: nil,
             docsDirectory: tempDir,
             evolutionDirectory: nil,
-            markdownToStructuredPage: { _, _ in nil },
+            markdownStrategy: NoopMarkdownStrategy(),
             sampleCatalogFetch: { .missing(onDiskPath: "") }
         )
 

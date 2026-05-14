@@ -9,6 +9,14 @@ import SharedModels
 import SQLite3
 import Testing
 
+// MARK: - Test Doubles
+
+private struct NoopMarkdownStrategy: Search.MarkdownToStructuredPageStrategy {
+    func convert(markdown: String, url: URL?) -> Shared.Models.StructuredDocumentationPage? {
+        nil
+    }
+}
+
 // End-to-end test that a real `Search.IndexBuilder` run on a fixture
 // directory of structured JSON docs produces populated `doc_symbols` rows,
 // a `docs_metadata.symbols` blob, AND a searchable `docs_fts.symbols`
@@ -135,7 +143,7 @@ struct IndexBuilderSymbolsIntegrationTests {
             metadata: nil,
             docsDirectory: docsDir,
             indexSampleCode: false,
-            markdownToStructuredPage: { _, _ in nil },
+            markdownStrategy: NoopMarkdownStrategy(),
             sampleCatalogFetch: { .missing(onDiskPath: "") }
         )
 

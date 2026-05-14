@@ -38,7 +38,7 @@ extension CLI.Command.Save {
         let tracker = ProgressTracker()
         let outcome = try await Indexer.DocsService.run(
             request,
-            markdownToStructuredPage: Core.JSONParser.MarkdownToStructuredPage.convert,
+            markdownStrategy: LiveMarkdownToStructuredPageStrategy(),
             sampleCatalogFetch: CLI.Command.Save.sampleCatalogFetch,
             docsIndexingRun: CLI.Command.Save.docsIndexingRun
         ) { event in
@@ -61,7 +61,7 @@ extension CLI.Command.Save {
             swiftOrgDirectory: input.swiftOrgDirectory,
             archiveDirectory: input.archiveDirectory,
             higDirectory: input.higDirectory,
-            markdownToStructuredPage: input.markdownToStructuredPage,
+            markdownStrategy: input.markdownStrategy,
             sampleCatalogFetch: input.sampleCatalogFetch
         )
         try await builder.buildIndex(clearExisting: input.clearExisting, onProgress: onProgress)
@@ -72,6 +72,19 @@ extension CLI.Command.Save {
             documentCount: docCount,
             frameworkCount: frameworks.count
         )
+    }
+
+    // MARK: - Markdown strategy adapter
+
+    /// Concrete `Search.MarkdownToStructuredPageStrategy` (GoF Strategy)
+    /// wrapping the `Core.JSONParser.MarkdownToStructuredPage.convert`
+    /// static method. Lives at the CLI composition root so neither
+    /// Search nor Indexer needs to import `CoreJSONParser` —
+    /// the Search target sees only the protocol from SearchModels.
+    struct LiveMarkdownToStructuredPageStrategy: Search.MarkdownToStructuredPageStrategy {
+        func convert(markdown: String, url: URL?) -> Shared.Models.StructuredDocumentationPage? {
+            Core.JSONParser.MarkdownToStructuredPage.convert(markdown, url: url)
+        }
     }
 
     // MARK: - Sample catalog adapter

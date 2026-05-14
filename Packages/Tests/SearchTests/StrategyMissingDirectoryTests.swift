@@ -2,7 +2,16 @@ import Foundation
 @testable import Search
 import SearchModels
 import SharedConstants
+import SharedModels
 import Testing
+
+// MARK: - Test Doubles
+
+private struct NoopMarkdownStrategy: Search.MarkdownToStructuredPageStrategy {
+    func convert(markdown: String, url: URL?) -> Shared.Models.StructuredDocumentationPage? {
+        nil
+    }
+}
 
 // Unit tests for the "directory not found" fast path of each concrete
 // SourceIndexingStrategy type.  These tests exercise the guard at the top of
@@ -41,7 +50,7 @@ struct StrategyMissingDirectoryTests {
         let index = try await makeIndex(in: tempRoot)
         let strategy = Search.AppleDocsStrategy(
             docsDirectory: missingDir,
-            markdownToStructuredPage: { _, _ in nil }
+            markdownStrategy: NoopMarkdownStrategy()
         )
 
         let stats = try await strategy.indexItems(into: index, progress: nil)
@@ -61,7 +70,7 @@ struct StrategyMissingDirectoryTests {
         let index = try await makeIndex(in: tempRoot)
         let strategy = Search.AppleDocsStrategy(
             docsDirectory: emptyDir,
-            markdownToStructuredPage: { _, _ in nil }
+            markdownStrategy: NoopMarkdownStrategy()
         )
 
         let stats = try await strategy.indexItems(into: index, progress: nil)
@@ -159,7 +168,7 @@ struct StrategyMissingDirectoryTests {
         let index = try await makeIndex(in: tempRoot)
         let strategy = Search.SwiftOrgStrategy(
             swiftOrgDirectory: missingDir,
-            markdownToStructuredPage: { _, _ in nil }
+            markdownStrategy: NoopMarkdownStrategy()
         )
 
         let stats = try await strategy.indexItems(into: index, progress: nil)

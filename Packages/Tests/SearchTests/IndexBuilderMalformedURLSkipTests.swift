@@ -6,6 +6,17 @@ import SharedCore
 import SharedModels
 import Testing
 
+// MARK: - Test Doubles
+
+/// `Search.MarkdownToStructuredPageStrategy` test double that returns
+/// `nil` for every input. Used by indexer tests that never exercise the
+/// markdown→page conversion path.
+private struct NoopMarkdownStrategy: Search.MarkdownToStructuredPageStrategy {
+    func convert(markdown: String, url: URL?) -> Shared.Models.StructuredDocumentationPage? {
+        nil
+    }
+}
+
 // Covers the malformed-URL skip path in
 // `Search.AppleDocsStrategy.indexFromMetadata(into:metadata:progress:)`.
 //
@@ -68,7 +79,7 @@ struct IndexBuilderMalformedURLSkipTests {
         let index = try await Search.Index(dbPath: dbPath)
         let strategy = Search.AppleDocsStrategy(
             docsDirectory: docsDir,
-            markdownToStructuredPage: { _, _ in nil }
+            markdownStrategy: NoopMarkdownStrategy()
         )
 
         let stats = try await strategy.indexFromMetadata(
@@ -109,7 +120,7 @@ struct IndexBuilderMalformedURLSkipTests {
         let index = try await Search.Index(dbPath: dbPath)
         let strategy = Search.AppleDocsStrategy(
             docsDirectory: docsDir,
-            markdownToStructuredPage: { _, _ in nil }
+            markdownStrategy: NoopMarkdownStrategy()
         )
 
         let stats = try await strategy.indexFromMetadata(
