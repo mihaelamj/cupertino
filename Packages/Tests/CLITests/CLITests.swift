@@ -23,26 +23,26 @@ struct CommandRegistrationTests {
         // into `search` in #239 (default fan-out path produces the same
         // chunked output as `ask` did).
         #expect(config.subcommands.count == 14)
-        #expect(config.subcommands.contains { $0 == CLI.Command.Setup.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.Fetch.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.Save.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.Serve.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.Search.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.Read.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.ListFrameworks.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.ListSamples.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.ReadSample.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.ReadSampleFile.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.Doctor.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.Cleanup.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.PackageSearch.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.ResolveRefs.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Setup.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Fetch.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Save.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Serve.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Search.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Read.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.ListFrameworks.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.ListSamples.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.ReadSample.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.ReadSampleFile.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Doctor.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Cleanup.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.PackageSearch.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.ResolveRefs.self })
     }
 
-    @Test("Default subcommand is CLI.Command.Serve")
+    @Test("Default subcommand is CLIImpl.Command.Serve")
     func defaultSubcommand() {
         let config = Cupertino.configuration
-        #expect(config.defaultSubcommand == CLI.Command.Serve.self)
+        #expect(config.defaultSubcommand == CLIImpl.Command.Serve.self)
     }
 
     @Test("Command name is set correctly")

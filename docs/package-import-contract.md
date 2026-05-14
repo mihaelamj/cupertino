@@ -75,13 +75,15 @@ Single source of truth for what each target is **allowed** to import. Anything e
 
 ### Apps (composition roots; can import anything)
 
+Build-system convention: every entry in this section is declared `.executableTarget(...)` in `Package.swift` (not a library). They are inherently impls — they wire feature targets together to produce a binary, so the "every target must lift out of the monorepo cleanly" rule does not apply. The Swift namespace anchors inside (`enum CLIImpl`, files named `CLIImpl.*.swift`, the renamed `ReleaseToolImpl.swift`) carry the `*Impl` suffix so the impl/library distinction is visible at a glance without checking `Package.swift`.
+
 | Target | Allowed imports | Current state |
 |---|---|---|
-| `CLI` | everything | ✅ composition root |
-| `TUI` | everything | ✅ |
+| `CLI` (`enum CLIImpl`) | everything | ✅ composition root, executableTarget → `cupertino` |
+| `TUI` | everything | ✅ executableTarget → `cupertino-tui` |
 | `MCP` (lib) | everything in its layer | ✅ |
-| `MockAIAgent` | everything | ✅ |
-| `ReleaseTool` | ArgumentParser, Foundation, SQLite3, SharedConstants, SharedCore, SharedUtils | ✅ (binary, not a producer) |
+| `MockAIAgent` | everything | ✅ executableTarget → `mock-ai-agent` |
+| `ReleaseTool` (`ReleaseToolImpl.swift`) | ArgumentParser, Foundation, SQLite3, SharedConstants, SharedCore, SharedUtils | ✅ executableTarget → `cupertino-rel`, binary, not a producer |
 
 ## What this contract bans
 

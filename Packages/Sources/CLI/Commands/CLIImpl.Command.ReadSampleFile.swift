@@ -13,7 +13,7 @@ import SharedUtils
 
 /// CLI command for reading a specific file from a sample project - mirrors MCP tool functionality.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension CLI.Command {
+extension CLIImpl.Command {
     struct ReadSampleFile: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "read-sample-file",
@@ -93,7 +93,7 @@ extension CLI.Command {
 
 // MARK: - Output Format
 
-extension CLI.Command.ReadSampleFile {
+extension CLIImpl.Command.ReadSampleFile {
     enum OutputFormat: String, ExpressibleByArgument, CaseIterable {
         case text
         case json

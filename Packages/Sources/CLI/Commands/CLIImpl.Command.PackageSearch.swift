@@ -20,7 +20,7 @@ import SharedUtils
 /// specifically want packages-only results without typing `--skip-docs
 /// --skip-samples`.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension CLI.Command {
+extension CLIImpl.Command {
     struct PackageSearch: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "package-search",

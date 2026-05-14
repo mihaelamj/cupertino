@@ -9,7 +9,7 @@ import SharedUtils
 
 // MARK: - Cleanup Command
 
-extension CLI.Command {
+extension CLIImpl.Command {
     struct Cleanup: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "cleanup",

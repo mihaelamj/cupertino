@@ -12,11 +12,11 @@ import SharedUtils
 
 // MARK: - Per-source runners
 
-/// `--source <name>` paths split out of `CLI.Command.Search` so the struct body
+/// `--source <name>` paths split out of `CLIImpl.Command.Search` so the struct body
 /// stays under SwiftLint's `type_body_length` ceiling. The default
 /// (no `--source`) fan-out + chunked report lives in
-/// `CLI.Command.Search+SmartReport.swift` (#239).
-extension CLI.Command.Search {
+/// `CLIImpl.Command.Search+SmartReport.swift` (#239).
+extension CLIImpl.Command.Search {
     func runDocsSearch() async throws {
         // GoF Factory Method (1994 p. 107): the search command's
         // composition sub-root. Each per-source runner constructs its

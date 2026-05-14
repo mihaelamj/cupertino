@@ -18,7 +18,7 @@ import SharedUtils
 /// reads live there so the MCP layer (and any future agent-shell adapter)
 /// can share one implementation.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension CLI.Command {
+extension CLIImpl.Command {
     struct Read: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "read",
@@ -143,7 +143,7 @@ extension CLI.Command {
 
 // MARK: - Output Format
 
-extension CLI.Command.Read {
+extension CLIImpl.Command.Read {
     enum OutputFormat: String, ExpressibleByArgument, CaseIterable {
         case json
         case markdown

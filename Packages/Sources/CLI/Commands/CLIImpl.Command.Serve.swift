@@ -20,7 +20,7 @@ import SharedCore
 
 // MARK: - Serve Command
 
-extension CLI.Command {
+extension CLIImpl.Command {
     struct Serve: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "serve",
