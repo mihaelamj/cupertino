@@ -1,5 +1,5 @@
 import Foundation
-import Logging
+import LoggingModels
 import SharedConstants
 import SharedCore
 import SharedModels
@@ -15,6 +15,8 @@ extension Sample.Cleanup {
         private let sampleCodeDirectory: URL
         private let dryRun: Bool
         private let keepOriginals: Bool
+        /// GoF Strategy seam for log emission (1994 p. 315).
+        private let logger: any LoggingModels.Logging.Recording
 
         /// Patterns of files/folders to remove from archives
         /// Standard gitignore patterns - safe to remove (build artifacts, not source code)
@@ -31,11 +33,13 @@ extension Sample.Cleanup {
         public init(
             sampleCodeDirectory: URL = Shared.Constants.defaultSampleCodeDirectory,
             dryRun: Bool = false,
-            keepOriginals: Bool = false
+            keepOriginals: Bool = false,
+            logger: any LoggingModels.Logging.Recording
         ) {
             self.sampleCodeDirectory = sampleCodeDirectory
             self.dryRun = dryRun
             self.keepOriginals = keepOriginals
+            self.logger = logger
         }
 
         // MARK: - Public Methods
@@ -50,7 +54,7 @@ extension Sample.Cleanup {
             let zipFiles = try findZipFiles()
 
             guard !zipFiles.isEmpty else {
-                Logging.Log.info("No ZIP files found in \(sampleCodeDirectory.path)", category: .samples)
+                logger.info("No ZIP files found in \(sampleCodeDirectory.path)", category: .samples)
                 return Shared.Models.CleanupStatistics(
                     totalArchives: 0,
                     cleanedArchives: 0,
@@ -62,7 +66,7 @@ extension Sample.Cleanup {
                 )
             }
 
-            Logging.Log.info("Found \(zipFiles.count) ZIP archives to process", category: .samples)
+            logger.info("Found \(zipFiles.count) ZIP archives to process", category: .samples)
 
             var cleanedArchives = 0
             var skippedArchives = 0
@@ -87,7 +91,7 @@ extension Sample.Cleanup {
                 } else {
                     errors += 1
                     if let error = result.errorMessage {
-                        Logging.Log.error("Failed to clean \(zipFile.lastPathComponent): \(error)", category: .samples)
+                        logger.error("Failed to clean \(zipFile.lastPathComponent): \(error)", category: .samples)
                     }
                 }
 
@@ -316,9 +320,9 @@ extension Sample.Cleanup {
                 do {
                     try FileManager.default.removeItem(at: itemURL)
                     itemsRemoved += 1
-                    Logging.Log.debug("Removed: \(itemURL.path)", category: .samples)
+                    logger.debug("Removed: \(itemURL.path)", category: .samples)
                 } catch {
-                    Logging.Log.warning("Failed to remove \(itemURL.path): \(error)", category: .samples)
+                    logger.warning("Failed to remove \(itemURL.path): \(error)", category: .samples)
                 }
             }
 

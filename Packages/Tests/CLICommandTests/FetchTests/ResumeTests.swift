@@ -78,7 +78,7 @@ struct ResumeAndStartCleanTests {
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         // Should not throw.
-        try Ingest.Session.clearSavedSession(at: tempDir)
+        try Ingest.Session.clearSavedSession(at: tempDir, logger: Logging.NoopRecording())
 
         // Should not have created the file as a side effect.
         #expect(!FileManager.default.fileExists(atPath: Self.metadataFile(in: tempDir).path))
@@ -109,7 +109,7 @@ struct ResumeAndStartCleanTests {
         #expect(before.crawlState?.queue.count == 2)
         #expect(before.stats.totalPages == 3)
 
-        try Ingest.Session.clearSavedSession(at: tempDir)
+        try Ingest.Session.clearSavedSession(at: tempDir, logger: Logging.NoopRecording())
 
         // crawlState is gone; the other fields are intact (so we don't lose
         // accumulated stats / page hashes — those are what change-detection
@@ -134,7 +134,7 @@ struct ResumeAndStartCleanTests {
             queue: [(url: "http://127.0.0.1:1/q", depth: 0)]
         )
 
-        try Ingest.Session.clearSavedSession(at: tempDir)
+        try Ingest.Session.clearSavedSession(at: tempDir, logger: Logging.NoopRecording())
 
         // The file must be valid JSON parsable as CrawlMetadata — if it's
         // truncated or corrupt, the next `cupertino fetch` will throw at
@@ -144,7 +144,7 @@ struct ResumeAndStartCleanTests {
 
         // And running --start-clean a second time on the already-cleaned file
         // is also a no-throw no-op.
-        try Ingest.Session.clearSavedSession(at: tempDir)
+        try Ingest.Session.clearSavedSession(at: tempDir, logger: Logging.NoopRecording())
         let twiceCleaned = try Shared.Models.CrawlMetadata.load(from: file)
         #expect(twiceCleaned.crawlState == nil)
     }
@@ -188,7 +188,7 @@ struct ResumeAndStartCleanTests {
         let tempDir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        try Ingest.Session.requeueErroredURLs(at: tempDir, maxDepth: 15)
+        try Ingest.Session.requeueErroredURLs(at: tempDir, maxDepth: 15, logger: Logging.NoopRecording())
         #expect(!FileManager.default.fileExists(atPath: Self.metadataFile(in: tempDir).path))
     }
 
@@ -209,7 +209,7 @@ struct ResumeAndStartCleanTests {
             erroredURLs: []
         )
 
-        try Ingest.Session.requeueErroredURLs(at: tempDir, maxDepth: 15)
+        try Ingest.Session.requeueErroredURLs(at: tempDir, maxDepth: 15, logger: Logging.NoopRecording())
 
         let after = try Shared.Models.CrawlMetadata.load(from: file)
         #expect(after.crawlState?.queue.isEmpty == true, "queue should remain empty")
@@ -244,7 +244,7 @@ struct ResumeAndStartCleanTests {
             erroredURLs: [erroredA, erroredB]
         )
 
-        try Ingest.Session.requeueErroredURLs(at: tempDir, maxDepth: 15)
+        try Ingest.Session.requeueErroredURLs(at: tempDir, maxDepth: 15, logger: Logging.NoopRecording())
 
         let after = try Shared.Models.CrawlMetadata.load(from: file)
         let queueURLs = Set(after.crawlState?.queue.map(\.url) ?? [])
@@ -319,7 +319,7 @@ struct ResumeAndStartCleanTests {
             erroredURLs: []
         )
 
-        try Ingest.Session.requeueFromBaseline(at: tempDir, baselineDir: baselineDir, maxDepth: 15)
+        try Ingest.Session.requeueFromBaseline(at: tempDir, baselineDir: baselineDir, maxDepth: 15, logger: Logging.NoopRecording())
 
         let after = try Shared.Models.CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
         let queueURLs = Set(after.crawlState?.queue.map(\.url) ?? [])
@@ -352,7 +352,7 @@ struct ResumeAndStartCleanTests {
             erroredURLs: []
         )
 
-        try Ingest.Session.requeueFromBaseline(at: tempDir, baselineDir: baselineDir, maxDepth: 15)
+        try Ingest.Session.requeueFromBaseline(at: tempDir, baselineDir: baselineDir, maxDepth: 15, logger: Logging.NoopRecording())
 
         let after = try Shared.Models.CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
         // Already known case-insensitively → should NOT be injected.
@@ -375,7 +375,7 @@ struct ResumeAndStartCleanTests {
         )
 
         let nonExistent = tempDir.appendingPathComponent("nope")
-        try Ingest.Session.requeueFromBaseline(at: tempDir, baselineDir: nonExistent, maxDepth: 15)
+        try Ingest.Session.requeueFromBaseline(at: tempDir, baselineDir: nonExistent, maxDepth: 15, logger: Logging.NoopRecording())
 
         let after = try Shared.Models.CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
         #expect(after.crawlState?.queue.isEmpty == true)
@@ -395,7 +395,7 @@ struct ResumeAndStartCleanTests {
             erroredURLs: []
         )
 
-        try Ingest.Session.requeueFromBaseline(at: tempDir, baselineDir: baselineDir, maxDepth: 15)
+        try Ingest.Session.requeueFromBaseline(at: tempDir, baselineDir: baselineDir, maxDepth: 15, logger: Logging.NoopRecording())
         let after = try Shared.Models.CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
         #expect(after.crawlState?.queue.isEmpty == true)
     }
@@ -433,7 +433,7 @@ struct ResumeAndStartCleanTests {
             erroredURLs: []
         )
 
-        try Ingest.Session.requeueFromBaseline(at: tempDir, baselineDir: baselineDir, maxDepth: 15)
+        try Ingest.Session.requeueFromBaseline(at: tempDir, baselineDir: baselineDir, maxDepth: 15, logger: Logging.NoopRecording())
 
         let after = try Shared.Models.CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
         let queueURLs = (after.crawlState?.queue ?? []).map(\.url)
@@ -463,7 +463,7 @@ struct ResumeAndStartCleanTests {
             queue: [(url: "https://developer.apple.com/documentation/uikit/already-queued", depth: 0)]
         )
 
-        try Ingest.Session.requeueFromBaseline(at: tempDir, baselineDir: baselineDir, maxDepth: 15)
+        try Ingest.Session.requeueFromBaseline(at: tempDir, baselineDir: baselineDir, maxDepth: 15, logger: Logging.NoopRecording())
 
         let after = try Shared.Models.CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
         let queue = after.crawlState?.queue ?? []
@@ -484,7 +484,7 @@ struct ResumeAndStartCleanTests {
         try metadata.save(to: Self.metadataFile(in: tempDir))
 
         // Should not throw and should not synthesize a crawlState.
-        try Ingest.Session.requeueErroredURLs(at: tempDir, maxDepth: 15)
+        try Ingest.Session.requeueErroredURLs(at: tempDir, maxDepth: 15, logger: Logging.NoopRecording())
         let after = try Shared.Models.CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
         #expect(after.crawlState == nil)
     }
@@ -566,7 +566,7 @@ struct ResumeAndStartCleanTests {
         )
 
         // Wipe via the same code path the CLI uses.
-        try Ingest.Session.clearSavedSession(at: tempDir)
+        try Ingest.Session.clearSavedSession(at: tempDir, logger: Logging.NoopRecording())
 
         // The Crawler's resume read sees nothing, so it'll start fresh from
         // the seed URL — exactly what --start-clean should produce.
@@ -613,7 +613,8 @@ struct ResumeAndStartCleanTests {
 
         let resolved = try Ingest.Session.checkForSession(
             at: foundDir,
-            matching: #require(URL(string: "https://developer.apple.com/documentation/"))
+            matching: #require(URL(string: "https://developer.apple.com/documentation/")),
+            logger: Logging.NoopRecording()
         )
 
         // BUG (pre-fix): would return URL(fileURLWithPath: foreignPath) —
@@ -651,7 +652,8 @@ struct ResumeAndStartCleanTests {
         // confused for a resumable session.
         let resolved = try Ingest.Session.checkForSession(
             at: dir,
-            matching: #require(URL(string: "https://docs.swift.org/swift-book"))
+            matching: #require(URL(string: "https://docs.swift.org/swift-book")),
+            logger: Logging.NoopRecording()
         )
         #expect(resolved == nil)
     }
@@ -672,7 +674,8 @@ struct ResumeAndStartCleanTests {
 
         let resolved = try Ingest.Session.checkForSession(
             at: dir,
-            matching: #require(URL(string: "https://developer.apple.com/documentation/"))
+            matching: #require(URL(string: "https://developer.apple.com/documentation/")),
+            logger: Logging.NoopRecording()
         )
         #expect(resolved == nil)
     }
@@ -684,7 +687,8 @@ struct ResumeAndStartCleanTests {
 
         let resolved = try Ingest.Session.checkForSession(
             at: dir,
-            matching: #require(URL(string: "https://developer.apple.com/documentation/"))
+            matching: #require(URL(string: "https://developer.apple.com/documentation/")),
+            logger: Logging.NoopRecording()
         )
         #expect(resolved == nil)
     }
@@ -713,7 +717,8 @@ struct ResumeAndStartCleanTests {
 
         let resolved = try Ingest.Session.checkForSession(
             at: realFoundDir,
-            matching: #require(URL(string: "https://developer.apple.com/documentation/"))
+            matching: #require(URL(string: "https://developer.apple.com/documentation/")),
+            logger: Logging.NoopRecording()
         )
         #expect(
             resolved == realFoundDir,
@@ -982,7 +987,8 @@ struct ResumeAndStartCleanTests {
             at: tempDir,
             urlsFile: urlsFile,
             maxDepth: 15,
-            startURL: Self.seedURL
+            startURL: Self.seedURL,
+            logger: Logging.NoopRecording()
         )
 
         let metadata = try Shared.Models.CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
@@ -1015,7 +1021,8 @@ struct ResumeAndStartCleanTests {
             at: tempDir,
             urlsFile: urlsFile,
             maxDepth: 15,
-            startURL: Self.seedURL
+            startURL: Self.seedURL,
+            logger: Logging.NoopRecording()
         )
 
         let metadata = try Shared.Models.CrawlMetadata.load(from: Self.metadataFile(in: tempDir))
@@ -1048,7 +1055,8 @@ struct ResumeAndStartCleanTests {
             at: tempDir,
             urlsFile: urlsFile,
             maxDepth: 15,
-            startURL: Self.seedURL
+            startURL: Self.seedURL,
+            logger: Logging.NoopRecording()
         )
 
         let metadata = try Shared.Models.CrawlMetadata.load(from: metaFile)
@@ -1082,7 +1090,8 @@ struct ResumeAndStartCleanTests {
                 at: tempDir,
                 urlsFile: urlsFile,
                 maxDepth: 15,
-                startURL: Self.seedURL
+                startURL: Self.seedURL,
+            logger: Logging.NoopRecording()
             )
         } catch is Ingest.FetchURLsError {
             threw = true
@@ -1105,7 +1114,8 @@ struct ResumeAndStartCleanTests {
             at: tempDir,
             urlsFile: urlsFile,
             maxDepth: 15,
-            startURL: Self.seedURL
+            startURL: Self.seedURL,
+            logger: Logging.NoopRecording()
         )
 
         // Should NOT have created a metadata file as a side effect.

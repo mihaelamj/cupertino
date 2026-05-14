@@ -142,7 +142,8 @@ extension CLI.Command {
             let resourceProvider = MCP.Support.DocsResourceProvider(
                 configuration: config,
                 evolutionDirectory: evolutionURL,
-                markdownLookup: markdownLookup
+                markdownLookup: markdownLookup,
+            logger: Logging.LiveRecording()
             )
             await server.registerResourceProvider(resourceProvider)
 

@@ -1,4 +1,5 @@
 import Foundation
+import LoggingModels
 import MCPCore
 @testable import MCPSupport
 import SharedConfiguration
@@ -68,7 +69,8 @@ private func makeProvider(
         configuration: config,
         evolutionDirectory: evolutionDir,
         archiveDirectory: archiveDir,
-        markdownLookup: markdownLookup
+        markdownLookup: markdownLookup,
+            logger: Logging.NoopRecording()
     )
 }
 

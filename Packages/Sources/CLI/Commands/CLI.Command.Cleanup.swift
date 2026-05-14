@@ -1,6 +1,7 @@
 import ArgumentParser
 import Cleanup
 import Foundation
+import LoggingModels
 import Logging
 import SharedConstants
 import SharedCore
@@ -82,7 +83,8 @@ extension CLI.Command {
             let cleaner = Sample.Cleanup.Cleaner(
                 sampleCodeDirectory: directory,
                 dryRun: dryRun,
-                keepOriginals: keepOriginals
+                keepOriginals: keepOriginals,
+            logger: Logging.LiveRecording()
             )
 
             let stats = try await cleaner.cleanup { progress in
