@@ -37,7 +37,34 @@ extension CLI.Command {
 
         static let configuration = CommandConfiguration(
             commandName: "fetch",
-            abstract: "Fetch documentation and resources"
+            abstract: "Download documentation, packages, and sample code for local indexing",
+            discussion: """
+            Downloads content from Apple and GitHub into ~/.cupertino/ ready for 'cupertino save'.
+
+            TYPES (--type)
+              docs          Apple developer documentation (default)
+              swift         Swift.org documentation
+              evolution     Swift Evolution proposals
+              hig           Human Interface Guidelines
+              archive       Apple Archive guides (legacy Core Animation, Quartz 2D, KVO/KVC, etc.)
+              availability  Update API availability metadata for an existing docs corpus (on-disk pass)
+              packages      Swift package metadata + source archives — two-stage fetch:
+                              Stage 1: refresh metadata from Swift Package Index
+                              Stage 2: download GitHub source archives
+                            Use --skip-metadata or --skip-archives to run only one stage.
+                            Use --annotate-availability after stage 2 to write availability.json.
+              code          Sample code zip archives from Apple (use 'samples' instead)
+              samples       Apple sample-code projects from GitHub (recommended)
+              all           Run all types in parallel
+
+            EXAMPLES
+              cupertino fetch                              # Apple docs (default)
+              cupertino fetch --type evolution             # Swift Evolution proposals
+              cupertino fetch --type packages              # package metadata + archives
+              cupertino fetch --type packages --skip-metadata  # archives only
+              cupertino fetch --type packages --skip-archives  # metadata only
+              cupertino fetch --type samples               # Apple sample-code from GitHub
+            """
         )
 
         @Option(
@@ -114,7 +141,7 @@ extension CLI.Command {
             with no descent, --max-depth 3 to follow 3 levels of children, etc. \
             Useful for fetching a fixed list — e.g. URLs another corpus has \
             but this one is missing — without re-spidering everything. Lines \
-            starting with '#' and blank lines are ignored. (#210)
+            starting with '#' and blank lines are ignored.
             """
         )
         var urls: String?
@@ -155,19 +182,13 @@ extension CLI.Command {
 
         @Flag(
             name: .long,
-            help: """
-            Skip the Swift Package Index metadata refresh stage of \
-            `--type packages` (run only the archive download). #217
-            """
+            help: "Skip the Swift Package Index metadata refresh stage of `--type packages` (run only the archive download)."
         )
         var skipMetadata: Bool = false
 
         @Flag(
             name: .long,
-            help: """
-            Skip the GitHub archive download stage of `--type packages` \
-            (run only the metadata refresh). #217
-            """
+            help: "Skip the GitHub archive download stage of `--type packages` (run only the metadata refresh)."
         )
         var skipArchives: Bool = false
 
@@ -177,8 +198,7 @@ extension CLI.Command {
             After `--type packages` stage 2, walk the on-disk corpus and \
             write a per-package `availability.json` recording \
             `Package.swift` deployment targets and every `@available(...)` \
-            attribute occurrence in `Sources/` and `Tests/` (#219). Pure \
-            on-disk pass — no network. Idempotent.
+            attribute in `Sources/` and `Tests/`. Pure on-disk pass — no network. Idempotent.
             """
         )
         var annotateAvailability: Bool = false

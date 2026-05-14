@@ -22,7 +22,28 @@ extension CLI.Command {
     struct Save: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "save",
-            abstract: "Save documentation to database and build search indexes"
+            abstract: "Index fetched documentation into search.db, packages.db, and samples.db",
+            discussion: """
+            Builds up to three local databases from content downloaded by 'cupertino fetch':
+
+              search.db   — Apple docs, Swift Evolution, HIG, Apple Archive, Swift.org, Swift Book
+              packages.db — Swift package metadata and source archives
+              samples.db  — Apple sample-code projects and their source files
+
+            With no scope flag, all three databases are built (sources missing on disk are
+            skipped with an info message). Use --docs / --packages / --samples to build a subset.
+
+            A preflight summary is printed before indexing starts. Pass --yes (or pipe stdin)
+            to skip the confirmation prompt. Run 'cupertino doctor --save' to preview the
+            preflight output without writing any database.
+
+            EXAMPLES
+              cupertino save                    # build all three DBs
+              cupertino save --docs             # search.db only
+              cupertino save --samples          # samples.db only
+              cupertino save --packages         # packages.db only
+              cupertino save --remote           # stream docs from GitHub (no local corpus needed)
+            """
         )
 
         @Option(name: .long, help: "Base directory (auto-fills all directories from standard structure)")
@@ -59,35 +80,27 @@ extension CLI.Command {
             name: .long,
             help: """
             Build search.db (Apple docs + Swift Evolution + HIG + Archive + \
-            Swift.org + Swift Book). Defaults to ON when no scope flag is \
-            passed. (#231)
+            Swift.org + Swift Book). Defaults to ON when no scope flag is passed.
             """
         )
         var docs: Bool = false
 
         @Flag(
             name: .long,
-            help: """
-            Build packages.db from extracted package archives at \
-            `~/.cupertino/packages/<owner>/<repo>/`. (#231)
-            """
+            help: "Build packages.db from extracted package archives at `~/.cupertino/packages/<owner>/<repo>/`."
         )
         var packages: Bool = false
 
         @Flag(
             name: .long,
-            help: """
-            Build samples.db from extracted sample-code zips at \
-            `~/.cupertino/sample-code/`. Replaces the removed `cupertino \
-            index` command. (#231)
-            """
+            help: "Build samples.db from extracted sample-code zips at `~/.cupertino/sample-code/`."
         )
         var samples: Bool = false
 
-        @Option(name: .long, help: "Sample-code directory for `--samples` (#231).")
+        @Option(name: .long, help: "Sample-code source directory (used with `--samples`).")
         var samplesDir: String?
 
-        @Option(name: .long, help: "samples.db path override for `--samples` (#231).")
+        @Option(name: .long, help: "samples.db output path override (used with `--samples`).")
         var samplesDB: String?
 
         @Flag(
@@ -98,7 +111,7 @@ extension CLI.Command {
 
         @Flag(
             name: [.short, .long],
-            help: "Skip the preflight summary + confirmation prompt (#232). Auto-skipped when stdin isn't a TTY."
+            help: "Skip the preflight summary + confirmation prompt. Auto-skipped when stdin isn't a TTY."
         )
         var yes: Bool = false
 

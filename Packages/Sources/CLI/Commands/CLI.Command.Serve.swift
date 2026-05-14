@@ -33,8 +33,7 @@ extension CLI.Command {
             Unified Search (requires 'cupertino save' or 'cupertino save --samples'):
             • search - Smart query fanned out across every available source
                        (apple-docs, samples, swift-evolution, swift-org, swift-book,
-                       packages, hig, apple-archive), reciprocal-rank fused. Replaces
-                       the pre-#239 per-source search_docs / search_samples tools.
+                       packages, hig, apple-archive), reciprocal-rank fused.
 
             Documentation Tools (requires 'cupertino save'):
             • list_frameworks - List available frameworks with document counts
@@ -45,8 +44,8 @@ extension CLI.Command {
             • read_sample      - Read sample project README and metadata
             • read_sample_file - Read a specific source file from a sample
 
-            Semantic Search Tools (requires 'cupertino save', AST-indexed, #81):
-            • search_symbols          - Find Swift symbols by name + kind
+            Semantic Search Tools (requires 'cupertino save', AST-indexed):
+            • search_symbols           - Find Swift symbols by name + kind
             • search_property_wrappers - Find @PropertyWrapper usage in indexed sources
             • search_concurrency       - Find concurrency patterns (@MainActor, async, …)
             • search_conformances      - Find protocol conformances by protocol name
@@ -187,7 +186,7 @@ extension CLI.Command {
             let sampleDBURL = Sample.Index.defaultDatabasePath
             guard FileManager.default.fileExists(atPath: sampleDBURL.path) else {
                 let infoMsg = "ℹ️  Sample code index not found at: \(sampleDBURL.path)"
-                let cmd = "\(Shared.Constants.App.commandName) index"
+                let cmd = "\(Shared.Constants.App.commandName) save --samples"
                 let hintMsg = "   Sample tools will not be available. Run '\(cmd)' to enable."
                 Logging.Log.info("\(infoMsg) \(hintMsg)", category: .mcp)
                 return nil
@@ -197,7 +196,7 @@ extension CLI.Command {
                 return try await Sample.Index.Database(dbPath: sampleDBURL)
             } catch {
                 let errorMsg = "⚠️  Failed to load sample index: \(error)"
-                let cmd = "\(Shared.Constants.App.commandName) index"
+                let cmd = "\(Shared.Constants.App.commandName) save --samples"
                 let hintMsg = "   Sample tools will not be available. Run '\(cmd)' to create the index."
                 Logging.Log.warning("\(errorMsg) \(hintMsg)", category: .mcp)
                 return nil
@@ -267,30 +266,32 @@ extension CLI.Command {
             │                                                                         │
             ╰─────────────────────────────────────────────────────────────────────────╯
 
-            📚 STEP 1: Crawl Documentation
+            📦 OPTION A: Download pre-built databases (fastest)
             ───────────────────────────────────────────────────────────────────────────
-            First, download the documentation you want to serve:
+              $ \(cmd) setup
+
+            📚 OPTION B: Build from source
+            ───────────────────────────────────────────────────────────────────────────
+            Step 1 — Fetch documentation:
 
             • Apple Developer Documentation (recommended):
-              $ \(cmd) crawl --type docs
+              $ \(cmd) fetch --type docs
 
             • Swift Evolution Proposals:
-              $ \(cmd) crawl --type evolution
+              $ \(cmd) fetch --type evolution
 
             • Swift.org Documentation:
-              $ \(cmd) crawl --type swift
+              $ \(cmd) fetch --type swift
 
             • Swift Packages (priority packages):
               $ \(cmd) fetch --type packages
 
-            ⏱️  Crawling takes 10-30 minutes depending on content type.
+            ⏱️  Fetching takes 10-30 minutes depending on content type.
                If interrupted, just re-run the same command — fetch resumes by default.
 
-            🔍 STEP 2: Build Search Index
+            Step 2 — Build search index:
             ───────────────────────────────────────────────────────────────────────────
-            After crawling, create a search index for fast lookups:
-
-              $ \(cmd) index
+              $ \(cmd) save
 
             ⏱️  Indexing typically takes 2-5 minutes.
 
