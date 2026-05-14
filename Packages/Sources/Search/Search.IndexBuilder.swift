@@ -95,7 +95,8 @@ extension Search {
             archiveDirectory: URL? = nil,
             higDirectory: URL? = nil,
             indexSampleCode: Bool = true,
-            markdownToStructuredPage: @escaping Search.MarkdownToStructuredPage
+            markdownToStructuredPage: @escaping Search.MarkdownToStructuredPage,
+            sampleCatalogFetch: @escaping Search.SampleCatalogFetch
         ) {
             self.init(
                 searchIndex: searchIndex,
@@ -107,7 +108,8 @@ extension Search {
                     archiveDirectory: archiveDirectory,
                     higDirectory: higDirectory,
                     indexSampleCode: indexSampleCode,
-                    markdownToStructuredPage: markdownToStructuredPage
+                    markdownToStructuredPage: markdownToStructuredPage,
+                    sampleCatalogFetch: sampleCatalogFetch
                 )
             )
         }
@@ -180,7 +182,8 @@ extension Search {
             archiveDirectory: URL? = nil,
             higDirectory: URL? = nil,
             indexSampleCode: Bool = true,
-            markdownToStructuredPage: @escaping Search.MarkdownToStructuredPage
+            markdownToStructuredPage: @escaping Search.MarkdownToStructuredPage,
+            sampleCatalogFetch: @escaping Search.SampleCatalogFetch
         ) -> [any Search.SourceIndexingStrategy] {
             var strategies: [any Search.SourceIndexingStrategy] = [
                 Search.AppleDocsStrategy(
@@ -204,7 +207,7 @@ extension Search {
                 strategies.append(Search.HIGStrategy(higDirectory: dir))
             }
             if indexSampleCode {
-                strategies.append(Search.SampleCodeStrategy())
+                strategies.append(Search.SampleCodeStrategy(sampleCatalogFetch: sampleCatalogFetch))
             }
             strategies.append(Search.SwiftPackagesStrategy())
             return strategies
