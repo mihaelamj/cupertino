@@ -7,7 +7,6 @@ import Foundation
 import LoggingModels
 import SharedConfiguration
 import SharedConstants
-import SharedModels
 import Testing
 
 // MARK: - Crawler Tests

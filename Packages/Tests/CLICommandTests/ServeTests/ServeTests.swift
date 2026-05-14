@@ -12,7 +12,6 @@ import SearchModels
 @testable import SearchToolProvider
 import SharedConfiguration
 import SharedConstants
-import SharedModels
 import Testing
 import TestSupport
 

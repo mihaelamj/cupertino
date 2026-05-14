@@ -4,7 +4,6 @@ import MCPCore
 import MCPSharedTools
 import SharedConfiguration
 import SharedConstants
-import SharedModels
 // MARK: - Documentation Resource Provider
 
 extension MCP.Support {

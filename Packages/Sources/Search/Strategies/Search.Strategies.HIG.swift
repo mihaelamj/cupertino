@@ -2,8 +2,6 @@ import Foundation
 import LoggingModels
 import SearchModels
 import SharedConstants
-import SharedModels
-
 // MARK: - HIGStrategy
 
 extension Search {

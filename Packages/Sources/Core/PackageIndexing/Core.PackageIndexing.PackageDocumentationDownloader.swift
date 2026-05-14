@@ -2,8 +2,6 @@ import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
 import SharedConstants
-import SharedModels
-
 // MARK: - Package Documentation Downloader
 
 /// Narrow helper for fetching individual README files and detecting known hosted

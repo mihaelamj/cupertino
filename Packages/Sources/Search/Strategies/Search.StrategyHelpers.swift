@@ -1,8 +1,6 @@
 import Foundation
 import SearchModels
 import SharedConstants
-import SharedModels
-
 // MARK: - StrategyHelpers
 
 extension Search {

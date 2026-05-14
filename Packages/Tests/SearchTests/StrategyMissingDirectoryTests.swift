@@ -3,7 +3,6 @@ import LoggingModels
 @testable import Search
 import SearchModels
 import SharedConstants
-import SharedModels
 import Testing
 
 // MARK: - Test Doubles

@@ -3,8 +3,6 @@ import CoreProtocols
 import Foundation
 import SearchModels
 import SharedConstants
-import SharedModels
-
 extension Search {
     /// Reads downloaded-and-extracted package trees from
     /// `~/.cupertino/packages/<owner>/<repo>/` and feeds them into the

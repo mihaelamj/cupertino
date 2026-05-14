@@ -4,8 +4,6 @@ import Foundation
 import LoggingModels
 import SharedConfiguration
 import SharedConstants
-import SharedModels
-
 // MARK: - Crawler State Manager
 
 extension Crawler.AppleDocs {
