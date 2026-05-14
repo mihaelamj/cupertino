@@ -9,8 +9,6 @@ import SearchModels
 import Services
 import ServicesModels
 import SharedConstants
-import SharedUtils
-
 // MARK: - Read Command (unified, #239 follow-up)
 
 /// Thin CLI wrapper around `Services.ReadService`. The dispatch + per-source

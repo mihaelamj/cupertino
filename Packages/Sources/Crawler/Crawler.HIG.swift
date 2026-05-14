@@ -4,7 +4,6 @@ import LoggingModels
 #if canImport(WebKit)
 import CoreProtocols
 import SharedConstants
-import SharedUtils
 import WebKit
 #endif
 

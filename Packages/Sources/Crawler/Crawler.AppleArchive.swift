@@ -3,8 +3,6 @@ import CrawlerModels
 import Foundation
 import LoggingModels
 import SharedConstants
-import SharedUtils
-
 // MARK: - Apple Archive Crawler
 
 // swiftlint:disable type_body_length function_body_length

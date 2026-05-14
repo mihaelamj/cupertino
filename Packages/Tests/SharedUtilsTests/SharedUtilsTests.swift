@@ -1,6 +1,5 @@
 import Foundation
 import SharedConstants
-@testable import SharedUtils
 import Testing
 
 // MARK: - SharedUtils Public API Smoke Tests

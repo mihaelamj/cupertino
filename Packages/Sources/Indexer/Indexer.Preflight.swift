@@ -1,7 +1,5 @@
 import Foundation
 import SharedConstants
-import SharedUtils
-
 extension Indexer {
     /// Pre-write inspection of the on-disk corpus state. Surfaces missing
     /// or un-annotated sources before any DB write so the user can bail

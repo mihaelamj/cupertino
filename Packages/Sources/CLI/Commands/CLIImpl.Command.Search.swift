@@ -8,8 +8,6 @@ import SearchModels
 import Services
 import ServicesModels
 import SharedConstants
-import SharedUtils
-
 // MARK: - Search Command
 
 /// CLI command for unified search across all documentation sources.

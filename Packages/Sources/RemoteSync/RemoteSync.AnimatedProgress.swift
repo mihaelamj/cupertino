@@ -1,7 +1,5 @@
 import Foundation
 import SharedConstants
-import SharedUtils
-
 // MARK: - Animated Progress Display
 
 extension RemoteSync {

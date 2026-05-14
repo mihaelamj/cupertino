@@ -8,8 +8,6 @@ import SampleIndex
 import Search
 import SearchModels
 import SharedConstants
-import SharedUtils
-
 // MARK: - Save Command
 
 /// Thin CLI wrapper around `Indexer.DocsService` / `Indexer.PackagesService`

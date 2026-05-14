@@ -4,8 +4,6 @@ import Foundation
 import LoggingModels
 import Logging
 import SharedConstants
-import SharedUtils
-
 // MARK: - Cleanup Command
 
 extension CLIImpl.Command {

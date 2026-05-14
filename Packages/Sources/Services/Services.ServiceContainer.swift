@@ -3,8 +3,6 @@ import SampleIndexModels
 import SearchModels
 import ServicesModels
 import SharedConstants
-import SharedUtils
-
 // MARK: - Service Container
 
 /// Composition utility for the Services target's read-side services
