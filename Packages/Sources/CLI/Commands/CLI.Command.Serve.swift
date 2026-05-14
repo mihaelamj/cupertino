@@ -7,12 +7,15 @@ import Logging
 import MCPCore
 import MCPSupport
 import SampleIndex
+import SampleIndexModels
 import Search
+import SearchModels
 import SearchToolProvider
+import Services
+import ServicesModels
 import SharedConfiguration
 import SharedConstants
 import SharedCore
-import SearchModels
 
 // MARK: - Serve Command
 
@@ -147,8 +150,18 @@ extension CLI.Command {
             // Initialize sample code index if available
             let sampleIndex = await loadSampleIndex()
 
-            // Register composite tool provider with both indexes
-            let toolProvider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: sampleIndex)
+            // Register composite tool provider with both indexes. The
+            // service-layer wrappers are constructed here at the
+            // composition root and passed across the protocol seam so
+            // SearchToolProvider doesn't have to construct them itself.
+            let docsService: (any Services.DocsSearcher)? = searchIndex.map(Services.DocsSearchService.init(database:))
+            let sampleService: (any Sample.Search.Searcher)? = sampleIndex.map(Sample.Search.Service.init(database:))
+            let toolProvider = CompositeToolProvider(
+                searchIndex: searchIndex,
+                sampleDatabase: sampleIndex,
+                docsService: docsService,
+                sampleService: sampleService
+            )
             await server.registerToolProvider(toolProvider)
 
             // Log availability of each index
