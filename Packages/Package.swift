@@ -408,7 +408,7 @@ let targets: [Target] = {
     // SearchModels / SampleIndexModels / CorePackageIndexingModels split pattern.
     let servicesModelsTarget = Target.target(
         name: "ServicesModels",
-        dependencies: ["SearchModels", "SharedCore", "SharedConstants"]
+        dependencies: ["SearchModels", "SampleIndexModels", "SharedCore", "SharedConstants"]
     )
     let servicesModelsTestsTarget = Target.testTarget(
         name: "ServicesModelsTests",
