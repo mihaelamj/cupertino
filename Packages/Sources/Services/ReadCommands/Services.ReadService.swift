@@ -71,12 +71,31 @@ extension Services {
             }
         }
 
-        /// Closure that resolves a file inside `packages.db` to its raw
-        /// content. Production composition root (CLI) wires this as a
-        /// thin wrapper around `Search.PackageQuery(dbPath:).fileContent(...)`,
-        /// then `disconnect()`. ReadService doesn't import the Search
-        /// target, so the actor stays opaque behind this seam.
-        public typealias PackageFileLookup = @Sendable (_ dbURL: URL, _ owner: String, _ repo: String, _ relpath: String) async throws -> String?
+        /// Strategy for resolving a file inside `packages.db` to its
+        /// raw content. GoF Strategy pattern (Gamma et al, 1994):
+        /// production composition root (CLI) wires a
+        /// `LivePackageFileLookupStrategy` that wraps
+        /// `Search.PackageQuery(dbPath:).fileContent(...)` + a
+        /// matching `disconnect()`. ReadService doesn't import the
+        /// Search target, so the actor stays opaque behind this seam.
+        ///
+        /// Replaces the previous
+        /// `PackageFileLookup = @Sendable (URL, String, String, String) async throws -> String?`
+        /// closure typealias. The protocol form names the contract at
+        /// the constructor site, makes captured-state explicit, and
+        /// produces one-line test mocks.
+        public protocol PackageFileLookupStrategy: Sendable {
+            /// Look up the raw content of a file inside `packages.db`.
+            /// Returns `nil` when the identifier doesn't resolve;
+            /// throws if the lookup itself fails (DB open error,
+            /// SQL error, etc.).
+            func fileContent(
+                dbURL: URL,
+                owner: String,
+                repo: String,
+                relpath: String
+            ) async throws -> String?
+        }
 
         /// Read a document by identifier. When `explicit` is provided the
         /// matching backend is used; otherwise we infer:
@@ -90,7 +109,7 @@ extension Services {
             samplesDB: URL?,
             packagesDB: URL?,
             searchDatabaseFactory: any Search.DatabaseFactory,
-            packageFileLookup: PackageFileLookup
+            packageFileLookup: any PackageFileLookupStrategy
         ) async throws -> Result {
             if let explicit {
                 return try await readFrom(
@@ -160,7 +179,7 @@ extension Services {
             packagesDB: URL?,
             allowFallback: Bool,
             searchDatabaseFactory: any Search.DatabaseFactory,
-            packageFileLookup: PackageFileLookup
+            packageFileLookup: any PackageFileLookupStrategy
         ) async throws -> Result {
             switch source {
             case .docs:
@@ -210,7 +229,7 @@ extension Services {
             samplesDB: URL?,
             allowFallback: Bool,
             packagesDB: URL?,
-            packageFileLookup: PackageFileLookup
+            packageFileLookup: any PackageFileLookupStrategy
         ) async throws -> Result {
             let dbURL = samplesDB ?? Sample.Index.defaultDatabasePath
             guard FileManager.default.fileExists(atPath: dbURL.path) else {
@@ -258,7 +277,7 @@ extension Services {
         private static func readFromPackages(
             identifier: String,
             packagesDB: URL?,
-            packageFileLookup: PackageFileLookup
+            packageFileLookup: any PackageFileLookupStrategy
         ) async throws -> Result {
             // Identifier shape: `<owner>/<repo>/<relpath>`. Anything else is
             // not a valid package identifier — auto-source mode bails here.
@@ -277,7 +296,7 @@ extension Services {
 
             let content: String?
             do {
-                content = try await packageFileLookup(dbURL, owner, repo, relpath)
+                content = try await packageFileLookup.fileContent(dbURL: dbURL, owner: owner, repo: repo, relpath: relpath)
             } catch {
                 throw ReadError.backendFailed("packages.db query failed: \(error.localizedDescription)")
             }
