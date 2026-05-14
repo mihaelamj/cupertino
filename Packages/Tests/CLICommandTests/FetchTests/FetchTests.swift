@@ -5,6 +5,7 @@ import ArgumentParser
 @testable import CorePackageIndexing
 import CoreProtocols
 import Foundation
+import LoggingModels
 @testable import SharedCore
 import Testing
 import TestSupport
@@ -27,7 +28,8 @@ struct FetchCommandTests {
         print("🧪 Test: Fetch Swift packages")
 
         _ = Core.PackageIndexing.PackageFetcher(
-            outputDirectory: tempDir
+            outputDirectory: tempDir,
+            logger: Logging.NoopRecording()
         )
 
         // Note: This would require network access

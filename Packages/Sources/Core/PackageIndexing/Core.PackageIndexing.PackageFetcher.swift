@@ -1,7 +1,7 @@
 import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
-import Logging
+import LoggingModels
 import SharedConstants
 import SharedCore
 import SharedUtils
@@ -23,11 +23,20 @@ extension Core.PackageIndexing {
         private let limit: Int?
         private let resumeFromCheckpoint: Bool
         private var starCache: [String: Int] = [:] // Cache star counts to avoid double-fetching
+        /// GoF Strategy seam for log emission (1994 p. 315). Injected by
+        /// the binary's composition root.
+        private let logger: any LoggingModels.Logging.Recording
 
-        public init(outputDirectory: URL, limit: Int? = nil, resume: Bool = false) {
+        public init(
+            outputDirectory: URL,
+            limit: Int? = nil,
+            resume: Bool = false,
+            logger: any LoggingModels.Logging.Recording
+        ) {
             self.outputDirectory = outputDirectory
             self.limit = limit
             resumeFromCheckpoint = resume
+            self.logger = logger
         }
 
         // MARK: - Public API
@@ -450,11 +459,11 @@ extension Core.PackageIndexing {
         // MARK: - Logging
 
         private func logInfo(_ message: String) {
-            Logging.Log.info(message, category: .packages)
+            logger.info(message, category: .packages)
         }
 
         private func logError(_ message: String) {
-            Logging.Log.error(message, category: .packages)
+            logger.error(message, category: .packages)
         }
     }
 }

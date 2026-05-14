@@ -5,6 +5,8 @@ import CoreProtocols
 import Crawler
 import CrawlerModels
 import Foundation
+import Logging
+import LoggingModels
 import MCPCore
 import MCPSupport
 import SampleIndex
@@ -179,7 +181,8 @@ struct LivePriorityPackageStrategy: Crawler.PriorityPackageStrategy {
     ) async throws -> Crawler.PriorityPackageOutcome {
         let generator = Core.PackageIndexing.PriorityPackageGenerator(
             swiftOrgDocsPath: swiftOrgDocsPath,
-            outputPath: outputPath
+            outputPath: outputPath,
+            logger: Logging.LiveRecording()
         )
         let list = try await generator.generate()
         return Crawler.PriorityPackageOutcome(

@@ -259,7 +259,7 @@ let targets: [Target] = {
     // ---------- CorePackageIndexing (v1.2 refactor 2.4: Resolver + Fetcher + Archive Extractor + Annotator + ManifestCache + Store + DocDownloader) ----------
     let corePackageIndexingTarget = Target.target(
         name: "CorePackageIndexing",
-        dependencies: ["CorePackageIndexingModels", "CoreProtocols", "SharedCore", "SharedModels", "SharedConstants", "SharedUtils", "Logging", "ASTIndexer", "Resources"],
+        dependencies: ["CorePackageIndexingModels", "CoreProtocols", "SharedCore", "SharedModels", "SharedConstants", "SharedUtils", "LoggingModels", "ASTIndexer", "Resources"],
         path: "Sources/Core/PackageIndexing"
     )
     let corePackageIndexingTestsTarget = Target.testTarget(
@@ -297,7 +297,6 @@ let targets: [Target] = {
             "SharedConstants",
             "SharedModels",
             "SharedUtils",
-            "Logging",
             "Resources",
             "ASTIndexer",
         ],
