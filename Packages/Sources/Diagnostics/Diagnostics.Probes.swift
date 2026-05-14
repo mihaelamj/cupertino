@@ -60,6 +60,14 @@ extension Diagnostics {
         /// `truncate`, `persist`, `memory`, `off`) is a red flag that
         /// the init code didn't switch the file.
         ///
+        /// `journal_mode` is the one SQLite PRAGMA that is **persistent
+        /// in the file header**, so a fresh read-only connection
+        /// reflects the writer's setting. `synchronous` and
+        /// `journal_size_limit` are per-connection — they can't be
+        /// probed this way and have no `Diagnostics.Probes.*` helpers.
+        /// Their cross-process correctness is tested instead by
+        /// querying through the writer actor's own connection.
+        ///
         /// Returns the mode as a lowercase string (sqlite's own
         /// canonical form), or nil for unreadable / unopenable files.
         public static func journalMode(at dbPath: URL) -> String? {

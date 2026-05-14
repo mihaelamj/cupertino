@@ -104,6 +104,28 @@ extension Sample.Index {
                 )
             }
 
+            // #236 follow-up: SQLite-recommended `synchronous=NORMAL`
+            // paired with WAL. Per-connection. See
+            // https://www.sqlite.org/pragma.html#pragma_synchronous.
+            if sqlite3_exec(dbPointer, "PRAGMA synchronous = NORMAL", nil, nil, nil) != SQLITE_OK {
+                let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
+                Logging.Log.warning(
+                    "Failed to set synchronous=NORMAL on \(dbPath.lastPathComponent): \(errorMessage)",
+                    category: .samples
+                )
+            }
+
+            // #236 follow-up: cap the WAL sidecar at 64 MB so
+            // pathological reader-starvation cases don't grow the
+            // file without bound. Default is -1 (unlimited).
+            if sqlite3_exec(dbPointer, "PRAGMA journal_size_limit = 67108864", nil, nil, nil) != SQLITE_OK {
+                let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
+                Logging.Log.warning(
+                    "Failed to set journal_size_limit on \(dbPath.lastPathComponent): \(errorMessage)",
+                    category: .samples
+                )
+            }
+
             database = dbPointer
         }
 
