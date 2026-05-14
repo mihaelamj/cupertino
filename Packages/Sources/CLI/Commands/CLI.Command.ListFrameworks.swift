@@ -29,6 +29,13 @@ extension CLI.Command {
         var searchDb: String?
 
         mutating func run() async throws {
+            // GoF Factory Method (1994 p. 107): construct the concrete
+            // Creator at the command's composition sub-root. Stateless
+            // structs need no singleton handle — per GoF p. 127, the
+            // Singleton pattern is reserved for "exactly one instance"
+            // semantics that stateless empty structs don't require.
+            let searchDatabaseFactory: any SearchModule.DatabaseFactory = LiveSearchDatabaseFactory()
+
             // Use Services.ServiceContainer for managed lifecycle
             let (frameworks, totalDocs) = try await Services.ServiceContainer.withDocsService(dbPath: searchDb, searchDatabaseFactory: searchDatabaseFactory) { service in
                 let frameworks = try await service.listFrameworks()
