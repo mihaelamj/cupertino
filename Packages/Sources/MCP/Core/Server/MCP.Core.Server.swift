@@ -130,6 +130,16 @@ extension MCP.Core {
                 throw ServerError.transportNotConnected
             }
 
+            // #581: every id-bound request MUST receive either a `result`
+            // or `error` response per JSON-RPC 2.0 + MCP 2025-06-18. Pre-
+            // fix only `ServerError` was converted to a JSON-RPC error;
+            // every other thrown error (notably the
+            // `Shared.Core.ToolError.invalidArgument(...)` errors that
+            // tool handlers like `read_document` raise for bad URIs) fell
+            // through, got logged to stderr, and the client request hung
+            // waiting for its id to come back. Now every catch emits a
+            // typed JSON-RPC error frame; only un-categorised errors map
+            // to `internalError`.
             do {
                 let result = try await routeRequest(request)
                 let response = MCP.Core.Protocols.JSONRPCResponse(id: request.id, result: result)
@@ -140,6 +150,36 @@ extension MCP.Core {
                     error: MCP.Core.Protocols.JSONRPCError.ErrorDetail(
                         code: error.code,
                         message: error.message
+                    )
+                )
+                try await transport.send(.error(errorResponse))
+            } catch {
+                // Catch-all for any non-ServerError thrown from
+                // `routeRequest` (the typical case is a tool handler
+                // raising `Shared.Core.ToolError.invalidArgument` for a
+                // bad URI or missing required arg). Map to JSON-RPC
+                // -32602 InvalidParams when the underlying error is
+                // about argument shape; otherwise default to
+                // -32603 InternalError.
+                let detailCode = MCP.Core.Protocols.ErrorCode.invalidParams.rawValue
+                let detailMessage: String
+                let errorDescription = String(describing: error)
+                // `Shared.Core.ToolError` emits `.invalidArgument(field, message)` and
+                // `.invalidURI(uri)` shapes; surface those as InvalidParams
+                // with a stable user-facing message. Anything else we
+                // pass through verbatim so the client at least sees what
+                // happened, rather than hanging.
+                if let localized = error as? LocalizedError, let description = localized.errorDescription {
+                    detailMessage = description
+                } else {
+                    detailMessage = errorDescription
+                }
+                logError("Error handling message (returning JSON-RPC error to client): \(errorDescription)")
+                let errorResponse = MCP.Core.Protocols.JSONRPCError(
+                    id: request.id,
+                    error: MCP.Core.Protocols.JSONRPCError.ErrorDetail(
+                        code: detailCode,
+                        message: detailMessage
                     )
                 )
                 try await transport.send(.error(errorResponse))
