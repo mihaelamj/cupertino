@@ -158,13 +158,14 @@ struct LoggingPublicSurfaceTests {
 
     // MARK: Logging.Unified actor
 
-    @Test("Logging.Unified.shared singleton is reachable and configurable")
+    @Test("Logging.Unified.shared singleton is reachable and configurable (legacy, removed in #548 Phase H)")
     func unifiedSharedConfigurable() async {
-        // The singleton is the entry point every cupertino subsystem
-        // uses. configure() reaches into the actor; if the signature
-        // breaks, every caller breaks. Round-trip a configure() with
-        // a known Options and verify the actor accepts it without
-        // throwing.
+        // The .shared accessor is preserved during the #548 migration so
+        // the ~500 inline `Logging.LiveRecording()` callsites keep working
+        // until their composition root is rewritten. New code must build
+        // a `Logging.Composition` (or call `Logging.Unified(options:)`
+        // directly) instead. Phase H of #548 deletes this accessor and
+        // this test.
         let opts = Logging.Unified.Options(
             consoleEnabled: false,
             fileEnabled: false,
@@ -176,5 +177,97 @@ struct LoggingPublicSurfaceTests {
         await Logging.Unified.shared.configure(opts)
         // Reset to default so we don't pollute follow-on tests.
         await Logging.Unified.shared.configure(.default)
+    }
+
+    // MARK: Logging.Unified — public init (post-#548 Phase A)
+
+    @Test("Logging.Unified is constructible directly via the public init")
+    func unifiedPublicInit() async {
+        // Phase A of #548 promoted `Logging.Unified.init(options:)` from
+        // private to public so each binary's composition root can build
+        // its own actor instance. Round-trip a configure() to confirm
+        // the constructed actor accepts the same Options shape as the
+        // legacy .shared accessor.
+        let opts = Logging.Unified.Options(
+            consoleEnabled: false,
+            fileEnabled: false,
+            fileURL: nil,
+            minLevel: .warning,
+            showTimestamps: false,
+            showCategory: false
+        )
+        let unified = Logging.Unified(options: opts)
+        await unified.configure(.default)
+    }
+
+    // MARK: Logging.LiveRecording(unified:) — Bridge init
+
+    @Test("Logging.LiveRecording(unified:) holds the injected actor")
+    func liveRecordingUnifiedInit() {
+        // Phase A of #548 added `init(unified:)` so the Bridge
+        // (GoF p. 151) is properly closed: the abstraction
+        // (Logging.Recording protocol) and the implementation
+        // (Logging.Unified actor) are wired via DI instead of via
+        // Service Locator. Identity check: the held actor reference
+        // is the one we passed in.
+        let injected = Logging.Unified(options: .default)
+        let recording = Logging.LiveRecording(unified: injected)
+        #expect(recording.unified === injected)
+    }
+
+    @Test("Logging.LiveRecording() no-arg shim still delegates to .shared (removed in #548 Phase H)")
+    func liveRecordingNoArgShim() {
+        // The no-arg init is a transition shim preserved during the
+        // #548 migration; it points at `Logging.Unified.shared` so the
+        // existing inline call sites in CLI / TUI / MCP keep behaving
+        // identically until each binary's composition root is rewritten.
+        // Phase H deletes both the shim and `.shared`.
+        let recording = Logging.LiveRecording()
+        #expect(recording.unified === Logging.Unified.shared)
+    }
+
+    // MARK: Logging.Composition — Abstract Factory at the binary layer
+
+    @Test("Logging.Composition() builds one Unified actor and wires LiveRecording")
+    func compositionBuildsCoherentGraph() {
+        // The composition root owns the actor; the recording is the
+        // Bridge wrapper around it. Both fields must point at the same
+        // actor reference (this is the whole point of the Abstract
+        // Factory — one Unified per binary, multiple consumers, one
+        // identity).
+        let composition = Logging.Composition()
+        let liveRecording = composition.recording as? Logging.LiveRecording
+        // The default-built recording is a LiveRecording, not a NoopRecording.
+        #expect(liveRecording != nil)
+        #expect(liveRecording?.unified === composition.unified)
+    }
+
+    @Test("Logging.Composition.configure forwards to the held actor")
+    func compositionConfigureForwards() async {
+        // Build a composition, push a non-default Options through
+        // configure(), then push back to .default to leave the actor
+        // in a clean state. The actor accepting the configure() call
+        // without throwing is the contract.
+        let composition = Logging.Composition()
+        let opts = Logging.Unified.Options(
+            consoleEnabled: false,
+            fileEnabled: false,
+            fileURL: nil,
+            minLevel: .error,
+            showTimestamps: false,
+            showCategory: false
+        )
+        await composition.configure(opts)
+        await composition.configure(.default)
+    }
+
+    @Test("Logging.Composition.disableConsole + enableConsole round-trip cleanly")
+    func compositionConsoleToggle() async {
+        // disableConsole is the entry point the MCP server uses to
+        // silence stdout for JSON-RPC. The composition forwards to the
+        // actor; round-trip both directions to pin the façade.
+        let composition = Logging.Composition()
+        await composition.disableConsole()
+        await composition.enableConsole()
     }
 }

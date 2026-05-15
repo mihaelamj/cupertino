@@ -6,6 +6,8 @@ _The v1.1.1 corpus tag exists on `cupertino-docs` only (not on this repo). It ma
 
 ### Added
 
+- **`Logging.Composition` Abstract Factory + `Logging.LiveRecording(unified:)` Bridge init + public `Logging.Unified.init` (#548 Phase A).** Composition-root primitives for killing the `Logging.Unified.shared` Singleton (GoF p. 127, rejected as Service Locator per Seemann 2011 ch. 5). `Logging.Composition` owns one `Logging.Unified` actor + the `LiveRecording` Bridge (GoF p. 151) wrapper, exposes `recording: any Logging.Recording` for downstream DI, plus façade methods (`configure(_:)`, `disableConsole()`, `enableConsole()`, `enableFileLogging(at:)`, `disableFileLogging()`) that forward to the held actor. `Logging.LiveRecording(unified:)` is the proper Bridge init (abstraction = `Recording` protocol, implementation = `Unified` actor, wired via DI). `Logging.Unified.init(options:)` promoted from `private` to `public` so each binary's composition root can build its own actor. Phase A is pure addition — the `.shared` accessor and the no-arg `LiveRecording()` shim stay alive for the per-binary migration in Phases B-G, deleted in Phase H.
+
 - **GoF protocol-DI epic complete (#495, PRs #494–#502).** Eight cross-target closure typealiases converted to GoF Strategy / Factory Method protocols. Production `Live*` concretes live in CLI (the composition root) wrapping the underlying static / actor; consumer targets see only the protocol seam.
   | # | Closure → Protocol | PR |
   |---|---|---|
