@@ -128,8 +128,14 @@ MODELS_TARGETS=(
 # `Core.PackageIndexing.ExclusionList` out of `CoreProtocols` before
 # this opt-in.
 #
-# Phase 3 of #536 (next) opts in the 17 producer / feature targets one
-# group at a time after a per-target audit.
+# Phase 3 of #536 (2026-05-15) opts in all 17 producer / feature
+# targets at once. Each target was empirically verified standalone-
+# portable via `scripts/check-target-portability.sh <Target>` — the
+# script physically copies the target + its declared deps into a tmp
+# repo and runs `xcrun swift build` against a fresh SwiftPM checkout.
+# All 17 built green, confirming the Shared-layer absorption (#536
+# phases 1a-1d) automatically brought every producer into compliance
+# with the foundation-only rule.
 STRICT_PRODUCERS=(
     # Phase 2b-2f (#536): protocol-seam companions, foundation-only.
     CoreProtocols
@@ -138,13 +144,8 @@ STRICT_PRODUCERS=(
     SearchModels
     SampleIndexModels
     ServicesModels
-)
 
-# Grandfathered: producers still under the legacy contract (enforced
-# by scripts/check-package-purity.sh, not this script). Listed here
-# only for documentation purposes — anything in this list is exempt
-# from this script's checks until it migrates to STRICT_PRODUCERS.
-GRANDFATHERED_TARGETS=(
+    # Phase 3 (#536): producer / feature targets.
     Availability
     Cleanup
     Core
@@ -155,13 +156,19 @@ GRANDFATHERED_TARGETS=(
     Distribution
     Indexer
     Ingest
+    Logging
+    MCPSupport
     RemoteSync
     SampleIndex
     Search
-    Services
     SearchToolProvider
-    MCPSupport
-    Logging
+    Services
+)
+
+# Grandfathered: producers still under the legacy contract (enforced
+# by scripts/check-package-purity.sh, not this script). Empty after
+# phase 3 — every producer is now strict.
+GRANDFATHERED_TARGETS=(
 )
 
 is_in_list() {
@@ -189,11 +196,27 @@ ALLOWED_GLOBAL=(
 violations=0
 violation_lines=()
 
+# Override map for targets whose source folder lives under a parent
+# folder rather than at `Sources/<Target>/`. Mirrors the `path:` field
+# in `Package.swift` for these targets. Keep in sync if more targets
+# are nested.
+target_source_path() {
+    case "$1" in
+        CoreJSONParser)       echo "$SOURCES_DIR/Core/JSONParser" ;;
+        CorePackageIndexing)  echo "$SOURCES_DIR/Core/PackageIndexing" ;;
+        MCPCore)              echo "$SOURCES_DIR/MCP" ;;
+        MCPClient)            echo "$SOURCES_DIR/MCP/Client" ;;
+        MCPSharedTools)       echo "$SOURCES_DIR/MCP/SharedTools" ;;
+        MCPSupport)           echo "$SOURCES_DIR/MCP/Support" ;;
+        *)                    echo "$SOURCES_DIR/$1" ;;
+    esac
+}
+
 # For each STRICT_PRODUCERS target, walk its source files and confirm
 # every import is in the allow list. Use `+` expansion so an empty
 # array doesn't trip `set -u`.
 for target in ${STRICT_PRODUCERS[@]+"${STRICT_PRODUCERS[@]}"}; do
-    target_dir="$SOURCES_DIR/$target"
+    target_dir="$(target_source_path "$target")"
     if [ ! -d "$target_dir" ]; then
         echo "error: STRICT_PRODUCERS lists $target but $target_dir doesn't exist" >&2
         exit 2
