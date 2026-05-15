@@ -1,6 +1,7 @@
 import CoreProtocols
 import Foundation
 import SharedConstants
+
 // swiftlint:disable type_body_length
 // Justification: MarkdownToStructuredPage is a comprehensive parser for Apple documentation markdown.
 // It handles: YAML frontmatter, section detection, code blocks, tables, links, and nested structures.
@@ -36,8 +37,18 @@ extension Core.JSONParser {
                 return nil
             }
 
-            // Extract kind
-            let kind = extractKind(from: content)
+            // Extract kind. #614: the markdown fallback used to first-match
+            // the `"<kind># <name>"` shape line-by-line. Pages with many
+            // protocol conformances rendered near the top of the body
+            // (String, Array, Hashable, Equatable, Sendable, …) had a
+            // conformance row like `Protocol# Equatable` appearing BEFORE
+            // the page's own `Structure# String` heading, so the
+            // first-match logic returned `.protocol` for what is in fact
+            // a struct. Passing the page's own title in lets `extractKind`
+            // accept only the heading whose suffix matches the title; the
+            // first-match path is still kept as a fallback for pages
+            // where no exact-title hit is found.
+            let kind = extractKind(from: content, title: title)
 
             // Extract declaration (first code block after title)
             let declaration = extractDeclaration(from: content)
@@ -147,14 +158,44 @@ extension Core.JSONParser {
 
         // MARK: - Kind Extraction
 
-        private static func extractKind(from content: String) -> Shared.Models.StructuredDocumentationPage.Kind {
+        private static func extractKind(
+            from content: String,
+            title: String? = nil
+        ) -> Shared.Models.StructuredDocumentationPage.Kind {
             let lines = content.split(separator: "\n", omittingEmptySubsequences: false)
+            let targetTitle = title?.trimmingCharacters(in: .whitespaces)
 
-            // Look for pattern: "Kind# Title" on a single line
+            // #614: when we know the page's own title, prefer the line whose
+            // suffix matches it. That gates out conformance listings rendered
+            // before the page's main heading (the bug class that mistagged
+            // `swift/string` as `protocol`).
+            //
+            // Two-pass scan: pass 1 hunts for an exact title match; pass 2
+            // falls back to the pre-#614 first-match behaviour so pages
+            // whose markdown shape doesn't include the title at the
+            // heading still resolve to *something* (rather than regressing
+            // to `.unknown`).
+            if let target = targetTitle, !target.isEmpty {
+                for line in lines {
+                    let trimmed = line.trimmingCharacters(in: .whitespaces)
+                    guard trimmed.contains("# "), !trimmed.hasPrefix("#"),
+                          let hashIndex = trimmed.firstIndex(of: "#") else { continue }
+                    let kindString = String(trimmed[..<hashIndex])
+                        .trimmingCharacters(in: .whitespaces)
+                        .lowercased()
+                    let suffix = String(trimmed[trimmed.index(after: hashIndex)...])
+                        .trimmingCharacters(in: .whitespaces)
+                    if suffix == target {
+                        return parseKind(kindString)
+                    }
+                }
+            }
+
+            // Fallback: pre-#614 first-match behaviour for pages where no
+            // exact-title heading appears (or no title was passed in).
             for line in lines {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 if trimmed.contains("# "), !trimmed.hasPrefix("#") {
-                    // Extract the kind before "# "
                     if let hashIndex = trimmed.firstIndex(of: "#") {
                         let kindString = String(trimmed[..<hashIndex]).lowercased()
                         return parseKind(kindString)
