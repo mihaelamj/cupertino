@@ -187,7 +187,7 @@ This registers Cupertino globally for all your projects. Claude Code will automa
 If you're using [OpenAI Codex](https://github.com/openai/codex), add Cupertino with:
 
 ```bash
-codex mcp add cupertino -- $(which cupertino) serve
+codex mcp add cupertino -- $(which cupertino) serve --no-reap
 ```
 
 Or add directly to `~/.codex/config.toml`:
@@ -196,8 +196,18 @@ Or add directly to `~/.codex/config.toml`:
 [mcp_servers.cupertino]
 command = "/opt/homebrew/bin/cupertino"  # Homebrew on Apple Silicon
 # command = "/usr/local/bin/cupertino"   # Intel Mac or manual install
-args = ["serve"]
+args = ["serve", "--no-reap"]
 ```
+
+> **Why `--no-reap`?** Codex spawns a fresh `cupertino serve` per tool
+> call. Without `--no-reap`, each new instance kills its predecessor as
+> a stale sibling, and the in-flight transport closes (`Transport closed`
+> error on every tool call — see #280). Claude Desktop / Cursor users
+> keep the default (reap on) so MCP-host config reloads don't leak
+> orphan servers.
+>
+> Equivalent env-var form: `CUPERTINO_DISABLE_REAPER=1` in
+> `[mcp_servers.cupertino.env]`.
 
 > **Tip:** Run `which cupertino` to find your installation path.
 

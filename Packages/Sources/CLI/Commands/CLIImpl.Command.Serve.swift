@@ -52,12 +52,34 @@ extension CLIImpl.Command {
             """
         )
 
+        @Flag(
+            name: .long,
+            help: """
+            Don't reap sibling `cupertino serve` processes on startup. \
+            Useful for clients that legitimately spawn a fresh server per tool \
+            call or keep multiple servers alive (e.g. OpenAI Codex CLI), where \
+            the default reaping behaviour from #242 produces a 'Transport closed' \
+            error on every tool call. Default off — Claude Desktop / Cursor \
+            users want the reap. (#280)
+            """
+        )
+        var noReap: Bool = false
+
         mutating func run() async throws {
-            // Reap any sibling `cupertino serve` processes of the same binary
-            // before we bind stdio. MCP host config reloads (Claude Desktop,
-            // Cursor, etc.) leave orphan servers behind otherwise — they pin
-            // SQLite read locks and stack RAM usage. (#242)
-            ServeReaper.reapSiblings()
+            // #280: reap is opt-out via `--no-reap` or the
+            // `CUPERTINO_DISABLE_REAPER=1` env var. Codex CLI and any
+            // per-call-spawn MCP client must disable the reaper; Claude
+            // Desktop / Cursor users keep it on so stale orphans don't
+            // pile up. The flag wins if the user passed it; otherwise
+            // the env var decides.
+            let envOptOut = ProcessInfo.processInfo.environment[Shared.Constants.EnvVar.disableReaper] == "1"
+            if !noReap, !envOptOut {
+                // Reap any sibling `cupertino serve` processes of the same binary
+                // before we bind stdio. MCP host config reloads (Claude Desktop,
+                // Cursor, etc.) leave orphan servers behind otherwise — they pin
+                // SQLite read locks and stack RAM usage. (#242)
+                ServeReaper.reapSiblings()
+            }
 
             if isatty(STDOUT_FILENO) == 0 {
                 // Silence stdout on the actor backing this binary's
