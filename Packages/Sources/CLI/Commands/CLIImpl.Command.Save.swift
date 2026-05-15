@@ -126,6 +126,27 @@ extension CLIImpl.Command {
             let buildPackages = !scopeFlagsSet || packages
             let buildSamples = !scopeFlagsSet || samples
 
+            // #253: gate on concurrent siblings before any preflight or
+            // write. Detect other `cupertino save` processes targeting
+            // the same DB(s) we're about to write and either continue
+            // (TTY prompt → [c]), wait for them to exit (TTY → [w]), or
+            // abort (TTY → [a], or non-TTY default).
+            var myTargets: Set<SaveSiblingGate.Target> = []
+            if buildDocs { myTargets.insert(.search) }
+            if buildPackages { myTargets.insert(.packages) }
+            if buildSamples { myTargets.insert(.samples) }
+
+            let recording = Cupertino.Context.composition.logging.recording
+            switch SaveSiblingGate.gate(myTargets: myTargets, recording: recording) {
+            case .proceed:
+                break
+            case .waitForSiblingsThenProceed(let pids):
+                SaveSiblingGate.waitForSiblings(pids: pids, recording: recording)
+            case .abort(let reason):
+                recording.info("❌ \(reason)", category: .cli)
+                throw ExitCode.failure
+            }
+
             if !runPreflightAndConfirm(
                 buildDocs: buildDocs,
                 buildPackages: buildPackages,

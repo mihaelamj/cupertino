@@ -4,6 +4,16 @@ _Code on `origin/main` past the v1.1.0 tag. No binary tag yet — the v1.2.0 rel
 
 _The v1.1.1 corpus tag exists on `cupertino-docs` only (not on this repo). It marks the post-Claw-merge source corpus snapshot: 414,807 source files, +2,285 new pages + 498 richer overwrites from Claw mini's 5.5-day crawl, with 153 React-SPA-404 poison files filtered out at the merge boundary. The 13-category poison audit returns zero matches on the merged corpus. The matching bundle (`cupertino-databases-v1.2.0.zip`) is rebuilt from the same source state when v1.2.0 ships._
 
+### Fixed
+
+- **#253: `cupertino save` now detects concurrent sibling save processes and prompts before overlapping a same-DB write.** New `SaveSiblingGate` in `Packages/Sources/CLI/Commands/SaveSiblingGate.swift` runs at the very top of `Save.run()`, before any preflight or write. Architecture mirrors `ServeReaper` (#242) — sysctl `KERN_PROCARGS2` for sibling argv, `proc_pidpath` + `realpath` for the resolved binary path. Pure scope: detect + prompt; no reap authority (a `save` in flight may represent many hours of work, and killing it without consent is dangerous enough to deserve its own follow-up PR with `--force-replace` + typed-confirmation gate).
+  - **Target detection from argv.** New `SaveSiblingGate.Target` enum (`.search` / `.packages` / `.samples`) with `dbFilename` accessor. `parseSaveTargets(argv:)` is a pure function that mirrors `Save.run`'s scope-flag defaulting: no scope flag → all three; explicit `--docs` / `--packages` / `--samples` narrow the set. Empty set when `save` doesn't appear in argv at all.
+  - **Conflict resolution.** A sibling whose targets intersect ours is a real overlap. Different-DB siblings (e.g. our `--docs` next to their `--samples`) log one informational line and proceed — that's a legitimate workflow.
+  - **TTY-aware prompt.** Same-DB overlap on a TTY → `[c] continue anyway / [w] wait for it to finish, then start fresh / [a] abort`. The `[w]` branch polls `kill(pid, 0)` every 5s with a heartbeat log line, then proceeds. Non-interactive callers (CI, scripts) get a non-zero exit and a clear error message instead of silently doubling up.
+  - **Deferred to a follow-up PR (mentioned in issue body):** `--force-replace` flag with typed-confirmation gate (`type 'replace' to confirm killing PID X with N hours of work`); `--from-setup` suppression for the `setup → save` pipeline.
+  - **18 unit tests across 3 suites** in `Packages/Tests/CLITests/SaveSiblingGateTests.swift`: argv → target-set defaulting (9 cases including unrelated-flag noise, wrapper-script invocation, `dbFilename` round-trip), `parsePsOutput` 3-column / malformed-line / empty handling, and `parseProcargs2` round-trip / short-buffer / `argc=0` sentinel. The detection runtime (`/bin/ps` spawn + sysctl) is left for manual integration testing because the existing pattern in `ServeReaper` does the same.
+  - `xcrun swift test`: **1664 / 1664** in 229 suites (was 1646 / 226; +18 net new).
+
 ### Changed
 
 - **Cleanup: kill three pre-existing test-side warnings flagged during the post-#574 retest.** All three were latent before the closure-purge epic; bundled here as a hygiene PR after main flagged them at 06:10Z.
