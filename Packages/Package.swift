@@ -26,6 +26,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Core"),
     .singleTargetLibrary("Cleanup"),
     .singleTargetLibrary("CleanupModels"),
+    .singleTargetLibrary("CoreSampleCodeModels"),
     .singleTargetLibrary("Search"),
     .singleTargetLibrary("SampleIndex"),
     .singleTargetLibrary("Services"),
@@ -282,16 +283,27 @@ let targets: [Target] = {
     // (`SampleIndex`, `Search/Strategies/Search.Strategies.SampleCode`,
     // `Indexer.SamplesService`, `CLI.Command.Fetch`) take an explicit
     // `import CoreSampleCode` instead of getting it transitively via Core.
+    // ---------- CoreSampleCodeModels (foundation-only seam — Observer protocol for GitHubFetcher) ----------
+    let coreSampleCodeModelsTarget = Target.target(
+        name: "CoreSampleCodeModels",
+        dependencies: ["SharedConstants"]
+    )
+    let coreSampleCodeModelsTestsTarget = Target.testTarget(
+        name: "CoreSampleCodeModelsTests",
+        dependencies: ["CoreSampleCodeModels", "SharedConstants", "TestSupport"]
+    )
+
     let coreSampleCodeTarget = Target.target(
         name: "CoreSampleCode",
         dependencies: [
+            "CoreSampleCodeModels",
             "SharedConstants",
             "LoggingModels",
         ]
     )
     let coreSampleCodeTestsTarget = Target.testTarget(
         name: "CoreSampleCodeTests",
-        dependencies: ["CoreSampleCode", "SharedConstants", "TestSupport"]
+        dependencies: ["CoreSampleCode", "CoreSampleCodeModels", "SharedConstants", "TestSupport"]
     )
 
     let coreTarget = Target.target(
@@ -620,7 +632,7 @@ let targets: [Target] = {
         dependencies: [
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
             "SharedConstants",
-            ],
+        ],
         exclude: ["README.md"]
     )
     let releaseToolTestsTarget = Target.testTarget(
@@ -725,6 +737,8 @@ let targets: [Target] = {
         corePackageIndexingTestsTarget,
         resourcesTarget,
         resourcesTestsTarget,
+        coreSampleCodeModelsTarget,
+        coreSampleCodeModelsTestsTarget,
         coreSampleCodeTarget,
         coreSampleCodeTestsTarget,
         coreTarget,
