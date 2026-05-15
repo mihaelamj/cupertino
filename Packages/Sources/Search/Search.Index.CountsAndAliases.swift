@@ -129,6 +129,28 @@ extension Search.Index {
         _ = sqlite3_step(statement)
     }
 
+    /// True if `identifier` appears as a `framework` value in `docs_metadata`
+    /// (#628). Used by `Search.Index.search` to validate `--framework`
+    /// against the corpus rather than the alias table — the alias table
+    /// is populated opportunistically during indexing and can lag the
+    /// metadata view for sources that don't carry a `module` field in
+    /// their JSON.
+    public func frameworkExistsInCorpus(_ identifier: String) async throws -> Bool {
+        guard let database else {
+            throw Search.Error.databaseNotInitialized
+        }
+
+        let sql = "SELECT 1 FROM docs_metadata WHERE framework = ? LIMIT 1;"
+        var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
+
+        guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
+            return false
+        }
+        sqlite3_bind_text(statement, 1, (identifier as NSString).utf8String, -1, nil)
+        return sqlite3_step(statement) == SQLITE_ROW
+    }
+
     /// Resolve any framework input (identifier, import name, or display name) to identifier
     /// - Parameter input: Any of the three forms (e.g., "appintents", "AppIntents", "App Intents")
     /// - Returns: The identifier form (e.g., "appintents"), or nil if not found

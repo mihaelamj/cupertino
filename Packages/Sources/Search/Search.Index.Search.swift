@@ -51,10 +51,30 @@ extension Search.Index {
         // Use explicit source or detected source
         let effectiveSource = source ?? detectedSource
 
-        // Resolve framework input to identifier (supports "appintents", "AppIntents", "App Intents")
+        // Resolve framework input to identifier (supports "appintents", "AppIntents", "App Intents").
+        // #628: if the caller passes a non-empty `framework` that the
+        // corpus doesn't know about, reject the query loudly. Pre-fix,
+        // `resolveFrameworkIdentifier` falls back to returning the raw
+        // input on miss ("might be a valid framework not yet in the
+        // alias table"), so `--framework banana` produced an empty
+        // result set rather than a clear error. The strict guard
+        // confirms the resolved identifier actually has rows in
+        // `docs_metadata` before letting the search proceed; the
+        // empty-string case (`--framework=`) still treats the filter
+        // as absent.
         let effectiveFramework: String?
-        if let framework {
-            effectiveFramework = try await resolveFrameworkIdentifier(framework)
+        if let framework, !framework.trimmingCharacters(in: .whitespaces).isEmpty {
+            let resolved = try await resolveFrameworkIdentifier(framework)
+            let identifier = resolved ?? framework.lowercased()
+                .replacingOccurrences(of: " ", with: "")
+            let exists = try await frameworkExistsInCorpus(identifier)
+            guard exists else {
+                throw Search.Error.invalidQuery(
+                    "Unknown framework: '\(framework)'. " +
+                        "Run `cupertino list-frameworks` for the canonical identifier list."
+                )
+            }
+            effectiveFramework = identifier
         } else {
             effectiveFramework = nil
         }
@@ -757,7 +777,10 @@ extension Search.Index {
         // single-word, ASCII-identifier-shaped queries — same rough
         // shape that HEURISTIC 1 + 1.5 already gate on.
         if shouldFetchFrameworkRoot {
-            let canonicals = try await fetchCanonicalTypePages(query: query)
+            let canonicals = try await fetchCanonicalTypePages(
+                query: query,
+                framework: effectiveFramework
+            )
             if !canonicals.isEmpty {
                 let canonicalURIs = Set(canonicals.map(\.uri))
                 results.removeAll { canonicalURIs.contains($0.uri) }
@@ -927,8 +950,20 @@ extension Search.Index {
     /// caller can dedup-and-prepend them without re-running the post-rank
     /// math. Caller is responsible for not invoking this when the
     /// effective source filter is something other than apple-docs.
-    func fetchCanonicalTypePages(query: String) async throws -> [Search.Result] {
+    func fetchCanonicalTypePages(
+        query: String,
+        framework: String? = nil
+    ) async throws -> [Search.Result] {
         guard let database else { return [] }
+
+        // #628: honour the caller's `--framework` filter — if they pinned
+        // the search to a specific framework, the canonical-prepend must
+        // not leak rows from a different framework. Pre-fix the prepend
+        // probed all three `canonicalTypePageFrameworks` regardless, and
+        // a `--framework foundation` query for "View" returned
+        // `apple-docs://swiftui/view` at rank -2000 (score 2000.00 in
+        // CLI display), violating the user's explicit filter.
+        let frameworkFilter = framework?.lowercased()
 
         // Same shape constraints as `Search.SmartQuery.isLikelySymbolQuery`:
         // single token, length >= 2, ASCII identifier characters only.
@@ -974,6 +1009,15 @@ extension Search.Index {
 
         var hits: [Search.Result] = []
         for framework in Self.canonicalTypePageFrameworks {
+            // #628: when caller pinned `--framework`, skip canonical
+            // probes for any other framework. A bogus filter (e.g.
+            // `--framework banana`) lands in this branch with
+            // `frameworkFilter == "banana"`, so no probe matches and
+            // the prepend correctly yields nothing.
+            if let frameworkFilter, frameworkFilter != framework {
+                continue
+            }
+
             // #610 Class A — URI shape updated from the pre-#283 form
             // `apple-docs://<framework>/documentation_<framework>_<query>`
             // to the lossless post-#283/#589 form

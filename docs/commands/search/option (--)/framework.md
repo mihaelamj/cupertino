@@ -81,6 +81,8 @@ cupertino search "Text" --framework swiftui --format json
 
 - Framework names are lowercase
 - Matches the `framework` field in indexed documents
-- Case-insensitive matching
-- Invalid framework values return no results
-- Some documents may have `nil` framework (e.g., Swift Evolution proposals)
+- Case-insensitive matching; identifier, import name, and display name all accepted (e.g. `appintents`, `AppIntents`, `App Intents`).
+- Invalid framework values are rejected with an `Unknown framework: '<name>'. Run \`cupertino list-frameworks\` for the canonical identifier list.` error (#628). Pre-#628 a typo silently returned an empty result set, which read the same as a real query miss.
+- Honoured on the unified (default, no `--source`) path as of #628 — pre-fix the unified `SmartQuery.answer` fan-out dropped `--framework` entirely.
+- Silently dropped for sources whose rows don't carry a meaningful framework column (`hig`, `swift-evolution`, `swift-org`, `swift-book`). Apply via `--source apple-docs` or `--source apple-archive` to scope tightly.
+- The empty form `--framework=` is treated as no filter, not as the empty string.
