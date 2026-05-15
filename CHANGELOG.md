@@ -4,6 +4,10 @@ _Code on `origin/main` past the v1.1.0 tag. No binary tag yet — the v1.2.0 rel
 
 _The v1.1.1 corpus tag exists on `cupertino-docs` only (not on this repo). It marks the post-Claw-merge source corpus snapshot: 414,807 source files, +2,285 new pages + 498 richer overwrites from Claw mini's 5.5-day crawl, with 153 React-SPA-404 poison files filtered out at the merge boundary. The 13-category poison audit returns zero matches on the merged corpus. The matching bundle (`cupertino-databases-v1.2.0.zip`) is rebuilt from the same source state when v1.2.0 ships._
 
+### Changed
+
+- **Drop 21 redundant `import SharedConstants` self-imports across `Sources/Shared/{Core,Utils,Models,Configuration}/*.swift`.** Every file under those subdirectories is part of the `SharedConstants` SPM target itself (the target's `path:` is `Sources/Shared`, which globs every Swift file in the tree), so opening with `import SharedConstants` triggers a Swift compiler warning per file: `file 'X.swift' is part of module 'SharedConstants'; ignoring import`. Main-Claude's post-`2678e88` retest with stderr capture corrected (per the redirect-order disclosure in its session report) tallied **124 instances of this warning** — the warning fires multiple times per build pass for each of the 21 affected files. Removing the line from every file zeroes that bucket without changing any name resolution (the types are already in scope; this is the same module). `xcrun swift test`: **1673 / 1673** in 232 suites still passes (+0 net).
+
 ### Fixed
 
 - **#581 (HIGH): MCP spec violation — `tools/call` with invalid arguments now sends a JSON-RPC error frame instead of dropping the response.** Pre-fix, `MCP.Core.Server.handleRequest` had:

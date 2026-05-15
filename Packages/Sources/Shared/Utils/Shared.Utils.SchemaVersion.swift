@@ -1,5 +1,4 @@
 import Foundation
-import SharedConstants
 
 extension Shared.Utils {
     /// Date-based schema version stamp for cupertino's local databases

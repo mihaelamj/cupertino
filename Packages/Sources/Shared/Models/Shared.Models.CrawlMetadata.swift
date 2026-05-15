@@ -1,5 +1,4 @@
 import Foundation
-import SharedConstants
 // MARK: - Crawl Metadata
 
 /// Metadata tracking crawl state and statistics

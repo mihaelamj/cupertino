@@ -1,5 +1,4 @@
 import Foundation
-import SharedConstants
 
 extension Shared.Utils {
     /// Pure string helpers for building SQLite FTS5 MATCH queries from

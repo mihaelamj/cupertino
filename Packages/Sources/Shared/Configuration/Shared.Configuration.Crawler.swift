@@ -1,5 +1,4 @@
 import Foundation
-import SharedConstants
 // MARK: - Shared.Configuration.Crawler
 
 extension Shared.Configuration {
