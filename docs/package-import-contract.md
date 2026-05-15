@@ -61,6 +61,7 @@ Validated against five independent references (see `mihaela-agents/Rules/swift/p
 | `ServicesModels` | Foundation, SearchModels, SampleIndexModels, SharedConstants | ✅ Foundation, SampleIndexModels, SearchModels, SharedConstants |
 | `IndexerModels` | Foundation | ✅ Foundation (closures-to-Observer epic seam: owns `Indexer.*Service.Request`/`Outcome`/`Event` value types + the three `*Service.EventObserving` Observer protocols) |
 | `DistributionModels` | Foundation, SharedConstants | ✅ Foundation, SharedConstants (closures-to-Observer epic seam: owns `Distribution.SetupService.Request`/`Outcome`/`Event` + `ArtifactDownloader.Progress` + `InstalledVersion.Status` + `SetupError` value types + `SetupService.EventObserving` / `ArtifactDownloader.ProgressObserving` / `ArtifactExtractor.TickObserving` protocols) |
+| `CleanupModels` | Foundation, SharedConstants | ✅ Foundation, SharedConstants (closures-to-Observer epic seam: owns the `Sample.Cleanup.CleanerProgressObserving` Observer protocol; payload `Shared.Models.CleanupProgress` already lives in `SharedConstants`) |
 
 ### Infrastructure tier (wraps a system API; foundation-tier deps)
 
@@ -75,7 +76,7 @@ Validated against five independent references (see `mihaela-agents/Rules/swift/p
 | Target | Allowed imports | Current state |
 |---|---|---|
 | `Availability` | Foundation, FoundationNetworking, SharedConstants | ✅ Foundation, FoundationNetworking, SharedConstants |
-| `Cleanup` | Foundation, LoggingModels, SharedConstants | ✅ Foundation, LoggingModels, SharedConstants |
+| `Cleanup` | Foundation, CleanupModels, LoggingModels, SharedConstants | ✅ Foundation, CleanupModels, LoggingModels, SharedConstants (closures-to-Observer epic: `cleanup` signature now takes `any Sample.Cleanup.CleanerProgressObserving` from seam) |
 | `Core` | Foundation, WebKit, LoggingModels, Resources, ASTIndexer, CoreProtocols, CorePackageIndexingModels, SharedConstants | ✅ ASTIndexer, CorePackageIndexingModels, CoreProtocols, Foundation, LoggingModels, Resources, SharedConstants, WebKit |
 | `CoreJSONParser` | Foundation, CoreProtocols, SharedConstants | ✅ |
 | `CorePackageIndexing` | Foundation, ASTIndexer, CorePackageIndexingModels, CoreProtocols, LoggingModels, Resources, SharedConstants | ✅ (post-#536 2a: now owns the moved GitHubCanonicalizer + ExclusionList) |
