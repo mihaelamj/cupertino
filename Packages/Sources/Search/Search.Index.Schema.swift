@@ -27,6 +27,7 @@ extension Search.Index {
             content,
             summary,
             symbols,            -- #192 D: AST-extracted Swift symbol names; enables bm25 boost for type-name queries
+            symbol_components,  -- #77:  acronym-aware CamelCase splits of `symbols` (LazyVGrid → Lazy / VGrid / Grid); BM25F weight 1.5 vs symbols' 5.0
             tokenize='porter unicode61'
         );
 

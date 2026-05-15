@@ -54,11 +54,12 @@ extension Search.Index {
         let effectiveLanguage = language ?? detectLanguage(from: content)
 
         // Insert into FTS5 table (db should be deleted before full re-index).
-        // `symbols` starts empty; the AST pass (#192 section D) UPDATEs it
-        // after doc_code_examples has been populated.
+        // `symbols` + `symbol_components` start empty; the AST pass
+        // (#192 section D, #77 component split) UPDATEs both after
+        // `doc_code_examples` has been populated.
         let ftsSql = """
-        INSERT INTO docs_fts (uri, source, framework, language, title, content, summary, symbols)
-        VALUES (?, ?, ?, ?, ?, ?, ?, '');
+        INSERT INTO docs_fts (uri, source, framework, language, title, content, summary, symbols, symbol_components)
+        VALUES (?, ?, ?, ?, ?, ?, ?, '', '');
         """
 
         var statement: OpaquePointer?
@@ -403,11 +404,12 @@ extension Search.Index {
         }
 
         // Insert into FTS5 table (db should be deleted before full re-index).
-        // `symbols` starts empty; the AST pass (#192 section D) UPDATEs it
-        // after doc_code_examples has been populated.
+        // `symbols` + `symbol_components` start empty; the AST pass
+        // (#192 section D, #77 component split) UPDATEs both after
+        // `doc_code_examples` has been populated.
         let ftsSql = """
-        INSERT INTO docs_fts (uri, source, framework, language, title, content, summary, symbols)
-        VALUES (?, ?, ?, ?, ?, ?, ?, '');
+        INSERT INTO docs_fts (uri, source, framework, language, title, content, summary, symbols, symbol_components)
+        VALUES (?, ?, ?, ?, ?, ?, ?, '', '');
         """
 
         var statement: OpaquePointer?

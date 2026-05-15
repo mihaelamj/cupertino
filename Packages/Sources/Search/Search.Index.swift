@@ -35,7 +35,16 @@ extension Search {
         ///       BREAKING: existing v12 DBs are rejected at open. Upgrade path is
         ///       `cupertino setup` to download the v1.0.2 bundle, which ships
         ///       pre-built at v13 with zero case-axis duplicate clusters.
-        public static let schemaVersion: Int32 = 13
+        /// - 14: Index-time CamelCase expansion (#77). Adds `symbol_components`
+        ///       FTS column carrying acronym-aware splits of every AST-derived
+        ///       symbol name on the page (`LazyVGrid → Lazy / VGrid / Grid`,
+        ///       `URLSession → URL / Session`, etc.). BM25F slot weighted at
+        ///       1.5 so `search("grid")` surfaces the LazyVGrid page without
+        ///       diluting exact-symbol ranking (the `symbols` column stays
+        ///       at 5.0). BREAKING — FTS5 does not support ALTER TABLE ADD
+        ///       COLUMN; existing v13 DBs are rejected at open with the same
+        ///       "rebuild required" message v12 received.
+        public static let schemaVersion: Int32 = 14
 
         // Properties are package-internal (default visibility) so the
         // SearchIndex+<Concern>.swift extension files can access them. Public
