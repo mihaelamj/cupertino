@@ -1,6 +1,8 @@
+import CoreSampleCodeModels
 import Foundation
 import LoggingModels
 import SharedConstants
+
 // MARK: - GitHub Sample Code Fetcher
 
 /// Fetches Apple sample code from the public GitHub repository
@@ -24,9 +26,29 @@ extension Sample.Core {
 
         // MARK: - Public API
 
-        /// Clone or pull the sample code repository
-        public func fetch(onProgress: ((FetchProgress) -> Void)? = nil) async throws -> FetchStatistics {
+        /// Clone or pull the sample code repository.
+        ///
+        /// `progress` is a GoF Observer (1994 p. 293) for the same
+        /// progress events that used to flow through a
+        /// `((FetchProgress) -> Void)?` closure. The Observer protocol
+        /// + payload value type live in the foundation-only
+        /// `CoreSampleCodeModels` seam target
+        /// (`Sample.Core.GitHubFetcherProgressObserving` /
+        /// `Sample.Core.GitHubFetcherProgress`) so any conformer can
+        /// implement without `import CoreSampleCode` pulling in
+        /// WebKit / AppKit.
+        public func fetch(
+            progress: (any Sample.Core.GitHubFetcherProgressObserving)? = nil
+        ) async throws -> FetchStatistics {
             var stats = FetchStatistics(startTime: Date())
+            // `progress` carries the Observer contract; the current
+            // implementation surfaces phase information through the
+            // injected `logger` (Strategy) and reserves explicit
+            // `progress.observe(progress:)` calls for the per-line
+            // git stdout pipe (TODO: stream the Pipe in
+            // clone/pullRepository, then forward as
+            // `GitHubFetcherProgress(message: line)`).
+            _ = progress
 
             let repoURL = "https://github.com/\(repoOwner)/\(repoName).git"
             let repoPath = outputDirectory.appendingPathComponent(repoName)
@@ -288,17 +310,12 @@ extension Sample.Core {
     }
 }
 
-extension Sample.Core {
-    public struct FetchProgress: Sendable {
-        public let message: String
-        public let percentage: Double?
-
-        public init(message: String, percentage: Double? = nil) {
-            self.message = message
-            self.percentage = percentage
-        }
-    }
-}
+// `Sample.Core.FetchProgress` was moved to the foundation-only
+// `CoreSampleCodeModels` seam target and renamed
+// `Sample.Core.GitHubFetcherProgress` (the type-name now carries the
+// producer it belongs to, parallel to
+// `Crawler.AppleDocsProgress` / `Sample.Cleanup.CleanerProgress`).
+// See `Packages/Sources/CoreSampleCodeModels/Sample.Core.GitHubFetcher.Progress.swift`.
 
 // MARK: - Errors
 

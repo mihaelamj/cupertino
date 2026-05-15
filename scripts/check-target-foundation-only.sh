@@ -119,6 +119,9 @@ MODELS_TARGETS=(
     ServicesModels
     IndexerModels
     DistributionModels
+    CleanupModels
+    CoreSampleCodeModels
+    RemoteSyncModels
 )
 
 # Producers that have been audited + opt into the strict rule.
@@ -159,6 +162,32 @@ STRICT_PRODUCERS=(
     # / `ArtifactExtractor.TickObserving` protocols. Pattern A
     # namespace anchor.
     DistributionModels
+
+    # Closures-to-Observer epic: foundation-only seam target for the
+    # `Sample.Cleanup.CleanerProgressObserving` protocol. Payload is
+    # `Shared.Models.CleanupProgress` from foundation-tier
+    # SharedConstants. Flat-named (the producer `Sample.Cleanup.Cleaner`
+    # is an actor, can't be extended from outside).
+    CleanupModels
+
+    # Closures-to-Observer epic: foundation-only seam target for
+    # `Sample.Core.GitHubFetcherProgress` value type +
+    # `Sample.Core.GitHubFetcherProgressObserving` Observer protocol.
+    # Flat-named (the producer `Sample.Core.GitHubFetcher` is a public
+    # final class, can't be extended cleanly from outside; the
+    # `Sample.Core` enum namespace itself lives in SharedConstants and
+    # is extended here).
+    CoreSampleCodeModels
+
+    # Closures-to-Observer epic: foundation-only seam target for the
+    # `RemoteSync` namespace anchor, the `RemoteSync.Progress` /
+    # `IndexState` / `IndexerResult` / `IndexerError` value types, and
+    # the `DocumentIndexing` Strategy + `IndexerProgressObserving` /
+    # `IndexerDocumentObserving` Observer protocols that drive
+    # `RemoteSync.Indexer.run`. Flat-named because the producer
+    # `RemoteSync.Indexer` is a public actor in the `RemoteSync` target
+    # (can't be extended from this foundation-only seam).
+    RemoteSyncModels
 
     # Phase 3 (#536): producer / feature targets.
     Availability

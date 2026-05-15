@@ -5,6 +5,7 @@ import CorePackageIndexing
 import CorePackageIndexingModels
 import CoreProtocols
 import CoreSampleCode
+import CoreSampleCodeModels
 import Crawler
 import CrawlerModels
 import Foundation
@@ -936,15 +937,26 @@ extension CLIImpl.Command {
             }
         }
 
+        /// Closure-free observer for the GitHub samples fetch. Forwards each
+        /// `Sample.Core.GitHubFetcherProgress` message through the binary's
+        /// recorder. Replaces the previous trailing-closure pattern.
+        private struct GitHubFetcherProgressObserver: Sample.Core.GitHubFetcherProgressObserving {
+            let recording: any LoggingModels.Logging.Recording
+
+            func observe(progress: Sample.Core.GitHubFetcherProgress) {
+                recording.output("   \(progress.message)")
+            }
+        }
+
         private func runSamplesFetch() async throws {
             let defaultPath = Shared.Paths.live().sampleCodeDirectory.path
             let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
 
-            let fetcher = Sample.Core.GitHubFetcher(outputDirectory: outputURL, logger: Cupertino.Context.composition.logging.recording)
+            let recording = Cupertino.Context.composition.logging.recording
+            let fetcher = Sample.Core.GitHubFetcher(outputDirectory: outputURL, logger: recording)
+            let observer = GitHubFetcherProgressObserver(recording: recording)
 
-            let stats = try await fetcher.fetch { progress in
-                Cupertino.Context.composition.logging.recording.output("   \(progress.message)")
-            }
+            let stats = try await fetcher.fetch(progress: observer)
 
             Cupertino.Context.composition.logging.recording.output("")
             Cupertino.Context.composition.logging.recording.info("✅ Fetch completed!")

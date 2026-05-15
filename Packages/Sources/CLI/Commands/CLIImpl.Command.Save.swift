@@ -4,6 +4,7 @@ import Indexer
 import Logging
 import LoggingModels
 import RemoteSync
+import RemoteSyncModels
 import SampleIndex
 import Search
 import SearchModels
@@ -208,8 +209,83 @@ extension CLIImpl.Command {
 /// a local corpus. Hasn't been lifted to `Indexer` yet because the
 /// `RemoteSync.Indexer` interface is heavily UI-coupled (animated progress
 /// bar, framework-by-framework status). Stays here until that pipeline
-/// gets a callback-based shape.
+/// is consolidated under `Indexer.*Service`.
 extension CLIImpl.Command.Save {
+    /// GoF Strategy seam (`RemoteSync.DocumentIndexing`) that forwards each
+    /// document fetched by `RemoteSync.Indexer.run` into the binary's
+    /// `Search.Index` database.
+    private struct SearchIndexDocumentIndexer: RemoteSync.DocumentIndexing {
+        let searchIndex: SearchModule.Index
+
+        func indexDocument(
+            uri: String,
+            source: String,
+            framework: String?,
+            title: String,
+            content: String,
+            jsonData: String?
+        ) async throws {
+            try await searchIndex.indexDocument(Search.Index.IndexDocumentParams(
+                uri: uri,
+                source: source,
+                framework: framework,
+                language: nil,
+                title: title,
+                content: content,
+                filePath: uri,
+                contentHash: content.hashValue.description,
+                lastCrawled: Date(),
+                sourceType: source,
+                packageId: nil,
+                jsonData: jsonData
+            ))
+        }
+    }
+
+    /// GoF Observer (`RemoteSync.IndexerProgressObserving`) that forwards
+    /// progress ticks into the binary's animated `ProgressReporter`.
+    private struct RemoteProgressObserver: RemoteSync.IndexerProgressObserving {
+        let reporter: RemoteSync.ProgressReporter
+
+        func observe(progress: RemoteSync.Progress) {
+            reporter.update(progress)
+        }
+    }
+
+    /// GoF Observer (`RemoteSync.IndexerDocumentObserving`) that bumps
+    /// per-document success / error counters on a shared tracker.
+    private struct RemoteDocumentObserver: RemoteSync.IndexerDocumentObserving {
+        let stats: StatsTracker
+
+        func observe(result: RemoteSync.IndexerResult) {
+            if result.success {
+                stats.bumpSuccess()
+            } else {
+                stats.bumpError()
+            }
+        }
+    }
+
+    /// Shared mutable counter for the remote-sync run. Lives inside the
+    /// command type so the observer structs above can carry a reference.
+    final class StatsTracker: @unchecked Sendable {
+        private let lock = NSLock()
+        private(set) var successCount = 0
+        private(set) var errorCount = 0
+
+        func bumpSuccess() {
+            lock.lock()
+            defer { lock.unlock() }
+            successCount += 1
+        }
+
+        func bumpError() {
+            lock.lock()
+            defer { lock.unlock() }
+            errorCount += 1
+        }
+    }
+
     private func runRemote() async throws {
         Cupertino.Context.composition.logging.recording.info("🚀 Building Search Index from Remote\n")
 
@@ -242,41 +318,14 @@ extension CLIImpl.Command.Save {
         let progressDisplay = RemoteSync.AnimatedProgress(barWidth: 20, useEmoji: true)
         let reporter = RemoteSync.ProgressReporter(display: progressDisplay)
 
-        final class StatsTracker: @unchecked Sendable {
-            var successCount = 0
-            var errorCount = 0
-        }
         let stats = StatsTracker()
         let startTime = Date()
 
         Cupertino.Context.composition.logging.recording.output("")
         try await indexer.run(
-            indexDocument: { uri, source, framework, title, content, jsonData in
-                try await searchIndex.indexDocument(Search.Index.IndexDocumentParams(
-                    uri: uri,
-                    source: source,
-                    framework: framework,
-                    language: nil,
-                    title: title,
-                    content: content,
-                    filePath: uri,
-                    contentHash: content.hashValue.description,
-                    lastCrawled: Date(),
-                    sourceType: source,
-                    packageId: nil,
-                    jsonData: jsonData
-                ))
-            },
-            onProgress: { progress in
-                reporter.update(progress)
-            },
-            onDocument: { result in
-                if result.success {
-                    stats.successCount += 1
-                } else {
-                    stats.errorCount += 1
-                }
-            }
+            documentIndexing: SearchIndexDocumentIndexer(searchIndex: searchIndex),
+            progress: RemoteProgressObserver(reporter: reporter),
+            document: RemoteDocumentObserver(stats: stats)
         )
 
         let elapsed = Date().timeIntervalSince(startTime)

@@ -61,6 +61,9 @@ Validated against five independent references (see `mihaela-agents/Rules/swift/p
 | `ServicesModels` | Foundation, SearchModels, SampleIndexModels, SharedConstants | ✅ Foundation, SampleIndexModels, SearchModels, SharedConstants |
 | `IndexerModels` | Foundation | ✅ Foundation (closures-to-Observer epic seam: owns `Indexer.*Service.Request`/`Outcome`/`Event` value types + the three `*Service.EventObserving` Observer protocols) |
 | `DistributionModels` | Foundation, SharedConstants | ✅ Foundation, SharedConstants (closures-to-Observer epic seam: owns `Distribution.SetupService.Request`/`Outcome`/`Event` + `ArtifactDownloader.Progress` + `InstalledVersion.Status` + `SetupError` value types + `SetupService.EventObserving` / `ArtifactDownloader.ProgressObserving` / `ArtifactExtractor.TickObserving` protocols) |
+| `CleanupModels` | Foundation, SharedConstants | ✅ Foundation, SharedConstants (closures-to-Observer epic seam: owns the `Sample.Cleanup.CleanerProgressObserving` Observer protocol; payload `Shared.Models.CleanupProgress` already lives in `SharedConstants`) |
+| `CoreSampleCodeModels` | Foundation, SharedConstants | ✅ Foundation, SharedConstants (closures-to-Observer epic seam: owns `Sample.Core.GitHubFetcherProgress` value type + `Sample.Core.GitHubFetcherProgressObserving` Observer protocol; flat-named because the producer `Sample.Core.GitHubFetcher` is a `public final class`, extends the `Sample.Core` namespace owned by `SharedConstants`) |
+| `RemoteSyncModels` | Foundation, SharedConstants | ✅ Foundation, SharedConstants (closures-to-Observer epic seam: owns the `RemoteSync` namespace anchor + `Progress` / `IndexState` / `IndexerResult` / `IndexerError` value types + `DocumentIndexing` Strategy protocol + `IndexerProgressObserving` / `IndexerDocumentObserving` Observer protocols; flat-named because the producer `RemoteSync.Indexer` is a `public actor`) |
 
 ### Infrastructure tier (wraps a system API; foundation-tier deps)
 
@@ -75,17 +78,17 @@ Validated against five independent references (see `mihaela-agents/Rules/swift/p
 | Target | Allowed imports | Current state |
 |---|---|---|
 | `Availability` | Foundation, FoundationNetworking, SharedConstants | ✅ Foundation, FoundationNetworking, SharedConstants |
-| `Cleanup` | Foundation, LoggingModels, SharedConstants | ✅ Foundation, LoggingModels, SharedConstants |
+| `Cleanup` | Foundation, CleanupModels, LoggingModels, SharedConstants | ✅ Foundation, CleanupModels, LoggingModels, SharedConstants (closures-to-Observer epic: `cleanup` signature now takes `any Sample.Cleanup.CleanerProgressObserving` from seam) |
 | `Core` | Foundation, WebKit, LoggingModels, Resources, ASTIndexer, CoreProtocols, CorePackageIndexingModels, SharedConstants | ✅ ASTIndexer, CorePackageIndexingModels, CoreProtocols, Foundation, LoggingModels, Resources, SharedConstants, WebKit |
 | `CoreJSONParser` | Foundation, CoreProtocols, SharedConstants | ✅ |
 | `CorePackageIndexing` | Foundation, ASTIndexer, CorePackageIndexingModels, CoreProtocols, LoggingModels, Resources, SharedConstants | ✅ (post-#536 2a: now owns the moved GitHubCanonicalizer + ExclusionList) |
-| `CoreSampleCode` | Foundation, AppKit, WebKit, LoggingModels, SharedConstants | ✅ AppKit, Foundation, LoggingModels, SharedConstants, WebKit |
+| `CoreSampleCode` | Foundation, AppKit, WebKit, CoreSampleCodeModels, LoggingModels, SharedConstants | ✅ AppKit, CoreSampleCodeModels, Foundation, LoggingModels, SharedConstants, WebKit (closures-to-Observer epic: `Sample.Core.GitHubFetcher.fetch` signature now takes `any Sample.Core.GitHubFetcherProgressObserving` from seam) |
 | `Crawler` | Foundation, os, WebKit, CoreProtocols, CrawlerModels, LoggingModels, Resources, SharedConstants | ✅ CoreProtocols, CrawlerModels, Foundation, LoggingModels, Resources, SharedConstants, WebKit, os |
 | `Distribution` | Foundation, DistributionModels, SharedConstants | ✅ Foundation, DistributionModels, SharedConstants (closures-to-Observer epic: `@_exported import DistributionModels` so existing callers reading `Distribution.SetupService.Request` via `import Distribution` still resolve) |
 | `Indexer` | Foundation, IndexerModels, SampleIndexModels, SearchModels, SharedConstants | ✅ Foundation, IndexerModels, SampleIndexModels, SearchModels, SharedConstants (closures-to-Observer epic: `@_exported import IndexerModels` so consumers reading `Indexer.*Service.Request`/`Outcome`/`Event` via `import Indexer` still resolve) |
 | `Ingest` | Foundation, LoggingModels, SharedConstants | ✅ Foundation, LoggingModels, SharedConstants |
 | `MCPSupport` | Foundation, LoggingModels, MCPCore, MCPSharedTools, SharedConstants | ✅ Foundation, LoggingModels, MCPCore, MCPSharedTools, SharedConstants |
-| `RemoteSync` | Foundation, SharedConstants | ✅ Foundation, SharedConstants |
+| `RemoteSync` | Foundation, RemoteSyncModels, SharedConstants | ✅ Foundation, RemoteSyncModels, SharedConstants (closures-to-Observer epic: `@_exported import RemoteSyncModels` so existing callers reading `RemoteSync.Indexer`/`Progress`/`IndexState` via `import RemoteSync` still resolve; `Indexer.run` signature now takes `any DocumentIndexing` Strategy + `any IndexerProgressObserving` Observer + optional `any IndexerDocumentObserving` Observer) |
 | `SampleIndex` | Foundation, OSLog, SQLite3, ASTIndexer, LoggingModels, SampleIndexModels, SharedConstants | ✅ ASTIndexer, Foundation, LoggingModels, OSLog, SQLite3, SampleIndexModels, SharedConstants |
 | `Search` | Foundation, SQLite3, ASTIndexer, CorePackageIndexingModels, CoreProtocols, LoggingModels, SearchModels, SharedConstants | ✅ ASTIndexer, CorePackageIndexingModels, CoreProtocols, Foundation, LoggingModels, SQLite3, SearchModels, SharedConstants |
 | `SearchToolProvider` | Foundation, MCPCore, MCPSharedTools, SampleIndexModels, SearchModels, ServicesModels, SharedConstants | ✅ Foundation, MCPCore, MCPSharedTools, SampleIndexModels, SearchModels, ServicesModels, SharedConstants |

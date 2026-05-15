@@ -44,8 +44,13 @@ struct DocsResourceProviderMalformedURLSkipTests {
         try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempRoot) }
 
+        // Framework-root URL post-#568: only `/documentation/<framework>`
+        // pages survive the resources/list filter. The malformed-row
+        // skip behaviour this suite covers is independent of the
+        // framework-root filter — both guards short-circuit; this test
+        // pins that the malformed guard hits first / catches the row.
         let goodPage = Shared.Models.PageMetadata(
-            url: "https://developer.apple.com/documentation/swiftui/list",
+            url: "https://developer.apple.com/documentation/swiftui",
             framework: "swiftui",
             filePath: "/dev/null",
             contentHash: "good",
@@ -59,7 +64,7 @@ struct DocsResourceProviderMalformedURLSkipTests {
             depth: 0
         )
         let metadata = Shared.Models.CrawlMetadata(pages: [
-            "https://developer.apple.com/documentation/swiftui/list": goodPage,
+            "https://developer.apple.com/documentation/swiftui": goodPage,
             "": badPage,
         ])
 

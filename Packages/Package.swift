@@ -25,6 +25,8 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("CorePackageIndexing"),
     .singleTargetLibrary("Core"),
     .singleTargetLibrary("Cleanup"),
+    .singleTargetLibrary("CleanupModels"),
+    .singleTargetLibrary("CoreSampleCodeModels"),
     .singleTargetLibrary("Search"),
     .singleTargetLibrary("SampleIndex"),
     .singleTargetLibrary("Services"),
@@ -41,6 +43,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("SearchToolProvider"),
     .singleTargetLibrary("MCPClient"),
     .singleTargetLibrary("RemoteSync"),
+    .singleTargetLibrary("RemoteSyncModels"),
     .executable(name: "cupertino", targets: ["CLI"]),
     .executable(name: "cupertino-tui", targets: ["TUI"]),
     .executable(name: "mock-ai-agent", targets: ["MockAIAgent"]),
@@ -281,16 +284,27 @@ let targets: [Target] = {
     // (`SampleIndex`, `Search/Strategies/Search.Strategies.SampleCode`,
     // `Indexer.SamplesService`, `CLI.Command.Fetch`) take an explicit
     // `import CoreSampleCode` instead of getting it transitively via Core.
+    // ---------- CoreSampleCodeModels (foundation-only seam — Observer protocol for GitHubFetcher) ----------
+    let coreSampleCodeModelsTarget = Target.target(
+        name: "CoreSampleCodeModels",
+        dependencies: ["SharedConstants"]
+    )
+    let coreSampleCodeModelsTestsTarget = Target.testTarget(
+        name: "CoreSampleCodeModelsTests",
+        dependencies: ["CoreSampleCodeModels", "SharedConstants", "TestSupport"]
+    )
+
     let coreSampleCodeTarget = Target.target(
         name: "CoreSampleCode",
         dependencies: [
+            "CoreSampleCodeModels",
             "SharedConstants",
             "LoggingModels",
         ]
     )
     let coreSampleCodeTestsTarget = Target.testTarget(
         name: "CoreSampleCodeTests",
-        dependencies: ["CoreSampleCode", "SharedConstants", "TestSupport"]
+        dependencies: ["CoreSampleCode", "CoreSampleCodeModels", "SharedConstants", "TestSupport"]
     )
 
     let coreTarget = Target.target(
@@ -341,13 +355,23 @@ let targets: [Target] = {
         dependencies: ["Crawler", "CrawlerModels", "Core", "CoreJSONParser", "CorePackageIndexing", "SharedConstants", "TestSupport"]
     )
 
+    // ---------- CleanupModels (foundation-only seam — Observer protocol for Sample.Cleanup.Cleaner) ----------
+    let cleanupModelsTarget = Target.target(
+        name: "CleanupModels",
+        dependencies: ["SharedConstants"]
+    )
+    let cleanupModelsTestsTarget = Target.testTarget(
+        name: "CleanupModelsTests",
+        dependencies: ["CleanupModels", "SharedConstants", "TestSupport"]
+    )
+
     let cleanupTarget = Target.target(
         name: "Cleanup",
-        dependencies: ["SharedConstants", "LoggingModels"]
+        dependencies: ["CleanupModels", "SharedConstants", "LoggingModels"]
     )
     let cleanupTestsTarget = Target.testTarget(
         name: "CleanupTests",
-        dependencies: ["Cleanup", "TestSupport"]
+        dependencies: ["Cleanup", "CleanupModels", "TestSupport"]
     )
 
     // ---------- SearchModels (#402a: value types lifted out of Search so result-consuming
@@ -467,13 +491,29 @@ let targets: [Target] = {
         path: "Tests/MCP/ClientTests"
     )
 
+    // ---------- RemoteSyncModels (foundation-only seam — closures-to-Observer epic) ----------
+    // Carries the `RemoteSync` namespace anchor + `Progress` /
+    // `IndexState` / `IndexerResult` / `IndexerError` value types
+    // and the `DocumentIndexing` Strategy + `IndexerProgressObserving`
+    // / `IndexerDocumentObserving` Observer protocols. Flat-named
+    // because the producer `RemoteSync.Indexer` is a public actor
+    // (can't be extended from outside).
+    let remoteSyncModelsTarget = Target.target(
+        name: "RemoteSyncModels",
+        dependencies: ["SharedConstants"]
+    )
+    let remoteSyncModelsTestsTarget = Target.testTarget(
+        name: "RemoteSyncModelsTests",
+        dependencies: ["RemoteSyncModels", "SharedConstants", "TestSupport"]
+    )
+
     let remoteSyncTarget = Target.target(
         name: "RemoteSync",
-        dependencies: ["SharedConstants"]
+        dependencies: ["RemoteSyncModels", "SharedConstants"]
     )
     let remoteSyncTestsTarget = Target.testTarget(
         name: "RemoteSyncTests",
-        dependencies: ["RemoteSync", "TestSupport"]
+        dependencies: ["RemoteSync", "RemoteSyncModels", "TestSupport"]
     )
 
     let availabilityTarget = Target.target(
@@ -609,7 +649,7 @@ let targets: [Target] = {
         dependencies: [
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
             "SharedConstants",
-            ],
+        ],
         exclude: ["README.md"]
     )
     let releaseToolTestsTarget = Target.testTarget(
@@ -714,6 +754,8 @@ let targets: [Target] = {
         corePackageIndexingTestsTarget,
         resourcesTarget,
         resourcesTestsTarget,
+        coreSampleCodeModelsTarget,
+        coreSampleCodeModelsTestsTarget,
         coreSampleCodeTarget,
         coreSampleCodeTestsTarget,
         coreTarget,
@@ -722,6 +764,8 @@ let targets: [Target] = {
         crawlerModelsTestsTarget,
         crawlerTarget,
         crawlerTestsTarget,
+        cleanupModelsTarget,
+        cleanupModelsTestsTarget,
         cleanupTarget,
         cleanupTestsTarget,
         searchModelsTarget,
@@ -754,6 +798,8 @@ let targets: [Target] = {
         searchToolProviderTestsTarget,
         mcpClientTarget,
         mcpClientTestsTarget,
+        remoteSyncModelsTarget,
+        remoteSyncModelsTestsTarget,
         remoteSyncTarget,
         remoteSyncTestsTarget,
         availabilityTarget,

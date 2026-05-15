@@ -1,8 +1,9 @@
 import ArgumentParser
 import Cleanup
+import CleanupModels
 import Foundation
-import LoggingModels
 import Logging
+import LoggingModels
 import SharedConstants
 // MARK: - Cleanup Command
 
@@ -88,11 +89,9 @@ extension CLIImpl.Command {
             logger: Cupertino.Context.composition.logging.recording
             )
 
-            let stats = try await cleaner.cleanup { progress in
-                let percent = String(format: "%.1f", progress.percentage)
-                let saved = Shared.Utils.Formatting.formatBytes(progress.originalSize - progress.cleanedSize)
-                Cupertino.Context.composition.logging.recording.output("   [\(percent)%] \(progress.currentFile) (saved \(saved))")
-            }
+            let stats = try await cleaner.cleanup(progress: CleanupProgressObserver(
+                recording: Cupertino.Context.composition.logging.recording
+            ))
 
             Cupertino.Context.composition.logging.recording.output("")
 
@@ -119,6 +118,20 @@ extension CLIImpl.Command {
 
             if let duration = stats.duration {
                 Cupertino.Context.composition.logging.recording.output("   Duration: \(Int(duration))s")
+            }
+        }
+
+        /// Closure-free observer for `Sample.Cleanup.Cleaner.cleanup`
+        /// progress. Prints per-archive progress lines through the
+        /// binary's recorder. Replaces the previous trailing-closure
+        /// pattern at the call site.
+        private struct CleanupProgressObserver: Sample.Cleanup.CleanerProgressObserving {
+            let recording: any LoggingModels.Logging.Recording
+
+            func observe(progress: Shared.Models.CleanupProgress) {
+                let percent = String(format: "%.1f", progress.percentage)
+                let saved = Shared.Utils.Formatting.formatBytes(progress.originalSize - progress.cleanedSize)
+                recording.output("   [\(percent)%] \(progress.currentFile) (saved \(saved))")
             }
         }
     }
