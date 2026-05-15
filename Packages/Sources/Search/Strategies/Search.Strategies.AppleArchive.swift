@@ -96,6 +96,25 @@ extension Search {
                 let filename = file.deletingPathExtension().lastPathComponent
                 let uri = "apple-archive://\(guideID)/\(filename)"
 
+                // #429: indexer-side poison defence, same checks as
+                // apple-docs.
+                if Search.StrategyHelpers.titleLooksLikeHTTPErrorTemplate(title) {
+                    logger.error(
+                        "⛔ Skipping HTTP-error-template archive page (#429 defence): title=\(title.prefix(60)) file=\(file.lastPathComponent)",
+                        category: .search
+                    )
+                    skipped += 1
+                    continue
+                }
+                if Search.StrategyHelpers.contentLooksLikeJavaScriptFallback(content) {
+                    logger.error(
+                        "⛔ Skipping JS-fallback archive page (#429 defence): title=\(title.prefix(60)) file=\(file.lastPathComponent)",
+                        category: .search
+                    )
+                    skipped += 1
+                    continue
+                }
+
                 let contentHash = Shared.Models.HashUtilities.sha256(of: content)
                 let attrs = try? FileManager.default.attributesOfItem(atPath: file.path)
                 let modDate = attrs?[.modificationDate] as? Date ?? Date()

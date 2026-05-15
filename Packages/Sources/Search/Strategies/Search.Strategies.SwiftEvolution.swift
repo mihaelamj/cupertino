@@ -153,6 +153,29 @@ extension Search {
             let title = Search.StrategyHelpers.extractTitle(from: content) ?? proposalID
             let uri = "swift-evolution://\(proposalID)"
 
+            // #429: indexer-side poison defence, generalised from
+            // apple-docs to all source strategies. Pre-fix only
+            // `indexAppleDocsFromDirectory` ran these checks; the
+            // swift-evolution / HIG / swift.org / archive paths could
+            // ship Apple-CDN HTTP error templates or JS-disabled
+            // fallback content straight into the index (the v1.0.2
+            // bundle carried a surviving `swift-org://docc_documentation`
+            // "Forbidden" row through exactly this gap).
+            if Search.StrategyHelpers.titleLooksLikeHTTPErrorTemplate(title) {
+                logger.error(
+                    "⛔ Skipping HTTP-error-template proposal (#429 defence): title=\(title.prefix(60)) file=\(file.lastPathComponent)",
+                    category: .search
+                )
+                return
+            }
+            if Search.StrategyHelpers.contentLooksLikeJavaScriptFallback(content) {
+                logger.error(
+                    "⛔ Skipping JS-fallback proposal (#429 defence): title=\(title.prefix(60)) file=\(file.lastPathComponent)",
+                    category: .search
+                )
+                return
+            }
+
             let attrs = try? FileManager.default.attributesOfItem(atPath: file.path)
             let modDate = attrs?[.modificationDate] as? Date ?? Date()
             let contentHash = Shared.Models.HashUtilities.sha256(of: content)

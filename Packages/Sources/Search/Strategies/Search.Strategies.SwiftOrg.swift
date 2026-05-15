@@ -161,6 +161,27 @@ extension Search {
                     skipped += 1
                     continue
                 }
+                // #429: indexer-side poison defence (HTTP error template
+                // titles + JS-disabled fallback content). Pre-fix this was
+                // wired into apple-docs only; a 'Forbidden' row survived
+                // into the v1.0.2 bundle at `swift-org://docc_documentation`
+                // for exactly this reason.
+                if Search.StrategyHelpers.titleLooksLikeHTTPErrorTemplate(title) {
+                    logger.error(
+                        "⛔ Skipping HTTP-error-template swift-org page (#429 defence): title=\(title.prefix(60)) file=\(file.lastPathComponent)",
+                        category: .search
+                    )
+                    skipped += 1
+                    continue
+                }
+                if Search.StrategyHelpers.pageLooksLikeJavaScriptFallback(structuredPage) {
+                    logger.error(
+                        "⛔ Skipping JS-fallback swift-org page (#429 defence): title=\(title.prefix(60)) file=\(file.lastPathComponent)",
+                        category: .search
+                    )
+                    skipped += 1
+                    continue
+                }
 
                 let filename = file.deletingPathExtension().lastPathComponent
                 let uri = "\(pageSource)://\(filename)"
