@@ -4,9 +4,9 @@ import CorePackageIndexing
 import CoreProtocols
 import Diagnostics
 import Foundation
-import LoggingModels
 import Indexer
 import Logging
+import LoggingModels
 import MCPCore
 import MCPSupport
 import SampleIndex
@@ -14,6 +14,7 @@ import Search
 import SearchModels
 import SearchToolProvider
 import SharedConstants
+
 // MARK: - Doctor Command
 
 /// One row in the raw-corpus directory check. Replaces a 4-tuple to
@@ -26,23 +27,26 @@ private struct CorpusEntry {
 }
 
 extension CLIImpl.Command {
+    // swiftlint:disable:next type_body_length
     struct Doctor: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "doctor",
             abstract: "Check MCP server health, database state, and save readiness",
             discussion: """
-            Verifies that the MCP server can start and all required components are available.
-
-            Checks:
-            • Server initialization
+            Default output focuses on what a user needs to know after `cupertino setup`:
+            • MCP server initialization
             • Resource and tool providers
-            • Database connectivity and schema versions
-            • Raw corpus directories (inputs for 'cupertino save')
-            • Swift package download state
+            • Database connectivity + schema versions (search.db, packages.db, samples.db)
 
-            Pass --save to run only the save preflight — prints which sources are present
-            and what would be built, without performing any health checks or DB writes.
-            Useful before running 'cupertino save' to confirm sources are ready.
+            Pass --save to also include the maintenance-side sections used before crawling
+            or re-indexing:
+            • Raw corpus directories (inputs for `cupertino save`)
+            • Swift-package download + selection state
+            • `cupertino save` per-source preflight summary
+
+            The default skips those because a setup-only user has no raw corpus on disk
+            (the bundle ships pre-built DBs), and a `0 files` line in `~/.cupertino/docs`
+            is normal in that flow — not a failure. (#68)
             """
         )
 
@@ -58,19 +62,44 @@ extension CLIImpl.Command {
         @Flag(
             name: .long,
             help: """
-            Run the 'cupertino save' preflight check only — print which sources are present \
-            and what would be built — without running the regular health suite. Read-only, no DB writes.
+            Also include the `cupertino save` maintenance sections in the report: raw \
+            corpus directories, Swift-package download/selection state, and the per-source \
+            save preflight summary. Default doctor output is database + MCP health only. \
+            Read-only, no DB writes.
             """
         )
         var save: Bool = false
 
         mutating func run() async throws {
-            // #232: --save flag short-circuits to the Command.Save preflight,
-            // so users can ask `is save ready?` without committing to running
-            // it. Identical output to what `cupertino save` would print as
-            // its preflight summary.
+            Cupertino.Context.composition.logging.recording.output("🏥 MCP Server Health Check")
+            Cupertino.Context.composition.logging.recording.output("")
+
+            var allChecks = true
+
+            // ----- Default sections (user-facing) -------------------------
+            // What a `cupertino setup` user needs: server + DBs + MCP. The
+            // raw corpus + package-selection sections used to live here too;
+            // #68 moved them behind `--save` because a setup-only user has
+            // no corpus on disk and the `0 files` line looked like a failure.
+            allChecks = checkServerInitialization() && allChecks
+            allChecks = checkPackagesDatabase() && allChecks
+            checkSamplesDatabase()
+            allChecks = await checkSearchDatabase() && allChecks
+            allChecks = checkResourceProviders() && allChecks
+            // Schema versions across all three DBs (#234)
+            printSchemaVersions()
+
+            // ----- Save-only sections (maintainer-facing) -----------------
+            // `--save` is intent-named: "I'm about to crawl / reindex; show
+            // me what the indexer sees." Adds the raw-corpus filesystem walk,
+            // selected-packages state, and the `Indexer.Preflight` per-source
+            // summary. Pre-#68 the flag short-circuited to only the preflight;
+            // it's now additive on top of the default health suite.
             if save {
-                Cupertino.Context.composition.logging.recording.output("🔍 `cupertino save` preflight check\n")
+                allChecks = checkDocumentationDirectories() && allChecks
+                await checkPackages()
+                Cupertino.Context.composition.logging.recording.output("🔍 `cupertino save` preflight check")
+                Cupertino.Context.composition.logging.recording.output("")
                 let lines = Indexer.Preflight.preflightLines(
                     paths: Shared.Paths.live(),
                     buildDocs: true,
@@ -80,40 +109,10 @@ extension CLIImpl.Command {
                 for line in lines {
                     Cupertino.Context.composition.logging.recording.output(line)
                 }
-                return
+                Cupertino.Context.composition.logging.recording.output("")
             }
 
-            Cupertino.Context.composition.logging.recording.output("🏥 MCP Server Health Check")
-            Cupertino.Context.composition.logging.recording.output("")
-
-            var allChecks = true
-
-            // Check server initialization
-            allChecks = checkServerInitialization() && allChecks
-
-            // Check documentation directories
-            allChecks = checkDocumentationDirectories() && allChecks
-
-            // Check packages (filesystem state)
-            await checkPackages()
-
-            // Check packages.db (#192 F1)
-            allChecks = checkPackagesDatabase() && allChecks
-
-            // Check samples.db (sample code index built by `cupertino save --samples`)
-            checkSamplesDatabase()
-
-            // Check search database + schema version (#192 F2)
-            allChecks = await checkSearchDatabase() && allChecks
-
-            // Check resource providers
-            allChecks = checkResourceProviders() && allChecks
-
-            // Schema versions across all three DBs (#234)
-            printSchemaVersions()
-
             // Summary
-            Cupertino.Context.composition.logging.recording.output("")
             if allChecks {
                 Cupertino.Context.composition.logging.recording.output("✅ All checks passed - MCP server ready")
             } else {
