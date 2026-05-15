@@ -52,6 +52,21 @@ extension CLIImpl.Command.Save {
         Self.printDocsSummary(outcome: outcome)
     }
 
+    /// Adapter bridging the closure-shaped `onProgress` parameter on the
+    /// `Search.DocsIndexingRun` protocol (defined in `SearchModels`) to the
+    /// `Search.IndexingProgressReporting` protocol that `Search.IndexBuilder`
+    /// now expects. The CLI is the composition root for this seam; the
+    /// adapter struct is the only place the closure-to-protocol bridge
+    /// lives. Future work can purge the closure from `DocsIndexingRun.run`
+    /// itself.
+    private struct ProgressCallbackToReporter: Search.IndexingProgressReporting {
+        let onProgress: @Sendable (Int, Int) -> Void
+
+        func report(processed: Int, total: Int) {
+            onProgress(processed, total)
+        }
+    }
+
     /// Concrete `Search.DocsIndexingRunner` (GoF Strategy) used by
     /// `Indexer.DocsService`. Wraps `Search.Index` + `Search.IndexBuilder`.
     /// Lives at the CLI composition root so Indexer doesn't need
@@ -73,7 +88,10 @@ extension CLIImpl.Command.Save {
                 markdownStrategy: input.markdownStrategy,
                 sampleCatalogProvider: input.sampleCatalogProvider, logger: Cupertino.Context.composition.logging.recording
             )
-            try await builder.buildIndex(clearExisting: input.clearExisting, onProgress: onProgress)
+            try await builder.buildIndex(
+                clearExisting: input.clearExisting,
+                onProgress: ProgressCallbackToReporter(onProgress: onProgress)
+            )
             let docCount = try await searchIndex.documentCount()
             let frameworks = try await searchIndex.listFrameworks()
             await searchIndex.disconnect()
@@ -306,6 +324,32 @@ extension CLIImpl.Command.Save {
     /// `Sample.Index.Builder` + `Sample.Core.Catalog`. Lives at the
     /// CLI composition root so the Indexer SPM target doesn't import
     /// SampleIndex or CoreSampleCode for these types.
+    /// Adapter bridging the closure-shaped `onPhase` parameter on the
+    /// `Sample.Index.SamplesIndexingRunner` protocol (defined in
+    /// `SampleIndexModels`) to the `Sample.Index.ProgressReporting`
+    /// Observer protocol that `Sample.Index.Builder` now expects. The CLI
+    /// is the composition root for this seam; the adapter struct is the
+    /// only place the closure-to-protocol bridge lives. Future work can
+    /// purge the closure from `SamplesIndexingRunner.run` itself.
+    private struct SamplesProgressReporter: Sample.Index.ProgressReporting {
+        let onPhase: @Sendable (Sample.Index.SamplesIndexingPhase) -> Void
+
+        func report(progress: Sample.Index.IndexProgress) {
+            let phase: Sample.Index.SamplesIndexingPhase.ProgressPhase
+            switch progress.status {
+            case .extracting: phase = .extracting
+            case .indexingFiles: phase = .indexingFiles
+            case .completed: phase = .completed
+            case .failed: phase = .failed
+            }
+            onPhase(.projectProgress(
+                name: progress.currentProject,
+                percent: progress.percentComplete,
+                phase: phase
+            ))
+        }
+    }
+
     struct LiveSamplesIndexingRunner: Sample.Index.SamplesIndexingRunner {
         func run(
             input: Sample.Index.SamplesIndexingInput,
@@ -347,23 +391,12 @@ extension CLIImpl.Command.Save {
             )
 
             let startTime = Date()
+            let reporter = SamplesProgressReporter(onPhase: onPhase)
             let indexed = try await builder.indexAll(
                 entries: entries,
-                forceReindex: input.force
-            ) { progress in
-                let phase: Sample.Index.SamplesIndexingPhase.ProgressPhase
-                switch progress.status {
-                case .extracting: phase = .extracting
-                case .indexingFiles: phase = .indexingFiles
-                case .completed: phase = .completed
-                case .failed: phase = .failed
-                }
-                onPhase(.projectProgress(
-                    name: progress.currentProject,
-                    percent: progress.percentComplete,
-                    phase: phase
-                ))
-            }
+                forceReindex: input.force,
+                progress: reporter
+            )
 
             let duration = Date().timeIntervalSince(startTime)
 

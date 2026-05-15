@@ -139,7 +139,7 @@ extension Search {
         ///   - onProgress: Optional progress callback forwarded to each strategy.
         public func buildIndex(
             clearExisting: Bool = true,
-            onProgress: Search.IndexingProgressCallback? = nil
+            onProgress: (any Search.IndexingProgressReporting)? = nil
         ) async throws {
             logger.info("🔨 Building search index...", category: .search)
 

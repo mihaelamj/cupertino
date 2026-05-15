@@ -50,7 +50,7 @@ extension Search {
         /// - Returns: ``Search/IndexStats`` with indexed and skipped counts.
         public func indexItems(
             into index: Search.Index,
-            progress: Search.IndexingProgressCallback?
+            progress: (any Search.IndexingProgressReporting)?
         ) async throws -> Search.IndexStats {
             guard FileManager.default.fileExists(atPath: archiveDirectory.path) else {
                 logger.info(
@@ -134,7 +134,7 @@ extension Search {
                 }
 
                 if (idx + 1) % Shared.Constants.Interval.progressLogEvery == 0 {
-                    progress?(idx + 1, markdownFiles.count)
+                    progress?.report(processed: idx + 1, total: markdownFiles.count)
                     logger.info(
                         "   Progress: \(idx + 1)/\(markdownFiles.count)", category: .search
                     )
