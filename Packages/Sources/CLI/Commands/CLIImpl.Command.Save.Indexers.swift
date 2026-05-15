@@ -106,8 +106,16 @@ extension CLIImpl.Command.Save {
         )
         if isDryRun {
             try? FileManager.default.removeItem(at: resolvedSearchDB)
+            // Clean up the audit log alongside the temp DB so dry-runs
+            // don't strew JSONL files in $TMPDIR. If the user wants to
+            // inspect the audit trail, they re-run without --dry-run
+            // against a real base-dir (the JSONL lives next to search.db
+            // there and persists).
+            if let logPath = logPathCapture.path {
+                try? FileManager.default.removeItem(at: logPath)
+            }
             Cupertino.Context.composition.logging.recording.info(
-                "🧪 Dry-run complete: throwaway DB deleted (\(resolvedSearchDB.lastPathComponent))"
+                "🧪 Dry-run complete: throwaway DB + audit log deleted (\(resolvedSearchDB.lastPathComponent))"
             )
         }
     }
@@ -148,12 +156,16 @@ extension CLIImpl.Command.Save {
             progress: any Search.IndexingProgressReporting
         ) async throws -> Search.DocsIndexingOutcome {
             // #588 step 5: open the per-doc JSONL audit log alongside
-            // the DB. Path is derived from the searchDB's parent so
-            // the audit lives next to whichever DB the run targets
+            // the DB. Path is `<db-parent>/save-<ISO8601>.jsonl` so the
+            // audit lives next to whichever DB the run targets
             // (real `~/.cupertino/`, dry-run temp dir, or user override).
+            // No nested `.cupertino/`: when the DB is already in
+            // `~/.cupertino/`, the JSONL is its sibling rather than a
+            // nested grandchild.
+            let isoStamp = ISO8601DateFormatter().string(from: Date())
+                .replacingOccurrences(of: ":", with: "-")
             let logURL = input.searchDBPath.deletingLastPathComponent()
-                .appendingPathComponent(".cupertino")
-                .appendingPathComponent("save-\(ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")).jsonl")
+                .appendingPathComponent("save-\(isoStamp).jsonl")
             let importLogSink = try? Search.JSONLImportLogSink(path: logURL)
             logPathCapture.path = importLogSink == nil ? nil : logURL
 
@@ -290,10 +302,12 @@ extension CLIImpl.Command.Save {
         recording.info("   Size: \(CLIImpl.Command.Save.formatFileSize(outcome.searchDBPath))")
 
         // #588 import-diligence breakdown.
-        // Only print the block when any door / garbage-filter counter
-        // is non-zero so non-apple-docs and pre-#588 builds keep their
-        // existing summary shape.
-        if !breakdown.isEmpty {
+        // Print the block whenever apple-docs ran (signalled by a
+        // non-nil audit log path) OR any counter fired. Non-apple-docs
+        // and pre-#588 builds keep their original summary shape because
+        // both signals are empty.
+        let breakdownActive = !breakdown.isEmpty || importLogPath != nil
+        if breakdownActive {
             recording.output("")
             recording.info("📊 Import diligence (#588):")
             recording.info("   Benign duplicates (tier A, byte-identical):     \(breakdown.benignDupTierA)")
@@ -303,15 +317,14 @@ extension CLIImpl.Command.Save {
             recording.info("   Rejected — HTTP error template (#284):          \(breakdown.rejectedHTTPErrorTemplate)")
             recording.info("   Rejected — JS-disabled fallback (#284):         \(breakdown.rejectedJSFallback)")
             recording.info("   Rejected — placeholder title (#588):            \(breakdown.rejectedPlaceholderTitle)")
+            if let logPath = importLogPath {
+                recording.info("   Per-doc audit log:                              \(logPath.path)")
+            }
             if breakdown.tierCCollisionCount > 0 {
                 recording.info("")
                 recording.info("⚠️  Tier-C collisions present — see [search] logs above for the offending URIs.")
                 recording.info("   docs/PRINCIPLES.md principle 3: work is not done while tier-C > 0.")
             }
-        }
-
-        if let logPath = importLogPath {
-            recording.info("   Per-doc audit log: \(logPath.path)")
         }
 
         recording.info(
