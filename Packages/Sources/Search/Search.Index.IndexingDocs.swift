@@ -82,18 +82,46 @@ extension Search.Index {
             throw Search.Error.insertFailed("FTS insert: \(errorMessage)")
         }
 
-        // Create minimal JSON wrapper if no jsonData provided
+        // Create minimal JSON wrapper if no jsonData provided.
+        //
+        // #607: callers that pass `jsonData: nil` (the string-content
+        // strategies — SwiftEvolution / HIG / AppleArchive) used to land
+        // a wrapper with literal `"rawMarkdown":null` here, leaving the
+        // body reachable only through `docs_fts.content`. `read_document`
+        // (MCP tool) and `cupertino read` (default JSON) both read from
+        // `docs_metadata.json_data`, so those 3 sources returned empty
+        // wrappers to AI agents. Inline `content` into `rawMarkdown` at
+        // this central seam so the fix benefits every nil-jsonData caller
+        // (current + future) without each strategy growing its own wrapper.
+        //
+        // JSON-serialise via Foundation rather than the previous hand-
+        // rolled string concat: title escape was the only field handled
+        // pre-#607 and adding markdown bodies (newlines, backticks, embedded
+        // quotes, backslashes) would have broken the hand-rolled path.
         let finalJsonData: String
         if let jsonData {
             finalJsonData = jsonData
         } else {
-            // Create minimal JSON for markdown-only content
-            let escapedTitle = title.replacingOccurrences(of: "\"", with: "\\\"")
-            let minimalJSON = """
-            {"title":"\(escapedTitle)","url":"\(uri)","rawMarkdown":null,\
-            "source":"\(source)","framework":"\(effectiveFramework)"}
-            """
-            finalJsonData = minimalJSON
+            let payload: [String: Any] = [
+                "title": title,
+                "url": uri,
+                "rawMarkdown": content,
+                "source": source,
+                "framework": effectiveFramework,
+            ]
+            if let data = try? JSONSerialization.data(
+                withJSONObject: payload,
+                options: [.sortedKeys]
+            ),
+                let json = String(data: data, encoding: .utf8) {
+                finalJsonData = json
+            } else {
+                // Fall back to a structurally-valid empty wrapper rather
+                // than crashing the indexer on a malformed payload.
+                // Foundation rejects only NaN / Infinity / non-string keys;
+                // none of the params above can produce those.
+                finalJsonData = "{\"title\":\"\",\"url\":\"\(uri)\",\"rawMarkdown\":null,\"source\":\"\(source)\",\"framework\":\"\"}"
+            }
         }
 
         // Classify (#192 C1). Direct `indexDocument` callers don't have a
