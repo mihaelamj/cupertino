@@ -3,6 +3,7 @@ import Foundation
 import LoggingModels
 import SearchModels
 import SharedConstants
+
 // MARK: - AppleDocsStrategy
 
 extension Search {
@@ -214,8 +215,27 @@ extension Search {
                     continue
                 }
 
-                let filename = Shared.Models.URLUtilities.normalize(structuredPage.url)?
-                    .lastPathComponent
+                // #293 fix: use `URLUtilities.filename(from:)` instead of
+                // `.lastPathComponent`. The lastPathComponent path stripped
+                // every middle URL segment from Apple's URLs, so symbols
+                // sharing a leaf name across different parent types
+                // (`accelerate/sparsepreconditioner_t/init(rawvalue:)`
+                // vs `accelerate/quadrature_integrator/init(rawvalue:)`)
+                // both collapsed to `apple-docs://accelerate/init(rawvalue:)`
+                // and clobbered each other in the index. The sibling URI
+                // construction at line ~322 of this same file already used
+                // `filename(from:)` correctly; the inconsistency is the
+                // bug surface. Switching both paths to `filename(from:)`
+                // (which encodes the full URL path + an 8-byte SHA-256
+                // disambiguator suffix when special chars are present)
+                // restores per-symbol uniqueness.
+                //
+                // Side-effect: existing shipped bundles still carry the
+                // old URIs (one-shot lossy write). A future `cupertino save`
+                // produces correct URIs; the v1.2.0 bundle re-publish
+                // (#290) is where end users pick this up.
+                let filename = Shared.Models.URLUtilities.normalize(structuredPage.url)
+                    .map { Shared.Models.URLUtilities.filename(from: $0) }
                     ?? Search.StrategyHelpers.canonicalPathComponent(
                         file.deletingPathExtension().lastPathComponent
                     )

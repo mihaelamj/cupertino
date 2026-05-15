@@ -65,6 +65,43 @@ struct SharedModelsPublicSurfaceTests {
         #expect(normalized?.path == "/documentation/swiftui/some-method")
     }
 
+    @Test("URLUtilities.filename — siblings with same leaf name under different parents produce distinct filenames (#293)")
+    func urlUtilitiesFilenameDistinguishesParents() throws {
+        // The bug fixed in #293: when two Apple symbols share a leaf
+        // name (`init(rawvalue:)`, `init(_:)`, `subscript(_:)`, etc.) but
+        // live under different parent types in the same framework, the
+        // old indexer path produced identical filenames and clobbered
+        // one of them in the search-index. `URLUtilities.filename(from:)`
+        // bakes the full URL path + an 8-byte SHA-256 disambiguator
+        // suffix when special chars are present, so the two cases below
+        // must yield different filenames.
+        let a = try #require(URL(string: "https://developer.apple.com/documentation/accelerate/sparsepreconditioner_t/init(rawvalue:)"))
+        let b = try #require(URL(string: "https://developer.apple.com/documentation/accelerate/quadrature_integrator/init(rawvalue:)"))
+        let fa = Shared.Models.URLUtilities.filename(from: a)
+        let fb = Shared.Models.URLUtilities.filename(from: b)
+        #expect(fa != fb)
+        // And both must NOT collapse to the bare leaf (`init(rawvalue:)`)
+        // that the pre-fix indexer site at
+        // `Search/Strategies/Search.Strategies.AppleDocs.swift:217` produced.
+        #expect(!fa.hasPrefix("init"))
+        #expect(!fb.hasPrefix("init"))
+    }
+
+    @Test("URLUtilities.filename — three siblings sharing init(_:) all distinct (RealityKit case)")
+    func urlUtilitiesFilenameRealityKitInitCollisions() throws {
+        // Worst-case from #293: `apple-docs://realitykit/init(_:)` collided
+        // across many RealityKit types pre-fix. Three sample sibling URLs
+        // must produce three different filenames.
+        let urls = try [
+            #require(URL(string: "https://developer.apple.com/documentation/realitykit/meshmodelcollection/init(_:)")),
+            #require(URL(string: "https://developer.apple.com/documentation/realitykit/meshbuffer/init(_:)-11fcy")),
+            #require(URL(string: "https://developer.apple.com/documentation/realitykit/manipulationcomponent/inputdevice/kind-swift.enum/set/init(_:)")),
+        ]
+        let filenames = urls.map { Shared.Models.URLUtilities.filename(from: $0) }
+        let unique = Set(filenames)
+        #expect(unique.count == 3, "all 3 sibling URLs must produce distinct filenames (got \(filenames))")
+    }
+
     // MARK: PackageReference
 
     @Test("PackageReference type is reachable")
