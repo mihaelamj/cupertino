@@ -651,7 +651,13 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             throw Shared.Core.ToolError.invalidArgument("index", "Documentation index not available")
         }
 
-        let uri: String = try args.require(Shared.Constants.Search.schemaParamURI)
+        let rawURI: String = try args.require(Shared.Constants.Search.schemaParamURI)
+        // #587: accept canonical Apple Developer web URLs by converting
+        // them to `apple-docs://...` before search.db lookup, matching
+        // CLI `cupertino read`'s entry-point normalisation. Users
+        // and AI agents routinely pass web URLs through MCP; rejecting
+        // them at the boundary forced clients to learn the URI scheme.
+        let uri = Self.normalizeReadDocumentURI(rawURI)
         let formatString = args.format()
         let format: Search.DocumentFormat = formatString == Shared.Constants.Search.formatValueMarkdown
             ? .markdown : .json
@@ -684,6 +690,24 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamURI,
             "Document not found: \(uri)"
         )
+    }
+
+    // MARK: - Read Document — URI normalisation (#587)
+
+    /// Convert a canonical Apple Developer web URL into the lossless
+    /// `apple-docs://...` URI shape; pass anything else through unchanged.
+    /// Mirrors `Services.ReadService.normalizeIdentifier` so CLI `cupertino
+    /// read` and MCP `read_document` accept the same input shapes.
+    static func normalizeReadDocumentURI(_ raw: String) -> String {
+        guard raw.hasPrefix("https://") || raw.hasPrefix("http://") else {
+            return raw
+        }
+        guard let url = URL(string: raw),
+              let uri = Shared.Models.URLUtilities.appleDocsURI(from: url)
+        else {
+            return raw
+        }
+        return uri
     }
 
     // MARK: - Sample Code Tools

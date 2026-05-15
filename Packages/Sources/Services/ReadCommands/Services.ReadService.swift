@@ -107,7 +107,7 @@ extension Services {
         /// (a Service Locator shape — Seemann 2011 ch. 5); strict DI gives
         /// the caller responsibility for path resolution.
         public static func read(
-            identifier: String,
+            identifier rawIdentifier: String,
             explicit: Source?,
             format: Search.DocumentFormat,
             searchDB: URL,
@@ -117,6 +117,15 @@ extension Services {
             sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
             packageFileLookup: any PackageFileLookupStrategy
         ) async throws -> Result {
+            // #587: accept canonical Apple Developer web URLs by
+            // converting them to the lossless `apple-docs://...` URI
+            // before the regular dispatch. Users (and AI agents) routinely
+            // paste the URL form when asked to read a doc; rejecting it
+            // forces them to learn cupertino's URI conventions first.
+            // The MCP `read_document` path applies the same normalisation
+            // for transport symmetry.
+            let identifier = Self.normalizeIdentifier(rawIdentifier)
+
             if let explicit {
                 return try await readFrom(
                     source: explicit,
@@ -176,6 +185,36 @@ extension Services {
                 sampleDatabaseFactory: sampleDatabaseFactory,
                 packageFileLookup: packageFileLookup
             )
+        }
+
+        // MARK: - Identifier normalisation (#587)
+
+        /// Convert a canonical Apple Developer web URL into the lossless
+        /// `apple-docs://...` URI shape; pass anything else through
+        /// untouched.
+        ///
+        /// Examples:
+        ///
+        ///     "https://developer.apple.com/documentation/swiftui/view"
+        ///       → "apple-docs://swiftui/view"
+        ///
+        ///     "apple-docs://swiftui/view"   →  pass-through
+        ///     "owner/repo/file.swift"        →  pass-through (package id)
+        ///     "swiftui-landmarks-sample"     →  pass-through (sample id)
+        ///
+        /// Non-Apple web URLs (Hacker News, GitHub, anything else)
+        /// also pass through; the existing dispatch will reject them
+        /// later via the per-source backends as it always has.
+        static func normalizeIdentifier(_ raw: String) -> String {
+            guard raw.hasPrefix("https://") || raw.hasPrefix("http://") else {
+                return raw
+            }
+            guard let url = URL(string: raw),
+                  let uri = Shared.Models.URLUtilities.appleDocsURI(from: url)
+            else {
+                return raw
+            }
+            return uri
         }
 
         // MARK: - Per-source reads

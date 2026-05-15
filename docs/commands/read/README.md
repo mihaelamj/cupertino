@@ -28,12 +28,18 @@ The document identifier (required). Shape depends on the source:
 
 | Source | Identifier shape | Example |
 |---|---|---|
-| docs (apple-docs / hig / archive / evolution / swift-org / swift-book) | URI scheme | `apple-docs://swiftui/documentation_swiftui_view` |
+| docs (apple-docs / hig / archive / evolution / swift-org / swift-book) | URI scheme **or** Apple Developer web URL | `apple-docs://swiftui/view` _or_ `https://developer.apple.com/documentation/swiftui/view` |
 | samples (project) | slugified id, no `/` | `swiftui-adopting-drag-and-drop-using-swiftui` |
 | samples (file) | `<projectId>/<path>` | `swiftui-foo/Sources/main.swift` |
 | packages | `<owner>/<repo>/<relpath>` | `pointfreeco/swift-navigation/Sources/UIKitNavigation/Documentation.docc/UIKitNavigation.md` |
 
 Shape alone disambiguates URI vs. non-URI, but a sample-file path and a package path overlap. `--source` resolves it; `cupertino search` always emits the source so the hint is unambiguous.
+
+#### Apple Developer web URLs (#587)
+
+Canonical `https://developer.apple.com/documentation/<framework>/<path>` URLs are accepted directly — `cupertino read` rewrites them to the lossless `apple-docs://<framework>/<path>` URI at the entry point before dispatch. The MCP `read_document` tool applies the same rewrite so both transports accept the same input. Pasting a URL straight from the browser works without first knowing the URI scheme.
+
+Non-Apple web URLs (`https://github.com/...`, `https://example.com/...`) pass through untouched; the per-source backends reject them as before.
 
 ## Options
 
