@@ -50,14 +50,20 @@ extension Search {
         /// GoF Strategy seam for log emission (1994 p. 315).
         private let logger: any LoggingModels.Logging.Recording
 
+        /// Optional #588 per-doc audit log sink. Nil disables the
+        /// JSONL emission and the strategy runs unchanged.
+        private let importLogSink: (any Search.ImportLogSink)?
+
         public init(
             docsDirectory: URL,
             markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
-            logger: any LoggingModels.Logging.Recording
+            logger: any LoggingModels.Logging.Recording,
+            importLogSink: (any Search.ImportLogSink)? = nil
         ) {
             self.docsDirectory = docsDirectory
             self.markdownStrategy = markdownStrategy
             self.logger = logger
+            self.importLogSink = importLogSink
         }
 
         /// Index all Apple documentation pages by scanning ``docsDirectory``.
@@ -218,6 +224,13 @@ extension Search {
                     )
                     skipped += 1
                     rejectedHTTPErrorTemplate += 1
+                    await importLogSink?.record(Search.ImportLogEntry(
+                        sourceFile: file.path,
+                        resolvedURL: structuredPage.url.absoluteString,
+                        uri: nil,
+                        state: .rejectedHTTPErrorTemplate,
+                        rejectionReason: "http_error_template"
+                    ))
                     continue
                 }
                 if Search.StrategyHelpers.pageLooksLikeJavaScriptFallback(structuredPage) {
@@ -229,6 +242,13 @@ extension Search {
                     )
                     skipped += 1
                     rejectedJSFallback += 1
+                    await importLogSink?.record(Search.ImportLogEntry(
+                        sourceFile: file.path,
+                        resolvedURL: structuredPage.url.absoluteString,
+                        uri: nil,
+                        state: .rejectedJSFallback,
+                        rejectionReason: "js_disabled_fallback"
+                    ))
                     continue
                 }
                 if Search.StrategyHelpers.titleLooksLikePlaceholderError(structuredPage.title, url: structuredPage.url) {
@@ -241,6 +261,13 @@ extension Search {
                     )
                     skipped += 1
                     rejectedPlaceholderTitle += 1
+                    await importLogSink?.record(Search.ImportLogEntry(
+                        sourceFile: file.path,
+                        resolvedURL: structuredPage.url.absoluteString,
+                        uri: nil,
+                        state: .rejectedPlaceholderTitle,
+                        rejectionReason: "placeholder_title"
+                    ))
                     continue
                 }
 
@@ -299,6 +326,13 @@ extension Search {
                         )
                         skipped += 1
                         benignDupTierA += 1
+                        await importLogSink?.record(Search.ImportLogEntry(
+                            sourceFile: file.path,
+                            resolvedURL: structuredPage.url.absoluteString,
+                            uri: uri,
+                            state: .benignDupTierA,
+                            duplicateOf: uri
+                        ))
                         continue
                     case .benignTitleMatchWithDrift:
                         logger.info(
@@ -307,6 +341,13 @@ extension Search {
                         )
                         skipped += 1
                         benignDupTierB += 1
+                        await importLogSink?.record(Search.ImportLogEntry(
+                            sourceFile: file.path,
+                            resolvedURL: structuredPage.url.absoluteString,
+                            uri: uri,
+                            state: .benignDupTierB,
+                            duplicateOf: uri
+                        ))
                         continue
                     case .malignantTitleMismatch:
                         logger.error(
@@ -315,6 +356,13 @@ extension Search {
                         )
                         skipped += 1
                         tierCCollisionCount += 1
+                        await importLogSink?.record(Search.ImportLogEntry(
+                            sourceFile: file.path,
+                            resolvedURL: structuredPage.url.absoluteString,
+                            uri: uri,
+                            state: .collisionTierC,
+                            collisionWith: uri
+                        ))
                         continue
                     case .firstArrival:
                         // Unreachable: classify is only called when prior != nil.
@@ -322,6 +370,12 @@ extension Search {
                     }
                 }
                 seenURIs[uri] = incoming
+                await importLogSink?.record(Search.ImportLogEntry(
+                    sourceFile: file.path,
+                    resolvedURL: structuredPage.url.absoluteString,
+                    uri: uri,
+                    state: .indexed
+                ))
 
                 do {
                     try await index.indexStructuredDocument(

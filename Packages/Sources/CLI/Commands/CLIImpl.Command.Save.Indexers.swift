@@ -31,6 +31,14 @@ extension CLIImpl.Command.Save {
         var breakdown: Search.ImportDiligenceBreakdown = .zero
     }
 
+    /// Sibling side-channel for the #588 per-doc audit log path
+    /// (`Search.JSONLImportLogSink`'s output file). Same composition-
+    /// root-only pattern as `DocsDiligenceBreakdownCapture` — keeps
+    /// `IndexerModels` dep-free.
+    final class DocsImportLogPathCapture: @unchecked Sendable {
+        var path: URL?
+    }
+
     func runDocsIndexer(effectiveBase: URL) async throws {
         // Resolve searchDB destination. In --dry-run, route writes to a
         // throwaway temp file so the existing on-disk search.db is
@@ -72,13 +80,17 @@ extension CLIImpl.Command.Save {
 
         let tracker = ProgressTracker()
         let breakdownCapture = DocsDiligenceBreakdownCapture()
+        let logPathCapture = DocsImportLogPathCapture()
         let outcome: Indexer.DocsService.Outcome
         do {
             outcome = try await Indexer.DocsService.run(
                 request,
                 markdownStrategy: LiveMarkdownToStructuredPageStrategy(),
                 sampleCatalogProvider: LiveSampleCatalogProvider(catalog: sampleCatalogActor),
-                docsIndexingRunner: LiveDocsIndexingRunner(breakdownCapture: breakdownCapture),
+                docsIndexingRunner: LiveDocsIndexingRunner(
+                    breakdownCapture: breakdownCapture,
+                    logPathCapture: logPathCapture
+                ),
                 events: DocsEventObserver(tracker: tracker)
             )
         } catch {
@@ -87,7 +99,11 @@ extension CLIImpl.Command.Save {
             }
             throw error
         }
-        Self.printDocsSummary(outcome: outcome, breakdown: breakdownCapture.breakdown)
+        Self.printDocsSummary(
+            outcome: outcome,
+            breakdown: breakdownCapture.breakdown,
+            importLogPath: logPathCapture.path
+        )
         if isDryRun {
             try? FileManager.default.removeItem(at: resolvedSearchDB)
             Cupertino.Context.composition.logging.recording.info(
@@ -121,11 +137,26 @@ extension CLIImpl.Command.Save {
     /// up at `Indexer.DocsService.HandlerProgressReporter`.
     struct LiveDocsIndexingRunner: Search.DocsIndexingRunner {
         let breakdownCapture: DocsDiligenceBreakdownCapture
+        /// Side-channel where the runner stashes the per-doc audit log
+        /// path so `runDocsIndexer` can surface it in the final report
+        /// after `Indexer.DocsService.run` returns. Same pattern as
+        /// `breakdownCapture` — keeps `IndexerModels` dep-free.
+        let logPathCapture: DocsImportLogPathCapture
 
         func run(
             input: Search.DocsIndexingInput,
             progress: any Search.IndexingProgressReporting
         ) async throws -> Search.DocsIndexingOutcome {
+            // #588 step 5: open the per-doc JSONL audit log alongside
+            // the DB. Path is derived from the searchDB's parent so
+            // the audit lives next to whichever DB the run targets
+            // (real `~/.cupertino/`, dry-run temp dir, or user override).
+            let logURL = input.searchDBPath.deletingLastPathComponent()
+                .appendingPathComponent(".cupertino")
+                .appendingPathComponent("save-\(ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")).jsonl")
+            let importLogSink = try? Search.JSONLImportLogSink(path: logURL)
+            logPathCapture.path = importLogSink == nil ? nil : logURL
+
             let searchIndex = try await Search.Index(dbPath: input.searchDBPath, logger: Cupertino.Context.composition.logging.recording)
             let builder = Search.IndexBuilder(
                 searchIndex: searchIndex,
@@ -136,12 +167,15 @@ extension CLIImpl.Command.Save {
                 archiveDirectory: input.archiveDirectory,
                 higDirectory: input.higDirectory,
                 markdownStrategy: input.markdownStrategy,
-                sampleCatalogProvider: input.sampleCatalogProvider, logger: Cupertino.Context.composition.logging.recording
+                sampleCatalogProvider: input.sampleCatalogProvider,
+                logger: Cupertino.Context.composition.logging.recording,
+                importLogSink: importLogSink
             )
             try await builder.buildIndex(
                 clearExisting: input.clearExisting,
                 onProgress: progress
             )
+            await importLogSink?.close()
             let docCount = try await searchIndex.documentCount()
             let frameworks = try await searchIndex.listFrameworks()
             // #588 — read the per-strategy stats the IndexBuilder
@@ -244,7 +278,8 @@ extension CLIImpl.Command.Save {
 
     static func printDocsSummary(
         outcome: Indexer.DocsService.Outcome,
-        breakdown: Search.ImportDiligenceBreakdown = .zero
+        breakdown: Search.ImportDiligenceBreakdown = .zero,
+        importLogPath: URL? = nil
     ) {
         let recording = Cupertino.Context.composition.logging.recording
         recording.output("")
@@ -273,6 +308,10 @@ extension CLIImpl.Command.Save {
                 recording.info("⚠️  Tier-C collisions present — see [search] logs above for the offending URIs.")
                 recording.info("   docs/PRINCIPLES.md principle 3: work is not done while tier-C > 0.")
             }
+        }
+
+        if let logPath = importLogPath {
+            recording.info("   Per-doc audit log: \(logPath.path)")
         }
 
         recording.info(

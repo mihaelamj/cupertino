@@ -103,7 +103,8 @@ extension Search {
             indexSampleCode: Bool = true,
             markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
             sampleCatalogProvider: any Search.SampleCatalogProvider,
-            logger: any LoggingModels.Logging.Recording
+            logger: any LoggingModels.Logging.Recording,
+            importLogSink: (any Search.ImportLogSink)? = nil
         ) {
             self.init(
                 searchIndex: searchIndex,
@@ -117,7 +118,8 @@ extension Search {
                     indexSampleCode: indexSampleCode,
                     markdownStrategy: markdownStrategy,
                     sampleCatalogProvider: sampleCatalogProvider,
-                    logger: logger
+                    logger: logger,
+                    importLogSink: importLogSink
                 ),
                 logger: logger
             )
@@ -203,13 +205,15 @@ extension Search {
             indexSampleCode: Bool = true,
             markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
             sampleCatalogProvider: any Search.SampleCatalogProvider,
-            logger: any LoggingModels.Logging.Recording
+            logger: any LoggingModels.Logging.Recording,
+            importLogSink: (any Search.ImportLogSink)? = nil
         ) -> [any Search.SourceIndexingStrategy] {
             var strategies: [any Search.SourceIndexingStrategy] = [
                 Search.AppleDocsStrategy(
                     docsDirectory: docsDirectory,
                     markdownStrategy: markdownStrategy,
-                    logger: logger
+                    logger: logger,
+                    importLogSink: importLogSink
                 ),
             ]
             if let dir = evolutionDirectory {
