@@ -738,11 +738,12 @@ For development setup, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Project Status
 
-**Version:** 1.1.0
-**Status:** ✅ Released 2026-05-13 — refactor release: namespacing + Crawler extract + DI epic kickoff. `databaseVersion` is `1.1.0`; `cupertino setup` downloads the v1.1.0 bundle (285,735 documents across 420 frameworks, 0 poison rows).
+**Released:** v1.1.0 on 2026-05-13. `databaseVersion` is `1.1.0`; `cupertino setup` downloads the v1.1.0 bundle (285,735 documents across 420 frameworks, 0 poison rows).
+
+**Staged for v1.2.0 (on `main`, not yet tagged):** the strict-DI epic — `Logging.Unified.shared` Singleton deleted (#548 closed), all 25 producer SPM targets enforce foundation-only imports at CI (#536 closed), and the closure-purge migration replaces every `@Sendable (X) -> Void` callback on producer-target public APIs with typed GoF Observer protocols (in flight: 7 PRs landed, 4 remaining).
 
 - ✅ All core functionality working
-- ✅ 1,234 tests across 135 suites passing (100% pass rate)
+- ✅ 1,609 tests across 210 suites passing (100% pass rate)
 - ✅ 0 lint violations
 - ✅ Swift 6.2 compliant with 100% strict concurrency checking
 - ✅ All production bugs resolved

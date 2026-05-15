@@ -1,7 +1,7 @@
 # Cupertino Architecture
 
-**Version:** v1.0.2 (released 2026-05-11)
-**Last Updated:** 2026-05-11
+**Last tagged release:** v1.1.0 on 2026-05-13.
+**`main` HEAD as of:** 2026-05-15 — v1.2.0-staged work landed (Logging Singleton kill #548, foundation-only producer epic #536, in-progress closure-purge: 7 PRs landed, 4 remaining). No `v1.2.0` tag cut yet.
 **Swift Version:** 6.2
 **Language Mode:** Swift 6 with Strict Concurrency Checking
 
@@ -23,9 +23,9 @@
 
 Cupertino is a Swift-based Apple documentation crawler and MCP (Model Context Protocol) server. The project uses **ExtremePackaging** architecture to organize code into focused, reusable modules.
 
-### Package Structure (v1.0.2)
+### Package Structure
 
-Cupertino uses **ExtremePackaging** with ~24 single-responsibility SPM targets, organized by role:
+Cupertino uses **ExtremePackaging** with ~30 single-responsibility SPM targets, organized by role. 25 of those are "producer" targets enforced by `scripts/check-target-foundation-only.sh` to import only the foundation tier + `*Models` protocol seams + external primitives — verifiably standalone-portable via `scripts/check-target-portability.sh`. The remaining ~5 are foundation-tier (`SharedConstants`, `LoggingModels`, `Resources`, `MCPCore`, `MCPSharedTools`).
 
 ```
 Foundation:

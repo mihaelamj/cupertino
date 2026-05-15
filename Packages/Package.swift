@@ -29,6 +29,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("SampleIndex"),
     .singleTargetLibrary("Services"),
     .singleTargetLibrary("Distribution"),
+    .singleTargetLibrary("DistributionModels"),
     .singleTargetLibrary("Diagnostics"),
     .singleTargetLibrary("Indexer"),
     .singleTargetLibrary("IndexerModels"),
@@ -496,14 +497,24 @@ let targets: [Target] = {
         dependencies: ["ASTIndexer", "TestSupport"]
     )
 
+    // ---------- DistributionModels (foundation-only seam — value types + Observer protocols) ----------
+    let distributionModelsTarget = Target.target(
+        name: "DistributionModels",
+        dependencies: ["SharedConstants"]
+    )
+    let distributionModelsTestsTarget = Target.testTarget(
+        name: "DistributionModelsTests",
+        dependencies: ["DistributionModels", "TestSupport"]
+    )
+
     // ---------- Distribution (#246: SetupCommand lift) ----------
     let distributionTarget = Target.target(
         name: "Distribution",
-        dependencies: ["SharedConstants"]
+        dependencies: ["DistributionModels", "SharedConstants"]
     )
     let distributionTestsTarget = Target.testTarget(
         name: "DistributionTests",
-        dependencies: ["Distribution", "TestSupport"]
+        dependencies: ["Distribution", "DistributionModels", "TestSupport"]
     )
 
     // ---------- Diagnostics (#245: DoctorCommand probe lift) ----------
@@ -725,6 +736,8 @@ let targets: [Target] = {
         servicesModelsTestsTarget,
         servicesTarget,
         servicesTestsTarget,
+        distributionModelsTarget,
+        distributionModelsTestsTarget,
         distributionTarget,
         distributionTestsTarget,
         diagnosticsTarget,
