@@ -140,7 +140,25 @@ extension Search.Index {
 
         switch format {
         case .json:
-            // Return full structured JSON
+            // #607 (read-side fallback): when the stored wrapper carries
+            // `rawMarkdown:null` (the 3 string-content strategies pre-#608
+            // — SwiftEvolution / HIG / AppleArchive — plus every doc indexed
+            // before that PR shipped), merge the full body from
+            // `docs_fts.content` into the returned wrapper. `read_document`
+            // (MCP tool) and `cupertino read` (default JSON) both read this
+            // method's output, so without the merge an AI agent calling
+            // `read_document` on a swift-evolution / hig / apple-archive
+            // URI receives only the title wrapper. Pre-fix the `.markdown`
+            // path already fell back to FTS for similar reasons; this
+            // extends the same defence to the structured-JSON consumers.
+            if let merged = try? await mergeFTSContentIfRawMarkdownMissing(
+                uri: uri,
+                jsonString: jsonString
+            ) {
+                return merged
+            }
+            // Unparseable wrapper / no FTS content / rawMarkdown already
+            // populated: hand back the stored JSON verbatim.
             return jsonString
 
         case .markdown:
@@ -164,6 +182,51 @@ extension Search.Index {
             // 3. Fall back to FTS content table
             return try await getContentFromFTS(uri: uri, format: format)
         }
+    }
+
+    /// #607 read-side fallback. Inspect the stored `docs_metadata.json_data`
+    /// wrapper for `uri`; if its `rawMarkdown` field is missing, JSON-null,
+    /// or empty, pull the full body from `docs_fts.content` and inject it
+    /// back into the wrapper before returning. Returns `nil` when the
+    /// wrapper is unparseable, already carries non-empty `rawMarkdown`, or
+    /// has no FTS row to fall back to — callers treat `nil` as "use the
+    /// stored wrapper verbatim". Re-serialisation goes through
+    /// `JSONSerialization` so the injected content's quotes, backslashes,
+    /// newlines, backticks, and tabs come back out as valid JSON.
+    func mergeFTSContentIfRawMarkdownMissing(
+        uri: String,
+        jsonString: String
+    ) async throws -> String? {
+        let data = Data(jsonString.utf8)
+        guard var payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            // Stored wrapper isn't valid JSON. Bail; the verbatim path is
+            // the safer return.
+            return nil
+        }
+
+        // `rawMarkdown` already populated → nothing to do. The check accepts
+        // either a non-empty string (the post-#608 indexer path) or the
+        // structured-page wrapper where `rawMarkdown` is one of several
+        // populated body fields.
+        if let raw = payload["rawMarkdown"] as? String, !raw.isEmpty {
+            return nil
+        }
+
+        // rawMarkdown is null / missing / empty → try the FTS sidecar.
+        guard let ftsContent = try await getContentFromFTS(uri: uri, format: .markdown),
+              !ftsContent.isEmpty else {
+            return nil
+        }
+
+        payload["rawMarkdown"] = ftsContent
+        guard let merged = try? JSONSerialization.data(
+            withJSONObject: payload,
+            options: [.sortedKeys]
+        ),
+            let mergedString = String(data: merged, encoding: .utf8) else {
+            return nil
+        }
+        return mergedString
     }
 
     /// Get content from the FTS table as a fallback
