@@ -1,5 +1,4 @@
 import Foundation
-import SharedConstants
 
 // MARK: - Package Documentation Models
 

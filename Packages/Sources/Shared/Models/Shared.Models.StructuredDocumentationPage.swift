@@ -1,6 +1,5 @@
 import CryptoKit
 import Foundation
-import SharedConstants
 
 // MARK: - Structured Documentation Page
 
