@@ -1,3 +1,4 @@
+import CleanupModels
 import Foundation
 import LoggingModels
 import SharedConstants
@@ -41,9 +42,11 @@ extension Sample.Cleanup {
 
         // MARK: - Public Methods
 
-        /// Clean all ZIP archives in the sample code directory
+        /// Clean all ZIP archives in the sample code directory. Pass
+        /// an `any Sample.Cleanup.CleanerProgressObserving` to receive
+        /// per-archive progress updates; `nil` opts out.
         public func cleanup(
-            onProgress: (@Sendable (Shared.Models.CleanupProgress) -> Void)? = nil
+            progress: (any Sample.Cleanup.CleanerProgressObserving)? = nil
         ) async throws -> Shared.Models.CleanupStatistics {
             let startTime = Date()
 
@@ -92,7 +95,7 @@ extension Sample.Cleanup {
                     }
                 }
 
-                onProgress?(Shared.Models.CleanupProgress(
+                progress?.observe(progress: Shared.Models.CleanupProgress(
                     current: index + 1,
                     total: zipFiles.count,
                     currentFile: zipFile.lastPathComponent,

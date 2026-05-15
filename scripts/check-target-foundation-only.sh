@@ -119,6 +119,7 @@ MODELS_TARGETS=(
     ServicesModels
     IndexerModels
     DistributionModels
+    CleanupModels
 )
 
 # Producers that have been audited + opt into the strict rule.
@@ -159,6 +160,13 @@ STRICT_PRODUCERS=(
     # / `ArtifactExtractor.TickObserving` protocols. Pattern A
     # namespace anchor.
     DistributionModels
+
+    # Closures-to-Observer epic: foundation-only seam target for the
+    # `Sample.Cleanup.CleanerProgressObserving` protocol. Payload is
+    # `Shared.Models.CleanupProgress` from foundation-tier
+    # SharedConstants. Flat-named (the producer `Sample.Cleanup.Cleaner`
+    # is an actor, can't be extended from outside).
+    CleanupModels
 
     # Phase 3 (#536): producer / feature targets.
     Availability

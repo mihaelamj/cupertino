@@ -25,6 +25,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("CorePackageIndexing"),
     .singleTargetLibrary("Core"),
     .singleTargetLibrary("Cleanup"),
+    .singleTargetLibrary("CleanupModels"),
     .singleTargetLibrary("Search"),
     .singleTargetLibrary("SampleIndex"),
     .singleTargetLibrary("Services"),
@@ -341,13 +342,23 @@ let targets: [Target] = {
         dependencies: ["Crawler", "CrawlerModels", "Core", "CoreJSONParser", "CorePackageIndexing", "SharedConstants", "TestSupport"]
     )
 
+    // ---------- CleanupModels (foundation-only seam — Observer protocol for Sample.Cleanup.Cleaner) ----------
+    let cleanupModelsTarget = Target.target(
+        name: "CleanupModels",
+        dependencies: ["SharedConstants"]
+    )
+    let cleanupModelsTestsTarget = Target.testTarget(
+        name: "CleanupModelsTests",
+        dependencies: ["CleanupModels", "SharedConstants", "TestSupport"]
+    )
+
     let cleanupTarget = Target.target(
         name: "Cleanup",
-        dependencies: ["SharedConstants", "LoggingModels"]
+        dependencies: ["CleanupModels", "SharedConstants", "LoggingModels"]
     )
     let cleanupTestsTarget = Target.testTarget(
         name: "CleanupTests",
-        dependencies: ["Cleanup", "TestSupport"]
+        dependencies: ["Cleanup", "CleanupModels", "TestSupport"]
     )
 
     // ---------- SearchModels (#402a: value types lifted out of Search so result-consuming
@@ -722,6 +733,8 @@ let targets: [Target] = {
         crawlerModelsTestsTarget,
         crawlerTarget,
         crawlerTestsTarget,
+        cleanupModelsTarget,
+        cleanupModelsTestsTarget,
         cleanupTarget,
         cleanupTestsTarget,
         searchModelsTarget,
