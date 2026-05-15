@@ -38,18 +38,20 @@ extension Core.PackageIndexing {
 
         // MARK: - Public API
 
-        /// Fetch packages and enrich with GitHub metadata
+        /// Fetch packages and enrich with GitHub metadata. Pass an
+        /// `any Core.PackageIndexing.PackageFetcherProgressObserving` to
+        /// receive per-package progress updates; `nil` opts out.
         public func fetch(
-            onProgress: (@Sendable (Progress) -> Void)? = nil
-        ) async throws -> Statistics {
-            var stats = Statistics(startTime: Date())
+            progress: (any Core.PackageIndexing.PackageFetcherProgressObserving)? = nil
+        ) async throws -> Core.PackageIndexing.PackageFetcherStatistics {
+            var stats = Core.PackageIndexing.PackageFetcherStatistics(startTime: Date())
 
             try setupOutputDirectory()
             let packageURLs = try await fetchAndSortPackageList()
             let (packages, _) = try await processPackages(
                 packageURLs,
                 stats: &stats,
-                onProgress: onProgress
+                progress: progress
             )
 
             let sortedPackages = packages
@@ -95,8 +97,8 @@ extension Core.PackageIndexing {
 
         private func processPackages(
             _ packageURLs: [String],
-            stats: inout Statistics,
-            onProgress: (@Sendable (Progress) -> Void)?
+            stats: inout Core.PackageIndexing.PackageFetcherStatistics,
+            progress: (any Core.PackageIndexing.PackageFetcherProgressObserving)?
         ) async throws -> ([PackageInfo], Bool) {
             var packages = try loadCheckpointIfNeeded()
             let startIndex = packages.count
@@ -128,7 +130,7 @@ extension Core.PackageIndexing {
                     try handleFetchError(error, owner: owner, repo: repo, packages: &packages, stats: &stats)
                 }
 
-                onProgress?(Progress(
+                progress?.observe(progress: Core.PackageIndexing.PackageFetcherProgress(
                     current: index + 1,
                     total: totalToProcess,
                     packageName: "\(owner)/\(repo)",
@@ -175,7 +177,7 @@ extension Core.PackageIndexing {
             owner: String,
             repo: String,
             packages: inout [PackageInfo],
-            stats: inout Statistics
+            stats: inout Core.PackageIndexing.PackageFetcherStatistics
         ) throws {
             let errorType = (error as? Error == .notFound) ? "not_found" : "fetch_failed"
             if errorType == "fetch_failed" {
@@ -219,7 +221,7 @@ extension Core.PackageIndexing {
             try saveJSON(output, to: outputFile)
         }
 
-        private func logCompletionSummary(_ packages: [PackageInfo], stats: Statistics) {
+        private func logCompletionSummary(_ packages: [PackageInfo], stats: Core.PackageIndexing.PackageFetcherStatistics) {
             logInfo("\n✅ Fetch completed!")
             logInfo("   Total packages: \(packages.count)")
             logInfo("   Successful: \(stats.successfulFetches)")
@@ -522,29 +524,13 @@ extension Core.PackageIndexing.PackageFetcher {
         public let timestamp: Date
     }
 
-    public struct Statistics: Sendable {
-        public var totalPackages: Int = 0
-        public var successfulFetches: Int = 0
-        public var errors: Int = 0
-        public var startTime: Date?
-        public var endTime: Date?
-
-        public var duration: TimeInterval? {
-            guard let start = startTime, let end = endTime else { return nil }
-            return end.timeIntervalSince(start)
-        }
-    }
-
-    public struct Progress: Sendable {
-        public let current: Int
-        public let total: Int
-        public let packageName: String
-        public let stats: Statistics
-
-        public var percentage: Double {
-            Double(current) / Double(total) * 100
-        }
-    }
+    // `Statistics` + `Progress` moved to
+    // `CorePackageIndexingModels/Core.PackageIndexing.PackageFetcher.Progress.swift`
+    // as `Core.PackageIndexing.PackageFetcherStatistics` +
+    // `Core.PackageIndexing.PackageFetcherProgress` +
+    // `Core.PackageIndexing.PackageFetcherProgressObserving`. Foundation-
+    // only seam target so any Observer conformer can implement without
+    // `import CorePackageIndexing`.
 
     enum Error: Swift.Error, Equatable {
         case rateLimited
