@@ -52,7 +52,15 @@ extension Sample.Core {
         /// (e.g. `webView(_:didFail:withError:)`) are also `nonisolated`
         /// and need direct access without an actor hop. Safe because
         /// `Logging.Recording` is `Sendable`.
-        nonisolated private let logger: any LoggingModels.Logging.Recording
+        private nonisolated let logger: any LoggingModels.Logging.Recording
+
+        /// GoF Strategy seam (1994 p. 315) for the "is stdin a TTY?" check.
+        /// Replaces the deleted `nonisolated(unsafe) static var
+        /// _isInteractiveStdinOverride` test seam with constructor
+        /// injection. Production default is `Sample.Core.LiveInteractiveStdinCheck`
+        /// (calls `isatty(fileno(stdin))`); tests pass a stub returning
+        /// a fixed `Bool`.
+        private nonisolated let interactiveStdinCheck: any Sample.Core.InteractiveStdinChecking
 
         private var sharedWebView: WKWebView?
 
@@ -61,13 +69,15 @@ extension Sample.Core {
             maxSamples: Int? = nil,
             forceDownload: Bool = false,
             visibleBrowser: Bool = false,
-            logger: any LoggingModels.Logging.Recording
+            logger: any LoggingModels.Logging.Recording,
+            interactiveStdinCheck: any Sample.Core.InteractiveStdinChecking = Sample.Core.LiveInteractiveStdinCheck()
         ) {
             self.outputDirectory = outputDirectory
             self.maxSamples = maxSamples
             self.forceDownload = forceDownload
             self.visibleBrowser = visibleBrowser
             self.logger = logger
+            self.interactiveStdinCheck = interactiveStdinCheck
 
             // Store cookies in output directory
             cookiesPath = outputDirectory.appendingPathComponent(Shared.Constants.FileName.authCookies)
@@ -248,7 +258,7 @@ extension Sample.Core {
         private func fetchSampleList() async throws -> [SampleMetadata] {
             // Load the sample code listing page
             let webView = await createWebView()
-            _ = try await loadPage(webView, url: try URL(knownGood: sampleCodeListURL))
+            _ = try await loadPage(webView, url: URL(knownGood: sampleCodeListURL))
 
             // Wait extra time for dynamic content to load
             try await Task.sleep(for: Shared.Constants.Delay.sampleCodePageLoad)
@@ -567,15 +577,21 @@ extension Sample.Core {
             // which in visible-browser invocations wasn't reaching stdout).
             logger.info("✅ Browser window opened")
             logger.info("   Sign in to your Apple Developer account")
-            if Self.isInteractiveStdin() {
+            if interactiveStdinCheck.isInteractive() {
                 logger.info("   The window closes automatically when sign-in is detected.")
                 logger.info("   (Or close the window / press Enter here to finish.)")
             } else {
                 logger.info("   The window closes automatically when sign-in is detected.")
-                logger.info("   (Or close the window to finish — stdin is not a TTY.)")
+                logger.info("   (Or close the window to finish, stdin is not a TTY.)")
             }
 
-            let outcome = await Self.awaitAuthOutcome(webView: webView, window: window, initialURL: loginURL, logger: logger)
+            let outcome = await Self.awaitAuthOutcome(
+                webView: webView,
+                window: window,
+                initialURL: loginURL,
+                logger: logger,
+                interactiveStdinCheck: interactiveStdinCheck
+            )
 
             await saveCookies(from: webView)
             window.close()
@@ -615,16 +631,6 @@ extension Sample.Core {
             }
         }
 
-        /// Wraps `isatty(fileno(stdin))` so the TTY check is mockable via `_isInteractiveStdinOverride`.
-        nonisolated static func isInteractiveStdin() -> Bool {
-            if let override = _isInteractiveStdinOverride { return override }
-            return isatty(fileno(stdin)) != 0
-        }
-
-        /// Test seam for forcing the TTY check result.
-        // swiftlint:disable:next identifier_name
-        nonisolated(unsafe) static var _isInteractiveStdinOverride: Bool?
-
         #if os(macOS)
         /// Races three signals: (1) WebView navigation reports an Apple session
         /// cookie present, (2) the user presses Enter at the prompt, (3) the user
@@ -634,7 +640,8 @@ extension Sample.Core {
             webView: WKWebView,
             window: NSWindow,
             initialURL: URL,
-            logger: any LoggingModels.Logging.Recording
+            logger: any LoggingModels.Logging.Recording,
+            interactiveStdinCheck: any Sample.Core.InteractiveStdinChecking
         ) async -> AuthOutcome {
             await withCheckedContinuation { (continuation: CheckedContinuation<AuthOutcome, Never>) in
                 let coordinator = AuthFlowCoordinator(
@@ -645,8 +652,8 @@ extension Sample.Core {
                 )
                 webView.navigationDelegate = coordinator
 
-                // (2) Terminal Enter — only if stdin is interactive.
-                if isInteractiveStdin() {
+                // (2) Terminal Enter, only if stdin is interactive.
+                if interactiveStdinCheck.isInteractive() {
                     Task.detached {
                         if readLine() != nil {
                             await MainActor.run { coordinator.userPressedEnter() }
