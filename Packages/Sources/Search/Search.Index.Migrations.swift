@@ -17,6 +17,7 @@ extension Search.Index {
         return sqlite3_column_int(statement, 0)
     }
 
+    // swiftlint:disable:next function_body_length
     func setSchemaVersion() async throws {
         guard let database else {
             throw Search.Error.databaseNotInitialized
@@ -29,8 +30,34 @@ extension Search.Index {
         // but did require a write lock on the DB. Two concurrent searches
         // would then contend (SQLite is single-writer) and one would fail
         // with `database is locked`.
-        if getSchemaVersion() == Self.schemaVersion {
+        let currentVersion = getSchemaVersion()
+        if currentVersion == Self.schemaVersion {
             return
+        }
+
+        // #635 — defense in depth. Only stamp when the DB is fresh
+        // (`user_version = 0`). Any other mismatch means
+        // `checkAndMigrateSchema` either ran an explicit migrator that
+        // updated the schema in place (the legitimate path) or
+        // silently fell through without recognising the version
+        // (the bug — happened with #77's schemaVersion 13 → 14 bump
+        // before the v13→v14 migrator entry was added; my dev binary
+        // smoke stamped the user's brew-managed DB at 14 while the
+        // homebrew binary still expected 13). The migrator entries
+        // are the primary defense; this guard catches the case where
+        // a future schema bump forgets to add one. Throwing here is
+        // strictly safer than silently stamping: the user sees a
+        // clear error and runs `cupertino setup` to rebuild rather
+        // than a different binary breaking on next open.
+        guard currentVersion == 0 else {
+            throw Search.Error.sqliteError(
+                "Refusing to stamp PRAGMA user_version=\(Self.schemaVersion) " +
+                    "on a DB at user_version=\(currentVersion). " +
+                    "Either a migrator entry is missing in `checkAndMigrateSchema` " +
+                    "for the \(currentVersion) → \(Self.schemaVersion) path, or this " +
+                    "binary is being run against a database produced by a different " +
+                    "build. Run `cupertino setup` to redownload a matching bundle."
+            )
         }
 
         let sql = "PRAGMA user_version = \(Self.schemaVersion)"
@@ -140,6 +167,29 @@ extension Search.Index {
                     "This is a breaking change that drops case-axis duplicate URIs (#283). " +
                     "Please delete the database and run 'cupertino setup' to download the " +
                     "pre-built v1.0.2 bundle: " +
+                    "rm \(dbPath.path) && cupertino setup"
+            )
+        }
+
+        if currentVersion < 14 {
+            // Version 13 -> 14: Added `symbol_components` column to docs_fts
+            // (#77 / #634). FTS5 does not support ALTER TABLE ADD COLUMN on
+            // virtual tables, so this is a BREAKING change — existing DBs
+            // must be rebuilt.
+            //
+            // #635 — this entry was missing in #634's initial schema bump;
+            // its absence caused `setSchemaVersion` to silently stamp
+            // user_version=14 on any v13 DB the new binary opened, which
+            // then locked out other binaries (homebrew 1.1.0 at schema 13)
+            // from reading the same DB. The pattern matches the v11→v12
+            // and v12→v13 throws above; the only safe upgrade path is a
+            // full rebuild via `cupertino setup`.
+            throw Search.Error.sqliteError(
+                "Database schema version \(currentVersion) requires migration to version 14. " +
+                    "This is a breaking change that adds CamelCase-component recall " +
+                    "to the FTS index (#77). " +
+                    "Please delete the database and run 'cupertino setup' to download the " +
+                    "pre-built v1.2.0 bundle: " +
                     "rm \(dbPath.path) && cupertino setup"
             )
         }
