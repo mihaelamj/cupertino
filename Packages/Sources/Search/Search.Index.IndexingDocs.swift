@@ -240,13 +240,13 @@ extension Search.Index {
     /// - Parameters:
     ///   - items: Array of source items to index
     ///   - extractSymbols: Whether to extract AST symbols
-    ///   - progress: Optional progress callback (itemIndex, totalItems)
+    ///   - progress: Optional progress reporter (called with `(processed, total)`)
     /// - Returns: Number of successfully indexed items
     @discardableResult
     public func indexItems(
         _ items: [Search.SourceItem],
         extractSymbols: Bool = true,
-        progress: ((Int, Int) -> Void)? = nil
+        progress: (any Search.IndexingProgressReporting)? = nil
     ) async throws -> Int {
         var successCount = 0
 
@@ -258,7 +258,7 @@ extension Search.Index {
                 // Log error but continue with other items
                 // In production, could collect errors and report at end
             }
-            progress?(index + 1, items.count)
+            progress?.report(processed: index + 1, total: items.count)
         }
 
         return successCount

@@ -4,13 +4,6 @@ import SearchModels
 // MARK: - SourceIndexingStrategy
 
 extension Search {
-    /// A callback fired periodically during an indexing run.
-    ///
-    /// The two arguments are `(processed, total)` — the number of items handled so far
-    /// and the total number of items in the source, respectively.  Callers use these
-    /// values to drive progress bars or log progress messages.
-    public typealias IndexingProgressCallback = @Sendable (Int, Int) -> Void
-
     /// Statistics returned by a completed ``SourceIndexingStrategy`` run.
     ///
     /// Aggregate these across all strategies to produce a full build report.
@@ -53,7 +46,7 @@ extension Search {
     ///
     ///     func indexItems(
     ///         into index: Search.Index,
-    ///         progress: Search.IndexingProgressCallback?
+    ///         progress: (any Search.IndexingProgressReporting)?
     ///     ) async throws -> Search.IndexStats {
     ///         var indexed = 0, skipped = 0
     ///         // … scan, parse, call index.indexDocument(…)
@@ -71,18 +64,18 @@ extension Search {
         /// Index all items for this source into the given search index.
         ///
         /// Implementations should:
-        /// - Log start, periodic progress, and completion via `Logging.Log`.
-        /// - Call `progress` at regular intervals with `(processed, total)`.
+        /// - Log start, periodic progress, and completion via the injected logger.
+        /// - Call `progress?.report(processed:total:)` at regular intervals.
         /// - Catch per-item errors internally, count them as `skipped`, and continue.
         ///
         /// - Parameters:
         ///   - index: The ``Search/Index`` to write into.
-        ///   - progress: Optional callback, called periodically with `(processed, total)`.
+        ///   - progress: Optional reporter, called periodically.
         /// - Returns: ``Search/IndexStats`` summarising the completed run.
         /// - Throws: Propagates only unrecoverable errors (e.g., database connection failure).
         func indexItems(
             into index: Search.Index,
-            progress: Search.IndexingProgressCallback?
+            progress: (any Search.IndexingProgressReporting)?
         ) async throws -> Search.IndexStats
     }
 }

@@ -41,7 +41,7 @@ extension Search {
         /// - Returns: ``Search/IndexStats`` with indexed and skipped counts.
         public func indexItems(
             into index: Search.Index,
-            progress: Search.IndexingProgressCallback?
+            progress: (any Search.IndexingProgressReporting)?
         ) async throws -> Search.IndexStats {
             logger.info(
                 "📦 Indexing Swift packages catalog from bundled resources...",
@@ -82,7 +82,7 @@ extension Search {
                 }
 
                 if (idx + 1) % 500 == 0 {
-                    progress?(idx + 1, packages.count)
+                    progress?.report(processed: idx + 1, total: packages.count)
                     logger.info(
                         "   Progress: \(idx + 1)/\(packages.count)", category: .search
                     )
