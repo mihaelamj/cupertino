@@ -233,8 +233,8 @@ struct DocsResourceProviderListResourcesFilterAndPagingTests {
         #expect(secondPage.nextCursor == nil, "second page is the final slice; nextCursor must be nil")
     }
 
-    @Test("Pagination: invalid cursor yields the first page without throwing")
-    func paginationInvalidCursorRecovers() async throws {
+    @Test("Pagination: invalid cursor throws invalidArgument (#595 — strict, was lenient pre-fix)")
+    func paginationInvalidCursorThrows() async throws {
         let tempRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent("cupertino-listres-badcursor-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
@@ -244,8 +244,26 @@ struct DocsResourceProviderListResourcesFilterAndPagingTests {
         let provider = makeProvider(in: tempRoot)
         await provider.injectMetadataForTesting(Shared.Models.CrawlMetadata(pages: [k: p]))
 
-        // Garbage cursor: not base64, not the expected `offset:N` shape.
-        let result = try await provider.listResources(cursor: "🚫not-a-cursor")
-        #expect(result.resources.count == 1, "Bad cursor must fall back to first-page semantics, not crash")
+        // Pre-#595 this silently returned page 1, trapping paginating
+        // clients in an infinite re-fetch loop. Post-#595 it throws
+        // invalidArgument; the JSON-RPC layer surfaces -32602.
+        await #expect(throws: Shared.Core.ToolError.self) {
+            _ = try await provider.listResources(cursor: "🚫not-a-cursor")
+        }
+    }
+
+    @Test("Pagination: empty / nil cursor remains the 'first page' bootstrap call (regression check)")
+    func paginationEmptyCursorReturnsFirstPage() async throws {
+        let tempRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cupertino-listres-emptycursor-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+        let (k, p) = framework(name: "swiftui")
+        let provider = makeProvider(in: tempRoot)
+        await provider.injectMetadataForTesting(Shared.Models.CrawlMetadata(pages: [k: p]))
+        let emptyResult = try await provider.listResources(cursor: "")
+        #expect(emptyResult.resources.count == 1)
+        let nilResult = try await provider.listResources(cursor: nil as String?)
+        #expect(nilResult.resources.count == 1)
     }
 }
