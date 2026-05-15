@@ -375,7 +375,19 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     // MARK: - Unified Search Handler
 
     private func handleSearch(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
-        let query: String = try args.require(Shared.Constants.Search.schemaParamQuery)
+        let rawQuery: String = try args.require(Shared.Constants.Search.schemaParamQuery)
+        // #596: reject empty / whitespace-only queries with an explicit
+        // invalidArgument frame. Pre-fix, MCP returned a 620-char "no
+        // results" response for `query=""` while CLI errored — clients
+        // had to special-case both transports. Tightened MCP side here
+        // so both transports now consistently reject empty queries.
+        let query = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else {
+            throw Shared.Core.ToolError.invalidArgument(
+                Shared.Constants.Search.schemaParamQuery,
+                "Query cannot be empty"
+            )
+        }
         let source = args.optional(Shared.Constants.Search.schemaParamSource)
         let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
         let language = args.optional(Shared.Constants.Search.schemaParamLanguage)
