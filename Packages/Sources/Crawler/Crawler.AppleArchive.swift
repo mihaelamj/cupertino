@@ -46,11 +46,13 @@ extension Crawler {
 
         // MARK: - Public API
 
-        /// Crawl all specified archive guides
+        /// Crawl all specified archive guides. Pass an
+        /// `any Crawler.AppleArchiveProgressObserving` to receive per-page
+        /// progress updates; `nil` opts out.
         public func crawl(
-            onProgress: (@Sendable (Progress) -> Void)? = nil
-        ) async throws -> Statistics {
-            var stats = Statistics(startTime: Date())
+            progress: (any Crawler.AppleArchiveProgressObserving)? = nil
+        ) async throws -> Crawler.AppleArchiveStatistics {
+            var stats = Crawler.AppleArchiveStatistics(startTime: Date())
 
             logInfo("Starting Apple Archive crawler")
             logInfo("   Output: \(outputDirectory.path)")
@@ -94,9 +96,9 @@ extension Crawler {
                             try await crawlPage(page, to: guideDir, framework: guide.framework, stats: &stats)
                             totalPages += 1
 
-                            // Progress callback
-                            if let onProgress {
-                                let progress = Progress(
+                            // Crawler.AppleArchiveProgress callback
+                            if let observer = progress {
+                                let progressValue = Crawler.AppleArchiveProgress(
                                     currentGuide: currentGuide,
                                     totalGuides: guides.count,
                                     currentPage: index + 1,
@@ -105,7 +107,7 @@ extension Crawler {
                                     pageName: page.title,
                                     stats: stats
                                 )
-                                onProgress(progress)
+                                observer.observe(progress: progressValue)
                             }
 
                             // Rate limiting
@@ -195,7 +197,7 @@ extension Crawler {
             _ page: Page,
             to guideDir: URL,
             framework: String,
-            stats: inout Statistics
+            stats: inout Crawler.AppleArchiveStatistics
         ) async throws {
             // Determine output path - preserve directory structure
             let relativePath = page.href.replacingOccurrences(of: ".html", with: ".md")
@@ -552,9 +554,9 @@ extension Crawler {
             logger.error("Error: \(message)", category: .archive)
         }
 
-        private func logStatistics(_ stats: Statistics) {
+        private func logStatistics(_ stats: Crawler.AppleArchiveStatistics) {
             let messages = [
-                "Statistics:",
+                "Crawler.AppleArchiveStatistics:",
                 "   Total guides: \(stats.totalGuides)",
                 "   Total pages: \(stats.totalPages)",
                 "   New: \(stats.newPages)",
@@ -662,71 +664,10 @@ extension Crawler.AppleArchive {
     }
 }
 
-// MARK: - Statistics
-
-extension Crawler.AppleArchive {
-    public struct Statistics: Sendable {
-        public var totalGuides: Int = 0
-        public var totalPages: Int = 0
-        public var newPages: Int = 0
-        public var updatedPages: Int = 0
-        public var skippedPages: Int = 0
-        public var errors: Int = 0
-        public var startTime: Date?
-        public var endTime: Date?
-
-        public init(
-            totalGuides: Int = 0,
-            totalPages: Int = 0,
-            newPages: Int = 0,
-            updatedPages: Int = 0,
-            skippedPages: Int = 0,
-            errors: Int = 0,
-            startTime: Date? = nil,
-            endTime: Date? = nil
-        ) {
-            self.totalGuides = totalGuides
-            self.totalPages = totalPages
-            self.newPages = newPages
-            self.updatedPages = updatedPages
-            self.skippedPages = skippedPages
-            self.errors = errors
-            self.startTime = startTime
-            self.endTime = endTime
-        }
-
-        public var duration: TimeInterval? {
-            guard let start = startTime, let end = endTime else {
-                return nil
-            }
-            return end.timeIntervalSince(start)
-        }
-    }
-}
-
-// MARK: - Progress
-
-extension Crawler.AppleArchive {
-    public struct Progress: Sendable {
-        public let currentGuide: Int
-        public let totalGuides: Int
-        public let currentPage: Int
-        public let totalPages: Int
-        public let guideName: String
-        public let pageName: String
-        public let stats: Statistics
-
-        public var percentage: Double {
-            let guideProgress = Double(currentGuide - 1) / Double(totalGuides)
-            let pageProgress = Double(currentPage) / Double(max(totalPages, 1)) / Double(totalGuides)
-            return (guideProgress + pageProgress) * 100
-        }
-
-        public var currentItem: String {
-            "\(guideName) - \(pageName)"
-        }
-    }
-}
+// `Crawler.AppleArchiveStatistics` + `Crawler.AppleArchiveProgress`
+// + `Crawler.AppleArchiveProgressObserving` moved to the foundation-only
+// `CrawlerModels` seam target so any Observer conformer can implement
+// without `import Crawler`.
 
 // MARK: - Errors
 

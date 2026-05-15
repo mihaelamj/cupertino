@@ -491,13 +491,24 @@ extension CLIImpl.Command {
                 priorityPackageStrategy: priorityPackageStrategy,
                 logger: logger
             )
-            let stats = try await crawler.crawl { progress in
-                let percentage = String(format: "%.1f", progress.percentage)
-                let urlComponent = progress.currentURL.lastPathComponent
-                Cupertino.Context.composition.logging.recording.output("   Progress: \(percentage)% - \(urlComponent)")
-            }
+            let stats = try await crawler.crawl(progress: AppleDocsCrawlProgressObserver(
+                recording: Cupertino.Context.composition.logging.recording
+            ))
 
             logCrawlCompletion(stats)
+        }
+
+        /// Closure-free observer for the Apple-docs crawl that prints
+        /// per-URL progress lines through the binary's recorder. Replaces
+        /// the previous trailing-closure pattern.
+        private struct AppleDocsCrawlProgressObserver: Crawler.AppleDocsProgressObserving {
+            let recording: any LoggingModels.Logging.Recording
+
+            func observe(progress: Crawler.AppleDocsProgress) {
+                let percentage = String(format: "%.1f", progress.percentage)
+                let urlComponent = progress.currentURL.lastPathComponent
+                recording.output("   Progress: \(percentage)% - \(urlComponent)")
+            }
         }
 
         private func logCrawlCompletion(_ stats: Shared.Models.CrawlStatistics) {
@@ -523,10 +534,9 @@ extension CLIImpl.Command {
                 logger: logger
             )
 
-            let stats = try await crawler.crawl { progress in
-                let percentage = String(format: "%.1f", progress.percentage)
-                Cupertino.Context.composition.logging.recording.output("   Progress: \(percentage)% - \(progress.proposalID)")
-            }
+            let stats = try await crawler.crawl(progress: EvolutionCrawlProgressObserver(
+                recording: Cupertino.Context.composition.logging.recording
+            ))
 
             Cupertino.Context.composition.logging.recording.output("")
             Cupertino.Context.composition.logging.recording.info("✅ Download completed!")
@@ -972,10 +982,9 @@ extension CLIImpl.Command {
                 logger: logger
             )
 
-            let stats = try await crawler.crawl { progress in
-                let percent = String(format: "%.1f", progress.percentage)
-                Cupertino.Context.composition.logging.recording.output("   Progress: \(percent)% - \(progress.currentItem)")
-            }
+            let stats = try await crawler.crawl(progress: AppleArchiveCrawlProgressObserver(
+                recording: Cupertino.Context.composition.logging.recording
+            ))
 
             Cupertino.Context.composition.logging.recording.output("")
             Cupertino.Context.composition.logging.recording.info("✅ Crawl completed!")
@@ -1007,10 +1016,9 @@ extension CLIImpl.Command {
                 logger: logger
             )
 
-            let stats = try await crawler.crawl { progress in
-                let percent = String(format: "%.1f", progress.percentage)
-                Cupertino.Context.composition.logging.recording.output("   Progress: \(percent)% - \(progress.currentItem)")
-            }
+            let stats = try await crawler.crawl(progress: HIGCrawlProgressObserver(
+                recording: Cupertino.Context.composition.logging.recording
+            ))
 
             Cupertino.Context.composition.logging.recording.output("")
             Cupertino.Context.composition.logging.recording.info("✅ Crawl completed!")
@@ -1087,6 +1095,36 @@ extension CLIImpl.Command {
             Cupertino.Context.composition.logging.recording.info("   Success rate: \(String(format: "%.1f", stats.successRate))%")
             if let duration = stats.duration {
                 Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(duration))s")
+            }
+        }
+
+        /// Closure-free observer for Swift Evolution crawl progress.
+        private struct EvolutionCrawlProgressObserver: Crawler.EvolutionProgressObserving {
+            let recording: any LoggingModels.Logging.Recording
+
+            func observe(progress: Crawler.EvolutionProgress) {
+                let percentage = String(format: "%.1f", progress.percentage)
+                recording.output("   Progress: \(percentage)% - \(progress.proposalID)")
+            }
+        }
+
+        /// Closure-free observer for Apple Archive crawl progress.
+        private struct AppleArchiveCrawlProgressObserver: Crawler.AppleArchiveProgressObserving {
+            let recording: any LoggingModels.Logging.Recording
+
+            func observe(progress: Crawler.AppleArchiveProgress) {
+                let percent = String(format: "%.1f", progress.percentage)
+                recording.output("   Progress: \(percent)% - \(progress.currentItem)")
+            }
+        }
+
+        /// Closure-free observer for HIG crawl progress.
+        private struct HIGCrawlProgressObserver: Crawler.HIGProgressObserving {
+            let recording: any LoggingModels.Logging.Recording
+
+            func observe(progress: Crawler.HIGProgress) {
+                let percent = String(format: "%.1f", progress.percentage)
+                recording.output("   Progress: \(percent)% - \(progress.currentItem)")
             }
         }
     }
