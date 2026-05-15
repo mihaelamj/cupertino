@@ -50,14 +50,20 @@ extension Search {
         /// GoF Strategy seam for log emission (1994 p. 315).
         private let logger: any LoggingModels.Logging.Recording
 
+        /// Optional #588 per-doc audit log sink. Nil disables the
+        /// JSONL emission and the strategy runs unchanged.
+        private let importLogSink: (any Search.ImportLogSink)?
+
         public init(
             docsDirectory: URL,
             markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
-            logger: any LoggingModels.Logging.Recording
+            logger: any LoggingModels.Logging.Recording,
+            importLogSink: (any Search.ImportLogSink)? = nil
         ) {
             self.docsDirectory = docsDirectory
             self.markdownStrategy = markdownStrategy
             self.logger = logger
+            self.importLogSink = importLogSink
         }
 
         /// Index all Apple documentation pages by scanning ``docsDirectory``.
@@ -126,6 +132,21 @@ extension Search {
 
             var indexed = 0
             var skipped = 0
+            var benignDupTierA = 0
+            var benignDupTierB = 0
+            var tierCCollisionCount = 0
+            var rejectedHTTPErrorTemplate = 0
+            var rejectedJSFallback = 0
+            var rejectedPlaceholderTitle = 0
+            // #588 door equivalence: per-run map of URIs we've already
+            // accepted, so subsequent same-URI encounters can be
+            // classified tier A / B / C against the prior record (see
+            // `docs/PRINCIPLES.md` principles 2 + 3). First-arrived
+            // wins; later arrivals are skipped with a log line carrying
+            // the classification + both source paths. The map is bounded
+            // by the number of unique URIs in the corpus (351K for the
+            // full Apple docs corpus today; small struct per entry).
+            var seenURIs: [String: Search.StrategyHelpers.SeenURIRecord] = [:]
 
             for (idx, file) in docFiles.enumerated() {
                 guard let rawFramework = Search.StrategyHelpers.extractFrameworkFromPath(
@@ -202,6 +223,14 @@ extension Search {
                         category: .search
                     )
                     skipped += 1
+                    rejectedHTTPErrorTemplate += 1
+                    await importLogSink?.record(Search.ImportLogEntry(
+                        sourceFile: file.path,
+                        resolvedURL: structuredPage.url.absoluteString,
+                        uri: nil,
+                        state: .rejectedHTTPErrorTemplate,
+                        rejectionReason: "http_error_template"
+                    ))
                     continue
                 }
                 if Search.StrategyHelpers.pageLooksLikeJavaScriptFallback(structuredPage) {
@@ -212,34 +241,141 @@ extension Search {
                         category: .search
                     )
                     skipped += 1
+                    rejectedJSFallback += 1
+                    await importLogSink?.record(Search.ImportLogEntry(
+                        sourceFile: file.path,
+                        resolvedURL: structuredPage.url.absoluteString,
+                        uri: nil,
+                        state: .rejectedJSFallback,
+                        rejectionReason: "js_disabled_fallback"
+                    ))
+                    continue
+                }
+                if Search.StrategyHelpers.titleLooksLikePlaceholderError(structuredPage.title, url: structuredPage.url) {
+                    logger.error(
+                        "⛔ Skipping placeholder-title page (#588 indexer defence): " +
+                            "title=\(structuredPage.title.prefix(60)) " +
+                            "url=\(structuredPage.url.absoluteString.prefix(120)) " +
+                            "file=\(file.lastPathComponent)",
+                        category: .search
+                    )
+                    skipped += 1
+                    rejectedPlaceholderTitle += 1
+                    await importLogSink?.record(Search.ImportLogEntry(
+                        sourceFile: file.path,
+                        resolvedURL: structuredPage.url.absoluteString,
+                        uri: nil,
+                        state: .rejectedPlaceholderTitle,
+                        rejectionReason: "placeholder_title"
+                    ))
                     continue
                 }
 
-                // #293 fix: use `URLUtilities.filename(from:)` instead of
-                // `.lastPathComponent`. The lastPathComponent path stripped
-                // every middle URL segment from Apple's URLs, so symbols
-                // sharing a leaf name across different parent types
-                // (`accelerate/sparsepreconditioner_t/init(rawvalue:)`
-                // vs `accelerate/quadrature_integrator/init(rawvalue:)`)
-                // both collapsed to `apple-docs://accelerate/init(rawvalue:)`
-                // and clobbered each other in the index. The sibling URI
-                // construction at line ~322 of this same file already used
-                // `filename(from:)` correctly; the inconsistency is the
-                // bug surface. Switching both paths to `filename(from:)`
-                // (which encodes the full URL path + an 8-byte SHA-256
-                // disambiguator suffix when special chars are present)
-                // restores per-symbol uniqueness.
+                // #587 / BUG 1 fix: use `URLUtilities.appleDocsURI(from:)`
+                // — the lossless path-mirror URI shape. The previous
+                // `URLUtilities.filename(from:)` shape sanitized special
+                // chars + added an 8-byte SHA-256 disambiguator suffix +
+                // capped at 240 bytes; the resulting URIs were opaque,
+                // non-reversible, and (at 32-bit hash width) had a
+                // measurable collision floor in the 285K-doc corpus.
+                // The lossless shape encodes the URL path verbatim:
+                // `apple-docs://<framework>/<rest-of-path-after-framework>`,
+                // lowercased + sub-page underscores→dashes per the
+                // existing #283 / #285 canonicalisation. Two different
+                // Apple URLs always produce two different URIs, so the
+                // INSERT-OR-REPLACE-wrong-winner bug main flagged in
+                // #587 BUG 1 cannot happen at the URI layer.
                 //
-                // Side-effect: existing shipped bundles still carry the
-                // old URIs (one-shot lossy write). A future `cupertino save`
-                // produces correct URIs; the v1.2.0 bundle re-publish
-                // (#290) is where end users pick this up.
-                let filename = Shared.Models.URLUtilities.normalize(structuredPage.url)
-                    .map { Shared.Models.URLUtilities.filename(from: $0) }
-                    ?? Search.StrategyHelpers.canonicalPathComponent(
+                // Side-effect: requires a one-time bundle re-index. The
+                // v1.2.0 bundle re-publish (#290) is where end users
+                // pick up the new URI scheme.
+                let uri: String
+                if let losslessURI = Shared.Models.URLUtilities.appleDocsURI(from: structuredPage.url) {
+                    uri = losslessURI
+                } else {
+                    // Fallback when the structured page's URL isn't a
+                    // recognisable Apple Developer doc URL — extremely
+                    // rare (every page in `Search.AppleDocsStrategy` is
+                    // crawled from developer.apple.com), but the
+                    // pre-#587 indexer had a fallback for the same
+                    // shape so we preserve it: synthesise a URI from
+                    // the framework + on-disk filename basename.
+                    let basename = Search.StrategyHelpers.canonicalPathComponent(
                         file.deletingPathExtension().lastPathComponent
                     )
-                let uri = "apple-docs://\(framework)/\(filename)"
+                    uri = "apple-docs://\(framework)/\(basename)"
+                }
+
+                // #588 door equivalence check. First-arrived wins; later
+                // arrivals for the same URI are classified A / B / C and
+                // skipped with a log line carrying the classification +
+                // both source files (`docs/PRINCIPLES.md` principles 2,3).
+                let incoming = Search.StrategyHelpers.SeenURIRecord(
+                    canonicalTitle: Search.StrategyHelpers.canonicalTitleForEquivalence(structuredPage.title),
+                    contentHash: structuredPage.contentHash
+                )
+                if let prior = seenURIs[uri] {
+                    let classification = Search.StrategyHelpers.classifyDoorEncounter(
+                        prior: prior, incoming: incoming
+                    )
+                    switch classification {
+                    case .benignByteIdentical:
+                        logger.info(
+                            "⏭️  Door (tier A, byte-identical) skip: uri=\(uri) file=\(file.lastPathComponent)",
+                            category: .search
+                        )
+                        skipped += 1
+                        benignDupTierA += 1
+                        await importLogSink?.record(Search.ImportLogEntry(
+                            sourceFile: file.path,
+                            resolvedURL: structuredPage.url.absoluteString,
+                            uri: uri,
+                            state: .benignDupTierA,
+                            duplicateOf: uri
+                        ))
+                        continue
+                    case .benignTitleMatchWithDrift:
+                        logger.info(
+                            "⏭️  Door (tier B, title-match + drift) skip: uri=\(uri) file=\(file.lastPathComponent) prior_title=\"\(prior.canonicalTitle.prefix(60))\"",
+                            category: .search
+                        )
+                        skipped += 1
+                        benignDupTierB += 1
+                        await importLogSink?.record(Search.ImportLogEntry(
+                            sourceFile: file.path,
+                            resolvedURL: structuredPage.url.absoluteString,
+                            uri: uri,
+                            state: .benignDupTierB,
+                            duplicateOf: uri
+                        ))
+                        continue
+                    case .malignantTitleMismatch:
+                        logger.error(
+                            "🚨 Door (tier C, COLLISION — different canonical titles for same URI) skip: uri=\(uri) file=\(file.lastPathComponent) prior_title=\"\(prior.canonicalTitle.prefix(80))\" incoming_title=\"\(incoming.canonicalTitle.prefix(80))\"",
+                            category: .search
+                        )
+                        skipped += 1
+                        tierCCollisionCount += 1
+                        await importLogSink?.record(Search.ImportLogEntry(
+                            sourceFile: file.path,
+                            resolvedURL: structuredPage.url.absoluteString,
+                            uri: uri,
+                            state: .collisionTierC,
+                            collisionWith: uri
+                        ))
+                        continue
+                    case .firstArrival:
+                        // Unreachable: classify is only called when prior != nil.
+                        break
+                    }
+                }
+                seenURIs[uri] = incoming
+                await importLogSink?.record(Search.ImportLogEntry(
+                    sourceFile: file.path,
+                    resolvedURL: structuredPage.url.absoluteString,
+                    uri: uri,
+                    state: .indexed
+                ))
 
                 do {
                     try await index.indexStructuredDocument(
@@ -279,9 +415,25 @@ extension Search {
             }
 
             logger.info(
-                "   Directory scan: \(indexed) indexed, \(skipped) skipped", category: .search
+                "   Directory scan: \(indexed) indexed, \(skipped) skipped " +
+                    "(door tierA=\(benignDupTierA) tierB=\(benignDupTierB) tierC=\(tierCCollisionCount); " +
+                    "rejected http=\(rejectedHTTPErrorTemplate) jsFallback=\(rejectedJSFallback) " +
+                    "placeholder=\(rejectedPlaceholderTitle))",
+                category: .search
             )
-            return IndexStats(source: source, indexed: indexed, skipped: skipped)
+            return IndexStats(
+                source: source,
+                indexed: indexed,
+                skipped: skipped,
+                breakdown: Search.ImportDiligenceBreakdown(
+                    benignDupTierA: benignDupTierA,
+                    benignDupTierB: benignDupTierB,
+                    tierCCollisionCount: tierCCollisionCount,
+                    rejectedHTTPErrorTemplate: rejectedHTTPErrorTemplate,
+                    rejectedJSFallback: rejectedJSFallback,
+                    rejectedPlaceholderTitle: rejectedPlaceholderTitle
+                )
+            )
         }
 
         // MARK: - Metadata-Driven Path
@@ -321,6 +473,12 @@ extension Search {
             var processed = 0
             var indexed = 0
             var skipped = 0
+            var benignDupTierA = 0
+            var benignDupTierB = 0
+            var tierCCollisionCount = 0
+            var rejectedPlaceholderTitle = 0
+            // #588 door equivalence map, mirrors the structured-page path.
+            var seenURIs: [String: Search.StrategyHelpers.SeenURIRecord] = [:]
 
             for (url, pageMetadata) in metadata.pages {
                 let filePath = URL(fileURLWithPath: pageMetadata.filePath)
@@ -339,8 +497,89 @@ extension Search {
 
                 let title = Search.StrategyHelpers.extractTitle(from: content)
                     ?? Shared.Models.URLUtilities.filename(from: parsedURL)
-                let uri = "apple-docs://\(pageMetadata.framework)/" +
-                    "\(Shared.Models.URLUtilities.filename(from: parsedURL))"
+
+                // #588 indexer defence (mirrors the structured-page branch above):
+                // skip docs whose title is the bare "Error" / "Apple Developer
+                // Documentation" placeholder Apple's JS app emits when its
+                // data fetch fails after the page chrome was already
+                // rendered. Empty / whitespace-only titles fall under the
+                // same gate.
+                if Search.StrategyHelpers.titleLooksLikePlaceholderError(title, url: parsedURL) {
+                    logger.error(
+                        "⛔ Skipping placeholder-title page (#588 indexer defence): " +
+                            "url=\(url) title=\(title.prefix(60))",
+                        category: .search
+                    )
+                    skipped += 1
+                    rejectedPlaceholderTitle += 1
+                    processed += 1
+                    continue
+                }
+
+                // #587 / BUG 1 fix: lossless URI shape, same as the
+                // structured-page branch above. `appleDocsURI(from:)`
+                // returns the canonical
+                // `apple-docs://<framework>/<rest-of-path>` URI; on the
+                // off chance the URL doesn't parse as an Apple Developer
+                // doc URL we synthesise a URI from framework +
+                // `filename(from:)` to preserve the pre-#587 fallback
+                // shape (this branch handles the metadata-driven
+                // incremental-build path, where URLs are read straight
+                // from crawl metadata and should already be well-formed).
+                let uri: String
+                if let losslessURI = Shared.Models.URLUtilities.appleDocsURI(from: parsedURL) {
+                    uri = losslessURI
+                } else {
+                    let fallbackFilename = Shared.Models.URLUtilities.filename(from: parsedURL)
+                    uri = "apple-docs://\(pageMetadata.framework)/\(fallbackFilename)"
+                }
+
+                // #588 door equivalence check. Same policy as the
+                // structured-page path: first-arrived wins; later
+                // arrivals classified tier A / B / C and skipped with a
+                // log line. `pageMetadata.contentHash` is the crawler-
+                // recorded hash carried in metadata.json.
+                let incoming = Search.StrategyHelpers.SeenURIRecord(
+                    canonicalTitle: Search.StrategyHelpers.canonicalTitleForEquivalence(title),
+                    contentHash: pageMetadata.contentHash
+                )
+                if let prior = seenURIs[uri] {
+                    let classification = Search.StrategyHelpers.classifyDoorEncounter(
+                        prior: prior, incoming: incoming
+                    )
+                    switch classification {
+                    case .benignByteIdentical:
+                        logger.info(
+                            "⏭️  Door (tier A) skip: uri=\(uri) url=\(url)",
+                            category: .search
+                        )
+                        skipped += 1
+                        benignDupTierA += 1
+                        processed += 1
+                        continue
+                    case .benignTitleMatchWithDrift:
+                        logger.info(
+                            "⏭️  Door (tier B, drift) skip: uri=\(uri) url=\(url)",
+                            category: .search
+                        )
+                        skipped += 1
+                        benignDupTierB += 1
+                        processed += 1
+                        continue
+                    case .malignantTitleMismatch:
+                        logger.error(
+                            "🚨 Door (tier C COLLISION) skip: uri=\(uri) url=\(url) prior_title=\"\(prior.canonicalTitle.prefix(80))\" incoming_title=\"\(incoming.canonicalTitle.prefix(80))\"",
+                            category: .search
+                        )
+                        skipped += 1
+                        tierCCollisionCount += 1
+                        processed += 1
+                        continue
+                    case .firstArrival:
+                        break
+                    }
+                }
+                seenURIs[uri] = incoming
 
                 do {
                     try await index.indexDocument(Search.Index.IndexDocumentParams(
@@ -375,7 +614,17 @@ extension Search {
             logger.info(
                 "   Apple Docs: \(indexed) indexed, \(skipped) skipped", category: .search
             )
-            return IndexStats(source: source, indexed: indexed, skipped: skipped)
+            return IndexStats(
+                source: source,
+                indexed: indexed,
+                skipped: skipped,
+                breakdown: Search.ImportDiligenceBreakdown(
+                    benignDupTierA: benignDupTierA,
+                    benignDupTierB: benignDupTierB,
+                    tierCCollisionCount: tierCCollisionCount,
+                    rejectedPlaceholderTitle: rejectedPlaceholderTitle
+                )
+            )
         }
     }
 }

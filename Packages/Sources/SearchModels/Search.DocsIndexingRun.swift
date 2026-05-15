@@ -99,10 +99,19 @@ public extension Search {
     struct DocsIndexingOutcome: Sendable {
         public let documentCount: Int
         public let frameworkCount: Int
+        /// #588 import-diligence aggregated breakdown over every
+        /// strategy that ran. Zero for legacy callers; populated by
+        /// the apple-docs strategy post-#588.
+        public let breakdown: ImportDiligenceBreakdown
 
-        public init(documentCount: Int, frameworkCount: Int) {
+        public init(
+            documentCount: Int,
+            frameworkCount: Int,
+            breakdown: ImportDiligenceBreakdown = .zero
+        ) {
             self.documentCount = documentCount
             self.frameworkCount = frameworkCount
+            self.breakdown = breakdown
         }
     }
 }

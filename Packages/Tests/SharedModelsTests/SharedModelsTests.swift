@@ -65,6 +65,153 @@ struct SharedModelsPublicSurfaceTests {
         #expect(normalized?.path == "/documentation/swiftui/some-method")
     }
 
+    // MARK: - #588: operator-bearing segment preservation
+
+    @Test(
+        "URLUtilities normalize preserves operator-bearing leaf segments (#588 — Apple URL-encodes >=, <=, /=, /, [], -> as _-bearing slugs, must not be _→- collapsed)",
+        arguments: [
+            // (raw URL path, expected normalized path)
+            //
+            // Apple's URL encoding for binary operators on Swift numeric types:
+            //   `>=` → URL slug `_=`, `-=` → URL slug `-=`. The blanket _→-
+            //   collapse pre-#588 fused these into a single `-=` URI, dropping
+            //   the `>=` doc. Post-fix: leaf has `(` so _→- skipped → both
+            //   slugs survive verbatim and produce distinct URIs.
+            ("/documentation/swift/float/_=(_:_:)", "/documentation/swift/float/_=(_:_:)"),
+            ("/documentation/swift/float/-=(_:_:)", "/documentation/swift/float/-=(_:_:)"),
+            ("/documentation/swift/floatingpoint/_=(_:_:)", "/documentation/swift/floatingpoint/_=(_:_:)"),
+            ("/documentation/swift/floatingpoint/-=(_:_:)", "/documentation/swift/floatingpoint/-=(_:_:)"),
+            ("/documentation/swift/double/_(_:_:)", "/documentation/swift/double/_(_:_:)"),
+            ("/documentation/swift/double/-(_:_:)", "/documentation/swift/double/-(_:_:)"),
+            // C++ operator forms in DriverKit: Apple URL-encodes `[]` as `__`
+            // and `->` as `-_`. The leaf starts with `operator` so the
+            // _→- rule is skipped via the operator-prefix path.
+            ("/documentation/driverkit/libkern/bounded_ptr/operator__", "/documentation/driverkit/libkern/bounded-ptr/operator__"),
+            ("/documentation/driverkit/libkern/bounded_ptr/operator-_", "/documentation/driverkit/libkern/bounded-ptr/operator-_"),
+        ]
+    )
+    func urlUtilitiesNormalizeOperatorBearing(rawPath: String, expectedPath: String) throws {
+        let url = try #require(URL(string: "https://developer.apple.com\(rawPath)"))
+        let normalized = Shared.Models.URLUtilities.normalize(url)
+        #expect(normalized?.path == expectedPath)
+    }
+
+    @Test("appleDocsURI keeps operator clash siblings distinct (#588 — /= vs -= must survive normalization)")
+    func appleDocsURIOperatorClashStaysDistinct() throws {
+        // The 16-cluster cohort from the #588 corpus audit: across every
+        // Swift numeric type (`Float`, `Double`, `Float16`, `Float80`,
+        // `FloatingPoint`, …) Apple ships both `/=(_:_:)` (URL slug
+        // `_=(_:_:)`) and `-=(_:_:)` (URL slug `-=(_:_:)`). Pre-#588 the
+        // blanket _→- collapsed both into `-=(-:-:)`, losing one of the
+        // two docs from search.db. Post-fix the two stay distinct by URI.
+        let geq = try #require(URL(string: "https://developer.apple.com/documentation/swift/float/_=(_:_:)"))
+        let sub = try #require(URL(string: "https://developer.apple.com/documentation/swift/float/-=(_:_:)"))
+        let a = Shared.Models.URLUtilities.appleDocsURI(from: geq)
+        let b = Shared.Models.URLUtilities.appleDocsURI(from: sub)
+        #expect(a == "apple-docs://swift/float/_=(_:_:)")
+        #expect(b == "apple-docs://swift/float/-=(_:_:)")
+        #expect(a != b)
+    }
+
+    @Test("appleDocsURI keeps C++ operator clash siblings distinct (#588 — operator[] vs operator->)")
+    func appleDocsURIOperatorBracketArrowStaysDistinct() throws {
+        let bracket = try #require(URL(string: "https://developer.apple.com/documentation/driverkit/libkern/bounded_ptr/operator__"))
+        let arrow = try #require(URL(string: "https://developer.apple.com/documentation/driverkit/libkern/bounded_ptr/operator-_"))
+        let a = Shared.Models.URLUtilities.appleDocsURI(from: bracket)
+        let b = Shared.Models.URLUtilities.appleDocsURI(from: arrow)
+        #expect(a == "apple-docs://driverkit/libkern/bounded-ptr/operator__")
+        #expect(b == "apple-docs://driverkit/libkern/bounded-ptr/operator-_")
+        #expect(a != b)
+    }
+
+    @Test("URLUtilities normalize still collapses _→- in prose slugs at sub-page depth (#588 — #285 prose dedup preserved)")
+    func urlUtilitiesNormalizeProseSlugStillCollapses() throws {
+        // The original #285 case must still hold: Apple serves
+        // `integrating_accessibility_into_your_app` and
+        // `integrating-accessibility-into-your-app` as aliases for the
+        // same page, so the URI canonicalisation collapses them. The
+        // leaf carries no operator punctuation and doesn't start with
+        // `operator`, so the _→- rule still applies.
+        let underscored = try #require(URL(string: "https://developer.apple.com/documentation/accessibility/integrating_accessibility_into_your_app"))
+        let dashed = try #require(URL(string: "https://developer.apple.com/documentation/accessibility/integrating-accessibility-into-your-app"))
+        let a = Shared.Models.URLUtilities.appleDocsURI(from: underscored)
+        let b = Shared.Models.URLUtilities.appleDocsURI(from: dashed)
+        #expect(a == "apple-docs://accessibility/integrating-accessibility-into-your-app")
+        #expect(b == "apple-docs://accessibility/integrating-accessibility-into-your-app")
+        #expect(a == b) // collapsed — same logical page
+    }
+
+    // MARK: - appleDocsURI (lossless path-mirror URI shape)
+
+    @Test("appleDocsURI: simple framework sub-page")
+    func appleDocsURISimpleSubpage() throws {
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/view"))
+        #expect(Shared.Models.URLUtilities.appleDocsURI(from: url) == "apple-docs://swiftui/view")
+    }
+
+    @Test("appleDocsURI: deeply nested path is preserved verbatim")
+    func appleDocsURIDeepPath() throws {
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/toolbarrole/navigationstack"))
+        #expect(Shared.Models.URLUtilities.appleDocsURI(from: url) == "apple-docs://swiftui/toolbarrole/navigationstack")
+    }
+
+    @Test("appleDocsURI: mixed-case URL is lowercased per #283 canonicalisation")
+    func appleDocsURICaseFolding() throws {
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/SwiftUI/View"))
+        #expect(Shared.Models.URLUtilities.appleDocsURI(from: url) == "apple-docs://swiftui/view")
+    }
+
+    @Test("appleDocsURI: special characters in symbol slug preserved (#293 — no sanitisation, no hash)")
+    func appleDocsURISpecialChars() throws {
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/accelerate/sparsepreconditioner_t/init(rawvalue:)"))
+        // sparsepreconditioner_t is at depth ≥ 3 so #285 underscore→dash applies; init(rawvalue:) is the leaf.
+        #expect(Shared.Models.URLUtilities.appleDocsURI(from: url) == "apple-docs://accelerate/sparsepreconditioner-t/init(rawvalue:)")
+    }
+
+    @Test("appleDocsURI: framework root URL with no sub-path returns just framework")
+    func appleDocsURIFrameworkRoot() throws {
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/swiftui"))
+        #expect(Shared.Models.URLUtilities.appleDocsURI(from: url) == "apple-docs://swiftui")
+    }
+
+    @Test("appleDocsURI: non-Apple-developer host returns nil")
+    func appleDocsURIRejectsForeignHost() throws {
+        let url = try #require(URL(string: "https://example.com/documentation/swiftui/view"))
+        #expect(Shared.Models.URLUtilities.appleDocsURI(from: url) == nil)
+    }
+
+    @Test("appleDocsURI: URL without /documentation/ segment returns nil")
+    func appleDocsURIRejectsNonDocURL() throws {
+        let url = try #require(URL(string: "https://developer.apple.com/news/2026"))
+        #expect(Shared.Models.URLUtilities.appleDocsURI(from: url) == nil)
+    }
+
+    @Test("appleDocsURI: query and fragment stripped per normalize")
+    func appleDocsURIStripsFragmentAndQuery() throws {
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/view?language=swift#discussion"))
+        #expect(Shared.Models.URLUtilities.appleDocsURI(from: url) == "apple-docs://swiftui/view")
+    }
+
+    @Test("appleDocsURI: two sibling URLs sharing leaf name produce distinct lossless URIs — BUG 1 (cross-type collision) fixed at the URI layer")
+    func appleDocsURISiblingsHaveDistinctURIs() throws {
+        // BUG 1 from main's real-life test report: pre-fix both URLs
+        // collapsed to `apple-docs://swiftui/navigationstack`. Post-fix
+        // each has its own URI carrying the full parent path.
+        let viewStruct = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/NavigationStack"))
+        let property = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/ToolbarRole/navigationStack"))
+        let a = Shared.Models.URLUtilities.appleDocsURI(from: viewStruct)
+        let b = Shared.Models.URLUtilities.appleDocsURI(from: property)
+        #expect(a == "apple-docs://swiftui/navigationstack")
+        #expect(b == "apple-docs://swiftui/toolbarrole/navigationstack")
+        #expect(a != b)
+    }
+
+    @Test("appleDocsURI: convenience string overload parses + forwards")
+    func appleDocsURIStringOverload() {
+        #expect(Shared.Models.URLUtilities.appleDocsURI(fromString: "https://developer.apple.com/documentation/swiftui/view") == "apple-docs://swiftui/view")
+        #expect(Shared.Models.URLUtilities.appleDocsURI(fromString: "not a url") == nil)
+    }
+
     @Test("URLUtilities.filename — siblings with same leaf name under different parents produce distinct filenames (#293)")
     func urlUtilitiesFilenameDistinguishesParents() throws {
         // The bug fixed in #293: when two Apple symbols share a leaf

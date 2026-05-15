@@ -118,8 +118,14 @@ extension MCP.Support {
                     guard isFrameworkRootPage(url: parsedURL, framework: pageMetadata.framework) else {
                         continue
                     }
-                    let uri = "\(Shared.Constants.Search.appleDocsScheme)\(pageMetadata.framework)/"
-                        + "\(Shared.Models.URLUtilities.filename(from: parsedURL))"
+                    // #587 / BUG 1 fix: use the lossless `appleDocsURI(from:)`
+                    // helper. The resources/list URI MUST match the
+                    // indexer-stored URI in `docs_metadata` so that
+                    // `resources/read` and `read_document` lookups
+                    // resolve. Both surfaces now route through the same
+                    // helper.
+                    let uri = Shared.Models.URLUtilities.appleDocsURI(from: parsedURL)
+                        ?? "\(Shared.Constants.Search.appleDocsScheme)\(pageMetadata.framework)/\(Shared.Models.URLUtilities.filename(from: parsedURL))"
                     let resource = MCP.Core.Protocols.Resource(
                         uri: uri,
                         name: extractTitle(from: url),
@@ -271,7 +277,7 @@ extension MCP.Support {
 
             // Database lookup failed or no index - fall back to filesystem
             if uri.hasPrefix(Shared.Constants.Search.appleDocsScheme) {
-                // Parse URI: apple-docs://framework/filename
+                // Parse URI: apple-docs://framework[/rest]
                 guard let components = parseAppleDocsURI(uri) else {
                     throw Shared.Core.ToolError.invalidURI(uri)
                 }
@@ -279,24 +285,39 @@ extension MCP.Support {
                 let baseDir = configuration.crawler.outputDirectory
                     .appendingPathComponent(components.framework)
 
-                // Try JSON file first (new format), then fall back to MD (old format)
-                let jsonPath = baseDir.appendingPathComponent("\(components.filename).json")
-                let mdFilename = "\(components.filename)\(Shared.Constants.FileName.markdownExtension)"
-                let mdPath = baseDir.appendingPathComponent(mdFilename)
+                // Probe sequence: try `<filename>.json`, then `.md`. For the
+                // framework-root URI shape `apple-docs://<framework>` the
+                // parser returns `filename == framework`; older crawls
+                // wrote that page under the legacy `documentation_<framework>`
+                // basename (filename(from:) output pre-#587), so also try
+                // that shape as a defence against stale on-disk files.
+                let isFrameworkRoot = components.filename == components.framework
+                var probes: [URL] = [
+                    baseDir.appendingPathComponent("\(components.filename).json"),
+                    baseDir.appendingPathComponent("\(components.filename)\(Shared.Constants.FileName.markdownExtension)"),
+                ]
+                if isFrameworkRoot {
+                    probes.append(baseDir.appendingPathComponent("documentation_\(components.framework).json"))
+                    probes.append(baseDir.appendingPathComponent("documentation_\(components.framework)\(Shared.Constants.FileName.markdownExtension)"))
+                }
 
-                if FileManager.default.fileExists(atPath: jsonPath.path) {
-                    // Read JSON and extract rawMarkdown
-                    let jsonData = try Data(contentsOf: jsonPath)
+                var found: URL?
+                for path in probes where FileManager.default.fileExists(atPath: path.path) {
+                    found = path
+                    break
+                }
+                guard let path = found else {
+                    throw Shared.Core.ToolError.notFound(uri)
+                }
+                if path.pathExtension == "json" {
+                    let jsonData = try Data(contentsOf: path)
                     let page = try Shared.Utils.JSONCoding.decode(Shared.Models.StructuredDocumentationPage.self, from: jsonData)
                     guard let rawMarkdown = page.rawMarkdown else {
                         throw Shared.Core.ToolError.notFound(uri)
                     }
                     markdown = rawMarkdown
-                } else if FileManager.default.fileExists(atPath: mdPath.path) {
-                    // Fall back to markdown file
-                    markdown = try String(contentsOf: mdPath, encoding: .utf8)
                 } else {
-                    throw Shared.Core.ToolError.notFound(uri)
+                    markdown = try String(contentsOf: path, encoding: .utf8)
                 }
 
             } else if uri.hasPrefix(Shared.Constants.Search.swiftEvolutionScheme) {
@@ -433,7 +454,17 @@ extension MCP.Support {
         }
 
         private func parseAppleDocsURI(_ uri: String) -> (framework: String, filename: String)? {
-            // Expected format: apple-docs://framework/filename
+            // Accept two shapes (#588 — `appleDocsURI(from:)` emits both):
+            //   * `apple-docs://<framework>/<rest-of-path>` — sub-page URI.
+            //     `filename` is the rest of the path verbatim (a single
+            //     segment for shallow pages, slash-joined for deep ones).
+            //   * `apple-docs://<framework>` — framework-root URI. The on-
+            //     disk crawl writes the root page at one of two legacy
+            //     filenames (`<framework>.json` or `documentation_<framework>.json`
+            //     depending on crawler version); the caller's existing
+            //     `.json`-then-`.md` fallback tries both shapes when we
+            //     return `filename: framework` here, so the resolution
+            //     proceeds via the standard probe chain.
             guard uri.hasPrefix(Shared.Constants.Search.appleDocsScheme) else {
                 return nil
             }
@@ -441,11 +472,16 @@ extension MCP.Support {
             let path = uri.replacingOccurrences(of: Shared.Constants.Search.appleDocsScheme, with: "")
             let components = path.split(separator: "/", maxSplits: 1)
 
-            guard components.count == 2 else {
+            switch components.count {
+            case 1:
+                let framework = String(components[0])
+                guard !framework.isEmpty else { return nil }
+                return (framework: framework, filename: framework)
+            case 2:
+                return (framework: String(components[0]), filename: String(components[1]))
+            default:
                 return nil
             }
-
-            return (framework: String(components[0]), filename: String(components[1]))
         }
 
         private func parseEvolutionURI(_ uri: String) -> String? {

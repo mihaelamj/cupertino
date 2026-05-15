@@ -191,3 +191,105 @@ struct IndexBuilderJavaScriptFallbackDefenseTests {
         #expect(SUT.pageLooksLikeJavaScriptFallback(page) == false)
     }
 }
+
+// MARK: - #588: placeholder-title defence
+
+// Sister defence to the #284 HTTP-error gate above: catches the
+// "Error" / "Apple Developer Documentation" / empty-string title
+// patterns Apple's JS app emits when its data fetch fails after
+// the page chrome was already painted. Found by the corpus audit
+// in issue #588 (PDFKit pdfViewParentViewController, PHASE
+// SoundEvent, others) — these slip past the HTTP-error gate
+// because they don't carry an HTTP status code in the title.
+
+@Suite("Search.StrategyHelpers.titleLooksLikePlaceholderError (#588 indexer defence)")
+struct StrategyHelpersPlaceholderErrorDefenceTests {
+    typealias SUT = Search.StrategyHelpers
+
+    // MARK: - Placeholder titles that always trip the gate (no URL context needed)
+
+    @Test(
+        "empty / apple-developer-documentation placeholder shapes always trip the gate",
+        arguments: [
+            "Apple Developer Documentation",
+            "apple developer documentation",
+            "  Apple Developer Documentation\n",
+            "",
+            "   ",
+            "\n\t  \n",
+        ]
+    )
+    func unconditionalPlaceholderTitlesAreDetected(title: String) {
+        // No URL — these patterns trip regardless of context.
+        #expect(SUT.titleLooksLikePlaceholderError(title) == true)
+        // With a URL — still trip.
+        let anyURL = URL(string: "https://developer.apple.com/documentation/pdfkit/pdfviewdelegate/pdfviewparentviewcontroller()")!
+        #expect(SUT.titleLooksLikePlaceholderError(title, url: anyURL) == true)
+    }
+
+    // MARK: - "Error" title needs URL context (corpus dry-run found
+    //         legitimate Apple `error` enum cases at URL leafs == "error")
+
+    @Test(
+        "`Error` title at a URL whose leaf is NOT `error` trips the gate (poison)",
+        arguments: [
+            URL(string: "https://developer.apple.com/documentation/pdfkit/pdfviewdelegate/pdfviewparentviewcontroller()")!,
+            URL(string: "https://developer.apple.com/documentation/swiftui/view")!,
+            URL(string: "https://developer.apple.com/documentation/swiftui/navigationstack")!,
+        ]
+    )
+    func errorTitleAtUnrelatedURLIsPoison(url: URL) {
+        #expect(SUT.titleLooksLikePlaceholderError("Error", url: url) == true)
+        #expect(SUT.titleLooksLikePlaceholderError("error", url: url) == true)
+        #expect(SUT.titleLooksLikePlaceholderError("  ERROR  ", url: url) == true)
+    }
+
+    @Test(
+        "`Error` title at a URL whose leaf IS `error` is a legitimate Apple enum case — must NOT trip the gate",
+        arguments: [
+            // The corpus dry-run found these false-positives in the
+            // pre-fix gate; they are real Apple symbols, not poison.
+            URL(string: "https://developer.apple.com/documentation/storekit/producticonphase/error")!,
+            URL(string: "https://developer.apple.com/documentation/storekit/skpaymenttransaction/error")!,
+            URL(string: "https://developer.apple.com/documentation/storekit/skdownload/error")!,
+            URL(string: "https://developer.apple.com/documentation/storekit/skerror/error")!,
+            // Case-variants (Apple sometimes lower-cases the framework segment).
+            URL(string: "https://developer.apple.com/documentation/StoreKit/ProductIconPhase/error")!,
+        ]
+    )
+    func errorTitleAtErrorLeafIsLegitimate(url: URL) {
+        #expect(SUT.titleLooksLikePlaceholderError("Error", url: url) == false)
+        #expect(SUT.titleLooksLikePlaceholderError("error", url: url) == false)
+    }
+
+    @Test("`Error` title without URL context defaults to PASS (conservative — don't drop legitimate symbols)")
+    func errorTitleWithoutURLIsPassThrough() {
+        // No URL context = no way to disambiguate enum-case `error` from
+        // renderer-poison "Error". Per #588 principle 3 (no content
+        // lost at the door), pass through — the door tier-C check
+        // surfaces real conflicts downstream.
+        #expect(SUT.titleLooksLikePlaceholderError("Error") == false)
+        #expect(SUT.titleLooksLikePlaceholderError("error") == false)
+    }
+
+    @Test(
+        "real Apple doc titles do NOT trip the gate",
+        arguments: [
+            "View",
+            "NavigationStack",
+            "init(rawValue:)",
+            "Errors", // plural is fine — many real docs cover error types
+            "Error Handling", // valid doc topic
+            "Handling Errors in Your App",
+            "Apple Developer Documentation Strategy", // longer title containing the placeholder string
+            "WKWebView",
+            "SwiftUI",
+            "PDFViewParentViewController()",
+        ]
+    )
+    func realTitlesAreNotFalsePositives(title: String) {
+        #expect(SUT.titleLooksLikePlaceholderError(title) == false)
+        let anyURL = URL(string: "https://developer.apple.com/documentation/swiftui/view")!
+        #expect(SUT.titleLooksLikePlaceholderError(title, url: anyURL) == false)
+    }
+}

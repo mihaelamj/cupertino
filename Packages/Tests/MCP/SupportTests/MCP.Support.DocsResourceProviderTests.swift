@@ -136,7 +136,11 @@ struct DocsResourceProviderListResourcesTests {
             $0.uri.hasPrefix(Shared.Constants.Search.appleDocsScheme)
         }
         #expect(appleDocs.count == 1)
-        #expect(appleDocs.first?.uri.contains("swiftui/") == true)
+        // Post-#588 lossless URI: a framework-root URL
+        // (`/documentation/swiftui`) maps to `apple-docs://swiftui` — no
+        // trailing slash, no path segment beyond the framework.
+        // Sub-page URIs still carry the `<framework>/<rest>` shape.
+        #expect(appleDocs.first?.uri == "apple-docs://swiftui")
         #expect(appleDocs.first?.mimeType == MCP.SharedTools.Copy.mimeTypeMarkdown)
     }
 
