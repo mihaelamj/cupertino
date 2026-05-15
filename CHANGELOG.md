@@ -4,6 +4,19 @@ _Code on `origin/main` past the v1.1.0 tag. No binary tag yet — the v1.2.0 rel
 
 _The v1.1.1 corpus tag exists on `cupertino-docs` only (not on this repo). It marks the post-Claw-merge source corpus snapshot: 414,807 source files, +2,285 new pages + 498 richer overwrites from Claw mini's 5.5-day crawl, with 153 React-SPA-404 poison files filtered out at the merge boundary. The 13-category poison audit returns zero matches on the merged corpus. The matching bundle (`cupertino-databases-v1.2.0.zip`) is rebuilt from the same source state when v1.2.0 ships._
 
+### Fixed
+
+- **#593 — samples indexer stops corrupting every file path with a leading `/private` prefix.** Caught during main's post-#589/#590 retest sweep. Every row in `samples.db.files.path` was getting a `/private` prefix concatenated without separator (`/privateShared/foo.swift` instead of `Shared/foo.swift`), making `cupertino read-sample-file '<id>' '<path>'` return "File not found" for the (correctly spelled) path the user expects. Root cause was in `Sample.Index.Builder.discoverFiles(...)`:
+
+      let relativePath = fileURL.path.replacingOccurrences(
+          of: projectRoot.path + "/",
+          with: ""
+      )
+
+  `FileManager.default.temporaryDirectory` returned `/var/folders/.../tmp.XXX/` (the unresolved form), but the file enumerator yielded the symlink-resolved `/private/var/folders/.../tmp.XXX/Shared/foo.swift` (because macOS's `/var` is a symlink to `/private/var`). `replacingOccurrences` found the strip-prefix as a substring starting at index 8 inside the resolved path and removed it, leaving the leading `/private` intact. Net: `/private` + `Shared/foo.swift`. Pre-existing bug; affected every `cupertino save --samples` since the indexer was added. Fix: new `Sample.Index.Builder.relativePath(of:under:)` helper resolves both URLs through their symlinks and computes the relative path via `pathComponents` math rather than substring stripping. 5 new unit tests (temp-dir-no-prefix, nested-segments, file-at-root, unresolved-URL-form, file-outside-root fallback) pin the contract on macOS where `$TMPDIR` exercises the `/var → /private/var` resolution discrepancy.
+
+  Most users aren't affected — `samples.db` is per-user, locally built, opt-in (only exists after running `cupertino fetch --type samples` + `cupertino save --samples`), and never part of the shipped `cupertino-databases-*.zip` bundle. If you DO have a local samples.db from a previous save, re-run `cupertino save --samples --clear` to pick up corrected paths. Full 1732-test suite green.
+
 ### Added
 
 - **#587 — `cupertino read` and MCP `read_document` accept canonical Apple Developer web URLs.** Pre-fix, pasting `https://developer.apple.com/documentation/swiftui/view` into either transport returned `Document not found in search.db` (CLI exit 1, MCP invalid-argument). Users (and AI agents) hitting cupertino for the first time routinely paste the URL form they copied from the browser; rejecting it forced them to learn the `apple-docs://...` URI convention before they could do anything useful. Fix: both entry points now run an identifier normalisation step at the top that converts canonical Apple Developer web URLs to the lossless `apple-docs://<framework>/<rest-of-path>` URI (using the helper from PR #589 / #588), then falls into the existing dispatch unchanged. Non-Apple URLs (`https://github.com/...`, `https://example.com/...`) pass through; the per-source backends reject them as before. 20 new normalisation tests (13 `Services.ReadService.normalizeIdentifier`, 7 `CompositeToolProvider.normalizeReadDocumentURI`) pin the input contract — canonical Apple URL → URI, mixed case lowercases, query/fragment stripped, framework-root URL → framework-only URI, every other shape passes through verbatim. Full 1727-test suite green.
