@@ -12,15 +12,22 @@ cupertino doctor [options]
 
 Verifies that the MCP server can start and all required components are available and properly configured.
 
-This command performs comprehensive health checks on:
+**Default output (no flags)** focuses on the runtime surface a `cupertino setup` user cares about:
+
 - **Server initialization** - MCP server can be created, transport is stdio, current protocol version
-- **Documentation directories** - Apple docs, Swift Evolution, HIG (each with file count)
-- **Swift Packages (filesystem)** - User selections file, downloaded READMEs, priority-package counts (Apple + Ecosystem)
 - **Packages index (`packages.db`)** - Presence, size, row counts (packages + indexed files), bundled version. Missing is a warning, not a failure.
+- **Sample code index (`samples.db`)** - Presence, size, row counts (projects + indexed files + symbols).
 - **Search index (`search.db`)** - Presence, size, **schema version** vs binary, indexed framework count. Schema mismatch (older or newer than the binary) is a hard fail with a precise rebuild hint.
 - **Resource providers** - DocsResourceProvider and SearchToolProvider are available
+- **Schema versions per DB** ([#234](https://github.com/mihaelamj/cupertino/issues/234)) - sequential schema number + journal mode (WAL warnings) + WAL sidecar size + non-local-volume warnings ([#236](https://github.com/mihaelamj/cupertino/issues/236)).
 
-Use this command to troubleshoot setup issues before starting the server.
+**[`--save`](option%20%28--%29/save.md) adds the maintenance sections** for users about to crawl or re-index:
+
+- **Documentation directories** - Apple docs, Swift Evolution, HIG, Swift.org, Apple Archive (each with file count)
+- **Swift Packages (filesystem)** - User selections file, downloaded READMEs, orphan / missing tallies, priority-package counts (Apple + Ecosystem)
+- **`cupertino save` preflight summary** - per-source presence and availability-annotation coverage (backed by `Indexer.Preflight.preflightLines(...)`)
+
+Use this command to troubleshoot setup issues before starting the server. Pre-[#68](https://github.com/mihaelamj/cupertino/issues/68) the corpus + packages-filesystem sections ran on every invocation; they made a `cupertino setup`-only install look broken (a `0 files` line under "Apple docs" is normal in that flow, not a failure).
 
 ## Options
 
@@ -62,7 +69,15 @@ cupertino doctor --search-db ~/my-search.db
 
 ### --save
 
-Run the `cupertino save` preflight check only — print which sources are present, which lack availability annotations, what would be skipped — without running the regular doctor health suite. Read-only, no DB writes. Same output `cupertino save` would print as its preflight summary, so you can ask "is save ready?" before committing to a run. ([#232](https://github.com/mihaelamj/cupertino/issues/232))
+Include the maintenance-side sections in the doctor report (additive on top of the default health suite). See [`option (--)/save.md`](option%20%28--%29/save.md) for the full description.
+
+Adds these to the default output:
+
+- 📂 Raw corpus directories (the inputs `cupertino save` would consume)
+- 📦 Swift Packages: user selection state + downloaded README counts + orphan / missing tallies
+- 🔍 `cupertino save` per-source preflight summary (backed by `Indexer.Preflight.preflightLines(...)`, lifted in [#244](https://github.com/mihaelamj/cupertino/issues/244))
+
+Pre-[#68](https://github.com/mihaelamj/cupertino/issues/68) this flag short-circuited to only the preflight summary; it is now additive so a maintainer gets one combined report instead of running doctor twice.
 
 **Type:** Flag
 **Default:** false
@@ -70,23 +85,6 @@ Run the `cupertino save` preflight check only — print which sources are presen
 **Example:**
 ```bash
 cupertino doctor --save
-```
-
-**Sample output:**
-```
-🔍 `cupertino save` preflight check
-
-  Docs (search.db)
-    ✓  /Users/me/.cupertino/docs  (404969 entries)
-    ✓  Availability annotation present
-
-  Packages (packages.db)
-    ✓  /Users/me/.cupertino/packages  (183 packages)
-    ✓  availability.json sidecars  (183/183)
-
-  Samples (samples.db)
-    ✓  /Users/me/.cupertino/sample-code  (627 zips)
-    (annotation runs inline during save — no preflight check needed)
 ```
 
 ## Examples
@@ -120,6 +118,8 @@ cupertino serve
 
 ### All Checks Passing
 
+Default `cupertino doctor` output (no flags):
+
 ```
 🏥 MCP Server Health Check
 
@@ -128,10 +128,51 @@ cupertino serve
    ✓ Transport: stdio
    ✓ Protocol version: 2025-11-25
 
+📦 Packages Index (packages.db)
+   ✓ Database: /Users/you/.cupertino/packages.db
+   ✓ Size: 988.9 MB
+   ✓ Indexed files: 20186
+   ℹ  Bundled version: 1.1.0
+
+🧪 Sample Code Index (samples.db)
+   ✓ Database: /Users/you/.cupertino/samples.db
+   ✓ Size: 184.4 MB
+   ✓ Projects: 619
+   ✓ Indexed files: 18928
+   ✓ Indexed symbols: 108536
+
+🔍 Search Index
+   ✓ Database: /Users/you/.cupertino/search.db
+   ✓ Size: 2.48 GB
+   ✓ Schema version: 13 (matches installed binary)
+   ✓ Frameworks: 420
+   📚 Indexed sources:
+     ✓ apple-docs: 284518 entries
+     ✓ swift-evolution: 483 entries
+
+🔧 Providers
+   ✓ MCP.Support.DocsResourceProvider: available
+   ✓ SearchToolProvider: available
+
+
+8. Schema versions (#234)
+
+   ✓ search.db: 13 (sequential), journal=wal
+   ✓ packages.db: 2 (sequential), journal=delete
+   ✓ samples.db: 3 (sequential), journal=wal
+
+✅ All checks passed - MCP server ready
+```
+
+`cupertino doctor --save` appends the maintenance sections on top of the default output:
+
+```
+… (default sections above) …
+
 📂 Raw corpus directories (input for `cupertino save`)
-   ✓ Apple docs: /Users/you/.cupertino/docs (404726 files)
-   ✓ Swift Evolution: /Users/you/.cupertino/swift-evolution (480 proposals)
-   ✓ Swift.org: /Users/you/.cupertino/swift-org (202 pages)
+   ✓ Apple docs: /Users/you/.cupertino/docs (415212 files)
+   ✓ Swift Evolution: /Users/you/.cupertino/swift-evolution (483 proposals)
+   ✓ Swift.org: /Users/you/.cupertino/swift-org (196 pages)
    ✓ HIG: /Users/you/.cupertino/hig (173 pages)
    ✓ Apple Archive: /Users/you/.cupertino/archive (406 guides)
 
@@ -139,34 +180,21 @@ cupertino serve
    ✓ User selections: /Users/you/.cupertino/selected-packages.json
      135 packages selected
    ✓ Downloaded READMEs: 448 packages
-     /Users/you/.cupertino/packages
-   ℹ  Priority packages: 135 total
-     Apple: 43, Ecosystem: 92
+   ℹ  Priority packages: 135 total (Apple: 43, Ecosystem: 92)
 
-📦 Packages Index (packages.db)
-   ✓ Database: /Users/you/.cupertino/packages.db
-   ✓ Size: ~940 MB
-   ✓ Indexed files: 20186
-   ℹ  Bundled version: 1.0.2
+🔍 `cupertino save` preflight check
 
-🧪 Sample Code Index (samples.db)
-   ✓ Database: /Users/you/.cupertino/samples.db
-   ✓ Size: ~180 MB
-   ✓ Projects: 619
-   ✓ Indexed files: 18928
-   ✓ Indexed symbols: 108536
+  Docs (search.db)
+    ✓  /Users/you/.cupertino/docs  (415212 entries)
+    ✓  Availability annotation present
 
-🔍 Search Index
-   ✓ Database: /Users/you/.cupertino/search.db
-   ✓ Size: 2.4 GB
-   ✓ Schema version: 13 (matches installed binary)
-   ✓ Frameworks: 402
-   📚 Indexed sources:
-     ✓ apple-docs: 277640 entries
+  Packages (packages.db)
+    ✓  /Users/you/.cupertino/packages  (183 packages)
+    ✓  availability.json sidecars  (183/183)
 
-🔧 Providers
-   ✓ DocsResourceProvider: available
-   ✓ SearchToolProvider: available
+  Samples (samples.db)
+    ✓  /Users/you/.cupertino/sample-code  (627 zips)
+    (annotation runs inline during save, no preflight check needed)
 
 ✅ All checks passed - MCP server ready
 ```
@@ -195,7 +223,9 @@ cupertino serve
 ⚠️  Some checks failed - see above for details
 ```
 
-### Missing Documentation
+### Fresh Installation (no databases yet)
+
+Default `cupertino doctor` output before `cupertino setup` has been run:
 
 ```
 🏥 MCP Server Health Check
@@ -205,40 +235,33 @@ cupertino serve
    ✓ Transport: stdio
    ✓ Protocol version: 2025-11-25
 
-📚 Documentation Directories
-   ✗ Apple docs: /Users/you/.cupertino/docs (not found)
-     → Run: cupertino fetch --type docs
-   ⚠  Swift Evolution: /Users/you/.cupertino/swift-evolution (not found)
-     → Run: cupertino fetch --type evolution
-   ⚠  HIG: /Users/you/.cupertino/hig (not found)
-     → Run: cupertino fetch --type hig
-
-📦 Swift Packages
-   ⚠  User selections: not configured
-     → Use TUI to select packages, or will use bundled defaults
-   ⚠  Package docs: not downloaded
-   ℹ  Priority packages: 135 total
-     Apple: 43, Ecosystem: 92
-
 📦 Packages Index (packages.db)
    ⚠  Database: /Users/you/.cupertino/packages.db (not found)
      → Run: cupertino setup  (downloads the pre-built packages index)
-     Expected version: 1.0.2
+     Expected version: 1.1.0
+
+🧪 Sample Code Index (samples.db)
+   ⚠  Database: /Users/you/.cupertino/samples.db (not found)
+     → Run: cupertino fetch --type samples && cupertino cleanup && cupertino save --samples
 
 🔍 Search Index
    ✗ Database: /Users/you/.cupertino/search.db (not found)
      → Run: cupertino setup  (or `cupertino save` if building locally)
 
 🔧 Providers
-   ✓ DocsResourceProvider: available
+   ✓ MCP.Support.DocsResourceProvider: available
    ✓ SearchToolProvider: available
 
 ⚠️  Some checks failed - see above for details
 ```
 
+Note the absence of the `📚 Documentation Directories` and filesystem `📦 Swift Packages` sections that appeared here pre-[#68](https://github.com/mihaelamj/cupertino/issues/68). A `cupertino setup`-only user never populates the raw corpus dirs and the missing-corpus warnings were false alarms. To see those sections, run `cupertino doctor --save`.
+
 ## Health Checks
 
-### 1. MCP Server
+### Default (always run)
+
+#### 1. MCP Server
 
 Verifies that:
 - MCP server can be initialized
@@ -247,32 +270,7 @@ Verifies that:
 
 **Always passes** - checks basic server functionality.
 
-### 2. Documentation Directories
-
-Checks:
-- **Apple docs**: Directory exists and contains `.md` files
-- **Swift Evolution**: Directory exists and contains proposal files
-- **HIG**: Directory exists and contains pages
-
-Shows:
-- Path to each directory
-- Number of files / proposals / pages found
-- Suggestions if directories are missing
-
-**Critical for Apple docs** - server needs at least one documentation source.
-**Warning for Evolution and HIG** - server can work without them.
-
-### 3. Swift Packages (filesystem)
-
-Checks:
-- **User selections file** (`~/.cupertino/selected-packages.json`) — additively merged with the embedded priority list on every load ([#218](https://github.com/mihaelamj/cupertino/issues/218)). New seeds shipped in `PriorityPackagesEmbedded.swift` propagate into existing installs the next time any subcommand touches the catalog. User deletions don't stick — the merge is set-diff.
-- **Downloaded packages** under `~/.cupertino/packages/<owner>/<repo>/` (whole archives, not just READMEs — see `fetch --type packages` stage 2)
-- Reports orphaned READMEs (packages no longer selected)
-- Counts priority packages bundled with the binary (Apple + Ecosystem)
-
-**Warning only** - server still runs without local package archives.
-
-### 4. Packages Index (`packages.db`)
+#### 2. Packages Index (`packages.db`)
 
 Verifies:
 - `~/.cupertino/packages.db` exists
@@ -280,7 +278,15 @@ Verifies:
 
 **Warning only** - server runs without `packages.db`; the packages tool simply isn't available.
 
-### 5. Search Index (`search.db`)
+#### 3. Sample Code Index (`samples.db`)
+
+Verifies:
+- `~/.cupertino/samples.db` exists
+- Reports size, project count, indexed file count, indexed symbol count
+
+**Warning only** - server runs without `samples.db`; the sample-code search just isn't available.
+
+#### 4. Search Index (`search.db`)
 
 Verifies:
 - `~/.cupertino/search.db` exists
@@ -294,15 +300,49 @@ Shows:
 - Schema version (with `matches` / older / newer status)
 - Framework count
 
-**Critical** - schema mismatch is a hard fail. Older schema → suggests `rm <db> && cupertino save`. Newer schema → suggests `brew upgrade cupertino`. Doctor exits non-zero so CI / smoke tests fail loudly. (#192 F2)
+**Critical** - schema mismatch is a hard fail. Older schema suggests `rm <db> && cupertino save`. Newer schema suggests `brew upgrade cupertino`. Doctor exits non-zero so CI / smoke tests fail loudly. ([#192 F2](https://github.com/mihaelamj/cupertino/issues/192))
 
-### 6. Providers
+#### 5. Providers
 
 Confirms that:
 - DocsResourceProvider is available
 - SearchToolProvider is available
 
 **Always passes** - providers are built into the binary.
+
+#### 6. Schema versions per DB ([#234](https://github.com/mihaelamj/cupertino/issues/234))
+
+Reads `PRAGMA user_version` for each of the three local databases and reports the sequential schema number plus journal mode. Anything other than `journal=wal` is flagged (with a separate non-local-volume warning for DBs on NFS / SMB / AFP — SQLite WAL doesn't work over network filesystems, [#236](https://github.com/mihaelamj/cupertino/issues/236)). The WAL sidecar size is included; runaway sidecars (`> 16 MB`) hint at checkpoint starvation from a long-lived reader.
+
+### `--save` only (maintainer-facing, added by [`--save`](option%20%28--%29/save.md))
+
+#### A. Documentation Directories
+
+Checks:
+- **Apple docs**: Directory exists and contains `.md` files
+- **Swift Evolution**: Directory exists and contains proposal files
+- **HIG**, **Swift.org**, **Apple Archive**: Directory exists and contains pages
+
+Shows:
+- Path to each directory
+- Number of files / proposals / pages found
+- Suggestions if directories are missing
+
+**Warning only** - server doesn't need raw corpus on disk once `search.db` is built (a `cupertino setup` user has the DB but no source dirs, and that's fine).
+
+#### B. Swift Packages (filesystem)
+
+Checks:
+- **User selections file** (`~/.cupertino/selected-packages.json`), additively merged with the embedded priority list on every load ([#218](https://github.com/mihaelamj/cupertino/issues/218)). New seeds shipped in `PriorityPackagesEmbedded.swift` propagate into existing installs the next time any subcommand touches the catalog. User deletions don't stick: the merge is set-diff.
+- **Downloaded packages** under `~/.cupertino/packages/<owner>/<repo>/` (whole archives, not just READMEs, see `fetch --type packages` stage 2)
+- Reports orphaned READMEs (packages no longer selected)
+- Counts priority packages bundled with the binary (Apple + Ecosystem)
+
+**Warning only** - server still runs without local package archives.
+
+#### C. `cupertino save` preflight summary
+
+Same output `cupertino save` prints before its confirmation prompt: per-source presence, availability-annotation coverage, sidecar counts. Backed by `Indexer.Preflight.preflightLines(...)` ([#244](https://github.com/mihaelamj/cupertino/issues/244)). Read-only.
 
 ## Exit Codes
 

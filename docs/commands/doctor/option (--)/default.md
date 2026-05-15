@@ -19,15 +19,17 @@ cupertino doctor \
   --search-db ~/.cupertino/search.db
 ```
 
+Default output focuses on **database + MCP health**. Raw corpus directories and Swift-package selection state moved behind [`--save`](save.md) in [#68](https://github.com/mihaelamj/cupertino/issues/68) because a `cupertino setup` user has no raw corpus on disk (the bundle ships pre-built DBs); the previous `0 files` line under "Apple docs" looked like a failure and isn't.
+
 ## Default Option Values
 
 | Option | Default Value | Description |
 |--------|---------------|-------------|
-| `--docs-dir` | `~/.cupertino/docs` | Apple documentation directory |
-| `--evolution-dir` | `~/.cupertino/swift-evolution` | Swift Evolution proposals directory |
+| `--docs-dir` | `~/.cupertino/docs` | Apple documentation directory (only used when `--save` is also passed) |
+| `--evolution-dir` | `~/.cupertino/swift-evolution` | Swift Evolution proposals directory (only used when `--save` is also passed) |
 | `--search-db` | `~/.cupertino/search.db` | Search database path |
 
-## Health Check Process
+## Default Health Check Process
 
 The doctor command performs these checks using default paths:
 
@@ -41,61 +43,68 @@ The doctor command performs these checks using default paths:
 
 Always passes (verifies code is working).
 
-### 2. Documentation Directories 📚
-
-**Apple Docs Check:**
+### 2. Packages Index (`packages.db`) 📦
 ```
-✓ Apple docs: ~/.cupertino/docs (404726 files)
-```
-
-or
-
-```
-✗ Apple docs: ~/.cupertino/docs (not found)
-  → Run: cupertino fetch --type docs
-```
-
-**Swift Evolution Check:**
-```
-✓ Swift Evolution: ~/.cupertino/swift-evolution (480 proposals)
+📦 Packages Index (packages.db)
+   ✓ Database: ~/.cupertino/packages.db
+   ✓ Size: 988.9 MB
+   ✓ Indexed files: 20186
+   ℹ  Bundled version: 1.1.0
 ```
 
 or
 
 ```
-⚠  Swift Evolution: ~/.cupertino/swift-evolution (not found)
-  → Run: cupertino fetch --type evolution
+⚠  Database: ~/.cupertino/packages.db (not found)
+   → Run: cupertino setup  (downloads the pre-built packages index)
 ```
 
-### 3. Search Index 🔍
-
-**Database exists:**
+### 3. Sample Code Index (`samples.db`) 🧪
 ```
-✓ Database: ~/.cupertino/search.db
-✓ Size: 2.4 GB
-✓ Frameworks: 402
+🧪 Sample Code Index (samples.db)
+   ✓ Database: ~/.cupertino/samples.db
+   ✓ Size: 184.4 MB
+   ✓ Projects: 619
+   ✓ Indexed files: 18928
+   ✓ Indexed symbols: 108536
 ```
 
-**Database missing:**
+### 4. Search Index (`search.db`) 🔍
+```
+🔍 Search Index
+   ✓ Database: ~/.cupertino/search.db
+   ✓ Size: 2.48 GB
+   ✓ Schema version: 13 (matches installed binary)
+   ✓ Frameworks: 420
+   📚 Indexed sources:
+     ✓ apple-docs: 284518 entries
+     ✓ swift-evolution: 483 entries
+```
+
+or
+
 ```
 ✗ Database: ~/.cupertino/search.db (not found)
-  → Run: cupertino save
+   → Run: cupertino setup  (or `cupertino save` if building locally)
 ```
 
-**Database corrupted:**
+### 5. Providers 🔧
 ```
-✗ Database error: unable to open database file
-  → Run: cupertino save
-```
-
-### 4. Providers 🔧
-```
-✅ Providers
-   ✓ DocsResourceProvider: available
+🔧 Providers
+   ✓ MCP.Support.DocsResourceProvider: available
    ✓ SearchToolProvider: available
 ```
 
-Always passes (verifies providers can load).
+### 6. Schema versions (#234)
+```
+8. Schema versions (#234)
+
+   ✓ search.db: 13 (sequential), journal=wal
+   ✓ packages.db: 2 (sequential), journal=delete
+   ✓ samples.db: 3 (sequential), journal=wal
+```
+
+Anything other than `journal=wal` is flagged (the schema-version probe doubles as a WAL sanity check per [#236](https://github.com/mihaelamj/cupertino/issues/236)).
 
 ## Exit Codes
 
@@ -115,24 +124,21 @@ One or more checks failed.
 
 ## Common Usage Patterns
 
-### Quick Health Check (All Defaults)
+### Quick Health Check (default)
 ```bash
 cupertino doctor
 ```
 
-### Check Custom Directories
+### Include maintenance sections (corpus, packages selection, save preflight)
 ```bash
-cupertino doctor \
-  --docs-dir ./my-docs \
-  --search-db ./my-search.db
+cupertino doctor --save
 ```
 
-### Check Specific Installation
+See [`--save`](save.md) for the full additive surface.
+
+### Check Custom Search DB
 ```bash
-cupertino doctor \
-  --docs-dir /opt/apple-docs \
-  --evolution-dir /opt/swift-evolution \
-  --search-db /opt/search.db
+cupertino doctor --search-db /opt/search.db
 ```
 
 ## Typical Output
@@ -146,49 +152,49 @@ cupertino doctor \
    ✓ Transport: stdio
    ✓ Protocol version: 2025-11-25
 
-📂 Raw corpus directories (input for `cupertino save`)
-   ✓ Apple docs: ~/.cupertino/docs (404726 files)
-   ✓ Swift Evolution: ~/.cupertino/swift-evolution (480 proposals)
-   ✓ Swift.org: ~/.cupertino/swift-org (202 pages)
-   ✓ HIG: ~/.cupertino/hig (173 pages)
-   ✓ Apple Archive: ~/.cupertino/archive (406 guides)
-
-📦 Swift Packages
-   ✓ User selections: ~/.cupertino/selected-packages.json
-     135 packages selected
-   ✓ Downloaded READMEs: 448 packages
-   ℹ  Priority packages: 135 total (Apple: 43, Ecosystem: 92)
-
 📦 Packages Index (packages.db)
-   ✓ Database: ~/.cupertino/packages.db (~940 MB)
-   ✓ Schema version: 2 (matches binary)
+   ✓ Database: ~/.cupertino/packages.db
+   ✓ Size: 988.9 MB
    ✓ Indexed files: 20186
-   ✓ Bundled version: 1.0.2
+   ℹ  Bundled version: 1.1.0
 
 🧪 Sample Code Index (samples.db)
-   ✓ Database: ~/.cupertino/samples.db (~180 MB)
+   ✓ Database: ~/.cupertino/samples.db
+   ✓ Size: 184.4 MB
    ✓ Projects: 619
    ✓ Indexed files: 18928
    ✓ Indexed symbols: 108536
 
 🔍 Search Index
    ✓ Database: ~/.cupertino/search.db
-   ✓ Size: 2.4 GB
-   ✓ Schema version: 13 (matches binary)
-   ✓ Frameworks: 402
+   ✓ Size: 2.48 GB
+   ✓ Schema version: 13 (matches installed binary)
+   ✓ Frameworks: 420
    📚 Indexed sources:
-     ✓ apple-docs: 277640 entries
+     ✓ apple-docs: 284518 entries
+     ✓ swift-evolution: 483 entries
+     ✓ apple-archive: 368 entries
+     ✓ hig: 173 entries
+     ✓ swift-org: 115 entries
+     ✓ swift-book: 78 entries
 
 🔧 Providers
-   ✓ DocsResourceProvider: available
+   ✓ MCP.Support.DocsResourceProvider: available
    ✓ SearchToolProvider: available
+
+
+8. Schema versions (#234)
+
+   ✓ search.db: 13 (sequential), journal=wal
+   ✓ packages.db: 2 (sequential), journal=delete
+   ✓ samples.db: 3 (sequential), journal=wal
 
 ✅ All checks passed - MCP server ready
 ```
 
-(Output snapshots the v1.0.2 corpus; sizes / counts vary with your local DB.)
+(Output snapshots a v1.1.0 install; sizes / counts vary with your local DB. To also see corpus / packages / save-preflight state, run `cupertino doctor --save`.)
 
-### Fresh Installation
+### Fresh Installation (no databases yet)
 ```
 🏥 MCP Server Health Check
 
@@ -197,18 +203,20 @@ cupertino doctor \
    ✓ Transport: stdio
    ✓ Protocol version: 2025-11-25
 
-📚 Documentation Directories
-   ✗ Apple docs: ~/.cupertino/docs (not found)
-     → Run: cupertino fetch --type docs
-   ⚠  Swift Evolution: ~/.cupertino/swift-evolution (not found)
-     → Run: cupertino fetch --type evolution
+📦 Packages Index (packages.db)
+   ⚠  Database: ~/.cupertino/packages.db (not found)
+     → Run: cupertino setup  (downloads the pre-built packages index)
+
+🧪 Sample Code Index (samples.db)
+   ⚠  Database: ~/.cupertino/samples.db (not found)
+     → Run: cupertino fetch --type samples && cupertino cleanup && cupertino save --samples
 
 🔍 Search Index
    ✗ Database: ~/.cupertino/search.db (not found)
-     → Run: cupertino save
+     → Run: cupertino setup  (or `cupertino save` if building locally)
 
 🔧 Providers
-   ✓ DocsResourceProvider: available
+   ✓ MCP.Support.DocsResourceProvider: available
    ✓ SearchToolProvider: available
 
 ⚠️  Some checks failed - see above for details
@@ -221,11 +229,9 @@ cupertino doctor \
    cupertino doctor
    ```
 
-2. **Follow remediation steps:**
+2. **If databases are missing, run setup (downloads the pre-built bundle):**
    ```bash
-   cupertino fetch --type docs
-   cupertino fetch --type evolution
-   cupertino save
+   cupertino setup
    ```
 
 3. **Verify setup:**
@@ -238,12 +244,14 @@ cupertino doctor \
    cupertino serve
    ```
 
+For maintainers rebuilding locally, see [`--save`](save.md) and the `cupertino fetch` + `cupertino save` flow.
+
 ## Notes
 
-- Defaults match `cupertino fetch`, `cupertino save`, and `cupertino serve`
-- All paths support tilde (`~`) expansion
-- Use before starting server to verify setup
-- Exit code suitable for CI/CD pipelines
-- Provides actionable remediation commands
-- Evolution directory is optional (shows warning, not error)
-- Use `--help` to see all options
+- Default focus is the runtime surface: MCP server health + the three databases. Corpus + package-selection state is opt-in via [`--save`](save.md).
+- Defaults match `cupertino fetch`, `cupertino save`, and `cupertino serve`.
+- All paths support tilde (`~`) expansion.
+- Use before starting server to verify setup.
+- Exit code suitable for CI/CD pipelines.
+- Provides actionable remediation commands.
+- Use `--help` to see all options.
