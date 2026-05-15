@@ -1,20 +1,20 @@
 import Foundation
+@_exported import DistributionModels
 
-// MARK: - Distribution module namespace (#246)
-
-/// Distribution houses the download / extract / version-tracking pipeline
-/// that powers `cupertino setup`. Lifted out of CLI in #246 so the logic
-/// can be reused by future MCP tools, automated installers, or test
-/// harnesses without depending on `ArgumentParser`.
-///
-/// Top-level types:
-/// - `Distribution.SetupService` — orchestrator (download + extract + version)
-/// - `Distribution.ArtifactDownloader` — URLSession download with progress callback
-/// - `Distribution.ArtifactExtractor` — `unzip` wrapper with progress callback
-/// - `Distribution.InstalledVersion` — version-stamp file read/write + classification
-/// - `Distribution.SetupError` — typed errors emitted by the pipeline
-///
-/// UI concerns (spinners, progress bars, prompts) stay in the calling
-/// layer (`CLI.SetupCommand`). The service emits progress events; the
-/// caller renders them.
-public enum Distribution {}
+// MARK: - Distribution module — concrete `cupertino setup` orchestrator
+//
+// The `Distribution` namespace anchor lives in the foundation-only
+// `DistributionModels` seam target (Pattern A, matching `Search` /
+// `SearchModels` and `Indexer` / `IndexerModels`). This producer
+// target extends the seam-defined enums with concrete behaviour:
+//
+// - `Distribution.SetupService.run(...)` — orchestrator static func
+// - `Distribution.ArtifactDownloader.download(...)` — URLSession download
+// - `Distribution.ArtifactExtractor.extract(...)` — ZIP extraction
+// - `Distribution.InstalledVersion.read / .write / .classify` — stamp helpers
+//
+// `@_exported import DistributionModels` makes the seam-target value
+// types and Observer protocols reachable through `import Distribution`
+// so existing callers that only need `import Distribution` keep
+// compiling. The CLI binary's composition root explicitly imports
+// both to make the seam dependency visible at the call site.

@@ -118,6 +118,7 @@ MODELS_TARGETS=(
     SampleIndexModels
     ServicesModels
     IndexerModels
+    DistributionModels
 )
 
 # Producers that have been audited + opt into the strict rule.
@@ -151,6 +152,13 @@ STRICT_PRODUCERS=(
     # three `*Service.EventObserving` protocols. Pattern A namespace
     # anchor (lives in this seam, producer extends it).
     IndexerModels
+
+    # Closures-to-Observer epic: foundation-only seam target for
+    # `Distribution.*` Request / Outcome / Event / Progress value types
+    # + `SetupService.EventObserving` / `ArtifactDownloader.ProgressObserving`
+    # / `ArtifactExtractor.TickObserving` protocols. Pattern A
+    # namespace anchor.
+    DistributionModels
 
     # Phase 3 (#536): producer / feature targets.
     Availability

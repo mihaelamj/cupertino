@@ -60,6 +60,7 @@ Validated against five independent references (see `mihaela-agents/Rules/swift/p
 | `SampleIndexModels` | Foundation, SharedConstants | ✅ Foundation, SharedConstants |
 | `ServicesModels` | Foundation, SearchModels, SampleIndexModels, SharedConstants | ✅ Foundation, SampleIndexModels, SearchModels, SharedConstants |
 | `IndexerModels` | Foundation | ✅ Foundation (closures-to-Observer epic seam: owns `Indexer.*Service.Request`/`Outcome`/`Event` value types + the three `*Service.EventObserving` Observer protocols) |
+| `DistributionModels` | Foundation, SharedConstants | ✅ Foundation, SharedConstants (closures-to-Observer epic seam: owns `Distribution.SetupService.Request`/`Outcome`/`Event` + `ArtifactDownloader.Progress` + `InstalledVersion.Status` + `SetupError` value types + `SetupService.EventObserving` / `ArtifactDownloader.ProgressObserving` / `ArtifactExtractor.TickObserving` protocols) |
 
 ### Infrastructure tier (wraps a system API; foundation-tier deps)
 
@@ -80,7 +81,7 @@ Validated against five independent references (see `mihaela-agents/Rules/swift/p
 | `CorePackageIndexing` | Foundation, ASTIndexer, CorePackageIndexingModels, CoreProtocols, LoggingModels, Resources, SharedConstants | ✅ (post-#536 2a: now owns the moved GitHubCanonicalizer + ExclusionList) |
 | `CoreSampleCode` | Foundation, AppKit, WebKit, LoggingModels, SharedConstants | ✅ AppKit, Foundation, LoggingModels, SharedConstants, WebKit |
 | `Crawler` | Foundation, os, WebKit, CoreProtocols, CrawlerModels, LoggingModels, Resources, SharedConstants | ✅ CoreProtocols, CrawlerModels, Foundation, LoggingModels, Resources, SharedConstants, WebKit, os |
-| `Distribution` | Foundation, SharedConstants | ✅ Foundation, SharedConstants |
+| `Distribution` | Foundation, DistributionModels, SharedConstants | ✅ Foundation, DistributionModels, SharedConstants (closures-to-Observer epic: `@_exported import DistributionModels` so existing callers reading `Distribution.SetupService.Request` via `import Distribution` still resolve) |
 | `Indexer` | Foundation, IndexerModels, SampleIndexModels, SearchModels, SharedConstants | ✅ Foundation, IndexerModels, SampleIndexModels, SearchModels, SharedConstants (closures-to-Observer epic: `@_exported import IndexerModels` so consumers reading `Indexer.*Service.Request`/`Outcome`/`Event` via `import Indexer` still resolve) |
 | `Ingest` | Foundation, LoggingModels, SharedConstants | ✅ Foundation, LoggingModels, SharedConstants |
 | `MCPSupport` | Foundation, LoggingModels, MCPCore, MCPSharedTools, SharedConstants | ✅ Foundation, LoggingModels, MCPCore, MCPSharedTools, SharedConstants |

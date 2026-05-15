@@ -24,6 +24,18 @@ extension CLIImpl.Command {
         @Flag(name: .long, help: "Skip the download and keep whatever databases are already installed")
         var keepExisting: Bool = false
 
+        /// Closure-free observer that forwards every
+        /// `Distribution.SetupService.Event` to the `SetupRenderer`'s
+        /// `handle(_:)` dispatcher. Replaces the previous trailing-closure
+        /// pattern at the `Distribution.SetupService.run` call site.
+        private struct SetupEventObserver: Distribution.SetupService.EventObserving {
+            let renderer: SetupRenderer
+
+            func observe(event: Distribution.SetupService.Event) {
+                renderer.handle(event)
+            }
+        }
+
         mutating func run() async throws {
             Cupertino.Context.composition.logging.recording.info("📦 Cupertino Setup\n")
 
@@ -40,9 +52,10 @@ extension CLIImpl.Command {
             )
 
             do {
-                let outcome = try await Distribution.SetupService.run(request) { event in
-                    renderer.handle(event)
-                }
+                let outcome = try await Distribution.SetupService.run(
+                    request,
+                    events: SetupEventObserver(renderer: renderer)
+                )
                 renderer.printFinalSummary(outcome: outcome)
             } catch {
                 Cupertino.Context.composition.logging.recording.error("❌ Setup failed: \(error)")
