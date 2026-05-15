@@ -229,14 +229,14 @@ extension CLIImpl.Command {
         private func runUnifiedSearch() async throws {
             let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else {
-                Logging.LiveRecording().error("❌ Query cannot be empty.")
+                Cupertino.Context.composition.logging.recording.error("❌ Query cannot be empty.")
                 throw ExitCode.failure
             }
 
             let availabilityFilter = try resolveAvailabilityFilter()
             let plan = await buildFetchers(availabilityFilter: availabilityFilter)
             guard !plan.fetchers.isEmpty else {
-                Logging.LiveRecording().error(
+                Cupertino.Context.composition.logging.recording.error(
                     "❌ No data sources available. Run `cupertino setup` to populate them."
                 )
                 throw ExitCode.failure
