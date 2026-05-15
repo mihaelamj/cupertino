@@ -530,6 +530,35 @@ extension Search.Index {
                             }
                         }
                         boost *= Self.frameworkAuthority[framework.lowercased()] ?? 1.0
+
+                        // HEURISTIC 1.6 (#610 Class A): kind-aware tiebreak.
+                        //
+                        // After PR #614 the corpus has reliable
+                        // {class, struct, enum, protocol, typealias, actor}
+                        // tagging for canonical Apple type pages. When two
+                        // exact-title rows tie (e.g. `Task` matches both
+                        // `swift/task` kind=class and `urlsession/task`
+                        // kind=property), strongly prefer the type-shape
+                        // page over the property/method/initializer page.
+                        //
+                        // Empirically closes 9 of main's 14 #610 wrong-winner
+                        // audit cases on the v1.1.0 shipped bundle: Task,
+                        // View, String (post-#614), Array (post-#614),
+                        // Hashable, Equatable, Codable (post-#614),
+                        // Identifiable, Sendable.
+                        //
+                        // The remaining 5 (URL, Color, Font, List, Data)
+                        // are Class B — their canonical row was overwritten
+                        // by a collision casualty pre-#589 and the corpus
+                        // row at the URI is now a different page entirely
+                        // (URLRequest.url, BlendMode.color, …). Class B
+                        // recovers on next re-index via #589's lossless
+                        // URI helper, not via ranking.
+                        if Self.canonicalTypeKinds.contains(kind) {
+                            boost *= 0.3 // ~3.3x: canonical type wins decisively
+                        } else if Self.propertyMethodKinds.contains(kind) {
+                            boost *= 1.5 // ~1.5x penalty: de-rank property/method pages
+                        }
                     }
                 }
                 // First word exact match (very strong signal)
@@ -903,11 +932,20 @@ extension Search.Index {
         // v1.0 corpus. Title and summary come from `json_data` via
         // `json_extract`; `abstract` is the structured-page summary in
         // the canonical Apple JSON output.
+        // #610 Class A — `summary` falls back through abstract →
+        // rawMarkdown (truncated to 500 chars) so a row carrying only
+        // the post-#608 synthesised wrapper (no `abstract` key) still
+        // returns a non-empty chunk. Pre-fix, `$.abstract` alone was
+        // the source and returned NULL for the synthesised-wrapper case.
         let sql = """
         SELECT
             m.uri, m.source, m.framework,
             json_extract(m.json_data, '$.title') AS title,
-            json_extract(m.json_data, '$.abstract') AS summary,
+            COALESCE(
+                json_extract(m.json_data, '$.abstract'),
+                substr(IFNULL(json_extract(m.json_data, '$.rawMarkdown'), ''), 1, 500),
+                ''
+            ) AS summary,
             m.file_path, m.word_count,
             m.min_ios, m.min_macos, m.min_tvos, m.min_watchos, m.min_visionos
         FROM docs_metadata m
@@ -917,7 +955,17 @@ extension Search.Index {
 
         var hits: [Search.Result] = []
         for framework in Self.canonicalTypePageFrameworks {
-            let candidateURI = "apple-docs://\(framework)/documentation_\(framework)_\(queryLower)"
+            // #610 Class A — URI shape updated from the pre-#283 form
+            // `apple-docs://<framework>/documentation_<framework>_<query>`
+            // to the lossless post-#283/#589 form
+            // `apple-docs://<framework>/<query>`. The shipped v1.1.0
+            // corpus has 284,515 of 284,518 apple-docs rows on the new
+            // shape; the old shape was effectively dead code that
+            // returned zero hits, so the safety net never fired even
+            // when the canonical page existed in the candidate set
+            // tail (Foundation `Identifiable` lands past BM25's
+            // fetchLimit and stayed buried as a result).
+            let candidateURI = "apple-docs://\(framework)/\(queryLower)"
 
             var statement: OpaquePointer?
             guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
@@ -989,11 +1037,20 @@ extension Search.Index {
         // costs ~5 s per call on the v1.0 corpus. Title and summary come
         // from `json_data` via `json_extract`; `abstract` is the
         // structured-page summary in the canonical Apple JSON output.
+        // #610 Class A — `summary` falls back through abstract →
+        // rawMarkdown (truncated to 500 chars) so a row carrying only
+        // the post-#608 synthesised wrapper (no `abstract` key) still
+        // returns a non-empty chunk. Pre-fix, `$.abstract` alone was
+        // the source and returned NULL for the synthesised-wrapper case.
         let sql = """
         SELECT
             m.uri, m.source, m.framework,
             json_extract(m.json_data, '$.title') AS title,
-            json_extract(m.json_data, '$.abstract') AS summary,
+            COALESCE(
+                json_extract(m.json_data, '$.abstract'),
+                substr(IFNULL(json_extract(m.json_data, '$.rawMarkdown'), ''), 1, 500),
+                ''
+            ) AS summary,
             m.file_path, m.word_count,
             m.min_ios, m.min_macos, m.min_tvos, m.min_watchos, m.min_visionos
         FROM docs_metadata m
