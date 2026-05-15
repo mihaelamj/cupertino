@@ -215,31 +215,40 @@ extension Search {
                     continue
                 }
 
-                // #293 fix: use `URLUtilities.filename(from:)` instead of
-                // `.lastPathComponent`. The lastPathComponent path stripped
-                // every middle URL segment from Apple's URLs, so symbols
-                // sharing a leaf name across different parent types
-                // (`accelerate/sparsepreconditioner_t/init(rawvalue:)`
-                // vs `accelerate/quadrature_integrator/init(rawvalue:)`)
-                // both collapsed to `apple-docs://accelerate/init(rawvalue:)`
-                // and clobbered each other in the index. The sibling URI
-                // construction at line ~322 of this same file already used
-                // `filename(from:)` correctly; the inconsistency is the
-                // bug surface. Switching both paths to `filename(from:)`
-                // (which encodes the full URL path + an 8-byte SHA-256
-                // disambiguator suffix when special chars are present)
-                // restores per-symbol uniqueness.
+                // #587 / BUG 1 fix: use `URLUtilities.appleDocsURI(from:)`
+                // — the lossless path-mirror URI shape. The previous
+                // `URLUtilities.filename(from:)` shape sanitized special
+                // chars + added an 8-byte SHA-256 disambiguator suffix +
+                // capped at 240 bytes; the resulting URIs were opaque,
+                // non-reversible, and (at 32-bit hash width) had a
+                // measurable collision floor in the 285K-doc corpus.
+                // The lossless shape encodes the URL path verbatim:
+                // `apple-docs://<framework>/<rest-of-path-after-framework>`,
+                // lowercased + sub-page underscores→dashes per the
+                // existing #283 / #285 canonicalisation. Two different
+                // Apple URLs always produce two different URIs, so the
+                // INSERT-OR-REPLACE-wrong-winner bug main flagged in
+                // #587 BUG 1 cannot happen at the URI layer.
                 //
-                // Side-effect: existing shipped bundles still carry the
-                // old URIs (one-shot lossy write). A future `cupertino save`
-                // produces correct URIs; the v1.2.0 bundle re-publish
-                // (#290) is where end users pick this up.
-                let filename = Shared.Models.URLUtilities.normalize(structuredPage.url)
-                    .map { Shared.Models.URLUtilities.filename(from: $0) }
-                    ?? Search.StrategyHelpers.canonicalPathComponent(
+                // Side-effect: requires a one-time bundle re-index. The
+                // v1.2.0 bundle re-publish (#290) is where end users
+                // pick up the new URI scheme.
+                let uri: String
+                if let losslessURI = Shared.Models.URLUtilities.appleDocsURI(from: structuredPage.url) {
+                    uri = losslessURI
+                } else {
+                    // Fallback when the structured page's URL isn't a
+                    // recognisable Apple Developer doc URL — extremely
+                    // rare (every page in `Search.AppleDocsStrategy` is
+                    // crawled from developer.apple.com), but the
+                    // pre-#587 indexer had a fallback for the same
+                    // shape so we preserve it: synthesise a URI from
+                    // the framework + on-disk filename basename.
+                    let basename = Search.StrategyHelpers.canonicalPathComponent(
                         file.deletingPathExtension().lastPathComponent
                     )
-                let uri = "apple-docs://\(framework)/\(filename)"
+                    uri = "apple-docs://\(framework)/\(basename)"
+                }
 
                 do {
                     try await index.indexStructuredDocument(
@@ -339,8 +348,23 @@ extension Search {
 
                 let title = Search.StrategyHelpers.extractTitle(from: content)
                     ?? Shared.Models.URLUtilities.filename(from: parsedURL)
-                let uri = "apple-docs://\(pageMetadata.framework)/" +
-                    "\(Shared.Models.URLUtilities.filename(from: parsedURL))"
+                // #587 / BUG 1 fix: lossless URI shape, same as the
+                // structured-page branch above. `appleDocsURI(from:)`
+                // returns the canonical
+                // `apple-docs://<framework>/<rest-of-path>` URI; on the
+                // off chance the URL doesn't parse as an Apple Developer
+                // doc URL we synthesise a URI from framework +
+                // `filename(from:)` to preserve the pre-#587 fallback
+                // shape (this branch handles the metadata-driven
+                // incremental-build path, where URLs are read straight
+                // from crawl metadata and should already be well-formed).
+                let uri: String
+                if let losslessURI = Shared.Models.URLUtilities.appleDocsURI(from: parsedURL) {
+                    uri = losslessURI
+                } else {
+                    let fallbackFilename = Shared.Models.URLUtilities.filename(from: parsedURL)
+                    uri = "apple-docs://\(pageMetadata.framework)/\(fallbackFilename)"
+                }
 
                 do {
                     try await index.indexDocument(Search.Index.IndexDocumentParams(

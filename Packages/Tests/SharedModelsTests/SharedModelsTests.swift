@@ -65,6 +65,77 @@ struct SharedModelsPublicSurfaceTests {
         #expect(normalized?.path == "/documentation/swiftui/some-method")
     }
 
+    // MARK: - appleDocsURI (lossless path-mirror URI shape)
+
+    @Test("appleDocsURI: simple framework sub-page")
+    func appleDocsURISimpleSubpage() throws {
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/view"))
+        #expect(Shared.Models.URLUtilities.appleDocsURI(from: url) == "apple-docs://swiftui/view")
+    }
+
+    @Test("appleDocsURI: deeply nested path is preserved verbatim")
+    func appleDocsURIDeepPath() throws {
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/toolbarrole/navigationstack"))
+        #expect(Shared.Models.URLUtilities.appleDocsURI(from: url) == "apple-docs://swiftui/toolbarrole/navigationstack")
+    }
+
+    @Test("appleDocsURI: mixed-case URL is lowercased per #283 canonicalisation")
+    func appleDocsURICaseFolding() throws {
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/SwiftUI/View"))
+        #expect(Shared.Models.URLUtilities.appleDocsURI(from: url) == "apple-docs://swiftui/view")
+    }
+
+    @Test("appleDocsURI: special characters in symbol slug preserved (#293 — no sanitisation, no hash)")
+    func appleDocsURISpecialChars() throws {
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/accelerate/sparsepreconditioner_t/init(rawvalue:)"))
+        // sparsepreconditioner_t is at depth ≥ 3 so #285 underscore→dash applies; init(rawvalue:) is the leaf.
+        #expect(Shared.Models.URLUtilities.appleDocsURI(from: url) == "apple-docs://accelerate/sparsepreconditioner-t/init(rawvalue:)")
+    }
+
+    @Test("appleDocsURI: framework root URL with no sub-path returns just framework")
+    func appleDocsURIFrameworkRoot() throws {
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/swiftui"))
+        #expect(Shared.Models.URLUtilities.appleDocsURI(from: url) == "apple-docs://swiftui")
+    }
+
+    @Test("appleDocsURI: non-Apple-developer host returns nil")
+    func appleDocsURIRejectsForeignHost() throws {
+        let url = try #require(URL(string: "https://example.com/documentation/swiftui/view"))
+        #expect(Shared.Models.URLUtilities.appleDocsURI(from: url) == nil)
+    }
+
+    @Test("appleDocsURI: URL without /documentation/ segment returns nil")
+    func appleDocsURIRejectsNonDocURL() throws {
+        let url = try #require(URL(string: "https://developer.apple.com/news/2026"))
+        #expect(Shared.Models.URLUtilities.appleDocsURI(from: url) == nil)
+    }
+
+    @Test("appleDocsURI: query and fragment stripped per normalize")
+    func appleDocsURIStripsFragmentAndQuery() throws {
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/view?language=swift#discussion"))
+        #expect(Shared.Models.URLUtilities.appleDocsURI(from: url) == "apple-docs://swiftui/view")
+    }
+
+    @Test("appleDocsURI: two sibling URLs sharing leaf name produce distinct lossless URIs — BUG 1 (cross-type collision) fixed at the URI layer")
+    func appleDocsURISiblingsHaveDistinctURIs() throws {
+        // BUG 1 from main's real-life test report: pre-fix both URLs
+        // collapsed to `apple-docs://swiftui/navigationstack`. Post-fix
+        // each has its own URI carrying the full parent path.
+        let viewStruct = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/NavigationStack"))
+        let property = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/ToolbarRole/navigationStack"))
+        let a = Shared.Models.URLUtilities.appleDocsURI(from: viewStruct)
+        let b = Shared.Models.URLUtilities.appleDocsURI(from: property)
+        #expect(a == "apple-docs://swiftui/navigationstack")
+        #expect(b == "apple-docs://swiftui/toolbarrole/navigationstack")
+        #expect(a != b)
+    }
+
+    @Test("appleDocsURI: convenience string overload parses + forwards")
+    func appleDocsURIStringOverload() {
+        #expect(Shared.Models.URLUtilities.appleDocsURI(fromString: "https://developer.apple.com/documentation/swiftui/view") == "apple-docs://swiftui/view")
+        #expect(Shared.Models.URLUtilities.appleDocsURI(fromString: "not a url") == nil)
+    }
+
     @Test("URLUtilities.filename — siblings with same leaf name under different parents produce distinct filenames (#293)")
     func urlUtilitiesFilenameDistinguishesParents() throws {
         // The bug fixed in #293: when two Apple symbols share a leaf

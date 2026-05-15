@@ -47,6 +47,98 @@ extension Shared.Models {
                 .joined(separator: "/")
         }
 
+        /// Convert an Apple Developer Documentation URL into the canonical
+        /// `apple-docs://` URI the search index stores. The URI is a
+        /// **lossless mirror** of the URL's path under `/documentation/`:
+        /// the framework name, then every remaining path segment joined
+        /// by `/`. Lowercased + fragment / query stripped + sub-page
+        /// underscores → dashes per the existing `normalize(_:)`
+        /// canonicalisation (#283, #285). No hashing, no truncation, no
+        /// special-char sanitisation.
+        ///
+        /// Returns `nil` for any URL that isn't a recognisable Apple
+        /// Developer documentation URL: different host, no
+        /// `/documentation/` segment, missing framework segment.
+        ///
+        /// ## Examples
+        ///
+        ///     /documentation/swiftui/view
+        ///       → apple-docs://swiftui/view
+        ///
+        ///     /documentation/swiftui/toolbarrole/navigationstack
+        ///       → apple-docs://swiftui/toolbarrole/navigationstack
+        ///
+        ///     /documentation/accelerate/sparsepreconditioner_t/init(rawvalue:)
+        ///       → apple-docs://accelerate/sparsepreconditioner-t/init(rawvalue:)
+        ///
+        ///     /documentation/swiftui  (framework root)
+        ///       → apple-docs://swiftui
+        ///
+        /// ## Why lossless
+        ///
+        /// Two different Apple URLs always produce two different URIs
+        /// because the URI literally encodes the URL path. The
+        /// pre-#293 `.lastPathComponent` shape collapsed siblings
+        /// sharing a leaf name (e.g. `swiftui/NavigationStack` and
+        /// `swiftui/ToolbarRole/navigationStack` both → `apple-docs://swiftui/navigationstack`)
+        /// and the `INSERT OR REPLACE` dedup picked one winner, losing
+        /// the other from the index entirely. The post-#293
+        /// `filename(from:)` shape avoided most collisions by adding
+        /// an 8-byte SHA-256 disambiguator suffix, but at the cost of
+        /// opaque URIs and a probabilistic collision floor
+        /// (~9 expected pairwise collisions in a 285K-doc corpus at
+        /// 32-bit hash width). The lossless path-mirror shape removes
+        /// the collision class at the URI layer — no probabilistic
+        /// disambiguator, no truncation cap, no reverse mapping
+        /// needed.
+        ///
+        /// ## URI ↔ URL is reversible
+        ///
+        /// A URI consumer that wants the source URL back can do
+        /// `uri.replacingOccurrences(of: \"apple-docs://\", with: \"https://developer.apple.com/documentation/\")`.
+        /// No index lookup required.
+        ///
+        /// ## Where it's used
+        ///
+        /// - Indexer (`Search.Strategies.AppleDocs.swift`) — URI stored
+        ///   in `docs_metadata.uri` for every indexed page.
+        /// - `MCP.Support.DocsResourceProvider.listResources` — URI
+        ///   returned in MCP `resources/list` entries.
+        /// - `Services.ReadService` (CLI `cupertino read`) — entry-
+        ///   point normalisation accepts web URLs.
+        /// - `CompositeToolProvider.handleReadDocument` (MCP tool) —
+        ///   same entry-point normalisation.
+        public static func appleDocsURI(from url: URL) -> String? {
+            // Host check, if present. Bare URL strings handed in by
+            // crawl metadata may have already been stripped down to
+            // path-only — that's fine; we still try to interpret the
+            // path. We just reject explicitly-non-Apple hosts.
+            if let host = url.host, host != Shared.Constants.HostDomain.appleDeveloper {
+                return nil
+            }
+            guard let canonical = normalize(url) else { return nil }
+            let parts = canonical.pathComponents
+            guard let docIdx = parts.firstIndex(of: "documentation"),
+                  docIdx + 1 < parts.count
+            else { return nil }
+            let framework = parts[docIdx + 1]
+            if docIdx + 2 >= parts.count {
+                // Framework root URL — no path beyond the framework.
+                return "\(Shared.Constants.Search.appleDocsScheme)\(framework)"
+            }
+            let rest = parts[(docIdx + 2)...].joined(separator: "/")
+            return "\(Shared.Constants.Search.appleDocsScheme)\(framework)/\(rest)"
+        }
+
+        /// Convenience overload: parse a string-form URL and forward to
+        /// `appleDocsURI(from:)`. Returns nil if the string doesn't
+        /// parse as a URL or doesn't pass `appleDocsURI(from:)`'s URL
+        /// shape check.
+        public static func appleDocsURI(fromString string: String) -> String? {
+            guard let url = URL(string: string) else { return nil }
+            return appleDocsURI(from: url)
+        }
+
         /// Extract framework name from documentation URL (Apple or Swift.org)
         public static func extractFramework(from url: URL) -> String {
             let pathComponents = url.pathComponents

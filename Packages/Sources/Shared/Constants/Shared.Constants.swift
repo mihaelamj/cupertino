@@ -1079,6 +1079,12 @@ extension Shared.Constants {
 
         /// Apple.com domain identifier
         public static let appleCom = "apple.com"
+
+        /// Apple Developer Documentation host. Used by
+        /// `URLUtilities.appleDocsURI(fromWebURL:)` to gate the web-URL →
+        /// `apple-docs://...` URI conversion #587 plumbs into the CLI
+        /// `read` command and the MCP `read_document` tool.
+        public static let appleDeveloper = "developer.apple.com"
     }
 
     // MARK: - Path Components

@@ -118,8 +118,14 @@ extension MCP.Support {
                     guard isFrameworkRootPage(url: parsedURL, framework: pageMetadata.framework) else {
                         continue
                     }
-                    let uri = "\(Shared.Constants.Search.appleDocsScheme)\(pageMetadata.framework)/"
-                        + "\(Shared.Models.URLUtilities.filename(from: parsedURL))"
+                    // #587 / BUG 1 fix: use the lossless `appleDocsURI(from:)`
+                    // helper. The resources/list URI MUST match the
+                    // indexer-stored URI in `docs_metadata` so that
+                    // `resources/read` and `read_document` lookups
+                    // resolve. Both surfaces now route through the same
+                    // helper.
+                    let uri = Shared.Models.URLUtilities.appleDocsURI(from: parsedURL)
+                        ?? "\(Shared.Constants.Search.appleDocsScheme)\(pageMetadata.framework)/\(Shared.Models.URLUtilities.filename(from: parsedURL))"
                     let resource = MCP.Core.Protocols.Resource(
                         uri: uri,
                         name: extractTitle(from: url),
