@@ -542,31 +542,63 @@ extension Search {
         /// Return `true` when `title` is a placeholder shed by Apple's web app
         /// in lieu of the real document title.
         ///
-        /// Two patterns are caught:
+        /// Three patterns are caught:
         ///
-        /// 1. Bare `"Error"` (case-insensitive, leading/trailing whitespace
-        ///    tolerated). Apple's JS app renders this when its data fetch
-        ///    fails after the page chrome has already been painted; the
-        ///    URL still resolves and the crawler captures the page, but
-        ///    the title field is the literal string "Error" with no other
-        ///    body content of substance.
-        /// 2. Bare `"Apple Developer Documentation"` (case-insensitive).
-        ///    The site-wide HTML `<title>` element when the page-specific
-        ///    title hasn't loaded yet.
+        /// 1. Empty / whitespace-only title.
+        /// 2. Bare `"Apple Developer Documentation"` (case-insensitive) —
+        ///    the site-wide HTML `<title>` element when the page-specific
+        ///    title hasn't loaded yet. No real Apple symbol is named that.
+        /// 3. Bare `"Error"` (case-insensitive, whitespace-tolerant), but
+        ///    **only when the URL's last path component is not itself
+        ///    named `error`**. This is the disambiguation `cupertino save
+        ///    --dry-run` against the canonical corpus revealed: Apple
+        ///    legitimately ships enum cases / properties named `error`
+        ///    (e.g. `StoreKit/ProductIconPhase/error`,
+        ///    `SKPaymentTransaction/error`, `SKDownload/error`) with the
+        ///    page title `"Error"`. Those are real symbols, not poison.
+        ///    The poison case is title `"Error"` at a URL whose leaf is
+        ///    something unrelated (e.g.
+        ///    `PDFKit/PDFViewDelegate/pdfViewParentViewController()`)
+        ///    because Apple's JS app failed mid-render and emitted the
+        ///    string `"Error"` as the title.
         ///
-        /// The audit at issue #588 found these two patterns hiding behind
+        /// When `url` is `nil` the caller has no context, so the gate
+        /// **passes** `"Error"` through (does not reject) — the door
+        /// equivalence check downstream will still flag it as tier C
+        /// if it conflicts with another page at the same URI, but we
+        /// won't drop a potentially legitimate symbol blind.
+        ///
+        /// The audit at issue #588 found these patterns hiding behind
         /// the existing #284 filters: `titleLooksLikeHTTPErrorTemplate`
         /// matches HTTP status names, not the bare "Error" string, and
         /// `pageLooksLikeJavaScriptFallback` checks the body but not the
-        /// title. This helper closes the gap.
+        /// title.
         ///
-        /// - Parameter title: The page title to inspect.
+        /// - Parameters:
+        ///   - title: The page title to inspect.
+        ///   - url: The page's source URL. Pass the actual URL whenever
+        ///     possible so a real `error` enum case isn't mis-classified
+        ///     as a placeholder. Defaults to `nil` for callers (and tests)
+        ///     that don't have it.
         /// - Returns: `true` if the title is a placeholder; indexer should skip.
-        public static func titleLooksLikePlaceholderError(_ title: String) -> Bool {
+        public static func titleLooksLikePlaceholderError(_ title: String, url: URL? = nil) -> Bool {
             let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             if trimmed.isEmpty { return true }
-            if trimmed == "error" { return true }
             if trimmed == "apple developer documentation" { return true }
+            if trimmed == "error" {
+                guard let url else {
+                    // No URL context — be conservative, don't reject
+                    // (downstream tier-C check still surfaces conflicts).
+                    return false
+                }
+                // Apple's slug for an enum case named `error` is literally
+                // "error" (or "error()" for parameterless method-like
+                // shapes). Strip trailing parens before comparing.
+                let leaf = url.lastPathComponent
+                    .lowercased()
+                    .replacingOccurrences(of: "()", with: "")
+                return leaf != "error"
+            }
             return false
         }
 

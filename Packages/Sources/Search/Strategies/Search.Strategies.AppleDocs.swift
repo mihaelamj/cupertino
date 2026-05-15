@@ -231,10 +231,11 @@ extension Search {
                     rejectedJSFallback += 1
                     continue
                 }
-                if Search.StrategyHelpers.titleLooksLikePlaceholderError(structuredPage.title) {
+                if Search.StrategyHelpers.titleLooksLikePlaceholderError(structuredPage.title, url: structuredPage.url) {
                     logger.error(
                         "⛔ Skipping placeholder-title page (#588 indexer defence): " +
                             "title=\(structuredPage.title.prefix(60)) " +
+                            "url=\(structuredPage.url.absoluteString.prefix(120)) " +
                             "file=\(file.lastPathComponent)",
                         category: .search
                     )
@@ -449,7 +450,7 @@ extension Search {
                 // data fetch fails after the page chrome was already
                 // rendered. Empty / whitespace-only titles fall under the
                 // same gate.
-                if Search.StrategyHelpers.titleLooksLikePlaceholderError(title) {
+                if Search.StrategyHelpers.titleLooksLikePlaceholderError(title, url: parsedURL) {
                     logger.error(
                         "⛔ Skipping placeholder-title page (#588 indexer defence): " +
                             "url=\(url) title=\(title.prefix(60))",
