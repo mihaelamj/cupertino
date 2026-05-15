@@ -4,6 +4,15 @@ _Code on `origin/main` past the v1.1.0 tag. No binary tag yet — the v1.2.0 rel
 
 _The v1.1.1 corpus tag exists on `cupertino-docs` only (not on this repo). It marks the post-Claw-merge source corpus snapshot: 414,807 source files, +2,285 new pages + 498 richer overwrites from Claw mini's 5.5-day crawl, with 153 React-SPA-404 poison files filtered out at the merge boundary. The 13-category poison audit returns zero matches on the merged corpus. The matching bundle (`cupertino-databases-v1.2.0.zip`) is rebuilt from the same source state when v1.2.0 ships._
 
+### Changed
+
+- **`Crawler.AppleDocs.State.updateStatistics(_:)` closure replaced with seven named actor methods.** Closes the last `@Sendable (inout …) -> Void` closure parameter on a producer-target public API. The previous shape gave every caller a generic mutation escape hatch into the actor's internal `Shared.Models.CrawlStatistics` value; the new shape exposes one method per mutation the crawler actually performs:
+  - `setStatistics(_ stats: Shared.Models.CrawlStatistics)` — whole-value replace, used at the start of a fresh session.
+  - `setStartTimeIfNil(_ startTime: Date)` — conditional set, used on session resume to adopt the saved start only if no startTime is already recorded.
+  - `recordError()` / `recordTotalPage()` / `recordSkippedPage()` / `recordNewPage()` / `recordUpdatedPage()` — atomic counter increments. Each method has one effect; pairs that previously appeared in one closure body (`errors+= 1; totalPages += 1`) are now two named calls at the call site, preserving identical end-state semantics.
+  - **14 call sites** in `Crawler.AppleDocs.swift` migrated. Closure form deleted; `Crawler.AppleDocs.State updateStatistics modifies stats` test rewritten to drive the same end-state through the named methods, plus two new tests pinning `setStatistics(_:)` and the conditional `setStartTimeIfNil(_:)` behaviour.
+  - `xcrun swift test`: **1641 / 1641** in 224 suites (was 1639).
+
 ### Fixed
 
 - **#568: `MCP.Support.DocsResourceProvider.listResources` was returning every page in the corpus as a separate resource.** On the v1.2.0-staged tree the call produced 55,915 resources (11.1 MB JSON response) including SwiftSyntax-extracted symbol identifiers like `Anonymous Field0` / `Init(Raw…)` / `Readattr…`; on v1.1.0 the same bug was masked by a silent `getMetadata()` swallow that dropped the apple-docs slice to 1 entry. Three changes in `Packages/Sources/MCP/Support/MCP.Support.DocsResourceProvider.swift`:

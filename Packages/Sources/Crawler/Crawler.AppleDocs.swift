@@ -4,6 +4,7 @@ import Foundation
 import LoggingModels
 import os
 import SharedConstants
+
 // MARK: - Documentation Crawler
 
 // swiftlint:disable function_body_length type_body_length
@@ -88,7 +89,7 @@ extension Crawler {
         /// `any Crawler.AppleDocsProgressObserving` to receive per-URL
         /// progress updates; `nil` opts out.
         public func crawl(progress: (any Crawler.AppleDocsProgressObserving)? = nil) async throws -> Shared.Models.CrawlStatistics {
-            self.progressObserver = progress
+            progressObserver = progress
 
             // Check for resumable session (must match current start URL)
             let savedSession = await state.getSavedSession()
@@ -112,12 +113,10 @@ extension Crawler {
                 // we don't persist `enqueued` separately.
                 enqueued = Set(queue.map(\.url.absoluteString))
 
-                // Restore or initialize stats
-                await state.updateStatistics { stats in
-                    if stats.startTime == nil {
-                        stats.startTime = savedSession.sessionStartTime
-                    }
-                }
+                // Restore or initialize stats. The previous closure-form
+                // `updateStatistics { if stats.startTime == nil { ... } }`
+                // is now the dedicated `setStartTimeIfNil(_:)` actor method.
+                await state.setStartTimeIfNil(savedSession.sessionStartTime)
             } else {
                 // Clear stale session if start URL doesn't match
                 if savedSession != nil {
@@ -126,9 +125,7 @@ extension Crawler {
                 }
                 // Initialize stats for new crawl
                 let startTime = Date()
-                await state.updateStatistics { stats in
-                    stats = Shared.Models.CrawlStatistics(startTime: startTime)
-                }
+                await state.setStatistics(Shared.Models.CrawlStatistics(startTime: startTime))
 
                 // Initialize queue — seed from technologies.json for Apple docs root
                 let isAppleDocs = configuration.startURL.host?.contains("developer.apple.com") == true
@@ -206,7 +203,7 @@ extension Crawler {
                         await recycleWebView()
                     }
                 } catch {
-                    await state.updateStatistics { $0.errors += 1 }
+                    await state.recordError()
                     logError("Error crawling \(normalizedURL.absoluteString): \(error)")
                 }
 
@@ -351,8 +348,8 @@ extension Crawler {
                             reason: .httpErrorTemplate,
                             outputDirectory: configuration.outputDirectory
                         )
-                        await state.updateStatistics { $0.errors += 1 }
-                        await state.updateStatistics { $0.totalPages += 1 }
+                        await state.recordError()
+                        await state.recordTotalPage()
                         return
                     }
                     if htmlParser.looksLikeJavaScriptFallback(html: html) {
@@ -363,8 +360,8 @@ extension Crawler {
                             reason: .javaScriptFallback,
                             outputDirectory: configuration.outputDirectory
                         )
-                        await state.updateStatistics { $0.errors += 1 }
-                        await state.updateStatistics { $0.totalPages += 1 }
+                        await state.recordError()
+                        await state.recordTotalPage()
                         return
                     }
                     (markdown, links, structuredPage) = autoreleasepool {
@@ -386,8 +383,8 @@ extension Crawler {
                         reason: .httpErrorTemplate,
                         outputDirectory: configuration.outputDirectory
                     )
-                    await state.updateStatistics { $0.errors += 1 }
-                    await state.updateStatistics { $0.totalPages += 1 }
+                    await state.recordError()
+                    await state.recordTotalPage()
                     return
                 }
                 if htmlParser.looksLikeJavaScriptFallback(html: html) {
@@ -398,8 +395,8 @@ extension Crawler {
                         reason: .javaScriptFallback,
                         outputDirectory: configuration.outputDirectory
                     )
-                    await state.updateStatistics { $0.errors += 1 }
-                    await state.updateStatistics { $0.totalPages += 1 }
+                    await state.recordError()
+                    await state.recordTotalPage()
                     return
                 }
                 (markdown, links, structuredPage) = autoreleasepool {
@@ -458,8 +455,8 @@ extension Crawler {
 
             if !shouldRecrawl {
                 logInfo("   ⏩ No changes detected, skipping")
-                await state.updateStatistics { $0.skippedPages += 1 }
-                await state.updateStatistics { $0.totalPages += 1 }
+                await state.recordSkippedPage()
+                await state.recordTotalPage()
                 return
             }
 
@@ -491,14 +488,14 @@ extension Crawler {
 
             // Update stats
             if isNew {
-                await state.updateStatistics { $0.newPages += 1 }
+                await state.recordNewPage()
                 logInfo("   ✅ Saved new page: \(jsonFilePath.lastPathComponent)")
             } else {
-                await state.updateStatistics { $0.updatedPages += 1 }
+                await state.recordUpdatedPage()
                 logInfo("   ♻️  Updated page: \(jsonFilePath.lastPathComponent)")
             }
 
-            await state.updateStatistics { $0.totalPages += 1 }
+            await state.recordTotalPage()
 
             // Notify progress
             if let progressObserver {
