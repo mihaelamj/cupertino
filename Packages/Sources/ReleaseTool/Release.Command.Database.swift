@@ -1,9 +1,6 @@
 import ArgumentParser
 import Foundation
 import SharedConstants
-import SharedCore
-import SharedUtils
-
 // MARK: - Database Release Command (search.db + samples.db + packages.db → cupertino-docs)
 
 //
@@ -55,8 +52,14 @@ extension Release.Command {
 
             Release.Console.info("📦 Database Release \(version.tag)\n")
 
+            // Path-DI composition sub-root (#535): ReleaseTool is its own
+            // executableTarget binary. The `--base-dir` flag is the canonical
+            // way to point it at the release artifacts; if not passed, fall
+            // back to a `Shared.Paths.live()` resolution like the other
+            // binaries (CLI/TUI) so the same BinaryConfig.json next to the
+            // executable routes the path.
             let baseURL = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-                ?? Shared.Constants.defaultBaseDirectory
+                ?? Shared.Paths.live().baseDirectory
 
             // Resolve the three database paths. search.db and samples.db are
             // always required; packages.db is required by default but the

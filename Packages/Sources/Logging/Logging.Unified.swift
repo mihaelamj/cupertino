@@ -2,7 +2,6 @@ import Foundation
 import LoggingModels
 import OSLog
 import SharedConstants
-import SharedCore
 
 // MARK: - Unified Logger
 
@@ -12,19 +11,21 @@ extension Logging {
     /// 2. Console (configurable) - stdout/stderr for user feedback
     /// 3. File (optional) - for crash debugging and long-running operations
     ///
-    /// Usage:
+    /// **Construction.** Build one `Logging.Unified` at each binary's
+    /// composition root and thread it downstream via `Logging.Composition`
+    /// (preferred) or directly to `Logging.LiveRecording(unified:)`.
+    ///
     /// ```swift
-    /// let log = Logging.Unified.shared
-    /// log.info("Starting crawl...")
-    /// log.error("Failed to fetch page")
-    /// log.debug("Detailed state: \(state)")
+    /// // Composition-root construction:
+    /// let logging = Logging.Composition()
+    /// let recording = logging.recording  // pass into producers via init
     /// ```
+    ///
+    /// The legacy `Logging.Unified.shared` Singleton (GoF p. 127, rejected
+    /// as Service Locator per Seemann 2011 ch. 5) was deleted in #548
+    /// Phase H. There is no process-wide accessor; every consumer receives
+    /// an instance via constructor injection.
     public actor Unified {
-        // MARK: - Singleton
-
-        /// Shared logger instance
-        public static let shared = Unified()
-
         // MARK: - Log Level
 
         /// Log severity levels
@@ -161,7 +162,11 @@ extension Logging {
 
         // MARK: - Initialization
 
-        private init(options: Options = .default) {
+        /// Construct a `Logging.Unified` actor with the given options.
+        /// Each binary's composition root builds its own instance, typically
+        /// via `Logging.Composition`. Constructor injection only — there is
+        /// no `.shared` accessor.
+        public init(options: Options = .default) {
             self.options = options
             dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
@@ -229,7 +234,16 @@ extension Logging {
         // MARK: - File Setup
 
         private func setupFileLogging() {
-            let fileURL = options.fileURL ?? defaultLogFileURL()
+            // Post-#535: no implicit fallback to Shared.Constants.defaultBaseDirectory
+            // (which routed through BinaryConfig.shared — Service Locator). The
+            // caller must supply an explicit fileURL via `enableFileLogging(at:)`
+            // (or via the Options init) when file logging is desired. If
+            // fileEnabled is true but fileURL is nil, file logging is silently
+            // disabled — that's a programmer error, not a runtime fallback.
+            guard let fileURL = options.fileURL else {
+                fileHandle = nil
+                return
+            }
 
             // Create directory if needed
             let directory = fileURL.deletingLastPathComponent()
@@ -252,16 +266,6 @@ extension Logging {
                 // Silently fail - don't crash if logging fails
                 fileHandle = nil
             }
-        }
-
-        private func defaultLogFileURL() -> URL {
-            // Route through Shared.Constants.defaultBaseDirectory so BinaryConfig
-            // (#211) redirects the log file along with every other default path.
-            // The previous manual construction silently wrote to ~/.cupertino/...
-            // even when the binary was configured to use a different base — the
-            // bug reported in #212.
-            Shared.Constants.defaultBaseDirectory
-                .appendingPathComponent(Shared.Constants.FileName.logFile)
         }
 
         // MARK: - Logging Methods
@@ -409,218 +413,3 @@ extension Logging {
 }
 
 // closes extension Logging (Unified)
-
-// MARK: - Synchronous Logging (for non-async contexts)
-
-extension Logging {
-    /// Synchronous logger for use in non-async contexts
-    /// Uses nonisolated(unsafe) to allow synchronous access - logging is fire-and-forget
-    public enum Log {
-        /// Shared options for synchronous logging
-        private nonisolated(unsafe) static var options = Unified.Options.default
-        private nonisolated(unsafe) static var fileHandle: FileHandle?
-        private nonisolated(unsafe) static var isInitialized = false
-
-        private static let dateFormatter: DateFormatter = {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
-            return formatter
-        }()
-
-        /// Configure synchronous logger options
-        public static func configure(_ newOptions: Unified.Options) {
-            options = newOptions
-            isInitialized = false
-            ensureInitialized()
-        }
-
-        /// Disable console output (for MCP server mode)
-        public static func disableConsole() {
-            options.consoleEnabled = false
-        }
-
-        /// Enable console output
-        public static func enableConsole() {
-            options.consoleEnabled = true
-        }
-
-        private static func ensureInitialized() {
-            guard !isInitialized else { return }
-            isInitialized = true
-
-            if options.fileEnabled {
-                setupFileLogging()
-            }
-        }
-
-        private static func setupFileLogging() {
-            let fileURL = options.fileURL ?? defaultLogFileURL()
-            let directory = fileURL.deletingLastPathComponent()
-            try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-
-            if !FileManager.default.fileExists(atPath: fileURL.path) {
-                FileManager.default.createFile(atPath: fileURL.path, contents: nil)
-            }
-
-            do {
-                fileHandle = try FileHandle(forWritingTo: fileURL)
-                try fileHandle?.seekToEnd()
-                let marker = "\n--- Log session started at \(dateFormatter.string(from: Date())) ---\n"
-                let data = Data(marker.utf8)
-                try fileHandle?.write(contentsOf: data)
-            } catch {
-                fileHandle = nil
-            }
-        }
-
-        private static func defaultLogFileURL() -> URL {
-            // Route through Shared.Constants.defaultBaseDirectory so BinaryConfig
-            // (#211) redirects the log file along with every other default path
-            // (#212).
-            Shared.Constants.defaultBaseDirectory
-                .appendingPathComponent(Shared.Constants.FileName.logFile)
-        }
-
-        /// Log a debug message
-        public static func debug(
-            _ message: String,
-            category: Unified.Category = .cli
-        ) {
-            log(message, level: .debug, category: category)
-        }
-
-        /// Log an info message
-        public static func info(
-            _ message: String,
-            category: Unified.Category = .cli
-        ) {
-            log(message, level: .info, category: category)
-        }
-
-        /// Log a warning message
-        public static func warning(
-            _ message: String,
-            category: Unified.Category = .cli
-        ) {
-            log(message, level: .warning, category: category)
-        }
-
-        /// Log an error message
-        public static func error(
-            _ message: String,
-            category: Unified.Category = .cli
-        ) {
-            log(message, level: .error, category: category)
-        }
-
-        /// Output to console only (no logging) - for user-facing output like search results
-        public static func output(_ message: String) {
-            print(message)
-        }
-
-        private static func log(
-            _ message: String,
-            level: Unified.Level,
-            category: Unified.Category
-        ) {
-            ensureInitialized()
-
-            guard level >= options.minLevel else { return }
-
-            // 1. Always log to os.log
-            let logger = category.osLogger
-            switch level {
-            case .debug:
-                logger.debug("\(message, privacy: .public)")
-            case .info:
-                logger.info("\(message, privacy: .public)")
-            case .warning:
-                logger.warning("\(message, privacy: .public)")
-            case .error:
-                logger.error("\(message, privacy: .public)")
-            }
-
-            // 2. Log to console if enabled
-            if options.consoleEnabled {
-                var output = ""
-                if options.showTimestamps {
-                    output += "[\(dateFormatter.string(from: Date()))] "
-                }
-                if options.showCategory {
-                    output += "[\(category.rawValue)] "
-                }
-                output += message
-
-                switch level {
-                case .debug, .info:
-                    Swift.print(output)
-                case .warning, .error:
-                    fputs("\(output)\n", stderr)
-                }
-            }
-
-            // 3. Log to file if enabled
-            if options.fileEnabled, let handle = fileHandle {
-                let timestamp = dateFormatter.string(from: Date())
-                let logLine = "[\(timestamp)] [\(level)] [\(category.rawValue)] \(message)\n"
-                let data = Data(logLine.utf8)
-                try? handle.write(contentsOf: data)
-            }
-        }
-    }
-}
-
-// closes extension Logging (Log)
-
-// MARK: - Convenience Global Functions (Async)
-
-//
-// Kept at file scope (not nested under `extension Logging`) so that classes
-// which define private `logInfo` / `logWarning` / `logError` sync methods can
-// keep shadowing these without a forced `Logging.` qualifier at every call
-// site. Types are what the namespace pass nests; these are convenience
-// functions, not part of the public type surface.
-
-/// Log a debug message (async)
-public func logDebug(
-    _ message: String,
-    category: Logging.Unified.Category = .cli,
-    file: String = #file,
-    function: String = #function,
-    line: Int = #line
-) async {
-    await Logging.Unified.shared.debug(message, category: category, file: file, function: function, line: line)
-}
-
-/// Log an info message (async)
-public func logInfo(
-    _ message: String,
-    category: Logging.Unified.Category = .cli,
-    file: String = #file,
-    function: String = #function,
-    line: Int = #line
-) async {
-    await Logging.Unified.shared.info(message, category: category, file: file, function: function, line: line)
-}
-
-/// Log a warning message (async)
-public func logWarning(
-    _ message: String,
-    category: Logging.Unified.Category = .cli,
-    file: String = #file,
-    function: String = #function,
-    line: Int = #line
-) async {
-    await Logging.Unified.shared.warning(message, category: category, file: file, function: function, line: line)
-}
-
-/// Log an error message (async)
-public func logError(
-    _ message: String,
-    category: Logging.Unified.Category = .cli,
-    file: String = #file,
-    function: String = #function,
-    line: Int = #line
-) async {
-    await Logging.Unified.shared.error(message, category: category, file: file, function: function, line: line)
-}

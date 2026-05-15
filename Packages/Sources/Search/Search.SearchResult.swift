@@ -1,8 +1,6 @@
 import Foundation
 import SearchModels
 import SharedConstants
-import SharedCore
-
 // MARK: - Framework Availability (Search Module)
 
 /// Minimum platform versions for a framework (used for availability filtering)

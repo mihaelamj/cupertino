@@ -1,18 +1,16 @@
 import ArgumentParser
 import Foundation
 import Logging
+import LoggingModels
 import SampleIndex
 import Services
 import ServicesModels
 import SharedConstants
-import SharedCore
-import SharedUtils
-
 // MARK: - Read Sample Command
 
 /// CLI command for reading a sample project's README - mirrors MCP tool functionality.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension CLI.Command {
+extension CLIImpl.Command {
     struct ReadSample: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "read-sample",
@@ -43,10 +41,10 @@ extension CLI.Command {
             let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
 
             // Use Services.ServiceContainer for managed lifecycle
-            let (project, files) = try await Services.ServiceContainer.withSampleService(dbPath: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
+            let (project, files) = try await Services.ServiceContainer.withSampleService(samplesDB: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
                 guard let project = try await service.getProject(id: projectId) else {
-                    Logging.Log.error("Project not found: \(projectId)")
-                    Logging.Log.output("Use 'cupertino list-samples' or 'cupertino search --source samples' to find valid project IDs.")
+                    Cupertino.Context.composition.logging.recording.error("Project not found: \(projectId)")
+                    Cupertino.Context.composition.logging.recording.output("Use 'cupertino list-samples' or 'cupertino search --source samples' to find valid project IDs.")
                     throw ExitCode.failure
                 }
 
@@ -71,50 +69,51 @@ extension CLI.Command {
             if let sampleDb {
                 return URL(fileURLWithPath: sampleDb).expandingTildeInPath
             }
-            return Sample.Index.defaultDatabasePath
+            // Path-DI composition sub-root (#535).
+            return Sample.Index.databasePath(baseDirectory: Shared.Paths.live().baseDirectory)
         }
 
         // MARK: - Output Formatting
 
         private func outputText(_ project: Sample.Index.Project, files: [Sample.Index.File]) {
-            Logging.Log.output(project.title)
-            Logging.Log.output(String(repeating: "=", count: project.title.count))
-            Logging.Log.output("")
-            Logging.Log.output("Project ID: \(project.id)")
-            Logging.Log.output("Frameworks: \(project.frameworks.joined(separator: ", "))")
-            Logging.Log.output("Files: \(project.fileCount)")
-            Logging.Log.output("Size: \(Shared.Utils.Formatting.formatBytes(project.totalSize))")
+            Cupertino.Context.composition.logging.recording.output(project.title)
+            Cupertino.Context.composition.logging.recording.output(String(repeating: "=", count: project.title.count))
+            Cupertino.Context.composition.logging.recording.output("")
+            Cupertino.Context.composition.logging.recording.output("Project ID: \(project.id)")
+            Cupertino.Context.composition.logging.recording.output("Frameworks: \(project.frameworks.joined(separator: ", "))")
+            Cupertino.Context.composition.logging.recording.output("Files: \(project.fileCount)")
+            Cupertino.Context.composition.logging.recording.output("Size: \(Shared.Utils.Formatting.formatBytes(project.totalSize))")
 
             if !project.webURL.isEmpty {
-                Logging.Log.output("Apple Developer: \(project.webURL)")
+                Cupertino.Context.composition.logging.recording.output("Apple Developer: \(project.webURL)")
             }
 
-            Logging.Log.output("")
+            Cupertino.Context.composition.logging.recording.output("")
 
             if !project.description.isEmpty {
-                Logging.Log.output("Description:")
-                Logging.Log.output(project.description)
-                Logging.Log.output("")
+                Cupertino.Context.composition.logging.recording.output("Description:")
+                Cupertino.Context.composition.logging.recording.output(project.description)
+                Cupertino.Context.composition.logging.recording.output("")
             }
 
             if let readme = project.readme, !readme.isEmpty {
-                Logging.Log.output("README:")
-                Logging.Log.output(readme)
-                Logging.Log.output("")
+                Cupertino.Context.composition.logging.recording.output("README:")
+                Cupertino.Context.composition.logging.recording.output(readme)
+                Cupertino.Context.composition.logging.recording.output("")
             }
 
             if !files.isEmpty {
-                Logging.Log.output("Files (\(files.count) total):")
+                Cupertino.Context.composition.logging.recording.output("Files (\(files.count) total):")
                 for file in files.prefix(30) {
-                    Logging.Log.output("  - \(file.path)")
+                    Cupertino.Context.composition.logging.recording.output("  - \(file.path)")
                 }
                 if files.count > 30 {
-                    Logging.Log.output("  ... and \(files.count - 30) more files")
+                    Cupertino.Context.composition.logging.recording.output("  ... and \(files.count - 30) more files")
                 }
             }
 
-            Logging.Log.output("")
-            Logging.Log.output("Tip: Use 'cupertino read-sample-file \(project.id) <path>' to view source code")
+            Cupertino.Context.composition.logging.recording.output("")
+            Cupertino.Context.composition.logging.recording.output("Tip: Use 'cupertino read-sample-file \(project.id) <path>' to view source code")
         }
 
         private func outputJSON(_ project: Sample.Index.Project, files: [Sample.Index.File]) {
@@ -148,46 +147,46 @@ extension CLI.Command {
             do {
                 let data = try encoder.encode(output)
                 if let jsonString = String(data: data, encoding: .utf8) {
-                    Logging.Log.output(jsonString)
+                    Cupertino.Context.composition.logging.recording.output(jsonString)
                 }
             } catch {
-                Logging.Log.error("Error encoding JSON: \(error)")
+                Cupertino.Context.composition.logging.recording.error("Error encoding JSON: \(error)")
             }
         }
 
         private func outputMarkdown(_ project: Sample.Index.Project, files: [Sample.Index.File]) {
-            Logging.Log.output("# \(project.title)\n")
-            Logging.Log.output("**Project ID:** `\(project.id)`\n")
+            Cupertino.Context.composition.logging.recording.output("# \(project.title)\n")
+            Cupertino.Context.composition.logging.recording.output("**Project ID:** `\(project.id)`\n")
 
             if !project.description.isEmpty {
-                Logging.Log.output("## Description\n")
-                Logging.Log.output("\(project.description)\n")
+                Cupertino.Context.composition.logging.recording.output("## Description\n")
+                Cupertino.Context.composition.logging.recording.output("\(project.description)\n")
             }
 
-            Logging.Log.output("## Metadata\n")
-            Logging.Log.output("- **Frameworks:** \(project.frameworks.joined(separator: ", "))")
-            Logging.Log.output("- **Files:** \(project.fileCount)")
-            Logging.Log.output("- **Size:** \(Shared.Utils.Formatting.formatBytes(project.totalSize))")
+            Cupertino.Context.composition.logging.recording.output("## Metadata\n")
+            Cupertino.Context.composition.logging.recording.output("- **Frameworks:** \(project.frameworks.joined(separator: ", "))")
+            Cupertino.Context.composition.logging.recording.output("- **Files:** \(project.fileCount)")
+            Cupertino.Context.composition.logging.recording.output("- **Size:** \(Shared.Utils.Formatting.formatBytes(project.totalSize))")
 
             if !project.webURL.isEmpty {
-                Logging.Log.output("- **Apple Developer:** \(project.webURL)")
+                Cupertino.Context.composition.logging.recording.output("- **Apple Developer:** \(project.webURL)")
             }
 
-            Logging.Log.output("")
+            Cupertino.Context.composition.logging.recording.output("")
 
             if let readme = project.readme, !readme.isEmpty {
-                Logging.Log.output("## README\n")
-                Logging.Log.output(readme)
-                Logging.Log.output("")
+                Cupertino.Context.composition.logging.recording.output("## README\n")
+                Cupertino.Context.composition.logging.recording.output(readme)
+                Cupertino.Context.composition.logging.recording.output("")
             }
 
             if !files.isEmpty {
-                Logging.Log.output("## Files (\(files.count) total)\n")
+                Cupertino.Context.composition.logging.recording.output("## Files (\(files.count) total)\n")
                 for file in files.prefix(30) {
-                    Logging.Log.output("- `\(file.path)`")
+                    Cupertino.Context.composition.logging.recording.output("- `\(file.path)`")
                 }
                 if files.count > 30 {
-                    Logging.Log.output("- _... and \(files.count - 30) more files_")
+                    Cupertino.Context.composition.logging.recording.output("- _... and \(files.count - 30) more files_")
                 }
             }
         }
@@ -196,7 +195,7 @@ extension CLI.Command {
 
 // MARK: - Output Format
 
-extension CLI.Command.ReadSample {
+extension CLIImpl.Command.ReadSample {
     enum OutputFormat: String, ExpressibleByArgument, CaseIterable {
         case text
         case json

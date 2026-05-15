@@ -2,8 +2,6 @@
 import Foundation
 import Resources
 import SharedConstants
-import SharedCore
-import SharedModels
 import Testing
 
 // MARK: - CoreProtocols Public API Smoke Tests
@@ -89,50 +87,9 @@ struct CoreProtocolsPublicSurfaceTests {
         #expect(result.structuredPage == nil)
     }
 
-    // MARK: ExclusionList
-
-    @Test("Core.Protocols.ExclusionList.normalise strips whitespace and lowercases")
-    func exclusionListNormalise() {
-        // The exclusion-list format is a plain text file of one slug per
-        // line; entries can carry stray whitespace or differ in case
-        // across hand-curated files. Pin the normalisation contract so
-        // a consumer comparing against it doesn't go off-rails.
-        #expect(Core.Protocols.ExclusionList.normalise("  SwiftUI  ") == "swiftui")
-        #expect(Core.Protocols.ExclusionList.normalise("UIKit") == "uikit")
-        #expect(Core.Protocols.ExclusionList.normalise("") == "")
-    }
-
-    // MARK: GitHubCanonicalizer
-
-    @Test("Core.Protocols.GitHubCanonicalizer.CanonicalName round-trips owner + repo")
-    func gitHubCanonicalizerCanonicalName() {
-        let name = Core.Protocols.GitHubCanonicalizer.CanonicalName(owner: "apple", repo: "swift")
-        #expect(name.owner == "apple")
-        #expect(name.repo == "swift")
-        // Equatable is part of the contract; conform-by-rename would
-        // silently break dedup logic downstream.
-        #expect(name == Core.Protocols.GitHubCanonicalizer.CanonicalName(owner: "apple", repo: "swift"))
-    }
-
-    @Test("Core.Protocols.GitHubCanonicalizer primes and snapshots its cache")
-    func gitHubCanonicalizerCachePrimeAndSnapshot() async {
-        // Don't write to disk for a smoke test; the actor accepts any
-        // cache URL and only persists on demand.
-        let cacheURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cupertino-leaf386-\(UUID().uuidString).json")
-        let canonicalizer = Core.Protocols.GitHubCanonicalizer(cacheURL: cacheURL)
-        await canonicalizer.primeCache(
-            inputOwner: "Mihaela",
-            inputRepo: "Cupertino",
-            canonicalOwner: "mihaelamj",
-            canonicalRepo: "cupertino"
-        )
-        let snapshot = await canonicalizer.cacheSnapshot()
-        // The snapshot key shape (input owner+repo lowercased) is an
-        // implementation detail of the actor; instead of pinning the
-        // exact key, just verify at least one entry now exists.
-        #expect(!snapshot.isEmpty)
-    }
+    // ExclusionList + GitHubCanonicalizer tests moved to
+    // CorePackageIndexingTests/CorePackageIndexing.MovedFromCoreProtocols.swift
+    // during #536 phase 2a, when the impls themselves moved out of CoreProtocols.
 
     // MARK: SwiftPackagesCatalog
 

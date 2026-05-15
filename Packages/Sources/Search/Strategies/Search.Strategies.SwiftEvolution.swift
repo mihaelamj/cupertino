@@ -2,8 +2,6 @@ import Foundation
 import LoggingModels
 import SearchModels
 import SharedConstants
-import SharedModels
-
 // MARK: - SwiftEvolutionStrategy
 
 extension Search {
@@ -53,7 +51,7 @@ extension Search {
         /// - Returns: ``Search/IndexStats`` with indexed and skipped counts.
         public func indexItems(
             into index: Search.Index,
-            progress: Search.IndexingProgressCallback?
+            progress: (any Search.IndexingProgressReporting)?
         ) async throws -> Search.IndexStats {
             guard FileManager.default.fileExists(atPath: evolutionDirectory.path) else {
                 logger.info(

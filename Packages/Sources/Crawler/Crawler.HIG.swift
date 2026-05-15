@@ -1,12 +1,9 @@
 import CrawlerModels
 import Foundation
 import LoggingModels
-import SharedCore
-
 #if canImport(WebKit)
 import CoreProtocols
 import SharedConstants
-import SharedUtils
 import WebKit
 #endif
 
@@ -47,11 +44,13 @@ extension Crawler {
 
         // MARK: - Public API
 
-        /// Crawl Human Interface Guidelines
+        /// Crawl Human Interface Guidelines. Pass an
+        /// `any Crawler.HIGProgressObserving` to receive per-page
+        /// progress updates; `nil` opts out.
         public func crawl(
-            onProgress: (@Sendable (Progress) -> Void)? = nil
-        ) async throws -> Statistics {
-            var stats = Statistics(startTime: Date())
+            progress: (any Crawler.HIGProgressObserving)? = nil
+        ) async throws -> Crawler.HIGStatistics {
+            var stats = Crawler.HIGStatistics(startTime: Date())
 
             logInfo("Starting Human Interface Guidelines crawler")
             logInfo("   Output: \(outputDirectory.path)")
@@ -83,15 +82,15 @@ extension Crawler {
                 do {
                     try await crawlPage(page, stats: &stats)
 
-                    // Progress callback
-                    if let onProgress {
-                        let progress = Progress(
+                    // Crawler.HIGProgress callback
+                    if let observer = progress {
+                        let progressValue = Crawler.HIGProgress(
                             currentPage: index + 1,
                             totalPages: min(pages.count, maxPages),
                             currentItem: page.title,
                             stats: stats
                         )
-                        onProgress(progress)
+                        observer.observe(progress: progressValue)
                     }
 
                     // Rate limiting
@@ -131,7 +130,7 @@ extension Crawler {
         #if canImport(WebKit)
         private func discoverPages(
             from rootURL: URL,
-            stats: inout Statistics
+            stats: inout Crawler.HIGStatistics
         ) async throws -> [Page] {
             var pages: [Page] = []
             var visited: Set<String> = []
@@ -193,7 +192,7 @@ extension Crawler {
             return try await fetcher.fetch(url: url).content
         }
 
-        private func crawlPage(_ page: Page, stats: inout Statistics) async throws {
+        private func crawlPage(_ page: Page, stats: inout Crawler.HIGStatistics) async throws {
             // Determine output path
             let filename = sanitizeFilename(page.title) + ".md"
             let categoryDir = outputDirectory.appendingPathComponent(page.category.rawValue)
@@ -537,9 +536,9 @@ extension Crawler {
             logger.error("Error: \(message)", category: .hig)
         }
 
-        private func logStatistics(_ stats: Statistics) {
+        private func logStatistics(_ stats: Crawler.HIGStatistics) {
             let messages = [
-                "Statistics:",
+                "Crawler.HIGStatistics:",
                 "   Total pages: \(stats.totalPages)",
                 "   New: \(stats.newPages)",
                 "   Updated: \(stats.updatedPages)",
@@ -620,60 +619,10 @@ extension Crawler.HIG {
     }
 }
 
-// MARK: - Statistics
-
-extension Crawler.HIG {
-    public struct Statistics: Sendable {
-        public var totalPages: Int = 0
-        public var newPages: Int = 0
-        public var updatedPages: Int = 0
-        public var skippedPages: Int = 0
-        public var errors: Int = 0
-        public var startTime: Date?
-        public var endTime: Date?
-
-        public init(
-            totalPages: Int = 0,
-            newPages: Int = 0,
-            updatedPages: Int = 0,
-            skippedPages: Int = 0,
-            errors: Int = 0,
-            startTime: Date? = nil,
-            endTime: Date? = nil
-        ) {
-            self.totalPages = totalPages
-            self.newPages = newPages
-            self.updatedPages = updatedPages
-            self.skippedPages = skippedPages
-            self.errors = errors
-            self.startTime = startTime
-            self.endTime = endTime
-        }
-
-        public var duration: TimeInterval? {
-            guard let start = startTime, let end = endTime else {
-                return nil
-            }
-            return end.timeIntervalSince(start)
-        }
-    }
-}
-
-// MARK: - Progress
-
-extension Crawler.HIG {
-    public struct Progress: Sendable {
-        public let currentPage: Int
-        public let totalPages: Int
-        public let currentItem: String
-        public let stats: Statistics
-
-        public var percentage: Double {
-            guard totalPages > 0 else { return 0 }
-            return Double(currentPage) / Double(totalPages) * 100
-        }
-    }
-}
+// `Crawler.HIGStatistics` + `Crawler.HIGProgress` +
+// `Crawler.HIGProgressObserving` moved to the foundation-only
+// `CrawlerModels` seam target so any Observer conformer can implement
+// without `import Crawler`.
 
 // MARK: - Errors
 

@@ -17,9 +17,6 @@
 import Foundation
 import SearchModels
 import SharedConstants
-import SharedCore
-import SharedModels
-
 extension Search {
     /// High-level document-shape taxonomy stored per row in `docs_metadata`.
     public enum DocKind: String, Codable, Sendable, CaseIterable {

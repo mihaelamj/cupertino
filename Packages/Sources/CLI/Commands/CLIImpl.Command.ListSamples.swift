@@ -1,18 +1,16 @@
 import ArgumentParser
 import Foundation
 import Logging
+import LoggingModels
 import SampleIndex
 import Services
 import ServicesModels
 import SharedConstants
-import SharedCore
-import SharedUtils
-
 // MARK: - List Samples Command
 
 /// CLI command for listing sample code projects - mirrors MCP tool functionality.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension CLI.Command {
+extension CLIImpl.Command {
     struct ListSamples: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "list-samples",
@@ -53,7 +51,7 @@ extension CLI.Command {
 
             // Use Services.ServiceContainer for managed lifecycle
             let (projects, totalProjects, totalFiles) = try await Services.ServiceContainer
-                .withSampleService(dbPath: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
+                .withSampleService(samplesDB: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
                     let projects = try await service.listProjects(framework: framework, limit: limit)
                     let totalProjects = try await service.projectCount()
                     let totalFiles = try await service.fileCount()
@@ -77,32 +75,33 @@ extension CLI.Command {
             if let sampleDb {
                 return URL(fileURLWithPath: sampleDb).expandingTildeInPath
             }
-            return Sample.Index.defaultDatabasePath
+            // Path-DI composition sub-root (#535).
+            return Sample.Index.databasePath(baseDirectory: Shared.Paths.live().baseDirectory)
         }
 
         // MARK: - Output Formatting
 
         private func outputText(_ projects: [Sample.Index.Project], totalProjects: Int, totalFiles: Int) {
-            Logging.Log.output("Sample Code Projects")
-            Logging.Log.output("Total: \(totalProjects) projects, \(totalFiles) files")
+            Cupertino.Context.composition.logging.recording.output("Sample Code Projects")
+            Cupertino.Context.composition.logging.recording.output("Total: \(totalProjects) projects, \(totalFiles) files")
 
             if let framework {
-                Logging.Log.output("Filtered by: \(framework)")
+                Cupertino.Context.composition.logging.recording.output("Filtered by: \(framework)")
             }
 
-            Logging.Log.output("")
+            Cupertino.Context.composition.logging.recording.output("")
 
             if projects.isEmpty {
-                Logging.Log.output("No projects found. Run 'cupertino save --samples' to index sample code.")
+                Cupertino.Context.composition.logging.recording.output("No projects found. Run 'cupertino save --samples' to index sample code.")
                 return
             }
 
             for (index, project) in projects.enumerated() {
-                Logging.Log.output("[\(index + 1)] \(project.title)")
-                Logging.Log.output("    ID: \(project.id)")
-                Logging.Log.output("    Frameworks: \(project.frameworks.joined(separator: ", "))")
-                Logging.Log.output("    Files: \(project.fileCount)")
-                Logging.Log.output("")
+                Cupertino.Context.composition.logging.recording.output("[\(index + 1)] \(project.title)")
+                Cupertino.Context.composition.logging.recording.output("    ID: \(project.id)")
+                Cupertino.Context.composition.logging.recording.output("    Frameworks: \(project.frameworks.joined(separator: ", "))")
+                Cupertino.Context.composition.logging.recording.output("    Files: \(project.fileCount)")
+                Cupertino.Context.composition.logging.recording.output("")
             }
         }
 
@@ -143,32 +142,32 @@ extension CLI.Command {
             do {
                 let data = try encoder.encode(output)
                 if let jsonString = String(data: data, encoding: .utf8) {
-                    Logging.Log.output(jsonString)
+                    Cupertino.Context.composition.logging.recording.output(jsonString)
                 }
             } catch {
-                Logging.Log.error("Error encoding JSON: \(error)")
+                Cupertino.Context.composition.logging.recording.error("Error encoding JSON: \(error)")
             }
         }
 
         private func outputMarkdown(_ projects: [Sample.Index.Project], totalProjects: Int, totalFiles: Int) {
-            Logging.Log.output("# Sample Code Projects\n")
-            Logging.Log.output("Total: **\(totalProjects)** projects, **\(totalFiles)** files\n")
+            Cupertino.Context.composition.logging.recording.output("# Sample Code Projects\n")
+            Cupertino.Context.composition.logging.recording.output("Total: **\(totalProjects)** projects, **\(totalFiles)** files\n")
 
             if let framework {
-                Logging.Log.output("_Filtered to framework: **\(framework)**_\n")
+                Cupertino.Context.composition.logging.recording.output("_Filtered to framework: **\(framework)**_\n")
             }
 
             if projects.isEmpty {
-                Logging.Log.output("_No projects found. Run `cupertino save --samples` to index sample code._")
+                Cupertino.Context.composition.logging.recording.output("_No projects found. Run `cupertino save --samples` to index sample code._")
                 return
             }
 
-            Logging.Log.output("| Project | Frameworks | Files |")
-            Logging.Log.output("|---------|-----------|------:|")
+            Cupertino.Context.composition.logging.recording.output("| Project | Frameworks | Files |")
+            Cupertino.Context.composition.logging.recording.output("|---------|-----------|------:|")
 
             for project in projects {
                 let frameworks = project.frameworks.joined(separator: ", ")
-                Logging.Log.output("| `\(project.id)` | \(frameworks) | \(project.fileCount) |")
+                Cupertino.Context.composition.logging.recording.output("| `\(project.id)` | \(frameworks) | \(project.fileCount) |")
             }
         }
     }
@@ -176,7 +175,7 @@ extension CLI.Command {
 
 // MARK: - Output Format
 
-extension CLI.Command.ListSamples {
+extension CLIImpl.Command.ListSamples {
     enum OutputFormat: String, ExpressibleByArgument, CaseIterable {
         case text
         case json

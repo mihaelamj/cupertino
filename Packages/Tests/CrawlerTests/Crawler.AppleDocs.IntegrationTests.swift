@@ -5,10 +5,7 @@ import Crawler
 import CrawlerModels
 import Foundation
 import LoggingModels
-import SharedConfiguration
 import SharedConstants
-@testable import SharedCore
-import SharedModels
 import Testing
 import TestSupport
 
@@ -78,7 +75,7 @@ private func createTestConfiguration(outputDirectory: URL) -> Shared.Configurati
             maxDepth: 1,
             outputDirectory: outputDirectory
         ),
-        changeDetection: Shared.Configuration.ChangeDetection(forceRecrawl: true),
+        changeDetection: Shared.Configuration.ChangeDetection(forceRecrawl: true, outputDirectory: URL(fileURLWithPath: "/tmp/cupertino-integration-test")),
         output: Shared.Configuration.Output(format: .markdown)
     )
 }
@@ -161,7 +158,8 @@ func crawlerStateInitialization() async {
     let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: tempDir.appendingPathComponent("metadata.json"),
-        forceRecrawl: false
+        forceRecrawl: false,
+        outputDirectory: tempDir
     )
 
     let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
@@ -208,7 +206,8 @@ func crawlerStateLoadsExistingMetadata() async throws {
     let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: metadataFile,
-        forceRecrawl: false
+        forceRecrawl: false,
+        outputDirectory: tempDir
     )
     let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
     let pageCount = await state.getPageCount()
@@ -225,7 +224,8 @@ func crawlerStateShouldRecrawlNewPage() async {
     let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: tempDir.appendingPathComponent("metadata.json"),
-        forceRecrawl: false
+        forceRecrawl: false,
+        outputDirectory: tempDir
     )
 
     let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
@@ -267,7 +267,8 @@ func crawlerStateShouldRecrawlContentChanged() async throws {
     let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: metadataFile,
-        forceRecrawl: false
+        forceRecrawl: false,
+        outputDirectory: tempDir
     )
     let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
 
@@ -308,7 +309,8 @@ func crawlerStateShouldRecrawlSkipsUnchanged() async throws {
     let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: metadataFile,
-        forceRecrawl: false
+        forceRecrawl: false,
+        outputDirectory: tempDir
     )
     let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
 
@@ -347,7 +349,8 @@ func crawlerStateShouldRecrawlMissingFile() async throws {
     let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: metadataFile,
-        forceRecrawl: false
+        forceRecrawl: false,
+        outputDirectory: tempDir
     )
     let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
 
@@ -388,7 +391,8 @@ func crawlerStateForceRecrawl() async throws {
     let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: metadataFile,
-        forceRecrawl: true // Force recrawl
+        forceRecrawl: true, // Force recrawl
+        outputDirectory: tempDir
     )
     let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
 
@@ -429,7 +433,8 @@ func crawlerStateDisabledChangeDetection() async throws {
     let config = Shared.Configuration.ChangeDetection(
         enabled: false, // Disabled
         metadataFile: metadataFile,
-        forceRecrawl: false
+        forceRecrawl: false,
+        outputDirectory: tempDir
     )
     let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
 
@@ -452,7 +457,8 @@ func crawlerStateUpdatePage() async {
     let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: tempDir.appendingPathComponent("metadata.json"),
-        forceRecrawl: false
+        forceRecrawl: false,
+        outputDirectory: tempDir
     )
 
     let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
@@ -482,7 +488,8 @@ func crawlerStateUpdateStatistics() async {
     let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: tempDir.appendingPathComponent("metadata.json"),
-        forceRecrawl: false
+        forceRecrawl: false,
+        outputDirectory: tempDir
     )
 
     let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
@@ -514,7 +521,8 @@ func crawlerStateSessionManagement() async throws {
     let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: tempDir.appendingPathComponent("metadata.json"),
-        forceRecrawl: false
+        forceRecrawl: false,
+        outputDirectory: tempDir
     )
 
     let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
@@ -566,7 +574,8 @@ func crawlerStateFinalizeAndSave() async throws {
     let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: metadataFile,
-        forceRecrawl: false
+        forceRecrawl: false,
+        outputDirectory: tempDir
     )
 
     let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
@@ -616,7 +625,8 @@ func crawlerStateAutoSaveInterval() async throws {
     let config = Shared.Configuration.ChangeDetection(
         enabled: true,
         metadataFile: metadataFile,
-        forceRecrawl: false
+        forceRecrawl: false,
+        outputDirectory: tempDir
     )
 
     let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())

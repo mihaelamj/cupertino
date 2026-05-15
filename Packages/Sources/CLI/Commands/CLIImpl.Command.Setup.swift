@@ -2,10 +2,8 @@ import ArgumentParser
 import Distribution
 import Foundation
 import Logging
+import LoggingModels
 import SharedConstants
-import SharedCore
-import SharedUtils
-
 // MARK: - Setup Command
 
 /// Thin CLI wrapper around `Distribution.SetupService` (#246). The
@@ -13,7 +11,7 @@ import SharedUtils
 /// this command parses flags, subscribes to progress events, and renders
 /// the spinner + progress bar + final summary.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension CLI.Command {
+extension CLIImpl.Command {
     struct Setup: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "setup",
@@ -27,10 +25,13 @@ extension CLI.Command {
         var keepExisting: Bool = false
 
         mutating func run() async throws {
-            Logging.ConsoleLogger.info("📦 Cupertino Setup\n")
+            Cupertino.Context.composition.logging.recording.info("📦 Cupertino Setup\n")
 
+            // Path-DI composition sub-root (#535): construct once at the top
+            // of run(), then thread explicit URLs into every consumer.
+            let paths = Shared.Paths.live()
             let baseURL = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-                ?? Shared.Constants.defaultBaseDirectory
+                ?? paths.baseDirectory
 
             let renderer = SetupRenderer()
             let request = Distribution.SetupService.Request(
@@ -44,7 +45,7 @@ extension CLI.Command {
                 }
                 renderer.printFinalSummary(outcome: outcome)
             } catch {
-                Logging.ConsoleLogger.error("❌ Setup failed: \(error)")
+                Cupertino.Context.composition.logging.recording.error("❌ Setup failed: \(error)")
                 throw ExitCode.failure
             }
         }
@@ -73,12 +74,12 @@ private final class SetupRenderer: @unchecked Sendable {
             printPriorStatus(status)
 
         case .dbBackedUp(let filename, _, let backupURL):
-            Logging.ConsoleLogger.info(
+            Cupertino.Context.composition.logging.recording.info(
                 "💾 Backed up \(filename) → \(backupURL.lastPathComponent)"
             )
 
         case .downloadStart(let label):
-            Logging.ConsoleLogger.info("⬇️  Downloading \(label)...")
+            Cupertino.Context.composition.logging.recording.info("⬇️  Downloading \(label)...")
 
         case .downloadProgress(_, let progress):
             renderProgress(progress: progress)
@@ -86,17 +87,17 @@ private final class SetupRenderer: @unchecked Sendable {
         case .downloadComplete(let label, let bytes):
             printRaw("\n")
             let size = Shared.Utils.Formatting.formatBytes(bytes)
-            Logging.ConsoleLogger.info("   ✓ \(label) (\(size))")
+            Cupertino.Context.composition.logging.recording.info("   ✓ \(label) (\(size))")
 
         case .extractStart(let label):
-            Logging.ConsoleLogger.info("📂 Extracting \(label.lowercased())...")
+            Cupertino.Context.composition.logging.recording.info("📂 Extracting \(label.lowercased())...")
 
         case .extractTick:
             renderExtractTick()
 
         case .extractComplete:
             printRaw("\(clearLine)")
-            Logging.ConsoleLogger.info("   ✓ Extracted")
+            Cupertino.Context.composition.logging.recording.info("   ✓ Extracted")
 
         case .finished:
             break
@@ -104,17 +105,17 @@ private final class SetupRenderer: @unchecked Sendable {
     }
 
     func printFinalSummary(outcome: Distribution.SetupService.Outcome) {
-        Logging.ConsoleLogger.output("")
+        Cupertino.Context.composition.logging.recording.output("")
         if outcome.skippedDownload {
-            Logging.ConsoleLogger.info("✅ Databases already exist (keeping them, per --keep-existing)")
+            Cupertino.Context.composition.logging.recording.info("✅ Databases already exist (keeping them, per --keep-existing)")
         } else {
-            Logging.ConsoleLogger.info("✅ Setup complete!")
+            Cupertino.Context.composition.logging.recording.info("✅ Setup complete!")
         }
-        Logging.ConsoleLogger.info("   Documentation: \(outcome.searchDBPath.path)")
-        Logging.ConsoleLogger.info("   Sample code:   \(outcome.samplesDBPath.path)")
-        Logging.ConsoleLogger.info("   Packages:      \(outcome.packagesDBPath.path)")
-        Logging.ConsoleLogger.info("   Version:       \(outcome.docsVersionWritten)")
-        Logging.ConsoleLogger.info("\n💡 Start the server with: cupertino serve")
+        Cupertino.Context.composition.logging.recording.info("   Documentation: \(outcome.searchDBPath.path)")
+        Cupertino.Context.composition.logging.recording.info("   Sample code:   \(outcome.samplesDBPath.path)")
+        Cupertino.Context.composition.logging.recording.info("   Packages:      \(outcome.packagesDBPath.path)")
+        Cupertino.Context.composition.logging.recording.info("   Version:       \(outcome.docsVersionWritten)")
+        Cupertino.Context.composition.logging.recording.info("\n💡 Start the server with: cupertino serve")
     }
 
     // MARK: - Rendering helpers
@@ -158,18 +159,18 @@ private final class SetupRenderer: @unchecked Sendable {
         case .missing:
             return
         case .current(let version):
-            Logging.ConsoleLogger.info(
+            Cupertino.Context.composition.logging.recording.info(
                 "ℹ️  Currently installed: v\(version) (same as the binary's expected version)."
             )
-            Logging.ConsoleLogger.info(
+            Cupertino.Context.composition.logging.recording.info(
                 "   Re-downloading v\(version). This is a refresh, not an upgrade."
             )
-            Logging.ConsoleLogger.info("   Tip: pass --keep-existing to skip this download.\n")
+            Cupertino.Context.composition.logging.recording.info("   Tip: pass --keep-existing to skip this download.\n")
         case .stale(let installed, let current):
-            Logging.ConsoleLogger.info("⬆️  Upgrading databases: v\(installed) → v\(current).\n")
+            Cupertino.Context.composition.logging.recording.info("⬆️  Upgrading databases: v\(installed) → v\(current).\n")
         case .unknown(let current):
-            Logging.ConsoleLogger.info("ℹ️  Databases exist but their version is unknown (legacy install).")
-            Logging.ConsoleLogger.info("   Downloading v\(current) and stamping the version file.\n")
+            Cupertino.Context.composition.logging.recording.info("ℹ️  Databases exist but their version is unknown (legacy install).")
+            Cupertino.Context.composition.logging.recording.info("   Downloading v\(current) and stamping the version file.\n")
         }
     }
 }

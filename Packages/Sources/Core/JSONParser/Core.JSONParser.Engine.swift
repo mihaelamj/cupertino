@@ -1,7 +1,5 @@
 import CoreProtocols
 import Foundation
-import SharedCore
-
 // MARK: - Apple JSON Crawler Engine
 
 /// Complete crawler engine for Apple documentation using JSON API

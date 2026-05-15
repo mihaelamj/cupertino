@@ -1,21 +1,19 @@
 import ArgumentParser
 import Foundation
 import Logging
+import LoggingModels
 import Search
 import SearchModels
 import Services
 import ServicesModels
 import SharedConstants
-import SharedCore
-import SharedUtils
-
 // MARK: - Per-source runners
 
-/// `--source <name>` paths split out of `CLI.Command.Search` so the struct body
+/// `--source <name>` paths split out of `CLIImpl.Command.Search` so the struct body
 /// stays under SwiftLint's `type_body_length` ceiling. The default
 /// (no `--source`) fan-out + chunked report lives in
-/// `CLI.Command.Search+SmartReport.swift` (#239).
-extension CLI.Command.Search {
+/// `CLIImpl.Command.Search+SmartReport.swift` (#239).
+extension CLIImpl.Command.Search {
     func runDocsSearch() async throws {
         // GoF Factory Method (1994 p. 107): the search command's
         // composition sub-root. Each per-source runner constructs its
@@ -24,7 +22,11 @@ extension CLI.Command.Search {
         let searchDatabaseFactory: any SearchModule.DatabaseFactory = LiveSearchDatabaseFactory()
         let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
 
-        let results = try await Services.ServiceContainer.withDocsService(dbPath: searchDb, searchDatabaseFactory: searchDatabaseFactory) { service in
+        // Path-DI composition sub-root (#535).
+        let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+            ?? Shared.Paths.live().searchDatabase
+
+        let results = try await Services.ServiceContainer.withDocsService(searchDB: searchDBURL, searchDatabaseFactory: searchDatabaseFactory) { service in
             try await service.search(Services.SearchQuery(
                 text: query,
                 source: source,
@@ -41,8 +43,8 @@ extension CLI.Command.Search {
         }
 
         let teasers = try await Services.ServiceContainer.withTeaserService(
-            searchDbPath: searchDb,
-            sampleDbPath: resolveSampleDbPath(),
+            searchDB: searchDBURL,
+            samplesDB: resolveSampleDbPath(),
             searchDatabaseFactory: searchDatabaseFactory,
             sampleDatabaseFactory: sampleDatabaseFactory
         ) { service in
@@ -61,10 +63,10 @@ extension CLI.Command.Search {
                 source: source,
                 teasers: teasers
             )
-            Logging.Log.output(formatter.format(results))
+            Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         case .json:
             let formatter = Services.Formatter.JSON()
-            Logging.Log.output(formatter.format(results))
+            Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         case .markdown:
             let formatter = Services.Formatter.Markdown(
                 query: query,
@@ -81,7 +83,7 @@ extension CLI.Command.Search {
                 config: .cliDefault,
                 teasers: teasers
             )
-            Logging.Log.output(formatter.format(results))
+            Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         }
     }
 
@@ -92,7 +94,7 @@ extension CLI.Command.Search {
 
         let dbPath = resolveSampleDbPath()
 
-        let result = try await Services.ServiceContainer.withSampleService(dbPath: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
+        let result = try await Services.ServiceContainer.withSampleService(samplesDB: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
             try await service.search(Sample.Search.Query(
                 text: query,
                 framework: framework,
@@ -107,9 +109,11 @@ extension CLI.Command.Search {
         // query (#237).
         let teasers: Services.Formatter.TeaserResults
         do {
+            let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+                ?? Shared.Paths.live().searchDatabase
             teasers = try await Services.ServiceContainer.withTeaserService(
-                searchDbPath: searchDb,
-                sampleDbPath: resolveSampleDbPath(),
+                searchDB: searchDBURL,
+                samplesDB: resolveSampleDbPath(),
                 searchDatabaseFactory: searchDatabaseFactory,
                 sampleDatabaseFactory: sampleDatabaseFactory
             ) { service in
@@ -121,7 +125,7 @@ extension CLI.Command.Search {
                 )
             }
         } catch {
-            Logging.Log.info(
+            Cupertino.Context.composition.logging.recording.info(
                 "ℹ️  Teaser results from other sources unavailable: \(error.localizedDescription) "
                     + "(common when another process is writing search.db). "
                     + "Continuing with samples results only."
@@ -132,13 +136,13 @@ extension CLI.Command.Search {
         switch format {
         case .text:
             let formatter = Sample.Format.Text.Search(query: query, framework: framework, teasers: teasers)
-            Logging.Log.output(formatter.format(result))
+            Cupertino.Context.composition.logging.recording.output(formatter.format(result))
         case .json:
             let formatter = Sample.Format.JSON.Search(query: query, framework: framework)
-            Logging.Log.output(formatter.format(result))
+            Cupertino.Context.composition.logging.recording.output(formatter.format(result))
         case .markdown:
             let formatter = Sample.Format.Markdown.Search(query: query, framework: framework, teasers: teasers)
-            Logging.Log.output(formatter.format(result))
+            Cupertino.Context.composition.logging.recording.output(formatter.format(result))
         }
     }
 
@@ -153,16 +157,16 @@ extension CLI.Command.Search {
     func runPackageSearch() async throws {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            Logging.ConsoleLogger.error("❌ Query cannot be empty.")
+            Cupertino.Context.composition.logging.recording.error("❌ Query cannot be empty.")
             throw ExitCode.failure
         }
 
         let dbURL = packagesDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Shared.Constants.defaultPackagesDatabase
+            ?? Shared.Paths.live().packagesDatabase
 
         guard FileManager.default.fileExists(atPath: dbURL.path) else {
-            Logging.ConsoleLogger.error("❌ packages.db not found at \(dbURL.path)")
-            Logging.ConsoleLogger.error("   Run `cupertino setup` to download it, or `cupertino save --packages` to build locally.")
+            Cupertino.Context.composition.logging.recording.error("❌ packages.db not found at \(dbURL.path)")
+            Cupertino.Context.composition.logging.recording.error("   Run `cupertino setup` to download it, or `cupertino save --packages` to build locally.")
             throw ExitCode.failure
         }
 
@@ -194,7 +198,11 @@ extension CLI.Command.Search {
         let searchDatabaseFactory: any SearchModule.DatabaseFactory = LiveSearchDatabaseFactory()
         let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
 
-        let results = try await Services.ServiceContainer.withDocsService(dbPath: searchDb, searchDatabaseFactory: searchDatabaseFactory) { service in
+        // Path-DI composition sub-root (#535).
+        let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+            ?? Shared.Paths.live().searchDatabase
+
+        let results = try await Services.ServiceContainer.withDocsService(searchDB: searchDBURL, searchDatabaseFactory: searchDatabaseFactory) { service in
             try await service.search(Services.SearchQuery(
                 text: query,
                 source: Shared.Constants.SourcePrefix.hig,
@@ -206,8 +214,8 @@ extension CLI.Command.Search {
         }
 
         let teasers = try await Services.ServiceContainer.withTeaserService(
-            searchDbPath: searchDb,
-            sampleDbPath: resolveSampleDbPath(),
+            searchDB: searchDBURL,
+            samplesDB: resolveSampleDbPath(),
             searchDatabaseFactory: searchDatabaseFactory,
             sampleDatabaseFactory: sampleDatabaseFactory
         ) { service in
@@ -224,13 +232,13 @@ extension CLI.Command.Search {
         switch format {
         case .text:
             let formatter = Services.Formatter.HIG.Text(query: higQuery, teasers: teasers)
-            Logging.Log.output(formatter.format(results))
+            Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         case .json:
             let formatter = Services.Formatter.HIG.JSON(query: higQuery)
-            Logging.Log.output(formatter.format(results))
+            Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         case .markdown:
             let formatter = Services.Formatter.HIG.Markdown(query: higQuery, config: .cliDefault, teasers: teasers)
-            Logging.Log.output(formatter.format(results))
+            Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         }
     }
 }

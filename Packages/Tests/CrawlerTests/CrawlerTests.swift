@@ -5,10 +5,7 @@ import CoreProtocols
 import CrawlerModels
 import Foundation
 import LoggingModels
-import SharedConfiguration
 import SharedConstants
-@testable import SharedCore
-import SharedModels
 import Testing
 
 // MARK: - Crawler Tests
@@ -34,7 +31,8 @@ struct CrawlerTests {
             ),
             changeDetection: Shared.Configuration.ChangeDetection(
                 enabled: false,
-                metadataFile: tempDir.appendingPathComponent("metadata.json")
+                metadataFile: tempDir.appendingPathComponent("metadata.json"),
+                outputDirectory: tempDir
             ),
             output: Shared.Configuration.Output()
         )
@@ -291,12 +289,12 @@ struct CrawlerTests {
         #expect(decoded.errors == 5)
     }
 
-    // MARK: - Crawler.AppleDocs.Progress Tests
+    // MARK: - Crawler.AppleDocsProgress Tests
 
-    @Test("Crawler.AppleDocs.Progress calculates percentage")
+    @Test("Crawler.AppleDocsProgress calculates percentage")
     func progressCalculatesPercentage() throws {
         let stats = Shared.Models.CrawlStatistics()
-        let progress = try Crawler.AppleDocs.Progress(
+        let progress = try Crawler.AppleDocsProgress(
             currentURL: #require(URL(string: "https://example.com")),
             visitedCount: 10,
             totalPages: 100,
@@ -325,7 +323,8 @@ struct CrawlerTests {
             ),
             changeDetection: Shared.Configuration.ChangeDetection(
                 enabled: false,
-                metadataFile: tempDir.appendingPathComponent("metadata.json")
+                metadataFile: tempDir.appendingPathComponent("metadata.json"),
+                outputDirectory: tempDir
             ),
             output: Shared.Configuration.Output()
         )
@@ -371,7 +370,8 @@ struct CrawlerTests {
             ),
             changeDetection: Shared.Configuration.ChangeDetection(
                 enabled: false,
-                metadataFile: tempDir.appendingPathComponent("metadata.json")
+                metadataFile: tempDir.appendingPathComponent("metadata.json"),
+                outputDirectory: tempDir
             ),
             output: Shared.Configuration.Output()
         )

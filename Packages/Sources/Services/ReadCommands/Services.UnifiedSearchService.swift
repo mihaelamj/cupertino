@@ -3,9 +3,6 @@ import SampleIndexModels
 import SearchModels
 import ServicesModels
 import SharedConstants
-import SharedCore
-import SharedUtils
-
 // MARK: - Unified Search Service
 
 /// Service for searching across all documentation sources.

@@ -2,8 +2,6 @@ import Foundation
 import SearchModels
 import ServicesModels
 import SharedConstants
-import SharedCore
-
 // MARK: - Documentation Search Service
 
 /// Service for searching Apple documentation, Swift Evolution, and other

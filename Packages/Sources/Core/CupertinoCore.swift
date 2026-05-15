@@ -11,9 +11,10 @@
 @_exported import WebKit
 #endif
 
-import SharedConfiguration
 import SharedConstants
-@_exported import SharedCore
+// SharedCore was absorbed into SharedConstants in #536 phase 1a. The
+// `@_exported` here was reaching for the SharedCore module surface;
+// now that surface is part of SharedConstants which is already imported above.
 
 // MARK: - Usage Example
 

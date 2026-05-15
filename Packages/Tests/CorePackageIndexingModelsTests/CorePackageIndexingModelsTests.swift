@@ -2,7 +2,6 @@ import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
 import SharedConstants
-import SharedModels
 import Testing
 
 // Smoke tests for the CorePackageIndexingModels target. Pin the public

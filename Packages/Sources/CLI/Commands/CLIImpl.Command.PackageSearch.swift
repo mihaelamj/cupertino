@@ -1,12 +1,10 @@
 import ArgumentParser
 import Foundation
 import Logging
+import LoggingModels
 import Search
 import SearchModels
 import SharedConstants
-import SharedCore
-import SharedUtils
-
 // MARK: - Package Search Command (hidden)
 
 /// Hidden packages-only smart query. Invoked as:
@@ -19,7 +17,7 @@ import SharedUtils
 /// specifically want packages-only results without typing `--skip-docs
 /// --skip-samples`.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension CLI.Command {
+extension CLIImpl.Command {
     struct PackageSearch: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "package-search",
@@ -58,18 +56,20 @@ extension CLI.Command {
         var minVersion: String?
 
         mutating func run() async throws {
+            // Path-DI composition sub-root (#535).
+            let paths = Shared.Paths.live()
             let dbURL = db.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-                ?? Shared.Constants.defaultPackagesDatabase
+                ?? paths.packagesDatabase
 
             guard FileManager.default.fileExists(atPath: dbURL.path) else {
-                Logging.ConsoleLogger.error("❌ packages.db not found at \(dbURL.path)")
-                Logging.ConsoleLogger.error("   Run `cupertino fetch --type packages` then `cupertino save --packages` first.")
+                Cupertino.Context.composition.logging.recording.error("❌ packages.db not found at \(dbURL.path)")
+                Cupertino.Context.composition.logging.recording.error("   Run `cupertino fetch --type packages` then `cupertino save --packages` first.")
                 throw ExitCode.failure
             }
 
             let trimmed = question.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else {
-                Logging.ConsoleLogger.error("❌ Question cannot be empty.")
+                Cupertino.Context.composition.logging.recording.error("❌ Question cannot be empty.")
                 throw ExitCode.failure
             }
 
@@ -86,7 +86,7 @@ extension CLI.Command {
                     minVersion: minVersion
                 )
             case (.some, nil), (nil, .some):
-                Logging.ConsoleLogger.error(
+                Cupertino.Context.composition.logging.recording.error(
                     "❌ --platform and --min-version must be used together."
                 )
                 throw ExitCode.failure
@@ -101,7 +101,7 @@ extension CLI.Command {
             let result = await smart.answer(question: trimmed, limit: limit, perFetcherLimit: max(20, limit))
 
             if result.candidates.isEmpty {
-                Logging.ConsoleLogger.info("No matches for: \(trimmed)")
+                Cupertino.Context.composition.logging.recording.info("No matches for: \(trimmed)")
                 return
             }
 

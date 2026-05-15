@@ -2,8 +2,6 @@ import ASTIndexer
 import Foundation
 import SearchModels
 import SharedConstants
-import SharedCore
-
 // MARK: - Source Item
 
 /// Unified container for content to be indexed from any source.

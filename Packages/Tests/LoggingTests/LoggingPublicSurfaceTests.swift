@@ -38,8 +38,13 @@ struct LoggingPublicSurfaceTests {
     func loggingNamespace() {
         _ = Logging.self
         _ = Logging.Logger.self
-        _ = Logging.ConsoleLogger.self
         _ = Logging.Unified.self
+        // Note: `Logging.ConsoleLogger` was deleted in the logging-DI
+        // arc (#534). The replacement is `Logging.LiveRecording`, the
+        // GoF Strategy concrete that conforms to
+        // `LoggingModels.Logging.Recording`. Its surface is covered by
+        // `Tests/LoggingTests/LiveRecordingTests.swift`.
+        _ = Logging.LiveRecording.self
     }
 
     // MARK: All 10 logger categories
@@ -151,15 +156,60 @@ struct LoggingPublicSurfaceTests {
         #expect(opts.showCategory == true)
     }
 
-    // MARK: Logging.Unified actor
+    // MARK: Logging.Unified — public init
 
-    @Test("Logging.Unified.shared singleton is reachable and configurable")
-    func unifiedSharedConfigurable() async {
-        // The singleton is the entry point every cupertino subsystem
-        // uses. configure() reaches into the actor; if the signature
-        // breaks, every caller breaks. Round-trip a configure() with
-        // a known Options and verify the actor accepts it without
-        // throwing.
+    @Test("Logging.Unified is constructible directly via the public init")
+    func unifiedPublicInit() async {
+        // Constructor injection is the only path. Build a Unified, round-trip
+        // a configure(), confirm the actor accepts the Options shape.
+        let opts = Logging.Unified.Options(
+            consoleEnabled: false,
+            fileEnabled: false,
+            fileURL: nil,
+            minLevel: .warning,
+            showTimestamps: false,
+            showCategory: false
+        )
+        let unified = Logging.Unified(options: opts)
+        await unified.configure(.default)
+    }
+
+    // MARK: Logging.LiveRecording(unified:) — Bridge init
+
+    @Test("Logging.LiveRecording(unified:) holds the injected actor")
+    func liveRecordingUnifiedInit() {
+        // Bridge (GoF p. 151) properly closed: the abstraction
+        // (`Logging.Recording` protocol) and the implementation
+        // (`Logging.Unified` actor) are wired via DI. Identity check:
+        // the held actor reference is the one we passed in.
+        let injected = Logging.Unified(options: .default)
+        let recording = Logging.LiveRecording(unified: injected)
+        #expect(recording.unified === injected)
+    }
+
+    // MARK: Logging.Composition — Abstract Factory at the binary layer
+
+    @Test("Logging.Composition() builds one Unified actor and wires LiveRecording")
+    func compositionBuildsCoherentGraph() {
+        // The composition root owns the actor; the recording is the
+        // Bridge wrapper around it. Both fields must point at the same
+        // actor reference (this is the whole point of the Abstract
+        // Factory — one Unified per binary, multiple consumers, one
+        // identity).
+        let composition = Logging.Composition()
+        let liveRecording = composition.recording as? Logging.LiveRecording
+        // The default-built recording is a LiveRecording, not a NoopRecording.
+        #expect(liveRecording != nil)
+        #expect(liveRecording?.unified === composition.unified)
+    }
+
+    @Test("Logging.Composition.configure forwards to the held actor")
+    func compositionConfigureForwards() async {
+        // Build a composition, push a non-default Options through
+        // configure(), then push back to .default to leave the actor
+        // in a clean state. The actor accepting the configure() call
+        // without throwing is the contract.
+        let composition = Logging.Composition()
         let opts = Logging.Unified.Options(
             consoleEnabled: false,
             fileEnabled: false,
@@ -168,8 +218,17 @@ struct LoggingPublicSurfaceTests {
             showTimestamps: false,
             showCategory: false
         )
-        await Logging.Unified.shared.configure(opts)
-        // Reset to default so we don't pollute follow-on tests.
-        await Logging.Unified.shared.configure(.default)
+        await composition.configure(opts)
+        await composition.configure(.default)
+    }
+
+    @Test("Logging.Composition.disableConsole + enableConsole round-trip cleanly")
+    func compositionConsoleToggle() async {
+        // disableConsole is the entry point the MCP server uses to
+        // silence stdout for JSON-RPC. The composition forwards to the
+        // actor; round-trip both directions to pin the façade.
+        let composition = Logging.Composition()
+        await composition.disableConsole()
+        await composition.enableConsole()
     }
 }

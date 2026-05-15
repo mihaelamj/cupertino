@@ -1,5 +1,6 @@
 @testable import CLI
 import Foundation
+import SharedConstants
 import Testing
 
 // MARK: - CLI Tests
@@ -22,26 +23,26 @@ struct CommandRegistrationTests {
         // into `search` in #239 (default fan-out path produces the same
         // chunked output as `ask` did).
         #expect(config.subcommands.count == 14)
-        #expect(config.subcommands.contains { $0 == CLI.Command.Setup.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.Fetch.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.Save.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.Serve.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.Search.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.Read.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.ListFrameworks.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.ListSamples.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.ReadSample.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.ReadSampleFile.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.Doctor.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.Cleanup.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.PackageSearch.self })
-        #expect(config.subcommands.contains { $0 == CLI.Command.ResolveRefs.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Setup.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Fetch.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Save.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Serve.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Search.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Read.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.ListFrameworks.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.ListSamples.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.ReadSample.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.ReadSampleFile.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Doctor.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Cleanup.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.PackageSearch.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.ResolveRefs.self })
     }
 
-    @Test("Default subcommand is CLI.Command.Serve")
+    @Test("Default subcommand is CLIImpl.Command.Serve")
     func defaultSubcommand() {
         let config = Cupertino.configuration
-        #expect(config.defaultSubcommand == CLI.Command.Serve.self)
+        #expect(config.defaultSubcommand == CLIImpl.Command.Serve.self)
     }
 
     @Test("Command name is set correctly")
@@ -94,9 +95,13 @@ struct FetchTypeTests {
 
     @Test("Output directories use home directory")
     func outputDirectoriesUseHome() {
+        // Path-DI migration (#535): pass a stub `Shared.Paths` rooted under the
+        // current user's home directory so the assertion still has something
+        // to compare against.
         let homeDir = FileManager.default.homeDirectoryForCurrentUser.path
+        let stubPaths = Shared.Paths(baseDirectory: URL(fileURLWithPath: homeDir).appendingPathComponent(".cupertino"))
         for fetchType in Self.allTypes {
-            let outputDir = fetchType.defaultOutputDir
+            let outputDir = fetchType.defaultOutputDir(paths: stubPaths)
             #expect(
                 outputDir.hasPrefix(homeDir),
                 "FetchType.\(fetchType) output dir should start with home directory"
@@ -106,8 +111,10 @@ struct FetchTypeTests {
 
     @Test("Output directories contain base directory name")
     func outputDirectoriesContainBase() {
+        // Path-DI migration (#535): see uniqueOutputDirectories for the rationale.
+        let stubPaths = Shared.Paths(baseDirectory: URL(fileURLWithPath: "/tmp/.cupertino"))
         for fetchType in Self.allTypes {
-            let outputDir = fetchType.defaultOutputDir
+            let outputDir = fetchType.defaultOutputDir(paths: stubPaths)
             #expect(
                 outputDir.contains("cupertino"),
                 "FetchType.\(fetchType) output dir should contain 'cupertino'"
@@ -206,7 +213,10 @@ struct FetchTypeTests {
             .code,
         ]
 
-        let directories = Set(types.map(\.defaultOutputDir))
+        // Path-DI migration (#535): defaultOutputDir takes a `Shared.Paths` injection,
+        // so it's a method now rather than a computed property — pass a stub.
+        let stubPaths = Shared.Paths(baseDirectory: URL(fileURLWithPath: "/tmp/cupertino-test-stub"))
+        let directories = Set(types.map { $0.defaultOutputDir(paths: stubPaths) })
         #expect(directories.count == types.count, "Each type should have a unique output directory")
     }
 
@@ -244,3 +254,57 @@ struct FetchTypeDisplayNameTests {
 
 // SaveCommandPreflightTests was moved to Tests/IndexerTests/PreflightTests.swift
 // in #244. The preflight pipeline now lives in `Indexer.Preflight`.
+
+// MARK: - Cupertino.Composition Mediator (#548 Phase B)
+
+@Suite("Cupertino.Composition")
+struct CupertinoCompositionTests {
+    @Test("Composition() builds a coherent logging + paths graph")
+    func compositionBuildsCoherentGraph() {
+        // The Mediator owns both deps; both fields must be non-nil-equivalent
+        // and the recording must trace back to the same Unified actor the
+        // composition holds. This pins the Abstract Factory wiring.
+        let composition = Cupertino.Composition()
+        // `paths.baseDirectory` is required for Shared.Paths to derive any
+        // of its 13 derived URLs; the constructor would have crashed if the
+        // value couldn't resolve, so simply reaching it confirms wiring.
+        _ = composition.paths.baseDirectory
+        _ = composition.logging.recording
+    }
+
+    @Test("Composition init accepts overrides for both deps (test seam)")
+    func compositionAcceptsOverrides() {
+        // Tests that need a stub logger / custom paths build their own
+        // Logging.Composition and Shared.Paths and inject them. This is
+        // the entry point a future Cupertino integration-test runner
+        // uses to feed the @TaskLocal a fake binary world.
+        let stubPaths = Shared.Paths(baseDirectory: URL(fileURLWithPath: "/tmp/cupertino-composition-test"))
+        let composition = Cupertino.Composition(paths: stubPaths)
+        #expect(composition.paths.baseDirectory.path == "/tmp/cupertino-composition-test")
+    }
+
+    @Test("Cupertino.Context.composition has a default value before main() binds one")
+    func contextDefaultIsReachable() {
+        // The @TaskLocal default exists so unit tests that touch a command
+        // body without going through Cupertino.main() still get a reachable
+        // composition. Reading it without crashing is the contract.
+        let composition = Cupertino.Context.composition
+        _ = composition.paths.baseDirectory
+        _ = composition.logging.recording
+    }
+
+    @Test("Cupertino.Context.$composition.withValue overrides the binding for its scope")
+    func contextWithValueScoping() async {
+        // Verify the SE-0311 binding behaviour: within `withValue { … }`,
+        // the override is visible; outside, the previous (default) value
+        // returns. This is the contract Cupertino.main() relies on.
+        let stubPaths = Shared.Paths(baseDirectory: URL(fileURLWithPath: "/tmp/cupertino-withvalue-test"))
+        let scoped = Cupertino.Composition(paths: stubPaths)
+        await Cupertino.Context.$composition.withValue(scoped) {
+            #expect(Cupertino.Context.composition.paths.baseDirectory.path == "/tmp/cupertino-withvalue-test")
+        }
+        // Outside the scope, the default-built composition's baseDirectory
+        // is NOT the stub path — confirms the binding properly cleared.
+        #expect(Cupertino.Context.composition.paths.baseDirectory.path != "/tmp/cupertino-withvalue-test")
+    }
+}

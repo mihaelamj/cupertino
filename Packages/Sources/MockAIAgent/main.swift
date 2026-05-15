@@ -1,8 +1,6 @@
 import Foundation
 import MCPCore
 import SharedConstants
-import SharedCore
-
 // MARK: - Mock AI Agent
 
 // swiftlint:disable type_body_length

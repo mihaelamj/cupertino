@@ -1,15 +1,13 @@
 import ArgumentParser
 import Foundation
 import Logging
+import LoggingModels
 import SampleIndex
 import Search
 import SearchModels
 import Services
 import ServicesModels
 import SharedConstants
-import SharedCore
-import SharedUtils
-
 // MARK: - Search Command
 
 /// CLI command for unified search across all documentation sources.
@@ -21,7 +19,7 @@ import SharedUtils
 /// single-source `--source <name>` path still runs the source-specific
 /// list-style formatters.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension CLI.Command {
+extension CLIImpl.Command {
     struct Search: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "search",
@@ -221,7 +219,7 @@ extension CLI.Command {
             }
         }
 
-        // MARK: - Per-source runners moved to CLI.Command.Search+SourceRunners.swift
+        // MARK: - Per-source runners moved to CLIImpl.Command.Search+SourceRunners.swift
 
         // MARK: - Unified Search (All Sources, fan-out + RRF) (#239)
 
@@ -231,14 +229,14 @@ extension CLI.Command {
         private func runUnifiedSearch() async throws {
             let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else {
-                Logging.ConsoleLogger.error("❌ Query cannot be empty.")
+                Cupertino.Context.composition.logging.recording.error("❌ Query cannot be empty.")
                 throw ExitCode.failure
             }
 
             let availabilityFilter = try resolveAvailabilityFilter()
             let plan = await buildFetchers(availabilityFilter: availabilityFilter)
             guard !plan.fetchers.isEmpty else {
-                Logging.ConsoleLogger.error(
+                Cupertino.Context.composition.logging.recording.error(
                     "❌ No data sources available. Run `cupertino setup` to populate them."
                 )
                 throw ExitCode.failure
@@ -275,14 +273,15 @@ extension CLI.Command {
             if let sampleDb {
                 return URL(fileURLWithPath: sampleDb).expandingTildeInPath
             }
-            return Sample.Index.defaultDatabasePath
+            // Path-DI composition sub-root (#535).
+            return Sample.Index.databasePath(baseDirectory: Shared.Paths.live().baseDirectory)
         }
     }
 }
 
 // MARK: - Output Format
 
-extension CLI.Command.Search {
+extension CLIImpl.Command.Search {
     enum OutputFormat: String, ExpressibleByArgument, CaseIterable {
         case text
         case json

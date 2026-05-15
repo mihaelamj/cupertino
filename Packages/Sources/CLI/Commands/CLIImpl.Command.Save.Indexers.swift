@@ -2,28 +2,26 @@ import CoreJSONParser
 import CoreProtocols
 import CoreSampleCode
 import Foundation
-import LoggingModels
 import Indexer
 import Logging
+import LoggingModels
 import SampleIndex
 import Search
 import SearchModels
 import SharedConstants
-import SharedCore
-import SharedUtils
 
 // MARK: - Indexer dispatch + progress rendering (#244)
 
-/// Per-source indexer dispatchers split out of `CLI.Command.Save.swift` so the
+/// Per-source indexer dispatchers split out of `CLIImpl.Command.Save.swift` so the
 /// struct body stays under SwiftLint's `type_body_length` 300-line
 /// ceiling. Each dispatcher converts CLI flags into an
 /// `Indexer.<X>Service.Request`, runs the service, renders progress
 /// events to the terminal, and prints a final summary.
-extension CLI.Command.Save {
+extension CLIImpl.Command.Save {
     // MARK: - Docs
 
     func runDocsIndexer(effectiveBase: URL) async throws {
-        Logging.ConsoleLogger.info("🔨 Building Search Index\n")
+        Cupertino.Context.composition.logging.recording.info("🔨 Building Search Index\n")
 
         let request = Indexer.DocsService.Request(
             baseDir: effectiveBase,
@@ -36,28 +34,52 @@ extension CLI.Command.Save {
             clear: clear
         )
 
+        // Path-DI composition sub-root (#535): catalog actor takes
+        // the resolved sample-code directory at construction.
+        let sampleCatalogActor = Sample.Core.Catalog(
+            sampleCodeDirectory: Shared.Paths.live().sampleCodeDirectory
+        )
+
         let tracker = ProgressTracker()
         let outcome = try await Indexer.DocsService.run(
             request,
             markdownStrategy: LiveMarkdownToStructuredPageStrategy(),
-            sampleCatalogProvider: LiveSampleCatalogProvider(),
-            docsIndexingRunner: LiveDocsIndexingRunner()
-        ) { event in
-            Self.handleDocsEvent(event, tracker: tracker)
-        }
+            sampleCatalogProvider: LiveSampleCatalogProvider(catalog: sampleCatalogActor),
+            docsIndexingRunner: LiveDocsIndexingRunner(),
+            events: DocsEventObserver(tracker: tracker)
+        )
         Self.printDocsSummary(outcome: outcome)
+    }
+
+    /// Closure-free GoF Observer for `Indexer.DocsService` lifecycle
+    /// events. Holds the shared `ProgressTracker` reference and routes
+    /// each event into the existing `handleDocsEvent` static dispatcher.
+    /// Replaces the trailing-closure pattern at the call site.
+    private struct DocsEventObserver: Indexer.DocsService.EventObserving {
+        let tracker: ProgressTracker
+
+        func observe(event: Indexer.DocsService.Event) {
+            CLIImpl.Command.Save.handleDocsEvent(event, tracker: tracker)
+        }
     }
 
     /// Concrete `Search.DocsIndexingRunner` (GoF Strategy) used by
     /// `Indexer.DocsService`. Wraps `Search.Index` + `Search.IndexBuilder`.
     /// Lives at the CLI composition root so Indexer doesn't need
     /// `import Search` for these actor types.
+    ///
+    /// Post-Observer-protocol cleanup: this runner is now closure-free.
+    /// The `progress: any Search.IndexingProgressReporting` value
+    /// flows straight through from `Indexer.DocsService` to
+    /// `Search.IndexBuilder.buildIndex` with no adapter struct in
+    /// between. The closure-to-protocol bridge now lives one layer
+    /// up at `Indexer.DocsService.HandlerProgressReporter`.
     struct LiveDocsIndexingRunner: Search.DocsIndexingRunner {
         func run(
             input: Search.DocsIndexingInput,
-            onProgress: @escaping @Sendable (Int, Int) -> Void
+            progress: any Search.IndexingProgressReporting
         ) async throws -> Search.DocsIndexingOutcome {
-            let searchIndex = try await Search.Index(dbPath: input.searchDBPath, logger: Logging.LiveRecording())
+            let searchIndex = try await Search.Index(dbPath: input.searchDBPath, logger: Cupertino.Context.composition.logging.recording)
             let builder = Search.IndexBuilder(
                 searchIndex: searchIndex,
                 metadata: nil,
@@ -67,9 +89,12 @@ extension CLI.Command.Save {
                 archiveDirectory: input.archiveDirectory,
                 higDirectory: input.higDirectory,
                 markdownStrategy: input.markdownStrategy,
-                sampleCatalogProvider: input.sampleCatalogProvider, logger: Logging.LiveRecording()
+                sampleCatalogProvider: input.sampleCatalogProvider, logger: Cupertino.Context.composition.logging.recording
             )
-            try await builder.buildIndex(clearExisting: input.clearExisting, onProgress: onProgress)
+            try await builder.buildIndex(
+                clearExisting: input.clearExisting,
+                onProgress: progress
+            )
             let docCount = try await searchIndex.documentCount()
             let frameworks = try await searchIndex.listFrameworks()
             await searchIndex.disconnect()
@@ -96,14 +121,16 @@ extension CLI.Command.Save {
     // MARK: - Sample catalog adapter
 
     /// Concrete `Search.SampleCatalogProvider` (GoF Strategy) that
-    /// bridges `Sample.Core.Catalog` (the CoreSampleCode singleton)
+    /// bridges `Sample.Core.Catalog` (a per-install actor, post-#535)
     /// to the catalog-state shape the Search `SampleCodeStrategy`
     /// reads. Lives at the CLI composition root so neither Search nor
     /// Indexer needs to import `CoreSampleCode`.
     struct LiveSampleCatalogProvider: Search.SampleCatalogProvider {
+        let catalog: Sample.Core.Catalog
+
         func fetch() async -> Search.SampleCatalogState {
-            let entries = await Sample.Core.Catalog.allEntries
-            let loaded = await Sample.Core.Catalog.loadedSource ?? .missing
+            let entries = await catalog.allEntries
+            let loaded = await catalog.loadedSource ?? .missing
             switch loaded {
             case .onDisk:
                 let mapped = entries.map { entry in
@@ -118,7 +145,7 @@ extension CLI.Command.Save {
                 }
                 return .loaded(entries: mapped)
             case .missing:
-                let path = Shared.Constants.defaultSampleCodeDirectory
+                let path = Shared.Paths.live().sampleCodeDirectory
                     .appendingPathComponent(Sample.Core.Catalog.onDiskCatalogFilename)
                     .path
                 return .missing(onDiskPath: path)
@@ -132,19 +159,19 @@ extension CLI.Command.Save {
     ) {
         switch event {
         case .removingExistingDB:
-            Logging.ConsoleLogger.info("🗑️  Removing existing database for clean re-index...")
+            Cupertino.Context.composition.logging.recording.info("🗑️  Removing existing database for clean re-index...")
         case .initializingIndex:
-            Logging.ConsoleLogger.info("🗄️  Initializing search database...")
+            Cupertino.Context.composition.logging.recording.info("🗄️  Initializing search database...")
         case .missingOptionalSource(let label, let url):
-            Logging.ConsoleLogger.info("ℹ️  \(label) directory not found at \(url.path), skipping")
+            Cupertino.Context.composition.logging.recording.info("ℹ️  \(label) directory not found at \(url.path), skipping")
         case .availabilityMissing:
-            Logging.ConsoleLogger.info("")
-            Logging.ConsoleLogger.info("⚠️  Docs don't have availability data yet")
-            Logging.ConsoleLogger.info("   Run 'cupertino fetch --type availability' first for best results")
-            Logging.ConsoleLogger.info("")
+            Cupertino.Context.composition.logging.recording.info("")
+            Cupertino.Context.composition.logging.recording.info("⚠️  Docs don't have availability data yet")
+            Cupertino.Context.composition.logging.recording.info("   Run 'cupertino fetch --type availability' first for best results")
+            Cupertino.Context.composition.logging.recording.info("")
         case .progress(let processed, let total, let percent):
             if percent - tracker.lastPercent >= 5.0 {
-                Logging.ConsoleLogger.output(
+                Cupertino.Context.composition.logging.recording.output(
                     "   \(String(format: "%.0f%%", percent)) complete (\(processed)/\(total))"
                 )
                 tracker.lastPercent = percent
@@ -155,13 +182,13 @@ extension CLI.Command.Save {
     }
 
     static func printDocsSummary(outcome: Indexer.DocsService.Outcome) {
-        Logging.ConsoleLogger.output("")
-        Logging.ConsoleLogger.info("✅ Search index built successfully!")
-        Logging.ConsoleLogger.info("   Total documents: \(outcome.documentCount)")
-        Logging.ConsoleLogger.info("   Frameworks: \(outcome.frameworkCount)")
-        Logging.ConsoleLogger.info("   Database: \(outcome.searchDBPath.path)")
-        Logging.ConsoleLogger.info("   Size: \(CLI.Command.Save.formatFileSize(outcome.searchDBPath))")
-        Logging.ConsoleLogger.info(
+        Cupertino.Context.composition.logging.recording.output("")
+        Cupertino.Context.composition.logging.recording.info("✅ Search index built successfully!")
+        Cupertino.Context.composition.logging.recording.info("   Total documents: \(outcome.documentCount)")
+        Cupertino.Context.composition.logging.recording.info("   Frameworks: \(outcome.frameworkCount)")
+        Cupertino.Context.composition.logging.recording.info("   Database: \(outcome.searchDBPath.path)")
+        Cupertino.Context.composition.logging.recording.info("   Size: \(CLIImpl.Command.Save.formatFileSize(outcome.searchDBPath))")
+        Cupertino.Context.composition.logging.recording.info(
             "\n💡 Tip: Start the MCP server with '\(Shared.Constants.App.commandName) serve' to enable search"
         )
     }
@@ -172,7 +199,7 @@ extension CLI.Command.Save {
         let packagesRoot = packagesDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? effectiveBase.appendingPathComponent(Shared.Constants.Directory.packages)
         guard FileManager.default.fileExists(atPath: packagesRoot.path) else {
-            Logging.ConsoleLogger.info(
+            Cupertino.Context.composition.logging.recording.info(
                 "ℹ️  packages directory not found at \(packagesRoot.path) — skipping packages step. "
                     + "Run `cupertino fetch --type packages` first."
             )
@@ -182,16 +209,26 @@ extension CLI.Command.Save {
     }
 
     func runPackagesIndexer(packagesRoot: URL) async throws {
+        let paths = Shared.Paths.live()
         let request = Indexer.PackagesService.Request(
             packagesRoot: packagesRoot,
+            packagesDB: paths.packagesDatabase,
             clear: clear
         )
 
         _ = try await Indexer.PackagesService.run(
             request,
-            packageIndexingRunner: LivePackageIndexingRunner()
-        ) { event in
-            Self.handlePackagesEvent(event)
+            packageIndexingRunner: LivePackageIndexingRunner(),
+            events: PackagesEventObserver()
+        )
+    }
+
+    /// Closure-free GoF Observer for `Indexer.PackagesService` lifecycle
+    /// events. No held state; routes each event into the existing
+    /// `handlePackagesEvent` static dispatcher.
+    private struct PackagesEventObserver: Indexer.PackagesService.EventObserving {
+        func observe(event: Indexer.PackagesService.Event) {
+            CLIImpl.Command.Save.handlePackagesEvent(event)
         }
     }
 
@@ -203,14 +240,15 @@ extension CLI.Command.Save {
         func run(
             packagesRoot: URL,
             packagesDB: URL,
-            onProgress: @escaping @Sendable (String, Int, Int) -> Void
+            progress: any Search.PackageIndexingProgressReporting
         ) async throws -> Search.PackageIndexingOutcome {
             let startedAt = Date()
-            let index = try await Search.PackageIndex(dbPath: packagesDB, logger: Logging.LiveRecording())
+            let index = try await Search.PackageIndex(dbPath: packagesDB, logger: Cupertino.Context.composition.logging.recording)
             let indexer = Search.PackageIndexer(rootDirectory: packagesRoot, index: index)
-            let stats = try await indexer.indexAll { name, done, total in
-                onProgress(name, done, total)
-            }
+            // `Search.PackageIndexer.indexAll` takes the same
+            // `Search.PackageIndexingProgressReporting` Observer protocol
+            // this method already receives; pass it straight through.
+            let stats = try await indexer.indexAll(progress: progress)
             let summary = try await index.summary()
             await index.disconnect()
             return Search.PackageIndexingOutcome(
@@ -229,12 +267,12 @@ extension CLI.Command.Save {
     static func handlePackagesEvent(_ event: Indexer.PackagesService.Event) {
         switch event {
         case .starting(let root, let db):
-            Logging.ConsoleLogger.info("🔨 Indexing packages from \(root.path) into \(db.path)")
+            Cupertino.Context.composition.logging.recording.info("🔨 Indexing packages from \(root.path) into \(db.path)")
         case .removingExistingDB(let url):
-            Logging.ConsoleLogger.info("🗑️  --clear: removing existing \(url.lastPathComponent)")
+            Cupertino.Context.composition.logging.recording.info("🗑️  --clear: removing existing \(url.lastPathComponent)")
         case .progress(let name, let done, let total):
             if done == 1 || done % 10 == 0 || done == total {
-                Logging.ConsoleLogger.output(String(format: "📊 %d/%d — %@", done, total, name as NSString))
+                Cupertino.Context.composition.logging.recording.output(String(format: "📊 %d/%d — %@", done, total, name as NSString))
             }
         case .finished(let outcome):
             Self.printPackagesSummary(outcome: outcome)
@@ -242,26 +280,28 @@ extension CLI.Command.Save {
     }
 
     static func printPackagesSummary(outcome: Indexer.PackagesService.Outcome) {
-        Logging.ConsoleLogger.output("")
-        Logging.ConsoleLogger.info("✅ Package indexing completed")
-        Logging.ConsoleLogger.info("   Packages indexed this run: \(outcome.packagesIndexed)")
-        Logging.ConsoleLogger.info("   Packages failed: \(outcome.packagesFailed)")
-        Logging.ConsoleLogger.info("   Files this run: \(outcome.totalFiles)")
-        Logging.ConsoleLogger.info("   Bytes this run: \(outcome.totalBytes / 1024) KB")
-        Logging.ConsoleLogger.info("   Duration: \(Int(outcome.durationSeconds))s")
-        Logging.ConsoleLogger.info("")
-        Logging.ConsoleLogger.info("   Total packages in DB: \(outcome.totalPackagesInDB)")
-        Logging.ConsoleLogger.info("   Total files in DB: \(outcome.totalFilesInDB)")
-        Logging.ConsoleLogger.info("   Total bytes in DB: \(outcome.totalBytesInDB / 1024) KB")
+        Cupertino.Context.composition.logging.recording.output("")
+        Cupertino.Context.composition.logging.recording.info("✅ Package indexing completed")
+        Cupertino.Context.composition.logging.recording.info("   Packages indexed this run: \(outcome.packagesIndexed)")
+        Cupertino.Context.composition.logging.recording.info("   Packages failed: \(outcome.packagesFailed)")
+        Cupertino.Context.composition.logging.recording.info("   Files this run: \(outcome.totalFiles)")
+        Cupertino.Context.composition.logging.recording.info("   Bytes this run: \(outcome.totalBytes / 1024) KB")
+        Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(outcome.durationSeconds))s")
+        Cupertino.Context.composition.logging.recording.info("")
+        Cupertino.Context.composition.logging.recording.info("   Total packages in DB: \(outcome.totalPackagesInDB)")
+        Cupertino.Context.composition.logging.recording.info("   Total files in DB: \(outcome.totalFilesInDB)")
+        Cupertino.Context.composition.logging.recording.info("   Total bytes in DB: \(outcome.totalBytesInDB / 1024) KB")
     }
 
     // MARK: - Samples
 
     func runSamplesIndexerSafely() async throws {
+        // Path-DI composition sub-root (#535).
+        let baseDir = Shared.Paths.live().baseDirectory
         let sampleCodeURL = samplesDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Sample.Index.defaultSampleCodeDirectory
+            ?? Sample.Index.sampleCodeDirectory(baseDirectory: baseDir)
         guard FileManager.default.fileExists(atPath: sampleCodeURL.path) else {
-            Logging.ConsoleLogger.info(
+            Cupertino.Context.composition.logging.recording.info(
                 "ℹ️  sample-code directory not found at \(sampleCodeURL.path) — skipping samples step. "
                     + "Run `cupertino fetch --type samples` first."
             )
@@ -271,8 +311,9 @@ extension CLI.Command.Save {
     }
 
     func runSamplesIndexer(sampleCodeURL: URL) async throws {
+        // Path-DI composition sub-root (#535).
         let dbURL = samplesDB.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Sample.Index.defaultDatabasePath
+            ?? Sample.Index.databasePath(baseDirectory: Shared.Paths.live().baseDirectory)
 
         let request = Indexer.SamplesService.Request(
             sampleCodeDir: sampleCodeURL,
@@ -284,9 +325,20 @@ extension CLI.Command.Save {
         let tracker = ProgressTracker()
         _ = try await Indexer.SamplesService.run(
             request,
-            samplesIndexingRunner: LiveSamplesIndexingRunner()
-        ) { event in
-            Self.handleSamplesEvent(event, tracker: tracker)
+            samplesIndexingRunner: LiveSamplesIndexingRunner(),
+            events: SamplesEventObserver(tracker: tracker)
+        )
+    }
+
+    /// Closure-free GoF Observer for `Indexer.SamplesService` lifecycle
+    /// events. Holds the shared `ProgressTracker` reference and routes
+    /// each event into the existing `handleSamplesEvent` static
+    /// dispatcher.
+    private struct SamplesEventObserver: Indexer.SamplesService.EventObserving {
+        let tracker: ProgressTracker
+
+        func observe(event: Indexer.SamplesService.Event) {
+            CLIImpl.Command.Save.handleSamplesEvent(event, tracker: tracker)
         }
     }
 
@@ -295,26 +347,57 @@ extension CLI.Command.Save {
     /// `Sample.Index.Builder` + `Sample.Core.Catalog`. Lives at the
     /// CLI composition root so the Indexer SPM target doesn't import
     /// SampleIndex or CoreSampleCode for these types.
+    ///
+    /// Post-Observer-protocol cleanup: this runner receives a typed
+    /// `phaseObserver: any Sample.Index.SamplesIndexingPhaseObserving`
+    /// from `Indexer.SamplesService`. Lifecycle phase events flow
+    /// through `phaseObserver.observe(phase:)`. The progress reporter
+    /// for `Sample.Index.Builder.indexAll(progress:)` is an internal
+    /// adapter (`PhaseObserverToProgressReporter`) that translates
+    /// per-project `IndexProgress` into a `.projectProgress` phase event
+    /// and forwards.
+    private struct PhaseObserverToProgressReporter: Sample.Index.ProgressReporting {
+        let phaseObserver: any Sample.Index.SamplesIndexingPhaseObserving
+
+        func report(progress: Sample.Index.IndexProgress) {
+            let phase: Sample.Index.SamplesIndexingPhase.ProgressPhase
+            switch progress.status {
+            case .extracting: phase = .extracting
+            case .indexingFiles: phase = .indexingFiles
+            case .completed: phase = .completed
+            case .failed: phase = .failed
+            }
+            phaseObserver.observe(phase: .projectProgress(
+                name: progress.currentProject,
+                percent: progress.percentComplete,
+                phase: phase
+            ))
+        }
+    }
+
     struct LiveSamplesIndexingRunner: Sample.Index.SamplesIndexingRunner {
         func run(
             input: Sample.Index.SamplesIndexingInput,
-            onPhase: @escaping @Sendable (Sample.Index.SamplesIndexingPhase) -> Void
+            phaseObserver: any Sample.Index.SamplesIndexingPhaseObserving
         ) async throws -> Sample.Index.SamplesIndexingOutcome {
-            let database = try await Sample.Index.Database(dbPath: input.samplesDB, logger: Logging.LiveRecording())
+            let database = try await Sample.Index.Database(dbPath: input.samplesDB, logger: Cupertino.Context.composition.logging.recording)
             if input.clear {
-                onPhase(.clearingExistingIndex)
+                phaseObserver.observe(phase: .clearingExistingIndex)
                 try await database.clearAll()
             }
 
             let existingProjects = try await database.projectCount()
             let existingFiles = try await database.fileCount()
             if existingProjects > 0, !input.force, !input.clear {
-                onPhase(.existingIndexNotice(projects: existingProjects, files: existingFiles))
+                phaseObserver.observe(phase: .existingIndexNotice(projects: existingProjects, files: existingFiles))
             }
 
-            onPhase(.loadingCatalog)
-            let catalogEntries = await Sample.Core.Catalog.allEntries
-            onPhase(.catalogLoaded(entryCount: catalogEntries.count))
+            phaseObserver.observe(phase: .loadingCatalog)
+            // Path-DI (#535): construct catalog actor with the input's
+            // sample-code directory rather than reaching for the singleton.
+            let catalog = Sample.Core.Catalog(sampleCodeDirectory: input.sampleCodeDir)
+            let catalogEntries = await catalog.allEntries
+            phaseObserver.observe(phase: .catalogLoaded(entryCount: catalogEntries.count))
 
             let entries = catalogEntries.map { entry in
                 Sample.Index.SampleCodeEntryInfo(
@@ -326,30 +409,19 @@ extension CLI.Command.Save {
                 )
             }
 
-            onPhase(.indexingStart)
+            phaseObserver.observe(phase: .indexingStart)
             let builder = Sample.Index.Builder(
                 database: database,
                 sampleCodeDirectory: input.sampleCodeDir
             )
 
             let startTime = Date()
+            let reporter = PhaseObserverToProgressReporter(phaseObserver: phaseObserver)
             let indexed = try await builder.indexAll(
                 entries: entries,
-                forceReindex: input.force
-            ) { progress in
-                let phase: Sample.Index.SamplesIndexingPhase.ProgressPhase
-                switch progress.status {
-                case .extracting: phase = .extracting
-                case .indexingFiles: phase = .indexingFiles
-                case .completed: phase = .completed
-                case .failed: phase = .failed
-                }
-                onPhase(.projectProgress(
-                    name: progress.currentProject,
-                    percent: progress.percentComplete,
-                    phase: phase
-                ))
-            }
+                forceReindex: input.force,
+                progress: reporter
+            )
 
             let duration = Date().timeIntervalSince(startTime)
 
@@ -375,30 +447,30 @@ extension CLI.Command.Save {
     ) {
         switch event {
         case .starting(let dir, let db):
-            Logging.Log.output("📦 Cupertino - Sample Code Indexer\n")
-            Logging.Log.output("   Sample code: \(dir.path)")
-            Logging.Log.output("   Database: \(db.path)")
-            Logging.Log.output("")
+            Cupertino.Context.composition.logging.recording.output("📦 Cupertino - Sample Code Indexer\n")
+            Cupertino.Context.composition.logging.recording.output("   Sample code: \(dir.path)")
+            Cupertino.Context.composition.logging.recording.output("   Database: \(db.path)")
+            Cupertino.Context.composition.logging.recording.output("")
         case .removingExistingDB:
-            Logging.Log.output("🗑️  Removing existing database for fresh index...")
+            Cupertino.Context.composition.logging.recording.output("🗑️  Removing existing database for fresh index...")
         case .clearingExistingIndex:
-            Logging.Log.output("🗑️  Clearing existing index...")
+            Cupertino.Context.composition.logging.recording.output("🗑️  Clearing existing index...")
         case .existingIndexNotice(let projects, let files):
-            Logging.Log.output("ℹ️  Found existing index with \(projects) projects, \(files) files")
-            Logging.Log.output("   Use --force to reindex all, or --clear to start fresh")
-            Logging.Log.output("")
+            Cupertino.Context.composition.logging.recording.output("ℹ️  Found existing index with \(projects) projects, \(files) files")
+            Cupertino.Context.composition.logging.recording.output("   Use --force to reindex all, or --clear to start fresh")
+            Cupertino.Context.composition.logging.recording.output("")
         case .loadingCatalog:
-            Logging.Log.output("📖 Loading sample code catalog...")
+            Cupertino.Context.composition.logging.recording.output("📖 Loading sample code catalog...")
         case .catalogLoaded(let count):
-            Logging.Log.output("   Found \(count) entries in catalog")
+            Cupertino.Context.composition.logging.recording.output("   Found \(count) entries in catalog")
         case .indexingStart:
-            Logging.Log.output("")
-            Logging.Log.output("📇 Indexing sample code...")
-            Logging.Log.output("")
+            Cupertino.Context.composition.logging.recording.output("")
+            Cupertino.Context.composition.logging.recording.output("📇 Indexing sample code...")
+            Cupertino.Context.composition.logging.recording.output("")
         case .projectProgress(let name, let percent, let phase):
             if percent - tracker.lastPercent >= 5.0 || phase == .completed {
                 let icon = phaseIcon(phase)
-                Logging.Log.output("   [\(String(format: "%3.0f%%", percent))] \(icon) \(name)")
+                Cupertino.Context.composition.logging.recording.output("   [\(String(format: "%3.0f%%", percent))] \(icon) \(name)")
                 tracker.lastPercent = percent
             }
         case .finished(let outcome):
@@ -416,16 +488,16 @@ extension CLI.Command.Save {
     }
 
     static func printSamplesSummary(outcome: Indexer.SamplesService.Outcome) {
-        Logging.Log.output("")
-        Logging.Log.output("✅ Indexing complete!")
-        Logging.Log.output("")
-        Logging.Log.output("   Projects indexed: \(outcome.projectsIndexedThisRun)")
-        Logging.Log.output("   Total projects: \(outcome.projectsTotal)")
-        Logging.Log.output("   Total files: \(outcome.filesTotal)")
-        Logging.Log.output("   Symbols extracted: \(outcome.symbolsTotal)")
-        Logging.Log.output("   Imports captured: \(outcome.importsTotal)")
-        Logging.Log.output("   Duration: \(Int(outcome.durationSeconds))s")
-        Logging.Log.output("   Database: \(CLI.Command.Save.formatFileSize(outcome.samplesDBPath))")
+        Cupertino.Context.composition.logging.recording.output("")
+        Cupertino.Context.composition.logging.recording.output("✅ Indexing complete!")
+        Cupertino.Context.composition.logging.recording.output("")
+        Cupertino.Context.composition.logging.recording.output("   Projects indexed: \(outcome.projectsIndexedThisRun)")
+        Cupertino.Context.composition.logging.recording.output("   Total projects: \(outcome.projectsTotal)")
+        Cupertino.Context.composition.logging.recording.output("   Total files: \(outcome.filesTotal)")
+        Cupertino.Context.composition.logging.recording.output("   Symbols extracted: \(outcome.symbolsTotal)")
+        Cupertino.Context.composition.logging.recording.output("   Imports captured: \(outcome.importsTotal)")
+        Cupertino.Context.composition.logging.recording.output("   Duration: \(Int(outcome.durationSeconds))s")
+        Cupertino.Context.composition.logging.recording.output("   Database: \(CLIImpl.Command.Save.formatFileSize(outcome.samplesDBPath))")
     }
 
     /// Class wrapper so `@Sendable` callbacks can mutate `lastPercent`.

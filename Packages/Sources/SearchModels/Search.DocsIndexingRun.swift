@@ -23,8 +23,13 @@ import Foundation
 /// surface explicit on the conforming type's stored properties, and
 /// produces one-line test mocks instead of multi-arg async closures.
 ///
-/// The progress callback stays a closure — it's a genuine
-/// (processed, total) callback, not a strategy seam.
+/// Progress reporting goes through the typed `Search.IndexingProgressReporting`
+/// Observer protocol (GoF p. 293) — the previous design carve-out for
+/// "genuine (processed, total) callback" closures is reversed per the
+/// standing cupertino rule "no closures, they ate magic." The Indexer
+/// orchestrator (`Indexer.DocsService.run`) bridges its closure-shaped
+/// `handler:` parameter to a `Search.IndexingProgressReporting` conformer
+/// before invoking this method.
 public extension Search {
     protocol DocsIndexingRunner: Sendable {
         /// Run one full indexing pass and return its outcome.
@@ -32,12 +37,13 @@ public extension Search {
         /// - Parameters:
         ///   - input: The full parameter bundle (paths + injected
         ///     markdown strategy + injected sample-catalog provider).
-        ///   - onProgress: Optional `(processed, total)` callback,
-        ///     called periodically as the indexer makes progress.
+        ///   - progress: Observer receiving `(processed, total)` reports
+        ///     as the indexer makes progress. Pass a Noop conformer to
+        ///     opt out of progress reports.
         /// - Returns: The aggregated `DocsIndexingOutcome`.
         func run(
             input: DocsIndexingInput,
-            onProgress: @escaping @Sendable (Int, Int) -> Void
+            progress: any Search.IndexingProgressReporting
         ) async throws -> DocsIndexingOutcome
     }
 }

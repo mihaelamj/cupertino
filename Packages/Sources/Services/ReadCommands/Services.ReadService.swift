@@ -3,8 +3,6 @@ import SampleIndexModels
 import SearchModels
 import ServicesModels
 import SharedConstants
-import SharedCore
-
 // MARK: - Unified read service
 
 /// Cross-source document reader. Dispatches by either an explicit `--source`
@@ -101,13 +99,20 @@ extension Services {
         /// matching backend is used; otherwise we infer:
         /// 1. URI scheme present → docs.
         /// 2. Else: try samples first; fall through to packages on miss.
+        ///
+        /// `searchDB`, `samplesDB`, `packagesDB` are all required: callers
+        /// must resolve the URLs at their composition root and supply them
+        /// here. Pre-#535 these were `URL?` with internal fallbacks to
+        /// `Shared.Constants.default*` / `Sample.Index.defaultDatabasePath`
+        /// (a Service Locator shape — Seemann 2011 ch. 5); strict DI gives
+        /// the caller responsibility for path resolution.
         public static func read(
             identifier: String,
             explicit: Source?,
             format: Search.DocumentFormat,
-            searchDB: URL?,
-            samplesDB: URL?,
-            packagesDB: URL?,
+            searchDB: URL,
+            samplesDB: URL,
+            packagesDB: URL,
             searchDatabaseFactory: any Search.DatabaseFactory,
             sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
             packageFileLookup: any PackageFileLookupStrategy
@@ -179,9 +184,9 @@ extension Services {
             source: Source,
             identifier: String,
             format: Search.DocumentFormat,
-            searchDB: URL?,
-            samplesDB: URL?,
-            packagesDB: URL?,
+            searchDB: URL,
+            samplesDB: URL,
+            packagesDB: URL,
             allowFallback: Bool,
             searchDatabaseFactory: any Search.DatabaseFactory,
             sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
@@ -216,11 +221,11 @@ extension Services {
         private static func readFromDocs(
             identifier: String,
             format: Search.DocumentFormat,
-            searchDB: URL?,
+            searchDB: URL,
             searchDatabaseFactory: any Search.DatabaseFactory
         ) async throws -> Result {
             let content = try await Services.ServiceContainer.withDocsService(
-                dbPath: searchDB?.path,
+                searchDB: searchDB,
                 searchDatabaseFactory: searchDatabaseFactory
             ) { service in
                 try await service.read(uri: identifier, format: format)
@@ -233,14 +238,13 @@ extension Services {
 
         private static func readFromSamples(
             identifier: String,
-            samplesDB: URL?,
+            samplesDB: URL,
             allowFallback: Bool,
-            packagesDB: URL?,
+            packagesDB: URL,
             sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
             packageFileLookup: any PackageFileLookupStrategy
         ) async throws -> Result {
-            let dbURL = samplesDB ?? Sample.Index.defaultDatabasePath
-            guard FileManager.default.fileExists(atPath: dbURL.path) else {
+            guard FileManager.default.fileExists(atPath: samplesDB.path) else {
                 if allowFallback {
                     return try await readFromPackages(
                         identifier: identifier,
@@ -255,7 +259,7 @@ extension Services {
                 let projectId = String(identifier[..<slashIdx])
                 let path = String(identifier[identifier.index(after: slashIdx)...])
                 let file = try await Services.ServiceContainer.withSampleService(
-                    dbPath: dbURL,
+                    samplesDB: samplesDB,
                     sampleDatabaseFactory: sampleDatabaseFactory
                 ) { service in
                     try await service.getFile(projectId: projectId, path: path)
@@ -265,7 +269,7 @@ extension Services {
                 }
             } else {
                 let project = try await Services.ServiceContainer.withSampleService(
-                    dbPath: dbURL,
+                    samplesDB: samplesDB,
                     sampleDatabaseFactory: sampleDatabaseFactory
                 ) { service in
                     try await service.getProject(id: identifier)
@@ -290,7 +294,7 @@ extension Services {
 
         private static func readFromPackages(
             identifier: String,
-            packagesDB: URL?,
+            packagesDB: URL,
             packageFileLookup: any PackageFileLookupStrategy
         ) async throws -> Result {
             // Identifier shape: `<owner>/<repo>/<relpath>`. Anything else is
@@ -303,14 +307,13 @@ extension Services {
             let repo = String(parts[1])
             let relpath = String(parts[2])
 
-            let dbURL = packagesDB ?? Shared.Constants.defaultPackagesDatabase
-            guard FileManager.default.fileExists(atPath: dbURL.path) else {
+            guard FileManager.default.fileExists(atPath: packagesDB.path) else {
                 throw ReadError.packagesNotFound(identifier: identifier)
             }
 
             let content: String?
             do {
-                content = try await packageFileLookup.fileContent(dbURL: dbURL, owner: owner, repo: repo, relpath: relpath)
+                content = try await packageFileLookup.fileContent(dbURL: packagesDB, owner: owner, repo: repo, relpath: relpath)
             } catch {
                 throw ReadError.backendFailed("packages.db query failed: \(error.localizedDescription)")
             }

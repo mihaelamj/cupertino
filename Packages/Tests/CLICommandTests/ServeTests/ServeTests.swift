@@ -10,10 +10,7 @@ import LoggingModels
 @testable import Search
 import SearchModels
 @testable import SearchToolProvider
-import SharedConfiguration
 import SharedConstants
-@testable import SharedCore
-import SharedModels
 import Testing
 import TestSupport
 
@@ -86,7 +83,7 @@ struct MCPCommandTests {
             changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
-        let provider = MCP.Support.DocsResourceProvider(configuration: config, logger: Logging.NoopRecording())
+        let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir, archiveDirectory: tempDir, logger: Logging.NoopRecording())
 
         await server.registerResourceProvider(provider)
 
@@ -127,10 +124,10 @@ struct MCPCommandTests {
 
         let config = Shared.Configuration(
             crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
-            changeDetection: Shared.Configuration.ChangeDetection(),
+            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
-        let provider = MCP.Support.DocsResourceProvider(configuration: config, logger: Logging.NoopRecording())
+        let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir, archiveDirectory: tempDir, logger: Logging.NoopRecording())
 
         // Read resource
         let result = try await provider.readResource(uri: "apple-docs://swift/documentation_swift")
@@ -257,10 +254,10 @@ struct MCPCommandTests {
 
         let config = Shared.Configuration(
             crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
-            changeDetection: Shared.Configuration.ChangeDetection(),
+            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
-        let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir, logger: Logging.NoopRecording())
+        let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir, archiveDirectory: tempDir, logger: Logging.NoopRecording())
 
         // List resources
         let listResult = try await provider.listResources(cursor: nil as String?)
@@ -309,10 +306,10 @@ struct MCPCommandTests {
 
         let config = Shared.Configuration(
             crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
-            changeDetection: Shared.Configuration.ChangeDetection(),
+            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
-        let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir, logger: Logging.NoopRecording())
+        let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir, archiveDirectory: tempDir, logger: Logging.NoopRecording())
 
         // List resources — should include both SE and ST
         let listResult = try await provider.listResources(cursor: nil as String?)
@@ -345,10 +342,10 @@ struct MCPCommandTests {
 
         let config = Shared.Configuration(
             crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
-            changeDetection: Shared.Configuration.ChangeDetection(),
+            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
-        let provider = MCP.Support.DocsResourceProvider(configuration: config, logger: Logging.NoopRecording())
+        let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir, archiveDirectory: tempDir, logger: Logging.NoopRecording())
 
         // Try to read non-existent resource
         await #expect(throws: Shared.Core.ToolError.self) {
@@ -425,13 +422,38 @@ struct MCPServerIntegrationTests {
         print("\n   🚀 Step 3: Starting MCP server...")
         let server = MCP.Core.Server(name: "test-server", version: "1.0.0")
 
-        // Register providers
+        // Register providers. evolutionDirectory + archiveDirectory point at
+        // sibling dirs that don't exist so listResources only emits the
+        // apple-docs entries from the metadata. Pre-#535 the test relied on
+        // archiveDirectory silently defaulting to ~/.cupertino/archive via
+        // BinaryConfig.shared and sorting a real archive resource first;
+        // strict DI removes that, so we also pre-seed a markdown file at
+        // the path the apple-docs URI fallback expects so Step 5's
+        // readResource(uri:) succeeds without depending on the host's
+        // production ~/.cupertino layout.
         let mcpConfig = Shared.Configuration(
             crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
-            changeDetection: Shared.Configuration.ChangeDetection(),
+            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
-        let docsProvider = MCP.Support.DocsResourceProvider(configuration: mcpConfig, logger: Logging.NoopRecording())
+        let seededDocsPath = tempDir
+            .appendingPathComponent("swift")
+            .appendingPathComponent("documentation_swift.md")
+        try FileManager.default.createDirectory(
+            at: seededDocsPath.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try "# Swift\n\nSeeded by completeMCPWorkflow.".write(
+            to: seededDocsPath,
+            atomically: true,
+            encoding: .utf8
+        )
+        let docsProvider = MCP.Support.DocsResourceProvider(
+            configuration: mcpConfig,
+            evolutionDirectory: tempDir.appendingPathComponent("nonexistent-evolution"),
+            archiveDirectory: tempDir.appendingPathComponent("nonexistent-archive"),
+            logger: Logging.NoopRecording()
+        )
         let searchProvider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: nil)
 
         await server.registerResourceProvider(docsProvider)

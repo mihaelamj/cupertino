@@ -2,21 +2,19 @@ import ArgumentParser
 import Core
 import Foundation
 import Logging
-import SharedCore
+import LoggingModels
 #if canImport(AppKit)
 import AppKit
 #endif
 #if canImport(WebKit)
 import CoreJSONParser
 import CoreProtocols
-import SharedModels
-import SharedUtils
 import WebKit
 #endif
 
 // MARK: - Resolve-Refs Command
 
-extension CLI.Command {
+extension CLIImpl.Command {
     struct ResolveRefs: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "resolve-refs",
@@ -63,11 +61,11 @@ extension CLI.Command {
         mutating func run() async throws {
             let dir = URL(fileURLWithPath: input).expandingTildeInPath
             guard FileManager.default.fileExists(atPath: dir.path) else {
-                Logging.Log.error("Directory does not exist: \(dir.path)")
+                Cupertino.Context.composition.logging.recording.error("Directory does not exist: \(dir.path)")
                 throw ExitCode.failure
             }
 
-            Logging.Log.info("Resolving doc:// markers in \(dir.path)")
+            Cupertino.Context.composition.logging.recording.info("Resolving doc:// markers in \(dir.path)")
             let resolver = Core.JSONParser.RefResolver(inputDirectory: dir)
 
             let fetcher = try await makeFetcher()
@@ -75,20 +73,20 @@ extension CLI.Command {
             if let fetcher {
                 (stats, unresolved) = try await resolver.runWithFetcher(fetcher) { done, total in
                     if done % 50 == 0 || done == total {
-                        Logging.Log.info("  network resolve: \(done)/\(total)")
+                        Cupertino.Context.composition.logging.recording.info("  network resolve: \(done)/\(total)")
                     }
                 }
             } else {
                 (stats, unresolved) = try resolver.run()
             }
 
-            Logging.Log.info("Pages scanned:                  \(stats.pagesScanned)")
-            Logging.Log.info("Refs harvested:                 \(stats.refsHarvested)")
-            Logging.Log.info("Pages rewritten:                \(stats.pagesRewritten)")
-            Logging.Log.info("doc:// markers found:           \(stats.markersFound)")
-            Logging.Log.info("Resolved from harvest:          \(stats.markersResolvedFromHarvest)")
-            Logging.Log.info("Resolved from network:          \(stats.markersResolvedFromNetwork)")
-            Logging.Log.info("Unresolved (unique):            \(unresolved.count)")
+            Cupertino.Context.composition.logging.recording.info("Pages scanned:                  \(stats.pagesScanned)")
+            Cupertino.Context.composition.logging.recording.info("Refs harvested:                 \(stats.refsHarvested)")
+            Cupertino.Context.composition.logging.recording.info("Pages rewritten:                \(stats.pagesRewritten)")
+            Cupertino.Context.composition.logging.recording.info("doc:// markers found:           \(stats.markersFound)")
+            Cupertino.Context.composition.logging.recording.info("Resolved from harvest:          \(stats.markersResolvedFromHarvest)")
+            Cupertino.Context.composition.logging.recording.info("Resolved from network:          \(stats.markersResolvedFromNetwork)")
+            Cupertino.Context.composition.logging.recording.info("Unresolved (unique):            \(unresolved.count)")
 
             // Persist a report next to the corpus.
             let report = ResolveReport(
@@ -102,7 +100,7 @@ extension CLI.Command {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             encoder.dateEncodingStrategy = .iso8601
             try encoder.encode(report).write(to: reportURL)
-            Logging.Log.info("Report: \(reportURL.path)")
+            Cupertino.Context.composition.logging.recording.info("Report: \(reportURL.path)")
 
             if printUnresolved {
                 for marker in report.unresolvedMarkers {
@@ -124,7 +122,7 @@ extension CLI.Command {
         private func makeFetcher() async throws -> (any Core.JSONParser.RefResolver.TitleFetcher)? {
             guard useNetwork else {
                 if useWebview {
-                    Logging.Log.error("--use-webview requires --use-network")
+                    Cupertino.Context.composition.logging.recording.error("--use-webview requires --use-network")
                     throw ExitCode.failure
                 }
                 return nil
@@ -147,7 +145,7 @@ extension CLI.Command {
             }
             return Core.JSONParser.CompositeTitleFetcher(primary: json, fallback: webView)
             #else
-            Logging.Log.error("--use-webview is only supported on macOS")
+            Cupertino.Context.composition.logging.recording.error("--use-webview is only supported on macOS")
             throw ExitCode.failure
             #endif
         }

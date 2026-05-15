@@ -1,7 +1,5 @@
 import Foundation
 import SharedConstants
-import SharedCore
-
 extension Distribution {
     /// Reads / writes / classifies the installed-version stamp under the
     /// cupertino base directory. The stamp file's filename comes from

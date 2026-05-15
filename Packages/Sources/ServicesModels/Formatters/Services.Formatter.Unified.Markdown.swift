@@ -2,8 +2,6 @@ import Foundation
 import SampleIndexModels
 import SearchModels
 import SharedConstants
-import SharedCore
-
 // MARK: - Unified Search Markdown Formatter
 
 extension Services.Formatter.Unified {

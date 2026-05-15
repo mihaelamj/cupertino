@@ -5,10 +5,6 @@ import CoreProtocols
 // swiftlint:disable function_body_length type_body_length
 import Foundation
 import SharedConstants
-import SharedCore
-import SharedModels
-import SharedUtils
-
 extension Core.PackageIndexing {
     /// Walks each seed repo's dependency graph via raw.githubusercontent.com and returns
     /// the transitive closure of GitHub-hosted Swift package references.
@@ -37,12 +33,12 @@ extension Core.PackageIndexing {
         private let requestDelay: TimeInterval
         private let concurrency: Int
         private let candidateBranches = ["HEAD", "main", "master"]
-        private let canonicalizer: Core.Protocols.GitHubCanonicalizer?
+        private let canonicalizer: Core.PackageIndexing.GitHubCanonicalizer?
         private let exclusions: Set<String>
         private let manifestCache: ManifestCache?
 
         public init(
-            canonicalizer: Core.Protocols.GitHubCanonicalizer? = nil,
+            canonicalizer: Core.PackageIndexing.GitHubCanonicalizer? = nil,
             exclusions: Set<String> = [],
             manifestCache: ManifestCache? = nil,
             concurrency: Int = 10,
@@ -66,7 +62,7 @@ extension Core.PackageIndexing {
         /// exclusions drop matched canonical names before adding them to the frontier.
         public func resolve(
             seeds: [Shared.Models.PackageReference],
-            onProgress: (@Sendable (String, Int, Int) -> Void)? = nil
+            progress: (any Core.PackageIndexing.PackageDependencyResolverProgressObserving)? = nil
         ) async -> (packages: [ResolvedPackage], stats: Statistics) {
             let startedAt = Date()
             var visited: [String: ResolvedPackage] = [:]
@@ -127,7 +123,7 @@ extension Core.PackageIndexing {
 
                 for (ownerIn, repoIn, seedOrigin, result) in results {
                     processed += 1
-                    onProgress?("\(ownerIn)/\(repoIn)", processed, processed + frontier.count)
+                    progress?.observe(packageName: "\(ownerIn)/\(repoIn)", processed: processed, total: processed + frontier.count)
 
                     let resolved: FetchSuccess
                     switch result {

@@ -1,9 +1,6 @@
 import CoreProtocols
 import Foundation
 import SharedConstants
-import SharedCore
-import SharedModels
-
 // swiftlint:disable type_body_length
 // Justification: MarkdownToStructuredPage is a comprehensive parser for Apple documentation markdown.
 // It handles: YAML frontmatter, section detection, code blocks, tables, links, and nested structures.

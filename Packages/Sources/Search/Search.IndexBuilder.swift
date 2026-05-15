@@ -2,8 +2,6 @@ import Foundation
 import LoggingModels
 import SearchModels
 import SharedConstants
-import SharedModels
-
 // MARK: - Search Index Builder
 
 extension Search {
@@ -141,7 +139,7 @@ extension Search {
         ///   - onProgress: Optional progress callback forwarded to each strategy.
         public func buildIndex(
             clearExisting: Bool = true,
-            onProgress: Search.IndexingProgressCallback? = nil
+            onProgress: (any Search.IndexingProgressReporting)? = nil
         ) async throws {
             logger.info("🔨 Building search index...", category: .search)
 

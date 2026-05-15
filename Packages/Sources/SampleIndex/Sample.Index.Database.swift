@@ -3,8 +3,6 @@ import Foundation
 import LoggingModels
 import SampleIndexModels
 import SharedConstants
-import SharedCore
-import SharedUtils
 import SQLite3
 
 // MARK: - Sample Index Database
@@ -33,7 +31,7 @@ extension Sample.Index {
         private let logger: any LoggingModels.Logging.Recording
 
         public init(
-            dbPath: URL = Sample.Index.defaultDatabasePath,
+            dbPath: URL,
             logger: any LoggingModels.Logging.Recording
         ) async throws {
             self.dbPath = dbPath

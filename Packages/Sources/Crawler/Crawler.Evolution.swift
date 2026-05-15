@@ -3,10 +3,6 @@ import CrawlerModels
 import Foundation
 import LoggingModels
 import SharedConstants
-import SharedCore
-import SharedModels
-import SharedUtils
-
 // MARK: - Swift Evolution Crawler
 
 /// Crawls Swift Evolution proposals from GitHub
@@ -34,12 +30,14 @@ extension Crawler {
 
         // MARK: - Public API
 
-        /// Crawl Swift Evolution proposals
+        /// Crawl Swift Evolution proposals. Pass an
+        /// `any Crawler.EvolutionProgressObserving` to receive per-proposal
+        /// progress updates; `nil` opts out.
         public func crawl(
             limit: Int? = nil, // Internal use only - for testing
-            onProgress: (@Sendable (Progress) -> Void)? = nil
-        ) async throws -> Statistics {
-            var stats = Statistics(startTime: Date())
+            progress: (any Crawler.EvolutionProgressObserving)? = nil
+        ) async throws -> Crawler.EvolutionStatistics {
+            var stats = Crawler.EvolutionStatistics(startTime: Date())
 
             logInfo("🚀 Starting Swift Evolution crawler")
             logInfo("   Repository: \(repo)")
@@ -75,15 +73,15 @@ extension Crawler {
                 do {
                     try await downloadProposal(proposal, stats: &stats)
 
-                    // Progress callback
-                    if let onProgress {
-                        let progress = Progress(
+                    // Crawler.EvolutionProgress callback
+                    if let observer = progress {
+                        let progressValue = Crawler.EvolutionProgress(
                             current: index + 1,
                             total: proposals.count,
                             proposalID: proposal.id,
                             stats: stats
                         )
-                        onProgress(progress)
+                        observer.observe(progress: progressValue)
                     }
 
                     // Rate limiting - be respectful to GitHub
@@ -157,7 +155,7 @@ extension Crawler {
             }
         }
 
-        private func downloadProposal(_ proposal: ProposalMetadata, stats: inout Statistics) async throws {
+        private func downloadProposal(_ proposal: ProposalMetadata, stats: inout Crawler.EvolutionStatistics) async throws {
             logInfo("📄 [\(stats.totalProposals + 1)] \(proposal.id)")
 
             // Download markdown content
@@ -255,9 +253,9 @@ extension Crawler {
             logger.error(errorMessage, category: .evolution)
         }
 
-        private func logStatistics(_ stats: Statistics) {
+        private func logStatistics(_ stats: Crawler.EvolutionStatistics) {
             let messages = [
-                "📊 Statistics:",
+                "📊 Crawler.EvolutionStatistics:",
                 "   Total proposals: \(stats.totalProposals)",
                 "   New: \(stats.newProposals)",
                 "   Updated: \(stats.updatedProposals)",
@@ -293,48 +291,10 @@ extension Crawler.Evolution {
         let downloadURL: String
     }
 
-    public struct Statistics: Sendable {
-        public var totalProposals: Int = 0
-        public var newProposals: Int = 0
-        public var updatedProposals: Int = 0
-        public var errors: Int = 0
-        public var startTime: Date?
-        public var endTime: Date?
-
-        public init(
-            totalProposals: Int = 0,
-            newProposals: Int = 0,
-            updatedProposals: Int = 0,
-            errors: Int = 0,
-            startTime: Date? = nil,
-            endTime: Date? = nil
-        ) {
-            self.totalProposals = totalProposals
-            self.newProposals = newProposals
-            self.updatedProposals = updatedProposals
-            self.errors = errors
-            self.startTime = startTime
-            self.endTime = endTime
-        }
-
-        public var duration: TimeInterval? {
-            guard let start = startTime, let end = endTime else {
-                return nil
-            }
-            return end.timeIntervalSince(start)
-        }
-    }
-
-    public struct Progress: Sendable {
-        public let current: Int
-        public let total: Int
-        public let proposalID: String
-        public let stats: Statistics
-
-        public var percentage: Double {
-            Double(current) / Double(total) * 100
-        }
-    }
+    // `Crawler.EvolutionStatistics` + `Crawler.EvolutionProgress`
+    // + `Crawler.EvolutionProgressObserving` moved to the foundation-only
+    // `CrawlerModels` seam target so any Observer conformer can implement
+    // without `import Crawler`.
 }
 
 // MARK: - Errors

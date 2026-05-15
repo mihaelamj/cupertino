@@ -1,8 +1,8 @@
 import Foundation
+import CorePackageIndexingModels
+import CoreProtocols
 import SharedConstants
-import SharedCore
-
-extension Core.Protocols {
+extension Core.PackageIndexing {
     /// User-maintained skip list at `~/.cupertino/excluded-packages.json`: a flat JSON
     /// array of `"owner/repo"` strings that the resolver must drop from its closure
     /// even when transitively discovered. Absent file = empty set.
@@ -10,7 +10,7 @@ extension Core.Protocols {
         /// Load the exclusion set from the standard location. Missing or malformed
         /// files return an empty set — hand-editing mistakes shouldn't brick the fetch.
         public static func load(
-            from directory: URL = Shared.Constants.defaultBaseDirectory
+            from directory: URL
         ) -> Set<String> {
             let fileURL = directory.appendingPathComponent(Shared.Constants.FileName.excludedPackages)
             guard FileManager.default.fileExists(atPath: fileURL.path) else {

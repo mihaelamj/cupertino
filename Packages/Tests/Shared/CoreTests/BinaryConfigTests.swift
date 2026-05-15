@@ -1,7 +1,5 @@
 import Foundation
 import SharedConstants
-@testable import SharedCore
-import SharedUtils
 import Testing
 
 @Suite("BinaryConfig (#211)")

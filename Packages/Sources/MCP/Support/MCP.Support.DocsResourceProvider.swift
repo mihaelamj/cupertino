@@ -2,12 +2,7 @@ import Foundation
 import LoggingModels
 import MCPCore
 import MCPSharedTools
-import SharedConfiguration
 import SharedConstants
-import SharedCore
-import SharedModels
-import SharedUtils
-
 // MARK: - Documentation Resource Provider
 
 extension MCP.Support {
@@ -44,16 +39,21 @@ extension MCP.Support {
         /// GoF Strategy seam for log emission (1994 p. 315).
         private let logger: any LoggingModels.Logging.Recording
 
+        /// Strict-DI constructor (#535): every directory is supplied by the
+        /// caller's composition root. The previous nil-default + fallback
+        /// to `Shared.Constants.default*` (which routed through the
+        /// `BinaryConfig.shared` Singleton) is gone — callers must thread
+        /// the URLs through explicitly.
         public init(
             configuration: Shared.Configuration,
-            evolutionDirectory: URL? = nil,
-            archiveDirectory: URL? = nil,
+            evolutionDirectory: URL,
+            archiveDirectory: URL,
             markdownLookup: (any MCP.Support.MarkdownLookupStrategy)? = nil,
             logger: any LoggingModels.Logging.Recording
         ) {
             self.configuration = configuration
-            self.evolutionDirectory = evolutionDirectory ?? Shared.Constants.defaultSwiftEvolutionDirectory
-            self.archiveDirectory = archiveDirectory ?? Shared.Constants.defaultArchiveDirectory
+            self.evolutionDirectory = evolutionDirectory
+            self.archiveDirectory = archiveDirectory
             self.markdownLookup = markdownLookup
             self.logger = logger
             // Metadata will be loaded lazily on first access

@@ -3,9 +3,6 @@ import CoreProtocols
 import Foundation
 import SearchModels
 import SharedConstants
-import SharedCore
-import SharedModels
-
 extension Search {
     /// Reads downloaded-and-extracted package trees from
     /// `~/.cupertino/packages/<owner>/<repo>/` and feeds them into the
@@ -39,7 +36,7 @@ extension Search {
         private let index: PackageIndex
 
         public init(
-            rootDirectory: URL = Shared.Constants.defaultPackagesDirectory,
+            rootDirectory: URL,
             index: PackageIndex
         ) {
             self.rootDirectory = rootDirectory
@@ -49,8 +46,16 @@ extension Search {
         /// Walk `<root>/<owner>/<repo>/` for each package, read its manifest +
         /// files, and index it. Missing or malformed manifests are logged and
         /// skipped without aborting the whole run.
+        ///
+        /// - Parameter progress: Optional GoF Observer
+        ///   (`Search.PackageIndexingProgressReporting`) called per package
+        ///   with the package label and the running `(processed, total)`
+        ///   count. Pass `nil` to opt out of progress reports. Replaces the
+        ///   previous `onProgress: @Sendable (String, Int, Int) -> Void`
+        ///   closure parameter per the standing "no closures, they ate
+        ///   magic" rule.
         public func indexAll(
-            onProgress: (@Sendable (String, Int, Int) -> Void)? = nil
+            progress: (any Search.PackageIndexingProgressReporting)? = nil
         ) async throws -> Statistics {
             let startedAt = Date()
             var stats = Statistics()
@@ -62,7 +67,7 @@ extension Search {
 
             for (idx, dir) in packageDirs.enumerated() {
                 let label = "\(dir.deletingLastPathComponent().lastPathComponent)/\(dir.lastPathComponent)"
-                onProgress?(label, idx + 1, packageDirs.count)
+                progress?.report(packageName: label, processed: idx + 1, total: packageDirs.count)
                 do {
                     let (resolved, files, tarballBytes) = try loadPackage(at: dir)
                     let result = Core.PackageIndexing.PackageExtractionResult(

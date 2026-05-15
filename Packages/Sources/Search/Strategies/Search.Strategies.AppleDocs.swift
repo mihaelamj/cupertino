@@ -3,8 +3,6 @@ import Foundation
 import LoggingModels
 import SearchModels
 import SharedConstants
-import SharedModels
-
 // MARK: - AppleDocsStrategy
 
 extension Search {
@@ -73,7 +71,7 @@ extension Search {
         /// - Returns: ``Search/IndexStats`` with indexed and skipped counts.
         public func indexItems(
             into index: Search.Index,
-            progress: Search.IndexingProgressCallback?
+            progress: (any Search.IndexingProgressReporting)?
         ) async throws -> Search.IndexStats {
             // Always use the directory-scan path; metadata is for crawling, not indexing.
             try await indexFromDirectory(into: index, progress: progress)
@@ -93,7 +91,7 @@ extension Search {
         /// - Returns: ``Search/IndexStats`` with indexed and skipped counts.
         func indexFromDirectory(
             into index: Search.Index,
-            progress: Search.IndexingProgressCallback?
+            progress: (any Search.IndexingProgressReporting)?
         ) async throws -> Search.IndexStats {
             guard FileManager.default.fileExists(atPath: docsDirectory.path) else {
                 logger.info(
@@ -251,7 +249,7 @@ extension Search {
                 }
 
                 if (idx + 1) % 100 == 0 {
-                    progress?(idx + 1, docFiles.count)
+                    progress?.report(processed: idx + 1, total: docFiles.count)
                     logger.info(
                         "   Progress: \(idx + 1)/\(docFiles.count) " +
                             "(\(indexed) indexed, \(skipped) skipped)",
@@ -285,7 +283,7 @@ extension Search {
         func indexFromMetadata(
             into index: Search.Index,
             metadata: Shared.Models.CrawlMetadata,
-            progress: Search.IndexingProgressCallback?
+            progress: (any Search.IndexingProgressReporting)?
         ) async throws -> Search.IndexStats {
             let total = metadata.pages.count
             guard total > 0 else {
@@ -345,7 +343,7 @@ extension Search {
 
                 processed += 1
                 if processed % 100 == 0 {
-                    progress?(processed, total)
+                    progress?.report(processed: processed, total: total)
                     logger.info(
                         "   Progress: \(processed)/\(total) " +
                             "(\(indexed) indexed, \(skipped) skipped)",

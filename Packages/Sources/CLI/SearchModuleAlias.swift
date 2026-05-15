@@ -16,12 +16,10 @@ import SearchModels
 import Services
 import ServicesModels
 import SharedConstants
-import SharedModels
-
 // MARK: - Search Module Disambiguator
 
-// `CLI.Command.Search` (the subcommand struct under `Sources/CLI/Commands/`) and
-// the `Search` SPM target share a name. From inside any `extension CLI.Command`
+// `CLIImpl.Command.Search` (the subcommand struct under `Sources/CLI/Commands/`) and
+// the `Search` SPM target share a name. From inside any `extension CLIImpl.Command`
 // scope, bare `Search.<Type>` resolves to the nested subcommand struct, not
 // the SPM target — Swift's name lookup checks enclosing types before
 // imported modules, so the local match wins.
@@ -51,7 +49,7 @@ typealias SearchModule = Search
 
 struct LiveSearchDatabaseFactory: Search.DatabaseFactory {
     func openDatabase(at url: URL) async throws -> any Search.Database {
-        try await SearchModule.Index(dbPath: url, logger: Logging.LiveRecording())
+        try await SearchModule.Index(dbPath: url, logger: Cupertino.Context.composition.logging.recording)
     }
 }
 
@@ -106,7 +104,7 @@ struct LivePackageFileLookupStrategy: Services.ReadService.PackageFileLookupStra
 
 struct LiveSampleIndexDatabaseFactory: Sample.Index.DatabaseFactory {
     func openDatabase(at url: URL) async throws -> any Sample.Index.Reader {
-        try await Sample.Index.Database(dbPath: url, logger: Logging.LiveRecording())
+        try await Sample.Index.Database(dbPath: url, logger: Cupertino.Context.composition.logging.recording)
     }
 }
 
@@ -182,7 +180,7 @@ struct LivePriorityPackageStrategy: Crawler.PriorityPackageStrategy {
         let generator = Core.PackageIndexing.PriorityPackageGenerator(
             swiftOrgDocsPath: swiftOrgDocsPath,
             outputPath: outputPath,
-            logger: Logging.LiveRecording()
+            logger: Cupertino.Context.composition.logging.recording
         )
         let list = try await generator.generate()
         return Crawler.PriorityPackageOutcome(

@@ -3,8 +3,6 @@ import Foundation
 import OSLog
 import SampleIndexModels
 import SharedConstants
-import SharedCore
-
 // MARK: - Sample Index Builder
 
 // swiftlint:disable type_body_length function_body_length
@@ -18,12 +16,9 @@ extension Sample.Index {
         private let sampleCodeDirectory: URL
         private let logger = os.Logger(subsystem: "com.cupertino", category: "SampleIndex")
 
-        /// Progress callback for indexing operations
-        public typealias ProgressCallback = @Sendable (IndexProgress) -> Void
-
         public init(
             database: Database,
-            sampleCodeDirectory: URL = Sample.Index.defaultSampleCodeDirectory
+            sampleCodeDirectory: URL
         ) {
             self.database = database
             self.sampleCodeDirectory = sampleCodeDirectory
@@ -31,26 +26,13 @@ extension Sample.Index {
 
         // MARK: - Index Progress
 
-        /// Progress information during indexing
-        public struct IndexProgress: Sendable {
-            public let currentProject: String
-            public let projectIndex: Int
-            public let totalProjects: Int
-            public let filesIndexed: Int
-            public let status: Status
-
-            public enum Status: Sendable {
-                case extracting
-                case indexingFiles
-                case completed
-                case failed(String)
-            }
-
-            public var percentComplete: Double {
-                guard totalProjects > 0 else { return 0 }
-                return Double(projectIndex) / Double(totalProjects) * 100
-            }
-        }
+        /// Source-compatibility shim: the canonical `IndexProgress` value
+        /// type lives in `SampleIndexModels` (foundation-only seam target)
+        /// so the `Sample.Index.ProgressReporting` Observer protocol can
+        /// reference it without `import SampleIndex`. This typealias keeps
+        /// `Sample.Index.Builder.IndexProgress` reachable for existing
+        /// callers while the canonical home is at the seam.
+        public typealias IndexProgress = Sample.Index.IndexProgress
 
         // MARK: - Index All Projects
 
@@ -58,12 +40,16 @@ extension Sample.Index {
         /// - Parameters:
         ///   - entries: Sample code entries with metadata (from Sample.Core.Catalog)
         ///   - forceReindex: If true, reindex even if project already exists
-        ///   - progress: Optional progress callback
+        ///   - progress: Optional GoF Observer (`Sample.Index.ProgressReporting`)
+        ///     that receives lifecycle updates per project. The protocol and its
+        ///     payload (`Sample.Index.IndexProgress`) both live in the
+        ///     foundation-only `SampleIndexModels` seam target, so conformers
+        ///     don't need `import SampleIndex`.
         /// - Returns: Number of projects indexed
         public func indexAll(
             entries: [SampleCodeEntryInfo],
             forceReindex: Bool = false,
-            progress: ProgressCallback? = nil
+            progress: (any Sample.Index.ProgressReporting)? = nil
         ) async throws -> Int {
             // Find both ZIP files and extracted directories
             let zipFiles = try findZipFiles()
@@ -110,7 +96,7 @@ extension Sample.Index {
                     filesIndexed: 0,
                     status: .extracting
                 )
-                progress?(progressInfo)
+                progress?.report(progress: progressInfo)
 
                 do {
                     let filesIndexed = try await indexProject(
@@ -126,7 +112,7 @@ extension Sample.Index {
                         filesIndexed: filesIndexed,
                         status: .completed
                     )
-                    progress?(completedProgress)
+                    progress?.report(progress: completedProgress)
 
                     indexedCount += 1
                     logger.info("Indexed project: \(entry?.title ?? projectId) (\(filesIndexed) files)")
@@ -139,7 +125,7 @@ extension Sample.Index {
                         filesIndexed: 0,
                         status: .failed(error.localizedDescription)
                     )
-                    progress?(failedProgress)
+                    progress?.report(progress: failedProgress)
                     logger.error("Failed to index \(zipFilename): \(error)")
                 }
             }
@@ -166,7 +152,7 @@ extension Sample.Index {
                     filesIndexed: 0,
                     status: .indexingFiles
                 )
-                progress?(progressInfo)
+                progress?.report(progress: progressInfo)
 
                 do {
                     let filesIndexed = try await indexProjectDirectory(
@@ -182,7 +168,7 @@ extension Sample.Index {
                         filesIndexed: filesIndexed,
                         status: .completed
                     )
-                    progress?(completedProgress)
+                    progress?.report(progress: completedProgress)
 
                     indexedCount += 1
                     logger.info("Indexed project: \(entry?.title ?? projectId) (\(filesIndexed) files)")
@@ -195,7 +181,7 @@ extension Sample.Index {
                         filesIndexed: 0,
                         status: .failed(error.localizedDescription)
                     )
-                    progress?(failedProgress)
+                    progress?.report(progress: failedProgress)
                     logger.error("Failed to index directory \(projectId): \(error)")
                 }
             }

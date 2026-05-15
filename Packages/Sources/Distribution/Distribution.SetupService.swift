@@ -1,7 +1,5 @@
 import Foundation
 import SharedConstants
-import SharedCore
-
 extension Distribution {
     /// High-level orchestrator for `cupertino setup`. Composes
     /// `ArtifactDownloader`, `ArtifactExtractor`, and `InstalledVersion`

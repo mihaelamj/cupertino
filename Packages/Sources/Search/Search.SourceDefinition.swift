@@ -1,8 +1,6 @@
 import Foundation
 import SearchModels
 import SharedConstants
-import SharedCore
-
 // MARK: - Source Definition
 
 /// Unified definition for a documentation source.

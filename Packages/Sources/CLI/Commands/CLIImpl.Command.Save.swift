@@ -1,15 +1,13 @@
 import ArgumentParser
 import Foundation
-import LoggingModels
 import Indexer
 import Logging
+import LoggingModels
 import RemoteSync
 import SampleIndex
 import Search
 import SearchModels
 import SharedConstants
-import SharedCore
-import SharedUtils
 
 // MARK: - Save Command
 
@@ -19,7 +17,7 @@ import SharedUtils
 /// command parses flags, runs the preflight prompt, dispatches to the
 /// requested scope, and renders progress.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension CLI.Command {
+extension CLIImpl.Command {
     struct Save: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "save",
@@ -132,12 +130,12 @@ extension CLI.Command {
                 buildPackages: buildPackages,
                 buildSamples: buildSamples
             ) {
-                Logging.ConsoleLogger.info("Aborted by user.")
+                Cupertino.Context.composition.logging.recording.info("Aborted by user.")
                 return
             }
 
             let effectiveBase = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-                ?? Shared.Constants.defaultBaseDirectory
+                ?? Shared.Paths.live().baseDirectory
 
             if buildDocs {
                 try await runDocsIndexer(effectiveBase: effectiveBase)
@@ -150,7 +148,7 @@ extension CLI.Command {
             }
         }
 
-        // MARK: - Indexer dispatchers moved to CLI.Command.Save+Indexers.swift (#244)
+        // MARK: - Indexer dispatchers moved to CLIImpl.Command.Save+Indexers.swift (#244)
 
         // MARK: - Preflight
 
@@ -160,6 +158,7 @@ extension CLI.Command {
             buildSamples: Bool
         ) -> Bool {
             let lines = Indexer.Preflight.preflightLines(
+                paths: Shared.Paths.live(),
                 buildDocs: buildDocs,
                 buildPackages: buildPackages,
                 buildSamples: buildSamples,
@@ -167,21 +166,21 @@ extension CLI.Command {
                 docsDir: docsDir,
                 samplesDir: samplesDir
             )
-            Logging.ConsoleLogger.info("🔍 Preflight check for `cupertino save`\n")
+            Cupertino.Context.composition.logging.recording.info("🔍 Preflight check for `cupertino save`\n")
             for line in lines {
-                Logging.ConsoleLogger.info(line)
+                Cupertino.Context.composition.logging.recording.info(line)
             }
-            Logging.ConsoleLogger.info("")
+            Cupertino.Context.composition.logging.recording.info("")
 
             if yes {
-                Logging.ConsoleLogger.info("--yes: skipping confirmation, continuing.\n")
+                Cupertino.Context.composition.logging.recording.info("--yes: skipping confirmation, continuing.\n")
                 return true
             }
             guard isatty(fileno(stdin)) != 0 else {
                 return true
             }
 
-            Logging.ConsoleLogger.info("Continue? [Y/n] ")
+            Cupertino.Context.composition.logging.recording.info("Continue? [Y/n] ")
             guard let response = readLine() else { return true }
             let normalized = response.trimmingCharacters(in: .whitespaces).lowercased()
             return normalized.isEmpty || normalized == "y" || normalized == "yes"
@@ -210,12 +209,12 @@ extension CLI.Command {
 /// `RemoteSync.Indexer` interface is heavily UI-coupled (animated progress
 /// bar, framework-by-framework status). Stays here until that pipeline
 /// gets a callback-based shape.
-extension CLI.Command.Save {
+extension CLIImpl.Command.Save {
     private func runRemote() async throws {
-        Logging.ConsoleLogger.info("🚀 Building Search Index from Remote\n")
+        Cupertino.Context.composition.logging.recording.info("🚀 Building Search Index from Remote\n")
 
         let effectiveBase = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Shared.Constants.defaultBaseDirectory
+            ?? Shared.Paths.live().baseDirectory
         let searchDBURL = searchDB.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? effectiveBase.appendingPathComponent(Shared.Constants.FileName.searchDatabase)
         let stateFileURL = effectiveBase.appendingPathComponent("remote-save-state.json")
@@ -233,12 +232,12 @@ extension CLI.Command.Save {
                 searchDBURL: searchDBURL
             )
         } else if FileManager.default.fileExists(atPath: searchDBURL.path) {
-            Logging.ConsoleLogger.info("🗑️  Removing existing database for clean re-index...")
+            Cupertino.Context.composition.logging.recording.info("🗑️  Removing existing database for clean re-index...")
             try FileManager.default.removeItem(at: searchDBURL)
         }
 
-        Logging.ConsoleLogger.info("🗄️  Initializing search database...")
-        let searchIndex = try await SearchModule.Index(dbPath: searchDBURL, logger: Logging.LiveRecording())
+        Cupertino.Context.composition.logging.recording.info("🗄️  Initializing search database...")
+        let searchIndex = try await SearchModule.Index(dbPath: searchDBURL, logger: Cupertino.Context.composition.logging.recording)
 
         let progressDisplay = RemoteSync.AnimatedProgress(barWidth: 20, useEmoji: true)
         let reporter = RemoteSync.ProgressReporter(display: progressDisplay)
@@ -250,7 +249,7 @@ extension CLI.Command.Save {
         let stats = StatsTracker()
         let startTime = Date()
 
-        Logging.ConsoleLogger.output("")
+        Cupertino.Context.composition.logging.recording.output("")
         try await indexer.run(
             indexDocument: { uri, source, framework, title, content, jsonData in
                 try await searchIndex.indexDocument(Search.Index.IndexDocumentParams(
@@ -285,15 +284,15 @@ extension CLI.Command.Save {
         let frameworks = try await searchIndex.listFrameworks()
 
         reporter.finish(message: "")
-        Logging.ConsoleLogger.output("")
-        Logging.ConsoleLogger.info("✅ Remote sync completed!")
-        Logging.ConsoleLogger.info("   Total documents: \(docCount)")
-        Logging.ConsoleLogger.info("   Frameworks: \(frameworks.count)")
-        Logging.ConsoleLogger.info("   Indexed: \(stats.successCount) | Errors: \(stats.errorCount)")
-        Logging.ConsoleLogger.info("   Time: \(Shared.Utils.Formatting.formatDuration(elapsed))")
-        Logging.ConsoleLogger.info("   Database: \(searchDBURL.path)")
-        Logging.ConsoleLogger.info("   Size: \(Self.formatFileSize(searchDBURL))")
-        Logging.ConsoleLogger.info(
+        Cupertino.Context.composition.logging.recording.output("")
+        Cupertino.Context.composition.logging.recording.info("✅ Remote sync completed!")
+        Cupertino.Context.composition.logging.recording.info("   Total documents: \(docCount)")
+        Cupertino.Context.composition.logging.recording.info("   Frameworks: \(frameworks.count)")
+        Cupertino.Context.composition.logging.recording.info("   Indexed: \(stats.successCount) | Errors: \(stats.errorCount)")
+        Cupertino.Context.composition.logging.recording.info("   Time: \(Shared.Utils.Formatting.formatDuration(elapsed))")
+        Cupertino.Context.composition.logging.recording.info("   Database: \(searchDBURL.path)")
+        Cupertino.Context.composition.logging.recording.info("   Size: \(Self.formatFileSize(searchDBURL))")
+        Cupertino.Context.composition.logging.recording.info(
             "\n💡 Tip: Start the MCP server with '\(Shared.Constants.App.commandName) serve' to enable search"
         )
     }
@@ -307,25 +306,25 @@ extension CLI.Command.Save {
         let total = state.frameworksTotal
         let framework = state.currentFramework ?? "unknown"
 
-        Logging.ConsoleLogger.info("📋 Found previous session")
-        Logging.ConsoleLogger.info("   Phase: \(state.phase.rawValue)")
-        Logging.ConsoleLogger.info("   Progress: \(completedCount)/\(total) frameworks")
+        Cupertino.Context.composition.logging.recording.info("📋 Found previous session")
+        Cupertino.Context.composition.logging.recording.info("   Phase: \(state.phase.rawValue)")
+        Cupertino.Context.composition.logging.recording.info("   Progress: \(completedCount)/\(total) frameworks")
         if let current = state.currentFramework {
-            Logging.ConsoleLogger.info(
+            Cupertino.Context.composition.logging.recording.info(
                 "   Current: \(current) (\(state.currentFileIndex)/\(state.filesTotal) files)"
             )
         }
-        Logging.ConsoleLogger.output("")
+        Cupertino.Context.composition.logging.recording.output("")
 
         print("Resume from \(framework)? [Y/n] ", terminator: "")
         if let response = readLine()?.lowercased(), response == "n" || response == "no" {
-            Logging.ConsoleLogger.info("🔄 Starting fresh...")
+            Cupertino.Context.composition.logging.recording.info("🔄 Starting fresh...")
             try await indexer.clearState()
             if FileManager.default.fileExists(atPath: searchDBURL.path) {
                 try FileManager.default.removeItem(at: searchDBURL)
             }
         } else {
-            Logging.ConsoleLogger.info("▶️  Resuming...")
+            Cupertino.Context.composition.logging.recording.info("▶️  Resuming...")
         }
     }
 }

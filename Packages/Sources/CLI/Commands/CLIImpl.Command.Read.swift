@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import Logging
+import LoggingModels
 import SampleIndex
 import SampleIndexModels
 import Search
@@ -8,16 +9,13 @@ import SearchModels
 import Services
 import ServicesModels
 import SharedConstants
-import SharedCore
-import SharedUtils
-
 // MARK: - Read Command (unified, #239 follow-up)
 
 /// Thin CLI wrapper around `Services.ReadService`. The dispatch + per-source
 /// reads live there so the MCP layer (and any future agent-shell adapter)
 /// can share one implementation.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension CLI.Command {
+extension CLIImpl.Command {
     struct Read: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "read",
@@ -85,9 +83,18 @@ extension CLI.Command {
             do {
                 explicit = try Services.ReadService.resolveSource(source)
             } catch Services.ReadService.ReadError.unknownSource(let raw) {
-                Logging.Log.error("Unknown --source value: \(raw). See `cupertino read --help`.")
+                Cupertino.Context.composition.logging.recording.error("Unknown --source value: \(raw). See `cupertino read --help`.")
                 throw ExitCode.failure
             }
+
+            // Path-DI composition sub-root (#535).
+            let paths = Shared.Paths.live()
+            let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+                ?? paths.searchDatabase
+            let samplesDBURL = sampleDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+                ?? Sample.Index.databasePath(baseDirectory: paths.baseDirectory)
+            let packagesDBURL = packagesDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+                ?? paths.packagesDatabase
 
             let result: Services.ReadService.Result
             do {
@@ -95,45 +102,45 @@ extension CLI.Command {
                     identifier: identifier,
                     explicit: explicit,
                     format: documentFormat,
-                    searchDB: searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath },
-                    samplesDB: sampleDb.map { URL(fileURLWithPath: $0).expandingTildeInPath },
-                    packagesDB: packagesDb.map { URL(fileURLWithPath: $0).expandingTildeInPath },
+                    searchDB: searchDBURL,
+                    samplesDB: samplesDBURL,
+                    packagesDB: packagesDBURL,
                     searchDatabaseFactory: searchDatabaseFactory,
                     sampleDatabaseFactory: sampleDatabaseFactory,
                     packageFileLookup: LivePackageFileLookupStrategy()
                 )
             } catch Services.ReadService.ReadError.docsNotFound(let id) {
-                Logging.Log.error("Document not found in search.db: \(id)")
+                Cupertino.Context.composition.logging.recording.error("Document not found in search.db: \(id)")
                 throw ExitCode.failure
             } catch Services.ReadService.ReadError.samplesNotFound(let id) {
-                Logging.Log.error("Not found in samples.db: \(id)")
+                Cupertino.Context.composition.logging.recording.error("Not found in samples.db: \(id)")
                 throw ExitCode.failure
             } catch Services.ReadService.ReadError.packagesNotFound(let id) {
-                Logging.Log.error("Not found in packages.db: \(id)")
+                Cupertino.Context.composition.logging.recording.error("Not found in packages.db: \(id)")
                 throw ExitCode.failure
             } catch Services.ReadService.ReadError.packagesIdentifierInvalid(let id) {
-                Logging.Log.error(
+                Cupertino.Context.composition.logging.recording.error(
                     "Invalid package identifier: \(id) — expected `<owner>/<repo>/<relpath>`."
                 )
                 throw ExitCode.failure
             } catch Services.ReadService.ReadError.backendFailed(let msg) {
-                Logging.Log.error("Read failed: \(msg)")
+                Cupertino.Context.composition.logging.recording.error("Read failed: \(msg)")
                 throw ExitCode.failure
             } catch Services.ReadService.ReadError.notFoundAnywhere(let id) {
-                Logging.Log.error(
+                Cupertino.Context.composition.logging.recording.error(
                     "Tried docs, samples, and packages — no source matched. Identifier: \(id)"
                 )
                 throw ExitCode.failure
             }
 
-            Logging.Log.output(result.content)
+            Cupertino.Context.composition.logging.recording.output(result.content)
         }
     }
 }
 
 // MARK: - Output Format
 
-extension CLI.Command.Read {
+extension CLIImpl.Command.Read {
     enum OutputFormat: String, ExpressibleByArgument, CaseIterable {
         case json
         case markdown

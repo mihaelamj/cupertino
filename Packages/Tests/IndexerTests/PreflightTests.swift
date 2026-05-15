@@ -1,5 +1,6 @@
 import Foundation
 @testable import Indexer
+import SharedConstants
 import Testing
 
 // MARK: - Preflight (#232, lifted to Indexer in #244)
@@ -12,6 +13,7 @@ struct IndexerPreflightLinesTests {
         defer { try? FileManager.default.removeItem(at: dir) }
 
         let lines = Indexer.Preflight.preflightLines(
+            paths: Shared.Paths(baseDirectory: dir),
             buildDocs: true,
             buildPackages: true,
             buildSamples: true,
@@ -33,6 +35,7 @@ struct IndexerPreflightLinesTests {
         defer { try? FileManager.default.removeItem(at: dir) }
 
         let lines = Indexer.Preflight.preflightLines(
+            paths: Shared.Paths(baseDirectory: dir),
             buildDocs: false,
             buildPackages: true,
             buildSamples: false,
@@ -57,6 +60,7 @@ struct IndexerPreflightLinesTests {
         try Data("{}".utf8).write(to: pkgRoot.appendingPathComponent("availability.json"))
 
         let lines = Indexer.Preflight.preflightLines(
+            paths: Shared.Paths(baseDirectory: dir),
             buildDocs: false,
             buildPackages: true,
             buildSamples: false,
@@ -77,6 +81,7 @@ struct IndexerPreflightLinesTests {
         // No availability.json
 
         let lines = Indexer.Preflight.preflightLines(
+            paths: Shared.Paths(baseDirectory: dir),
             buildDocs: false,
             buildPackages: true,
             buildSamples: false,

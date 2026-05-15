@@ -3,53 +3,33 @@ import SharedConstants
 
 // MARK: - Path Resolver
 
-/// Centralized path resolution for database files and directories.
-/// Consolidates path resolution logic used across CLI commands and tool providers.
+/// Pure-function path helpers. Post-#535 the previous Service-Locator-shaped
+/// convenience accessors (`searchDatabase()`, `docsDirectory()`,
+/// `evolutionDirectory()`, `higDirectory()`, `sampleCodeDirectory()`) are
+/// gone — they routed through `Shared.Constants.defaultX` and hid a
+/// `BinaryConfig.shared` read at the callsite. Callers now thread a
+/// `Shared.Paths` value through their composition root and pick the URL
+/// they want directly.
+///
+/// What remains here is the stateless, path-shape-only surface:
+/// `directory(_:default:)` to apply an explicit fallback, `expand(_:)`
+/// for tilde-expansion, and the `exists` / `isDirectory` filesystem
+/// probes.
 extension Shared.Utils {
     public enum PathResolver {
-        // MARK: - Search Database
-
-        /// Resolve the search database path.
-        /// - Parameter customPath: Optional custom path (supports ~ expansion)
-        /// - Returns: Resolved URL to the search database
-        public static func searchDatabase(_ customPath: String? = nil) -> URL {
-            if let customPath {
-                return URL(fileURLWithPath: customPath).expandingTildeInPath
-            }
-            return Shared.Constants.defaultSearchDatabase
-        }
-
         // MARK: - Directory Resolution
 
-        /// Resolve a documentation directory path.
-        /// - Parameter customPath: Optional custom path (supports ~ expansion)
-        /// - Parameter defaultPath: Default path if custom is not provided
+        /// Resolve a directory path: either the explicit custom path
+        /// (tilde-expanded) or the provided default URL.
+        /// - Parameters:
+        ///   - customPath: Optional custom path (supports ~ expansion)
+        ///   - defaultPath: Default path if custom is not provided
         /// - Returns: Resolved URL to the directory
         public static func directory(_ customPath: String? = nil, default defaultPath: URL) -> URL {
             if let customPath {
                 return URL(fileURLWithPath: customPath).expandingTildeInPath
             }
             return defaultPath
-        }
-
-        /// Resolve the docs directory.
-        public static func docsDirectory(_ customPath: String? = nil) -> URL {
-            directory(customPath, default: Shared.Constants.defaultDocsDirectory)
-        }
-
-        /// Resolve the Swift Evolution directory.
-        public static func evolutionDirectory(_ customPath: String? = nil) -> URL {
-            directory(customPath, default: Shared.Constants.defaultSwiftEvolutionDirectory)
-        }
-
-        /// Resolve the HIG directory.
-        public static func higDirectory(_ customPath: String? = nil) -> URL {
-            directory(customPath, default: Shared.Constants.defaultHIGDirectory)
-        }
-
-        /// Resolve the sample code directory.
-        public static func sampleCodeDirectory(_ customPath: String? = nil) -> URL {
-            directory(customPath, default: Shared.Constants.defaultSampleCodeDirectory)
         }
 
         // MARK: - Path Expansion

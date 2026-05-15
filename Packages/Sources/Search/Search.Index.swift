@@ -3,8 +3,6 @@ import Foundation
 import LoggingModels
 import SearchModels
 import SharedConstants
-import SharedCore
-import SharedModels
 import SQLite3
 
 // MARK: - Search Index
@@ -51,7 +49,7 @@ extension Search {
         let logger: any LoggingModels.Logging.Recording
 
         public init(
-            dbPath: URL = Shared.Constants.defaultSearchDatabase,
+            dbPath: URL,
             logger: any LoggingModels.Logging.Recording
         ) async throws {
             self.dbPath = dbPath

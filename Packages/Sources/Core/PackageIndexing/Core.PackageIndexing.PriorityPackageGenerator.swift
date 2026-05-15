@@ -3,8 +3,6 @@ import CoreProtocols
 import Foundation
 import LoggingModels
 import SharedConstants
-import SharedCore
-
 // swiftlint:disable function_body_length
 // Justification: The generate() function orchestrates the complete package analysis workflow:
 // scanning documentation, extracting package mentions, categorizing by tier (Apple/SwiftLang/

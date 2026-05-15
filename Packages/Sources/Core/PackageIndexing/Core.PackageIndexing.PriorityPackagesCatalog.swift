@@ -1,5 +1,5 @@
 // This file loads the Priority Packages catalog from JSON
-// Supports user-selected packages from ~/.cupertino/selected-packages.json
+// Supports user-selected packages from <baseDirectory>/selected-packages.json
 // Falls back to bundled priority-packages.json if user file doesn't exist
 
 import CorePackageIndexingModels
@@ -7,8 +7,6 @@ import CoreProtocols
 import Foundation
 import Resources
 import SharedConstants
-import SharedCore
-
 extension Core.PackageIndexing {
     /// Represents a priority package entry
     public struct PriorityPackage: Codable, Sendable {
@@ -65,66 +63,54 @@ extension Core.PackageIndexing {
         let stats: PriorityPackageStats
     }
 
-    /// Complete catalog of curated high-priority Swift packages
-    public enum PriorityPackagesCatalog {
-        /// User-writable location for selected packages: ~/.cupertino/selected-packages.json
-        private static var userSelectionsURL: URL {
-            Shared.Constants.defaultBaseDirectory
-                .appendingPathComponent(Shared.Constants.FileName.selectedPackages)
+    /// Complete catalog of curated high-priority Swift packages.
+    ///
+    /// Post-#535: converted from a `static enum` Singleton (process-wide
+    /// cache + reach for `Shared.Constants.defaultBaseDirectory` through
+    /// `BinaryConfig.shared`) to an `actor` whose `baseDirectory` is
+    /// supplied at construction. Each composition root (CLI / TUI)
+    /// instantiates one catalog with the resolved per-install base; tests
+    /// instantiate one per test with a `tempDir` base and
+    /// `useBundledOnly: true`.
+    public actor PriorityPackagesCatalog {
+        private let baseDirectory: URL
+        private var catalog: PriorityPackagesCatalogJSON?
+        private var useBundledOnly: Bool
+
+        public init(baseDirectory: URL, useBundledOnly: Bool = false) {
+            self.baseDirectory = baseDirectory
+            self.useBundledOnly = useBundledOnly
         }
 
-        /// Cached catalog data (thread-safe via actor isolation)
-        private actor Cache {
-            var catalog: PriorityPackagesCatalogJSON?
-            var useBundledOnly = false
-
-            func get() -> PriorityPackagesCatalogJSON? {
-                catalog
-            }
-
-            func set(_ newCatalog: PriorityPackagesCatalogJSON) {
-                catalog = newCatalog
-            }
-
-            func clear() {
-                catalog = nil
-            }
-
-            func setUseBundledOnly(_ value: Bool) {
-                useBundledOnly = value
-                catalog = nil // Clear cache when changing mode
-            }
-
-            func shouldSkipUserFile() -> Bool {
-                useBundledOnly
-            }
+        /// User-writable location for selected packages, under the supplied
+        /// base directory.
+        private var userSelectionsURL: URL {
+            baseDirectory.appendingPathComponent(Shared.Constants.FileName.selectedPackages)
         }
-
-        private static let cache = Cache()
 
         /// Clear the cache (useful when user file changes)
-        public static func clearCache() async {
-            await cache.clear()
+        public func clearCache() {
+            catalog = nil
         }
 
-        /// Force using bundled file only (for testing)
-        /// Call with `true` before tests, `false` after to restore normal behavior
-        public static func setUseBundledOnly(_ bundledOnly: Bool) async {
-            await cache.setUseBundledOnly(bundledOnly)
+        /// Force using bundled file only (for testing).
+        /// Call with `true` before tests, `false` after to restore normal behavior.
+        public func setUseBundledOnly(_ bundledOnly: Bool) {
+            useBundledOnly = bundledOnly
+            catalog = nil // Clear cache when changing mode
         }
 
         /// Load catalog - checks user file first, falls back to bundled resource
-        private static func loadCatalog() async -> PriorityPackagesCatalogJSON {
-            if let cached = await cache.get() {
+        private func loadCatalog() -> PriorityPackagesCatalogJSON {
+            if let cached = catalog {
                 return cached
             }
 
             // Try user selections file first (unless testing with bundled only)
-            let skipUserFile = await cache.shouldSkipUserFile()
-            if !skipUserFile {
+            if !useBundledOnly {
                 ensureUserSelectionsFileExists()
                 if let userCatalog = loadUserCatalog() {
-                    await cache.set(userCatalog)
+                    catalog = userCatalog
                     return userCatalog
                 }
             }
@@ -135,16 +121,16 @@ extension Core.PackageIndexing {
             }
 
             do {
-                let catalog = try JSONDecoder().decode(PriorityPackagesCatalogJSON.self, from: data)
-                await cache.set(catalog)
-                return catalog
+                let decoded = try JSONDecoder().decode(PriorityPackagesCatalogJSON.self, from: data)
+                catalog = decoded
+                return decoded
             } catch {
                 fatalError("❌ Failed to decode embedded priority-packages JSON: \(error)")
             }
         }
 
         /// Load catalog from user selections file if it exists
-        private static func loadUserCatalog() -> PriorityPackagesCatalogJSON? {
+        private func loadUserCatalog() -> PriorityPackagesCatalogJSON? {
             let fileURL = userSelectionsURL
 
             guard FileManager.default.fileExists(atPath: fileURL.path) else {
@@ -171,10 +157,10 @@ extension Core.PackageIndexing {
         /// next time any caller touches `PriorityPackagesCatalog`.
         ///
         /// Fixes the 2026-05-03 staleness bug filed under #218: a Dec 2025
-        /// `~/.cupertino/selected-packages.json` was frozen at the priority list
+        /// `<base>/selected-packages.json` was frozen at the priority list
         /// from then, so April 2026 additions (e.g. `mihaelamj/*` packages)
         /// never reached the resolver despite being in the embedded JSON.
-        private static func ensureUserSelectionsFileExists() {
+        private func ensureUserSelectionsFileExists() {
             let selectedURL = userSelectionsURL
 
             guard let embeddedData = Resources.jsonData(named: "priority-packages") else {
@@ -183,9 +169,8 @@ extension Core.PackageIndexing {
 
             if !FileManager.default.fileExists(atPath: selectedURL.path) {
                 do {
-                    let baseDir = Shared.Constants.defaultBaseDirectory
-                    if !FileManager.default.fileExists(atPath: baseDir.path) {
-                        try FileManager.default.createDirectory(at: baseDir, withIntermediateDirectories: true)
+                    if !FileManager.default.fileExists(atPath: baseDirectory.path) {
+                        try FileManager.default.createDirectory(at: baseDirectory, withIntermediateDirectories: true)
                     }
                     try embeddedData.write(to: selectedURL)
                 } catch {
@@ -195,7 +180,7 @@ extension Core.PackageIndexing {
             }
 
             // File exists — additively merge any new embedded entries (#218).
-            mergeNewEmbeddedEntries(into: selectedURL, from: embeddedData)
+            Self.mergeNewEmbeddedEntries(into: selectedURL, from: embeddedData)
         }
 
         /// Append entries present in `embeddedData` but missing from the user
@@ -204,7 +189,9 @@ extension Core.PackageIndexing {
         /// user file already covers every embedded entry; prints a one-line
         /// summary when it adds anything. Never removes entries.
         /// `internal` (not `private`) so #218 unit tests can drive it without
-        /// touching real disk or network state.
+        /// touching real disk or network state. Static so tests don't need
+        /// to construct an actor instance just to drive the pure-ish file-merge
+        /// behaviour.
         static func mergeNewEmbeddedEntries(into selectedURL: URL, from embeddedData: Data) {
             let decoder = JSONDecoder()
             guard let embedded = try? decoder.decode(PriorityPackagesCatalogJSON.self, from: embeddedData),
@@ -299,17 +286,11 @@ extension Core.PackageIndexing {
 
             do {
                 try mergedData.write(to: selectedURL)
-                // PriorityPackagesCatalog is a static-enum Singleton (GoF
-                // p. 127 — exactly-one-instance over an embedded
-                // resource). Static enums can't hold an injected
-                // logger without forcing every public accessor
-                // (allPackages, applePackages, etc.) to thread one
-                // through — that ripple would touch CLI + TUI.
-                // For the one-time migration notice fired here on a
-                // first-run upgrade, direct stdout is the GoF-honest
-                // boundary: no Service Locator reach, no Singleton
-                // logger leak, just the side-effect that already had
-                // to land somewhere observable.
+                // PriorityPackagesCatalog is now an injected actor (post-#535).
+                // For the one-time migration notice fired here on a first-run
+                // upgrade, direct stdout is the GoF-honest boundary: no
+                // Service Locator reach, no Singleton logger leak, just the
+                // side-effect that already had to land somewhere observable.
                 print("📥 selected-packages.json: added \(totalNew) new priority entries from embedded list (#218)")
             } catch {
                 // Silently fail - we already have the user file from before
@@ -317,66 +298,50 @@ extension Core.PackageIndexing {
         }
 
         /// Catalog version
-        public static var version: String {
-            get async {
-                await loadCatalog().version
-            }
+        public var version: String {
+            loadCatalog().version
         }
 
         /// Last updated date
-        public static var lastUpdated: String {
-            get async {
-                await loadCatalog().lastUpdated
-            }
+        public var lastUpdated: String {
+            loadCatalog().lastUpdated
         }
 
         /// Catalog description
-        public static var description: String {
-            get async {
-                await loadCatalog().description
-            }
+        public var description: String {
+            loadCatalog().description
         }
 
         /// All tiers
-        public static var tiers: PriorityTiers {
-            get async {
-                await loadCatalog().tiers
-            }
+        public var tiers: PriorityTiers {
+            loadCatalog().tiers
         }
 
         /// Statistics
-        public static var stats: PriorityPackageStats {
-            get async {
-                await loadCatalog().stats
-            }
+        public var stats: PriorityPackageStats {
+            loadCatalog().stats
         }
 
         /// All Apple official packages
-        public static var applePackages: [PriorityPackage] {
-            get async {
-                await loadCatalog().tiers.appleOfficial?.packages ?? []
-            }
+        public var applePackages: [PriorityPackage] {
+            loadCatalog().tiers.appleOfficial?.packages ?? []
         }
 
         /// All ecosystem packages
-        public static var ecosystemPackages: [PriorityPackage] {
-            get async {
-                await loadCatalog().tiers.ecosystem.packages
-            }
+        public var ecosystemPackages: [PriorityPackage] {
+            loadCatalog().tiers.ecosystem.packages
         }
 
         /// All priority packages (combined)
-        public static var allPackages: [PriorityPackage] {
-            get async {
-                let catalog = await loadCatalog()
-                let applePackages = catalog.tiers.appleOfficial?.packages ?? []
-                return applePackages + catalog.tiers.ecosystem.packages
-            }
+        public var allPackages: [PriorityPackage] {
+            let cat = loadCatalog()
+            let appleP = cat.tiers.appleOfficial?.packages ?? []
+            return appleP + cat.tiers.ecosystem.packages
         }
 
         /// Check if a package is in the priority list
-        public static func isPriority(owner: String, repo: String) async -> Bool {
-            let all = await allPackages
+        public func isPriority(owner: String, repo: String) -> Bool {
+            let all = allPackages
             return all.contains { pkg in
                 let pkgOwner = pkg.owner ?? "apple"
                 return pkgOwner.lowercased() == owner.lowercased() && pkg.repo.lowercased() == repo.lowercased()
@@ -384,8 +349,8 @@ extension Core.PackageIndexing {
         }
 
         /// Get priority package by repo name (searches all tiers)
-        public static func package(named repo: String) async -> PriorityPackage? {
-            let all = await allPackages
+        public func package(named repo: String) -> PriorityPackage? {
+            let all = allPackages
             return all.first { $0.repo.lowercased() == repo.lowercased() }
         }
     }

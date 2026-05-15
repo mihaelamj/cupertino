@@ -2,8 +2,6 @@ import Foundation
 @testable import Search
 import SearchModels
 import SharedConstants
-import SharedCore
-import SharedModels
 import Testing
 
 // Regression coverage for `Search.StrategyHelpers.deduplicateDocFilesByCanonicalURL`

@@ -2,9 +2,6 @@ import Foundation
 @testable import Search
 import SearchModels
 import SharedConstants
-import SharedCore
-import SharedModels
-import SharedUtils
 import Testing
 
 // Truth-table coverage for `Search.IndexBuilder.titleLooksLikeHTTPErrorTemplate`,

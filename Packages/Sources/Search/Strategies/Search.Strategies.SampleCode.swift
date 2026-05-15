@@ -2,8 +2,6 @@ import Foundation
 import LoggingModels
 import SearchModels
 import SharedConstants
-import SharedModels
-
 // MARK: - SampleCodeStrategy
 
 extension Search {
@@ -63,7 +61,7 @@ extension Search {
         /// - Returns: ``Search/IndexStats`` with indexed and skipped counts.
         public func indexItems(
             into index: Search.Index,
-            progress: Search.IndexingProgressCallback?
+            progress: (any Search.IndexingProgressReporting)?
         ) async throws -> Search.IndexStats {
             let state = await sampleCatalogProvider.fetch()
 
@@ -138,7 +136,7 @@ extension Search {
                 }
 
                 if (idx + 1) % 100 == 0 {
-                    progress?(idx + 1, entries.count)
+                    progress?.report(processed: idx + 1, total: entries.count)
                     logger.info(
                         "   Progress: \(idx + 1)/\(entries.count)", category: .search
                     )

@@ -1,9 +1,6 @@
 import CoreProtocols
 import Foundation
 import SharedConstants
-import SharedCore
-import SharedModels
-
 // MARK: - Apple Documentation JSON to Markdown Converter
 
 extension Core.JSONParser {

@@ -14,13 +14,10 @@ import SearchModels
 import SearchToolProvider
 import Services
 import ServicesModels
-import SharedConfiguration
 import SharedConstants
-import SharedCore
-
 // MARK: - Serve Command
 
-extension CLI.Command {
+extension CLIImpl.Command {
     struct Serve: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "serve",
@@ -63,23 +60,39 @@ extension CLI.Command {
             ServeReaper.reapSiblings()
 
             if isatty(STDOUT_FILENO) == 0 {
-                Logging.Log.disableConsole()
+                // Silence stdout on the actor backing this binary's
+                // `LiveRecording` so the JSON-RPC stream stays parseable.
+                // Post-#548 Phase B, the recording sources from the
+                // binary's `Cupertino.Composition` (TaskLocal-bound at
+                // `Cupertino.main()`), not from the global
+                // `Logging.Unified.shared` singleton — disabling console
+                // on `.shared` after Phase B would silence the wrong
+                // actor.
+                await Cupertino.Context.composition.logging.disableConsole()
             }
 
+            // Path-DI composition sub-root (#535).
+            let paths = Shared.Paths.live()
             let config = Shared.Configuration(
                 crawler: Shared.Configuration.Crawler(
-                    outputDirectory: Shared.Constants.defaultDocsDirectory
+                    outputDirectory: paths.docsDirectory
+                ),
+                changeDetection: Shared.Configuration.ChangeDetection(
+                    outputDirectory: paths.docsDirectory
                 )
             )
 
-            let evolutionURL = Shared.Constants.defaultSwiftEvolutionDirectory
-            let searchDBURL = Shared.Constants.defaultSearchDatabase
+            let evolutionURL = paths.swiftEvolutionDirectory
+            let archiveURL = paths.archiveDirectory
+            let searchDBURL = paths.searchDatabase
+            let sampleDBURL = Sample.Index.databasePath(baseDirectory: paths.baseDirectory)
 
             // Check if there's anything to serve
             let hasData = checkForData(
                 docsDir: config.crawler.outputDirectory,
                 evolutionDir: evolutionURL,
-                searchDB: searchDBURL
+                searchDB: searchDBURL,
+                sampleDB: sampleDBURL
             )
 
             if !hasData {
@@ -104,10 +117,17 @@ extension CLI.Command {
                 server: server,
                 config: config,
                 evolutionURL: evolutionURL,
-                searchDBURL: searchDBURL
+                archiveURL: archiveURL,
+                searchDBURL: searchDBURL,
+                sampleDBURL: sampleDBURL
             )
 
-            printStartupMessages(config: config, evolutionURL: evolutionURL, searchDBURL: searchDBURL)
+            printStartupMessages(
+                config: config,
+                evolutionURL: evolutionURL,
+                searchDBURL: searchDBURL,
+                sampleDBURL: sampleDBURL
+            )
 
             let transport = MCP.Core.Transport.Stdio()
             try await server.connect(transport)
@@ -122,7 +142,9 @@ extension CLI.Command {
             server: MCP.Core.Server,
             config: Shared.Configuration,
             evolutionURL: URL,
-            searchDBURL: URL
+            archiveURL: URL,
+            searchDBURL: URL,
+            sampleDBURL: URL
         ) async {
             // Initialize search index if available
             let searchIndex: SearchModule.Index? = await loadSearchIndex(searchDBURL: searchDBURL)
@@ -141,13 +163,14 @@ extension CLI.Command {
             let resourceProvider = MCP.Support.DocsResourceProvider(
                 configuration: config,
                 evolutionDirectory: evolutionURL,
+                archiveDirectory: archiveURL,
                 markdownLookup: markdownLookup,
-            logger: Logging.LiveRecording()
+                logger: Cupertino.Context.composition.logging.recording
             )
             await server.registerResourceProvider(resourceProvider)
 
             // Initialize sample code index if available
-            let sampleIndex = await loadSampleIndex()
+            let sampleIndex = await loadSampleIndex(sampleDBURL: sampleDBURL)
 
             // Register composite tool provider with both indexes. The
             // service-layer wrappers are constructed here at the
@@ -176,31 +199,30 @@ extension CLI.Command {
             // Log availability of each index
             if searchIndex != nil {
                 let message = "✅ Documentation search enabled (index found)"
-                Logging.Log.info(message, category: .mcp)
+                Cupertino.Context.composition.logging.recording.info(message, category: .mcp)
             }
             if sampleIndex != nil {
                 let message = "✅ Sample code search enabled (index found)"
-                Logging.Log.info(message, category: .mcp)
+                Cupertino.Context.composition.logging.recording.info(message, category: .mcp)
             }
         }
 
-        private func loadSampleIndex() async -> Sample.Index.Database? {
-            let sampleDBURL = Sample.Index.defaultDatabasePath
+        private func loadSampleIndex(sampleDBURL: URL) async -> Sample.Index.Database? {
             guard FileManager.default.fileExists(atPath: sampleDBURL.path) else {
                 let infoMsg = "ℹ️  Sample code index not found at: \(sampleDBURL.path)"
                 let cmd = "\(Shared.Constants.App.commandName) save --samples"
                 let hintMsg = "   Sample tools will not be available. Run '\(cmd)' to enable."
-                Logging.Log.info("\(infoMsg) \(hintMsg)", category: .mcp)
+                Cupertino.Context.composition.logging.recording.info("\(infoMsg) \(hintMsg)", category: .mcp)
                 return nil
             }
 
             do {
-                return try await Sample.Index.Database(dbPath: sampleDBURL, logger: Logging.LiveRecording())
+                return try await Sample.Index.Database(dbPath: sampleDBURL, logger: Cupertino.Context.composition.logging.recording)
             } catch {
                 let errorMsg = "⚠️  Failed to load sample index: \(error)"
                 let cmd = "\(Shared.Constants.App.commandName) save --samples"
                 let hintMsg = "   Sample tools will not be available. Run '\(cmd)' to create the index."
-                Logging.Log.warning("\(errorMsg) \(hintMsg)", category: .mcp)
+                Cupertino.Context.composition.logging.recording.warning("\(errorMsg) \(hintMsg)", category: .mcp)
                 return nil
             }
         }
@@ -210,22 +232,27 @@ extension CLI.Command {
                 let infoMsg = "ℹ️  Search index not found at: \(searchDBURL.path)"
                 let cmd = "\(Shared.Constants.App.commandName) save"
                 let hintMsg = "   Tools will not be available. Run '\(cmd)' to enable search."
-                Logging.Log.info("\(infoMsg) \(hintMsg)", category: .mcp)
+                Cupertino.Context.composition.logging.recording.info("\(infoMsg) \(hintMsg)", category: .mcp)
                 return nil
             }
 
             do {
-                return try await SearchModule.Index(dbPath: searchDBURL, logger: Logging.LiveRecording())
+                return try await SearchModule.Index(dbPath: searchDBURL, logger: Cupertino.Context.composition.logging.recording)
             } catch {
                 let errorMsg = "⚠️  Failed to load search index: \(error)"
                 let cmd = "\(Shared.Constants.App.commandName) save"
                 let hintMsg = "   Tools will not be available. Run '\(cmd)' to create the index."
-                Logging.Log.warning("\(errorMsg) \(hintMsg)", category: .mcp)
+                Cupertino.Context.composition.logging.recording.warning("\(errorMsg) \(hintMsg)", category: .mcp)
                 return nil
             }
         }
 
-        private func printStartupMessages(config _: Shared.Configuration, evolutionURL _: URL, searchDBURL: URL) {
+        private func printStartupMessages(
+            config _: Shared.Configuration,
+            evolutionURL _: URL,
+            searchDBURL: URL,
+            sampleDBURL: URL
+        ) {
             var messages = ["🚀 Cupertino MCP Server starting..."]
 
             // Add search DB path if it exists
@@ -234,7 +261,6 @@ extension CLI.Command {
             }
 
             // Add samples DB path if it exists
-            let sampleDBURL = Sample.Index.defaultDatabasePath
             if FileManager.default.fileExists(atPath: sampleDBURL.path) {
                 messages.append("   Samples DB: \(sampleDBURL.path)")
             }
@@ -242,16 +268,16 @@ extension CLI.Command {
             messages.append("   Waiting for client connection...")
 
             for message in messages {
-                Logging.Log.info(message, category: .mcp)
+                Cupertino.Context.composition.logging.recording.info(message, category: .mcp)
             }
         }
 
-        private func checkForData(docsDir _: URL, evolutionDir _: URL, searchDB: URL) -> Bool {
+        private func checkForData(docsDir _: URL, evolutionDir _: URL, searchDB: URL, sampleDB: URL) -> Bool {
             let fileManager = FileManager.default
 
             // Check if either database exists
             let hasSearchDB = fileManager.fileExists(atPath: searchDB.path)
-            let hasSamplesDB = fileManager.fileExists(atPath: Sample.Index.defaultDatabasePath.path)
+            let hasSamplesDB = fileManager.fileExists(atPath: sampleDB.path)
 
             return hasSearchDB || hasSamplesDB
         }

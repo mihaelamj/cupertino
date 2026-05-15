@@ -2,8 +2,6 @@ import Foundation
 import LoggingModels
 import OSLog
 import SharedConstants
-import SharedCore
-
 // MARK: - Logger Infrastructure
 
 /// Centralized logging infrastructure for Cupertino using os.log
@@ -84,31 +82,6 @@ extension Logger {
     @inlinable
     public func fault(_ message: String) {
         fault("\(message, privacy: .public)")
-    }
-}
-
-// MARK: - Console Output Helpers
-
-/// Helper for outputting to console while also logging
-/// Useful for CLI tools that need both user-facing output and logging
-extension Logging {
-    public enum ConsoleLogger {
-        /// Print to stdout and log as info
-        public static func info(_ message: String, logger: os.Logger = Logging.Logger.cli) {
-            print(message)
-            logger.info(message)
-        }
-
-        /// Print to stderr and log as error
-        public static func error(_ message: String, logger: os.Logger = Logging.Logger.cli) {
-            fputs("\(message)\n", stderr)
-            logger.error(message)
-        }
-
-        /// Print to stdout only (no logging) - for interactive output
-        public static func output(_ message: String) {
-            print(message)
-        }
     }
 }
 

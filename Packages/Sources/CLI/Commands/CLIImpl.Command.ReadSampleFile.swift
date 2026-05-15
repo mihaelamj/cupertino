@@ -1,18 +1,16 @@
 import ArgumentParser
 import Foundation
 import Logging
+import LoggingModels
 import SampleIndex
 import Services
 import ServicesModels
 import SharedConstants
-import SharedCore
-import SharedUtils
-
 // MARK: - Read Sample File Command
 
 /// CLI command for reading a specific file from a sample project - mirrors MCP tool functionality.
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
-extension CLI.Command {
+extension CLIImpl.Command {
     struct ReadSampleFile: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "read-sample-file",
@@ -46,10 +44,10 @@ extension CLI.Command {
             let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
 
             // Use Services.ServiceContainer for managed lifecycle
-            let file = try await Services.ServiceContainer.withSampleService(dbPath: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
+            let file = try await Services.ServiceContainer.withSampleService(samplesDB: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
                 guard let file = try await service.getFile(projectId: projectId, path: filePath) else {
-                    Logging.Log.error("File not found: \(filePath) in project \(projectId)")
-                    Logging.Log.output("Use 'cupertino read-sample \(projectId)' to list available files.")
+                    Cupertino.Context.composition.logging.recording.error("File not found: \(filePath) in project \(projectId)")
+                    Cupertino.Context.composition.logging.recording.output("Use 'cupertino read-sample \(projectId)' to list available files.")
                     throw ExitCode.failure
                 }
                 return file
@@ -61,10 +59,10 @@ extension CLI.Command {
                 outputText(file)
             case .json:
                 let formatter = Sample.Format.JSON.File()
-                Logging.Log.output(formatter.format(file))
+                Cupertino.Context.composition.logging.recording.output(formatter.format(file))
             case .markdown:
                 let formatter = Sample.Format.Markdown.File()
-                Logging.Log.output(formatter.format(file))
+                Cupertino.Context.composition.logging.recording.output(formatter.format(file))
             }
         }
 
@@ -74,24 +72,25 @@ extension CLI.Command {
             if let sampleDb {
                 return URL(fileURLWithPath: sampleDb).expandingTildeInPath
             }
-            return Sample.Index.defaultDatabasePath
+            // Path-DI composition sub-root (#535).
+            return Sample.Index.databasePath(baseDirectory: Shared.Paths.live().baseDirectory)
         }
 
         // MARK: - Output Formatting
 
         private func outputText(_ file: Sample.Index.File) {
-            Logging.Log.output("// File: \(file.path)")
-            Logging.Log.output("// Project: \(file.projectId)")
-            Logging.Log.output("// Size: \(Shared.Utils.Formatting.formatBytes(file.size))")
-            Logging.Log.output("")
-            Logging.Log.output(file.content)
+            Cupertino.Context.composition.logging.recording.output("// File: \(file.path)")
+            Cupertino.Context.composition.logging.recording.output("// Project: \(file.projectId)")
+            Cupertino.Context.composition.logging.recording.output("// Size: \(Shared.Utils.Formatting.formatBytes(file.size))")
+            Cupertino.Context.composition.logging.recording.output("")
+            Cupertino.Context.composition.logging.recording.output(file.content)
         }
     }
 }
 
 // MARK: - Output Format
 
-extension CLI.Command.ReadSampleFile {
+extension CLIImpl.Command.ReadSampleFile {
     enum OutputFormat: String, ExpressibleByArgument, CaseIterable {
         case text
         case json

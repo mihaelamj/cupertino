@@ -1,84 +1,69 @@
 import Foundation
+import IndexerModels
 import SearchModels
 import SharedConstants
-import SharedCore
 
-extension Indexer {
+// MARK: - Indexer.PackagesService — concrete `run` orchestrator
+//
+// The value types (`Request`, `Outcome`, `Event`) plus the
+// `Indexer.PackagesService.EventObserving` Observer protocol live in the
+// foundation-only `IndexerModels` seam target. This file extends the
+// same `Indexer.PackagesService` namespace to add the actual
+// orchestrator behaviour.
+
+extension Indexer.PackagesService {
     /// Build `packages.db` from extracted package archives at
     /// `~/.cupertino/packages/<owner>/<repo>/`. Wraps an injected
-    /// `Search.PackageIndexingRunner` conformer with event-emission
-    /// so this target doesn't import `Search` directly — the CLI
+    /// `Search.PackageIndexingRunner` conformer with event-emission so
+    /// this target doesn't import `Search` directly — the CLI
     /// composition root supplies a `LivePackageIndexingRunner` backed
     /// by `Search.PackageIndex` + `Search.PackageIndexer`.
-    public enum PackagesService {
-        public struct Request: Sendable {
-            public let packagesRoot: URL
-            public let packagesDB: URL
-            public let clear: Bool
+    public static func run(
+        _ request: Request,
+        packageIndexingRunner: any Search.PackageIndexingRunner,
+        events: any EventObserving
+    ) async throws -> Outcome {
+        events.observe(event: .starting(
+            packagesRoot: request.packagesRoot,
+            packagesDB: request.packagesDB
+        ))
 
-            public init(
-                packagesRoot: URL,
-                packagesDB: URL = Shared.Constants.defaultPackagesDatabase,
-                clear: Bool = false
-            ) {
-                self.packagesRoot = packagesRoot
-                self.packagesDB = packagesDB
-                self.clear = clear
-            }
+        if request.clear, FileManager.default.fileExists(atPath: request.packagesDB.path) {
+            events.observe(event: .removingExistingDB(request.packagesDB))
+            try FileManager.default.removeItem(at: request.packagesDB)
         }
 
-        public struct Outcome: Sendable {
-            public let packagesIndexed: Int
-            public let packagesFailed: Int
-            public let totalFiles: Int
-            public let totalBytes: Int64
-            public let durationSeconds: Double
-            public let totalPackagesInDB: Int
-            public let totalFilesInDB: Int
-            public let totalBytesInDB: Int64
-        }
+        let reporter = EventsToProgressReporter(events: events)
+        let result = try await packageIndexingRunner.run(
+            packagesRoot: request.packagesRoot,
+            packagesDB: request.packagesDB,
+            progress: reporter
+        )
 
-        public enum Event: Sendable {
-            case starting(packagesRoot: URL, packagesDB: URL)
-            case removingExistingDB(URL)
-            case progress(name: String, done: Int, total: Int)
-            case finished(Outcome)
-        }
+        let outcome = Outcome(
+            packagesIndexed: result.packagesIndexed,
+            packagesFailed: result.packagesFailed,
+            totalFiles: result.totalFiles,
+            totalBytes: result.totalBytes,
+            durationSeconds: result.durationSeconds,
+            totalPackagesInDB: result.totalPackagesInDB,
+            totalFilesInDB: result.totalFilesInDB,
+            totalBytesInDB: result.totalBytesInDB
+        )
+        events.observe(event: .finished(outcome))
+        return outcome
+    }
 
-        public static func run(
-            _ request: Request,
-            packageIndexingRunner: any Search.PackageIndexingRunner,
-            handler: @escaping @Sendable (Event) -> Void = { _ in }
-        ) async throws -> Outcome {
-            handler(.starting(
-                packagesRoot: request.packagesRoot,
-                packagesDB: request.packagesDB
-            ))
+    /// Adapter bridging the typed `Indexer.PackagesService.EventObserving`
+    /// Observer protocol (from `IndexerModels`) to the typed
+    /// `Search.PackageIndexingProgressReporting` Observer protocol that
+    /// `Search.PackageIndexingRunner.run` requires. Pure
+    /// protocol-to-protocol adapter — no closures involved.
+    private struct EventsToProgressReporter: Search.PackageIndexingProgressReporting {
+        let events: any EventObserving
 
-            if request.clear, FileManager.default.fileExists(atPath: request.packagesDB.path) {
-                handler(.removingExistingDB(request.packagesDB))
-                try FileManager.default.removeItem(at: request.packagesDB)
-            }
-
-            let result = try await packageIndexingRunner.run(
-                packagesRoot: request.packagesRoot,
-                packagesDB: request.packagesDB
-            ) { name, done, total in
-                handler(.progress(name: name, done: done, total: total))
-            }
-
-            let outcome = Outcome(
-                packagesIndexed: result.packagesIndexed,
-                packagesFailed: result.packagesFailed,
-                totalFiles: result.totalFiles,
-                totalBytes: result.totalBytes,
-                durationSeconds: result.durationSeconds,
-                totalPackagesInDB: result.totalPackagesInDB,
-                totalFilesInDB: result.totalFilesInDB,
-                totalBytesInDB: result.totalBytesInDB
-            )
-            handler(.finished(outcome))
-            return outcome
+        func report(packageName: String, processed: Int, total: Int) {
+            events.observe(event: .progress(name: packageName, done: processed, total: total))
         }
     }
 }

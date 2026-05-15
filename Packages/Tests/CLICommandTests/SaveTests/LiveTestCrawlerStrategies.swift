@@ -6,8 +6,6 @@ import CrawlerModels
 import Foundation
 import LoggingModels
 import SharedConstants
-import SharedModels
-
 // MARK: - Live test crawler strategies
 
 // Real wrappers around `Core.Parser.HTML`, `Core.JSONParser.AppleJSONToMarkdown`,

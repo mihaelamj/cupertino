@@ -1,6 +1,5 @@
 import Foundation
 import SearchModels
-import SharedCore
 import SQLite3
 
 extension Search.Index {

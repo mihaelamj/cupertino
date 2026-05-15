@@ -1,8 +1,6 @@
 import Foundation
 import SampleIndexModels
 import SharedConstants
-import SharedCore
-
 // MARK: - Sample Search Markdown Formatter
 
 /// Formats sample search results as markdown

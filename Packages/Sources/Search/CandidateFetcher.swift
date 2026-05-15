@@ -1,8 +1,6 @@
 import Foundation
 import SearchModels
 import SharedConstants
-import SharedCore
-
 // MARK: - Smart-query abstraction (#192 section E)
 
 //
@@ -32,7 +30,7 @@ extension Search {
         private let availability: Search.AvailabilityFilter?
 
         public init(
-            dbPath: URL = Shared.Constants.defaultPackagesDatabase,
+            dbPath: URL,
             availability: Search.AvailabilityFilter? = nil
         ) {
             self.dbPath = dbPath

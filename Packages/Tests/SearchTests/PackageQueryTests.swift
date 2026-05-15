@@ -1,7 +1,6 @@
 import Foundation
 @testable import Search
 import SearchModels
-import SharedCore
 import Testing
 
 // MARK: - IntentClassifier

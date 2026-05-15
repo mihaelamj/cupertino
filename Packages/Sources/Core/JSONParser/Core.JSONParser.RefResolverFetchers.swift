@@ -1,6 +1,5 @@
 import CoreProtocols
 import Foundation
-import SharedCore
 #if canImport(WebKit)
 import WebKit
 #endif

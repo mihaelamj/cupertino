@@ -3,9 +3,6 @@ import SampleIndexModels
 import SearchModels
 import ServicesModels
 import SharedConstants
-import SharedCore
-import SharedUtils
-
 // MARK: - Service Container
 
 /// Composition utility for the Services target's read-side services
@@ -26,18 +23,24 @@ extension Services {
         // MARK: - Convenience Factory Methods
 
         /// Execute an operation with a docs service, handling lifecycle.
+        ///
+        /// `searchDB` is the resolved search.db URL supplied by the caller
+        /// at its composition root. Pre-#535 this method accepted an
+        /// optional `String?` path and fell back to
+        /// `Shared.Constants.defaultSearchDatabase` via
+        /// `Shared.Utils.PathResolver.searchDatabase` (a Service Locator
+        /// shape — Seemann 2011 ch. 5). Strict DI requires the caller to
+        /// supply the URL it wants; no producer-side default reaches.
         public static func withDocsService<T>(
-            dbPath: String? = nil,
+            searchDB: URL,
             searchDatabaseFactory: any Search.DatabaseFactory,
             operation: (Services.DocsSearchService) async throws -> T
         ) async throws -> T {
-            let resolvedPath = Shared.Utils.PathResolver.searchDatabase(dbPath)
-
-            guard Shared.Utils.PathResolver.exists(resolvedPath) else {
-                throw Shared.Core.ToolError.noData("Search database not found at \(resolvedPath.path). Run 'cupertino save' to build the index.")
+            guard FileManager.default.fileExists(atPath: searchDB.path) else {
+                throw Shared.Core.ToolError.noData("Search database not found at \(searchDB.path). Run 'cupertino save' to build the index.")
             }
 
-            let database = try await searchDatabaseFactory.openDatabase(at: resolvedPath)
+            let database = try await searchDatabaseFactory.openDatabase(at: searchDB)
             let service = Services.DocsSearchService(database: database)
             defer {
                 Task {
@@ -56,15 +59,15 @@ extension Services {
         /// wrapper internally; the composition root never has to know
         /// about it.
         public static func withSampleService<T: Sendable>(
-            dbPath: URL,
+            samplesDB: URL,
             sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
             operation: (any Sample.Search.Searcher) async throws -> T
         ) async throws -> T {
-            guard Shared.Utils.PathResolver.exists(dbPath) else {
-                throw Shared.Core.ToolError.noData("Sample database not found at \(dbPath.path). Run 'cupertino save --samples' to build the index.")
+            guard FileManager.default.fileExists(atPath: samplesDB.path) else {
+                throw Shared.Core.ToolError.noData("Sample database not found at \(samplesDB.path). Run 'cupertino save --samples' to build the index.")
             }
 
-            let database = try await sampleDatabaseFactory.openDatabase(at: dbPath)
+            let database = try await sampleDatabaseFactory.openDatabase(at: samplesDB)
             let service = Sample.Search.Service(database: database)
             let result = try await operation(service)
             await service.disconnect()
@@ -74,28 +77,26 @@ extension Services {
         /// Execute an operation with a teaser service.
         ///
         /// The teaser service reads from the search database (optional)
-        /// and the sample database (optional). Missing paths degrade
-        /// each source to empty rather than failing.
+        /// and the sample database (optional). Missing paths on disk
+        /// degrade each source to empty rather than failing — pass any
+        /// URL the caller has resolved; existence is checked here.
         public static func withTeaserService<T: Sendable>(
-            searchDbPath: String? = nil,
-            sampleDbPath: URL? = nil,
+            searchDB: URL,
+            samplesDB: URL,
             searchDatabaseFactory: any Search.DatabaseFactory,
             sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
             operation: (Services.TeaserService) async throws -> T
         ) async throws -> T {
-            let resolvedSearchPath = Shared.Utils.PathResolver.searchDatabase(searchDbPath)
-            let resolvedSamplePath = sampleDbPath ?? Sample.Index.defaultDatabasePath
-
             let searchIndex: (any Search.Database)?
-            if Shared.Utils.PathResolver.exists(resolvedSearchPath) {
-                searchIndex = try await searchDatabaseFactory.openDatabase(at: resolvedSearchPath)
+            if FileManager.default.fileExists(atPath: searchDB.path) {
+                searchIndex = try await searchDatabaseFactory.openDatabase(at: searchDB)
             } else {
                 searchIndex = nil
             }
 
             let sampleDatabase: (any Sample.Index.Reader)?
-            if Shared.Utils.PathResolver.exists(resolvedSamplePath) {
-                sampleDatabase = try await sampleDatabaseFactory.openDatabase(at: resolvedSamplePath)
+            if FileManager.default.fileExists(atPath: samplesDB.path) {
+                sampleDatabase = try await sampleDatabaseFactory.openDatabase(at: samplesDB)
             } else {
                 sampleDatabase = nil
             }
@@ -111,25 +112,22 @@ extension Services {
         /// Execute an operation with a unified search service. Same
         /// composition pattern as `withTeaserService`.
         public static func withUnifiedSearchService<T: Sendable>(
-            searchDbPath: String? = nil,
-            sampleDbPath: URL? = nil,
+            searchDB: URL,
+            samplesDB: URL,
             searchDatabaseFactory: any Search.DatabaseFactory,
             sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
             operation: (Services.UnifiedSearchService) async throws -> T
         ) async throws -> T {
-            let resolvedSearchPath = Shared.Utils.PathResolver.searchDatabase(searchDbPath)
-            let resolvedSamplePath = sampleDbPath ?? Sample.Index.defaultDatabasePath
-
             let searchIndex: (any Search.Database)?
-            if Shared.Utils.PathResolver.exists(resolvedSearchPath) {
-                searchIndex = try await searchDatabaseFactory.openDatabase(at: resolvedSearchPath)
+            if FileManager.default.fileExists(atPath: searchDB.path) {
+                searchIndex = try await searchDatabaseFactory.openDatabase(at: searchDB)
             } else {
                 searchIndex = nil
             }
 
             let sampleDatabase: (any Sample.Index.Reader)?
-            if Shared.Utils.PathResolver.exists(resolvedSamplePath) {
-                sampleDatabase = try await sampleDatabaseFactory.openDatabase(at: resolvedSamplePath)
+            if FileManager.default.fileExists(atPath: samplesDB.path) {
+                sampleDatabase = try await sampleDatabaseFactory.openDatabase(at: samplesDB)
             } else {
                 sampleDatabase = nil
             }

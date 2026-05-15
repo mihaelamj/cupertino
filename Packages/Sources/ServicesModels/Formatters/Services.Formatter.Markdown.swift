@@ -1,8 +1,6 @@
 import Foundation
 import SearchModels
 import SharedConstants
-import SharedCore
-
 // MARK: - Markdown Search Result Formatter
 
 extension Services.Formatter {

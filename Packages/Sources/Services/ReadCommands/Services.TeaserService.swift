@@ -3,9 +3,6 @@ import SampleIndexModels
 import SearchModels
 import ServicesModels
 import SharedConstants
-import SharedCore
-import SharedUtils
-
 // MARK: - Teaser Service
 
 /// Service for fetching teaser results from sources the user didn't search.

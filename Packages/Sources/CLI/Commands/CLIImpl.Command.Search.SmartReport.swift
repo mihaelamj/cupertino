@@ -8,17 +8,14 @@ import SearchModels
 import Services
 import ServicesModels
 import SharedConstants
-import SharedCore
-import SharedUtils
-
 // MARK: - SmartQuery fan-out helpers (#239)
 
-/// Helpers for `CLI.Command.Search`'s default (no `--source`) path: building the
+/// Helpers for `CLIImpl.Command.Search`'s default (no `--source`) path: building the
 /// per-DB `CandidateFetcher` list, then printing the fused result in
-/// text / markdown / json. Lifted out of `CLI.Command.Search.swift` so the
+/// text / markdown / json. Lifted out of `CLIImpl.Command.Search.swift` so the
 /// struct body stays under SwiftLint's `type_body_length` ceiling and so
 /// the printers don't need access to instance-level CLI options.
-extension CLI.Command.Search {
+extension CLIImpl.Command.Search {
     /// Bundle returned by `buildFetchers`. The `searchIndex` and
     /// `sampleService` references are kept so the caller can disconnect
     /// them once the SmartQuery has run — the fetchers don't own those
@@ -61,7 +58,7 @@ extension CLI.Command.Search {
                 minVersion: minVersion
             )
         case (.some, nil), (nil, .some):
-            Logging.ConsoleLogger.error(
+            Cupertino.Context.composition.logging.recording.error(
                 "❌ --platform and --min-version must be used together."
             )
             throw ExitCode.failure
@@ -114,15 +111,15 @@ extension CLI.Command.Search {
     ) async -> SearchModule.Index? {
         guard !skip else { return nil }
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Shared.Constants.defaultSearchDatabase
+            ?? Shared.Paths.live().searchDatabase
         guard FileManager.default.fileExists(atPath: url.path) else {
-            Logging.ConsoleLogger.info(
+            Cupertino.Context.composition.logging.recording.info(
                 "ℹ️  search.db not found at \(url.path) — skipping doc sources."
             )
             return nil
         }
         do {
-            let index = try await SearchModule.Index(dbPath: url, logger: Logging.LiveRecording())
+            let index = try await SearchModule.Index(dbPath: url, logger: Cupertino.Context.composition.logging.recording)
             for source in docsSources {
                 fetchers.append(Search.DocsSourceCandidateFetcher(
                     searchIndex: index,
@@ -133,7 +130,7 @@ extension CLI.Command.Search {
             }
             return index
         } catch {
-            Logging.ConsoleLogger.error(
+            Cupertino.Context.composition.logging.recording.error(
                 "⚠️  Could not open search.db: \(error.localizedDescription)"
             )
             return nil
@@ -148,9 +145,9 @@ extension CLI.Command.Search {
     ) {
         guard !skip else { return }
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Shared.Constants.defaultPackagesDatabase
+            ?? Shared.Paths.live().packagesDatabase
         guard FileManager.default.fileExists(atPath: url.path) else {
-            Logging.ConsoleLogger.info(
+            Cupertino.Context.composition.logging.recording.info(
                 "ℹ️  packages.db not found at \(url.path) — skipping packages."
             )
             return
@@ -169,15 +166,15 @@ extension CLI.Command.Search {
     ) async -> Sample.Search.Service? {
         guard !skip else { return nil }
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Sample.Index.defaultDatabasePath
+            ?? Sample.Index.databasePath(baseDirectory: Shared.Paths.live().baseDirectory)
         guard FileManager.default.fileExists(atPath: url.path) else {
-            Logging.ConsoleLogger.info(
+            Cupertino.Context.composition.logging.recording.info(
                 "ℹ️  samples.db not found at \(url.path) — skipping samples."
             )
             return nil
         }
         do {
-            let database = try await Sample.Index.Database(dbPath: url, logger: Logging.LiveRecording())
+            let database = try await Sample.Index.Database(dbPath: url, logger: Cupertino.Context.composition.logging.recording)
             let service = Sample.Search.Service(database: database)
             fetchers.append(Sample.Services.CandidateFetcher(
                 service: service,
@@ -185,7 +182,7 @@ extension CLI.Command.Search {
             ))
             return service
         } catch {
-            Logging.ConsoleLogger.error(
+            Cupertino.Context.composition.logging.recording.error(
                 "⚠️  Could not open samples.db: \(error.localizedDescription)"
             )
             return nil
@@ -472,7 +469,7 @@ extension CLI.Command.Search {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         if let data = try? encoder.encode(report),
            let json = String(data: data, encoding: .utf8) {
-            Logging.Log.output(json)
+            Cupertino.Context.composition.logging.recording.output(json)
         }
     }
 

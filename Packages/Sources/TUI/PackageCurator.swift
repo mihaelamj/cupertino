@@ -4,8 +4,6 @@ import CoreProtocols
 import Foundation
 import Resources
 import SharedConstants
-import SharedCore
-
 // swiftlint:disable type_body_length function_body_length
 // Justification: PackageCuratorApp is a self-contained CLI tool for curating Swift packages.
 // The main() function orchestrates a complex multi-stage workflow that is clearer as a single flow.
@@ -25,17 +23,22 @@ struct PackageCuratorApp {
         // Load packages
         let packages = await Core.Protocols.SwiftPackagesCatalog.allPackages
 
-        // Load user selections first, fall back to bundled priority packages
+        // Load configuration first (so we know the base directory for path-DI below)
+        let config = ConfigManager.load()
+
+        // Load user selections first, fall back to bundled priority packages.
+        // The priority catalog is constructed with the resolved base directory
+        // (post-#535: catalog is an actor, not a singleton).
         let userSelectedURLs = loadUserSelectedPackageURLs()
         let priorityURLs: Set<String>
         if !userSelectedURLs.isEmpty {
             priorityURLs = userSelectedURLs
         } else {
-            priorityURLs = await Set(Core.PackageIndexing.PriorityPackagesCatalog.allPackages.map(\.url))
+            let priorityCatalog = Core.PackageIndexing.PriorityPackagesCatalog(
+                baseDirectory: URL(fileURLWithPath: config.baseDirectory).expandingTildeInPath
+            )
+            priorityURLs = await Set(priorityCatalog.allPackages.map(\.url))
         }
-
-        // Load configuration first
-        let config = ConfigManager.load()
 
         // Check which packages are downloaded using configured base directory
         let downloadedPackages = checkDownloadedPackages(in: config.baseDirectory)
@@ -353,7 +356,7 @@ struct PackageCuratorApp {
 
     /// Scan library for artifacts
     static func scanLibraryArtifacts() -> [ArtifactInfo] {
-        scanLibraryArtifactsInDirectory(Shared.Constants.defaultBaseDirectory)
+        scanLibraryArtifactsInDirectory(Shared.Paths.live().baseDirectory)
     }
 
     /// Scan library for artifacts using a string path

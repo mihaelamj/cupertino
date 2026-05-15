@@ -16,7 +16,9 @@ import Testing
 struct LiveRecordingConformanceTests {
     @Test("LiveRecording is constructible and satisfies the protocol")
     func conformsToRecording() {
-        let _: any LoggingModels.Logging.Recording = Logging.LiveRecording()
+        let _: any LoggingModels.Logging.Recording = Logging.LiveRecording(
+            unified: Logging.Unified(options: .default)
+        )
     }
 }
 
@@ -32,7 +34,7 @@ struct LiveRecordingExhaustiveTests {
         // without updating the LiveRecording bridge, the switch
         // statements in mapLevel / mapCategory stop being exhaustive
         // and this file fails to compile.
-        let recorder = Logging.LiveRecording()
+        let recorder = Logging.LiveRecording(unified: Logging.Unified(options: .default))
         for level in [LoggingModels.Logging.Level.debug, .info, .warning, .error] {
             for category in LoggingModels.Logging.Category.allCases {
                 recorder.record("test message", level: level, category: category)
@@ -49,7 +51,7 @@ struct LiveRecordingExhaustiveTests {
         // reaching into the process's stdout FD; we accept this as a
         // smoke test. Real visibility comes from integration tests that
         // capture the binary's output (Tests/CLITests).
-        let recorder = Logging.LiveRecording()
+        let recorder = Logging.LiveRecording(unified: Logging.Unified(options: .default))
         recorder.output("user-facing line")
     }
 }

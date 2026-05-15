@@ -1,31 +1,41 @@
 import Foundation
 import SharedConstants
 
-// MARK: - Sample.Index static helpers
+// MARK: - Sample.Index helpers
 
-/// Default paths + small lookup helpers for the sample-code index.
+/// Path-builder helpers + small lookups for the sample-code index.
 ///
 /// Lives in `SampleIndexModels` (foundation-only) so consumers can
 /// resolve the canonical on-disk locations of `samples.db` and the
 /// sample-code download root without importing the concrete
-/// `SampleIndex` target. The same pattern applies as the
-/// `Search.Database` / `Sample.Index.Reader` protocol seams: shared
-/// abstractions and constants live in the Models target; concrete
-/// actors live in the producer target.
+/// `SampleIndex` target.
+///
+/// **Strict DI shape** (post-#535): the old `defaultDatabasePath` /
+/// `defaultSampleCodeDirectory` static accessors reached for
+/// `Shared.Constants.defaultBaseDirectory` (a Service Locator backed by
+/// the `BinaryConfig.shared` Singleton). Replaced with explicit
+/// `baseDirectory:` parameters — every caller passes a base directory
+/// it owns (typically derived from a `Shared.Paths` value resolved at
+/// the composition root).
 extension Sample.Index {
-    /// Default database path for the sample-code search index
-    /// (`~/.cupertino/samples.db` by default).
-    public static var defaultDatabasePath: URL {
-        Shared.Constants.defaultBaseDirectory
-            .appendingPathComponent(Shared.Constants.FileName.samplesDatabase)
+    /// `<baseDirectory>/samples.db` — the sample-code search index
+    /// database path, relative to the caller's resolved base directory.
+    public static func databasePath(baseDirectory: URL) -> URL {
+        baseDirectory.appendingPathComponent(Shared.Constants.FileName.samplesDatabase)
     }
 
-    /// Default sample-code download directory
-    /// (`~/.cupertino/sample-code/` by default).
-    public static var defaultSampleCodeDirectory: URL {
-        Shared.Constants.defaultBaseDirectory
-            .appendingPathComponent(Shared.Constants.Directory.sampleCode)
+    /// `<baseDirectory>/sample-code/` — the sample-code download
+    /// directory, relative to the caller's resolved base directory.
+    public static func sampleCodeDirectory(baseDirectory: URL) -> URL {
+        baseDirectory.appendingPathComponent(Shared.Constants.Directory.sampleCode)
     }
+
+    // Deprecated `defaultDatabasePath` / `defaultSampleCodeDirectory`
+    // wrappers deleted in #535 phase 11. They routed through
+    // `Shared.Constants.defaultBaseDirectory` → `BinaryConfig.shared`,
+    // both of which are also gone. Migration: pass an explicit
+    // `baseDirectory:` resolved from `Shared.Paths.live().baseDirectory`
+    // at the composition root.
 
     /// Map a user-facing platform name (case-insensitive) to the
     /// `projects.min_<x>` column on `samples.db`. Returns nil for

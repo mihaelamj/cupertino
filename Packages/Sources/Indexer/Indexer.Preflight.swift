@@ -1,8 +1,5 @@
 import Foundation
 import SharedConstants
-import SharedCore
-import SharedUtils
-
 extension Indexer {
     /// Pre-write inspection of the on-disk corpus state. Surfaces missing
     /// or un-annotated sources before any DB write so the user can bail
@@ -14,7 +11,15 @@ extension Indexer {
 
         /// Build the printable preflight summary lines for the chosen
         /// scope. Pure: no I/O beyond filesystem reads, no stdin/stdout.
+        ///
+        /// `paths` is the per-invocation `Shared.Paths` value constructed at
+        /// the caller's composition root (#535). It supplies the default
+        /// base + sample-code directories when `baseDir` / `samplesDir`
+        /// aren't passed explicitly. Pre-#535 this function reached for
+        /// `Shared.Constants.defaultBaseDirectory` directly, which routed
+        /// through the `BinaryConfig.shared` Singleton — that path is gone.
         public static func preflightLines(
+            paths: Shared.Paths,
             buildDocs: Bool,
             buildPackages: Bool,
             buildSamples: Bool,
@@ -25,7 +30,7 @@ extension Indexer {
             var lines: [String] = []
             let fm = FileManager.default
             let effectiveBase = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-                ?? Shared.Constants.defaultBaseDirectory
+                ?? paths.baseDirectory
 
             if buildDocs {
                 lines.append(contentsOf: docsLines(
@@ -42,6 +47,7 @@ extension Indexer {
             }
             if buildSamples {
                 lines.append(contentsOf: samplesLines(
+                    sampleCodeDirectory: paths.sampleCodeDirectory,
                     samplesDir: samplesDir,
                     fm: fm
                 ))
@@ -99,10 +105,14 @@ extension Indexer {
             return lines
         }
 
-        private static func samplesLines(samplesDir: String?, fm: FileManager) -> [String] {
+        private static func samplesLines(
+            sampleCodeDirectory: URL,
+            samplesDir: String?,
+            fm: FileManager
+        ) -> [String] {
             var lines = ["  Samples (samples.db)"]
             let samplesURL = samplesDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-                ?? Shared.Constants.defaultSampleCodeDirectory
+                ?? sampleCodeDirectory
             if fm.fileExists(atPath: samplesURL.path) {
                 let zipCount = (try? fm.contentsOfDirectory(atPath: samplesURL.path))?
                     .filter { $0.hasSuffix(".zip") }.count ?? 0

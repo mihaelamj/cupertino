@@ -1,8 +1,6 @@
 import Foundation
 import SampleIndexModels
 import SharedConstants
-import SharedCore
-
 // MARK: - Sample Search
 
 // `Sample.Search.Query` and `Sample.Search.Result` lifted to the

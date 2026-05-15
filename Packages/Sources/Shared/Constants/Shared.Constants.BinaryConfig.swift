@@ -19,9 +19,6 @@ extension Shared.Constants {
             self.baseDirectory = baseDirectory
         }
 
-        /// Process-wide cached config, loaded once relative to the running executable.
-        public static let shared: BinaryConfig = load(from: executableDirectory)
-
         /// Directory of the running executable, **without** resolving symlinks,
         /// so a config dropped next to a stable symlink (e.g.
         /// `~/.local/bin/cupertino-dev` → `.build/release/cupertino`) survives
