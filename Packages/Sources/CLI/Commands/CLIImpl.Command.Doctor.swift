@@ -70,7 +70,7 @@ extension CLIImpl.Command {
             // it. Identical output to what `cupertino save` would print as
             // its preflight summary.
             if save {
-                Logging.LiveRecording().output("🔍 `cupertino save` preflight check\n")
+                Cupertino.Context.composition.logging.recording.output("🔍 `cupertino save` preflight check\n")
                 let lines = Indexer.Preflight.preflightLines(
                     paths: Shared.Paths.live(),
                     buildDocs: true,
@@ -78,13 +78,13 @@ extension CLIImpl.Command {
                     buildSamples: true
                 )
                 for line in lines {
-                    Logging.LiveRecording().output(line)
+                    Cupertino.Context.composition.logging.recording.output(line)
                 }
                 return
             }
 
-            Logging.LiveRecording().output("🏥 MCP Server Health Check")
-            Logging.LiveRecording().output("")
+            Cupertino.Context.composition.logging.recording.output("🏥 MCP Server Health Check")
+            Cupertino.Context.composition.logging.recording.output("")
 
             var allChecks = true
 
@@ -113,11 +113,11 @@ extension CLIImpl.Command {
             printSchemaVersions()
 
             // Summary
-            Logging.LiveRecording().output("")
+            Cupertino.Context.composition.logging.recording.output("")
             if allChecks {
-                Logging.LiveRecording().output("✅ All checks passed - MCP server ready")
+                Cupertino.Context.composition.logging.recording.output("✅ All checks passed - MCP server ready")
             } else {
-                Logging.LiveRecording().output("⚠️  Some checks failed - see above for details")
+                Cupertino.Context.composition.logging.recording.output("⚠️  Some checks failed - see above for details")
                 throw ExitCode(1)
             }
         }
@@ -129,9 +129,9 @@ extension CLIImpl.Command {
         /// fail the check — they're already covered by the per-DB sections
         /// above.
         private func printSchemaVersions() {
-            Logging.LiveRecording().output("")
-            Logging.LiveRecording().output("8. Schema versions (#234)")
-            Logging.LiveRecording().output("")
+            Cupertino.Context.composition.logging.recording.output("")
+            Cupertino.Context.composition.logging.recording.output("8. Schema versions (#234)")
+            Cupertino.Context.composition.logging.recording.output("")
             // Path-DI composition sub-root (#535).
             let paths = Shared.Paths.live()
             let entries: [(String, URL)] = [
@@ -141,7 +141,7 @@ extension CLIImpl.Command {
             ]
             for (label, url) in entries {
                 guard FileManager.default.fileExists(atPath: url.path) else {
-                    Logging.LiveRecording().output("   ⚠ \(label): not built")
+                    Cupertino.Context.composition.logging.recording.output("   ⚠ \(label): not built")
                     continue
                 }
                 let version = Diagnostics.Probes.userVersion(at: url) ?? 0
@@ -204,7 +204,7 @@ extension CLIImpl.Command {
                 // corruption guide).
                 let volumeNote = volumeWarning(for: url)
 
-                Logging.LiveRecording().output("   ✓ \(label): \(formatted), journal=\(journalNote)\(walNote)\(volumeNote)")
+                Cupertino.Context.composition.logging.recording.output("   ✓ \(label): \(formatted), journal=\(journalNote)\(walNote)\(volumeNote)")
             }
         }
 
@@ -227,11 +227,11 @@ extension CLIImpl.Command {
         }
 
         private func checkServerInitialization() -> Bool {
-            Logging.LiveRecording().output("✅ MCP Server")
-            Logging.LiveRecording().output("   ✓ Server can initialize")
-            Logging.LiveRecording().output("   ✓ Transport: stdio")
-            Logging.LiveRecording().output("   ✓ Protocol version: \(MCPProtocolVersion)")
-            Logging.LiveRecording().output("")
+            Cupertino.Context.composition.logging.recording.output("✅ MCP Server")
+            Cupertino.Context.composition.logging.recording.output("   ✓ Server can initialize")
+            Cupertino.Context.composition.logging.recording.output("   ✓ Transport: stdio")
+            Cupertino.Context.composition.logging.recording.output("   ✓ Protocol version: \(MCPProtocolVersion)")
+            Cupertino.Context.composition.logging.recording.output("")
             return true
         }
 
@@ -250,7 +250,7 @@ extension CLIImpl.Command {
             let swiftOrgURL = paths.swiftOrgDirectory
             let archiveURL = paths.archiveDirectory
 
-            Logging.LiveRecording().output("📂 Raw corpus directories (input for `cupertino save`)")
+            Cupertino.Context.composition.logging.recording.output("📂 Raw corpus directories (input for `cupertino save`)")
 
             let entries: [CorpusEntry] = [
                 CorpusEntry(label: "Apple docs", url: docsURL, suffix: "files", fetchType: "docs"),
@@ -263,14 +263,14 @@ extension CLIImpl.Command {
             for entry in entries {
                 if FileManager.default.fileExists(atPath: entry.url.path) {
                     let count = Diagnostics.Probes.countCorpusFiles(in: entry.url)
-                    Logging.LiveRecording().output("   ✓ \(entry.label): \(entry.url.path) (\(count) \(entry.suffix))")
+                    Cupertino.Context.composition.logging.recording.output("   ✓ \(entry.label): \(entry.url.path) (\(count) \(entry.suffix))")
                 } else {
-                    Logging.LiveRecording().output("   ⚠  \(entry.label): \(entry.url.path) (not found)")
-                    Logging.LiveRecording().output("     → Run: cupertino fetch --type \(entry.fetchType)  (only needed to rebuild from scratch)")
+                    Cupertino.Context.composition.logging.recording.output("   ⚠  \(entry.label): \(entry.url.path) (not found)")
+                    Cupertino.Context.composition.logging.recording.output("     → Run: cupertino fetch --type \(entry.fetchType)  (only needed to rebuild from scratch)")
                 }
             }
 
-            Logging.LiveRecording().output("")
+            Cupertino.Context.composition.logging.recording.output("")
             // Filesystem state is informational. The hard fail is whether
             // search.db has indexed data, which `checkSearchDatabase` enforces.
             return true
@@ -279,33 +279,33 @@ extension CLIImpl.Command {
         private func checkSearchDatabase() async -> Bool {
             let searchDBURL = URL(fileURLWithPath: searchDB).expandingTildeInPath
 
-            Logging.LiveRecording().output("🔍 Search Index")
+            Cupertino.Context.composition.logging.recording.output("🔍 Search Index")
 
             guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
-                Logging.LiveRecording().output("   ✗ Database: \(searchDBURL.path) (not found)")
-                Logging.LiveRecording().output("     → Run: cupertino setup  (or `cupertino save` if building locally)")
-                Logging.LiveRecording().output("")
+                Cupertino.Context.composition.logging.recording.output("   ✗ Database: \(searchDBURL.path) (not found)")
+                Cupertino.Context.composition.logging.recording.output("     → Run: cupertino setup  (or `cupertino save` if building locally)")
+                Cupertino.Context.composition.logging.recording.output("")
                 return false
             }
 
             let fileSize = (try? FileManager.default.attributesOfItem(atPath: searchDBURL.path)[.size] as? UInt64) ?? 0
-            Logging.LiveRecording().output("   ✓ Database: \(searchDBURL.path)")
-            Logging.LiveRecording().output("   ✓ Size: \(Shared.Utils.Formatting.formatBytes(Int64(fileSize)))")
+            Cupertino.Context.composition.logging.recording.output("   ✓ Database: \(searchDBURL.path)")
+            Cupertino.Context.composition.logging.recording.output("   ✓ Size: \(Shared.Utils.Formatting.formatBytes(Int64(fileSize)))")
 
             if !reportSchemaVersion(at: searchDBURL) {
                 return false
             }
 
             do {
-                let searchIndex = try await SearchModule.Index(dbPath: searchDBURL, logger: Logging.LiveRecording())
+                let searchIndex = try await SearchModule.Index(dbPath: searchDBURL, logger: Cupertino.Context.composition.logging.recording)
                 let frameworks = try await searchIndex.listFrameworks()
-                Logging.LiveRecording().output("   ✓ Frameworks: \(frameworks.count)")
+                Cupertino.Context.composition.logging.recording.output("   ✓ Frameworks: \(frameworks.count)")
                 await searchIndex.disconnect()
                 return reportIndexedSources(at: searchDBURL)
             } catch {
-                Logging.LiveRecording().output("   ✗ Database error: \(error)")
-                Logging.LiveRecording().output("     → rm \(searchDBURL.path) && cupertino save")
-                Logging.LiveRecording().output("")
+                Cupertino.Context.composition.logging.recording.output("   ✗ Database error: \(error)")
+                Cupertino.Context.composition.logging.recording.output("     → rm \(searchDBURL.path) && cupertino save")
+                Cupertino.Context.composition.logging.recording.output("")
                 return false
             }
         }
@@ -319,21 +319,21 @@ extension CLIImpl.Command {
             let onDiskVersion = Diagnostics.Probes.userVersion(at: searchDBURL)
             let expected = SearchModule.Index.schemaVersion
             guard let onDiskVersion else {
-                Logging.LiveRecording().output("   ⚠  Schema version: could not read PRAGMA user_version")
+                Cupertino.Context.composition.logging.recording.output("   ⚠  Schema version: could not read PRAGMA user_version")
                 return true
             }
             if onDiskVersion == expected {
-                Logging.LiveRecording().output("   ✓ Schema version: \(onDiskVersion) (matches installed binary)")
+                Cupertino.Context.composition.logging.recording.output("   ✓ Schema version: \(onDiskVersion) (matches installed binary)")
                 return true
             }
             if onDiskVersion < expected {
-                Logging.LiveRecording().output("   ✗ Schema version: \(onDiskVersion) (binary expects \(expected), rebuild required)")
-                Logging.LiveRecording().output("     → rm \(searchDBURL.path) && cupertino save")
+                Cupertino.Context.composition.logging.recording.output("   ✗ Schema version: \(onDiskVersion) (binary expects \(expected), rebuild required)")
+                Cupertino.Context.composition.logging.recording.output("     → rm \(searchDBURL.path) && cupertino save")
             } else {
-                Logging.LiveRecording().output("   ✗ Schema version: \(onDiskVersion) (newer than binary — expected \(expected))")
-                Logging.LiveRecording().output("     → Upgrade cupertino: brew upgrade cupertino")
+                Cupertino.Context.composition.logging.recording.output("   ✗ Schema version: \(onDiskVersion) (newer than binary — expected \(expected))")
+                Cupertino.Context.composition.logging.recording.output("     → Upgrade cupertino: brew upgrade cupertino")
             }
-            Logging.LiveRecording().output("")
+            Cupertino.Context.composition.logging.recording.output("")
             return false
         }
 
@@ -343,17 +343,17 @@ extension CLIImpl.Command {
         private func reportIndexedSources(at searchDBURL: URL) -> Bool {
             let perSource = Diagnostics.Probes.perSourceCounts(at: searchDBURL)
             if !perSource.isEmpty {
-                Logging.LiveRecording().output("   📚 Indexed sources:")
+                Cupertino.Context.composition.logging.recording.output("   📚 Indexed sources:")
                 for (source, count) in perSource {
-                    Logging.LiveRecording().output("     ✓ \(source): \(count) entries")
+                    Cupertino.Context.composition.logging.recording.output("     ✓ \(source): \(count) entries")
                 }
             }
-            Logging.LiveRecording().output("")
+            Cupertino.Context.composition.logging.recording.output("")
             let totalIndexed = perSource.reduce(0) { $0 + $1.count }
             if totalIndexed == 0 {
-                Logging.LiveRecording().output("   ✗ Search index is empty (0 rows in docs_metadata)")
-                Logging.LiveRecording().output("     → Rebuild: rm \(searchDBURL.path) && cupertino setup")
-                Logging.LiveRecording().output("")
+                Cupertino.Context.composition.logging.recording.output("   ✗ Search index is empty (0 rows in docs_metadata)")
+                Cupertino.Context.composition.logging.recording.output("     → Rebuild: rm \(searchDBURL.path) && cupertino setup")
+                Cupertino.Context.composition.logging.recording.output("")
                 return false
             }
             return true
@@ -366,26 +366,26 @@ extension CLIImpl.Command {
         private func checkSamplesDatabase() {
             let samplesDBURL = Sample.Index.databasePath(baseDirectory: Shared.Paths.live().baseDirectory)
 
-            Logging.LiveRecording().output("🧪 Sample Code Index (samples.db)")
+            Cupertino.Context.composition.logging.recording.output("🧪 Sample Code Index (samples.db)")
 
             guard FileManager.default.fileExists(atPath: samplesDBURL.path) else {
-                Logging.LiveRecording().output("   ⚠  Database: \(samplesDBURL.path) (not found)")
-                Logging.LiveRecording().output("     → Run: cupertino fetch --type samples && cupertino cleanup && cupertino save --samples")
-                Logging.LiveRecording().output("")
+                Cupertino.Context.composition.logging.recording.output("   ⚠  Database: \(samplesDBURL.path) (not found)")
+                Cupertino.Context.composition.logging.recording.output("     → Run: cupertino fetch --type samples && cupertino cleanup && cupertino save --samples")
+                Cupertino.Context.composition.logging.recording.output("")
                 return
             }
 
             let fileSize = (try? FileManager.default.attributesOfItem(atPath: samplesDBURL.path)[.size] as? UInt64) ?? 0
-            Logging.LiveRecording().output("   ✓ Database: \(samplesDBURL.path)")
-            Logging.LiveRecording().output("   ✓ Size: \(Shared.Utils.Formatting.formatBytes(Int64(fileSize)))")
+            Cupertino.Context.composition.logging.recording.output("   ✓ Database: \(samplesDBURL.path)")
+            Cupertino.Context.composition.logging.recording.output("   ✓ Size: \(Shared.Utils.Formatting.formatBytes(Int64(fileSize)))")
 
             let projectCount = Diagnostics.Probes.rowCount(at: samplesDBURL, sql: Shared.Utils.SQL.countRows(in: "projects"))
             let fileCount = Diagnostics.Probes.rowCount(at: samplesDBURL, sql: Shared.Utils.SQL.countRows(in: "files"))
             let symbolCount = Diagnostics.Probes.rowCount(at: samplesDBURL, sql: Shared.Utils.SQL.countRows(in: "file_symbols"))
-            if let projectCount { Logging.LiveRecording().output("   ✓ Projects: \(projectCount)") }
-            if let fileCount { Logging.LiveRecording().output("   ✓ Indexed files: \(fileCount)") }
-            if let symbolCount { Logging.LiveRecording().output("   ✓ Indexed symbols: \(symbolCount)") }
-            Logging.LiveRecording().output("")
+            if let projectCount { Cupertino.Context.composition.logging.recording.output("   ✓ Projects: \(projectCount)") }
+            if let fileCount { Cupertino.Context.composition.logging.recording.output("   ✓ Indexed files: \(fileCount)") }
+            if let symbolCount { Cupertino.Context.composition.logging.recording.output("   ✓ Indexed symbols: \(symbolCount)") }
+            Cupertino.Context.composition.logging.recording.output("")
         }
 
         /// #192 F1. Report `packages.db` presence, size, and row counts (packages,
@@ -395,28 +395,28 @@ extension CLIImpl.Command {
         private func checkPackagesDatabase() -> Bool {
             let packagesDBURL = Shared.Paths.live().packagesDatabase
 
-            Logging.LiveRecording().output("📦 Packages Index (packages.db)")
+            Cupertino.Context.composition.logging.recording.output("📦 Packages Index (packages.db)")
 
             guard FileManager.default.fileExists(atPath: packagesDBURL.path) else {
-                Logging.LiveRecording().output("   ⚠  Database: \(packagesDBURL.path) (not found)")
-                Logging.LiveRecording().output("     → Run: cupertino setup  (downloads the pre-built packages index)")
-                Logging.LiveRecording().output("     Expected version: \(Shared.Constants.App.databaseVersion)")
-                Logging.LiveRecording().output("")
+                Cupertino.Context.composition.logging.recording.output("   ⚠  Database: \(packagesDBURL.path) (not found)")
+                Cupertino.Context.composition.logging.recording.output("     → Run: cupertino setup  (downloads the pre-built packages index)")
+                Cupertino.Context.composition.logging.recording.output("     Expected version: \(Shared.Constants.App.databaseVersion)")
+                Cupertino.Context.composition.logging.recording.output("")
                 // Missing packages.db is a warning, not a failure — server still
                 // runs, just without the packages tool. Doctor summary stays green.
                 return true
             }
 
             let fileSize = (try? FileManager.default.attributesOfItem(atPath: packagesDBURL.path)[.size] as? UInt64) ?? 0
-            Logging.LiveRecording().output("   ✓ Database: \(packagesDBURL.path)")
-            Logging.LiveRecording().output("   ✓ Size: \(Shared.Utils.Formatting.formatBytes(Int64(fileSize)))")
+            Cupertino.Context.composition.logging.recording.output("   ✓ Database: \(packagesDBURL.path)")
+            Cupertino.Context.composition.logging.recording.output("   ✓ Size: \(Shared.Utils.Formatting.formatBytes(Int64(fileSize)))")
 
             let packageCount = Diagnostics.Probes.rowCount(at: packagesDBURL, sql: Shared.Utils.SQL.countRows(in: "packages"))
             let fileCount = Diagnostics.Probes.rowCount(at: packagesDBURL, sql: Shared.Utils.SQL.countRows(in: "package_files"))
-            if let packageCount { Logging.LiveRecording().output("   ✓ Packages: \(packageCount)") }
-            if let fileCount { Logging.LiveRecording().output("   ✓ Indexed files: \(fileCount)") }
-            Logging.LiveRecording().output("   ℹ  Bundled version: \(Shared.Constants.App.databaseVersion)")
-            Logging.LiveRecording().output("")
+            if let packageCount { Cupertino.Context.composition.logging.recording.output("   ✓ Packages: \(packageCount)") }
+            if let fileCount { Cupertino.Context.composition.logging.recording.output("   ✓ Indexed files: \(fileCount)") }
+            Cupertino.Context.composition.logging.recording.output("   ℹ  Bundled version: \(Shared.Constants.App.databaseVersion)")
+            Cupertino.Context.composition.logging.recording.output("")
             return true
         }
 
@@ -427,19 +427,19 @@ extension CLIImpl.Command {
             let userSelectionsURL = paths.baseDirectory
                 .appendingPathComponent(Shared.Constants.FileName.selectedPackages)
 
-            Logging.LiveRecording().output("📦 Swift Packages")
+            Cupertino.Context.composition.logging.recording.output("📦 Swift Packages")
 
             // Load selected URLs once and derive the canonical "owner/repo" key
             // set so we can compare against on-disk READMEs by NAME, not by count.
             let selectedURLs: Set<String>
             if FileManager.default.fileExists(atPath: userSelectionsURL.path) {
                 selectedURLs = Diagnostics.Probes.userSelectedPackageURLs(from: userSelectionsURL)
-                Logging.LiveRecording().output("   ✓ User selections: \(userSelectionsURL.path)")
-                Logging.LiveRecording().output("     \(selectedURLs.count) packages selected")
+                Cupertino.Context.composition.logging.recording.output("   ✓ User selections: \(userSelectionsURL.path)")
+                Cupertino.Context.composition.logging.recording.output("     \(selectedURLs.count) packages selected")
             } else {
                 selectedURLs = []
-                Logging.LiveRecording().output("   ⚠  User selections: not configured")
-                Logging.LiveRecording().output("     → Use TUI to select packages, or will use bundled defaults")
+                Cupertino.Context.composition.logging.recording.output("   ⚠  User selections: not configured")
+                Cupertino.Context.composition.logging.recording.output("     → Use TUI to select packages, or will use bundled defaults")
             }
             let selectedKeys = Set(selectedURLs.compactMap(Diagnostics.Probes.ownerRepoKey(forGitHubURL:)))
 
@@ -449,25 +449,25 @@ extension CLIImpl.Command {
             if FileManager.default.fileExists(atPath: packagesDir.path) {
                 let readmeKeys = Diagnostics.Probes.packageREADMEKeys(in: packagesDir)
                 if readmeKeys.isEmpty {
-                    Logging.LiveRecording().output("   ⚠  Package docs: directory exists but no package files")
+                    Cupertino.Context.composition.logging.recording.output("   ⚠  Package docs: directory exists but no package files")
                 } else {
-                    Logging.LiveRecording().output("   ✓ Downloaded READMEs: \(readmeKeys.count) packages")
-                    Logging.LiveRecording().output("     \(packagesDir.path)")
+                    Cupertino.Context.composition.logging.recording.output("   ✓ Downloaded READMEs: \(readmeKeys.count) packages")
+                    Cupertino.Context.composition.logging.recording.output("     \(packagesDir.path)")
 
                     if !selectedKeys.isEmpty {
                         let orphans = readmeKeys.subtracting(selectedKeys)
                         let missing = selectedKeys.subtracting(readmeKeys)
                         if !orphans.isEmpty {
-                            Logging.LiveRecording().output("   ⚠  Orphaned READMEs: \(orphans.count) (downloaded but no longer selected)")
+                            Cupertino.Context.composition.logging.recording.output("   ⚠  Orphaned READMEs: \(orphans.count) (downloaded but no longer selected)")
                         }
                         if !missing.isEmpty {
-                            Logging.LiveRecording().output("   ⚠  Missing READMEs: \(missing.count) (selected but not yet downloaded)")
-                            Logging.LiveRecording().output("     → Run: cupertino fetch --type packages")
+                            Cupertino.Context.composition.logging.recording.output("   ⚠  Missing READMEs: \(missing.count) (selected but not yet downloaded)")
+                            Cupertino.Context.composition.logging.recording.output("     → Run: cupertino fetch --type packages")
                         }
                     }
                 }
             } else {
-                Logging.LiveRecording().output("   ⚠  Package docs: not downloaded")
+                Cupertino.Context.composition.logging.recording.output("   ⚠  Package docs: not downloaded")
             }
 
             // Show priority packages source. The catalog is constructed
@@ -477,17 +477,17 @@ extension CLIImpl.Command {
             let allPackages = await priorityCatalog.allPackages
             let appleCount = await priorityCatalog.applePackages.count
             let ecosystemCount = await priorityCatalog.ecosystemPackages.count
-            Logging.LiveRecording().output("   ℹ  Priority packages: \(allPackages.count) total")
-            Logging.LiveRecording().output("     Apple: \(appleCount), Ecosystem: \(ecosystemCount)")
+            Cupertino.Context.composition.logging.recording.output("   ℹ  Priority packages: \(allPackages.count) total")
+            Cupertino.Context.composition.logging.recording.output("     Apple: \(appleCount), Ecosystem: \(ecosystemCount)")
 
-            Logging.LiveRecording().output("")
+            Cupertino.Context.composition.logging.recording.output("")
         }
 
         private func checkResourceProviders() -> Bool {
-            Logging.LiveRecording().output("🔧 Providers")
-            Logging.LiveRecording().output("   ✓ MCP.Support.DocsResourceProvider: available")
-            Logging.LiveRecording().output("   ✓ SearchToolProvider: available")
-            Logging.LiveRecording().output("")
+            Cupertino.Context.composition.logging.recording.output("🔧 Providers")
+            Cupertino.Context.composition.logging.recording.output("   ✓ MCP.Support.DocsResourceProvider: available")
+            Cupertino.Context.composition.logging.recording.output("   ✓ SearchToolProvider: available")
+            Cupertino.Context.composition.logging.recording.output("")
             return true
         }
     }
