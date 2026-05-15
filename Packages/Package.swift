@@ -43,6 +43,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("SearchToolProvider"),
     .singleTargetLibrary("MCPClient"),
     .singleTargetLibrary("RemoteSync"),
+    .singleTargetLibrary("RemoteSyncModels"),
     .executable(name: "cupertino", targets: ["CLI"]),
     .executable(name: "cupertino-tui", targets: ["TUI"]),
     .executable(name: "mock-ai-agent", targets: ["MockAIAgent"]),
@@ -490,13 +491,29 @@ let targets: [Target] = {
         path: "Tests/MCP/ClientTests"
     )
 
+    // ---------- RemoteSyncModels (foundation-only seam — closures-to-Observer epic) ----------
+    // Carries the `RemoteSync` namespace anchor + `Progress` /
+    // `IndexState` / `IndexerResult` / `IndexerError` value types
+    // and the `DocumentIndexing` Strategy + `IndexerProgressObserving`
+    // / `IndexerDocumentObserving` Observer protocols. Flat-named
+    // because the producer `RemoteSync.Indexer` is a public actor
+    // (can't be extended from outside).
+    let remoteSyncModelsTarget = Target.target(
+        name: "RemoteSyncModels",
+        dependencies: ["SharedConstants"]
+    )
+    let remoteSyncModelsTestsTarget = Target.testTarget(
+        name: "RemoteSyncModelsTests",
+        dependencies: ["RemoteSyncModels", "SharedConstants", "TestSupport"]
+    )
+
     let remoteSyncTarget = Target.target(
         name: "RemoteSync",
-        dependencies: ["SharedConstants"]
+        dependencies: ["RemoteSyncModels", "SharedConstants"]
     )
     let remoteSyncTestsTarget = Target.testTarget(
         name: "RemoteSyncTests",
-        dependencies: ["RemoteSync", "TestSupport"]
+        dependencies: ["RemoteSync", "RemoteSyncModels", "TestSupport"]
     )
 
     let availabilityTarget = Target.target(
@@ -781,6 +798,8 @@ let targets: [Target] = {
         searchToolProviderTestsTarget,
         mcpClientTarget,
         mcpClientTestsTarget,
+        remoteSyncModelsTarget,
+        remoteSyncModelsTestsTarget,
         remoteSyncTarget,
         remoteSyncTestsTarget,
         availabilityTarget,

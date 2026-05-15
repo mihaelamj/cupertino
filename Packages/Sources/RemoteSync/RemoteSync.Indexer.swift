@@ -1,14 +1,26 @@
 import Foundation
+@_exported import RemoteSyncModels
 import SharedConstants
+
+// `@_exported import RemoteSyncModels` keeps callers reaching
+// `RemoteSync.Progress` / `RemoteSync.IndexState` / etc. through
+// `import RemoteSync` source-compatible after the seam extraction.
+
 extension RemoteSync {
     // MARK: - Indexing Context
 
     /// Groups callbacks and context for indexing operations.
     /// Reduces function parameter count while maintaining type safety.
-    struct IndexingContext: @unchecked Sendable {
-        let indexDocument: Indexer.DocumentIndexer
-        let onProgress: @Sendable (RemoteSync.Progress) -> Void
-        let onDocument: (@Sendable (Indexer.IndexResult) -> Void)?
+    ///
+    /// Carries the three GoF Strategy / Observer protocol values supplied
+    /// at `run` time:
+    ///   - `documentIndexing` (Strategy): how to persist each document.
+    ///   - `progress`         (Observer): high-frequency phase / file ticks.
+    ///   - `document`         (Observer): per-document outcome, optional.
+    struct IndexingContext {
+        let documentIndexing: any RemoteSync.DocumentIndexing
+        let progress: any RemoteSync.IndexerProgressObserving
+        let document: (any RemoteSync.IndexerDocumentObserving)?
     }
 
     // MARK: - Remote Indexer
@@ -70,25 +82,20 @@ extension RemoteSync {
 
         // MARK: - Indexing
 
-        /// Callback type for document indexing
-        public typealias DocumentIndexer = @Sendable (
-            _ uri: String,
-            _ source: String,
-            _ framework: String?,
-            _ title: String,
-            _ content: String,
-            _ jsonData: String?
-        ) async throws -> Void
-
-        /// Run the full indexing process
+        /// Run the full indexing process.
+        ///
         /// - Parameters:
-        ///   - indexDocument: Callback to index each document
-        ///   - onProgress: Progress callback (called frequently)
-        ///   - onDocument: Called for each document processed
+        ///   - documentIndexing: GoF Strategy seam for persisting each
+        ///     document into a search backend. Replaces the previous
+        ///     `indexDocument: DocumentIndexer` closure typealias.
+        ///   - progress: GoF Observer for high-frequency progress ticks.
+        ///     Replaces the previous `onProgress` closure.
+        ///   - document: Optional GoF Observer for per-document outcome.
+        ///     Replaces the previous `onDocument` closure.
         public func run(
-            indexDocument: @escaping DocumentIndexer,
-            onProgress: @escaping @Sendable (RemoteSync.Progress) -> Void,
-            onDocument: (@Sendable (IndexResult) -> Void)? = nil
+            documentIndexing: any RemoteSync.DocumentIndexing,
+            progress: any RemoteSync.IndexerProgressObserving,
+            document: (any RemoteSync.IndexerDocumentObserving)? = nil
         ) async throws {
             // Determine which phases to run
             let allPhases = IndexState.Phase.allCases
@@ -104,9 +111,9 @@ extension RemoteSync {
 
                 try await runPhase(
                     phase,
-                    indexDocument: indexDocument,
-                    onProgress: onProgress,
-                    onDocument: onDocument
+                    documentIndexing: documentIndexing,
+                    progress: progress,
+                    document: document
                 )
 
                 // Mark phase complete
@@ -122,9 +129,9 @@ extension RemoteSync {
 
         private func runPhase(
             _ phase: IndexState.Phase,
-            indexDocument: @escaping DocumentIndexer,
-            onProgress: @escaping @Sendable (RemoteSync.Progress) -> Void,
-            onDocument: (@Sendable (IndexResult) -> Void)?
+            documentIndexing: any RemoteSync.DocumentIndexing,
+            progress: any RemoteSync.IndexerProgressObserving,
+            document: (any RemoteSync.IndexerDocumentObserving)?
         ) async throws {
             let path = phasePath(phase)
             let source = phaseSource(phase)
@@ -155,9 +162,9 @@ extension RemoteSync {
                 }
 
                 let context = IndexingContext(
-                    indexDocument: indexDocument,
-                    onProgress: onProgress,
-                    onDocument: onDocument
+                    documentIndexing: documentIndexing,
+                    progress: progress,
+                    document: document
                 )
                 try await indexItem(
                     item,
@@ -189,7 +196,7 @@ extension RemoteSync {
             try state.save(to: stateFileURL)
 
             // Report progress
-            reportProgress(context.onProgress)
+            reportProgress(to: context.progress)
 
             // Determine starting file index (for resume)
             let startFileIndex = state.currentFileIndex
@@ -201,7 +208,7 @@ extension RemoteSync {
                 state = state.updatingFileIndex(fileIndex)
 
                 // Report progress every file
-                reportProgress(context.onProgress)
+                reportProgress(to: context.progress)
 
                 // Fetch and index file
                 do {
@@ -212,12 +219,23 @@ extension RemoteSync {
                     // Determine framework (nil for non-docs phases)
                     let framework: String? = phase == .docs ? item : nil
 
-                    try await context.indexDocument(uri, source, framework, title, content, content)
+                    try await context.documentIndexing.indexDocument(
+                        uri: uri,
+                        source: source,
+                        framework: framework,
+                        title: title,
+                        content: content,
+                        jsonData: content
+                    )
 
-                    context.onDocument?(IndexResult(uri: uri, title: title, success: true))
+                    context.document?.observe(result: RemoteSync.IndexerResult(
+                        uri: uri,
+                        title: title,
+                        success: true
+                    ))
                 } catch {
                     let uri = buildURI(phase: phase, item: item, filename: file.name)
-                    context.onDocument?(IndexResult(
+                    context.document?.observe(result: RemoteSync.IndexerResult(
                         uri: uri,
                         title: file.name,
                         success: false,
@@ -228,7 +246,7 @@ extension RemoteSync {
 
             // Final progress for this item
             state = state.updatingFileIndex(jsonFiles.count)
-            reportProgress(context.onProgress)
+            reportProgress(to: context.progress)
         }
 
         // MARK: - Helpers
@@ -298,7 +316,7 @@ extension RemoteSync {
                 .capitalized
         }
 
-        private func reportProgress(_ onProgress: @Sendable (RemoteSync.Progress) -> Void) {
+        private func reportProgress(to observer: any RemoteSync.IndexerProgressObserving) {
             let progress = RemoteSync.Progress(
                 phase: state.phase,
                 framework: state.currentFramework,
@@ -309,7 +327,7 @@ extension RemoteSync {
                 elapsed: Date().timeIntervalSince(startTime),
                 overallProgress: state.overallProgress
             )
-            onProgress(progress)
+            observer.observe(progress: progress)
         }
     }
 }

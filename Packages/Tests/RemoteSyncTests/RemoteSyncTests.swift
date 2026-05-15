@@ -337,9 +337,13 @@ struct RemoteIndexerTests {
         #expect(!cleared)
     }
 
-    @Test("IndexResult creation")
+    @Test("IndexerResult creation")
     func indexResult() {
-        let success = RemoteSync.Indexer.IndexResult(
+        // Renamed from `RemoteSync.Indexer.IndexResult` during the closures-to-Observer
+        // epic: the value type now lives in `RemoteSyncModels` as
+        // `RemoteSync.IndexerResult` (flat-named, since the producer
+        // `RemoteSync.Indexer` is an actor and can't be extended from the seam).
+        let success = RemoteSync.IndexerResult(
             uri: "apple-docs://swiftui/View",
             title: "View",
             success: true
@@ -347,7 +351,7 @@ struct RemoteIndexerTests {
         #expect(success.success)
         #expect(success.error == nil)
 
-        let failure = RemoteSync.Indexer.IndexResult(
+        let failure = RemoteSync.IndexerResult(
             uri: "apple-docs://swiftui/View",
             title: "View",
             success: false,
@@ -358,20 +362,22 @@ struct RemoteIndexerTests {
     }
 }
 
-// MARK: - RemoteSync.Indexer.Error Tests
+// MARK: - RemoteSync.IndexerError Tests
 
-@Suite("RemoteSync.Indexer.Error Tests")
+@Suite("RemoteSync.IndexerError Tests")
 struct RemoteIndexerErrorTests {
     @Test("Error descriptions")
     func testErrorDescriptions() {
-        let versionMismatch = RemoteSync.Indexer.Error.stateVersionMismatch(expected: "1.0.0", found: "0.9.0")
+        // Renamed from `RemoteSync.Indexer.Error` during the closures-to-Observer
+        // epic: now flat-named under `RemoteSync` in `RemoteSyncModels`.
+        let versionMismatch = RemoteSync.IndexerError.stateVersionMismatch(expected: "1.0.0", found: "0.9.0")
         #expect(versionMismatch.description.contains("1.0.0"))
         #expect(versionMismatch.description.contains("0.9.0"))
 
-        let phaseNotFound = RemoteSync.Indexer.Error.phaseNotFound("unknown")
+        let phaseNotFound = RemoteSync.IndexerError.phaseNotFound("unknown")
         #expect(phaseNotFound.description.contains("unknown"))
 
-        let indexingFailed = RemoteSync.Indexer.Error.indexingFailed(uri: "test://uri", underlying: "timeout")
+        let indexingFailed = RemoteSync.IndexerError.indexingFailed(uri: "test://uri", underlying: "timeout")
         #expect(indexingFailed.description.contains("test://uri"))
         #expect(indexingFailed.description.contains("timeout"))
     }

@@ -1,5 +1,6 @@
 import Foundation
 import SharedConstants
+
 // MARK: - GitHub Fetcher
 
 extension RemoteSync {
