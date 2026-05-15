@@ -216,11 +216,11 @@ struct SwiftEvolutionCrawlerTests {
         #expect(isAccepted == false)
     }
 
-    // MARK: - Crawler.Evolution.Statistics Tests
+    // MARK: - Crawler.EvolutionStatistics Tests
 
-    @Test("Crawler.Evolution.Statistics initializes with zeros")
+    @Test("Crawler.EvolutionStatistics initializes with zeros")
     func statisticsInitializesWithZeros() {
-        let stats = Crawler.Evolution.Statistics()
+        let stats = Crawler.EvolutionStatistics()
 
         #expect(stats.totalProposals == 0)
         #expect(stats.newProposals == 0)
@@ -228,9 +228,9 @@ struct SwiftEvolutionCrawlerTests {
         #expect(stats.errors == 0)
     }
 
-    @Test("Crawler.Evolution.Statistics tracks counts")
+    @Test("Crawler.EvolutionStatistics tracks counts")
     func statisticsTracksCounts() {
-        var stats = Crawler.Evolution.Statistics(startTime: Date())
+        var stats = Crawler.EvolutionStatistics(startTime: Date())
         stats.totalProposals = 400
         stats.newProposals = 350
         stats.updatedProposals = 50
@@ -242,21 +242,21 @@ struct SwiftEvolutionCrawlerTests {
         #expect(stats.errors == 0)
     }
 
-    @Test("Crawler.Evolution.Statistics calculates duration")
+    @Test("Crawler.EvolutionStatistics calculates duration")
     func statisticsCalculatesDuration() {
-        var stats = Crawler.Evolution.Statistics(startTime: Date())
+        var stats = Crawler.EvolutionStatistics(startTime: Date())
         stats.endTime = stats.startTime?.addingTimeInterval(3600) // 1 hour
 
         let duration = stats.duration
         #expect(duration == 3600.0)
     }
 
-    // MARK: - Crawler.Evolution.Progress Tests
+    // MARK: - Crawler.EvolutionProgress Tests
 
-    @Test("Crawler.Evolution.Progress tracks progress")
+    @Test("Crawler.EvolutionProgress tracks progress")
     func progressTracksProgress() {
-        let stats = Crawler.Evolution.Statistics()
-        let progress = Crawler.Evolution.Progress(
+        let stats = Crawler.EvolutionStatistics()
+        let progress = Crawler.EvolutionProgress(
             current: 100,
             total: 400,
             proposalID: "SE-0100",
@@ -354,10 +354,10 @@ struct SwiftEvolutionCrawlerTests {
         #expect(sorted[3].id == "ST-0002")
     }
 
-    @Test("Crawler.Evolution.Progress works with ST proposal ID")
+    @Test("Crawler.EvolutionProgress works with ST proposal ID")
     func progressWithSTProposalID() {
-        let stats = Crawler.Evolution.Statistics()
-        let progress = Crawler.Evolution.Progress(
+        let stats = Crawler.EvolutionStatistics()
+        let progress = Crawler.EvolutionProgress(
             current: 1,
             total: 10,
             proposalID: "ST-0001",

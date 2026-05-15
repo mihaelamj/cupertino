@@ -50,7 +50,7 @@ extension Crawler {
         /// static.
         private let logger: any LoggingModels.Logging.Recording
 
-        private var onProgress: (@Sendable (Progress) -> Void)?
+        private var progressObserver: (any Crawler.AppleDocsProgressObserving)?
         private var logFileHandle: FileHandle?
 
         public init(
@@ -84,9 +84,11 @@ extension Crawler {
 
         // MARK: - Public API
 
-        /// Start crawling from the configured start URL
-        public func crawl(onProgress: (@Sendable (Progress) -> Void)? = nil) async throws -> Shared.Models.CrawlStatistics {
-            self.onProgress = onProgress
+        /// Start crawling from the configured start URL. Pass an
+        /// `any Crawler.AppleDocsProgressObserving` to receive per-URL
+        /// progress updates; `nil` opts out.
+        public func crawl(progress: (any Crawler.AppleDocsProgressObserving)? = nil) async throws -> Shared.Models.CrawlStatistics {
+            self.progressObserver = progress
 
             // Check for resumable session (must match current start URL)
             let savedSession = await state.getSavedSession()
@@ -499,14 +501,14 @@ extension Crawler {
             await state.updateStatistics { $0.totalPages += 1 }
 
             // Notify progress
-            if let onProgress {
-                let progress = await Progress(
+            if let progressObserver {
+                let progress = await Crawler.AppleDocsProgress(
                     currentURL: url,
                     visitedCount: visited.count,
                     totalPages: configuration.maxPages,
                     stats: state.getStatistics()
                 )
-                onProgress(progress)
+                progressObserver.observe(progress: progress)
             }
         }
 
@@ -716,22 +718,6 @@ extension Crawler {
             logInfo("   ✅ Found \(priorityList.totalUniqueReposFound) unique packages")
             logInfo("   📁 Saved to: \(outputPath.path)")
             logInfo("   💡 This list will be used for prioritizing package documentation crawls")
-        }
-    }
-}
-
-// MARK: - Crawler Progress
-
-extension Crawler.AppleDocs {
-    /// Progress information during crawling
-    public struct Progress: Sendable {
-        public let currentURL: URL
-        public let visitedCount: Int
-        public let totalPages: Int
-        public let stats: Shared.Models.CrawlStatistics
-
-        public var percentage: Double {
-            Double(visitedCount) / Double(totalPages) * 100
         }
     }
 }
