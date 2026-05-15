@@ -3,6 +3,7 @@ import CrawlerModels
 import Foundation
 import LoggingModels
 import SharedConstants
+
 // MARK: - Crawler State Manager
 
 extension Crawler.AppleDocs {
@@ -321,9 +322,72 @@ extension Crawler.AppleDocs {
             metadata.stats
         }
 
-        /// Update statistics
-        public func updateStatistics(_ update: @Sendable (inout Shared.Models.CrawlStatistics) -> Void) {
-            update(&metadata.stats)
+        // Closures-to-Observer epic (last batch): the previous
+        // `updateStatistics(_:)` took a closure with `inout`
+        // semantics over `Shared.Models.CrawlStatistics`. That gave
+        // every caller a generic escape hatch into the actor's
+        // internal state — easy to misuse, hard to reason about, and
+        // exactly the kind of closure surface the cupertino rules
+        // forbid in producer-target public APIs.
+        //
+        // The seven named methods below cover every mutation any
+        // caller in `Crawler.AppleDocs` performed pre-refactor. The
+        // surface is typed, named, and trivially mockable: each
+        // method either replaces a field or bumps a counter by one.
+        // The test exercising the previous closure form
+        // (`Crawler.AppleDocs.State updateStatistics modifies stats`)
+        // is rewritten to drive the same end-state through these
+        // explicit methods.
+
+        /// Overwrite the entire `CrawlStatistics` value. Used by the
+        /// crawler at the start of a fresh session to seed
+        /// `startTime`. Tests use this to set a known starting state.
+        public func setStatistics(_ stats: Shared.Models.CrawlStatistics) {
+            metadata.stats = stats
+        }
+
+        /// Set `stats.startTime` only if it hasn't been set yet.
+        /// Used when resuming a session: the saved metadata may
+        /// already carry the original startTime, in which case we
+        /// keep it; if it's nil (older state, or never started),
+        /// adopt the session's recorded start.
+        public func setStartTimeIfNil(_ startTime: Date) {
+            if metadata.stats.startTime == nil {
+                metadata.stats.startTime = startTime
+            }
+        }
+
+        /// Bump `stats.errors` by one. Callers typically follow up
+        /// with `recordTotalPage()` to count the failed-page attempt
+        /// in the total — the previous closure form coupled the two
+        /// only at the call site; that coupling stays at the call
+        /// site here so each method has one effect.
+        public func recordError() {
+            metadata.stats.errors += 1
+        }
+
+        /// Bump `stats.totalPages` by one. Counts every page the
+        /// crawler attempted, regardless of outcome.
+        public func recordTotalPage() {
+            metadata.stats.totalPages += 1
+        }
+
+        /// Bump `stats.skippedPages` by one. Counts pages the
+        /// content-hash short-circuit decided not to re-write.
+        public func recordSkippedPage() {
+            metadata.stats.skippedPages += 1
+        }
+
+        /// Bump `stats.newPages` by one. Counts pages saved for the
+        /// first time this run.
+        public func recordNewPage() {
+            metadata.stats.newPages += 1
+        }
+
+        /// Bump `stats.updatedPages` by one. Counts previously-known
+        /// pages whose content hash changed and were re-written.
+        public func recordUpdatedPage() {
+            metadata.stats.updatedPages += 1
         }
 
         /// Get page count

@@ -46,7 +46,7 @@ func downloadRealAppleDocPage() async throws {
         htmlParser: LiveTestHTMLParserStrategy(),
         appleJSONParser: LiveTestAppleJSONParserStrategy(),
         priorityPackageStrategy: LiveTestPriorityPackageStrategy(),
-            logger: Logging.NoopRecording()
+        logger: Logging.NoopRecording()
     )
     let stats = try await crawler.crawl()
 
@@ -480,8 +480,16 @@ func crawlerStateUpdatePage() async {
     print("   ✅ Page metadata successfully added")
 }
 
-@Test("Crawler.AppleDocs.State updateStatistics modifies stats")
-func crawlerStateUpdateStatistics() async {
+@Test("Crawler.AppleDocs.State named-mutation methods cover the previous updateStatistics closure surface")
+func crawlerStateNamedMutationMethods() async {
+    // Previously this test drove `updateStatistics(_:)` with a closure
+    // that mass-assigned every CrawlStatistics field. That closure was
+    // deleted in the closures-to-Observer epic — the actor now exposes
+    // seven named mutation methods (`setStatistics`, `setStartTimeIfNil`,
+    // `recordError`, `recordTotalPage`, `recordSkippedPage`,
+    // `recordNewPage`, `recordUpdatedPage`). The test now arrives at the
+    // same end-state through those explicit methods so a future caller
+    // can't reach for a closure escape hatch any more.
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -494,13 +502,22 @@ func crawlerStateUpdateStatistics() async {
 
     let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
 
-    await state.updateStatistics { stats in
-        stats.totalPages = 10
-        stats.newPages = 5
-        stats.updatedPages = 3
-        stats.skippedPages = 2
-        stats.errors = 1
+    // Reach the same end-state the previous closure produced
+    // (totalPages=10, newPages=5, updatedPages=3, skippedPages=2,
+    // errors=1) through the named counter methods.
+    for _ in 0..<10 {
+        await state.recordTotalPage()
     }
+    for _ in 0..<5 {
+        await state.recordNewPage()
+    }
+    for _ in 0..<3 {
+        await state.recordUpdatedPage()
+    }
+    for _ in 0..<2 {
+        await state.recordSkippedPage()
+    }
+    await state.recordError()
 
     let stats = await state.getStatistics()
     #expect(stats.totalPages == 10)
@@ -508,7 +525,58 @@ func crawlerStateUpdateStatistics() async {
     #expect(stats.updatedPages == 3)
     #expect(stats.skippedPages == 2)
     #expect(stats.errors == 1)
-    print("   ✅ Statistics successfully updated")
+    print("   ✅ Statistics successfully updated through named methods")
+}
+
+@Test("Crawler.AppleDocs.State setStatistics overwrites the whole CrawlStatistics value")
+func crawlerStateSetStatistics() async {
+    // Pins `setStatistics(_:)` — the whole-value-replace path used by
+    // `Crawler.AppleDocs.crawl` to seed `startTime` at session start.
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    let config = Shared.Configuration.ChangeDetection(
+        enabled: true,
+        metadataFile: tempDir.appendingPathComponent("metadata.json"),
+        forceRecrawl: false,
+        outputDirectory: tempDir
+    )
+    let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
+
+    let startTime = Date(timeIntervalSince1970: 1000000)
+    await state.setStatistics(Shared.Models.CrawlStatistics(startTime: startTime))
+
+    let stats = await state.getStatistics()
+    #expect(stats.startTime == startTime)
+    #expect(stats.totalPages == 0)
+}
+
+@Test("Crawler.AppleDocs.State setStartTimeIfNil sets when nil, skips when already set")
+func crawlerStateSetStartTimeIfNil() async {
+    // Pins `setStartTimeIfNil(_:)` — the resume path used by
+    // `Crawler.AppleDocs.crawl` when restoring a saved session.
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    let config = Shared.Configuration.ChangeDetection(
+        enabled: true,
+        metadataFile: tempDir.appendingPathComponent("metadata.json"),
+        forceRecrawl: false,
+        outputDirectory: tempDir
+    )
+    let state = Crawler.AppleDocs.State(configuration: config, logger: Logging.NoopRecording())
+
+    // Initial state: startTime is nil → setStartTimeIfNil should fill it.
+    let firstStart = Date(timeIntervalSince1970: 2000000)
+    await state.setStartTimeIfNil(firstStart)
+    var stats = await state.getStatistics()
+    #expect(stats.startTime == firstStart)
+
+    // Now it's set → a second call must NOT overwrite it.
+    let secondStart = Date(timeIntervalSince1970: 3000000)
+    await state.setStartTimeIfNil(secondStart)
+    stats = await state.getStatistics()
+    #expect(stats.startTime == firstStart)
 }
 
 @Test("Crawler.AppleDocs.State session state management")
