@@ -245,14 +245,10 @@ extension CLIImpl.Command.Save {
             let startedAt = Date()
             let index = try await Search.PackageIndex(dbPath: packagesDB, logger: Cupertino.Context.composition.logging.recording)
             let indexer = Search.PackageIndexer(rootDirectory: packagesRoot, index: index)
-            // `Search.PackageIndexer.indexAll` still takes a closure
-            // `(String, Int, Int) -> Void` — converting that public surface
-            // to its own Observer protocol is the next conversion boundary.
-            // For this PR the closure-to-protocol bridge lives here, wrapping
-            // the incoming `progress` Observer for the closure-shaped inner API.
-            let stats = try await indexer.indexAll { name, done, total in
-                progress.report(packageName: name, processed: done, total: total)
-            }
+            // `Search.PackageIndexer.indexAll` takes the same
+            // `Search.PackageIndexingProgressReporting` Observer protocol
+            // this method already receives; pass it straight through.
+            let stats = try await indexer.indexAll(progress: progress)
             let summary = try await index.summary()
             await index.disconnect()
             return Search.PackageIndexingOutcome(
