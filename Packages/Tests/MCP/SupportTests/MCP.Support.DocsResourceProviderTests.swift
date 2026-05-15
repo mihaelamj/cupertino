@@ -68,7 +68,7 @@ private func makeProvider(
         evolutionDirectory: evolutionDir,
         archiveDirectory: archiveDir,
         markdownLookup: markdownLookup,
-            logger: Logging.NoopRecording()
+        logger: Logging.NoopRecording()
     )
 }
 
@@ -114,15 +114,20 @@ struct DocsResourceProviderListResourcesTests {
             archiveDir: tmp.appendingPathComponent("archive")
         )
 
+        // Framework-root URL post-#568: only the page whose URL path
+        // is exactly `/documentation/<framework>` survives the
+        // resources/list filter. Deep symbol pages
+        // (`/documentation/swiftui/list` etc.) belong to `tools/call
+        // search` + `readResource`, not the resource browser.
         let page = Shared.Models.PageMetadata(
-            url: "https://developer.apple.com/documentation/swiftui/list",
+            url: "https://developer.apple.com/documentation/swiftui",
             framework: "swiftui",
             filePath: "/dev/null",
             contentHash: "h",
             depth: 0
         )
         let metadata = Shared.Models.CrawlMetadata(pages: [
-            "https://developer.apple.com/documentation/swiftui/list": page,
+            "https://developer.apple.com/documentation/swiftui": page,
         ])
         await provider.injectMetadataForTesting(metadata)
 
@@ -145,26 +150,30 @@ struct DocsResourceProviderListResourcesTests {
             archiveDir: tmp.appendingPathComponent("archive")
         )
 
-        // Three pages whose generated `name` (last URL component, capitalised
-        // + dash/underscore stripped) lands in a non-input order: View, Button, List.
+        // Three framework-root pages so the result is non-empty
+        // post-#568 filter (deep symbol URLs are now correctly
+        // dropped). Generated `name` is the last URL component
+        // capitalised + dash/underscore-stripped: Swiftui, Foundation,
+        // Accelerate. Input order is intentionally non-sorted so the
+        // assertion exercises real sorting, not a vacuous tautology.
         let pages: [String: Shared.Models.PageMetadata] = [
-            "https://developer.apple.com/documentation/swiftui/view": .init(
-                url: "https://developer.apple.com/documentation/swiftui/view",
+            "https://developer.apple.com/documentation/swiftui": .init(
+                url: "https://developer.apple.com/documentation/swiftui",
                 framework: "swiftui",
                 filePath: "/dev/null",
                 contentHash: "1",
                 depth: 0
             ),
-            "https://developer.apple.com/documentation/swiftui/button": .init(
-                url: "https://developer.apple.com/documentation/swiftui/button",
-                framework: "swiftui",
+            "https://developer.apple.com/documentation/foundation": .init(
+                url: "https://developer.apple.com/documentation/foundation",
+                framework: "foundation",
                 filePath: "/dev/null",
                 contentHash: "2",
                 depth: 0
             ),
-            "https://developer.apple.com/documentation/swiftui/list": .init(
-                url: "https://developer.apple.com/documentation/swiftui/list",
-                framework: "swiftui",
+            "https://developer.apple.com/documentation/accelerate": .init(
+                url: "https://developer.apple.com/documentation/accelerate",
+                framework: "accelerate",
                 filePath: "/dev/null",
                 contentHash: "3",
                 depth: 0
@@ -173,6 +182,7 @@ struct DocsResourceProviderListResourcesTests {
         await provider.injectMetadataForTesting(.init(pages: pages))
 
         let names = try await provider.listResources(cursor: nil).resources.map(\.name)
+        #expect(names.count == 3, "three framework roots should survive the filter (got \(names))")
         #expect(names == names.sorted(), "listResources should sort by name (got \(names))")
     }
 
@@ -262,7 +272,7 @@ struct DocsResourceProviderReadAppleDocsTests {
         try FileManager.default.createDirectory(at: frameworkDir, withIntermediateDirectories: true)
 
         let payload = "# Title\n\nBody markdown."
-        let pageURL = URL(string: "https://developer.apple.com/documentation/swiftui/list")!
+        let pageURL = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/list"))
         let page = Shared.Models.StructuredDocumentationPage(
             url: pageURL,
             title: "Title",

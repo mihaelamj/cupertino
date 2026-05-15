@@ -3,6 +3,7 @@ import LoggingModels
 import MCPCore
 import MCPSharedTools
 import SharedConstants
+
 // MARK: - Documentation Resource Provider
 
 extension MCP.Support {
@@ -31,6 +32,21 @@ extension MCP.Support {
     /// at the call site (CLI/MCP entrypoint) — typically a small
     /// adapter around `Search.Index.getDocumentContent(uri:format:)`.
     public actor DocsResourceProvider: MCP.Core.ResourceProvider {
+        /// Maximum number of resources returned in a single
+        /// `listResources` page. Pinned by
+        /// `DocsResourceProviderListResourcesFilterAndPagingTests`. The
+        /// MCP cursor protocol (2025-06-18) makes pagination optional;
+        /// we issue a `nextCursor` only when the underlying sorted
+        /// result is strictly longer than `pageSize`.
+        ///
+        /// The current bundle yields ~1,000 sorted resources
+        /// (~420 framework roots + 483 Swift Evolution proposals +
+        /// 96 Apple Archive guides + a handful of curated entries), so
+        /// 500 keeps the typical first page well under typical MCP
+        /// client message-size limits without forcing every consumer
+        /// to follow a cursor.
+        public static let pageSize: Int = 500
+
         private let configuration: Shared.Configuration
         private var metadata: Shared.Models.CrawlMetadata?
         private let evolutionDirectory: URL
@@ -64,7 +80,24 @@ extension MCP.Support {
         public func listResources(cursor: String?) async throws -> MCP.Core.Protocols.ListResourcesResult {
             var resources: [MCP.Core.Protocols.Resource] = []
 
-            // Add Apple Documentation resources
+            // Add Apple Documentation resources.
+            //
+            // Bug #568 fix: iterate `metadata.pages` with the
+            // framework-root filter applied. Pre-fix this loop ran on
+            // every page in the corpus (~55k entries on the live
+            // bundle), turning each deep symbol page into a noisy
+            // resource. Only one resource per framework belongs in
+            // `resources/list`; deep pages are reachable through
+            // `tools/call search` + `readResource` with a precise
+            // `apple-docs://framework/symbol` URI.
+            //
+            // The do/catch around `getMetadata()` used to swallow the
+            // throw silently, which is how v1.1.0 hid this regression
+            // (the apple-docs slice quietly evaporated and the user
+            // saw a swift-evolution-only list). Now we log at .error
+            // level so the failure is visible in normal operation
+            // without breaking the "evolution + archive still work
+            // when the docs corpus is absent" UX.
             do {
                 let metadata = try await getMetadata()
 
@@ -82,6 +115,9 @@ extension MCP.Support {
                         )
                         continue
                     }
+                    guard isFrameworkRootPage(url: parsedURL, framework: pageMetadata.framework) else {
+                        continue
+                    }
                     let uri = "\(Shared.Constants.Search.appleDocsScheme)\(pageMetadata.framework)/"
                         + "\(Shared.Models.URLUtilities.filename(from: parsedURL))"
                     let resource = MCP.Core.Protocols.Resource(
@@ -93,7 +129,16 @@ extension MCP.Support {
                     resources.append(resource)
                 }
             } catch {
-                // If Apple docs aren't available, that's OK - we might only have Evolution proposals
+                // Loud-fail surface for the apple-docs slice. The
+                // call still returns the evolution + archive resources
+                // it can build from disk; `cupertino doctor` users
+                // can grep for this line to confirm the corpus is
+                // absent / unreadable.
+                logger.error(
+                    "DocsResourceProvider: apple-docs slice unavailable (\(error)); "
+                        + "resources/list will exclude apple-docs entries this call",
+                    category: .mcp
+                )
             }
 
             // Add Swift Evolution proposals
@@ -131,10 +176,79 @@ extension MCP.Support {
                 }
             }
 
-            // Sort by name
+            // Sort by name (stable input for pagination — same cursor
+            // returns the same slice across calls).
             resources.sort { $0.name < $1.name }
 
-            return MCP.Core.Protocols.ListResourcesResult(resources: resources)
+            // Slice by cursor. Bad cursors fall back to the first page
+            // rather than throwing — the MCP spec leaves the cursor
+            // string opaque, and a paranoid client recovers naturally
+            // from "I lost my cursor" by re-requesting from scratch.
+            let offset = Self.decodeOffset(from: cursor)
+            return paginate(resources, offset: offset)
+        }
+
+        // MARK: - Cursor pagination
+
+        /// Slice `resources` starting at `offset`, returning at most
+        /// `Self.pageSize` entries and a `nextCursor` if more remain.
+        private func paginate(
+            _ resources: [MCP.Core.Protocols.Resource],
+            offset: Int
+        ) -> MCP.Core.Protocols.ListResourcesResult {
+            let safeOffset = max(0, min(offset, resources.count))
+            let end = min(safeOffset + Self.pageSize, resources.count)
+            let slice = Array(resources[safeOffset..<end])
+            let nextCursor: String? = end < resources.count
+                ? Self.encodeOffset(end)
+                : nil
+            return MCP.Core.Protocols.ListResourcesResult(resources: slice, nextCursor: nextCursor)
+        }
+
+        /// Encode an offset as an opaque base64 cursor. Format is
+        /// `offset:<N>`, ASCII, base64-encoded, no padding stripped.
+        /// Self-evident in debug while still opaque enough that
+        /// clients won't grow a dependency on the internal format.
+        static func encodeOffset(_ offset: Int) -> String {
+            let payload = "offset:\(offset)"
+            return Data(payload.utf8).base64EncodedString()
+        }
+
+        /// Decode a cursor produced by `encodeOffset`. Bad input
+        /// (nil, not base64, wrong format, negative offset, NaN, …)
+        /// returns 0 so the caller serves the first page.
+        static func decodeOffset(from cursor: String?) -> Int {
+            guard let cursor,
+                  !cursor.isEmpty,
+                  let data = Data(base64Encoded: cursor),
+                  let decoded = String(data: data, encoding: .utf8),
+                  decoded.hasPrefix("offset:"),
+                  let offset = Int(decoded.dropFirst("offset:".count)),
+                  offset >= 0
+            else {
+                return 0
+            }
+            return offset
+        }
+
+        // MARK: - Filter
+
+        /// Returns `true` when `url` points at a framework root page —
+        /// the only apple-docs entries that belong in
+        /// `resources/list`. A framework root has path exactly
+        /// `/documentation/<framework>` (case-insensitive on the
+        /// framework segment to absorb Apple's mixed-case JSON
+        /// responses), with an optional trailing slash.
+        ///
+        /// Returns `false` for deep symbol pages
+        /// (`/documentation/<framework>/<member>`), the docs root
+        /// (`/documentation` with no framework), and anything else.
+        private func isFrameworkRootPage(url: URL, framework: String) -> Bool {
+            let normalizedPath = url.path.hasSuffix("/")
+                ? String(url.path.dropLast())
+                : url.path
+            let expected = "/documentation/\(framework.lowercased())"
+            return normalizedPath.lowercased() == expected
         }
 
         public func readResource(uri: String) async throws -> MCP.Core.Protocols.ReadResourceResult {
@@ -261,14 +375,32 @@ extension MCP.Support {
         private func loadMetadata() {
             let metadataURL = configuration.changeDetection.metadataFile
 
+            // #568 retrospective: the previous shape was a silent
+            // early-return when the file was missing and a `.warning`
+            // log when the parse threw. That combination is exactly
+            // how the v1.1.0 brew binary masked the bug — the
+            // outermost catch in `listResources` then swallowed the
+            // `noData` throw and the user saw a swift-evolution-only
+            // list. Both miss-paths now log at `.error` with full
+            // context so `cupertino doctor` and ad-hoc grep can spot
+            // them.
             guard FileManager.default.fileExists(atPath: metadataURL.path) else {
+                logger.error(
+                    "DocsResourceProvider: metadata file absent at '\(metadataURL.path)'; "
+                        + "apple-docs slice of resources/list will be empty",
+                    category: .mcp
+                )
                 return
             }
 
             do {
                 metadata = try Shared.Models.CrawlMetadata.load(from: metadataURL)
             } catch {
-                logger.warning("Failed to load metadata: \(error)", category: .mcp)
+                logger.error(
+                    "DocsResourceProvider: failed to parse metadata at '\(metadataURL.path)' "
+                        + "(\(error)); apple-docs slice of resources/list will be empty",
+                    category: .mcp
+                )
             }
         }
 
