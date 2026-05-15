@@ -65,6 +65,82 @@ struct SharedModelsPublicSurfaceTests {
         #expect(normalized?.path == "/documentation/swiftui/some-method")
     }
 
+    // MARK: - #588: operator-bearing segment preservation
+
+    @Test(
+        "URLUtilities normalize preserves operator-bearing leaf segments (#588 — Apple URL-encodes >=, <=, /=, /, [], -> as _-bearing slugs, must not be _→- collapsed)",
+        arguments: [
+            // (raw URL path, expected normalized path)
+            //
+            // Apple's URL encoding for binary operators on Swift numeric types:
+            //   `>=` → URL slug `_=`, `-=` → URL slug `-=`. The blanket _→-
+            //   collapse pre-#588 fused these into a single `-=` URI, dropping
+            //   the `>=` doc. Post-fix: leaf has `(` so _→- skipped → both
+            //   slugs survive verbatim and produce distinct URIs.
+            ("/documentation/swift/float/_=(_:_:)", "/documentation/swift/float/_=(_:_:)"),
+            ("/documentation/swift/float/-=(_:_:)", "/documentation/swift/float/-=(_:_:)"),
+            ("/documentation/swift/floatingpoint/_=(_:_:)", "/documentation/swift/floatingpoint/_=(_:_:)"),
+            ("/documentation/swift/floatingpoint/-=(_:_:)", "/documentation/swift/floatingpoint/-=(_:_:)"),
+            ("/documentation/swift/double/_(_:_:)", "/documentation/swift/double/_(_:_:)"),
+            ("/documentation/swift/double/-(_:_:)", "/documentation/swift/double/-(_:_:)"),
+            // C++ operator forms in DriverKit: Apple URL-encodes `[]` as `__`
+            // and `->` as `-_`. The leaf starts with `operator` so the
+            // _→- rule is skipped via the operator-prefix path.
+            ("/documentation/driverkit/libkern/bounded_ptr/operator__", "/documentation/driverkit/libkern/bounded-ptr/operator__"),
+            ("/documentation/driverkit/libkern/bounded_ptr/operator-_", "/documentation/driverkit/libkern/bounded-ptr/operator-_"),
+        ]
+    )
+    func urlUtilitiesNormalizeOperatorBearing(rawPath: String, expectedPath: String) throws {
+        let url = try #require(URL(string: "https://developer.apple.com\(rawPath)"))
+        let normalized = Shared.Models.URLUtilities.normalize(url)
+        #expect(normalized?.path == expectedPath)
+    }
+
+    @Test("appleDocsURI keeps operator clash siblings distinct (#588 — /= vs -= must survive normalization)")
+    func appleDocsURIOperatorClashStaysDistinct() throws {
+        // The 16-cluster cohort from the #588 corpus audit: across every
+        // Swift numeric type (`Float`, `Double`, `Float16`, `Float80`,
+        // `FloatingPoint`, …) Apple ships both `/=(_:_:)` (URL slug
+        // `_=(_:_:)`) and `-=(_:_:)` (URL slug `-=(_:_:)`). Pre-#588 the
+        // blanket _→- collapsed both into `-=(-:-:)`, losing one of the
+        // two docs from search.db. Post-fix the two stay distinct by URI.
+        let geq = try #require(URL(string: "https://developer.apple.com/documentation/swift/float/_=(_:_:)"))
+        let sub = try #require(URL(string: "https://developer.apple.com/documentation/swift/float/-=(_:_:)"))
+        let a = Shared.Models.URLUtilities.appleDocsURI(from: geq)
+        let b = Shared.Models.URLUtilities.appleDocsURI(from: sub)
+        #expect(a == "apple-docs://swift/float/_=(_:_:)")
+        #expect(b == "apple-docs://swift/float/-=(_:_:)")
+        #expect(a != b)
+    }
+
+    @Test("appleDocsURI keeps C++ operator clash siblings distinct (#588 — operator[] vs operator->)")
+    func appleDocsURIOperatorBracketArrowStaysDistinct() throws {
+        let bracket = try #require(URL(string: "https://developer.apple.com/documentation/driverkit/libkern/bounded_ptr/operator__"))
+        let arrow = try #require(URL(string: "https://developer.apple.com/documentation/driverkit/libkern/bounded_ptr/operator-_"))
+        let a = Shared.Models.URLUtilities.appleDocsURI(from: bracket)
+        let b = Shared.Models.URLUtilities.appleDocsURI(from: arrow)
+        #expect(a == "apple-docs://driverkit/libkern/bounded-ptr/operator__")
+        #expect(b == "apple-docs://driverkit/libkern/bounded-ptr/operator-_")
+        #expect(a != b)
+    }
+
+    @Test("URLUtilities normalize still collapses _→- in prose slugs at sub-page depth (#588 — #285 prose dedup preserved)")
+    func urlUtilitiesNormalizeProseSlugStillCollapses() throws {
+        // The original #285 case must still hold: Apple serves
+        // `integrating_accessibility_into_your_app` and
+        // `integrating-accessibility-into-your-app` as aliases for the
+        // same page, so the URI canonicalisation collapses them. The
+        // leaf carries no operator punctuation and doesn't start with
+        // `operator`, so the _→- rule still applies.
+        let underscored = try #require(URL(string: "https://developer.apple.com/documentation/accessibility/integrating_accessibility_into_your_app"))
+        let dashed = try #require(URL(string: "https://developer.apple.com/documentation/accessibility/integrating-accessibility-into-your-app"))
+        let a = Shared.Models.URLUtilities.appleDocsURI(from: underscored)
+        let b = Shared.Models.URLUtilities.appleDocsURI(from: dashed)
+        #expect(a == "apple-docs://accessibility/integrating-accessibility-into-your-app")
+        #expect(b == "apple-docs://accessibility/integrating-accessibility-into-your-app")
+        #expect(a == b) // collapsed — same logical page
+    }
+
     // MARK: - appleDocsURI (lossless path-mirror URI shape)
 
     @Test("appleDocsURI: simple framework sub-page")

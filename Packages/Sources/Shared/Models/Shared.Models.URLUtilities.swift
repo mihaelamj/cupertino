@@ -33,6 +33,14 @@ extension Shared.Models {
         /// Framework slugs at depth 2 after /documentation/ use underscores
         /// canonically (installer_js, professional_video_applications) and must
         /// be left untouched.
+        ///
+        /// Operator-bearing segments (`_=(_:_:)`, `operator-_`, etc.) are
+        /// also skipped because Apple's URL encoding deliberately uses
+        /// `_` to encode distinct operator characters: `_=` is the URL
+        /// slug for `>=`, `_(_:_:)` is the URL slug for the `/` operator,
+        /// `operator__` is `operator[]`, `operator-_` is `operator->`.
+        /// Conflating those with the literal `-` form would fuse two
+        /// distinct Apple pages into one URI (issue #588).
         private static func normalizeDocPath(_ path: String) -> String {
             let parts = path.components(separatedBy: "/")
             guard let docIdx = parts.firstIndex(of: "documentation"),
@@ -41,10 +49,34 @@ extension Shared.Models {
             let normalizeFromIdx = docIdx + 2
             return parts
                 .enumerated()
-                .map { index, part in
-                    index >= normalizeFromIdx ? String(part.map { $0 == "_" ? "-" : $0 }) : part
+                .map { index, part -> String in
+                    guard index >= normalizeFromIdx, !isOperatorBearing(part) else { return part }
+                    return String(part.map { $0 == "_" ? "-" : $0 })
                 }
                 .joined(separator: "/")
+        }
+
+        /// A path segment is operator-bearing if it contains punctuation
+        /// Apple preserves verbatim in its URL slugs, or starts with the
+        /// C++ `operator` keyword. Such segments encode Swift / C++
+        /// symbol identities where `_` and `-` mean different things
+        /// (`_=` is `>=`, `-=` is `-=`); the blanket `_→-` collapse
+        /// from #285 must not run on them.
+        ///
+        /// The punctuation set comes from Apple's observed URL slugs:
+        /// `(` `)` `[` `]` `<` `>` `=` `+` `*` `/` `%` `!` `&` `|` `^`
+        /// `~` `?`. Plain prose slugs (`integrating_accessibility_into_your_app`)
+        /// carry none of these and remain subject to `_→-` so the
+        /// originally-#285-targeted prose dedup still works.
+        private static func isOperatorBearing(_ segment: String) -> Bool {
+            let operatorPunctuation: Set<Character> = [
+                "(", ")", "[", "]", "<", ">", "=",
+                "+", "*", "/", "%", "!", "&", "|", "^", "~", "?",
+            ]
+            if segment.contains(where: { operatorPunctuation.contains($0) }) {
+                return true
+            }
+            return segment.hasPrefix("operator")
         }
 
         /// Convert an Apple Developer Documentation URL into the canonical
