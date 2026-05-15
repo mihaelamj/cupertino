@@ -7,24 +7,43 @@ extension Search {
     /// Statistics returned by a completed ``SourceIndexingStrategy`` run.
     ///
     /// Aggregate these across all strategies to produce a full build report.
+    ///
+    /// The `breakdown` field carries the #588 import-diligence
+    /// classification (door tier A / B / C + pre-INSERT garbage filter
+    /// rejections by category). The breakdown counters are subsets of
+    /// `skipped`; they classify the reason, they don't add new
+    /// rejections. Strategies that don't classify (HIG, SwiftEvolution,
+    /// SwiftOrg, AppleArchive, SampleCode) leave it at
+    /// ``Search/ImportDiligenceBreakdown/zero``.
     public struct IndexStats: Sendable {
         /// The source identifier for this run (e.g., `"apple-docs"`).
         public let source: String
         /// Number of items successfully written to the search index.
         public let indexed: Int
         /// Number of items skipped due to missing files, parse errors, or filter rejections.
+        /// Catch-all total — every entry in `breakdown` is a subset of
+        /// this number.
         public let skipped: Int
+        /// #588 import-diligence breakdown — door classifications and
+        /// pre-INSERT garbage filter rejections by category. Zero for
+        /// strategies that don't classify.
+        public let breakdown: Search.ImportDiligenceBreakdown
 
         /// Create a new statistics value.
         ///
-        /// - Parameters:
-        ///   - source: The source identifier (must match the strategy's ``SourceIndexingStrategy/source``).
-        ///   - indexed: Items successfully written to the index.
-        ///   - skipped: Items that were not indexed.
-        public init(source: String, indexed: Int, skipped: Int) {
+        /// The `breakdown` parameter defaults to `.zero` so existing
+        /// strategies that don't classify keep their original
+        /// initializer shape working unchanged.
+        public init(
+            source: String,
+            indexed: Int,
+            skipped: Int,
+            breakdown: Search.ImportDiligenceBreakdown = .zero
+        ) {
             self.source = source
             self.indexed = indexed
             self.skipped = skipped
+            self.breakdown = breakdown
         }
     }
 

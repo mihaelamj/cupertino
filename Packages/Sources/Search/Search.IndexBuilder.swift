@@ -164,9 +164,19 @@ extension Search {
                     category: .search
                 )
             }
+            // #588: preserve aggregated breakdown so the CLI / runner can
+            // surface door + garbage-filter counters in the final report
+            // without having to plumb a new return type through buildIndex
+            // (which would break every existing caller).
+            self.lastBuildStats = allStats
             let count = try await searchIndex.documentCount()
             logger.info("✅ Search index built: \(count) documents", category: .search)
         }
+
+        /// Per-strategy `IndexStats` from the most recent `buildIndex` call.
+        /// Used by the CLI runner to read the #588 door + garbage-filter
+        /// breakdown after `buildIndex` returns. Nil until a build completes.
+        public private(set) var lastBuildStats: [Search.IndexStats] = []
 
         // MARK: - Factory
 

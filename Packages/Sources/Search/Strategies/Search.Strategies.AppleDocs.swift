@@ -126,6 +126,12 @@ extension Search {
 
             var indexed = 0
             var skipped = 0
+            var benignDupTierA = 0
+            var benignDupTierB = 0
+            var tierCCollisionCount = 0
+            var rejectedHTTPErrorTemplate = 0
+            var rejectedJSFallback = 0
+            var rejectedPlaceholderTitle = 0
             // #588 door equivalence: per-run map of URIs we've already
             // accepted, so subsequent same-URI encounters can be
             // classified tier A / B / C against the prior record (see
@@ -211,6 +217,7 @@ extension Search {
                         category: .search
                     )
                     skipped += 1
+                    rejectedHTTPErrorTemplate += 1
                     continue
                 }
                 if Search.StrategyHelpers.pageLooksLikeJavaScriptFallback(structuredPage) {
@@ -221,6 +228,7 @@ extension Search {
                         category: .search
                     )
                     skipped += 1
+                    rejectedJSFallback += 1
                     continue
                 }
                 if Search.StrategyHelpers.titleLooksLikePlaceholderError(structuredPage.title) {
@@ -231,6 +239,7 @@ extension Search {
                         category: .search
                     )
                     skipped += 1
+                    rejectedPlaceholderTitle += 1
                     continue
                 }
 
@@ -288,6 +297,7 @@ extension Search {
                             category: .search
                         )
                         skipped += 1
+                        benignDupTierA += 1
                         continue
                     case .benignTitleMatchWithDrift:
                         logger.info(
@@ -295,6 +305,7 @@ extension Search {
                             category: .search
                         )
                         skipped += 1
+                        benignDupTierB += 1
                         continue
                     case .malignantTitleMismatch:
                         logger.error(
@@ -302,6 +313,7 @@ extension Search {
                             category: .search
                         )
                         skipped += 1
+                        tierCCollisionCount += 1
                         continue
                     case .firstArrival:
                         // Unreachable: classify is only called when prior != nil.
@@ -348,9 +360,25 @@ extension Search {
             }
 
             logger.info(
-                "   Directory scan: \(indexed) indexed, \(skipped) skipped", category: .search
+                "   Directory scan: \(indexed) indexed, \(skipped) skipped " +
+                    "(door tierA=\(benignDupTierA) tierB=\(benignDupTierB) tierC=\(tierCCollisionCount); " +
+                    "rejected http=\(rejectedHTTPErrorTemplate) jsFallback=\(rejectedJSFallback) " +
+                    "placeholder=\(rejectedPlaceholderTitle))",
+                category: .search
             )
-            return IndexStats(source: source, indexed: indexed, skipped: skipped)
+            return IndexStats(
+                source: source,
+                indexed: indexed,
+                skipped: skipped,
+                breakdown: Search.ImportDiligenceBreakdown(
+                    benignDupTierA: benignDupTierA,
+                    benignDupTierB: benignDupTierB,
+                    tierCCollisionCount: tierCCollisionCount,
+                    rejectedHTTPErrorTemplate: rejectedHTTPErrorTemplate,
+                    rejectedJSFallback: rejectedJSFallback,
+                    rejectedPlaceholderTitle: rejectedPlaceholderTitle
+                )
+            )
         }
 
         // MARK: - Metadata-Driven Path
@@ -390,6 +418,10 @@ extension Search {
             var processed = 0
             var indexed = 0
             var skipped = 0
+            var benignDupTierA = 0
+            var benignDupTierB = 0
+            var tierCCollisionCount = 0
+            var rejectedPlaceholderTitle = 0
             // #588 door equivalence map, mirrors the structured-page path.
             var seenURIs: [String: Search.StrategyHelpers.SeenURIRecord] = [:]
 
@@ -423,7 +455,10 @@ extension Search {
                             "url=\(url) title=\(title.prefix(60))",
                         category: .search
                     )
-                    skipped += 1; processed += 1; continue
+                    skipped += 1
+                    rejectedPlaceholderTitle += 1
+                    processed += 1
+                    continue
                 }
 
                 // #587 / BUG 1 fix: lossless URI shape, same as the
@@ -463,19 +498,28 @@ extension Search {
                             "⏭️  Door (tier A) skip: uri=\(uri) url=\(url)",
                             category: .search
                         )
-                        skipped += 1; processed += 1; continue
+                        skipped += 1
+                        benignDupTierA += 1
+                        processed += 1
+                        continue
                     case .benignTitleMatchWithDrift:
                         logger.info(
                             "⏭️  Door (tier B, drift) skip: uri=\(uri) url=\(url)",
                             category: .search
                         )
-                        skipped += 1; processed += 1; continue
+                        skipped += 1
+                        benignDupTierB += 1
+                        processed += 1
+                        continue
                     case .malignantTitleMismatch:
                         logger.error(
                             "🚨 Door (tier C COLLISION) skip: uri=\(uri) url=\(url) prior_title=\"\(prior.canonicalTitle.prefix(80))\" incoming_title=\"\(incoming.canonicalTitle.prefix(80))\"",
                             category: .search
                         )
-                        skipped += 1; processed += 1; continue
+                        skipped += 1
+                        tierCCollisionCount += 1
+                        processed += 1
+                        continue
                     case .firstArrival:
                         break
                     }
@@ -515,7 +559,17 @@ extension Search {
             logger.info(
                 "   Apple Docs: \(indexed) indexed, \(skipped) skipped", category: .search
             )
-            return IndexStats(source: source, indexed: indexed, skipped: skipped)
+            return IndexStats(
+                source: source,
+                indexed: indexed,
+                skipped: skipped,
+                breakdown: Search.ImportDiligenceBreakdown(
+                    benignDupTierA: benignDupTierA,
+                    benignDupTierB: benignDupTierB,
+                    tierCCollisionCount: tierCCollisionCount,
+                    rejectedPlaceholderTitle: rejectedPlaceholderTitle
+                )
+            )
         }
     }
 }

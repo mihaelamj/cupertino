@@ -20,6 +20,17 @@ import SharedConstants
 extension CLIImpl.Command.Save {
     // MARK: - Docs
 
+    /// Side-channel that lets the CLI composition layer read the
+    /// `Search.ImportDiligenceBreakdown` produced by the docs runner
+    /// without smuggling it through `Indexer.DocsService.Outcome` (which
+    /// would force `IndexerModels` to import `SearchModels` and violate
+    /// the foundation-only seam rule from #536 / per-package-import-contract).
+    /// The CLI is the only place that links both targets, so the
+    /// breakdown crosses the seam *inside* the composition root.
+    final class DocsDiligenceBreakdownCapture: @unchecked Sendable {
+        var breakdown: Search.ImportDiligenceBreakdown = .zero
+    }
+
     func runDocsIndexer(effectiveBase: URL) async throws {
         // Resolve searchDB destination. In --dry-run, route writes to a
         // throwaway temp file so the existing on-disk search.db is
@@ -60,13 +71,14 @@ extension CLIImpl.Command.Save {
         )
 
         let tracker = ProgressTracker()
+        let breakdownCapture = DocsDiligenceBreakdownCapture()
         let outcome: Indexer.DocsService.Outcome
         do {
             outcome = try await Indexer.DocsService.run(
                 request,
                 markdownStrategy: LiveMarkdownToStructuredPageStrategy(),
                 sampleCatalogProvider: LiveSampleCatalogProvider(catalog: sampleCatalogActor),
-                docsIndexingRunner: LiveDocsIndexingRunner(),
+                docsIndexingRunner: LiveDocsIndexingRunner(breakdownCapture: breakdownCapture),
                 events: DocsEventObserver(tracker: tracker)
             )
         } catch {
@@ -75,7 +87,7 @@ extension CLIImpl.Command.Save {
             }
             throw error
         }
-        Self.printDocsSummary(outcome: outcome)
+        Self.printDocsSummary(outcome: outcome, breakdown: breakdownCapture.breakdown)
         if isDryRun {
             try? FileManager.default.removeItem(at: resolvedSearchDB)
             Cupertino.Context.composition.logging.recording.info(
@@ -108,6 +120,8 @@ extension CLIImpl.Command.Save {
     /// between. The closure-to-protocol bridge now lives one layer
     /// up at `Indexer.DocsService.HandlerProgressReporter`.
     struct LiveDocsIndexingRunner: Search.DocsIndexingRunner {
+        let breakdownCapture: DocsDiligenceBreakdownCapture
+
         func run(
             input: Search.DocsIndexingInput,
             progress: any Search.IndexingProgressReporting
@@ -130,10 +144,24 @@ extension CLIImpl.Command.Save {
             )
             let docCount = try await searchIndex.documentCount()
             let frameworks = try await searchIndex.listFrameworks()
+            // #588 — read the per-strategy stats the IndexBuilder
+            // stashed so the door + garbage-filter breakdown reaches
+            // the save report and dry-run audit. Aggregate across all
+            // strategies using `+` on `Search.ImportDiligenceBreakdown`
+            // (the operator is defined element-wise on that type).
+            // The breakdown crosses the IndexerModels seam via the
+            // CLI-owned `breakdownCapture` side-channel, not through
+            // `Indexer.DocsService.Outcome`, so IndexerModels stays
+            // dep-free.
+            let totalBreakdown = await builder.lastBuildStats
+                .map(\.breakdown)
+                .reduce(Search.ImportDiligenceBreakdown.zero, +)
+            breakdownCapture.breakdown = totalBreakdown
             await searchIndex.disconnect()
             return Search.DocsIndexingOutcome(
                 documentCount: docCount,
-                frameworkCount: frameworks.count
+                frameworkCount: frameworks.count,
+                breakdown: totalBreakdown
             )
         }
     }
@@ -214,14 +242,40 @@ extension CLIImpl.Command.Save {
         }
     }
 
-    static func printDocsSummary(outcome: Indexer.DocsService.Outcome) {
-        Cupertino.Context.composition.logging.recording.output("")
-        Cupertino.Context.composition.logging.recording.info("✅ Search index built successfully!")
-        Cupertino.Context.composition.logging.recording.info("   Total documents: \(outcome.documentCount)")
-        Cupertino.Context.composition.logging.recording.info("   Frameworks: \(outcome.frameworkCount)")
-        Cupertino.Context.composition.logging.recording.info("   Database: \(outcome.searchDBPath.path)")
-        Cupertino.Context.composition.logging.recording.info("   Size: \(CLIImpl.Command.Save.formatFileSize(outcome.searchDBPath))")
-        Cupertino.Context.composition.logging.recording.info(
+    static func printDocsSummary(
+        outcome: Indexer.DocsService.Outcome,
+        breakdown: Search.ImportDiligenceBreakdown = .zero
+    ) {
+        let recording = Cupertino.Context.composition.logging.recording
+        recording.output("")
+        recording.info("✅ Search index built successfully!")
+        recording.info("   Total documents: \(outcome.documentCount)")
+        recording.info("   Frameworks: \(outcome.frameworkCount)")
+        recording.info("   Database: \(outcome.searchDBPath.path)")
+        recording.info("   Size: \(CLIImpl.Command.Save.formatFileSize(outcome.searchDBPath))")
+
+        // #588 import-diligence breakdown.
+        // Only print the block when any door / garbage-filter counter
+        // is non-zero so non-apple-docs and pre-#588 builds keep their
+        // existing summary shape.
+        if !breakdown.isEmpty {
+            recording.output("")
+            recording.info("📊 Import diligence (#588):")
+            recording.info("   Benign duplicates (tier A, byte-identical):     \(breakdown.benignDupTierA)")
+            recording.info("   Benign duplicates (tier B, title-match drift):  \(breakdown.benignDupTierB)")
+            let tierCMarker = breakdown.tierCCollisionCount == 0 ? "✓" : "✗"
+            recording.info("   Tier-C collisions (must be 0 for DoD):          \(breakdown.tierCCollisionCount) \(tierCMarker)")
+            recording.info("   Rejected — HTTP error template (#284):          \(breakdown.rejectedHTTPErrorTemplate)")
+            recording.info("   Rejected — JS-disabled fallback (#284):         \(breakdown.rejectedJSFallback)")
+            recording.info("   Rejected — placeholder title (#588):            \(breakdown.rejectedPlaceholderTitle)")
+            if breakdown.tierCCollisionCount > 0 {
+                recording.info("")
+                recording.info("⚠️  Tier-C collisions present — see [search] logs above for the offending URIs.")
+                recording.info("   docs/PRINCIPLES.md principle 3: work is not done while tier-C > 0.")
+            }
+        }
+
+        recording.info(
             "\n💡 Tip: Start the MCP server with '\(Shared.Constants.App.commandName) serve' to enable search"
         )
     }
