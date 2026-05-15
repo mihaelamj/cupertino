@@ -60,13 +60,15 @@ extension CLIImpl.Command {
             ServeReaper.reapSiblings()
 
             if isatty(STDOUT_FILENO) == 0 {
-                // Silence stdout from the actor backing `Logging.LiveRecording`
-                // so the JSON-RPC stream stays parseable. `Logging.Unified` is
-                // the internal Singleton (GoF p. 127: legitimate
-                // "exactly one instance" — process-wide writer config); its
-                // `options.consoleEnabled` flag gates the print() inside
-                // `record()`.
-                await Logging.Unified.shared.disableConsole()
+                // Silence stdout on the actor backing this binary's
+                // `LiveRecording` so the JSON-RPC stream stays parseable.
+                // Post-#548 Phase B, the recording sources from the
+                // binary's `Cupertino.Composition` (TaskLocal-bound at
+                // `Cupertino.main()`), not from the global
+                // `Logging.Unified.shared` singleton — disabling console
+                // on `.shared` after Phase B would silence the wrong
+                // actor.
+                await Cupertino.Context.composition.logging.disableConsole()
             }
 
             // Path-DI composition sub-root (#535).
@@ -163,7 +165,7 @@ extension CLIImpl.Command {
                 evolutionDirectory: evolutionURL,
                 archiveDirectory: archiveURL,
                 markdownLookup: markdownLookup,
-                logger: Logging.LiveRecording()
+                logger: Cupertino.Context.composition.logging.recording
             )
             await server.registerResourceProvider(resourceProvider)
 
@@ -197,11 +199,11 @@ extension CLIImpl.Command {
             // Log availability of each index
             if searchIndex != nil {
                 let message = "✅ Documentation search enabled (index found)"
-                Logging.LiveRecording().info(message, category: .mcp)
+                Cupertino.Context.composition.logging.recording.info(message, category: .mcp)
             }
             if sampleIndex != nil {
                 let message = "✅ Sample code search enabled (index found)"
-                Logging.LiveRecording().info(message, category: .mcp)
+                Cupertino.Context.composition.logging.recording.info(message, category: .mcp)
             }
         }
 
@@ -210,17 +212,17 @@ extension CLIImpl.Command {
                 let infoMsg = "ℹ️  Sample code index not found at: \(sampleDBURL.path)"
                 let cmd = "\(Shared.Constants.App.commandName) save --samples"
                 let hintMsg = "   Sample tools will not be available. Run '\(cmd)' to enable."
-                Logging.LiveRecording().info("\(infoMsg) \(hintMsg)", category: .mcp)
+                Cupertino.Context.composition.logging.recording.info("\(infoMsg) \(hintMsg)", category: .mcp)
                 return nil
             }
 
             do {
-                return try await Sample.Index.Database(dbPath: sampleDBURL, logger: Logging.LiveRecording())
+                return try await Sample.Index.Database(dbPath: sampleDBURL, logger: Cupertino.Context.composition.logging.recording)
             } catch {
                 let errorMsg = "⚠️  Failed to load sample index: \(error)"
                 let cmd = "\(Shared.Constants.App.commandName) save --samples"
                 let hintMsg = "   Sample tools will not be available. Run '\(cmd)' to create the index."
-                Logging.LiveRecording().warning("\(errorMsg) \(hintMsg)", category: .mcp)
+                Cupertino.Context.composition.logging.recording.warning("\(errorMsg) \(hintMsg)", category: .mcp)
                 return nil
             }
         }
@@ -230,17 +232,17 @@ extension CLIImpl.Command {
                 let infoMsg = "ℹ️  Search index not found at: \(searchDBURL.path)"
                 let cmd = "\(Shared.Constants.App.commandName) save"
                 let hintMsg = "   Tools will not be available. Run '\(cmd)' to enable search."
-                Logging.LiveRecording().info("\(infoMsg) \(hintMsg)", category: .mcp)
+                Cupertino.Context.composition.logging.recording.info("\(infoMsg) \(hintMsg)", category: .mcp)
                 return nil
             }
 
             do {
-                return try await SearchModule.Index(dbPath: searchDBURL, logger: Logging.LiveRecording())
+                return try await SearchModule.Index(dbPath: searchDBURL, logger: Cupertino.Context.composition.logging.recording)
             } catch {
                 let errorMsg = "⚠️  Failed to load search index: \(error)"
                 let cmd = "\(Shared.Constants.App.commandName) save"
                 let hintMsg = "   Tools will not be available. Run '\(cmd)' to create the index."
-                Logging.LiveRecording().warning("\(errorMsg) \(hintMsg)", category: .mcp)
+                Cupertino.Context.composition.logging.recording.warning("\(errorMsg) \(hintMsg)", category: .mcp)
                 return nil
             }
         }
@@ -266,7 +268,7 @@ extension CLIImpl.Command {
             messages.append("   Waiting for client connection...")
 
             for message in messages {
-                Logging.LiveRecording().info(message, category: .mcp)
+                Cupertino.Context.composition.logging.recording.info(message, category: .mcp)
             }
         }
 
