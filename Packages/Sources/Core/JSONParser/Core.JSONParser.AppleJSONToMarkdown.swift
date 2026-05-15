@@ -1,12 +1,14 @@
 import CoreProtocols
 import Foundation
 import SharedConstants
+
 // MARK: - Apple Documentation JSON to Markdown Converter
 
 extension Core.JSONParser {
     /// Converts Apple's documentation JSON API response to Markdown
     /// This is a lightweight alternative to WKWebView rendering that avoids memory issues
     /// with large index pages like lapack-functions (1600+ items)
+    // swiftlint:disable:next type_body_length
     public struct AppleJSONToMarkdown: Core.Protocols.ContentTransformer, @unchecked Sendable {
         public typealias RawContent = Data
 
@@ -533,6 +535,7 @@ private struct Reference: Codable {
 
 extension Core.JSONParser.AppleJSONToMarkdown {
     /// Convert Apple documentation JSON to a StructuredDocumentationPage
+    // swiftlint:disable:next function_body_length
     public static func toStructuredPage(
         _ json: Data,
         url: URL,
@@ -541,9 +544,6 @@ extension Core.JSONParser.AppleJSONToMarkdown {
         guard let doc = try? JSONDecoder().decode(AppleDocumentation.self, from: json) else {
             return nil
         }
-
-        // Extract kind from roleHeading
-        let kind = parseKind(from: doc.metadata.roleHeading, role: doc.metadata.role)
 
         // Extract abstract
         let abstract: String?
@@ -555,6 +555,19 @@ extension Core.JSONParser.AppleJSONToMarkdown {
 
         // Extract declaration
         let declaration = extractDeclaration(from: doc.primaryContentSections)
+
+        // Extract kind. First try `metadata.roleHeading` (the canonical
+        // path); fall back to peeking at the declaration's first token
+        // when roleHeading is missing or ambiguous (#626). On the v1.1.0
+        // shipped bundle, 162,821 of 284,518 apple-docs rows landed with
+        // `kind=unknown` because the JSON didn't carry a `roleHeading`;
+        // the declaration-token fallback recovers ~109k of those (struct
+        // / class / enum / protocol / actor / typealias / case / init /
+        // subscript / property / method).
+        let kindFromRole = parseKind(from: doc.metadata.roleHeading, role: doc.metadata.role)
+        let kind = kindFromRole == .unknown
+            ? parseKindFromDeclaration(declaration?.code) ?? .unknown
+            : kindFromRole
 
         // Extract overview (content sections)
         let overview = extractOverview(from: doc.primaryContentSections)
@@ -647,6 +660,115 @@ extension Core.JSONParser.AppleJSONToMarkdown {
 
     // MARK: - Private Helpers for Structured Page
 
+    /// Infer kind from a Swift declaration's leading tokens (#626 fallback).
+    ///
+    /// Apple's DocC sometimes emits pages without a `metadata.roleHeading`
+    /// — particularly inside `@MainActor`-decorated structs, sample-code
+    /// sub-pages, and entries Apple generates from header-only sources.
+    /// When that happens the canonical path returns `.unknown` and the
+    /// search ranker loses the type-vs-member signal. The declaration's
+    /// first significant token is the most reliable independent
+    /// fingerprint we have: it's authoritative Swift syntax and survives
+    /// regardless of how Apple's renderer happens to label the page.
+    ///
+    /// Returns `nil` when no usable shape is found (article-style pages
+    /// without a code declaration — they correctly stay `.unknown`).
+    ///
+    /// Recognises:
+    ///
+    /// - Type declarations: `struct`, `class`, `enum`, `protocol`, `actor`,
+    ///   `typealias`, `extension` (extension → `.unknown`, no Kind case).
+    /// - Member declarations: `case` → `.enumCase`, `init` /
+    ///   `convenience init` / `nonisolated init` → `.initializer`,
+    ///   `subscript` / `static subscript` → `.subscript`.
+    /// - Property declarations: `var`, `let`, `class var`, `static var`,
+    ///   `static let`, `nonisolated var` → `.property`.
+    /// - Method declarations: `func`, `class func`, `static func`,
+    ///   `mutating func`, `nonisolated func` → `.method`. The
+    ///   `class func` ambiguity that pre-#626 mis-classified type
+    ///   methods as `.class` is handled here by matching `class func`
+    ///   before bare `class`.
+    // swiftlint:disable:next function_body_length
+    private static func parseKindFromDeclaration(_ declaration: String?) -> Shared.Models.StructuredDocumentationPage.Kind? {
+        guard let raw = declaration?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !raw.isEmpty
+        else {
+            return nil
+        }
+
+        // Drop @MainActor, @available(...) and similar attribute lines so
+        // the first significant token is the declaration keyword.
+        var body = raw
+        while body.hasPrefix("@") {
+            // Trim past the @-attribute (may be `@MainActor` or
+            // `@available(iOS 16, *)` — the latter carries parentheses).
+            var idx = body.startIndex
+            while idx < body.endIndex, body[idx] != "\n", body[idx] != " " {
+                if body[idx] == "(" {
+                    // Skip balanced parens.
+                    var depth = 1
+                    idx = body.index(after: idx)
+                    while idx < body.endIndex, depth > 0 {
+                        if body[idx] == "(" {
+                            depth += 1
+                        } else if body[idx] == ")" {
+                            depth -= 1
+                        }
+                        idx = body.index(after: idx)
+                    }
+                    break
+                }
+                idx = body.index(after: idx)
+            }
+            body = String(body[idx...])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        // Match longest-first: `class func` / `class var` must be tested
+        // before bare `class` so a type method is not mis-tagged as a
+        // class declaration (the v1.1.0 bundle's `SKAdNetwork.endImpression`
+        // failure mode).
+        let prefixes: [(String, Shared.Models.StructuredDocumentationPage.Kind)] = [
+            ("class func ", .method),
+            ("class var ", .property),
+            ("class let ", .property),
+            ("static func ", .method),
+            ("static var ", .property),
+            ("static let ", .property),
+            ("static subscript", .subscript),
+            ("convenience init", .initializer),
+            ("nonisolated init", .initializer),
+            ("nonisolated func ", .method),
+            ("nonisolated var ", .property),
+            ("mutating func ", .method),
+            ("required init", .initializer),
+            ("init(", .initializer),
+            ("init ", .initializer),
+            ("init?", .initializer),
+            ("subscript(", .subscript),
+            ("subscript ", .subscript),
+            ("struct ", .struct),
+            ("class ", .class),
+            ("enum ", .enum),
+            ("protocol ", .protocol),
+            ("actor ", .actor),
+            ("typealias ", .typeAlias),
+            ("case ", .enumCase),
+            ("func ", .method),
+            ("var ", .property),
+            ("let ", .property),
+            ("operator ", .operator),
+            ("prefix operator ", .operator),
+            ("postfix operator ", .operator),
+            ("infix operator ", .operator),
+        ]
+        for (prefix, kind) in prefixes where body.hasPrefix(prefix) {
+            return kind
+        }
+        return nil
+    }
+
     private static func parseKind(
         from roleHeading: String?,
         role: String?
@@ -669,10 +791,19 @@ extension Core.JSONParser.AppleJSONToMarkdown {
         case "tutorial": return .tutorial
         case "api collection", "collection": return .collection
         case "framework": return .framework
+        // #626 — Apple `roleHeading` values that previously fell through
+        // to `.unknown`. ~14k case rows, ~5k initializers, ~456 subscripts,
+        // plus the small but signal-rich actor + sample-code surface.
+        case "case", "enum case": return .enumCase
+        case "initializer", "constructor": return .initializer
+        case "subscript", "instance subscript", "type subscript": return .subscript
+        case "actor": return .actor
+        case "sample code", "samples": return .sampleCode
         default:
             // Fallback to role
             if roleStr.contains("collection") { return .collection }
             if roleStr.contains("article") { return .article }
+            if roleStr.contains("sample") { return .sampleCode }
             return .unknown
         }
     }

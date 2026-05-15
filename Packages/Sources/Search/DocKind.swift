@@ -17,6 +17,7 @@
 import Foundation
 import SearchModels
 import SharedConstants
+
 extension Search {
     /// High-level document-shape taxonomy stored per row in `docs_metadata`.
     public enum DocKind: String, Codable, Sendable, CaseIterable {
@@ -90,15 +91,22 @@ extension Search {
 
             // Map `StructuredDocumentationPage.Kind` raw values to the coarser taxonomy.
             // Unknown or missing structured kinds fall through to `.unknown`.
+            // #626 — `case`, `initializer`, `subscript`, `actor` are
+            // declaration members / type-shapes that all index as
+            // `.symbolPage` in the coarser taxonomy. `sample code` is
+            // its own bucket.
             switch structuredKind {
-            case "protocol", "class", "struct", "enum",
+            case "protocol", "class", "struct", "enum", "actor",
                  "function", "property", "method", "operator",
-                 "typealias", "macro", "framework":
+                 "typealias", "macro", "framework",
+                 "case", "initializer", "subscript":
                 return .symbolPage
             case "article", "collection":
                 return .article
             case "tutorial":
                 return .tutorial
+            case "sample code":
+                return .sampleCode
             default:
                 return .unknown
             }

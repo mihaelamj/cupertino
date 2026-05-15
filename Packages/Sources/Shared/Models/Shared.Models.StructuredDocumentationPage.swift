@@ -124,6 +124,11 @@ extension Shared.Models {
         // MARK: - Nested Types
 
         /// The kind/type of documentation page
+        ///
+        /// Raw values match `parseKind`'s normalised dispatch tokens; the
+        /// search ranker's `canonicalTypeKinds` and `propertyMethodKinds`
+        /// sets read these values verbatim, so any new case must be
+        /// reflected there as well.
         public enum Kind: String, Codable, Sendable, CaseIterable {
             case `protocol`
             case `class`
@@ -139,6 +144,17 @@ extension Shared.Models {
             case tutorial
             case collection // API collection (index page)
             case framework
+            // #626 — pre-existing dispatch returned `.unknown` for these
+            // four Apple `roleHeading` values plus the matching markdown-
+            // fallback shapes. Adding them surfaces ~30k `kind=unknown`
+            // rows on the next reindex with a meaningful kind, and lets
+            // the canonical-prepend filter (#630) and HEURISTIC 1.6 (#616)
+            // tiebreak on the right signal for member pages.
+            case enumCase = "case" // enum case (Apple roleHeading "Case")
+            case initializer
+            case `subscript`
+            case actor
+            case sampleCode = "sample code"
             case unknown
         }
 

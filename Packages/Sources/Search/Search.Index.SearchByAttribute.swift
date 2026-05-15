@@ -522,6 +522,12 @@ extension Search.Index {
         "instance method", "type method",
         "instance-property", "type-property",
         "instance-method", "type-method",
+        // #626 — member-shape kinds the indexer didn't emit pre-fix but
+        // does on the next reindex. Keep them in the property-method
+        // bucket so the canonical-prepend filter (#630) rejects them
+        // at canonical URIs, and HEURISTIC 1.6 (#616) treats them as
+        // tiebreak-losers against a real type page.
+        "case", "subscript", "sample code",
     ]
 
     // Extract source prefix from query if present.
