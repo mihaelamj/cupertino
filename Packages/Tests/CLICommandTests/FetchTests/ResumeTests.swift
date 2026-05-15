@@ -944,6 +944,7 @@ struct ResumeAndStartCleanTests {
         try await writer.saveSessionState(
             visited: visited,
             queue: queue,
+            retryQueue: [],
             startURL: #require(URL(string: "http://127.0.0.1:1/seed")),
             outputDirectory: tempDir
         )

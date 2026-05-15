@@ -200,6 +200,8 @@ extension Shared.Models {
         public var updatedPages: Int
         public var skippedPages: Int
         public var errors: Int
+        public var deferredRetries: Int
+        public var retriesSucceeded: Int
         public var startTime: Date?
         public var endTime: Date?
 
@@ -209,6 +211,8 @@ extension Shared.Models {
             updatedPages: Int = 0,
             skippedPages: Int = 0,
             errors: Int = 0,
+            deferredRetries: Int = 0,
+            retriesSucceeded: Int = 0,
             startTime: Date? = nil,
             endTime: Date? = nil
         ) {
@@ -217,6 +221,8 @@ extension Shared.Models {
             self.updatedPages = updatedPages
             self.skippedPages = skippedPages
             self.errors = errors
+            self.deferredRetries = deferredRetries
+            self.retriesSucceeded = retriesSucceeded
             self.startTime = startTime
             self.endTime = endTime
         }
@@ -241,12 +247,16 @@ extension Shared.Models {
             updatedPages = try container.decodeIfPresent(Int.self, forKey: .updatedPages) ?? 0
             skippedPages = try container.decodeIfPresent(Int.self, forKey: .skippedPages) ?? 0
             errors = try container.decodeIfPresent(Int.self, forKey: .errors) ?? 0
+            deferredRetries = try container.decodeIfPresent(Int.self, forKey: .deferredRetries) ?? 0
+            retriesSucceeded = try container.decodeIfPresent(Int.self, forKey: .retriesSucceeded) ?? 0
             startTime = try container.decodeIfPresent(Date.self, forKey: .startTime)
             endTime = try container.decodeIfPresent(Date.self, forKey: .endTime)
         }
 
         private enum CodingKeys: String, CodingKey {
-            case totalPages, newPages, updatedPages, skippedPages, errors, startTime, endTime
+            case totalPages, newPages, updatedPages, skippedPages, errors
+            case deferredRetries, retriesSucceeded
+            case startTime, endTime
         }
     }
 }
@@ -258,6 +268,7 @@ extension Shared.Models {
     public struct CrawlSessionState: Codable, Sendable {
         public var visited: Set<String> // Visited URL strings
         public var queue: [QueuedURL] // Pending URLs to crawl
+        public var retryQueue: [QueuedRetryURL] // URLs deferred for retry after HTTP error
         public var startURL: String
         public var outputDirectory: String // Where files are being saved
         public var sessionStartTime: Date
@@ -267,6 +278,7 @@ extension Shared.Models {
         public init(
             visited: Set<String> = [],
             queue: [QueuedURL] = [],
+            retryQueue: [QueuedRetryURL] = [],
             startURL: String,
             outputDirectory: String,
             sessionStartTime: Date = Date(),
@@ -275,11 +287,32 @@ extension Shared.Models {
         ) {
             self.visited = visited
             self.queue = queue
+            self.retryQueue = retryQueue
             self.startURL = startURL
             self.outputDirectory = outputDirectory
             self.sessionStartTime = sessionStartTime
             self.lastSaveTime = lastSaveTime
             self.isActive = isActive
+        }
+
+        // MARK: - Codable
+
+        /// Custom decoder so old session files without `retryQueue` decode cleanly.
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            visited = try container.decodeIfPresent(Set<String>.self, forKey: .visited) ?? []
+            queue = try container.decodeIfPresent([QueuedURL].self, forKey: .queue) ?? []
+            retryQueue = try container.decodeIfPresent([QueuedRetryURL].self, forKey: .retryQueue) ?? []
+            startURL = try container.decode(String.self, forKey: .startURL)
+            outputDirectory = try container.decode(String.self, forKey: .outputDirectory)
+            sessionStartTime = try container.decodeIfPresent(Date.self, forKey: .sessionStartTime) ?? Date()
+            lastSaveTime = try container.decodeIfPresent(Date.self, forKey: .lastSaveTime) ?? Date()
+            isActive = try container.decodeIfPresent(Bool.self, forKey: .isActive) ?? true
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case visited, queue, retryQueue, startURL, outputDirectory
+            case sessionStartTime, lastSaveTime, isActive
         }
     }
 }
@@ -293,6 +326,23 @@ extension Shared.Models {
         public init(url: String, depth: Int) {
             self.url = url
             self.depth = depth
+        }
+    }
+}
+
+/// A URL deferred for retry after an HTTP error page was detected (#292).
+/// `attempts` tracks how many retry attempts have been made so far (0 = not yet retried).
+/// `nextAttempt` is the earliest time the URL may be retried.
+extension Shared.Models {
+    public struct QueuedRetryURL: Codable, Sendable {
+        public let url: String
+        public var attempts: Int
+        public var nextAttempt: Date
+
+        public init(url: String, attempts: Int = 0, nextAttempt: Date) {
+            self.url = url
+            self.attempts = attempts
+            self.nextAttempt = nextAttempt
         }
     }
 }
