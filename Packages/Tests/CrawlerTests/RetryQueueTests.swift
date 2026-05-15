@@ -155,6 +155,91 @@ struct RetryQueueTests {
             // Network errors (no WKWebView, offline, etc.) are acceptable in non-integration environments.
         }
     }
+
+    // MARK: - Test 5: Integration — final retry exhausted → rejection log entry (AC-4)
+
+    @Test("3 retries exhausted: recordRejection(.httpErrorTemplate) called once, URL not in pending queue")
+    @MainActor
+    func retriesExhaustedWritesRejectionLogEntry() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let startURL = try #require(URL(string: "https://developer.apple.com/documentation/swift"))
+        let targetURL = "https://developer.apple.com/documentation/swift/array"
+
+        // Pre-seed a resumable session with the target URL already at attempts: 2
+        // (representing two prior retry passes). One more httpErrorPage response
+        // from processRetryQueue pushes attempts to 3 (>= 3) and triggers
+        // recordRejection(.httpErrorTemplate). nextAttempt is in the past so
+        // processRetryQueue handles the item immediately — no real-time sleep.
+        let metadataFile = tempDir.appendingPathComponent("metadata.json")
+        var seedMetadata = Shared.Models.CrawlMetadata()
+        seedMetadata.crawlState = Shared.Models.CrawlSessionState(
+            visited: [startURL.absoluteString],
+            queue: [],
+            retryQueue: [
+                Shared.Models.QueuedRetryURL(
+                    url: targetURL,
+                    attempts: 2,
+                    nextAttempt: Date(timeIntervalSinceNow: -1)
+                ),
+            ],
+            startURL: startURL.absoluteString,
+            outputDirectory: tempDir.path
+        )
+        try seedMetadata.save(to: metadataFile)
+
+        let config = try Shared.Configuration(
+            crawler: Shared.Configuration.Crawler(
+                startURL: startURL,
+                maxPages: 1,
+                outputDirectory: tempDir,
+                requestDelay: 0
+            ),
+            changeDetection: Shared.Configuration.ChangeDetection(
+                enabled: false,
+                metadataFile: metadataFile,
+                outputDirectory: tempDir
+            ),
+            output: Shared.Configuration.Output()
+        )
+
+        let crawler = await Crawler.AppleDocs(
+            configuration: config,
+            htmlParser: AlwaysHTTPErrorHTMLParserStrategy(),
+            appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
+            priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy(),
+            logger: Logging.NoopRecording()
+        )
+
+        let stats = try await crawler.crawl()
+
+        // recordRejection(.httpErrorTemplate) must have been called exactly once.
+        let rejectionLog = tempDir.appendingPathComponent(".cupertino-rejected-urls.jsonl")
+        #expect(
+            FileManager.default.fileExists(atPath: rejectionLog.path),
+            "Rejection log must exist after all retries are exhausted"
+        )
+        let logLines = try String(contentsOf: rejectionLog, encoding: .utf8)
+            .components(separatedBy: "\n")
+            .filter { !$0.isEmpty }
+        #expect(logLines.count == 1, "Exactly one rejection entry must be written")
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let record = try decoder.decode(
+            Crawler.AppleDocs.State.RejectedURLRecord.self,
+            from: try #require(logLines.first?.data(using: .utf8))
+        )
+        #expect(record.reason == .httpErrorTemplate)
+        #expect(record.url == targetURL)
+
+        // The URL must not remain in the pending queue: exhaustion calls
+        // recordError() instead of re-queuing, so errors > 0.
+        #expect(stats.errors > 0, "Exhausted URL must increment the error counter, not be re-queued")
+    }
 }
 
 // MARK: - Test helpers
