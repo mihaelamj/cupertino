@@ -45,6 +45,14 @@ extension CLIImpl.Command {
 
             // Use Services.ServiceContainer for managed lifecycle
             let file = try await Services.ServiceContainer.withSampleService(samplesDB: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
+                // Verify project exists before attempting file lookup, so
+                // invalid project IDs get a distinct "Project not found"
+                // error that matches read-sample's behaviour.
+                guard let _ = try await service.getProject(id: projectId) else {
+                    Cupertino.Context.composition.logging.recording.error("Project not found: \(projectId)")
+                    Cupertino.Context.composition.logging.recording.output("Use 'cupertino list-samples' or 'cupertino search --source samples' to find valid project IDs.")
+                    throw ExitCode.failure
+                }
                 guard let file = try await service.getFile(projectId: projectId, path: filePath) else {
                     Cupertino.Context.composition.logging.recording.error("File not found: \(filePath) in project \(projectId)")
                     Cupertino.Context.composition.logging.recording.output("Use 'cupertino read-sample \(projectId)' to list available files.")
