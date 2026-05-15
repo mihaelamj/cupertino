@@ -2,6 +2,12 @@
 
 /// Remote documentation streaming from GitHub to SQLite.
 /// Provides instant setup by streaming from pre-crawled cupertino-docs repo.
+///
+/// The `RemoteSync` namespace anchor lives in the foundation-only
+/// `RemoteSyncModels` seam target. The producer-target `RemoteSync`
+/// `@_exported import`s this so existing callers reading
+/// `RemoteSync.Indexer` (the actor, still in the producer) via
+/// `import RemoteSync` keep resolving without source changes.
 public enum RemoteSync {
     /// Package version
     public static let version = "1.0.0"

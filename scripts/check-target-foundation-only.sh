@@ -121,6 +121,7 @@ MODELS_TARGETS=(
     DistributionModels
     CleanupModels
     CoreSampleCodeModels
+    RemoteSyncModels
 )
 
 # Producers that have been audited + opt into the strict rule.
@@ -177,6 +178,16 @@ STRICT_PRODUCERS=(
     # `Sample.Core` enum namespace itself lives in SharedConstants and
     # is extended here).
     CoreSampleCodeModels
+
+    # Closures-to-Observer epic: foundation-only seam target for the
+    # `RemoteSync` namespace anchor, the `RemoteSync.Progress` /
+    # `IndexState` / `IndexerResult` / `IndexerError` value types, and
+    # the `DocumentIndexing` Strategy + `IndexerProgressObserving` /
+    # `IndexerDocumentObserving` Observer protocols that drive
+    # `RemoteSync.Indexer.run`. Flat-named because the producer
+    # `RemoteSync.Indexer` is a public actor in the `RemoteSync` target
+    # (can't be extended from this foundation-only seam).
+    RemoteSyncModels
 
     # Phase 3 (#536): producer / feature targets.
     Availability
