@@ -58,12 +58,12 @@ extension Indexer {
                 try FileManager.default.removeItem(at: request.packagesDB)
             }
 
+            let reporter = HandlerProgressReporter(handler: handler)
             let result = try await packageIndexingRunner.run(
                 packagesRoot: request.packagesRoot,
-                packagesDB: request.packagesDB
-            ) { name, done, total in
-                handler(.progress(name: name, done: done, total: total))
-            }
+                packagesDB: request.packagesDB,
+                progress: reporter
+            )
 
             let outcome = Outcome(
                 packagesIndexed: result.packagesIndexed,
@@ -77,6 +77,19 @@ extension Indexer {
             )
             handler(.finished(outcome))
             return outcome
+        }
+
+        /// Adapter bridging the closure-shaped `handler:` parameter on
+        /// `Indexer.PackagesService.run` to the typed
+        /// `Search.PackageIndexingProgressReporting` Observer protocol that
+        /// `Search.PackageIndexingRunner.run` now requires. Same boundary
+        /// pattern as `Indexer.DocsService.HandlerProgressReporter`.
+        private struct HandlerProgressReporter: Search.PackageIndexingProgressReporting {
+            let handler: @Sendable (Event) -> Void
+
+            func report(packageName: String, processed: Int, total: Int) {
+                handler(.progress(name: packageName, done: processed, total: total))
+            }
         }
     }
 }

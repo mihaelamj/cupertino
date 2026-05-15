@@ -105,10 +105,8 @@ extension Indexer {
                 sampleCatalogProvider: sampleCatalogProvider
             )
 
-            let result = try await docsIndexingRunner.run(input: input) { processed, total in
-                let percent = Double(processed) / Double(total) * 100
-                handler(.progress(processed: processed, total: total, percent: percent))
-            }
+            let reporter = HandlerProgressReporter(handler: handler)
+            let result = try await docsIndexingRunner.run(input: input, progress: reporter)
 
             let outcome = Outcome(
                 searchDBPath: searchDBURL,
@@ -129,6 +127,22 @@ extension Indexer {
             }
             handler(.missingOptionalSource(label: label, url: url))
             return nil
+        }
+
+        /// Adapter bridging the closure-shaped `handler:` parameter on
+        /// `Indexer.DocsService.run` to the typed
+        /// `Search.IndexingProgressReporting` Observer protocol that
+        /// `Search.DocsIndexingRunner.run` now requires. The closure-to-
+        /// protocol bridge lives here so the producer-target protocol
+        /// (`DocsIndexingRunner`) stays closure-free; the orchestrator
+        /// layer's `handler:` parameter is the next conversion boundary.
+        private struct HandlerProgressReporter: Search.IndexingProgressReporting {
+            let handler: @Sendable (Event) -> Void
+
+            func report(processed: Int, total: Int) {
+                let percent = Double(processed) / Double(total) * 100
+                handler(.progress(processed: processed, total: total, percent: percent))
+            }
         }
     }
 }

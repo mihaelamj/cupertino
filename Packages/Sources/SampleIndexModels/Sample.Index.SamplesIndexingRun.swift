@@ -28,21 +28,27 @@ import SharedConstants
 /// surface explicit on the conforming type's stored properties, and
 /// produces one-line test mocks instead of multi-arg async closures.
 ///
-/// The phase callback stays a closure — it's a genuine lifecycle
-/// event stream, not a strategy seam.
+/// Lifecycle events go through the typed
+/// `Sample.Index.SamplesIndexingPhaseObserving` Observer protocol (GoF
+/// p. 293) — the previous design carve-out for "genuine lifecycle event
+/// stream" closures is reversed per the standing cupertino rule
+/// "no closures, they ate magic." The Indexer orchestrator
+/// (`Indexer.SamplesService.run`) bridges its closure-shaped `handler:`
+/// parameter to a `SamplesIndexingPhaseObserving` conformer before
+/// invoking this method.
 public extension Sample.Index {
     protocol SamplesIndexingRunner: Sendable {
         /// Run one full indexing pass and return its outcome.
         ///
         /// - Parameters:
         ///   - input: Paths + clear / force flags.
-        ///   - onPhase: Callback that receives each lifecycle event
+        ///   - phaseObserver: Observer receiving each lifecycle event
         ///     (`.loadingCatalog`, `.projectProgress(...)`, …) so the
         ///     caller can forward them to its event API.
         /// - Returns: The aggregated `SamplesIndexingOutcome`.
         func run(
             input: SamplesIndexingInput,
-            onPhase: @escaping @Sendable (SamplesIndexingPhase) -> Void
+            phaseObserver: any Sample.Index.SamplesIndexingPhaseObserving
         ) async throws -> SamplesIndexingOutcome
     }
 }

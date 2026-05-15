@@ -22,8 +22,14 @@ import Foundation
 /// surface explicit on the conforming type's stored properties, and
 /// produces one-line test mocks instead of multi-arg async closures.
 ///
-/// The progress callback stays a closure — it's a genuine
-/// (name, done, total) callback, not a strategy seam.
+/// Progress reporting goes through the typed
+/// `Search.PackageIndexingProgressReporting` Observer protocol (GoF p. 293)
+/// — the previous design carve-out for "genuine (name, done, total)
+/// callback" closures is reversed per the standing cupertino rule
+/// "no closures, they ate magic." The Indexer orchestrator
+/// (`Indexer.PackagesService.run`) bridges its closure-shaped `handler:`
+/// parameter to a `PackageIndexingProgressReporting` conformer before
+/// invoking this method.
 public extension Search {
     protocol PackageIndexingRunner: Sendable {
         /// Run one full indexing pass and return its outcome.
@@ -32,14 +38,14 @@ public extension Search {
         ///   - packagesRoot: On-disk root of extracted package archives
         ///     (typically `~/.cupertino/packages/`).
         ///   - packagesDB: Destination database file URL.
-        ///   - onProgress: Optional per-package progress callback,
-        ///     receiving the package name and the (done, total)
-        ///     counts.
+        ///   - progress: Observer receiving `(packageName, processed, total)`
+        ///     reports for each package handled. Pass a Noop conformer
+        ///     to opt out of progress reports.
         /// - Returns: The aggregated `PackageIndexingOutcome`.
         func run(
             packagesRoot: URL,
             packagesDB: URL,
-            onProgress: @escaping @Sendable (String, Int, Int) -> Void
+            progress: any Search.PackageIndexingProgressReporting
         ) async throws -> PackageIndexingOutcome
     }
 }

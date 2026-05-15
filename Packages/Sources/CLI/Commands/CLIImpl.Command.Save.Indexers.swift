@@ -52,29 +52,21 @@ extension CLIImpl.Command.Save {
         Self.printDocsSummary(outcome: outcome)
     }
 
-    /// Adapter bridging the closure-shaped `onProgress` parameter on the
-    /// `Search.DocsIndexingRun` protocol (defined in `SearchModels`) to the
-    /// `Search.IndexingProgressReporting` protocol that `Search.IndexBuilder`
-    /// now expects. The CLI is the composition root for this seam; the
-    /// adapter struct is the only place the closure-to-protocol bridge
-    /// lives. Future work can purge the closure from `DocsIndexingRun.run`
-    /// itself.
-    private struct ProgressCallbackToReporter: Search.IndexingProgressReporting {
-        let onProgress: @Sendable (Int, Int) -> Void
-
-        func report(processed: Int, total: Int) {
-            onProgress(processed, total)
-        }
-    }
-
     /// Concrete `Search.DocsIndexingRunner` (GoF Strategy) used by
     /// `Indexer.DocsService`. Wraps `Search.Index` + `Search.IndexBuilder`.
     /// Lives at the CLI composition root so Indexer doesn't need
     /// `import Search` for these actor types.
+    ///
+    /// Post-Observer-protocol cleanup: this runner is now closure-free.
+    /// The `progress: any Search.IndexingProgressReporting` value
+    /// flows straight through from `Indexer.DocsService` to
+    /// `Search.IndexBuilder.buildIndex` with no adapter struct in
+    /// between. The closure-to-protocol bridge now lives one layer
+    /// up at `Indexer.DocsService.HandlerProgressReporter`.
     struct LiveDocsIndexingRunner: Search.DocsIndexingRunner {
         func run(
             input: Search.DocsIndexingInput,
-            onProgress: @escaping @Sendable (Int, Int) -> Void
+            progress: any Search.IndexingProgressReporting
         ) async throws -> Search.DocsIndexingOutcome {
             let searchIndex = try await Search.Index(dbPath: input.searchDBPath, logger: Cupertino.Context.composition.logging.recording)
             let builder = Search.IndexBuilder(
@@ -90,7 +82,7 @@ extension CLIImpl.Command.Save {
             )
             try await builder.buildIndex(
                 clearExisting: input.clearExisting,
-                onProgress: ProgressCallbackToReporter(onProgress: onProgress)
+                onProgress: progress
             )
             let docCount = try await searchIndex.documentCount()
             let frameworks = try await searchIndex.listFrameworks()
@@ -229,13 +221,18 @@ extension CLIImpl.Command.Save {
         func run(
             packagesRoot: URL,
             packagesDB: URL,
-            onProgress: @escaping @Sendable (String, Int, Int) -> Void
+            progress: any Search.PackageIndexingProgressReporting
         ) async throws -> Search.PackageIndexingOutcome {
             let startedAt = Date()
             let index = try await Search.PackageIndex(dbPath: packagesDB, logger: Cupertino.Context.composition.logging.recording)
             let indexer = Search.PackageIndexer(rootDirectory: packagesRoot, index: index)
+            // `Search.PackageIndexer.indexAll` still takes a closure
+            // `(String, Int, Int) -> Void` — converting that public surface
+            // to its own Observer protocol is the next conversion boundary.
+            // For this PR the closure-to-protocol bridge lives here, wrapping
+            // the incoming `progress` Observer for the closure-shaped inner API.
             let stats = try await indexer.indexAll { name, done, total in
-                onProgress(name, done, total)
+                progress.report(packageName: name, processed: done, total: total)
             }
             let summary = try await index.summary()
             await index.disconnect()
@@ -324,15 +321,17 @@ extension CLIImpl.Command.Save {
     /// `Sample.Index.Builder` + `Sample.Core.Catalog`. Lives at the
     /// CLI composition root so the Indexer SPM target doesn't import
     /// SampleIndex or CoreSampleCode for these types.
-    /// Adapter bridging the closure-shaped `onPhase` parameter on the
-    /// `Sample.Index.SamplesIndexingRunner` protocol (defined in
-    /// `SampleIndexModels`) to the `Sample.Index.ProgressReporting`
-    /// Observer protocol that `Sample.Index.Builder` now expects. The CLI
-    /// is the composition root for this seam; the adapter struct is the
-    /// only place the closure-to-protocol bridge lives. Future work can
-    /// purge the closure from `SamplesIndexingRunner.run` itself.
-    private struct SamplesProgressReporter: Sample.Index.ProgressReporting {
-        let onPhase: @Sendable (Sample.Index.SamplesIndexingPhase) -> Void
+    ///
+    /// Post-Observer-protocol cleanup: this runner receives a typed
+    /// `phaseObserver: any Sample.Index.SamplesIndexingPhaseObserving`
+    /// from `Indexer.SamplesService`. Lifecycle phase events flow
+    /// through `phaseObserver.observe(phase:)`. The progress reporter
+    /// for `Sample.Index.Builder.indexAll(progress:)` is an internal
+    /// adapter (`PhaseObserverToProgressReporter`) that translates
+    /// per-project `IndexProgress` into a `.projectProgress` phase event
+    /// and forwards.
+    private struct PhaseObserverToProgressReporter: Sample.Index.ProgressReporting {
+        let phaseObserver: any Sample.Index.SamplesIndexingPhaseObserving
 
         func report(progress: Sample.Index.IndexProgress) {
             let phase: Sample.Index.SamplesIndexingPhase.ProgressPhase
@@ -342,7 +341,7 @@ extension CLIImpl.Command.Save {
             case .completed: phase = .completed
             case .failed: phase = .failed
             }
-            onPhase(.projectProgress(
+            phaseObserver.observe(phase: .projectProgress(
                 name: progress.currentProject,
                 percent: progress.percentComplete,
                 phase: phase
@@ -353,26 +352,26 @@ extension CLIImpl.Command.Save {
     struct LiveSamplesIndexingRunner: Sample.Index.SamplesIndexingRunner {
         func run(
             input: Sample.Index.SamplesIndexingInput,
-            onPhase: @escaping @Sendable (Sample.Index.SamplesIndexingPhase) -> Void
+            phaseObserver: any Sample.Index.SamplesIndexingPhaseObserving
         ) async throws -> Sample.Index.SamplesIndexingOutcome {
             let database = try await Sample.Index.Database(dbPath: input.samplesDB, logger: Cupertino.Context.composition.logging.recording)
             if input.clear {
-                onPhase(.clearingExistingIndex)
+                phaseObserver.observe(phase: .clearingExistingIndex)
                 try await database.clearAll()
             }
 
             let existingProjects = try await database.projectCount()
             let existingFiles = try await database.fileCount()
             if existingProjects > 0, !input.force, !input.clear {
-                onPhase(.existingIndexNotice(projects: existingProjects, files: existingFiles))
+                phaseObserver.observe(phase: .existingIndexNotice(projects: existingProjects, files: existingFiles))
             }
 
-            onPhase(.loadingCatalog)
+            phaseObserver.observe(phase: .loadingCatalog)
             // Path-DI (#535): construct catalog actor with the input's
             // sample-code directory rather than reaching for the singleton.
             let catalog = Sample.Core.Catalog(sampleCodeDirectory: input.sampleCodeDir)
             let catalogEntries = await catalog.allEntries
-            onPhase(.catalogLoaded(entryCount: catalogEntries.count))
+            phaseObserver.observe(phase: .catalogLoaded(entryCount: catalogEntries.count))
 
             let entries = catalogEntries.map { entry in
                 Sample.Index.SampleCodeEntryInfo(
@@ -384,14 +383,14 @@ extension CLIImpl.Command.Save {
                 )
             }
 
-            onPhase(.indexingStart)
+            phaseObserver.observe(phase: .indexingStart)
             let builder = Sample.Index.Builder(
                 database: database,
                 sampleCodeDirectory: input.sampleCodeDir
             )
 
             let startTime = Date()
-            let reporter = SamplesProgressReporter(onPhase: onPhase)
+            let reporter = PhaseObserverToProgressReporter(phaseObserver: phaseObserver)
             let indexed = try await builder.indexAll(
                 entries: entries,
                 forceReindex: input.force,
