@@ -3,7 +3,7 @@ import Foundation
 extension Distribution {
     /// Typed errors emitted by `SetupService`, `ArtifactDownloader`, and
     /// `ArtifactExtractor`. Mirrors the `SetupError` that lived in
-    /// `CLI.SetupCommand` pre-#246.
+    /// `CLI.SetupCommand` pre-#246. Pure value enum; foundation-only.
     public enum SetupError: Error, CustomStringConvertible, Equatable {
         case invalidURL(String)
         case invalidResponse

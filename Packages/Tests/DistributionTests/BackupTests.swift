@@ -1,7 +1,15 @@
 @testable import Distribution
+import DistributionModels
 import Foundation
 import SharedConstants
 import Testing
+
+/// Closure-free no-op observer for `Distribution.SetupService.run` calls
+/// in tests that don't care about the events. Replaces the previous
+/// trailing-closure `{ _ in }` pattern.
+private struct NoopObserver: Distribution.SetupService.EventObserving {
+    func observe(event: Distribution.SetupService.Event) {}
+}
 
 // MARK: - Backup-existing-DBs (#249)
 
@@ -72,9 +80,17 @@ struct DBBackupIntegrationTests {
         }
         let collector = EventCollector()
 
-        _ = try? await Distribution.SetupService.run(request) { event in
-            Task { await collector.append(event) }
+        struct CollectingObserver: Distribution.SetupService.EventObserving {
+            let collector: EventCollector
+            func observe(event: Distribution.SetupService.Event) {
+                Task { await collector.append(event) }
+            }
         }
+
+        _ = try? await Distribution.SetupService.run(
+            request,
+            events: CollectingObserver(collector: collector)
+        )
 
         // Give the Task above a moment to flush; cheap polling is fine
         // for a unit test against a localhost-failing URL.
@@ -127,7 +143,7 @@ struct DBBackupIntegrationTests {
             baseDir: dir,
             currentDocsVersion: "1.0.0", docsReleaseBaseURL: "http://127.0.0.1:1/"
         )
-        _ = try? await Distribution.SetupService.run(request) { _ in }
+        _ = try? await Distribution.SetupService.run(request, events: NoopObserver())
         try await Task.sleep(nanoseconds: 100000000)
 
         let dirContents = try FileManager.default.contentsOfDirectory(atPath: dir.path)
@@ -155,7 +171,7 @@ struct DBBackupIntegrationTests {
             currentDocsVersion: "1.0.0", docsReleaseBaseURL: "http://127.0.0.1:1/"
         )
 
-        _ = try? await Distribution.SetupService.run(request) { _ in }
+        _ = try? await Distribution.SetupService.run(request, events: NoopObserver())
 
         // No backup files should appear.
         let contents = try FileManager.default.contentsOfDirectory(atPath: dir.path)
