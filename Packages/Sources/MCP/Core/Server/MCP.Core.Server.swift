@@ -444,7 +444,12 @@ extension MCP.Core {
             case .alreadyInitialized:
                 return "Server has already been initialized"
             case .methodNotFound(let method):
-                return "MCP.Core.Protocols.Method not found: \(method)"
+                // #611: pre-fix this string read "MCP.Core.Protocols.Method
+                // not found: …" — the Swift namespace path leaked into the
+                // JSON-RPC error frame's `message` field that clients + AI
+                // agents read. The other six `ServerError` messages are
+                // clean; only this one carried the autocomplete slip.
+                return "Method not found: \(method)"
             case .invalidParams(let details):
                 return "Invalid parameters: \(details)"
             case .capabilityNotSupported(let capability):
