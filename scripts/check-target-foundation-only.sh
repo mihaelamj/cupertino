@@ -120,8 +120,25 @@ MODELS_TARGETS=(
 )
 
 # Producers that have been audited + opt into the strict rule.
-# Empty during phase 0. Each phase 3 PR adds one or more targets here.
-STRICT_PRODUCERS=()
+#
+# Phase 2 of #536 (2026-05-15) opted in the 6 `*Models` protocol-seam
+# companions. All carry Foundation + foundation-tier + other *Models
+# imports only — no actors with I/O, no URLSession, no FileManager.
+# Phase 2a (#542) moved `Core.PackageIndexing.GitHubCanonicalizer` +
+# `Core.PackageIndexing.ExclusionList` out of `CoreProtocols` before
+# this opt-in.
+#
+# Phase 3 of #536 (next) opts in the 17 producer / feature targets one
+# group at a time after a per-target audit.
+STRICT_PRODUCERS=(
+    # Phase 2b-2f (#536): protocol-seam companions, foundation-only.
+    CoreProtocols
+    CrawlerModels
+    CorePackageIndexingModels
+    SearchModels
+    SampleIndexModels
+    ServicesModels
+)
 
 # Grandfathered: producers still under the legacy contract (enforced
 # by scripts/check-package-purity.sh, not this script). Listed here
