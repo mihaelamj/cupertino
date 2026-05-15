@@ -48,10 +48,19 @@ extension Core.JSONParser {
             // accept only the heading whose suffix matches the title; the
             // first-match path is still kept as a fallback for pages
             // where no exact-title hit is found.
-            let kind = extractKind(from: content, title: title)
-
             // Extract declaration (first code block after title)
             let declaration = extractDeclaration(from: content)
+
+            // Extract kind via the heading-line scan; #626 fallback peeks
+            // at the declaration's first significant token when the
+            // heading scan returns `.unknown`. Mirrors the same recovery
+            // path in `AppleJSONToMarkdown.toStructuredPage` so both the
+            // structured-JSON and markdown ingestion routes converge on
+            // the same kind for a given page.
+            let kindFromHeading = extractKind(from: content, title: title)
+            let kind = kindFromHeading == .unknown
+                ? parseKindFromDeclaration(declaration?.code) ?? .unknown
+                : kindFromHeading
 
             // Extract abstract (text between kind line and declaration)
             let abstract = extractAbstract(from: content)
@@ -206,6 +215,92 @@ extension Core.JSONParser {
             return .unknown
         }
 
+        /// Infer kind from a Swift declaration's leading tokens (#626 fallback).
+        ///
+        /// Mirror of `Core.JSONParser.AppleJSONToMarkdown.parseKindFromDeclaration`
+        /// so both ingestion paths converge on the same kind for the same
+        /// declaration. Used when `extractKind` returns `.unknown` because
+        /// the markdown's `"<kind># <title>"` line wasn't present (Apple
+        /// drops the role-heading line for pages auto-generated from
+        /// `@MainActor` structs, sample-code sub-pages, etc.). Returns
+        /// `nil` when the declaration has no recognised first-token shape;
+        /// the caller leaves `kind = .unknown` in that case.
+        // swiftlint:disable:next function_body_length
+        static func parseKindFromDeclaration(_ declaration: String?) -> Shared.Models.StructuredDocumentationPage.Kind? {
+            guard let raw = declaration?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+                !raw.isEmpty
+            else {
+                return nil
+            }
+
+            // Strip leading `@MainActor`, `@available(…)`, etc.
+            var body = raw
+            while body.hasPrefix("@") {
+                var idx = body.startIndex
+                while idx < body.endIndex, body[idx] != "\n", body[idx] != " " {
+                    if body[idx] == "(" {
+                        var depth = 1
+                        idx = body.index(after: idx)
+                        while idx < body.endIndex, depth > 0 {
+                            if body[idx] == "(" {
+                                depth += 1
+                            } else if body[idx] == ")" {
+                                depth -= 1
+                            }
+                            idx = body.index(after: idx)
+                        }
+                        break
+                    }
+                    idx = body.index(after: idx)
+                }
+                body = String(body[idx...])
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+
+            // Longest-match-first so `class func` doesn't latch onto bare
+            // `class` (the pre-#626 mis-classification: type methods on
+            // class types ended up tagged `.class`).
+            let prefixes: [(String, Shared.Models.StructuredDocumentationPage.Kind)] = [
+                ("class func ", .method),
+                ("class var ", .property),
+                ("class let ", .property),
+                ("static func ", .method),
+                ("static var ", .property),
+                ("static let ", .property),
+                ("static subscript", .subscript),
+                ("convenience init", .initializer),
+                ("nonisolated init", .initializer),
+                ("nonisolated func ", .method),
+                ("nonisolated var ", .property),
+                ("mutating func ", .method),
+                ("required init", .initializer),
+                ("init(", .initializer),
+                ("init ", .initializer),
+                ("init?", .initializer),
+                ("subscript(", .subscript),
+                ("subscript ", .subscript),
+                ("struct ", .struct),
+                ("class ", .class),
+                ("enum ", .enum),
+                ("protocol ", .protocol),
+                ("actor ", .actor),
+                ("typealias ", .typeAlias),
+                ("case ", .enumCase),
+                ("func ", .method),
+                ("var ", .property),
+                ("let ", .property),
+                ("prefix operator ", .operator),
+                ("postfix operator ", .operator),
+                ("infix operator ", .operator),
+                ("operator ", .operator),
+            ]
+            for (prefix, kind) in prefixes where body.hasPrefix(prefix) {
+                return kind
+            }
+            return nil
+        }
+
         private static func parseKind(_ kindString: String) -> Shared.Models.StructuredDocumentationPage.Kind {
             let kind = kindString.lowercased().trimmingCharacters(in: .whitespaces)
 
@@ -224,6 +319,16 @@ extension Core.JSONParser {
             case "article": return .article
             case "tutorial": return .tutorial
             case "collection", "api collection": return .collection
+            // #626 — five DocC role headings the markdown-fallback parser
+            // previously dropped to `.unknown`. The `knownKinds` set above
+            // already skips lines tagged with these so the kind hunt
+            // doesn't latch onto a parent-type heading; this branch now
+            // returns the matching `Kind` value instead.
+            case "case", "enum case": return .enumCase
+            case "initializer", "constructor": return .initializer
+            case "subscript", "instance subscript", "type subscript": return .subscript
+            case "actor": return .actor
+            case "sample code", "samples": return .sampleCode
             default: return .unknown
             }
         }

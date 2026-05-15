@@ -242,7 +242,11 @@ let targets: [Target] = {
     )
     let coreJSONParserTestsTarget = Target.testTarget(
         name: "CoreJSONParserTests",
-        dependencies: ["CoreJSONParser", "CoreProtocols", "TestSupport"]
+        // #626 — tests directly reference `Shared.Models.StructuredDocumentationPage.Kind`
+        // to assert the new dispatch cases. The type lives in `SharedConstants`
+        // (post-#536 the Shared/Models folder consolidated there); CoreProtocols
+        // uses it in its public API but doesn't re-export the module.
+        dependencies: ["CoreJSONParser", "CoreProtocols", "SharedConstants", "TestSupport"]
     )
 
     // ---------- CorePackageIndexingModels (#400: value types + namespace anchor lifted out

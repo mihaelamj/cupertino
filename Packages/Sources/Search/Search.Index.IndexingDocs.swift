@@ -300,7 +300,7 @@ extension Search.Index {
         var parts: [String] = []
 
         switch kind {
-        case .protocol, .class, .struct, .enum, .typeAlias:
+        case .protocol, .class, .struct, .enum, .typeAlias, .actor:
             // Core types: high-signal content only
             // Repeat title multiple times to boost title matching in BM25
             parts.append(page.title)
@@ -321,7 +321,8 @@ extension Search.Index {
                 parts.append(truncated)
             }
 
-        case .method, .property, .operator, .macro:
+        case .method, .property, .operator, .macro,
+             .enumCase, .initializer, .subscript:
             // Members: focused on identity and usage
             parts.append(page.title)
             parts.append(page.title)
@@ -334,8 +335,11 @@ extension Search.Index {
                 parts.append(declaration)
             }
 
-        case .article, .tutorial, .collection:
-            // Articles: use full content for comprehensive search
+        case .article, .tutorial, .collection, .sampleCode:
+            // Articles + sample-code landings: full content for
+            // comprehensive search (sample-code pages benefit from the
+            // same shape as articles — code excerpts in body, no symbol
+            // declaration to lean on).
             if let raw = page.rawMarkdown {
                 return raw
             }
