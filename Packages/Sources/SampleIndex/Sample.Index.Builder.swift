@@ -617,17 +617,28 @@ extension Sample.Index {
                 options: [.skipsHiddenFiles]
             )
 
+            // #593: resolve symlinks on the project root ONCE outside
+            // the loop so the strip-prefix matches what the enumerator
+            // returns for each file. `FileManager.default.temporaryDirectory`
+            // returns the unresolved `/var/folders/...` path on macOS,
+            // but the enumerator walks the resolved-through-symlinks
+            // form `/private/var/folders/...` because `/var → /private/var`.
+            // Without this resolution, the old code's
+            // `replacingOccurrences(of: '/var/folders/.../tmp/', ...)`
+            // stripped the middle of `/private/var/folders/.../tmp/Shared/foo.swift`
+            // and left `/private` clinging to the front, producing
+            // `/privateShared/foo.swift` for every indexed file.
+            let resolvedRoot = projectRoot.resolvingSymlinksInPath()
+
             while let fileURL = enumerator?.nextObject() as? URL {
                 // Skip directories
                 guard (try? fileURL.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else {
                     continue
                 }
 
-                // Get relative path
-                let relativePath = fileURL.path.replacingOccurrences(
-                    of: projectRoot.path + "/",
-                    with: ""
-                )
+                // Get relative path (#593 — strip resolved-symlink form so
+                // macOS /var → /private/var doesn't corrupt the prefix)
+                let relativePath = Self.relativePath(of: fileURL, under: resolvedRoot)
 
                 // Skip non-indexable files
                 guard Sample.Index.shouldIndex(path: relativePath) else {
@@ -656,6 +667,39 @@ extension Sample.Index {
             }
 
             return files
+        }
+
+        // MARK: - Path helpers (#593)
+
+        /// Compute the relative path of `fileURL` under `resolvedRoot`,
+        /// using URL `pathComponents` math rather than string-substring
+        /// stripping. Robust to symlink-resolution discrepancies between
+        /// the two URLs (the `/var → /private/var` macOS case the original
+        /// `replacingOccurrences` strip mishandled, #593).
+        ///
+        /// Both inputs are expected to be in resolved-symlinks form;
+        /// the caller passes `projectRoot.resolvingSymlinksInPath()` as
+        /// `resolvedRoot`. The enumerator's `fileURL.path` is already
+        /// in resolved form on macOS.
+        ///
+        /// - Parameters:
+        ///   - fileURL: The file URL the enumerator handed us.
+        ///   - resolvedRoot: The project's root, with symlinks resolved.
+        /// - Returns: A `/`-joined relative path starting from the first
+        ///   path component below `resolvedRoot`. Falls back to
+        ///   `fileURL.lastPathComponent` when the file isn't actually
+        ///   under the root (unexpected — would only happen for a
+        ///   broken setup).
+        static func relativePath(of fileURL: URL, under resolvedRoot: URL) -> String {
+            let resolvedFile = fileURL.resolvingSymlinksInPath()
+            let rootComponents = resolvedRoot.pathComponents
+            let fileComponents = resolvedFile.pathComponents
+            guard fileComponents.count > rootComponents.count,
+                  Array(fileComponents.prefix(rootComponents.count)) == rootComponents
+            else {
+                return resolvedFile.lastPathComponent
+            }
+            return fileComponents.dropFirst(rootComponents.count).joined(separator: "/")
         }
     }
 
