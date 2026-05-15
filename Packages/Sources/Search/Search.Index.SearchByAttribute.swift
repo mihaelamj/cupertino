@@ -495,6 +495,35 @@ extension Search.Index {
         "devicemanagement": 1.2, // MDM payload schemas
     ]
 
+    /// #610 Class A — kind values that mark a canonical Swift type page.
+    /// A bare type-name query that ties on exact title gets a strong boost
+    /// when the row's `kind` is in this set. The complementary set
+    /// `propertyMethodKinds` carries a penalty so a property/method page
+    /// with the same title loses the tiebreak.
+    ///
+    /// Sourced from the Swift declaration grammar (Apple's DocC `roleHeading`
+    /// renders these as "Class", "Structure", "Enumeration", "Protocol",
+    /// "Type Alias", "Actor"). The indexer normalises to lowercase singular
+    /// per `Core.JSONParser.AppleJSONToMarkdown.parseKind` and
+    /// `Core.JSONParser.MarkdownToStructuredPage.parseKind`.
+    static let canonicalTypeKinds: Set<String> = [
+        "class", "struct", "enum", "protocol", "typealias", "actor",
+    ]
+
+    /// #610 Class A — kind values for declaration members (not the parent
+    /// type). When a member page's title coincides with a type name in
+    /// another framework (`URLRequest.url` vs `Foundation.URL`), the
+    /// parent should win. All `roleHeading` variants Apple emits for
+    /// member kinds are listed here, lowercased to match the indexer's
+    /// `parseKind` output.
+    static let propertyMethodKinds: Set<String> = [
+        "property", "method", "function", "operator", "macro", "initializer",
+        "instance property", "type property",
+        "instance method", "type method",
+        "instance-property", "type-property",
+        "instance-method", "type-method",
+    ]
+
     // Extract source prefix from query if present.
     // - Returns: (detectedSource, remainingQuery)
     // - Example: "swift-evolution actors" -> ("swift-evolution", "actors")
