@@ -186,11 +186,15 @@ extension MCP.Support {
             // returns the same slice across calls).
             resources.sort { $0.name < $1.name }
 
-            // Slice by cursor. Bad cursors fall back to the first page
-            // rather than throwing — the MCP spec leaves the cursor
-            // string opaque, and a paranoid client recovers naturally
-            // from "I lost my cursor" by re-requesting from scratch.
-            let offset = Self.decodeOffset(from: cursor)
+            // Slice by cursor. Empty / nil cursor means "first page"
+            // and is valid. Non-empty but malformed cursors throw
+            // `invalidArgument` so a buggy client gets a JSON-RPC
+            // error frame (`-32602`) instead of silently restarting
+            // pagination on every call (#595). The MCP spec leaves the
+            // cursor string opaque, but a server that silently swallows
+            // bad cursors traps paginating clients in an infinite "first
+            // page" loop — they never notice their cursor was wrong.
+            let offset = try Self.decodeOffset(from: cursor)
             return paginate(resources, offset: offset)
         }
 
@@ -220,19 +224,32 @@ extension MCP.Support {
             return Data(payload.utf8).base64EncodedString()
         }
 
-        /// Decode a cursor produced by `encodeOffset`. Bad input
-        /// (nil, not base64, wrong format, negative offset, NaN, …)
-        /// returns 0 so the caller serves the first page.
-        static func decodeOffset(from cursor: String?) -> Int {
-            guard let cursor,
-                  !cursor.isEmpty,
-                  let data = Data(base64Encoded: cursor),
+        /// Decode a cursor produced by `encodeOffset`.
+        ///
+        /// - `nil` or empty cursor → returns 0 (means "first page" —
+        ///   the valid no-cursor case).
+        /// - Non-empty cursor that doesn't decode (not base64, wrong
+        ///   prefix, negative offset, non-integer payload, …) → throws
+        ///   `Shared.Core.ToolError.invalidArgument("cursor", ...)`.
+        ///   That surfaces to the JSON-RPC layer as a `-32602
+        ///   invalidParams` error frame, which is the correct behaviour
+        ///   for a malformed pagination cursor (#595). Pre-fix this
+        ///   returned 0 silently and trapped paginating clients in an
+        ///   endless loop of re-fetching page 1.
+        static func decodeOffset(from cursor: String?) throws -> Int {
+            // No cursor = "first page". This is the valid bootstrap call.
+            guard let cursor, !cursor.isEmpty else { return 0 }
+            // Cursor present — must decode cleanly, no silent fallback.
+            guard let data = Data(base64Encoded: cursor),
                   let decoded = String(data: data, encoding: .utf8),
                   decoded.hasPrefix("offset:"),
                   let offset = Int(decoded.dropFirst("offset:".count)),
                   offset >= 0
             else {
-                return 0
+                throw Shared.Core.ToolError.invalidArgument(
+                    "cursor",
+                    "Malformed cursor: \(cursor)"
+                )
             }
             return offset
         }
