@@ -11,28 +11,21 @@ extension Logging {
     /// 2. Console (configurable) - stdout/stderr for user feedback
     /// 3. File (optional) - for crash debugging and long-running operations
     ///
-    /// **Construction (post-#548).** Build one `Logging.Unified` at each
-    /// binary's composition root and thread it downstream via
-    /// `Logging.Composition` (preferred) or directly to
-    /// `Logging.LiveRecording(unified:)`. The legacy `Logging.Unified.shared`
-    /// accessor is preserved during the per-binary migration and removed in
-    /// the final phase of #548 once every consumer has been switched over.
+    /// **Construction.** Build one `Logging.Unified` at each binary's
+    /// composition root and thread it downstream via `Logging.Composition`
+    /// (preferred) or directly to `Logging.LiveRecording(unified:)`.
     ///
     /// ```swift
-    /// // Composition-root construction (Phase B onwards):
+    /// // Composition-root construction:
     /// let logging = Logging.Composition()
     /// let recording = logging.recording  // pass into producers via init
     /// ```
+    ///
+    /// The legacy `Logging.Unified.shared` Singleton (GoF p. 127, rejected
+    /// as Service Locator per Seemann 2011 ch. 5) was deleted in #548
+    /// Phase H. There is no process-wide accessor; every consumer receives
+    /// an instance via constructor injection.
     public actor Unified {
-        // MARK: - Singleton (transitional, removed at the end of #548)
-
-        /// Process-wide accessor kept alive during the #548 migration so
-        /// the existing inline `Logging.LiveRecording()` call sites keep
-        /// working until each binary's composition root is rewritten.
-        /// New code must take a `Logging.Unified` via constructor injection
-        /// (typically through `Logging.Composition`) instead.
-        public static let shared = Unified()
-
         // MARK: - Log Level
 
         /// Log severity levels
@@ -170,11 +163,9 @@ extension Logging {
         // MARK: - Initialization
 
         /// Construct a `Logging.Unified` actor with the given options.
-        /// Phase A of #548 promoted this initializer from `private` to
-        /// `public` so each binary's composition root can build its own
-        /// instance (typically via `Logging.Composition`). The legacy
-        /// `Logging.Unified.shared` singleton calls this with `.default`
-        /// and is removed in the final phase of #548.
+        /// Each binary's composition root builds its own instance, typically
+        /// via `Logging.Composition`. Constructor injection only — there is
+        /// no `.shared` accessor.
         public init(options: Options = .default) {
             self.options = options
             dateFormatter = DateFormatter()

@@ -27,7 +27,7 @@ func liveRecordingSmoke() {
     // the equivalent post-arc smoke is to verify the GoF Strategy concrete
     // (`Logging.LiveRecording`) handles the same three shapes without crashing.
     // Replaces the old `consoleLogger` test verbatim — same coverage, new API.
-    let recorder: any LoggingModels.Logging.Recording = Logging.LiveRecording()
+    let recorder: any LoggingModels.Logging.Recording = Logging.LiveRecording(unified: Logging.Unified(options: .default))
     recorder.info("Test info message")
     recorder.error("Test error message")
     recorder.output("Test output message")
