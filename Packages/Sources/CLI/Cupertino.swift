@@ -1,6 +1,7 @@
 import ArgumentParser
 import Darwin
 import SharedConstants
+
 // MARK: - Cupertino CLI
 
 @main
@@ -65,17 +66,27 @@ struct Cupertino: AsyncParsableCommand {
     /// makes long-running fetches appear hung — output piles up inside the
     /// process for minutes before flushing. Line-buffered means every `\n`
     /// flushes immediately, which is what the user expects.
+    ///
+    /// #548 Phase B: build one `Cupertino.Composition` (Mediator, GoF
+    /// p. 273) and bind it via `@TaskLocal` for the lifetime of the
+    /// program. Subcommand `run()` bodies read the binding and thread
+    /// `composition.recording` / `composition.paths` into producers as
+    /// explicit parameters. The TaskLocal is structurally scoped to
+    /// this `withValue { … }` block — not a Singleton.
     static func main() async {
         setvbuf(stdout, nil, _IOLBF, 0)
 
-        // Replicates the default `AsyncParsableCommand.main()` body so the
-        // override doesn't lose any behaviour.
+        let composition = Cupertino.Composition()
         do {
-            var command = try parseAsRoot()
-            if var asyncCommand = command as? AsyncParsableCommand {
-                try await asyncCommand.run()
-            } else {
-                try command.run()
+            try await Cupertino.Context.$composition.withValue(composition) {
+                // Replicates the default `AsyncParsableCommand.main()` body
+                // so the override doesn't lose any behaviour.
+                var command = try parseAsRoot()
+                if var asyncCommand = command as? AsyncParsableCommand {
+                    try await asyncCommand.run()
+                } else {
+                    try command.run()
+                }
             }
         } catch {
             exit(withError: error)

@@ -14,6 +14,7 @@ import LoggingModels
 import Search
 import SearchModels
 import SharedConstants
+
 /// Lets ArgumentParser parse `--discovery-mode <mode>` directly into the
 /// shared enum. The conformance lives here (not in Shared) so the Shared
 /// module doesn't take on an ArgumentParser dependency.
@@ -252,16 +253,16 @@ extension CLIImpl.Command {
             // and matches the start URL — no flag needed. We log "Fetching" here
             // unconditionally; the Crawler itself prints "🔄 Found resumable session"
             // when it actually loads saved state.
-            Logging.LiveRecording().info("🚀 Cupertino - Fetching \(type.displayName)")
+            Cupertino.Context.composition.logging.recording.info("🚀 Cupertino - Fetching \(type.displayName)")
             // Print the resolved output directory at startup so #212-style
             // BinaryConfig misrouting is immediately visible.
             let resolvedOutputDir = outputDir.flatMap { URL(fileURLWithPath: $0).expandingTildeInPath.path }
                 ?? type.defaultOutputDir(paths: Shared.Paths.live())
-            Logging.LiveRecording().info("   Output: \(resolvedOutputDir)\n")
+            Cupertino.Context.composition.logging.recording.info("   Output: \(resolvedOutputDir)\n")
         }
 
         private mutating func runAllFetches() async throws {
-            Logging.LiveRecording().info("📚 Fetching all documentation types in parallel:\n")
+            Cupertino.Context.composition.logging.recording.info("📚 Fetching all documentation types in parallel:\n")
             let baseCommand = self
 
             try await withThrowingTaskGroup(of: (FetchType, Result<Void, Error>).self) { group in
@@ -280,7 +281,7 @@ extension CLIImpl.Command {
             _ fetchType: FetchType,
             baseCommand: CLIImpl.Command.Fetch
         ) async -> (FetchType, Result<Void, Error>) {
-            Logging.LiveRecording().info("🚀 Starting \(fetchType.displayName)...")
+            Cupertino.Context.composition.logging.recording.info("🚀 Starting \(fetchType.displayName)...")
             var fetchCommand = baseCommand
             fetchCommand.type = fetchType
             fetchCommand.outputDir = fetchType.defaultOutputDir(paths: Shared.Paths.live())
@@ -302,9 +303,9 @@ extension CLIImpl.Command {
                 let (fetchType, outcome) = result
                 switch outcome {
                 case .success:
-                    Logging.LiveRecording().info("✅ Completed \(fetchType.displayName)")
+                    Cupertino.Context.composition.logging.recording.info("✅ Completed \(fetchType.displayName)")
                 case .failure(let error):
-                    Logging.LiveRecording().error("❌ Failed \(fetchType.displayName): \(error)")
+                    Cupertino.Context.composition.logging.recording.error("❌ Failed \(fetchType.displayName): \(error)")
                 }
             }
             return results
@@ -317,9 +318,9 @@ extension CLIImpl.Command {
             }
 
             if failures.isEmpty {
-                Logging.LiveRecording().info("\n✅ All documentation types fetched successfully!")
+                Cupertino.Context.composition.logging.recording.info("\n✅ All documentation types fetched successfully!")
             } else {
-                Logging.LiveRecording().info("\n⚠️  Completed with \(failures.count) failure(s)")
+                Cupertino.Context.composition.logging.recording.info("\n⚠️  Completed with \(failures.count) failure(s)")
                 throw ExitCode.failure
             }
         }
@@ -328,14 +329,14 @@ extension CLIImpl.Command {
             let url = try validateStartURL()
             let outputDirectory = try await determineOutputDirectory(for: url)
             if startClean {
-                try Ingest.Session.clearSavedSession(at: outputDirectory, logger: Logging.LiveRecording())
+                try Ingest.Session.clearSavedSession(at: outputDirectory, logger: Cupertino.Context.composition.logging.recording)
             }
             if retryErrors {
-                try Ingest.Session.requeueErroredURLs(at: outputDirectory, maxDepth: maxDepth, logger: Logging.LiveRecording())
+                try Ingest.Session.requeueErroredURLs(at: outputDirectory, maxDepth: maxDepth, logger: Cupertino.Context.composition.logging.recording)
             }
             if let baselinePath = baseline {
                 let baselineURL = URL(fileURLWithPath: baselinePath).expandingTildeInPath
-                try Ingest.Session.requeueFromBaseline(at: outputDirectory, baselineDir: baselineURL, maxDepth: maxDepth, logger: Logging.LiveRecording())
+                try Ingest.Session.requeueFromBaseline(at: outputDirectory, baselineDir: baselineURL, maxDepth: maxDepth, logger: Cupertino.Context.composition.logging.recording)
             }
             if let urlsPath = urls {
                 let urlsURL = URL(fileURLWithPath: urlsPath).expandingTildeInPath
@@ -344,7 +345,7 @@ extension CLIImpl.Command {
                     urlsFile: urlsURL,
                     maxDepth: maxDepth,
                     startURL: url,
-            logger: Logging.LiveRecording()
+                    logger: Cupertino.Context.composition.logging.recording
                 )
             }
             let config = createConfiguration(url: url, outputDirectory: outputDirectory)
@@ -405,7 +406,7 @@ extension CLIImpl.Command {
             ]
 
             for candidate in candidates {
-                if let sessionDir = Ingest.Session.checkForSession(at: candidate, matching: url, logger: Logging.LiveRecording()) {
+                if let sessionDir = Ingest.Session.checkForSession(at: candidate, matching: url, logger: Cupertino.Context.composition.logging.recording) {
                     return sessionDir
                 }
             }
@@ -431,7 +432,7 @@ extension CLIImpl.Command {
                 guard isDirectory == true else {
                     continue
                 }
-                if let sessionDir = Ingest.Session.checkForSession(at: dir, matching: url, logger: Logging.LiveRecording()) {
+                if let sessionDir = Ingest.Session.checkForSession(at: dir, matching: url, logger: Cupertino.Context.composition.logging.recording) {
                     return sessionDir
                 }
             }
@@ -481,7 +482,7 @@ extension CLIImpl.Command {
             // Crawler target imports only LoggingModels (the protocol
             // surface); the production OSLog + console + file conformer
             // is wired here at the composition sub-root.
-            let logger: any LoggingModels.Logging.Recording = Logging.LiveRecording()
+            let logger: any LoggingModels.Logging.Recording = Cupertino.Context.composition.logging.recording
 
             let crawler = await Crawler.AppleDocs(
                 configuration: config,
@@ -493,28 +494,28 @@ extension CLIImpl.Command {
             let stats = try await crawler.crawl { progress in
                 let percentage = String(format: "%.1f", progress.percentage)
                 let urlComponent = progress.currentURL.lastPathComponent
-                Logging.LiveRecording().output("   Progress: \(percentage)% - \(urlComponent)")
+                Cupertino.Context.composition.logging.recording.output("   Progress: \(percentage)% - \(urlComponent)")
             }
 
             logCrawlCompletion(stats)
         }
 
         private func logCrawlCompletion(_ stats: Shared.Models.CrawlStatistics) {
-            Logging.LiveRecording().output("")
-            Logging.LiveRecording().info("✅ Crawl completed!")
-            Logging.LiveRecording().info("   Total: \(stats.totalPages) pages")
-            Logging.LiveRecording().info("   New: \(stats.newPages)")
-            Logging.LiveRecording().info("   Updated: \(stats.updatedPages)")
-            Logging.LiveRecording().info("   Skipped: \(stats.skippedPages)")
+            Cupertino.Context.composition.logging.recording.output("")
+            Cupertino.Context.composition.logging.recording.info("✅ Crawl completed!")
+            Cupertino.Context.composition.logging.recording.info("   Total: \(stats.totalPages) pages")
+            Cupertino.Context.composition.logging.recording.info("   New: \(stats.newPages)")
+            Cupertino.Context.composition.logging.recording.info("   Updated: \(stats.updatedPages)")
+            Cupertino.Context.composition.logging.recording.info("   Skipped: \(stats.skippedPages)")
             if let duration = stats.duration {
-                Logging.LiveRecording().info("   Duration: \(Int(duration))s")
+                Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(duration))s")
             }
         }
 
         private func runEvolutionCrawl() async throws {
             let defaultPath = Shared.Paths.live().swiftEvolutionDirectory.path
             let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
-            let logger: any LoggingModels.Logging.Recording = Logging.LiveRecording()
+            let logger: any LoggingModels.Logging.Recording = Cupertino.Context.composition.logging.recording
 
             let crawler = await Crawler.Evolution(
                 outputDirectory: outputURL,
@@ -524,17 +525,17 @@ extension CLIImpl.Command {
 
             let stats = try await crawler.crawl { progress in
                 let percentage = String(format: "%.1f", progress.percentage)
-                Logging.LiveRecording().output("   Progress: \(percentage)% - \(progress.proposalID)")
+                Cupertino.Context.composition.logging.recording.output("   Progress: \(percentage)% - \(progress.proposalID)")
             }
 
-            Logging.LiveRecording().output("")
-            Logging.LiveRecording().info("✅ Download completed!")
-            Logging.LiveRecording().info("   Total: \(stats.totalProposals) proposals")
-            Logging.LiveRecording().info("   New: \(stats.newProposals)")
-            Logging.LiveRecording().info("   Updated: \(stats.updatedProposals)")
-            Logging.LiveRecording().info("   Errors: \(stats.errors)")
+            Cupertino.Context.composition.logging.recording.output("")
+            Cupertino.Context.composition.logging.recording.info("✅ Download completed!")
+            Cupertino.Context.composition.logging.recording.info("   Total: \(stats.totalProposals) proposals")
+            Cupertino.Context.composition.logging.recording.info("   New: \(stats.newProposals)")
+            Cupertino.Context.composition.logging.recording.info("   Updated: \(stats.updatedProposals)")
+            Cupertino.Context.composition.logging.recording.info("   Errors: \(stats.errors)")
             if let duration = stats.duration {
-                Logging.LiveRecording().info("   Duration: \(Int(duration))s")
+                Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(duration))s")
             }
         }
 
@@ -552,29 +553,29 @@ extension CLIImpl.Command {
             try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
 
             if skipMetadata, skipArchives, !annotateAvailability {
-                Logging.LiveRecording().error(
+                Cupertino.Context.composition.logging.recording.error(
                     "❌ Both --skip-metadata and --skip-archives passed without --annotate-availability — nothing to do."
                 )
                 throw ExitCode.failure
             }
 
             if ProcessInfo.processInfo.environment[Shared.Constants.EnvVar.githubToken] == nil {
-                Logging.LiveRecording().info(Shared.Constants.Message.gitHubTokenTip)
-                Logging.LiveRecording().info("   \(Shared.Constants.Message.rateLimitWithoutToken)")
-                Logging.LiveRecording().info("   \(Shared.Constants.Message.rateLimitWithToken)")
-                Logging.LiveRecording().info("   \(Shared.Constants.Message.exportGitHubToken)\n")
+                Cupertino.Context.composition.logging.recording.info(Shared.Constants.Message.gitHubTokenTip)
+                Cupertino.Context.composition.logging.recording.info("   \(Shared.Constants.Message.rateLimitWithoutToken)")
+                Cupertino.Context.composition.logging.recording.info("   \(Shared.Constants.Message.rateLimitWithToken)")
+                Cupertino.Context.composition.logging.recording.info("   \(Shared.Constants.Message.exportGitHubToken)\n")
             }
 
             if !skipMetadata {
                 try await runPackageMetadataStage(outputURL: outputURL)
             } else {
-                Logging.LiveRecording().info("⏭  --skip-metadata: skipping Swift Package Index metadata refresh")
+                Cupertino.Context.composition.logging.recording.info("⏭  --skip-metadata: skipping Swift Package Index metadata refresh")
             }
 
             if !skipArchives {
                 try await runPackageArchivesStage(outputURL: outputURL)
             } else {
-                Logging.LiveRecording().info("⏭  --skip-archives: skipping GitHub archive download")
+                Cupertino.Context.composition.logging.recording.info("⏭  --skip-archives: skipping GitHub archive download")
             }
 
             if annotateAvailability {
@@ -588,11 +589,11 @@ extension CLIImpl.Command {
         /// `Sources/` and `Tests/` trees. Pure on-disk pass — runs whether or
         /// not stage 2 just downloaded fresh archives. Idempotent.
         private func runPackageAnnotationStage(outputURL: URL) async throws {
-            Logging.LiveRecording().info("🏷  Stage 3 — Annotating availability metadata (#219)")
+            Cupertino.Context.composition.logging.recording.info("🏷  Stage 3 — Annotating availability metadata (#219)")
 
             let fm = FileManager.default
             guard fm.fileExists(atPath: outputURL.path) else {
-                Logging.LiveRecording().error(
+                Cupertino.Context.composition.logging.recording.error(
                     "❌ Packages directory \(outputURL.path) doesn't exist — run with stage 2 first."
                 )
                 throw ExitCode.failure
@@ -620,52 +621,52 @@ extension CLIImpl.Command {
                         let result = try await annotator.annotate(packageDirectory: repoURL)
                         packagesAnnotated += 1
                         totalAttrs += result.stats.totalAttributes
-                        Logging.LiveRecording().info(
+                        Cupertino.Context.composition.logging.recording.info(
                             "  ✅ \(label) — \(result.stats.totalAttributes) @available attrs across "
                                 + "\(result.stats.filesWithAvailability)/\(result.stats.filesScanned) files"
                         )
                     } catch {
-                        Logging.LiveRecording().error("  ✗ \(label) — \(error.localizedDescription)")
+                        Cupertino.Context.composition.logging.recording.error("  ✗ \(label) — \(error.localizedDescription)")
                     }
                 }
             }
 
             let duration = Int(Date().timeIntervalSince(startedAt))
-            Logging.LiveRecording().output("")
-            Logging.LiveRecording().info("✅ Annotation completed")
-            Logging.LiveRecording().info("   Packages annotated: \(packagesAnnotated)")
-            Logging.LiveRecording().info("   Total @available attrs: \(totalAttrs)")
-            Logging.LiveRecording().info("   Duration: \(duration)s")
+            Cupertino.Context.composition.logging.recording.output("")
+            Cupertino.Context.composition.logging.recording.info("✅ Annotation completed")
+            Cupertino.Context.composition.logging.recording.info("   Packages annotated: \(packagesAnnotated)")
+            Cupertino.Context.composition.logging.recording.info("   Total @available attrs: \(totalAttrs)")
+            Cupertino.Context.composition.logging.recording.info("   Duration: \(duration)s")
         }
 
         private func runPackageMetadataStage(outputURL: URL) async throws {
-            Logging.LiveRecording().info("📇 Stage 1/2 — Refreshing Swift Package Index metadata")
+            Cupertino.Context.composition.logging.recording.info("📇 Stage 1/2 — Refreshing Swift Package Index metadata")
 
             let fetcher = Core.PackageIndexing.PackageFetcher(
                 outputDirectory: outputURL,
                 limit: limit,
                 resume: !startClean,
-                logger: Logging.LiveRecording()
+                logger: Cupertino.Context.composition.logging.recording
             )
 
             let stats = try await fetcher.fetch { progress in
                 let percent = String(format: "%.1f", progress.percentage)
-                Logging.LiveRecording().output("   Progress: \(percent)% - \(progress.packageName)")
+                Cupertino.Context.composition.logging.recording.output("   Progress: \(percent)% - \(progress.packageName)")
             }
 
-            Logging.LiveRecording().output("")
-            Logging.LiveRecording().info("✅ Metadata refresh completed")
-            Logging.LiveRecording().info("   Total packages: \(stats.totalPackages)")
-            Logging.LiveRecording().info("   Successful: \(stats.successfulFetches)")
-            Logging.LiveRecording().info("   Errors: \(stats.errors)")
+            Cupertino.Context.composition.logging.recording.output("")
+            Cupertino.Context.composition.logging.recording.info("✅ Metadata refresh completed")
+            Cupertino.Context.composition.logging.recording.info("   Total packages: \(stats.totalPackages)")
+            Cupertino.Context.composition.logging.recording.info("   Successful: \(stats.successfulFetches)")
+            Cupertino.Context.composition.logging.recording.info("   Errors: \(stats.errors)")
             if let duration = stats.duration {
-                Logging.LiveRecording().info("   Duration: \(Int(duration))s")
+                Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(duration))s")
             }
-            Logging.LiveRecording().info("   📁 \(outputURL.path)/\(Shared.Constants.FileName.packagesWithStars)\n")
+            Cupertino.Context.composition.logging.recording.info("   📁 \(outputURL.path)/\(Shared.Constants.FileName.packagesWithStars)\n")
         }
 
         private func runPackageArchivesStage(outputURL: URL) async throws {
-            Logging.LiveRecording().info("📦 Stage 2/2 — Downloading priority package archives")
+            Cupertino.Context.composition.logging.recording.info("📦 Stage 2/2 — Downloading priority package archives")
 
             // Path-DI arc (#535): construct a `Shared.Paths` at the
             // function's composition sub-root and pass explicit URLs.
@@ -682,12 +683,12 @@ extension CLIImpl.Command {
                 let priorityPackagesPath = paths.packagesDirectory
                     .appendingPathComponent(Shared.Constants.FileName.priorityPackages)
                     .path
-                Logging.LiveRecording().error("❌ Error: No priority packages found")
-                Logging.LiveRecording().error("   Searched:")
-                Logging.LiveRecording().error("   - \(priorityPackagesPath)")
-                Logging.LiveRecording().error("   - Shared.Constants.CriticalApplePackages")
-                Logging.LiveRecording().error("   - Shared.Constants.KnownEcosystemPackages")
-                Logging.LiveRecording().error("\n   Please ensure at least one package source is configured.")
+                Cupertino.Context.composition.logging.recording.error("❌ Error: No priority packages found")
+                Cupertino.Context.composition.logging.recording.error("   Searched:")
+                Cupertino.Context.composition.logging.recording.error("   - \(priorityPackagesPath)")
+                Cupertino.Context.composition.logging.recording.error("   - Shared.Constants.CriticalApplePackages")
+                Cupertino.Context.composition.logging.recording.error("   - Shared.Constants.KnownEcosystemPackages")
+                Cupertino.Context.composition.logging.recording.error("\n   Please ensure at least one package source is configured.")
                 throw ExitCode.failure
             }
 
@@ -733,16 +734,17 @@ extension CLIImpl.Command {
                 if !refresh,
                    let cached = Core.PackageIndexing.ResolvedPackagesStore.load(from: resolvedStoreURL),
                    cached.seedChecksum == seedChecksum {
-                    Logging.LiveRecording().info("🔗 Using cached closure from resolved-packages.json (\(cached.packages.count) packages, generated \(cached.generatedAt))")
+                    Cupertino.Context.composition.logging.recording
+                        .info("🔗 Using cached closure from resolved-packages.json (\(cached.packages.count) packages, generated \(cached.generatedAt))")
                     resolvedPackages = cached.packages
                 } else {
                     if refresh {
-                        Logging.LiveRecording().info("🔗 --refresh: discarding cached closure, re-walking dependency graphs...")
+                        Cupertino.Context.composition.logging.recording.info("🔗 --refresh: discarding cached closure, re-walking dependency graphs...")
                     } else {
-                        Logging.LiveRecording().info("🔗 Resolving transitive dependencies for \(seedRefs.count) seed packages...")
+                        Cupertino.Context.composition.logging.recording.info("🔗 Resolving transitive dependencies for \(seedRefs.count) seed packages...")
                     }
                     if !exclusions.isEmpty {
-                        Logging.LiveRecording().info("   Exclusion list in effect: \(exclusions.count) entries")
+                        Cupertino.Context.composition.logging.recording.info("   Exclusion list in effect: \(exclusions.count) entries")
                     }
                     let canonicalizer = Core.PackageIndexing.GitHubCanonicalizer(cacheURL: canonicalCacheURL)
                     let manifestCache = Core.PackageIndexing.ManifestCache(
@@ -757,18 +759,18 @@ extension CLIImpl.Command {
                     )
                     let (resolved, resolverStats) = await resolver.resolve(seeds: seedRefs) { name, done, total in
                         if done == 1 || done % 10 == 0 || done == total {
-                            Logging.LiveRecording().output("   Resolving: \(done)/\(total) (\(name))")
+                            Cupertino.Context.composition.logging.recording.output("   Resolving: \(done)/\(total) (\(name))")
                         }
                     }
                     resolvedPackages = resolved
-                    Logging.LiveRecording().info("   Seeds: \(resolverStats.seedCount)")
-                    Logging.LiveRecording().info("   Discovered via dependencies: \(resolverStats.discoveredCount)")
-                    Logging.LiveRecording().info("   Excluded: \(resolverStats.excludedCount)")
-                    Logging.LiveRecording().info("   Skipped (non-GitHub): \(resolverStats.skippedNonGitHub)")
-                    Logging.LiveRecording().info("   Skipped (SPM registry id): \(resolverStats.skippedRegistry)")
-                    Logging.LiveRecording().info("   Missing manifest: \(resolverStats.missingManifest)")
-                    Logging.LiveRecording().info("   Malformed manifest: \(resolverStats.malformedManifest)")
-                    Logging.LiveRecording().info("   Resolver duration: \(Int(resolverStats.duration))s")
+                    Cupertino.Context.composition.logging.recording.info("   Seeds: \(resolverStats.seedCount)")
+                    Cupertino.Context.composition.logging.recording.info("   Discovered via dependencies: \(resolverStats.discoveredCount)")
+                    Cupertino.Context.composition.logging.recording.info("   Excluded: \(resolverStats.excludedCount)")
+                    Cupertino.Context.composition.logging.recording.info("   Skipped (non-GitHub): \(resolverStats.skippedNonGitHub)")
+                    Cupertino.Context.composition.logging.recording.info("   Skipped (SPM registry id): \(resolverStats.skippedRegistry)")
+                    Cupertino.Context.composition.logging.recording.info("   Missing manifest: \(resolverStats.missingManifest)")
+                    Cupertino.Context.composition.logging.recording.info("   Malformed manifest: \(resolverStats.malformedManifest)")
+                    Cupertino.Context.composition.logging.recording.info("   Resolver duration: \(Int(resolverStats.duration))s")
 
                     let store = Core.PackageIndexing.ResolvedPackagesStore(
                         cupertinoVersion: Shared.Constants.App.version,
@@ -777,9 +779,9 @@ extension CLIImpl.Command {
                     )
                     do {
                         try store.write(to: resolvedStoreURL)
-                        Logging.LiveRecording().info("   Saved closure to \(resolvedStoreURL.path)")
+                        Cupertino.Context.composition.logging.recording.info("   Saved closure to \(resolvedStoreURL.path)")
                     } catch {
-                        Logging.LiveRecording().error("   ⚠️  Could not persist resolved-packages.json: \(error)")
+                        Cupertino.Context.composition.logging.recording.error("   ⚠️  Could not persist resolved-packages.json: \(error)")
                     }
                 }
             } else {
@@ -792,13 +794,13 @@ extension CLIImpl.Command {
                         parents: ["\(ref.owner.lowercased())/\(ref.repo.lowercased())"]
                     )
                 }
-                Logging.LiveRecording().info("🔗 Skipping dependency resolution (--no-recurse)")
+                Cupertino.Context.composition.logging.recording.info("🔗 Skipping dependency resolution (--no-recurse)")
                 if !exclusions.isEmpty {
-                    Logging.LiveRecording().info("   Exclusion list ignored while --no-recurse is set")
+                    Cupertino.Context.composition.logging.recording.info("   Exclusion list ignored while --no-recurse is set")
                 }
             }
 
-            Logging.LiveRecording().info("📦 Fetching \(resolvedPackages.count) archives into \(outputURL.path)...")
+            Cupertino.Context.composition.logging.recording.info("📦 Fetching \(resolvedPackages.count) archives into \(outputURL.path)...")
 
             let extractor = Core.PackageIndexing.PackageArchiveExtractor()
             let startedAt = Date()
@@ -826,38 +828,38 @@ extension CLIImpl.Command {
                     stats.totalFilesSaved += extraction.files.count
                     stats.totalBytesSaved += extraction.totalBytes
                     let kb = extraction.totalBytes / 1024
-                    Logging.LiveRecording().info("  ✅ \(label) — \(extraction.files.count) files, \(kb) KB")
+                    Cupertino.Context.composition.logging.recording.info("  ✅ \(label) — \(extraction.files.count) files, \(kb) KB")
                 } catch Core.PackageIndexing.PackageArchiveExtractor.ExtractError.tarballNotFound {
                     stats.errors += 1
-                    Logging.LiveRecording().error("  ✗ \(label) — archive not found on any ref")
+                    Cupertino.Context.composition.logging.recording.error("  ✗ \(label) — archive not found on any ref")
                 } catch Core.PackageIndexing.PackageArchiveExtractor.ExtractError.tarballTooLarge(let bytes) {
                     stats.errors += 1
-                    Logging.LiveRecording().error("  ✗ \(label) — archive too large (\(bytes / 1024 / 1024) MB)")
+                    Cupertino.Context.composition.logging.recording.error("  ✗ \(label) — archive too large (\(bytes / 1024 / 1024) MB)")
                 } catch {
                     stats.errors += 1
-                    Logging.LiveRecording().error("  ✗ \(label) — \(error.localizedDescription)")
+                    Cupertino.Context.composition.logging.recording.error("  ✗ \(label) — \(error.localizedDescription)")
                 }
 
                 if (idx + 1) % Shared.Constants.Interval.progressLogEvery == 0 || idx + 1 == resolvedPackages.count {
                     let percent = Double(idx + 1) / Double(resolvedPackages.count) * 100
-                    Logging.LiveRecording().output(
+                    Cupertino.Context.composition.logging.recording.output(
                         String(format: "📊 Progress: %.1f%% (%d/%d)", percent, idx + 1, resolvedPackages.count)
                     )
                 }
             }
             stats.endTime = Date()
 
-            Logging.LiveRecording().output("")
-            Logging.LiveRecording().info("✅ Archive download completed")
-            Logging.LiveRecording().info("   New packages: \(stats.newPackages)")
-            Logging.LiveRecording().info("   Files saved: \(stats.totalFilesSaved)")
-            Logging.LiveRecording().info("   Bytes saved: \(stats.totalBytesSaved / 1024) KB")
-            Logging.LiveRecording().info("   Errors: \(stats.errors)")
+            Cupertino.Context.composition.logging.recording.output("")
+            Cupertino.Context.composition.logging.recording.info("✅ Archive download completed")
+            Cupertino.Context.composition.logging.recording.info("   New packages: \(stats.newPackages)")
+            Cupertino.Context.composition.logging.recording.info("   Files saved: \(stats.totalFilesSaved)")
+            Cupertino.Context.composition.logging.recording.info("   Bytes saved: \(stats.totalBytesSaved / 1024) KB")
+            Cupertino.Context.composition.logging.recording.info("   Errors: \(stats.errors)")
             if let duration = stats.duration {
-                Logging.LiveRecording().info("   Duration: \(Int(duration))s")
+                Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(duration))s")
             }
-            Logging.LiveRecording().info("   📁 \(outputURL.path)")
-            Logging.LiveRecording().info("   Next: index them into \(paths.packagesDatabase.path) via `save --packages`")
+            Cupertino.Context.composition.logging.recording.info("   📁 \(outputURL.path)")
+            Cupertino.Context.composition.logging.recording.info("   Next: index them into \(paths.packagesDatabase.path) via `save --packages`")
         }
 
         private func writePackageManifest(
@@ -905,22 +907,22 @@ extension CLIImpl.Command {
             let crawler = await Sample.Core.Downloader(
                 outputDirectory: outputURL,
                 maxSamples: limit,
-                forceDownload: force, logger: Logging.LiveRecording()
+                forceDownload: force, logger: Cupertino.Context.composition.logging.recording
             )
 
             let stats = try await crawler.download { progress in
                 let percent = String(format: "%.1f", progress.percentage)
-                Logging.LiveRecording().output("   Progress: \(percent)% - \(progress.sampleName)")
+                Cupertino.Context.composition.logging.recording.output("   Progress: \(percent)% - \(progress.sampleName)")
             }
 
-            Logging.LiveRecording().output("")
-            Logging.LiveRecording().info("✅ Download completed!")
-            Logging.LiveRecording().info("   Total: \(stats.totalSamples) samples")
-            Logging.LiveRecording().info("   Downloaded: \(stats.downloadedSamples)")
-            Logging.LiveRecording().info("   Skipped: \(stats.skippedSamples)")
-            Logging.LiveRecording().info("   Errors: \(stats.errors)")
+            Cupertino.Context.composition.logging.recording.output("")
+            Cupertino.Context.composition.logging.recording.info("✅ Download completed!")
+            Cupertino.Context.composition.logging.recording.info("   Total: \(stats.totalSamples) samples")
+            Cupertino.Context.composition.logging.recording.info("   Downloaded: \(stats.downloadedSamples)")
+            Cupertino.Context.composition.logging.recording.info("   Skipped: \(stats.skippedSamples)")
+            Cupertino.Context.composition.logging.recording.info("   Errors: \(stats.errors)")
             if let duration = stats.duration {
-                Logging.LiveRecording().info("   Duration: \(Int(duration))s")
+                Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(duration))s")
             }
         }
 
@@ -928,20 +930,20 @@ extension CLIImpl.Command {
             let defaultPath = Shared.Paths.live().sampleCodeDirectory.path
             let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
 
-            let fetcher = Sample.Core.GitHubFetcher(outputDirectory: outputURL, logger: Logging.LiveRecording())
+            let fetcher = Sample.Core.GitHubFetcher(outputDirectory: outputURL, logger: Cupertino.Context.composition.logging.recording)
 
             let stats = try await fetcher.fetch { progress in
-                Logging.LiveRecording().output("   \(progress.message)")
+                Cupertino.Context.composition.logging.recording.output("   \(progress.message)")
             }
 
-            Logging.LiveRecording().output("")
-            Logging.LiveRecording().info("✅ Fetch completed!")
-            Logging.LiveRecording().info("   Action: \(stats.action.description)")
-            Logging.LiveRecording().info("   Projects: \(stats.projectCount)")
+            Cupertino.Context.composition.logging.recording.output("")
+            Cupertino.Context.composition.logging.recording.info("✅ Fetch completed!")
+            Cupertino.Context.composition.logging.recording.info("   Action: \(stats.action.description)")
+            Cupertino.Context.composition.logging.recording.info("   Projects: \(stats.projectCount)")
             if let duration = stats.duration {
-                Logging.LiveRecording().info("   Duration: \(Int(duration))s")
+                Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(duration))s")
             }
-            Logging.LiveRecording().info("\n📁 Output: \(outputURL.path)/cupertino-sample-code")
+            Cupertino.Context.composition.logging.recording.info("\n📁 Output: \(outputURL.path)/cupertino-sample-code")
         }
 
         private func runArchiveCrawl() async throws {
@@ -954,14 +956,14 @@ extension CLIImpl.Command {
             let guides = try await loadArchiveGuides()
 
             guard !guides.isEmpty else {
-                Logging.LiveRecording().error("❌ No archive guides configured")
-                Logging.LiveRecording().info("   Use --start-url to specify guide URLs or configure the manifest")
+                Cupertino.Context.composition.logging.recording.error("❌ No archive guides configured")
+                Cupertino.Context.composition.logging.recording.info("   Use --start-url to specify guide URLs or configure the manifest")
                 throw ExitCode.failure
             }
 
-            Logging.LiveRecording().info("📚 Crawling \(guides.count) Apple Archive guides...")
-            Logging.LiveRecording().info("   Output: \(outputURL.path)\n")
-            let logger: any LoggingModels.Logging.Recording = Logging.LiveRecording()
+            Cupertino.Context.composition.logging.recording.info("📚 Crawling \(guides.count) Apple Archive guides...")
+            Cupertino.Context.composition.logging.recording.info("   Output: \(outputURL.path)\n")
+            let logger: any LoggingModels.Logging.Recording = Cupertino.Context.composition.logging.recording
 
             let crawler = await Crawler.AppleArchive(
                 outputDirectory: outputURL,
@@ -972,21 +974,21 @@ extension CLIImpl.Command {
 
             let stats = try await crawler.crawl { progress in
                 let percent = String(format: "%.1f", progress.percentage)
-                Logging.LiveRecording().output("   Progress: \(percent)% - \(progress.currentItem)")
+                Cupertino.Context.composition.logging.recording.output("   Progress: \(percent)% - \(progress.currentItem)")
             }
 
-            Logging.LiveRecording().output("")
-            Logging.LiveRecording().info("✅ Crawl completed!")
-            Logging.LiveRecording().info("   Total guides: \(stats.totalGuides)")
-            Logging.LiveRecording().info("   Total pages: \(stats.totalPages)")
-            Logging.LiveRecording().info("   New: \(stats.newPages)")
-            Logging.LiveRecording().info("   Updated: \(stats.updatedPages)")
-            Logging.LiveRecording().info("   Skipped: \(stats.skippedPages)")
-            Logging.LiveRecording().info("   Errors: \(stats.errors)")
+            Cupertino.Context.composition.logging.recording.output("")
+            Cupertino.Context.composition.logging.recording.info("✅ Crawl completed!")
+            Cupertino.Context.composition.logging.recording.info("   Total guides: \(stats.totalGuides)")
+            Cupertino.Context.composition.logging.recording.info("   Total pages: \(stats.totalPages)")
+            Cupertino.Context.composition.logging.recording.info("   New: \(stats.newPages)")
+            Cupertino.Context.composition.logging.recording.info("   Updated: \(stats.updatedPages)")
+            Cupertino.Context.composition.logging.recording.info("   Skipped: \(stats.skippedPages)")
+            Cupertino.Context.composition.logging.recording.info("   Errors: \(stats.errors)")
             if let duration = stats.duration {
-                Logging.LiveRecording().info("   Duration: \(Int(duration))s")
+                Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(duration))s")
             }
-            Logging.LiveRecording().info("\n📁 Output: \(outputURL.path)/")
+            Cupertino.Context.composition.logging.recording.info("\n📁 Output: \(outputURL.path)/")
         }
 
         private func runHIGCrawl() async throws {
@@ -995,9 +997,9 @@ extension CLIImpl.Command {
 
             try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
 
-            Logging.LiveRecording().info("📖 Crawling Human Interface Guidelines...")
-            Logging.LiveRecording().info("   Output: \(outputURL.path)\n")
-            let logger: any LoggingModels.Logging.Recording = Logging.LiveRecording()
+            Cupertino.Context.composition.logging.recording.info("📖 Crawling Human Interface Guidelines...")
+            Cupertino.Context.composition.logging.recording.info("   Output: \(outputURL.path)\n")
+            let logger: any LoggingModels.Logging.Recording = Cupertino.Context.composition.logging.recording
 
             let crawler = await Crawler.HIG(
                 outputDirectory: outputURL,
@@ -1007,20 +1009,20 @@ extension CLIImpl.Command {
 
             let stats = try await crawler.crawl { progress in
                 let percent = String(format: "%.1f", progress.percentage)
-                Logging.LiveRecording().output("   Progress: \(percent)% - \(progress.currentItem)")
+                Cupertino.Context.composition.logging.recording.output("   Progress: \(percent)% - \(progress.currentItem)")
             }
 
-            Logging.LiveRecording().output("")
-            Logging.LiveRecording().info("✅ Crawl completed!")
-            Logging.LiveRecording().info("   Total pages: \(stats.totalPages)")
-            Logging.LiveRecording().info("   New: \(stats.newPages)")
-            Logging.LiveRecording().info("   Updated: \(stats.updatedPages)")
-            Logging.LiveRecording().info("   Skipped: \(stats.skippedPages)")
-            Logging.LiveRecording().info("   Errors: \(stats.errors)")
+            Cupertino.Context.composition.logging.recording.output("")
+            Cupertino.Context.composition.logging.recording.info("✅ Crawl completed!")
+            Cupertino.Context.composition.logging.recording.info("   Total pages: \(stats.totalPages)")
+            Cupertino.Context.composition.logging.recording.info("   New: \(stats.newPages)")
+            Cupertino.Context.composition.logging.recording.info("   Updated: \(stats.updatedPages)")
+            Cupertino.Context.composition.logging.recording.info("   Skipped: \(stats.skippedPages)")
+            Cupertino.Context.composition.logging.recording.info("   Errors: \(stats.errors)")
             if let duration = stats.duration {
-                Logging.LiveRecording().info("   Duration: \(Int(duration))s")
+                Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(duration))s")
             }
-            Logging.LiveRecording().info("\n📁 Output: \(outputURL.path)/")
+            Cupertino.Context.composition.logging.recording.info("\n📁 Output: \(outputURL.path)/")
         }
 
         private func loadArchiveGuides() async throws -> [Crawler.AppleArchive.GuideInfo] {
@@ -1040,14 +1042,14 @@ extension CLIImpl.Command {
                 ?? Shared.Paths.live().docsDirectory
 
             guard FileManager.default.fileExists(atPath: docsDir.path) else {
-                Logging.LiveRecording().error("❌ Documentation directory not found: \(docsDir.path)")
-                Logging.LiveRecording().info("   Run 'cupertino fetch --type docs' first to download documentation.")
+                Cupertino.Context.composition.logging.recording.error("❌ Documentation directory not found: \(docsDir.path)")
+                Cupertino.Context.composition.logging.recording.info("   Run 'cupertino fetch --type docs' first to download documentation.")
                 throw ExitCode.failure
             }
 
-            Logging.LiveRecording().info("📊 Fetching API availability data...")
-            Logging.LiveRecording().info("   Source: \(docsDir.path)")
-            Logging.LiveRecording().info("   API: developer.apple.com/tutorials/data/documentation\n")
+            Cupertino.Context.composition.logging.recording.info("📊 Fetching API availability data...")
+            Cupertino.Context.composition.logging.recording.info("   Source: \(docsDir.path)")
+            Cupertino.Context.composition.logging.recording.info("   API: developer.apple.com/tutorials/data/documentation\n")
 
             let configuration: Availability.Fetcher.Configuration
             if fast {
@@ -1070,21 +1072,21 @@ extension CLIImpl.Command {
                 let successRate = progress.completed > 0
                     ? String(format: "%.0f", Double(progress.successful) / Double(progress.completed) * 100)
                     : "0"
-                Logging.LiveRecording().output(
+                Cupertino.Context.composition.logging.recording.output(
                     "   Progress: \(percent)% [\(progress.currentFramework)] \(successRate)% success"
                 )
             }
 
-            Logging.LiveRecording().output("")
-            Logging.LiveRecording().info("✅ Availability fetch completed!")
-            Logging.LiveRecording().info("   Documents scanned: \(stats.totalDocuments)")
-            Logging.LiveRecording().info("   Updated: \(stats.updatedDocuments)")
-            Logging.LiveRecording().info("   Skipped: \(stats.skippedDocuments)")
-            Logging.LiveRecording().info("   Failed: \(stats.failedFetches)")
-            Logging.LiveRecording().info("   Frameworks: \(stats.frameworksProcessed)")
-            Logging.LiveRecording().info("   Success rate: \(String(format: "%.1f", stats.successRate))%")
+            Cupertino.Context.composition.logging.recording.output("")
+            Cupertino.Context.composition.logging.recording.info("✅ Availability fetch completed!")
+            Cupertino.Context.composition.logging.recording.info("   Documents scanned: \(stats.totalDocuments)")
+            Cupertino.Context.composition.logging.recording.info("   Updated: \(stats.updatedDocuments)")
+            Cupertino.Context.composition.logging.recording.info("   Skipped: \(stats.skippedDocuments)")
+            Cupertino.Context.composition.logging.recording.info("   Failed: \(stats.failedFetches)")
+            Cupertino.Context.composition.logging.recording.info("   Frameworks: \(stats.frameworksProcessed)")
+            Cupertino.Context.composition.logging.recording.info("   Success rate: \(String(format: "%.1f", stats.successRate))%")
             if let duration = stats.duration {
-                Logging.LiveRecording().info("   Duration: \(Int(duration))s")
+                Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(duration))s")
             }
         }
     }

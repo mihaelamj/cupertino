@@ -2,13 +2,14 @@ import CoreJSONParser
 import CoreProtocols
 import CoreSampleCode
 import Foundation
-import LoggingModels
 import Indexer
 import Logging
+import LoggingModels
 import SampleIndex
 import Search
 import SearchModels
 import SharedConstants
+
 // MARK: - Indexer dispatch + progress rendering (#244)
 
 /// Per-source indexer dispatchers split out of `CLIImpl.Command.Save.swift` so the
@@ -20,7 +21,7 @@ extension CLIImpl.Command.Save {
     // MARK: - Docs
 
     func runDocsIndexer(effectiveBase: URL) async throws {
-        Logging.LiveRecording().info("🔨 Building Search Index\n")
+        Cupertino.Context.composition.logging.recording.info("🔨 Building Search Index\n")
 
         let request = Indexer.DocsService.Request(
             baseDir: effectiveBase,
@@ -60,7 +61,7 @@ extension CLIImpl.Command.Save {
             input: Search.DocsIndexingInput,
             onProgress: @escaping @Sendable (Int, Int) -> Void
         ) async throws -> Search.DocsIndexingOutcome {
-            let searchIndex = try await Search.Index(dbPath: input.searchDBPath, logger: Logging.LiveRecording())
+            let searchIndex = try await Search.Index(dbPath: input.searchDBPath, logger: Cupertino.Context.composition.logging.recording)
             let builder = Search.IndexBuilder(
                 searchIndex: searchIndex,
                 metadata: nil,
@@ -70,7 +71,7 @@ extension CLIImpl.Command.Save {
                 archiveDirectory: input.archiveDirectory,
                 higDirectory: input.higDirectory,
                 markdownStrategy: input.markdownStrategy,
-                sampleCatalogProvider: input.sampleCatalogProvider, logger: Logging.LiveRecording()
+                sampleCatalogProvider: input.sampleCatalogProvider, logger: Cupertino.Context.composition.logging.recording
             )
             try await builder.buildIndex(clearExisting: input.clearExisting, onProgress: onProgress)
             let docCount = try await searchIndex.documentCount()
@@ -137,19 +138,19 @@ extension CLIImpl.Command.Save {
     ) {
         switch event {
         case .removingExistingDB:
-            Logging.LiveRecording().info("🗑️  Removing existing database for clean re-index...")
+            Cupertino.Context.composition.logging.recording.info("🗑️  Removing existing database for clean re-index...")
         case .initializingIndex:
-            Logging.LiveRecording().info("🗄️  Initializing search database...")
+            Cupertino.Context.composition.logging.recording.info("🗄️  Initializing search database...")
         case .missingOptionalSource(let label, let url):
-            Logging.LiveRecording().info("ℹ️  \(label) directory not found at \(url.path), skipping")
+            Cupertino.Context.composition.logging.recording.info("ℹ️  \(label) directory not found at \(url.path), skipping")
         case .availabilityMissing:
-            Logging.LiveRecording().info("")
-            Logging.LiveRecording().info("⚠️  Docs don't have availability data yet")
-            Logging.LiveRecording().info("   Run 'cupertino fetch --type availability' first for best results")
-            Logging.LiveRecording().info("")
+            Cupertino.Context.composition.logging.recording.info("")
+            Cupertino.Context.composition.logging.recording.info("⚠️  Docs don't have availability data yet")
+            Cupertino.Context.composition.logging.recording.info("   Run 'cupertino fetch --type availability' first for best results")
+            Cupertino.Context.composition.logging.recording.info("")
         case .progress(let processed, let total, let percent):
             if percent - tracker.lastPercent >= 5.0 {
-                Logging.LiveRecording().output(
+                Cupertino.Context.composition.logging.recording.output(
                     "   \(String(format: "%.0f%%", percent)) complete (\(processed)/\(total))"
                 )
                 tracker.lastPercent = percent
@@ -160,13 +161,13 @@ extension CLIImpl.Command.Save {
     }
 
     static func printDocsSummary(outcome: Indexer.DocsService.Outcome) {
-        Logging.LiveRecording().output("")
-        Logging.LiveRecording().info("✅ Search index built successfully!")
-        Logging.LiveRecording().info("   Total documents: \(outcome.documentCount)")
-        Logging.LiveRecording().info("   Frameworks: \(outcome.frameworkCount)")
-        Logging.LiveRecording().info("   Database: \(outcome.searchDBPath.path)")
-        Logging.LiveRecording().info("   Size: \(CLIImpl.Command.Save.formatFileSize(outcome.searchDBPath))")
-        Logging.LiveRecording().info(
+        Cupertino.Context.composition.logging.recording.output("")
+        Cupertino.Context.composition.logging.recording.info("✅ Search index built successfully!")
+        Cupertino.Context.composition.logging.recording.info("   Total documents: \(outcome.documentCount)")
+        Cupertino.Context.composition.logging.recording.info("   Frameworks: \(outcome.frameworkCount)")
+        Cupertino.Context.composition.logging.recording.info("   Database: \(outcome.searchDBPath.path)")
+        Cupertino.Context.composition.logging.recording.info("   Size: \(CLIImpl.Command.Save.formatFileSize(outcome.searchDBPath))")
+        Cupertino.Context.composition.logging.recording.info(
             "\n💡 Tip: Start the MCP server with '\(Shared.Constants.App.commandName) serve' to enable search"
         )
     }
@@ -177,7 +178,7 @@ extension CLIImpl.Command.Save {
         let packagesRoot = packagesDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? effectiveBase.appendingPathComponent(Shared.Constants.Directory.packages)
         guard FileManager.default.fileExists(atPath: packagesRoot.path) else {
-            Logging.LiveRecording().info(
+            Cupertino.Context.composition.logging.recording.info(
                 "ℹ️  packages directory not found at \(packagesRoot.path) — skipping packages step. "
                     + "Run `cupertino fetch --type packages` first."
             )
@@ -213,7 +214,7 @@ extension CLIImpl.Command.Save {
             onProgress: @escaping @Sendable (String, Int, Int) -> Void
         ) async throws -> Search.PackageIndexingOutcome {
             let startedAt = Date()
-            let index = try await Search.PackageIndex(dbPath: packagesDB, logger: Logging.LiveRecording())
+            let index = try await Search.PackageIndex(dbPath: packagesDB, logger: Cupertino.Context.composition.logging.recording)
             let indexer = Search.PackageIndexer(rootDirectory: packagesRoot, index: index)
             let stats = try await indexer.indexAll { name, done, total in
                 onProgress(name, done, total)
@@ -236,12 +237,12 @@ extension CLIImpl.Command.Save {
     static func handlePackagesEvent(_ event: Indexer.PackagesService.Event) {
         switch event {
         case .starting(let root, let db):
-            Logging.LiveRecording().info("🔨 Indexing packages from \(root.path) into \(db.path)")
+            Cupertino.Context.composition.logging.recording.info("🔨 Indexing packages from \(root.path) into \(db.path)")
         case .removingExistingDB(let url):
-            Logging.LiveRecording().info("🗑️  --clear: removing existing \(url.lastPathComponent)")
+            Cupertino.Context.composition.logging.recording.info("🗑️  --clear: removing existing \(url.lastPathComponent)")
         case .progress(let name, let done, let total):
             if done == 1 || done % 10 == 0 || done == total {
-                Logging.LiveRecording().output(String(format: "📊 %d/%d — %@", done, total, name as NSString))
+                Cupertino.Context.composition.logging.recording.output(String(format: "📊 %d/%d — %@", done, total, name as NSString))
             }
         case .finished(let outcome):
             Self.printPackagesSummary(outcome: outcome)
@@ -249,17 +250,17 @@ extension CLIImpl.Command.Save {
     }
 
     static func printPackagesSummary(outcome: Indexer.PackagesService.Outcome) {
-        Logging.LiveRecording().output("")
-        Logging.LiveRecording().info("✅ Package indexing completed")
-        Logging.LiveRecording().info("   Packages indexed this run: \(outcome.packagesIndexed)")
-        Logging.LiveRecording().info("   Packages failed: \(outcome.packagesFailed)")
-        Logging.LiveRecording().info("   Files this run: \(outcome.totalFiles)")
-        Logging.LiveRecording().info("   Bytes this run: \(outcome.totalBytes / 1024) KB")
-        Logging.LiveRecording().info("   Duration: \(Int(outcome.durationSeconds))s")
-        Logging.LiveRecording().info("")
-        Logging.LiveRecording().info("   Total packages in DB: \(outcome.totalPackagesInDB)")
-        Logging.LiveRecording().info("   Total files in DB: \(outcome.totalFilesInDB)")
-        Logging.LiveRecording().info("   Total bytes in DB: \(outcome.totalBytesInDB / 1024) KB")
+        Cupertino.Context.composition.logging.recording.output("")
+        Cupertino.Context.composition.logging.recording.info("✅ Package indexing completed")
+        Cupertino.Context.composition.logging.recording.info("   Packages indexed this run: \(outcome.packagesIndexed)")
+        Cupertino.Context.composition.logging.recording.info("   Packages failed: \(outcome.packagesFailed)")
+        Cupertino.Context.composition.logging.recording.info("   Files this run: \(outcome.totalFiles)")
+        Cupertino.Context.composition.logging.recording.info("   Bytes this run: \(outcome.totalBytes / 1024) KB")
+        Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(outcome.durationSeconds))s")
+        Cupertino.Context.composition.logging.recording.info("")
+        Cupertino.Context.composition.logging.recording.info("   Total packages in DB: \(outcome.totalPackagesInDB)")
+        Cupertino.Context.composition.logging.recording.info("   Total files in DB: \(outcome.totalFilesInDB)")
+        Cupertino.Context.composition.logging.recording.info("   Total bytes in DB: \(outcome.totalBytesInDB / 1024) KB")
     }
 
     // MARK: - Samples
@@ -270,7 +271,7 @@ extension CLIImpl.Command.Save {
         let sampleCodeURL = samplesDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? Sample.Index.sampleCodeDirectory(baseDirectory: baseDir)
         guard FileManager.default.fileExists(atPath: sampleCodeURL.path) else {
-            Logging.LiveRecording().info(
+            Cupertino.Context.composition.logging.recording.info(
                 "ℹ️  sample-code directory not found at \(sampleCodeURL.path) — skipping samples step. "
                     + "Run `cupertino fetch --type samples` first."
             )
@@ -310,7 +311,7 @@ extension CLIImpl.Command.Save {
             input: Sample.Index.SamplesIndexingInput,
             onPhase: @escaping @Sendable (Sample.Index.SamplesIndexingPhase) -> Void
         ) async throws -> Sample.Index.SamplesIndexingOutcome {
-            let database = try await Sample.Index.Database(dbPath: input.samplesDB, logger: Logging.LiveRecording())
+            let database = try await Sample.Index.Database(dbPath: input.samplesDB, logger: Cupertino.Context.composition.logging.recording)
             if input.clear {
                 onPhase(.clearingExistingIndex)
                 try await database.clearAll()
@@ -388,30 +389,30 @@ extension CLIImpl.Command.Save {
     ) {
         switch event {
         case .starting(let dir, let db):
-            Logging.LiveRecording().output("📦 Cupertino - Sample Code Indexer\n")
-            Logging.LiveRecording().output("   Sample code: \(dir.path)")
-            Logging.LiveRecording().output("   Database: \(db.path)")
-            Logging.LiveRecording().output("")
+            Cupertino.Context.composition.logging.recording.output("📦 Cupertino - Sample Code Indexer\n")
+            Cupertino.Context.composition.logging.recording.output("   Sample code: \(dir.path)")
+            Cupertino.Context.composition.logging.recording.output("   Database: \(db.path)")
+            Cupertino.Context.composition.logging.recording.output("")
         case .removingExistingDB:
-            Logging.LiveRecording().output("🗑️  Removing existing database for fresh index...")
+            Cupertino.Context.composition.logging.recording.output("🗑️  Removing existing database for fresh index...")
         case .clearingExistingIndex:
-            Logging.LiveRecording().output("🗑️  Clearing existing index...")
+            Cupertino.Context.composition.logging.recording.output("🗑️  Clearing existing index...")
         case .existingIndexNotice(let projects, let files):
-            Logging.LiveRecording().output("ℹ️  Found existing index with \(projects) projects, \(files) files")
-            Logging.LiveRecording().output("   Use --force to reindex all, or --clear to start fresh")
-            Logging.LiveRecording().output("")
+            Cupertino.Context.composition.logging.recording.output("ℹ️  Found existing index with \(projects) projects, \(files) files")
+            Cupertino.Context.composition.logging.recording.output("   Use --force to reindex all, or --clear to start fresh")
+            Cupertino.Context.composition.logging.recording.output("")
         case .loadingCatalog:
-            Logging.LiveRecording().output("📖 Loading sample code catalog...")
+            Cupertino.Context.composition.logging.recording.output("📖 Loading sample code catalog...")
         case .catalogLoaded(let count):
-            Logging.LiveRecording().output("   Found \(count) entries in catalog")
+            Cupertino.Context.composition.logging.recording.output("   Found \(count) entries in catalog")
         case .indexingStart:
-            Logging.LiveRecording().output("")
-            Logging.LiveRecording().output("📇 Indexing sample code...")
-            Logging.LiveRecording().output("")
+            Cupertino.Context.composition.logging.recording.output("")
+            Cupertino.Context.composition.logging.recording.output("📇 Indexing sample code...")
+            Cupertino.Context.composition.logging.recording.output("")
         case .projectProgress(let name, let percent, let phase):
             if percent - tracker.lastPercent >= 5.0 || phase == .completed {
                 let icon = phaseIcon(phase)
-                Logging.LiveRecording().output("   [\(String(format: "%3.0f%%", percent))] \(icon) \(name)")
+                Cupertino.Context.composition.logging.recording.output("   [\(String(format: "%3.0f%%", percent))] \(icon) \(name)")
                 tracker.lastPercent = percent
             }
         case .finished(let outcome):
@@ -429,16 +430,16 @@ extension CLIImpl.Command.Save {
     }
 
     static func printSamplesSummary(outcome: Indexer.SamplesService.Outcome) {
-        Logging.LiveRecording().output("")
-        Logging.LiveRecording().output("✅ Indexing complete!")
-        Logging.LiveRecording().output("")
-        Logging.LiveRecording().output("   Projects indexed: \(outcome.projectsIndexedThisRun)")
-        Logging.LiveRecording().output("   Total projects: \(outcome.projectsTotal)")
-        Logging.LiveRecording().output("   Total files: \(outcome.filesTotal)")
-        Logging.LiveRecording().output("   Symbols extracted: \(outcome.symbolsTotal)")
-        Logging.LiveRecording().output("   Imports captured: \(outcome.importsTotal)")
-        Logging.LiveRecording().output("   Duration: \(Int(outcome.durationSeconds))s")
-        Logging.LiveRecording().output("   Database: \(CLIImpl.Command.Save.formatFileSize(outcome.samplesDBPath))")
+        Cupertino.Context.composition.logging.recording.output("")
+        Cupertino.Context.composition.logging.recording.output("✅ Indexing complete!")
+        Cupertino.Context.composition.logging.recording.output("")
+        Cupertino.Context.composition.logging.recording.output("   Projects indexed: \(outcome.projectsIndexedThisRun)")
+        Cupertino.Context.composition.logging.recording.output("   Total projects: \(outcome.projectsTotal)")
+        Cupertino.Context.composition.logging.recording.output("   Total files: \(outcome.filesTotal)")
+        Cupertino.Context.composition.logging.recording.output("   Symbols extracted: \(outcome.symbolsTotal)")
+        Cupertino.Context.composition.logging.recording.output("   Imports captured: \(outcome.importsTotal)")
+        Cupertino.Context.composition.logging.recording.output("   Duration: \(Int(outcome.durationSeconds))s")
+        Cupertino.Context.composition.logging.recording.output("   Database: \(CLIImpl.Command.Save.formatFileSize(outcome.samplesDBPath))")
     }
 
     /// Class wrapper so `@Sendable` callbacks can mutate `lastPercent`.

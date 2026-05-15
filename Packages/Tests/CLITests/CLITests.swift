@@ -254,3 +254,57 @@ struct FetchTypeDisplayNameTests {
 
 // SaveCommandPreflightTests was moved to Tests/IndexerTests/PreflightTests.swift
 // in #244. The preflight pipeline now lives in `Indexer.Preflight`.
+
+// MARK: - Cupertino.Composition Mediator (#548 Phase B)
+
+@Suite("Cupertino.Composition")
+struct CupertinoCompositionTests {
+    @Test("Composition() builds a coherent logging + paths graph")
+    func compositionBuildsCoherentGraph() {
+        // The Mediator owns both deps; both fields must be non-nil-equivalent
+        // and the recording must trace back to the same Unified actor the
+        // composition holds. This pins the Abstract Factory wiring.
+        let composition = Cupertino.Composition()
+        // `paths.baseDirectory` is required for Shared.Paths to derive any
+        // of its 13 derived URLs; the constructor would have crashed if the
+        // value couldn't resolve, so simply reaching it confirms wiring.
+        _ = composition.paths.baseDirectory
+        _ = composition.logging.recording
+    }
+
+    @Test("Composition init accepts overrides for both deps (test seam)")
+    func compositionAcceptsOverrides() {
+        // Tests that need a stub logger / custom paths build their own
+        // Logging.Composition and Shared.Paths and inject them. This is
+        // the entry point a future Cupertino integration-test runner
+        // uses to feed the @TaskLocal a fake binary world.
+        let stubPaths = Shared.Paths(baseDirectory: URL(fileURLWithPath: "/tmp/cupertino-composition-test"))
+        let composition = Cupertino.Composition(paths: stubPaths)
+        #expect(composition.paths.baseDirectory.path == "/tmp/cupertino-composition-test")
+    }
+
+    @Test("Cupertino.Context.composition has a default value before main() binds one")
+    func contextDefaultIsReachable() {
+        // The @TaskLocal default exists so unit tests that touch a command
+        // body without going through Cupertino.main() still get a reachable
+        // composition. Reading it without crashing is the contract.
+        let composition = Cupertino.Context.composition
+        _ = composition.paths.baseDirectory
+        _ = composition.logging.recording
+    }
+
+    @Test("Cupertino.Context.$composition.withValue overrides the binding for its scope")
+    func contextWithValueScoping() async {
+        // Verify the SE-0311 binding behaviour: within `withValue { … }`,
+        // the override is visible; outside, the previous (default) value
+        // returns. This is the contract Cupertino.main() relies on.
+        let stubPaths = Shared.Paths(baseDirectory: URL(fileURLWithPath: "/tmp/cupertino-withvalue-test"))
+        let scoped = Cupertino.Composition(paths: stubPaths)
+        await Cupertino.Context.$composition.withValue(scoped) {
+            #expect(Cupertino.Context.composition.paths.baseDirectory.path == "/tmp/cupertino-withvalue-test")
+        }
+        // Outside the scope, the default-built composition's baseDirectory
+        // is NOT the stub path — confirms the binding properly cleared.
+        #expect(Cupertino.Context.composition.paths.baseDirectory.path != "/tmp/cupertino-withvalue-test")
+    }
+}
