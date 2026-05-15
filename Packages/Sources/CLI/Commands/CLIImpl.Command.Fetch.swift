@@ -909,22 +909,33 @@ extension CLIImpl.Command {
             try data.write(to: destination.appendingPathComponent("manifest.json"))
         }
 
+        /// Closure-free observer for the legacy code-fetch command that
+        /// prints per-sample progress through the binary's recorder.
+        /// Mirrors `GitHubFetcherProgressObserver` from #567.
+        private struct DownloaderProgressObserver: Sample.Core.DownloaderProgressObserving {
+            let recording: any LoggingModels.Logging.Recording
+
+            func observe(progress: Sample.Core.Progress) {
+                let percent = String(format: "%.1f", progress.percentage)
+                recording.output("   Progress: \(percent)% - \(progress.sampleName)")
+            }
+        }
+
         private func runCodeFetch() async throws {
             let defaultPath = Shared.Paths.live().sampleCodeDirectory.path
             let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
 
             try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
 
+            let recording = Cupertino.Context.composition.logging.recording
             let crawler = await Sample.Core.Downloader(
                 outputDirectory: outputURL,
                 maxSamples: limit,
-                forceDownload: force, logger: Cupertino.Context.composition.logging.recording
+                forceDownload: force, logger: recording
             )
 
-            let stats = try await crawler.download { progress in
-                let percent = String(format: "%.1f", progress.percentage)
-                Cupertino.Context.composition.logging.recording.output("   Progress: \(percent)% - \(progress.sampleName)")
-            }
+            let observer = DownloaderProgressObserver(recording: recording)
+            let stats = try await crawler.download(progress: observer)
 
             Cupertino.Context.composition.logging.recording.output("")
             Cupertino.Context.composition.logging.recording.info("✅ Download completed!")

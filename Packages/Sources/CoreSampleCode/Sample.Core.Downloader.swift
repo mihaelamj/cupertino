@@ -1,3 +1,4 @@
+import CoreSampleCodeModels
 import Foundation
 import LoggingModels
 import WebKit
@@ -85,8 +86,18 @@ extension Sample.Core {
 
         // MARK: - Public API
 
-        /// Download sample code projects
-        public func download(onProgress: (@Sendable (Sample.Core.Progress) -> Void)? = nil) async throws -> Sample.Core.Statistics {
+        /// Download sample code projects.
+        ///
+        /// `progress` is a GoF Observer (1994 p. 293) replacing the
+        /// previous `((Sample.Core.Progress) -> Void)?` closure. The
+        /// Observer protocol + payload value type live in the
+        /// foundation-only `CoreSampleCodeModels` seam target
+        /// (`Sample.Core.DownloaderProgressObserving` /
+        /// `Sample.Core.Progress`) so any conformer can implement
+        /// without `import CoreSampleCode` pulling in WebKit / AppKit.
+        public func download(
+            progress: (any Sample.Core.DownloaderProgressObserving)? = nil
+        ) async throws -> Sample.Core.Statistics {
             var stats = Sample.Core.Statistics(startTime: Date())
 
             logInfo("🚀 Starting sample code downloader")
@@ -124,15 +135,15 @@ extension Sample.Core {
                 do {
                     try await downloadSample(sample, stats: &stats)
 
-                    // Progress callback
-                    if let onProgress {
-                        let progress = Sample.Core.Progress(
+                    // Observer notify
+                    if let progress {
+                        let event = Sample.Core.Progress(
                             current: index + 1,
                             total: samplesToDownload.count,
                             sampleName: sample.name,
                             stats: stats
                         )
-                        onProgress(progress)
+                        progress.observe(progress: event)
                     }
 
                     // Rate limiting - be respectful to Apple's servers
