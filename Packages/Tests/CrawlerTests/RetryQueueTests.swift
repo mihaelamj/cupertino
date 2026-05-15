@@ -236,13 +236,29 @@ struct RetryQueueTests {
         #expect(record.reason == .httpErrorTemplate)
         #expect(record.url == targetURL)
 
-        // The URL must not remain in the pending queue: exhaustion calls
-        // recordError() instead of re-queuing, so errors > 0.
-        #expect(stats.errors > 0, "Exhausted URL must increment the error counter, not be re-queued")
+        // Exhausted retry is a rejection, not an error. The JSONL log check
+        // above is the authoritative AC-4 verification; errors must stay at 0.
+        #expect(stats.errors == 0, "Exhausted retry URLs are rejections — must not increment the error counter")
     }
 }
 
 // MARK: - Test helpers
+
+/// HTML parser that always signals an HTTP error page. Used to drive the retry-exhaustion path.
+private struct AlwaysHTTPErrorHTMLParserStrategy: Crawler.HTMLParserStrategy {
+    func convert(html: String, url: URL) -> String { "" }
+
+    func toStructuredPage(
+        html: String,
+        url: URL,
+        source: Shared.Models.StructuredDocumentationPage.Source,
+        depth: Int?
+    ) -> Shared.Models.StructuredDocumentationPage? { nil }
+
+    func looksLikeHTTPErrorPage(html: String) -> Bool { true }
+
+    func looksLikeJavaScriptFallback(html: String) -> Bool { false }
+}
 
 /// HTML parser that signals an HTTP error page on the first call only, then acts normally.
 /// Models a transient CDN error that resolves before the first retry window.

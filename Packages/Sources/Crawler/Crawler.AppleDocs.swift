@@ -349,7 +349,6 @@ extension Crawler {
                                 reason: .httpErrorTemplate,
                                 outputDirectory: configuration.outputDirectory
                             )
-                            await state.recordError()
                         } else {
                             let delay = Self.deferredRetryDelay(forAttempt: item.attempts)
                             item.nextAttempt = Date().addingTimeInterval(delay)
