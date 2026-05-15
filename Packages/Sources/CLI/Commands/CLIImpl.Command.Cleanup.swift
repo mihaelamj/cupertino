@@ -58,67 +58,67 @@ extension CLIImpl.Command {
             }
 
             guard FileManager.default.fileExists(atPath: directory.path) else {
-                Logging.LiveRecording().error("Sample code directory not found: \(directory.path)")
-                Logging.LiveRecording().error("Run 'cupertino fetch --type code' first to download sample code.")
+                Cupertino.Context.composition.logging.recording.error("Sample code directory not found: \(directory.path)")
+                Cupertino.Context.composition.logging.recording.error("Run 'cupertino fetch --type code' first to download sample code.")
                 throw ExitCode.failure
             }
 
             if dryRun {
-                Logging.LiveRecording().output("🔍 Cupertino - Cleanup Dry Run")
-                Logging.LiveRecording().output("")
-                Logging.LiveRecording().output("   Directory: \(directory.path)")
-                Logging.LiveRecording().output("   (No files will be modified)")
-                Logging.LiveRecording().output("")
+                Cupertino.Context.composition.logging.recording.output("🔍 Cupertino - Cleanup Dry Run")
+                Cupertino.Context.composition.logging.recording.output("")
+                Cupertino.Context.composition.logging.recording.output("   Directory: \(directory.path)")
+                Cupertino.Context.composition.logging.recording.output("   (No files will be modified)")
+                Cupertino.Context.composition.logging.recording.output("")
             } else {
-                Logging.LiveRecording().output("🧹 Cupertino - Cleaning Sample Code Archives")
-                Logging.LiveRecording().output("")
-                Logging.LiveRecording().output("   Directory: \(directory.path)")
+                Cupertino.Context.composition.logging.recording.output("🧹 Cupertino - Cleaning Sample Code Archives")
+                Cupertino.Context.composition.logging.recording.output("")
+                Cupertino.Context.composition.logging.recording.output("   Directory: \(directory.path)")
                 if keepOriginals {
-                    Logging.LiveRecording().output("   Mode: Keep originals (cleaned files saved as .cleaned.zip)")
+                    Cupertino.Context.composition.logging.recording.output("   Mode: Keep originals (cleaned files saved as .cleaned.zip)")
                 } else {
-                    Logging.LiveRecording().output("   Mode: Replace originals")
+                    Cupertino.Context.composition.logging.recording.output("   Mode: Replace originals")
                 }
-                Logging.LiveRecording().output("")
+                Cupertino.Context.composition.logging.recording.output("")
             }
 
             let cleaner = Sample.Cleanup.Cleaner(
                 sampleCodeDirectory: directory,
                 dryRun: dryRun,
                 keepOriginals: keepOriginals,
-            logger: Logging.LiveRecording()
+            logger: Cupertino.Context.composition.logging.recording
             )
 
             let stats = try await cleaner.cleanup { progress in
                 let percent = String(format: "%.1f", progress.percentage)
                 let saved = Shared.Utils.Formatting.formatBytes(progress.originalSize - progress.cleanedSize)
-                Logging.LiveRecording().output("   [\(percent)%] \(progress.currentFile) (saved \(saved))")
+                Cupertino.Context.composition.logging.recording.output("   [\(percent)%] \(progress.currentFile) (saved \(saved))")
             }
 
-            Logging.LiveRecording().output("")
+            Cupertino.Context.composition.logging.recording.output("")
 
             if dryRun {
-                Logging.LiveRecording().output("📊 Dry Run Summary:")
+                Cupertino.Context.composition.logging.recording.output("📊 Dry Run Summary:")
             } else {
-                Logging.LiveRecording().output("✅ Cleanup completed!")
+                Cupertino.Context.composition.logging.recording.output("✅ Cleanup completed!")
             }
 
-            Logging.LiveRecording().output("   Total archives: \(stats.totalArchives)")
-            Logging.LiveRecording().output("   Cleaned: \(stats.cleanedArchives)")
-            Logging.LiveRecording().output("   Skipped (already clean): \(stats.skippedArchives)")
-            Logging.LiveRecording().output("   Errors: \(stats.errors)")
-            Logging.LiveRecording().output("   Items to remove: \(stats.totalItemsRemoved)")
-            Logging.LiveRecording().output("")
-            Logging.LiveRecording().output("   Original size: \(Shared.Utils.Formatting.formatBytes(stats.originalTotalSize))")
+            Cupertino.Context.composition.logging.recording.output("   Total archives: \(stats.totalArchives)")
+            Cupertino.Context.composition.logging.recording.output("   Cleaned: \(stats.cleanedArchives)")
+            Cupertino.Context.composition.logging.recording.output("   Skipped (already clean): \(stats.skippedArchives)")
+            Cupertino.Context.composition.logging.recording.output("   Errors: \(stats.errors)")
+            Cupertino.Context.composition.logging.recording.output("   Items to remove: \(stats.totalItemsRemoved)")
+            Cupertino.Context.composition.logging.recording.output("")
+            Cupertino.Context.composition.logging.recording.output("   Original size: \(Shared.Utils.Formatting.formatBytes(stats.originalTotalSize))")
             if !dryRun {
-                Logging.LiveRecording().output("   Cleaned size: \(Shared.Utils.Formatting.formatBytes(stats.cleanedTotalSize))")
-                Logging.LiveRecording().output(
+                Cupertino.Context.composition.logging.recording.output("   Cleaned size: \(Shared.Utils.Formatting.formatBytes(stats.cleanedTotalSize))")
+                Cupertino.Context.composition.logging.recording.output(
                     "   Space saved: \(Shared.Utils.Formatting.formatBytes(stats.spaceSaved)) " +
                         "(\(String(format: "%.1f", stats.spaceSavedPercentage))%)"
                 )
             }
 
             if let duration = stats.duration {
-                Logging.LiveRecording().output("   Duration: \(Int(duration))s")
+                Cupertino.Context.composition.logging.recording.output("   Duration: \(Int(duration))s")
             }
         }
     }
