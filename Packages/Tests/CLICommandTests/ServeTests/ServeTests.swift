@@ -144,7 +144,11 @@ struct MCPCommandTests {
         print("   ✅ Read resource test passed!")
     }
 
-    @Test("Register search tool provider", .tags(.integration), .serialized)
+    // `.serialized` removed: the enclosing
+    // `@Suite("MCP Command Tests", .serialized)` already serializes every
+    // test in this suite. `.serialized` on a non-parameterized `@Test`
+    // has no effect and Swift Testing warns about it.
+    @Test("Register search tool provider", .tags(.integration))
     @MainActor
     func registerSearchProvider() async throws {
         _ = NSApplication.shared
@@ -190,7 +194,8 @@ struct MCPCommandTests {
         print("   ✅ Search provider test passed!")
     }
 
-    @Test("Execute search tool", .tags(.integration), .serialized)
+    // `.serialized` removed (same reason as the previous test).
+    @Test("Execute search tool", .tags(.integration))
     @MainActor
     func executeSearchTool() async throws {
         _ = NSApplication.shared
