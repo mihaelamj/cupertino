@@ -6,6 +6,7 @@ import SampleIndex
 import Services
 import ServicesModels
 import SharedConstants
+
 // MARK: - Read Sample File Command
 
 /// CLI command for reading a specific file from a sample project - mirrors MCP tool functionality.
@@ -43,8 +44,25 @@ extension CLIImpl.Command {
             // at the command's composition sub-root.
             let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
 
-            // Use Services.ServiceContainer for managed lifecycle
+            // Use Services.ServiceContainer for managed lifecycle.
+            //
+            // #620: probe project existence before the file lookup so the
+            // error message distinguishes "wrong project id" from "wrong
+            // file path inside a valid project". Pre-fix both shapes
+            // returned the same `File not found in project <id>` message
+            // with a remediation hint pointing at `cupertino read-sample
+            // <id>` — that hint runs straight into the same project-not-
+            // found wall when the user's typo is in the project id.
+            // Post-fix the wrong-project path emits the same wording
+            // `cupertino read-sample` uses on its own miss path.
             let file = try await Services.ServiceContainer.withSampleService(samplesDB: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
+                guard try await service.getProject(id: projectId) != nil else {
+                    Cupertino.Context.composition.logging.recording.error("Project not found: \(projectId)")
+                    Cupertino.Context.composition.logging.recording.output(
+                        "Use 'cupertino list-samples' or 'cupertino search --source samples' to find valid project IDs."
+                    )
+                    throw ExitCode.failure
+                }
                 guard let file = try await service.getFile(projectId: projectId, path: filePath) else {
                     Cupertino.Context.composition.logging.recording.error("File not found: \(filePath) in project \(projectId)")
                     Cupertino.Context.composition.logging.recording.output("Use 'cupertino read-sample \(projectId)' to list available files.")
