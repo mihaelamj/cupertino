@@ -3,8 +3,8 @@ import Core
 import CoreProtocols
 import Darwin
 import Foundation
-import LoggingModels
 import Logging
+import LoggingModels
 import MCPCore
 import MCPSupport
 import SampleIndex
@@ -15,6 +15,7 @@ import SearchToolProvider
 import Services
 import ServicesModels
 import SharedConstants
+
 // MARK: - Serve Command
 
 extension CLIImpl.Command {
@@ -208,13 +209,22 @@ extension CLIImpl.Command {
                 (searchIndex == nil && sampleIndex == nil)
                     ? nil
                     : Services.UnifiedSearchService(searchIndex: searchIndex, sampleDatabase: sampleIndex)
+            // #582: pass the same `DocsResourceProvider` instance into the
+            // tool provider so `read_document` falls back through the
+            // identical filesystem path `resources/read` uses. Without
+            // this, the search-index direct lookup in `handleReadDocument`
+            // returned "Document not found" for URIs that
+            // `resources/read` successfully read off disk (typical with
+            // bundles whose indexer-written URIs use the pre-#293
+            // `.lastPathComponent` shape).
             let toolProvider = CompositeToolProvider(
                 searchIndex: searchIndex,
                 sampleDatabase: sampleIndex,
                 docsService: docsService,
                 sampleService: sampleService,
                 teaserService: teaserService,
-                unifiedService: unifiedService
+                unifiedService: unifiedService,
+                documentResourceProvider: resourceProvider
             )
             await server.registerToolProvider(toolProvider)
 
