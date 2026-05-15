@@ -194,6 +194,19 @@ extension Search.Index {
         //               word_count(6), rank(7), kind(8), min_ios(9), min_macos(10),
         //               min_tvos(11), min_watchos(12), min_visionos(13)
         var results: [Search.Result] = []
+        // #625 dedup: docs_fts can carry multiple rows for the same `uri`
+        // (the shipped v1.1.0 bundle has e.g. 3 rows for
+        // apple-docs://naturallanguage/string while docs_metadata has 1 —
+        // a corpus-level dup the indexer didn't dedupe pre-#587). The
+        // JOIN to docs_metadata returns the cartesian product, so the
+        // result list duplicates a single page. Downstream RRF fusion
+        // (Search.SmartQuery.answer) sums increments per identifier
+        // across these duplicates, inflating the affected page's score
+        // and pushing it above legitimately-ranked canonical pages
+        // (the wrong-winner symptom on `cupertino search String`
+        // without `--source` flagged in #625). Walk results once and
+        // keep only the first (best-BM25-rank) row per uri.
+        var seenURIs = Set<String>()
 
         while sqlite3_step(statement) == SQLITE_ROW {
             guard let uriPtr = sqlite3_column_text(statement, 0),
@@ -208,6 +221,12 @@ extension Search.Index {
             }
 
             let uri = String(cString: uriPtr)
+            // #625 dedup: rows are already ORDER BY rank ASC, so the
+            // first appearance of a uri is its best-ranked occurrence.
+            // Skip subsequent duplicates.
+            if !seenURIs.insert(uri).inserted {
+                continue
+            }
             let source = String(cString: sourcePtr)
             let framework = String(cString: frameworkPtr)
             let title = String(cString: titlePtr)
