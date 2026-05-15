@@ -991,6 +991,13 @@ extension Search.Index {
         // the post-#608 synthesised wrapper (no `abstract` key) still
         // returns a non-empty chunk. Pre-fix, `$.abstract` alone was
         // the source and returned NULL for the synthesised-wrapper case.
+        //
+        // #630 — also pull `kind` so we can reject property/method/case
+        // rows that share a URI with a real canonical type page. The
+        // v1.1.0 bundle has e.g. `apple-docs://swift/url` pointing at
+        // `String.IntentInputOptions.KeyboardType.URL` (kind=unknown,
+        // title shaped as a dotted breadcrumb); without this filter
+        // the safety-net prepend force-promotes it to rank -2000.
         let sql = """
         SELECT
             m.uri, m.source, m.framework,
@@ -1001,7 +1008,8 @@ extension Search.Index {
                 ''
             ) AS summary,
             m.file_path, m.word_count,
-            m.min_ios, m.min_macos, m.min_tvos, m.min_watchos, m.min_visionos
+            m.min_ios, m.min_macos, m.min_tvos, m.min_watchos, m.min_visionos,
+            COALESCE(json_extract(m.json_data, '$.kind'), 'unknown') AS kind
         FROM docs_metadata m
         WHERE m.uri = ?
         LIMIT 1;
@@ -1061,6 +1069,35 @@ extension Search.Index {
                 if let visionos = sqlite3_column_text(statement, 11).map({ String(cString: $0) }) {
                     availabilityArray.append(Search.PlatformAvailability(name: "visionOS", introducedAt: visionos))
                 }
+                let kindRaw = sqlite3_column_text(statement, 12).map { String(cString: $0) } ?? "unknown"
+                let kind = kindRaw.lowercased()
+
+                sqlite3_finalize(statement)
+
+                // #630 — reject obviously-wrong matches before force-prepending
+                // at rank -2000:
+                //
+                //   1. `kind ∈ propertyMethodKinds` — the row is a member, not
+                //      a parent type. Catches `apple-docs://foundation/url` →
+                //      URLRequest.url (property) and `apple-docs://swiftui/data`
+                //      → ForEach.data (property) in the v1.1.0 bundle.
+                //
+                //   2. Title contains `.` — Apple's canonical type pages use a
+                //      bare title (`Task`, `URLSession`) optionally followed by
+                //      ` | Apple Developer Documentation`. A title like
+                //      `String.IntentInputOptions.KeyboardType.URL` is a nested-
+                //      enum-case breadcrumb. Catches `apple-docs://swift/url`
+                //      (kind=unknown but title is the dotted breadcrumb).
+                //
+                // The `canonicalTypeKinds` / `unknown` rows with bare titles
+                // still survive (e.g. Codable lands with kind=unknown and
+                // title="Codable | Apple Developer Documentation" — kept).
+                if Self.propertyMethodKinds.contains(kind) {
+                    continue
+                }
+                if title.contains(".") {
+                    continue
+                }
 
                 hits.append(Search.Result(
                     uri: uri,
@@ -1073,9 +1110,9 @@ extension Search.Index {
                     rank: -2000.0, // Guaranteed top, ahead of even framework-root rank (-1000)
                     availability: availabilityArray.isEmpty ? nil : availabilityArray
                 ))
+            } else {
+                sqlite3_finalize(statement)
             }
-
-            sqlite3_finalize(statement)
         }
 
         return hits
