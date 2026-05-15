@@ -437,6 +437,108 @@ extension Search {
             return false
         }
 
+        // MARK: - #588 door equivalence (tier A / B / C)
+
+        /// Per-run record of a URI the indexer has already accepted.
+        ///
+        /// The strategy keeps a `[String: SeenURIRecord]` map as it walks
+        /// the corpus. Each subsequent same-URI encounter is classified
+        /// against the prior record via ``classifyDoorEncounter(prior:incoming:)``
+        /// so the indexer never silently double-inserts and never silently
+        /// drops a row whose content differs from what it collided with
+        /// (`docs/PRINCIPLES.md` principle 3).
+        public struct SeenURIRecord: Sendable, Equatable {
+            /// Title after ``canonicalTitleForEquivalence(_:)`` normalization.
+            public let canonicalTitle: String
+            /// SHA-256 over the doc's content (as recorded by the crawler).
+            public let contentHash: String
+
+            public init(canonicalTitle: String, contentHash: String) {
+                self.canonicalTitle = canonicalTitle
+                self.contentHash = contentHash
+            }
+        }
+
+        /// Result of comparing a new same-URI encounter against the prior
+        /// record. Used by the strategy's door check to decide whether to
+        /// INSERT, skip silently, or surface as a collision.
+        ///
+        /// - `firstArrival`: the URI hasn't been seen this run; the caller
+        ///   records the URI and proceeds to INSERT.
+        /// - `benignByteIdentical` (tier A): identical content hash;
+        ///   provably the same bytes; silent skip.
+        /// - `benignTitleMatchWithDrift` (tier B): same canonical title,
+        ///   different content hash; same logical Apple page rendered
+        ///   slightly differently between crawls (Apple's case-insensitive
+        ///   routing guarantees same URI = same page); first-arrived
+        ///   stays in the index, drift logged.
+        /// - `malignantTitleMismatch` (tier C): different canonical title;
+        ///   the URI canonicalization conflated two distinct Apple pages;
+        ///   surface as a collision; **`DoD = 0 tier-C`** per `docs/PRINCIPLES.md`.
+        public enum DoorClassification: Sendable, Equatable {
+            case firstArrival
+            case benignByteIdentical
+            case benignTitleMatchWithDrift
+            case malignantTitleMismatch
+        }
+
+        /// Normalize a page title for door-time equivalence comparison.
+        ///
+        /// Steps applied (deterministic Swift only, no AI):
+        ///
+        /// 1. HTML-entity decode (`&lt;`, `&gt;`, `&amp;`, `&quot;`, `&apos;`)
+        ///    so Apple's renderer encoding doesn't make two byte-equal
+        ///    titles compare unequal.
+        /// 2. Strip the site-wide trailing `" | Apple Developer Documentation"`
+        ///    suffix that some crawler paths capture.
+        /// 3. Lowercase.
+        /// 4. Collapse internal whitespace runs to single spaces.
+        /// 5. Trim leading / trailing whitespace.
+        ///
+        /// Two titles compare equal under door equivalence iff their
+        /// canonical forms are exactly equal.
+        public static func canonicalTitleForEquivalence(_ title: String) -> String {
+            var working = title
+                .replacingOccurrences(of: "&lt;", with: "<")
+                .replacingOccurrences(of: "&gt;", with: ">")
+                .replacingOccurrences(of: "&amp;", with: "&")
+                .replacingOccurrences(of: "&quot;", with: "\"")
+                .replacingOccurrences(of: "&apos;", with: "'")
+            let suffix = " | Apple Developer Documentation"
+            if working.hasSuffix(suffix) {
+                working = String(working.dropLast(suffix.count))
+            }
+            working = working.lowercased()
+            working = working
+                .split(whereSeparator: \.isWhitespace)
+                .joined(separator: " ")
+            return working
+        }
+
+        /// Classify a same-URI encounter at the door.
+        ///
+        /// Pure function: same inputs always produce the same output, no
+        /// I/O, no shared state. Exposed for unit tests.
+        ///
+        /// - Parameters:
+        ///   - prior: The record stored for this URI on first arrival.
+        ///   - incoming: The record we just constructed for the new encounter.
+        /// - Returns: The classification per `docs/PRINCIPLES.md` principle 3.
+        public static func classifyDoorEncounter(
+            prior: SeenURIRecord,
+            incoming: SeenURIRecord
+        ) -> DoorClassification {
+            if !prior.contentHash.isEmpty,
+               !incoming.contentHash.isEmpty,
+               prior.contentHash == incoming.contentHash {
+                return .benignByteIdentical
+            }
+            if prior.canonicalTitle == incoming.canonicalTitle {
+                return .benignTitleMatchWithDrift
+            }
+            return .malignantTitleMismatch
+        }
+
         /// Return `true` when `title` is a placeholder shed by Apple's web app
         /// in lieu of the real document title.
         ///

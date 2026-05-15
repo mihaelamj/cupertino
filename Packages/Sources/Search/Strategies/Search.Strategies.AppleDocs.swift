@@ -126,6 +126,15 @@ extension Search {
 
             var indexed = 0
             var skipped = 0
+            // #588 door equivalence: per-run map of URIs we've already
+            // accepted, so subsequent same-URI encounters can be
+            // classified tier A / B / C against the prior record (see
+            // `docs/PRINCIPLES.md` principles 2 + 3). First-arrived
+            // wins; later arrivals are skipped with a log line carrying
+            // the classification + both source paths. The map is bounded
+            // by the number of unique URIs in the corpus (351K for the
+            // full Apple docs corpus today; small struct per entry).
+            var seenURIs: [String: Search.StrategyHelpers.SeenURIRecord] = [:]
 
             for (idx, file) in docFiles.enumerated() {
                 guard let rawFramework = Search.StrategyHelpers.extractFrameworkFromPath(
@@ -260,6 +269,47 @@ extension Search {
                     uri = "apple-docs://\(framework)/\(basename)"
                 }
 
+                // #588 door equivalence check. First-arrived wins; later
+                // arrivals for the same URI are classified A / B / C and
+                // skipped with a log line carrying the classification +
+                // both source files (`docs/PRINCIPLES.md` principles 2,3).
+                let incoming = Search.StrategyHelpers.SeenURIRecord(
+                    canonicalTitle: Search.StrategyHelpers.canonicalTitleForEquivalence(structuredPage.title),
+                    contentHash: structuredPage.contentHash
+                )
+                if let prior = seenURIs[uri] {
+                    let classification = Search.StrategyHelpers.classifyDoorEncounter(
+                        prior: prior, incoming: incoming
+                    )
+                    switch classification {
+                    case .benignByteIdentical:
+                        logger.info(
+                            "⏭️  Door (tier A, byte-identical) skip: uri=\(uri) file=\(file.lastPathComponent)",
+                            category: .search
+                        )
+                        skipped += 1
+                        continue
+                    case .benignTitleMatchWithDrift:
+                        logger.info(
+                            "⏭️  Door (tier B, title-match + drift) skip: uri=\(uri) file=\(file.lastPathComponent) prior_title=\"\(prior.canonicalTitle.prefix(60))\"",
+                            category: .search
+                        )
+                        skipped += 1
+                        continue
+                    case .malignantTitleMismatch:
+                        logger.error(
+                            "🚨 Door (tier C, COLLISION — different canonical titles for same URI) skip: uri=\(uri) file=\(file.lastPathComponent) prior_title=\"\(prior.canonicalTitle.prefix(80))\" incoming_title=\"\(incoming.canonicalTitle.prefix(80))\"",
+                            category: .search
+                        )
+                        skipped += 1
+                        continue
+                    case .firstArrival:
+                        // Unreachable: classify is only called when prior != nil.
+                        break
+                    }
+                }
+                seenURIs[uri] = incoming
+
                 do {
                     try await index.indexStructuredDocument(
                         uri: uri,
@@ -340,6 +390,8 @@ extension Search {
             var processed = 0
             var indexed = 0
             var skipped = 0
+            // #588 door equivalence map, mirrors the structured-page path.
+            var seenURIs: [String: Search.StrategyHelpers.SeenURIRecord] = [:]
 
             for (url, pageMetadata) in metadata.pages {
                 let filePath = URL(fileURLWithPath: pageMetadata.filePath)
@@ -391,6 +443,44 @@ extension Search {
                     let fallbackFilename = Shared.Models.URLUtilities.filename(from: parsedURL)
                     uri = "apple-docs://\(pageMetadata.framework)/\(fallbackFilename)"
                 }
+
+                // #588 door equivalence check. Same policy as the
+                // structured-page path: first-arrived wins; later
+                // arrivals classified tier A / B / C and skipped with a
+                // log line. `pageMetadata.contentHash` is the crawler-
+                // recorded hash carried in metadata.json.
+                let incoming = Search.StrategyHelpers.SeenURIRecord(
+                    canonicalTitle: Search.StrategyHelpers.canonicalTitleForEquivalence(title),
+                    contentHash: pageMetadata.contentHash
+                )
+                if let prior = seenURIs[uri] {
+                    let classification = Search.StrategyHelpers.classifyDoorEncounter(
+                        prior: prior, incoming: incoming
+                    )
+                    switch classification {
+                    case .benignByteIdentical:
+                        logger.info(
+                            "⏭️  Door (tier A) skip: uri=\(uri) url=\(url)",
+                            category: .search
+                        )
+                        skipped += 1; processed += 1; continue
+                    case .benignTitleMatchWithDrift:
+                        logger.info(
+                            "⏭️  Door (tier B, drift) skip: uri=\(uri) url=\(url)",
+                            category: .search
+                        )
+                        skipped += 1; processed += 1; continue
+                    case .malignantTitleMismatch:
+                        logger.error(
+                            "🚨 Door (tier C COLLISION) skip: uri=\(uri) url=\(url) prior_title=\"\(prior.canonicalTitle.prefix(80))\" incoming_title=\"\(incoming.canonicalTitle.prefix(80))\"",
+                            category: .search
+                        )
+                        skipped += 1; processed += 1; continue
+                    case .firstArrival:
+                        break
+                    }
+                }
+                seenURIs[uri] = incoming
 
                 do {
                     try await index.indexDocument(Search.Index.IndexDocumentParams(
