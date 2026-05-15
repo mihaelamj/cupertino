@@ -90,32 +90,38 @@ struct AppleSessionCookieDetectionTests {
     }
 }
 
-// MARK: - TTY detection (#6 follow-up)
+// MARK: - TTY detection (#6 follow-up, GoF Strategy seam after #547)
 
-@Suite("Sample.Core.Downloader.isInteractiveStdin")
-struct IsInteractiveStdinTests {
-    @Test("Override seam returns whatever was forced")
-    func overrideIsRespected() {
-        let previous = Sample.Core.Downloader._isInteractiveStdinOverride
-        defer { Sample.Core.Downloader._isInteractiveStdinOverride = previous }
-
-        Sample.Core.Downloader._isInteractiveStdinOverride = true
-        #expect(Sample.Core.Downloader.isInteractiveStdin() == true)
-
-        Sample.Core.Downloader._isInteractiveStdinOverride = false
-        #expect(Sample.Core.Downloader.isInteractiveStdin() == false)
+/// Test stub for the `Sample.Core.InteractiveStdinChecking` strategy.
+/// Returns the value supplied at construction; replaces the deleted
+/// `nonisolated(unsafe) static var _isInteractiveStdinOverride` mutation.
+private struct StubInteractiveStdinCheck: Sample.Core.InteractiveStdinChecking {
+    let result: Bool
+    func isInteractive() -> Bool {
+        result
     }
+}
 
-    @Test("Clearing the override falls back to the real isatty check")
-    func noOverrideFallsBack() {
-        let previous = Sample.Core.Downloader._isInteractiveStdinOverride
-        defer { Sample.Core.Downloader._isInteractiveStdinOverride = previous }
-
-        Sample.Core.Downloader._isInteractiveStdinOverride = nil
-        // We don't assert true/false here — swift test's stdin may or may not
+@Suite("Sample.Core.InteractiveStdinChecking strategy seam")
+struct InteractiveStdinCheckingTests {
+    @Test("LiveInteractiveStdinCheck delegates to isatty(fileno(stdin)) without crashing")
+    func liveCheckExecutesCleanly() {
+        // We don't assert true/false here, swift test's stdin may or may not
         // be a TTY depending on how the runner invoked us. Just confirm the
         // call does not crash and returns a Bool.
-        _ = Sample.Core.Downloader.isInteractiveStdin()
+        _ = Sample.Core.LiveInteractiveStdinCheck().isInteractive()
+    }
+
+    @Test("Stub strategy returns whichever value the test supplied (true)")
+    func stubReturnsTrue() {
+        let stub: any Sample.Core.InteractiveStdinChecking = StubInteractiveStdinCheck(result: true)
+        #expect(stub.isInteractive() == true)
+    }
+
+    @Test("Stub strategy returns whichever value the test supplied (false)")
+    func stubReturnsFalse() {
+        let stub: any Sample.Core.InteractiveStdinChecking = StubInteractiveStdinCheck(result: false)
+        #expect(stub.isInteractive() == false)
     }
 }
 
