@@ -34,6 +34,10 @@ See #183. v1.1+ design and academic research review live in `mihaela-blog-ideas/
 
 See `AGENTS.md` for code style, commit format, and the "ask when unsure" workflow.
 
+## Principles
+
+See `docs/PRINCIPLES.md` for the engineering principles the import + indexer paths stand on (lossless URIs, collisions handled at the door, no content lost at the door, garbage filtered at input, 10x scale headroom, correctness first).
+
 ## Imported Rules
 
 @../../private/mihaela-agents/Rules/AGENTS.md

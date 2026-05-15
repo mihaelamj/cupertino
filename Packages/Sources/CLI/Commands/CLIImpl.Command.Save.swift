@@ -115,6 +115,18 @@ extension CLIImpl.Command {
         )
         var yes: Bool = false
 
+        @Flag(
+            name: .long,
+            help: """
+            Run the full import pipeline against a throwaway temp database; emit \
+            the per-document import log and final report, then delete the temp DB. \
+            Used to verify that a corpus imports clean (0 collisions, 0 redundancy, \
+            0 content lost) without touching the on-disk search.db. Honors all \
+            other save flags (--docs-dir etc.).
+            """
+        )
+        var dryRun: Bool = false
+
         mutating func run() async throws {
             if remote {
                 try await runRemote()

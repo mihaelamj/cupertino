@@ -21,6 +21,25 @@ extension CLIImpl.Command.Save {
     // MARK: - Docs
 
     func runDocsIndexer(effectiveBase: URL) async throws {
+        // Resolve searchDB destination. In --dry-run, route writes to a
+        // throwaway temp file so the existing on-disk search.db is
+        // untouched; the temp file is deleted after the run regardless of
+        // outcome. Same code path otherwise, so the dry-run is a
+        // faithful preview of what a real save would produce.
+        let resolvedSearchDB: URL
+        let isDryRun = dryRun
+        if isDryRun {
+            let name = "cupertino-dryrun-\(UUID().uuidString).db"
+            resolvedSearchDB = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(name)
+            Cupertino.Context.composition.logging.recording.info(
+                "🧪 Dry-run: writing to throwaway \(resolvedSearchDB.path)"
+            )
+        } else if let userPath = searchDB {
+            resolvedSearchDB = URL(fileURLWithPath: userPath).expandingTildeInPath
+        } else {
+            resolvedSearchDB = effectiveBase.appendingPathComponent(Shared.Constants.FileName.searchDatabase)
+        }
+
         Cupertino.Context.composition.logging.recording.info("🔨 Building Search Index\n")
 
         let request = Indexer.DocsService.Request(
@@ -30,7 +49,7 @@ extension CLIImpl.Command.Save {
             swiftOrgDir: swiftOrgDir.map { URL(fileURLWithPath: $0).expandingTildeInPath },
             archiveDir: archiveDir.map { URL(fileURLWithPath: $0).expandingTildeInPath },
             higDir: nil,
-            searchDB: searchDB.map { URL(fileURLWithPath: $0).expandingTildeInPath },
+            searchDB: resolvedSearchDB,
             clear: clear
         )
 
@@ -41,14 +60,28 @@ extension CLIImpl.Command.Save {
         )
 
         let tracker = ProgressTracker()
-        let outcome = try await Indexer.DocsService.run(
-            request,
-            markdownStrategy: LiveMarkdownToStructuredPageStrategy(),
-            sampleCatalogProvider: LiveSampleCatalogProvider(catalog: sampleCatalogActor),
-            docsIndexingRunner: LiveDocsIndexingRunner(),
-            events: DocsEventObserver(tracker: tracker)
-        )
+        let outcome: Indexer.DocsService.Outcome
+        do {
+            outcome = try await Indexer.DocsService.run(
+                request,
+                markdownStrategy: LiveMarkdownToStructuredPageStrategy(),
+                sampleCatalogProvider: LiveSampleCatalogProvider(catalog: sampleCatalogActor),
+                docsIndexingRunner: LiveDocsIndexingRunner(),
+                events: DocsEventObserver(tracker: tracker)
+            )
+        } catch {
+            if isDryRun {
+                try? FileManager.default.removeItem(at: resolvedSearchDB)
+            }
+            throw error
+        }
         Self.printDocsSummary(outcome: outcome)
+        if isDryRun {
+            try? FileManager.default.removeItem(at: resolvedSearchDB)
+            Cupertino.Context.composition.logging.recording.info(
+                "🧪 Dry-run complete: throwaway DB deleted (\(resolvedSearchDB.lastPathComponent))"
+            )
+        }
     }
 
     /// Closure-free GoF Observer for `Indexer.DocsService` lifecycle
