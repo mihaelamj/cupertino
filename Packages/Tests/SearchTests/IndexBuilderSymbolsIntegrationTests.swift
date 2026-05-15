@@ -1,7 +1,7 @@
 import CoreProtocols
 import Foundation
-import LoggingModels
 import Logging
+import LoggingModels
 @testable import Search
 import SearchModels
 import SharedConstants
@@ -158,7 +158,12 @@ struct IndexBuilderSymbolsIntegrationTests {
         try await builder.buildIndex(clearExisting: true)
         await index.disconnect()
 
-        let uri = "apple-docs://swiftui/sample"
+        // #293 fix: the indexer now uses `URLUtilities.filename(from:)`
+        // (full-path-encoded with disambiguator) instead of the bare
+        // `.lastPathComponent`. The previous expected URI
+        // `apple-docs://swiftui/sample` collided with siblings sharing
+        // the same leaf name; the new shape preserves uniqueness.
+        let uri = "apple-docs://swiftui/documentation_swiftui_sample"
         let symbolRows = try countDocSymbolRows(at: dbPath, uri: uri)
         #expect(symbolRows >= 2, "doc_symbols should hold both the declaration AND code-block symbols")
 
