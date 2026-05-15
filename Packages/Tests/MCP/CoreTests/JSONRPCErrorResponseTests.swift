@@ -60,7 +60,15 @@ private actor InMemoryTransport: MCP.Core.Transport.Channel {
     }
 
     nonisolated var messages: AsyncStream<MCP.Core.Transport.Message> {
-        get async { await inboundStream }
+        // The `async` getter is required by the protocol
+        // (`Channel.messages: AsyncStream<Message> { get async }`),
+        // but reading the actor-isolated `let inboundStream` here
+        // resolves to a non-suspending access — `AsyncStream` is
+        // `Sendable`, so the compiler can hand it back without a
+        // hop. Dropping the `await` silences Swift's "no async
+        // operations occur within 'await' expression" warning while
+        // keeping the protocol shape intact.
+        get async { inboundStream }
     }
 
     var isConnected: Bool {
