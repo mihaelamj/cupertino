@@ -31,6 +31,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Distribution"),
     .singleTargetLibrary("Diagnostics"),
     .singleTargetLibrary("Indexer"),
+    .singleTargetLibrary("IndexerModels"),
     .singleTargetLibrary("Ingest"),
     .singleTargetLibrary("Resources"),
     .singleTargetLibrary("Availability"),
@@ -515,14 +516,24 @@ let targets: [Target] = {
         dependencies: ["Diagnostics", "TestSupport"]
     )
 
+    // ---------- IndexerModels (foundation-only seam — value types + Observer protocols) ----------
+    let indexerModelsTarget = Target.target(
+        name: "IndexerModels",
+        dependencies: []
+    )
+    let indexerModelsTestsTarget = Target.testTarget(
+        name: "IndexerModelsTests",
+        dependencies: ["IndexerModels", "TestSupport"]
+    )
+
     // ---------- Indexer (#244: SaveCommand indexer + preflight lift) ----------
     let indexerTarget = Target.target(
         name: "Indexer",
-        dependencies: ["SearchModels", "SampleIndexModels", "SharedConstants"]
+        dependencies: ["IndexerModels", "SearchModels", "SampleIndexModels", "SharedConstants"]
     )
     let indexerTestsTarget = Target.testTarget(
         name: "IndexerTests",
-        dependencies: ["Indexer", "TestSupport"]
+        dependencies: ["Indexer", "IndexerModels", "TestSupport"]
     )
 
     // ---------- Ingest (#247: FetchCommand session + pipelines lift) ----------
@@ -718,6 +729,8 @@ let targets: [Target] = {
         distributionTestsTarget,
         diagnosticsTarget,
         diagnosticsTestsTarget,
+        indexerModelsTarget,
+        indexerModelsTestsTarget,
         indexerTarget,
         indexerTestsTarget,
         ingestTarget,

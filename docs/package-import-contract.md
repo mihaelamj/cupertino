@@ -59,6 +59,7 @@ Validated against five independent references (see `mihaela-agents/Rules/swift/p
 | `SearchModels` | Foundation, SharedConstants | ✅ Foundation, SharedConstants |
 | `SampleIndexModels` | Foundation, SharedConstants | ✅ Foundation, SharedConstants |
 | `ServicesModels` | Foundation, SearchModels, SampleIndexModels, SharedConstants | ✅ Foundation, SampleIndexModels, SearchModels, SharedConstants |
+| `IndexerModels` | Foundation | ✅ Foundation (closures-to-Observer epic seam: owns `Indexer.*Service.Request`/`Outcome`/`Event` value types + the three `*Service.EventObserving` Observer protocols) |
 
 ### Infrastructure tier (wraps a system API; foundation-tier deps)
 
@@ -80,7 +81,7 @@ Validated against five independent references (see `mihaela-agents/Rules/swift/p
 | `CoreSampleCode` | Foundation, AppKit, WebKit, LoggingModels, SharedConstants | ✅ AppKit, Foundation, LoggingModels, SharedConstants, WebKit |
 | `Crawler` | Foundation, os, WebKit, CoreProtocols, CrawlerModels, LoggingModels, Resources, SharedConstants | ✅ CoreProtocols, CrawlerModels, Foundation, LoggingModels, Resources, SharedConstants, WebKit, os |
 | `Distribution` | Foundation, SharedConstants | ✅ Foundation, SharedConstants |
-| `Indexer` | Foundation, SampleIndexModels, SearchModels, SharedConstants | ✅ Foundation, SampleIndexModels, SearchModels, SharedConstants |
+| `Indexer` | Foundation, IndexerModels, SampleIndexModels, SearchModels, SharedConstants | ✅ Foundation, IndexerModels, SampleIndexModels, SearchModels, SharedConstants (closures-to-Observer epic: `@_exported import IndexerModels` so consumers reading `Indexer.*Service.Request`/`Outcome`/`Event` via `import Indexer` still resolve) |
 | `Ingest` | Foundation, LoggingModels, SharedConstants | ✅ Foundation, LoggingModels, SharedConstants |
 | `MCPSupport` | Foundation, LoggingModels, MCPCore, MCPSharedTools, SharedConstants | ✅ Foundation, LoggingModels, MCPCore, MCPSharedTools, SharedConstants |
 | `RemoteSync` | Foundation, SharedConstants | ✅ Foundation, SharedConstants |

@@ -45,11 +45,22 @@ extension CLIImpl.Command.Save {
             request,
             markdownStrategy: LiveMarkdownToStructuredPageStrategy(),
             sampleCatalogProvider: LiveSampleCatalogProvider(catalog: sampleCatalogActor),
-            docsIndexingRunner: LiveDocsIndexingRunner()
-        ) { event in
-            Self.handleDocsEvent(event, tracker: tracker)
-        }
+            docsIndexingRunner: LiveDocsIndexingRunner(),
+            events: DocsEventObserver(tracker: tracker)
+        )
         Self.printDocsSummary(outcome: outcome)
+    }
+
+    /// Closure-free GoF Observer for `Indexer.DocsService` lifecycle
+    /// events. Holds the shared `ProgressTracker` reference and routes
+    /// each event into the existing `handleDocsEvent` static dispatcher.
+    /// Replaces the trailing-closure pattern at the call site.
+    private struct DocsEventObserver: Indexer.DocsService.EventObserving {
+        let tracker: ProgressTracker
+
+        func observe(event: Indexer.DocsService.Event) {
+            CLIImpl.Command.Save.handleDocsEvent(event, tracker: tracker)
+        }
     }
 
     /// Concrete `Search.DocsIndexingRunner` (GoF Strategy) used by
@@ -207,9 +218,17 @@ extension CLIImpl.Command.Save {
 
         _ = try await Indexer.PackagesService.run(
             request,
-            packageIndexingRunner: LivePackageIndexingRunner()
-        ) { event in
-            Self.handlePackagesEvent(event)
+            packageIndexingRunner: LivePackageIndexingRunner(),
+            events: PackagesEventObserver()
+        )
+    }
+
+    /// Closure-free GoF Observer for `Indexer.PackagesService` lifecycle
+    /// events. No held state; routes each event into the existing
+    /// `handlePackagesEvent` static dispatcher.
+    private struct PackagesEventObserver: Indexer.PackagesService.EventObserving {
+        func observe(event: Indexer.PackagesService.Event) {
+            CLIImpl.Command.Save.handlePackagesEvent(event)
         }
     }
 
@@ -310,9 +329,20 @@ extension CLIImpl.Command.Save {
         let tracker = ProgressTracker()
         _ = try await Indexer.SamplesService.run(
             request,
-            samplesIndexingRunner: LiveSamplesIndexingRunner()
-        ) { event in
-            Self.handleSamplesEvent(event, tracker: tracker)
+            samplesIndexingRunner: LiveSamplesIndexingRunner(),
+            events: SamplesEventObserver(tracker: tracker)
+        )
+    }
+
+    /// Closure-free GoF Observer for `Indexer.SamplesService` lifecycle
+    /// events. Holds the shared `ProgressTracker` reference and routes
+    /// each event into the existing `handleSamplesEvent` static
+    /// dispatcher.
+    private struct SamplesEventObserver: Indexer.SamplesService.EventObserving {
+        let tracker: ProgressTracker
+
+        func observe(event: Indexer.SamplesService.Event) {
+            CLIImpl.Command.Save.handleSamplesEvent(event, tracker: tracker)
         }
     }
 
