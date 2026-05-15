@@ -1,7 +1,9 @@
 # Cupertino Deployment Guide
 
-**Version:** 1.1.0
-**Last Updated:** 2025-12-12
+**Last tagged release:** v1.1.0 on 2026-05-13.
+**Last updated:** 2026-05-15.
+
+`main` carries the v1.2.0-staged changes (Logging Singleton kill, foundation-only producer epic, in-progress closure-purge) but no `v1.2.0` tag has been cut yet. The release process below describes how each tagged release is shipped.
 
 This guide covers the complete release process for Cupertino.
 
