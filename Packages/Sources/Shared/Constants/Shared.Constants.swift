@@ -549,6 +549,14 @@ extension Shared.Constants {
 
         /// Cupertino docs token environment variable (for database releases)
         public static let cupertinoDocsToken = "CUPERTINO_DOCS_TOKEN"
+
+        /// When set to `"1"`, `cupertino serve` skips the sibling-reaper
+        /// pass at startup. Useful for clients (OpenAI Codex CLI is the
+        /// canonical case) that spawn a fresh `cupertino serve` per tool
+        /// call and surface the reap as `Transport closed`. Equivalent
+        /// to passing `--no-reap` to `serve`. The CLI flag wins if both
+        /// are set. (#280)
+        public static let disableReaper = "CUPERTINO_DISABLE_REAPER"
     }
 
     // MARK: - Search Constants

@@ -90,7 +90,7 @@ claude mcp add cupertino --scope user -- $(which cupertino)
 ### OpenAI Codex
 
 ```bash
-codex mcp add cupertino -- $(which cupertino) serve
+codex mcp add cupertino -- $(which cupertino) serve --no-reap
 ```
 
 Or add to `~/.codex/config.toml`:
@@ -98,8 +98,10 @@ Or add to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.cupertino]
 command = "/opt/homebrew/bin/cupertino"
-args = ["serve"]
+args = ["serve", "--no-reap"]
 ```
+
+**Why `--no-reap`?** Codex spawns a fresh `cupertino serve` per tool call. Without `--no-reap`, each new instance kills its predecessor as a stale sibling and the in-flight transport closes (`Transport closed` error on every tool call — see #280). Equivalent env-var form: `CUPERTINO_DISABLE_REAPER=1` in `[mcp_servers.cupertino.env]`. Claude Desktop / Cursor users keep the default (reap on).
 
 ### Cursor
 
