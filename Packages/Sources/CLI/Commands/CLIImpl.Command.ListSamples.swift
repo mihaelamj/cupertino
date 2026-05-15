@@ -82,26 +82,26 @@ extension CLIImpl.Command {
         // MARK: - Output Formatting
 
         private func outputText(_ projects: [Sample.Index.Project], totalProjects: Int, totalFiles: Int) {
-            Logging.LiveRecording().output("Sample Code Projects")
-            Logging.LiveRecording().output("Total: \(totalProjects) projects, \(totalFiles) files")
+            Cupertino.Context.composition.logging.recording.output("Sample Code Projects")
+            Cupertino.Context.composition.logging.recording.output("Total: \(totalProjects) projects, \(totalFiles) files")
 
             if let framework {
-                Logging.LiveRecording().output("Filtered by: \(framework)")
+                Cupertino.Context.composition.logging.recording.output("Filtered by: \(framework)")
             }
 
-            Logging.LiveRecording().output("")
+            Cupertino.Context.composition.logging.recording.output("")
 
             if projects.isEmpty {
-                Logging.LiveRecording().output("No projects found. Run 'cupertino save --samples' to index sample code.")
+                Cupertino.Context.composition.logging.recording.output("No projects found. Run 'cupertino save --samples' to index sample code.")
                 return
             }
 
             for (index, project) in projects.enumerated() {
-                Logging.LiveRecording().output("[\(index + 1)] \(project.title)")
-                Logging.LiveRecording().output("    ID: \(project.id)")
-                Logging.LiveRecording().output("    Frameworks: \(project.frameworks.joined(separator: ", "))")
-                Logging.LiveRecording().output("    Files: \(project.fileCount)")
-                Logging.LiveRecording().output("")
+                Cupertino.Context.composition.logging.recording.output("[\(index + 1)] \(project.title)")
+                Cupertino.Context.composition.logging.recording.output("    ID: \(project.id)")
+                Cupertino.Context.composition.logging.recording.output("    Frameworks: \(project.frameworks.joined(separator: ", "))")
+                Cupertino.Context.composition.logging.recording.output("    Files: \(project.fileCount)")
+                Cupertino.Context.composition.logging.recording.output("")
             }
         }
 
@@ -142,32 +142,32 @@ extension CLIImpl.Command {
             do {
                 let data = try encoder.encode(output)
                 if let jsonString = String(data: data, encoding: .utf8) {
-                    Logging.LiveRecording().output(jsonString)
+                    Cupertino.Context.composition.logging.recording.output(jsonString)
                 }
             } catch {
-                Logging.LiveRecording().error("Error encoding JSON: \(error)")
+                Cupertino.Context.composition.logging.recording.error("Error encoding JSON: \(error)")
             }
         }
 
         private func outputMarkdown(_ projects: [Sample.Index.Project], totalProjects: Int, totalFiles: Int) {
-            Logging.LiveRecording().output("# Sample Code Projects\n")
-            Logging.LiveRecording().output("Total: **\(totalProjects)** projects, **\(totalFiles)** files\n")
+            Cupertino.Context.composition.logging.recording.output("# Sample Code Projects\n")
+            Cupertino.Context.composition.logging.recording.output("Total: **\(totalProjects)** projects, **\(totalFiles)** files\n")
 
             if let framework {
-                Logging.LiveRecording().output("_Filtered to framework: **\(framework)**_\n")
+                Cupertino.Context.composition.logging.recording.output("_Filtered to framework: **\(framework)**_\n")
             }
 
             if projects.isEmpty {
-                Logging.LiveRecording().output("_No projects found. Run `cupertino save --samples` to index sample code._")
+                Cupertino.Context.composition.logging.recording.output("_No projects found. Run `cupertino save --samples` to index sample code._")
                 return
             }
 
-            Logging.LiveRecording().output("| Project | Frameworks | Files |")
-            Logging.LiveRecording().output("|---------|-----------|------:|")
+            Cupertino.Context.composition.logging.recording.output("| Project | Frameworks | Files |")
+            Cupertino.Context.composition.logging.recording.output("|---------|-----------|------:|")
 
             for project in projects {
                 let frameworks = project.frameworks.joined(separator: ", ")
-                Logging.LiveRecording().output("| `\(project.id)` | \(frameworks) | \(project.fileCount) |")
+                Cupertino.Context.composition.logging.recording.output("| `\(project.id)` | \(frameworks) | \(project.fileCount) |")
             }
         }
     }

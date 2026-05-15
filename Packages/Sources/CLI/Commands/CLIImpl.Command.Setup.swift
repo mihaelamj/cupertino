@@ -25,7 +25,7 @@ extension CLIImpl.Command {
         var keepExisting: Bool = false
 
         mutating func run() async throws {
-            Logging.LiveRecording().info("📦 Cupertino Setup\n")
+            Cupertino.Context.composition.logging.recording.info("📦 Cupertino Setup\n")
 
             // Path-DI composition sub-root (#535): construct once at the top
             // of run(), then thread explicit URLs into every consumer.
@@ -45,7 +45,7 @@ extension CLIImpl.Command {
                 }
                 renderer.printFinalSummary(outcome: outcome)
             } catch {
-                Logging.LiveRecording().error("❌ Setup failed: \(error)")
+                Cupertino.Context.composition.logging.recording.error("❌ Setup failed: \(error)")
                 throw ExitCode.failure
             }
         }
@@ -74,12 +74,12 @@ private final class SetupRenderer: @unchecked Sendable {
             printPriorStatus(status)
 
         case .dbBackedUp(let filename, _, let backupURL):
-            Logging.LiveRecording().info(
+            Cupertino.Context.composition.logging.recording.info(
                 "💾 Backed up \(filename) → \(backupURL.lastPathComponent)"
             )
 
         case .downloadStart(let label):
-            Logging.LiveRecording().info("⬇️  Downloading \(label)...")
+            Cupertino.Context.composition.logging.recording.info("⬇️  Downloading \(label)...")
 
         case .downloadProgress(_, let progress):
             renderProgress(progress: progress)
@@ -87,17 +87,17 @@ private final class SetupRenderer: @unchecked Sendable {
         case .downloadComplete(let label, let bytes):
             printRaw("\n")
             let size = Shared.Utils.Formatting.formatBytes(bytes)
-            Logging.LiveRecording().info("   ✓ \(label) (\(size))")
+            Cupertino.Context.composition.logging.recording.info("   ✓ \(label) (\(size))")
 
         case .extractStart(let label):
-            Logging.LiveRecording().info("📂 Extracting \(label.lowercased())...")
+            Cupertino.Context.composition.logging.recording.info("📂 Extracting \(label.lowercased())...")
 
         case .extractTick:
             renderExtractTick()
 
         case .extractComplete:
             printRaw("\(clearLine)")
-            Logging.LiveRecording().info("   ✓ Extracted")
+            Cupertino.Context.composition.logging.recording.info("   ✓ Extracted")
 
         case .finished:
             break
@@ -105,17 +105,17 @@ private final class SetupRenderer: @unchecked Sendable {
     }
 
     func printFinalSummary(outcome: Distribution.SetupService.Outcome) {
-        Logging.LiveRecording().output("")
+        Cupertino.Context.composition.logging.recording.output("")
         if outcome.skippedDownload {
-            Logging.LiveRecording().info("✅ Databases already exist (keeping them, per --keep-existing)")
+            Cupertino.Context.composition.logging.recording.info("✅ Databases already exist (keeping them, per --keep-existing)")
         } else {
-            Logging.LiveRecording().info("✅ Setup complete!")
+            Cupertino.Context.composition.logging.recording.info("✅ Setup complete!")
         }
-        Logging.LiveRecording().info("   Documentation: \(outcome.searchDBPath.path)")
-        Logging.LiveRecording().info("   Sample code:   \(outcome.samplesDBPath.path)")
-        Logging.LiveRecording().info("   Packages:      \(outcome.packagesDBPath.path)")
-        Logging.LiveRecording().info("   Version:       \(outcome.docsVersionWritten)")
-        Logging.LiveRecording().info("\n💡 Start the server with: cupertino serve")
+        Cupertino.Context.composition.logging.recording.info("   Documentation: \(outcome.searchDBPath.path)")
+        Cupertino.Context.composition.logging.recording.info("   Sample code:   \(outcome.samplesDBPath.path)")
+        Cupertino.Context.composition.logging.recording.info("   Packages:      \(outcome.packagesDBPath.path)")
+        Cupertino.Context.composition.logging.recording.info("   Version:       \(outcome.docsVersionWritten)")
+        Cupertino.Context.composition.logging.recording.info("\n💡 Start the server with: cupertino serve")
     }
 
     // MARK: - Rendering helpers
@@ -159,18 +159,18 @@ private final class SetupRenderer: @unchecked Sendable {
         case .missing:
             return
         case .current(let version):
-            Logging.LiveRecording().info(
+            Cupertino.Context.composition.logging.recording.info(
                 "ℹ️  Currently installed: v\(version) (same as the binary's expected version)."
             )
-            Logging.LiveRecording().info(
+            Cupertino.Context.composition.logging.recording.info(
                 "   Re-downloading v\(version). This is a refresh, not an upgrade."
             )
-            Logging.LiveRecording().info("   Tip: pass --keep-existing to skip this download.\n")
+            Cupertino.Context.composition.logging.recording.info("   Tip: pass --keep-existing to skip this download.\n")
         case .stale(let installed, let current):
-            Logging.LiveRecording().info("⬆️  Upgrading databases: v\(installed) → v\(current).\n")
+            Cupertino.Context.composition.logging.recording.info("⬆️  Upgrading databases: v\(installed) → v\(current).\n")
         case .unknown(let current):
-            Logging.LiveRecording().info("ℹ️  Databases exist but their version is unknown (legacy install).")
-            Logging.LiveRecording().info("   Downloading v\(current) and stamping the version file.\n")
+            Cupertino.Context.composition.logging.recording.info("ℹ️  Databases exist but their version is unknown (legacy install).")
+            Cupertino.Context.composition.logging.recording.info("   Downloading v\(current) and stamping the version file.\n")
         }
     }
 }
