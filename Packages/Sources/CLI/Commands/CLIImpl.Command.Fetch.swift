@@ -659,10 +659,9 @@ extension CLIImpl.Command {
                 logger: Cupertino.Context.composition.logging.recording
             )
 
-            let stats = try await fetcher.fetch { progress in
-                let percent = String(format: "%.1f", progress.percentage)
-                Cupertino.Context.composition.logging.recording.output("   Progress: \(percent)% - \(progress.packageName)")
-            }
+            let stats = try await fetcher.fetch(progress: PackageFetcherProgressObserver(
+                recording: Cupertino.Context.composition.logging.recording
+            ))
 
             Cupertino.Context.composition.logging.recording.output("")
             Cupertino.Context.composition.logging.recording.info("✅ Metadata refresh completed")
@@ -767,11 +766,12 @@ extension CLIImpl.Command {
                         exclusions: exclusions,
                         manifestCache: manifestCache
                     )
-                    let (resolved, resolverStats) = await resolver.resolve(seeds: seedRefs) { name, done, total in
-                        if done == 1 || done % 10 == 0 || done == total {
-                            Cupertino.Context.composition.logging.recording.output("   Resolving: \(done)/\(total) (\(name))")
-                        }
-                    }
+                    let (resolved, resolverStats) = await resolver.resolve(
+                        seeds: seedRefs,
+                        progress: PackageDependencyResolverProgressObserver(
+                            recording: Cupertino.Context.composition.logging.recording
+                        )
+                    )
                     resolvedPackages = resolved
                     Cupertino.Context.composition.logging.recording.info("   Seeds: \(resolverStats.seedCount)")
                     Cupertino.Context.composition.logging.recording.info("   Discovered via dependencies: \(resolverStats.discoveredCount)")
@@ -1125,6 +1125,33 @@ extension CLIImpl.Command {
             func observe(progress: Crawler.HIGProgress) {
                 let percent = String(format: "%.1f", progress.percentage)
                 recording.output("   Progress: \(percent)% - \(progress.currentItem)")
+            }
+        }
+
+        /// Closure-free observer for `Core.PackageIndexing.PackageFetcher`
+        /// progress. Prints per-package progress lines through the
+        /// binary's recorder. Replaces the previous trailing-closure
+        /// pattern at the call site.
+        private struct PackageFetcherProgressObserver: Core.PackageIndexing.PackageFetcherProgressObserving {
+            let recording: any LoggingModels.Logging.Recording
+
+            func observe(progress: Core.PackageIndexing.PackageFetcherProgress) {
+                let percent = String(format: "%.1f", progress.percentage)
+                recording.output("   Progress: \(percent)% - \(progress.packageName)")
+            }
+        }
+
+        /// Closure-free observer for
+        /// `Core.PackageIndexing.PackageDependencyResolver` progress.
+        /// Same throttled-output rule the previous trailing closure had
+        /// (every 1, 10, total).
+        private struct PackageDependencyResolverProgressObserver: Core.PackageIndexing.PackageDependencyResolverProgressObserving {
+            let recording: any LoggingModels.Logging.Recording
+
+            func observe(packageName: String, processed: Int, total: Int) {
+                if processed == 1 || processed % 10 == 0 || processed == total {
+                    recording.output("   Resolving: \(processed)/\(total) (\(packageName))")
+                }
             }
         }
     }

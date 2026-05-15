@@ -62,7 +62,7 @@ extension Core.PackageIndexing {
         /// exclusions drop matched canonical names before adding them to the frontier.
         public func resolve(
             seeds: [Shared.Models.PackageReference],
-            onProgress: (@Sendable (String, Int, Int) -> Void)? = nil
+            progress: (any Core.PackageIndexing.PackageDependencyResolverProgressObserving)? = nil
         ) async -> (packages: [ResolvedPackage], stats: Statistics) {
             let startedAt = Date()
             var visited: [String: ResolvedPackage] = [:]
@@ -123,7 +123,7 @@ extension Core.PackageIndexing {
 
                 for (ownerIn, repoIn, seedOrigin, result) in results {
                     processed += 1
-                    onProgress?("\(ownerIn)/\(repoIn)", processed, processed + frontier.count)
+                    progress?.observe(packageName: "\(ownerIn)/\(repoIn)", processed: processed, total: processed + frontier.count)
 
                     let resolved: FetchSuccess
                     switch result {

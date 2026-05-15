@@ -84,9 +84,9 @@ struct PackageFetcherTests {
 
     // MARK: - Statistics Tests
 
-    @Test("Core.PackageIndexing.PackageFetcher.Statistics initializes with defaults")
+    @Test("Core.PackageIndexing.PackageFetcherStatistics initializes with defaults")
     func statisticsInitialization() {
-        let stats = Core.PackageIndexing.PackageFetcher.Statistics()
+        let stats = Core.PackageIndexing.PackageFetcherStatistics()
 
         #expect(stats.totalPackages == 0)
         #expect(stats.successfulFetches == 0)
@@ -96,21 +96,21 @@ struct PackageFetcherTests {
         #expect(stats.duration == nil)
     }
 
-    @Test("Core.PackageIndexing.PackageFetcher.Statistics calculates duration")
+    @Test("Core.PackageIndexing.PackageFetcherStatistics calculates duration")
     func statisticsCalculatesDuration() {
         let start = Date()
         let end = start.addingTimeInterval(120)
 
-        var stats = Core.PackageIndexing.PackageFetcher.Statistics()
+        var stats = Core.PackageIndexing.PackageFetcherStatistics()
         stats.startTime = start
         stats.endTime = end
 
         #expect(stats.duration == 120)
     }
 
-    @Test("Core.PackageIndexing.PackageFetcher.Statistics duration is nil when incomplete")
+    @Test("Core.PackageIndexing.PackageFetcherStatistics duration is nil when incomplete")
     func statisticsDurationNilWhenIncomplete() {
-        var stats = Core.PackageIndexing.PackageFetcher.Statistics()
+        var stats = Core.PackageIndexing.PackageFetcherStatistics()
         #expect(stats.duration == nil)
 
         stats.startTime = Date()
@@ -122,10 +122,10 @@ struct PackageFetcherTests {
 
     // MARK: - Progress Tests
 
-    @Test("Core.PackageIndexing.PackageFetcher.Progress calculates percentage")
+    @Test("Core.PackageIndexing.PackageFetcherProgress calculates percentage")
     func progressCalculatesPercentage() {
-        let stats = Core.PackageIndexing.PackageFetcher.Statistics()
-        let progress = Core.PackageIndexing.PackageFetcher.Progress(
+        let stats = Core.PackageIndexing.PackageFetcherStatistics()
+        let progress = Core.PackageIndexing.PackageFetcherProgress(
             current: 25,
             total: 100,
             packageName: "apple/swift",
@@ -135,17 +135,17 @@ struct PackageFetcherTests {
         #expect(progress.percentage == 25.0)
     }
 
-    @Test("Core.PackageIndexing.PackageFetcher.Progress handles edge cases")
+    @Test("Core.PackageIndexing.PackageFetcherProgress handles edge cases")
     func progressHandlesEdgeCases() {
-        let stats = Core.PackageIndexing.PackageFetcher.Statistics()
+        let stats = Core.PackageIndexing.PackageFetcherStatistics()
 
-        let progress1 = Core.PackageIndexing.PackageFetcher.Progress(current: 0, total: 100, packageName: "test/repo", stats: stats)
+        let progress1 = Core.PackageIndexing.PackageFetcherProgress(current: 0, total: 100, packageName: "test/repo", stats: stats)
         #expect(progress1.percentage == 0.0)
 
-        let progress2 = Core.PackageIndexing.PackageFetcher.Progress(current: 100, total: 100, packageName: "test/repo", stats: stats)
+        let progress2 = Core.PackageIndexing.PackageFetcherProgress(current: 100, total: 100, packageName: "test/repo", stats: stats)
         #expect(progress2.percentage == 100.0)
 
-        let progress3 = Core.PackageIndexing.PackageFetcher.Progress(current: 50, total: 100, packageName: "test/repo", stats: stats)
+        let progress3 = Core.PackageIndexing.PackageFetcherProgress(current: 50, total: 100, packageName: "test/repo", stats: stats)
         #expect(progress3.percentage == 50.0)
     }
 
