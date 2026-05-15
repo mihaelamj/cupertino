@@ -92,6 +92,25 @@ extension Search {
                 let filename = file.deletingPathExtension().lastPathComponent
                 let uri = "hig://\(category)/\(filename)"
 
+                // #429: indexer-side poison defence — same checks the
+                // apple-docs strategy runs, generalised to this source.
+                if Search.StrategyHelpers.titleLooksLikeHTTPErrorTemplate(title) {
+                    logger.error(
+                        "⛔ Skipping HTTP-error-template HIG page (#429 defence): title=\(title.prefix(60)) file=\(file.lastPathComponent)",
+                        category: .search
+                    )
+                    skipped += 1
+                    continue
+                }
+                if Search.StrategyHelpers.contentLooksLikeJavaScriptFallback(content) {
+                    logger.error(
+                        "⛔ Skipping JS-fallback HIG page (#429 defence): title=\(title.prefix(60)) file=\(file.lastPathComponent)",
+                        category: .search
+                    )
+                    skipped += 1
+                    continue
+                }
+
                 let contentHash = Shared.Models.HashUtilities.sha256(of: content)
                 let attrs = try? FileManager.default.attributesOfItem(atPath: file.path)
                 let modDate = attrs?[.modificationDate] as? Date ?? Date()

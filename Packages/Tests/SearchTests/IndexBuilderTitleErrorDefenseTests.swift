@@ -192,6 +192,59 @@ struct IndexBuilderJavaScriptFallbackDefenseTests {
     }
 }
 
+// MARK: - #429 generalised poison filter — content-based JS-fallback gate
+
+// Sister to `pageLooksLikeJavaScriptFallback`. The page-based check
+// takes a `StructuredDocumentationPage` (only the apple-docs strategy
+// has one). The content-based check works on a raw `String` so the
+// 4 non-apple-docs strategies (SwiftEvolution, HIG, SwiftOrg,
+// AppleArchive) can also reject JS-fallback content reaching their
+// on-disk corpus. Same signatures detected, same return semantics.
+
+@Suite("Search.StrategyHelpers.contentLooksLikeJavaScriptFallback (#429 — content-based variant)")
+struct StrategyHelpersContentJSFallbackTests {
+    typealias SUT = Search.StrategyHelpers
+
+    @Test("'Please turn on JavaScript' anywhere in content trips the gate")
+    func pleaseTurnOnJSTrips() {
+        #expect(SUT.contentLooksLikeJavaScriptFallback(
+            "Some prose. Please turn on JavaScript to view this page. More prose."
+        ) == true)
+    }
+
+    @Test("'#app-main)# An unknown error occurred' WebView marker trips the gate")
+    func appMainErrorTrips() {
+        #expect(SUT.contentLooksLikeJavaScriptFallback(
+            "Some text. #app-main)# An unknown error occurred. Trailing text."
+        ) == true)
+    }
+
+    @Test(
+        "Content shapes that don't contain the JS-fallback signatures are NOT false positives",
+        arguments: [
+            // Synthetic fixtures, NOT verbatim Apple-corpus excerpts. The
+            // point of these cases is to confirm the gate doesn't trip on
+            // arbitrary prose that lacks the two trigger strings
+            // ("Please turn on JavaScript", "#app-main)# An unknown error
+            // occurred"). The content of each fixture is illustrative
+            // only — the filter is purely substring-based, so any prose
+            // without the two markers exercises the negative branch.
+            "Some Apple-style heading. Body text that talks about an API and gives an example, with no JS-fallback markers anywhere.",
+            "A long paragraph of prose. Multiple sentences. Some technical detail. None of it contains the WebView fallback signature.",
+            "Headings, code-block markers like ```swift, function signatures, lists. All inert from the gate's perspective.",
+            "A single short sentence.",
+        ]
+    )
+    func contentWithoutSignaturesIsNotFalsePositive(content: String) {
+        #expect(SUT.contentLooksLikeJavaScriptFallback(content) == false)
+    }
+
+    @Test("Empty content is NOT a false positive")
+    func emptyContentNotFlagged() {
+        #expect(SUT.contentLooksLikeJavaScriptFallback("") == false)
+    }
+}
+
 // MARK: - #588: placeholder-title defence
 
 // Sister defence to the #284 HTTP-error gate above: catches the

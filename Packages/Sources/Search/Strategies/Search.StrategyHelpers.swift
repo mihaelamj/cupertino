@@ -437,6 +437,32 @@ extension Search {
             return false
         }
 
+        /// Sister to `pageLooksLikeJavaScriptFallback` that operates on
+        /// the raw content string instead of a `StructuredDocumentationPage`.
+        /// Used by the non-Apple-docs indexer strategies (Swift Evolution,
+        /// HIG, Swift.org, Apple Archive) that don't decode to the
+        /// structured page shape but still need defence-in-depth against
+        /// Apple's WebView crawl mishaps reaching their on-disk corpus
+        /// (#429 — same poison-filter coverage everywhere, not just
+        /// `indexAppleDocsFromDirectory`).
+        ///
+        /// Matches the same two signatures the structured-page check
+        /// uses:
+        ///   - `"Please turn on JavaScript"` (Apple's JS-disabled
+        ///     fallback prose)
+        ///   - `"#app-main)# An unknown error occurred"` (WebView render
+        ///     failure marker the crawler emits when it can't draw the
+        ///     page)
+        ///
+        /// - Parameter content: The raw page body the indexer is about
+        ///   to write into the FTS index.
+        /// - Returns: `true` if the content matches a JS-fallback signature.
+        public static func contentLooksLikeJavaScriptFallback(_ content: String) -> Bool {
+            if content.contains("Please turn on JavaScript") { return true }
+            if content.contains("#app-main)# An unknown error occurred") { return true }
+            return false
+        }
+
         // MARK: - #588 door equivalence (tier A / B / C)
 
         /// Per-run record of a URI the indexer has already accepted.
