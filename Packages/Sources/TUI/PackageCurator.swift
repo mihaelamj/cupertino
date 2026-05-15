@@ -20,6 +20,23 @@ struct PackageCuratorApp {
             return
         }
 
+        // #598: TUI requires a real TTY on both stdin and stdout.
+        // Without a TTY, `enableRawMode`'s VMIN/VTIME settings have no
+        // effect (they only govern terminal-driver blocking), so `read()`
+        // returns EOF immediately, the event loop spins, and one core
+        // pins at 100% CPU until the process is killed. Detect the
+        // headless case up front and exit cleanly with a usage hint
+        // instead of entering the doomed loop.
+        if isatty(STDIN_FILENO) == 0 || isatty(STDOUT_FILENO) == 0 {
+            var stderr = FileHandle.standardError
+            stderr.write(Data((
+                "cupertino-tui: stdin/stdout is not a terminal — TUI requires a real TTY.\n" +
+                "  Launch it directly in a terminal window, not from a pipe or background invocation.\n" +
+                "  For headless probes (CI, scripts), use `cupertino-tui --version` to confirm the binary is present.\n"
+            ).utf8))
+            return
+        }
+
         // Load packages
         let packages = await Core.Protocols.SwiftPackagesCatalog.allPackages
 
