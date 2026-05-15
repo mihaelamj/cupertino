@@ -390,6 +390,18 @@ extension Crawler.AppleDocs {
             metadata.stats.updatedPages += 1
         }
 
+        /// Bump `stats.deferredRetries` by one. Called when a URL is added
+        /// to the retry queue instead of being immediately rejected (#292).
+        public func recordDeferredRetry() {
+            metadata.stats.deferredRetries += 1
+        }
+
+        /// Bump `stats.retriesSucceeded` by one. Called when a deferred URL
+        /// is successfully crawled on a retry attempt (#292).
+        public func recordRetrySucceeded() {
+            metadata.stats.retriesSucceeded += 1
+        }
+
         /// Get page count
         public func getPageCount() -> Int {
             metadata.pages.count
@@ -406,6 +418,7 @@ extension Crawler.AppleDocs {
         public func saveSessionState(
             visited: Set<String>,
             queue: [(url: URL, depth: Int)],
+            retryQueue: [Shared.Models.QueuedRetryURL],
             startURL: URL,
             outputDirectory: URL
         ) throws {
@@ -414,6 +427,7 @@ extension Crawler.AppleDocs {
             metadata.crawlState = Shared.Models.CrawlSessionState(
                 visited: visited,
                 queue: queuedURLs,
+                retryQueue: retryQueue,
                 startURL: startURL.absoluteString,
                 outputDirectory: outputDirectory.path,
                 sessionStartTime: metadata.stats.startTime ?? Date(),
@@ -424,19 +438,26 @@ extension Crawler.AppleDocs {
             try metadata.save(to: configuration.metadataFile)
             lastAutoSave = Date()
 
-            logger.info("💾 Saved session state: \(visited.count) visited, \(queue.count) queued", category: .crawler)
+            logger.info("💾 Saved session state: \(visited.count) visited, \(queue.count) queued, \(retryQueue.count) deferred", category: .crawler)
         }
 
         /// Check if auto-save is needed and perform it
         public func autoSaveIfNeeded(
             visited: Set<String>,
             queue: [(url: URL, depth: Int)],
+            retryQueue: [Shared.Models.QueuedRetryURL],
             startURL: URL,
             outputDirectory: URL
         ) async throws {
             let now = Date()
             if now.timeIntervalSince(lastAutoSave) >= autoSaveInterval {
-                try saveSessionState(visited: visited, queue: queue, startURL: startURL, outputDirectory: outputDirectory)
+                try saveSessionState(
+                    visited: visited,
+                    queue: queue,
+                    retryQueue: retryQueue,
+                    startURL: startURL,
+                    outputDirectory: outputDirectory
+                )
             }
         }
 

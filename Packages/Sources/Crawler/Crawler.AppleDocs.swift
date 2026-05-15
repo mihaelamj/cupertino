@@ -25,6 +25,7 @@ extension Crawler {
         private var webPageFetcher: Crawler.WebKit.ContentFetcher!
         private var visited = Set<String>()
         private var queue: [(url: URL, depth: Int)] = []
+        private var retryQueue: [Shared.Models.QueuedRetryURL] = []
         // Tracks URLs currently in `queue` so the same URL discovered from
         // multiple parents is only enqueued once. Was an O(N) duplicate queue
         // before — measured at 72 % duplicates on the 2026-04-30 v1.0 recrawl
@@ -112,6 +113,7 @@ extension Crawler {
                 // dedup at enqueue is correct after resume. Schema-compatible:
                 // we don't persist `enqueued` separately.
                 enqueued = Set(queue.map(\.url.absoluteString))
+                retryQueue = savedSession.retryQueue
 
                 // Restore or initialize stats. The previous closure-form
                 // `updateStatistics { if stats.startTime == nil { ... } }`
@@ -189,6 +191,7 @@ extension Crawler {
                     try await state.autoSaveIfNeeded(
                         visited: visited,
                         queue: queue,
+                        retryQueue: retryQueue,
                         startURL: configuration.startURL,
                         outputDirectory: configuration.outputDirectory
                     )
@@ -202,6 +205,15 @@ extension Crawler {
                     if visited.count % Shared.Constants.Interval.webViewRecycleEvery == 0 {
                         await recycleWebView()
                     }
+                } catch Error.httpErrorPage {
+                    let delay = Self.deferredRetryDelay(forAttempt: 0)
+                    retryQueue.append(Shared.Models.QueuedRetryURL(
+                        url: normalizedURL.absoluteString,
+                        attempts: 0,
+                        nextAttempt: Date().addingTimeInterval(delay)
+                    ))
+                    await state.recordDeferredRetry()
+                    logInfo("   🔁 Deferred \(normalizedURL.lastPathComponent) for retry in \(Int(delay))s (#292)")
                 } catch {
                     await state.recordError()
                     logError("Error crawling \(normalizedURL.absoluteString): \(error)")
@@ -210,6 +222,9 @@ extension Crawler {
                 // Delay between requests
                 try await Task.sleep(for: .seconds(configuration.requestDelay))
             }
+
+            // Process URLs deferred due to HTTP error pages (#292)
+            await processRetryQueue()
 
             // Finalize - get final stats from state
             var finalStats = await state.getStatistics()
@@ -260,6 +275,9 @@ extension Crawler {
                 do {
                     try await crawlPage(url: url, depth: depth)
                     return // Success
+                } catch Error.httpErrorPage {
+                    // Propagate immediately — the main loop handles deferral to retryQueue.
+                    throw Error.httpErrorPage
                 } catch {
                     lastError = error
                     logError("Attempt \(attempt + 1) failed for \(url.absoluteString): \(error)")
@@ -268,6 +286,81 @@ extension Crawler {
 
             // All retries exhausted
             throw lastError ?? Error.invalidState
+        }
+
+        // MARK: - Deferred Retry Queue (#292)
+
+        /// Backoff delays for deferred retries: 30s → 5min → 30min.
+        /// `attempt` is the number of retries already made (0 = about to make the 1st retry).
+        static func deferredRetryDelay(forAttempt attempt: Int) -> TimeInterval {
+            switch attempt {
+            case 0: return 30
+            case 1: return 300
+            default: return 1800
+            }
+        }
+
+        /// Process all URLs deferred due to HTTP error pages (#292).
+        /// Runs after the main crawl queue is exhausted. Respects the per-URL
+        /// `nextAttempt` timestamp, sleeping until the earliest window.
+        /// Max 3 total attempts per URL; final failure writes to the rejection log.
+        private func processRetryQueue() async {
+            guard !retryQueue.isEmpty else { return }
+            logInfo("🔄 Processing \(retryQueue.count) deferred retry URL(s)...")
+
+            var pending = retryQueue
+            retryQueue = []
+
+            while !pending.isEmpty {
+                let now = Date()
+                var ready: [Shared.Models.QueuedRetryURL] = []
+                var waiting: [Shared.Models.QueuedRetryURL] = []
+                for item in pending {
+                    if item.nextAttempt <= now { ready.append(item) } else { waiting.append(item) }
+                }
+
+                if ready.isEmpty {
+                    guard let earliest = waiting.min(by: { $0.nextAttempt < $1.nextAttempt }) else { break }
+                    let wait = earliest.nextAttempt.timeIntervalSinceNow
+                    if wait > 0 {
+                        logInfo("   ⏳ Waiting \(Int(wait))s for next retry window...")
+                        try? await Task.sleep(for: .seconds(wait))
+                    }
+                    pending = waiting
+                    continue
+                }
+
+                pending = waiting
+                for var item in ready {
+                    guard let url = URL(string: item.url) else { continue }
+                    logInfo("   🔁 Retry attempt \(item.attempts + 1)/3: \(url.lastPathComponent)")
+                    do {
+                        try await crawlPage(url: url, depth: 0)
+                        await state.recordRetrySucceeded()
+                        logInfo("   ✅ Retry succeeded: \(url.lastPathComponent)")
+                    } catch Error.httpErrorPage {
+                        item.attempts += 1
+                        if item.attempts >= 3 {
+                            logInfo("   ⛔ All retries exhausted: \(url.lastPathComponent)")
+                            let framework = Shared.Models.URLUtilities.extractFramework(from: url)
+                            await state.recordRejection(
+                                url: url,
+                                framework: framework,
+                                reason: .httpErrorTemplate,
+                                outputDirectory: configuration.outputDirectory
+                            )
+                        } else {
+                            let delay = Self.deferredRetryDelay(forAttempt: item.attempts)
+                            item.nextAttempt = Date().addingTimeInterval(delay)
+                            pending.append(item)
+                            logInfo("   ↩️ Re-queued with \(Int(delay))s delay (attempt \(item.attempts + 1)/3 next)")
+                        }
+                    } catch {
+                        logError("Retry failed for \(url.absoluteString): \(error)")
+                        await state.recordError()
+                    }
+                }
+            }
         }
 
         private func crawlPage(url: URL, depth: Int) async throws {
@@ -341,16 +434,8 @@ extension Crawler {
                     logInfo("   ⚠️ JSON API unavailable, using HTML fallback")
                     let html = try await loadPage(url: url)
                     if htmlParser.looksLikeHTTPErrorPage(html: html) {
-                        logInfo("   ⛔ HTTP error template detected, skipping (#284)")
-                        await state.recordRejection(
-                            url: url,
-                            framework: framework,
-                            reason: .httpErrorTemplate,
-                            outputDirectory: configuration.outputDirectory
-                        )
-                        await state.recordError()
-                        await state.recordTotalPage()
-                        return
+                        logInfo("   ⏳ HTTP error template detected, deferring for retry (#292)")
+                        throw Error.httpErrorPage
                     }
                     if htmlParser.looksLikeJavaScriptFallback(html: html) {
                         logInfo("   ⛔ Apple SPA no-content sub-view detected, skipping (#284)")
@@ -376,16 +461,8 @@ extension Crawler {
                 // No JSON endpoint available, use HTML directly
                 let html = try await loadPage(url: url)
                 if htmlParser.looksLikeHTTPErrorPage(html: html) {
-                    logInfo("   ⛔ HTTP error template detected, skipping (#284)")
-                    await state.recordRejection(
-                        url: url,
-                        framework: framework,
-                        reason: .httpErrorTemplate,
-                        outputDirectory: configuration.outputDirectory
-                    )
-                    await state.recordError()
-                    await state.recordTotalPage()
-                    return
+                    logInfo("   ⏳ HTTP error template detected, deferring for retry (#292)")
+                    throw Error.httpErrorPage
                 }
                 if htmlParser.looksLikeJavaScriptFallback(html: html) {
                     logInfo("   ⛔ Apple SPA no-content sub-view detected, skipping (#284)")
@@ -647,17 +724,23 @@ extension Crawler {
 
         private func logStatistics() async {
             let stats = await state.getStatistics()
-            let messages = [
+            var messages = [
                 "📊 Statistics:",
                 "   Total pages processed: \(stats.totalPages)",
                 "   New pages: \(stats.newPages)",
                 "   Updated pages: \(stats.updatedPages)",
                 "   Skipped (unchanged): \(stats.skippedPages)",
                 "   Errors: \(stats.errors)",
+            ]
+            if stats.deferredRetries > 0 {
+                messages.append("   Deferred retries: \(stats.deferredRetries)")
+                messages.append("   Retries succeeded: \(stats.retriesSucceeded)")
+            }
+            messages.append(contentsOf: [
                 stats.duration.map { "   Duration: \(Shared.Utils.Formatting.formatDurationVerbose($0))" } ?? "",
                 "",
                 "📁 Output: \(configuration.outputDirectory.path)",
-            ]
+            ])
 
             for message in messages where !message.isEmpty {
                 logger.info(message, category: .crawler)
@@ -727,6 +810,9 @@ extension Crawler.AppleDocs {
         case invalidState
         case invalidHTML
         case unsupportedPlatform
+        /// Apple's CDN served a styled HTTP error page (502/429/403 at HTTP 200).
+        /// Thrown by `crawlPage` so callers can defer the URL for retry (#292).
+        case httpErrorPage
 
         public var errorDescription: String? {
             switch self {
@@ -738,6 +824,8 @@ extension Crawler.AppleDocs {
                 return "Invalid HTML received"
             case .unsupportedPlatform:
                 return "WKWebView is not available on this platform"
+            case .httpErrorPage:
+                return "HTTP error template page received"
             }
         }
     }

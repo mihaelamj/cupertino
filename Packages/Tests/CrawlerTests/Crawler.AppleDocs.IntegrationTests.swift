@@ -609,6 +609,7 @@ func crawlerStateSessionManagement() async throws {
     try await state.saveSessionState(
         visited: visited,
         queue: queue,
+        retryQueue: [],
         startURL: #require(URL(string: "https://example.com/start")),
         outputDirectory: tempDir
     )
@@ -707,6 +708,7 @@ func crawlerStateAutoSaveInterval() async throws {
     try await state.autoSaveIfNeeded(
         visited: visited,
         queue: queue,
+        retryQueue: [],
         startURL: startURL,
         outputDirectory: tempDir
     )
@@ -719,6 +721,7 @@ func crawlerStateAutoSaveInterval() async throws {
     try await state.saveSessionState(
         visited: visited,
         queue: queue,
+        retryQueue: [],
         startURL: startURL,
         outputDirectory: tempDir
     )
@@ -733,6 +736,7 @@ func crawlerStateAutoSaveInterval() async throws {
     try await state.autoSaveIfNeeded(
         visited: visited,
         queue: queue,
+        retryQueue: [],
         startURL: startURL,
         outputDirectory: tempDir
     )
