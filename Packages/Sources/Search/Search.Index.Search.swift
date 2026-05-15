@@ -90,19 +90,30 @@ extension Search.Index {
         let (_, queryForFTS) = extractAttributeFilters(queryToSearch)
         let sanitizedQuery = sanitizeFTS5Query(queryForFTS)
 
-        // Per-column bm25 weights (#181, #192 D): title dominates, symbols next,
-        // summary third, framework modest bonus. Body matches are common and
-        // easily dilute ranking; title and AST-derived symbols are the user's
-        // clearest intent signal. Column order matches the docs_fts
-        // declaration: uri, source, framework, language, title, content,
-        // summary, symbols.
+        // Per-column bm25 weights (#181, #192 D, #77): title dominates,
+        // symbols next, summary third, symbol_components a deliberately
+        // modest 1.5 floor, framework modest bonus. Body matches are
+        // common and easily dilute ranking; title and AST-derived
+        // symbols are the user's clearest intent signal. Column order
+        // matches the docs_fts declaration: uri, source, framework,
+        // language, title, content, summary, symbols, symbol_components.
         //
-        // Rationale for symbols=5.0: code-derived names ("Observable", "Task",
-        // "@MainActor") are strong signals but slightly below a title-level
-        // match. Placed above summary (3.0) since semantic queries target
-        // type names directly; below title (10.0) since a user typing
-        // "Task" still wants the Swift Task struct first, not any doc that
-        // mentions it in a code block.
+        // Rationale for symbols=5.0: code-derived names ("Observable",
+        // "Task", "@MainActor") are strong signals but slightly below a
+        // title-level match. Placed above summary (3.0) since semantic
+        // queries target type names directly; below title (10.0) since a
+        // user typing "Task" still wants the Swift Task struct first,
+        // not any doc that mentions it in a code block.
+        //
+        // Rationale for symbol_components=1.5 (#77): acronym-aware
+        // CamelCase splits (LazyVGrid → Lazy / VGrid / Grid) recover
+        // canonical-answer recall on token-boundary mismatches
+        // (`search("grid")` finding LazyVGrid). 1.5 sits well below
+        // symbols=5.0 so `search("LazyVGrid")` ranking is unchanged
+        // from the v1.0.0 exact-symbol path — the original identifier
+        // signal stays dominant. Placed above content (1.0) since a
+        // component match on the symbols column is still a stronger
+        // signal than a body-text mention.
         var sql = """
         SELECT
             f.uri,
@@ -112,7 +123,7 @@ extension Search.Index {
             f.summary,
             m.file_path,
             m.word_count,
-            bm25(docs_fts, 1.0, 1.0, 2.0, 1.0, 10.0, 1.0, 3.0, 5.0) as rank,
+            bm25(docs_fts, 1.0, 1.0, 2.0, 1.0, 10.0, 1.0, 3.0, 5.0, 1.5) as rank,
             COALESCE(s.kind, 'unknown') as kind,
             m.min_ios,
             m.min_macos,

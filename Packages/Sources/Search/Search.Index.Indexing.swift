@@ -350,15 +350,25 @@ extension Search.Index {
             _ = sqlite3_step(metaStmt)
         }
 
-        // Update FTS index column with a space-separated form so each
-        // name becomes its own token under unicode61 + porter.
-        let ftsSql = "UPDATE docs_fts SET symbols = ? WHERE uri = ?;"
+        // Update FTS index columns. `symbols` carries the original
+        // identifiers (space-separated so each becomes its own FTS token).
+        // `symbol_components` (#77) carries acronym-aware CamelCase splits
+        // of the same set — `LazyVGrid → Lazy / VGrid / Grid`,
+        // `URLSession → URL / Session` — so a query like `search("grid")`
+        // finds the `LazyVGrid` page that bare-token matching on `symbols`
+        // would have missed. BM25F weight on `symbol_components` (1.5) is
+        // deliberately well below `symbols` (5.0): the original-identifier
+        // signal stays dominant for exact-symbol queries.
+        let components = Self.splitCamelCaseIdentifiers(names)
+        let ftsSql = "UPDATE docs_fts SET symbols = ?, symbol_components = ? WHERE uri = ?;"
         var ftsStmt: OpaquePointer?
         defer { sqlite3_finalize(ftsStmt) }
         if sqlite3_prepare_v2(database, ftsSql, -1, &ftsStmt, nil) == SQLITE_OK {
             let ftsBlob = names.isEmpty ? "" : names.sorted().joined(separator: " ")
+            let componentsBlob = components.isEmpty ? "" : components.joined(separator: " ")
             sqlite3_bind_text(ftsStmt, 1, (ftsBlob as NSString).utf8String, -1, nil)
-            sqlite3_bind_text(ftsStmt, 2, (docUri as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(ftsStmt, 2, (componentsBlob as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(ftsStmt, 3, (docUri as NSString).utf8String, -1, nil)
             _ = sqlite3_step(ftsStmt)
         }
     }
