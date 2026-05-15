@@ -98,7 +98,32 @@ extension Indexer {
                 force: request.force
             )
 
-            let result = try await samplesIndexingRunner.run(input: input) { phase in
+            let observer = HandlerPhaseObserver(handler: handler)
+            let result = try await samplesIndexingRunner.run(input: input, phaseObserver: observer)
+
+            let outcome = Outcome(
+                samplesDBPath: request.samplesDB,
+                projectsIndexedThisRun: result.projectsIndexedThisRun,
+                projectsTotal: result.projectsTotal,
+                filesTotal: result.filesTotal,
+                symbolsTotal: result.symbolsTotal,
+                importsTotal: result.importsTotal,
+                durationSeconds: result.durationSeconds
+            )
+            handler(.finished(outcome))
+            return outcome
+        }
+
+        /// Adapter bridging the closure-shaped `handler:` parameter on
+        /// `Indexer.SamplesService.run` to the typed
+        /// `Sample.Index.SamplesIndexingPhaseObserving` Observer protocol
+        /// that `Sample.Index.SamplesIndexingRunner.run` now requires.
+        /// Same boundary pattern as `Indexer.DocsService` /
+        /// `Indexer.PackagesService` HandlerProgressReporter adapters.
+        private struct HandlerPhaseObserver: Sample.Index.SamplesIndexingPhaseObserving {
+            let handler: @Sendable (Event) -> Void
+
+            func observe(phase: Sample.Index.SamplesIndexingPhase) {
                 switch phase {
                 case .clearingExistingIndex:
                     handler(.clearingExistingIndex)
@@ -121,18 +146,6 @@ extension Indexer {
                     handler(.projectProgress(name: name, percent: percent, phase: mapped))
                 }
             }
-
-            let outcome = Outcome(
-                samplesDBPath: request.samplesDB,
-                projectsIndexedThisRun: result.projectsIndexedThisRun,
-                projectsTotal: result.projectsTotal,
-                filesTotal: result.filesTotal,
-                symbolsTotal: result.symbolsTotal,
-                importsTotal: result.importsTotal,
-                durationSeconds: result.durationSeconds
-            )
-            handler(.finished(outcome))
-            return outcome
         }
     }
 }
