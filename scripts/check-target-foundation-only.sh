@@ -120,6 +120,7 @@ MODELS_TARGETS=(
     IndexerModels
     DistributionModels
     CleanupModels
+    CoreSampleCodeModels
 )
 
 # Producers that have been audited + opt into the strict rule.
@@ -167,6 +168,15 @@ STRICT_PRODUCERS=(
     # SharedConstants. Flat-named (the producer `Sample.Cleanup.Cleaner`
     # is an actor, can't be extended from outside).
     CleanupModels
+
+    # Closures-to-Observer epic: foundation-only seam target for
+    # `Sample.Core.GitHubFetcherProgress` value type +
+    # `Sample.Core.GitHubFetcherProgressObserving` Observer protocol.
+    # Flat-named (the producer `Sample.Core.GitHubFetcher` is a public
+    # final class, can't be extended cleanly from outside; the
+    # `Sample.Core` enum namespace itself lives in SharedConstants and
+    # is extended here).
+    CoreSampleCodeModels
 
     # Phase 3 (#536): producer / feature targets.
     Availability
