@@ -23,10 +23,9 @@ extension Logging {
     ///
     /// Replaces the previous `Logging.Unified.shared` Singleton (GoF p.
     /// 127) which was rejected as a Service Locator (Seemann, *Dependency
-    /// Injection*, 2011, ch. 5). Phase A of #548 added this type; Phases
-    /// B-G migrate each binary's composition root to construct one;
-    /// Phase H deletes the `.shared` accessor and the no-arg
-    /// `Logging.LiveRecording()` shim.
+    /// Injection*, 2011, ch. 5). Shipped across #548 phases A-H; the
+    /// `.shared` accessor and the no-arg `Logging.LiveRecording()` shim
+    /// are deleted.
     ///
     /// Sendable because every stored property is Sendable (actors are
     /// reference-typed and Sendable; `LiveRecording` is a Sendable struct

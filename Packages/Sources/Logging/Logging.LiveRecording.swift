@@ -12,18 +12,13 @@ extension Logging {
     /// `Logging.Unified` actor is the implementation. The two are
     /// pluggable independently.
     ///
-    /// **Construction (post-#548 Phase A).** Prefer the
-    /// `init(unified:)` form, which takes the implementation via
-    /// constructor injection. The composition root (typically through
-    /// `Logging.Composition`) builds one `Logging.Unified` instance,
-    /// wraps it with `LiveRecording`, and threads the resulting
-    /// `any Logging.Recording` downstream.
-    ///
-    /// The no-arg `init()` is preserved during the #548 migration as
-    /// a transition shim that delegates to `Logging.Unified.shared`.
-    /// It is deleted in the final phase of #548 once every binary's
-    /// composition root has been rewritten to build a `Composition`
-    /// explicitly.
+    /// **Construction.** Each binary's composition root (typically a
+    /// `Logging.Composition` value, which itself lives inside a
+    /// `Cupertino.Composition` Mediator) builds one `Logging.Unified`
+    /// instance, wraps it with `LiveRecording(unified:)`, and threads
+    /// the resulting `any LoggingModels.Logging.Recording` downstream
+    /// via constructor injection. Constructor injection only —
+    /// `LiveRecording` has no no-arg init.
     ///
     /// Tests substitute `Logging.NoopRecording` (the inert conformer
     /// in `LoggingModels`) or a custom spy, exactly the same way
@@ -38,19 +33,9 @@ extension Logging {
         /// Constructor-injected init. Each binary's composition root
         /// builds one `Logging.Unified` (or, more typically, one
         /// `Logging.Composition` which owns the actor) and passes that
-        /// instance here. Phase A of #548 added this initializer.
+        /// instance here.
         public init(unified: Logging.Unified) {
             self.unified = unified
-        }
-
-        /// Transition shim preserved during #548's per-binary migration.
-        /// Delegates to `Logging.Unified.shared` so the ~500 existing
-        /// inline `Logging.LiveRecording()` call sites in CLI / TUI / MCP /
-        /// ReleaseTool / MockAIAgent keep working while their composition
-        /// roots are rewritten one PR at a time. Removed in the final
-        /// phase of #548.
-        public init() {
-            unified = .shared
         }
 
         public func record(
