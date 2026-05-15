@@ -46,8 +46,8 @@ extension CLIImpl.Command {
             // Use Services.ServiceContainer for managed lifecycle
             let file = try await Services.ServiceContainer.withSampleService(samplesDB: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
                 guard let file = try await service.getFile(projectId: projectId, path: filePath) else {
-                    Logging.LiveRecording().error("File not found: \(filePath) in project \(projectId)")
-                    Logging.LiveRecording().output("Use 'cupertino read-sample \(projectId)' to list available files.")
+                    Cupertino.Context.composition.logging.recording.error("File not found: \(filePath) in project \(projectId)")
+                    Cupertino.Context.composition.logging.recording.output("Use 'cupertino read-sample \(projectId)' to list available files.")
                     throw ExitCode.failure
                 }
                 return file
@@ -59,10 +59,10 @@ extension CLIImpl.Command {
                 outputText(file)
             case .json:
                 let formatter = Sample.Format.JSON.File()
-                Logging.LiveRecording().output(formatter.format(file))
+                Cupertino.Context.composition.logging.recording.output(formatter.format(file))
             case .markdown:
                 let formatter = Sample.Format.Markdown.File()
-                Logging.LiveRecording().output(formatter.format(file))
+                Cupertino.Context.composition.logging.recording.output(formatter.format(file))
             }
         }
 
@@ -79,11 +79,11 @@ extension CLIImpl.Command {
         // MARK: - Output Formatting
 
         private func outputText(_ file: Sample.Index.File) {
-            Logging.LiveRecording().output("// File: \(file.path)")
-            Logging.LiveRecording().output("// Project: \(file.projectId)")
-            Logging.LiveRecording().output("// Size: \(Shared.Utils.Formatting.formatBytes(file.size))")
-            Logging.LiveRecording().output("")
-            Logging.LiveRecording().output(file.content)
+            Cupertino.Context.composition.logging.recording.output("// File: \(file.path)")
+            Cupertino.Context.composition.logging.recording.output("// Project: \(file.projectId)")
+            Cupertino.Context.composition.logging.recording.output("// Size: \(Shared.Utils.Formatting.formatBytes(file.size))")
+            Cupertino.Context.composition.logging.recording.output("")
+            Cupertino.Context.composition.logging.recording.output(file.content)
         }
     }
 }

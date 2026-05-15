@@ -62,14 +62,14 @@ extension CLIImpl.Command {
                 ?? paths.packagesDatabase
 
             guard FileManager.default.fileExists(atPath: dbURL.path) else {
-                Logging.LiveRecording().error("❌ packages.db not found at \(dbURL.path)")
-                Logging.LiveRecording().error("   Run `cupertino fetch --type packages` then `cupertino save --packages` first.")
+                Cupertino.Context.composition.logging.recording.error("❌ packages.db not found at \(dbURL.path)")
+                Cupertino.Context.composition.logging.recording.error("   Run `cupertino fetch --type packages` then `cupertino save --packages` first.")
                 throw ExitCode.failure
             }
 
             let trimmed = question.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else {
-                Logging.LiveRecording().error("❌ Question cannot be empty.")
+                Cupertino.Context.composition.logging.recording.error("❌ Question cannot be empty.")
                 throw ExitCode.failure
             }
 
@@ -86,7 +86,7 @@ extension CLIImpl.Command {
                     minVersion: minVersion
                 )
             case (.some, nil), (nil, .some):
-                Logging.LiveRecording().error(
+                Cupertino.Context.composition.logging.recording.error(
                     "❌ --platform and --min-version must be used together."
                 )
                 throw ExitCode.failure
@@ -101,7 +101,7 @@ extension CLIImpl.Command {
             let result = await smart.answer(question: trimmed, limit: limit, perFetcherLimit: max(20, limit))
 
             if result.candidates.isEmpty {
-                Logging.LiveRecording().info("No matches for: \(trimmed)")
+                Cupertino.Context.composition.logging.recording.info("No matches for: \(trimmed)")
                 return
             }
 

@@ -51,13 +51,13 @@ extension CLIImpl.Command {
             switch format {
             case .text:
                 let formatter = Services.Formatter.Frameworks.Text(totalDocs: totalDocs)
-                Logging.LiveRecording().output(formatter.format(frameworks))
+                Cupertino.Context.composition.logging.recording.output(formatter.format(frameworks))
             case .json:
                 let formatter = Services.Formatter.Frameworks.JSON()
-                Logging.LiveRecording().output(formatter.format(frameworks))
+                Cupertino.Context.composition.logging.recording.output(formatter.format(frameworks))
             case .markdown:
                 let formatter = Services.Formatter.Frameworks.Markdown(totalDocs: totalDocs)
-                Logging.LiveRecording().output(formatter.format(frameworks))
+                Cupertino.Context.composition.logging.recording.output(formatter.format(frameworks))
             }
         }
     }

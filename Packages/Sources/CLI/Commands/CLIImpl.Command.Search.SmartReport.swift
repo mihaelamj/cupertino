@@ -58,7 +58,7 @@ extension CLIImpl.Command.Search {
                 minVersion: minVersion
             )
         case (.some, nil), (nil, .some):
-            Logging.LiveRecording().error(
+            Cupertino.Context.composition.logging.recording.error(
                 "❌ --platform and --min-version must be used together."
             )
             throw ExitCode.failure
@@ -113,13 +113,13 @@ extension CLIImpl.Command.Search {
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? Shared.Paths.live().searchDatabase
         guard FileManager.default.fileExists(atPath: url.path) else {
-            Logging.LiveRecording().info(
+            Cupertino.Context.composition.logging.recording.info(
                 "ℹ️  search.db not found at \(url.path) — skipping doc sources."
             )
             return nil
         }
         do {
-            let index = try await SearchModule.Index(dbPath: url, logger: Logging.LiveRecording())
+            let index = try await SearchModule.Index(dbPath: url, logger: Cupertino.Context.composition.logging.recording)
             for source in docsSources {
                 fetchers.append(Search.DocsSourceCandidateFetcher(
                     searchIndex: index,
@@ -130,7 +130,7 @@ extension CLIImpl.Command.Search {
             }
             return index
         } catch {
-            Logging.LiveRecording().error(
+            Cupertino.Context.composition.logging.recording.error(
                 "⚠️  Could not open search.db: \(error.localizedDescription)"
             )
             return nil
@@ -147,7 +147,7 @@ extension CLIImpl.Command.Search {
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? Shared.Paths.live().packagesDatabase
         guard FileManager.default.fileExists(atPath: url.path) else {
-            Logging.LiveRecording().info(
+            Cupertino.Context.composition.logging.recording.info(
                 "ℹ️  packages.db not found at \(url.path) — skipping packages."
             )
             return
@@ -168,13 +168,13 @@ extension CLIImpl.Command.Search {
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? Sample.Index.databasePath(baseDirectory: Shared.Paths.live().baseDirectory)
         guard FileManager.default.fileExists(atPath: url.path) else {
-            Logging.LiveRecording().info(
+            Cupertino.Context.composition.logging.recording.info(
                 "ℹ️  samples.db not found at \(url.path) — skipping samples."
             )
             return nil
         }
         do {
-            let database = try await Sample.Index.Database(dbPath: url, logger: Logging.LiveRecording())
+            let database = try await Sample.Index.Database(dbPath: url, logger: Cupertino.Context.composition.logging.recording)
             let service = Sample.Search.Service(database: database)
             fetchers.append(Sample.Services.CandidateFetcher(
                 service: service,
@@ -182,7 +182,7 @@ extension CLIImpl.Command.Search {
             ))
             return service
         } catch {
-            Logging.LiveRecording().error(
+            Cupertino.Context.composition.logging.recording.error(
                 "⚠️  Could not open samples.db: \(error.localizedDescription)"
             )
             return nil
@@ -469,7 +469,7 @@ extension CLIImpl.Command.Search {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         if let data = try? encoder.encode(report),
            let json = String(data: data, encoding: .utf8) {
-            Logging.LiveRecording().output(json)
+            Cupertino.Context.composition.logging.recording.output(json)
         }
     }
 

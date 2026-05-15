@@ -83,7 +83,7 @@ extension CLIImpl.Command {
             do {
                 explicit = try Services.ReadService.resolveSource(source)
             } catch Services.ReadService.ReadError.unknownSource(let raw) {
-                Logging.LiveRecording().error("Unknown --source value: \(raw). See `cupertino read --help`.")
+                Cupertino.Context.composition.logging.recording.error("Unknown --source value: \(raw). See `cupertino read --help`.")
                 throw ExitCode.failure
             }
 
@@ -110,30 +110,30 @@ extension CLIImpl.Command {
                     packageFileLookup: LivePackageFileLookupStrategy()
                 )
             } catch Services.ReadService.ReadError.docsNotFound(let id) {
-                Logging.LiveRecording().error("Document not found in search.db: \(id)")
+                Cupertino.Context.composition.logging.recording.error("Document not found in search.db: \(id)")
                 throw ExitCode.failure
             } catch Services.ReadService.ReadError.samplesNotFound(let id) {
-                Logging.LiveRecording().error("Not found in samples.db: \(id)")
+                Cupertino.Context.composition.logging.recording.error("Not found in samples.db: \(id)")
                 throw ExitCode.failure
             } catch Services.ReadService.ReadError.packagesNotFound(let id) {
-                Logging.LiveRecording().error("Not found in packages.db: \(id)")
+                Cupertino.Context.composition.logging.recording.error("Not found in packages.db: \(id)")
                 throw ExitCode.failure
             } catch Services.ReadService.ReadError.packagesIdentifierInvalid(let id) {
-                Logging.LiveRecording().error(
+                Cupertino.Context.composition.logging.recording.error(
                     "Invalid package identifier: \(id) — expected `<owner>/<repo>/<relpath>`."
                 )
                 throw ExitCode.failure
             } catch Services.ReadService.ReadError.backendFailed(let msg) {
-                Logging.LiveRecording().error("Read failed: \(msg)")
+                Cupertino.Context.composition.logging.recording.error("Read failed: \(msg)")
                 throw ExitCode.failure
             } catch Services.ReadService.ReadError.notFoundAnywhere(let id) {
-                Logging.LiveRecording().error(
+                Cupertino.Context.composition.logging.recording.error(
                     "Tried docs, samples, and packages — no source matched. Identifier: \(id)"
                 )
                 throw ExitCode.failure
             }
 
-            Logging.LiveRecording().output(result.content)
+            Cupertino.Context.composition.logging.recording.output(result.content)
         }
     }
 }
