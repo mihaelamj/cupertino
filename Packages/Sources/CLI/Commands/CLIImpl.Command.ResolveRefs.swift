@@ -61,11 +61,11 @@ extension CLIImpl.Command {
         mutating func run() async throws {
             let dir = URL(fileURLWithPath: input).expandingTildeInPath
             guard FileManager.default.fileExists(atPath: dir.path) else {
-                Logging.LiveRecording().error("Directory does not exist: \(dir.path)")
+                Cupertino.Context.composition.logging.recording.error("Directory does not exist: \(dir.path)")
                 throw ExitCode.failure
             }
 
-            Logging.LiveRecording().info("Resolving doc:// markers in \(dir.path)")
+            Cupertino.Context.composition.logging.recording.info("Resolving doc:// markers in \(dir.path)")
             let resolver = Core.JSONParser.RefResolver(inputDirectory: dir)
 
             let fetcher = try await makeFetcher()
@@ -73,20 +73,20 @@ extension CLIImpl.Command {
             if let fetcher {
                 (stats, unresolved) = try await resolver.runWithFetcher(fetcher) { done, total in
                     if done % 50 == 0 || done == total {
-                        Logging.LiveRecording().info("  network resolve: \(done)/\(total)")
+                        Cupertino.Context.composition.logging.recording.info("  network resolve: \(done)/\(total)")
                     }
                 }
             } else {
                 (stats, unresolved) = try resolver.run()
             }
 
-            Logging.LiveRecording().info("Pages scanned:                  \(stats.pagesScanned)")
-            Logging.LiveRecording().info("Refs harvested:                 \(stats.refsHarvested)")
-            Logging.LiveRecording().info("Pages rewritten:                \(stats.pagesRewritten)")
-            Logging.LiveRecording().info("doc:// markers found:           \(stats.markersFound)")
-            Logging.LiveRecording().info("Resolved from harvest:          \(stats.markersResolvedFromHarvest)")
-            Logging.LiveRecording().info("Resolved from network:          \(stats.markersResolvedFromNetwork)")
-            Logging.LiveRecording().info("Unresolved (unique):            \(unresolved.count)")
+            Cupertino.Context.composition.logging.recording.info("Pages scanned:                  \(stats.pagesScanned)")
+            Cupertino.Context.composition.logging.recording.info("Refs harvested:                 \(stats.refsHarvested)")
+            Cupertino.Context.composition.logging.recording.info("Pages rewritten:                \(stats.pagesRewritten)")
+            Cupertino.Context.composition.logging.recording.info("doc:// markers found:           \(stats.markersFound)")
+            Cupertino.Context.composition.logging.recording.info("Resolved from harvest:          \(stats.markersResolvedFromHarvest)")
+            Cupertino.Context.composition.logging.recording.info("Resolved from network:          \(stats.markersResolvedFromNetwork)")
+            Cupertino.Context.composition.logging.recording.info("Unresolved (unique):            \(unresolved.count)")
 
             // Persist a report next to the corpus.
             let report = ResolveReport(
@@ -100,7 +100,7 @@ extension CLIImpl.Command {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             encoder.dateEncodingStrategy = .iso8601
             try encoder.encode(report).write(to: reportURL)
-            Logging.LiveRecording().info("Report: \(reportURL.path)")
+            Cupertino.Context.composition.logging.recording.info("Report: \(reportURL.path)")
 
             if printUnresolved {
                 for marker in report.unresolvedMarkers {
@@ -122,7 +122,7 @@ extension CLIImpl.Command {
         private func makeFetcher() async throws -> (any Core.JSONParser.RefResolver.TitleFetcher)? {
             guard useNetwork else {
                 if useWebview {
-                    Logging.LiveRecording().error("--use-webview requires --use-network")
+                    Cupertino.Context.composition.logging.recording.error("--use-webview requires --use-network")
                     throw ExitCode.failure
                 }
                 return nil
@@ -145,7 +145,7 @@ extension CLIImpl.Command {
             }
             return Core.JSONParser.CompositeTitleFetcher(primary: json, fallback: webView)
             #else
-            Logging.LiveRecording().error("--use-webview is only supported on macOS")
+            Cupertino.Context.composition.logging.recording.error("--use-webview is only supported on macOS")
             throw ExitCode.failure
             #endif
         }

@@ -63,10 +63,10 @@ extension CLIImpl.Command.Search {
                 source: source,
                 teasers: teasers
             )
-            Logging.LiveRecording().output(formatter.format(results))
+            Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         case .json:
             let formatter = Services.Formatter.JSON()
-            Logging.LiveRecording().output(formatter.format(results))
+            Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         case .markdown:
             let formatter = Services.Formatter.Markdown(
                 query: query,
@@ -83,7 +83,7 @@ extension CLIImpl.Command.Search {
                 config: .cliDefault,
                 teasers: teasers
             )
-            Logging.LiveRecording().output(formatter.format(results))
+            Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         }
     }
 
@@ -125,7 +125,7 @@ extension CLIImpl.Command.Search {
                 )
             }
         } catch {
-            Logging.LiveRecording().info(
+            Cupertino.Context.composition.logging.recording.info(
                 "ℹ️  Teaser results from other sources unavailable: \(error.localizedDescription) "
                     + "(common when another process is writing search.db). "
                     + "Continuing with samples results only."
@@ -136,13 +136,13 @@ extension CLIImpl.Command.Search {
         switch format {
         case .text:
             let formatter = Sample.Format.Text.Search(query: query, framework: framework, teasers: teasers)
-            Logging.LiveRecording().output(formatter.format(result))
+            Cupertino.Context.composition.logging.recording.output(formatter.format(result))
         case .json:
             let formatter = Sample.Format.JSON.Search(query: query, framework: framework)
-            Logging.LiveRecording().output(formatter.format(result))
+            Cupertino.Context.composition.logging.recording.output(formatter.format(result))
         case .markdown:
             let formatter = Sample.Format.Markdown.Search(query: query, framework: framework, teasers: teasers)
-            Logging.LiveRecording().output(formatter.format(result))
+            Cupertino.Context.composition.logging.recording.output(formatter.format(result))
         }
     }
 
@@ -157,7 +157,7 @@ extension CLIImpl.Command.Search {
     func runPackageSearch() async throws {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            Logging.LiveRecording().error("❌ Query cannot be empty.")
+            Cupertino.Context.composition.logging.recording.error("❌ Query cannot be empty.")
             throw ExitCode.failure
         }
 
@@ -165,8 +165,8 @@ extension CLIImpl.Command.Search {
             ?? Shared.Paths.live().packagesDatabase
 
         guard FileManager.default.fileExists(atPath: dbURL.path) else {
-            Logging.LiveRecording().error("❌ packages.db not found at \(dbURL.path)")
-            Logging.LiveRecording().error("   Run `cupertino setup` to download it, or `cupertino save --packages` to build locally.")
+            Cupertino.Context.composition.logging.recording.error("❌ packages.db not found at \(dbURL.path)")
+            Cupertino.Context.composition.logging.recording.error("   Run `cupertino setup` to download it, or `cupertino save --packages` to build locally.")
             throw ExitCode.failure
         }
 
@@ -232,13 +232,13 @@ extension CLIImpl.Command.Search {
         switch format {
         case .text:
             let formatter = Services.Formatter.HIG.Text(query: higQuery, teasers: teasers)
-            Logging.LiveRecording().output(formatter.format(results))
+            Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         case .json:
             let formatter = Services.Formatter.HIG.JSON(query: higQuery)
-            Logging.LiveRecording().output(formatter.format(results))
+            Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         case .markdown:
             let formatter = Services.Formatter.HIG.Markdown(query: higQuery, config: .cliDefault, teasers: teasers)
-            Logging.LiveRecording().output(formatter.format(results))
+            Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         }
     }
 }

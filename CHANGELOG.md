@@ -6,6 +6,8 @@ _The v1.1.1 corpus tag exists on `cupertino-docs` only (not on this repo). It ma
 
 ### Added
 
+- **`CLIImpl.Command.Search.SourceRunners` + `CLIImpl.Command.ResolveRefs` + `CLIImpl.Command.Serve` migrated to `Cupertino.Context.composition.logging.recording` (#548 Phase E).** 36 inline `Logging.LiveRecording()` call sites swapped (13 each in SourceRunners + ResolveRefs, 10 in Serve). Also fixed a latent bug in `Serve.run()`: `await Logging.Unified.shared.disableConsole()` was muting the wrong actor after Phase B (the composition's `Logging.Unified` is a separate instance from `.shared`); now calls `await Cupertino.Context.composition.logging.disableConsole()` so the MCP JSON-RPC stdout stream actually goes silent on a non-TTY.
+
 - **`CLIImpl.Command.Cleanup` + `CLIImpl.Command.Setup` + `CLIImpl.Command.ListSamples` migrated to `Cupertino.Context.composition.logging.recording` (#548 Phase D).** 68 inline `Logging.LiveRecording()` call sites swapped (28 in `Cleanup.swift`, 21 in `Setup.swift`, 19 in `ListSamples.swift`). No producer-side signature changes; no test regressions.
 
 - **`CLIImpl.Command.Doctor` + `CLIImpl.Command.ReadSample` migrated to `Cupertino.Context.composition.logging.recording` (#548 Phase C).** 126 inline `Logging.LiveRecording()` call sites swapped to read from the binary-scoped `@TaskLocal` composition (86 in `Doctor.swift`, 40 in `ReadSample.swift`). No producer-side signature changes; no test regressions. Phases D-F handle the remaining 12 CLI command files (140 sites total).
