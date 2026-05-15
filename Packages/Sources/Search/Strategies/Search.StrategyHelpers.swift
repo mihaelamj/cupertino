@@ -437,6 +437,37 @@ extension Search {
             return false
         }
 
+        /// Return `true` when `title` is a placeholder shed by Apple's web app
+        /// in lieu of the real document title.
+        ///
+        /// Two patterns are caught:
+        ///
+        /// 1. Bare `"Error"` (case-insensitive, leading/trailing whitespace
+        ///    tolerated). Apple's JS app renders this when its data fetch
+        ///    fails after the page chrome has already been painted; the
+        ///    URL still resolves and the crawler captures the page, but
+        ///    the title field is the literal string "Error" with no other
+        ///    body content of substance.
+        /// 2. Bare `"Apple Developer Documentation"` (case-insensitive).
+        ///    The site-wide HTML `<title>` element when the page-specific
+        ///    title hasn't loaded yet.
+        ///
+        /// The audit at issue #588 found these two patterns hiding behind
+        /// the existing #284 filters: `titleLooksLikeHTTPErrorTemplate`
+        /// matches HTTP status names, not the bare "Error" string, and
+        /// `pageLooksLikeJavaScriptFallback` checks the body but not the
+        /// title. This helper closes the gap.
+        ///
+        /// - Parameter title: The page title to inspect.
+        /// - Returns: `true` if the title is a placeholder; indexer should skip.
+        public static func titleLooksLikePlaceholderError(_ title: String) -> Bool {
+            let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if trimmed.isEmpty { return true }
+            if trimmed == "error" { return true }
+            if trimmed == "apple developer documentation" { return true }
+            return false
+        }
+
         /// Return `true` when `title` and `content` indicate a 404 error page.
         ///
         /// Three checks are applied:

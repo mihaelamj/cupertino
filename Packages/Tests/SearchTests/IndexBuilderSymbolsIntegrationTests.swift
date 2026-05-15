@@ -158,12 +158,13 @@ struct IndexBuilderSymbolsIntegrationTests {
         try await builder.buildIndex(clearExisting: true)
         await index.disconnect()
 
-        // #293 fix: the indexer now uses `URLUtilities.filename(from:)`
-        // (full-path-encoded with disambiguator) instead of the bare
-        // `.lastPathComponent`. The previous expected URI
-        // `apple-docs://swiftui/sample` collided with siblings sharing
-        // the same leaf name; the new shape preserves uniqueness.
-        let uri = "apple-docs://swiftui/documentation_swiftui_sample"
+        // Two-stage URI shape history for this fixture:
+        //   pre-#293:  apple-docs://swiftui/sample          (bare leaf, collision-prone)
+        //   #293:      apple-docs://swiftui/documentation_swiftui_sample  (full-path-encoded + 8-byte SHA disambiguator)
+        //   #587/#588: apple-docs://swiftui/sample          (lossless path-mirror — back to the bare form
+        //                                                   but now distinct by construction because two different
+        //                                                   Apple URLs always produce two different URIs.)
+        let uri = "apple-docs://swiftui/sample"
         let symbolRows = try countDocSymbolRows(at: dbPath, uri: uri)
         #expect(symbolRows >= 2, "doc_symbols should hold both the declaration AND code-block symbols")
 

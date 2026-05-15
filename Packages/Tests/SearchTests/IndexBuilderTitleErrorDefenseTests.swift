@@ -191,3 +191,56 @@ struct IndexBuilderJavaScriptFallbackDefenseTests {
         #expect(SUT.pageLooksLikeJavaScriptFallback(page) == false)
     }
 }
+
+// MARK: - #588: placeholder-title defence
+
+// Sister defence to the #284 HTTP-error gate above: catches the
+// "Error" / "Apple Developer Documentation" / empty-string title
+// patterns Apple's JS app emits when its data fetch fails after
+// the page chrome was already painted. Found by the corpus audit
+// in issue #588 (PDFKit pdfViewParentViewController, PHASE
+// SoundEvent, others) — these slip past the HTTP-error gate
+// because they don't carry an HTTP status code in the title.
+
+@Suite("Search.StrategyHelpers.titleLooksLikePlaceholderError (#588 indexer defence)")
+struct StrategyHelpersPlaceholderErrorDefenceTests {
+    typealias SUT = Search.StrategyHelpers
+
+    @Test(
+        "every placeholder shape trips the gate",
+        arguments: [
+            "Error",
+            "error",
+            "ERROR",
+            "  Error  ",
+            "Apple Developer Documentation",
+            "apple developer documentation",
+            "  Apple Developer Documentation\n",
+            "",
+            "   ",
+            "\n\t  \n",
+        ]
+    )
+    func placeholderTitlesAreDetected(title: String) {
+        #expect(SUT.titleLooksLikePlaceholderError(title) == true)
+    }
+
+    @Test(
+        "real Apple doc titles do NOT trip the gate",
+        arguments: [
+            "View",
+            "NavigationStack",
+            "init(rawValue:)",
+            "Errors", // plural is fine — many real docs cover error types
+            "Error Handling", // valid doc topic
+            "Handling Errors in Your App",
+            "Apple Developer Documentation Strategy", // longer title containing the placeholder string
+            "WKWebView",
+            "SwiftUI",
+            "PDFViewParentViewController()",
+        ]
+    )
+    func realTitlesAreNotFalsePositives(title: String) {
+        #expect(SUT.titleLooksLikePlaceholderError(title) == false)
+    }
+}

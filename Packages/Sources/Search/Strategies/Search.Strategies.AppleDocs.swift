@@ -214,6 +214,16 @@ extension Search {
                     skipped += 1
                     continue
                 }
+                if Search.StrategyHelpers.titleLooksLikePlaceholderError(structuredPage.title) {
+                    logger.error(
+                        "⛔ Skipping placeholder-title page (#588 indexer defence): " +
+                            "title=\(structuredPage.title.prefix(60)) " +
+                            "file=\(file.lastPathComponent)",
+                        category: .search
+                    )
+                    skipped += 1
+                    continue
+                }
 
                 // #587 / BUG 1 fix: use `URLUtilities.appleDocsURI(from:)`
                 // — the lossless path-mirror URI shape. The previous
@@ -348,6 +358,22 @@ extension Search {
 
                 let title = Search.StrategyHelpers.extractTitle(from: content)
                     ?? Shared.Models.URLUtilities.filename(from: parsedURL)
+
+                // #588 indexer defence (mirrors the structured-page branch above):
+                // skip docs whose title is the bare "Error" / "Apple Developer
+                // Documentation" placeholder Apple's JS app emits when its
+                // data fetch fails after the page chrome was already
+                // rendered. Empty / whitespace-only titles fall under the
+                // same gate.
+                if Search.StrategyHelpers.titleLooksLikePlaceholderError(title) {
+                    logger.error(
+                        "⛔ Skipping placeholder-title page (#588 indexer defence): " +
+                            "url=\(url) title=\(title.prefix(60))",
+                        category: .search
+                    )
+                    skipped += 1; processed += 1; continue
+                }
+
                 // #587 / BUG 1 fix: lossless URI shape, same as the
                 // structured-page branch above. `appleDocsURI(from:)`
                 // returns the canonical
