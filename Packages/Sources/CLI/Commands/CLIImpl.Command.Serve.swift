@@ -155,10 +155,20 @@ extension CLIImpl.Command {
             let transport = MCP.Core.Transport.Stdio()
             try await server.connect(transport)
 
-            // Keep running indefinitely
-            while true {
-                try await Task.sleep(for: .seconds(60))
-            }
+            // #618: park on the server's message-processing task — which
+            // unwinds when the transport's `messages` stream finishes —
+            // instead of the pre-fix `while true { sleep 60 }` parking
+            // loop. AI-agent MCP clients (Claude Desktop, Cursor, Codex
+            // MCP) shut the server down by closing stdin: the Stdio
+            // transport's `input.bytes` async sequence terminates,
+            // `messagesContinuation.finish()` propagates to the server's
+            // `for await message in messageStream`, the message task
+            // exits, and this `await` returns so the process exits
+            // cleanly. Pre-#618 the CLI never noticed EOF and stayed
+            // alive forever (caught during main's retest of the v1.1.0
+            // shipped binary; explained why stray `cupertino serve`
+            // procs accumulated on every test machine).
+            await server.waitForCompletion()
         }
 
         private func registerProviders(

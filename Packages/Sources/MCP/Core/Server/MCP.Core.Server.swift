@@ -80,6 +80,19 @@ extension MCP.Core {
             logInfo("Server started and waiting for initialization")
         }
 
+        /// Block the caller until the message-processing task finishes.
+        ///
+        /// `processMessages` returns when the transport's `messages`
+        /// `AsyncStream` finishes, which happens for stdio when the
+        /// peer closes stdin. AI-agent MCP clients (Claude Desktop,
+        /// Cursor, Codex MCP) signal shutdown that way; before #618
+        /// the CLI parked on `while true { sleep 60 }` instead of
+        /// awaiting the message task, so the process never noticed EOF
+        /// and stayed alive forever after the client disconnected.
+        public func waitForCompletion() async {
+            await messageTask?.value
+        }
+
         /// Disconnect and stop the server
         public func disconnect() async throws {
             guard isRunning else {
