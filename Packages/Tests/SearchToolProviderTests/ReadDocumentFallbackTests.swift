@@ -69,8 +69,15 @@ struct ReadDocumentFallbackTests {
         let tempDB = FileManager.default.temporaryDirectory
             .appendingPathComponent("readdoc-fallback-\(UUID().uuidString).db")
         let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording())
-        let cleanup = { try? FileManager.default.removeItem(at: tempDB) }
-        return (index, { try cleanup() ?? () })
+        // Return the real throwing form directly. The previous shape
+        // wrapped it in `{ try? ... }` and then re-wrapped that in
+        // `{ try cleanup() ?? () }` — but the inner `try?` already
+        // swallowed any throw, so the outer `try` had nothing to
+        // throw and Swift warned "no calls to throwing functions
+        // occur within 'try' expression". Returning the throwing
+        // closure directly keeps the call-site's `defer { try? cleanup() }`
+        // (line ~79) doing its own swallow.
+        return (index, { try FileManager.default.removeItem(at: tempDB) })
     }
 
     @Test("Search-index miss → falls back to resourceProvider; tool returns the same content resources/read would")
