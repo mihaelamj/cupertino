@@ -246,7 +246,13 @@ struct SampleCodeDownloaderTests {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
 
-        let downloader = Sample.Core.Downloader(outputDirectory: tempDir, logger: Logging.NoopRecording())
+        // The Downloader is constructed for its side-effect of confirming
+        // init succeeds for this output directory; the assertion verifies
+        // the path-naming convention, not state read off the instance.
+        // Discard to `_` so Swift's unused-let warning stops (and to match
+        // the `_ = downloader` discard pattern used by the four init-only
+        // smoke tests earlier in this file).
+        _ = Sample.Core.Downloader(outputDirectory: tempDir, logger: Logging.NoopRecording())
 
         // Cookie path should be: outputDirectory/auth-cookies.json
         let expectedPath = tempDir.appendingPathComponent(Shared.Constants.FileName.authCookies)

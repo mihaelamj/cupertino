@@ -294,13 +294,20 @@ struct CupertinoCompositionTests {
     }
 
     @Test("Cupertino.Context.$composition.withValue overrides the binding for its scope")
-    func contextWithValueScoping() async {
+    func contextWithValueScoping() {
         // Verify the SE-0311 binding behaviour: within `withValue { … }`,
         // the override is visible; outside, the previous (default) value
         // returns. This is the contract Cupertino.main() relies on.
+        //
+        // Both the closure body and `TaskLocal.withValue` resolve to the
+        // synchronous overload here (no `await` in the closure body), so
+        // the test function is non-async and the call site doesn't carry
+        // `await`. The earlier shape emitted a Swift Testing warning
+        // ("await on non-async expression") because the compiler had
+        // selected the sync overload.
         let stubPaths = Shared.Paths(baseDirectory: URL(fileURLWithPath: "/tmp/cupertino-withvalue-test"))
         let scoped = Cupertino.Composition(paths: stubPaths)
-        await Cupertino.Context.$composition.withValue(scoped) {
+        Cupertino.Context.$composition.withValue(scoped) {
             #expect(Cupertino.Context.composition.paths.baseDirectory.path == "/tmp/cupertino-withvalue-test")
         }
         // Outside the scope, the default-built composition's baseDirectory
