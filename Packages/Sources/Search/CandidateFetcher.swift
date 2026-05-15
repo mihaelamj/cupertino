@@ -1,6 +1,7 @@
 import Foundation
 import SearchModels
 import SharedConstants
+
 // MARK: - Smart-query abstraction (#192 section E)
 
 //
@@ -81,6 +82,7 @@ extension Search {
         private let searchIndex: Search.Index
         private let includeArchive: Bool
         private let availability: Search.AvailabilityFilter?
+        private let framework: String?
 
         /// Sources whose content uses a different availability axis from
         /// iOS / macOS / etc. — Swift language version (#225). When the
@@ -94,6 +96,16 @@ extension Search {
             Shared.Constants.SourcePrefix.swiftBook,
         ]
 
+        /// Sources whose pages actually carry a meaningful `framework`
+        /// column. Only apple-docs and apple-archive partition their
+        /// content by Apple framework — `hig`, `swift-evolution`,
+        /// `swift-org`, `swift-book` carry framework="" so applying
+        /// the filter would zero them out.
+        private static let frameworkScopedSources: Set<String> = [
+            Shared.Constants.SourcePrefix.appleDocs,
+            Shared.Constants.SourcePrefix.appleArchive,
+        ]
+
         /// - Parameters:
         ///   - searchIndex: shared Search.Index instance (fetchers inherit
         ///     connection lifecycle; callers manage `disconnect()`).
@@ -105,16 +117,24 @@ extension Search {
         ///     sources whose pages actually carry `min_*` columns.
         ///     Silently dropped for swift-evolution / swift-org / swift-book
         ///     because those use the Swift-language-version axis (see #225).
+        ///   - framework: optional `--framework` filter (#628). Threaded
+        ///     into the per-source `Search.Index.search` call so the
+        ///     unified fan-out (no `--source`) honours `--framework`
+        ///     just like the source-scoped path always did. Silently
+        ///     dropped for non-Apple sources whose pages don't carry
+        ///     a meaningful framework column.
         public init(
             searchIndex: Search.Index,
             source: String,
             includeArchive: Bool = false,
-            availability: Search.AvailabilityFilter? = nil
+            availability: Search.AvailabilityFilter? = nil,
+            framework: String? = nil
         ) {
             self.searchIndex = searchIndex
             sourceName = source
             self.includeArchive = includeArchive
             self.availability = availability
+            self.framework = framework
         }
 
         public func fetch(question: String, limit: Int) async throws -> [SmartCandidate] {
@@ -122,10 +142,17 @@ extension Search {
             let effective = Self.swiftVersionSources.contains(sourceName)
                 ? nil
                 : availability
+            // Apply framework filter only on the sources whose rows are
+            // partitioned by Apple framework. Pre-fix, the unified path
+            // dropped `--framework` entirely; #628's apple-docs/hig
+            // discrepancy was the user-visible symptom.
+            let effectiveFramework = Self.frameworkScopedSources.contains(sourceName)
+                ? framework
+                : nil
             let rows = try await searchIndex.search(
                 query: question,
                 source: sourceName,
-                framework: nil,
+                framework: effectiveFramework,
                 language: nil,
                 limit: limit,
                 includeArchive: includeArchive,

@@ -1,13 +1,14 @@
 import ArgumentParser
 import Foundation
-import LoggingModels
 import Logging
+import LoggingModels
 import SampleIndex
 import Search
 import SearchModels
 import Services
 import ServicesModels
 import SharedConstants
+
 // MARK: - SmartQuery fan-out helpers (#239)
 
 /// Helpers for `CLIImpl.Command.Search`'s default (no `--source`) path: building the
@@ -75,10 +76,14 @@ extension CLIImpl.Command.Search {
     ) async -> FetcherPlan {
         var fetchers: [any Search.CandidateFetcher] = []
 
+        // #628: thread `--framework` into the docs fetchers so the unified
+        // (no `--source`) path honours it. Other fetchers (packages,
+        // samples) don't partition by Apple framework at the row level.
         let searchIndex = await Self.openDocsFetchers(
             override: searchDb,
             skip: skipDocs,
             availability: availabilityFilter,
+            framework: framework,
             into: &fetchers
         )
 
@@ -107,6 +112,7 @@ extension CLIImpl.Command.Search {
         override: String?,
         skip: Bool,
         availability: SearchModels.Search.AvailabilityFilter?,
+        framework: String?,
         into fetchers: inout [any Search.CandidateFetcher]
     ) async -> SearchModule.Index? {
         guard !skip else { return nil }
@@ -125,7 +131,8 @@ extension CLIImpl.Command.Search {
                     searchIndex: index,
                     source: source.prefix,
                     includeArchive: source.includeArchive,
-                    availability: availability
+                    availability: availability,
+                    framework: framework
                 ))
             }
             return index

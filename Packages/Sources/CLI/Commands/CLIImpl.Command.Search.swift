@@ -8,6 +8,7 @@ import SearchModels
 import Services
 import ServicesModels
 import SharedConstants
+
 // MARK: - Search Command
 
 /// CLI command for unified search across all documentation sources.
@@ -240,6 +241,29 @@ extension CLIImpl.Command {
                     "❌ No data sources available. Run `cupertino setup` to populate them."
                 )
                 throw ExitCode.failure
+            }
+
+            // #628: validate `--framework` against the corpus before
+            // running the fan-out. Per-fetcher errors are silently
+            // collapsed inside `SmartQuery.answer` (so one dead source
+            // can't take the rest down), which would also swallow the
+            // "bogus framework" throw and make `--framework banana`
+            // read as "no results" instead of a clear error.
+            if let framework,
+               !framework.trimmingCharacters(in: .whitespaces).isEmpty,
+               let searchIndex = plan.searchIndex {
+                let resolved = await (try? searchIndex.resolveFrameworkIdentifier(framework))
+                    ?? framework.lowercased().replacingOccurrences(of: " ", with: "")
+                let exists = await (try? searchIndex.frameworkExistsInCorpus(resolved)) ?? false
+                if !exists {
+                    await plan.searchIndex?.disconnect()
+                    await plan.sampleService?.disconnect()
+                    Cupertino.Context.composition.logging.recording.error(
+                        "❌ Unknown framework: '\(framework)'. " +
+                            "Run `cupertino list-frameworks` for the canonical identifier list."
+                    )
+                    throw ExitCode.failure
+                }
             }
 
             let smartQuery = SearchModule.SmartQuery(fetchers: plan.fetchers)
