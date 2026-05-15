@@ -332,6 +332,47 @@ extension CLIImpl.Command.Save {
         )
     }
 
+    // MARK: - #597 path resolution helpers
+    //
+    // Pure, side-effect-free static functions that compose the
+    // per-DB output path under a given base directory. Pulling
+    // them out so the resolution can be unit-tested against an
+    // arbitrary base (e.g. a temp dir from `--base-dir`) without
+    // having to invoke the save command end-to-end. The regression
+    // these guard against: every callsite must compose its DB
+    // path under `effectiveBase`, NEVER under
+    // `Shared.Paths.live().baseDirectory` (which always returns
+    // ~/.cupertino regardless of --base-dir, the BUG 4 cause).
+
+    /// Resolve the samples.db output path. Pre-#597 this used
+    /// `Shared.Paths.live().baseDirectory` and silently rewrote
+    /// `~/.cupertino/samples.db` even when `--base-dir` was set.
+    static func resolveSamplesDBPath(effectiveBase: URL, override: String?) -> URL {
+        if let override {
+            return URL(fileURLWithPath: override).expandingTildeInPath
+        }
+        return Sample.Index.databasePath(baseDirectory: effectiveBase)
+    }
+
+    /// Resolve the packages.db output path. Same isolation gap as
+    /// `resolveSamplesDBPath` pre-#597.
+    static func resolvePackagesDBPath(effectiveBase: URL, override: String?) -> URL {
+        if let override {
+            return URL(fileURLWithPath: override).expandingTildeInPath
+        }
+        return effectiveBase.appendingPathComponent(Shared.Constants.FileName.packagesIndexDatabase)
+    }
+
+    /// Resolve the search.db output path. Already correct pre-#597
+    /// (uses `effectiveBase`); kept here as a sibling so the three
+    /// resolvers share one shape and one place for future tests.
+    static func resolveSearchDBPath(effectiveBase: URL, override: String?) -> URL {
+        if let override {
+            return URL(fileURLWithPath: override).expandingTildeInPath
+        }
+        return effectiveBase.appendingPathComponent(Shared.Constants.FileName.searchDatabase)
+    }
+
     // MARK: - Packages
 
     func runPackagesIndexerSafely(effectiveBase: URL) async throws {
@@ -344,14 +385,14 @@ extension CLIImpl.Command.Save {
             )
             return
         }
-        try await runPackagesIndexer(packagesRoot: packagesRoot)
+        try await runPackagesIndexer(packagesRoot: packagesRoot, effectiveBase: effectiveBase)
     }
 
-    func runPackagesIndexer(packagesRoot: URL) async throws {
-        let paths = Shared.Paths.live()
+    func runPackagesIndexer(packagesRoot: URL, effectiveBase: URL) async throws {
+        let packagesDB = Self.resolvePackagesDBPath(effectiveBase: effectiveBase, override: nil)
         let request = Indexer.PackagesService.Request(
             packagesRoot: packagesRoot,
-            packagesDB: paths.packagesDatabase,
+            packagesDB: packagesDB,
             clear: clear
         )
 
@@ -434,11 +475,15 @@ extension CLIImpl.Command.Save {
 
     // MARK: - Samples
 
-    func runSamplesIndexerSafely() async throws {
-        // Path-DI composition sub-root (#535).
-        let baseDir = Shared.Paths.live().baseDirectory
+    func runSamplesIndexerSafely(effectiveBase: URL) async throws {
+        // #597: derive sample-code + DB paths from the caller's
+        // resolved base (i.e. honour --base-dir). Pre-fix this used
+        // `Shared.Paths.live().baseDirectory` unconditionally, which
+        // hardcodes ~/.cupertino regardless of --base-dir and SILENTLY
+        // wrote into live data when users ran isolated-test saves
+        // (cupertino-full-coverage-2026-05-15.md BUG 4).
         let sampleCodeURL = samplesDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Sample.Index.sampleCodeDirectory(baseDirectory: baseDir)
+            ?? Sample.Index.sampleCodeDirectory(baseDirectory: effectiveBase)
         guard FileManager.default.fileExists(atPath: sampleCodeURL.path) else {
             Cupertino.Context.composition.logging.recording.info(
                 "ℹ️  sample-code directory not found at \(sampleCodeURL.path) — skipping samples step. "
@@ -446,13 +491,11 @@ extension CLIImpl.Command.Save {
             )
             return
         }
-        try await runSamplesIndexer(sampleCodeURL: sampleCodeURL)
+        try await runSamplesIndexer(sampleCodeURL: sampleCodeURL, effectiveBase: effectiveBase)
     }
 
-    func runSamplesIndexer(sampleCodeURL: URL) async throws {
-        // Path-DI composition sub-root (#535).
-        let dbURL = samplesDB.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Sample.Index.databasePath(baseDirectory: Shared.Paths.live().baseDirectory)
+    func runSamplesIndexer(sampleCodeURL: URL, effectiveBase: URL) async throws {
+        let dbURL = Self.resolveSamplesDBPath(effectiveBase: effectiveBase, override: samplesDB)
 
         let request = Indexer.SamplesService.Request(
             sampleCodeDir: sampleCodeURL,

@@ -178,7 +178,7 @@ extension CLIImpl.Command {
                 try await runPackagesIndexerSafely(effectiveBase: effectiveBase)
             }
             if buildSamples {
-                try await runSamplesIndexerSafely()
+                try await runSamplesIndexerSafely(effectiveBase: effectiveBase)
             }
         }
 
