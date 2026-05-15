@@ -5,6 +5,7 @@ import SampleIndexModels
 import SearchModels
 import ServicesModels
 import SharedConstants
+
 // MARK: - Unified Cupertino Tool Provider
 
 /// Composite tool provider that provides unified search across all documentation sources.
@@ -25,6 +26,22 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     private let searchIndex: (any Search.Database)?
     private let sampleDatabase: (any Sample.Index.Reader)?
 
+    // #582: fallback resource provider used by `handleReadDocument` when
+    // the search-index lookup misses. `MCP.Support.DocsResourceProvider`
+    // (the same instance the CLI uses for `resources/read`) does a
+    // filesystem fallback over the crawled docs directory that the
+    // search-index direct lookup doesn't. Pre-fix, `read_document` and
+    // `resources/read` had divergent lookup paths and the tool failed
+    // for URIs the resource path accepted (e.g.
+    // `apple-docs://accelerate/documentation_accelerate` against a
+    // pre-#293 indexed bundle). Wiring the same provider into both
+    // paths makes them symmetric.
+    //
+    // Typed against `MCP.Core.ResourceProvider` (already imported) so
+    // this file still doesn't reach for `MCP.Support` and the per-
+    // package import-contract stays clean.
+    private let documentResourceProvider: (any MCP.Core.ResourceProvider)?
+
     /// Primary init used by the CLI composition root. Each cross-package
     /// surface arrives pre-wired as a protocol-typed value so this file
     /// doesn't have to import the Search / SampleIndex / Services
@@ -35,7 +52,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         docsService: (any Services.DocsSearcher)?,
         sampleService: (any Sample.Search.Searcher)?,
         teaserService: (any Services.Teaser)?,
-        unifiedService: (any Services.UnifiedSearcher)?
+        unifiedService: (any Services.UnifiedSearcher)?,
+        documentResourceProvider: (any MCP.Core.ResourceProvider)? = nil
     ) {
         self.searchIndex = searchIndex
         self.sampleDatabase = sampleDatabase
@@ -43,6 +61,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         self.sampleService = sampleService
         self.teaserService = teaserService
         self.unifiedService = unifiedService
+        self.documentResourceProvider = documentResourceProvider
     }
 
     // The two-argument convenience init that constructed concrete
@@ -637,14 +656,34 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let format: Search.DocumentFormat = formatString == Shared.Constants.Search.formatValueMarkdown
             ? .markdown : .json
 
-        guard let documentContent = try await searchIndex.getDocumentContent(uri: uri, format: format) else {
-            throw Shared.Core.ToolError.invalidArgument(
-                Shared.Constants.Search.schemaParamURI,
-                "Document not found: \(uri)"
-            )
+        if let documentContent = try await searchIndex.getDocumentContent(uri: uri, format: format) {
+            return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: documentContent))])
         }
 
-        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: documentContent))])
+        // #582: search-index direct lookup missed. Fall back through the
+        // same path `resources/read` uses (filesystem read of the
+        // crawled JSON / MD under `<outputDirectory>/<framework>/`).
+        // Pre-fix the two paths were asymmetric and the tool failed for
+        // URIs the resource path accepted (typical with bundles whose
+        // indexer-written URIs use the pre-#293 `.lastPathComponent`
+        // shape while the resource-list URI generator already used
+        // `URLUtilities.filename(from:)`).
+        if let provider = documentResourceProvider {
+            let result = try await provider.readResource(uri: uri)
+            if let firstText = result.contents.compactMap({ contents -> String? in
+                if case .text(let textContents) = contents {
+                    return textContents.text
+                }
+                return nil
+            }).first {
+                return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: firstText))])
+            }
+        }
+
+        throw Shared.Core.ToolError.invalidArgument(
+            Shared.Constants.Search.schemaParamURI,
+            "Document not found: \(uri)"
+        )
     }
 
     // MARK: - Sample Code Tools

@@ -1,6 +1,7 @@
 import Foundation
 import MCPCore
 import SharedConstants
+
 // MARK: - Mock AI Agent
 
 // swiftlint:disable type_body_length
@@ -94,12 +95,17 @@ private actor MCPClient {
         // Call unified search tool
         try await callSearchTool(query: "SwiftUI")
 
-        // List available resources
-        try await listResources()
-
-        // Read one of the search results
-        // Use a known URI from the indexed documentation
-        let testURI = Shared.Constants.Search.appleDocsScheme + "swiftui/documentation_swiftui_view"
+        // List available resources, then pick one at random and read it.
+        // Pre-#582 + #583, this used a hardcoded URI
+        // (`apple-docs://swiftui/documentation_swiftui_view`) that never
+        // matched the shipped bundle (DB has pre-#293 `.lastPathComponent`
+        // URIs while `resources/list` produced post-#293 full-path-
+        // encoded URIs — see #582 for the symmetry fix). Now we discover
+        // a real URI by listing first and picking one at random, so the
+        // demo flow exercises whichever URIs the server actually returns
+        // for the running bundle.
+        let listed = try await listResources()
+        let testURI = try pickRandomURI(from: listed)
         try await readResource(uri: testURI)
 
         // Shutdown
@@ -413,7 +419,7 @@ private actor MCPClient {
         print()
     }
 
-    private func listResources() async throws {
+    private func listResources() async throws -> MCP.Core.Protocols.ListResourcesResult {
         print("📨 CLIENT → SERVER: resources/list")
         print("-".repeating(80))
 
@@ -443,6 +449,33 @@ private actor MCPClient {
             }
         }
         print()
+        return response
+    }
+
+    /// Pick a URI at random from a `resources/list` response. Used by the
+    /// demo flow's `resources/read` step so the read exercises a real
+    /// URI in whichever bundle the server is running against, rather
+    /// than a hardcoded constant that drifts every time the URI scheme
+    /// or bundle re-publishes (#583 retrospective). Throws if the list
+    /// was empty — that's the legitimate failure mode the agent surfaces
+    /// when no docs are indexed.
+    private func pickRandomURI(from listing: MCP.Core.Protocols.ListResourcesResult) throws -> String {
+        guard let chosen = listing.resources.randomElement() else {
+            print("⚠️  resources/list returned zero entries — nothing to read.")
+            throw RuntimeError.noResourcesAvailable
+        }
+        print("🎲 Randomly chose for resources/read: \(chosen.uri)")
+        return chosen.uri
+    }
+
+    enum RuntimeError: Error, CustomStringConvertible {
+        case noResourcesAvailable
+        var description: String {
+            switch self {
+            case .noResourcesAvailable:
+                return "resources/list returned no entries — cannot run resources/read step."
+            }
+        }
     }
 
     private func readResource(uri: String) async throws {
