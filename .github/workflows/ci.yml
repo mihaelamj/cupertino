@@ -36,4 +36,43 @@ jobs:
 
       - name: Test
         working-directory: Packages
-        run: swift test --skip testDownloadRealAppleDocPage
+        # Skip every test that hits a real network endpoint. Comprehensive
+        # audit of @Test(.tags(.integration)) cases on 2026-05-16 (#686):
+        # CI doesn't have stable network access to Apple's CDN / GitHub
+        # raw content, and 9 of the last 14 main-branch runs failed from
+        # network or timing flakes. Each skip below names the function +
+        # the endpoint it would hit; per-test detail is in the
+        # alphabetical reference block below the swift test invocation.
+        #
+        # Tests stay runnable locally (no @Test attribute is changed —
+        # the skip is workflow-side only). Local devs with network see
+        # full coverage; CI sees only deterministic tests.
+        #
+        # NOTE: --skip takes a REGEX matching test function names.
+        # The pre-#686 entry was `testDownloadRealAppleDocPage` which
+        # matched nothing (the test is named `downloadRealAppleDocPage`,
+        # no `test` prefix — that's an XCTest convention, not Swift
+        # Testing). Fixed below.
+        run: |
+          swift test \
+            --skip downloadRealAppleDocPage \
+            --skip fetchSinglePage \
+            --skip fetchWithResume \
+            --skip fetchSwiftEvolution \
+            --skip canonicalizerFollowsRename \
+            --skip downloaderCreatesOutputDirectory \
+            --skip httpErrorPageDefersAndRetriesSuccessfully \
+            --skip crawlerCreatesOutputDirectory \
+            --skip crawlerRespectsMaxPages \
+            --skip lapackFunctionsURLIsProblematic
+        # Endpoint reference for each skip (alphabetical):
+        #   canonicalizerFollowsRename — github.com (ResolverPipelineTests; follows redirects)
+        #   crawlerCreatesOutputDirectory — developer.apple.com (CrawlerTests + SwiftEvolutionCrawlerTests; 2 tests, same name in different files — regex catches both)
+        #   crawlerRespectsMaxPages — developer.apple.com (CrawlerTests)
+        #   downloadRealAppleDocPage — developer.apple.com (Crawler.AppleDocs.IntegrationTests; the only skip pre-#686, target name was wrong)
+        #   downloaderCreatesOutputDirectory — Apple sample-code zip download (SampleCodeDownloaderTests)
+        #   fetchSinglePage — developer.apple.com (CrawlTests)
+        #   fetchSwiftEvolution — github.com/swiftlang/swift-evolution (CrawlTests; added in #685, recurring `invalidResponse` flake)
+        #   fetchWithResume — developer.apple.com + on-disk resume state (CrawlTests)
+        #   httpErrorPageDefersAndRetriesSuccessfully — real HTTP error pages (RetryQueueTests)
+        #   lapackFunctionsURLIsProblematic — developer.apple.com (CrawlerTests; the curiosity URL)

@@ -154,9 +154,20 @@ extension MCP.Core.Protocols.AnyCodable {
 /// seconds, succeeding when `predicate` returns true on any message.
 /// Beats a flat sleep because the server's processMessages task runs
 /// non-deterministically under test scheduling.
+///
+/// Default timeout bumped from 5.0 → 15.0 to absorb CI-runner cold-start
+/// jitter. The macos-15 GitHub Actions runner consistently delivered the
+/// initialize response within 200 ms locally but intermittently took
+/// 5-8 s under CI load (recurring 3 of last 4 main runs at this suite's
+/// line 204 `#require(initResponse != nil)`). 15 s is well below the
+/// suite's effective wall-time budget (the whole test completes in
+/// ~50 ms locally) while comfortably covering the worst CI jitter
+/// observed. Root cause is a Phase B / #673 class-of-bug investigation
+/// (no signal on when the server has fully bound the transport's
+/// processing task), not this specific test.
 private func waitForMessage(
     on transport: InMemoryTransport,
-    timeout: TimeInterval = 5.0,
+    timeout: TimeInterval = 15.0,
     matching predicate: (MCP.Core.Transport.Message) -> Bool
 ) async -> MCP.Core.Transport.Message? {
     let deadline = Date().addingTimeInterval(timeout)
