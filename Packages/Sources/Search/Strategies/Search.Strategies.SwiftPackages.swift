@@ -50,8 +50,14 @@ extension Search {
 
             let packages = await Core.Protocols.SwiftPackagesCatalog.allPackages
             guard !packages.isEmpty else {
-                logger.info("⚠️  No packages found in catalog", category: .search)
-                return IndexStats(source: source, indexed: 0, skipped: 0)
+                // #671 — clean-skip when the bundled catalog has no packages.
+                return IndexStats(
+                    source: source,
+                    indexed: 0,
+                    skipped: 0,
+                    wasSkipped: true,
+                    skipReason: "catalog empty"
+                )
             }
 
             logger.info(

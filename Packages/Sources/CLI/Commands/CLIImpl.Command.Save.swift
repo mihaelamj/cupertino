@@ -22,23 +22,30 @@ extension CLIImpl.Command {
     struct Save: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "save",
-            abstract: "Index fetched documentation into search.db, packages.db, and samples.db",
+            abstract: "Rebuild search.db / packages.db / samples.db from on-disk sources",
             discussion: """
-            Builds up to three local databases from content downloaded by 'cupertino fetch':
+            Most users do NOT need this command — `cupertino setup` downloads the pre-built
+            bundle and is the supported end-user workflow. `save` is for maintainers
+            rebuilding the bundle, or advanced users rebuilding from a local crawl produced
+            by `cupertino fetch`.
+
+            Builds up to three local databases from whichever sources happen to be on disk:
 
               search.db   — Apple docs, Swift Evolution, HIG, Apple Archive, Swift.org, Swift Book
               packages.db — Swift package metadata and source archives
               samples.db  — Apple sample-code projects and their source files
 
-            With no scope flag, all three databases are built (sources missing on disk are
-            skipped with an info message). Use --docs / --packages / --samples to build a subset.
+            With no scope flag, all three databases are built. Sources whose input directory
+            is absent or whose catalog is empty are skipped cleanly (`[source] skipped
+            (no local corpus)`) and do not count as failures. Use --docs / --packages /
+            --samples to build a subset.
 
             A preflight summary is printed before indexing starts. Pass --yes (or pipe stdin)
             to skip the confirmation prompt. Run 'cupertino doctor --save' to preview the
             preflight output without writing any database.
 
             EXAMPLES
-              cupertino save                    # build all three DBs
+              cupertino save                    # build all three DBs from whatever is on disk
               cupertino save --docs             # search.db only
               cupertino save --samples          # samples.db only
               cupertino save --packages         # packages.db only
@@ -49,19 +56,22 @@ extension CLIImpl.Command {
         @Option(name: .long, help: "Base directory (auto-fills all directories from standard structure)")
         var baseDir: String?
 
-        @Option(name: .long, help: "Directory containing crawled documentation")
+        @Option(
+            name: .long,
+            help: "Optional. Directory containing crawled documentation. Maintainer workflow only; most users index from the pre-built bundle via `cupertino setup`."
+        )
         var docsDir: String?
 
-        @Option(name: .long, help: "Directory containing Swift Evolution proposals")
+        @Option(name: .long, help: "Optional. Directory containing Swift Evolution proposals (maintainer workflow).")
         var evolutionDir: String?
 
-        @Option(name: .long, help: "Directory containing Swift.org documentation")
+        @Option(name: .long, help: "Optional. Directory containing Swift.org documentation (maintainer workflow).")
         var swiftOrgDir: String?
 
-        @Option(name: .long, help: "Directory containing package READMEs")
+        @Option(name: .long, help: "Optional. Directory containing package READMEs (maintainer workflow).")
         var packagesDir: String?
 
-        @Option(name: .long, help: "Directory containing Apple Archive documentation")
+        @Option(name: .long, help: "Optional. Directory containing Apple Archive documentation (maintainer workflow).")
         var archiveDir: String?
 
         @Option(name: .long, help: "Metadata file path")

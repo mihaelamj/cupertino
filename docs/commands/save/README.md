@@ -1,6 +1,8 @@
 # cupertino save
 
-Build FTS5 search index from crawled documentation
+Rebuild `search.db` / `packages.db` / `samples.db` from on-disk sources.
+
+> **Most users do not need this command.** `cupertino setup` downloads the pre-built bundle and is the supported end-user workflow. `save` is for maintainers rebuilding the bundle, or advanced users rebuilding from a local crawl produced by `cupertino fetch`. ([#671](https://github.com/mihaelamj/cupertino/issues/671))
 
 ## Synopsis
 
@@ -18,7 +20,7 @@ The `save` command builds the local SQLite databases that back `cupertino search
 | `--packages` | `packages.db` | `~/.cupertino/packages/<owner>/<repo>/` |
 | `--samples` | `samples.db` | `~/.cupertino/sample-code/*.zip` |
 
-When **no scope flag is passed**, `save` builds **all three** in fixed order (docs → packages → samples). Each step skips gracefully with an info log if its source directory is missing.
+When **no scope flag is passed**, `save` builds **all three** in fixed order (docs → packages → samples). Sources whose input directory is absent or whose catalog is empty are skipped cleanly — the per-source summary shows `[source] skipped (no local corpus)` instead of `[source] indexed: 0, skipped: 0`, and the run does not count as a failure ([#671](https://github.com/mihaelamj/cupertino/issues/671)).
 
 The `--samples` form replaces the old `cupertino index` command (removed in #231). No backwards-compat alias — pre-1.0 clean break.
 

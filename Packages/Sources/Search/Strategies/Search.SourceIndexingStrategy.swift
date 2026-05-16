@@ -28,22 +28,42 @@ extension Search {
         /// pre-INSERT garbage filter rejections by category. Zero for
         /// strategies that don't classify.
         public let breakdown: Search.ImportDiligenceBreakdown
+        /// #671 — true when the strategy short-circuited because its
+        /// input directory was absent or its catalog was empty. Lets
+        /// the renderer print a clean `[source] skipped (<reason>)`
+        /// line instead of `[source] indexed: 0, skipped: 0`, which
+        /// falsely implies a failed indexing attempt against existing
+        /// input. 99.9 % of users only have the bundled DB, no local
+        /// corpus directory, and the clean-skip line is the right UX
+        /// for that case.
+        public let wasSkipped: Bool
+        /// Human-readable reason for `wasSkipped` (e.g. `"no local
+        /// corpus"`, `"no documents found"`, `"catalog empty"`). Nil
+        /// when `wasSkipped == false`.
+        public let skipReason: String?
 
         /// Create a new statistics value.
         ///
         /// The `breakdown` parameter defaults to `.zero` so existing
         /// strategies that don't classify keep their original
-        /// initializer shape working unchanged.
+        /// initializer shape working unchanged. The `wasSkipped` /
+        /// `skipReason` parameters default to `false` / `nil` so
+        /// strategies that actually ran indexing keep their existing
+        /// initializer shape too.
         public init(
             source: String,
             indexed: Int,
             skipped: Int,
-            breakdown: Search.ImportDiligenceBreakdown = .zero
+            breakdown: Search.ImportDiligenceBreakdown = .zero,
+            wasSkipped: Bool = false,
+            skipReason: String? = nil
         ) {
             self.source = source
             self.indexed = indexed
             self.skipped = skipped
             self.breakdown = breakdown
+            self.wasSkipped = wasSkipped
+            self.skipReason = skipReason
         }
     }
 
