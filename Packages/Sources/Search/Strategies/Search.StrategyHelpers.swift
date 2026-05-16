@@ -1,6 +1,7 @@
 import Foundation
 import SearchModels
 import SharedConstants
+
 // MARK: - StrategyHelpers
 
 extension Search {
@@ -648,6 +649,81 @@ extension Search {
                 lowerContent.contains("404 not found") { return true }
             if content.count < 500, lowerContent.contains("page not found") { return true }
             return false
+        }
+
+        // MARK: - #668 — minimal-structured-page builder for markdown-source strategies
+
+        /// Construct a minimal `StructuredDocumentationPage` suitable for the
+        /// markdown-source strategies (HIG, Swift Evolution, Apple Archive)
+        /// to feed `Search.Index.indexStructuredDocument` and produce a
+        /// `docs_structured` row per source page. Pre-#668 these 3 sources
+        /// called the FTS-only `indexDocument` path, leaving them at 100 %
+        /// `(missing)` rate in `cupertino doctor --kind-coverage` — every
+        /// search-quality fix that depends on `s.kind` (the #177 rerank
+        /// tier, the #616 kind-aware tiebreak, the #630 canonical-prepend
+        /// filter) was a no-op for these sources.
+        ///
+        /// The page is built with `kind: .article` because all three sources
+        /// are prose-only markdown (HIG design guidance, Swift Evolution
+        /// proposals, Apple's archived programming guides). `.article` is
+        /// the closest existing Kind case; if a finer-grained classification
+        /// is needed in the future (e.g. `.proposal` for SE-*), introduce
+        /// that as a new Kind case + thread it through here.
+        ///
+        /// `source` is set to `.custom` rather than `.appleJSON` /
+        /// `.appleWebKit` because these markdown pages were never JSON-decoded
+        /// from an Apple endpoint — they're our own crawler output.
+        ///
+        /// - Parameters:
+        ///   - url: Canonical URL for the page (web URL when known, else
+        ///     a `cupertino://`-style identifier).
+        ///   - title: Page title (already extracted by the caller).
+        ///   - rawMarkdown: Full markdown body — preserved in the page so
+        ///     downstream features (FTS body via `extractOptimizedContent`'s
+        ///     `.article` branch, future inheritance-fallback parsers, etc.)
+        ///     can read the source content from the structured row.
+        ///   - crawledAt: File-system modification date as a stand-in for
+        ///     crawl time.
+        ///   - contentHash: SHA-256 of `rawMarkdown` (caller usually has
+        ///     this for the `indexDocument` path already).
+        /// - Returns: A `StructuredDocumentationPage` with only the
+        ///   essential fields set; abstract/declaration/sections/etc.
+        ///   stay nil — the structured row exists, the kind is populated,
+        ///   `docs_structured.(missing)` rate drops to 0 % for the source.
+        public static func makeArticleStructuredPage(
+            url: URL,
+            title: String,
+            rawMarkdown: String,
+            crawledAt: Date,
+            contentHash: String
+        ) -> Shared.Models.StructuredDocumentationPage {
+            Shared.Models.StructuredDocumentationPage(
+                url: url,
+                title: title,
+                kind: .article,
+                source: .custom,
+                rawMarkdown: rawMarkdown,
+                crawledAt: crawledAt,
+                contentHash: contentHash
+            )
+        }
+
+        /// Serialise a `StructuredDocumentationPage` to a JSON string for the
+        /// `indexStructuredDocument(jsonData:)` parameter. Returns `"{}"` on
+        /// encode failure so the indexer call site doesn't need to thread an
+        /// error path for what is effectively a serialisation-of-a-struct-
+        /// we-just-built operation. ISO-8601 dates match the indexer's
+        /// pre-existing convention (see `Search.Strategies.SwiftOrg`'s
+        /// markdown branch).
+        public static func encodeStructuredPageToJSON(
+            _ page: Shared.Models.StructuredDocumentationPage
+        ) -> String {
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            guard let data = try? encoder.encode(page),
+                  let string = String(data: data, encoding: .utf8)
+            else { return "{}" }
+            return string
         }
 
         // MARK: - Private Helpers

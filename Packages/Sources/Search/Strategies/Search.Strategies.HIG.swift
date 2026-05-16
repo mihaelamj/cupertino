@@ -126,23 +126,35 @@ extension Search {
                 let modDate = attrs?[.modificationDate] as? Date ?? Date()
 
                 do {
+                    // #668 — write a structured row in addition to the FTS row so
+                    // `docs_structured.(missing)` rate drops from 100 % to 0 % for HIG.
+                    // `indexStructuredDocument` writes both rows in one call; the
+                    // `.article` kind lets #177 rerank + #616 kind-aware tiebreak
+                    // function on these pages instead of being a no-op.
+                    let pageURL = URL(string: uri) ?? URL(fileURLWithPath: file.path)
+                    let structuredPage = Search.StrategyHelpers.makeArticleStructuredPage(
+                        url: pageURL,
+                        title: title,
+                        rawMarkdown: content,
+                        crawledAt: modDate,
+                        contentHash: contentHash
+                    )
+                    let pageJSON = Search.StrategyHelpers.encodeStructuredPageToJSON(structuredPage)
+
                     // HIG applies universally to all Apple platforms.
-                    try await index.indexDocument(Search.Index.IndexDocumentParams(
+                    try await index.indexStructuredDocument(
                         uri: uri,
                         source: source,
                         framework: category,
-                        title: title,
-                        content: content,
-                        filePath: file.path,
-                        contentHash: contentHash,
-                        lastCrawled: modDate,
-                        minIOS: "2.0",
-                        minMacOS: "10.0",
-                        minTvOS: "9.0",
-                        minWatchOS: "2.0",
-                        minVisionOS: "1.0",
-                        availabilitySource: "universal"
-                    ))
+                        page: structuredPage,
+                        jsonData: pageJSON,
+                        overrideMinIOS: "2.0",
+                        overrideMinMacOS: "10.0",
+                        overrideMinTvOS: "9.0",
+                        overrideMinWatchOS: "2.0",
+                        overrideMinVisionOS: "1.0",
+                        overrideAvailabilitySource: "universal"
+                    )
                     indexed += 1
                 } catch {
                     logger.error(
