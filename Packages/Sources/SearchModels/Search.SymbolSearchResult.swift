@@ -20,6 +20,12 @@ extension Search {
         public let conformances: String?
         public let isAsync: Bool
         public let isPublic: Bool
+        /// AST-extracted generic-parameter clause (e.g. `T: View`,
+        /// `Element: Hashable & Sendable`). `nil` for non-generic symbols.
+        /// Populated by `searchByGenericConstraint` (#665); the older
+        /// semantic-search entry points leave this `nil` since they don't
+        /// SELECT the column. Default-nil keeps the init source-compatible.
+        public let genericParams: String?
 
         public init(
             docUri: String,
@@ -31,7 +37,8 @@ extension Search {
             attributes: String?,
             conformances: String?,
             isAsync: Bool,
-            isPublic: Bool
+            isPublic: Bool,
+            genericParams: String? = nil
         ) {
             self.docUri = docUri
             self.docTitle = docTitle
@@ -43,6 +50,7 @@ extension Search {
             self.conformances = conformances
             self.isAsync = isAsync
             self.isPublic = isPublic
+            self.genericParams = genericParams
         }
     }
 }

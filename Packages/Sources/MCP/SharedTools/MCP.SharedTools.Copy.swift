@@ -189,5 +189,26 @@ extension MCP.SharedTools {
         - Find View conformances: protocol=View
         - Find Sendable types: protocol=Sendable
         """
+
+        /// Search generics tool description (#665, #409 Layer 2)
+        public static let toolSearchGenericsDescription = """
+        Find generic types and functions by constraint. Surfaces the AST-extracted \
+        `generic_params` column (e.g. `T: View`, `Element: Hashable & Sendable`) so \
+        agents can ask "what concrete generics constrain on Sendable in SwiftUI?" \
+        and "where is Hashable used as a generic bound?".
+
+        **Common constraints:** Sendable, Hashable, Equatable, View, Codable, \
+        Comparable, Identifiable, BinaryInteger, FloatingPoint
+
+        **Parameters:**
+        - constraint: Generic constraint to search for (matched as substring)
+        - framework: Filter by framework (optional)
+        - limit: Maximum results (default 20)
+
+        **Examples:**
+        - Find Sendable-constrained generics: constraint=Sendable
+        - Find View-constrained generics in SwiftUI: constraint=View framework=swiftui
+        - Find Hashable-bound generics: constraint=Hashable
+        """
     }
 }

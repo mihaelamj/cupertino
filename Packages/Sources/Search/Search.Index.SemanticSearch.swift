@@ -3,7 +3,6 @@ import SearchModels
 import SharedConstants
 import SQLite3
 
-
 /// #177 — shared signal-rank ORDER BY clause for the 4 AST semantic search
 /// queries (`searchSymbols`, `searchPropertyWrappers`,
 /// `searchConcurrencyPatterns`, `searchConformances`). Pre-fix every
@@ -492,6 +491,113 @@ extension Search.Index {
                 conformances: conformances,
                 isAsync: isAsync,
                 isPublic: isPublic
+            ))
+        }
+
+        return results
+    }
+
+    /// Search for generic types / functions by constraint.
+    ///
+    /// Layer 2 of #409 (issue #665). Surfaces the AST-extracted
+    /// `doc_symbols.generic_params` column (e.g. `T: View`,
+    /// `Element: Hashable & Sendable`). Match is substring-LIKE so a
+    /// query of `Sendable` returns both `T: Sendable` and
+    /// `T: Hashable & Sendable`.
+    ///
+    /// Mirrors `searchConformances`: same WHERE/ORDER/LIMIT shape,
+    /// same `Search.SymbolSearchResult` return type, but populates
+    /// `genericParams` on the result so the MCP layer can echo what
+    /// matched.
+    ///
+    /// - Parameters:
+    ///   - constraint: Generic constraint to search for (substring).
+    ///   - framework: Filter by framework.
+    ///   - limit: Maximum results.
+    /// - Returns: Symbols whose `generic_params` contains the constraint.
+    public func searchByGenericConstraint(
+        constraint: String,
+        framework: String? = nil,
+        limit: Int = Shared.Constants.Limit.defaultSearchLimit
+    ) async throws -> [Search.SymbolSearchResult] {
+        guard let database else {
+            throw Search.Error.databaseNotInitialized
+        }
+
+        let constraintPattern = "%\(constraint)%"
+
+        var conditions = ["s.generic_params LIKE ?"]
+        var params: [String] = [constraintPattern]
+
+        if let framework, !framework.isEmpty {
+            conditions.append("m.framework = ?")
+            params.append(framework.lowercased())
+        }
+
+        let whereClause = "WHERE " + conditions.joined(separator: " AND ")
+
+        let sql = """
+        SELECT DISTINCT
+            s.doc_uri,
+            f.title,
+            COALESCE(m.framework, '') as framework,
+            s.name,
+            s.kind,
+            s.signature,
+            s.attributes,
+            s.conformances,
+            s.is_async,
+            s.is_public,
+            s.generic_params
+        FROM doc_symbols s
+        JOIN docs_fts f ON s.doc_uri = f.uri
+        LEFT JOIN docs_metadata m ON s.doc_uri = m.uri
+        \(whereClause)
+        \(signalRankOrderClause)
+        LIMIT ?;
+        """
+
+        var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
+
+        guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
+            let errorMessage = String(cString: sqlite3_errmsg(database))
+            throw Search.Error.searchFailed("Generic-constraint search failed: \(errorMessage)")
+        }
+
+        var paramIndex: Int32 = 1
+        for param in params {
+            sqlite3_bind_text(statement, paramIndex, (param as NSString).utf8String, -1, nil)
+            paramIndex += 1
+        }
+        sqlite3_bind_int(statement, paramIndex, Int32(limit))
+
+        var results: [Search.SymbolSearchResult] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            let docUri = sqlite3_column_text(statement, 0).map { String(cString: $0) } ?? ""
+            let docTitle = sqlite3_column_text(statement, 1).map { String(cString: $0) } ?? ""
+            let framework = sqlite3_column_text(statement, 2).map { String(cString: $0) } ?? ""
+            let symbolName = sqlite3_column_text(statement, 3).map { String(cString: $0) } ?? ""
+            let symbolKind = sqlite3_column_text(statement, 4).map { String(cString: $0) } ?? ""
+            let signature = sqlite3_column_text(statement, 5).map { String(cString: $0) }
+            let attributes = sqlite3_column_text(statement, 6).map { String(cString: $0) }
+            let conformances = sqlite3_column_text(statement, 7).map { String(cString: $0) }
+            let isAsync = sqlite3_column_int(statement, 8) != 0
+            let isPublic = sqlite3_column_int(statement, 9) != 0
+            let genericParams = sqlite3_column_text(statement, 10).map { String(cString: $0) }
+
+            results.append(Search.SymbolSearchResult(
+                docUri: docUri,
+                docTitle: docTitle,
+                framework: framework,
+                symbolName: symbolName,
+                symbolKind: symbolKind,
+                signature: signature,
+                attributes: attributes,
+                conformances: conformances,
+                isAsync: isAsync,
+                isPublic: isPublic,
+                genericParams: genericParams
             ))
         }
 

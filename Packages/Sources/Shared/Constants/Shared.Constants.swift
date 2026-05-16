@@ -665,6 +665,11 @@ extension Shared.Constants {
         /// Search protocol conformances tool name
         public static let toolSearchConformances = "search_conformances"
 
+        /// Search generic-parameter constraints tool name (#665, #409 Layer 2).
+        /// Surfaces the `doc_symbols.generic_params` column populated by the
+        /// AST extractor (e.g. `T: View`, `T: Hashable & Sendable`).
+        public static let toolSearchGenerics = "search_generics"
+
         /// Inheritance walk tool name (#274).
         public static let toolGetInheritance = "get_inheritance"
 
@@ -760,6 +765,9 @@ extension Shared.Constants {
 
         /// JSON Schema parameter: protocol (protocol conformance)
         public static let schemaParamProtocol = "protocol"
+
+        /// JSON Schema parameter: constraint (generic-parameter constraint, #665).
+        public static let schemaParamConstraint = "constraint"
 
         /// Format value: json
         public static let formatValueJSON = "json"
