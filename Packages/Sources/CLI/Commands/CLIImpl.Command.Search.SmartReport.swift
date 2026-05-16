@@ -256,6 +256,13 @@ extension CLIImpl.Command.Search {
         minVersion: String?,
         brief: Bool
     ) {
+        // #640 — surface configuration-error sources before the body so
+        // the user sees the schema-mismatch warning whether the query
+        // matched anything or not. Prints to stderr-equivalent
+        // (`print` here goes to stdout for CLI piping; the warning
+        // shape echoes what CLI users already get from the loud
+        // `cupertino search` schema error).
+        printDegradedSourcesText(result: result)
         if result.candidates.isEmpty {
             let sources = result.contributingSources.isEmpty
                 ? "no sources responded"
@@ -309,6 +316,28 @@ extension CLIImpl.Command.Search {
         print("")
     }
 
+    /// Emit a `⚠ N sources unavailable` banner when any fetcher hit a
+    /// configuration error (#640). No-op when `result.degradedSources`
+    /// is empty so the existing happy-path output is unchanged.
+    private static func printDegradedSourcesText(result: Search.SmartResult) {
+        guard !result.degradedSources.isEmpty else { return }
+        let count = result.degradedSources.count
+        print("⚠ \(count) source\(count == 1 ? "" : "s") unavailable due to configuration error:")
+        for degraded in result.degradedSources {
+            print("  - \(degraded.name): \(degraded.reason)")
+        }
+        print("")
+    }
+
+    private static func printDegradedSourcesMarkdown(result: Search.SmartResult) {
+        guard !result.degradedSources.isEmpty else { return }
+        print("> ⚠ **\(result.degradedSources.count) source\(result.degradedSources.count == 1 ? "" : "s") unavailable due to configuration error:**")
+        for degraded in result.degradedSources {
+            print("> - `\(degraded.name)`: \(degraded.reason)")
+        }
+        print("")
+    }
+
     private static func printTipsFooterText(availabilityFilterActive: Bool) {
         print("💡 Narrow with --source <name>: "
             + Shared.Constants.Search.availableSources.joined(separator: ", "))
@@ -350,6 +379,11 @@ extension CLIImpl.Command.Search {
     ) {
         print("# Results for `\(question)`")
         print("")
+        // #640 — schema-mismatch / DB-unopenable warning at the top so
+        // AI agents reading the markdown body see it before the
+        // candidate list. Uses a blockquote so MCP clients render it
+        // distinctly.
+        printDegradedSourcesMarkdown(result: result)
         if result.candidates.isEmpty {
             let sources = result.contributingSources.isEmpty
                 ? "no sources responded"
@@ -450,14 +484,27 @@ extension CLIImpl.Command.Search {
             /// today — read directly from `~/.cupertino/packages/<id>`).
             let readFullCommand: String?
         }
+        // `degradedSources` (#640) field next to `contributingSources`
+        // so JSON consumers (AI agents, dashboards, automated pipelines)
+        // can distinguish "no apple-docs match for the query" from
+        // "apple-docs.db is unopenable". Empty array on the happy path
+        // keeps the shipped output shape backwards-compatible.
+        struct DegradedSourceOut: Encodable {
+            let name: String
+            let reason: String
+        }
         struct ReportOut: Encodable {
             let question: String
             let contributingSources: [String]
+            let degradedSources: [DegradedSourceOut]
             let candidates: [CandidateOut]
         }
         let report = ReportOut(
             question: question,
             contributingSources: result.contributingSources,
+            degradedSources: result.degradedSources.map {
+                DegradedSourceOut(name: $0.name, reason: $0.reason)
+            },
             candidates: result.candidates.enumerated().map { idx, fused in
                 CandidateOut(
                     rank: idx + 1,
