@@ -79,8 +79,14 @@ private actor MCPClient {
         // Start the MCP server
         try startMCPServer()
 
-        // Give server time to start
-        try await Task.sleep(for: .seconds(1))
+        // Give server time to start. #632 — bumped from 1s to 3s so the
+        // cold-start path (SPM-relinked binary + DB open + Composition
+        // bootstrap) finishes before we start sending requests. A faster
+        // start still wins because every subsequent request races against
+        // its own per-request timeout (`readLine.timeoutSeconds`); this
+        // pre-roll only avoids the noisy "received unexpected line"
+        // diagnostic that fires when the server warms up mid-initialize.
+        try await Task.sleep(for: .seconds(3))
 
         print("📡 Starting MCP Communication...")
         print("=".repeating(80))
@@ -650,10 +656,41 @@ private actor MCPClient {
         }
     }
 
-    private func readLine(from fileHandle: FileHandle) async throws -> String {
-        try await withCheckedThrowingContinuation { continuation in
+    /// #632 — per-request deadline so a stuck cold-start doesn't hang the
+    /// agent forever. 30s covers the worst observed clean-rebuild cold-start
+    /// (~10-15s for SPM-relinked binary + DB open + Composition bootstrap),
+    /// with margin for slower machines. Tuneable via the parameter for tests.
+    private static let defaultResponseTimeoutSeconds = 30
+
+    private func readLine(
+        from fileHandle: FileHandle,
+        timeoutSeconds: Int = MCPClient.defaultResponseTimeoutSeconds
+    ) async throws -> String {
+        // Spawn a sibling task that fires `timeoutSeconds` later and dequeues
+        // the parked continuation with a timeout error if it's still there.
+        // Both tasks run on this actor, so the array mutation is serialised
+        // between handleLine (response arrived) and dequeueOldestAsTimeout
+        // (timeout fired) — exactly one of them will resume the continuation.
+        let timeoutTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(timeoutSeconds))
+            await self?.dequeueOldestAsTimeout(seconds: timeoutSeconds)
+        }
+        defer { timeoutTask.cancel() }
+
+        return try await withCheckedThrowingContinuation { continuation in
             pendingResponses.append(continuation)
         }
+    }
+
+    /// #632 — called from the per-request timeout sibling task when the
+    /// deadline fires before `handleLine` consumes the parked continuation.
+    /// Removes the oldest pending continuation and resumes it with
+    /// `responseTimeout`. Idempotent against late responses: if
+    /// `handleLine` already fired (array is empty), this is a no-op.
+    private func dequeueOldestAsTimeout(seconds: Int) {
+        guard !pendingResponses.isEmpty else { return }
+        let continuation = pendingResponses.removeFirst()
+        continuation.resume(throwing: MCPClientError.responseTimeout(seconds: seconds))
     }
 
     private func nextMessageID() -> Int {
@@ -707,6 +744,10 @@ private enum MCPClientError: Error, CustomStringConvertible {
     case noResponse
     case noResult
     case serverError(String)
+    /// #632 — no MCP response received within the configured deadline.
+    /// Carries the timeout that fired so logs surface "30s deadline"
+    /// instead of a silent forever-wait.
+    case responseTimeout(seconds: Int)
 
     var description: String {
         switch self {
@@ -722,6 +763,11 @@ private enum MCPClientError: Error, CustomStringConvertible {
             return "Response contains no result"
         case .serverError(let message):
             return "Server error: \(message)"
+        case .responseTimeout(let seconds):
+            return "MCP server did not respond within \(seconds)s. " +
+                "Cold-start (DB open / Composition bootstrap) may have stalled, " +
+                "or the server crashed before answering. Check the [SERVER STDERR] " +
+                "lines above for clues."
         }
     }
 }
