@@ -597,6 +597,26 @@ extension Search.Index {
         // declaration-only symbol pages (the common case) missed the bm25
         // boost on type names.
         try await recomputeSymbolsBlob(docUri: uri)
+
+        // #274 — write class-inheritance edges for the page. The
+        // resolved URIs come from `page.inheritsFromURIs` and
+        // `page.inheritedByURIs` (parallel to the title arrays;
+        // populated by `AppleJSONToMarkdown.toStructuredPage` from
+        // `doc.references`). Each row is one directed edge:
+        // `child inherits from parent`. The same page contributes
+        // edges in two directions: `inheritsFrom` rows put `page.uri`
+        // in the child slot (with each ancestor as parent), while
+        // `inheritedBy` rows put `page.uri` in the parent slot (with
+        // each descendant as child). The composite primary key on
+        // the inheritance table dedups overlapping edges seen from
+        // both ends (e.g. UIControl's `inheritedBy: [UIButton]` and
+        // UIButton's `inheritsFrom: [UIControl]` produce the same
+        // row, written from whichever page is indexed first).
+        try await writeInheritanceEdges(
+            pageURI: uri,
+            inheritsFromURIs: page.inheritsFromURIs,
+            inheritedByURIs: page.inheritedByURIs
+        )
     }
 
     // MARK: - Symbol Indexing (#81)

@@ -194,4 +194,82 @@ struct Issue274InheritsFromExtractionTests {
         let decoded = try JSONDecoder().decode(Shared.Models.StructuredDocumentationPage.self, from: encoded)
         #expect(decoded.inheritsFrom == ["UIControl", "UIView"])
     }
+
+    // MARK: - URI resolution (#274 follow-up)
+
+    @Test("UIButton page populates `inheritsFromURIs` parallel to titles via doc.references lookup")
+    func uiButtonResolvesInheritsFromURIs() throws {
+        let data = try #require(Self.uiButtonJSON.data(using: .utf8))
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/uikit/uibutton"))
+        let page = try #require(Core.JSONParser.AppleJSONToMarkdown.toStructuredPage(data, url: url))
+
+        try #require(page.inheritsFromURIs != nil, "page must expose inheritsFromURIs")
+        // Apple-docs canonical form: lowercase framework + path.
+        #expect(page.inheritsFromURIs == ["apple-docs://uikit/uicontrol"])
+        // Parallel to the title array — same order, same length.
+        #expect(page.inheritsFromURIs?.count == page.inheritsFrom?.count)
+    }
+
+    @Test("Page with no `Inherits From` section keeps `inheritsFromURIs` nil")
+    func noInheritsFromMeansNilURIs() throws {
+        let data = try #require(Self.dataStruct.data(using: .utf8))
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/foundation/data"))
+        let page = try #require(Core.JSONParser.AppleJSONToMarkdown.toStructuredPage(data, url: url))
+
+        #expect(page.inheritsFromURIs == nil)
+    }
+
+    @Test("Inherited By URIs are resolved through the same path")
+    func inheritedByResolvesURIs() throws {
+        let json = """
+        {
+            "schemaVersion": {"major": 0, "minor": 3, "patch": 0},
+            "identifier": {
+                "url": "doc://com.apple.documentation/documentation/uikit/uicontrol",
+                "interfaceLanguage": "swift"
+            },
+            "metadata": {
+                "title": "UIControl",
+                "role": "symbol",
+                "roleHeading": "Class",
+                "modules": [{"name": "UIKit"}]
+            },
+            "abstract": [],
+            "primaryContentSections": [],
+            "topicSections": [],
+            "seeAlsoSections": [],
+            "relationshipsSections": [
+                {
+                    "title": "Inherited By",
+                    "identifiers": [
+                        "doc://com.apple.documentation/documentation/uikit/uibutton",
+                        "doc://com.apple.documentation/documentation/uikit/uiswitch"
+                    ],
+                    "kind": "relationships",
+                    "type": "inheritedBy"
+                }
+            ],
+            "references": {
+                "doc://com.apple.documentation/documentation/uikit/uibutton": {
+                    "title": "UIButton", "url": "/documentation/uikit/uibutton",
+                    "type": "topic", "kind": "symbol"
+                },
+                "doc://com.apple.documentation/documentation/uikit/uiswitch": {
+                    "title": "UISwitch", "url": "/documentation/uikit/uiswitch",
+                    "type": "topic", "kind": "symbol"
+                }
+            },
+            "interfaceLanguage": "swift"
+        }
+        """
+        let data = try #require(json.data(using: .utf8))
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/uikit/uicontrol"))
+        let page = try #require(Core.JSONParser.AppleJSONToMarkdown.toStructuredPage(data, url: url))
+
+        try #require(page.inheritedByURIs != nil)
+        #expect(Set(page.inheritedByURIs ?? []) == Set([
+            "apple-docs://uikit/uibutton",
+            "apple-docs://uikit/uiswitch",
+        ]))
+    }
 }
