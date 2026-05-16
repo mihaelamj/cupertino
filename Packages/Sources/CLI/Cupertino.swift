@@ -29,8 +29,10 @@ struct Cupertino: AsyncParsableCommand {
 
         QUERY
           search           Search across all documentation sources
+          package-search   Smart query over the packages corpus (packages.db source only)
           read             Read a full document by URI
           list-frameworks  List indexed frameworks with document counts
+          inheritance      Walk class inheritance chains (Apple class-based APIs)
 
         SAMPLE CODE
           list-samples     List indexed Apple sample projects

@@ -27,9 +27,8 @@ extension CLIImpl.Command {
             abstract: "Search Apple documentation, samples, HIG, and more",
             discussion: """
             Unified search across all documentation sources. By default, searches ALL sources
-            in parallel and returns chunked excerpts ranked by reciprocal-rank fusion
-            (absorbed from the removed `cupertino ask`). Use --source to narrow to one source
-            and get the source-specific list view instead.
+            in parallel and returns chunked excerpts ranked by reciprocal-rank fusion. Use
+            --source to narrow to one source and get the source-specific list view instead.
 
             SOURCES:
               (default)       Fan out across every available DB (chunked, RRF-fused)

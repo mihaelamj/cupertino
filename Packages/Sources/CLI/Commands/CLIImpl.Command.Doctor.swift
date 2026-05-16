@@ -46,7 +46,7 @@ extension CLIImpl.Command {
 
             The default skips those because a setup-only user has no raw corpus on disk
             (the bundle ships pre-built DBs), and a `0 files` line in `~/.cupertino/docs`
-            is normal in that flow — not a failure. (#68)
+            is normal in that flow — not a failure.
             """
         )
 
