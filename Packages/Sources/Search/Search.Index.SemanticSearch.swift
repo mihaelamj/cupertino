@@ -8,6 +8,47 @@ import SQLite3
 // file's class_body_length / function_body_length / function_parameter_count
 // rationale carries forward to the per-concern slices.
 
+/// #177 — shared signal-rank ORDER BY clause for the 4 AST semantic search
+/// queries (`searchSymbols`, `searchPropertyWrappers`,
+/// `searchConcurrencyPatterns`, `searchConformances`). Pre-fix every
+/// query did a flat `ORDER BY s.name`, which surfaced `==(_:_:)` operator
+/// overloads + synthesised `Equatable` / `Hashable` / `Comparable`
+/// conformance members ahead of canonical type pages. A developer
+/// searching for `mainactor` got `==` operators from RealityKit before
+/// any real view-model class; `task` got `==` / `<=` / `<` on
+/// `Task<Success, Failure>` and `TaskPriority` before any real Task
+/// usage; etc.
+///
+/// Two-tier reranking deprioritises (does NOT exclude — that would
+/// break "show me everything" workflows) the boilerplate:
+///
+/// Tier 1: rows whose symbol name is one of the auto-synthesised /
+///   operator-overload names go LAST among everything else.
+/// Tier 2: within tier 1, canonical type kinds (class / struct / enum /
+///   protocol / actor) come first; type-shape sub-kinds (typealias /
+///   macro) next; member-shape (method / function / property /
+///   initializer) third; pages explicitly tagged `kind=operator`
+///   fourth; everything else (including `kind=unknown`) in tier 5.
+///
+/// `s.name` ties remaining ordering — preserves the pre-fix alphabetic
+/// shape for rows in the same kind+name-shape bucket.
+private let signalRankOrderClause = """
+ORDER BY
+    CASE WHEN s.name IN (
+        '==(_:_:)', '!=(_:_:)', '<(_:_:)', '<=(_:_:)', '>(_:_:)', '>=(_:_:)',
+        '~=(_:_:)', 'hash(into:)',
+        '==', '!=', '<', '<=', '>', '>='
+    ) THEN 1 ELSE 0 END,
+    CASE
+        WHEN s.kind IN ('class', 'struct', 'enum', 'protocol', 'actor') THEN 0
+        WHEN s.kind IN ('typealias', 'macro') THEN 1
+        WHEN s.kind IN ('method', 'function', 'property', 'initializer', 'subscript', 'case') THEN 2
+        WHEN s.kind = 'operator' THEN 3
+        ELSE 4
+    END,
+    s.name
+"""
+
 extension Search.Index {
     public func searchSymbols(
         query: String?,
@@ -60,7 +101,7 @@ extension Search.Index {
         JOIN docs_fts f ON s.doc_uri = f.uri
         LEFT JOIN docs_metadata m ON s.doc_uri = m.uri
         \(whereClause)
-        ORDER BY s.name
+        \(signalRankOrderClause)
         LIMIT ?;
         """
 
@@ -156,7 +197,7 @@ extension Search.Index {
         JOIN docs_fts f ON s.doc_uri = f.uri
         LEFT JOIN docs_metadata m ON s.doc_uri = m.uri
         \(whereClause)
-        ORDER BY s.name
+        \(signalRankOrderClause)
         LIMIT ?;
         """
 
@@ -269,7 +310,7 @@ extension Search.Index {
         JOIN docs_fts f ON s.doc_uri = f.uri
         LEFT JOIN docs_metadata m ON s.doc_uri = m.uri
         \(whereClause)
-        ORDER BY s.name
+        \(signalRankOrderClause)
         LIMIT ?;
         """
 
@@ -361,7 +402,7 @@ extension Search.Index {
         JOIN docs_fts f ON s.doc_uri = f.uri
         LEFT JOIN docs_metadata m ON s.doc_uri = m.uri
         \(whereClause)
-        ORDER BY s.name
+        \(signalRankOrderClause)
         LIMIT ?;
         """
 
