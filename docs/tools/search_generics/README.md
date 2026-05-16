@@ -60,6 +60,14 @@ Maximum number of results.
 **Type:** Integer  
 **Default:** 20
 
+### min_ios / min_macos / min_tvos / min_watchos / min_visionos (optional)
+
+Platform-availability floor (#226). Drops rows whose `min_<platform>` is above the user's floor — i.e. the user is on platform version X, hide APIs that require newer. Rows with NULL `min_<platform>` on the requested platform are dropped when the filter is active (no availability metadata = unknown = excluded from a platform-scoped query). Mirrors the semantics of the same args on `search_symbols` / `search_property_wrappers` / `search_concurrency` / `search_conformances`.
+
+**Type:** String (dotted-decimal semver, e.g. `"16.0"`, `"10.15"`)
+
+**Example:** `{"constraint": "Sendable", "min_ios": "16.0"}` returns only Sendable-constrained generics whose iOS deployment-target floor is ≤ 16.0 (i.e. available on iOS 16 and earlier; iOS 18-only APIs filtered out).
+
 ## Examples
 
 ### Find Sendable-Constrained Generics
