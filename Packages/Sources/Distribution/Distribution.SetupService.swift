@@ -147,6 +147,12 @@ extension Distribution.SetupService {
             to: destination,
             tickObserver: ExtractTickForwarder(label: label, events: events)
         )
+        // #682 — intentional silent removal failure. The zip has been
+        // fully extracted at this point; leaving it on disk is clutter,
+        // not corruption. A user can `rm ~/.cupertino/*.zip` manually
+        // if they want the space back. A warn here would surface a
+        // benign cleanup miss with no actionable next step (the
+        // extracted DBs are already in place + the setup completed).
         try? FileManager.default.removeItem(at: zipURL)
         events.observe(event: .extractComplete(label: label))
     }

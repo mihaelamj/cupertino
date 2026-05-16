@@ -170,6 +170,13 @@ extension Crawler.AppleDocs {
                 let line = try encoder.encode(record) + Data("\n".utf8)
                 if FileManager.default.fileExists(atPath: logFile.path) {
                     let handle = try FileHandle(forWritingTo: logFile)
+                    // #682 — intentional silent close in defer. The
+                    // actual log line was already written (seekToEnd +
+                    // write above); close failure here would mean the
+                    // kernel couldn't release the descriptor (extremely
+                    // rare on local fs). The data has already crossed
+                    // userspace; surfacing via a warn here would risk
+                    // masking the real failure mode (the throws above).
                     defer { try? handle.close() }
                     try handle.seekToEnd()
                     try handle.write(contentsOf: line)

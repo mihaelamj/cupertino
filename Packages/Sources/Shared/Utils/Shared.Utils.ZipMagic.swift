@@ -54,6 +54,10 @@ extension Shared.Utils {
             guard let handle = try? FileHandle(forReadingFrom: url) else {
                 return false
             }
+            // #682 — intentional silent close in defer. Read-only handle
+            // on a 4-byte probe; close failure is harmless (no buffered
+            // writes to flush). Read failure goes through the explicit
+            // try? on the read() below and turns into a `false` result.
             defer { try? handle.close() }
             guard let data = try? handle.read(upToCount: 4), data.count == 4 else {
                 return false
