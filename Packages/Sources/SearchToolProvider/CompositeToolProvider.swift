@@ -694,10 +694,32 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         guard let unifiedService else {
             throw Shared.Core.ToolError.invalidArgument("source", "No indexes available for unified search")
         }
-        let input = await unifiedService.searchAll(
+        let rawInput = await unifiedService.searchAll(
             query: query,
             framework: framework,
             limit: limit
+        )
+
+        // #648 (open-time path) — main's post-#642 retest found that the
+        // existing `classifyDegradation` plumbing only fires for per-
+        // fetcher errors thrown at query time. When `search.db` fails
+        // to open at server startup (#645's path), `unifiedService` is
+        // constructed with `searchIndex: nil`; the apple-docs / hig /
+        // swift-evolution / apple-archive / swift-org / swift-book
+        // fetchers register as unavailable and are never called for
+        // the query, so no per-fetcher throw exists to classify and
+        // `degradedSources` stays empty. The renderer then claims
+        // `_Searched ALL sources_` while in fact only samples + packages
+        // ran. Bridge the gap here: when `searchIndexDisabledReason` is
+        // set on the provider, synthesise one `DegradedSource` per
+        // search.db-backed source and merge them into the formatter
+        // input. The Markdown / Text / JSON renderers already gate the
+        // warning blockquote + "Searched: <list>" line off
+        // `degradedSources`, so the same render path now triggers for
+        // the open-time path with no formatter changes.
+        let input = Self.injectOpenTimeDegradation(
+            into: rawInput,
+            disabledReason: searchIndexDisabledReason
         )
 
         // Use shared formatter (identical to CLI --format markdown output)
@@ -709,6 +731,55 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let markdown = formatter.format(input)
 
         return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
+    }
+
+    /// #648 — merge synthetic `DegradedSource` entries for each search.db-
+    /// backed source into the formatter input when `disabledReason` is
+    /// set. Pure function; no provider state captured beyond the
+    /// parameters. Lifted to an internal static so the tests pin the
+    /// merge logic (preserved-fields, source-list, dedup-against-existing-
+    /// entries) without standing up the full `handleSearchAll` pipeline.
+    static func injectOpenTimeDegradation(
+        into input: Services.Formatter.Unified.Input,
+        disabledReason: String?
+    ) -> Services.Formatter.Unified.Input {
+        guard let disabledReason else { return input }
+
+        // The 6 sources backed by `search.db`. `samples` (samples.db) and
+        // `packages` (packages.db) live in different DBs and aren't
+        // affected by `search.db` being closed, so they stay out of the
+        // synthesized degraded list.
+        let searchDBSources: [String] = [
+            Shared.Constants.SourcePrefix.appleDocs,
+            Shared.Constants.SourcePrefix.appleArchive,
+            Shared.Constants.SourcePrefix.hig,
+            Shared.Constants.SourcePrefix.swiftEvolution,
+            Shared.Constants.SourcePrefix.swiftOrg,
+            Shared.Constants.SourcePrefix.swiftBook,
+        ]
+
+        // Dedup against anything the per-fetcher classifier already
+        // populated (in practice it won't have, because fetchers don't
+        // even run when `searchIndex` is nil — but a future refactor
+        // that wires partial-fetcher availability shouldn't double-
+        // count).
+        let existing = Set(input.degradedSources.map(\.name))
+        let synthesised = searchDBSources
+            .filter { !existing.contains($0) }
+            .map { Search.DegradedSource(name: $0, reason: disabledReason) }
+
+        return Services.Formatter.Unified.Input(
+            docResults: input.docResults,
+            archiveResults: input.archiveResults,
+            sampleResults: input.sampleResults,
+            higResults: input.higResults,
+            swiftEvolutionResults: input.swiftEvolutionResults,
+            swiftOrgResults: input.swiftOrgResults,
+            swiftBookResults: input.swiftBookResults,
+            packagesResults: input.packagesResults,
+            limit: input.limit,
+            degradedSources: input.degradedSources + synthesised
+        )
     }
 
     // MARK: - List Frameworks
