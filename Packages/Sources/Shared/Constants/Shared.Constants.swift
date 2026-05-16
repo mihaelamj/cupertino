@@ -93,6 +93,7 @@ extension Shared.Constants {
     }
 
     // MARK: - Default Paths
+
     //
     // Post-#535: every `Shared.Constants.defaultX` static accessor is
     // deleted. Each one was a Service Locator reach into
@@ -612,6 +613,18 @@ extension Shared.Constants {
 
         /// Search protocol conformances tool name
         public static let toolSearchConformances = "search_conformances"
+
+        /// Inheritance walk tool name (#274).
+        public static let toolGetInheritance = "get_inheritance"
+
+        /// Schema parameter: `symbol` (inheritance lookup root).
+        public static let schemaParamSymbol = "symbol"
+
+        /// Schema parameter: `direction` (up/down/both).
+        public static let schemaParamDirection = "direction"
+
+        /// Schema parameter: `depth` (max walk depth).
+        public static let schemaParamDepth = "depth"
 
         // MARK: Swift Evolution
 
