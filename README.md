@@ -478,10 +478,10 @@ A UIKit view controller that manages a SwiftUI view hierarchy.
 
 Cupertino includes pre-indexed catalog data bundled directly into the application:
 
-- **Swift Packages Catalog** (~9,700 entries in the embedded SPI catalog; 183 Apple-official packages with full source in packages.db)
-  - Manually curated from Swift Package Index + GitHub API
-  - Includes package metadata, stars, licenses, descriptions
-  - Updated periodically by maintainers
+- **Swift Packages Catalog** (183 Apple-official packages with full source + metadata in `packages.db`; the previous 9,699-entry embedded URL list was removed in #194 — `packages.db` is now the canonical corpus, shipped via `cupertino setup`)
+  - Curated from Swift Package Index + GitHub API
+  - Includes package metadata, stars, licenses, descriptions, deployment-target platforms, **and** authored `swift-tools-version` (#225)
+  - Updated by re-running `cupertino fetch --type packages` then `cupertino save --packages`
 
 - **Sample Code Catalog** (619 entries)
   - Apple's official sample code projects
