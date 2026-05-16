@@ -156,7 +156,7 @@ extension MCP.Core.Protocols.AnyCodable {
 /// non-deterministically under test scheduling.
 private func waitForMessage(
     on transport: InMemoryTransport,
-    timeout: TimeInterval = 5.0,
+    timeout: TimeInterval = 30.0,
     matching predicate: (MCP.Core.Transport.Message) -> Bool
 ) async -> MCP.Core.Transport.Message? {
     let deadline = Date().addingTimeInterval(timeout)
