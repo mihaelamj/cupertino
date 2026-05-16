@@ -402,8 +402,23 @@ extension Search {
             guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
                 throw PackageIndexError.sqliteError(lastError(database))
             }
-            let parentsJSON = (try? JSONEncoder().encode(resolved.parents))
-                .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+            // #682 — surface JSONEncoder failure instead of silently
+            // losing the parents chain. `resolved.parents` is a Codable
+            // [ResolvedPackage] — encode failure should be impossible in
+            // practice (no funky types in the value), but if it ever
+            // does happen we want a log line rather than a "[]" with no
+            // explanation.
+            let parentsJSON: String
+            do {
+                let data = try JSONEncoder().encode(resolved.parents)
+                parentsJSON = String(data: data, encoding: .utf8) ?? "[]"
+            } catch {
+                logger.error(
+                    "PackageIndex: failed to encode parents for \(resolved.owner)/\(resolved.repo): \(error). Storing empty array as fallback.",
+                    category: .search
+                )
+                parentsJSON = "[]"
+            }
             let isApple: Int32 = resolved.priority == .appleOfficial ? 1 : 0
 
             sqlite3_bind_text(statement, 1, resolved.owner, -1, SQLITE_TRANSIENT)
@@ -466,7 +481,19 @@ extension Search {
                     let platforms: [String]
                 }
                 let encoded = attrs.map { Encoded(line: $0.line, raw: $0.raw, platforms: $0.platforms) }
-                attrsJSON = (try? JSONEncoder().encode(encoded)).flatMap { String(data: $0, encoding: .utf8) }
+                // #682 — surface JSONEncoder failure instead of silently
+                // losing per-file availability metadata. Same shape as the
+                // parents-encode fix at line 412 above.
+                do {
+                    let data = try JSONEncoder().encode(encoded)
+                    attrsJSON = String(data: data, encoding: .utf8)
+                } catch {
+                    logger.error(
+                        "PackageIndex: failed to encode availability attrs for \(file.relpath): \(error). Storing NULL as fallback.",
+                        category: .search
+                    )
+                    attrsJSON = nil
+                }
             } else {
                 attrsJSON = nil
             }
