@@ -108,6 +108,59 @@ extension Diagnostics {
             return Int(sqlite3_column_int(stmt, 0))
         }
 
+        /// #626 — kind histogram per `source` for `search.db`.
+        /// Returns rows in the shape `(source, kind, count)` sorted by
+        /// source ascending, count descending. Used by `cupertino
+        /// doctor --kind-coverage` to surface the `unknown` rate and
+        /// the dominant kinds per source — directly useful for
+        /// verifying that indexer-side kind-extraction fixes (#615 /
+        /// #633 / #664) actually moved the needle on the corpus.
+        ///
+        /// Joins `docs_metadata` (carries `source`) with `docs_structured`
+        /// (carries the `kind` column added at schema v11 via #192 C).
+        /// Rows where `docs_structured` has no entry contribute a
+        /// synthetic `kind=NULL` bucket; the caller renders that as
+        /// `(missing)` so it stays distinguishable from rows that
+        /// successfully resolved to `kind=unknown`.
+        ///
+        /// Returns `nil` on any SQLite failure (DB locked, schema
+        /// mismatch refused at open, file missing). The caller is
+        /// expected to surface that as `(skipped)` rather than crash.
+        public static func kindHistogramBySource(at dbPath: URL) -> [(source: String, kind: String, count: Int)]? {
+            var db: OpaquePointer?
+            guard sqlite3_open_v2(dbPath.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+                return nil
+            }
+            defer { sqlite3_close(db) }
+
+            // COALESCE(s.kind, '(missing)') so rows with no docs_structured
+            // entry render distinguishably from rows tagged `unknown`.
+            let sql = """
+            SELECT m.source,
+                   COALESCE(s.kind, '(missing)') AS kind,
+                   COUNT(*) AS n
+            FROM docs_metadata m
+            LEFT JOIN docs_structured s ON s.uri = m.uri
+            GROUP BY m.source, COALESCE(s.kind, '(missing)')
+            ORDER BY m.source ASC, n DESC;
+            """
+
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                return nil
+            }
+
+            var rows: [(source: String, kind: String, count: Int)] = []
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                let source = sqlite3_column_text(stmt, 0).map { String(cString: $0) } ?? ""
+                let kind = sqlite3_column_text(stmt, 1).map { String(cString: $0) } ?? "(missing)"
+                let count = Int(sqlite3_column_int(stmt, 2))
+                rows.append((source: source, kind: kind, count: count))
+            }
+            return rows
+        }
+
         // MARK: - File-system probes
 
         /// Count corpus document files under `directory`. Matches `.md`

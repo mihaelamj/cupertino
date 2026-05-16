@@ -70,6 +70,24 @@ extension CLIImpl.Command {
         )
         var save: Bool = false
 
+        /// #626 — kind distribution audit. When set, doctor walks
+        /// `docs_structured.kind` joined with `docs_metadata.source` and
+        /// prints per-source kind histograms + the `unknown` rate per
+        /// source. Designed as a release-time metric so the team can
+        /// see whether the indexer-side improvements landed (#633 / #664
+        /// / future tiers) actually moved the needle on the corpus.
+        /// Read-only, no DB writes. Independent of `--save` — the kind
+        /// distribution is informational; doesn't gate doctor verdict.
+        @Flag(
+            name: .long,
+            help: """
+            Print a kind distribution audit per source (`apple-docs`, `samples`, etc.). \
+            Reports total rows per kind, percentage, and `unknown` rate. Useful after a \
+            reindex to verify kind-extraction improvements landed. Read-only.
+            """
+        )
+        var kindCoverage: Bool = false
+
         mutating func run() async throws {
             Cupertino.Context.composition.logging.recording.output("🏥 MCP Server Health Check")
             Cupertino.Context.composition.logging.recording.output("")
@@ -111,6 +129,18 @@ extension CLIImpl.Command {
                     Cupertino.Context.composition.logging.recording.output(line)
                 }
                 Cupertino.Context.composition.logging.recording.output("")
+            }
+
+            // ----- #626 kind-coverage audit (informational) ---------------
+            // Doesn't gate the doctor verdict — purely a release-time
+            // metric. When the user wakes after a reindex, this is the
+            // one-liner that says "yes, your indexer fixes moved the
+            // unknown rate from 57% to N%". Reads `search.db` directly;
+            // skipped silently when the file is missing or schema-
+            // mismatched (the regular `checkSearchDatabase` already
+            // surfaced that).
+            if kindCoverage {
+                checkKindCoverage()
             }
 
             // Summary
@@ -432,6 +462,79 @@ extension CLIImpl.Command {
                 }
                 Cupertino.Context.composition.logging.recording.output("     → These are likely HTML landing pages saved as .zip (Apple CDN transient 200s).")
                 Cupertino.Context.composition.logging.recording.output("     → Remove them manually, or re-run: cupertino fetch --type samples --force")
+            }
+            Cupertino.Context.composition.logging.recording.output("")
+        }
+
+        /// #626 — kind distribution audit. Walks `docs_structured.kind`
+        /// joined with `docs_metadata.source` and prints per-source
+        /// histograms ordered by count desc. Highlights the `unknown`
+        /// rate per source so a reindex audit answers "did the
+        /// indexer-side improvements (#615 / #633 / #664) actually
+        /// land on this bundle?". Informational; doesn't gate the
+        /// doctor verdict. Skipped silently when `search.db` is
+        /// missing or unopenable (the regular `checkSearchDatabase`
+        /// already surfaced that).
+        private func checkKindCoverage() {
+            let searchDBURL = URL(fileURLWithPath: searchDB).expandingTildeInPath
+            Cupertino.Context.composition.logging.recording.output("🧩 Kind distribution audit (#626)")
+
+            guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
+                Cupertino.Context.composition.logging.recording.output("   ⚠  search.db not found at \(searchDBURL.path) (skipped)")
+                Cupertino.Context.composition.logging.recording.output("")
+                return
+            }
+
+            guard let rows = Diagnostics.Probes.kindHistogramBySource(at: searchDBURL) else {
+                Cupertino.Context.composition.logging.recording.output("   ⚠  Could not read kind histogram from \(searchDBURL.path) (skipped — schema mismatch or DB unopenable)")
+                Cupertino.Context.composition.logging.recording.output("")
+                return
+            }
+
+            // Group rows by source. Each source gets its own per-kind
+            // breakdown + an `unknown`-rate summary line.
+            var bySource: [String: [(kind: String, count: Int)]] = [:]
+            for row in rows {
+                bySource[row.source, default: []].append((kind: row.kind, count: row.count))
+            }
+            guard !bySource.isEmpty else {
+                Cupertino.Context.composition.logging.recording.output("   ⚠  No rows in docs_metadata (DB present but empty)")
+                Cupertino.Context.composition.logging.recording.output("")
+                return
+            }
+
+            for source in bySource.keys.sorted() {
+                let kinds = bySource[source] ?? []
+                let total = kinds.reduce(0) { $0 + $1.count }
+                let unknown = kinds.first { $0.kind == "unknown" }?.count ?? 0
+                let missing = kinds.first { $0.kind == "(missing)" }?.count ?? 0
+                let unrecognised = unknown + missing
+                let unknownPct = total > 0 ? Double(unrecognised) / Double(total) * 100 : 0
+                let summary = String(format: "%.1f", unknownPct)
+                Cupertino.Context.composition.logging.recording.output("   \(source) — \(total) rows, unknown/missing: \(unrecognised) (\(summary)%)")
+                // Show the top 5 kinds per source to keep output bounded
+                // on a 280k-row bundle. The dominant kinds are the
+                // signal; the long tail of `actor` / `macro` / `case`
+                // matters for #626 follow-up tiers but is noisy at the
+                // doctor level.
+                for entry in kinds.prefix(5) {
+                    let pct = total > 0 ? Double(entry.count) / Double(total) * 100 : 0
+                    // Manual padding — `%s` in Swift's String(format:)
+                    // expects a C string; passing a Swift String renders
+                    // garbage. Pad via Swift `padding(toLength:withPad:
+                    // startingAt:)` for the kind name and `String(
+                    // repeating:count:)` for the right-aligned count.
+                    let kindPadded = entry.kind.padding(toLength: 14, withPad: " ", startingAt: 0)
+                    let countRaw = String(entry.count)
+                    let countPadded = String(repeating: " ", count: max(0, 8 - countRaw.count)) + countRaw
+                    let pctStr = String(format: "%5.1f", pct)
+                    Cupertino.Context.composition.logging.recording.output(
+                        "     \(kindPadded)\(countPadded)  (\(pctStr)%)"
+                    )
+                }
+                if kinds.count > 5 {
+                    Cupertino.Context.composition.logging.recording.output("     … and \(kinds.count - 5) more")
+                }
             }
             Cupertino.Context.composition.logging.recording.output("")
         }
