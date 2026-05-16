@@ -405,13 +405,22 @@ struct SaveCommandTests {
 
     // MARK: - Package Catalog Tests
 
-    @Test("Index Swift packages catalog from bundled resources")
-    func indexPackagesCatalog() async throws {
+    // Post-#194: the 568 KB embedded swift-packages URL catalog was
+    // deleted in favour of the `packages.db` artifact distributed via
+    // `cupertino setup`. `Core.Protocols.SwiftPackagesCatalog.allPackages`
+    // now returns []; `Search.Strategies.SwiftPackages` hits its
+    // existing `guard !packages.isEmpty` clean-skip path (#671). These
+    // tests pin the post-#194 empty contract through the full
+    // Search.IndexBuilder path. Restored coverage against packages.db
+    // fixtures lives in PackageQueryTests and is out of scope for #194.
+
+    @Test("Index Swift packages catalog: empty post-#194; strategy clean-skips")
+    func indexPackagesCatalogIsEmpty() async throws {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("cupertino-packages-test-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        print("🧪 Test: Index packages catalog")
+        print("🧪 Test: Index packages catalog (post-#194 empty contract)")
 
         let searchDbPath = tempDir.appendingPathComponent("search.db")
         let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
@@ -427,53 +436,33 @@ struct SaveCommandTests {
 
         try await builder.buildIndex()
 
-        // Verify packages were indexed
+        // Post-#194 contract: with the embedded URL list deleted, the
+        // SwiftPackages strategy clean-skips and the search.db carries
+        // no package rows. Brew users get their packages from the
+        // pre-built bundle shipped via `cupertino setup`; local
+        // `save --packages` is a no-op until the indexer is rewired
+        // to read from packages.db (deferred follow-up).
         let packageResults = try await searchIndex.searchPackages(query: "Alamofire", limit: 10)
-        #expect(!packageResults.isEmpty, "Should find package entries")
+        #expect(packageResults.isEmpty, "post-#194: no packages indexed from the (deleted) bundled catalog; got \(packageResults.count)")
 
         let totalPackages = try await searchIndex.packageCount()
-        #expect(totalPackages > 0, "Should have indexed packages catalog")
-        #expect(totalPackages >= 9000, "Should have thousands of package entries")
+        #expect(totalPackages == 0, "post-#194: search.db's package count should be 0 when building from an empty catalog; got \(totalPackages)")
 
-        print("   ✅ Indexed \(totalPackages) package entries")
-        print("   ✅ Package indexing test passed!")
+        print("   ✅ Empty-contract pinned (#194)")
     }
 
-    @Test("Package catalog includes metadata")
-    func packageCatalogMetadata() async throws {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cupertino-pkg-meta-test-\(UUID().uuidString)")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+    @Test("Package catalog metadata: accessor returns [] post-#194")
+    func packageCatalogIsEmpty() async {
+        // Direct accessor pin — independent of the builder path above.
+        // `Core.Protocols.SwiftPackagesCatalog.allPackages` is the
+        // upstream source the indexer reads; this test guards against
+        // a future revert re-introducing the embedded literal without
+        // also revisiting the indexer / packages.db pipeline.
+        let entries = await Core.Protocols.SwiftPackagesCatalog.allPackages
+        let count = await Core.Protocols.SwiftPackagesCatalog.count
+        #expect(entries.isEmpty, "post-#194: bundled catalog is gone; allPackages must be []")
+        #expect(count == 0, "post-#194: bundled catalog is gone; count must be 0")
 
-        print("🧪 Test: Package catalog metadata")
-
-        let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
-
-        let builder = Search.IndexBuilder(
-            searchIndex: searchIndex,
-            metadata: nil,
-            docsDirectory: tempDir,
-            evolutionDirectory: nil,
-            markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogProvider: MissingSampleCatalogProvider(), logger: Logging.NoopRecording()
-        )
-
-        try await builder.buildIndex()
-
-        // Search for a well-known package
-        let results = try await searchIndex.searchPackages(query: "swift argument parser", limit: 5)
-        #expect(!results.isEmpty, "Should find swift-argument-parser")
-
-        if let pkg = results.first {
-            #expect(pkg.owner == "apple" || pkg.owner == "Apple", "Should have correct owner")
-            #expect(pkg.repositoryURL.contains("github.com"), "Should have repository URL")
-            // Star count is no longer carried by the embedded URL-only catalog
-            // (#161 slimming). It returns to the DB once v1.0.0's packages.db
-            // distribution lands and the indexer pulls stars from there.
-        }
-
-        print("   ✅ Package metadata verified (post-#161 URL-only catalog)")
-        print("   ✅ Package metadata test passed!")
+        print("   ✅ Catalog-accessor empty-contract pinned (#194)")
     }
 }

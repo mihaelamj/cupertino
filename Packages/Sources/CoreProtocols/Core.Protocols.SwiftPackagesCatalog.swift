@@ -90,20 +90,43 @@ extension Core.Protocols {
         private static let cache = Cache()
 
         private static func loadEntries() async -> [SwiftPackageEntry] {
-            if let cached = await cache.get() { return cached }
-            let entries = Resources.Embedded.SwiftPackagesCatalog.urls.compactMap(SwiftPackageEntry.fromURL)
-            await cache.set(entries)
-            return entries
+            // #194 — the 568 KB embedded URL list was deleted post-v1.0.x;
+            // the canonical Swift-packages corpus now lives in
+            // `packages.db` (downloaded via `cupertino setup`). This
+            // accessor returns an empty array so legacy callers compile
+            // unchanged but read no data:
+            //
+            // * `Search.Strategies.SwiftPackages` hits its existing
+            //   `guard !packages.isEmpty` clean-skip path (#671), so
+            //   `cupertino save --packages` cleanly skips with reason
+            //   "catalog empty" — the indexer-side rebuild of
+            //   `search.db`'s swift-packages source is deferred to a
+            //   follow-up PR that rewires it to read from packages.db.
+            //
+            // * `TUI/PackageCurator` sees an empty package list; the
+            //   #194 PR adds a "run `cupertino setup` first" banner so
+            //   the empty state is explained, not mysterious.
+            //
+            // End-user impact: zero. Brew users get the swift-packages
+            // search rows from the pre-built `search.db` shipped via
+            // `cupertino setup`; they never ran `save --packages`.
+            // Bundle size drops by ~530 KB.
+            []
         }
 
         /// Total number of Swift packages in the bundled URL list.
+        /// Post-#194: always 0 — see `loadEntries` for the migration
+        /// to `packages.db`.
         public static var count: Int {
-            get async { await loadEntries().count }
+            get async { 0 }
         }
 
-        /// Last crawled date (stamped at catalog generation time).
+        /// Last crawled date. Post-#194 the embedded URL list is gone;
+        /// returns an empty string. Callers wanting "when did Apple
+        /// docs / packages last refresh" should use the per-source
+        /// metadata in `packages.db` or `cupertino doctor --freshness`.
         public static var lastCrawled: String {
-            get async { Resources.Embedded.SwiftPackagesCatalog.lastCrawled }
+            get async { "" }
         }
 
         /// Catalog version marker. Fixed string post-slim; bumped when the URL

@@ -120,18 +120,19 @@ struct CoreProtocolsPublicSurfaceTests {
         #expect(entry.description == nil)
     }
 
-    @Test("Core.Protocols.SwiftPackagesCatalog reads from the embedded URL list")
-    func swiftPackagesCatalogLoads() async {
-        // Post-#161 the catalog is materialised lazily out of
-        // Resources.Embedded.SwiftPackagesCatalog.urls. Pin that the
-        // loaded count matches the embedded count and the version /
-        // source markers are non-empty.
+    @Test("Core.Protocols.SwiftPackagesCatalog returns an empty list post-#194")
+    func swiftPackagesCatalogIsEmpty() async {
+        // Post-#194 the 568 KB embedded URL list was deleted; the
+        // canonical Swift-packages corpus now lives in packages.db
+        // (downloaded via `cupertino setup`). The accessor stays for
+        // source-compatibility but returns empty so legacy callers
+        // (Search.Strategies.SwiftPackages, TUI/PackageCurator) hit
+        // their existing empty-list paths cleanly.
         let count = await Core.Protocols.SwiftPackagesCatalog.count
-        let version = await Core.Protocols.SwiftPackagesCatalog.version
-        let source = await Core.Protocols.SwiftPackagesCatalog.source
-        #expect(count > 0)
-        #expect(count == Resources.Embedded.SwiftPackagesCatalog.urls.count)
-        #expect(!version.isEmpty)
-        #expect(!source.isEmpty)
+        let entries = await Core.Protocols.SwiftPackagesCatalog.allPackages
+        let lastCrawled = await Core.Protocols.SwiftPackagesCatalog.lastCrawled
+        #expect(count == 0, "post-#194 the embedded catalog is gone; count must be 0")
+        #expect(entries.isEmpty, "allPackages must be [] post-#194")
+        #expect(lastCrawled == "", "lastCrawled is empty post-#194; use cupertino doctor --freshness for per-source dates")
     }
 }
