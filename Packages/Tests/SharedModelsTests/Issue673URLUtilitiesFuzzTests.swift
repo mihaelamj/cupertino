@@ -52,28 +52,47 @@ struct Issue673URLUtilitiesFuzzTests {
         ) == nil)
     }
 
-    @Test("exotic schemes — current contract is scheme-agnostic when host + path match")
+    @Test("exotic schemes — #691 contract: only http(s) is accepted; everything else returns nil")
     func fromStringExoticSchemes() {
-        // Discovery during #673 Phase C fuzz: `appleDocsURI` does NOT reject
-        // non-https schemes. The host check (`url.host == "developer.apple.com"`)
-        // is the only gate; if host + /documentation/ path match, the URI is
-        // produced regardless of scheme. Filed as #691 for the hardening
-        // discussion — in practice the indexer never sees
-        // non-https URLs from any caller, so this is currently a hypothetical
-        // collision risk, not an active bug.
+        // #691 (originally discovered during #673 Phase C iter-2 fuzz, then
+        // tightened in this PR): `appleDocsURI` now rejects URLs whose scheme
+        // is anything other than `https` or `http`. Pre-fix the function was
+        // scheme-agnostic — a `ftp://developer.apple.com/documentation/swiftui`
+        // would have mapped to `apple-docs://swiftui` because the host +
+        // /documentation/ path matched. Post-fix the scheme gate rejects
+        // every non-http(s) scheme at the top, so even a perfectly-formed
+        // path under a hostile scheme returns nil. Apple docs only live over
+        // HTTP(S); anything else is by definition not an Apple documentation
+        // URL.
         //
-        // Locks current behaviour here so any future deliberate-tightening
-        // change to scheme handling shows up as a test failure with this
-        // explicit doc comment naming why.
+        // Path-only forms (no scheme) still parse — they're legitimate input
+        // from crawl metadata callers that hand in pre-stripped paths.
         #expect(Shared.Models.URLUtilities.appleDocsURI(
             fromString: "ftp://developer.apple.com/documentation/swiftui"
-        ) == "apple-docs://swiftui")
+        ) == nil, "ftp:// must be rejected post-#691")
         #expect(Shared.Models.URLUtilities.appleDocsURI(
             fromString: "file:///documentation/swiftui"
-        ) == "apple-docs://swiftui")
-        // mailto: has no /documentation/ in path, so does return nil.
+        ) == nil, "file:// must be rejected post-#691")
+        // javascript: / data: / mailto: — all still return nil. mailto:
+        // happened to return nil pre-#691 because it has no /documentation/
+        // path; the others did too for the same reason. Post-#691 the
+        // scheme gate catches them earlier and uniformly.
+        #expect(Shared.Models.URLUtilities.appleDocsURI(
+            fromString: "javascript:alert(1)"
+        ) == nil)
+        #expect(Shared.Models.URLUtilities.appleDocsURI(
+            fromString: "data:text/plain;base64,SGVsbG8="
+        ) == nil)
         #expect(Shared.Models.URLUtilities.appleDocsURI(
             fromString: "mailto:user@developer.apple.com"
+        ) == nil)
+        // Scheme matching is case-insensitive — uppercase HTTPS / HTTP work,
+        // hostile MIXED-case schemes do not.
+        #expect(Shared.Models.URLUtilities.appleDocsURI(
+            fromString: "HTTPS://developer.apple.com/documentation/swiftui"
+        ) == "apple-docs://swiftui")
+        #expect(Shared.Models.URLUtilities.appleDocsURI(
+            fromString: "FTP://developer.apple.com/documentation/swiftui"
         ) == nil)
     }
 
