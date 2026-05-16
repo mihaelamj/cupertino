@@ -267,6 +267,19 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             ),
         ].merging(platformFilterProperties) { lhs, _ in lhs }
 
+        // #665 / #409 Layer 2 — generic-parameter constraint search.
+        let searchGenericsProperties: [String: MCP.Core.Protocols.AnyCodable] = [
+            Shared.Constants.Search.schemaParamConstraint: stringSchema(
+                description: "Generic constraint to search for (e.g. Sendable, Hashable, View)."
+            ),
+            Shared.Constants.Search.schemaParamFramework: stringSchema(
+                description: "Framework filter (e.g. swiftui, foundation)."
+            ),
+            Shared.Constants.Search.schemaParamLimit: intSchema(
+                description: "Maximum results to return (default 20)."
+            ),
+        ]
+
         // #274 — class-inheritance walk over the `inheritance` edge table.
         let getInheritanceProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamSymbol: stringSchema(
@@ -392,6 +405,15 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                     required: [Shared.Constants.Search.schemaParamProtocol]
                 )
             ))
+
+            allTools.append(MCP.Core.Protocols.Tool(
+                name: Shared.Constants.Search.toolSearchGenerics,
+                description: MCP.SharedTools.Copy.toolSearchGenericsDescription,
+                inputSchema: objectSchema(
+                    properties: searchGenericsProperties,
+                    required: [Shared.Constants.Search.schemaParamConstraint]
+                )
+            ))
         }
 
         return MCP.Core.Protocols.ListToolsResult(tools: allTools)
@@ -421,6 +443,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             return try await handleSearchConcurrency(args: args)
         case Shared.Constants.Search.toolSearchConformances:
             return try await handleSearchConformances(args: args)
+        case Shared.Constants.Search.toolSearchGenerics:
+            return try await handleSearchGenerics(args: args)
         case Shared.Constants.Search.toolGetInheritance:
             return try await handleGetInheritance(args: args)
         default:
@@ -1284,6 +1308,35 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         }
     }
 
+    /// #665 / #409 Layer 2 — surfaces `doc_symbols.generic_params`.
+    /// (The MCP-level platform filter from #226 is not wired in here yet;
+    /// follow-up will extend the same `applyPlatformFilter` post-pass to
+    /// this handler for consistency.)
+    private func handleSearchGenerics(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
+        guard let searchIndex else {
+            throw searchIndexUnavailableError("index")
+        }
+
+        let constraint: String = try args.require(Shared.Constants.Search.schemaParamConstraint)
+        let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
+        let limit = args.limit()
+
+        let results = try await searchIndex.searchByGenericConstraint(
+            constraint: constraint,
+            framework: framework,
+            limit: limit
+        )
+
+        let markdown = formatSymbolResults(
+            results: results,
+            title: "Generic Constraint: \(constraint)",
+            query: constraint,
+            filters: ["constraint": constraint, "framework": framework]
+        )
+
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
+    }
+
     /// Format symbol search results as markdown
     private func formatSymbolResults(
         results: [Search.SymbolSearchResult],
@@ -1337,6 +1390,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 }
                 if let conforms = symbol.conformances, !conforms.isEmpty {
                     markdown += "\n  - Conforms to: \(conforms)"
+                }
+                if let generics = symbol.genericParams, !generics.isEmpty {
+                    markdown += "\n  - Generic params: `\(generics)`"
                 }
                 markdown += "\n"
             }

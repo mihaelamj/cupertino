@@ -46,7 +46,7 @@ struct Issue645ToolsListHonestyTests {
         #expect(result.tools.isEmpty)
     }
 
-    @Test("tools/list advertises 8 search.db-dependent tools when reason is set even though searchIndex is nil")
+    @Test("tools/list advertises 9 search.db-dependent tools when reason is set even though searchIndex is nil")
     func reasonOnlyExposesFullSearchSurface() async throws {
         let provider = CompositeToolProvider(
             searchIndex: nil,
@@ -55,8 +55,9 @@ struct Issue645ToolsListHonestyTests {
         )
         let result = try await provider.listTools(cursor: nil)
 
-        // 1 unified `search` + 2 list/read + 5 semantic — same set the
-        // server would advertise with a healthy index.
+        // 1 unified `search` + 2 list/read + 6 semantic (#665 added
+        // `search_generics`) — same set the server would advertise with
+        // a healthy index.
         let names = Set(result.tools.map(\.name))
         #expect(names.contains(Shared.Constants.Search.toolSearch))
         #expect(names.contains(Shared.Constants.Search.toolListFrameworks))
@@ -66,10 +67,11 @@ struct Issue645ToolsListHonestyTests {
         #expect(names.contains(Shared.Constants.Search.toolSearchConcurrency))
         #expect(names.contains(Shared.Constants.Search.toolGetInheritance))
         #expect(names.contains(Shared.Constants.Search.toolSearchConformances))
-        #expect(result.tools.count == 8)
+        #expect(names.contains(Shared.Constants.Search.toolSearchGenerics))
+        #expect(result.tools.count == 9)
     }
 
-    @Test("tools/list returns full 11 tools when both searchIndex (via reason) and samples are advertised")
+    @Test("tools/list returns full 12 tools when both searchIndex (via reason) and samples are advertised")
     func reasonPlusSamplesExposesEverything() async throws {
         let (database, cleanup) = try await createTestSampleDatabase()
         defer { cleanup() }
@@ -82,7 +84,7 @@ struct Issue645ToolsListHonestyTests {
         let result = try await provider.listTools(cursor: nil)
 
         let names = Set(result.tools.map(\.name))
-        // 8 search-side + 3 sample-side
+        // 9 search-side (#665 bumped from 8) + 3 sample-side
         #expect(names.contains(Shared.Constants.Search.toolSearch))
         #expect(names.contains(Shared.Constants.Search.toolListFrameworks))
         #expect(names.contains(Shared.Constants.Search.toolReadDocument))
@@ -94,7 +96,8 @@ struct Issue645ToolsListHonestyTests {
         #expect(names.contains(Shared.Constants.Search.toolSearchConcurrency))
         #expect(names.contains(Shared.Constants.Search.toolGetInheritance))
         #expect(names.contains(Shared.Constants.Search.toolSearchConformances))
-        #expect(result.tools.count == 11)
+        #expect(names.contains(Shared.Constants.Search.toolSearchGenerics))
+        #expect(result.tools.count == 12)
     }
 
     @Test("tools/list returns 4 tools (samples-only) when only samples are configured AND no reason")
@@ -129,6 +132,7 @@ struct Issue645ToolsListHonestyTests {
             Shared.Constants.Search.toolSearchConcurrency,
             Shared.Constants.Search.toolGetInheritance,
             Shared.Constants.Search.toolSearchConformances,
+            Shared.Constants.Search.toolSearchGenerics,
         ]
     )
     func handlersSurfaceDisabledReason(toolName: String) async throws {
@@ -149,6 +153,7 @@ struct Issue645ToolsListHonestyTests {
             Shared.Constants.Search.schemaParamWrapper: MCP.Core.Protocols.AnyCodable("State"),
             Shared.Constants.Search.schemaParamPattern: MCP.Core.Protocols.AnyCodable("actor"),
             Shared.Constants.Search.schemaParamProtocol: MCP.Core.Protocols.AnyCodable("Equatable"),
+            Shared.Constants.Search.schemaParamConstraint: MCP.Core.Protocols.AnyCodable("Sendable"),
         ]
 
         await #expect {

@@ -92,6 +92,19 @@ extension Search {
             limit: Int
         ) async throws -> [Search.SymbolSearchResult]
 
+        /// Semantic search by generic-parameter constraint (#665, #409 Layer 2).
+        ///
+        /// Matches the AST-extracted `doc_symbols.generic_params` column
+        /// as a substring (so `Sendable` returns both `T: Sendable` and
+        /// `T: Hashable & Sendable`). Results carry the matched
+        /// generic-parameter clause on `SymbolSearchResult.genericParams`
+        /// so the MCP layer can echo what matched.
+        func searchByGenericConstraint(
+            constraint: String,
+            framework: String?,
+            limit: Int
+        ) async throws -> [Search.SymbolSearchResult]
+
         // MARK: - Class inheritance (#274)
 
         /// Resolve a user-supplied symbol name to one or more apple-docs URIs.
