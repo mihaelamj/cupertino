@@ -2,11 +2,6 @@ import CoreProtocols
 import Foundation
 import SharedConstants
 
-// swiftlint:disable type_body_length
-// Justification: MarkdownToStructuredPage is a comprehensive parser for Apple documentation markdown.
-// It handles: YAML frontmatter, section detection, code blocks, tables, links, and nested structures.
-// The parsing logic must handle many edge cases from Apple's varied documentation formats.
-
 extension Core.JSONParser {
     /// Converts Apple documentation markdown files to StructuredDocumentationPage
     public enum MarkdownToStructuredPage {

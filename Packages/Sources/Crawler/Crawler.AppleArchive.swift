@@ -5,11 +5,6 @@ import LoggingModels
 import SharedConstants
 // MARK: - Apple Archive Crawler
 
-// swiftlint:disable type_body_length function_body_length
-// Justification: AppleArchiveCrawler handles the complete lifecycle of crawling Apple's legacy docs.
-// It manages HTML fetching, parsing, markdown conversion, and hierarchical page navigation.
-// The guide parsing function is complex due to handling multiple HTML structures from different eras.
-
 /// Crawls Apple's archived documentation (static HTML pages)
 /// These are the pre-2016 guides that are no longer updated but still valuable
 extension Crawler {
