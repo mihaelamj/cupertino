@@ -147,4 +147,91 @@ struct Issue626KindExtractionExpansionTests {
             ) == nil
         )
     }
+
+    // MARK: - #626 follow-up — parseKindFromSymbolKind (Apple's internal taxonomy)
+
+    //
+    // The roleHeading + declaration-token cascade landed in #633 cut the
+    // unknown rate to ~19% on a projected reindex. The remaining residual
+    // is mostly pages where Apple emits `metadata.symbolKind` but neither
+    // a usable `roleHeading` nor a structured `declaration` block (common
+    // for `enum.case` sub-pages, `associatedtype` requirements, and
+    // `@MainActor`-decorated types that DocC renders without a heading).
+    // `parseKindFromSymbolKind` mines `swift.struct` / `swift.func` /
+    // `swift.enum.case` / etc. and sits between roleHeading and the
+    // declaration-token fallback in the three-tier cascade.
+
+    @Test(
+        "parseKindFromSymbolKind handles every common Apple swift.* symbolKind",
+        arguments: [
+            ("swift.struct", Kind.struct),
+            ("swift.class", Kind.class),
+            ("swift.enum", Kind.enum),
+            ("swift.enum.case", Kind.enumCase),
+            ("swift.protocol", Kind.protocol),
+            ("swift.actor", Kind.actor),
+            ("swift.typealias", Kind.typeAlias),
+            ("swift.macro", Kind.macro),
+            ("swift.func", Kind.function),
+            ("swift.method", Kind.method),
+            ("swift.property", Kind.property),
+            ("swift.init", Kind.initializer),
+            ("swift.subscript", Kind.subscript),
+            ("swift.operator", Kind.operator),
+        ]
+    )
+    func symbolKindRecognisesSwiftTaxonomy(symbolKind: String, expected: Kind) {
+        let result = Core.JSONParser.AppleJSONToMarkdown.parseKindFromSymbolKind(symbolKind)
+        #expect(result == expected, "\(symbolKind) → \(expected), got \(result?.rawValue ?? "nil")")
+    }
+
+    @Test(
+        "parseKindFromSymbolKind handles Objective-C variants identically",
+        arguments: [
+            ("objc.class", Kind.class),
+            ("objc.method", Kind.method),
+            ("objc.property", Kind.property),
+        ]
+    )
+    func symbolKindRecognisesObjcTaxonomy(symbolKind: String, expected: Kind) {
+        #expect(Core.JSONParser.AppleJSONToMarkdown.parseKindFromSymbolKind(symbolKind) == expected)
+    }
+
+    @Test("parseKindFromSymbolKind maps swift.associatedtype to .typeAlias")
+    func associatedTypeMapsToTypeAlias() {
+        // Associated types are shape-wise type declarations; no dedicated
+        // Kind case so we route them to .typeAlias (closest existing
+        // member) rather than dropping to .unknown.
+        #expect(Core.JSONParser.AppleJSONToMarkdown.parseKindFromSymbolKind("swift.associatedtype") == .typeAlias)
+    }
+
+    @Test("parseKindFromSymbolKind returns nil for swift.extension (no Kind case)")
+    func extensionReturnsNil() {
+        // Extensions adopt the kind of the type they extend; the helper
+        // returns nil so the declaration-token tier can peek at the
+        // first token (or `.unknown` survives if there's no declaration).
+        #expect(Core.JSONParser.AppleJSONToMarkdown.parseKindFromSymbolKind("swift.extension") == nil)
+    }
+
+    @Test("parseKindFromSymbolKind returns nil for nil input")
+    func nilSymbolKindReturnsNil() {
+        #expect(Core.JSONParser.AppleJSONToMarkdown.parseKindFromSymbolKind(nil) == nil)
+    }
+
+    @Test("parseKindFromSymbolKind returns nil for unrecognised values (no false positives)")
+    func unrecognisedSymbolKindReturnsNil() {
+        // A future Apple addition or a malformed entry must NOT be
+        // guessed at. Returning nil lets the declaration-token fallback
+        // try, or `.unknown` survives — both better than a wrong tag.
+        #expect(Core.JSONParser.AppleJSONToMarkdown.parseKindFromSymbolKind("swift.somefutureshape") == nil)
+        #expect(Core.JSONParser.AppleJSONToMarkdown.parseKindFromSymbolKind("randomgarbage") == nil)
+    }
+
+    @Test("parseKindFromSymbolKind is case-insensitive")
+    func caseInsensitive() {
+        // Apple's emitted casing is consistently lowercase but we
+        // normalise defensively in case the JSON ever shifts.
+        #expect(Core.JSONParser.AppleJSONToMarkdown.parseKindFromSymbolKind("Swift.Struct") == .struct)
+        #expect(Core.JSONParser.AppleJSONToMarkdown.parseKindFromSymbolKind("SWIFT.FUNC") == .function)
+    }
 }
