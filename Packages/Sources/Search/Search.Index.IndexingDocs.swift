@@ -381,7 +381,8 @@ extension Search.Index {
         overrideMinTvOS: String? = nil,
         overrideMinWatchOS: String? = nil,
         overrideMinVisionOS: String? = nil,
-        overrideAvailabilitySource: String? = nil
+        overrideAvailabilitySource: String? = nil,
+        implementationSwiftVersion: String? = nil
     ) async throws {
         // Register framework alias if module is available
         if let module = page.module, !module.isEmpty {
@@ -463,13 +464,16 @@ extension Search.Index {
             uriPath: uri
         ).rawValue
 
-        // Insert metadata with json_data, availability, and kind (#192 C).
-        // `kind` appended at end so existing bind indexes 1-16 stay stable.
+        // Insert metadata with json_data, availability, kind (#192 C),
+        // and implementation_swift_version (#225 Part B). New columns
+        // appended at the end so existing bind indexes stay stable
+        // (`kind` is 17, `implementation_swift_version` is 18).
         let metaSql = """
         INSERT OR REPLACE INTO docs_metadata \
         (uri, source, framework, language, file_path, content_hash, last_crawled, word_count, \
         source_type, json_data, min_ios, min_macos, min_tvos, min_watchos, min_visionos, \
-        availability_source, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        availability_source, kind, implementation_swift_version) \
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         """
 
         var metaStatement: OpaquePointer?
@@ -503,6 +507,11 @@ extension Search.Index {
         bindOptionalText(metaStatement, 15, finalVisionOS)
         bindOptionalText(metaStatement, 16, finalSource)
         sqlite3_bind_text(metaStatement, 17, (classifiedKind as NSString).utf8String, -1, nil)
+        // #225 Part B — implementation_swift_version (NULL on every
+        // source except swift-evolution; the SwiftEvolution strategy
+        // passes the parsed value, every other caller leaves it
+        // defaulted to nil so the bind becomes a NULL).
+        bindOptionalText(metaStatement, 18, implementationSwiftVersion)
 
         guard sqlite3_step(metaStatement) == SQLITE_DONE else {
             let errorMessage = String(cString: sqlite3_errmsg(database))

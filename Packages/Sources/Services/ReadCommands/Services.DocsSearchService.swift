@@ -2,6 +2,7 @@ import Foundation
 import SearchModels
 import ServicesModels
 import SharedConstants
+
 // MARK: - Documentation Search Service
 
 /// Service for searching Apple documentation, Swift Evolution, and other
@@ -38,7 +39,8 @@ extension Services {
                 minMacOS: query.minimumMacOS,
                 minTvOS: query.minimumTvOS,
                 minWatchOS: query.minimumWatchOS,
-                minVisionOS: query.minimumVisionOS
+                minVisionOS: query.minimumVisionOS,
+                minSwift: query.minimumSwift
             )
         }
 

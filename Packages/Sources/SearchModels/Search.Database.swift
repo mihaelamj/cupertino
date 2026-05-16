@@ -28,6 +28,12 @@ extension Search {
         ///   - minIOS / minMacOS / minTvOS / minWatchOS / minVisionOS:
         ///     Filter rows whose minimum-version annotation falls below the
         ///     dotted-decimal threshold. Pass `nil` to skip a platform.
+        ///   - minSwift: #225 Part B — filter rows whose
+        ///     `implementation_swift_version` falls at or below the
+        ///     dotted-decimal Swift toolchain threshold. Populated only
+        ///     for swift-evolution rows; every other row is rejected
+        ///     when this filter is set (matches the platform-filter
+        ///     NULL-rejection semantic).
         func search(
             query: String,
             source: String?,
@@ -39,7 +45,8 @@ extension Search {
             minMacOS: String?,
             minTvOS: String?,
             minWatchOS: String?,
-            minVisionOS: String?
+            minVisionOS: String?,
+            minSwift: String?
         ) async throws -> [Search.Result]
 
         /// Fetch the pre-rendered document content for a URI.
@@ -254,7 +261,8 @@ extension Search.Database {
             minMacOS: nil,
             minTvOS: nil,
             minWatchOS: nil,
-            minVisionOS: nil
+            minVisionOS: nil,
+            minSwift: nil
         )
     }
 }

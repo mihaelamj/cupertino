@@ -207,6 +207,47 @@ extension Search.Index {
                 dbPath: dbPath.path
             )
         }
+
+        if currentVersion < 16 {
+            // Version 15 -> 16: Added `implementation_swift_version`
+            // column to `docs_metadata` (#225 Part B). Captures the
+            // Swift toolchain version a swift-evolution proposal landed
+            // in. Unlike v14→v15 (which had to throw because the new
+            // `inheritance` table needed walk data only available via a
+            // full re-index), this is a clean in-place ALTER TABLE ADD
+            // COLUMN — old rows get NULL, new indexing populates the
+            // column for swift-evolution rows, every other source stays
+            // NULL by design. NULL semantics match the #226 platform
+            // filter: a row with no value is rejected when `--swift` is
+            // set, passed through when it isn't.
+            try await migrateToVersion16()
+        }
+    }
+
+    /// v15 → v16: add `implementation_swift_version` to docs_metadata
+    /// (#225 Part B). In-place column add; safe for both fresh DBs
+    /// (the column is also declared in the initial CREATE TABLE so a
+    /// v16 build coming up against a brand-new DB never enters this
+    /// path) and existing v15 DBs (the column starts NULL and gets
+    /// populated on the next re-index).
+    func migrateToVersion16() async throws {
+        guard let database else {
+            throw Search.Error.databaseNotInitialized
+        }
+
+        let statements = [
+            "ALTER TABLE docs_metadata ADD COLUMN implementation_swift_version TEXT;",
+            "CREATE INDEX IF NOT EXISTS idx_implementation_swift_version ON docs_metadata(implementation_swift_version);",
+        ]
+
+        for sql in statements {
+            var errorPointer: UnsafeMutablePointer<CChar>?
+            defer { sqlite3_free(errorPointer) }
+            // Ignore error if column/index already exists — keeps the
+            // migration idempotent across partial runs. Matches the
+            // pattern in `migrateToVersion11`.
+            sqlite3_exec(database, sql, nil, nil, &errorPointer)
+        }
     }
 
     func migrateToVersion11() async throws {
