@@ -455,6 +455,16 @@ private struct AppleDocumentation: Codable {
         let title: String
         let role: String?
         let roleHeading: String?
+        /// Apple's internal symbol taxonomy. Common values:
+        /// `swift.struct`, `swift.class`, `swift.enum`, `swift.protocol`,
+        /// `swift.actor`, `swift.func`, `swift.method`, `swift.property`,
+        /// `swift.init`, `swift.subscript`, `swift.typealias`, `swift.macro`,
+        /// `swift.operator`, `swift.enum.case`, `swift.associatedtype`,
+        /// `swift.extension`. Objective-C variants use the `objc.*`
+        /// prefix. #626 — present on virtually every symbol page even
+        /// when `roleHeading` is missing; the second-tier fallback path
+        /// after `parseKind(from:role:)` returns `.unknown`.
+        let symbolKind: String?
         let modules: [Module]?
 
         struct Module: Codable {
@@ -556,18 +566,27 @@ extension Core.JSONParser.AppleJSONToMarkdown {
         // Extract declaration
         let declaration = extractDeclaration(from: doc.primaryContentSections)
 
-        // Extract kind. First try `metadata.roleHeading` (the canonical
-        // path); fall back to peeking at the declaration's first token
-        // when roleHeading is missing or ambiguous (#626). On the v1.1.0
-        // shipped bundle, 162,821 of 284,518 apple-docs rows landed with
-        // `kind=unknown` because the JSON didn't carry a `roleHeading`;
-        // the declaration-token fallback recovers ~109k of those (struct
-        // / class / enum / protocol / actor / typealias / case / init /
-        // subscript / property / method).
+        // Extract kind in a three-tier cascade:
+        //   (1) `metadata.roleHeading` (the canonical Apple-DocC string —
+        //       "Structure", "Class", "Instance Property", etc.).
+        //   (2) `metadata.symbolKind` (Apple's internal taxonomy —
+        //       `swift.struct`, `swift.func`, …; present even when
+        //       roleHeading is null). Added #626 after #633's declaration-
+        //       token fallback recovered ~109k of 162k unknowns but left
+        //       the long tail (pages where the JSON carries symbolKind
+        //       but neither roleHeading nor a declaration block — common
+        //       for `enum.case` and `associatedtype` sub-pages).
+        //   (3) Peek at the declaration's first significant token
+        //       (`parseKindFromDeclaration`). Catches the residual where
+        //       Apple emits a code block but no symbolKind.
+        // Each tier short-circuits when it returns a non-.unknown kind.
         let kindFromRole = parseKind(from: doc.metadata.roleHeading, role: doc.metadata.role)
-        let kind = kindFromRole == .unknown
-            ? parseKindFromDeclaration(declaration?.code) ?? .unknown
+        let kindFromSymbolKind = kindFromRole == .unknown
+            ? parseKindFromSymbolKind(doc.metadata.symbolKind) ?? .unknown
             : kindFromRole
+        let kind = kindFromSymbolKind == .unknown
+            ? parseKindFromDeclaration(declaration?.code) ?? .unknown
+            : kindFromSymbolKind
 
         // Extract overview (content sections)
         let overview = extractOverview(from: doc.primaryContentSections)
@@ -804,6 +823,73 @@ extension Core.JSONParser.AppleJSONToMarkdown {
             return kind
         }
         return nil
+    }
+
+    /// #626 — map Apple's internal `metadata.symbolKind` taxonomy to
+    /// our `Kind` enum. Sits between `parseKind(from:role:)` and
+    /// `parseKindFromDeclaration(_:)` in the three-tier cascade. The
+    /// `symbolKind` field is present on virtually every symbol page in
+    /// the DocC JSON even when `roleHeading` is missing — particularly
+    /// useful for `enum.case` sub-pages, `associatedtype` requirements,
+    /// and `@MainActor`-decorated types that Apple renders without a
+    /// role heading.
+    ///
+    /// Both Swift (`swift.struct`, …) and Objective-C (`objc.class`, …)
+    /// variants are accepted; the language axis isn't kind-distinguishing.
+    /// `swift.extension` returns `.unknown` because we don't have a
+    /// dedicated extension Kind case (extensions adopt the kind of the
+    /// type they extend; ranking treats them as articles for now).
+    /// Returns `nil` for unrecognised values so the caller can fall
+    /// through to the declaration-token tier.
+    static func parseKindFromSymbolKind(_ symbolKind: String?) -> Shared.Models.StructuredDocumentationPage.Kind? {
+        guard let raw = symbolKind?.lowercased() else { return nil }
+        // Strip the `swift.` / `objc.` language prefix so the table
+        // doesn't need to repeat both variants.
+        let bare: String
+        if raw.hasPrefix("swift.") {
+            bare = String(raw.dropFirst("swift.".count))
+        } else if raw.hasPrefix("objc.") {
+            bare = String(raw.dropFirst("objc.".count))
+        } else {
+            bare = raw
+        }
+        switch bare {
+        case "struct": return .struct
+        case "class": return .class
+        case "enum": return .enum
+        case "enum.case": return .enumCase
+        case "protocol": return .protocol
+        case "actor": return .actor
+        case "typealias", "type_alias": return .typeAlias
+        case "macro": return .macro
+        case "func", "function": return .function
+        case "method", "instancemethod", "typemethod", "instance_method", "type_method": return .method
+        case "property", "instanceproperty", "typeproperty", "instance_property", "type_property": return .property
+        case "init", "initializer": return .initializer
+        case "subscript", "instance_subscript", "type_subscript": return .subscript
+        case "op", "operator", "infix_operator", "prefix_operator", "postfix_operator": return .operator
+        case "associatedtype", "associated_type":
+            // Associated types render alongside protocol requirements;
+            // they're shape-wise type declarations even though they
+            // can't be queried for canonical-type-page boost. Tag as
+            // `.typeAlias` (the closest existing Kind) so downstream
+            // semantic filters don't lose them.
+            return .typeAlias
+        case "extension":
+            // No dedicated Kind case; extensions adopt the kind of the
+            // type they extend. Returning nil lets the declaration-
+            // token fallback peek at the first token (e.g. `extension
+            // String` → falls through to the unknown-extension default,
+            // which is acceptable — the page links back to the canonical
+            // type page anyway).
+            return nil
+        case "article": return .article
+        case "tutorial": return .tutorial
+        case "samplecode", "sample_code", "samples": return .sampleCode
+        case "collection", "groupmarker", "group_marker": return .collection
+        default:
+            return nil
+        }
     }
 
     private static func parseKind(
