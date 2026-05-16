@@ -2,6 +2,7 @@ import Foundation
 import SampleIndexModels
 import SearchModels
 import SharedConstants
+
 // MARK: - Unified Search Markdown Formatter
 
 extension Services.Formatter.Unified {
@@ -23,6 +24,22 @@ extension Services.Formatter.Unified {
 
         public func format(_ input: Services.Formatter.Unified.Input) -> String {
             var output = "# Unified Search: \"\(query)\"\n\n"
+
+            // #640 — configuration-error warning at the top so AI agents
+            // see schema-mismatch / DB-unopenable state before they
+            // read the empty (or partial) candidate list below. Uses a
+            // markdown blockquote so MCP clients render it distinctly
+            // from the body. Empty-degradedSources is a no-op so the
+            // happy-path output shape is unchanged.
+            if !input.degradedSources.isEmpty {
+                output += "> ⚠ **\(input.degradedSources.count) source"
+                output += input.degradedSources.count == 1 ? "" : "s"
+                output += " unavailable due to configuration error:**\n"
+                for degraded in input.degradedSources {
+                    output += "> - `\(degraded.name)`: \(degraded.reason)\n"
+                }
+                output += "\n"
+            }
 
             if let framework {
                 output += "_Filtered to framework: **\(framework)**_\n\n"

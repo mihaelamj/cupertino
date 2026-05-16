@@ -1,6 +1,7 @@
 import Foundation
 import SearchModels
 import SharedConstants
+
 // MARK: - Smart cross-source query (#192 section E)
 
 //
@@ -124,6 +125,7 @@ extension Search {
         /// Fetchers that throw are silently skipped — a dead DB or network
         /// error on one source must not take down the rest of the query. The
         /// returned `sources` array lists which fetchers actually contributed.
+        // swiftlint:disable:next function_body_length
         public func answer(
             question: String,
             limit: Int = 10,
@@ -136,10 +138,22 @@ extension Search {
             let question = question
             let fetchers = Self.routeFetchers(fetchers, for: question)
 
-            // Fan out: one task per fetcher. Failures collapse to empty lists.
-            let contributions: [(name: String, candidates: [SmartCandidate])] = await withTaskGroup(
-                of: (String, [SmartCandidate]).self
-            ) { group in
+            // Fan out: one task per fetcher. Failures collapse to empty
+            // lists so one dead source can't take down the whole query.
+            // #640 — but we distinguish CONFIGURATION errors (schema
+            // mismatch / DB unopenable) from transient FETCH errors
+            // (network blip, lock contention). Configuration errors get
+            // promoted into the result's `degradedSources` so AI agents
+            // reading the MCP response can see "apple-docs returned 0"
+            // and know it's a setup problem, not "we have no apple-docs
+            // content for your query". Pre-fix the silent collapse made
+            // both states indistinguishable in the response body.
+            struct Contribution: Sendable {
+                let name: String
+                let candidates: [SmartCandidate]
+                let degradationReason: String?
+            }
+            let contributions: [Contribution] = await withTaskGroup(of: Contribution.self) { group in
                 for fetcher in fetchers {
                     group.addTask {
                         do {
@@ -147,13 +161,21 @@ extension Search {
                                 question: question,
                                 limit: perFetcherLimit
                             )
-                            return (fetcher.sourceName, batch)
+                            return Contribution(
+                                name: fetcher.sourceName,
+                                candidates: batch,
+                                degradationReason: nil
+                            )
                         } catch {
-                            return (fetcher.sourceName, [])
+                            return Contribution(
+                                name: fetcher.sourceName,
+                                candidates: [],
+                                degradationReason: Self.classifyDegradation(error)
+                            )
                         }
                     }
                 }
-                var collected: [(String, [SmartCandidate])] = []
+                var collected: [Contribution] = []
                 for await result in group {
                     collected.append(result)
                 }
@@ -167,7 +189,8 @@ extension Search {
             // `sourceWeights[candidate.source]` so apple-docs' rank-1 hit
             // beats lower-authority rank-1 hits on the cross-source tiebreak.
             var fused: [String: (candidate: SmartCandidate, score: Double)] = [:]
-            for (_, batch) in contributions {
+            for contribution in contributions {
+                let batch = contribution.candidates
                 for (rank, candidate) in batch.enumerated() {
                     let key = "\(candidate.source)\u{1F}\(candidate.identifier)"
                     let weight = Self.sourceWeights[candidate.source] ?? 1.0
@@ -188,12 +211,50 @@ extension Search {
             let activeSources = contributions
                 .filter { !$0.candidates.isEmpty }
                 .map(\.name)
+            // #640 — configuration-error sources (schema mismatch /
+            // DB unopenable) bubble into a separate channel so the
+            // SmartReport formatter can prepend a `⚠ Schema mismatch`
+            // warning instead of letting the empty result read like
+            // "no content on this source for the query".
+            let degradedSources = contributions
+                .compactMap { contribution -> DegradedSource? in
+                    guard let reason = contribution.degradationReason else { return nil }
+                    return DegradedSource(name: contribution.name, reason: reason)
+                }
 
             return SmartResult(
                 question: question,
                 candidates: Array(ranked),
-                contributingSources: activeSources
+                contributingSources: activeSources,
+                degradedSources: degradedSources
             )
+        }
+
+        // MARK: - Degradation classification
+
+        /// Distinguish configuration errors (schema mismatch, missing /
+        /// unopenable DB) from transient fetch errors. Returns a
+        /// human-readable reason string when the error is the kind of
+        /// thing the user has to act on — schema mismatch, "database
+        /// is locked" exceeding the timeout, file-not-found — vs `nil`
+        /// for plain "no results" or other transient throws that the
+        /// caller can safely swallow per the original skip-on-error
+        /// policy.
+        ///
+        /// The match is on the message text rather than the type
+        /// because `Search.Error.sqliteError` is the same Swift type
+        /// regardless of cause; the message is what tells us what
+        /// happened. We err on the side of reporting too few rather
+        /// than too many to keep the warning signal strong.
+        static func classifyDegradation(_ error: any Swift.Error) -> String? {
+            let message = "\(error)".lowercased()
+            if message.contains("schema version") {
+                return "schema mismatch — run `cupertino setup` to redownload a matching bundle"
+            }
+            if message.contains("unable to open database") || message.contains("file is not a database") {
+                return "database unopenable — check the `--search-db` / `--packages-db` / `--sample-db` paths"
+            }
+            return nil
         }
     }
 
@@ -217,15 +278,30 @@ extension Search {
         /// Source names that produced at least one candidate this run. Useful
         /// for telling the user "searched: apple-docs, packages, swift-org".
         public let contributingSources: [String]
+        /// Sources that returned empty due to a configuration error (schema
+        /// mismatch / DB unopenable) rather than legitimate "no content"
+        /// for the query (#640). Empty when every fetcher either
+        /// contributed or threw a transient error. Pre-#640 the fan-out
+        /// silently collapsed configuration errors into empty results,
+        /// leaving AI agents unable to distinguish "no apple-docs match
+        /// for `URLSession`" from "apple-docs.db is unopenable".
+        public let degradedSources: [DegradedSource]
 
         public init(
             question: String,
             candidates: [FusedCandidate],
-            contributingSources: [String]
+            contributingSources: [String],
+            degradedSources: [DegradedSource] = []
         ) {
             self.question = question
             self.candidates = candidates
             self.contributingSources = contributingSources
+            self.degradedSources = degradedSources
         }
     }
+
+    // `Search.DegradedSource` lives in the `SearchModels` target (#640)
+    // so consumers like `Services.Formatter.Unified.Input` can reference
+    // it without pulling the concrete `Search` target into their import
+    // graph.
 }

@@ -17,6 +17,15 @@ extension Services.Formatter.Unified {
         public let swiftBookResults: [Search.Result]
         public let packagesResults: [Search.Result]
         public let limit: Int // The limit used per source, for teaser calculation
+        /// Per-source configuration errors (#640). Empty on the happy
+        /// path; populated when a source returned 0 because it failed
+        /// to open (schema mismatch, unopenable DB) rather than because
+        /// the query genuinely matched nothing. Markdown / text / JSON
+        /// formatters prepend a `⚠ Schema mismatch` warning so MCP
+        /// clients see the configuration problem at the top of the
+        /// response body, not silently in the form of an empty
+        /// candidate list.
+        public let degradedSources: [Search.DegradedSource]
 
         public init(
             docResults: [Search.Result] = [],
@@ -27,7 +36,8 @@ extension Services.Formatter.Unified {
             swiftOrgResults: [Search.Result] = [],
             swiftBookResults: [Search.Result] = [],
             packagesResults: [Search.Result] = [],
-            limit: Int = 10
+            limit: Int = 10,
+            degradedSources: [Search.DegradedSource] = []
         ) {
             self.docResults = docResults
             self.archiveResults = archiveResults
@@ -38,6 +48,7 @@ extension Services.Formatter.Unified {
             self.swiftBookResults = swiftBookResults
             self.packagesResults = packagesResults
             self.limit = limit
+            self.degradedSources = degradedSources
         }
 
         /// Total number of results across all sources
