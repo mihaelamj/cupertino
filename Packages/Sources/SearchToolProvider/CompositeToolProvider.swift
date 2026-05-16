@@ -26,6 +26,16 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     private let searchIndex: (any Search.Database)?
     private let sampleDatabase: (any Sample.Index.Reader)?
 
+    /// #645 — set when `search.db` exists on disk but couldn't be
+    /// opened (schema mismatch, corrupt file, "not a database"). When
+    /// non-nil the tool provider still advertises the search.db-
+    /// dependent tools so `tools/list` is honest about the server's
+    /// capability surface; per-tool handlers throw a clear error
+    /// frame naming the reason. When nil + searchIndex is also nil,
+    /// the file is legitimately missing and we hide the tools (the
+    /// pre-#645 status quo for samples-only servers).
+    private let searchIndexDisabledReason: String?
+
     // #582: fallback resource provider used by `handleReadDocument` when
     // the search-index lookup misses. `MCP.Support.DocsResourceProvider`
     // (the same instance the CLI uses for `resources/read`) does a
@@ -53,7 +63,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         sampleService: (any Sample.Search.Searcher)?,
         teaserService: (any Services.Teaser)?,
         unifiedService: (any Services.UnifiedSearcher)?,
-        documentResourceProvider: (any MCP.Core.ResourceProvider)? = nil
+        documentResourceProvider: (any MCP.Core.ResourceProvider)? = nil,
+        searchIndexDisabledReason: String? = nil
     ) {
         self.searchIndex = searchIndex
         self.sampleDatabase = sampleDatabase
@@ -62,6 +73,33 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         self.teaserService = teaserService
         self.unifiedService = unifiedService
         self.documentResourceProvider = documentResourceProvider
+        self.searchIndexDisabledReason = searchIndexDisabledReason
+    }
+
+    /// True when the server should advertise search.db-dependent tools.
+    /// The DB is either currently open (ready path) or present-but-
+    /// unopenable (configuration-error path, #645). When the file is
+    /// legitimately missing, both branches are false and the tools stay
+    /// hidden in `tools/list`.
+    private var searchToolsVisible: Bool {
+        searchIndex != nil || searchIndexDisabledReason != nil
+    }
+
+    /// #645 — error frame for tool calls when `search.db` is present
+    /// but unopenable. The handler funnel checks `searchIndex` and
+    /// throws this when nil with `searchIndexDisabledReason` set,
+    /// instead of the generic "index not available" message. AI agents
+    /// reading the error see the same actionable text the CLI prints
+    /// (e.g. "schema mismatch — run `cupertino setup` …"), matching
+    /// the #640 degradation pattern on the unified search path.
+    private func searchIndexUnavailableError(_ paramName: String) -> Shared.Core.ToolError {
+        let message: String
+        if let reason = searchIndexDisabledReason {
+            message = "Documentation index disabled: \(reason)"
+        } else {
+            message = "Documentation index not available"
+        }
+        return Shared.Core.ToolError.invalidArgument(paramName, message)
     }
 
     // The two-argument convenience init that constructed concrete
@@ -222,8 +260,11 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             ),
         ]
 
-        // Unified search tool (replaces search_docs, search_hig, search_all, search_samples)
-        if searchIndex != nil || sampleDatabase != nil {
+        // Unified search tool (replaces search_docs, search_hig, search_all, search_samples).
+        // #645 — visible when EITHER search.db is openable (or present-but-
+        // unopenable) or samples.db has content. The schema-mismatch path
+        // makes searchToolsVisible true even when searchIndex is nil.
+        if searchToolsVisible || sampleDatabase != nil {
             allTools.append(MCP.Core.Protocols.Tool(
                 name: Shared.Constants.Search.toolSearch,
                 description: MCP.SharedTools.Copy.toolSearchDescription,
@@ -235,7 +276,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         }
 
         // List frameworks tool
-        if searchIndex != nil {
+        if searchToolsVisible {
             allTools.append(MCP.Core.Protocols.Tool(
                 name: Shared.Constants.Search.toolListFrameworks,
                 description: MCP.SharedTools.Copy.toolListFrameworksDescription,
@@ -283,7 +324,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         }
 
         // Semantic search tools (#81)
-        if searchIndex != nil {
+        if searchToolsVisible {
             allTools.append(MCP.Core.Protocols.Tool(
                 name: Shared.Constants.Search.toolSearchSymbols,
                 description: MCP.SharedTools.Copy.toolSearchSymbolsDescription,
@@ -674,7 +715,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     private func handleListFrameworks() async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
-            throw Shared.Core.ToolError.invalidArgument("index", "Documentation index not available")
+            throw searchIndexUnavailableError("index")
         }
 
         let frameworks = try await searchIndex.listFrameworks()
@@ -690,7 +731,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     private func handleReadDocument(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
-            throw Shared.Core.ToolError.invalidArgument("index", "Documentation index not available")
+            throw searchIndexUnavailableError("index")
         }
 
         let rawURI: String = try args.require(Shared.Constants.Search.schemaParamURI)
@@ -883,7 +924,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     private func handleSearchSymbols(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
-            throw Shared.Core.ToolError.invalidArgument("index", "Documentation index not available")
+            throw searchIndexUnavailableError("index")
         }
 
         let query = args.optional(Shared.Constants.Search.schemaParamQuery)
@@ -912,7 +953,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     private func handleSearchPropertyWrappers(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
-            throw Shared.Core.ToolError.invalidArgument("index", "Documentation index not available")
+            throw searchIndexUnavailableError("index")
         }
 
         let wrapper: String = try args.require(Shared.Constants.Search.schemaParamWrapper)
@@ -938,7 +979,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     private func handleSearchConcurrency(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
-            throw Shared.Core.ToolError.invalidArgument("index", "Documentation index not available")
+            throw searchIndexUnavailableError("index")
         }
 
         let pattern: String = try args.require(Shared.Constants.Search.schemaParamPattern)
@@ -966,7 +1007,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     // swiftlint:disable:next function_body_length
     private func handleGetInheritance(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
-            throw Shared.Core.ToolError.invalidArgument("index", "Documentation index not available")
+            throw searchIndexUnavailableError("index")
         }
 
         let symbol: String = try args.require(Shared.Constants.Search.schemaParamSymbol)
@@ -1053,7 +1094,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     private func handleSearchConformances(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
-            throw Shared.Core.ToolError.invalidArgument("index", "Documentation index not available")
+            throw searchIndexUnavailableError("index")
         }
 
         let protocolName: String = try args.require(Shared.Constants.Search.schemaParamProtocol)

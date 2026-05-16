@@ -22,7 +22,8 @@ import SharedConstants
 public extension CompositeToolProvider {
     init(
         searchIndex: (any Search.Database)?,
-        sampleDatabase: (any Sample.Index.Reader)?
+        sampleDatabase: (any Sample.Index.Reader)?,
+        searchIndexDisabledReason: String? = nil
     ) {
         let docs = searchIndex.map(Services.DocsSearchService.init(database:))
         let sample = sampleDatabase.map(Sample.Search.Service.init(database:))
@@ -46,7 +47,9 @@ public extension CompositeToolProvider {
             docsService: docs,
             sampleService: sample,
             teaserService: teaser,
-            unifiedService: unified
+            unifiedService: unified,
+            documentResourceProvider: nil,
+            searchIndexDisabledReason: searchIndexDisabledReason
         )
     }
 }
