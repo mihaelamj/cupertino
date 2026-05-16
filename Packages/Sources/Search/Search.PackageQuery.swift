@@ -93,7 +93,8 @@ extension Search {
         public func answer(
             _ question: String,
             maxResults: Int = 3,
-            availability: AvailabilityFilter? = nil
+            availability: AvailabilityFilter? = nil,
+            swiftTools: SwiftToolsFilter? = nil
         ) throws -> [PackageSearchResult] {
             guard database != nil else { throw PackageQueryError.databaseNotOpen }
 
@@ -107,7 +108,8 @@ extension Search {
                 weights: config.columnWeights,
                 kinds: config.kindFilter,
                 limit: 20,
-                availability: availability
+                availability: availability,
+                swiftTools: swiftTools
             )
 
             let queryTokens = Self.tokens(from: question)
@@ -127,7 +129,8 @@ extension Search {
                 ftsQuery: ftsQuery,
                 weights: config.columnWeights,
                 kinds: config.kindFilter,
-                availability: availability
+                availability: availability,
+                swiftTools: swiftTools
             )
 
             var scored: [(score: Double, result: PackageSearchResult)] = []
@@ -215,7 +218,8 @@ extension Search {
             ftsQuery: String,
             weights: IntentConfig.Weights,
             kinds: Set<String>,
-            availability: AvailabilityFilter?
+            availability: AvailabilityFilter?,
+            swiftTools: SwiftToolsFilter? = nil
         ) throws -> [Candidate] {
             // Two priority tiers:
             //
@@ -266,7 +270,8 @@ extension Search {
                     ftsQuery: ftsQuery,
                     weights: weights,
                     kinds: kinds,
-                    availability: availability
+                    availability: availability,
+                    swiftTools: swiftTools
                 ) {
                     hits.append(candidate)
                 }
@@ -313,7 +318,8 @@ extension Search {
             ftsQuery: String,
             weights: IntentConfig.Weights,
             kinds: Set<String>,
-            availability: AvailabilityFilter?
+            availability: AvailabilityFilter?,
+            swiftTools: SwiftToolsFilter? = nil
         ) throws -> Candidate? {
             guard let database else { throw PackageQueryError.databaseNotOpen }
 
@@ -324,6 +330,14 @@ extension Search {
                 availabilityClause = """
                   AND m.\(column) IS NOT NULL
                   AND m.\(column) <= ?
+                """
+            }
+            // #225 Part A — see `fetchCandidates` for the full rationale.
+            var swiftToolsClause = ""
+            if swiftTools != nil {
+                swiftToolsClause = """
+                  AND m.swift_tools_version IS NOT NULL
+                  AND m.swift_tools_version >= ?
                 """
             }
 
@@ -337,6 +351,7 @@ extension Search {
               AND f.repo = ?
               AND f.kind IN (\(kindList))
               \(availabilityClause)
+              \(swiftToolsClause)
             ORDER BY score
             LIMIT 1
             """
@@ -349,9 +364,15 @@ extension Search {
             sqlite3_bind_text(statement, 1, ftsQuery, -1, SQLITE_TRANSIENT_QUERY)
             sqlite3_bind_text(statement, 2, owner, -1, SQLITE_TRANSIENT_QUERY)
             sqlite3_bind_text(statement, 3, repo, -1, SQLITE_TRANSIENT_QUERY)
+            var nextBind: Int32 = 4
             if let availability,
                Self.minColumn(for: availability.platform) != nil {
-                sqlite3_bind_text(statement, 4, availability.minVersion, -1, SQLITE_TRANSIENT_QUERY)
+                sqlite3_bind_text(statement, nextBind, availability.minVersion, -1, SQLITE_TRANSIENT_QUERY)
+                nextBind += 1
+            }
+            if let swiftTools {
+                sqlite3_bind_text(statement, nextBind, swiftTools.minVersion, -1, SQLITE_TRANSIENT_QUERY)
+                nextBind += 1
             }
 
             guard sqlite3_step(statement) == SQLITE_ROW else { return nil }
@@ -406,7 +427,8 @@ extension Search {
             weights: IntentConfig.Weights,
             kinds: Set<String>,
             limit: Int,
-            availability: AvailabilityFilter? = nil
+            availability: AvailabilityFilter? = nil,
+            swiftTools: SwiftToolsFilter? = nil
         ) throws -> [Candidate] {
             guard let database else { throw PackageQueryError.databaseNotOpen }
 
@@ -431,6 +453,20 @@ extension Search {
                 """
             }
 
+            // #225 Part A — optional swift-tools-version filter. Same
+            // semver-prefix lex compare as the #220 platform filter;
+            // works for Swift majors 4.x through 6.x (current as of
+            // 2026). NULL rows dropped when the filter is active —
+            // unknown declaration = excluded from a Swift-version-
+            // specific query.
+            var swiftToolsClause = ""
+            if swiftTools != nil {
+                swiftToolsClause = """
+                  AND m.swift_tools_version IS NOT NULL
+                  AND m.swift_tools_version >= ?
+                """
+            }
+
             let sql = """
             SELECT f.owner, f.repo, f.module, f.relpath, f.kind, f.title, f.content,
                    bm25(package_files_fts, \(weights.title), \(weights.content), \(weights.symbols)) AS score
@@ -439,6 +475,7 @@ extension Search {
             WHERE package_files_fts MATCH ?
               AND f.kind IN (\(kindList))
               \(availabilityClause)
+              \(swiftToolsClause)
             ORDER BY score
             LIMIT \(limit)
             """
@@ -449,9 +486,15 @@ extension Search {
                 throw PackageQueryError.sqliteError(String(cString: sqlite3_errmsg(database)))
             }
             sqlite3_bind_text(statement, 1, ftsQuery, -1, SQLITE_TRANSIENT_QUERY)
+            var nextBind: Int32 = 2
             if let availability,
                Self.minColumn(for: availability.platform) != nil {
-                sqlite3_bind_text(statement, 2, availability.minVersion, -1, SQLITE_TRANSIENT_QUERY)
+                sqlite3_bind_text(statement, nextBind, availability.minVersion, -1, SQLITE_TRANSIENT_QUERY)
+                nextBind += 1
+            }
+            if let swiftTools {
+                sqlite3_bind_text(statement, nextBind, swiftTools.minVersion, -1, SQLITE_TRANSIENT_QUERY)
+                nextBind += 1
             }
 
             var results: [Candidate] = []

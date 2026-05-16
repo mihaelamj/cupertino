@@ -32,7 +32,7 @@ extension Search {
         /// pattern (#192 sec. C). Existing v1 DBs migrate via
         /// `ALTER TABLE ADD COLUMN`; fresh installs land them inline via
         /// `createTables`. No destructive migration.
-        public static let schemaVersion: Int32 = 2
+        public static let schemaVersion: Int32 = 3
 
         private var database: OpaquePointer?
         private let dbPath: URL
@@ -117,6 +117,11 @@ extension Search {
             /// `"package-swift"` (parsed from Package.swift + .swift sources
             /// by `PackageAvailabilityAnnotator`).
             public let source: String
+            /// Authored Swift compiler floor from Package.swift line 1
+            /// (#225 Part A). Nil when the manifest didn't carry a
+            /// `swift-tools-version: X.Y` declaration. Default-nil so
+            /// existing call sites compile unchanged.
+            public let swiftToolsVersion: String?
 
             public struct FileAttribute: Sendable {
                 public let line: Int
@@ -132,11 +137,13 @@ extension Search {
             public init(
                 deploymentTargets: [String: String],
                 attributesByRelpath: [String: [FileAttribute]],
-                source: String
+                source: String,
+                swiftToolsVersion: String? = nil
             ) {
                 self.deploymentTargets = deploymentTargets
                 self.attributesByRelpath = attributesByRelpath
                 self.source = source
+                self.swiftToolsVersion = swiftToolsVersion
             }
         }
 
@@ -238,6 +245,13 @@ extension Search {
                 min_watchos TEXT,
                 min_visionos TEXT,
                 availability_source TEXT,
+                -- #225 Part A — Swift compiler floor from Package.swift's
+                -- `// swift-tools-version: X.Y` declaration. Authored,
+                -- not derived from min_ios (issue body explicitly
+                -- rejects that inference). Nil for older corpora or
+                -- packages whose manifest doesn't declare the version
+                -- in a parseable shape.
+                swift_tools_version TEXT,
                 UNIQUE(owner, repo)
             );
 
@@ -248,6 +262,7 @@ extension Search {
             CREATE INDEX IF NOT EXISTS idx_pkg_min_tvos ON package_metadata(min_tvos);
             CREATE INDEX IF NOT EXISTS idx_pkg_min_watchos ON package_metadata(min_watchos);
             CREATE INDEX IF NOT EXISTS idx_pkg_min_visionos ON package_metadata(min_visionos);
+            CREATE INDEX IF NOT EXISTS idx_pkg_swift_tools ON package_metadata(swift_tools_version);
 
             CREATE TABLE IF NOT EXISTS package_files (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -310,6 +325,21 @@ extension Search {
             if currentVersion < 2 {
                 try migrateToVersion2()
             }
+            if currentVersion < 3 {
+                try migrateToVersion3()
+            }
+        }
+
+        /// Version 2 → 3 (#225 Part A): add `swift_tools_version` column
+        /// to `package_metadata` for the Swift compiler floor parsed
+        /// from `Package.swift` line 1. ALTER ignores "duplicate column"
+        /// errors so re-running the migration is harmless.
+        private func migrateToVersion3() throws {
+            guard let database else { throw PackageIndexError.databaseNotInitialized }
+            var errPtr: UnsafeMutablePointer<CChar>?
+            _ = sqlite3_exec(database, "ALTER TABLE package_metadata ADD COLUMN swift_tools_version TEXT;", nil, nil, &errPtr)
+            sqlite3_free(errPtr)
+            try execute("CREATE INDEX IF NOT EXISTS idx_pkg_swift_tools ON package_metadata(swift_tools_version);")
         }
 
         /// Version 1 → 2 (#219 follow-up): add availability columns to
@@ -394,8 +424,9 @@ extension Search {
                 owner, repo, url, branch_used, stars, is_apple_official,
                 tarball_bytes, total_bytes, fetched_at, cupertino_version,
                 hosted_doc_url, parents_json,
-                min_ios, min_macos, min_tvos, min_watchos, min_visionos, availability_source
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                min_ios, min_macos, min_tvos, min_watchos, min_visionos, availability_source,
+                swift_tools_version
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             var statement: OpaquePointer?
             defer { sqlite3_finalize(statement) }
@@ -455,6 +486,14 @@ extension Search {
                 sqlite3_bind_text(statement, 18, source, -1, SQLITE_TRANSIENT)
             } else {
                 sqlite3_bind_null(statement, 18)
+            }
+
+            // #225 Part A — column 19. Nil for older corpora / manifests
+            // whose declaration we couldn't parse.
+            if let swiftTools = availability?.swiftToolsVersion {
+                sqlite3_bind_text(statement, 19, swiftTools, -1, SQLITE_TRANSIENT)
+            } else {
+                sqlite3_bind_null(statement, 19)
             }
 
             guard sqlite3_step(statement) == SQLITE_DONE else {

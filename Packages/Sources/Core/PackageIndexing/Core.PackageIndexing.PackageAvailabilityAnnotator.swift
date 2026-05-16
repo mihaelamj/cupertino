@@ -2,6 +2,7 @@ import ASTIndexer
 import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
+
 extension Core.PackageIndexing {
     /// Walks a downloaded package on disk and writes an `availability.json`
     /// alongside its `manifest.json`, capturing:
@@ -47,10 +48,16 @@ extension Core.PackageIndexing {
 
             let packageSwiftURL = resolvedDir.appendingPathComponent("Package.swift")
             let deploymentTargets: [String: String]
+            let swiftToolsVersion: String?
             if let manifest = try? String(contentsOf: packageSwiftURL, encoding: .utf8) {
                 deploymentTargets = Self.parsePlatforms(from: manifest)
+                // #225 Part A — capture the manifest's `// swift-tools-version: X.Y`
+                // declaration alongside the platforms block. Both come from
+                // the same on-disk read; no extra IO.
+                swiftToolsVersion = Self.parseSwiftToolsVersion(from: manifest)
             } else {
                 deploymentTargets = [:]
+                swiftToolsVersion = nil
             }
 
             var fileAvailability: [FileAvailability] = []
@@ -94,7 +101,8 @@ extension Core.PackageIndexing {
                     filesScanned: filesScanned,
                     filesWithAvailability: fileAvailability.count,
                     totalAttributes: totalAttrs
-                )
+                ),
+                swiftToolsVersion: swiftToolsVersion
             )
 
             let outputURL = packageDirectory.appendingPathComponent(Core.PackageIndexing.availabilityFilename)
@@ -113,6 +121,13 @@ extension Core.PackageIndexing {
 
         public static func extractAvailability(from source: String) -> [Attribute] {
             ASTIndexer.AvailabilityParsers.extractAvailability(from: source)
+        }
+
+        /// Forwarder for the swift-tools-version parser (#225 Part A).
+        /// Mirrors the `parsePlatforms` shape so existing #219 callers
+        /// pick up the new signal with one extra line at the call site.
+        public static func parseSwiftToolsVersion(from packageSwift: String) -> String? {
+            ASTIndexer.AvailabilityParsers.parseSwiftToolsVersion(from: packageSwift)
         }
 
         // MARK: - Persistence

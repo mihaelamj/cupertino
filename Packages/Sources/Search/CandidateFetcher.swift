@@ -29,13 +29,19 @@ extension Search {
 
         private let dbPath: URL
         private let availability: Search.AvailabilityFilter?
+        /// #225 Part A — `--swift-tools` filter pushdown. Orthogonal to
+        /// `availability` (platform deployment target) so both can be
+        /// set on the same query.
+        private let swiftTools: Search.SwiftToolsFilter?
 
         public init(
             dbPath: URL,
-            availability: Search.AvailabilityFilter? = nil
+            availability: Search.AvailabilityFilter? = nil,
+            swiftTools: Search.SwiftToolsFilter? = nil
         ) {
             self.dbPath = dbPath
             self.availability = availability
+            self.swiftTools = swiftTools
         }
 
         public func fetch(question: String, limit: Int) async throws -> [SmartCandidate] {
@@ -45,7 +51,8 @@ extension Search {
             let results = try await query.answer(
                 question,
                 maxResults: limit,
-                availability: availability
+                availability: availability,
+                swiftTools: swiftTools
             )
             return results.map { row in
                 SmartCandidate(
