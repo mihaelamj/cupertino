@@ -91,6 +91,23 @@ extension Search {
             framework: String?,
             limit: Int
         ) async throws -> [Search.SymbolSearchResult]
+
+        // MARK: - Class inheritance (#274)
+
+        /// Resolve a user-supplied symbol name to one or more apple-docs URIs.
+        /// Multiple candidates means the title is ambiguous across
+        /// frameworks (`Color` in SwiftUI + AppKit) — caller surfaces
+        /// disambiguation. Empty when no apple-docs row carries the title.
+        func resolveSymbolURIs(title: String) async throws -> [Search.InheritanceCandidate]
+
+        /// Walk the class-inheritance graph from `startURI` in the given
+        /// direction up to `maxDepth` hops. Tree shape is BFS-frontier
+        /// (one level at a time before recursing).
+        func walkInheritance(
+            startURI: String,
+            direction: Search.InheritanceDirection,
+            maxDepth: Int
+        ) async throws -> Search.InheritanceTree
     }
 }
 

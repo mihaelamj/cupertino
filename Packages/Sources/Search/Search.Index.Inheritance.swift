@@ -133,4 +133,119 @@ extension Search.Index {
         }
         return Int(sqlite3_column_int(statement, 0))
     }
+
+    // MARK: - High-level walks for CLI + MCP
+
+    /// Resolve a user-supplied symbol name to its apple-docs URI(s).
+    ///
+    /// Returns one URI when the title is unique (the common case for
+    /// most UIKit/AppKit/Foundation classes). Returns multiple URIs
+    /// when the same title exists in multiple frameworks
+    /// (`Color` → SwiftUI / AppKit, `View` → SwiftUI / UIKit, etc.) —
+    /// the caller must surface a disambiguation block in that case.
+    /// Returns empty when no apple-docs page has the title.
+    ///
+    /// Match is case-insensitive on `title` (Apple uses `UIButton`
+    /// in the title but a user might type `uibutton`). Source is
+    /// pinned to `apple-docs` since inheritance edges only exist
+    /// for that source.
+    public func resolveSymbolURIs(title: String) async throws -> [Search.InheritanceCandidate] {
+        guard let database else {
+            throw Search.Error.databaseNotInitialized
+        }
+        let sql = """
+        SELECT uri, framework, COALESCE(json_extract(json_data, '$.title'), '') as t
+        FROM docs_metadata
+        WHERE source = 'apple-docs'
+            AND LOWER(json_extract(json_data, '$.title')) = LOWER(?)
+        ORDER BY framework;
+        """
+        var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
+        guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
+            return []
+        }
+        sqlite3_bind_text(statement, 1, (title as NSString).utf8String, -1, nil)
+        var candidates: [Search.InheritanceCandidate] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            guard let uriPtr = sqlite3_column_text(statement, 0) else { continue }
+            let framework = sqlite3_column_text(statement, 1).map { String(cString: $0) } ?? ""
+            let title = sqlite3_column_text(statement, 2).map { String(cString: $0) } ?? ""
+            candidates.append(Search.InheritanceCandidate(
+                uri: String(cString: uriPtr),
+                framework: framework,
+                title: title
+            ))
+        }
+        return candidates
+    }
+
+    /// Walk the inheritance graph from `startURI` in the given direction
+    /// up to `maxDepth` hops.
+    ///
+    /// - `direction == .up`: follows `parentsOf` recursively (ancestor chain).
+    /// - `direction == .down`: follows `childrenOf` recursively (descendant tree).
+    /// - `direction == .both`: walks both directions concurrently.
+    ///
+    /// `maxDepth = 0` returns just the start node with no neighbours.
+    /// `maxDepth` defaults to 5 in the CLI / MCP entry points so a
+    /// query like `inheritance UIView --direction down` doesn't try to
+    /// emit all thousands of UIView descendants in one go. Cycles are
+    /// impossible in real Apple inheritance data but the walker
+    /// guards with a visited-set anyway (cheap insurance).
+    public func walkInheritance(
+        startURI: String,
+        direction: Search.InheritanceDirection,
+        maxDepth: Int
+    ) async throws -> Search.InheritanceTree {
+        var visited: Set<String> = [startURI]
+        let ups = direction == .up || direction == .both
+            ? try await walk(from: startURI, mode: .parents, depth: maxDepth, visited: &visited)
+            : []
+        let downs = direction == .down || direction == .both
+            ? try await walk(from: startURI, mode: .children, depth: maxDepth, visited: &visited)
+            : []
+        return Search.InheritanceTree(
+            startURI: startURI,
+            ancestors: ups,
+            descendants: downs
+        )
+    }
+
+    private enum WalkMode { case parents, children }
+
+    /// Single-direction recursive walk. Returns the tree of nodes
+    /// reachable from `from` in the requested direction up to `depth`
+    /// hops. Each level's nodes are visited before recursing so the
+    /// returned shape mirrors the BFS frontier rather than depth-first.
+    private func walk(
+        from uri: String,
+        mode: WalkMode,
+        depth: Int,
+        visited: inout Set<String>
+    ) async throws -> [Search.InheritanceNode] {
+        guard depth > 0 else { return [] }
+        let neighbours: [String]
+        switch mode {
+        case .parents: neighbours = try await parentsOf(childURI: uri)
+        case .children: neighbours = try await childrenOf(parentURI: uri)
+        }
+        var nodes: [Search.InheritanceNode] = []
+        for neighbour in neighbours {
+            guard visited.insert(neighbour).inserted else { continue }
+            let children = try await walk(
+                from: neighbour,
+                mode: mode,
+                depth: depth - 1,
+                visited: &visited
+            )
+            nodes.append(Search.InheritanceNode(uri: neighbour, children: children))
+        }
+        return nodes
+    }
 }
+
+// `Search.InheritanceCandidate` / `InheritanceDirection` /
+// `InheritanceNode` / `InheritanceTree` live in the `SearchModels`
+// target so the protocol surface in `Search.Database` can name them
+// without pulling the concrete `Search` target into consumers.

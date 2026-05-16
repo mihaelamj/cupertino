@@ -205,6 +205,23 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             ),
         ]
 
+        // #274 — class-inheritance walk over the `inheritance` edge table.
+        let getInheritanceProperties: [String: MCP.Core.Protocols.AnyCodable] = [
+            Shared.Constants.Search.schemaParamSymbol: stringSchema(
+                description: "Symbol name to walk from (e.g. UIButton, NSView)."
+            ),
+            Shared.Constants.Search.schemaParamDirection: stringSchema(
+                description: "Walk direction. 'up' = ancestors (default), 'down' = descendants, 'both'.",
+                enumValues: ["up", "down", "both"]
+            ),
+            Shared.Constants.Search.schemaParamDepth: intSchema(
+                description: "Maximum walk depth (default 5)."
+            ),
+            Shared.Constants.Search.schemaParamFramework: stringSchema(
+                description: "Disambiguate to a specific framework when the symbol exists in multiple."
+            ),
+        ]
+
         // Unified search tool (replaces search_docs, search_hig, search_all, search_samples)
         if searchIndex != nil || sampleDatabase != nil {
             allTools.append(MCP.Core.Protocols.Tool(
@@ -292,6 +309,17 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             ))
 
             allTools.append(MCP.Core.Protocols.Tool(
+                name: Shared.Constants.Search.toolGetInheritance,
+                description: "Walk class-inheritance chains (UIKit / AppKit / Foundation). " +
+                    "Returns ancestors (`direction=up`), descendants (`direction=down`), or both. " +
+                    "Non-class kinds return empty — Swift value types and protocols don't carry inherits-from edges.",
+                inputSchema: objectSchema(
+                    properties: getInheritanceProperties,
+                    required: [Shared.Constants.Search.schemaParamSymbol]
+                )
+            ))
+
+            allTools.append(MCP.Core.Protocols.Tool(
                 name: Shared.Constants.Search.toolSearchConformances,
                 description: MCP.SharedTools.Copy.toolSearchConformancesDescription,
                 inputSchema: objectSchema(
@@ -328,6 +356,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             return try await handleSearchConcurrency(args: args)
         case Shared.Constants.Search.toolSearchConformances:
             return try await handleSearchConformances(args: args)
+        case Shared.Constants.Search.toolGetInheritance:
+            return try await handleGetInheritance(args: args)
         default:
             throw Shared.Core.ToolError.unknownTool(name)
         }
@@ -929,6 +959,96 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         )
 
         return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
+    }
+
+    // MARK: - Inheritance walk (#274)
+
+    // swiftlint:disable:next function_body_length
+    private func handleGetInheritance(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
+        guard let searchIndex else {
+            throw Shared.Core.ToolError.invalidArgument("index", "Documentation index not available")
+        }
+
+        let symbol: String = try args.require(Shared.Constants.Search.schemaParamSymbol)
+        let directionString = args.optional(Shared.Constants.Search.schemaParamDirection) ?? "up"
+        let frameworkFilter = args.optional(Shared.Constants.Search.schemaParamFramework)
+        let depth = args.optional(Shared.Constants.Search.schemaParamDepth, default: 5)
+
+        guard let direction = Search.InheritanceDirection(rawValue: directionString.lowercased()) else {
+            throw Shared.Core.ToolError.invalidArgument(
+                Shared.Constants.Search.schemaParamDirection,
+                "Invalid direction `\(directionString)`. Valid values: up, down, both."
+            )
+        }
+        guard depth > 0 else {
+            throw Shared.Core.ToolError.invalidArgument(
+                Shared.Constants.Search.schemaParamDepth,
+                "Depth must be at least 1; got \(depth)."
+            )
+        }
+
+        let candidates = try await searchIndex.resolveSymbolURIs(title: symbol)
+        let candidate: Search.InheritanceCandidate
+        switch candidates.count {
+        case 0:
+            let body = "No symbol named `\(symbol)` in apple-docs. " +
+                "Try `search` first to find the right name, or check `list_frameworks`."
+            return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: body))])
+        case 1:
+            candidate = candidates[0]
+        default:
+            if let frameworkFilter,
+               let match = candidates.first(where: { $0.framework.lowercased() == frameworkFilter.lowercased() }) {
+                candidate = match
+            } else {
+                // Ambiguity → emit a disambiguation block per the
+                // `get_symbol_summary` pattern (#70).
+                var body = "`\(symbol)` is ambiguous across \(candidates.count) frameworks. " +
+                    "Re-call with the matching `framework` argument:\n\n"
+                for candidate in candidates {
+                    body += "- `\(candidate.title)` in `\(candidate.framework)` — \(candidate.uri)\n"
+                }
+                return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: body))])
+            }
+        }
+
+        let tree = try await searchIndex.walkInheritance(
+            startURI: candidate.uri,
+            direction: direction,
+            maxDepth: depth
+        )
+
+        var body = "# Inheritance: \(candidate.title)\n\n"
+        body += "**URI:** `\(candidate.uri)`  **Framework:** `\(candidate.framework)`  **Direction:** `\(direction.rawValue)`  **Depth:** `\(depth)`\n\n"
+        if tree.isEmpty {
+            body += "_No inheritance data — Swift value types and protocols don't carry inherits-from edges. " +
+                "Check `search_conformances` if you're looking for protocol conformance instead._\n"
+            return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: body))])
+        }
+        if !tree.ancestors.isEmpty {
+            body += "## Inherits from\n\n"
+            renderInheritanceTreeMarkdown(tree.ancestors, indent: 0, into: &body)
+            body += "\n"
+        }
+        if !tree.descendants.isEmpty {
+            body += "## Inherited by\n\n"
+            renderInheritanceTreeMarkdown(tree.descendants, indent: 0, into: &body)
+        }
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: body))])
+    }
+
+    private func renderInheritanceTreeMarkdown(
+        _ nodes: [Search.InheritanceNode],
+        indent: Int,
+        into body: inout String
+    ) {
+        let pad = String(repeating: "  ", count: indent)
+        for node in nodes {
+            body += "\(pad)- `\(node.uri)`\n"
+            if !node.children.isEmpty {
+                renderInheritanceTreeMarkdown(node.children, indent: indent + 1, into: &body)
+            }
+        }
     }
 
     private func handleSearchConformances(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {

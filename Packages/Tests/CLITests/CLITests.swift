@@ -16,13 +16,15 @@ struct CommandRegistrationTests {
     func subcommandsRegistered() {
         let config = Cupertino.configuration
 
-        // 13 visible + 1 hidden (package-search). `setup` now owns every
-        // database — packages-setup was collapsed into it. `resolve-refs`
-        // post-processes saved pages against #208. `index` removed in
-        // #231 (samples now build via `save --samples`). `ask` absorbed
-        // into `search` in #239 (default fan-out path produces the same
-        // chunked output as `ask` did).
-        #expect(config.subcommands.count == 14)
+        // 13 visible + 1 hidden (package-search) + `inheritance` (#274).
+        // `setup` now owns every database — packages-setup was collapsed
+        // into it. `resolve-refs` post-processes saved pages against
+        // #208. `index` removed in #231 (samples now build via
+        // `save --samples`). `ask` absorbed into `search` in #239
+        // (default fan-out path produces the same chunked output as
+        // `ask` did). `inheritance` added in #274 — walks the class-
+        // inheritance edge table introduced at schema v15.
+        #expect(config.subcommands.count == 15)
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.Setup.self })
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.Fetch.self })
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.Save.self })
@@ -37,6 +39,7 @@ struct CommandRegistrationTests {
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.Cleanup.self })
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.PackageSearch.self })
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.ResolveRefs.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.Inheritance.self })
     }
 
     @Test("Default subcommand is CLIImpl.Command.Serve")
