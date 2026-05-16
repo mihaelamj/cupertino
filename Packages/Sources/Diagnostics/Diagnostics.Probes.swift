@@ -265,6 +265,67 @@ extension Diagnostics {
             }
         }
 
+        // MARK: - #673 Phase F — disk usage
+
+        /// Free / total bytes on the volume backing the given directory.
+        /// Read via `FileManager.attributesOfFileSystem(forPath:)` which
+        /// wraps `statfs(2)` on Darwin. Pure value — caller decides what
+        /// to do with the numbers (e.g. refuse a write that won't fit).
+        ///
+        /// Returns nil if the FileManager attributes can't be read
+        /// (path doesn't exist + can't be resolved to a parent volume,
+        /// permission denied, etc.). Callers treat nil as "can't check
+        /// — defer to user's judgement" rather than refuse the operation.
+        ///
+        /// The directory doesn't need to exist itself; we walk up to the
+        /// nearest existing ancestor so the check works for "we're about
+        /// to create ~/.cupertino-dev/" scenarios.
+        public static func diskUsage(at directory: URL) -> DiskUsage? {
+            // Walk up to the nearest existing ancestor. `attributesOfFileSystem`
+            // requires a path that actually resolves to a mounted volume;
+            // a non-existent `~/.cupertino-dev/` would fail.
+            var probe = directory
+            while !FileManager.default.fileExists(atPath: probe.path), probe.path != "/" {
+                probe = probe.deletingLastPathComponent()
+            }
+            guard let attrs = try? FileManager.default.attributesOfFileSystem(forPath: probe.path) else {
+                return nil
+            }
+            guard let totalNumber = attrs[.systemSize] as? NSNumber,
+                  let freeNumber = attrs[.systemFreeSize] as? NSNumber
+            else {
+                return nil
+            }
+            return DiskUsage(
+                totalBytes: totalNumber.int64Value,
+                freeBytes: freeNumber.int64Value
+            )
+        }
+
+        /// Free / total disk space on a volume.
+        public struct DiskUsage: Sendable, Equatable {
+            public let totalBytes: Int64
+            public let freeBytes: Int64
+
+            public init(totalBytes: Int64, freeBytes: Int64) {
+                self.totalBytes = totalBytes
+                self.freeBytes = freeBytes
+            }
+
+            /// Free space as a fraction of total (0.0 – 1.0). Returns 0
+            /// when total is non-positive (defensive — shouldn't happen
+            /// on a real volume).
+            public var freeFraction: Double {
+                guard totalBytes > 0 else { return 0 }
+                return Double(freeBytes) / Double(totalBytes)
+            }
+
+            /// Used bytes (total − free).
+            public var usedBytes: Int64 {
+                max(0, totalBytes - freeBytes)
+            }
+        }
+
         // MARK: - File-system probes
 
         /// Count corpus document files under `directory`. Matches `.md`

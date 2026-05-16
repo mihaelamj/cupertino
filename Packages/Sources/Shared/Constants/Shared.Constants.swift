@@ -24,6 +24,48 @@ extension Shared.Constants {
     /// to resolve to `~/.cupertino/` via `Provenance.brewInstalled`.
     public static let devBaseDirectoryName = ".cupertino-dev"
 
+    // MARK: - #673 Phase F — disk-space budgets
+
+    /// Conservative per-command disk-write estimates used by
+    /// `Diagnostics.DiskPreflight.check(...)` to refuse low-disk
+    /// situations before they can corrupt a half-written DB. Each value
+    /// is the operation's peak transient write size, including WAL +
+    /// audit JSONL + extract working tree where applicable; the
+    /// preflight adds a configurable safety margin on top (default 10 %).
+    ///
+    /// When the bundle grows past these estimates, update the constants
+    /// here AND the `docs/binaries/README.md` resolution table; the
+    /// `Issue673PhaseFDiskPreflightTests` unit suite pins each value
+    /// against its rationale comment.
+    public enum DiskBudget {
+        /// `cupertino save --docs` peak: search.db (~2.5 GB at v15 full
+        /// reindex) + WAL (~1 GB during commit) + per-doc audit JSONL
+        /// (~120 MB on the 285k-row corpus). Round up to 4 GB.
+        public static let docsSaveBytes: Int64 = 4 * 1024 * 1024 * 1024
+
+        /// `cupertino save --samples` peak: samples.db (~200 MB after
+        /// the 8.6k indexed-files run) + WAL. Round up to 500 MB.
+        public static let samplesSaveBytes: Int64 = 500 * 1024 * 1024
+
+        /// `cupertino save --packages` peak: packages.db (~50 MB at
+        /// today's 9.7k-package catalog) + WAL. Round up to 200 MB.
+        public static let packagesSaveBytes: Int64 = 200 * 1024 * 1024
+
+        /// `cupertino setup` peak: bundle zip (~850 MB) + extracted
+        /// search.db + samples.db + packages.db (~2.7 GB total) +
+        /// transient working tree. Round up to 4 GB.
+        public static let setupBytes: Int64 = 4 * 1024 * 1024 * 1024
+
+        /// `cupertino fetch` peak: conservative single number that covers
+        /// the typical `--type docs` (~6 GB JSON), `--type code` (~2 GB
+        /// zips), and `--type metadata` paths. The full `--type packages`
+        /// crawl (~15 GB) exceeds this and will be refused on a fresh
+        /// 8 GB-free volume — a future per-type override can shrink the
+        /// estimate for the smaller fetch types or grow it for the
+        /// packages path.
+        public static let fetchBytes: Int64 = 5 * 1024 * 1024 * 1024
+    }
+
     /// Subdirectory names
     public enum Directory {
         public static let docs = "docs"
