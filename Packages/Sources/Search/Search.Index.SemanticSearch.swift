@@ -3,10 +3,6 @@ import SearchModels
 import SharedConstants
 import SQLite3
 
-// swiftlint:disable function_body_length
-// Justification: extracted from SearchIndex.swift; the original 4598-line
-// file's class_body_length / function_body_length / function_parameter_count
-// rationale carries forward to the per-concern slices.
 
 /// #177 — shared signal-rank ORDER BY clause for the 4 AST semantic search
 /// queries (`searchSymbols`, `searchPropertyWrappers`,
