@@ -138,22 +138,33 @@ extension Search {
                 }
 
                 do {
-                    try await index.indexDocument(Search.Index.IndexDocumentParams(
+                    // #668 — write a structured row in addition to the FTS row so
+                    // `docs_structured.(missing)` rate drops from 100 % to 0 % for
+                    // apple-archive. `.article` kind lets #177 rerank + #616
+                    // kind-aware tiebreak function on these legacy programming guides.
+                    let pageURL = URL(string: uri) ?? URL(fileURLWithPath: file.path)
+                    let structuredPage = Search.StrategyHelpers.makeArticleStructuredPage(
+                        url: pageURL,
+                        title: title,
+                        rawMarkdown: content,
+                        crawledAt: modDate,
+                        contentHash: contentHash
+                    )
+                    let pageJSON = Search.StrategyHelpers.encodeStructuredPageToJSON(structuredPage)
+
+                    try await index.indexStructuredDocument(
                         uri: uri,
                         source: source,
                         framework: framework,
-                        title: title,
-                        content: content,
-                        filePath: file.path,
-                        contentHash: contentHash,
-                        lastCrawled: modDate,
-                        minIOS: availability.minIOS,
-                        minMacOS: availability.minMacOS,
-                        minTvOS: availability.minTvOS,
-                        minWatchOS: availability.minWatchOS,
-                        minVisionOS: availability.minVisionOS,
-                        availabilitySource: availability.minIOS != nil ? "framework" : nil
-                    ))
+                        page: structuredPage,
+                        jsonData: pageJSON,
+                        overrideMinIOS: availability.minIOS,
+                        overrideMinMacOS: availability.minMacOS,
+                        overrideMinTvOS: availability.minTvOS,
+                        overrideMinWatchOS: availability.minWatchOS,
+                        overrideMinVisionOS: availability.minVisionOS,
+                        overrideAvailabilitySource: availability.minIOS != nil ? "framework" : nil
+                    )
                     indexed += 1
                 } catch {
                     logger.error(

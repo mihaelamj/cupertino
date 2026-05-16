@@ -193,19 +193,32 @@ extension Search {
             let status = Search.StrategyHelpers.extractProposalStatus(from: content)
             let availability = Search.StrategyHelpers.mapSwiftVersionToAvailability(status)
 
-            try await index.indexDocument(Search.Index.IndexDocumentParams(
+            // #668 — write a structured row in addition to the FTS row so
+            // `docs_structured.(missing)` rate drops from 100 % to 0 % for
+            // swift-evolution. `.article` kind lets #177 rerank + #616
+            // kind-aware tiebreak function on these pages.
+            let pageURL = URL(string: "https://github.com/swiftlang/swift-evolution/blob/main/proposals/\(filename).md")
+                ?? URL(string: uri)
+                ?? URL(fileURLWithPath: file.path)
+            let structuredPage = Search.StrategyHelpers.makeArticleStructuredPage(
+                url: pageURL,
+                title: title,
+                rawMarkdown: content,
+                crawledAt: modDate,
+                contentHash: contentHash
+            )
+            let pageJSON = Search.StrategyHelpers.encodeStructuredPageToJSON(structuredPage)
+
+            try await index.indexStructuredDocument(
                 uri: uri,
                 source: source,
-                framework: nil,
-                title: title,
-                content: content,
-                filePath: file.path,
-                contentHash: contentHash,
-                lastCrawled: modDate,
-                minIOS: availability.iOS,
-                minMacOS: availability.macOS,
-                availabilitySource: availability.iOS != nil ? "swift-version" : nil
-            ))
+                framework: source,
+                page: structuredPage,
+                jsonData: pageJSON,
+                overrideMinIOS: availability.iOS,
+                overrideMinMacOS: availability.macOS,
+                overrideAvailabilitySource: availability.iOS != nil ? "swift-version" : nil
+            )
         }
     }
 }
