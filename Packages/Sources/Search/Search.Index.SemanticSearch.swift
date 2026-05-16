@@ -49,6 +49,45 @@ ORDER BY
     s.name
 """
 
+/// #670 — variant of `signalRankOrderClause` with an additional
+/// tier between kind-shape and `s.name` that boosts rows whose
+/// symbol name exactly equals the query string (case-insensitive).
+///
+/// Pre-#670 fix, `searchSymbols(query: "Task")` matched on
+/// `s.name LIKE '%Task%'`, then ranked by kind tier + alphabetic
+/// `s.name`. Among `kind=class` rows, `AVAggregateAssetDownloadTask`
+/// beat the canonical `Task` (struct) because the struct's kind tier
+/// is 0 and the AV* class's tier is 0 too — both share tier 0, so
+/// alphabetic order put AV* first.
+///
+/// The new tier promotes any row whose `LOWER(s.name) = LOWER(query)`
+/// to position 0 within its kind-shape bucket. `Task` (struct) and
+/// `AVAggregateAssetDownloadTask` (class) share kind tier 0; the
+/// exact-name match `Task` wins tier-3 (0 < 1), so it lands first.
+/// Substring matches keep their relative alphabetic ordering inside
+/// tier-3 = 1.
+///
+/// Only `searchSymbols` benefits from this — the other 3 AST
+/// queries match on attributes / conformances, not symbol name, so
+/// they continue to use the original `signalRankOrderClause`.
+private let signalRankOrderClauseWithExactName = """
+ORDER BY
+    CASE WHEN s.name IN (
+        '==(_:_:)', '!=(_:_:)', '<(_:_:)', '<=(_:_:)', '>(_:_:)', '>=(_:_:)',
+        '~=(_:_:)', 'hash(into:)',
+        '==', '!=', '<', '<=', '>', '>='
+    ) THEN 1 ELSE 0 END,
+    CASE
+        WHEN s.kind IN ('class', 'struct', 'enum', 'protocol', 'actor') THEN 0
+        WHEN s.kind IN ('typealias', 'macro') THEN 1
+        WHEN s.kind IN ('method', 'function', 'property', 'initializer', 'subscript', 'case') THEN 2
+        WHEN s.kind = 'operator' THEN 3
+        ELSE 4
+    END,
+    CASE WHEN LOWER(s.name) = LOWER(?) THEN 0 ELSE 1 END,
+    s.name
+"""
+
 extension Search.Index {
     public func searchSymbols(
         query: String?,
@@ -85,6 +124,13 @@ extension Search.Index {
 
         let whereClause = conditions.isEmpty ? "" : "WHERE " + conditions.joined(separator: " AND ")
 
+        // #670 — promote exact-name matches above substring matches
+        // within the same kind tier when a query string was supplied.
+        // The variant clause adds one extra `?` placeholder bound to
+        // the query string between the WHERE params and the LIMIT.
+        let hasQueryForExactMatch = query?.isEmpty == false
+        let orderByClause = hasQueryForExactMatch ? signalRankOrderClauseWithExactName : signalRankOrderClause
+
         let sql = """
         SELECT DISTINCT
             s.doc_uri,
@@ -101,7 +147,7 @@ extension Search.Index {
         JOIN docs_fts f ON s.doc_uri = f.uri
         LEFT JOIN docs_metadata m ON s.doc_uri = m.uri
         \(whereClause)
-        \(signalRankOrderClause)
+        \(orderByClause)
         LIMIT ?;
         """
 
@@ -118,6 +164,11 @@ extension Search.Index {
             if let str = param as? String {
                 sqlite3_bind_text(statement, paramIndex, (str as NSString).utf8String, -1, nil)
             }
+            paramIndex += 1
+        }
+        // #670 — bind exact-name ORDER BY placeholder between WHERE params and LIMIT.
+        if let query, !query.isEmpty {
+            sqlite3_bind_text(statement, paramIndex, (query as NSString).utf8String, -1, nil)
             paramIndex += 1
         }
         sqlite3_bind_int(statement, paramIndex, Int32(limit))
