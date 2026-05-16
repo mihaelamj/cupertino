@@ -408,6 +408,29 @@ extension Sample.Core {
 
             try FileManager.default.moveItem(at: tempFileURL, to: destinationURL)
 
+            // #657 — Apple's CDN occasionally returns an HTML landing
+            // page or a partial body with HTTP 200 (transient CDN
+            // issues, redirect chains, auth gates). The fetcher just
+            // saw `httpResponse.statusCode == 200` and trusted the
+            // body. Validate the on-disk artefact with a 4-byte magic-
+            // signature check before declaring the download a success.
+            // Invalid downloads are renamed to `<filename>.invalid` so
+            // they don't pollute the directory or trip up `cupertino
+            // save --samples` later, and counted in a new statistics
+            // bucket so the fetch summary surfaces the failure mode
+            // instead of hiding it under the "downloaded" total.
+            if fileExtension == "zip", !Shared.Utils.ZipMagic.isValid(at: destinationURL) {
+                let invalidURL = destinationURL.appendingPathExtension("invalid")
+                if FileManager.default.fileExists(atPath: invalidURL.path) {
+                    try? FileManager.default.removeItem(at: invalidURL)
+                }
+                try? FileManager.default.moveItem(at: destinationURL, to: invalidURL)
+                logInfo("   ⚠️  Downloaded body isn't a valid ZIP (likely HTML landing page or partial); parked at \(invalidURL.lastPathComponent)")
+                stats.invalidDownloads += 1
+                stats.totalSamples += 1
+                return
+            }
+
             stats.downloadedSamples += 1
             stats.totalSamples += 1
             logInfo("   ✅ Saved: \(filename)")
@@ -786,6 +809,10 @@ extension Sample.Core {
                 "   Downloaded: \(stats.downloadedSamples)",
                 "   Skipped: \(stats.skippedSamples)",
                 "   Errors: \(stats.errors)",
+                // #657 — only surface the invalid-downloads line when it's
+                // non-zero; on a clean run the count is 0 and the line
+                // would just be noise.
+                stats.invalidDownloads > 0 ? "   Invalid downloads (parked as .invalid): \(stats.invalidDownloads)" : "",
                 stats.duration.map { "   Duration: \(Int($0))s" } ?? "",
                 "",
                 "📁 Output: \(outputDirectory.path)",
