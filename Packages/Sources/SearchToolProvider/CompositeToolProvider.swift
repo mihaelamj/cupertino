@@ -271,6 +271,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         ].merging(platformFilterProperties) { lhs, _ in lhs }
 
         // #665 / #409 Layer 2 — generic-parameter constraint search.
+        // #226 follow-up — `platformFilterProperties` merged in so the 12th
+        // MCP tool gets the same `min_*` axis the other 4 AST tools carry.
         let searchGenericsProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamConstraint: stringSchema(
                 description: "Generic constraint to search for (e.g. Sendable, Hashable, View)."
@@ -281,7 +283,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamLimit: intSchema(
                 description: "Maximum results to return (default 20)."
             ),
-        ]
+        ].merging(platformFilterProperties) { lhs, _ in lhs }
 
         // #274 — class-inheritance walk over the `inheritance` edge table.
         let getInheritanceProperties: [String: MCP.Core.Protocols.AnyCodable] = [
@@ -1321,9 +1323,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     }
 
     /// #665 / #409 Layer 2 — surfaces `doc_symbols.generic_params`.
-    /// (The MCP-level platform filter from #226 is not wired in here yet;
-    /// follow-up will extend the same `applyPlatformFilter` post-pass to
-    /// this handler for consistency.)
+    /// #226 follow-up — applies the MCP-level platform filter post-search
+    /// to match the other 4 AST tools (search_symbols /
+    /// search_property_wrappers / search_concurrency / search_conformances).
     private func handleSearchGenerics(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
             throw searchIndexUnavailableError("index")
@@ -1332,11 +1334,15 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let constraint: String = try args.require(Shared.Constants.Search.schemaParamConstraint)
         let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
         let limit = args.limit()
+        let platform = Self.extractPlatformArgs(args)
 
-        let results = try await searchIndex.searchByGenericConstraint(
+        let raw = try await searchIndex.searchByGenericConstraint(
             constraint: constraint,
             framework: framework,
             limit: limit
+        )
+        let results = try await Self.applyPlatformFilter(
+            results: raw, platform: platform, searchIndex: searchIndex
         )
 
         let markdown = formatSymbolResults(
