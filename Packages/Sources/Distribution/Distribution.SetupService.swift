@@ -2,6 +2,7 @@ import Foundation
 import SharedConstants
 
 // MARK: - Distribution.SetupService — concrete run static func
+
 //
 // The `Distribution.SetupService` namespace + `Request` + `Outcome` +
 // `Event` value types + `EventObserving` Observer protocol live in the
@@ -93,8 +94,22 @@ extension Distribution.SetupService {
         }
 
         // Stamp version on success. Non-fatal; the file is an
-        // optimization, not correctness.
-        try? Distribution.InstalledVersion.write(request.currentDocsVersion, in: request.baseDir)
+        // optimization, not correctness — but #673 Phase B surfaces the
+        // failure on stderr so a broken stamp (which makes
+        // `cupertino doctor` later report "no setup ever happened")
+        // doesn't disappear silently. Pre-fix every stamp failure was
+        // dropped on the floor.
+        do {
+            try Distribution.InstalledVersion.write(request.currentDocsVersion, in: request.baseDir)
+        } catch {
+            let message = "⚠️  Failed to write installed-version stamp at " +
+                "\(request.baseDir.path)/.setup-version: \(error). " +
+                "Setup succeeded but `cupertino doctor` may not report the " +
+                "current version. Re-running `cupertino setup` will retry.\n"
+            if let data = message.data(using: .utf8) {
+                FileHandle.standardError.write(data)
+            }
+        }
 
         let outcome = Outcome(
             searchDBPath: searchDBURL,
@@ -194,6 +209,7 @@ extension Distribution.SetupService {
     }
 
     // MARK: - Inner adapters bridging downloader/extractor Observer
+
     // protocols to SetupService.EventObserving. Closure-free.
 
     private struct DownloadProgressForwarder: Distribution.ArtifactDownloader.ProgressObserving {

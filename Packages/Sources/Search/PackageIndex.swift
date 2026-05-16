@@ -178,7 +178,20 @@ extension Search {
                 _ = database
                 return IndexResult(filesIndexed: extraction.files.count, bytesIndexed: bytes)
             } catch {
-                try? execute("ROLLBACK")
+                // #673 Phase B — surface a ROLLBACK failure so the next
+                // BEGIN doesn't fail mysteriously with "cannot start a
+                // transaction within a transaction". Pre-fix this was
+                // silent, leaving the writer actor in a stuck-
+                // transaction state with no observability.
+                do {
+                    try execute("ROLLBACK")
+                } catch let rollbackError {
+                    logger.warning(
+                        "ROLLBACK failed after package-indexing error " +
+                            "(transaction state may be stuck): \(rollbackError)",
+                        category: .search
+                    )
+                }
                 throw error
             }
         }
