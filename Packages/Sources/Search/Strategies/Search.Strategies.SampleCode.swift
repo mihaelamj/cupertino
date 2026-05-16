@@ -2,6 +2,7 @@ import Foundation
 import LoggingModels
 import SearchModels
 import SharedConstants
+
 // MARK: - SampleCodeStrategy
 
 extension Search {
@@ -73,24 +74,28 @@ extension Search {
                     category: .search
                 )
                 entries = loadedEntries
-            case .missing(let onDiskPath):
-                logger.info(
-                    "⚠️  No sample-code catalog at \(onDiskPath) — skipping sample-code indexing.",
-                    category: .search
+            case .missing:
+                // #671 — clean-skip when the on-disk catalog isn't present. The
+                // bundled DB covers the common path; users without a local fetch
+                // shouldn't see an alarming log line.
+                return IndexStats(
+                    source: source,
+                    indexed: 0,
+                    skipped: 0,
+                    wasSkipped: true,
+                    skipReason: "no catalog found"
                 )
-                logger.info(
-                    "    Run `cupertino fetch --type code` to populate the catalog, then re-run save.",
-                    category: .search
-                )
-                return IndexStats(source: source, indexed: 0, skipped: 0)
             }
 
             guard !entries.isEmpty else {
-                logger.info(
-                    "⚠️  Sample-code catalog parsed but contained zero entries; skipping.",
-                    category: .search
+                // #671 — clean-skip when the catalog parsed but had no entries.
+                return IndexStats(
+                    source: source,
+                    indexed: 0,
+                    skipped: 0,
+                    wasSkipped: true,
+                    skipReason: "catalog empty"
                 )
-                return IndexStats(source: source, indexed: 0, skipped: 0)
             }
 
             logger.info(

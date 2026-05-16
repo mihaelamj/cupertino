@@ -2,6 +2,7 @@ import Foundation
 import LoggingModels
 import SearchModels
 import SharedConstants
+
 // MARK: - Search Index Builder
 
 extension Search {
@@ -160,17 +161,27 @@ extension Search {
 
             // Log per-source breakdown so operators can diagnose index-build issues
             // without having to re-run with verbose logging.
+            //
+            // #671 — distinguish "ran and indexed N items" from "skipped because
+            // the source's input wasn't available". 99.9% of users don't have a
+            // local docs/ directory and see the bundled DB through `cupertino
+            // setup`; printing "indexed: 0, skipped: 0" against those sources
+            // implies a failed indexing attempt when nothing was attempted.
             for stats in allStats {
-                logger.info(
-                    "   [\(stats.source)] indexed: \(stats.indexed), skipped: \(stats.skipped)",
-                    category: .search
-                )
+                let line: String
+                if stats.wasSkipped {
+                    let reason = stats.skipReason ?? "no input"
+                    line = "   [\(stats.source)] skipped (\(reason))"
+                } else {
+                    line = "   [\(stats.source)] indexed: \(stats.indexed), skipped: \(stats.skipped)"
+                }
+                logger.info(line, category: .search)
             }
             // #588: preserve aggregated breakdown so the CLI / runner can
             // surface door + garbage-filter counters in the final report
             // without having to plumb a new return type through buildIndex
             // (which would break every existing caller).
-            self.lastBuildStats = allStats
+            lastBuildStats = allStats
             let count = try await searchIndex.documentCount()
             logger.info("✅ Search index built: \(count) documents", category: .search)
         }

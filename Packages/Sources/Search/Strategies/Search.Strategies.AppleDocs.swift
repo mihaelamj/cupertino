@@ -101,10 +101,19 @@ extension Search {
             progress: (any Search.IndexingProgressReporting)?
         ) async throws -> Search.IndexStats {
             guard FileManager.default.fileExists(atPath: docsDirectory.path) else {
-                logger.info(
-                    "⚠️  Docs directory not found: \(docsDirectory.path)", category: .search
+                // #671 — 99.9% of users only have the bundled DB and no local docs/
+                // directory. Skip cleanly via wasSkipped + skipReason; the
+                // IndexBuilder renderer surfaces "[apple-docs] skipped (no local
+                // corpus)" instead of an alarming "Docs directory not found" line
+                // + "indexed: 0". Maintainer preflight (`cupertino doctor --save`)
+                // still flags absence as informational.
+                return IndexStats(
+                    source: source,
+                    indexed: 0,
+                    skipped: 0,
+                    wasSkipped: true,
+                    skipReason: "no local corpus"
                 )
-                return IndexStats(source: source, indexed: 0, skipped: 0)
             }
 
             logger.info(
@@ -118,11 +127,14 @@ extension Search {
             )
 
             guard !docFiles.isEmpty else {
-                logger.info(
-                    "⚠️  No documentation files found in \(docsDirectory.path)",
-                    category: .search
+                // #671 — clean-skip when the dir exists but is empty.
+                return IndexStats(
+                    source: source,
+                    indexed: 0,
+                    skipped: 0,
+                    wasSkipped: true,
+                    skipReason: "no documents found"
                 )
-                return IndexStats(source: source, indexed: 0, skipped: 0)
             }
 
             logger.info(
@@ -350,8 +362,12 @@ extension Search {
                         ))
                         continue
                     case .malignantTitleMismatch:
+                        let priorTitle = prior.canonicalTitle.prefix(80)
+                        let incomingTitle = incoming.canonicalTitle.prefix(80)
                         logger.error(
-                            "🚨 Door (tier C, COLLISION — different canonical titles for same URI) skip: uri=\(uri) file=\(file.lastPathComponent) prior_title=\"\(prior.canonicalTitle.prefix(80))\" incoming_title=\"\(incoming.canonicalTitle.prefix(80))\"",
+                            "🚨 Door (tier C, COLLISION — different canonical titles for same URI) " +
+                                "skip: uri=\(uri) file=\(file.lastPathComponent) " +
+                                "prior_title=\"\(priorTitle)\" incoming_title=\"\(incomingTitle)\"",
                             category: .search
                         )
                         skipped += 1

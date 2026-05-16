@@ -2,6 +2,7 @@ import Foundation
 import LoggingModels
 import SearchModels
 import SharedConstants
+
 // MARK: - SwiftEvolutionStrategy
 
 extension Search {
@@ -54,17 +55,26 @@ extension Search {
             progress: (any Search.IndexingProgressReporting)?
         ) async throws -> Search.IndexStats {
             guard FileManager.default.fileExists(atPath: evolutionDirectory.path) else {
-                logger.info(
-                    "⚠️  Swift Evolution directory not found: \(evolutionDirectory.path)",
-                    category: .search
+                // #671 — clean-skip when no local corpus is available.
+                return IndexStats(
+                    source: source,
+                    indexed: 0,
+                    skipped: 0,
+                    wasSkipped: true,
+                    skipReason: "no local corpus"
                 )
-                return IndexStats(source: source, indexed: 0, skipped: 0)
             }
 
             let proposalFiles = try getProposalFiles(from: evolutionDirectory)
             guard !proposalFiles.isEmpty else {
-                logger.info("⚠️  No Swift Evolution proposals found", category: .search)
-                return IndexStats(source: source, indexed: 0, skipped: 0)
+                // #671 — clean-skip when the dir exists but has no proposals.
+                return IndexStats(
+                    source: source,
+                    indexed: 0,
+                    skipped: 0,
+                    wasSkipped: true,
+                    skipReason: "no proposals found"
+                )
             }
 
             logger.info(

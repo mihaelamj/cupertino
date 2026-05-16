@@ -1,6 +1,6 @@
 # --docs-dir
 
-Directory containing crawled documentation
+**Optional.** Directory containing crawled documentation (maintainer workflow).
 
 ## Synopsis
 
@@ -10,7 +10,9 @@ cupertino save --docs-dir <path>
 
 ## Description
 
-Specifies the directory containing Markdown files from a previous crawl operation.
+Specifies the directory containing crawled documentation files from a previous `cupertino fetch` run. Pointing at an absent or empty directory is fine — the apple-docs source is then skipped cleanly with `[apple-docs] skipped (no local corpus)`, and the rest of `save` runs against whichever other sources happen to be on disk ([#671](https://github.com/mihaelamj/cupertino/issues/671)).
+
+Most users do not have a crawled docs directory — they download the pre-built bundle via `cupertino setup` and never use `cupertino save` at all.
 
 ## Default
 
@@ -53,8 +55,8 @@ docs-dir/
 
 ## Notes
 
-- Directory must exist
-- Should contain Markdown (`.md`) files
+- Directory may be absent — `save` skips the apple-docs source cleanly when it is ([#671](https://github.com/mihaelamj/cupertino/issues/671))
+- Should contain Markdown (`.md`) files or structured `.json` pages
 - Works with output from `cupertino fetch`
 - Tilde (`~`) expansion is supported
-- Recursive: indexes all `.md` files in subdirectories
+- Recursive: indexes all files in subdirectories

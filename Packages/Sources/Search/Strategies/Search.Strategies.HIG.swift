@@ -2,6 +2,7 @@ import Foundation
 import LoggingModels
 import SearchModels
 import SharedConstants
+
 // MARK: - HIGStrategy
 
 extension Search {
@@ -53,17 +54,26 @@ extension Search {
             progress: (any Search.IndexingProgressReporting)?
         ) async throws -> Search.IndexStats {
             guard FileManager.default.fileExists(atPath: higDirectory.path) else {
-                logger.info(
-                    "⚠️  HIG directory not found: \(higDirectory.path)",
-                    category: .search
+                // #671 — clean-skip when no local corpus is available.
+                return IndexStats(
+                    source: source,
+                    indexed: 0,
+                    skipped: 0,
+                    wasSkipped: true,
+                    skipReason: "no local corpus"
                 )
-                return IndexStats(source: source, indexed: 0, skipped: 0)
             }
 
             let markdownFiles = try Search.StrategyHelpers.findMarkdownFiles(in: higDirectory)
             guard !markdownFiles.isEmpty else {
-                logger.info("⚠️  No HIG documentation found", category: .search)
-                return IndexStats(source: source, indexed: 0, skipped: 0)
+                // #671 — clean-skip when the dir exists but has no HIG pages.
+                return IndexStats(
+                    source: source,
+                    indexed: 0,
+                    skipped: 0,
+                    wasSkipped: true,
+                    skipReason: "no documents found"
+                )
             }
 
             logger.info(

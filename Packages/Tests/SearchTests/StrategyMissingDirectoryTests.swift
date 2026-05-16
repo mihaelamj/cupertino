@@ -58,6 +58,12 @@ struct StrategyMissingDirectoryTests {
 
         #expect(stats.indexed == 0)
         #expect(stats.skipped == 0)
+        // #671 — missing-dir path sets wasSkipped + "no local corpus" reason
+        // so the IndexBuilder renderer prints `[apple-docs] skipped (no local
+        // corpus)` instead of `indexed: 0, skipped: 0` (which falsely implies
+        // a failed indexing attempt).
+        #expect(stats.wasSkipped == true)
+        #expect(stats.skipReason == "no local corpus")
         #expect(try await index.documentCount() == 0)
     }
 
@@ -79,6 +85,9 @@ struct StrategyMissingDirectoryTests {
 
         #expect(stats.indexed == 0)
         #expect(stats.skipped == 0)
+        // #671 — empty-dir path is also a clean skip.
+        #expect(stats.wasSkipped == true)
+        #expect(stats.skipReason == "no documents found")
     }
 
     // MARK: - AppleArchiveStrategy
@@ -96,6 +105,9 @@ struct StrategyMissingDirectoryTests {
 
         #expect(stats.indexed == 0)
         #expect(stats.skipped == 0)
+        // #671 — missing-dir is a clean skip with the "no local corpus" reason.
+        #expect(stats.wasSkipped == true)
+        #expect(stats.skipReason == "no local corpus")
     }
 
     // MARK: - HIGStrategy
@@ -113,6 +125,9 @@ struct StrategyMissingDirectoryTests {
 
         #expect(stats.indexed == 0)
         #expect(stats.skipped == 0)
+        // #671 — missing-dir clean-skip + reason
+        #expect(stats.wasSkipped == true)
+        #expect(stats.skipReason == "no local corpus")
     }
 
     // MARK: - SwiftEvolutionStrategy
@@ -130,6 +145,9 @@ struct StrategyMissingDirectoryTests {
 
         #expect(stats.indexed == 0)
         #expect(stats.skipped == 0)
+        // #671 — missing-dir clean-skip + reason
+        #expect(stats.wasSkipped == true)
+        #expect(stats.skipReason == "no local corpus")
     }
 
     @Test("SwiftEvolutionStrategy skips non-accepted proposals")
@@ -178,5 +196,21 @@ struct StrategyMissingDirectoryTests {
 
         #expect(stats.indexed == 0)
         #expect(stats.skipped == 0)
+        // #671 — missing-dir clean-skip + reason
+        #expect(stats.wasSkipped == true)
+        #expect(stats.skipReason == "no local corpus")
+    }
+
+    // MARK: - #671 — Default initializer preserves prior wasSkipped/skipReason behaviour
+
+    @Test("#671 — IndexStats default init produces wasSkipped == false, skipReason == nil")
+    func indexStatsDefaultInitNoSkip() {
+        // Existing strategies that actually run indexing keep their pre-#671
+        // call shape unchanged. Asserting on the default values pins the
+        // backward-compatible behaviour: an indexed-N stats value is never
+        // misread as a clean-skip line.
+        let stats = Search.IndexStats(source: "apple-docs", indexed: 100, skipped: 5)
+        #expect(stats.wasSkipped == false)
+        #expect(stats.skipReason == nil)
     }
 }
