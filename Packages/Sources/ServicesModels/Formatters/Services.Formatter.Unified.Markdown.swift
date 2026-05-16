@@ -45,9 +45,27 @@ extension Services.Formatter.Unified {
                 output += "_Filtered to framework: **\(framework)**_\n\n"
             }
 
-            // Tell the AI exactly what sources were searched
-            let allSources = Shared.Constants.Search.availableSources.joined(separator: ", ")
-            output += "_Searched ALL sources: \(allSources)_\n\n"
+            // #648 — the "Searched ALL sources" line was a lie when any
+            // source failed its configuration check. Pre-#642 the whole
+            // failure was silent; #642 added the prepended warning block
+            // above, but the line below still claimed full coverage. CLI
+            // text already prints `Searched: <actually-searched>` and
+            // omits any source that errored out, so AI agents had two
+            // contradictory signals: the warning at the top + the "ALL"
+            // claim a paragraph later. The line now flips to the actual
+            // searched set when degradedSources is non-empty, and keeps
+            // the original "ALL sources" wording on the happy path so
+            // existing clients don't have to special-case anything.
+            let degradedNames = Set(input.degradedSources.map(\.name))
+            if degradedNames.isEmpty {
+                let allSources = Shared.Constants.Search.availableSources.joined(separator: ", ")
+                output += "_Searched ALL sources: \(allSources)_\n\n"
+            } else {
+                let actuallySearched = Shared.Constants.Search.availableSources
+                    .filter { !degradedNames.contains($0) }
+                let label = actuallySearched.isEmpty ? "(none)" : actuallySearched.joined(separator: ", ")
+                output += "_Searched: \(label)_\n\n"
+            }
 
             let sourceCount = input.nonEmptySourceCount
             let plural = sourceCount == 1 ? "" : "s"
