@@ -31,57 +31,37 @@ import TestSupport
 
 // MARK: - SwiftPackagesCatalog Tests
 
-@Test("SwiftPackagesCatalog loads from JSON resource")
-func swiftPackagesCatalogLoadsFromJSON() async {
+// Post-#194: the 568 KB embedded URL list was deleted in favour of the
+// `packages.db` artifact distributed via `cupertino setup`. The accessor
+// stays public for source-compatibility but returns empty values. Tests
+// that previously asserted on >9000 packages / non-empty metadata are
+// replaced with empty-contract pins. Full Swift-packages query coverage
+// moves to `PackageQueryTests` (against packages.db fixtures) — out of
+// scope for #194.
+
+@Test("SwiftPackagesCatalog returns 0 count post-#194 (embedded list deleted)")
+func swiftPackagesCatalogIsEmpty() async {
     let count = await Core.Protocols.SwiftPackagesCatalog.count
-    #expect(count > 9000, "Should have thousands of Swift packages")
-    #expect(count < 15000, "Package count should be reasonable")
-    print("   ✅ Loaded \(count) Swift packages")
+    #expect(count == 0, "post-#194 the embedded catalog is gone; count must be 0")
 }
 
-@Test("SwiftPackagesCatalog has correct metadata")
-func swiftPackagesCatalogMetadata() async {
-    let version = await Core.Protocols.SwiftPackagesCatalog.version
+@Test("SwiftPackagesCatalog returns empty metadata post-#194")
+func swiftPackagesCatalogMetadataEmpty() async {
     let lastCrawled = await Core.Protocols.SwiftPackagesCatalog.lastCrawled
-    let source = await Core.Protocols.SwiftPackagesCatalog.source
-
-    #expect(!version.isEmpty, "Release.Version should not be empty")
-    #expect(!lastCrawled.isEmpty, "Last crawled date should not be empty")
-    #expect(!source.isEmpty, "Source should not be empty")
-    print("   ✅ Release.Version: \(version), Last crawled: \(lastCrawled)")
-    print("   ✅ Source: \(source)")
+    #expect(lastCrawled == "", "lastCrawled is empty post-#194; use cupertino doctor --freshness for per-source dates")
 }
 
-@Test("SwiftPackagesCatalog entries have required fields")
-func swiftPackagesCatalogEntriesValid() async {
+@Test("SwiftPackagesCatalog.allPackages is empty post-#194")
+func swiftPackagesCatalogAllPackagesEmpty() async {
     let packages = await Core.Protocols.SwiftPackagesCatalog.allPackages
-    #expect(!packages.isEmpty, "Should have at least one package")
-
-    // Verify first entry has all required fields
-    let firstPackage = packages[0]
-    #expect(!firstPackage.owner.isEmpty, "Package should have owner")
-    #expect(!firstPackage.repo.isEmpty, "Package should have repo")
-    #expect(!firstPackage.url.isEmpty, "Package should have URL")
-    // updatedAt is optional - some packages may not have it
-    if let updatedAt = firstPackage.updatedAt {
-        #expect(!updatedAt.isEmpty, "If updatedAt exists, it should not be empty")
-    }
-
-    print("   ✅ Sample package: \(firstPackage.owner)/\(firstPackage.repo)")
+    #expect(packages.isEmpty, "allPackages must be [] post-#194; consumers read from packages.db instead")
 }
 
-@Test("SwiftPackagesCatalog search works")
-func swiftPackagesCatalogSearch() async {
+@Test("SwiftPackagesCatalog.search returns empty post-#194")
+func swiftPackagesCatalogSearchEmpty() async {
     let results = await Core.Protocols.SwiftPackagesCatalog.search("SwiftUI")
-    #expect(!results.isEmpty, "Search for 'SwiftUI' should return results")
-
-    print("   ✅ Found \(results.count) results for 'SwiftUI'")
+    #expect(results.isEmpty, "search returns [] post-#194; package queries move to packages.db")
 }
-
-// Removed in #161: `topPackages(limit:)` and `activePackages(minStars:)` relied
-// on metadata (stars, fork, archived) that the slimmed URL-only catalog no
-// longer carries. Once packages.db lands in v1.0.0, those queries should come
-// from the DB; test coverage will move there.
 
 // MARK: - Core.PackageIndexing.PriorityPackagesCatalog Tests
 
@@ -111,7 +91,6 @@ func priorityPackagesCatalogLoadsFromJSON() async {
     let expectedTotal = applePackages + ecosystemPackages
     #expect(stats.totalPriorityPackages == expectedTotal, "Total should equal sum")
     print("   ✅ Loaded \(stats.totalPriorityPackages) priority packages")
-
 }
 
 @Test("Core.PackageIndexing.PriorityPackagesCatalog has correct metadata")
@@ -133,7 +112,6 @@ func priorityPackagesCatalogMetadata() async {
     #expect(!lastUpdated.isEmpty, "Last updated date should not be empty")
     #expect(!description.isEmpty, "Description should not be empty")
     print("   ✅ Release.Version: \(version), Last updated: \(lastUpdated)")
-
 }
 
 @Test("Core.PackageIndexing.PriorityPackagesCatalog Apple packages are valid")
@@ -158,7 +136,6 @@ func priorityPackagesCatalogApplePackages() async {
     #expect(repos.contains("swift-testing"), "Should contain swift-testing")
 
     print("   ✅ Apple packages validated")
-
 }
 
 @Test("Core.PackageIndexing.PriorityPackagesCatalog ecosystem packages are valid")
@@ -183,7 +160,6 @@ func priorityPackagesCatalogEcosystemPackages() async {
     #expect(fullNames.contains("pointfreeco/swift-composable-architecture"), "Should contain TCA")
 
     print("   ✅ Ecosystem packages validated")
-
 }
 
 @Test("Core.PackageIndexing.PriorityPackagesCatalog priority check works")
@@ -211,7 +187,6 @@ func priorityPackagesCatalogPriorityCheck() async {
     #expect(!isRandomPriority, "random package should not be priority")
 
     print("   ✅ Priority check working correctly")
-
 }
 
 @Test("Core.PackageIndexing.PriorityPackagesCatalog package lookup works")

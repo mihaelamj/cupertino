@@ -4,6 +4,7 @@ import CoreProtocols
 import Foundation
 import Resources
 import SharedConstants
+
 // swiftlint:disable type_body_length function_body_length
 // Justification: PackageCuratorApp is a self-contained CLI tool for curating Swift packages.
 // The main() function orchestrates a complex multi-stage workflow that is clearer as a single flow.
@@ -31,8 +32,8 @@ struct PackageCuratorApp {
             var stderr = FileHandle.standardError
             stderr.write(Data((
                 "cupertino-tui: stdin/stdout is not a terminal — TUI requires a real TTY.\n" +
-                "  Launch it directly in a terminal window, not from a pipe or background invocation.\n" +
-                "  For headless probes (CI, scripts), use `cupertino-tui --version` to confirm the binary is present.\n"
+                    "  Launch it directly in a terminal window, not from a pipe or background invocation.\n" +
+                    "  For headless probes (CI, scripts), use `cupertino-tui --version` to confirm the binary is present.\n"
             ).utf8))
             return
         }

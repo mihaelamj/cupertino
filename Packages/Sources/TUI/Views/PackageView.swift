@@ -60,21 +60,52 @@ struct PackageView {
         result += renderPaddedLine(stats, width: width)
         result += Box.teeRight + String(repeating: Box.horizontal, count: width - 2) + Box.teeLeft + "\r\n"
 
-        // Package list
-        for (index, entry) in page.enumerated() {
-            let absoluteIndex = state.scrollOffset + index
-            let isCurrentLine = absoluteIndex == state.cursor
+        // Package list (or post-#194 empty-catalog banner).
+        //
+        // Post-#194 the bundled URL list is gone; `state.packages`
+        // arrives empty when no `packages.db` is present yet. Render
+        // a centered banner pointing at `cupertino setup` instead of
+        // a blank panel so the empty state is explained, not mysterious.
+        // A search-filtered empty result (state.packages non-empty but
+        // visible empty) keeps the original blank-row fill — that's
+        // the "no results for current query" affordance the user
+        // already understands.
+        if state.packages.isEmpty {
+            let banner: [String] = [
+                "",
+                "No Swift packages catalog loaded.",
+                "",
+                "Run  cupertino setup  to download the package index,",
+                "then relaunch  cupertino-tui  to browse and curate packages.",
+                "",
+            ]
+            let topPad = max(0, (pageSize - banner.count) / 2)
+            for _ in 0..<topPad {
+                result += Box.vertical + String(repeating: " ", count: width - 2) + Box.vertical + "\r\n"
+            }
+            for line in banner.prefix(pageSize - topPad) {
+                result += renderPaddedLine(line, width: width)
+            }
+            let bottomPad = pageSize - topPad - min(banner.count, pageSize - topPad)
+            for _ in 0..<bottomPad {
+                result += Box.vertical + String(repeating: " ", count: width - 2) + Box.vertical + "\r\n"
+            }
+        } else {
+            for (index, entry) in page.enumerated() {
+                let absoluteIndex = state.scrollOffset + index
+                let isCurrentLine = absoluteIndex == state.cursor
 
-            let line = renderPackageLine(
-                entry: entry, width: width, highlight: isCurrentLine, searchQuery: state.searchQuery
-            )
-            result += line + "\r\n"
-        }
+                let line = renderPackageLine(
+                    entry: entry, width: width, highlight: isCurrentLine, searchQuery: state.searchQuery
+                )
+                result += line + "\r\n"
+            }
 
-        // Fill remaining space
-        let remaining = pageSize - page.count
-        for _ in 0..<remaining {
-            result += Box.vertical + String(repeating: " ", count: width - 2) + Box.vertical + "\r\n"
+            // Fill remaining space
+            let remaining = pageSize - page.count
+            for _ in 0..<remaining {
+                result += Box.vertical + String(repeating: " ", count: width - 2) + Box.vertical + "\r\n"
+            }
         }
 
         // Footer with current package info
