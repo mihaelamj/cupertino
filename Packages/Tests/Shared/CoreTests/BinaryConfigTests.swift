@@ -104,3 +104,96 @@ struct BinaryConfigTests {
         try contents.write(to: url, atomically: true, encoding: .utf8)
     }
 }
+
+// MARK: - #675 — provenance classification + isolation-by-default resolution
+
+@Suite("BinaryConfig.Provenance (#675 isolation by default)")
+struct BinaryConfigProvenanceTests {
+    // MARK: - classify(executablePath:)
+
+    @Test(
+        "Brew install prefixes classify as .brewInstalled",
+        arguments: [
+            "/opt/homebrew/bin/cupertino",
+            "/opt/homebrew/Cellar/cupertino/1.1.0/bin/cupertino",
+            "/usr/local/bin/cupertino",
+            "/usr/local/Cellar/cupertino/1.0.2/bin/cupertino",
+            "/home/linuxbrew/.linuxbrew/bin/cupertino",
+            "/home/linuxbrew/.linuxbrew/Cellar/cupertino/1.1.0/bin/cupertino",
+        ]
+    )
+    func brewPrefixesClassifyAsBrewInstalled(path: String) {
+        #expect(Shared.Constants.BinaryConfig.classify(executablePath: path) == .brewInstalled)
+    }
+
+    @Test(
+        "Non-brew paths classify as .other",
+        arguments: [
+            // SwiftPM dev-build paths — the headline case #675 fixes.
+            "/Volumes/Code/DeveloperExt/public/cupertino/Packages/.build/release/cupertino",
+            "/Users/mmj/.cupertino/Packages/.build/debug/cupertino",
+            // CI workspace
+            "/Users/runner/work/cupertino/cupertino/Packages/.build/release/cupertino",
+            // Manually copied executable
+            "/tmp/cupertino",
+            "/Users/mmj/Desktop/cupertino-test/cupertino",
+            // System bin paths that AREN'T brew-managed
+            "/usr/bin/cupertino",
+            "/usr/sbin/cupertino",
+            "/sbin/cupertino",
+            // Empty / nonsense
+            "",
+            "cupertino",
+        ]
+    )
+    func nonBrewPathsClassifyAsOther(path: String) {
+        #expect(Shared.Constants.BinaryConfig.classify(executablePath: path) == .other)
+    }
+
+    @Test("Look-alike paths that contain a brew prefix substring but don't start with it classify as .other")
+    func brewSubstringNotPrefixIsNotBrew() {
+        // Defensive: prefix-match must NOT trip on substrings deeper in the path.
+        let lookAlike = "/Users/mmj/work/opt/homebrew/bin/cupertino" // /opt/homebrew/bin appears AFTER /Users/…
+        #expect(Shared.Constants.BinaryConfig.classify(executablePath: lookAlike) == .other)
+    }
+
+    // MARK: - Paths(binaryConfig:provenance:) default resolution
+
+    @Test("Explicit conf-file override wins regardless of provenance (brew + non-brew)")
+    func confOverrideWinsForAllProvenances() {
+        let override = "/var/tmp/cupertino-explicit-override"
+        let conf = Shared.Constants.BinaryConfig(baseDirectory: override)
+
+        let brewPaths = Shared.Paths(binaryConfig: conf, provenance: .brewInstalled)
+        #expect(brewPaths.baseDirectory.path == override)
+
+        let devPaths = Shared.Paths(binaryConfig: conf, provenance: .other)
+        #expect(devPaths.baseDirectory.path == override)
+    }
+
+    @Test("Brew-installed binary + no conf override → ~/.cupertino/ (production default)")
+    func brewProvenanceDefault() {
+        let paths = Shared.Paths(
+            binaryConfig: Shared.Constants.BinaryConfig(),
+            provenance: .brewInstalled
+        )
+        let expectedSuffix = "/" + Shared.Constants.baseDirectoryName // ".cupertino"
+        #expect(paths.baseDirectory.path.hasSuffix(expectedSuffix))
+        #expect(paths.baseDirectory.path.hasSuffix(".cupertino-dev") == false)
+    }
+
+    @Test("Non-brew binary + no conf override → ~/.cupertino-dev/ (isolation default — #675 headline)")
+    func otherProvenanceDefault() {
+        let paths = Shared.Paths(
+            binaryConfig: Shared.Constants.BinaryConfig(),
+            provenance: .other
+        )
+        let expectedSuffix = "/" + Shared.Constants.devBaseDirectoryName // ".cupertino-dev"
+        #expect(paths.baseDirectory.path.hasSuffix(expectedSuffix))
+    }
+
+    @Test("Dev-isolated default directory name is .cupertino-dev (pins the convention #675)")
+    func devDirNameIsCupertinoDev() {
+        #expect(Shared.Constants.devBaseDirectoryName == ".cupertino-dev")
+    }
+}
