@@ -225,6 +225,29 @@ extension Search.Index {
 
         CREATE INDEX IF NOT EXISTS idx_doc_imports_uri ON doc_imports(doc_uri);
         CREATE INDEX IF NOT EXISTS idx_doc_imports_module ON doc_imports(module_name);
+
+        -- #274: class-inheritance edges. One row per parent→child link,
+        -- extracted from Apple's DocC `relationshipsSections.inheritsFrom`
+        -- and `inheritedBy` arrays at index time. Both walk directions
+        -- are indexed so `WHERE child_uri = ?` (walk-up to ancestors) and
+        -- `WHERE parent_uri = ?` (walk-down to descendants) are equally
+        -- fast on the 280k-row apple-docs corpus.
+        --
+        -- Schema choice rationale: a dedicated edge table (vs a JSON
+        -- column on docs_metadata) because a single class can have
+        -- thousands of descendants (`NSObject`, `UIView`, etc.) and a
+        -- JSON-blob column would be both unscanable and bloated. The
+        -- composite primary key prevents duplicate edges if the same
+        -- (parent, child) pair appears in both `inheritsFrom` (from
+        -- the child's page) and `inheritedBy` (from the parent's page).
+        CREATE TABLE IF NOT EXISTS inheritance (
+            parent_uri TEXT NOT NULL,
+            child_uri  TEXT NOT NULL,
+            PRIMARY KEY (parent_uri, child_uri)
+        );
+
+        CREATE INDEX IF NOT EXISTS inheritance_by_parent ON inheritance (parent_uri);
+        CREATE INDEX IF NOT EXISTS inheritance_by_child  ON inheritance (child_uri);
         """
 
         var errorPointer: UnsafeMutablePointer<CChar>?

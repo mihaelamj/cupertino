@@ -590,10 +590,17 @@ extension Core.JSONParser.AppleJSONToMarkdown {
             }
         }
 
-        // Extract relationships (conforms to, inherited by, conforming types)
+        // Extract relationships (conforms to, inherited by, conforming
+        // types, inherits from). The `inheritsFrom` axis is what #274
+        // adds — Apple's DocC JSON has carried the data for years
+        // (UIButton → UIControl → UIView → UIResponder → NSObject) but
+        // the v1.1.0 extractor only kept `inheritedBy` and dropped
+        // `inheritsFrom` into the default section bucket. Capturing it
+        // here lets the indexer write a queryable edge table.
         var conformsTo: [String]?
         var inheritedBy: [String]?
         var conformingTypes: [String]?
+        var inheritsFrom: [String]?
 
         if let relationships = doc.relationshipsSections {
             for section in relationships {
@@ -611,6 +618,8 @@ extension Core.JSONParser.AppleJSONToMarkdown {
                     inheritedBy = types
                 case "conforming types":
                     conformingTypes = types
+                case "inherits from":
+                    inheritsFrom = types
                 default:
                     // Add as a section
                     sections.append(Shared.Models.StructuredDocumentationPage.Section(
@@ -650,6 +659,7 @@ extension Core.JSONParser.AppleJSONToMarkdown {
             conformsTo: conformsTo,
             inheritedBy: inheritedBy,
             conformingTypes: conformingTypes,
+            inheritsFrom: inheritsFrom,
             rawMarkdown: markdown,
             crawledAt: Date(),
             contentHash: "",
