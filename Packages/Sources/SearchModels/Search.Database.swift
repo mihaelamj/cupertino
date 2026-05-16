@@ -108,6 +108,111 @@ extension Search {
             direction: Search.InheritanceDirection,
             maxDepth: Int
         ) async throws -> Search.InheritanceTree
+
+        // MARK: - #226 — platform-availability batch lookup
+
+        /// Batch-fetch `min_*` platform availability for a list of URIs
+        /// in one round-trip. Used by `CompositeToolProvider`'s
+        /// search-style tool handlers to apply the MCP `--platform` /
+        /// `--min-version` filter post-fetch when the per-result
+        /// `SymbolSearchResult` doesn't carry version data on its own.
+        ///
+        /// Returns a `[uri → PlatformMinima]` map. URIs absent from the
+        /// map have no `docs_metadata` row (treat as "no platform info;
+        /// reject when any filter is set" — same IS-NOT-NULL semantics
+        /// as the unified `search` tool).
+        func fetchPlatformMinima(
+            uris: [String]
+        ) async throws -> [String: Search.PlatformMinima]
+    }
+
+    /// #226 — `[uri → minimum platform versions]` value returned by
+    /// `Database.fetchPlatformMinima(uris:)`. Distinct from the
+    /// pre-existing `Search.PlatformAvailability` (which is a per-platform
+    /// availability record — name, introducedAt, deprecated, beta —
+    /// embedded in `Search.Result.availability`). `PlatformMinima` is
+    /// the flat 5-field shape used by the MCP search-style platform
+    /// filter (`minIOS` / `minMacOS` / etc.), one record per URI.
+    ///
+    /// Lives in `SearchModels` (not `Search`) because the `Database`
+    /// protocol references it across the package seam — `CompositeToolProvider`
+    /// consumes the protocol without importing the `Search` SPM target.
+    /// Pure value type; semver-format strings (`"17.0"`, `"10.13"`).
+    /// #226 — predicate used by `CompositeToolProvider`'s search-style
+    /// tool handlers to filter result rows by the MCP `--platform` /
+    /// `--min-version` args. Lives in `SearchModels` (not `Search`)
+    /// because the caller doesn't import the Search SPM target.
+    ///
+    /// Semantics: a row passes when *every set filter* is `>=` the row's
+    /// own minimum (semver-aware — `"10.13" <= "10.2"` is **false**).
+    /// A row with no platform info is rejected when any filter is set
+    /// (matches the unified `search` tool's IS-NOT-NULL pre-gate at
+    /// `Search.Index.Search.swift:166-180`).
+    public enum PlatformFilter {
+        public static func passes(
+            minima: PlatformMinima?,
+            minIOS: String?,
+            minMacOS: String?,
+            minTvOS: String?,
+            minWatchOS: String?,
+            minVisionOS: String?
+        ) -> Bool {
+            let fIOS = (minIOS?.isEmpty == true) ? nil : minIOS
+            let fMac = (minMacOS?.isEmpty == true) ? nil : minMacOS
+            let fTv = (minTvOS?.isEmpty == true) ? nil : minTvOS
+            let fWatch = (minWatchOS?.isEmpty == true) ? nil : minWatchOS
+            let fVision = (minVisionOS?.isEmpty == true) ? nil : minVisionOS
+            if fIOS == nil, fMac == nil, fTv == nil, fWatch == nil, fVision == nil { return true }
+            guard let minima else { return false }
+            if let f = fIOS, let rv = minima.minIOS, !isVersion(rv, lessThanOrEqualTo: f) { return false }
+            if let f = fIOS, minima.minIOS == nil { return false }
+            if let f = fMac, let rv = minima.minMacOS, !isVersion(rv, lessThanOrEqualTo: f) { return false }
+            if let f = fMac, minima.minMacOS == nil { return false }
+            if let f = fTv, let rv = minima.minTvOS, !isVersion(rv, lessThanOrEqualTo: f) { return false }
+            if let f = fTv, minima.minTvOS == nil { return false }
+            if let f = fWatch, let rv = minima.minWatchOS, !isVersion(rv, lessThanOrEqualTo: f) { return false }
+            if let f = fWatch, minima.minWatchOS == nil { return false }
+            if let f = fVision, let rv = minima.minVisionOS, !isVersion(rv, lessThanOrEqualTo: f) { return false }
+            if let f = fVision, minima.minVisionOS == nil { return false }
+            return true
+        }
+
+        /// Semver-correct `lhs <= rhs` (string compare gets `"10.13" <= "10.2"` wrong).
+        /// Identical algorithm to `Search.Index.isVersion`; duplicated here as `public`
+        /// so consumers outside the Search SPM target can use the same predicate.
+        public static func isVersion(_ lhs: String, lessThanOrEqualTo rhs: String) -> Bool {
+            let lhsComponents = lhs.split(separator: ".").compactMap { Int($0) }
+            let rhsComponents = rhs.split(separator: ".").compactMap { Int($0) }
+            for idx in 0..<max(lhsComponents.count, rhsComponents.count) {
+                let lhsValue = idx < lhsComponents.count ? lhsComponents[idx] : 0
+                let rhsValue = idx < rhsComponents.count ? rhsComponents[idx] : 0
+                if lhsValue < rhsValue { return true }
+                if lhsValue > rhsValue { return false }
+            }
+            return true
+        }
+    }
+
+    public struct PlatformMinima: Sendable, Equatable {
+        public let minIOS: String?
+        public let minMacOS: String?
+        public let minTvOS: String?
+        public let minWatchOS: String?
+        public let minVisionOS: String?
+
+        public init(
+            minIOS: String? = nil,
+            minMacOS: String? = nil,
+            minTvOS: String? = nil,
+            minWatchOS: String? = nil,
+            minVisionOS: String? = nil
+        ) {
+            self.minIOS = minIOS
+            self.minMacOS = minMacOS
+            self.minTvOS = minTvOS
+            self.minWatchOS = minWatchOS
+            self.minVisionOS = minVisionOS
+        }
     }
 }
 

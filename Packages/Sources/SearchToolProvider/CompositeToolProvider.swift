@@ -189,6 +189,30 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             ),
         ]
 
+        // #226 — platform-filter schema fragment shared by all 4
+        // AST search-style tools. Same shape as the unified `search`
+        // tool's existing platform args (CompositeToolProvider.swift:147-161).
+        // Applied client-side via Search.PlatformFilter.passes after the
+        // existing Search.Index method returns its result list (the
+        // helper fetches min_* per result URI in one batched query).
+        let platformFilterProperties: [String: MCP.Core.Protocols.AnyCodable] = [
+            Shared.Constants.Search.schemaParamMinIOS: stringSchema(
+                description: "Minimum iOS version filter (e.g. 17.0)."
+            ),
+            Shared.Constants.Search.schemaParamMinMacOS: stringSchema(
+                description: "Minimum macOS version filter (e.g. 14.0)."
+            ),
+            Shared.Constants.Search.schemaParamMinTvOS: stringSchema(
+                description: "Minimum tvOS version filter (e.g. 17.0)."
+            ),
+            Shared.Constants.Search.schemaParamMinWatchOS: stringSchema(
+                description: "Minimum watchOS version filter (e.g. 10.0)."
+            ),
+            Shared.Constants.Search.schemaParamMinVisionOS: stringSchema(
+                description: "Minimum visionOS version filter (e.g. 1.0)."
+            ),
+        ]
+
         let searchSymbolsProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamQuery: stringSchema(
                 description: "Symbol name pattern (partial match)."
@@ -205,7 +229,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamLimit: intSchema(
                 description: "Maximum results to return (default 20)."
             ),
-        ]
+        ].merging(platformFilterProperties) { lhs, _ in lhs }
 
         let searchPropertyWrappersProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamWrapper: stringSchema(
@@ -217,7 +241,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamLimit: intSchema(
                 description: "Maximum results to return (default 20)."
             ),
-        ]
+        ].merging(platformFilterProperties) { lhs, _ in lhs }
 
         let searchConcurrencyProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamPattern: stringSchema(
@@ -229,7 +253,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamLimit: intSchema(
                 description: "Maximum results to return (default 20)."
             ),
-        ]
+        ].merging(platformFilterProperties) { lhs, _ in lhs }
 
         let searchConformancesProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamProtocol: stringSchema(
@@ -241,7 +265,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamLimit: intSchema(
                 description: "Maximum results to return (default 20)."
             ),
-        ]
+        ].merging(platformFilterProperties) { lhs, _ in lhs }
 
         // #274 — class-inheritance walk over the `inheritance` edge table.
         let getInheritanceProperties: [String: MCP.Core.Protocols.AnyCodable] = [
@@ -1003,6 +1027,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let isAsync = args.optionalBool(Shared.Constants.Search.schemaParamIsAsync)
         let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
         let limit = args.limit()
+        let platform = Self.extractPlatformArgs(args)
 
         let results = try await searchIndex.searchSymbols(
             query: query,
@@ -1011,9 +1036,12 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             framework: framework,
             limit: limit
         )
+        let filtered = try await Self.applyPlatformFilter(
+            results: results, platform: platform, searchIndex: searchIndex
+        )
 
         let markdown = formatSymbolResults(
-            results: results,
+            results: filtered,
             title: "Symbol Search Results",
             query: query,
             filters: ["kind": kind, "is_async": isAsync.map { String($0) }, "framework": framework]
@@ -1030,11 +1058,15 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let wrapper: String = try args.require(Shared.Constants.Search.schemaParamWrapper)
         let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
         let limit = args.limit()
+        let platform = Self.extractPlatformArgs(args)
 
-        let results = try await searchIndex.searchPropertyWrappers(
+        let raw = try await searchIndex.searchPropertyWrappers(
             wrapper: wrapper,
             framework: framework,
             limit: limit
+        )
+        let results = try await Self.applyPlatformFilter(
+            results: raw, platform: platform, searchIndex: searchIndex
         )
 
         let normalizedWrapper = wrapper.hasPrefix("@") ? wrapper : "@\(wrapper)"
@@ -1056,11 +1088,15 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let pattern: String = try args.require(Shared.Constants.Search.schemaParamPattern)
         let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
         let limit = args.limit()
+        let platform = Self.extractPlatformArgs(args)
 
-        let results = try await searchIndex.searchConcurrencyPatterns(
+        let raw = try await searchIndex.searchConcurrencyPatterns(
             pattern: pattern,
             framework: framework,
             limit: limit
+        )
+        let results = try await Self.applyPlatformFilter(
+            results: raw, platform: platform, searchIndex: searchIndex
         )
 
         let markdown = formatSymbolResults(
@@ -1171,11 +1207,15 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let protocolName: String = try args.require(Shared.Constants.Search.schemaParamProtocol)
         let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
         let limit = args.limit()
+        let platform = Self.extractPlatformArgs(args)
 
-        let results = try await searchIndex.searchConformances(
+        let raw = try await searchIndex.searchConformances(
             protocolName: protocolName,
             framework: framework,
             limit: limit
+        )
+        let results = try await Self.applyPlatformFilter(
+            results: raw, platform: platform, searchIndex: searchIndex
         )
 
         let markdown = formatSymbolResults(
@@ -1186,6 +1226,62 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         )
 
         return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
+    }
+
+    // MARK: - #226 — platform filter helpers (shared across 4 search-style tools)
+
+    /// 5-tuple of `min*` filter strings extracted from the MCP call's
+    /// arguments. All optional. Empty / missing fields stay nil so the
+    /// `Search.PlatformFilter.passes(...)` predicate treats them as
+    /// "no constraint" downstream.
+    private struct PlatformArgs {
+        let minIOS: String?
+        let minMacOS: String?
+        let minTvOS: String?
+        let minWatchOS: String?
+        let minVisionOS: String?
+
+        var isAnySet: Bool {
+            minIOS != nil || minMacOS != nil || minTvOS != nil || minWatchOS != nil || minVisionOS != nil
+        }
+    }
+
+    private static func extractPlatformArgs(
+        _ args: MCP.SharedTools.ArgumentExtractor
+    ) -> PlatformArgs {
+        PlatformArgs(
+            minIOS: args.optional(Shared.Constants.Search.schemaParamMinIOS),
+            minMacOS: args.optional(Shared.Constants.Search.schemaParamMinMacOS),
+            minTvOS: args.optional(Shared.Constants.Search.schemaParamMinTvOS),
+            minWatchOS: args.optional(Shared.Constants.Search.schemaParamMinWatchOS),
+            minVisionOS: args.optional(Shared.Constants.Search.schemaParamMinVisionOS)
+        )
+    }
+
+    /// Apply the MCP-level platform filter to a `[SymbolSearchResult]`.
+    /// Short-circuits when no filter is set (the common case) — returns
+    /// the input unchanged. When set, batch-fetches `docs_metadata.min_*`
+    /// for each result's URI in one query, then filters in-process via
+    /// `Search.PlatformFilter.passes`. Same semver semantics as the
+    /// unified `search` tool (`Search.Index.Search.swift:730`).
+    private static func applyPlatformFilter(
+        results: [Search.SymbolSearchResult],
+        platform: PlatformArgs,
+        searchIndex: any Search.Database
+    ) async throws -> [Search.SymbolSearchResult] {
+        guard platform.isAnySet, !results.isEmpty else { return results }
+        let uris = results.map(\.docUri)
+        let minimaByURI = try await searchIndex.fetchPlatformMinima(uris: uris)
+        return results.filter { row in
+            Search.PlatformFilter.passes(
+                minima: minimaByURI[row.docUri],
+                minIOS: platform.minIOS,
+                minMacOS: platform.minMacOS,
+                minTvOS: platform.minTvOS,
+                minWatchOS: platform.minWatchOS,
+                minVisionOS: platform.minVisionOS
+            )
+        }
     }
 
     /// Format symbol search results as markdown
