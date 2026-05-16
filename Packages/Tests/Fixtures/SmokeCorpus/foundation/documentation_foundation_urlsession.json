@@ -1,0 +1,18 @@
+{
+    "id": "11111111-1111-1111-1111-000000000006",
+    "url": "https://developer.apple.com/documentation/foundation/urlsession",
+    "title": "URLSession | Apple Developer Documentation",
+    "kind": "class",
+    "source": "appleJSON",
+    "abstract": "An object that coordinates a group of related, network data transfer tasks.",
+    "declaration": {
+        "code": "class URLSession",
+        "language": "swift"
+    },
+    "overview": "URLSession is the canonical class for network requests in Foundation. Use URLSession to download / upload files.",
+    "sections": [],
+    "codeExamples": [],
+    "rawMarkdown": "# URLSession | Apple Developer Documentation\n\nClass# URLSession\n\nCoordinates network tasks.",
+    "crawledAt": "2026-05-16T05:00:00Z",
+    "contentHash": "smoke-urlsession-001"
+}
