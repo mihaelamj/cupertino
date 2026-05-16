@@ -943,6 +943,13 @@ extension CLIImpl.Command {
             Cupertino.Context.composition.logging.recording.info("   Downloaded: \(stats.downloadedSamples)")
             Cupertino.Context.composition.logging.recording.info("   Skipped: \(stats.skippedSamples)")
             Cupertino.Context.composition.logging.recording.info("   Errors: \(stats.errors)")
+            // #657 — surface the invalid-downloads bucket only when
+            // non-zero so the happy-path output stays unchanged.
+            if stats.invalidDownloads > 0 {
+                Cupertino.Context.composition.logging.recording.info(
+                    "   Invalid downloads (parked as .invalid): \(stats.invalidDownloads)"
+                )
+            }
             if let duration = stats.duration {
                 Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(duration))s")
             }

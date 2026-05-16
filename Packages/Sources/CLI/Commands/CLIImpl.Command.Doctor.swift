@@ -84,6 +84,7 @@ extension CLIImpl.Command {
             allChecks = checkServerInitialization() && allChecks
             allChecks = checkPackagesDatabase() && allChecks
             checkSamplesDatabase()
+            checkSampleArchiveIntegrity()
             allChecks = await checkSearchDatabase() && allChecks
             allChecks = checkResourceProviders() && allChecks
             // Schema versions across all three DBs (#234)
@@ -384,6 +385,54 @@ extension CLIImpl.Command {
             if let projectCount { Cupertino.Context.composition.logging.recording.output("   ✓ Projects: \(projectCount)") }
             if let fileCount { Cupertino.Context.composition.logging.recording.output("   ✓ Indexed files: \(fileCount)") }
             if let symbolCount { Cupertino.Context.composition.logging.recording.output("   ✓ Indexed symbols: \(symbolCount)") }
+            Cupertino.Context.composition.logging.recording.output("")
+        }
+
+        /// #657 — scan `~/.cupertino/sample-code/*.zip` for files whose
+        /// first 4 bytes don't match a ZIP magic signature. Apple's CDN
+        /// occasionally returns an HTML landing page or partial body
+        /// with HTTP 200; pre-#657 the fetcher trusted the status code
+        /// and the body lingered with a `.zip` extension. The fetcher
+        /// now renames such bodies to `<filename>.invalid` at download
+        /// time (and counts them in `Sample.Core.Statistics
+        /// .invalidDownloads`), but this probe is the safety net for
+        /// any pre-#657 corpora and for files that survived earlier
+        /// fetch runs. Soft warning; doctor summary stays green when
+        /// the count is non-zero so a stale corpus doesn't fail the
+        /// post-promote health check.
+        private func checkSampleArchiveIntegrity() {
+            let directory = Shared.Paths.live().sampleCodeDirectory
+            Cupertino.Context.composition.logging.recording.output("📦 Sample Code Archive Integrity (#657)")
+
+            guard FileManager.default.fileExists(atPath: directory.path) else {
+                Cupertino.Context.composition.logging.recording.output("   ⚠  Directory: \(directory.path) (not found)")
+                Cupertino.Context.composition.logging.recording.output("     → Run: cupertino fetch --type samples")
+                Cupertino.Context.composition.logging.recording.output("")
+                return
+            }
+
+            let contents = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])) ?? []
+            let zips = contents.filter { $0.pathExtension.lowercased() == "zip" }
+            let invalid = zips.filter { !Shared.Utils.ZipMagic.isValid(at: $0) }
+
+            Cupertino.Context.composition.logging.recording.output("   ✓ Directory: \(directory.path)")
+            Cupertino.Context.composition.logging.recording.output("   ✓ Total archives: \(zips.count)")
+            if invalid.isEmpty {
+                Cupertino.Context.composition.logging.recording.output("   ✓ Invalid ZIP archives: 0")
+            } else {
+                Cupertino.Context.composition.logging.recording.output("   ⚠  Invalid ZIP archives: \(invalid.count)")
+                // Cap the list at 5 to keep doctor output bounded; the
+                // count is the actionable signal, the names are a
+                // breadcrumb.
+                for url in invalid.prefix(5) {
+                    Cupertino.Context.composition.logging.recording.output("     - \(url.lastPathComponent)")
+                }
+                if invalid.count > 5 {
+                    Cupertino.Context.composition.logging.recording.output("     - … and \(invalid.count - 5) more")
+                }
+                Cupertino.Context.composition.logging.recording.output("     → These are likely HTML landing pages saved as .zip (Apple CDN transient 200s).")
+                Cupertino.Context.composition.logging.recording.output("     → Remove them manually, or re-run: cupertino fetch --type samples --force")
+            }
             Cupertino.Context.composition.logging.recording.output("")
         }
 
