@@ -12,8 +12,16 @@ import Foundation
 extension Shared.Constants {
     // MARK: - Directory Names
 
-    /// Base directory name for Cupertino data
+    /// Base directory name for Cupertino data — production default,
+    /// resolved relative to `$HOME` for brew-installed binaries.
     public static let baseDirectoryName = ".cupertino"
+
+    /// Base directory name for dev-isolated Cupertino data — used as the
+    /// default for non-brew binaries (locally-built dev builds, CI
+    /// workspaces, manually copied executables) per #675 so a dev build
+    /// cannot silently corrupt the brew install. Brew bottles continue
+    /// to resolve to `~/.cupertino/` via `Provenance.brewInstalled`.
+    public static let devBaseDirectoryName = ".cupertino-dev"
 
     /// Subdirectory names
     public enum Directory {

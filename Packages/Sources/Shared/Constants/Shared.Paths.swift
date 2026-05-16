@@ -30,31 +30,57 @@ extension Shared {
             self.baseDirectory = baseDirectory
         }
 
-        /// Resolve from a `BinaryConfig` value. The composition root
-        /// loads `BinaryConfig` once (typically via
-        /// `Shared.Constants.BinaryConfig.load(from:)`) and passes the
-        /// resolved struct here.
-        public init(binaryConfig: Shared.Constants.BinaryConfig) {
+        /// Resolve from a `BinaryConfig` value + the running binary's
+        /// `Provenance`. Resolution rules (#675):
+        ///
+        /// 1. Explicit `cupertino.config.json` override wins.
+        /// 2. Otherwise, brew-installed binaries default to `~/.cupertino/`
+        ///    (the production path consumed by the brew CLI).
+        /// 3. Otherwise (any other binary location — `.build/`-relative dev
+        ///    build, manually copied executable, CI workspace, unrecognised
+        ///    install path), default to `~/.cupertino-dev/` so a dev build
+        ///    cannot silently corrupt the brew install just by running a
+        ///    `save` / `setup` / `fetch` command.
+        ///
+        /// Pre-#675 the default was always `~/.cupertino/` regardless of
+        /// binary provenance; the `cupertino.config.json` drop performed by
+        /// `Makefile build-release` / `build-debug` was the only safety
+        /// gate, and a raw `swift build -c release` (or any build that
+        /// skipped the conf drop) silently targeted the brew path. Now
+        /// the binary self-classifies at startup and the conf is an
+        /// optional override, not a safety prerequisite.
+        public init(
+            binaryConfig: Shared.Constants.BinaryConfig,
+            provenance: Shared.Constants.BinaryConfig.Provenance
+        ) {
             if let override = binaryConfig.resolvedBaseDirectory {
                 self.init(baseDirectory: override)
-            } else {
-                self.init(
-                    baseDirectory: FileManager.default.homeDirectoryForCurrentUser
-                        .appendingPathComponent(Shared.Constants.baseDirectoryName)
-                )
+                return
             }
+            let directoryName: String
+            switch provenance {
+            case .brewInstalled:
+                directoryName = Shared.Constants.baseDirectoryName
+            case .other:
+                directoryName = Shared.Constants.devBaseDirectoryName
+            }
+            self.init(
+                baseDirectory: FileManager.default.homeDirectoryForCurrentUser
+                    .appendingPathComponent(directoryName)
+            )
         }
 
         /// Production factory: load `BinaryConfig` from the running
-        /// executable's directory and build a `Paths` from it. Used by
-        /// the CLI / TUI / MockAIAgent composition roots. Tests should
-        /// construct `Paths(baseDirectory:)` with a UUID-tagged temp
-        /// directory instead.
+        /// executable's directory + classify the binary's provenance, then
+        /// build a `Paths` from both. Used by the CLI / TUI / MockAIAgent
+        /// composition roots. Tests should construct `Paths(baseDirectory:)`
+        /// with a UUID-tagged temp directory instead.
         public static func live() -> Paths {
             Paths(
                 binaryConfig: Shared.Constants.BinaryConfig.load(
                     from: Shared.Constants.BinaryConfig.executableDirectory
-                )
+                ),
+                provenance: Shared.Constants.BinaryConfig.provenance
             )
         }
 
