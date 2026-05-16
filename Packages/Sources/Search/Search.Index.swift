@@ -44,7 +44,19 @@ extension Search {
         ///       at 5.0). BREAKING — FTS5 does not support ALTER TABLE ADD
         ///       COLUMN; existing v13 DBs are rejected at open with the same
         ///       "rebuild required" message v12 received.
-        public static let schemaVersion: Int32 = 14
+        /// - 15: Class-inheritance edges (#274). New `inheritance` table
+        ///       persists parent→child rows extracted from Apple's DocC
+        ///       JSON `relationshipsSections.inheritsFrom` and
+        ///       `inheritedBy` arrays. Two `B-tree` indexes
+        ///       (`inheritance_by_parent`, `inheritance_by_child`) cover
+        ///       both walk directions; the same data the v13/v14 indexer
+        ///       already had access to (via `relationshipsSections`)
+        ///       finally gets a queryable edge table instead of being
+        ///       dropped into a default-section bucket. BREAKING — the
+        ///       table is created in `createTables()` only on fresh
+        ///       inits, and existing DBs without it have no rows to
+        ///       walk; the only meaningful upgrade path is a re-index.
+        public static let schemaVersion: Int32 = 15
 
         // Properties are package-internal (default visibility) so the
         // SearchIndex+<Concern>.swift extension files can access them. Public

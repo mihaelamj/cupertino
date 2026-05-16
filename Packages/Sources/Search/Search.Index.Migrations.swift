@@ -17,7 +17,6 @@ extension Search.Index {
         return sqlite3_column_int(statement, 0)
     }
 
-    // swiftlint:disable:next function_body_length
     func setSchemaVersion() async throws {
         guard let database else {
             throw Search.Error.databaseNotInitialized
@@ -70,6 +69,7 @@ extension Search.Index {
         }
     }
 
+    // swiftlint:disable:next function_body_length
     func checkAndMigrateSchema() async throws {
         let currentVersion = getSchemaVersion()
 
@@ -188,6 +188,22 @@ extension Search.Index {
                 "Database schema version \(currentVersion) requires migration to version 14. " +
                     "This is a breaking change that adds CamelCase-component recall " +
                     "to the FTS index (#77). " +
+                    "Please delete the database and run 'cupertino setup' to download the " +
+                    "pre-built v1.2.0 bundle: " +
+                    "rm \(dbPath.path) && cupertino setup"
+            )
+        }
+
+        if currentVersion < 15 {
+            // Version 14 -> 15: Added `inheritance` edge table (#274).
+            // Existing v14 DBs have no rows to walk; the only meaningful
+            // upgrade path is a re-index that re-runs the indexer over
+            // the same JSON and populates the new table. Pattern
+            // matches v11→v12 / v12→v13 / v13→v14 — `cupertino setup`
+            // for the production-ready bundle, or rebuild locally.
+            throw Search.Error.sqliteError(
+                "Database schema version \(currentVersion) requires migration to version 15. " +
+                    "This is a breaking change that adds class-inheritance edge tracking (#274). " +
                     "Please delete the database and run 'cupertino setup' to download the " +
                     "pre-built v1.2.0 bundle: " +
                     "rm \(dbPath.path) && cupertino setup"

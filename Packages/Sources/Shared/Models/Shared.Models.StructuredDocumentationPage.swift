@@ -6,8 +6,8 @@ import Foundation
 /// Represents a fully structured documentation page with rich content
 /// This model is designed to be populated from both Apple JSON API and HTML sources
 /// and is suitable for database storage and querying
-// swiftlint:disable:next type_body_length
 extension Shared.Models {
+    // swiftlint:disable:next type_body_length
     public struct StructuredDocumentationPage: Codable, Sendable, Identifiable, Hashable {
         public let id: UUID
         public let url: URL
@@ -29,6 +29,10 @@ extension Shared.Models {
         public let conformsTo: [String]? // Protocols this type conforms to
         public let inheritedBy: [String]? // Types that inherit from this
         public let conformingTypes: [String]? // Types that conform to this protocol
+        /// Class-inheritance ancestors (UIKit/AppKit/Foundation class chains; #274).
+        /// `nil` for value types and protocols — non-class kinds simply
+        /// don't have superclass data in Apple's DocC JSON.
+        public let inheritsFrom: [String]?
 
         /// Raw markdown from original source (HTML conversion)
         public let rawMarkdown: String?
@@ -57,6 +61,7 @@ extension Shared.Models {
             conformsTo: [String]? = nil,
             inheritedBy: [String]? = nil,
             conformingTypes: [String]? = nil,
+            inheritsFrom: [String]? = nil,
             rawMarkdown: String? = nil,
             crawledAt: Date = Date(),
             contentHash: String = "",
@@ -78,6 +83,7 @@ extension Shared.Models {
             self.conformsTo = conformsTo
             self.inheritedBy = inheritedBy
             self.conformingTypes = conformingTypes
+            self.inheritsFrom = inheritsFrom
             self.rawMarkdown = rawMarkdown
             self.crawledAt = crawledAt
             self.contentHash = contentHash
@@ -107,6 +113,7 @@ extension Shared.Models {
             conformsTo = try container.decodeIfPresent([String].self, forKey: .conformsTo)
             inheritedBy = try container.decodeIfPresent([String].self, forKey: .inheritedBy)
             conformingTypes = try container.decodeIfPresent([String].self, forKey: .conformingTypes)
+            inheritsFrom = try container.decodeIfPresent([String].self, forKey: .inheritsFrom)
             rawMarkdown = try container.decodeIfPresent(String.self, forKey: .rawMarkdown)
             crawledAt = try container.decode(Date.self, forKey: .crawledAt)
             contentHash = try container.decode(String.self, forKey: .contentHash)
@@ -117,7 +124,7 @@ extension Shared.Models {
             case id, url, title, kind, source
             case abstract, declaration, overview, sections, codeExamples
             case language, platforms, module
-            case conformsTo, inheritedBy, conformingTypes
+            case conformsTo, inheritedBy, conformingTypes, inheritsFrom
             case rawMarkdown, crawledAt, contentHash, crawlDepth
         }
 
@@ -505,7 +512,8 @@ extension Shared.Models {
                 module: module,
                 conformsTo: conformsTo,
                 inheritedBy: inheritedBy,
-                conformingTypes: conformingTypes
+                conformingTypes: conformingTypes,
+                inheritsFrom: inheritsFrom
             )
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.sortedKeys]
@@ -529,6 +537,7 @@ extension Shared.Models {
             let conformsTo: [String]?
             let inheritedBy: [String]?
             let conformingTypes: [String]?
+            let inheritsFrom: [String]?
         }
 
         /// Return a copy with `contentHash` replaced. Use after constructing a
@@ -551,6 +560,7 @@ extension Shared.Models {
                 conformsTo: conformsTo,
                 inheritedBy: inheritedBy,
                 conformingTypes: conformingTypes,
+                inheritsFrom: inheritsFrom,
                 rawMarkdown: rawMarkdown,
                 crawledAt: crawledAt,
                 contentHash: newHash,

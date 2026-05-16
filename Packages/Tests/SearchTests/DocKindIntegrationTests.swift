@@ -101,23 +101,26 @@ enum TestError: Error {
 
 @Suite("Search.Index schema shape (#192 C2)")
 struct SchemaShapeTests {
-    @Test("Schema version constant is 14")
-    func schemaVersionIs14() {
+    @Test("Schema version constant is 15")
+    func schemaVersionIs15() {
         // Bumped 12 -> 13 by #283 (URL case canonicalization in-place migration).
         // Bumped 13 -> 14 by #77 (`symbol_components` FTS column for index-time
         // CamelCase expansion; FTS5 doesn't support ALTER TABLE ADD COLUMN
         // so the bump is required even though no in-place migration runs).
-        #expect(Search.Index.schemaVersion == 14)
+        // Bumped 14 -> 15 by #274 (class-inheritance edge table — new
+        // `inheritance` table persists parent→child rows from Apple's
+        // DocC `relationshipsSections.inheritsFrom` / `inheritedBy`).
+        #expect(Search.Index.schemaVersion == 15)
     }
 
-    @Test("Fresh DB has PRAGMA user_version = 14")
+    @Test("Fresh DB has PRAGMA user_version = 15")
     func freshDBStampedVersion() async throws {
         let dbPath = makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
         let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
         await idx.disconnect()
 
-        #expect(try readSchemaVersion(at: dbPath) == 14)
+        #expect(try readSchemaVersion(at: dbPath) == 15)
     }
 
     @Test("Fresh DB has idx_kind index on docs_metadata")
