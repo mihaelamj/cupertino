@@ -1,9 +1,11 @@
 import ArgumentParser
+import Diagnostics
 import Distribution
 import Foundation
 import Logging
 import LoggingModels
 import SharedConstants
+
 // MARK: - Setup Command
 
 /// Thin CLI wrapper around `Distribution.SetupService` (#246). The
@@ -44,6 +46,30 @@ extension CLIImpl.Command {
             let paths = Shared.Paths.live()
             let baseURL = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
                 ?? paths.baseDirectory
+
+            // #673 Phase F — disk-space preflight. Setup downloads a
+            // ~850 MB zip + extracts ~2.7 GB of DBs + transient working
+            // tree. Refuse before any download starts if free disk would
+            // run out mid-extract — the partial-extract state is the
+            // same corruption shape Phase F was filed to prevent.
+            let recording = Cupertino.Context.composition.logging.recording
+            switch Diagnostics.DiskPreflight.check(
+                targetDirectory: baseURL,
+                estimatedBytes: Shared.Constants.DiskBudget.setupBytes
+            ) {
+            case .ok:
+                break
+            case .warningLow(_, _, let freeFraction):
+                let pct = String(format: "%.0f", freeFraction * 100)
+                recording.info(
+                    "⚠️  Free disk on the target volume is at \(pct) % — setup will proceed, but consider freeing space before the next bundle update.",
+                    category: .cli
+                )
+            case .refuseInsufficient(let needed, let free, let path):
+                throw Diagnostics.InsufficientDiskSpaceError(
+                    neededBytes: needed, freeBytes: free, path: path
+                )
+            }
 
             let renderer = SetupRenderer()
             let request = Distribution.SetupService.Request(

@@ -123,6 +123,12 @@ extension CLIImpl.Command {
             allChecks = checkResourceProviders() && allChecks
             // Schema versions across all three DBs (#234)
             printSchemaVersions()
+            // #673 Phase F — disk-space red flag. Surfaces low free disk
+            // on the volume backing ~/.cupertino so users see the risk
+            // before a `cupertino save` / `cupertino setup` would refuse
+            // partway through. Always runs (independent of --save / etc.)
+            // — disk pressure affects every cupertino operation.
+            checkDiskSpace()
 
             // ----- Save-only sections (maintainer-facing) -----------------
             // `--save` is intent-named: "I'm about to crawl / reindex; show
@@ -281,6 +287,64 @@ extension CLIImpl.Command {
                 return ""
             }
             return ", volume=non-local ⚠ (SQLite WAL doesn't work over NFS/SMB/AFP; risk of corruption per sqlite.org/wal.html)"
+        }
+
+        // MARK: - #673 Phase F — disk-space red flag
+
+        /// Inspect free disk on the volume backing the user's base
+        /// directory and emit a status line: green ≥ 20 % free, orange
+        /// 10-20 % (warn), red < 10 % free (will refuse to save / setup
+        /// on next write), CRITICAL if even less than the smallest
+        /// per-command estimate could fit.
+        ///
+        /// Pinned by `Issue673PhaseFDiskPreflightTests` on the probe +
+        /// preflight sides; the doctor-side rendering is verified via
+        /// the end-to-end binary check in PR #695's live verification.
+        private func checkDiskSpace() {
+            let target = Shared.Paths.live().baseDirectory
+            Cupertino.Context.composition.logging.recording.output("💾 Disk space (#673 Phase F)")
+            guard let usage = Diagnostics.Probes.diskUsage(at: target) else {
+                Cupertino.Context.composition.logging.recording.output(
+                    "   ⚠  Could not read volume stats for \(target.path) (skipped)"
+                )
+                Cupertino.Context.composition.logging.recording.output("")
+                return
+            }
+            let formatter = ByteCountFormatter()
+            formatter.allowedUnits = [.useGB, .useMB]
+            formatter.countStyle = .file
+            let free = formatter.string(fromByteCount: usage.freeBytes)
+            let total = formatter.string(fromByteCount: usage.totalBytes)
+            let pct = String(format: "%.0f", usage.freeFraction * 100)
+            let savedEstimate = Shared.Constants.DiskBudget.docsSaveBytes
+            let savedNeed = Int64(Double(savedEstimate) * 1.10)
+            let savedNeedStr = formatter.string(fromByteCount: savedNeed)
+
+            // Classification thresholds match the preflight: refuse
+            // (< 10 % default warningFraction reflects 1/2 of the
+            // existing 20 % threshold; we surface "would refuse" as
+            // its own line for actionability) / orange / green.
+            if usage.freeBytes < savedNeed {
+                Cupertino.Context.composition.logging.recording.output(
+                    "   ✗ Volume \(target.path): \(free) free of \(total) (\(pct) %) — `cupertino save --docs` would REFUSE (needs \(savedNeedStr))"
+                )
+                Cupertino.Context.composition.logging.recording.output(
+                    "     → Free at least \(formatter.string(fromByteCount: savedNeed - usage.freeBytes)) on this volume before the next save / setup"
+                )
+            } else if usage.freeFraction < 0.10 {
+                Cupertino.Context.composition.logging.recording.output(
+                    "   ⚠  Volume \(target.path): \(free) free of \(total) (\(pct) %) — critically low; consider freeing space"
+                )
+            } else if usage.freeFraction < 0.20 {
+                Cupertino.Context.composition.logging.recording.output(
+                    "   ⚠  Volume \(target.path): \(free) free of \(total) (\(pct) %) — low; next save will warn"
+                )
+            } else {
+                Cupertino.Context.composition.logging.recording.output(
+                    "   ✓ Volume \(target.path): \(free) free of \(total) (\(pct) %)"
+                )
+            }
+            Cupertino.Context.composition.logging.recording.output("")
         }
 
         private func checkServerInitialization() -> Bool {

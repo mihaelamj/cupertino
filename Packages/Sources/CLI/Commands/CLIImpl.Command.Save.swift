@@ -1,4 +1,5 @@
 import ArgumentParser
+import Diagnostics
 import Foundation
 import Indexer
 import Logging
@@ -169,6 +170,20 @@ extension CLIImpl.Command {
                 throw ExitCode.failure
             }
 
+            // #673 Phase F — disk-space preflight. Refuse before opening
+            // any DB if free disk wouldn't cover the operation's peak
+            // write + safety margin. The 2026-05-16 corruption
+            // (2.48 GB → 429 MB partial-write) happened because save
+            // started on a 95%-full disk and crashed mid-FTS insert.
+            // This check makes that class of bug impossible.
+            try Self.runDiskPreflight(
+                baseDir: baseDir,
+                buildDocs: buildDocs,
+                buildPackages: buildPackages,
+                buildSamples: buildSamples,
+                recording: recording
+            )
+
             if !runPreflightAndConfirm(
                 buildDocs: buildDocs,
                 buildPackages: buildPackages,
@@ -228,6 +243,56 @@ extension CLIImpl.Command {
             guard let response = readLine() else { return true }
             let normalized = response.trimmingCharacters(in: .whitespaces).lowercased()
             return normalized.isEmpty || normalized == "y" || normalized == "yes"
+        }
+
+        // MARK: - #673 Phase F — disk-space preflight
+
+        /// Refuse to start `cupertino save` if free disk wouldn't cover
+        /// the operation's peak transient write + 10 % safety margin.
+        ///
+        /// Estimate sums the per-scope `Shared.Constants.DiskBudget`
+        /// values for the scopes the user actually enabled (`--docs`
+        /// alone is ~4 GB; all three is ~5 GB). The target volume is
+        /// the same `effectiveBase` the save will write to, so a user
+        /// passing `--base-dir /tmp/big-fast-disk` correctly probes
+        /// `/tmp` not `~/`.
+        ///
+        /// Throws `Diagnostics.InsufficientDiskSpaceError` on refuse;
+        /// `Cupertino.main` catches that and exits with `EX_IOERR` (74).
+        /// `.warningLow` prints a one-line yellow hint but still
+        /// returns so the save proceeds — refusing on a low-but-
+        /// adequate disk would be a false positive for users who
+        /// know they have just enough.
+        private static func runDiskPreflight(
+            baseDir: String?,
+            buildDocs: Bool,
+            buildPackages: Bool,
+            buildSamples: Bool,
+            recording: any LoggingModels.Logging.Recording
+        ) throws {
+            var estimate: Int64 = 0
+            if buildDocs { estimate += Shared.Constants.DiskBudget.docsSaveBytes }
+            if buildPackages { estimate += Shared.Constants.DiskBudget.packagesSaveBytes }
+            if buildSamples { estimate += Shared.Constants.DiskBudget.samplesSaveBytes }
+            guard estimate > 0 else { return }
+
+            let target = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+                ?? Shared.Paths.live().baseDirectory
+
+            switch Diagnostics.DiskPreflight.check(targetDirectory: target, estimatedBytes: estimate) {
+            case .ok:
+                return
+            case .warningLow(_, _, let freeFraction):
+                let pct = String(format: "%.0f", freeFraction * 100)
+                recording.info(
+                    "⚠️  Free disk on the target volume is at \(pct) % — operation will proceed, but consider freeing space before the next reindex.",
+                    category: .cli
+                )
+            case .refuseInsufficient(let needed, let free, let path):
+                throw Diagnostics.InsufficientDiskSpaceError(
+                    neededBytes: needed, freeBytes: free, path: path
+                )
+            }
         }
 
         // MARK: - Helpers
