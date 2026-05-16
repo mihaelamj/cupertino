@@ -246,13 +246,20 @@ extension Search {
         /// regardless of cause; the message is what tells us what
         /// happened. We err on the side of reporting too few rather
         /// than too many to keep the warning signal strong.
-        static func classifyDegradation(_ error: any Swift.Error) -> String? {
+        /// #648 (CLI JSON path) — bumped to `public` so the CLI (not a
+        /// `@testable` consumer of Search) can call it from
+        /// `openDocsFetchers` to convert a search.db open-failure into
+        /// the same string a per-fetcher classifier would have produced,
+        /// then synthesise `Search.DegradedSource` entries for the
+        /// open-time path. Same internal callers + tests; the surface
+        /// is pure.
+        public static func classifyDegradation(_ error: any Swift.Error) -> String? {
             let message = "\(error)".lowercased()
             if message.contains("schema version") {
-                return "schema mismatch — run `cupertino setup` to redownload a matching bundle"
+                return "schema mismatch; run `cupertino setup` to redownload a matching bundle"
             }
             if message.contains("unable to open database") || message.contains("file is not a database") {
-                return "database unopenable — check the `--search-db` / `--packages-db` / `--sample-db` paths"
+                return "database unopenable; check the `--search-db` / `--packages-db` / `--sample-db` paths"
             }
             return nil
         }

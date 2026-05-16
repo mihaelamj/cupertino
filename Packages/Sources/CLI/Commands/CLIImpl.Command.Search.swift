@@ -267,10 +267,24 @@ extension CLIImpl.Command {
             }
 
             let smartQuery = SearchModule.SmartQuery(fetchers: plan.fetchers)
-            let result = await smartQuery.answer(
+            let rawResult = await smartQuery.answer(
                 question: trimmed,
                 limit: limit,
                 perFetcherLimit: perSource
+            )
+
+            // #648 (CLI JSON path) — when search.db fails to OPEN
+            // (vs. throws per-query), no apple-docs / hig / swift-
+            // evolution / apple-archive / swift-org / swift-book
+            // fetcher ran, so SmartQuery's per-fetcher classifier
+            // never fired and `rawResult.degradedSources` is empty.
+            // Bridge `plan.searchDBDisabledReason` (#645's classifier
+            // output from the open path) into the result so CLI
+            // `--format json` consumers see the same degradedSources
+            // payload MCP markdown already shows post-#652.
+            let result = Self.augmentWithOpenTimeDegradation(
+                result: rawResult,
+                disabledReason: plan.searchDBDisabledReason
             )
 
             if let index = plan.searchIndex {
@@ -288,6 +302,55 @@ extension CLIImpl.Command {
                 minVersion: minVersion,
                 format: format,
                 brief: brief
+            )
+        }
+
+        // MARK: - Open-time degradation injection (#648, CLI JSON path)
+
+        /// #648 (CLI JSON path) — bridge `FetcherPlan.searchDBDisabledReason`
+        /// (#645's classifier output for search.db open failures) into the
+        /// `SmartResult.degradedSources` array. Mirrors
+        /// `CompositeToolProvider.injectOpenTimeDegradation` on the MCP
+        /// side (#648-open-time / PR #652); same 6 search.db-backed
+        /// source names, same dedup-by-name merge so a future refactor
+        /// that wires partial-fetcher availability won't double-count.
+        /// Pure function on value types; lifted to internal scope so
+        /// tests can pin the merge logic without standing up the full
+        /// search command pipeline.
+        static func augmentWithOpenTimeDegradation(
+            result: SearchModule.SmartResult,
+            disabledReason: String?
+        ) -> SearchModule.SmartResult {
+            guard let disabledReason else { return result }
+
+            // The 6 sources backed by `search.db`. `samples` (samples.db)
+            // and `packages` (packages.db) live in different DBs and
+            // aren't affected by `search.db` being closed, so they stay
+            // out of the synthesised list.
+            let searchDBSources: [String] = [
+                Shared.Constants.SourcePrefix.appleDocs,
+                Shared.Constants.SourcePrefix.appleArchive,
+                Shared.Constants.SourcePrefix.hig,
+                Shared.Constants.SourcePrefix.swiftEvolution,
+                Shared.Constants.SourcePrefix.swiftOrg,
+                Shared.Constants.SourcePrefix.swiftBook,
+            ]
+
+            // Dedupe against entries the per-fetcher classifier may have
+            // populated (currently unreachable when searchIndex is nil
+            // — no fetchers run — but a future refactor wiring partial
+            // availability could populate some; preserve their original
+            // reason on collision because the fetcher saw it first).
+            let existing = Set(result.degradedSources.map(\.name))
+            let synthesised = searchDBSources
+                .filter { !existing.contains($0) }
+                .map { SearchModels.Search.DegradedSource(name: $0, reason: disabledReason) }
+
+            return SearchModule.SmartResult(
+                question: result.question,
+                candidates: result.candidates,
+                contributingSources: result.contributingSources,
+                degradedSources: result.degradedSources + synthesised
             )
         }
 

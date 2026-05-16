@@ -25,6 +25,18 @@ extension CLIImpl.Command.Search {
         let fetchers: [any Search.CandidateFetcher]
         let searchIndex: SearchModule.Index?
         let sampleService: Sample.Search.Service?
+        /// Set when `search.db` exists on disk but couldn't be opened
+        /// (schema mismatch, corrupt file, "not a database"). Mirrors
+        /// `CompositeToolProvider.searchIndexDisabledReason` from #645 /
+        /// PR #649 on the MCP side. When non-nil, `runUnifiedSearch`
+        /// synthesises `Search.DegradedSource` entries for the 6 search.
+        /// db-backed sources (apple-docs, apple-archive, hig,
+        /// swift-evolution, swift-org, swift-book) and merges them into
+        /// the `SmartResult.degradedSources` array, so CLI `--format json`
+        /// consumers see the same `degradedSources` payload MCP markdown
+        /// already shows via #650 / PR #652. Nil for "search.db not
+        /// found" (legitimate file-missing path) and the happy case.
+        let searchDBDisabledReason: String?
     }
 
     /// Docs-backed sources in a consistent order. `apple-archive` is included
@@ -79,7 +91,7 @@ extension CLIImpl.Command.Search {
         // #628: thread `--framework` into the docs fetchers so the unified
         // (no `--source`) path honours it. Other fetchers (packages,
         // samples) don't partition by Apple framework at the row level.
-        let searchIndex = await Self.openDocsFetchers(
+        let docsResult = await Self.openDocsFetchers(
             override: searchDb,
             skip: skipDocs,
             availability: availabilityFilter,
@@ -103,9 +115,25 @@ extension CLIImpl.Command.Search {
 
         return FetcherPlan(
             fetchers: fetchers,
-            searchIndex: searchIndex,
-            sampleService: sampleService
+            searchIndex: docsResult.index,
+            sampleService: sampleService,
+            searchDBDisabledReason: docsResult.disabledReason
         )
+    }
+
+    /// #648 (CLI JSON path) — pair of `(SearchModule.Index?, String?)`
+    /// returned by `openDocsFetchers`. Distinguishes the three states a
+    /// search.db open can land in:
+    ///   - `(index, nil)`     — happy path, fetchers wired
+    ///   - `(nil, nil)`       — file legitimately missing (skip / samples-only)
+    ///   - `(nil, "<reason>")` — file present but unopenable (schema mismatch,
+    ///     corrupt file, "not a database"); fetchers can't be wired but
+    ///     the CLI should surface the failure to `--format json` consumers
+    ///     via `SmartResult.degradedSources` instead of silently dropping
+    ///     to "no apple-docs match" semantics.
+    struct DocsFetchersResult {
+        let index: SearchModule.Index?
+        let disabledReason: String?
     }
 
     private static func openDocsFetchers(
@@ -114,8 +142,8 @@ extension CLIImpl.Command.Search {
         availability: SearchModels.Search.AvailabilityFilter?,
         framework: String?,
         into fetchers: inout [any Search.CandidateFetcher]
-    ) async -> SearchModule.Index? {
-        guard !skip else { return nil }
+    ) async -> DocsFetchersResult {
+        guard !skip else { return DocsFetchersResult(index: nil, disabledReason: nil) }
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? Shared.Paths.live().searchDatabase
         guard FileManager.default.fileExists(atPath: url.path) else {
@@ -129,7 +157,12 @@ extension CLIImpl.Command.Search {
             Cupertino.Context.composition.logging.recording.warning(
                 "ℹ️  search.db not found at \(url.path) — skipping doc sources."
             )
-            return nil
+            // File legitimately missing isn't a configuration error —
+            // it's the samples-only path. Mirror #645's distinction:
+            // disabledReason stays nil so the CLI doesn't synthesise
+            // fake degradedSources for users who never set up the
+            // bundle in the first place.
+            return DocsFetchersResult(index: nil, disabledReason: nil)
         }
         do {
             let index = try await SearchModule.Index(dbPath: url, logger: Cupertino.Context.composition.logging.recording)
@@ -142,12 +175,28 @@ extension CLIImpl.Command.Search {
                     framework: framework
                 ))
             }
-            return index
+            return DocsFetchersResult(index: index, disabledReason: nil)
         } catch {
             Cupertino.Context.composition.logging.recording.error(
                 "⚠️  Could not open search.db: \(error.localizedDescription)"
             )
-            return nil
+            // #648 (CLI JSON path) — file present + open failed
+            // is a configuration error. Pre-fix the catch returned nil
+            // alongside the file-missing path and the downstream
+            // SmartQuery saw zero docs fetchers in the fan-out, which
+            // its `classifyDegradation` plumbing couldn't pin to a
+            // schema-mismatch (no per-fetcher throw fired — they
+            // never ran). Result: `SmartResult.degradedSources` stayed
+            // empty + the CLI `--format json` payload had an empty
+            // `degradedSources` array even though 6 sources had
+            // actually failed to open. Classify with the same patterns
+            // SmartQuery / UnifiedSearchService use (#640 / #642) and
+            // return the reason so the caller can synthesise the
+            // open-time `DegradedSource` entries — mirrors #648 (open-
+            // time) / PR #652 on the MCP side.
+            let reason = SearchModule.SmartQuery.classifyDegradation(error)
+                ?? "search index initialisation failed: \(error.localizedDescription)"
+            return DocsFetchersResult(index: nil, disabledReason: reason)
         }
     }
 
