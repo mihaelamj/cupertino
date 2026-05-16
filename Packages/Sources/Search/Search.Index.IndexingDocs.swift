@@ -4,7 +4,6 @@ import SearchModels
 import SharedConstants
 import SQLite3
 
-
 extension Search.Index {
     /// Index a document for searching.
     ///
@@ -25,13 +24,22 @@ extension Search.Index {
         let framework = params.framework
         let language = params.language
         let title = params.title
-        let content = params.content
+        // #113 — rewrite `doc://` references to public `https://` URLs
+        // at the indexer boundary (total rewrite policy). Pre-fix, raw
+        // `doc://` URIs that the DocC renderer failed to translate
+        // leaked into stored content, where AI clients hit unfollowable
+        // references. Substring substitution; idempotent; no DB lookup.
+        let content = DocLinkRewriter.rewrite(params.content).output
         let filePath = params.filePath
         let contentHash = params.contentHash
         let lastCrawled = params.lastCrawled
         let sourceType = params.sourceType
         let packageId = params.packageId
-        let jsonData = params.jsonData
+        // Apply the same rewrite to jsonData — the `read_document` MCP
+        // tool + `cupertino read` both serve from `docs_metadata.json_data`,
+        // so leaving `doc://` in the JSON blob would defeat the rewrite.
+        // JSON-safe: the substituted substring contains no JSON-meta chars.
+        let jsonData = params.jsonData.map { DocLinkRewriter.rewrite($0).output }
         let minIOS = params.minIOS
         let minMacOS = params.minMacOS
         let minTvOS = params.minTvOS
@@ -39,7 +47,9 @@ extension Search.Index {
         let minVisionOS = params.minVisionOS
         let availabilitySource = params.availabilitySource
 
-        // Extract summary (first 500 chars, stop at sentence)
+        // Extract summary (first 500 chars, stop at sentence).
+        // Note: `content` is already post-rewrite, so the summary inherits
+        // the rewrite automatically; no explicit summary pass needed.
         let summary = extractSummary(from: content)
         let wordCount = content.split(separator: " ").count
 
@@ -389,6 +399,13 @@ extension Search.Index {
             content += "\n\n" + attributes.joined(separator: " ")
         }
 
+        // #113 — total-rewrite policy: kill every `doc://` link at the
+        // indexer boundary. Same pattern as `indexDocument`. Applies to
+        // both the FTS-side content blob and the JSON payload that
+        // `read_document` / `cupertino read` serve back. JSON-safe.
+        content = DocLinkRewriter.rewrite(content).output
+        let rewrittenJsonData = DocLinkRewriter.rewrite(jsonData).output
+
         let summary = extractSummary(from: content)
         let wordCount = content.split(separator: " ").count
 
@@ -472,7 +489,11 @@ extension Search.Index {
         sqlite3_bind_int64(metaStatement, 7, Int64(page.crawledAt.timeIntervalSince1970))
         sqlite3_bind_int(metaStatement, 8, Int32(wordCount))
         sqlite3_bind_text(metaStatement, 9, (page.source.rawValue as NSString).utf8String, -1, nil)
-        sqlite3_bind_text(metaStatement, 10, (jsonData as NSString).utf8String, -1, nil)
+        // #113 — bind the rewritten JSON blob (doc:// → https://) so the
+        // `read_document` MCP tool + `cupertino read` serve clean links.
+        // `extractAvailabilityFromJSON` above runs against the original
+        // jsonData because it reads platform version numbers, not links.
+        sqlite3_bind_text(metaStatement, 10, (rewrittenJsonData as NSString).utf8String, -1, nil)
 
         // Bind availability columns (use final values with overrides)
         bindOptionalText(metaStatement, 11, finalIOS)
