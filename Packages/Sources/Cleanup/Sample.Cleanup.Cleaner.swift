@@ -2,6 +2,7 @@ import CleanupModels
 import Foundation
 import LoggingModels
 import SharedConstants
+
 // MARK: - Sample Code Cleaner
 
 extension Sample.Cleanup {
@@ -13,6 +14,15 @@ extension Sample.Cleanup {
         private let sampleCodeDirectory: URL
         private let dryRun: Bool
         private let keepOriginals: Bool
+        /// #656 — when true, dry-run runs `zipinfo` on every archive to
+        /// count items that would be removed (accurate but slow,
+        /// ~minutes on a 600-zip corpus). When false (the default for
+        /// dry-run after #656), each archive is reported with
+        /// `itemsRemoved: 0` and the subprocess fan-out is skipped
+        /// entirely — dry-run finishes in seconds. Real cleanup
+        /// (dryRun = false) ignores this flag; it always runs the full
+        /// extract → scan → recompress pipeline.
+        private let verify: Bool
         /// GoF Strategy seam for log emission (1994 p. 315).
         private let logger: any LoggingModels.Logging.Recording
 
@@ -32,11 +42,13 @@ extension Sample.Cleanup {
             sampleCodeDirectory: URL,
             dryRun: Bool = false,
             keepOriginals: Bool = false,
+            verify: Bool = false,
             logger: any LoggingModels.Logging.Recording
         ) {
             self.sampleCodeDirectory = sampleCodeDirectory
             self.dryRun = dryRun
             self.keepOriginals = keepOriginals
+            self.verify = verify
             self.logger = logger
         }
 
@@ -150,9 +162,21 @@ extension Sample.Cleanup {
                 )
             }
 
-            // Dry run - just report what would be cleaned
+            // Dry run - just report what would be cleaned.
+            //
+            // #656 — pre-fix every dry-run archive ran `/usr/bin/zipinfo`
+            // in a subprocess, fanning out 627 fork+exec calls on the
+            // default corpus and turning a "preview" into ~3 minutes of
+            // work. The throttled output (#651) hid the firehose but
+            // didn't speed up the underlying scan. Default behaviour is
+            // now stat-only: report each archive at its on-disk size +
+            // `itemsRemoved: 0` without ever opening the zip. The
+            // archive count + size totals stay accurate (that's what
+            // most operators want from `--dry-run` — "do I have a
+            // corpus to clean?"). When the user opts into precise
+            // counting via `--verify`, we fall through to the old path.
             if dryRun {
-                let itemsToRemove = await countItemsToRemove(in: zipURL)
+                let itemsToRemove = verify ? await countItemsToRemove(in: zipURL) : 0
                 return Shared.Models.CleanupResult(
                     filename: filename,
                     originalSize: originalSize,
