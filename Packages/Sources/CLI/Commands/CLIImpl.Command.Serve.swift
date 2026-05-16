@@ -179,8 +179,14 @@ extension CLIImpl.Command {
             searchDBURL: URL,
             sampleDBURL: URL
         ) async {
-            // Initialize search index if available
-            let searchIndex: SearchModule.Index? = await loadSearchIndex(searchDBURL: searchDBURL)
+            // Initialize search index if available. #645: when the file
+            // exists but can't be opened (schema mismatch, etc.) we keep
+            // the reason string so the tool provider can still advertise
+            // search tools and fail loudly on call, rather than silently
+            // dropping them from `tools/list`.
+            let searchLoadResult = await loadSearchIndex(searchDBURL: searchDBURL)
+            let searchIndex: SearchModule.Index? = searchLoadResult.index
+            let searchIndexDisabledReason: String? = searchLoadResult.disabledReason
 
             // Register resource provider with optional search-index markdown
             // lookup. The provider doesn't see the Search target — it just
@@ -234,7 +240,8 @@ extension CLIImpl.Command {
                 sampleService: sampleService,
                 teaserService: teaserService,
                 unifiedService: unifiedService,
-                documentResourceProvider: resourceProvider
+                documentResourceProvider: resourceProvider,
+                searchIndexDisabledReason: searchIndexDisabledReason
             )
             await server.registerToolProvider(toolProvider)
 
@@ -269,23 +276,58 @@ extension CLIImpl.Command {
             }
         }
 
-        private func loadSearchIndex(searchDBURL: URL) async -> SearchModule.Index? {
+        /// Result of attempting to load the search index for the MCP server.
+        ///
+        /// Distinguishes the two `nil` cases so `CompositeToolProvider` can
+        /// decide whether to hide the search.db-dependent tools (file missing,
+        /// legitimately samples-only) or advertise them with a per-call
+        /// error path (file present but unopenable, a configuration error).
+        /// Pre-#645 both states collapsed to a bare `Search.Index?` and
+        /// `tools/list` silently dropped 6 tools when the DB was unopenable.
+        struct SearchIndexLoadResult {
+            let index: SearchModule.Index?
+            let disabledReason: String?
+        }
+
+        private func loadSearchIndex(searchDBURL: URL) async -> SearchIndexLoadResult {
             guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
                 let infoMsg = "ℹ️  Search index not found at: \(searchDBURL.path)"
                 let cmd = "\(Shared.Constants.App.commandName) save"
                 let hintMsg = "   Tools will not be available. Run '\(cmd)' to enable search."
                 Cupertino.Context.composition.logging.recording.info("\(infoMsg) \(hintMsg)", category: .mcp)
-                return nil
+                // No file → legitimately no search index; the tool provider
+                // hides the 6 search.db-dependent tools to keep `tools/list`
+                // honest about what's actually callable.
+                return SearchIndexLoadResult(index: nil, disabledReason: nil)
             }
 
             do {
-                return try await SearchModule.Index(dbPath: searchDBURL, logger: Cupertino.Context.composition.logging.recording)
+                let index = try await SearchModule.Index(
+                    dbPath: searchDBURL,
+                    logger: Cupertino.Context.composition.logging.recording
+                )
+                return SearchIndexLoadResult(index: index, disabledReason: nil)
             } catch {
+                let errorString = "\(error)"
+                let reason: String
+                let lowercased = errorString.lowercased()
+                if lowercased.contains("schema version") {
+                    reason = "schema mismatch; run `cupertino setup` to redownload a matching bundle"
+                } else if lowercased.contains("unable to open database") || lowercased.contains("file is not a database") {
+                    reason = "database unopenable; check the `--search-db` path"
+                } else {
+                    reason = "search index initialisation failed: \(errorString)"
+                }
                 let errorMsg = "⚠️  Failed to load search index: \(error)"
-                let cmd = "\(Shared.Constants.App.commandName) save"
-                let hintMsg = "   Tools will not be available. Run '\(cmd)' to create the index."
+                let cmd = "\(Shared.Constants.App.commandName) setup"
+                let hintMsg = "   Tools advertised but will return an error on call until you run '\(cmd)' or rebuild the index."
                 Cupertino.Context.composition.logging.recording.warning("\(errorMsg) \(hintMsg)", category: .mcp)
-                return nil
+                // File present + open failed → configuration error. Expose
+                // the tools in `tools/list` so AI agents see the full
+                // capability set; per-call handlers throw a clear error
+                // frame naming the reason (the same one the user can act
+                // on).
+                return SearchIndexLoadResult(index: nil, disabledReason: reason)
             }
         }
 
