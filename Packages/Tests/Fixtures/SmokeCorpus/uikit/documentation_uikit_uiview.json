@@ -1,0 +1,22 @@
+{
+    "id": "11111111-1111-1111-1111-000000000003",
+    "url": "https://developer.apple.com/documentation/uikit/uiview",
+    "title": "UIView | Apple Developer Documentation",
+    "kind": "class",
+    "source": "appleJSON",
+    "abstract": "An object that manages the content for a rectangular area on the screen.",
+    "declaration": {
+        "code": "@MainActor\nclass UIView : UIResponder",
+        "language": "swift"
+    },
+    "overview": "UIView is the base class for all UIKit views. Subclass UIView to provide custom drawing and event handling.",
+    "sections": [],
+    "codeExamples": [],
+    "inheritsFrom": ["UIResponder"],
+    "inheritsFromURIs": ["apple-docs://uikit/uiresponder"],
+    "inheritedBy": ["UIControl"],
+    "inheritedByURIs": ["apple-docs://uikit/uicontrol"],
+    "rawMarkdown": "# UIView | Apple Developer Documentation\n\nClass# UIView",
+    "crawledAt": "2026-05-16T05:00:00Z",
+    "contentHash": "smoke-uiview-001"
+}

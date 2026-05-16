@@ -1,0 +1,18 @@
+{
+    "id": "11111111-1111-1111-1111-000000000007",
+    "url": "https://developer.apple.com/documentation/swiftui/lazyvgrid",
+    "title": "LazyVGrid | Apple Developer Documentation",
+    "kind": "struct",
+    "source": "appleJSON",
+    "abstract": "A container view that arranges its child views in a grid that grows vertically.",
+    "declaration": {
+        "code": "@MainActor\n@preconcurrency\nstruct LazyVGrid<Content> where Content : View",
+        "language": "swift"
+    },
+    "overview": "LazyVGrid is a SwiftUI container. Use it to lay out a collection of views in a grid layout that grows vertically as items are added.",
+    "sections": [],
+    "codeExamples": [],
+    "rawMarkdown": "# LazyVGrid | Apple Developer Documentation\n\nStructure# LazyVGrid\n\nGrid container.",
+    "crawledAt": "2026-05-16T05:00:00Z",
+    "contentHash": "smoke-lazyvgrid-001"
+}
