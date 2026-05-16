@@ -1,4 +1,3 @@
-// swiftlint:disable identifier_name
 // Core.Protocols.SwiftPackagesCatalog.swift
 //
 // Seed list of Swift package URLs, slimmed (#161 follow-up) from the original
@@ -130,8 +129,8 @@ extension Core.Protocols {
 
         /// Search packages by repo name (description is nil post-slim).
         public static func search(_ query: String) async -> [SwiftPackageEntry] {
-            let q = query.lowercased()
-            return await allPackages.filter { $0.repo.lowercased().contains(q) }
+            let needle = query.lowercased()
+            return await allPackages.filter { $0.repo.lowercased().contains(needle) }
         }
 
         // Removed post-#161: packages(license:), activePackages(minStars:), topPackages(limit:)
