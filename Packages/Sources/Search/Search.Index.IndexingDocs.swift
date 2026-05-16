@@ -612,10 +612,24 @@ extension Search.Index {
         // both ends (e.g. UIControl's `inheritedBy: [UIButton]` and
         // UIButton's `inheritsFrom: [UIControl]` produce the same
         // row, written from whichever page is indexed first).
+        //
+        // #669 fallback: when the structured page predates PR #638
+        // (which introduced the URI second-walk inside the JSON
+        // parser), both arrays are nil and `writeInheritanceEdges`
+        // no-ops, leaving the `inheritance` table empty for the
+        // whole bundle. `resolveInheritanceURIs` re-derives them
+        // from `page.rawMarkdown` (which crawlers of every vintage
+        // preserve, including the 2026-05-09 corpus the v1.2.0
+        // bundle was built from) so existing bundles can be
+        // repaired with `cupertino save` alone — no recrawl. Once
+        // a future crawl writes fresh JSON with the dedicated
+        // arrays populated, the fallback no-ops because the
+        // `nil && nil` guard fails inside the helper.
+        let resolved = resolveInheritanceURIs(for: page)
         try await writeInheritanceEdges(
             pageURI: uri,
-            inheritsFromURIs: page.inheritsFromURIs,
-            inheritedByURIs: page.inheritedByURIs
+            inheritsFromURIs: resolved.inheritsFrom,
+            inheritedByURIs: resolved.inheritedBy
         )
     }
 
