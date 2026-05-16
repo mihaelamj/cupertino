@@ -119,7 +119,14 @@ extension CLIImpl.Command.Search {
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? Shared.Paths.live().searchDatabase
         guard FileManager.default.fileExists(atPath: url.path) else {
-            Cupertino.Context.composition.logging.recording.info(
+            // #654 — route the missing-file diagnostic to stderr (.warning
+            // in Logging.Unified.logToConsole, not .info) so it doesn't
+            // pollute stdout when `--format json` is set. Same reasoning
+            // as the schema-mismatch path at the catch-block below
+            // (already `.error()` → stderr). Text + markdown CLI users
+            // still see the line on the same terminal stream interleaved
+            // with the report.
+            Cupertino.Context.composition.logging.recording.warning(
                 "ℹ️  search.db not found at \(url.path) — skipping doc sources."
             )
             return nil
@@ -154,7 +161,9 @@ extension CLIImpl.Command.Search {
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? Shared.Paths.live().packagesDatabase
         guard FileManager.default.fileExists(atPath: url.path) else {
-            Cupertino.Context.composition.logging.recording.info(
+            // #654 — see openDocsFetchers above. Stderr keeps `--format
+            // json` stdout pure for `jq` consumers.
+            Cupertino.Context.composition.logging.recording.warning(
                 "ℹ️  packages.db not found at \(url.path) — skipping packages."
             )
             return
@@ -175,7 +184,9 @@ extension CLIImpl.Command.Search {
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? Sample.Index.databasePath(baseDirectory: Shared.Paths.live().baseDirectory)
         guard FileManager.default.fileExists(atPath: url.path) else {
-            Cupertino.Context.composition.logging.recording.info(
+            // #654 — see openDocsFetchers above. Stderr keeps `--format
+            // json` stdout pure for `jq` consumers.
+            Cupertino.Context.composition.logging.recording.warning(
                 "ℹ️  samples.db not found at \(url.path) — skipping samples."
             )
             return nil
