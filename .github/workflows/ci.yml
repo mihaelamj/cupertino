@@ -36,4 +36,15 @@ jobs:
 
       - name: Test
         working-directory: Packages
-        run: swift test --skip testDownloadRealAppleDocPage
+        # --skip targets recurring CI-flaky tests that hit real network
+        # endpoints. Keep these as @Test(.tags(.integration)) cases for
+        # local runs; CI does not have stable network access to Apple's
+        # CDN / GitHub raw content. Each entry needs a brief justification
+        # comment so future maintainers know why it's here:
+        #   testDownloadRealAppleDocPage: live GET against developer.apple.com
+        #   fetchSwiftEvolution: live GET against github.com/swiftlang/swift-evolution
+        #     (recurring "Caught error: invalidResponse" — see audit on 2026-05-16)
+        run: |
+          swift test \
+            --skip testDownloadRealAppleDocPage \
+            --skip fetchSwiftEvolution
