@@ -185,6 +185,72 @@ extension Search {
             return status.contains("implemented") || status.contains("accepted")
         }
 
+        /// Extract the Swift toolchain version a proposal was implemented in
+        /// (#225 Part B). The corpus has two distinct patterns:
+        ///
+        /// 1. A bulleted `* Implementation:` line carrying the version inline,
+        ///    e.g. `* Implementation: Swift 5.5`. This is the standard
+        ///    swift-evolution convention for accepted-and-implemented
+        ///    proposals.
+        /// 2. A `* Status: Implemented (Swift X.Y)` line — the same status
+        ///    string `extractProposalStatus(from:)` returns; reused here
+        ///    because some proposals carry the version on the status line
+        ///    rather than on a dedicated implementation line.
+        ///
+        /// Pattern 1 wins when both are present (the implementation line is
+        /// the primary citation; the status line is a convenience repeat).
+        ///
+        /// - Parameter markdown: Raw Markdown content of a proposal file.
+        /// - Returns: The semver-style version string (e.g. `"5.5"`) or
+        ///   `nil` when neither pattern matched. Single-component versions
+        ///   (e.g. `Swift 6`) are returned as `"6.0"` so all values share
+        ///   the same `<major>.<minor>` shape the filter compares against.
+        public static func extractImplementationSwiftVersion(from markdown: String) -> String? {
+            // Pattern 1: dedicated implementation line. Match
+            // `Implementation: Swift X[.Y]` anywhere in the line so a
+            // leading `*` / `-` bullet marker or `**Implementation:**`
+            // bold marker doesn't break the scan. The `[\s*]*` between
+            // the colon and `Swift` swallows any combination of
+            // whitespace and markdown bold asterisks so all four
+            // common shapes match:
+            //   * Implementation: Swift X
+            //   * **Implementation:** Swift X
+            //   * Implementation:**Swift X**
+            //   - Implementation: **Swift X.Y**
+            let primary = #"Implementation\s*:[\s*]*Swift\s+(\d+(?:\.\d+)?)"#
+            // Pattern 2: status line that embeds the version in parens,
+            // e.g. `Status: Implemented (Swift 5.5)`. Re-scan rather
+            // than going through extractProposalStatus → mapSwiftVersionToAvailability
+            // because we want the literal version string, not the
+            // platform-version derivation.
+            let fallback = #"Status\s*:[\s*]*Implemented\s*\(\s*Swift\s+(\d+(?:\.\d+)?)\s*\)"#
+
+            for pattern in [primary, fallback] {
+                guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
+                      let match = regex.firstMatch(
+                          in: markdown,
+                          range: NSRange(markdown.startIndex..., in: markdown)
+                      ),
+                      match.numberOfRanges > 1,
+                      let versionRange = Range(match.range(at: 1), in: markdown)
+                else { continue }
+
+                let raw = String(markdown[versionRange])
+                return normalizeSwiftVersion(raw)
+            }
+            return nil
+        }
+
+        /// Normalize a Swift version match to the canonical `<major>.<minor>`
+        /// shape the filter compares against. `Swift 6` → `"6.0"`,
+        /// `Swift 5.10` → `"5.10"` (no padding). Private helper for
+        /// `extractImplementationSwiftVersion`; the filter side does its
+        /// own semver-aware compare so this only normalises the on-disk
+        /// representation.
+        private static func normalizeSwiftVersion(_ raw: String) -> String {
+            raw.contains(".") ? raw : "\(raw).0"
+        }
+
         /// Extract the `SE-NNNN` or `ST-NNNN` identifier from a proposal filename.
         ///
         /// - Parameter filename: Base filename without extension (e.g., `"SE-0001-generics"`).

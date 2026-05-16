@@ -159,6 +159,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamMinVisionOS: stringSchema(
                 description: "Minimum visionOS version filter (e.g. 1.0)."
             ),
+            Shared.Constants.Search.schemaParamMinSwift: stringSchema(
+                description: "Maximum Swift toolchain version for swift-evolution results (e.g. 5.5, 6.0). Filters swift-evolution proposals to those implemented at or below the given version; rows from other sources (apple-docs, samples, hig, swift-org, swift-book, packages) are filtered out when this is set."
+            ),
         ]
 
         let readDocumentProperties: [String: MCP.Core.Protocols.AnyCodable] = [
@@ -517,6 +520,12 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let minTvOS = args.minTvOS()
         let minWatchOS = args.minWatchOS()
         let minVisionOS = args.minVisionOS()
+        // #225 Part B — Swift toolchain filter for swift-evolution rows
+        // via docs_metadata.implementation_swift_version. Plumbed
+        // through handleSearchDocs → Services.SearchQuery; non-evolution
+        // rows are rejected by the index's NULL-rejection semantic when
+        // this is set. nil when the MCP arg is absent (filter off).
+        let minSwift: String? = args.optional(Shared.Constants.Search.schemaParamMinSwift)
 
         // Route based on source parameter
         // Default (nil) now searches ALL sources for better results (#81)
@@ -551,7 +560,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 minMacOS: minMacOS,
                 minTvOS: minTvOS,
                 minWatchOS: minWatchOS,
-                minVisionOS: minVisionOS
+                minVisionOS: minVisionOS,
+                minSwift: minSwift
             )
         default:
             // Default (nil or "all"): search ALL sources for comprehensive results
@@ -576,7 +586,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         minMacOS: String?,
         minTvOS: String?,
         minWatchOS: String?,
-        minVisionOS: String?
+        minVisionOS: String?,
+        minSwift: String?
     ) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let docsService else {
             throw Shared.Core.ToolError.invalidArgument("source", "Documentation index not available")
@@ -594,7 +605,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             minimumMacOS: minMacOS,
             minimumTvOS: minTvOS,
             minimumWatchOS: minWatchOS,
-            minimumVisionOS: minVisionOS
+            minimumVisionOS: minVisionOS,
+            minimumSwift: minSwift
         ))
 
         // Fetch teaser results from all sources user didn't search

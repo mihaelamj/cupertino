@@ -124,6 +124,17 @@ extension CLIImpl.Command {
 
         @Option(
             name: .long,
+            help: """
+            Maximum Swift toolchain version for swift-evolution results \
+            (e.g., 5.5, 6.0). Filters swift-evolution proposals to those \
+            implemented at or below the given version; rows from other \
+            sources are filtered out when this is set.
+            """
+        )
+        var swift: String?
+
+        @Option(
+            name: .long,
             help: "Path to search database (search.db)"
         )
         var searchDb: String?

@@ -29,7 +29,8 @@ extension Search.Index {
         minMacOS: String? = nil,
         minTvOS: String? = nil,
         minWatchOS: String? = nil,
-        minVisionOS: String? = nil
+        minVisionOS: String? = nil,
+        minSwift: String? = nil
     ) async throws -> [Search.Result] {
         guard let database else {
             throw Search.Error.databaseNotInitialized
@@ -114,6 +115,13 @@ extension Search.Index {
         // signal stays dominant. Placed above content (1.0) since a
         // component match on the symbols column is still a stronger
         // signal than a body-text mention.
+        // Column 14 (`implementation_swift_version`) is #225 Part B —
+        // the Swift toolchain version a swift-evolution proposal landed
+        // in. NULL on every non-evolution row. Captured into a local
+        // [uri: version] map in the row-iteration loop below so the
+        // post-fetch in-memory filter can do a proper semver compare
+        // (string compare gets `"10.13" <= "10.2"` wrong; same reason
+        // platform filters do their compare in Swift, not SQL).
         var sql = """
         SELECT
             f.uri,
@@ -129,7 +137,8 @@ extension Search.Index {
             m.min_macos,
             m.min_tvos,
             m.min_watchos,
-            m.min_visionos
+            m.min_visionos,
+            m.implementation_swift_version
         FROM docs_fts f
         JOIN docs_metadata m ON f.uri = m.uri
         LEFT JOIN docs_structured s ON f.uri = s.uri
@@ -159,6 +168,15 @@ extension Search.Index {
         let effectiveMinTvOS = minTvOS?.isEmpty == true ? nil : minTvOS
         let effectiveMinWatchOS = minWatchOS?.isEmpty == true ? nil : minWatchOS
         let effectiveMinVisionOS = minVisionOS?.isEmpty == true ? nil : minVisionOS
+        // #225 Part B — `--swift` filter scopes results by the Swift
+        // toolchain version a swift-evolution proposal landed in. NULL
+        // rows are filtered out at SQL level (same IS-NOT-NULL pattern
+        // the platform filters above use) so a `--swift 5.5` query
+        // against a search-index that hasn't yet been re-built on the
+        // v15→v16 path doesn't surface a sea of NULL evolution rows;
+        // the actual semver compare runs in memory after fetch via the
+        // [uri: version] map captured during the row-iteration loop.
+        let effectiveMinSwift = minSwift?.isEmpty == true ? nil : minSwift
 
         // Add platform version filters (uses indexed columns for NULL filtering)
         // Note: We filter IS NOT NULL at SQL level (uses index), then do proper
@@ -177,6 +195,9 @@ extension Search.Index {
         }
         if effectiveMinVisionOS != nil {
             sql += " AND m.min_visionos IS NOT NULL"
+        }
+        if effectiveMinSwift != nil {
+            sql += " AND m.implementation_swift_version IS NOT NULL"
         }
 
         // Fetch significantly more results so title/kind boosts can surface buried gems.
@@ -223,8 +244,14 @@ extension Search.Index {
         // Execute and collect results
         // Column order: uri(0), source(1), framework(2), title(3), summary(4), file_path(5),
         //               word_count(6), rank(7), kind(8), min_ios(9), min_macos(10),
-        //               min_tvos(11), min_watchos(12), min_visionos(13)
+        //               min_tvos(11), min_watchos(12), min_visionos(13),
+        //               implementation_swift_version(14)
         var results: [Search.Result] = []
+        // #225 Part B — captured per-URI for the post-fetch semver
+        // filter. NULL rows are already excluded at SQL level when
+        // `--swift` is set, so the absence of a uri from this map
+        // when the filter is active means the row had no value.
+        var implementationSwiftVersionByURI: [String: String] = [:]
         // #625 dedup: docs_fts can carry multiple rows for the same `uri`
         // (the shipped v1.1.0 bundle has e.g. 3 rows for
         // apple-docs://naturallanguage/string while docs_metadata has 1 —
@@ -272,6 +299,15 @@ extension Search.Index {
             let minTvOSPtr = sqlite3_column_text(statement, 11)
             let minWatchOSPtr = sqlite3_column_text(statement, 12)
             let minVisionOSPtr = sqlite3_column_text(statement, 13)
+            // #225 Part B — implementation_swift_version (column 14).
+            // Captured into the by-uri map for the post-fetch semver
+            // filter; not surfaced on Search.Result because the value
+            // is filter-only (no current consumer that wants to render
+            // it). When the SearchModels.Result struct grows a slot
+            // for it, replace this side-band capture with a struct field.
+            if let ptr = sqlite3_column_text(statement, 14) {
+                implementationSwiftVersionByURI[uri] = String(cString: ptr)
+            }
 
             // Build availability array from columns
             var availabilityItems: [Search.PlatformAvailability] = []
@@ -755,6 +791,19 @@ extension Search.Index {
             results = results.filter { result in
                 guard let version = result.minimumVisionOS else { return false }
                 return Self.isVersion(version, lessThanOrEqualTo: effectiveMinVisionOS)
+            }
+        }
+        // #225 Part B — semver-aware filter against the captured
+        // [uri: implementation_swift_version] map. Rows missing from
+        // the map (e.g. swift-evolution rows whose markdown the parser
+        // couldn't read a version from, or any non-evolution row in a
+        // mixed result set) are rejected when the filter is set —
+        // matches the IS-NOT-NULL pre-gate semantic the SQL layer
+        // applies for platform filters.
+        if let effectiveMinSwift {
+            results = results.filter { result in
+                guard let version = implementationSwiftVersionByURI[result.uri] else { return false }
+                return Self.isVersion(version, lessThanOrEqualTo: effectiveMinSwift)
             }
         }
 

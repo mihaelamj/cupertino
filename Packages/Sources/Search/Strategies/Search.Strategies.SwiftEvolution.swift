@@ -192,6 +192,16 @@ extension Search {
 
             let status = Search.StrategyHelpers.extractProposalStatus(from: content)
             let availability = Search.StrategyHelpers.mapSwiftVersionToAvailability(status)
+            // #225 Part B — Swift toolchain version this proposal landed
+            // in. Parsed from the proposal markdown's `Implementation:
+            // Swift X.Y` line (primary) or `Status: Implemented (Swift X.Y)`
+            // line (fallback). Stored on docs_metadata so
+            // `cupertino search --swift <ver>` can filter swift-evolution
+            // results by toolchain version. NULL when neither pattern
+            // matched (e.g. Status: Accepted without an implementation
+            // tag yet).
+            let implementationSwiftVersion = Search.StrategyHelpers
+                .extractImplementationSwiftVersion(from: content)
 
             // #668 — write a structured row in addition to the FTS row so
             // `docs_structured.(missing)` rate drops from 100 % to 0 % for
@@ -217,7 +227,8 @@ extension Search {
                 jsonData: pageJSON,
                 overrideMinIOS: availability.iOS,
                 overrideMinMacOS: availability.macOS,
-                overrideAvailabilitySource: availability.iOS != nil ? "swift-version" : nil
+                overrideAvailabilitySource: availability.iOS != nil ? "swift-version" : nil,
+                implementationSwiftVersion: implementationSwiftVersion
             )
         }
     }

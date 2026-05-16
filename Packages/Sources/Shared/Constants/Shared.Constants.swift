@@ -749,6 +749,12 @@ extension Shared.Constants {
         /// JSON Schema parameter: min_visionos
         public static let schemaParamMinVisionOS = "min_visionos"
 
+        /// JSON Schema parameter: min_swift (#225 Part B). Swift
+        /// toolchain version threshold for swift-evolution rows; passes
+        /// through to `docs_metadata.implementation_swift_version` via
+        /// the search index's `--swift` filter surface.
+        public static let schemaParamMinSwift = "min_swift"
+
         // MARK: Semantic Search Parameters (#81)
 
         /// JSON Schema parameter: kind (symbol kind)
