@@ -601,6 +601,16 @@ extension Core.JSONParser.AppleJSONToMarkdown {
         var inheritedBy: [String]?
         var conformingTypes: [String]?
         var inheritsFrom: [String]?
+        // #274 — resolved apple-docs URIs parallel to the title arrays.
+        // The relationship walk has the identifier (doc://...) AND the
+        // ref.url (relative DocC path) in hand, so resolving to a
+        // canonical `apple-docs://<framework>/<path>` is one URL build +
+        // one URLUtilities call. Same order as the corresponding title
+        // array; nil when the identifier doesn't resolve through
+        // `doc.references` (rare — Apple's JSON references its own
+        // classes consistently).
+        var inheritsFromURIs: [String]?
+        var inheritedByURIs: [String]?
 
         if let relationships = doc.relationshipsSections {
             for section in relationships {
@@ -610,16 +620,31 @@ extension Core.JSONParser.AppleJSONToMarkdown {
                     }
                     return id.components(separatedBy: "/").last
                 }
+                let uris = section.identifiers.compactMap { id -> String? in
+                    // ref.url is the relative DocC path (`/documentation/uikit/uicontrol`).
+                    // Build an absolute developer.apple.com URL via the
+                    // existing helper, then run through `URLUtilities.appleDocsURI`
+                    // for the canonical `apple-docs://<framework>/<path>` form.
+                    guard let ref = doc.references?[id],
+                          let absolute = absoluteDocumentationURL(from: ref.url),
+                          let appleDocsURI = Shared.Models.URLUtilities.appleDocsURI(from: absolute)
+                    else {
+                        return nil
+                    }
+                    return appleDocsURI
+                }
 
                 switch section.title.lowercased() {
                 case "conforms to":
                     conformsTo = types
                 case "inherited by":
                     inheritedBy = types
+                    inheritedByURIs = uris
                 case "conforming types":
                     conformingTypes = types
                 case "inherits from":
                     inheritsFrom = types
+                    inheritsFromURIs = uris
                 default:
                     // Add as a section
                     sections.append(Shared.Models.StructuredDocumentationPage.Section(
@@ -660,6 +685,8 @@ extension Core.JSONParser.AppleJSONToMarkdown {
             inheritedBy: inheritedBy,
             conformingTypes: conformingTypes,
             inheritsFrom: inheritsFrom,
+            inheritsFromURIs: inheritsFromURIs,
+            inheritedByURIs: inheritedByURIs,
             rawMarkdown: markdown,
             crawledAt: Date(),
             contentHash: "",

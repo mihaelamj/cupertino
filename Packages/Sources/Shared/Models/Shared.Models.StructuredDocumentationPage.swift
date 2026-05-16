@@ -33,6 +33,13 @@ extension Shared.Models {
         /// `nil` for value types and protocols — non-class kinds simply
         /// don't have superclass data in Apple's DocC JSON.
         public let inheritsFrom: [String]?
+        /// Resolved apple-docs URIs parallel to `inheritsFrom` (#274 writes).
+        /// One URI per title, same order; nil when the title couldn't be
+        /// resolved through `doc.references` (extremely rare — Apple's
+        /// JSON references its own classes consistently).
+        public let inheritsFromURIs: [String]?
+        /// Resolved apple-docs URIs parallel to `inheritedBy`.
+        public let inheritedByURIs: [String]?
 
         /// Raw markdown from original source (HTML conversion)
         public let rawMarkdown: String?
@@ -62,6 +69,8 @@ extension Shared.Models {
             inheritedBy: [String]? = nil,
             conformingTypes: [String]? = nil,
             inheritsFrom: [String]? = nil,
+            inheritsFromURIs: [String]? = nil,
+            inheritedByURIs: [String]? = nil,
             rawMarkdown: String? = nil,
             crawledAt: Date = Date(),
             contentHash: String = "",
@@ -84,6 +93,8 @@ extension Shared.Models {
             self.inheritedBy = inheritedBy
             self.conformingTypes = conformingTypes
             self.inheritsFrom = inheritsFrom
+            self.inheritsFromURIs = inheritsFromURIs
+            self.inheritedByURIs = inheritedByURIs
             self.rawMarkdown = rawMarkdown
             self.crawledAt = crawledAt
             self.contentHash = contentHash
@@ -114,6 +125,8 @@ extension Shared.Models {
             inheritedBy = try container.decodeIfPresent([String].self, forKey: .inheritedBy)
             conformingTypes = try container.decodeIfPresent([String].self, forKey: .conformingTypes)
             inheritsFrom = try container.decodeIfPresent([String].self, forKey: .inheritsFrom)
+            inheritsFromURIs = try container.decodeIfPresent([String].self, forKey: .inheritsFromURIs)
+            inheritedByURIs = try container.decodeIfPresent([String].self, forKey: .inheritedByURIs)
             rawMarkdown = try container.decodeIfPresent(String.self, forKey: .rawMarkdown)
             crawledAt = try container.decode(Date.self, forKey: .crawledAt)
             contentHash = try container.decode(String.self, forKey: .contentHash)
@@ -125,6 +138,7 @@ extension Shared.Models {
             case abstract, declaration, overview, sections, codeExamples
             case language, platforms, module
             case conformsTo, inheritedBy, conformingTypes, inheritsFrom
+            case inheritsFromURIs, inheritedByURIs
             case rawMarkdown, crawledAt, contentHash, crawlDepth
         }
 
@@ -561,6 +575,8 @@ extension Shared.Models {
                 inheritedBy: inheritedBy,
                 conformingTypes: conformingTypes,
                 inheritsFrom: inheritsFrom,
+                inheritsFromURIs: inheritsFromURIs,
+                inheritedByURIs: inheritedByURIs,
                 rawMarkdown: rawMarkdown,
                 crawledAt: crawledAt,
                 contentHash: newHash,
