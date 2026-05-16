@@ -72,7 +72,7 @@ extension MCP.Core {
             try await transport.start()
 
             // Start message processing loop
-            messageTask = Task { [weak self] in
+            messageTask = Task(priority: .userInitiated) { [weak self] in
                 await self?.processMessages()
             }
 
