@@ -686,5 +686,4 @@ extension Search {
 
 /// SQLite3 convenience — the same constant SearchIndex uses, replicated here so this
 /// file doesn't depend on Search/Index's private symbols.
-// swiftlint:disable:next identifier_name
 private let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)

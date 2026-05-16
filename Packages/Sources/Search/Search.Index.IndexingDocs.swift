@@ -4,10 +4,12 @@ import SearchModels
 import SharedConstants
 import SQLite3
 
-// swiftlint:disable function_body_length function_parameter_count
+// swiftlint:disable function_body_length
 // Justification: extracted from SearchIndex.swift; the original 4598-line
-// file's class_body_length / function_body_length / function_parameter_count
-// rationale carries forward to the per-concern slices.
+// file's class_body_length / function_body_length rationale carries forward
+// to the per-concern slices. (`function_parameter_count` was dropped in
+// #673 Phase D as superfluous — no function in this file currently
+// trips the rule.)
 
 extension Search.Index {
     /// Index a document for searching.

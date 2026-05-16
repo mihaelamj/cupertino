@@ -2,10 +2,11 @@ import Foundation
 
 // MARK: - Cupertino Constants
 
-// swiftlint:disable type_body_length file_length
+// swiftlint:disable file_length
 // Justification: Shared.Constants serves as central configuration hub for the entire application.
 // Contains directory names, file names, URL patterns, limits, delays, and MCP configuration.
-// Splitting would scatter related constants and reduce discoverability.
+// Splitting would scatter related constants and reduce discoverability. (`type_body_length` was
+// dropped in #673 Phase D as superfluous — the namespace enum doesn't trip the rule.)
 // Organized with clear MARK sections for easy navigation.
 
 /// Global constants for Cupertino application

@@ -382,9 +382,11 @@ extension Crawler {
             return html
         }
 
-        // swiftlint:disable:next function_body_length
-        // Justification: HTML to Markdown conversion requires many regex replacements.
-        // Splitting would obscure the sequential transformation pipeline.
+        /// HTML-to-Markdown conversion: many sequential regex replacements.
+        /// Splitting would obscure the linear transformation pipeline; kept
+        /// as a single function. (Previously had a swiftlint disable for
+        /// `function_body_length`; refactors elsewhere brought it under the
+        /// threshold, so the disable was removed in #673 Phase D.)
         private func htmlToMarkdown(_ html: String) -> String {
             var result = html
 
