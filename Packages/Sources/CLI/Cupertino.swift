@@ -1,5 +1,7 @@
 import ArgumentParser
 import Darwin
+import Foundation
+import Search
 import SharedConstants
 
 // MARK: - Cupertino CLI
@@ -89,8 +91,29 @@ struct Cupertino: AsyncParsableCommand {
                     try command.run()
                 }
             }
+        } catch let mismatch as SearchModule.Error where Self.isSchemaMismatch(mismatch) {
+            // #673 Phase E — schema-version mismatch is a known, recoverable
+            // class of error with a concrete remediation. Print the user-
+            // friendly `errorDescription` (NO Swift stack trace) on stderr,
+            // then exit with `EX_DATAERR` (65 — "the input data was incorrect
+            // in some way", per sysexits(3)) so scripts can detect this class
+            // without parsing the message text.
+            //
+            // Distinct from `exit(withError:)`'s default mapping (which would
+            // print the underlying error's String description + exit with
+            // generic `EXIT_FAILURE` = 1).
+            FileHandle.standardError.write(Data((mismatch.errorDescription ?? "Schema version mismatch.\n").utf8))
+            FileHandle.standardError.write(Data("\n".utf8))
+            Darwin.exit(Int32(EX_DATAERR))
         } catch {
             exit(withError: error)
         }
+    }
+
+    /// True when the value is the `.schemaVersionMismatch` case. Helper
+    /// so the `catch let … where` clause stays readable.
+    private static func isSchemaMismatch(_ error: SearchModule.Error) -> Bool {
+        if case .schemaVersionMismatch = error { return true }
+        return false
     }
 }
