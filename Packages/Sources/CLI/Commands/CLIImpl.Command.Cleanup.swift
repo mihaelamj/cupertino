@@ -5,6 +5,7 @@ import Foundation
 import Logging
 import LoggingModels
 import SharedConstants
+
 // MARK: - Cleanup Command
 
 extension CLIImpl.Command {
@@ -46,6 +47,19 @@ extension CLIImpl.Command {
         )
         var keepOriginals: Bool = false
 
+        /// #656 — opt back in to per-archive zipinfo during dry-run.
+        /// Without this, dry-run is stat-only (fast, ~seconds on 627
+        /// zips) and reports `Items to remove: 0` because no archives
+        /// were opened. With `--verify`, dry-run forks `/usr/bin/zipinfo`
+        /// per archive to count the cleanup candidates exactly (slow,
+        /// ~minutes, matches the pre-#656 behaviour). Real cleanup
+        /// ignores this flag — it always extracts + scans.
+        @Flag(
+            name: .long,
+            help: "During --dry-run, open each archive with zipinfo to count cleanup candidates exactly (slow on large corpora; off by default)."
+        )
+        var verify: Bool = false
+
         mutating func run() async throws {
             // Path-DI composition sub-root (#535): one `Shared.Paths`
             // constructed at the top of run(); explicit URLs to every
@@ -86,7 +100,8 @@ extension CLIImpl.Command {
                 sampleCodeDirectory: directory,
                 dryRun: dryRun,
                 keepOriginals: keepOriginals,
-            logger: Cupertino.Context.composition.logging.recording
+                verify: verify,
+                logger: Cupertino.Context.composition.logging.recording
             )
 
             let stats = try await cleaner.cleanup(progress: CleanupProgressObserver(
