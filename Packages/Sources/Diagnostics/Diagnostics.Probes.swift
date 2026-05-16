@@ -161,6 +161,110 @@ extension Diagnostics {
             return rows
         }
 
+        // MARK: - #275 — freshness / drift signal
+
+        /// Per-source freshness report based on `docs_metadata.last_crawled`
+        /// (Unix epoch seconds). Per the #275 spec, brew-installed users
+        /// have no `cupertino-docs-private` checkout, so neither `git log`
+        /// nor filesystem mtimes give them a useful answer to "how stale
+        /// is my local index?". `last_crawled` is on every row and is
+        /// stamped at indexer save time, so it's the authoritative signal
+        /// available without external state.
+        ///
+        /// Returns per-source quantiles + total row count. Caller (doctor)
+        /// renders timestamps as human-readable dates. Pure read; no
+        /// writes; idempotent.
+        ///
+        /// Quantile choice: `oldest` / `p50` / `p90` / `newest` mirrors the
+        /// pattern from the #275 spec's open question 1 (snapshot vs
+        /// distribution): a single snapshot timestamp hides per-page
+        /// staleness when a long crawl spans days, while raw min/max
+        /// can lie about the bulk. p50 + p90 surfaces both the typical
+        /// age and the tail.
+        ///
+        /// Returns `nil` on any SQLite failure (DB locked, schema mismatch
+        /// at open, file missing). The caller surfaces that as
+        /// `(skipped)` rather than crash.
+        public static func freshnessBySource(
+            at dbPath: URL
+        ) -> [FreshnessRow]? {
+            var db: OpaquePointer?
+            guard sqlite3_open_v2(dbPath.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+                return nil
+            }
+            defer { sqlite3_close(db) }
+
+            // Per-source min/max + count. SQLite has no native PERCENTILE_CONT,
+            // so the p50 / p90 quantiles are computed in Swift after reading
+            // all `(source, last_crawled)` pairs sorted ascending. For a
+            // ~285k-row corpus that's ~2 MB of in-memory Int64s — well
+            // within budget for a read-only doctor probe that runs once.
+            let sql = """
+            SELECT source, last_crawled
+            FROM docs_metadata
+            WHERE last_crawled > 0
+            ORDER BY source ASC, last_crawled ASC;
+            """
+
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                return nil
+            }
+
+            var bySource: [String: [Int64]] = [:]
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                let source = sqlite3_column_text(stmt, 0).map { String(cString: $0) } ?? ""
+                let crawled = sqlite3_column_int64(stmt, 1)
+                bySource[source, default: []].append(crawled)
+            }
+
+            return bySource
+                .map { source, timestamps in
+                    FreshnessRow(
+                        source: source,
+                        count: timestamps.count,
+                        oldest: timestamps.first ?? 0,
+                        p50: Self.quantile(sortedTimestamps: timestamps, fraction: 0.50),
+                        p90: Self.quantile(sortedTimestamps: timestamps, fraction: 0.90),
+                        newest: timestamps.last ?? 0
+                    )
+                }
+                .sorted { $0.source < $1.source }
+        }
+
+        /// Nearest-rank quantile on a pre-sorted (ascending) Int64 array.
+        /// Returns 0 on empty input; nearest-rank avoids the interpolation
+        /// ambiguity that bites Postgres' `percentile_cont` vs `percentile_disc`
+        /// and matches what humans expect ("the p90 is one of the actual
+        /// observations, not a synthetic average").
+        private static func quantile(sortedTimestamps: [Int64], fraction: Double) -> Int64 {
+            guard !sortedTimestamps.isEmpty else { return 0 }
+            let rank = Int((Double(sortedTimestamps.count) * fraction).rounded(.up)) - 1
+            let clamped = max(0, min(sortedTimestamps.count - 1, rank))
+            return sortedTimestamps[clamped]
+        }
+
+        /// Per-source row in the freshness report. Unix epoch seconds for
+        /// every timestamp; caller renders to human-readable dates.
+        public struct FreshnessRow: Sendable, Equatable {
+            public let source: String
+            public let count: Int
+            public let oldest: Int64
+            public let p50: Int64
+            public let p90: Int64
+            public let newest: Int64
+
+            public init(source: String, count: Int, oldest: Int64, p50: Int64, p90: Int64, newest: Int64) {
+                self.source = source
+                self.count = count
+                self.oldest = oldest
+                self.p50 = p50
+                self.p90 = p90
+                self.newest = newest
+            }
+        }
+
         // MARK: - File-system probes
 
         /// Count corpus document files under `directory`. Matches `.md`
