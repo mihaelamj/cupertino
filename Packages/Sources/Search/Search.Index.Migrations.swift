@@ -78,11 +78,14 @@ extension Search.Index {
             return
         }
 
-        // Future version - incompatible
+        // Future version - incompatible.
+        // #673 Phase E — typed error so CLI can map to EX_DATAERR + print
+        // the brew-upgrade remediation without a Swift stack trace.
         if currentVersion > Self.schemaVersion {
-            throw Search.Error.sqliteError(
-                "Database schema version \(currentVersion) is newer than supported version \(Self.schemaVersion). "
-                    + "Please update cupertino or delete the database to recreate it."
+            throw Search.Error.schemaVersionMismatch(
+                currentDBVersion: Int(currentVersion),
+                expectedBinaryVersion: Int(Self.schemaVersion),
+                dbPath: dbPath.path
             )
         }
 
@@ -105,15 +108,13 @@ extension Search.Index {
         }
 
         if currentVersion < 5 {
-            // Version 4 -> 5: Added language field to docs_fts and docs_metadata
+            // Version 4 -> 5: Added language field to docs_fts and docs_metadata.
             // BREAKING CHANGE: FTS5 tables cannot have columns added.
-            // Database must be deleted and rebuilt with 'cupertino save'.
-            throw Search.Error.sqliteError(
-                "Database schema version \(currentVersion); binary expects version \(Self.schemaVersion). " +
-                    "The path includes a breaking change at v4→v5 that adds the 'language' field " +
-                    "(plus subsequent breaking changes depending on \(Self.schemaVersion)). " +
-                    "Please delete the database and run 'cupertino save' to rebuild: " +
-                    "rm \(dbPath.path) && cupertino save"
+            // #673 Phase E — typed error; CLI prints user-friendly remediation.
+            throw Search.Error.schemaVersionMismatch(
+                currentDBVersion: Int(currentVersion),
+                expectedBinaryVersion: Int(Self.schemaVersion),
+                dbPath: dbPath.path
             )
         }
 
@@ -148,12 +149,11 @@ extension Search.Index {
             // bm25 can weight directly on AST-extracted symbol names. FTS5
             // does not support ALTER TABLE ADD COLUMN on virtual tables, so
             // this is a BREAKING change — existing DBs must be rebuilt.
-            throw Search.Error.sqliteError(
-                "Database schema version \(currentVersion); binary expects version \(Self.schemaVersion). " +
-                    "The path includes a breaking change at v11→v12 (#192 D) that adds AST-derived " +
-                    "symbols to the FTS index (plus subsequent breaking changes depending on \(Self.schemaVersion)). " +
-                    "Please delete the database and run 'cupertino save' to rebuild: " +
-                    "rm \(dbPath.path) && cupertino save"
+            // #673 Phase E — typed error; CLI prints user-friendly remediation.
+            throw Search.Error.schemaVersionMismatch(
+                currentDBVersion: Int(currentVersion),
+                expectedBinaryVersion: Int(Self.schemaVersion),
+                dbPath: dbPath.path
             )
         }
 
@@ -164,13 +164,11 @@ extension Search.Index {
             // `URLUtilities.filename(_:)` makes new crawls produce canonical
             // URIs. The v1.0.2 bundle ships pre-built at v13, so `cupertino
             // setup` is the production upgrade path.
-            throw Search.Error.sqliteError(
-                "Database schema version \(currentVersion); binary expects version \(Self.schemaVersion). " +
-                    "The path includes a breaking change at v12→v13 (#283) that drops case-axis " +
-                    "duplicate URIs (plus subsequent breaking changes depending on \(Self.schemaVersion)). " +
-                    "Please delete the database and run 'cupertino setup' to download the " +
-                    "matching pre-built bundle: " +
-                    "rm \(dbPath.path) && cupertino setup"
+            // #673 Phase E — typed error; CLI prints user-friendly remediation.
+            throw Search.Error.schemaVersionMismatch(
+                currentDBVersion: Int(currentVersion),
+                expectedBinaryVersion: Int(Self.schemaVersion),
+                dbPath: dbPath.path
             )
         }
 
@@ -187,13 +185,11 @@ extension Search.Index {
             // from reading the same DB. The pattern matches the v11→v12
             // and v12→v13 throws above; the only safe upgrade path is a
             // full rebuild via `cupertino setup`.
-            throw Search.Error.sqliteError(
-                "Database schema version \(currentVersion); binary expects version \(Self.schemaVersion). " +
-                    "The path includes a breaking change at v13→v14 (#77) that adds CamelCase-component " +
-                    "recall to the FTS index (plus subsequent breaking changes depending on \(Self.schemaVersion)). " +
-                    "Please delete the database and run 'cupertino setup' to download the " +
-                    "matching pre-built bundle: " +
-                    "rm \(dbPath.path) && cupertino setup"
+            // #673 Phase E — typed error; CLI prints user-friendly remediation.
+            throw Search.Error.schemaVersionMismatch(
+                currentDBVersion: Int(currentVersion),
+                expectedBinaryVersion: Int(Self.schemaVersion),
+                dbPath: dbPath.path
             )
         }
 
@@ -204,13 +200,11 @@ extension Search.Index {
             // the same JSON and populates the new table. Pattern
             // matches v11→v12 / v12→v13 / v13→v14 — `cupertino setup`
             // for the production-ready bundle, or rebuild locally.
-            throw Search.Error.sqliteError(
-                "Database schema version \(currentVersion); binary expects version \(Self.schemaVersion). " +
-                    "The path includes a breaking change at v14→v15 (#274) that adds class-inheritance " +
-                    "edge tracking. " +
-                    "Please delete the database and run 'cupertino setup' to download the " +
-                    "matching pre-built bundle: " +
-                    "rm \(dbPath.path) && cupertino setup"
+            // #673 Phase E — typed error; CLI prints user-friendly remediation.
+            throw Search.Error.schemaVersionMismatch(
+                currentDBVersion: Int(currentVersion),
+                expectedBinaryVersion: Int(Self.schemaVersion),
+                dbPath: dbPath.path
             )
         }
     }
