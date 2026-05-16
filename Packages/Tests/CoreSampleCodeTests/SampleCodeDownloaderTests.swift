@@ -63,23 +63,10 @@ struct SampleCodeDownloaderTests {
         try? FileManager.default.removeItem(at: tempDir)
     }
 
-    @Test("Sample.Core.Downloader initializes with visible browser flag")
-    @MainActor
-    func downloaderInitializationWithVisibleBrowser() {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-
-        let downloader = Sample.Core.Downloader(
-            outputDirectory: tempDir,
-            visibleBrowser: false, // Don't actually show browser in tests
-            logger: Logging.NoopRecording()
-        )
-
-        _ = downloader
-
-        // Cleanup
-        try? FileManager.default.removeItem(at: tempDir)
-    }
+    // #193 — the `visibleBrowser` parameter was deleted along with the
+    // entire auth flow (the CLI never set it true; the test stub passing
+    // false was the only consumer). Init test below now exercises the
+    // default-arg path (already covered by the prior smoke test).
 
     // MARK: - SampleMetadata Tests
 
@@ -238,32 +225,10 @@ struct SampleCodeDownloaderTests {
         try? FileManager.default.removeItem(at: tempDir)
     }
 
-    // MARK: - Cookie Management Tests
-
-    @Test("Cookies path is in output directory")
-    @MainActor
-    func cookiesPathInOutputDirectory() {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-
-        // The Downloader is constructed for its side-effect of confirming
-        // init succeeds for this output directory; the assertion verifies
-        // the path-naming convention, not state read off the instance.
-        // Discard to `_` so Swift's unused-let warning stops (and to match
-        // the `_ = downloader` discard pattern used by the four init-only
-        // smoke tests earlier in this file).
-        _ = Sample.Core.Downloader(outputDirectory: tempDir, logger: Logging.NoopRecording())
-
-        // Cookie path should be: outputDirectory/auth-cookies.json
-        let expectedPath = tempDir.appendingPathComponent(Shared.Constants.FileName.authCookies)
-
-        // We can't directly access private cookiesPath, but we know the pattern
-        #expect(expectedPath.lastPathComponent == Shared.Constants.FileName.authCookies)
-        #expect(expectedPath.path.contains(tempDir.path))
-
-        // Cleanup
-        try? FileManager.default.removeItem(at: tempDir)
-    }
+    // #193 — `Cookie Management Tests` section deleted. Auth flow gone;
+    // no cookies are loaded or persisted. The path-naming convention test
+    // asserted on `Shared.Constants.FileName.authCookies`, which is now
+    // dead surface.
 
     // MARK: - URL Validation Tests
 
