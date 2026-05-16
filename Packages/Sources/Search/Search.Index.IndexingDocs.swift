@@ -659,7 +659,26 @@ extension Search.Index {
 
             sqlite3_bind_int(statement, 7, symbol.isAsync ? 1 : 0)
             sqlite3_bind_int(statement, 8, symbol.isThrows ? 1 : 0)
-            sqlite3_bind_int(statement, 9, symbol.isPublic ? 1 : 0)
+            // #409 Layer 1 — repurpose `is_public`. The literal-keyword
+            // extractor populated this from a `public` modifier on the
+            // declaration, but Apple's doc code snippets never write
+            // `public` explicitly (it's redundant; everything documented
+            // IS public). Pre-fix the column read `1` for ~0% of rows
+            // (24 of 168,259 in the v1.0.3 snapshot, all from
+            // sample-code blocks or framework-design articles that
+            // happened to include modifiers). The column carried no
+            // useful signal for our corpus and confused anyone reading
+            // the schema. Post-fix: for apple-docs-sourced pages, the
+            // column reads `1` tautologically (every documented Apple
+            // API is public). Any future internal sample-code blocks
+            // (where `private` / `internal` actually appears in source)
+            // fall through to the original literal-keyword interpretation
+            // so a future "exclude internal helpers" query has the
+            // signal it needs.
+            let isPublic = docUri.hasPrefix(Shared.Constants.SourcePrefix.appleDocs + "://")
+                ? true
+                : symbol.isPublic
+            sqlite3_bind_int(statement, 9, isPublic ? 1 : 0)
             sqlite3_bind_int(statement, 10, symbol.isStatic ? 1 : 0)
 
             let attributesStr = symbol.attributes.isEmpty
