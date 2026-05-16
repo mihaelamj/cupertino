@@ -194,6 +194,103 @@ struct Issue177SemanticSearchRerankTests {
         }
     }
 
+    @Test("#670 — searchSymbols: exact name match ranks above substring matches in the same kind tier")
+    func exactNameBeatsSubstring() async throws {
+        let (index, dbPath) = try await makeIndex()
+        defer { cleanup(dbPath) }
+
+        // Pre-fix repro: query `Task` returned `AVAggregateAssetDownloadTask`
+        // (class, avfoundation) before the canonical `Task` (struct, swift)
+        // because both share kind tier 0 (class/struct/enum/protocol/actor)
+        // and AV* < T alphabetically. Post-fix the exact-name tier promotes
+        // `Task` to position 0 within tier 0, and AV* stays at position 1.
+        try await seed(
+            index: index,
+            uri: "apple-docs://avfoundation/avaggregateassetdownloadtask",
+            framework: "avfoundation",
+            title: "AVAggregateAssetDownloadTask",
+            symbolName: "AVAggregateAssetDownloadTask",
+            kind: "class"
+        )
+        try await seed(
+            index: index,
+            uri: "apple-docs://avfoundation/avassetdownloadtask",
+            framework: "avfoundation",
+            title: "AVAssetDownloadTask",
+            symbolName: "AVAssetDownloadTask",
+            kind: "class"
+        )
+        try await seed(
+            index: index,
+            uri: "apple-docs://swift/task",
+            framework: "swift",
+            title: "Task",
+            symbolName: "Task",
+            kind: "struct"
+        )
+        let results = try await index.searchSymbols(query: "Task", limit: 10)
+        await index.disconnect()
+
+        let names = results.map(\.symbolName)
+        #expect(names.first == "Task", "exact-name match `Task` should rank #1; got \(names)")
+        // Substring matches still returned, just lower in the list.
+        #expect(names.contains("AVAggregateAssetDownloadTask"), "substring matches should still appear; got \(names)")
+        #expect(names.contains("AVAssetDownloadTask"), "substring matches should still appear; got \(names)")
+    }
+
+    @Test("#670 — searchSymbols: exact-name match is case-insensitive")
+    func exactNameBeatsSubstringCaseInsensitive() async throws {
+        let (index, dbPath) = try await makeIndex()
+        defer { cleanup(dbPath) }
+
+        // The exact-name tier uses LOWER() on both sides, so a query
+        // typed in any case still matches a symbol regardless of case.
+        try await seed(
+            index: index,
+            uri: "apple-docs://framework/viewcontroller",
+            framework: "framework",
+            title: "ViewControllerHost",
+            symbolName: "ViewControllerHost",
+            kind: "class"
+        )
+        try await seed(
+            index: index,
+            uri: "apple-docs://framework/view",
+            framework: "framework",
+            title: "View",
+            symbolName: "View",
+            kind: "struct"
+        )
+        let results = try await index.searchSymbols(query: "view", limit: 10)
+        await index.disconnect()
+
+        let names = results.map(\.symbolName)
+        #expect(names.first == "View", "lowercase query `view` should match exactly against `View`; got \(names)")
+    }
+
+    @Test("#670 — searchSymbols: nil/empty query path still uses the base ORDER BY clause (no exact-name placeholder)")
+    func emptyQueryUsesBaseClause() async throws {
+        let (index, dbPath) = try await makeIndex()
+        defer { cleanup(dbPath) }
+
+        // Without a query, there's nothing to exact-match against —
+        // the SQL builder must skip the exact-name tier entirely (and
+        // not bind a phantom placeholder against a non-existent `?`).
+        // Pure smoke: the call must not throw, must return seeded rows.
+        try await seed(
+            index: index,
+            uri: "apple-docs://framework/foo",
+            framework: "framework",
+            title: "Foo",
+            symbolName: "Foo",
+            kind: "struct"
+        )
+        let results = try await index.searchSymbols(query: nil, kind: "struct", limit: 10)
+        await index.disconnect()
+
+        #expect(results.contains { $0.symbolName == "Foo" }, "nil-query search by kind should return the seeded struct; got \(results.map(\.symbolName))")
+    }
+
     @Test("kind-tier ordering: class beats typealias beats method beats operator")
     func kindTierOrdering() async throws {
         let (index, dbPath) = try await makeIndex()
