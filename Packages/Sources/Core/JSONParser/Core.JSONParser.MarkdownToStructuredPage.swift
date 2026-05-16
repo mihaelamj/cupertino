@@ -439,7 +439,6 @@ extension Core.JSONParser {
 
         private static func removePlatformSuffix(_ text: String) -> String {
             // Remove platform version strings like "iOS 17.0+iPadOS 17.0+..."
-            // swiftlint:disable:next line_length
             let platformPattern = #"(?:iOS|iPadOS|macOS|tvOS|watchOS|visionOS|Mac Catalyst)\s*\d+\.\d+(?:\+|–[^+]+\+?)?(?:Deprecated)?"#
 
             guard let regex = try? NSRegularExpression(pattern: platformPattern, options: []) else {
@@ -829,7 +828,6 @@ extension Core.JSONParser {
             var platforms: [String] = []
 
             // Pattern: iOS 17.0+, macOS 14.0+, etc. or iOS 3.0–18.0Deprecated
-            // swiftlint:disable:next line_length
             let pattern = #"(iOS|iPadOS|macOS|tvOS|watchOS|visionOS|Mac Catalyst)\s*(\d+\.\d+)(?:–(\d+\.\d+))?(Deprecated|\+)?"#
 
             guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {

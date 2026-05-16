@@ -703,5 +703,4 @@ extension Search {
 /// Separate name to avoid collision with the same constant in PackageIndex.swift
 /// (both files define a private SQLITE_TRANSIENT but Swift is fine with per-file
 /// private naming collisions).
-// swiftlint:disable:next identifier_name
 private let SQLITE_TRANSIENT_QUERY = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
