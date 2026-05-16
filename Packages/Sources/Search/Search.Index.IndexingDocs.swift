@@ -29,7 +29,8 @@ extension Search.Index {
         // `doc://` URIs that the DocC renderer failed to translate
         // leaked into stored content, where AI clients hit unfollowable
         // references. Substring substitution; idempotent; no DB lookup.
-        let content = DocLinkRewriter.rewrite(params.content).output
+        let contentRewrite = DocLinkRewriter.rewrite(params.content)
+        let content = contentRewrite.output
         let filePath = params.filePath
         let contentHash = params.contentHash
         let lastCrawled = params.lastCrawled
@@ -39,7 +40,20 @@ extension Search.Index {
         // tool + `cupertino read` both serve from `docs_metadata.json_data`,
         // so leaving `doc://` in the JSON blob would defeat the rewrite.
         // JSON-safe: the substituted substring contains no JSON-meta chars.
-        let jsonData = params.jsonData.map { DocLinkRewriter.rewrite($0).output }
+        let jsonRewrite = params.jsonData.map { DocLinkRewriter.rewrite($0) }
+        let jsonData = jsonRewrite?.output
+        // #113 audit-count follow-up: emit a debug record when the
+        // rewriter substituted anything, so `cupertino save` logs carry
+        // a per-page count for the audit trail the issue body asked
+        // for. Zero-count case stays silent to avoid drowning logs in
+        // no-op events (the vast majority of pages have no doc://).
+        let totalRewrites = contentRewrite.count + (jsonRewrite?.count ?? 0)
+        if totalRewrites > 0 {
+            logger.debug(
+                "doc-link-rewrite: \(totalRewrites) substitutions in \(uri) (content=\(contentRewrite.count), json=\(jsonRewrite?.count ?? 0))",
+                category: .search
+            )
+        }
         let minIOS = params.minIOS
         let minMacOS = params.minMacOS
         let minTvOS = params.minTvOS
@@ -403,8 +417,19 @@ extension Search.Index {
         // indexer boundary. Same pattern as `indexDocument`. Applies to
         // both the FTS-side content blob and the JSON payload that
         // `read_document` / `cupertino read` serve back. JSON-safe.
-        content = DocLinkRewriter.rewrite(content).output
-        let rewrittenJsonData = DocLinkRewriter.rewrite(jsonData).output
+        let contentRewrite = DocLinkRewriter.rewrite(content)
+        content = contentRewrite.output
+        let jsonRewrite = DocLinkRewriter.rewrite(jsonData)
+        let rewrittenJsonData = jsonRewrite.output
+        // #113 audit-count follow-up — emit per-page debug record when
+        // any substitution happened. Same shape as `indexDocument`.
+        let totalRewrites = contentRewrite.count + jsonRewrite.count
+        if totalRewrites > 0 {
+            logger.debug(
+                "doc-link-rewrite: \(totalRewrites) substitutions in \(uri) (content=\(contentRewrite.count), json=\(jsonRewrite.count))",
+                category: .search
+            )
+        }
 
         let summary = extractSummary(from: content)
         let wordCount = content.split(separator: " ").count
