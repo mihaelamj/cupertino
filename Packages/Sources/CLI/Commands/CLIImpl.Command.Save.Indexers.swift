@@ -45,18 +45,48 @@ extension CLIImpl.Command.Save {
         // untouched; the temp file is deleted after the run regardless of
         // outcome. Same code path otherwise, so the dry-run is a
         // faithful preview of what a real save would produce.
-        let resolvedSearchDB: URL
+        let actualSearchDB: URL
         let isDryRun = dryRun
         if isDryRun {
             let name = "cupertino-dryrun-\(UUID().uuidString).db"
-            resolvedSearchDB = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(name)
+            actualSearchDB = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(name)
             Cupertino.Context.composition.logging.recording.info(
-                "🧪 Dry-run: writing to throwaway \(resolvedSearchDB.path)"
+                "🧪 Dry-run: writing to throwaway \(actualSearchDB.path)"
             )
         } else if let userPath = searchDB {
-            resolvedSearchDB = URL(fileURLWithPath: userPath).expandingTildeInPath
+            actualSearchDB = URL(fileURLWithPath: userPath).expandingTildeInPath
         } else {
-            resolvedSearchDB = effectiveBase.appendingPathComponent(Shared.Constants.FileName.searchDatabase)
+            actualSearchDB = effectiveBase.appendingPathComponent(Shared.Constants.FileName.searchDatabase)
+        }
+
+        // #673 Phase G — sidecar-rename for crash safety. When --clear
+        // is set, the runner would otherwise truncate the existing DB
+        // before writing new data; kill -9 mid-save leaves the original
+        // empty / partial. Writing to <db>.in-flight and atomic-renaming
+        // on success means the original DB stays intact through any
+        // mid-save crash. SQLite WAL already covers in-place transaction
+        // atomicity for non-clear saves; sidecar mode is only needed
+        // for --clear's full-wipe semantics.
+        //
+        // Dry-run already routes to a throwaway path; sidecar adds no
+        // value there (the user explicitly asked for a temp DB).
+        let resolvedSearchDB: URL
+        let sidecarPath: URL?
+        if clear, !isDryRun {
+            let sidecar = actualSearchDB.appendingPathExtension("in-flight")
+            // Clean up any orphan sidecar from a prior crashed save.
+            // .in-flight files should never persist between runs; if
+            // we find one, it means a previous save was killed before
+            // it could rename. Log + remove so the new save starts clean.
+            Self.cleanUpOrphanSidecar(at: sidecar)
+            resolvedSearchDB = sidecar
+            sidecarPath = sidecar
+            Cupertino.Context.composition.logging.recording.info(
+                "🛡️  Sidecar mode (#673 Phase G): writing to \(sidecar.lastPathComponent) — original DB stays intact until atomic-rename on success"
+            )
+        } else {
+            resolvedSearchDB = actualSearchDB
+            sidecarPath = nil
         }
 
         Cupertino.Context.composition.logging.recording.info("🔨 Building Search Index\n")
@@ -97,6 +127,15 @@ extension CLIImpl.Command.Save {
             if isDryRun {
                 try? FileManager.default.removeItem(at: resolvedSearchDB)
             }
+            // #673 Phase G — on failure, leave the sidecar in place for
+            // forensic inspection. It'll be cleaned up at the start of
+            // the next save (or by the user manually). The original DB
+            // is untouched because we never wrote to it.
+            if let sidecarPath {
+                Cupertino.Context.composition.logging.recording.error(
+                    "❌ Save failed; sidecar preserved at \(sidecarPath.path) for inspection. Original DB at \(actualSearchDB.path) is intact. Re-run `cupertino save --clear` to retry."
+                )
+            }
             throw error
         }
         Self.printDocsSummary(
@@ -104,6 +143,20 @@ extension CLIImpl.Command.Save {
             breakdown: breakdownCapture.breakdown,
             importLogPath: logPathCapture.path
         )
+
+        // #673 Phase G — atomic-rename the sidecar over the original.
+        // FileManager.replaceItem is the right primitive on Darwin: it's
+        // atomic when both items are on the same volume (always true
+        // here — sidecar is `<actual>.in-flight` in the same directory).
+        // The rename swap also handles SQLite's WAL/SHM files implicitly
+        // because Search.Index disconnects cleanly inside DocsService.run
+        // before returning (WAL checkpoints into the main file on close).
+        if let sidecarPath, !isDryRun {
+            try Self.atomicReplaceWithSidecar(actual: actualSearchDB, sidecar: sidecarPath)
+            Cupertino.Context.composition.logging.recording.info(
+                "✅ Sidecar atomic-renamed to \(actualSearchDB.lastPathComponent) (#673 Phase G crash-safety)"
+            )
+        }
         if isDryRun {
             try? FileManager.default.removeItem(at: resolvedSearchDB)
             // Clean up the audit log alongside the temp DB so dry-runs
@@ -333,6 +386,7 @@ extension CLIImpl.Command.Save {
     }
 
     // MARK: - #597 path resolution helpers
+
     //
     // Pure, side-effect-free static functions that compose the
     // per-DB output path under a given base directory. Pulling
@@ -686,5 +740,76 @@ extension CLIImpl.Command.Save {
     /// Single-actor concurrency makes this safe in practice.
     final class ProgressTracker: @unchecked Sendable {
         var lastPercent = 0.0
+    }
+
+    // MARK: - #673 Phase G — sidecar helpers
+
+    /// Remove an orphan sidecar from a prior crashed save. The
+    /// `.in-flight` extension should never persist between runs (a clean
+    /// shutdown either renames it over the actual DB or — on failure —
+    /// leaves it intentionally for inspection until the next save).
+    /// Logging the find + removing it is the right behaviour at the
+    /// start of every `--clear` save so the new save isn't surprised
+    /// by stale state at the target path.
+    ///
+    /// Companion sidecar files (SQLite `-wal`, `-shm`, `-journal`) are
+    /// also removed so a partially-written sidecar can't leave SQLite
+    /// confused when the next save opens its own fresh sidecar.
+    static func cleanUpOrphanSidecar(at sidecar: URL) {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: sidecar.path) else { return }
+        let size = (try? fm.attributesOfItem(atPath: sidecar.path)[.size] as? Int64) ?? -1
+        let sizeStr = size >= 0
+            ? ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
+            : "unknown size"
+        Cupertino.Context.composition.logging.recording.info(
+            "🧹 Orphan sidecar detected at \(sidecar.path) (\(sizeStr)) — cleaning up before new save. Likely a crashed prior `cupertino save`; original DB at \(sidecar.deletingPathExtension().path) is unaffected."
+        )
+        try? fm.removeItem(at: sidecar)
+        // Also remove SQLite companion files if they exist.
+        for suffix in ["-wal", "-shm", "-journal"] {
+            let companion = URL(fileURLWithPath: sidecar.path + suffix)
+            try? fm.removeItem(at: companion)
+        }
+    }
+
+    /// Atomically replace the actual DB at `actual` with the sidecar at
+    /// `sidecar`. Wraps `FileManager.replaceItem(at:withItemAt:...)`
+    /// which on Darwin maps to `renameat(2)` when both items are on the
+    /// same volume (always true for cupertino's sidecar pattern, since
+    /// the sidecar is `<actual>.in-flight` in the same directory).
+    ///
+    /// Companion SQLite files (`-wal`, `-shm`, `-journal`) are handled
+    /// by SQLite itself: the writer disconnected before this method is
+    /// called, so the WAL has been checkpointed back into the main DB
+    /// file and the companion files are either empty or absent. Any
+    /// stale companion files at the actual path get removed before the
+    /// replace so SQLite doesn't see mismatched WAL/SHM for the new DB.
+    static func atomicReplaceWithSidecar(actual: URL, sidecar: URL) throws {
+        let fm = FileManager.default
+        // Defensive cleanup of stale companions at the target — a
+        // prior in-place save may have left a WAL even after disconnect.
+        for suffix in ["-wal", "-shm", "-journal"] {
+            let companion = URL(fileURLWithPath: actual.path + suffix)
+            try? fm.removeItem(at: companion)
+        }
+        if fm.fileExists(atPath: actual.path) {
+            // `replaceItem` requires the destination to exist OR uses
+            // the `withItemAt` flavour; we want unconditional replace.
+            _ = try fm.replaceItemAt(actual, withItemAt: sidecar)
+        } else {
+            // No existing DB to replace — just move the sidecar into place.
+            try fm.moveItem(at: sidecar, to: actual)
+        }
+        // Post-rename cleanup: SQLite's WAL/SHM files were created next
+        // to the sidecar (e.g. `search.db.in-flight-wal`); they aren't
+        // renamed by `replaceItemAt` because the sidecar is moved by
+        // path-not-by-directory. Leaving them in place is harmless
+        // (SQLite won't see them under the new `search.db` name) but
+        // ugly; remove them so the directory ends up clean.
+        for suffix in ["-wal", "-shm", "-journal"] {
+            let sidecarCompanion = URL(fileURLWithPath: sidecar.path + suffix)
+            try? fm.removeItem(at: sidecarCompanion)
+        }
     }
 }
