@@ -109,8 +109,9 @@ extension Search.Index {
             // BREAKING CHANGE: FTS5 tables cannot have columns added.
             // Database must be deleted and rebuilt with 'cupertino save'.
             throw Search.Error.sqliteError(
-                "Database schema version \(currentVersion) requires migration to version 5. " +
-                    "This is a breaking change that adds the 'language' field. " +
+                "Database schema version \(currentVersion); binary expects version \(Self.schemaVersion). " +
+                    "The path includes a breaking change at v4→v5 that adds the 'language' field " +
+                    "(plus subsequent breaking changes depending on \(Self.schemaVersion)). " +
                     "Please delete the database and run 'cupertino save' to rebuild: " +
                     "rm \(dbPath.path) && cupertino save"
             )
@@ -148,8 +149,9 @@ extension Search.Index {
             // does not support ALTER TABLE ADD COLUMN on virtual tables, so
             // this is a BREAKING change — existing DBs must be rebuilt.
             throw Search.Error.sqliteError(
-                "Database schema version \(currentVersion) requires migration to version 12. " +
-                    "This is a breaking change that adds AST-derived symbols to the FTS index. " +
+                "Database schema version \(currentVersion); binary expects version \(Self.schemaVersion). " +
+                    "The path includes a breaking change at v11→v12 (#192 D) that adds AST-derived " +
+                    "symbols to the FTS index (plus subsequent breaking changes depending on \(Self.schemaVersion)). " +
                     "Please delete the database and run 'cupertino save' to rebuild: " +
                     "rm \(dbPath.path) && cupertino save"
             )
@@ -163,10 +165,11 @@ extension Search.Index {
             // URIs. The v1.0.2 bundle ships pre-built at v13, so `cupertino
             // setup` is the production upgrade path.
             throw Search.Error.sqliteError(
-                "Database schema version \(currentVersion) requires migration to version 13. " +
-                    "This is a breaking change that drops case-axis duplicate URIs (#283). " +
+                "Database schema version \(currentVersion); binary expects version \(Self.schemaVersion). " +
+                    "The path includes a breaking change at v12→v13 (#283) that drops case-axis " +
+                    "duplicate URIs (plus subsequent breaking changes depending on \(Self.schemaVersion)). " +
                     "Please delete the database and run 'cupertino setup' to download the " +
-                    "pre-built v1.0.2 bundle: " +
+                    "matching pre-built bundle: " +
                     "rm \(dbPath.path) && cupertino setup"
             )
         }
@@ -185,11 +188,11 @@ extension Search.Index {
             // and v12→v13 throws above; the only safe upgrade path is a
             // full rebuild via `cupertino setup`.
             throw Search.Error.sqliteError(
-                "Database schema version \(currentVersion) requires migration to version 14. " +
-                    "This is a breaking change that adds CamelCase-component recall " +
-                    "to the FTS index (#77). " +
+                "Database schema version \(currentVersion); binary expects version \(Self.schemaVersion). " +
+                    "The path includes a breaking change at v13→v14 (#77) that adds CamelCase-component " +
+                    "recall to the FTS index (plus subsequent breaking changes depending on \(Self.schemaVersion)). " +
                     "Please delete the database and run 'cupertino setup' to download the " +
-                    "pre-built v1.2.0 bundle: " +
+                    "matching pre-built bundle: " +
                     "rm \(dbPath.path) && cupertino setup"
             )
         }
@@ -202,10 +205,11 @@ extension Search.Index {
             // matches v11→v12 / v12→v13 / v13→v14 — `cupertino setup`
             // for the production-ready bundle, or rebuild locally.
             throw Search.Error.sqliteError(
-                "Database schema version \(currentVersion) requires migration to version 15. " +
-                    "This is a breaking change that adds class-inheritance edge tracking (#274). " +
+                "Database schema version \(currentVersion); binary expects version \(Self.schemaVersion). " +
+                    "The path includes a breaking change at v14→v15 (#274) that adds class-inheritance " +
+                    "edge tracking. " +
                     "Please delete the database and run 'cupertino setup' to download the " +
-                    "pre-built v1.2.0 bundle: " +
+                    "matching pre-built bundle: " +
                     "rm \(dbPath.path) && cupertino setup"
             )
         }
