@@ -75,17 +75,20 @@ extension Services {
                 minSwift: minSwift
             )
 
-            // #226 follow-up #732: samples in fan-out remain unfiltered
-            // for now. `Sample.Index.Database.searchProjects` doesn't yet
-            // accept platform args (the per-file `searchFiles` path does,
-            // but returns a different result shape that the unified
-            // formatter cannot consume without further work). The
-            // `platform_filter_partial` notice from `PlatformFilterScope`
-            // surfaces this gap to AI clients in the meantime.
+            // #732: samples now apply the 5-field platform filter in
+            // the fan-out path too. `Sample.Index.Database.searchProjects`
+            // grew the args natively; this fan-out call threads them
+            // through. Multiple `min_*` values AND-combine — a sample
+            // must satisfy every requested minimum.
             async let sampleResults = searchSamples(
                 query: query,
                 framework: framework,
-                limit: limit
+                limit: limit,
+                minIOS: minIOS,
+                minMacOS: minMacOS,
+                minTvOS: minTvOS,
+                minWatchOS: minWatchOS,
+                minVisionOS: minVisionOS
             )
 
             async let hig = searchSource(
@@ -259,11 +262,20 @@ extension Services {
             return nil
         }
 
-        /// Search sample code projects
+        /// Search sample code projects.
+        ///
+        /// #732: threads the 5-field platform filter through to
+        /// `Sample.Index.Database.searchProjects`. Multiple `min<Platform>`
+        /// values AND-combine inside the SQL.
         private func searchSamples(
             query: String,
             framework: String?,
-            limit: Int
+            limit: Int,
+            minIOS: String? = nil,
+            minMacOS: String? = nil,
+            minTvOS: String? = nil,
+            minWatchOS: String? = nil,
+            minVisionOS: String? = nil
         ) async -> [Sample.Index.Project] {
             guard let sampleDatabase else { return [] }
 
@@ -271,7 +283,12 @@ extension Services {
                 return try await sampleDatabase.searchProjects(
                     query: query,
                     framework: framework,
-                    limit: limit
+                    limit: limit,
+                    minIOS: minIOS,
+                    minMacOS: minMacOS,
+                    minTvOS: minTvOS,
+                    minWatchOS: minWatchOS,
+                    minVisionOS: minVisionOS
                 )
             } catch {
                 return []

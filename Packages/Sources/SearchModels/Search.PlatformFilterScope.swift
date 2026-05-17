@@ -46,28 +46,31 @@ extension Search {
             Shared.Constants.SourcePrefix.swiftOrg,
             Shared.Constants.SourcePrefix.swiftBook,
             Shared.Constants.SourcePrefix.packages,
+            // #732: samples now apply the 5-field platform filter
+            // natively via `Sample.Index.Database.searchProjects`
+            // (and `Sample.Search.Query` carries the 5 fields end-to-end).
+            // Both the specific-source dispatch (handleSearchSamples) and
+            // the fan-out path (UnifiedSearchService.searchSamples) thread
+            // the args through.
+            Shared.Constants.SourcePrefix.samples,
+            Shared.Constants.SourcePrefix.appleSampleCode,
         ]
 
         /// Sources whose tool handler does **not** thread the platform
-        /// filter through at all — the args are silently dropped at the
-        /// MCP boundary even when the data shape could support them.
+        /// filter through — the args are dropped at the MCP boundary.
         ///
-        /// - `hig` → `handleSearchHIG(query:framework:limit:)` — no
-        ///   `min_*` parameters in the handler's signature.
-        /// - `samples` / `apple-sample-code` (alias) →
-        ///   `handleSearchSamples(query:framework:limit:)` — same shape.
-        ///   `samples` is the case where the data carries `min_*`
-        ///   columns (via #228) but the MCP handler doesn't pass them
-        ///   into `Sample.Search.Query`. Fixing that is filed as a
-        ///   follow-up.
+        /// **Post-#732 this is just `hig`.** HIG content is design /
+        /// UI guidelines (Buttons, Color, Typography, Accessibility)
+        /// with no version-availability axis on the underlying data.
+        /// Filtering structurally doesn't fit; the notice fires for any
+        /// `source=hig` dispatch + platform filter to tell AI clients
+        /// the filter was honoured everywhere except HIG.
         ///
-        /// Results from these sources can carry rows that don't satisfy
-        /// the user's platform filter — the notice surfaces this so AI
-        /// clients can't assume uniform filtration.
+        /// `handleSearchHIG(query:framework:limit:)` keeps its
+        /// 3-argument signature — adding `min_*` parameters would
+        /// expose an interface that produces zero results by design.
         public static let dispatchDropsFilter: Set<String> = [
             Shared.Constants.SourcePrefix.hig,
-            Shared.Constants.SourcePrefix.samples,
-            Shared.Constants.SourcePrefix.appleSampleCode,
         ]
 
         // MARK: - Legacy compatibility (deprecated aliases)

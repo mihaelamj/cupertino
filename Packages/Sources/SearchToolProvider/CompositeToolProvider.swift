@@ -643,36 +643,6 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         return out
     }
 
-    /// #226 — translate the MCP 5-field platform filter shape down to
-    /// `Sample.Search.Query`'s single-platform `(platform, minVersion)`
-    /// pair via a documented precedence: iOS → macOS → tvOS → watchOS →
-    /// visionOS. Picks the first non-nil `min_*` value and returns the
-    /// corresponding platform name string + the version.
-    ///
-    /// Returns `(nil, nil)` when no `min_*` is set — `Sample.Search.Query`
-    /// reads that as "no filter."
-    ///
-    /// Multi-platform AND combination (e.g. iOS 15+ AND macOS 12+) is a
-    /// future expansion that requires extending
-    /// `Sample.Index.Database.searchProjects` + `Sample.Index.Database.searchFiles`
-    /// to accept the 5-field shape natively. Filed as #732 follow-up. The
-    /// `platform_filter_partial` notice surfaces the trade-off to AI
-    /// clients today.
-    static func firstSamplePlatform(
-        minIOS: String?,
-        minMacOS: String?,
-        minTvOS: String?,
-        minWatchOS: String?,
-        minVisionOS: String?
-    ) -> (platform: String?, minVersion: String?) {
-        if let version = minIOS { return ("iOS", version) }
-        if let version = minMacOS { return ("macOS", version) }
-        if let version = minTvOS { return ("tvOS", version) }
-        if let version = minWatchOS { return ("watchOS", version) }
-        if let version = minVisionOS { return ("visionOS", version) }
-        return (nil, nil)
-    }
-
     /// #226 — prepend the notice markdown to the first text-content block
     /// of a `CallToolResult`. No-op when notice is nil or the result has
     /// no text content. Returns a new result rather than mutating.
@@ -804,33 +774,23 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             throw Shared.Core.ToolError.invalidArgument("source", "Sample code database not available")
         }
 
-        // #226 expansion: `Sample.Search.Query` already supports a
-        // single-platform filter via `(platform, minVersion)` per #233.
-        // The MCP 5-field shape (`min_ios` / `min_macos` / `min_tvos` /
-        // `min_watchos` / `min_visionos`) maps to that by picking the
-        // first non-nil value via a documented precedence — iOS, macOS,
-        // tvOS, watchOS, visionOS — and translating to the
-        // `Sample.Search.Query.platform` enum string the sample-index
-        // expects. Multi-platform AND-combination is a future
-        // expansion (filed as #732 follow-up); the precedence pick
-        // keeps the single-platform case working today and the
-        // partial-filter notice surfaces the trade-off for any caller
-        // that passes more than one.
-        let (samplePlatform, sampleMinVersion) = Self.firstSamplePlatform(
-            minIOS: minIOS,
-            minMacOS: minMacOS,
-            minTvOS: minTvOS,
-            minWatchOS: minWatchOS,
-            minVisionOS: minVisionOS
-        )
-        // Use service layer (same as CLI)
+        // #732 — pass the 5-field shape natively into `Sample.Search.Query`.
+        // Multiple `min_*` values AND-combine inside
+        // `Sample.Index.Database.searchProjects` SQL: a project must
+        // satisfy every requested minimum to pass. #226's precedence-
+        // pick translation (then needed because `searchProjects` only
+        // had `(platform, minVersion)`) is gone — the 5-field path is
+        // end-to-end now.
         let result = try await sampleService.search(Sample.Search.Query(
             text: query,
             framework: framework,
             searchFiles: true,
             limit: limit,
-            platform: samplePlatform,
-            minVersion: sampleMinVersion
+            minIOS: minIOS,
+            minMacOS: minMacOS,
+            minTvOS: minTvOS,
+            minWatchOS: minWatchOS,
+            minVisionOS: minVisionOS
         ))
 
         // Fetch teaser results from other sources

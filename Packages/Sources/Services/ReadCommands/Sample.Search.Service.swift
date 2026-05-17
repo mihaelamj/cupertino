@@ -1,6 +1,7 @@
 import Foundation
 import SampleIndexModels
 import SharedConstants
+
 // MARK: - Sample Search
 
 // `Sample.Search.Query` and `Sample.Search.Result` lifted to the
@@ -28,11 +29,26 @@ extension Sample.Search {
         // MARK: - Search Methods
 
         /// Search with a specialized query
+        ///
+        /// #732 expansion: the 5-field platform filter on
+        /// `Sample.Search.Query` (`minIOS` / `minMacOS` / `minTvOS` /
+        /// `minWatchOS` / `minVisionOS`) is threaded into both
+        /// `searchProjects` and `searchFiles`. Multiple `min<Platform>`
+        /// values AND-combine inside the SQL — a sample must satisfy
+        /// every requested minimum to pass. The legacy `(platform,
+        /// minVersion)` pair (#233) is still honoured for `searchFiles`
+        /// callers that haven't migrated, but new MCP / CLI surfaces
+        /// use the 5-field shape.
         public func search(_ query: Sample.Search.Query) async throws -> Sample.Search.Result {
             let projects = try await database.searchProjects(
                 query: query.text,
                 framework: query.framework,
-                limit: query.limit
+                limit: query.limit,
+                minIOS: query.minIOS,
+                minMacOS: query.minMacOS,
+                minTvOS: query.minTvOS,
+                minWatchOS: query.minWatchOS,
+                minVisionOS: query.minVisionOS
             )
 
             var files: [Sample.Index.FileSearchResult] = []

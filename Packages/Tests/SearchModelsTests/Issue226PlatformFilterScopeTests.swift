@@ -18,13 +18,14 @@ import Testing
 
 @Suite("#226 — Search.PlatformFilterScope bucket assignments")
 struct Issue226PlatformFilterScopeBucketsTests {
-    @Test("dispatchAppliesFilter covers the 6 handleSearchDocs-routed sources")
+    @Test("dispatchAppliesFilter covers 6 search.db sources + samples (post-#732)")
     func dispatchAppliesFilterMembership() {
-        // All 6 sources route through `CompositeToolProvider.handleSearchDocs`
-        // which threads the 5 `min_*` args + minSwift into `Search.Database.search`.
-        // The handler applies the filter uniformly; row-level results
-        // depend on whether the source's data has populated `min_*` columns
-        // (sparse data manifests as fewer results, not as unfiltered ones).
+        // 6 search.db sources route through `handleSearchDocs` which
+        // threads the 5 `min_*` args + minSwift into
+        // `Search.Database.search`. Post-#732, samples (+ apple-sample-
+        // code alias) also apply the filter — `Sample.Index.Database`
+        // `.searchProjects` grew the 5-field shape natively and both
+        // dispatch paths (specific-source + fan-out) thread the args.
         #expect(Search.PlatformFilterScope.dispatchAppliesFilter == [
             Shared.Constants.SourcePrefix.appleDocs,
             Shared.Constants.SourcePrefix.appleArchive,
@@ -32,25 +33,19 @@ struct Issue226PlatformFilterScopeBucketsTests {
             Shared.Constants.SourcePrefix.swiftOrg,
             Shared.Constants.SourcePrefix.swiftBook,
             Shared.Constants.SourcePrefix.packages,
+            Shared.Constants.SourcePrefix.samples,
+            Shared.Constants.SourcePrefix.appleSampleCode,
         ])
     }
 
-    @Test("dispatchDropsFilter covers hig + the samples aliases")
+    @Test("dispatchDropsFilter is just hig post-#732")
     func dispatchDropsFilterMembership() {
-        // Post-#226 expansion, `handleSearchSamples` now applies the
-        // filter via the single-platform precedence pick. The samples /
-        // apple-sample-code source remains in this bucket for the
-        // fan-out case (#732 follow-up — the fan-out's
-        // `unifiedService.searchSamples` path still uses
-        // `Sample.Index.Database.searchProjects` which doesn't accept
-        // platform args). When #732 lands and `searchProjects` gains
-        // the args, samples + apple-sample-code can move to
-        // `dispatchAppliesFilter`. HIG is structurally unfilterable
-        // (no platform-version axis on the data).
+        // Post-#732 only HIG remains: structurally unfilterable (design
+        // / UI guidelines have no platform-version axis on the source
+        // data). The notice fires only when a request targets HIG with
+        // platform args — every other dispatch path honours the filter.
         #expect(Search.PlatformFilterScope.dispatchDropsFilter == [
             Shared.Constants.SourcePrefix.hig,
-            Shared.Constants.SourcePrefix.samples,
-            Shared.Constants.SourcePrefix.appleSampleCode,
         ])
     }
 
@@ -110,20 +105,23 @@ struct Issue226PartitionForNoticeTests {
         #expect(result.filtered.count == 2)
     }
 
-    @Test("Only hig + samples remain unaware post-#226 expansion")
-    func onlyHigAndSamplesUnaware() {
-        // Sanity-check the post-expansion bucket shape: hig + samples
-        // (+ apple-sample-code alias) are the only sources that stay in
-        // `dispatchDropsFilter`. Swift-evolution / swift-org / swift-book /
-        // apple-archive all moved to `dispatchAppliesFilter` because
-        // their dispatch goes through `handleSearchDocs` which now
-        // threads platform args at the SQL boundary.
+    @Test("Only hig remains unaware post-#732")
+    func onlyHigUnaware() {
+        // Sanity-check the post-#732 bucket shape: hig is now the only
+        // source that stays in `dispatchDropsFilter`. Samples + apple-
+        // sample-code moved to `dispatchAppliesFilter` because
+        // `Sample.Index.Database.searchProjects` grew the 5-field
+        // platform filter natively. Swift-evolution / swift-org /
+        // swift-book / apple-archive route through `handleSearchDocs`
+        // which already threads platform args.
         let result = Search.PlatformFilterScope.partitionForNotice(contributingSources: [
             Shared.Constants.SourcePrefix.hig,
             Shared.Constants.SourcePrefix.samples,
         ])
-        #expect(result.filtered.isEmpty)
-        #expect(result.unfiltered.count == 2)
+        // samples is in dispatchAppliesFilter now, so it partitions as
+        // filtered; only hig partitions as unfiltered.
+        #expect(result.filtered == [Shared.Constants.SourcePrefix.samples])
+        #expect(result.unfiltered == [Shared.Constants.SourcePrefix.hig])
     }
 
     @Test("Unknown source is conservatively partitioned as unfiltered")
