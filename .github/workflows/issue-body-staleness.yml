@@ -60,12 +60,16 @@ jobs:
           # rather than filing a new one per run.
           TITLE="Issue body staleness tracker (auto-updated)"
 
+          # Exact-match the tracker title. `gh --search "$TITLE in:title"`
+          # is a substring search and would match "Issue body staleness
+          # tracker (auto-updated)" against any future issue whose title
+          # contained that phrase. The post-filter with jq pins it.
           existing=$(gh issue list \
             --repo "${{ github.repository }}" \
             --state open \
             --search "$TITLE in:title" \
-            --json number \
-            --jq '.[0].number // empty')
+            --json number,title \
+            --jq "[.[] | select(.title == \"$TITLE\")] | .[0].number // empty")
 
           if [ -n "$existing" ]; then
             echo "Updating existing tracking issue #$existing"
@@ -91,12 +95,16 @@ jobs:
           # tracker honest: empty open trackers shouldn't linger.
           TITLE="Issue body staleness tracker (auto-updated)"
 
+          # Exact-match the tracker title. `gh --search "$TITLE in:title"`
+          # is a substring search and would match "Issue body staleness
+          # tracker (auto-updated)" against any future issue whose title
+          # contained that phrase. The post-filter with jq pins it.
           existing=$(gh issue list \
             --repo "${{ github.repository }}" \
             --state open \
             --search "$TITLE in:title" \
-            --json number \
-            --jq '.[0].number // empty')
+            --json number,title \
+            --jq "[.[] | select(.title == \"$TITLE\")] | .[0].number // empty")
 
           if [ -n "$existing" ]; then
             echo "Closing existing tracking issue #$existing (clean scan)"
