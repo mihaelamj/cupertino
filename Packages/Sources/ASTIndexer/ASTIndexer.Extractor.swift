@@ -92,6 +92,7 @@ private final class DeclarationVisitor: SyntaxVisitor {
             modifiers: node.modifiers,
             inheritanceClause: node.inheritanceClause,
             genericParameterClause: node.genericParameterClause,
+            genericWhereClause: node.genericWhereClause,
             startPosition: node.positionAfterSkippingLeadingTrivia
         )
         symbols.append(symbol)
@@ -106,6 +107,7 @@ private final class DeclarationVisitor: SyntaxVisitor {
             modifiers: node.modifiers,
             inheritanceClause: node.inheritanceClause,
             genericParameterClause: node.genericParameterClause,
+            genericWhereClause: node.genericWhereClause,
             startPosition: node.positionAfterSkippingLeadingTrivia
         )
         symbols.append(symbol)
@@ -120,6 +122,7 @@ private final class DeclarationVisitor: SyntaxVisitor {
             modifiers: node.modifiers,
             inheritanceClause: node.inheritanceClause,
             genericParameterClause: node.genericParameterClause,
+            genericWhereClause: node.genericWhereClause,
             startPosition: node.positionAfterSkippingLeadingTrivia
         )
         symbols.append(symbol)
@@ -134,6 +137,7 @@ private final class DeclarationVisitor: SyntaxVisitor {
             modifiers: node.modifiers,
             inheritanceClause: node.inheritanceClause,
             genericParameterClause: node.genericParameterClause,
+            genericWhereClause: node.genericWhereClause,
             startPosition: node.positionAfterSkippingLeadingTrivia
         )
         symbols.append(symbol)
@@ -148,6 +152,7 @@ private final class DeclarationVisitor: SyntaxVisitor {
             modifiers: node.modifiers,
             inheritanceClause: node.inheritanceClause,
             genericParameterClause: nil,
+            genericWhereClause: node.genericWhereClause,
             startPosition: node.positionAfterSkippingLeadingTrivia
         )
         symbols.append(symbol)
@@ -159,6 +164,13 @@ private final class DeclarationVisitor: SyntaxVisitor {
         let location = sourceLocationConverter.location(for: node.positionAfterSkippingLeadingTrivia)
         let conformances = extractConformances(from: node.inheritanceClause)
         let attributes = extractAttributes(from: node.attributes)
+        // #759 — extensions carry their constraints in the where clause:
+        // `extension Collection where Element: Equatable`. Capture them so
+        // the constraint axis works on extension-defined methods too.
+        let genericParams = extractGenericParameters(
+            from: nil,
+            whereClause: node.genericWhereClause
+        )
 
         symbols.append(ASTIndexer.Symbol(
             name: name,
@@ -166,7 +178,8 @@ private final class DeclarationVisitor: SyntaxVisitor {
             line: location.line,
             column: location.column,
             attributes: attributes,
-            conformances: conformances
+            conformances: conformances,
+            genericParameters: genericParams
         ))
 
         return .visitChildren
@@ -188,7 +201,10 @@ private final class DeclarationVisitor: SyntaxVisitor {
         // Determine if it's a method (inside a type) or free function
         let kind: ASTIndexer.SymbolKind = isInsideTypeDeclaration(node) ? .method : .function
 
-        let genericParams = extractGenericParameters(from: node.genericParameterClause)
+        let genericParams = extractGenericParameters(
+            from: node.genericParameterClause,
+            whereClause: node.genericWhereClause
+        )
 
         symbols.append(ASTIndexer.Symbol(
             name: node.name.text,
@@ -281,7 +297,10 @@ private final class DeclarationVisitor: SyntaxVisitor {
         let location = sourceLocationConverter.location(for: node.positionAfterSkippingLeadingTrivia)
         let attributes = extractAttributes(from: node.attributes)
         let isPublic = hasPublicModifier(node.modifiers)
-        let genericParams = extractGenericParameters(from: node.genericParameterClause)
+        let genericParams = extractGenericParameters(
+            from: node.genericParameterClause,
+            whereClause: node.genericWhereClause
+        )
 
         symbols.append(ASTIndexer.Symbol(
             name: node.name.text,
@@ -363,13 +382,17 @@ private final class DeclarationVisitor: SyntaxVisitor {
         modifiers: DeclModifierListSyntax,
         inheritanceClause: InheritanceClauseSyntax?,
         genericParameterClause: GenericParameterClauseSyntax?,
+        genericWhereClause: GenericWhereClauseSyntax? = nil,
         startPosition: AbsolutePosition
     ) -> ASTIndexer.Symbol {
         let location = sourceLocationConverter.location(for: startPosition)
         let extractedAttributes = extractAttributes(from: attributes)
         let conformances = extractConformances(from: inheritanceClause)
         let isPublic = hasPublicModifier(modifiers)
-        let genericParams = extractGenericParameters(from: genericParameterClause)
+        let genericParams = extractGenericParameters(
+            from: genericParameterClause,
+            whereClause: genericWhereClause
+        )
 
         return ASTIndexer.Symbol(
             name: name,
@@ -399,14 +422,45 @@ private final class DeclarationVisitor: SyntaxVisitor {
         return clause.inheritedTypes.map(\.type.trimmedDescription)
     }
 
-    private func extractGenericParameters(from clause: GenericParameterClauseSyntax?) -> [String] {
-        guard let clause else { return [] }
-        return clause.parameters.map { param in
-            if let constraint = param.inheritedType {
-                return "\(param.name.text): \(constraint.trimmedDescription)"
+    /// Extract entries for the `generic_params` column in `T` /
+    /// `T: Constraint` form, from BOTH the generic parameter clause's
+    /// inline form (`<T: Collection>`) AND the where-clause form
+    /// (`where T: Collection`). Apple's DocC `declaration.code` always
+    /// carries the full declaration including the where clause (see
+    /// e.g. `ForEach`: `struct ForEach<Data, ID, Content> where
+    /// Data : RandomAccessCollection, ID : Hashable`); the indexer's
+    /// AST pass had been dropping the where-clause half until #755.
+    ///
+    /// Same-type requirements (`T == U`) are intentionally excluded —
+    /// they're not the constraint shape `search_generics` answers.
+    /// Layout requirements (rare in Apple's docs) similarly excluded.
+    private func extractGenericParameters(
+        from clause: GenericParameterClauseSyntax?,
+        whereClause: GenericWhereClauseSyntax? = nil
+    ) -> [String] {
+        var entries: [String] = []
+
+        if let clause {
+            for param in clause.parameters {
+                if let constraint = param.inheritedType {
+                    entries.append("\(param.name.text): \(constraint.trimmedDescription)")
+                } else {
+                    entries.append(param.name.text)
+                }
             }
-            return param.name.text
         }
+
+        if let whereClause {
+            for requirement in whereClause.requirements {
+                if case let .conformanceRequirement(conformance) = requirement.requirement {
+                    let left = conformance.leftType.trimmedDescription
+                    let right = conformance.rightType.trimmedDescription
+                    entries.append("\(left): \(right)")
+                }
+            }
+        }
+
+        return entries
     }
 
     private func hasPublicModifier(_ modifiers: DeclModifierListSyntax) -> Bool {

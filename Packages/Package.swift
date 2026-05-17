@@ -44,10 +44,12 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("MCPClient"),
     .singleTargetLibrary("RemoteSync"),
     .singleTargetLibrary("RemoteSyncModels"),
+    .singleTargetLibrary("AppleConstraintsKit"),
     .executable(name: "cupertino", targets: ["CLI"]),
     .executable(name: "cupertino-tui", targets: ["TUI"]),
     .executable(name: "mock-ai-agent", targets: ["MockAIAgent"]),
     .executable(name: "cupertino-rel", targets: ["ReleaseTool"]),
+    .executable(name: "cupertino-constraints-gen", targets: ["ConstraintsGen"]),
 ]
 #else
 let macOSOnlyProducts: [Product] = []
@@ -630,6 +632,7 @@ let targets: [Target] = {
             "Logging",
             "RemoteSync",
             "Availability",
+            "AppleConstraintsKit",
             // MCP dependencies (for mcp serve command)
             "MCPCore",
             "MCPSupport",
@@ -670,6 +673,32 @@ let targets: [Target] = {
     let releaseToolTestsTarget = Target.testTarget(
         name: "ReleaseToolTests",
         dependencies: ["ReleaseTool"]
+    )
+
+    // ---------- AppleConstraintsKit (#759 iteration 3) ----------
+    // Producer-side companion to the `Search.StaticConstraintsLookup`
+    // protocol seam (declared in `SearchModels`). Parses Apple's
+    // `swift symbolgraph-extract` JSON into the cupertino constraints
+    // table. Foundation-only + SearchModels (the protocol-seam
+    // companion) — per gof-di-rules.md rule 8 (producer foundation-only).
+    let appleConstraintsKitTarget = Target.target(
+        name: "AppleConstraintsKit",
+        dependencies: ["SearchModels"]
+    )
+    let appleConstraintsKitTestsTarget = Target.testTarget(
+        name: "AppleConstraintsKitTests",
+        dependencies: [
+            "AppleConstraintsKit",
+            "SearchModels",
+        ]
+    )
+    let constraintsGenTarget = Target.executableTarget(
+        name: "ConstraintsGen",
+        dependencies: [
+            .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            "AppleConstraintsKit",
+            "SearchModels",
+        ]
     )
 
     let testSupportTarget = Target.target(
@@ -827,6 +856,9 @@ let targets: [Target] = {
         mockAIAgentTarget,
         releaseToolTarget,
         releaseToolTestsTarget,
+        appleConstraintsKitTarget,
+        appleConstraintsKitTestsTarget,
+        constraintsGenTarget,
         // CLI Command Tests
         serveTestsTarget,
         doctorTestsTarget,
