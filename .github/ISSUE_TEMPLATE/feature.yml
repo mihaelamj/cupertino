@@ -1,0 +1,81 @@
+name: Feature / enhancement
+description: New work, refactor, or design proposal. Bug reports use the Bug template.
+title: ""
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Convention from the 2026-05-17 issue-tracker audit** (`docs/audits/methodology.md`, "Issue body hygiene"): bodies without a dated status block age into fiction within a month. The form below enforces the status block, kind, priority, and complexity as required fields.
+
+        **Avoid in the body**: line numbers (use symbol names, lines drift on every PR), phantom file paths (every `` `backtick-quoted-path` `` in the body must exist in the repo at filing time, mechanically enforced by `scripts/check-issue-body-staleness.sh`).
+
+  - type: input
+    id: status_date
+    attributes:
+      label: Status date (YYYY-MM-DD)
+      description: Today's date. The body will carry a `## Status (YYYY-MM-DD)` block, edited on every state change.
+      placeholder: "2026-05-17"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: Critical / Medium / Low. Triage signal for the bug-list pass.
+      options:
+        - "priority: high"
+        - "priority: medium"
+        - "priority: low"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Complexity
+      description: Effort hint. Simple / moderate / architectural.
+      options:
+        - "complexity: low"
+        - "complexity: medium"
+        - "complexity: high"
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What problem does this solve? One paragraph.
+      placeholder: "When a user runs ..., they get ... but should get ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance
+      description: Concrete, checkable bullets. "Compiles" is not acceptance. "Test X passes against state Y" is.
+      value: |
+        - [ ]
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+      description: What this issue intentionally does not cover. List adjacent work that might tempt scope creep and explain why it's separate.
+    validations:
+      required: false
+
+  - type: textarea
+    id: related
+    attributes:
+      label: Related
+      description: Cross-references to other issues (`#NNN`). When citing a file path, the path must EXIST at filing time. Use symbol names instead of line numbers.
+    validations:
+      required: false
