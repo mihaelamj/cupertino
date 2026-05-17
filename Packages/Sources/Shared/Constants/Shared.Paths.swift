@@ -147,5 +147,18 @@ extension Shared {
         public var packagesDatabase: URL {
             baseDirectory.appendingPathComponent(Shared.Constants.FileName.packagesIndexDatabase)
         }
+
+        /// `<baseDirectory>/selected-archive-guides.json` (#101).
+        ///
+        /// Canonical user-writable selection file for archive guides. Both the
+        /// TUI (which writes user choices) and the crawler (which reads them
+        /// to drive the Apple Archive crawl set) consume this property, so a
+        /// rename on either side stays mechanically impossible — there is one
+        /// declaration site for the filename (`FileName.userArchiveSelections`)
+        /// and one computed accessor (this property). Pre-#101 each side
+        /// computed the URL independently with a local literal.
+        public var userArchiveSelectionsFile: URL {
+            baseDirectory.appendingPathComponent(Shared.Constants.FileName.userArchiveSelections)
+        }
     }
 }
