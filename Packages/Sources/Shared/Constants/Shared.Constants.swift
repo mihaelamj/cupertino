@@ -108,6 +108,15 @@ extension Shared.Constants {
         /// Read on subsequent setup invocations to distinguish stale DBs from current ones (#168).
         public static let setupVersionFile = ".setup-version"
 
+        /// User-writable selection file for archive guides (#101). Written by the
+        /// TUI when the user toggles required-guide selections; read by the
+        /// crawler to drive the Apple Archive crawl set. Lives next to the
+        /// other top-level state files under `<baseDirectory>/`. **Sole
+        /// source of truth for this filename** — `Shared.Paths.userArchiveSelectionsFile`
+        /// is the canonical computed URL, consumed by both `Crawler.ArchiveGuideCatalog`
+        /// and `TUI/Models/ArchiveGuidesCatalog` so the two paths cannot drift.
+        public static let userArchiveSelections = "selected-archive-guides.json"
+
         // MARK: Package Data Files
 
         /// Swift packages with GitHub stars data

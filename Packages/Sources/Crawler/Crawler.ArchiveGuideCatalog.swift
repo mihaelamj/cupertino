@@ -3,6 +3,7 @@ import CrawlerModels
 import Foundation
 import Resources
 import SharedConstants
+
 // MARK: - Archive Guide Catalog
 
 extension Crawler {
@@ -24,8 +25,14 @@ extension Crawler {
         private static let baseURL = String(Shared.Constants.BaseURL.appleArchiveDocs.dropLast())
 
         /// User-writable location for selected guides under the supplied base directory.
+        ///
+        /// Delegates to `Shared.Paths.userArchiveSelectionsFile` (#101) so the
+        /// crawler and TUI cannot drift on the filename. The seam lives in
+        /// `Shared.Paths` because both producers already depend on
+        /// `SharedConstants`; pre-#101 the TUI computed the same URL
+        /// independently in `TUI/Models/ArchiveGuidesCatalog`.
         private static func userSelectionsURL(baseDirectory: URL) -> URL {
-            baseDirectory.appendingPathComponent("selected-archive-guides.json")
+            Shared.Paths(baseDirectory: baseDirectory).userArchiveSelectionsFile
         }
 
         /// Essential programming guides worth crawling

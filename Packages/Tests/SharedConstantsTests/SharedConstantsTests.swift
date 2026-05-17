@@ -59,3 +59,54 @@ struct SharedConstantsPublicSurfaceTests {
         #expect(Shared.Constants.BaseURL.appleTutorialsDocs.hasPrefix("https://"))
     }
 }
+
+// MARK: - #101: user-archive-selections single source of truth
+
+/// Both `Crawler.ArchiveGuideCatalog.userSelectionsFileURL(baseDirectory:)`
+/// and `TUI/Models/ArchiveGuidesCatalog.userSelectionsURL` now resolve
+/// the selection-file path through `Shared.Paths.userArchiveSelectionsFile`,
+/// which itself reads the filename from
+/// `Shared.Constants.FileName.userArchiveSelections`. The tests below
+/// lock the filename literal + the `Shared.Paths` join shape so any
+/// future change has to update exactly one declaration site — drift on
+/// either end becomes mechanically impossible (or at minimum loud at
+/// test time).
+@Suite("#101 — user-archive-selections single source of truth")
+struct Issue101UserArchiveSelectionsTests {
+    @Test("FileName.userArchiveSelections is the canonical literal")
+    func filenameConstantValue() {
+        // Both Crawler and TUI consume this constant via Shared.Paths.
+        // The literal value is contract-locked: changing it requires
+        // also updating any persisted user files in the field.
+        #expect(Shared.Constants.FileName.userArchiveSelections == "selected-archive-guides.json")
+    }
+
+    @Test("Shared.Paths.userArchiveSelectionsFile joins baseDirectory + canonical filename")
+    func pathsJoin() {
+        let tmpDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cupertino-test-\(UUID().uuidString)", isDirectory: true)
+        let paths = Shared.Paths(baseDirectory: tmpDir)
+
+        #expect(paths.userArchiveSelectionsFile == tmpDir
+            .appendingPathComponent(Shared.Constants.FileName.userArchiveSelections))
+        #expect(paths.userArchiveSelectionsFile.lastPathComponent == "selected-archive-guides.json")
+    }
+
+    @Test("Shared.Paths.userArchiveSelectionsFile sits directly under baseDirectory (no nesting)")
+    func pathsNoExtraSegments() {
+        // The file is a top-level state file alongside `metadata.json` and
+        // `config.json` — not under a subdirectory. Locks the existing
+        // on-disk layout so neither the crawler nor the TUI accidentally
+        // nests it under e.g. `archive/` and silently splits the user's
+        // selections from what the crawler reads.
+        //
+        // Compared by `.path` (not URL equality) because URL appends a
+        // trailing slash after `deletingLastPathComponent()` on a file URL
+        // that doesn't have one — this would falsely fail the structural
+        // check the test is trying to make.
+        let tmpDir = URL(fileURLWithPath: "/tmp/cupertino-test")
+        let paths = Shared.Paths(baseDirectory: tmpDir)
+
+        #expect(paths.userArchiveSelectionsFile.deletingLastPathComponent().path == tmpDir.path)
+    }
+}

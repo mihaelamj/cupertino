@@ -110,6 +110,28 @@ func archiveGuideCatalogUserSelectionsFileURLCorrect() {
     print("   ✅ User selections file URL: \(fileURL.path)")
 }
 
+// MARK: - #101: Delegation lock — Crawler reads through Shared.Paths seam
+
+@Test("Crawler.ArchiveGuideCatalog.userSelectionsFileURL delegates to Shared.Paths (#101)")
+func archiveGuideCatalogDelegatesToSharedPaths() {
+    // Pre-#101 the crawler computed the selections-file path with a
+    // local literal ("selected-archive-guides.json"); the TUI did the
+    // same thing in a separate file. Either side could rename the file
+    // and silently split the user's selections from what the crawler
+    // read. Post-#101 both delegate to `Shared.Paths.userArchiveSelectionsFile`
+    // — this test locks the delegation by comparing the crawler's
+    // public accessor against the canonical seam for the same base
+    // directory.
+    let tempDir = FileManager.default.temporaryDirectory
+        .appendingPathComponent("cupertino-test-\(UUID().uuidString)", isDirectory: true)
+
+    let crawlerURL = Crawler.ArchiveGuideCatalog.userSelectionsFileURL(baseDirectory: tempDir)
+    let canonicalURL = Shared.Paths(baseDirectory: tempDir).userArchiveSelectionsFile
+
+    #expect(crawlerURL == canonicalURL, "Crawler must delegate to Shared.Paths.userArchiveSelectionsFile")
+    print("   ✅ Crawler reads through Shared.Paths seam: \(crawlerURL.path)")
+}
+
 @Test("Crawler.ArchiveGuideCatalog created file contains only required guides")
 func archiveGuideCatalogCreatedFileContainsOnlyRequiredGuides() {
     // This test verifies that the bundled catalog has required guides

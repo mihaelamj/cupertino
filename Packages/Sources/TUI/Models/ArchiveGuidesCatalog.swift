@@ -1,11 +1,18 @@
 import Foundation
 import Resources
 import SharedConstants
+
 /// Catalog of archive guides loaded from bundled JSON resource
 enum ArchiveGuidesCatalog {
-    /// User-writable location for selected guides: ~/.cupertino/selected-archive-guides.json
+    /// User-writable location for selected guides: `<baseDirectory>/selected-archive-guides.json`.
+    ///
+    /// Delegates to `Shared.Paths.userArchiveSelectionsFile` (#101) — the
+    /// crawler's `Crawler.ArchiveGuideCatalog.userSelectionsFileURL(baseDirectory:)`
+    /// reads from the same seam, so the TUI's write target and the crawler's
+    /// read target cannot drift. Pre-#101 each side computed the literal
+    /// filename independently.
     private static var userSelectionsURL: URL {
-        Shared.Paths.live().baseDirectory.appendingPathComponent("selected-archive-guides.json")
+        Shared.Paths.live().userArchiveSelectionsFile
     }
 
     /// All archive guides from the embedded catalog (#161).
