@@ -56,7 +56,12 @@ extension Search {
         ///       table is created in `createTables()` only on fresh
         ///       inits, and existing DBs without it have no rows to
         ///       walk; the only meaningful upgrade path is a re-index.
-        public static let schemaVersion: Int32 = 15
+        /// - 16: `implementation_swift_version` column on `docs_metadata`
+        ///       (#749). In-place migration via ALTER TABLE ADD COLUMN —
+        ///       existing rows get NULL (column is nullable). Enables
+        ///       per-page Swift language version tracking without a
+        ///       full re-index.
+        public static let schemaVersion: Int32 = 16
 
         // Properties are package-internal (default visibility) so the
         // SearchIndex+<Concern>.swift extension files can access them. Public

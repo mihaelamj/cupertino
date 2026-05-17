@@ -52,6 +52,7 @@ extension Search.Index {
             min_watchos TEXT,
             min_visionos TEXT,
             availability_source TEXT, -- 'api', 'parsed', 'inherited', 'derived'
+            implementation_swift_version TEXT, -- #749: Swift version required to implement the API
             FOREIGN KEY (package_id) REFERENCES packages(id)
         );
 
@@ -65,6 +66,7 @@ extension Search.Index {
         CREATE INDEX IF NOT EXISTS idx_min_tvos ON docs_metadata(min_tvos);
         CREATE INDEX IF NOT EXISTS idx_min_watchos ON docs_metadata(min_watchos);
         CREATE INDEX IF NOT EXISTS idx_min_visionos ON docs_metadata(min_visionos);
+        CREATE INDEX IF NOT EXISTS idx_implementation_swift_version ON docs_metadata(implementation_swift_version);
 
         -- Structured documentation fields (extracted from JSON for querying)
         CREATE TABLE IF NOT EXISTS docs_structured (

@@ -213,6 +213,12 @@ extension Search.Index {
                     "rm \(dbPath.path) && cupertino setup"
             )
         }
+
+        if currentVersion < 16 {
+            // Version 15 -> 16: Added `implementation_swift_version` column to
+            // docs_metadata (#749). In-place migration — existing rows get NULL.
+            try await migrateToVersion16()
+        }
     }
 
     func migrateToVersion11() async throws {
@@ -224,6 +230,7 @@ extension Search.Index {
             "ALTER TABLE docs_metadata ADD COLUMN kind TEXT NOT NULL DEFAULT 'unknown';",
             "ALTER TABLE docs_metadata ADD COLUMN symbols TEXT;",
             "CREATE INDEX IF NOT EXISTS idx_kind ON docs_metadata(kind);",
+            "PRAGMA user_version = 11;",
         ]
 
         for sql in statements {
@@ -240,13 +247,17 @@ extension Search.Index {
             throw Search.Error.databaseNotInitialized
         }
 
-        let sql = "ALTER TABLE framework_aliases ADD COLUMN synonyms TEXT;"
+        let statements = [
+            "ALTER TABLE framework_aliases ADD COLUMN synonyms TEXT;",
+            "PRAGMA user_version = 10;",
+        ]
 
-        var errorPointer: UnsafeMutablePointer<CChar>?
-        defer { sqlite3_free(errorPointer) }
-
-        // Ignore error if column already exists
-        sqlite3_exec(database, sql, nil, nil, &errorPointer)
+        for sql in statements {
+            var errorPointer: UnsafeMutablePointer<CChar>?
+            defer { sqlite3_free(errorPointer) }
+            // Ignore error if column already exists
+            sqlite3_exec(database, sql, nil, nil, &errorPointer)
+        }
     }
 
     func migrateToVersion7() async throws {
@@ -255,17 +266,18 @@ extension Search.Index {
         }
 
         // Add availability columns to sample_code_metadata
-        let columns = [
+        let statements = [
             "ALTER TABLE sample_code_metadata ADD COLUMN min_ios TEXT;",
             "ALTER TABLE sample_code_metadata ADD COLUMN min_macos TEXT;",
             "ALTER TABLE sample_code_metadata ADD COLUMN min_tvos TEXT;",
             "ALTER TABLE sample_code_metadata ADD COLUMN min_watchos TEXT;",
             "ALTER TABLE sample_code_metadata ADD COLUMN min_visionos TEXT;",
+            "PRAGMA user_version = 7;",
         ]
 
         var errorPointer: UnsafeMutablePointer<CChar>?
 
-        for sql in columns {
+        for sql in statements {
             sqlite3_free(errorPointer)
             errorPointer = nil
             _ = sqlite3_exec(database, sql, nil, nil, &errorPointer)
@@ -280,40 +292,32 @@ extension Search.Index {
         }
 
         // Add availability columns - these can be added with ALTER TABLE
-        let columns = [
+        let statements = [
             "ALTER TABLE docs_metadata ADD COLUMN min_ios TEXT;",
             "ALTER TABLE docs_metadata ADD COLUMN min_macos TEXT;",
             "ALTER TABLE docs_metadata ADD COLUMN min_tvos TEXT;",
             "ALTER TABLE docs_metadata ADD COLUMN min_watchos TEXT;",
             "ALTER TABLE docs_metadata ADD COLUMN min_visionos TEXT;",
             "ALTER TABLE docs_metadata ADD COLUMN availability_source TEXT;",
+            // Create indexes for efficient filtering
+            "CREATE INDEX IF NOT EXISTS idx_min_ios ON docs_metadata(min_ios);",
+            "CREATE INDEX IF NOT EXISTS idx_min_macos ON docs_metadata(min_macos);",
+            "CREATE INDEX IF NOT EXISTS idx_min_tvos ON docs_metadata(min_tvos);",
+            "CREATE INDEX IF NOT EXISTS idx_min_watchos ON docs_metadata(min_watchos);",
+            "CREATE INDEX IF NOT EXISTS idx_min_visionos ON docs_metadata(min_visionos);",
+            "PRAGMA user_version = 6;",
         ]
 
         var errorPointer: UnsafeMutablePointer<CChar>?
 
-        for sql in columns {
-            // This will fail silently if column already exists
+        for sql in statements {
+            // Fails silently if column/index already exists
             sqlite3_free(errorPointer)
             errorPointer = nil
             _ = sqlite3_exec(database, sql, nil, nil, &errorPointer)
         }
 
         sqlite3_free(errorPointer)
-
-        // Create indexes for efficient filtering
-        let indexes = [
-            "CREATE INDEX IF NOT EXISTS idx_min_ios ON docs_metadata(min_ios);",
-            "CREATE INDEX IF NOT EXISTS idx_min_macos ON docs_metadata(min_macos);",
-            "CREATE INDEX IF NOT EXISTS idx_min_tvos ON docs_metadata(min_tvos);",
-            "CREATE INDEX IF NOT EXISTS idx_min_watchos ON docs_metadata(min_watchos);",
-            "CREATE INDEX IF NOT EXISTS idx_min_visionos ON docs_metadata(min_visionos);",
-        ]
-
-        for sql in indexes {
-            errorPointer = nil
-            _ = sqlite3_exec(database, sql, nil, nil, &errorPointer)
-            sqlite3_free(errorPointer)
-        }
     }
 
     func migrateToVersion4() async throws {
@@ -338,12 +342,35 @@ extension Search.Index {
             throw Search.Error.databaseNotInitialized
         }
 
-        // Add json_data column if it doesn't exist
-        let sql = "ALTER TABLE docs_metadata ADD COLUMN json_data TEXT;"
-        var errorPointer: UnsafeMutablePointer<CChar>?
-        defer { sqlite3_free(errorPointer) }
+        let statements = [
+            "ALTER TABLE docs_metadata ADD COLUMN json_data TEXT;",
+            "PRAGMA user_version = 3;",
+        ]
 
-        // This will fail silently if column already exists, which is fine
-        _ = sqlite3_exec(database, sql, nil, nil, &errorPointer)
+        for sql in statements {
+            var errorPointer: UnsafeMutablePointer<CChar>?
+            defer { sqlite3_free(errorPointer) }
+            // Fails silently if column already exists
+            _ = sqlite3_exec(database, sql, nil, nil, &errorPointer)
+        }
+    }
+
+    func migrateToVersion16() async throws {
+        guard let database else {
+            throw Search.Error.databaseNotInitialized
+        }
+
+        let statements = [
+            "ALTER TABLE docs_metadata ADD COLUMN implementation_swift_version TEXT;",
+            "CREATE INDEX IF NOT EXISTS idx_implementation_swift_version ON docs_metadata(implementation_swift_version);",
+            "PRAGMA user_version = 16;",
+        ]
+
+        for sql in statements {
+            var errorPointer: UnsafeMutablePointer<CChar>?
+            defer { sqlite3_free(errorPointer) }
+            // Fails silently if column/index already exists
+            _ = sqlite3_exec(database, sql, nil, nil, &errorPointer)
+        }
     }
 }

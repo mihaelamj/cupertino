@@ -138,9 +138,9 @@ check_at_least() {
     fi
 }
 
-# 1. Schema version (current expected: 15 per #637)
+# 1. Schema version (current expected: 16 per #749)
 USER_VERSION=$("$SQLITE" "$DB" "PRAGMA user_version;" 2>/dev/null)
-check "schema v15"  "15"  "$USER_VERSION"
+check "schema v16"  "16"  "$USER_VERSION"
 
 # 2. Page count — 7 fixtures committed
 DOC_COUNT=$("$SQLITE" "$DB" "SELECT COUNT(*) FROM docs_metadata;" 2>/dev/null)
