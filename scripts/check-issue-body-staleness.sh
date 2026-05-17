@@ -93,19 +93,19 @@ fi
 # the right hint.
 
 RENAME_MAP=$(cat <<'EOF'
-\bPackages/Sources/Search/SearchIndex\.swift\b	split into Search.Index.*.swift (Search.Index.swift / Search.Index.Search.swift / Search.Index.Schema.swift / Search.Index.SemanticSearch.swift / etc.)
-\bPackages/Sources/Search/SearchIndexBuilder\.swift\b	renamed to Search.IndexBuilder.swift
-\bPackages/Sources/SampleIndex/SampleIndexDatabase\.swift\b	renamed to Sample.Index.Database.swift
-\bPackages/Sources/Resources/Embedded/ArchiveGuidesCatalogEmbedded\.swift\b	renamed to Resources.Embedded.ArchiveGuidesCatalog.swift
-\bPackages/Sources/Resources/Embedded/SampleCodeCatalogEmbedded\.swift\b	deleted in #215 (sample-code metadata now lives in samples.db + ~/.cupertino/sample-code/catalog.json)
-\bPackages/Sources/Resources/Embedded/SwiftPackagesCatalogEmbedded\.swift\b	deleted in #711 / #194 (catalog now in packages.db)
-\bPackages/Sources/Core/Protocols/\b	package renamed: CoreProtocols/ (no slash inside)
-\bSources/TUI/\b	missing Packages/ prefix: use Packages/Sources/TUI/
-\bSources/Resources/Embedded/\b	missing Packages/ prefix: use Packages/Sources/Resources/Embedded/
-\bdocs/tools/\b	docs tree uses docs/commands/<cmd>/option (--)/<flag>.md shape; no docs/tools/ tree exists
-\bScripts/generate-embedded-catalogs\.sh\b	lowercase: scripts/generate-embedded-catalogs.sh
-\b\.github/ISSUE_TEMPLATE/feature\.md\b	converted to feature.yml GitHub form template (PR #745)
-\b\.github/ISSUE_TEMPLATE/bug\.md\b	converted to bug.yml GitHub form template (PR #745)
+Packages/Sources/Search/SearchIndex\.swift	split into Search.Index.*.swift (Search.Index.swift / Search.Index.Search.swift / Search.Index.Schema.swift / Search.Index.SemanticSearch.swift / etc.)
+Packages/Sources/Search/SearchIndexBuilder\.swift	renamed to Search.IndexBuilder.swift
+Packages/Sources/SampleIndex/SampleIndexDatabase\.swift	renamed to Sample.Index.Database.swift
+Packages/Sources/Resources/Embedded/ArchiveGuidesCatalogEmbedded\.swift	renamed to Resources.Embedded.ArchiveGuidesCatalog.swift
+Packages/Sources/Resources/Embedded/SampleCodeCatalogEmbedded\.swift	deleted in #215 (sample-code metadata now lives in samples.db + ~/.cupertino/sample-code/catalog.json)
+Packages/Sources/Resources/Embedded/SwiftPackagesCatalogEmbedded\.swift	deleted in #711 / #194 (catalog now in packages.db)
+Packages/Sources/Core/Protocols/	package renamed: CoreProtocols/ (no slash inside)
+Sources/TUI/	missing Packages/ prefix: use Packages/Sources/TUI/
+Sources/Resources/Embedded/	missing Packages/ prefix: use Packages/Sources/Resources/Embedded/
+docs/tools/	docs tree uses docs/commands/<cmd>/option (--)/<flag>.md shape; no docs/tools/ tree exists
+Scripts/generate-embedded-catalogs\.sh	lowercase: scripts/generate-embedded-catalogs.sh
+\.github/ISSUE_TEMPLATE/feature\.md	converted to feature.yml GitHub form template in PR #745
+\.github/ISSUE_TEMPLATE/bug\.md	converted to bug.yml GitHub form template in PR #745
 EOF
 )
 
