@@ -14,8 +14,7 @@ body:
     id: status_date
     attributes:
       label: Status date (YYYY-MM-DD)
-      description: Today's date. The body will carry a `## Status (YYYY-MM-DD)` block, edited on every state change.
-      placeholder: "2026-05-17"
+      description: Today's date in YYYY-MM-DD format. The body will carry a `## Status (YYYY-MM-DD)` block, edited on every state change.
     validations:
       required: true
 

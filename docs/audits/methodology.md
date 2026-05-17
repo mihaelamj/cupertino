@@ -168,10 +168,17 @@ on bodies with 10x-wrong default values inside them.
   maintained in the script's `SHIPPED_VERSIONS` list; bump when a new
   release tag drops.
 - `.github/ISSUE_TEMPLATE/feature.yml` and
-  `.github/ISSUE_TEMPLATE/bug.yml`. GitHub form templates with
-  required dropdowns for kind / priority / complexity / status date.
-  Forms enforce structure mechanically at filing time, rather than
-  suggesting structure via markdown templates.
+  `.github/ISSUE_TEMPLATE/bug.yml`. GitHub form templates. Required
+  inputs: status date. Required dropdowns: priority, complexity.
+  Required textareas: goal / acceptance (feature) or symptom /
+  expected / reproduce / acceptance (bug). Kind is determined by
+  which template the user picks (the static top-level `labels:` field
+  applies `enhancement` for feature, `bug` for bug). Priority and
+  complexity dropdown values are translated into matching labels by
+  `.github/workflows/issue-form-labeler.yml` on the `issues.opened`
+  event; form dropdowns do not auto-apply labels by themselves, they
+  only write the selected value into the issue body, so the labeler
+  closes the gap.
 
 **Rename-PR checklist (manual)**:
 

@@ -1,0 +1,82 @@
+name: Issue form labeler
+
+# Translates form-template dropdown values from issue bodies into
+# actual labels. GitHub form templates produce body sections like
+# "### Priority\n\npriority: high\n" but they DO NOT auto-apply the
+# value as a label; that's the missing piece this workflow closes.
+#
+# Origin: critic-fix pass on PR #745. The forms shipped with required
+# dropdowns for priority and complexity, but inspection revealed
+# dropdown values land in the body, not as labels. This workflow
+# reads the relevant sections and applies the matching labels.
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  label-from-form:
+    name: Apply form dropdown values as labels
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Read body and apply matching labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          # The form templates render their dropdown values as plain
+          # text under "### Priority" / "### Complexity" headings.
+          # Extract the value line that follows each heading; verify
+          # it matches the known label set; apply via gh issue edit.
+
+          set -euo pipefail
+
+          add_label() {
+            local val="$1"
+            # Validate against known labels to avoid arbitrary label creation.
+            case "$val" in
+              "priority: high"|"priority: medium"|"priority: low") ;;
+              "complexity: low"|"complexity: medium"|"complexity: high") ;;
+              *) echo "  skip: $val does not match the known label set"; return ;;
+            esac
+            echo "  apply: $val"
+            gh issue edit "$ISSUE_NUMBER" \
+              --repo "${{ github.repository }}" \
+              --add-label "$val" || echo "  (label-add failed for $val, already applied?)"
+          }
+
+          # Extract value under a given heading. Form bodies look like:
+          #
+          #   ### Priority
+          #
+          #   priority: high
+          #
+          extract_under_heading() {
+            local heading="$1"
+            # Print the next non-blank line after the heading. Robust
+            # against trailing whitespace and multiple blank lines.
+            awk -v h="$heading" '
+              $0 == "### " h { found = 1; next }
+              found && /^[[:space:]]*$/ { next }
+              found { print; exit }
+            ' <<<"$ISSUE_BODY"
+          }
+
+          priority=$(extract_under_heading "Priority" | tr -d '\r')
+          complexity=$(extract_under_heading "Complexity" | tr -d '\r')
+          complexity_alt=$(extract_under_heading "Complexity (effort hint)" | tr -d '\r')
+
+          echo "Extracted from issue body:"
+          echo "  priority='$priority'"
+          echo "  complexity='$complexity'"
+          echo "  complexity_alt='$complexity_alt'"
+
+          [ -n "$priority" ]      && add_label "$priority"
+          [ -n "$complexity" ]    && add_label "$complexity"
+          [ -n "$complexity_alt" ] && add_label "$complexity_alt"
