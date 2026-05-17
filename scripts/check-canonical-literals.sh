@@ -53,10 +53,17 @@ check_literal() {
     # Count matches across Sources/ (excludes Resources/Embedded which carry
     # JSON catalogs by design — those use the literals but only as DATA,
     # not as code-level constants).
+    #
+    # Match the quoted-string form (`"$literal"`) so doc comments that
+    # mention the literal in backticks / prose / file-path examples
+    # don't trip the check. The declaration site uses
+    # `static let foo = "$literal"` — the literal IS in quotes there.
+    # The duplicate-constant smell we're guarding against also lives
+    # in code as `"$literal"` — same shape.
     local matches
     matches=$(grep -rln --include='*.swift' \
         --exclude-dir='Resources/Embedded' \
-        -- "$literal" Packages/Sources/ 2>/dev/null || true)
+        -F -- "\"$literal\"" Packages/Sources/ 2>/dev/null || true)
     local count
     count=$(printf '%s' "$matches" | grep -c . || true)
 
