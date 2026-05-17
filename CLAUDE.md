@@ -32,7 +32,7 @@ See #183. v1.1+ design and academic research review live in `mihaela-blog-ideas/
 
 ## Conventions
 
-See `AGENTS.md` for code style, commit format, and the "ask when unsure" workflow.
+See the imported `mihaela-agents/Rules/AGENTS.md` (resolved below) for code style, commit format, and the "ask when unsure" workflow. No local `AGENTS.md` at the repo root — the canonical rules live in the private rules repo.
 
 ## Principles
 

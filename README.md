@@ -718,10 +718,12 @@ cupertino serve --docs-dir ~/docs/apple --search-db ~/docs/search.db
 
 ## Documentation
 
-- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Build, test, contribute, and release workflow
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Build, test, contribute, and release workflow
+- **[docs/PRINCIPLES.md](docs/PRINCIPLES.md)** - Engineering principles (lossless URIs, no content lost at the door, 10x scale headroom)
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Technical deep-dives (Concurrency, MCP, WKWebView testing)
 - **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Homebrew distribution and CI/CD setup
 - **[docs/commands/](docs/commands/)** - Command-specific documentation
+- **[docs/tools/](docs/tools/)** - MCP-tool-specific documentation
 
 ### Command Documentation
 
@@ -744,7 +746,7 @@ Don't hesitate to submit a PR because of code style. I'd rather have your contri
 
 By participating in this project you agree to abide by the [Contributor Covenant Code of Conduct](https://www.contributor-covenant.org/).
 
-For development setup, see [DEVELOPMENT.md](DEVELOPMENT.md).
+For development setup, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Project Status
 
