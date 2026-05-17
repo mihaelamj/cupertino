@@ -5,6 +5,8 @@
 **Prior pass this session:** 15 issues closed (4 false-positive + 11 verified-shipped).
 **This pass:** 2 additional closures (#624, #101). **17 total closed this session.**
 
+**🔴 SELF-REVIEW CORRECTION (post-PR-728 critical pass):** #101 was reopened. The duplicate-constant fold-in named in the issue body is NOT done — `TUI/Models/ArchiveGuidesCatalog.swift:7` still computes the user-selections URL independently of `Crawler.ArchiveGuideCatalog.userSelectionsFileURL`. The closure verified only the test-theatre half. **16 net closures this session.**
+
 ---
 
 ## TL;DR
