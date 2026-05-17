@@ -187,12 +187,18 @@ struct Issue635SchemaStampGuardTests {
         // Direct call into setSchemaVersion is via the actor's internal
         // surface — we exercise it through reopening after a raw poke.
         await idx.disconnect()
-        try Self.writeRawUserVersion(Search.Index.schemaVersion - 1, at: dbPath)
 
-        // Reopening should throw — but if a future schema bump forgot
-        // its migrator entry (so `checkAndMigrateSchema` fell through
-        // without rejecting), the `setSchemaVersion` guard would catch
-        // the stamp attempt. Either way: throw, no silent stamping.
+        // schemaVersion == 16 at this schema bump. schemaVersion - 1 = 15
+        // is now handled by the v15→v16 in-place migrator (which stamps
+        // PRAGMA user_version = 16 as its last step). Test the guard with
+        // schemaVersion - 2 = 14, which has no in-place migrator and hits
+        // the breaking-change throw at `currentVersion < 15`.
+        try Self.writeRawUserVersion(Search.Index.schemaVersion - 2, at: dbPath)
+
+        // Reopening should throw — either from the breaking-change
+        // throw in `checkAndMigrateSchema` (v14→v15 path) or, if a
+        // future schema bump forgot its migrator entry, from the
+        // `setSchemaVersion` guard. Either way: throw, no silent stamping.
         await #expect(throws: Search.Error.self) {
             _ = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
         }
@@ -200,7 +206,7 @@ struct Issue635SchemaStampGuardTests {
         // The DB must NOT have been stamped at the new schemaVersion.
         let after = try Self.readRawUserVersion(at: dbPath)
         #expect(
-            after == Search.Index.schemaVersion - 1,
+            after == Search.Index.schemaVersion - 2,
             "guard must leave user_version untouched on mismatch (got \(after))"
         )
     }

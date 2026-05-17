@@ -2,6 +2,7 @@ import Foundation
 import LoggingModels
 @testable import Search
 import SearchModels
+import SQLite3
 import Testing
 
 // MARK: - #225 Part B — implementation_swift_version on swift-evolution rows
@@ -245,5 +246,95 @@ struct Issue225PartBPersistenceTests {
         // exact bug the post-fetch in-memory compare prevents.
         let rejects = try await index.search(query: "semver edge case", source: "swift-evolution", minSwift: "5.2")
         #expect(rejects.isEmpty, "5.10 row must NOT pass --swift 5.2 (semver compare; string compare would mistakenly accept it)")
+    }
+
+    @Test("v15→v16 in-place migration stamps user_version=16 and column is reachable")
+    func v15ToV16InPlaceMigrationLeavesDBAtV16WithColumnReachable() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cupertino-225-v15-migration-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let dbPath = tempDir.appendingPathComponent("search.db")
+
+        // 1. Create v15 DB — raw SQLite with docs_metadata table (no implementation_swift_version)
+        var db: OpaquePointer?
+        guard sqlite3_open(dbPath.path, &db) == SQLITE_OK else {
+            Issue.record("Failed to create temp DB")
+            return
+        }
+
+        let createSQL = """
+        CREATE TABLE docs_metadata (
+            uri TEXT PRIMARY KEY,
+            source TEXT NOT NULL DEFAULT 'apple-docs',
+            framework TEXT NOT NULL,
+            language TEXT NOT NULL DEFAULT 'swift',
+            kind TEXT NOT NULL DEFAULT 'unknown',
+            symbols TEXT,
+            file_path TEXT NOT NULL,
+            content_hash TEXT NOT NULL,
+            last_crawled INTEGER NOT NULL,
+            word_count INTEGER NOT NULL,
+            source_type TEXT DEFAULT 'apple',
+            package_id INTEGER,
+            json_data TEXT,
+            min_ios TEXT,
+            min_macos TEXT,
+            min_tvos TEXT,
+            min_watchos TEXT,
+            min_visionos TEXT,
+            availability_source TEXT
+        );
+        """
+        sqlite3_exec(db, createSQL, nil, nil, nil)
+        sqlite3_exec(db, "PRAGMA user_version = 15;", nil, nil, nil)
+        sqlite3_close(db)
+
+        // 2. Open with Search.Index to trigger checkAndMigrateSchema
+        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        defer { Task { await index.disconnect() } }
+
+        // 3. Verify PRAGMA user_version == 16 post-migration
+        guard sqlite3_open(dbPath.path, &db) == SQLITE_OK else {
+            Issue.record("Failed to re-open DB for verification")
+            return
+        }
+        defer { sqlite3_close(db) }
+
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, "PRAGMA user_version", -1, &stmt, nil) == SQLITE_OK,
+              sqlite3_step(stmt) == SQLITE_ROW else {
+            Issue.record("Failed to read user_version")
+            return
+        }
+        let version = sqlite3_column_int(stmt, 0)
+        sqlite3_finalize(stmt)
+        #expect(version == 16, "v15→v16 migration should stamp user_version = 16, got \(version)")
+
+        // 4. Assert implementation_swift_version column is reachable via indexStructuredDocument
+        let pageURL = try #require(URL(string: "https://github.com/swiftlang/swift-evolution/blob/main/proposals/SE-0001.md"))
+        let page = Search.StrategyHelpers.makeArticleStructuredPage(
+            url: pageURL,
+            title: "Migration test document",
+            rawMarkdown: "# SE-0001\n* Implementation: Swift 2.0",
+            crawledAt: Date(),
+            contentHash: "migration-test-hash"
+        )
+        let json = Search.StrategyHelpers.encodeStructuredPageToJSON(page)
+
+        try await index.indexStructuredDocument(
+            uri: "swift-evolution://SE-MIGRATION-TEST",
+            source: "swift-evolution",
+            framework: "swift-evolution",
+            page: page,
+            jsonData: json,
+            implementationSwiftVersion: "3.0"
+        )
+
+        // 5. Round-trip via search with --swift filter
+        let results = try await index.search(query: "Migration test document", source: "swift-evolution", minSwift: "5.0")
+        #expect(!results.isEmpty, "Migrated v16 DB should index and return documents with implementation_swift_version")
+        #expect(results.first?.uri == "swift-evolution://SE-MIGRATION-TEST")
     }
 }

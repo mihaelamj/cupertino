@@ -238,6 +238,7 @@ extension Search.Index {
         let statements = [
             "ALTER TABLE docs_metadata ADD COLUMN implementation_swift_version TEXT;",
             "CREATE INDEX IF NOT EXISTS idx_implementation_swift_version ON docs_metadata(implementation_swift_version);",
+            "PRAGMA user_version = 16;",
         ]
 
         for sql in statements {
@@ -259,6 +260,7 @@ extension Search.Index {
             "ALTER TABLE docs_metadata ADD COLUMN kind TEXT NOT NULL DEFAULT 'unknown';",
             "ALTER TABLE docs_metadata ADD COLUMN symbols TEXT;",
             "CREATE INDEX IF NOT EXISTS idx_kind ON docs_metadata(kind);",
+            "PRAGMA user_version = 11;",
         ]
 
         for sql in statements {
@@ -282,6 +284,9 @@ extension Search.Index {
 
         // Ignore error if column already exists
         sqlite3_exec(database, sql, nil, nil, &errorPointer)
+
+        let pragmaSQL = "PRAGMA user_version = 10;"
+        sqlite3_exec(database, pragmaSQL, nil, nil, nil)
     }
 
     func migrateToVersion7() async throws {
@@ -307,6 +312,9 @@ extension Search.Index {
         }
 
         sqlite3_free(errorPointer)
+
+        let pragmaSQL = "PRAGMA user_version = 7;"
+        sqlite3_exec(database, pragmaSQL, nil, nil, nil)
     }
 
     func migrateToVersion6() async throws {
@@ -349,6 +357,9 @@ extension Search.Index {
             _ = sqlite3_exec(database, sql, nil, nil, &errorPointer)
             sqlite3_free(errorPointer)
         }
+
+        let pragmaSQL = "PRAGMA user_version = 6;"
+        sqlite3_exec(database, pragmaSQL, nil, nil, nil)
     }
 
     func migrateToVersion4() async throws {
@@ -380,5 +391,8 @@ extension Search.Index {
 
         // This will fail silently if column already exists, which is fine
         _ = sqlite3_exec(database, sql, nil, nil, &errorPointer)
+
+        let pragmaSQL = "PRAGMA user_version = 3;"
+        sqlite3_exec(database, pragmaSQL, nil, nil, nil)
     }
 }
