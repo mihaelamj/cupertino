@@ -138,6 +138,41 @@ extension CLIImpl.Command {
         )
         var dryRun: Bool = false
 
+        /// #722 — opt-in override of the concurrent-save gate. When a
+        /// sibling `cupertino save` is already targeting one of our
+        /// DBs, this flag authorises sending it SIGTERM (with a grace
+        /// window for clean WAL flush, then SIGKILL fallback) before
+        /// proceeding with our own save. Gated by a typed-confirmation
+        /// prompt (TTY) or `--yes` (CI / scripted) — never
+        /// unconditional, because nuking an in-flight multi-hour build
+        /// by accident is exactly the class-of-bug this exists to
+        /// prevent.
+        @Flag(
+            name: .long,
+            help: """
+            Authorise SIGTERM of any sibling `cupertino save` that targets the same DB(s). \
+            Requires either an interactive typed-confirmation gate (type 'replace') or `--yes` \
+            for non-interactive use (CI, scripts). Sends SIGTERM, waits for clean WAL flush, \
+            SIGKILL fallback. Use sparingly — losing the sibling's in-flight work is the point \
+            of the typed-confirmation gate.
+            """
+        )
+        var forceReplace: Bool = false
+
+        @Option(
+            name: .long,
+            help: """
+            Seconds to wait between SIGTERM and SIGKILL when --force-replace terminates a \
+            sibling save. Must be >= 0. The default of 30 is a practical floor for a \
+            moderately-sized WAL; raise to 60 or higher when the sibling is near-completing a \
+            multi-GB checkpoint and the default leaves SIGKILL landing mid-checkpoint (which is \
+            what causes the corruption the gate exists to prevent). Passing 0 skips the grace \
+            window entirely and SIGKILLs immediately — only use when you've already confirmed \
+            the sibling is stuck.
+            """
+        )
+        var forceReplaceGrace: Int = 30
+
         mutating func run() async throws {
             if remote {
                 try await runRemote()
@@ -160,11 +195,47 @@ extension CLIImpl.Command {
             if buildSamples { myTargets.insert(.samples) }
 
             let recording = Cupertino.Context.composition.logging.recording
-            switch SaveSiblingGate.gate(myTargets: myTargets, recording: recording) {
+            switch SaveSiblingGate.gate(
+                myTargets: myTargets,
+                recording: recording,
+                forceReplace: forceReplace,
+                assumeYes: yes
+            ) {
             case .proceed:
                 break
             case .waitForSiblingsThenProceed(let pids):
                 SaveSiblingGate.waitForSiblings(pids: pids, recording: recording)
+            case .forceReplaceSiblings(let pids):
+                // #722 — typed-confirmation gate already passed (or
+                // `--yes` bypassed it). Terminate siblings + wait for
+                // clean WAL flush before proceeding. Honour
+                // `.stragglers` outcome — refuse to open the DB if
+                // SIGKILL didn't take (otherwise we'd cascade into
+                // `database is locked`).
+                guard forceReplaceGrace >= 0 else {
+                    recording.error(
+                        "❌ --force-replace-grace must be >= 0 (got \(forceReplaceGrace)).",
+                        category: .cli
+                    )
+                    throw ExitCode.failure
+                }
+                let outcome = SaveSiblingGate.terminateSiblings(
+                    pids: pids,
+                    graceSeconds: TimeInterval(forceReplaceGrace),
+                    recording: recording
+                )
+                switch outcome {
+                case .allTerminated:
+                    break
+                case .stragglers(let surviving):
+                    recording.error(
+                        "❌ Refusing to proceed — \(surviving.count) sibling save(s) still alive after SIGKILL: " +
+                            "\(surviving.map(String.init).joined(separator: ", ")). " +
+                            "Investigate (likely cross-user EPERM or stuck in D-state) before retrying.",
+                        category: .cli
+                    )
+                    throw ExitCode.failure
+                }
             case .abort(let reason):
                 recording.info("❌ \(reason)", category: .cli)
                 throw ExitCode.failure
