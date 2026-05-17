@@ -77,6 +77,7 @@ Validated against five independent references (see `mihaela-agents/Rules/swift/p
 
 | Target | Allowed imports | Current state |
 |---|---|---|
+| `AppleConstraintsKit` | Foundation, SearchModels | ✅ Foundation, SearchModels (#759 iter 3 — parses `swift symbolgraph-extract` output via local Codable schema, maps `pathComponents → apple-docs://...` URIs, ships the filtered table as `Search.StaticConstraintsLookup` conformance) |
 | `Availability` | Foundation, FoundationNetworking, SharedConstants | ✅ Foundation, FoundationNetworking, SharedConstants |
 | `Cleanup` | Foundation, CleanupModels, LoggingModels, SharedConstants | ✅ Foundation, CleanupModels, LoggingModels, SharedConstants (closures-to-Observer epic: `cleanup` signature now takes `any Sample.Cleanup.CleanerProgressObserving` from seam) |
 | `Core` | Foundation, WebKit, LoggingModels, Resources, ASTIndexer, CoreProtocols, CorePackageIndexingModels, SharedConstants | ✅ ASTIndexer, CorePackageIndexingModels, CoreProtocols, Foundation, LoggingModels, Resources, SharedConstants, WebKit |
@@ -107,6 +108,7 @@ Build-system convention: every entry in this section is declared `.executableTar
 | `MCP` (lib) | everything in its layer | ✅ |
 | `MockAIAgent` | everything | ✅ `executableTarget` → `mock-ai-agent` |
 | `ReleaseTool` (`ReleaseToolImpl.swift`) | everything | ✅ `executableTarget` → `cupertino-rel`, binary, not a producer |
+| `ConstraintsGen` (`ConstraintsGen.swift`) | Foundation, ArgumentParser, AppleConstraintsKit, SearchModels | ✅ `executableTarget` → `cupertino-constraints-gen`, binary, parses `swift symbolgraph-extract` output into the `apple-constraints.json` table consumed by `Search.IndexBuilder` (#759 iter 3) |
 
 ## CI enforcement
 

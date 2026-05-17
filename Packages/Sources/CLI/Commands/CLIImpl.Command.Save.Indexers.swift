@@ -1,3 +1,4 @@
+import AppleConstraintsKit
 import CoreJSONParser
 import CoreProtocols
 import CoreSampleCode
@@ -223,6 +224,31 @@ extension CLIImpl.Command.Save {
             logPathCapture.path = importLogSink == nil ? nil : logURL
 
             let searchIndex = try await Search.Index(dbPath: input.searchDBPath, logger: Cupertino.Context.composition.logging.recording)
+
+            // #759 iteration 3 — load the authoritative Apple-type
+            // constraints table from `<base-dir>/apple-constraints.json`
+            // if present. The composition root is the rule-7-allowed
+            // place to import AppleConstraintsKit's concrete table;
+            // Search itself stays foundation-only and consumes the
+            // `Search.StaticConstraintsLookup` protocol. Absent file
+            // is silently OK — the build falls back to iter 1 + iter 2.
+            let constraintsPath = input.searchDBPath.deletingLastPathComponent()
+                .appendingPathComponent("apple-constraints.json")
+            let staticConstraintsLookup: (any Search.StaticConstraintsLookup)? = {
+                guard FileManager.default.fileExists(atPath: constraintsPath.path) else {
+                    return nil
+                }
+                do {
+                    return try AppleConstraintsKit.Table.from(fileURL: constraintsPath)
+                } catch {
+                    Cupertino.Context.composition.logging.recording.warning(
+                        "Failed to load \(constraintsPath.lastPathComponent): \(error). Falling back to iter 1 + iter 2.",
+                        category: .search
+                    )
+                    return nil
+                }
+            }()
+
             let builder = Search.IndexBuilder(
                 searchIndex: searchIndex,
                 metadata: nil,
@@ -234,7 +260,8 @@ extension CLIImpl.Command.Save {
                 markdownStrategy: input.markdownStrategy,
                 sampleCatalogProvider: input.sampleCatalogProvider,
                 logger: Cupertino.Context.composition.logging.recording,
-                importLogSink: importLogSink
+                importLogSink: importLogSink,
+                staticConstraintsLookup: staticConstraintsLookup
             )
             try await builder.buildIndex(
                 clearExisting: input.clearExisting,
