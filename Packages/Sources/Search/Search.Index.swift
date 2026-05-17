@@ -68,7 +68,24 @@ extension Search {
         ///       parses them, which matches the #226 platform-filter
         ///       semantic (NULL rows are rejected when a filter is set,
         ///       passed through when it isn't).
-        public static let schemaVersion: Int32 = 16
+        /// - 17: `generic_constraints` column on `doc_symbols` (#755).
+        ///       The pre-fix `generic_params` column stored type-parameter
+        ///       NAMES only (`T`, `Element`, `Result`); the MCP
+        ///       `search_generics` tool advertised constraint search
+        ///       but the corpus never carried constraint clauses
+        ///       (only 17 rows of 351,495 had constraint-form values).
+        ///       The new column stores constraint halves harvested
+        ///       from two sources at index time: (1) the AST extractor's
+        ///       `"T: Collection"` output (split into name + constraint
+        ///       pair, written to `generic_params` and
+        ///       `generic_constraints` respectively); (2) where-clause
+        ///       + inline `<T: X>` patterns parsed from the `signature`
+        ///       column for symbols whose declarations carry them.
+        ///       Search predicate moves from `generic_params LIKE` to
+        ///       `generic_constraints LIKE`. v16 DBs migrate in place
+        ///       via ALTER TABLE ADD COLUMN; values stay NULL until
+        ///       the next re-index populates them.
+        public static let schemaVersion: Int32 = 17
 
         // Properties are package-internal (default visibility) so the
         // SearchIndex+<Concern>.swift extension files can access them. Public

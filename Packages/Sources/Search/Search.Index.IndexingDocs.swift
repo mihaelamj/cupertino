@@ -698,8 +698,9 @@ extension Search.Index {
         let sql = """
         INSERT INTO doc_symbols
         (doc_uri, name, kind, line, column, signature, is_async, is_throws,
-         is_public, is_static, attributes, conformances, generic_params)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+         is_public, is_static, attributes, conformances, generic_params,
+         generic_constraints)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         """
 
         for symbol in symbols {
@@ -752,6 +753,22 @@ extension Search.Index {
                 ? nil : symbol.conformances.joined(separator: ",")
             let genericParamsStr = symbol.genericParameters.isEmpty
                 ? nil : symbol.genericParameters.joined(separator: ",")
+            // #755 — populate the new generic_constraints column.
+            // Two sources merge:
+            //   (1) The AST extractor's `T: Collection` form (when the
+            //       declaration has an inline `inheritedType`). Pulled
+            //       out via `splitGenericConstraints(_:)`.
+            //   (2) Where-clause patterns harvested from the signature
+            //       column via `extractWhereClauseConstraints(from:)`,
+            //       which catches `func foo<T>(x: T) where T: Collection`
+            //       declarations that the AST extractor's
+            //       `extractGenericParameters` doesn't reach (where
+            //       clauses live on the GenericWhereClause node, not
+            //       the GenericParameter node).
+            let genericConstraintsStr = Self.combinedGenericConstraints(
+                fromAST: symbol.genericParameters,
+                fromSignature: symbol.signature
+            )
 
             if let attrs = attributesStr {
                 sqlite3_bind_text(statement, 11, (attrs as NSString).utf8String, -1, nil)
@@ -771,10 +788,104 @@ extension Search.Index {
                 sqlite3_bind_null(statement, 13)
             }
 
+            if let constraints = genericConstraintsStr {
+                sqlite3_bind_text(statement, 14, (constraints as NSString).utf8String, -1, nil)
+            } else {
+                sqlite3_bind_null(statement, 14)
+            }
+
             _ = sqlite3_step(statement)
 
             // Insert into FTS
             try await indexDocSymbolFTS(symbol: symbol)
+        }
+    }
+
+    /// #755 — derive the comma-joined constraint blob written to the
+    /// new `doc_symbols.generic_constraints` column from the two
+    /// shapes the corpus carries them in:
+    ///
+    /// 1. **AST extractor output** (`genericParameters`). Each entry
+    ///    is either a bare type-parameter name (`"T"`) or the
+    ///    constraint form (`"T: Collection"` /
+    ///    `"Element: Hashable & Sendable"`). The constraint half is
+    ///    everything after the first `": "`.
+    /// 2. **Where-clause text in `signature`**. Patterns like
+    ///    `where T: Collection` or
+    ///    `where Element: Equatable, Index: Comparable` carry
+    ///    constraints the AST extractor's
+    ///    `extractGenericParameters` doesn't reach.
+    ///
+    /// Both halves merge into one comma-joined string. Returns `nil`
+    /// when neither half yields anything — that's the same NULL
+    /// semantic the other `attributes` / `conformances` /
+    /// `generic_params` writes use.
+    static func combinedGenericConstraints(
+        fromAST genericParameters: [String],
+        fromSignature signature: String?
+    ) -> String? {
+        var parts: [String] = []
+
+        for entry in genericParameters {
+            if let range = entry.range(of: ": ") {
+                let constraint = entry[range.upperBound...]
+                    .trimmingCharacters(in: .whitespaces)
+                if !constraint.isEmpty {
+                    parts.append(constraint)
+                }
+            }
+        }
+
+        parts.append(contentsOf: Self.extractWhereClauseConstraints(from: signature))
+
+        return parts.isEmpty ? nil : parts.joined(separator: ",")
+    }
+
+    /// #755 — pull constraints out of a `where ...` clause. Matches
+    /// `where T: Collection`, `where T: Hashable & Sendable`, and the
+    /// comma-separated multi-constraint form
+    /// `where T: View, U: Equatable`. Returns the constraint side of
+    /// each pair (everything after the `:`). Skips entries that don't
+    /// look like type-parameter constraints (e.g. same-type requirements
+    /// `T == U` end up dropped by the missing `:`).
+    ///
+    /// The regex is anchored to the first `where ` and extracts the
+    /// clause up to the next `{` (function body), `->` (return type
+    /// before body — only matches if the clause stays inline), or
+    /// end-of-string. Apple's doc-extracted signatures don't carry
+    /// braces, so end-of-string is the typical anchor.
+    static func extractWhereClauseConstraints(from signature: String?) -> [String] {
+        guard let signature, signature.contains("where ") else {
+            return []
+        }
+
+        let pattern = #"\bwhere\s+(.+?)(?:\s*\{|$)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+            return []
+        }
+        let nsSignature = signature as NSString
+        let range = NSRange(location: 0, length: nsSignature.length)
+        guard let match = regex.firstMatch(in: signature, options: [], range: range),
+              match.numberOfRanges >= 2 else {
+            return []
+        }
+        let clauseRange = match.range(at: 1)
+        guard clauseRange.location != NSNotFound else {
+            return []
+        }
+        let clause = nsSignature.substring(with: clauseRange)
+
+        return clause.split(separator: ",").compactMap { part in
+            let trimmed = part.trimmingCharacters(in: .whitespaces)
+            guard let colon = trimmed.firstIndex(of: ":") else {
+                // Same-type requirements (`T == U`) and any non-colon
+                // pattern get dropped — they're not the constraint
+                // shape `search_generics` answers.
+                return nil
+            }
+            let constraint = trimmed[trimmed.index(after: colon)...]
+                .trimmingCharacters(in: .whitespaces)
+            return constraint.isEmpty ? nil : constraint
         }
     }
 
