@@ -183,16 +183,20 @@ struct Issue635SchemaStampGuardTests {
 
         // Bring up an Index normally (stamps to current schemaVersion).
         let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
-        // Now poke the DB to an off-by-one version with the actor still open.
-        // Direct call into setSchemaVersion is via the actor's internal
-        // surface — we exercise it through reopening after a raw poke.
         await idx.disconnect()
-        try Self.writeRawUserVersion(Search.Index.schemaVersion - 1, at: dbPath)
 
-        // Reopening should throw — but if a future schema bump forgot
-        // its migrator entry (so `checkAndMigrateSchema` fell through
-        // without rejecting), the `setSchemaVersion` guard would catch
-        // the stamp attempt. Either way: throw, no silent stamping.
+        // Poke the DB to user_version=14, which is in the BREAKING zone.
+        // v14→v15 has no in-place migrator (it requires a full re-index
+        // via `cupertino setup`), so `checkAndMigrateSchema` throws at
+        // the `if currentVersion < 15` guard. We cannot use
+        // `schemaVersion - 1` here because v15→v16 is a valid in-place
+        // ALTER TABLE migration — that path succeeds and stamps 16,
+        // which would make this test a false pass. User_version=14 is
+        // guaranteed to be rejected before any stamp can occur.
+        try Self.writeRawUserVersion(14, at: dbPath)
+
+        // Reopening must throw — the migrator chain rejects v14.
+        // Either way: throw, no silent stamping.
         await #expect(throws: Search.Error.self) {
             _ = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
         }
@@ -200,8 +204,8 @@ struct Issue635SchemaStampGuardTests {
         // The DB must NOT have been stamped at the new schemaVersion.
         let after = try Self.readRawUserVersion(at: dbPath)
         #expect(
-            after == Search.Index.schemaVersion - 1,
-            "guard must leave user_version untouched on mismatch (got \(after))"
+            after == 14,
+            "rejected DB must leave user_version untouched (got \(after))"
         )
     }
 
