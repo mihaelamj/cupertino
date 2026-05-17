@@ -215,9 +215,11 @@ struct Issue225PartBPersistenceTests {
         let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
         defer { Task { await index.disconnect() } }
 
-        // Assert: user_version == 16 on disk (fix stamps it inside migrateToVersion16)
+        // Assert: user_version == current schemaVersion on disk. The init runs
+        // every applicable migrator (v15→v16 stamps 16 internally, v16→v17 stamps
+        // 17 internally per #755), so the final stamp is cumulative.
         let onDisk = try Self.readRawUserVersion(at: dbPath)
-        #expect(onDisk == 16, "migrateToVersion16() must stamp PRAGMA user_version=16; got \(onDisk)")
+        #expect(onDisk == Search.Index.schemaVersion, "init must stamp PRAGMA to current schemaVersion (\(Search.Index.schemaVersion)); got \(onDisk)")
 
         // Assert: implementation_swift_version column is reachable — indexStructuredDocument
         // throws on INSERT if the column is absent (prepare fails on the 18-column bind shape).

@@ -112,17 +112,23 @@ struct SchemaShapeTests {
         // DocC `relationshipsSections.inheritsFrom` / `inheritedBy`).
         // Bumped 15 -> 16 by #225 Part B (`implementation_swift_version`
         // column on docs_metadata; in-place ALTER TABLE migration).
-        #expect(Search.Index.schemaVersion == 16)
+        // Bumped 16 -> 17 by #755 (`generic_constraints` column on
+        // doc_symbols; in-place ALTER TABLE migration; the original
+        // `generic_params` column kept for type-parameter-name search,
+        // the new column stores the constraint half of `T: Collection`
+        // form so `search_generics` finally matches what its description
+        // advertises).
+        #expect(Search.Index.schemaVersion == 17)
     }
 
-    @Test("Fresh DB has PRAGMA user_version = 16")
+    @Test("Fresh DB has PRAGMA user_version stamped to current schemaVersion")
     func freshDBStampedVersion() async throws {
         let dbPath = makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
         let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
         await idx.disconnect()
 
-        #expect(try readSchemaVersion(at: dbPath) == 16)
+        #expect(try readSchemaVersion(at: dbPath) == Int(Search.Index.schemaVersion))
     }
 
     @Test("Fresh DB has idx_kind index on docs_metadata")

@@ -499,22 +499,35 @@ extension Search.Index {
 
     /// Search for generic types / functions by constraint.
     ///
-    /// Layer 2 of #409 (issue #665). Surfaces the AST-extracted
-    /// `doc_symbols.generic_params` column (e.g. `T: View`,
-    /// `Element: Hashable & Sendable`). Match is substring-LIKE so a
-    /// query of `Sendable` returns both `T: Sendable` and
-    /// `T: Hashable & Sendable`.
+    /// Layer 2 of #409 (issue #665). Surfaces the
+    /// `doc_symbols.generic_constraints` column (e.g. `Collection`,
+    /// `Hashable & Sendable`) populated at index time from two
+    /// sources per #755: (a) the AST extractor's `T: Collection`
+    /// form, split into name + constraint and the constraint half
+    /// written here; (b) `where`-clause patterns regex-parsed from
+    /// the `signature` column. Match is substring-LIKE so a query of
+    /// `Sendable` returns both `Sendable` and `Hashable & Sendable`.
+    ///
+    /// Pre-#755 this column was named `generic_params` and held
+    /// type-parameter names, not constraints — the search advertised
+    /// constraint match but the corpus carried only 17 rows of
+    /// constraint-form data out of 351,495 because most Apple HTML
+    /// snippets carry bare `<T>` declarations. The schema-v17
+    /// migration adds `generic_constraints`; the column is populated
+    /// by the next `cupertino save --docs` re-index.
     ///
     /// Mirrors `searchConformances`: same WHERE/ORDER/LIMIT shape,
     /// same `Search.SymbolSearchResult` return type, but populates
     /// `genericParams` on the result so the MCP layer can echo what
-    /// matched.
+    /// matched (the param-name column carries the AST extractor's
+    /// own name half and remains useful for that surface).
     ///
     /// - Parameters:
     ///   - constraint: Generic constraint to search for (substring).
     ///   - framework: Filter by framework.
     ///   - limit: Maximum results.
-    /// - Returns: Symbols whose `generic_params` contains the constraint.
+    /// - Returns: Symbols whose `generic_constraints` contains the
+    ///   constraint substring.
     public func searchByGenericConstraint(
         constraint: String,
         framework: String? = nil,
@@ -526,7 +539,7 @@ extension Search.Index {
 
         let constraintPattern = "%\(constraint)%"
 
-        var conditions = ["s.generic_params LIKE ?"]
+        var conditions = ["s.generic_constraints LIKE ?"]
         var params: [String] = [constraintPattern]
 
         if let framework, !framework.isEmpty {

@@ -105,7 +105,10 @@ struct Issue749MigratorPragmaBumpTests {
         try #require(sqlite3_step(versionStmt) == SQLITE_ROW)
         let postVersion = sqlite3_column_int(versionStmt, 0)
         sqlite3_finalize(versionStmt)
-        #expect(postVersion == 16, "PRAGMA user_version should be stamped to 16 post-migration; got \(postVersion)")
+        #expect(
+            postVersion == Search.Index.schemaVersion,
+            "PRAGMA user_version should be stamped to current schemaVersion (\(Search.Index.schemaVersion)) post-migration; got \(postVersion)"
+        )
 
         // Column reachable via SELECT.
         var columnStmt: OpaquePointer?
@@ -145,7 +148,10 @@ struct Issue749MigratorPragmaBumpTests {
         try #require(sqlite3_step(stmt) == SQLITE_ROW)
         let version = sqlite3_column_int(stmt, 0)
         sqlite3_finalize(stmt)
-        #expect(version == 16, "PRAGMA user_version should still be 16 after second open; got \(version)")
+        #expect(
+            version == Search.Index.schemaVersion,
+            "PRAGMA user_version should still be current schemaVersion (\(Search.Index.schemaVersion)) after second open; got \(version)"
+        )
     }
 
     @Test("stampUserVersionUnchecked writes the requested version unconditionally")

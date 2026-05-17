@@ -178,6 +178,11 @@ extension Search.Index {
         );
 
         -- Symbols extracted from Swift code via SwiftSyntax AST (#81)
+        -- generic_params: type parameter names (`T`, `Element`).
+        -- generic_constraints: constraint half of `T: Collection` form,
+        --                      joined `,` across multiple params, plus
+        --                      where-clause constraints harvested from
+        --                      the signature column at index time (#755).
         CREATE TABLE IF NOT EXISTS doc_symbols (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             doc_uri TEXT NOT NULL,
@@ -193,6 +198,7 @@ extension Search.Index {
             attributes TEXT,
             conformances TEXT,
             generic_params TEXT,
+            generic_constraints TEXT,
             FOREIGN KEY (doc_uri) REFERENCES docs_metadata(uri) ON DELETE CASCADE
         );
 
@@ -200,6 +206,7 @@ extension Search.Index {
         CREATE INDEX IF NOT EXISTS idx_doc_symbols_kind ON doc_symbols(kind);
         CREATE INDEX IF NOT EXISTS idx_doc_symbols_name ON doc_symbols(name);
         CREATE INDEX IF NOT EXISTS idx_doc_symbols_async ON doc_symbols(is_async);
+        CREATE INDEX IF NOT EXISTS idx_doc_symbols_generic_constraints ON doc_symbols(generic_constraints);
 
         -- FTS for symbol name search
         CREATE VIRTUAL TABLE IF NOT EXISTS doc_symbols_fts USING fts5(

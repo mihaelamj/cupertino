@@ -71,8 +71,8 @@ extension Search.Index {
     ///
     /// Callers:
     /// - Every in-place migrator (`migrateToVersion3` / `4` / `6` / `7` /
-    ///   `10` / `11` / `16`) — stamps the version it migrated to as the
-    ///   final step.
+    ///   `10` / `11` / `16` / `17`) — stamps the version it migrated to
+    ///   as the final step.
     /// - `setSchemaVersion()` itself for the fresh-DB (`user_version=0`)
     ///   path; this consolidates the actual sqlite3 write here so future
     ///   schema bumps cannot accidentally introduce two different write
@@ -251,6 +251,23 @@ extension Search.Index {
             // set, passed through when it isn't.
             try await migrateToVersion16()
         }
+
+        if currentVersion < 17 {
+            // Version 16 -> 17: Added `generic_constraints` column to
+            // `doc_symbols` (#755). The pre-fix `generic_params` column
+            // stored only type-parameter names (`T`, `Element`); the
+            // MCP `search_generics` tool advertised constraint search
+            // but the corpus carried only 17 rows of constraint-form
+            // data out of 351,495. The new column carries the
+            // constraint half of `T: Collection` form harvested from
+            // the AST extractor + where-clause patterns parsed from
+            // the `signature` column at index time. Clean in-place
+            // ALTER TABLE ADD COLUMN — old rows get NULL, the next
+            // `cupertino save --docs` re-index populates the column.
+            // Same NULL semantics as v15→v16: filters reject NULL
+            // rows when set, pass through when not set.
+            try await migrateToVersion17()
+        }
     }
 
     /// v15 → v16: add `implementation_swift_version` to docs_metadata
@@ -284,6 +301,35 @@ extension Search.Index {
         }
 
         try stampUserVersionUnchecked(16)
+    }
+
+    /// v16 → v17: add `generic_constraints` to doc_symbols (#755).
+    /// In-place column add. v16 DBs continue to work after the
+    /// migration with the new column NULL on every row; the next
+    /// `cupertino save --docs` re-index populates the column from
+    /// the AST extractor + signature-column where-clause parsing.
+    ///
+    /// The trailing `stampUserVersionUnchecked(17)` is load-bearing
+    /// per #749. See `migrateToVersion16` for the rationale.
+    func migrateToVersion17() async throws {
+        guard let database else {
+            throw Search.Error.databaseNotInitialized
+        }
+
+        let statements = [
+            "ALTER TABLE doc_symbols ADD COLUMN generic_constraints TEXT;",
+            "CREATE INDEX IF NOT EXISTS idx_doc_symbols_generic_constraints ON doc_symbols(generic_constraints);",
+        ]
+
+        for sql in statements {
+            var errorPointer: UnsafeMutablePointer<CChar>?
+            defer { sqlite3_free(errorPointer) }
+            // Ignore error if column/index already exists — idempotent
+            // across partial runs, same pattern as migrateToVersion16.
+            sqlite3_exec(database, sql, nil, nil, &errorPointer)
+        }
+
+        try stampUserVersionUnchecked(17)
     }
 
     /// v10 → v11: adds `kind` + `symbols` columns to `docs_metadata`

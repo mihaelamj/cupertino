@@ -190,15 +190,18 @@ extension MCP.SharedTools {
         - Find Sendable types: protocol=Sendable
         """
 
-        /// Search generics tool description (#665, #409 Layer 2)
+        /// Search generics tool description (#665, #409 Layer 2, #755)
         public static let toolSearchGenericsDescription = """
-        Find generic types and functions by constraint. Surfaces the AST-extracted \
-        `generic_params` column (e.g. `T: View`, `Element: Hashable & Sendable`) so \
-        agents can ask "what concrete generics constrain on Sendable in SwiftUI?" \
-        and "where is Hashable used as a generic bound?".
+        Find generic types and functions by constraint. Surfaces the \
+        `generic_constraints` column populated at index time from (a) the \
+        AST extractor's `T: Collection` form and (b) `where`-clause + \
+        inline-constraint patterns harvested from the declaration's \
+        signature. Agents can ask "what concrete generics constrain on \
+        Sendable in SwiftUI?" and "where is Hashable used as a generic bound?".
 
         **Common constraints:** Sendable, Hashable, Equatable, View, Codable, \
-        Comparable, Identifiable, BinaryInteger, FloatingPoint
+        Comparable, Identifiable, BinaryInteger, FloatingPoint, Collection, \
+        Sequence
 
         **Parameters:**
         - constraint: Generic constraint to search for (matched as substring)

@@ -64,10 +64,23 @@ struct Issue635SchemaStampGuardTests {
         }
     }
 
-    /// Drop the v15 → v16 column + index from a freshly-built v16 DB
-    /// so the on-disk shape looks v15 again. Used by the schemaVersion
-    /// - 1 in-place migration regression test (#749).
-    private static func stripV16ColumnAndIndex(at dbURL: URL) throws {
+    /// Drop the most-recent-version column + index from a freshly-built
+    /// current-schemaVersion DB so the on-disk shape looks one version
+    /// older. Used by the `schemaVersionMinusOneAutoMigratesToTarget`
+    /// test — it pairs with `writeRawUserVersion(schemaVersion - 1, ...)`
+    /// to construct a synthetic pre-current-version DB.
+    ///
+    /// The strip targets the column added by the LATEST schema bump
+    /// (currently v17's `generic_constraints` per #755). Update this
+    /// helper on each schema bump so the test stays anchored to
+    /// `current - 1` rather than to a specific version that drifts
+    /// further away with every bump.
+    ///
+    /// Why strip latest-only and not every column since v15: stripping
+    /// is per-version-bump work. The test exercises the v(N-1) → vN
+    /// migration; the older v(<N-1) migrators are tested elsewhere
+    /// (`Issue749MigratorPragmaBumpTests` covers v15→v16 explicitly).
+    private static func stripCurrentVersionColumnAndIndex(at dbURL: URL) throws {
         var db: OpaquePointer?
         defer { sqlite3_close(db) }
         guard sqlite3_open(dbURL.path, &db) == SQLITE_OK else {
@@ -75,9 +88,10 @@ struct Issue635SchemaStampGuardTests {
                 NSLocalizedDescriptionKey: "open(\(dbURL.path)) failed",
             ])
         }
+        // v17: drop generic_constraints + its index from doc_symbols (#755).
         let statements = [
-            "DROP INDEX IF EXISTS idx_implementation_swift_version;",
-            "ALTER TABLE docs_metadata DROP COLUMN implementation_swift_version;",
+            "DROP INDEX IF EXISTS idx_doc_symbols_generic_constraints;",
+            "ALTER TABLE doc_symbols DROP COLUMN generic_constraints;",
         ]
         for sql in statements {
             guard sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK else {
@@ -230,9 +244,11 @@ struct Issue635SchemaStampGuardTests {
         let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
         await idx.disconnect()
 
-        // Strip the v16-only column + index, then stamp PRAGMA back to v15
-        // so the DB looks like a pre-PR-#718 artefact.
-        try Self.stripV16ColumnAndIndex(at: dbPath)
+        // Strip the latest-version column + index, then stamp PRAGMA back
+        // to current schemaVersion - 1 so the DB looks one version older
+        // than this binary's target. The strip targets the column the
+        // latest in-place migrator (today v17 / #755) adds.
+        try Self.stripCurrentVersionColumnAndIndex(at: dbPath)
         try Self.writeRawUserVersion(Search.Index.schemaVersion - 1, at: dbPath)
 
         // Reopening triggers checkAndMigrateSchema → migrateToVersion16
