@@ -3,14 +3,16 @@ import Foundation
 import OSLog
 import SampleIndexModels
 import SharedConstants
-// MARK: - Sample Index Builder
 
-// swiftlint:disable type_body_length function_body_length
-// Justification: This actor manages complete ZIP extraction and indexing workflow.
-// Breaking into smaller types would fragment the cohesive indexing logic.
+// MARK: - Sample Index Builder
 
 extension Sample.Index {
     /// Builds the sample index by extracting ZIP files and indexing their contents
+    ///
+    /// #673 Phase D iter-5: 450-line actor — owns the full ZIP extraction
+    /// pipeline (catalog scan → unzip → per-file walk → AST extraction →
+    /// DB writes). Splits scatter the cohesive build workflow.
+    // swiftlint:disable:next type_body_length
     public actor Builder {
         private let database: Database
         private let sampleCodeDirectory: URL
@@ -46,6 +48,11 @@ extension Sample.Index {
         ///     foundation-only `SampleIndexModels` seam target, so conformers
         ///     don't need `import SampleIndex`.
         /// - Returns: Number of projects indexed
+        ///
+        /// #673 Phase D iter-5: 106-line body — per-entry unzip-or-skip
+        /// loop with progress callbacks + statistics tracking; the
+        /// orchestration is a single linear pipeline.
+        // swiftlint:disable:next function_body_length
         public func indexAll(
             entries: [SampleCodeEntryInfo],
             forceReindex: Bool = false,
@@ -197,6 +204,11 @@ extension Sample.Index {
         ///   - entry: Optional metadata from Sample.Core.Catalog
         ///   - forceReindex: If true, delete existing and reindex
         /// - Returns: Number of files indexed
+        ///
+        /// #673 Phase D iter-5: 76-line body — unzip → per-file walk
+        /// → AST extraction → DB writes; same inlined pipeline shape
+        /// the actor uses everywhere.
+        // swiftlint:disable:next function_body_length
         public func indexProject(
             zipURL: URL,
             entry: SampleCodeEntryInfo?,
@@ -728,5 +740,3 @@ extension Sample.Index {
         }
     }
 }
-
-// swiftlint:enable type_body_length function_body_length

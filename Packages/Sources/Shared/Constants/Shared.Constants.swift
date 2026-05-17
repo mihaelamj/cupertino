@@ -2,12 +2,12 @@ import Foundation
 
 // MARK: - Cupertino Constants
 
+// #673 Phase D iter-5: file_length is the only remaining file-level
+// blanket — the rule has no per-declaration form, and this central
+// constants hub (1415 lines, MARK-sectioned by domain) deliberately
+// keeps everything one Cmd-F away. Splitting scatters discoverability
+// without buying a meaningful boundary.
 // swiftlint:disable file_length
-// Justification: Shared.Constants serves as central configuration hub for the entire application.
-// Contains directory names, file names, URL patterns, limits, delays, and MCP configuration.
-// Splitting would scatter related constants and reduce discoverability. (`type_body_length` was
-// dropped in #673 Phase D as superfluous — the namespace enum doesn't trip the rule.)
-// Organized with clear MARK sections for easy navigation.
 
 /// Global constants for Cupertino application
 extension Shared.Constants {

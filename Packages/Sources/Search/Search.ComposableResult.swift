@@ -1,4 +1,3 @@
-// swiftlint:disable function_body_length
 import Foundation
 import SearchModels
 import SharedConstants
@@ -556,6 +555,12 @@ extension Search {
 
 /// Analyze a query to detect intent
 /// Uses keyword heuristics and pattern matching
+///
+/// #673 Phase D iter-5: 102-line body — sequence of pattern-match checks
+/// over `queryLower` (legacy / Obj-C / Swift / sample / etc.). Reads as
+/// a flat decision tree; splitting fragments the precedence order
+/// (early-return cases must stay in the same function).
+// swiftlint:disable:next function_body_length
 public func detectQueryIntent(_ query: String) -> Search.QueryIntent {
     let queryLower = query.lowercased()
 

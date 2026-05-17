@@ -6,13 +6,12 @@ import FoundationNetworking
 
 // MARK: - Availability Fetcher
 
-// swiftlint:disable type_body_length
-// Justification: Availability.Fetcher is a self-contained actor that handles availability data fetching.
-// It manages API calls, caching, fallback strategies, and statistics tracking as a cohesive unit.
-// Splitting would fragment the actor's state management and reduce thread-safety guarantees.
-
 /// Fetches platform availability data from Apple's API and updates existing documentation JSONs
 extension Availability {
+    // #673 Phase D iter-5: 431-line actor — Apple API calls + caching
+    // + fallback strategies + statistics tracking; splits scatter the
+    // actor's state and weaken thread-safety guarantees.
+    // swiftlint:disable:next type_body_length
     public actor Fetcher {
         // MARK: - Configuration
 
@@ -148,6 +147,11 @@ extension Availability {
 
         // MARK: - Private Methods - Processing
 
+        // #673 Phase D iter-5: 66-line processFiles — per-file dispatch
+        // loop with progress reporting + framework accounting +
+        // statistics tracking woven together; splitting scatters the
+        // accounting logic across helpers with no standalone purpose.
+        // swiftlint:disable:next function_body_length
         private func processFiles(
             _ files: [(framework: String, file: URL)],
             stats: inout Availability.Statistics,
@@ -344,6 +348,11 @@ extension Availability {
             }
         }
 
+        // #673 Phase D iter-5: 76-line processFile — load existing
+        // JSON, fan out API fetches with cache + fallback, merge the
+        // result back into the page payload; the linear sequence is
+        // the contract.
+        // swiftlint:disable:next function_body_length
         private func processFile(
             _ fileURL: URL,
             framework: String,

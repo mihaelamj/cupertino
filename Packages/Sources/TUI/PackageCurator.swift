@@ -5,14 +5,16 @@ import Foundation
 import Resources
 import SharedConstants
 
-// swiftlint:disable type_body_length function_body_length
-// Justification: PackageCuratorApp is a self-contained CLI tool for curating Swift packages.
-// The main() function orchestrates a complex multi-stage workflow that is clearer as a single flow.
-// Splitting would fragment the workflow logic without meaningful improvement.
-
 @main
+// #673 Phase D iter-5: 354-line struct — self-contained TUI app entry,
+// owns the main run-loop + per-view state + terminal lifecycle.
+// swiftlint:disable:next type_body_length
 struct PackageCuratorApp {
     @MainActor
+    // #673 Phase D iter-5: 169-line main() — multi-stage workflow
+    // (package load, terminal setup, render loop, input dispatch,
+    // cleanup); splitting fragments the linear app lifecycle.
+    // swiftlint:disable:next function_body_length
     static func main() async throws {
         // Handle --version flag
         let args = CommandLine.arguments
