@@ -56,7 +56,19 @@ extension Search {
         ///       table is created in `createTables()` only on fresh
         ///       inits, and existing DBs without it have no rows to
         ///       walk; the only meaningful upgrade path is a re-index.
-        public static let schemaVersion: Int32 = 15
+        /// - 16: `implementation_swift_version` column on `docs_metadata`
+        ///       (#225 Part B). Captures the Swift toolchain version a
+        ///       swift-evolution proposal landed in (parsed from
+        ///       `Implementation: Swift <X.Y>` / `Status: Implemented (Swift <X.Y>)`
+        ///       lines in the proposal markdown). Populated only for
+        ///       swift-evolution rows; NULL on every other source.
+        ///       Filter surface: `cupertino search --swift <ver>`. Old
+        ///       rows on a v15 DB migrate in place via ALTER TABLE ADD
+        ///       COLUMN — values stay NULL until the next re-index
+        ///       parses them, which matches the #226 platform-filter
+        ///       semantic (NULL rows are rejected when a filter is set,
+        ///       passed through when it isn't).
+        public static let schemaVersion: Int32 = 16
 
         // Properties are package-internal (default visibility) so the
         // SearchIndex+<Concern>.swift extension files can access them. Public

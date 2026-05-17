@@ -21,6 +21,14 @@ extension Search {
         private let path: URL
         private var fileHandle: FileHandle
         private let encoder: JSONEncoder
+        /// #673 Phase B — one-shot flag so a broken disk / closed file
+        /// surfaces ONCE on stderr instead of either silently losing
+        /// every audit entry (the pre-fix behaviour) or spamming the
+        /// terminal with a warning per row. After the first warning the
+        /// sink keeps trying to write (next entry may succeed; we don't
+        /// know what state the FS is in) but stays quiet about repeated
+        /// failures.
+        private var hasWarnedAboutWriteFailure = false
 
         public init(path: URL) throws {
             self.path = path
@@ -35,21 +43,45 @@ extension Search {
             guard let handle = try? FileHandle(forWritingTo: path) else {
                 throw SinkError.couldNotCreateLogFile(path)
             }
-            self.fileHandle = handle
-            self.encoder = JSONEncoder()
+            fileHandle = handle
+            encoder = JSONEncoder()
             // Compact JSONL — no pretty-printing, one record per line.
-            self.encoder.outputFormatting = .sortedKeys
-            self.encoder.dateEncodingStrategy = .iso8601
+            encoder.outputFormatting = .sortedKeys
+            encoder.dateEncodingStrategy = .iso8601
         }
 
         /// The path the sink is writing to. Exposed so the CLI can
         /// print it in the save final report.
-        public var logPath: URL { path }
+        public var logPath: URL {
+            path
+        }
 
         public func record(_ entry: Search.ImportLogEntry) async {
-            guard let data = try? encoder.encode(entry) else { return }
-            try? fileHandle.write(contentsOf: data)
-            try? fileHandle.write(contentsOf: Data([0x0A])) // newline
+            do {
+                let data = try encoder.encode(entry)
+                try fileHandle.write(contentsOf: data)
+                try fileHandle.write(contentsOf: Data([0x0a])) // newline
+            } catch {
+                // #673 Phase B — surface the first failure on stderr.
+                // Silent loss of audit entries was pre-fix behaviour;
+                // the JSONL log is the user's only record of what
+                // `cupertino save` rejected, so a half-empty log with
+                // no warning misleads later forensics (cf. today's
+                // #669 audit where "112 chars" was actually the error
+                // path because we'd lost visibility into earlier
+                // failure modes).
+                warnOnceAboutWriteFailure(error)
+            }
+        }
+
+        private func warnOnceAboutWriteFailure(_ error: Swift.Error) {
+            guard !hasWarnedAboutWriteFailure else { return }
+            hasWarnedAboutWriteFailure = true
+            let message = "⚠️  JSONL audit log write failure on \(path.lastPathComponent): " +
+                "\(error). Subsequent failures will be silent; the audit log may be incomplete.\n"
+            if let data = message.data(using: .utf8) {
+                FileHandle.standardError.write(data)
+            }
         }
 
         /// Flush + close. Call once at the end of the indexing run so

@@ -27,9 +27,8 @@ extension CLIImpl.Command {
             abstract: "Search Apple documentation, samples, HIG, and more",
             discussion: """
             Unified search across all documentation sources. By default, searches ALL sources
-            in parallel and returns chunked excerpts ranked by reciprocal-rank fusion
-            (absorbed from the removed `cupertino ask`). Use --source to narrow to one source
-            and get the source-specific list view instead.
+            in parallel and returns chunked excerpts ranked by reciprocal-rank fusion. Use
+            --source to narrow to one source and get the source-specific list view instead.
 
             SOURCES:
               (default)       Fan out across every available DB (chunked, RRF-fused)
@@ -121,6 +120,17 @@ extension CLIImpl.Command {
             help: "Filter to APIs available on visionOS version (e.g., 1.0, 2.0)"
         )
         var minVisionos: String?
+
+        @Option(
+            name: .long,
+            help: """
+            Maximum Swift toolchain version for swift-evolution results \
+            (e.g., 5.5, 6.0). Filters swift-evolution proposals to those \
+            implemented at or below the given version; rows from other \
+            sources are filtered out when this is set.
+            """
+        )
+        var swift: String?
 
         @Option(
             name: .long,

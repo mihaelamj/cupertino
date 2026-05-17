@@ -3,12 +3,6 @@ import CoreProtocols
 import Foundation
 import LoggingModels
 import SharedConstants
-// swiftlint:disable function_body_length
-// Justification: The generate() function orchestrates the complete package analysis workflow:
-// scanning documentation, extracting package mentions, categorizing by tier (Apple/SwiftLang/
-// Server/Ecosystem), selecting critical packages, and building the output JSON structure.
-// Function body length: 64 lines
-// Disabling: function_body_length (50 line limit for complex data aggregation)
 
 extension Core.PackageIndexing {
     /// Generates priority package list from Swift.org documentation analysis
@@ -29,6 +23,13 @@ extension Core.PackageIndexing {
             self.logger = logger
         }
 
+        // generate() orchestrates the complete package analysis workflow:
+        // scanning documentation, extracting package mentions, categorising by
+        // tier (Apple / SwiftLang / Server / Ecosystem), selecting critical
+        // packages, building the output JSON structure. 64-line body is
+        // cohesive aggregation; splitting would scatter the pipeline. (#673
+        // Phase D — converted from file-level blanket disable.)
+        // swiftlint:disable:next function_body_length
         public func generate() async throws -> PriorityPackageList {
             logger.info(
                 "🔍 Scanning \(Shared.Constants.DisplayName.swiftOrg) documentation for package mentions...",

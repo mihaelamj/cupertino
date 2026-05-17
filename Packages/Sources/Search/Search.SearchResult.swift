@@ -1,6 +1,7 @@
 import Foundation
 import SearchModels
 import SharedConstants
+
 // MARK: - Framework Availability (Search Module)
 
 /// Minimum platform versions for a framework (used for availability filtering)
@@ -132,6 +133,27 @@ extension Search {
         case insertFailed(String)
         case searchFailed(String)
         case invalidQuery(String)
+        /// #673 Phase E — typed schema-mismatch error replacing the
+        /// generic `.sqliteError("Database schema version X; binary
+        /// expects version Y. …")` cases that previously bubbled out
+        /// of `Search.Index.Migrations.runMigrations`. Carrying the
+        /// raw version numbers + DB path lets the CLI top-level
+        /// (`Cupertino.main`) print a user-friendly remediation hint
+        /// AND exit with `EX_DATAERR` (65) so scripts can detect the
+        /// class without parsing a string.
+        ///
+        /// Direction matters:
+        ///   - `currentDBVersion > expectedBinaryVersion` → binary is
+        ///     stale; suggest `brew upgrade cupertino` (or rebuild
+        ///     the binary in a dev setup).
+        ///   - `currentDBVersion < expectedBinaryVersion` → DB is
+        ///     stale; suggest `cupertino setup` to download a matching
+        ///     pre-built bundle.
+        ///
+        /// The errorDescription wires both branches into a single
+        /// user-visible sentence; the CLI's catch path adds the exit
+        /// code + suppresses the Swift stack trace.
+        case schemaVersionMismatch(currentDBVersion: Int, expectedBinaryVersion: Int, dbPath: String)
 
         public var errorDescription: String? {
             switch self {
@@ -147,6 +169,29 @@ extension Search {
                 return "Search query failed: \(msg)"
             case .invalidQuery(let msg):
                 return "Invalid search query: \(msg)"
+            case .schemaVersionMismatch(let dbVersion, let binaryVersion, let dbPath):
+                if dbVersion > binaryVersion {
+                    // DB is newer than binary — installed cupertino can't read it.
+                    return """
+                    Database schema mismatch: search.db at \(dbPath) is at schema version \(dbVersion), \
+                    but this cupertino binary only understands up to version \(binaryVersion).
+
+                    Remediation:
+                      • If you installed via Homebrew: `brew upgrade cupertino`
+                      • If you build cupertino from source: rebuild your binary so it matches the bundle's schema
+                      • To force-reset to the binary's current schema: `rm '\(dbPath)' && cupertino setup`
+                    """
+                } else {
+                    // DB is older than binary — common after `brew upgrade cupertino` without a bundle refresh.
+                    return """
+                    Database schema mismatch: search.db at \(dbPath) is at schema version \(dbVersion), \
+                    but this cupertino binary expects version \(binaryVersion).
+
+                    Remediation:
+                      • Download the matching pre-built bundle: `cupertino setup`
+                      • Or rebuild from a local crawl: `rm '\(dbPath)' && cupertino save`
+                    """
+                }
             }
         }
     }

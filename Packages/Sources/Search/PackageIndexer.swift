@@ -3,6 +3,7 @@ import CoreProtocols
 import Foundation
 import SearchModels
 import SharedConstants
+
 extension Search {
     /// Reads downloaded-and-extracted package trees from
     /// `~/.cupertino/packages/<owner>/<repo>/` and feeds them into the
@@ -204,7 +205,11 @@ extension Search {
             return PackageIndex.AvailabilityPayload(
                 deploymentTargets: result.deploymentTargets,
                 attributesByRelpath: attrsByRelpath,
-                source: "package-swift"
+                source: "package-swift",
+                // #225 Part A — propagate the swift-tools-version from the
+                // annotator's read of Package.swift line 1. Nil when the
+                // manifest didn't carry a declaration we could parse.
+                swiftToolsVersion: result.swiftToolsVersion
             )
         }
 

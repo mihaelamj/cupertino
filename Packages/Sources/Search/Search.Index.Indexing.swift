@@ -3,10 +3,6 @@ import Foundation
 import SearchModels
 import SQLite3
 
-// swiftlint:disable function_parameter_count
-// Justification: extracted from SearchIndex.swift; the original 4598-line
-// file's class_body_length / function_body_length / function_parameter_count
-// rationale carries forward to the per-concern slices.
 
 extension Search.Index {
     /// Index a Swift package

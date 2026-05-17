@@ -59,13 +59,42 @@ extension Search.Index {
             )
         }
 
-        let sql = "PRAGMA user_version = \(Self.schemaVersion)"
+        try stampUserVersionUnchecked(Self.schemaVersion)
+    }
+
+    /// Unguarded helper that writes `PRAGMA user_version = <version>`.
+    /// **Bypasses** the #635 fresh-DB guard in `setSchemaVersion()` because
+    /// each in-place migrator already knows it just successfully migrated
+    /// to its target version. Without this helper, in-place migrators have
+    /// no legitimate way to advance the on-disk version stamp and the
+    /// next-open setSchemaVersion call trips the guard (#749).
+    ///
+    /// Callers:
+    /// - Every in-place migrator (`migrateToVersion3` / `4` / `6` / `7` /
+    ///   `10` / `11` / `16`) — stamps the version it migrated to as the
+    ///   final step.
+    /// - `setSchemaVersion()` itself for the fresh-DB (`user_version=0`)
+    ///   path; this consolidates the actual sqlite3 write here so future
+    ///   schema bumps cannot accidentally introduce two different write
+    ///   paths.
+    ///
+    /// Errors propagate as `Search.Error.sqliteError`; refuses to swallow
+    /// the failure the way the historical migrator `sqlite3_exec(...) →
+    /// ignored errorPointer` pattern does for ALTER TABLE statements.
+    /// The PRAGMA write is the load-bearing step; silent failure here is
+    /// the class-of-bug we are closing.
+    func stampUserVersionUnchecked(_ version: Int32) throws {
+        guard let database else {
+            throw Search.Error.databaseNotInitialized
+        }
+
+        let sql = "PRAGMA user_version = \(version)"
         var errorPointer: UnsafeMutablePointer<CChar>?
         defer { sqlite3_free(errorPointer) }
 
         guard sqlite3_exec(database, sql, nil, nil, &errorPointer) == SQLITE_OK else {
             let errorMessage = errorPointer.map { String(cString: $0) } ?? "Unknown error"
-            throw Search.Error.sqliteError("Failed to set schema version: \(errorMessage)")
+            throw Search.Error.sqliteError("Failed to stamp PRAGMA user_version=\(version): \(errorMessage)")
         }
     }
 
@@ -78,11 +107,14 @@ extension Search.Index {
             return
         }
 
-        // Future version - incompatible
+        // Future version - incompatible.
+        // #673 Phase E — typed error so CLI can map to EX_DATAERR + print
+        // the brew-upgrade remediation without a Swift stack trace.
         if currentVersion > Self.schemaVersion {
-            throw Search.Error.sqliteError(
-                "Database schema version \(currentVersion) is newer than supported version \(Self.schemaVersion). "
-                    + "Please update cupertino or delete the database to recreate it."
+            throw Search.Error.schemaVersionMismatch(
+                currentDBVersion: Int(currentVersion),
+                expectedBinaryVersion: Int(Self.schemaVersion),
+                dbPath: dbPath.path
             )
         }
 
@@ -105,15 +137,13 @@ extension Search.Index {
         }
 
         if currentVersion < 5 {
-            // Version 4 -> 5: Added language field to docs_fts and docs_metadata
+            // Version 4 -> 5: Added language field to docs_fts and docs_metadata.
             // BREAKING CHANGE: FTS5 tables cannot have columns added.
-            // Database must be deleted and rebuilt with 'cupertino save'.
-            throw Search.Error.sqliteError(
-                "Database schema version \(currentVersion); binary expects version \(Self.schemaVersion). " +
-                    "The path includes a breaking change at v4→v5 that adds the 'language' field " +
-                    "(plus subsequent breaking changes depending on \(Self.schemaVersion)). " +
-                    "Please delete the database and run 'cupertino save' to rebuild: " +
-                    "rm \(dbPath.path) && cupertino save"
+            // #673 Phase E — typed error; CLI prints user-friendly remediation.
+            throw Search.Error.schemaVersionMismatch(
+                currentDBVersion: Int(currentVersion),
+                expectedBinaryVersion: Int(Self.schemaVersion),
+                dbPath: dbPath.path
             )
         }
 
@@ -148,12 +178,11 @@ extension Search.Index {
             // bm25 can weight directly on AST-extracted symbol names. FTS5
             // does not support ALTER TABLE ADD COLUMN on virtual tables, so
             // this is a BREAKING change — existing DBs must be rebuilt.
-            throw Search.Error.sqliteError(
-                "Database schema version \(currentVersion); binary expects version \(Self.schemaVersion). " +
-                    "The path includes a breaking change at v11→v12 (#192 D) that adds AST-derived " +
-                    "symbols to the FTS index (plus subsequent breaking changes depending on \(Self.schemaVersion)). " +
-                    "Please delete the database and run 'cupertino save' to rebuild: " +
-                    "rm \(dbPath.path) && cupertino save"
+            // #673 Phase E — typed error; CLI prints user-friendly remediation.
+            throw Search.Error.schemaVersionMismatch(
+                currentDBVersion: Int(currentVersion),
+                expectedBinaryVersion: Int(Self.schemaVersion),
+                dbPath: dbPath.path
             )
         }
 
@@ -164,13 +193,11 @@ extension Search.Index {
             // `URLUtilities.filename(_:)` makes new crawls produce canonical
             // URIs. The v1.0.2 bundle ships pre-built at v13, so `cupertino
             // setup` is the production upgrade path.
-            throw Search.Error.sqliteError(
-                "Database schema version \(currentVersion); binary expects version \(Self.schemaVersion). " +
-                    "The path includes a breaking change at v12→v13 (#283) that drops case-axis " +
-                    "duplicate URIs (plus subsequent breaking changes depending on \(Self.schemaVersion)). " +
-                    "Please delete the database and run 'cupertino setup' to download the " +
-                    "matching pre-built bundle: " +
-                    "rm \(dbPath.path) && cupertino setup"
+            // #673 Phase E — typed error; CLI prints user-friendly remediation.
+            throw Search.Error.schemaVersionMismatch(
+                currentDBVersion: Int(currentVersion),
+                expectedBinaryVersion: Int(Self.schemaVersion),
+                dbPath: dbPath.path
             )
         }
 
@@ -187,13 +214,11 @@ extension Search.Index {
             // from reading the same DB. The pattern matches the v11→v12
             // and v12→v13 throws above; the only safe upgrade path is a
             // full rebuild via `cupertino setup`.
-            throw Search.Error.sqliteError(
-                "Database schema version \(currentVersion); binary expects version \(Self.schemaVersion). " +
-                    "The path includes a breaking change at v13→v14 (#77) that adds CamelCase-component " +
-                    "recall to the FTS index (plus subsequent breaking changes depending on \(Self.schemaVersion)). " +
-                    "Please delete the database and run 'cupertino setup' to download the " +
-                    "matching pre-built bundle: " +
-                    "rm \(dbPath.path) && cupertino setup"
+            // #673 Phase E — typed error; CLI prints user-friendly remediation.
+            throw Search.Error.schemaVersionMismatch(
+                currentDBVersion: Int(currentVersion),
+                expectedBinaryVersion: Int(Self.schemaVersion),
+                dbPath: dbPath.path
             )
         }
 
@@ -204,17 +229,68 @@ extension Search.Index {
             // the same JSON and populates the new table. Pattern
             // matches v11→v12 / v12→v13 / v13→v14 — `cupertino setup`
             // for the production-ready bundle, or rebuild locally.
-            throw Search.Error.sqliteError(
-                "Database schema version \(currentVersion); binary expects version \(Self.schemaVersion). " +
-                    "The path includes a breaking change at v14→v15 (#274) that adds class-inheritance " +
-                    "edge tracking. " +
-                    "Please delete the database and run 'cupertino setup' to download the " +
-                    "matching pre-built bundle: " +
-                    "rm \(dbPath.path) && cupertino setup"
+            // #673 Phase E — typed error; CLI prints user-friendly remediation.
+            throw Search.Error.schemaVersionMismatch(
+                currentDBVersion: Int(currentVersion),
+                expectedBinaryVersion: Int(Self.schemaVersion),
+                dbPath: dbPath.path
             )
+        }
+
+        if currentVersion < 16 {
+            // Version 15 -> 16: Added `implementation_swift_version`
+            // column to `docs_metadata` (#225 Part B). Captures the
+            // Swift toolchain version a swift-evolution proposal landed
+            // in. Unlike v14→v15 (which had to throw because the new
+            // `inheritance` table needed walk data only available via a
+            // full re-index), this is a clean in-place ALTER TABLE ADD
+            // COLUMN — old rows get NULL, new indexing populates the
+            // column for swift-evolution rows, every other source stays
+            // NULL by design. NULL semantics match the #226 platform
+            // filter: a row with no value is rejected when `--swift` is
+            // set, passed through when it isn't.
+            try await migrateToVersion16()
         }
     }
 
+    /// v15 → v16: add `implementation_swift_version` to docs_metadata
+    /// (#225 Part B). In-place column add; safe for both fresh DBs
+    /// (the column is also declared in the initial CREATE TABLE so a
+    /// v16 build coming up against a brand-new DB never enters this
+    /// path) and existing v15 DBs (the column starts NULL and gets
+    /// populated on the next re-index).
+    ///
+    /// The trailing `stampUserVersionUnchecked(16)` is load-bearing
+    /// per #749 — the #635 guard in `setSchemaVersion()` refuses to
+    /// stamp non-fresh DBs, so each in-place migrator is responsible
+    /// for stamping the version it migrated to.
+    func migrateToVersion16() async throws {
+        guard let database else {
+            throw Search.Error.databaseNotInitialized
+        }
+
+        let statements = [
+            "ALTER TABLE docs_metadata ADD COLUMN implementation_swift_version TEXT;",
+            "CREATE INDEX IF NOT EXISTS idx_implementation_swift_version ON docs_metadata(implementation_swift_version);",
+        ]
+
+        for sql in statements {
+            var errorPointer: UnsafeMutablePointer<CChar>?
+            defer { sqlite3_free(errorPointer) }
+            // Ignore error if column/index already exists — keeps the
+            // migration idempotent across partial runs. Matches the
+            // pattern in `migrateToVersion11`.
+            sqlite3_exec(database, sql, nil, nil, &errorPointer)
+        }
+
+        try stampUserVersionUnchecked(16)
+    }
+
+    /// v10 → v11: adds `kind` + `symbols` columns to `docs_metadata`
+    /// (#192 C1 doc-kind taxonomy).
+    ///
+    /// Trailing `stampUserVersionUnchecked(11)` is load-bearing per
+    /// #749. See `migrateToVersion16` for the rationale.
     func migrateToVersion11() async throws {
         guard let database else {
             throw Search.Error.databaseNotInitialized
@@ -233,8 +309,14 @@ extension Search.Index {
             // migration idempotent across partial runs.
             sqlite3_exec(database, sql, nil, nil, &errorPointer)
         }
+
+        try stampUserVersionUnchecked(11)
     }
 
+    /// v9 → v10: adds `synonyms` column to `framework_aliases`.
+    ///
+    /// Trailing `stampUserVersionUnchecked(10)` is load-bearing per
+    /// #749. See `migrateToVersion16` for the rationale.
     func migrateToVersion10() async throws {
         guard let database else {
             throw Search.Error.databaseNotInitialized
@@ -245,10 +327,15 @@ extension Search.Index {
         var errorPointer: UnsafeMutablePointer<CChar>?
         defer { sqlite3_free(errorPointer) }
 
-        // Ignore error if column already exists
+        // Ignore error if column already exists.
         sqlite3_exec(database, sql, nil, nil, &errorPointer)
+
+        try stampUserVersionUnchecked(10)
     }
 
+    /// v6 → v7: adds 5 platform availability columns to
+    /// `sample_code_metadata`. Trailing `stampUserVersionUnchecked(7)`
+    /// is load-bearing per #749. See `migrateToVersion16`.
     func migrateToVersion7() async throws {
         guard let database else {
             throw Search.Error.databaseNotInitialized
@@ -272,8 +359,14 @@ extension Search.Index {
         }
 
         sqlite3_free(errorPointer)
+
+        try stampUserVersionUnchecked(7)
     }
 
+    /// v5 → v6: adds 5 platform `min_*` columns + `availability_source`
+    /// to `docs_metadata` plus matching filtering indexes. Trailing
+    /// `stampUserVersionUnchecked(6)` is load-bearing per #749. See
+    /// `migrateToVersion16`.
     func migrateToVersion6() async throws {
         guard let database else {
             throw Search.Error.databaseNotInitialized
@@ -314,8 +407,21 @@ extension Search.Index {
             _ = sqlite3_exec(database, sql, nil, nil, &errorPointer)
             sqlite3_free(errorPointer)
         }
+
+        try stampUserVersionUnchecked(6)
     }
 
+    /// v3 → v4: adds `source` column to `docs_metadata`. Note: this
+    /// migrator is a dead-path today — checkAndMigrateSchema's
+    /// `currentVersion < 5` branch immediately throws
+    /// schemaVersionMismatch right after this migrator runs, because
+    /// FTS5 tables cannot be altered and the docs_fts schema changed
+    /// at v5. Users on v3 cannot upgrade in-place; they must re-save.
+    ///
+    /// Trailing `stampUserVersionUnchecked(4)` is included for
+    /// consistency with the class-of-bug fix (#749) and as a
+    /// future-proof: if v4→v5 ever becomes recoverable, the v3→v4
+    /// stamp is already correct.
     func migrateToVersion4() async throws {
         guard let database else {
             throw Search.Error.databaseNotInitialized
@@ -331,8 +437,13 @@ extension Search.Index {
 
         // Note: FTS5 tables require recreation to add columns.
         // The new schema will be created on next save, old data will be replaced.
+
+        try stampUserVersionUnchecked(4)
     }
 
+    /// v2 → v3: adds `json_data` column to `docs_metadata`. Trailing
+    /// `stampUserVersionUnchecked(3)` is load-bearing per #749. See
+    /// `migrateToVersion16`.
     func migrateToVersion3() async throws {
         guard let database else {
             throw Search.Error.databaseNotInitialized
@@ -345,5 +456,7 @@ extension Search.Index {
 
         // This will fail silently if column already exists, which is fine
         _ = sqlite3_exec(database, sql, nil, nil, &errorPointer)
+
+        try stampUserVersionUnchecked(3)
     }
 }

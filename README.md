@@ -478,10 +478,10 @@ A UIKit view controller that manages a SwiftUI view hierarchy.
 
 Cupertino includes pre-indexed catalog data bundled directly into the application:
 
-- **Swift Packages Catalog** (~9,700 entries in the embedded SPI catalog; 183 Apple-official packages with full source in packages.db)
-  - Manually curated from Swift Package Index + GitHub API
-  - Includes package metadata, stars, licenses, descriptions
-  - Updated periodically by maintainers
+- **Swift Packages Catalog** (183 Apple-official packages with full source + metadata in `packages.db`; the previous 9,699-entry embedded URL list was removed in #194 — `packages.db` is now the canonical corpus, shipped via `cupertino setup`)
+  - Curated from Swift Package Index + GitHub API
+  - Includes package metadata, stars, licenses, descriptions, deployment-target platforms, **and** authored `swift-tools-version` (#225)
+  - Updated by re-running `cupertino fetch --type packages` then `cupertino save --packages`
 
 - **Sample Code Catalog** (619 entries)
   - Apple's official sample code projects
@@ -517,7 +517,8 @@ These catalogs are indexed during `cupertino save` and enable instant search wit
 - **Tools**: Search and read capabilities for AI agents
   - **Documentation Tools** (requires `cupertino save`):
     - `search` - **Unified full-text search** across every indexed source: Apple Developer Documentation, sample code, Human Interface Guidelines, Apple Archive, Swift Evolution, swift.org, the Swift Book, and Swift package metadata. Replaces the pre-[#239](https://github.com/mihaelamj/cupertino/issues/239) per-source tools (`search_docs`, `search_hig`, `search_samples`, `search_all`).
-      - Parameters: `query` (required), `source` (optional: `all`, `apple-docs`, `samples`, `hig`, `apple-archive`, `swift-evolution`, `swift-org`, `swift-book`, `packages`), `framework`, `language`, `include_archive`, `limit`, `min_ios`, `min_macos`, `min_tvos`, `min_watchos`, `min_visionos` (all optional)
+      - Parameters: `query` (required), `source` (optional: `all`, `apple-docs`, `samples`, `hig`, `apple-archive`, `swift-evolution`, `swift-org`, `swift-book`, `packages`), `framework`, `language`, `include_archive`, `limit`, `min_ios`, `min_macos`, `min_tvos`, `min_watchos`, `min_visionos`, `min_swift` (all optional)
+      - Platform filtering (#226, #732): the 5 `min_*` parameters apply on every source whose data carries platform-availability metadata (apple-docs, apple-archive, packages, swift-evolution, swift-org, swift-book, samples). Multi-platform values AND-combine (e.g. `min_ios=18.0` + `min_macos=14.0` keeps only results that satisfy both). HIG content has no version axis and the filter doesn't apply there; the response prefixes a `platform_filter_partial` notice when HIG contributes to the result set so AI clients know the filter was non-uniform. Malformed `min_*` values (`"v18.0"`, `""`, `"18..0"`) are rejected at the MCP boundary with a clear `invalidArgument` error frame instead of silently no-oping.
     - `list_frameworks` - List indexed frameworks with document counts
     - `read_document` - Read document by URI with format option
       - Parameters: `uri` (required), `format` (optional: `json` or `markdown`, default: `json`)
@@ -718,10 +719,12 @@ cupertino serve --docs-dir ~/docs/apple --search-db ~/docs/search.db
 
 ## Documentation
 
-- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Build, test, contribute, and release workflow
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Build, test, contribute, and release workflow
+- **[docs/PRINCIPLES.md](docs/PRINCIPLES.md)** - Engineering principles (lossless URIs, no content lost at the door, 10x scale headroom)
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Technical deep-dives (Concurrency, MCP, WKWebView testing)
 - **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Homebrew distribution and CI/CD setup
 - **[docs/commands/](docs/commands/)** - Command-specific documentation
+- **[docs/tools/](docs/tools/)** - MCP-tool-specific documentation
 
 ### Command Documentation
 
@@ -744,7 +747,7 @@ Don't hesitate to submit a PR because of code style. I'd rather have your contri
 
 By participating in this project you agree to abide by the [Contributor Covenant Code of Conduct](https://www.contributor-covenant.org/).
 
-For development setup, see [DEVELOPMENT.md](DEVELOPMENT.md).
+For development setup, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Project Status
 

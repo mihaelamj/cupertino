@@ -25,6 +25,12 @@ extension Services {
         public let minimumTvOS: String?
         public let minimumWatchOS: String?
         public let minimumVisionOS: String?
+        /// #225 Part B — Swift toolchain version filter. Applies to
+        /// swift-evolution rows via `docs_metadata.implementation_swift_version`;
+        /// every other source's rows are filtered out when this is set
+        /// (no Swift toolchain stamp ⇒ NULL ⇒ rejected, same pattern
+        /// the platform-version filters use).
+        public let minimumSwift: String?
 
         public init(
             text: String,
@@ -37,7 +43,8 @@ extension Services {
             minimumMacOS: String? = nil,
             minimumTvOS: String? = nil,
             minimumWatchOS: String? = nil,
-            minimumVisionOS: String? = nil
+            minimumVisionOS: String? = nil,
+            minimumSwift: String? = nil
         ) {
             self.text = text
             self.source = source
@@ -50,6 +57,7 @@ extension Services {
             self.minimumTvOS = minimumTvOS
             self.minimumWatchOS = minimumWatchOS
             self.minimumVisionOS = minimumVisionOS
+            self.minimumSwift = minimumSwift
         }
     }
 }

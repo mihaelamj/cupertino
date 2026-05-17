@@ -159,6 +159,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamMinVisionOS: stringSchema(
                 description: "Minimum visionOS version filter (e.g. 1.0)."
             ),
+            Shared.Constants.Search.schemaParamMinSwift: stringSchema(
+                description: "Maximum Swift toolchain version for swift-evolution results (e.g. 5.5, 6.0). Filters swift-evolution proposals to those implemented at or below the given version; rows from other sources (apple-docs, samples, hig, swift-org, swift-book, packages) are filtered out when this is set."
+            ),
         ]
 
         let readDocumentProperties: [String: MCP.Core.Protocols.AnyCodable] = [
@@ -189,6 +192,30 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             ),
         ]
 
+        // #226 — platform-filter schema fragment shared by all 4
+        // AST search-style tools. Same shape as the unified `search`
+        // tool's existing platform args (CompositeToolProvider.swift:147-161).
+        // Applied client-side via Search.PlatformFilter.passes after the
+        // existing Search.Index method returns its result list (the
+        // helper fetches min_* per result URI in one batched query).
+        let platformFilterProperties: [String: MCP.Core.Protocols.AnyCodable] = [
+            Shared.Constants.Search.schemaParamMinIOS: stringSchema(
+                description: "Minimum iOS version filter (e.g. 17.0)."
+            ),
+            Shared.Constants.Search.schemaParamMinMacOS: stringSchema(
+                description: "Minimum macOS version filter (e.g. 14.0)."
+            ),
+            Shared.Constants.Search.schemaParamMinTvOS: stringSchema(
+                description: "Minimum tvOS version filter (e.g. 17.0)."
+            ),
+            Shared.Constants.Search.schemaParamMinWatchOS: stringSchema(
+                description: "Minimum watchOS version filter (e.g. 10.0)."
+            ),
+            Shared.Constants.Search.schemaParamMinVisionOS: stringSchema(
+                description: "Minimum visionOS version filter (e.g. 1.0)."
+            ),
+        ]
+
         let searchSymbolsProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamQuery: stringSchema(
                 description: "Symbol name pattern (partial match)."
@@ -205,7 +232,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamLimit: intSchema(
                 description: "Maximum results to return (default 20)."
             ),
-        ]
+        ].merging(platformFilterProperties) { lhs, _ in lhs }
 
         let searchPropertyWrappersProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamWrapper: stringSchema(
@@ -217,7 +244,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamLimit: intSchema(
                 description: "Maximum results to return (default 20)."
             ),
-        ]
+        ].merging(platformFilterProperties) { lhs, _ in lhs }
 
         let searchConcurrencyProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamPattern: stringSchema(
@@ -229,7 +256,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamLimit: intSchema(
                 description: "Maximum results to return (default 20)."
             ),
-        ]
+        ].merging(platformFilterProperties) { lhs, _ in lhs }
 
         let searchConformancesProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamProtocol: stringSchema(
@@ -241,7 +268,22 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamLimit: intSchema(
                 description: "Maximum results to return (default 20)."
             ),
-        ]
+        ].merging(platformFilterProperties) { lhs, _ in lhs }
+
+        // #665 / #409 Layer 2 — generic-parameter constraint search.
+        // #226 follow-up — `platformFilterProperties` merged in so the 12th
+        // MCP tool gets the same `min_*` axis the other 4 AST tools carry.
+        let searchGenericsProperties: [String: MCP.Core.Protocols.AnyCodable] = [
+            Shared.Constants.Search.schemaParamConstraint: stringSchema(
+                description: "Generic constraint to search for (e.g. Sendable, Hashable, View)."
+            ),
+            Shared.Constants.Search.schemaParamFramework: stringSchema(
+                description: "Framework filter (e.g. swiftui, foundation)."
+            ),
+            Shared.Constants.Search.schemaParamLimit: intSchema(
+                description: "Maximum results to return (default 20)."
+            ),
+        ].merging(platformFilterProperties) { lhs, _ in lhs }
 
         // #274 — class-inheritance walk over the `inheritance` edge table.
         let getInheritanceProperties: [String: MCP.Core.Protocols.AnyCodable] = [
@@ -368,6 +410,15 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                     required: [Shared.Constants.Search.schemaParamProtocol]
                 )
             ))
+
+            allTools.append(MCP.Core.Protocols.Tool(
+                name: Shared.Constants.Search.toolSearchGenerics,
+                description: MCP.SharedTools.Copy.toolSearchGenericsDescription,
+                inputSchema: objectSchema(
+                    properties: searchGenericsProperties,
+                    required: [Shared.Constants.Search.schemaParamConstraint]
+                )
+            ))
         }
 
         return MCP.Core.Protocols.ListToolsResult(tools: allTools)
@@ -397,6 +448,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             return try await handleSearchConcurrency(args: args)
         case Shared.Constants.Search.toolSearchConformances:
             return try await handleSearchConformances(args: args)
+        case Shared.Constants.Search.toolSearchGenerics:
+            return try await handleSearchGenerics(args: args)
         case Shared.Constants.Search.toolGetInheritance:
             return try await handleGetInheritance(args: args)
         default:
@@ -464,23 +517,72 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let language = args.optional(Shared.Constants.Search.schemaParamLanguage)
         let limit = args.limit()
         let includeArchive = args.includeArchive()
-        let minIOS = args.minIOS()
-        let minMacOS = args.minMacOS()
-        let minTvOS = args.minTvOS()
-        let minWatchOS = args.minWatchOS()
-        let minVisionOS = args.minVisionOS()
+        // #226 — validate + canonicalise the 5 platform filter values up
+        // front so empty / malformed strings get a clear MCP error rather
+        // than silently no-oping past `Search.PlatformFilter.passes(...)`.
+        // The shipped 5-field shape replaces the original "platform +
+        // min_version pair" spec; each `min_*` field is self-naming
+        // (platform implied by the field) so the original required-
+        // together rule doesn't translate — what we can validate is that
+        // each present value is well-formed.
+        let platform = try Self.extractPlatformArgs(args)
+        let minIOS = platform.minIOS
+        let minMacOS = platform.minMacOS
+        let minTvOS = platform.minTvOS
+        let minWatchOS = platform.minWatchOS
+        let minVisionOS = platform.minVisionOS
+        // #225 Part B — Swift toolchain filter for swift-evolution rows
+        // via docs_metadata.implementation_swift_version. Plumbed
+        // through handleSearchDocs → Services.SearchQuery; non-evolution
+        // rows are rejected by the index's NULL-rejection semantic when
+        // this is set. nil when the MCP arg is absent (filter off).
+        let minSwift: String? = args.optional(Shared.Constants.Search.schemaParamMinSwift)
+
+        // #226 — decide the cross-source partial-filter notice before
+        // dispatch. The notice prepends to the response markdown when
+        // the user passed any platform filter AND the dispatch path
+        // produces unfiltered rows. Two cases:
+        //
+        // 1. Specific-source dispatch (`apple-docs` / `apple-archive` /
+        //    `swift-evolution` / `swift-org` / `swift-book` / `packages`
+        //    via `handleSearchDocs`) — filter IS applied, no notice.
+        //    `hig` / `samples` via the standalone HIG/Samples handlers
+        //    DO NOT thread platform args — notice fires.
+        //
+        // 2. Fan-out dispatch (no source, "all", empty) via
+        //    `handleSearchAll` — currently drops platform args for ALL
+        //    sources. Notice fires for every contributing source. When
+        //    `handleSearchAll` is updated to thread args (filed as
+        //    follow-up), the partition switches automatically.
+        //
+        // The `Search.PlatformFilterScope.Dispatch` enum encodes this
+        // path-dependent fact so the helper knows whether to treat all
+        // contributing sources as unfiltered (fan-out) or partition
+        // them per `dispatchAppliesFilter` (single-source).
+        let dispatchDecision = Search.PlatformFilterScope.dispatch(for: source)
+        let notice = Search.PlatformFilterScope.partialNoticeMarkdown(
+            platformDescriptions: Self.platformDescriptions(platform: platform, minSwift: minSwift),
+            dispatch: dispatchDecision.kind,
+            contributingSources: dispatchDecision.sources
+        )
 
         // Route based on source parameter
         // Default (nil) now searches ALL sources for better results (#81)
+        let raw: MCP.Core.Protocols.CallToolResult
         switch source {
         case Shared.Constants.SourcePrefix.samples, Shared.Constants.SourcePrefix.appleSampleCode:
-            return try await handleSearchSamples(
+            raw = try await handleSearchSamples(
                 query: query,
                 framework: framework,
-                limit: limit
+                limit: limit,
+                minIOS: minIOS,
+                minMacOS: minMacOS,
+                minTvOS: minTvOS,
+                minWatchOS: minWatchOS,
+                minVisionOS: minVisionOS
             )
         case Shared.Constants.SourcePrefix.hig:
-            return try await handleSearchHIG(
+            raw = try await handleSearchHIG(
                 query: query,
                 framework: framework,
                 limit: limit
@@ -492,7 +594,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
              Shared.Constants.SourcePrefix.swiftBook,
              Shared.Constants.SourcePrefix.packages:
             // Specific source requested: search only that source
-            return try await handleSearchDocs(
+            raw = try await handleSearchDocs(
                 query: query,
                 source: source,
                 framework: framework,
@@ -503,16 +605,57 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 minMacOS: minMacOS,
                 minTvOS: minTvOS,
                 minWatchOS: minWatchOS,
-                minVisionOS: minVisionOS
+                minVisionOS: minVisionOS,
+                minSwift: minSwift
             )
         default:
             // Default (nil or "all"): search ALL sources for comprehensive results
-            return try await handleSearchAll(
+            raw = try await handleSearchAll(
                 query: query,
                 framework: framework,
-                limit: limit
+                limit: limit,
+                minIOS: minIOS,
+                minMacOS: minMacOS,
+                minTvOS: minTvOS,
+                minWatchOS: minWatchOS,
+                minVisionOS: minVisionOS,
+                minSwift: minSwift
             )
         }
+        return Self.prependNoticeIfNeeded(notice: notice, to: raw)
+    }
+
+    /// #226 — format a per-platform description list (e.g. `["min_ios=18.0",
+    /// "min_macos=14.0"]`) for the notice prefix. Includes the `--swift`
+    /// filter when set; pre-#226 it lived in #225 Part B's filter and the
+    /// notice ignored it.
+    private static func platformDescriptions(
+        platform: PlatformArgs,
+        minSwift: String?
+    ) -> [String] {
+        var out: [String] = []
+        if let value = platform.minIOS { out.append("min_ios=\(value)") }
+        if let value = platform.minMacOS { out.append("min_macos=\(value)") }
+        if let value = platform.minTvOS { out.append("min_tvos=\(value)") }
+        if let value = platform.minWatchOS { out.append("min_watchos=\(value)") }
+        if let value = platform.minVisionOS { out.append("min_visionos=\(value)") }
+        if let value = minSwift { out.append("min_swift=\(value)") }
+        return out
+    }
+
+    /// #226 — prepend the notice markdown to the first text-content block
+    /// of a `CallToolResult`. No-op when notice is nil or the result has
+    /// no text content. Returns a new result rather than mutating.
+    static func prependNoticeIfNeeded(
+        notice: String?,
+        to result: MCP.Core.Protocols.CallToolResult
+    ) -> MCP.Core.Protocols.CallToolResult {
+        guard let notice else { return result }
+        let newContent: [MCP.Core.Protocols.ContentBlock] = result.content.enumerated().map { idx, block in
+            guard idx == 0, case let .text(textContent) = block else { return block }
+            return .text(MCP.Core.Protocols.TextContent(text: notice + textContent.text))
+        }
+        return MCP.Core.Protocols.CallToolResult(content: newContent, isError: result.isError)
     }
 
     // MARK: - Documentation Search
@@ -528,7 +671,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         minMacOS: String?,
         minTvOS: String?,
         minWatchOS: String?,
-        minVisionOS: String?
+        minVisionOS: String?,
+        minSwift: String?
     ) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let docsService else {
             throw Shared.Core.ToolError.invalidArgument("source", "Documentation index not available")
@@ -546,7 +690,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             minimumMacOS: minMacOS,
             minimumTvOS: minTvOS,
             minimumWatchOS: minWatchOS,
-            minimumVisionOS: minVisionOS
+            minimumVisionOS: minVisionOS,
+            minimumSwift: minSwift
         ))
 
         // Fetch teaser results from all sources user didn't search
@@ -618,18 +763,34 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     private func handleSearchSamples(
         query: String,
         framework: String?,
-        limit: Int
+        limit: Int,
+        minIOS: String? = nil,
+        minMacOS: String? = nil,
+        minTvOS: String? = nil,
+        minWatchOS: String? = nil,
+        minVisionOS: String? = nil
     ) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let sampleService else {
             throw Shared.Core.ToolError.invalidArgument("source", "Sample code database not available")
         }
 
-        // Use service layer (same as CLI)
+        // #732 — pass the 5-field shape natively into `Sample.Search.Query`.
+        // Multiple `min_*` values AND-combine inside
+        // `Sample.Index.Database.searchProjects` SQL: a project must
+        // satisfy every requested minimum to pass. #226's precedence-
+        // pick translation (then needed because `searchProjects` only
+        // had `(platform, minVersion)`) is gone — the 5-field path is
+        // end-to-end now.
         let result = try await sampleService.search(Sample.Search.Query(
             text: query,
             framework: framework,
             searchFiles: true,
-            limit: limit
+            limit: limit,
+            minIOS: minIOS,
+            minMacOS: minMacOS,
+            minTvOS: minTvOS,
+            minWatchOS: minWatchOS,
+            minVisionOS: minVisionOS
         ))
 
         // Fetch teaser results from other sources
@@ -689,15 +850,34 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     private func handleSearchAll(
         query: String,
         framework: String?,
-        limit: Int
+        limit: Int,
+        minIOS: String? = nil,
+        minMacOS: String? = nil,
+        minTvOS: String? = nil,
+        minWatchOS: String? = nil,
+        minVisionOS: String? = nil,
+        minSwift: String? = nil
     ) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let unifiedService else {
             throw Shared.Core.ToolError.invalidArgument("source", "No indexes available for unified search")
         }
+        // #226 expansion: thread platform args + minSwift through the
+        // fan-out so each search.db-backed fetcher applies the filter at
+        // SQL time. Samples within the fan-out remain unfiltered until
+        // the #732 follow-up extends `Sample.Index.Database.searchProjects`
+        // — `PlatformFilterScope` partitions samples into the unaware
+        // bucket so the partial-filter notice still fires for fan-out +
+        // platform args (see `handleSearch` line 535).
         let rawInput = await unifiedService.searchAll(
             query: query,
             framework: framework,
-            limit: limit
+            limit: limit,
+            minIOS: minIOS,
+            minMacOS: minMacOS,
+            minTvOS: minTvOS,
+            minWatchOS: minWatchOS,
+            minVisionOS: minVisionOS,
+            minSwift: minSwift
         )
 
         // #648 (open-time path) — main's post-#642 retest found that the
@@ -1003,6 +1183,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let isAsync = args.optionalBool(Shared.Constants.Search.schemaParamIsAsync)
         let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
         let limit = args.limit()
+        let platform = try Self.extractPlatformArgs(args)
 
         let results = try await searchIndex.searchSymbols(
             query: query,
@@ -1011,9 +1192,12 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             framework: framework,
             limit: limit
         )
+        let filtered = try await Self.applyPlatformFilter(
+            results: results, platform: platform, searchIndex: searchIndex
+        )
 
         let markdown = formatSymbolResults(
-            results: results,
+            results: filtered,
             title: "Symbol Search Results",
             query: query,
             filters: ["kind": kind, "is_async": isAsync.map { String($0) }, "framework": framework]
@@ -1030,11 +1214,15 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let wrapper: String = try args.require(Shared.Constants.Search.schemaParamWrapper)
         let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
         let limit = args.limit()
+        let platform = try Self.extractPlatformArgs(args)
 
-        let results = try await searchIndex.searchPropertyWrappers(
+        let raw = try await searchIndex.searchPropertyWrappers(
             wrapper: wrapper,
             framework: framework,
             limit: limit
+        )
+        let results = try await Self.applyPlatformFilter(
+            results: raw, platform: platform, searchIndex: searchIndex
         )
 
         let normalizedWrapper = wrapper.hasPrefix("@") ? wrapper : "@\(wrapper)"
@@ -1056,11 +1244,15 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let pattern: String = try args.require(Shared.Constants.Search.schemaParamPattern)
         let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
         let limit = args.limit()
+        let platform = try Self.extractPlatformArgs(args)
 
-        let results = try await searchIndex.searchConcurrencyPatterns(
+        let raw = try await searchIndex.searchConcurrencyPatterns(
             pattern: pattern,
             framework: framework,
             limit: limit
+        )
+        let results = try await Self.applyPlatformFilter(
+            results: raw, platform: platform, searchIndex: searchIndex
         )
 
         let markdown = formatSymbolResults(
@@ -1171,11 +1363,15 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let protocolName: String = try args.require(Shared.Constants.Search.schemaParamProtocol)
         let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
         let limit = args.limit()
+        let platform = try Self.extractPlatformArgs(args)
 
-        let results = try await searchIndex.searchConformances(
+        let raw = try await searchIndex.searchConformances(
             protocolName: protocolName,
             framework: framework,
             limit: limit
+        )
+        let results = try await Self.applyPlatformFilter(
+            results: raw, platform: platform, searchIndex: searchIndex
         )
 
         let markdown = formatSymbolResults(
@@ -1183,6 +1379,154 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             title: "Protocol Conformance: \(protocolName)",
             query: protocolName,
             filters: ["protocol": protocolName, "framework": framework]
+        )
+
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
+    }
+
+    // MARK: - #226 — platform filter helpers (shared across 4 search-style tools)
+
+    /// 5-tuple of `min*` filter strings extracted from the MCP call's
+    /// arguments. All optional. Empty / missing fields stay nil so the
+    /// `Search.PlatformFilter.passes(...)` predicate treats them as
+    /// "no constraint" downstream.
+    private struct PlatformArgs {
+        let minIOS: String?
+        let minMacOS: String?
+        let minTvOS: String?
+        let minWatchOS: String?
+        let minVisionOS: String?
+
+        var isAnySet: Bool {
+            minIOS != nil || minMacOS != nil || minTvOS != nil || minWatchOS != nil || minVisionOS != nil
+        }
+    }
+
+    private static func extractPlatformArgs(
+        _ args: MCP.SharedTools.ArgumentExtractor
+    ) throws -> PlatformArgs {
+        try PlatformArgs(
+            minIOS: validatePlatformValue(
+                args.optional(Shared.Constants.Search.schemaParamMinIOS),
+                paramName: Shared.Constants.Search.schemaParamMinIOS
+            ),
+            minMacOS: validatePlatformValue(
+                args.optional(Shared.Constants.Search.schemaParamMinMacOS),
+                paramName: Shared.Constants.Search.schemaParamMinMacOS
+            ),
+            minTvOS: validatePlatformValue(
+                args.optional(Shared.Constants.Search.schemaParamMinTvOS),
+                paramName: Shared.Constants.Search.schemaParamMinTvOS
+            ),
+            minWatchOS: validatePlatformValue(
+                args.optional(Shared.Constants.Search.schemaParamMinWatchOS),
+                paramName: Shared.Constants.Search.schemaParamMinWatchOS
+            ),
+            minVisionOS: validatePlatformValue(
+                args.optional(Shared.Constants.Search.schemaParamMinVisionOS),
+                paramName: Shared.Constants.Search.schemaParamMinVisionOS
+            )
+        )
+    }
+
+    /// #226 — reject empty or malformed `min_<platform>` values up-front so
+    /// they cannot silently no-op past the filter. Pre-#226 the args
+    /// extractor accepted any string (or nil); empty strings, whitespace,
+    /// and shapes like `"v18.0"` / `"18"` / `"ios18.0"` all flowed through
+    /// to `Search.PlatformFilter.passes(...)` which compares lexicographic
+    /// after splitting on `.`, producing surprising (and silently wrong)
+    /// matches.
+    ///
+    /// Validation rule: a value is acceptable when its trimmed form matches
+    /// `<digits>(\.<digits>)*` (semver-prefix shape — major, major.minor,
+    /// or major.minor.patch). Any other shape rejects with a
+    /// `ToolError.invalidArgument` carrying the offending param name so the
+    /// MCP client sees a clear error frame rather than a silent no-op.
+    ///
+    /// Returns the *trimmed* value (or nil) so downstream callers consume
+    /// the canonical form.
+    static func validatePlatformValue(
+        _ raw: String?,
+        paramName: String
+    ) throws -> String? {
+        guard let raw else { return nil }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            throw Shared.Core.ToolError.invalidArgument(
+                paramName,
+                "Platform version filter must not be empty / whitespace-only — pass nil to omit the filter or a numeric version like \"18.0\"."
+            )
+        }
+        // Permitted: digits, optional dot-separated digit groups.
+        // Examples: "18", "18.0", "18.0.1". Rejected: "v18.0", "18.0a",
+        // "ios18", "18..0", ".18", "18.".
+        let parts = trimmed.split(separator: ".", omittingEmptySubsequences: false)
+        let allDigitGroups = parts.allSatisfy { part in
+            !part.isEmpty && part.allSatisfy(\.isWholeNumber)
+        }
+        guard allDigitGroups else {
+            throw Shared.Core.ToolError.invalidArgument(
+                paramName,
+                "Platform version filter must be a numeric semver-prefix (e.g. \"18\", \"18.0\", \"18.0.1\") — got \"\(raw)\"."
+            )
+        }
+        return trimmed
+    }
+
+    /// Apply the MCP-level platform filter to a `[SymbolSearchResult]`.
+    /// Short-circuits when no filter is set (the common case) — returns
+    /// the input unchanged. When set, batch-fetches `docs_metadata.min_*`
+    /// for each result's URI in one query, then filters in-process via
+    /// `Search.PlatformFilter.passes`. Same semver semantics as the
+    /// unified `search` tool (`Search.Index.Search.swift:730`).
+    private static func applyPlatformFilter(
+        results: [Search.SymbolSearchResult],
+        platform: PlatformArgs,
+        searchIndex: any Search.Database
+    ) async throws -> [Search.SymbolSearchResult] {
+        guard platform.isAnySet, !results.isEmpty else { return results }
+        let uris = results.map(\.docUri)
+        let minimaByURI = try await searchIndex.fetchPlatformMinima(uris: uris)
+        return results.filter { row in
+            Search.PlatformFilter.passes(
+                minima: minimaByURI[row.docUri],
+                minIOS: platform.minIOS,
+                minMacOS: platform.minMacOS,
+                minTvOS: platform.minTvOS,
+                minWatchOS: platform.minWatchOS,
+                minVisionOS: platform.minVisionOS
+            )
+        }
+    }
+
+    /// #665 / #409 Layer 2 — surfaces `doc_symbols.generic_params`.
+    /// #226 follow-up — applies the MCP-level platform filter post-search
+    /// to match the other 4 AST tools (search_symbols /
+    /// search_property_wrappers / search_concurrency / search_conformances).
+    private func handleSearchGenerics(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
+        guard let searchIndex else {
+            throw searchIndexUnavailableError("index")
+        }
+
+        let constraint: String = try args.require(Shared.Constants.Search.schemaParamConstraint)
+        let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
+        let limit = args.limit()
+        let platform = try Self.extractPlatformArgs(args)
+
+        let raw = try await searchIndex.searchByGenericConstraint(
+            constraint: constraint,
+            framework: framework,
+            limit: limit
+        )
+        let results = try await Self.applyPlatformFilter(
+            results: raw, platform: platform, searchIndex: searchIndex
+        )
+
+        let markdown = formatSymbolResults(
+            results: results,
+            title: "Generic Constraint: \(constraint)",
+            query: constraint,
+            filters: ["constraint": constraint, "framework": framework]
         )
 
         return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
@@ -1241,6 +1585,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 }
                 if let conforms = symbol.conformances, !conforms.isEmpty {
                     markdown += "\n  - Conforms to: \(conforms)"
+                }
+                if let generics = symbol.genericParams, !generics.isEmpty {
+                    markdown += "\n  - Generic params: `\(generics)`"
                 }
                 markdown += "\n"
             }

@@ -1,5 +1,8 @@
 import ArgumentParser
 import Darwin
+import Diagnostics
+import Foundation
+import Search
 import SharedConstants
 
 // MARK: - Cupertino CLI
@@ -26,8 +29,10 @@ struct Cupertino: AsyncParsableCommand {
 
         QUERY
           search           Search across all documentation sources
+          package-search   Smart query over the packages corpus (packages.db source only)
           read             Read a full document by URI
           list-frameworks  List indexed frameworks with document counts
+          inheritance      Walk class inheritance chains (Apple class-based APIs)
 
         SAMPLE CODE
           list-samples     List indexed Apple sample projects
@@ -89,8 +94,42 @@ struct Cupertino: AsyncParsableCommand {
                     try command.run()
                 }
             }
+        } catch let mismatch as SearchModule.Error where Self.isSchemaMismatch(mismatch) {
+            // #673 Phase E — schema-version mismatch is a known, recoverable
+            // class of error with a concrete remediation. Print the user-
+            // friendly `errorDescription` (NO Swift stack trace) on stderr,
+            // then exit with `EX_DATAERR` (65 — "the input data was incorrect
+            // in some way", per sysexits(3)) so scripts can detect this class
+            // without parsing the message text.
+            //
+            // Distinct from `exit(withError:)`'s default mapping (which would
+            // print the underlying error's String description + exit with
+            // generic `EXIT_FAILURE` = 1).
+            FileHandle.standardError.write(Data((mismatch.errorDescription ?? "Schema version mismatch.\n").utf8))
+            FileHandle.standardError.write(Data("\n".utf8))
+            Darwin.exit(Int32(EX_DATAERR))
+        } catch let lowDisk as Diagnostics.InsufficientDiskSpaceError {
+            // #673 Phase F — disk-space preflight refused the operation.
+            // Print the typed `errorDescription` (which already names
+            // the path, needed, free, short-by figures) and exit with
+            // `EX_IOERR` (74 — sysexits(3) "an error occurred while
+            // doing I/O on some file") so scripts / CI / agent wrappers
+            // can detect the class. Distinct from the schema-mismatch
+            // exit code so a single catch-all in a deployer script can
+            // tell the difference (`exit 65 → cupertino setup` vs
+            // `exit 74 → free disk + retry`).
+            FileHandle.standardError.write(Data((lowDisk.errorDescription ?? "Insufficient disk space.\n").utf8))
+            FileHandle.standardError.write(Data("\n".utf8))
+            Darwin.exit(Int32(EX_IOERR))
         } catch {
             exit(withError: error)
         }
+    }
+
+    /// True when the value is the `.schemaVersionMismatch` case. Helper
+    /// so the `catch let … where` clause stays readable.
+    private static func isSchemaMismatch(_ error: SearchModule.Error) -> Bool {
+        if case .schemaVersionMismatch = error { return true }
+        return false
     }
 }

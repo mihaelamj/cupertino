@@ -20,3 +20,14 @@ repos:
         pass_filenames: false
         # Only run when Swift sources or the script itself change.
         files: '(Packages/Sources/.*\.swift|scripts/check-package-purity\.sh)$'
+
+      - id: changelog-touched
+        name: CHANGELOG.md updated for source changes (post-2026-05-17 audit guard)
+        entry: scripts/check-changelog-touched.sh
+        language: script
+        pass_filenames: false
+        # Always run on every commit — the script decides whether the
+        # change set requires CHANGELOG (cheap: just a diff inspect).
+        # Use `git commit --no-verify` or include `[no-changelog]` in
+        # the commit message body to opt out per-commit.
+        stages: [commit]

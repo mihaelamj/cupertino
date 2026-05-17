@@ -5,6 +5,7 @@ import LoggingModels
 import Search
 import SearchModels
 import SharedConstants
+
 // MARK: - Package Search Command (hidden)
 
 /// Hidden packages-only smart query. Invoked as:
@@ -55,6 +56,18 @@ extension CLIImpl.Command {
         )
         var minVersion: String?
 
+        @Option(
+            name: .long,
+            help: """
+            Restrict results to packages whose authored `// swift-tools-version: X.Y` \
+            declaration in `Package.swift` is greater than or equal to the given \
+            value (e.g. 5.7, 6.0). Orthogonal to --platform / --min-version: filters \
+            on the Swift compiler floor, not the platform deployment target. \
+            Packages with no swift-tools declaration are dropped when the filter is active.
+            """
+        )
+        var swiftTools: String?
+
         mutating func run() async throws {
             // Path-DI composition sub-root (#535).
             let paths = Shared.Paths.live()
@@ -93,9 +106,11 @@ extension CLIImpl.Command {
             case (nil, nil):
                 availabilityFilter = nil
             }
+            let swiftToolsFilter = swiftTools.map { SearchModels.Search.SwiftToolsFilter(minVersion: $0) }
             let fetcher = SearchModule.PackageFTSCandidateFetcher(
                 dbPath: dbURL,
-                availability: availabilityFilter
+                availability: availabilityFilter,
+                swiftTools: swiftToolsFilter
             )
             let smart = SearchModule.SmartQuery(fetchers: [fetcher])
             let result = await smart.answer(question: trimmed, limit: limit, perFetcherLimit: max(20, limit))

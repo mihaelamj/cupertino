@@ -7,12 +7,6 @@ import SharedConstants
 
 // MARK: - Documentation Crawler
 
-// swiftlint:disable function_body_length type_body_length
-// Justification: This class implements the core web crawling engine with WKWebView integration.
-// It manages: page navigation, URL queue processing, change detection, content extraction,
-// progress tracking, session persistence, and navigation delegation. The crawling logic is
-// inherently stateful and requires coordinating multiple async operations in sequence.
-
 /// Main crawler for Apple documentation using WKWebView
 extension Crawler {
     @MainActor
@@ -756,6 +750,16 @@ extension Crawler {
             let data = Data(line.utf8)
             if !data.isEmpty {
                 handle.write(data)
+                // #682 — intentional silent failure on synchronize().
+                // The line was already written via handle.write(data)
+                // above; synchronize is the explicit fsync for durability
+                // guarantees. If it fails (rare — would indicate disk
+                // pressure or the fs detached the file mid-write), the
+                // data is still in the kernel buffer and will get flushed
+                // on file close or next fsync. Worst case: log is up to
+                // one fsync interval stale. Surfacing via a per-line
+                // warn would spam during an outage; we accept the silent
+                // skip + rely on the close path's synchronize to catch up.
                 try? handle.synchronize()
             }
         }

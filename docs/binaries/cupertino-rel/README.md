@@ -85,5 +85,5 @@ The `bump` command updates version in:
 
 ## See Also
 
-- [DEVELOPMENT.md](../../../DEVELOPMENT.md) - Development workflow
-- [DEPLOYMENT.md](../DEPLOYMENT.md) - Deployment and CI/CD
+- [CONTRIBUTING.md](../../../CONTRIBUTING.md) - Development workflow
+- [DEPLOYMENT.md](../../DEPLOYMENT.md) - Deployment and CI/CD

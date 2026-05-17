@@ -1,14 +1,13 @@
 import Foundation
 
-// swiftlint:disable type_body_length
-// Justification: InputHandler processes all keyboard input for the TUI application.
-// It handles: navigation, selection, filtering, pagination, and view-specific actions.
-// The switch statement covers all input cases for consistent keyboard handling.
-
 // InputResult moved to InputResult.swift
 
 /// Handles all keyboard input and state mutations
 @MainActor
+// #673 Phase D iter-5: 355-line enum — one switch covers every key
+// binding across home/packages/library/archive/settings views; splitting
+// scatters the keyboard dispatch contract.
+// swiftlint:disable:next type_body_length
 enum InputHandler {
     /// Process a key input and mutate state accordingly
     /// - Parameters:

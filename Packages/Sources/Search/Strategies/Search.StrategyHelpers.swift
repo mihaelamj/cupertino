@@ -1,6 +1,7 @@
 import Foundation
 import SearchModels
 import SharedConstants
+
 // MARK: - StrategyHelpers
 
 extension Search {
@@ -182,6 +183,72 @@ extension Search {
         public static func isAcceptedProposal(_ status: String?) -> Bool {
             guard let status = status?.lowercased() else { return false }
             return status.contains("implemented") || status.contains("accepted")
+        }
+
+        /// Extract the Swift toolchain version a proposal was implemented in
+        /// (#225 Part B). The corpus has two distinct patterns:
+        ///
+        /// 1. A bulleted `* Implementation:` line carrying the version inline,
+        ///    e.g. `* Implementation: Swift 5.5`. This is the standard
+        ///    swift-evolution convention for accepted-and-implemented
+        ///    proposals.
+        /// 2. A `* Status: Implemented (Swift X.Y)` line — the same status
+        ///    string `extractProposalStatus(from:)` returns; reused here
+        ///    because some proposals carry the version on the status line
+        ///    rather than on a dedicated implementation line.
+        ///
+        /// Pattern 1 wins when both are present (the implementation line is
+        /// the primary citation; the status line is a convenience repeat).
+        ///
+        /// - Parameter markdown: Raw Markdown content of a proposal file.
+        /// - Returns: The semver-style version string (e.g. `"5.5"`) or
+        ///   `nil` when neither pattern matched. Single-component versions
+        ///   (e.g. `Swift 6`) are returned as `"6.0"` so all values share
+        ///   the same `<major>.<minor>` shape the filter compares against.
+        public static func extractImplementationSwiftVersion(from markdown: String) -> String? {
+            // Pattern 1: dedicated implementation line. Match
+            // `Implementation: Swift X[.Y]` anywhere in the line so a
+            // leading `*` / `-` bullet marker or `**Implementation:**`
+            // bold marker doesn't break the scan. The `[\s*]*` between
+            // the colon and `Swift` swallows any combination of
+            // whitespace and markdown bold asterisks so all four
+            // common shapes match:
+            //   * Implementation: Swift X
+            //   * **Implementation:** Swift X
+            //   * Implementation:**Swift X**
+            //   - Implementation: **Swift X.Y**
+            let primary = #"Implementation\s*:[\s*]*Swift\s+(\d+(?:\.\d+)?)"#
+            // Pattern 2: status line that embeds the version in parens,
+            // e.g. `Status: Implemented (Swift 5.5)`. Re-scan rather
+            // than going through extractProposalStatus → mapSwiftVersionToAvailability
+            // because we want the literal version string, not the
+            // platform-version derivation.
+            let fallback = #"Status\s*:[\s*]*Implemented\s*\(\s*Swift\s+(\d+(?:\.\d+)?)\s*\)"#
+
+            for pattern in [primary, fallback] {
+                guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
+                      let match = regex.firstMatch(
+                          in: markdown,
+                          range: NSRange(markdown.startIndex..., in: markdown)
+                      ),
+                      match.numberOfRanges > 1,
+                      let versionRange = Range(match.range(at: 1), in: markdown)
+                else { continue }
+
+                let raw = String(markdown[versionRange])
+                return normalizeSwiftVersion(raw)
+            }
+            return nil
+        }
+
+        /// Normalize a Swift version match to the canonical `<major>.<minor>`
+        /// shape the filter compares against. `Swift 6` → `"6.0"`,
+        /// `Swift 5.10` → `"5.10"` (no padding). Private helper for
+        /// `extractImplementationSwiftVersion`; the filter side does its
+        /// own semver-aware compare so this only normalises the on-disk
+        /// representation.
+        private static func normalizeSwiftVersion(_ raw: String) -> String {
+            raw.contains(".") ? raw : "\(raw).0"
         }
 
         /// Extract the `SE-NNNN` or `ST-NNNN` identifier from a proposal filename.
@@ -648,6 +715,81 @@ extension Search {
                 lowerContent.contains("404 not found") { return true }
             if content.count < 500, lowerContent.contains("page not found") { return true }
             return false
+        }
+
+        // MARK: - #668 — minimal-structured-page builder for markdown-source strategies
+
+        /// Construct a minimal `StructuredDocumentationPage` suitable for the
+        /// markdown-source strategies (HIG, Swift Evolution, Apple Archive)
+        /// to feed `Search.Index.indexStructuredDocument` and produce a
+        /// `docs_structured` row per source page. Pre-#668 these 3 sources
+        /// called the FTS-only `indexDocument` path, leaving them at 100 %
+        /// `(missing)` rate in `cupertino doctor --kind-coverage` — every
+        /// search-quality fix that depends on `s.kind` (the #177 rerank
+        /// tier, the #616 kind-aware tiebreak, the #630 canonical-prepend
+        /// filter) was a no-op for these sources.
+        ///
+        /// The page is built with `kind: .article` because all three sources
+        /// are prose-only markdown (HIG design guidance, Swift Evolution
+        /// proposals, Apple's archived programming guides). `.article` is
+        /// the closest existing Kind case; if a finer-grained classification
+        /// is needed in the future (e.g. `.proposal` for SE-*), introduce
+        /// that as a new Kind case + thread it through here.
+        ///
+        /// `source` is set to `.custom` rather than `.appleJSON` /
+        /// `.appleWebKit` because these markdown pages were never JSON-decoded
+        /// from an Apple endpoint — they're our own crawler output.
+        ///
+        /// - Parameters:
+        ///   - url: Canonical URL for the page (web URL when known, else
+        ///     a `cupertino://`-style identifier).
+        ///   - title: Page title (already extracted by the caller).
+        ///   - rawMarkdown: Full markdown body — preserved in the page so
+        ///     downstream features (FTS body via `extractOptimizedContent`'s
+        ///     `.article` branch, future inheritance-fallback parsers, etc.)
+        ///     can read the source content from the structured row.
+        ///   - crawledAt: File-system modification date as a stand-in for
+        ///     crawl time.
+        ///   - contentHash: SHA-256 of `rawMarkdown` (caller usually has
+        ///     this for the `indexDocument` path already).
+        /// - Returns: A `StructuredDocumentationPage` with only the
+        ///   essential fields set; abstract/declaration/sections/etc.
+        ///   stay nil — the structured row exists, the kind is populated,
+        ///   `docs_structured.(missing)` rate drops to 0 % for the source.
+        public static func makeArticleStructuredPage(
+            url: URL,
+            title: String,
+            rawMarkdown: String,
+            crawledAt: Date,
+            contentHash: String
+        ) -> Shared.Models.StructuredDocumentationPage {
+            Shared.Models.StructuredDocumentationPage(
+                url: url,
+                title: title,
+                kind: .article,
+                source: .custom,
+                rawMarkdown: rawMarkdown,
+                crawledAt: crawledAt,
+                contentHash: contentHash
+            )
+        }
+
+        /// Serialise a `StructuredDocumentationPage` to a JSON string for the
+        /// `indexStructuredDocument(jsonData:)` parameter. Returns `"{}"` on
+        /// encode failure so the indexer call site doesn't need to thread an
+        /// error path for what is effectively a serialisation-of-a-struct-
+        /// we-just-built operation. ISO-8601 dates match the indexer's
+        /// pre-existing convention (see `Search.Strategies.SwiftOrg`'s
+        /// markdown branch).
+        public static func encodeStructuredPageToJSON(
+            _ page: Shared.Models.StructuredDocumentationPage
+        ) -> String {
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            guard let data = try? encoder.encode(page),
+                  let string = String(data: data, encoding: .utf8)
+            else { return "{}" }
+            return string
         }
 
         // MARK: - Private Helpers

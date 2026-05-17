@@ -24,7 +24,7 @@ A full-screen terminal interface for navigating Apple and Swift documentation of
 
 The main menu with quick stats and navigation:
 
-- **Packages** - Browse the Swift packages catalog (9,700+ entries in search.db, 183 Apple-official packages with source files in packages.db)
+- **Packages** - Browse the Swift packages corpus in `packages.db` (183 Apple-official packages with full source files + GitHub metadata). The previous embedded 9,699-URL catalog was removed in #194; `packages.db` is now the canonical source, shipped via `cupertino setup`.
 - **Library** - View artifact collections
 - **Archive** - Browse classic Apple programming guides
 - **Settings** - Configure Cupertino

@@ -20,12 +20,26 @@ extension Sample.Search {
         public let searchFiles: Bool
         public let limit: Int
 
-        /// Optional platform filter (#233). When set together with
-        /// `minVersion`, restricts results to projects whose
+        /// Optional single-platform filter (#233). When set together
+        /// with `minVersion`, restricts results to projects whose
         /// `min_<platform>` column is non-NULL and lex-≤ the requested
-        /// version. nil on either disables the filter.
+        /// version. nil on either disables this filter. Kept for
+        /// back-compat with the original (single-platform) call shape;
+        /// new callers use the 5-field shape below.
         public let platform: String?
         public let minVersion: String?
+
+        /// 5-field platform-minima filter (#732). When any is non-nil,
+        /// AND-combines against `projects.min_<platform>` columns: a
+        /// project must satisfy every set minimum to pass. Used by the
+        /// MCP unified search + the fan-out path which both pass the
+        /// caller-supplied `min_*` args as-is — no precedence-pick
+        /// translation needed.
+        public let minIOS: String?
+        public let minMacOS: String?
+        public let minTvOS: String?
+        public let minWatchOS: String?
+        public let minVisionOS: String?
 
         public init(
             text: String,
@@ -33,7 +47,12 @@ extension Sample.Search {
             searchFiles: Bool = true,
             limit: Int = Shared.Constants.Limit.defaultSearchLimit,
             platform: String? = nil,
-            minVersion: String? = nil
+            minVersion: String? = nil,
+            minIOS: String? = nil,
+            minMacOS: String? = nil,
+            minTvOS: String? = nil,
+            minWatchOS: String? = nil,
+            minVisionOS: String? = nil
         ) {
             self.text = text
             self.framework = framework
@@ -41,6 +60,11 @@ extension Sample.Search {
             self.limit = min(limit, Shared.Constants.Limit.maxSearchLimit)
             self.platform = platform
             self.minVersion = minVersion
+            self.minIOS = minIOS
+            self.minMacOS = minMacOS
+            self.minTvOS = minTvOS
+            self.minWatchOS = minWatchOS
+            self.minVisionOS = minVisionOS
         }
     }
 }

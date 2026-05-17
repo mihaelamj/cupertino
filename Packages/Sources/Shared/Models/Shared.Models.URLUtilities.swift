@@ -141,6 +141,20 @@ extension Shared.Models {
         /// - `CompositeToolProvider.handleReadDocument` (MCP tool) —
         ///   same entry-point normalisation.
         public static func appleDocsURI(from url: URL) -> String? {
+            // #691 — scheme gate. Pre-fix this function was scheme-agnostic:
+            // `ftp://developer.apple.com/documentation/swiftui` would happily
+            // map to `apple-docs://swiftui`, as would `file://` and any
+            // custom scheme. Apple docs only live over HTTP(S); anything
+            // else is by definition not an Apple documentation URL.
+            // Caught by develop's Phase C iter-2 fuzz sweep
+            // (Issue673URLUtilitiesFuzzTests.fromStringExoticSchemes).
+            // Rejecting URLs with no scheme (path-only forms) would break
+            // crawl-metadata callers that hand in pre-stripped paths, so
+            // we only gate when a scheme is present.
+            if let scheme = url.scheme?.lowercased(),
+               scheme != "https", scheme != "http" {
+                return nil
+            }
             // Host check, if present. Bare URL strings handed in by
             // crawl metadata may have already been stripped down to
             // path-only — that's fine; we still try to interpret the

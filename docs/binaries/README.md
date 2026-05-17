@@ -25,23 +25,38 @@ The binaries are located in `.build/release/`:
 - `.build/release/mock-ai-agent`
 - `.build/release/cupertino-rel`
 
-## Dev binary base directory ([#218](https://github.com/mihaelamj/cupertino/issues/218))
+## Dev binary base directory ([#218](https://github.com/mihaelamj/cupertino/issues/218), [#675](https://github.com/mihaelamj/cupertino/issues/675))
 
-`make build-debug` and `make build-release` write a `cupertino.config.json` next to the produced binary with `{ "baseDirectory": "~/.cupertino-dev" }`. Locally-built binaries therefore resolve every default path under `~/.cupertino-dev/` instead of the brew default `~/.cupertino/`, so a dev build doesn't clobber a side-by-side brew install.
+### How it works (post-#675)
 
-Override at invocation:
+Every cupertino binary classifies itself at startup based on its install location:
+
+| Binary location | Default `baseDirectory` |
+|---|---|
+| `/opt/homebrew/bin/cupertino` or any path under `/opt/homebrew/Cellar/` | `~/.cupertino/` (brew production) |
+| `/usr/local/bin/cupertino` or any path under `/usr/local/Cellar/` | `~/.cupertino/` (Intel brew production) |
+| `/home/linuxbrew/.linuxbrew/...` | `~/.cupertino/` (Linux brew production) |
+| Anywhere else — `.build/`-relative dev build, CI workspace, manually copied binary, `/tmp/`, etc. | **`~/.cupertino-dev/`** (isolated) |
+
+The dev-isolated default is the safety property: a binary you built locally cannot silently corrupt your brew install just by running a `save` / `setup` / `fetch` command. This is enforced by the binary itself at startup, not by any external build-step or Makefile drop, so it cannot be bypassed by skipping `make build-release` and using raw `swift build -c release` directly. ([#675](https://github.com/mihaelamj/cupertino/issues/675))
+
+### Optional explicit override
+
+If you need to target a different path (e.g. for testing the production code path against a sandbox copy, or running multiple dev binaries against different data), drop a `cupertino.config.json` next to the binary:
 
 ```bash
-make build-debug DEV_BASE_DIR=~/some-other-dir
+printf '{"baseDirectory":"~/some-other-dir"}\n' > .build/release/cupertino.config.json
 ```
 
-Brew bottles ship only the binary (the `bottle:` Makefile target doesn't copy `cupertino.config.json`), so released installs continue to resolve to `~/.cupertino/`.
+The conf-file override wins over both default cases. `make build-debug DEV_BASE_DIR=~/some-other-dir` is the canonical way to specify this at build time.
 
-If you build via `swift build` directly (not through the Makefile), drop the config file yourself:
+### Brew bottle behaviour
 
-```bash
-printf '{"baseDirectory":"~/.cupertino-dev"}\n' > .build/debug/cupertino.config.json
-```
+Brew bottles ship only the binary (the `bottle:` Makefile target doesn't copy `cupertino.config.json`). Brew-installed binaries land at `/opt/homebrew/bin/cupertino` or `/usr/local/bin/cupertino`, which the provenance check classifies as `.brewInstalled`, and they resolve to `~/.cupertino/` as before — unchanged behaviour for end users.
+
+### Migration note (pre-#675 conf files)
+
+The `make build-debug` / `make build-release` targets continue to drop the `cupertino.config.json` for backwards compatibility, but it's no longer load-bearing for isolation. Old binaries built with the conf-drop continue to work identically. New binaries built without it now isolate correctly via the provenance default.
 
 ## See Also
 

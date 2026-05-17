@@ -32,11 +32,15 @@ See #183. v1.1+ design and academic research review live in `mihaela-blog-ideas/
 
 ## Conventions
 
-See `AGENTS.md` for code style, commit format, and the "ask when unsure" workflow.
+See the imported `mihaela-agents/Rules/AGENTS.md` (resolved below) for code style, commit format, and the "ask when unsure" workflow. No local `AGENTS.md` at the repo root — the canonical rules live in the private rules repo.
 
 ## Principles
 
 See `docs/PRINCIPLES.md` for the engineering principles the import + indexer paths stand on (lossless URIs, collisions handled at the door, no content lost at the door, garbage filtered at input, 10x scale headroom, correctness first).
+
+## Issue body hygiene
+
+Issue tracker discipline is documented in `docs/audits/methodology.md` under "Issue body hygiene". Short version: every issue body carries a `## Status (YYYY-MM-DD)` block at the top; no line numbers in references (use symbol names); every backtick-quoted file path must exist in the repo at write time (not the literal text `'backtick-quoted-path'`, but any path in actual backticks); cross-references in blocker phrasing must be to OPEN issues. `scripts/check-issue-body-staleness.sh` (run nightly by `.github/workflows/issue-body-staleness.yml`) is the mechanical backstop. When a PR renames a file, the author runs the script's `--check=renamed` mode and updates any matched issue bodies in the same PR.
 
 ## Imported Rules
 

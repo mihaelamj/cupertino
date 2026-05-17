@@ -3,10 +3,12 @@ import SearchModels
 import SharedConstants
 import SQLite3
 
-// swiftlint:disable function_body_length file_length
-// Justification: extracted from SearchIndex.swift; the original 4598-line
-// file's class_body_length / function_body_length / function_parameter_count
-// rationale carries forward to the per-concern slices.
+// #673 Phase D iter-5: this file slices the search query path off the
+// original 4598-line SearchIndex.swift. file_length stays as the only
+// remaining file-level blanket because file_length can't be made
+// per-declaration; all function_body_length disables below are
+// now per-function with rationale.
+// swiftlint:disable file_length
 
 extension Search.Index {
     /// Search documents by query with optional source, framework, and language filters.
@@ -17,7 +19,13 @@ extension Search.Index {
     ///   - framework: Optional framework filter (swiftui, foundation, etc. - only for apple-docs)
     ///   - language: Optional language filter (swift, objc)
     ///   - limit: Maximum number of results
-    // swiftlint:disable:next cyclomatic_complexity
+    ///
+    /// #673 Phase D iter-5: 489-line body — the unified search query
+    /// path (FTS query build → bind → execute → row iteration with
+    /// platform / kind / framework filtering + result re-rank). Body
+    /// length is the cost of inlining the per-row processing; helper
+    /// extraction would just push state through awkward param lists.
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     public func search(
         query: String,
         source: String? = nil,
@@ -29,7 +37,8 @@ extension Search.Index {
         minMacOS: String? = nil,
         minTvOS: String? = nil,
         minWatchOS: String? = nil,
-        minVisionOS: String? = nil
+        minVisionOS: String? = nil,
+        minSwift: String? = nil
     ) async throws -> [Search.Result] {
         guard let database else {
             throw Search.Error.databaseNotInitialized
@@ -114,6 +123,13 @@ extension Search.Index {
         // signal stays dominant. Placed above content (1.0) since a
         // component match on the symbols column is still a stronger
         // signal than a body-text mention.
+        // Column 14 (`implementation_swift_version`) is #225 Part B —
+        // the Swift toolchain version a swift-evolution proposal landed
+        // in. NULL on every non-evolution row. Captured into a local
+        // [uri: version] map in the row-iteration loop below so the
+        // post-fetch in-memory filter can do a proper semver compare
+        // (string compare gets `"10.13" <= "10.2"` wrong; same reason
+        // platform filters do their compare in Swift, not SQL).
         var sql = """
         SELECT
             f.uri,
@@ -129,7 +145,8 @@ extension Search.Index {
             m.min_macos,
             m.min_tvos,
             m.min_watchos,
-            m.min_visionos
+            m.min_visionos,
+            m.implementation_swift_version
         FROM docs_fts f
         JOIN docs_metadata m ON f.uri = m.uri
         LEFT JOIN docs_structured s ON f.uri = s.uri
@@ -159,6 +176,15 @@ extension Search.Index {
         let effectiveMinTvOS = minTvOS?.isEmpty == true ? nil : minTvOS
         let effectiveMinWatchOS = minWatchOS?.isEmpty == true ? nil : minWatchOS
         let effectiveMinVisionOS = minVisionOS?.isEmpty == true ? nil : minVisionOS
+        // #225 Part B — `--swift` filter scopes results by the Swift
+        // toolchain version a swift-evolution proposal landed in. NULL
+        // rows are filtered out at SQL level (same IS-NOT-NULL pattern
+        // the platform filters above use) so a `--swift 5.5` query
+        // against a search-index that hasn't yet been re-built on the
+        // v15→v16 path doesn't surface a sea of NULL evolution rows;
+        // the actual semver compare runs in memory after fetch via the
+        // [uri: version] map captured during the row-iteration loop.
+        let effectiveMinSwift = minSwift?.isEmpty == true ? nil : minSwift
 
         // Add platform version filters (uses indexed columns for NULL filtering)
         // Note: We filter IS NOT NULL at SQL level (uses index), then do proper
@@ -177,6 +203,9 @@ extension Search.Index {
         }
         if effectiveMinVisionOS != nil {
             sql += " AND m.min_visionos IS NOT NULL"
+        }
+        if effectiveMinSwift != nil {
+            sql += " AND m.implementation_swift_version IS NOT NULL"
         }
 
         // Fetch significantly more results so title/kind boosts can surface buried gems.
@@ -223,8 +252,14 @@ extension Search.Index {
         // Execute and collect results
         // Column order: uri(0), source(1), framework(2), title(3), summary(4), file_path(5),
         //               word_count(6), rank(7), kind(8), min_ios(9), min_macos(10),
-        //               min_tvos(11), min_watchos(12), min_visionos(13)
+        //               min_tvos(11), min_watchos(12), min_visionos(13),
+        //               implementation_swift_version(14)
         var results: [Search.Result] = []
+        // #225 Part B — captured per-URI for the post-fetch semver
+        // filter. NULL rows are already excluded at SQL level when
+        // `--swift` is set, so the absence of a uri from this map
+        // when the filter is active means the row had no value.
+        var implementationSwiftVersionByURI: [String: String] = [:]
         // #625 dedup: docs_fts can carry multiple rows for the same `uri`
         // (the shipped v1.1.0 bundle has e.g. 3 rows for
         // apple-docs://naturallanguage/string while docs_metadata has 1 —
@@ -272,6 +307,15 @@ extension Search.Index {
             let minTvOSPtr = sqlite3_column_text(statement, 11)
             let minWatchOSPtr = sqlite3_column_text(statement, 12)
             let minVisionOSPtr = sqlite3_column_text(statement, 13)
+            // #225 Part B — implementation_swift_version (column 14).
+            // Captured into the by-uri map for the post-fetch semver
+            // filter; not surfaced on Search.Result because the value
+            // is filter-only (no current consumer that wants to render
+            // it). When the SearchModels.Result struct grows a slot
+            // for it, replace this side-band capture with a struct field.
+            if let ptr = sqlite3_column_text(statement, 14) {
+                implementationSwiftVersionByURI[uri] = String(cString: ptr)
+            }
 
             // Build availability array from columns
             var availabilityItems: [Search.PlatformAvailability] = []
@@ -757,6 +801,19 @@ extension Search.Index {
                 return Self.isVersion(version, lessThanOrEqualTo: effectiveMinVisionOS)
             }
         }
+        // #225 Part B — semver-aware filter against the captured
+        // [uri: implementation_swift_version] map. Rows missing from
+        // the map (e.g. swift-evolution rows whose markdown the parser
+        // couldn't read a version from, or any non-evolution row in a
+        // mixed result set) are rejected when the filter is set —
+        // matches the IS-NOT-NULL pre-gate semantic the SQL layer
+        // applies for platform filters.
+        if let effectiveMinSwift {
+            results = results.filter { result in
+                guard let version = implementationSwiftVersionByURI[result.uri] else { return false }
+                return Self.isVersion(version, lessThanOrEqualTo: effectiveMinSwift)
+            }
+        }
 
         // (#81) Ensure framework root page appears at top for single-word framework queries
         // This bypasses BM25 limitations for framework names like "SwiftUI", "Foundation", etc.
@@ -961,6 +1018,11 @@ extension Search.Index {
     /// caller can dedup-and-prepend them without re-running the post-rank
     /// math. Caller is responsible for not invoking this when the
     /// effective source filter is something other than apple-docs.
+    ///
+    /// #673 Phase D iter-5: 87-line body — direct SQL with row-by-row
+    /// processing plus per-candidate disambiguation. Split would force
+    /// state through helper params for no callsite gain.
+    // swiftlint:disable:next function_body_length
     func fetchCanonicalTypePages(
         query: String,
         framework: String? = nil
@@ -1132,6 +1194,12 @@ extension Search.Index {
     /// Fetch framework root page by exact query match (#81)
     /// If user searches "SwiftUI", directly fetch apple-docs://swiftui/documentation_swiftui
     /// This ensures framework roots always appear regardless of BM25 score
+    ///
+    /// #673 Phase D iter-5: 62-line body — SQL build + bind + per-row
+    /// hydration + identity-page resolution. Same shape as
+    /// `fetchCanonicalTypePages`; helper extraction trades one long
+    /// function for two with shared state.
+    // swiftlint:disable:next function_body_length
     func fetchFrameworkRoot(query: String) async throws -> Search.Result? {
         guard let database else { return nil }
 

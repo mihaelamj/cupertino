@@ -189,7 +189,16 @@ extension Logging {
         public func configure(_ newOptions: Options) {
             // Close existing file handle if any
             if let handle = fileHandle {
-                try? handle.close()
+                // #682 — surface close failures via the one-shot stderr
+                // warning. Calling self.error(...) here would recurse
+                // back into the logger's own write path (recursive-log
+                // trap); stderr-direct breaks the cycle. Same shape as
+                // Search.JSONLImportLogSink's warnOnceAboutWriteFailure.
+                do {
+                    try handle.close()
+                } catch {
+                    warnOnceAboutFileHandleFailure(operation: "close (configure)", error: error)
+                }
                 fileHandle = nil
             }
 
@@ -211,7 +220,12 @@ extension Logging {
         public func disableFileLogging() {
             options.fileEnabled = false
             if let handle = fileHandle {
-                try? handle.close()
+                // #682 — see configure() for the recursive-log rationale.
+                do {
+                    try handle.close()
+                } catch {
+                    warnOnceAboutFileHandleFailure(operation: "close (disableFileLogging)", error: error)
+                }
                 fileHandle = nil
             }
         }
@@ -392,7 +406,22 @@ extension Logging {
             let logLine = "[\(timestamp)] [\(level)] [\(category.rawValue)] \(fileName):\(line) \(function) - \(message)\n"
 
             let data = Data(logLine.utf8)
-            try? fileHandle?.write(contentsOf: data)
+            // #682 — surface file-write failures via the one-shot stderr
+            // warning. Pre-fix every per-log-message write that failed
+            // (disk full, fs unmounted, handle invalidated) silently
+            // dropped the log line. Now the first failure prints once
+            // to stderr; subsequent writes keep trying but stay quiet
+            // so a perma-broken handle doesn't spam the terminal.
+            // Direct-to-stderr avoids the recursive-log trap that would
+            // happen if we called self.error(...) from inside the
+            // logger's own write path.
+            if let handle = fileHandle {
+                do {
+                    try handle.write(contentsOf: data)
+                } catch {
+                    warnOnceAboutFileHandleFailure(operation: "write", error: error)
+                }
+            }
         }
 
         // MARK: - Cleanup
@@ -404,9 +433,53 @@ extension Logging {
         /// Flush and close the log file
         public func close() {
             if let handle = fileHandle {
-                try? handle.synchronize()
-                try? handle.close()
+                // #682 — surface synchronize / close failures via the
+                // one-shot stderr warning. See configure() / write
+                // sites above for the recursive-log rationale.
+                do {
+                    try handle.synchronize()
+                } catch {
+                    warnOnceAboutFileHandleFailure(operation: "synchronize (close)", error: error)
+                }
+                do {
+                    try handle.close()
+                } catch {
+                    warnOnceAboutFileHandleFailure(operation: "close", error: error)
+                }
                 fileHandle = nil
+            }
+        }
+
+        // MARK: - #682 — one-shot stderr warning for file-handle failures
+
+        /// One-shot flag so a broken disk / closed file surfaces ONCE on
+        /// stderr instead of either silently losing every log entry
+        /// (the pre-#682 try? behaviour) or spamming the terminal with
+        /// a warning per row. After the first warning the logger keeps
+        /// trying to write (next write may succeed; we don't know what
+        /// state the FS is in) but stays quiet about repeated failures.
+        ///
+        /// Same shape as `Search.JSONLImportLogSink.warnOnceAboutWriteFailure`
+        /// (develop's #681 fix), generalised to cover every file-handle
+        /// operation in this actor (write / close / synchronize). The
+        /// `operation` parameter names which one failed so a postmortem
+        /// can distinguish "log writes started failing mid-run" from
+        /// "couldn't even close the file at shutdown".
+        ///
+        /// Writes go to `FileHandle.standardError` directly — calling
+        /// `self.error(...)` would recurse into this same write path
+        /// (the recursive-log trap), so we break the cycle by going
+        /// straight to stderr.
+        private var hasWarnedAboutFileHandleFailure = false
+
+        private func warnOnceAboutFileHandleFailure(operation: String, error: Swift.Error) {
+            guard !hasWarnedAboutFileHandleFailure else { return }
+            hasWarnedAboutFileHandleFailure = true
+            let path = options.fileURL?.path ?? "(unknown path)"
+            let message = "⚠️  Logging.Unified \(operation) failure on \(path): " +
+                "\(error). Subsequent failures will be silent; the file log may be incomplete.\n"
+            if let data = message.data(using: .utf8) {
+                FileHandle.standardError.write(data)
             }
         }
     }

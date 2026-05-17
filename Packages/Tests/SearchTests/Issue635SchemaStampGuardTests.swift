@@ -64,6 +64,30 @@ struct Issue635SchemaStampGuardTests {
         }
     }
 
+    /// Drop the v15 → v16 column + index from a freshly-built v16 DB
+    /// so the on-disk shape looks v15 again. Used by the schemaVersion
+    /// - 1 in-place migration regression test (#749).
+    private static func stripV16ColumnAndIndex(at dbURL: URL) throws {
+        var db: OpaquePointer?
+        defer { sqlite3_close(db) }
+        guard sqlite3_open(dbURL.path, &db) == SQLITE_OK else {
+            throw NSError(domain: "TestSetup", code: 3, userInfo: [
+                NSLocalizedDescriptionKey: "open(\(dbURL.path)) failed",
+            ])
+        }
+        let statements = [
+            "DROP INDEX IF EXISTS idx_implementation_swift_version;",
+            "ALTER TABLE docs_metadata DROP COLUMN implementation_swift_version;",
+        ]
+        for sql in statements {
+            guard sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK else {
+                throw NSError(domain: "TestSetup", code: 4, userInfo: [
+                    NSLocalizedDescriptionKey: "exec(\(sql)) failed: \(String(cString: sqlite3_errmsg(db)))",
+                ])
+            }
+        }
+    }
+
     /// Read `PRAGMA user_version` directly so the test isn't reading
     /// through `getSchemaVersion()` (which is package-internal and
     /// could be subject to future refactors).
@@ -176,32 +200,52 @@ struct Issue635SchemaStampGuardTests {
 
     // MARK: - E. setSchemaVersion guard (defense-in-depth)
 
-    @Test("setSchemaVersion guard refuses to stamp over a non-zero, non-matching value")
-    func setSchemaVersionGuardRejectsNonZeroMismatch() async throws {
+    @Test("schemaVersion-1 DB auto-migrates in place: PRAGMA stamped to target, no throw")
+    func schemaVersionMinusOneAutoMigratesToTarget() async throws {
+        // Post-#749 fix: in-place migrators self-stamp PRAGMA user_version
+        // at the end via `stampUserVersionUnchecked`. A DB at
+        // `schemaVersion - 1` (today v15) has a working in-place migrator
+        // (migrateToVersion16) that runs the ALTER TABLE ADD COLUMN +
+        // stamps to 16. setSchemaVersion's #635 guard sees the matching
+        // version and returns at the early-exit, never reaching the
+        // throw branch.
+        //
+        // Pre-#749: this test asserted the open SHOULD throw because
+        // migrateToVersion16 didn't stamp and the #635 guard refused to
+        // stamp from non-zero. That codified the bug. Updated to assert
+        // the post-fix correct behaviour: in-place migration succeeds
+        // end-to-end.
+        //
+        // The #635 guard remains as defense in depth — fires if a future
+        // schema bump forgets to add a migrator entry. Defense is hard to
+        // test in isolation today because every version 2 through 16
+        // has SOME branch in `checkAndMigrateSchema` (migrate, throw, or
+        // no-op-via-createTables-IF-NOT-EXISTS). When the next schema
+        // bump lands, this test gains a sibling that pokes the new
+        // schemaVersion - 1 and verifies in-place migration there too.
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
         // Bring up an Index normally (stamps to current schemaVersion).
         let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
-        // Now poke the DB to an off-by-one version with the actor still open.
-        // Direct call into setSchemaVersion is via the actor's internal
-        // surface — we exercise it through reopening after a raw poke.
         await idx.disconnect()
+
+        // Strip the v16-only column + index, then stamp PRAGMA back to v15
+        // so the DB looks like a pre-PR-#718 artefact.
+        try Self.stripV16ColumnAndIndex(at: dbPath)
         try Self.writeRawUserVersion(Search.Index.schemaVersion - 1, at: dbPath)
 
-        // Reopening should throw — but if a future schema bump forgot
-        // its migrator entry (so `checkAndMigrateSchema` fell through
-        // without rejecting), the `setSchemaVersion` guard would catch
-        // the stamp attempt. Either way: throw, no silent stamping.
-        await #expect(throws: Search.Error.self) {
-            _ = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
-        }
+        // Reopening triggers checkAndMigrateSchema → migrateToVersion16
+        // (which now stamps the version) → setSchemaVersion (early-exits
+        // because PRAGMA already matches target).
+        let reopened = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        await reopened.disconnect()
 
-        // The DB must NOT have been stamped at the new schemaVersion.
+        // The DB should now be stamped at the current schemaVersion.
         let after = try Self.readRawUserVersion(at: dbPath)
         #expect(
-            after == Search.Index.schemaVersion - 1,
-            "guard must leave user_version untouched on mismatch (got \(after))"
+            after == Search.Index.schemaVersion,
+            "in-place migration must stamp PRAGMA to target (got \(after), expected \(Search.Index.schemaVersion))"
         )
     }
 

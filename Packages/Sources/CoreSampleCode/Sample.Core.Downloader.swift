@@ -6,17 +6,6 @@ import WebKit
 
 // MARK: - Sample Code Downloader
 
-// swiftlint:disable type_body_length function_body_length
-// Justification: a complete sample-code downloading actor that still has to
-// drive a hidden WKWebView (Apple's sample pages render their download links
-// via JavaScript; a plain HTML fetch doesn't see them). Includes WebView
-// management + page navigation, download URL discovery via JS, file move +
-// magic-bytes validation (#657), and a writeCatalogJSON helper. Splitting
-// would separate tightly-coupled WebView lifetime + per-sample state.
-// File length under control post-#193 (cookie / auth flow gone — was ~932
-// lines, now ~470). Keeping the type_body_length disable for now because the
-// WebView lifetime + per-sample state still warrant a single owner.
-
 extension Sample.Core {
     /// Downloads Apple sample code projects (zip/tar files).
     ///
@@ -34,6 +23,11 @@ extension Sample.Core {
     /// deferred — "just remove auth flow, ignore it" was the user's
     /// scope-narrowing direction.
     @MainActor
+    // #673 Phase D iter-5: 359-line class — hidden WKWebView driver
+    // + per-sample download URL discovery via JS + file move + magic-byte
+    // validation; splitting separates tightly-coupled WebView lifetime
+    // from per-sample state.
+    // swiftlint:disable:next type_body_length
     public final class Downloader {
         private let outputDirectory: URL
         private let maxSamples: Int?
@@ -248,6 +242,11 @@ extension Sample.Core {
             return try await extractSamplesWithJavaScript(webView)
         }
 
+        // #673 Phase D iter-5: 56-line body — most of it is the embedded
+        // JavaScript string literal that walks the rendered DOM for
+        // sample links; splitting would put the JS in a separate file
+        // away from its single call site.
+        // swiftlint:disable:next function_body_length
         private func extractSamplesWithJavaScript(_ webView: WKWebView) async throws -> [SampleMetadata] {
             // Use JavaScript to extract all sample code links from the rendered page
             let script = """

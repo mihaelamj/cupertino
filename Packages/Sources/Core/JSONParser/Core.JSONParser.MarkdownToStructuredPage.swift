@@ -2,11 +2,6 @@ import CoreProtocols
 import Foundation
 import SharedConstants
 
-// swiftlint:disable type_body_length
-// Justification: MarkdownToStructuredPage is a comprehensive parser for Apple documentation markdown.
-// It handles: YAML frontmatter, section detection, code blocks, tables, links, and nested structures.
-// The parsing logic must handle many edge cases from Apple's varied documentation formats.
-
 extension Core.JSONParser {
     /// Converts Apple documentation markdown files to StructuredDocumentationPage
     public enum MarkdownToStructuredPage {
@@ -439,7 +434,6 @@ extension Core.JSONParser {
 
         private static func removePlatformSuffix(_ text: String) -> String {
             // Remove platform version strings like "iOS 17.0+iPadOS 17.0+..."
-            // swiftlint:disable:next line_length
             let platformPattern = #"(?:iOS|iPadOS|macOS|tvOS|watchOS|visionOS|Mac Catalyst)\s*\d+\.\d+(?:\+|–[^+]+\+?)?(?:Deprecated)?"#
 
             guard let regex = try? NSRegularExpression(pattern: platformPattern, options: []) else {
@@ -829,7 +823,6 @@ extension Core.JSONParser {
             var platforms: [String] = []
 
             // Pattern: iOS 17.0+, macOS 14.0+, etc. or iOS 3.0–18.0Deprecated
-            // swiftlint:disable:next line_length
             let pattern = #"(iOS|iPadOS|macOS|tvOS|watchOS|visionOS|Mac Catalyst)\s*(\d+\.\d+)(?:–(\d+\.\d+))?(Deprecated|\+)?"#
 
             guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {

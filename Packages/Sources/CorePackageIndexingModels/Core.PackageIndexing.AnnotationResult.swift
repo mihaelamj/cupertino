@@ -20,6 +20,12 @@ extension Core.PackageIndexing {
         public let version: String
         public let annotatedAt: Date
         public let deploymentTargets: [String: String]
+        /// Authored Swift compiler floor from `Package.swift` line 1
+        /// (`// swift-tools-version: X.Y`). Nil when the manifest didn't
+        /// carry a declaration (or carried one we couldn't parse).
+        /// Added in #225 Part A; default-nil keeps the init source-
+        /// compatible with pre-#225 callers.
+        public let swiftToolsVersion: String?
         public let fileAvailability: [FileAvailability]
         public let stats: Stats
 
@@ -28,13 +34,15 @@ extension Core.PackageIndexing {
             annotatedAt: Date,
             deploymentTargets: [String: String],
             fileAvailability: [FileAvailability],
-            stats: Stats
+            stats: Stats,
+            swiftToolsVersion: String? = nil
         ) {
             self.version = version
             self.annotatedAt = annotatedAt
             self.deploymentTargets = deploymentTargets
             self.fileAvailability = fileAvailability
             self.stats = stats
+            self.swiftToolsVersion = swiftToolsVersion
         }
 
         /// Run-summary numbers attached to every annotation pass.

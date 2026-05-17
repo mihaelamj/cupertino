@@ -25,11 +25,19 @@ extension Sample.Index {
         // MARK: - Search
 
         /// Free-text search across project titles, descriptions, and
-        /// metadata. Optionally narrows to a single framework.
+        /// metadata. Optionally narrows to a single framework and applies
+        /// the #732 5-field platform-minimum filter when any `min<Platform>`
+        /// is non-nil. Multiple platform minima are AND-combined — a
+        /// sample must satisfy every requested minimum to pass.
         func searchProjects(
             query: String,
             framework: String?,
-            limit: Int
+            limit: Int,
+            minIOS: String?,
+            minMacOS: String?,
+            minTvOS: String?,
+            minWatchOS: String?,
+            minVisionOS: String?
         ) async throws -> [Sample.Index.Project]
 
         /// Free-text search across indexed source files. Optionally
@@ -84,5 +92,31 @@ extension Sample.Index {
         /// this so `Sample.Search.Service.disconnect()` can fan out
         /// through the seam without seeing the concrete actor.
         func disconnect() async
+    }
+}
+
+// MARK: - #732 — backward-compatible overload
+
+extension Sample.Index.Reader {
+    /// Legacy three-argument overload retained so call sites that
+    /// haven't been migrated to the 8-arg shape compile unchanged. Maps
+    /// to the new shape with every `min<Platform>` argument set to nil
+    /// (= no platform filter). New platform-filtered behaviour is opt-in
+    /// through the explicit-args overload.
+    public func searchProjects(
+        query: String,
+        framework: String?,
+        limit: Int
+    ) async throws -> [Sample.Index.Project] {
+        try await searchProjects(
+            query: query,
+            framework: framework,
+            limit: limit,
+            minIOS: nil,
+            minMacOS: nil,
+            minTvOS: nil,
+            minWatchOS: nil,
+            minVisionOS: nil
+        )
     }
 }

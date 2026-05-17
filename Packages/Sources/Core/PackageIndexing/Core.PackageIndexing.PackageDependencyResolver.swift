@@ -1,10 +1,8 @@
 import CorePackageIndexingModels
 import CoreProtocols
-
-// swiftlint:disable identifier_name
-// swiftlint:disable function_body_length type_body_length
 import Foundation
 import SharedConstants
+
 extension Core.PackageIndexing {
     /// Walks each seed repo's dependency graph via raw.githubusercontent.com and returns
     /// the transitive closure of GitHub-hosted Swift package references.
@@ -13,6 +11,15 @@ extension Core.PackageIndexing {
     /// declarations are trivial to regex-extract). Fallback: `Package.resolved` (committed
     /// by apps, not libraries). Non-GitHub URLs (GitLab, self-hosted, SPM registry) are
     /// counted and skipped.
+    ///
+    /// #673 Phase D iter-5: file-level blanket replaced with this
+    /// per-actor `disable:next type_body_length` (366 lines — the
+    /// dependency-walk + GitHub-fetch + regex-extract pipeline shares
+    /// state that's awkward to split into helper types). Function-level
+    /// disables for `resolveSeed` (122-line orchestrator) and the
+    /// regex-result variable name `r` live at their own call sites
+    /// below so new long functions in this actor still trip the linter.
+    // swiftlint:disable:next type_body_length
     public actor PackageDependencyResolver {
         public struct Statistics: Sendable {
             public let seedCount: Int
@@ -60,6 +67,12 @@ extension Core.PackageIndexing {
         /// list themselves. Canonicalization dedupes GitHub redirects (so
         /// `apple/swift-docc` and `swiftlang/swift-docc` collapse into one entry);
         /// exclusions drop matched canonical names before adding them to the frontier.
+        ///
+        /// #673 Phase D iter-5: 122-line body — single linear pipeline
+        /// (seed validation, frontier loop, canonicalize, fetch, regex-extract,
+        /// stats accounting). Splitting fragments the pipeline without
+        /// meaningful abstraction.
+        // swiftlint:disable:next function_body_length
         public func resolve(
             seeds: [Shared.Models.PackageReference],
             progress: (any Core.PackageIndexing.PackageDependencyResolverProgressObserving)? = nil
@@ -115,6 +128,11 @@ extension Core.PackageIndexing {
                         }
                     }
                     var collected: [(String, String, String, FetchResult)] = []
+                    // #673 Phase D iter-5: `r` is the conventional one-char
+                    // name for the awaited TaskGroup tuple element on this
+                    // tight collection loop; renaming to e.g. `result` adds
+                    // no clarity at this scope.
+                    // swiftlint:disable:next identifier_name
                     for await r in group {
                         collected.append(r)
                     }

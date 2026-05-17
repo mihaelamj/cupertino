@@ -34,6 +34,43 @@ extension ASTIndexer {
             }
         }
 
+        /// Extract the `swift-tools-version` declaration from the first
+        /// non-blank line of a `Package.swift` manifest (#225 Part A).
+        ///
+        /// SwiftPM's contract: the very first content line must be the
+        /// `// swift-tools-version: <X.Y>` declaration (SE-0152). Leading
+        /// blank lines are tolerated by the SwiftPM parser, leading
+        /// comments are not. We scan for the first line that contains
+        /// non-whitespace and try to match the declaration there; any
+        /// failure to match returns nil so callers can treat a missing
+        /// declaration as "unknown" rather than asserting on shape.
+        ///
+        /// Patch versions (`5.7.1`) get truncated to major.minor (`5.7`)
+        /// so the column behaves as a coarse "Swift floor" axis matching
+        /// the `min_ios` semver-prefix shape (#220).
+        ///
+        /// - Returns: e.g. `"5.7"`, `"6.0"`. Nil when no declaration is
+        ///   found on the first non-blank line.
+        public static func parseSwiftToolsVersion(from packageSwift: String) -> String? {
+            // Find first non-blank line.
+            var firstNonBlankLine: Substring?
+            for line in packageSwift.split(separator: "\n", omittingEmptySubsequences: false) {
+                if !line.trimmingCharacters(in: .whitespaces).isEmpty {
+                    firstNonBlankLine = line
+                    break
+                }
+            }
+            guard let line = firstNonBlankLine else { return nil }
+
+            let pattern = #"^\s*//\s*swift-tools-version\s*:\s*(\d+\.\d+)"#
+            guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+            let nsLine = String(line) as NSString
+            let range = NSRange(location: 0, length: nsLine.length)
+            guard let match = regex.firstMatch(in: String(line), range: range),
+                  match.numberOfRanges == 2 else { return nil }
+            return nsLine.substring(with: match.range(at: 1))
+        }
+
         /// Extract the platform → version mapping from a `Package.swift`
         /// source string. Matches `.iOS(.v16)`, `.macOS(.v10_15)`, etc.
         /// inside the first `platforms: [...]` block. Multi-line declarations

@@ -384,15 +384,27 @@ struct FooterItemTests {
 struct ServicesProtocolWitnessTests {
     /// Stub DocsSearcher returns an empty result set regardless of query.
     private struct StubDocs: Services.DocsSearcher {
-        func search(_ query: Services.SearchQuery) async throws -> [Search.Result] { [] }
+        func search(_ query: Services.SearchQuery) async throws -> [Search.Result] {
+            []
+        }
     }
 
     /// Stub UnifiedSearcher returns an empty unified input.
     private struct StubUnified: Services.UnifiedSearcher {
+        /// #226 expansion: the protocol now requires the 10-arg shape
+        /// including 5 `min_*` platform filters + `minSwift`. Stub
+        /// ignores them and returns an empty input regardless — pure
+        /// conformance witness.
         func searchAll(
             query: String,
             framework: String?,
-            limit: Int
+            limit: Int,
+            minIOS: String?,
+            minMacOS: String?,
+            minTvOS: String?,
+            minWatchOS: String?,
+            minVisionOS: String?,
+            minSwift: String?
         ) async -> Services.Formatter.Unified.Input {
             Services.Formatter.Unified.Input(limit: limit)
         }

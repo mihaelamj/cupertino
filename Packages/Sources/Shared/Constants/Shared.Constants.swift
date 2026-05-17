@@ -2,18 +2,69 @@ import Foundation
 
 // MARK: - Cupertino Constants
 
-// swiftlint:disable type_body_length file_length
-// Justification: Shared.Constants serves as central configuration hub for the entire application.
-// Contains directory names, file names, URL patterns, limits, delays, and MCP configuration.
-// Splitting would scatter related constants and reduce discoverability.
-// Organized with clear MARK sections for easy navigation.
+// #673 Phase D iter-5: file_length is the only remaining file-level
+// blanket — the rule has no per-declaration form, and this central
+// constants hub (1415 lines, MARK-sectioned by domain) deliberately
+// keeps everything one Cmd-F away. Splitting scatters discoverability
+// without buying a meaningful boundary.
+// swiftlint:disable file_length
 
 /// Global constants for Cupertino application
 extension Shared.Constants {
     // MARK: - Directory Names
 
-    /// Base directory name for Cupertino data
+    /// Base directory name for Cupertino data — production default,
+    /// resolved relative to `$HOME` for brew-installed binaries.
     public static let baseDirectoryName = ".cupertino"
+
+    /// Base directory name for dev-isolated Cupertino data — used as the
+    /// default for non-brew binaries (locally-built dev builds, CI
+    /// workspaces, manually copied executables) per #675 so a dev build
+    /// cannot silently corrupt the brew install. Brew bottles continue
+    /// to resolve to `~/.cupertino/` via `Provenance.brewInstalled`.
+    public static let devBaseDirectoryName = ".cupertino-dev"
+
+    // MARK: - #673 Phase F — disk-space budgets
+
+    /// Conservative per-command disk-write estimates used by
+    /// `Diagnostics.DiskPreflight.check(...)` to refuse low-disk
+    /// situations before they can corrupt a half-written DB. Each value
+    /// is the operation's peak transient write size, including WAL +
+    /// audit JSONL + extract working tree where applicable; the
+    /// preflight adds a configurable safety margin on top (default 10 %).
+    ///
+    /// When the bundle grows past these estimates, update the constants
+    /// here AND the `docs/binaries/README.md` resolution table; the
+    /// `Issue673PhaseFDiskPreflightTests` unit suite pins each value
+    /// against its rationale comment.
+    public enum DiskBudget {
+        /// `cupertino save --docs` peak: search.db (~2.5 GB at v15 full
+        /// reindex) + WAL (~1 GB during commit) + per-doc audit JSONL
+        /// (~120 MB on the 285k-row corpus). Round up to 4 GB.
+        public static let docsSaveBytes: Int64 = 4 * 1024 * 1024 * 1024
+
+        /// `cupertino save --samples` peak: samples.db (~200 MB after
+        /// the 8.6k indexed-files run) + WAL. Round up to 500 MB.
+        public static let samplesSaveBytes: Int64 = 500 * 1024 * 1024
+
+        /// `cupertino save --packages` peak: packages.db (~50 MB at
+        /// today's 9.7k-package catalog) + WAL. Round up to 200 MB.
+        public static let packagesSaveBytes: Int64 = 200 * 1024 * 1024
+
+        /// `cupertino setup` peak: bundle zip (~850 MB) + extracted
+        /// search.db + samples.db + packages.db (~2.7 GB total) +
+        /// transient working tree. Round up to 4 GB.
+        public static let setupBytes: Int64 = 4 * 1024 * 1024 * 1024
+
+        /// `cupertino fetch` peak: conservative single number that covers
+        /// the typical `--type docs` (~6 GB JSON), `--type code` (~2 GB
+        /// zips), and `--type metadata` paths. The full `--type packages`
+        /// crawl (~15 GB) exceeds this and will be refused on a fresh
+        /// 8 GB-free volume — a future per-type override can shrink the
+        /// estimate for the smaller fetch types or grow it for the
+        /// packages path.
+        public static let fetchBytes: Int64 = 5 * 1024 * 1024 * 1024
+    }
 
     /// Subdirectory names
     public enum Directory {
@@ -56,6 +107,15 @@ extension Shared.Constants {
         /// Stores the `databaseVersion` that was active when `setup` last succeeded.
         /// Read on subsequent setup invocations to distinguish stale DBs from current ones (#168).
         public static let setupVersionFile = ".setup-version"
+
+        /// User-writable selection file for archive guides (#101). Written by the
+        /// TUI when the user toggles required-guide selections; read by the
+        /// crawler to drive the Apple Archive crawl set. Lives next to the
+        /// other top-level state files under `<baseDirectory>/`. **Sole
+        /// source of truth for this filename** — `Shared.Paths.userArchiveSelectionsFile`
+        /// is the canonical computed URL, consumed by both `Crawler.ArchiveGuideCatalog`
+        /// and `TUI/Models/ArchiveGuidesCatalog` so the two paths cannot drift.
+        public static let userArchiveSelections = "selected-archive-guides.json"
 
         // MARK: Package Data Files
 
@@ -614,6 +674,11 @@ extension Shared.Constants {
         /// Search protocol conformances tool name
         public static let toolSearchConformances = "search_conformances"
 
+        /// Search generic-parameter constraints tool name (#665, #409 Layer 2).
+        /// Surfaces the `doc_symbols.generic_params` column populated by the
+        /// AST extractor (e.g. `T: View`, `T: Hashable & Sendable`).
+        public static let toolSearchGenerics = "search_generics"
+
         /// Inheritance walk tool name (#274).
         public static let toolGetInheritance = "get_inheritance"
 
@@ -693,6 +758,12 @@ extension Shared.Constants {
         /// JSON Schema parameter: min_visionos
         public static let schemaParamMinVisionOS = "min_visionos"
 
+        /// JSON Schema parameter: min_swift (#225 Part B). Swift
+        /// toolchain version threshold for swift-evolution rows; passes
+        /// through to `docs_metadata.implementation_swift_version` via
+        /// the search index's `--swift` filter surface.
+        public static let schemaParamMinSwift = "min_swift"
+
         // MARK: Semantic Search Parameters (#81)
 
         /// JSON Schema parameter: kind (symbol kind)
@@ -709,6 +780,9 @@ extension Shared.Constants {
 
         /// JSON Schema parameter: protocol (protocol conformance)
         public static let schemaParamProtocol = "protocol"
+
+        /// JSON Schema parameter: constraint (generic-parameter constraint, #665).
+        public static let schemaParamConstraint = "constraint"
 
         /// Format value: json
         public static let formatValueJSON = "json"

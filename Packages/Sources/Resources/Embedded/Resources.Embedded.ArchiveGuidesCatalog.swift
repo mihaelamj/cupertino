@@ -1,4 +1,3 @@
-// swiftlint:disable type_body_length
 // Auto-generated from archive-guides-catalog.json. Do not edit by hand.
 // Regenerate via: Scripts/generate-embedded-catalogs.sh
 
@@ -8,6 +7,12 @@ import Foundation
 /// `Bundle.module`/`CupertinoResources.bundle` lookup that failed on
 /// Homebrew installs (#161). Updated via PR.
 extension Resources.Embedded {
+    // #673 Phase D iter-5: 380-line enum body, auto-generated wrapper
+    // around a single multiline JSON string literal — the literal
+    // itself is most of the body. Disable lives on the type per
+    // the iter-5 pattern; if the generator is later changed to
+    // shard the catalog across multiple types, drop this annotation.
+    // swiftlint:disable:next type_body_length
     public enum ArchiveGuidesCatalog {
         public static let json: String = #"""
         {

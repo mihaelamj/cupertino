@@ -7,6 +7,7 @@ import SearchModels
 import Services
 import ServicesModels
 import SharedConstants
+
 // MARK: - Per-source runners
 
 /// `--source <name>` paths split out of `CLIImpl.Command.Search` so the struct body
@@ -38,7 +39,8 @@ extension CLIImpl.Command.Search {
                 minimumMacOS: minMacos,
                 minimumTvOS: minTvos,
                 minimumWatchOS: minWatchos,
-                minimumVisionOS: minVisionos
+                minimumVisionOS: minVisionos,
+                minimumSwift: swift
             ))
         }
 

@@ -18,8 +18,10 @@
 # fetch time by `cupertino fetch --type code`. If you place a
 # sample-code-catalog.json in /tmp/catalogs/, this script ignores it.
 #
-# NOTE: the swift-packages catalog is slimmed to URL list only (no metadata)
-# because the rich metadata will come from packages.db (v1.0.0+).
+# Note: swift-packages-catalog.json is NO LONGER embedded (#194). The 568 KB
+# URL list was deleted; the canonical Swift-packages corpus now lives in
+# `packages.db` (downloaded via `cupertino setup`). If you place a
+# swift-packages-catalog.json in /tmp/catalogs/, this script ignores it.
 
 set -euo pipefail
 
@@ -66,45 +68,19 @@ def emit_raw(json_path: pathlib.Path, out_path: pathlib.Path) -> None:
     out_path.write_text(content, encoding='utf-8')
     print(f'wrote {out_path.name} ({len(raw)} bytes, delim={delim})')
 
-def emit_packages_url_list(json_path: pathlib.Path, out_path: pathlib.Path) -> None:
-    data = json.loads(json_path.read_text(encoding='utf-8'))
-    urls = sorted({pkg['url'] for pkg in data.get('packages', []) if pkg.get('url')})
-    last_crawled = data.get('lastCrawled', '')
-    lines = [
-        '// Auto-generated from swift-packages-catalog.json. Do not edit by hand.',
-        '// Regenerate via: Scripts/generate-embedded-catalogs.sh',
-        '//',
-        '// Slim format (#161): just package URLs. The previous bundled catalog',
-        '// carried description/stars/license per entry (~3.4 MB); once the',
-        '// packages.db distribution lands in v1.0.0, that metadata comes from',
-        '// the DB instead of a compiled-in catalog. The URL list remains here',
-        '// as a seed for the TUI package-selection picker and the',
-        '// SearchIndexBuilder catalog index step.',
-        '',
-        'import Foundation',
-        '',
-        'public enum SwiftPackagesCatalogEmbedded {',
-        f'    public static let lastCrawled: String = "{last_crawled}"',
-        f'    public static let count: Int = {len(urls)}',
-        '',
-        '    public static let urls: [String] = [',
-    ]
-    lines += [f'        "{u}",' for u in urls]
-    lines += ['    ]', '}', '']
-    out_path.write_text('\n'.join(lines), encoding='utf-8')
-    print(f'wrote SwiftPackagesCatalogEmbedded.swift ({len(urls)} URLs)')
-
 for json_path in sorted(src.glob('*.json')):
     # sample-code-catalog is sourced from disk at fetch time (#215);
     # never re-embed it as a Swift literal.
     if json_path.name == 'sample-code-catalog.json':
         print(f'skipping {json_path.name} (sample-code is on-disk only since #215)')
         continue
+    # swift-packages-catalog is no longer embedded (#194); the canonical
+    # corpus lives in packages.db (downloaded via `cupertino setup`).
     if json_path.name == 'swift-packages-catalog.json':
-        emit_packages_url_list(json_path, dst / 'SwiftPackagesCatalogEmbedded.swift')
-    else:
-        out = dst / (sym(json_path.stem) + 'Embedded.swift')
-        emit_raw(json_path, out)
+        print(f'skipping {json_path.name} (swift-packages is packages.db-only since #194)')
+        continue
+    out = dst / (sym(json_path.stem) + 'Embedded.swift')
+    emit_raw(json_path, out)
 PY
 
 echo "Done. Regenerated files in: $DST"

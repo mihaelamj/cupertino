@@ -32,7 +32,7 @@ extension Search {
         /// pattern (#192 sec. C). Existing v1 DBs migrate via
         /// `ALTER TABLE ADD COLUMN`; fresh installs land them inline via
         /// `createTables`. No destructive migration.
-        public static let schemaVersion: Int32 = 2
+        public static let schemaVersion: Int32 = 3
 
         private var database: OpaquePointer?
         private let dbPath: URL
@@ -117,6 +117,11 @@ extension Search {
             /// `"package-swift"` (parsed from Package.swift + .swift sources
             /// by `PackageAvailabilityAnnotator`).
             public let source: String
+            /// Authored Swift compiler floor from Package.swift line 1
+            /// (#225 Part A). Nil when the manifest didn't carry a
+            /// `swift-tools-version: X.Y` declaration. Default-nil so
+            /// existing call sites compile unchanged.
+            public let swiftToolsVersion: String?
 
             public struct FileAttribute: Sendable {
                 public let line: Int
@@ -132,11 +137,13 @@ extension Search {
             public init(
                 deploymentTargets: [String: String],
                 attributesByRelpath: [String: [FileAttribute]],
-                source: String
+                source: String,
+                swiftToolsVersion: String? = nil
             ) {
                 self.deploymentTargets = deploymentTargets
                 self.attributesByRelpath = attributesByRelpath
                 self.source = source
+                self.swiftToolsVersion = swiftToolsVersion
             }
         }
 
@@ -178,7 +185,20 @@ extension Search {
                 _ = database
                 return IndexResult(filesIndexed: extraction.files.count, bytesIndexed: bytes)
             } catch {
-                try? execute("ROLLBACK")
+                // #673 Phase B — surface a ROLLBACK failure so the next
+                // BEGIN doesn't fail mysteriously with "cannot start a
+                // transaction within a transaction". Pre-fix this was
+                // silent, leaving the writer actor in a stuck-
+                // transaction state with no observability.
+                do {
+                    try execute("ROLLBACK")
+                } catch let rollbackError {
+                    logger.warning(
+                        "ROLLBACK failed after package-indexing error " +
+                            "(transaction state may be stuck): \(rollbackError)",
+                        category: .search
+                    )
+                }
                 throw error
             }
         }
@@ -225,6 +245,13 @@ extension Search {
                 min_watchos TEXT,
                 min_visionos TEXT,
                 availability_source TEXT,
+                -- #225 Part A — Swift compiler floor from Package.swift's
+                -- `// swift-tools-version: X.Y` declaration. Authored,
+                -- not derived from min_ios (issue body explicitly
+                -- rejects that inference). Nil for older corpora or
+                -- packages whose manifest doesn't declare the version
+                -- in a parseable shape.
+                swift_tools_version TEXT,
                 UNIQUE(owner, repo)
             );
 
@@ -235,6 +262,7 @@ extension Search {
             CREATE INDEX IF NOT EXISTS idx_pkg_min_tvos ON package_metadata(min_tvos);
             CREATE INDEX IF NOT EXISTS idx_pkg_min_watchos ON package_metadata(min_watchos);
             CREATE INDEX IF NOT EXISTS idx_pkg_min_visionos ON package_metadata(min_visionos);
+            CREATE INDEX IF NOT EXISTS idx_pkg_swift_tools ON package_metadata(swift_tools_version);
 
             CREATE TABLE IF NOT EXISTS package_files (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -297,6 +325,21 @@ extension Search {
             if currentVersion < 2 {
                 try migrateToVersion2()
             }
+            if currentVersion < 3 {
+                try migrateToVersion3()
+            }
+        }
+
+        /// Version 2 → 3 (#225 Part A): add `swift_tools_version` column
+        /// to `package_metadata` for the Swift compiler floor parsed
+        /// from `Package.swift` line 1. ALTER ignores "duplicate column"
+        /// errors so re-running the migration is harmless.
+        private func migrateToVersion3() throws {
+            guard let database else { throw PackageIndexError.databaseNotInitialized }
+            var errPtr: UnsafeMutablePointer<CChar>?
+            _ = sqlite3_exec(database, "ALTER TABLE package_metadata ADD COLUMN swift_tools_version TEXT;", nil, nil, &errPtr)
+            sqlite3_free(errPtr)
+            try execute("CREATE INDEX IF NOT EXISTS idx_pkg_swift_tools ON package_metadata(swift_tools_version);")
         }
 
         /// Version 1 → 2 (#219 follow-up): add availability columns to
@@ -381,16 +424,32 @@ extension Search {
                 owner, repo, url, branch_used, stars, is_apple_official,
                 tarball_bytes, total_bytes, fetched_at, cupertino_version,
                 hosted_doc_url, parents_json,
-                min_ios, min_macos, min_tvos, min_watchos, min_visionos, availability_source
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                min_ios, min_macos, min_tvos, min_watchos, min_visionos, availability_source,
+                swift_tools_version
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             var statement: OpaquePointer?
             defer { sqlite3_finalize(statement) }
             guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
                 throw PackageIndexError.sqliteError(lastError(database))
             }
-            let parentsJSON = (try? JSONEncoder().encode(resolved.parents))
-                .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+            // #682 — surface JSONEncoder failure instead of silently
+            // losing the parents chain. `resolved.parents` is a Codable
+            // [ResolvedPackage] — encode failure should be impossible in
+            // practice (no funky types in the value), but if it ever
+            // does happen we want a log line rather than a "[]" with no
+            // explanation.
+            let parentsJSON: String
+            do {
+                let data = try JSONEncoder().encode(resolved.parents)
+                parentsJSON = String(data: data, encoding: .utf8) ?? "[]"
+            } catch {
+                logger.error(
+                    "PackageIndex: failed to encode parents for \(resolved.owner)/\(resolved.repo): \(error). Storing empty array as fallback.",
+                    category: .search
+                )
+                parentsJSON = "[]"
+            }
             let isApple: Int32 = resolved.priority == .appleOfficial ? 1 : 0
 
             sqlite3_bind_text(statement, 1, resolved.owner, -1, SQLITE_TRANSIENT)
@@ -429,6 +488,14 @@ extension Search {
                 sqlite3_bind_null(statement, 18)
             }
 
+            // #225 Part A — column 19. Nil for older corpora / manifests
+            // whose declaration we couldn't parse.
+            if let swiftTools = availability?.swiftToolsVersion {
+                sqlite3_bind_text(statement, 19, swiftTools, -1, SQLITE_TRANSIENT)
+            } else {
+                sqlite3_bind_null(statement, 19)
+            }
+
             guard sqlite3_step(statement) == SQLITE_DONE else {
                 throw PackageIndexError.sqliteError(lastError(database))
             }
@@ -453,7 +520,19 @@ extension Search {
                     let platforms: [String]
                 }
                 let encoded = attrs.map { Encoded(line: $0.line, raw: $0.raw, platforms: $0.platforms) }
-                attrsJSON = (try? JSONEncoder().encode(encoded)).flatMap { String(data: $0, encoding: .utf8) }
+                // #682 — surface JSONEncoder failure instead of silently
+                // losing per-file availability metadata. Same shape as the
+                // parents-encode fix at line 412 above.
+                do {
+                    let data = try JSONEncoder().encode(encoded)
+                    attrsJSON = String(data: data, encoding: .utf8)
+                } catch {
+                    logger.error(
+                        "PackageIndex: failed to encode availability attrs for \(file.relpath): \(error). Storing NULL as fallback.",
+                        category: .search
+                    )
+                    attrsJSON = nil
+                }
             } else {
                 attrsJSON = nil
             }
@@ -686,5 +765,4 @@ extension Search {
 
 /// SQLite3 convenience — the same constant SearchIndex uses, replicated here so this
 /// file doesn't depend on Search/Index's private symbols.
-// swiftlint:disable:next identifier_name
 private let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)

@@ -8,19 +8,27 @@ Thank you for your interest in contributing to Cupertino!
 
 Many MCP servers are written in Node.js or Python. Cupertino takes a different path — we're built for Apple developers, using Apple's language, with Apple's tooling.
 
-We will only accept contributions in:
-- ✅ Swift source code
-- ✅ Swift Package Manager for dependencies
-- ✅ Shell scripts for build/install automation
+### External pull requests: Swift only
 
-We will **not** accept:
+If you are submitting a pull request from outside the maintainer team, we will only accept:
+
+- ✅ Swift source code
+- ✅ Swift Package Manager manifest edits (`Package.swift`)
+
+We will **not** accept external PRs that introduce:
+
 - ❌ Node.js / JavaScript / TypeScript
 - ❌ Python
-- ❌ Other languages or runtimes
+- ❌ Shell scripts (maintainer-side tooling only — see below)
+- ❌ Any other language or runtime
 
 **No exceptions.** If you can't solve something in Swift, someone else can.
 
-This keeps the project lean, consistent, and true to its mission.
+### Maintainer-side tooling
+
+The repo carries shell scripts under `scripts/` (`check-canonical-db-shape.sh`, `check-canonical-literals.sh`, `check-changelog-touched.sh`, etc.), CI YAML under `.github/workflows/`, and configuration in `.pre-commit-config.yaml`. These are **maintainer-side infrastructure** — they belong to the developer workflow, not to the shipped product. External contributors do not extend or modify these files via PR. If you have an idea for a new check or script, open an issue first; the maintainer will decide whether to author it.
+
+This keeps the shipped binary and its source tree Swift-only while leaving the maintainer free to use the right tool for build / install / CI infrastructure.
 
 ## Getting Started
 

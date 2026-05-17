@@ -4,14 +4,17 @@ import CoreProtocols
 import Foundation
 import Resources
 import SharedConstants
-// swiftlint:disable type_body_length function_body_length
-// Justification: PackageCuratorApp is a self-contained CLI tool for curating Swift packages.
-// The main() function orchestrates a complex multi-stage workflow that is clearer as a single flow.
-// Splitting would fragment the workflow logic without meaningful improvement.
 
 @main
+// #673 Phase D iter-5: 354-line struct — self-contained TUI app entry,
+// owns the main run-loop + per-view state + terminal lifecycle.
+// swiftlint:disable:next type_body_length
 struct PackageCuratorApp {
     @MainActor
+    // #673 Phase D iter-5: 169-line main() — multi-stage workflow
+    // (package load, terminal setup, render loop, input dispatch,
+    // cleanup); splitting fragments the linear app lifecycle.
+    // swiftlint:disable:next function_body_length
     static func main() async throws {
         // Handle --version flag
         let args = CommandLine.arguments
@@ -31,8 +34,8 @@ struct PackageCuratorApp {
             var stderr = FileHandle.standardError
             stderr.write(Data((
                 "cupertino-tui: stdin/stdout is not a terminal — TUI requires a real TTY.\n" +
-                "  Launch it directly in a terminal window, not from a pipe or background invocation.\n" +
-                "  For headless probes (CI, scripts), use `cupertino-tui --version` to confirm the binary is present.\n"
+                    "  Launch it directly in a terminal window, not from a pipe or background invocation.\n" +
+                    "  For headless probes (CI, scripts), use `cupertino-tui --version` to confirm the binary is present.\n"
             ).utf8))
             return
         }

@@ -4,11 +4,6 @@ import SearchModels
 import SharedConstants
 import SQLite3
 
-// swiftlint:disable function_body_length function_parameter_count
-// Justification: extracted from SearchIndex.swift; the original 4598-line
-// file's class_body_length / function_body_length / function_parameter_count
-// rationale carries forward to the per-concern slices.
-
 extension Search.Index {
     /// Index a document for searching.
     ///
@@ -29,13 +24,36 @@ extension Search.Index {
         let framework = params.framework
         let language = params.language
         let title = params.title
-        let content = params.content
+        // #113 — rewrite `doc://` references to public `https://` URLs
+        // at the indexer boundary (total rewrite policy). Pre-fix, raw
+        // `doc://` URIs that the DocC renderer failed to translate
+        // leaked into stored content, where AI clients hit unfollowable
+        // references. Substring substitution; idempotent; no DB lookup.
+        let contentRewrite = DocLinkRewriter.rewrite(params.content)
+        let content = contentRewrite.output
         let filePath = params.filePath
         let contentHash = params.contentHash
         let lastCrawled = params.lastCrawled
         let sourceType = params.sourceType
         let packageId = params.packageId
-        let jsonData = params.jsonData
+        // Apply the same rewrite to jsonData — the `read_document` MCP
+        // tool + `cupertino read` both serve from `docs_metadata.json_data`,
+        // so leaving `doc://` in the JSON blob would defeat the rewrite.
+        // JSON-safe: the substituted substring contains no JSON-meta chars.
+        let jsonRewrite = params.jsonData.map { DocLinkRewriter.rewrite($0) }
+        let jsonData = jsonRewrite?.output
+        // #113 audit-count follow-up: emit a debug record when the
+        // rewriter substituted anything, so `cupertino save` logs carry
+        // a per-page count for the audit trail the issue body asked
+        // for. Zero-count case stays silent to avoid drowning logs in
+        // no-op events (the vast majority of pages have no doc://).
+        let totalRewrites = contentRewrite.count + (jsonRewrite?.count ?? 0)
+        if totalRewrites > 0 {
+            logger.debug(
+                "doc-link-rewrite: \(totalRewrites) substitutions in \(uri) (content=\(contentRewrite.count), json=\(jsonRewrite?.count ?? 0))",
+                category: .search
+            )
+        }
         let minIOS = params.minIOS
         let minMacOS = params.minMacOS
         let minTvOS = params.minTvOS
@@ -43,7 +61,9 @@ extension Search.Index {
         let minVisionOS = params.minVisionOS
         let availabilitySource = params.availabilitySource
 
-        // Extract summary (first 500 chars, stop at sentence)
+        // Extract summary (first 500 chars, stop at sentence).
+        // Note: `content` is already post-rewrite, so the summary inherits
+        // the rewrite automatically; no explicit summary pass needed.
         let summary = extractSummary(from: content)
         let wordCount = content.split(separator: " ").count
 
@@ -375,7 +395,8 @@ extension Search.Index {
         overrideMinTvOS: String? = nil,
         overrideMinWatchOS: String? = nil,
         overrideMinVisionOS: String? = nil,
-        overrideAvailabilitySource: String? = nil
+        overrideAvailabilitySource: String? = nil,
+        implementationSwiftVersion: String? = nil
     ) async throws {
         // Register framework alias if module is available
         if let module = page.module, !module.isEmpty {
@@ -391,6 +412,24 @@ extension Search.Index {
         let attributes = page.extractedAttributes
         if !attributes.isEmpty {
             content += "\n\n" + attributes.joined(separator: " ")
+        }
+
+        // #113 — total-rewrite policy: kill every `doc://` link at the
+        // indexer boundary. Same pattern as `indexDocument`. Applies to
+        // both the FTS-side content blob and the JSON payload that
+        // `read_document` / `cupertino read` serve back. JSON-safe.
+        let contentRewrite = DocLinkRewriter.rewrite(content)
+        content = contentRewrite.output
+        let jsonRewrite = DocLinkRewriter.rewrite(jsonData)
+        let rewrittenJsonData = jsonRewrite.output
+        // #113 audit-count follow-up — emit per-page debug record when
+        // any substitution happened. Same shape as `indexDocument`.
+        let totalRewrites = contentRewrite.count + jsonRewrite.count
+        if totalRewrites > 0 {
+            logger.debug(
+                "doc-link-rewrite: \(totalRewrites) substitutions in \(uri) (content=\(contentRewrite.count), json=\(jsonRewrite.count))",
+                category: .search
+            )
         }
 
         let summary = extractSummary(from: content)
@@ -450,13 +489,16 @@ extension Search.Index {
             uriPath: uri
         ).rawValue
 
-        // Insert metadata with json_data, availability, and kind (#192 C).
-        // `kind` appended at end so existing bind indexes 1-16 stay stable.
+        // Insert metadata with json_data, availability, kind (#192 C),
+        // and implementation_swift_version (#225 Part B). New columns
+        // appended at the end so existing bind indexes stay stable
+        // (`kind` is 17, `implementation_swift_version` is 18).
         let metaSql = """
         INSERT OR REPLACE INTO docs_metadata \
         (uri, source, framework, language, file_path, content_hash, last_crawled, word_count, \
         source_type, json_data, min_ios, min_macos, min_tvos, min_watchos, min_visionos, \
-        availability_source, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        availability_source, kind, implementation_swift_version) \
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         """
 
         var metaStatement: OpaquePointer?
@@ -476,7 +518,11 @@ extension Search.Index {
         sqlite3_bind_int64(metaStatement, 7, Int64(page.crawledAt.timeIntervalSince1970))
         sqlite3_bind_int(metaStatement, 8, Int32(wordCount))
         sqlite3_bind_text(metaStatement, 9, (page.source.rawValue as NSString).utf8String, -1, nil)
-        sqlite3_bind_text(metaStatement, 10, (jsonData as NSString).utf8String, -1, nil)
+        // #113 — bind the rewritten JSON blob (doc:// → https://) so the
+        // `read_document` MCP tool + `cupertino read` serve clean links.
+        // `extractAvailabilityFromJSON` above runs against the original
+        // jsonData because it reads platform version numbers, not links.
+        sqlite3_bind_text(metaStatement, 10, (rewrittenJsonData as NSString).utf8String, -1, nil)
 
         // Bind availability columns (use final values with overrides)
         bindOptionalText(metaStatement, 11, finalIOS)
@@ -486,6 +532,11 @@ extension Search.Index {
         bindOptionalText(metaStatement, 15, finalVisionOS)
         bindOptionalText(metaStatement, 16, finalSource)
         sqlite3_bind_text(metaStatement, 17, (classifiedKind as NSString).utf8String, -1, nil)
+        // #225 Part B — implementation_swift_version (NULL on every
+        // source except swift-evolution; the SwiftEvolution strategy
+        // passes the parsed value, every other caller leaves it
+        // defaulted to nil so the bind becomes a NULL).
+        bindOptionalText(metaStatement, 18, implementationSwiftVersion)
 
         guard sqlite3_step(metaStatement) == SQLITE_DONE else {
             let errorMessage = String(cString: sqlite3_errmsg(database))

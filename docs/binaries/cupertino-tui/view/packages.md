@@ -4,7 +4,7 @@ Browse and search Swift packages.
 
 ## Description
 
-Browse the Swift packages catalog (9,700+ entries indexed). Search, view details, and mark packages for download.
+Browse the Swift packages corpus in `packages.db` (183 Apple-official packages with full source files + GitHub metadata; the previous embedded 9,699-URL catalog was removed in #194 — `packages.db` is now the canonical source, shipped via `cupertino setup`). Search, view details, and mark packages for download.
 
 ## Features
 

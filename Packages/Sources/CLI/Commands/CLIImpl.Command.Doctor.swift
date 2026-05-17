@@ -46,7 +46,7 @@ extension CLIImpl.Command {
 
             The default skips those because a setup-only user has no raw corpus on disk
             (the bundle ships pre-built DBs), and a `0 files` line in `~/.cupertino/docs`
-            is normal in that flow — not a failure. (#68)
+            is normal in that flow — not a failure.
             """
         )
 
@@ -88,6 +88,22 @@ extension CLIImpl.Command {
         )
         var kindCoverage: Bool = false
 
+        /// #275 — per-source freshness / drift report from `docs_metadata.last_crawled`.
+        /// Brew-installed users have no `cupertino-docs-private` checkout, so neither
+        /// `git log` nor filesystem mtimes give them a useful answer to "how stale is
+        /// my local index?". `last_crawled` is on every row and is stamped at indexer
+        /// save time, so it's the authoritative signal available without external state.
+        /// Independent of `--save`; doesn't gate doctor verdict.
+        @Flag(
+            name: .long,
+            help: """
+            Print a per-source freshness report from docs_metadata.last_crawled timestamps. \
+            Shows row count + oldest / p50 / p90 / newest crawl dates per source. Answers \
+            "how stale is my local index?" for brew users without a corpus checkout. Read-only.
+            """
+        )
+        var freshness: Bool = false
+
         mutating func run() async throws {
             Cupertino.Context.composition.logging.recording.output("🏥 MCP Server Health Check")
             Cupertino.Context.composition.logging.recording.output("")
@@ -107,6 +123,12 @@ extension CLIImpl.Command {
             allChecks = checkResourceProviders() && allChecks
             // Schema versions across all three DBs (#234)
             printSchemaVersions()
+            // #673 Phase F — disk-space red flag. Surfaces low free disk
+            // on the volume backing ~/.cupertino so users see the risk
+            // before a `cupertino save` / `cupertino setup` would refuse
+            // partway through. Always runs (independent of --save / etc.)
+            // — disk pressure affects every cupertino operation.
+            checkDiskSpace()
 
             // ----- Save-only sections (maintainer-facing) -----------------
             // `--save` is intent-named: "I'm about to crawl / reindex; show
@@ -141,6 +163,17 @@ extension CLIImpl.Command {
             // surfaced that).
             if kindCoverage {
                 checkKindCoverage()
+            }
+
+            // ----- #275 freshness / drift signal (informational) ---------
+            // Independent of `--save` / `--kind-coverage`. Doesn't gate
+            // the verdict — purely informational. Targets brew users who
+            // can't `git log` the corpus repo to answer "how stale is my
+            // bundle?". The doctor's existing schema-version / journal-
+            // mode lines tell them how their DB compares to the binary;
+            // this tells them how their DB compares to Apple's "now".
+            if freshness {
+                checkFreshness()
             }
 
             // Summary
@@ -254,6 +287,64 @@ extension CLIImpl.Command {
                 return ""
             }
             return ", volume=non-local ⚠ (SQLite WAL doesn't work over NFS/SMB/AFP; risk of corruption per sqlite.org/wal.html)"
+        }
+
+        // MARK: - #673 Phase F — disk-space red flag
+
+        /// Inspect free disk on the volume backing the user's base
+        /// directory and emit a status line: green ≥ 20 % free, orange
+        /// 10-20 % (warn), red < 10 % free (will refuse to save / setup
+        /// on next write), CRITICAL if even less than the smallest
+        /// per-command estimate could fit.
+        ///
+        /// Pinned by `Issue673PhaseFDiskPreflightTests` on the probe +
+        /// preflight sides; the doctor-side rendering is verified via
+        /// the end-to-end binary check in PR #695's live verification.
+        private func checkDiskSpace() {
+            let target = Shared.Paths.live().baseDirectory
+            Cupertino.Context.composition.logging.recording.output("💾 Disk space (#673 Phase F)")
+            guard let usage = Diagnostics.Probes.diskUsage(at: target) else {
+                Cupertino.Context.composition.logging.recording.output(
+                    "   ⚠  Could not read volume stats for \(target.path) (skipped)"
+                )
+                Cupertino.Context.composition.logging.recording.output("")
+                return
+            }
+            let formatter = ByteCountFormatter()
+            formatter.allowedUnits = [.useGB, .useMB]
+            formatter.countStyle = .file
+            let free = formatter.string(fromByteCount: usage.freeBytes)
+            let total = formatter.string(fromByteCount: usage.totalBytes)
+            let pct = String(format: "%.0f", usage.freeFraction * 100)
+            let savedEstimate = Shared.Constants.DiskBudget.docsSaveBytes
+            let savedNeed = Int64(Double(savedEstimate) * 1.10)
+            let savedNeedStr = formatter.string(fromByteCount: savedNeed)
+
+            // Classification thresholds match the preflight: refuse
+            // (< 10 % default warningFraction reflects 1/2 of the
+            // existing 20 % threshold; we surface "would refuse" as
+            // its own line for actionability) / orange / green.
+            if usage.freeBytes < savedNeed {
+                Cupertino.Context.composition.logging.recording.output(
+                    "   ✗ Volume \(target.path): \(free) free of \(total) (\(pct) %) — `cupertino save --docs` would REFUSE (needs \(savedNeedStr))"
+                )
+                Cupertino.Context.composition.logging.recording.output(
+                    "     → Free at least \(formatter.string(fromByteCount: savedNeed - usage.freeBytes)) on this volume before the next save / setup"
+                )
+            } else if usage.freeFraction < 0.10 {
+                Cupertino.Context.composition.logging.recording.output(
+                    "   ⚠  Volume \(target.path): \(free) free of \(total) (\(pct) %) — critically low; consider freeing space"
+                )
+            } else if usage.freeFraction < 0.20 {
+                Cupertino.Context.composition.logging.recording.output(
+                    "   ⚠  Volume \(target.path): \(free) free of \(total) (\(pct) %) — low; next save will warn"
+                )
+            } else {
+                Cupertino.Context.composition.logging.recording.output(
+                    "   ✓ Volume \(target.path): \(free) free of \(total) (\(pct) %)"
+                )
+            }
+            Cupertino.Context.composition.logging.recording.output("")
         }
 
         private func checkServerInitialization() -> Bool {
@@ -537,6 +628,72 @@ extension CLIImpl.Command {
                 }
             }
             Cupertino.Context.composition.logging.recording.output("")
+        }
+
+        // MARK: - #275 — freshness / drift signal
+
+        /// Per-source freshness report driven by `Diagnostics.Probes.freshnessBySource`.
+        /// Renders each source's row count + oldest / p50 / p90 / newest
+        /// crawl dates. Skipped silently when `search.db` is missing or
+        /// unopenable (the regular `checkSearchDatabase` already surfaced
+        /// that). No thresholds — raw ages only, per #275's scoping
+        /// discussion. Users decide their own "fresh / aging / stale"
+        /// definitions; thresholds are a separate follow-up if needed.
+        private func checkFreshness() {
+            let searchDBURL = URL(fileURLWithPath: searchDB).expandingTildeInPath
+            Cupertino.Context.composition.logging.recording.output("📅 Freshness / drift signal (#275)")
+
+            guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
+                Cupertino.Context.composition.logging.recording.output("   ⚠  search.db not found at \(searchDBURL.path) (skipped)")
+                Cupertino.Context.composition.logging.recording.output("")
+                return
+            }
+
+            guard let rows = Diagnostics.Probes.freshnessBySource(at: searchDBURL) else {
+                Cupertino.Context.composition.logging.recording.output(
+                    "   ⚠  Could not read freshness from \(searchDBURL.path) (skipped — schema mismatch or DB unopenable)"
+                )
+                Cupertino.Context.composition.logging.recording.output("")
+                return
+            }
+
+            guard !rows.isEmpty else {
+                Cupertino.Context.composition.logging.recording.output("   ⚠  No rows in docs_metadata (DB present but empty)")
+                Cupertino.Context.composition.logging.recording.output("")
+                return
+            }
+
+            // Header row — column layout matches kindCoverage's style
+            // (left-pad source, right-pad numeric, manual formatting
+            // because Swift's String(format:) on %s expects C strings).
+            Cupertino.Context.composition.logging.recording.output(
+                "   source              rows    oldest                p50                   p90                   newest"
+            )
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withFullDate]
+            for row in rows {
+                let sourcePadded = row.source.padding(toLength: 18, withPad: " ", startingAt: 0)
+                let countRaw = String(row.count)
+                let countPadded = String(repeating: " ", count: max(0, 8 - countRaw.count)) + countRaw
+                let oldest = Self.renderDate(row.oldest, formatter: formatter)
+                let p50 = Self.renderDate(row.p50, formatter: formatter)
+                let p90 = Self.renderDate(row.p90, formatter: formatter)
+                let newest = Self.renderDate(row.newest, formatter: formatter)
+                Cupertino.Context.composition.logging.recording.output(
+                    "   \(sourcePadded)\(countPadded)  \(oldest)    \(p50)    \(p90)    \(newest)"
+                )
+            }
+            Cupertino.Context.composition.logging.recording.output("")
+        }
+
+        /// Format a `last_crawled` Unix epoch (seconds) as a YYYY-MM-DD
+        /// string. Returns a constant `"(unset)"` for `0` / negative
+        /// values so the row stays right-aligned and the reader sees
+        /// the empty-state explicitly.
+        private static func renderDate(_ epoch: Int64, formatter: ISO8601DateFormatter) -> String {
+            guard epoch > 0 else { return "(unset)   " }
+            let date = Date(timeIntervalSince1970: TimeInterval(epoch))
+            return formatter.string(from: date)
         }
 
         /// #192 F1. Report `packages.db` presence, size, and row counts (packages,

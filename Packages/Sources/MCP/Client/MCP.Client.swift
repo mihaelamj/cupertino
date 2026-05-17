@@ -298,10 +298,46 @@ extension MCP {
             }
         }
 
-        private func readLine(from fileHandle: FileHandle) async throws -> String {
-            try await withCheckedThrowingContinuation { continuation in
+        /// #632 / #673 Phase B — per-request deadline so a stuck or crashed
+        /// server doesn't hang the production MCP client forever. Same
+        /// shape as `MockAIAgent.MCPClient.readLine` (the test-side
+        /// surface where this rule was discovered): spawn a sibling task
+        /// that sleeps `timeoutSeconds`, then calls
+        /// `dequeueOldestAsTimeout(seconds:)` on the actor to resume the
+        /// parked continuation with a timeout error. Actor-serialised
+        /// array mutation between `handleIncomingData` (response arrived)
+        /// and `dequeueOldestAsTimeout` (deadline fired) ensures exactly
+        /// one resumption.
+        ///
+        /// 30s default covers cold-start latency on a typical server
+        /// (~10-15s for SPM-relinked binary + DB open) with margin. Callers
+        /// that need a tighter or looser deadline can pass `timeoutSeconds`.
+        private static let defaultResponseTimeoutSeconds = 30
+
+        private func readLine(
+            from fileHandle: FileHandle,
+            timeoutSeconds: Int = Client.defaultResponseTimeoutSeconds
+        ) async throws -> String {
+            let timeoutTask = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(timeoutSeconds))
+                await self?.dequeueOldestAsTimeout(seconds: timeoutSeconds)
+            }
+            defer { timeoutTask.cancel() }
+
+            return try await withCheckedThrowingContinuation { continuation in
                 pendingResponses.append(continuation)
             }
+        }
+
+        /// #673 Phase B — called from the per-request timeout sibling task
+        /// when the deadline fires before `handleIncomingData` consumes
+        /// the parked continuation. Idempotent against late responses:
+        /// if `handleIncomingData` already fired (array empty), this is
+        /// a no-op.
+        private func dequeueOldestAsTimeout(seconds: Int) {
+            guard !pendingResponses.isEmpty else { return }
+            let continuation = pendingResponses.removeFirst()
+            continuation.resume(throwing: MCP.ClientError.responseTimeout(seconds: seconds))
         }
 
         private func nextMessageID() -> Int {
@@ -327,6 +363,11 @@ extension MCP {
         case decodingFailed
         case noResponse
         case serverError(String)
+        /// #673 Phase B — no response received within the per-request
+        /// deadline (default 30s). Distinguished from `.noResponse`
+        /// (which is for empty / malformed wire payloads) so callers
+        /// can detect "server hung" vs "server replied with garbage".
+        case responseTimeout(seconds: Int)
 
         public var errorDescription: String? {
             switch self {
@@ -342,6 +383,10 @@ extension MCP {
                 return "No response from server"
             case .serverError(let message):
                 return "Server error: \(message)"
+            case .responseTimeout(let seconds):
+                return "MCP server did not respond within \(seconds)s. " +
+                    "Cold-start (DB open / Composition bootstrap) may have " +
+                    "stalled, or the server crashed before answering."
             }
         }
     }
