@@ -137,7 +137,7 @@ SCHEMA_TABLES=(docs_metadata docs_structured doc_symbols doc_code_examples packa
 
 BLOCKER_PHRASES='(blocked[ -]?on|blocks?|depends on|after #?[0-9]+ lands|gated on|hard block on|pending in|awaits?|waiting on)'
 
-# --- Shipped release tags (CHECK 5 — label drift) ---------------------
+# --- Shipped release tags (CHECK 5: label drift) ----------------------
 #
 # Versions for which `fix-in: v<X.Y.Z>` labels mean "shipped" rather
 # than "targeted." Append a version to this list when its tag drops.
@@ -321,7 +321,7 @@ check_schema() {
 #
 # 5a. Dead `blocked_by_<N>` labels where #N is CLOSED.
 # 5b. `fix-in: v<X.Y.Z>` labels for SHIPPED_VERSIONS (rename / delete).
-# 5c. Single-carrier labels (1 open issue carries it) — grow or fold.
+# 5c. Single-carrier labels (1 open issue carries it); grow or fold.
 # 5d. Open issues missing a kind label (enhancement / bug / etc.).
 # 5e. Open issues missing a priority label (excluding epics / wishlist).
 #
@@ -367,10 +367,10 @@ check_labels_global() {
         esac
     done <<<"$labels_list"
 
-    # 5c. Single-carrier labels (1 open carrier — neither cluster nor footnote)
+    # 5c. Single-carrier labels (1 open carrier, neither cluster nor footnote)
     while IFS= read -r lbl; do
         [ -z "$lbl" ] && continue
-        # Skip release/triage labels — they're axes, not topical
+        # Skip release/triage labels; they're axes, not topical
         case "$lbl" in
             priority:*|complexity:*|"released-in:"*|"fix-in:"*|"fixed: "*|enhancement|bug|documentation|epic|"good first issue"|"help wanted"|duplicate|invalid|question|wontfix|blocked|blocker)
                 continue
@@ -420,7 +420,7 @@ issues=$(fetch_open_issues)
 total=$(echo "$issues" | wc -l | tr -d ' ')
 echo "Scanning $total open issues..." >&2
 
-# Label drift is global — run once, not per-issue
+# Label drift is global, run once, not per-issue
 if [ "$CHECK" = "all" ] || [ "$CHECK" = "labels" ]; then
     LABEL_REPORT=$(check_labels_global)
 fi
@@ -504,7 +504,7 @@ if [ -n "$LABEL_REPORT" ]; then
     DRIFT=true
     echo "## Label drift (check 5)"
     echo ""
-    echo "Tracker-level label problems: orphan \`blocked_by_<N>\` (referenced issue closed), \`fix-in: v<X.Y.Z>\` for shipped versions, single-carrier topical labels (grow or fold), and open issues missing a kind or priority label. Shipped versions are maintained in the script's \`SHIPPED_VERSIONS\` list — bump it when a new release tag drops."
+    echo "Tracker-level label problems: orphan \`blocked_by_<N>\` (referenced issue closed), \`fix-in: v<X.Y.Z>\` for shipped versions, single-carrier topical labels (grow or fold), and open issues missing a kind or priority label. Shipped versions are maintained in the script's \`SHIPPED_VERSIONS\` list, bump it when a new release tag drops."
     echo ""
     printf "%s" "$LABEL_REPORT"
     echo ""
