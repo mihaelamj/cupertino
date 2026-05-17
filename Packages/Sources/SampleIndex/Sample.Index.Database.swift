@@ -656,11 +656,26 @@ extension Sample.Index {
         ///
         /// #673 Phase D iter-5: 61-line body — FTS5 MATCH + framework
         /// filter + row hydration into Project structs.
+        ///
+        /// #732 expansion: optional 5-field platform filter. When any
+        /// `min<Platform>` is non-nil, the SQL grows an
+        /// `AND p.min_<platform> IS NOT NULL AND p.min_<platform> <= ?`
+        /// clause for each set parameter. Multiple set parameters are
+        /// AND-combined — a project must satisfy every requested
+        /// minimum to pass (a sample that runs on iOS 15+ AND macOS 12+
+        /// is included when the user asks for iOS 17+ AND macOS 14+).
+        /// Lex compare matches the existing convention used in #220's
+        /// `Search.PackageQuery` + #233's `searchFiles`.
         // swiftlint:disable:next function_body_length
         public func searchProjects(
             query: String,
             framework: String? = nil,
-            limit: Int = 20
+            limit: Int = 20,
+            minIOS: String? = nil,
+            minMacOS: String? = nil,
+            minTvOS: String? = nil,
+            minWatchOS: String? = nil,
+            minVisionOS: String? = nil
         ) async throws -> [Project] {
             guard let database else {
                 throw Sample.Index.Error.databaseNotInitialized
@@ -677,6 +692,21 @@ extension Sample.Index {
             let sanitizedQuery = Shared.Utils.FTSQuery.build(question: query)
             guard !sanitizedQuery.isEmpty else { return [] }
 
+            // #732 — collect the per-platform filters into an ordered
+            // (column, value) list so the SQL clause + parameter binds
+            // stay in lock-step. Iterated twice: once to build the
+            // clauses, once to bind. Empty list short-circuits both.
+            let platformFilters: [(column: String, value: String)] = [
+                ("min_ios", minIOS),
+                ("min_macos", minMacOS),
+                ("min_tvos", minTvOS),
+                ("min_watchos", minWatchOS),
+                ("min_visionos", minVisionOS),
+            ].compactMap { column, value in
+                guard let value else { return nil }
+                return (column, value)
+            }
+
             var sql = """
             SELECT p.id, p.title, p.description, p.frameworks, p.readme,
                    p.web_url, p.zip_filename, p.file_count, p.total_size, p.indexed_at
@@ -687,6 +717,10 @@ extension Sample.Index {
 
             if framework != nil {
                 sql += " AND p.frameworks LIKE ?"
+            }
+
+            for filter in platformFilters {
+                sql += " AND p.\(filter.column) IS NOT NULL AND p.\(filter.column) <= ?"
             }
 
             sql += " ORDER BY bm25(projects_fts) LIMIT ?;"
@@ -706,6 +740,11 @@ extension Sample.Index {
             if let framework {
                 let pattern = "%\(framework.lowercased())%"
                 sqlite3_bind_text(statement, paramIndex, (pattern as NSString).utf8String, -1, nil)
+                paramIndex += 1
+            }
+
+            for filter in platformFilters {
+                sqlite3_bind_text(statement, paramIndex, (filter.value as NSString).utf8String, -1, nil)
                 paramIndex += 1
             }
 
