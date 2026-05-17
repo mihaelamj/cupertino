@@ -23,13 +23,19 @@ extension Shared.Configuration.DiscoveryMode: ExpressibleByArgument {}
 
 // MARK: - Fetch Command
 
-// swiftlint:disable type_body_length file_length function_body_length
-// Justification: CLIImpl.Command.Fetch handles 10+ different fetch types (docs, evolution, packages, code, etc.)
-// Each type has distinct configuration, progress reporting, and error handling.
-// Splitting into separate commands would duplicate shared options and break the unified fetch interface.
+// #673 Phase D iter-5: file_length stays as the only remaining
+// file-level blanket — the rule has no per-declaration form, and
+// the fetch command's option surface (10+ types, 30+ flags) puts
+// this file past 1000 lines on its own. Per-type and per-function
+// disables for the rest are scoped below.
+// swiftlint:disable file_length
 
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
 extension CLIImpl.Command {
+    /// #673 Phase D iter-5: 916-line struct — ArgumentParser doesn't
+    /// support partial-struct command composition, so every `@Option`
+    /// / `@Flag` for every `--type` value must live on one struct.
+    // swiftlint:disable:next type_body_length
     struct Fetch: AsyncParsableCommand {
         typealias FetchType = Cupertino.FetchType
 
@@ -675,6 +681,12 @@ extension CLIImpl.Command {
             Cupertino.Context.composition.logging.recording.info("   📁 \(outputURL.path)/\(Shared.Constants.FileName.packagesWithStars)\n")
         }
 
+        // #673 Phase D iter-5: 174-line body — Stage 2 of the
+        // packages fetch: priority-catalog load → resolve → per-archive
+        // download → magic-bytes validation → on-disk catalog write →
+        // skip-statistics accounting. Linear pipeline; helpers would
+        // need to pass a 6-tuple of state to be useful.
+        // swiftlint:disable:next function_body_length
         private func runPackageArchivesStage(outputURL: URL) async throws {
             Cupertino.Context.composition.logging.recording.info("📦 Stage 2/2 — Downloading priority package archives")
 

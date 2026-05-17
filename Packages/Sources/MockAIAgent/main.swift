@@ -4,11 +4,6 @@ import SharedConstants
 
 // MARK: - Mock AI Agent
 
-// swiftlint:disable type_body_length
-// Justification: MCPClient actor implements a complete MCP client for testing.
-// It handles: process management, JSON-RPC communication, request/response formatting, and demo flows.
-// The actor maintains state across multiple async operations for the test session.
-
 // A mock AI agent that demonstrates how to send MCP requests to an MCP server
 // This helps visualize the complete MCP request/response cycle with full JSON logging
 
@@ -61,6 +56,10 @@ struct MockAIAgent {
 
 // MARK: - MCP Client
 
+// #673 Phase D iter-5: 476-line actor — process management +
+// JSON-RPC framing + request/response correlation + demo flows in one
+// owner; splitting fragments the test-session state machine.
+// swiftlint:disable:next type_body_length
 private actor MCPClient {
     private var process: Process?
     private var stdin: FileHandle?

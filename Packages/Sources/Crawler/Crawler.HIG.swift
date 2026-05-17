@@ -9,15 +9,14 @@ import WebKit
 
 // MARK: - HIG Crawler
 
-// swiftlint:disable type_body_length
-// Justification: HIGCrawler is a self-contained crawler module.
-// Contains page discovery, HTML parsing, markdown conversion, and file saving.
-// Splitting would scatter related functionality and reduce cohesion.
-
 /// Crawls Apple's Human Interface Guidelines
 /// The HIG website is a JavaScript SPA, requiring WKWebView-based crawling
 extension Crawler {
     @MainActor
+    // #673 Phase D iter-5: 395-line class — page discovery + HTML parsing
+    // + markdown conversion + file saving in one self-contained crawler;
+    // splits would scatter the WebView lifetime + per-page state.
+    // swiftlint:disable:next type_body_length
     public final class HIG {
         private let outputDirectory: URL
         private let forceRecrawl: Bool
@@ -384,9 +383,8 @@ extension Crawler {
 
         /// HTML-to-Markdown conversion: many sequential regex replacements.
         /// Splitting would obscure the linear transformation pipeline; kept
-        /// as a single function. (Previously had a swiftlint disable for
-        /// `function_body_length`; refactors elsewhere brought it under the
-        /// threshold, so the disable was removed in #673 Phase D.)
+        /// as a single function. Body sits at 77 lines (default threshold 50).
+        // swiftlint:disable:next function_body_length
         private func htmlToMarkdown(_ html: String) -> String {
             var result = html
 
@@ -557,8 +555,6 @@ extension Crawler {
         }
     }
 }
-
-// swiftlint:enable type_body_length
 
 // MARK: - Models
 

@@ -7,10 +7,18 @@ import SQLite3
 
 // MARK: - Sample Index Database
 
-// swiftlint:disable type_body_length file_length function_body_length
+// #673 Phase D iter-5: file_length stays as the only remaining
+// file-level blanket (1230 lines, can't be made per-declaration).
+// Per-type and per-function disables are scoped below.
+// swiftlint:disable file_length
 
 extension Sample.Index {
     /// SQLite FTS5-based database for sample code indexing and search
+    ///
+    /// #673 Phase D iter-5: 906-line actor body — single owner of the
+    /// FTS5 + AST + per-sample availability schema; every CRUD path
+    /// + every query path lives here so the SQL stays in one place.
+    // swiftlint:disable:next type_body_length
     public actor Database {
         /// Current schema version
         /// Version history:
@@ -177,6 +185,10 @@ extension Sample.Index {
             }
         }
 
+        // #673 Phase D iter-5: 129-line body — full DDL for the FTS5
+        // virtual tables + AST tables + indexes; one transaction, one
+        // place to maintain the schema source-of-truth.
+        // swiftlint:disable:next function_body_length
         private func createTables() async throws {
             guard let database else {
                 throw Sample.Index.Error.databaseNotInitialized
@@ -315,6 +327,10 @@ extension Sample.Index {
         // MARK: - Project Indexing
 
         /// Index a sample project
+        ///
+        /// #673 Phase D iter-5: 70-line body — INSERT project row + N
+        /// file rows + per-file AST symbols/imports in one transaction.
+        // swiftlint:disable:next function_body_length
         public func indexProject(_ project: Project) async throws {
             guard let database else {
                 throw Sample.Index.Error.databaseNotInitialized
@@ -637,6 +653,10 @@ extension Sample.Index {
         // MARK: - Search Projects
 
         /// Search projects by query
+        ///
+        /// #673 Phase D iter-5: 61-line body — FTS5 MATCH + framework
+        /// filter + row hydration into Project structs.
+        // swiftlint:disable:next function_body_length
         public func searchProjects(
             query: String,
             framework: String? = nil,
@@ -733,6 +753,10 @@ extension Sample.Index {
         // cyclic dep on `SampleIndex`.
 
         /// Search files by content
+        ///
+        /// #673 Phase D iter-5: 74-line body — FTS5 MATCH against files_fts
+        /// + project/extension filters + per-row hydration into SampleFile.
+        // swiftlint:disable:next function_body_length
         public func searchFiles(
             query: String,
             projectId: String? = nil,
@@ -850,6 +874,10 @@ extension Sample.Index {
         // MARK: - Get Project
 
         /// Get a project by ID
+        ///
+        /// #673 Phase D iter-5: 51-line body — single SELECT + per-row
+        /// hydration; just past the 50-line threshold.
+        // swiftlint:disable:next function_body_length
         public func getProject(id: String) async throws -> Project? {
             guard let database else {
                 throw Sample.Index.Error.databaseNotInitialized
@@ -1228,5 +1256,3 @@ extension Sample.Index {
         }
     }
 }
-
-// swiftlint:enable type_body_length file_length function_body_length

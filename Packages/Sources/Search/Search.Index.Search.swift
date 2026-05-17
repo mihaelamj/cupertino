@@ -3,10 +3,12 @@ import SearchModels
 import SharedConstants
 import SQLite3
 
-// swiftlint:disable function_body_length file_length
-// Justification: extracted from SearchIndex.swift; the original 4598-line
-// file's class_body_length / function_body_length / function_parameter_count
-// rationale carries forward to the per-concern slices.
+// #673 Phase D iter-5: this file slices the search query path off the
+// original 4598-line SearchIndex.swift. file_length stays as the only
+// remaining file-level blanket because file_length can't be made
+// per-declaration; all function_body_length disables below are
+// now per-function with rationale.
+// swiftlint:disable file_length
 
 extension Search.Index {
     /// Search documents by query with optional source, framework, and language filters.
@@ -17,7 +19,13 @@ extension Search.Index {
     ///   - framework: Optional framework filter (swiftui, foundation, etc. - only for apple-docs)
     ///   - language: Optional language filter (swift, objc)
     ///   - limit: Maximum number of results
-    // swiftlint:disable:next cyclomatic_complexity
+    ///
+    /// #673 Phase D iter-5: 489-line body — the unified search query
+    /// path (FTS query build → bind → execute → row iteration with
+    /// platform / kind / framework filtering + result re-rank). Body
+    /// length is the cost of inlining the per-row processing; helper
+    /// extraction would just push state through awkward param lists.
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     public func search(
         query: String,
         source: String? = nil,
@@ -1010,6 +1018,11 @@ extension Search.Index {
     /// caller can dedup-and-prepend them without re-running the post-rank
     /// math. Caller is responsible for not invoking this when the
     /// effective source filter is something other than apple-docs.
+    ///
+    /// #673 Phase D iter-5: 87-line body — direct SQL with row-by-row
+    /// processing plus per-candidate disambiguation. Split would force
+    /// state through helper params for no callsite gain.
+    // swiftlint:disable:next function_body_length
     func fetchCanonicalTypePages(
         query: String,
         framework: String? = nil
@@ -1181,6 +1194,12 @@ extension Search.Index {
     /// Fetch framework root page by exact query match (#81)
     /// If user searches "SwiftUI", directly fetch apple-docs://swiftui/documentation_swiftui
     /// This ensures framework roots always appear regardless of BM25 score
+    ///
+    /// #673 Phase D iter-5: 62-line body — SQL build + bind + per-row
+    /// hydration + identity-page resolution. Same shape as
+    /// `fetchCanonicalTypePages`; helper extraction trades one long
+    /// function for two with shared state.
+    // swiftlint:disable:next function_body_length
     func fetchFrameworkRoot(query: String) async throws -> Search.Result? {
         guard let database else { return nil }
 
