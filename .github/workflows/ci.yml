@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, develop]
   push:
-    branches: [main]
+    branches: [main, develop]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -14,6 +14,33 @@ permissions:
   contents: read
 
 jobs:
+  changelog-touched:
+    name: CHANGELOG updated
+    runs-on: ubuntu-latest
+    # Cheap PR-level gate (post-2026-05-17 whole-CHANGELOG audit). Runs
+    # in parallel with build-and-test so a CHANGELOG miss is surfaced
+    # in seconds, not after the 15-min build. Pre-commit runs the same
+    # script locally before push; this job is the second net.
+    steps:
+      - name: Checkout (with history)
+        uses: actions/checkout@v4
+        with:
+          # The script diffs against the PR base; need enough history to
+          # resolve `origin/main`. Shallow clones (depth 1) break the diff.
+          fetch-depth: 0
+
+      - name: Run check-changelog-touched.sh
+        run: |
+          # PR runs: diff against the merge base with main.
+          # Push runs: diff against the immediate parent (HEAD~1).
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="origin/${{ github.event.pull_request.base.ref }}"
+          else
+            base="HEAD~1"
+          fi
+          echo "Checking changelog discipline against $base"
+          ./scripts/check-changelog-touched.sh --base="$base"
+
   build-and-test:
     name: Build & Test
     runs-on: macos-15
