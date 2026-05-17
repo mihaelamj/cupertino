@@ -2,6 +2,7 @@ import Foundation
 import LoggingModels
 @testable import Search
 import SearchModels
+import SQLite3
 import Testing
 
 // MARK: - #225 Part B — implementation_swift_version on swift-evolution rows
@@ -133,6 +134,122 @@ struct Issue225PartBPersistenceTests {
         let dbPath = tempDir.appendingPathComponent("search.db")
         let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
         return (index, tempDir)
+    }
+
+    /// Create a minimal v15-shaped SQLite DB: `docs_metadata` without
+    /// `implementation_swift_version`, stamped at `PRAGMA user_version = 15`.
+    /// `createTables()` in `Search.Index.init` uses `IF NOT EXISTS` everywhere,
+    /// so it will create all other tables on top of this DB — the migration
+    /// test only cares that `docs_metadata` is present without the column.
+    private static func makeV15RawDB(at dbURL: URL) throws {
+        var db: OpaquePointer?
+        defer { sqlite3_close(db) }
+        guard sqlite3_open(dbURL.path, &db) == SQLITE_OK else {
+            throw NSError(domain: "V15Setup", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "sqlite3_open failed",
+            ])
+        }
+        let sql = """
+        CREATE TABLE docs_metadata (
+            uri TEXT PRIMARY KEY,
+            source TEXT NOT NULL DEFAULT 'apple-docs',
+            framework TEXT NOT NULL,
+            language TEXT NOT NULL DEFAULT 'swift',
+            kind TEXT NOT NULL DEFAULT 'unknown',
+            symbols TEXT,
+            file_path TEXT NOT NULL,
+            content_hash TEXT NOT NULL,
+            last_crawled INTEGER NOT NULL,
+            word_count INTEGER NOT NULL,
+            source_type TEXT DEFAULT 'apple',
+            package_id INTEGER,
+            json_data TEXT,
+            min_ios TEXT,
+            min_macos TEXT,
+            min_tvos TEXT,
+            min_watchos TEXT,
+            min_visionos TEXT,
+            availability_source TEXT
+        );
+        """
+        guard sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK else {
+            throw NSError(domain: "V15Setup", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: String(cString: sqlite3_errmsg(db)),
+            ])
+        }
+        guard sqlite3_exec(db, "PRAGMA user_version = 15", nil, nil, nil) == SQLITE_OK else {
+            throw NSError(domain: "V15Setup", code: 3, userInfo: [
+                NSLocalizedDescriptionKey: "PRAGMA user_version = 15 failed",
+            ])
+        }
+    }
+
+    private static func readRawUserVersion(at dbURL: URL) throws -> Int32 {
+        var db: OpaquePointer?
+        defer { sqlite3_close(db) }
+        guard sqlite3_open(dbURL.path, &db) == SQLITE_OK else {
+            throw NSError(domain: "V15Test", code: 1)
+        }
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_prepare_v2(db, "PRAGMA user_version", -1, &stmt, nil) == SQLITE_OK,
+              sqlite3_step(stmt) == SQLITE_ROW
+        else { return 0 }
+        return sqlite3_column_int(stmt, 0)
+    }
+
+    // MARK: - #749 regression: v15→v16 in-place migration stamps user_version=16
+
+    @Test("v15 DB migrates to v16: PRAGMA user_version=16 stamped and implementation_swift_version column reachable")
+    func v15ToV16InPlaceMigrationLeavesDBAtV16WithColumnReachable() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cupertino-749-v15v16-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let dbPath = tempDir.appendingPathComponent("search.db")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        // Build a v15-shaped DB: docs_metadata without implementation_swift_version
+        try Self.makeV15RawDB(at: dbPath)
+
+        // Opening via Search.Index.init triggers checkAndMigrateSchema → migrateToVersion16()
+        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        defer { Task { await index.disconnect() } }
+
+        // Assert: user_version == 16 on disk (fix stamps it inside migrateToVersion16)
+        let onDisk = try Self.readRawUserVersion(at: dbPath)
+        #expect(onDisk == 16, "migrateToVersion16() must stamp PRAGMA user_version=16; got \(onDisk)")
+
+        // Assert: implementation_swift_version column is reachable — indexStructuredDocument
+        // throws on INSERT if the column is absent (prepare fails on the 18-column bind shape).
+        let pageURL = try #require(URL(string: "https://github.com/swiftlang/swift-evolution/blob/main/proposals/SE-0001.md"))
+        let page = Search.StrategyHelpers.makeArticleStructuredPage(
+            url: pageURL,
+            title: "Allow keywords as argument labels",
+            rawMarkdown: "# SE-0001\n* Implementation: Swift 2.0",
+            crawledAt: Date(),
+            contentHash: "deadbeef749"
+        )
+        let json = Search.StrategyHelpers.encodeStructuredPageToJSON(page)
+
+        try await index.indexStructuredDocument(
+            uri: "swift-evolution://SE-0001-v15v16-migration-test",
+            source: "swift-evolution",
+            framework: "swift-evolution",
+            page: page,
+            jsonData: json,
+            implementationSwiftVersion: "2.0"
+        )
+
+        // Assert: round-trip through the column — row passes --swift 5.0 (2.0 ≤ 5.0)
+        let results = try await index.search(
+            query: "argument labels",
+            source: "swift-evolution",
+            minSwift: "5.0"
+        )
+        #expect(
+            !results.isEmpty,
+            "post-v15→v16 migration: swift-evolution row with implementation_swift_version=2.0 must pass --swift 5.0"
+        )
     }
 
     @Test("Fresh v16 DB has implementation_swift_version column populated through indexStructuredDocument")
