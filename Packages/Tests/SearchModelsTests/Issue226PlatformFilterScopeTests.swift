@@ -18,34 +18,46 @@ import Testing
 
 @Suite("#226 — Search.PlatformFilterScope bucket assignments")
 struct Issue226PlatformFilterScopeBucketsTests {
-    @Test("appliesFilter contains exactly apple-docs + packages")
-    func appliesFilterMembership() {
-        #expect(Search.PlatformFilterScope.appliesFilter == [
+    @Test("dispatchAppliesFilter covers the 6 handleSearchDocs-routed sources")
+    func dispatchAppliesFilterMembership() {
+        // All 6 sources route through `CompositeToolProvider.handleSearchDocs`
+        // which threads the 5 `min_*` args + minSwift into `Search.Database.search`.
+        // The handler applies the filter uniformly; row-level results
+        // depend on whether the source's data has populated `min_*` columns
+        // (sparse data manifests as fewer results, not as unfiltered ones).
+        #expect(Search.PlatformFilterScope.dispatchAppliesFilter == [
             Shared.Constants.SourcePrefix.appleDocs,
+            Shared.Constants.SourcePrefix.appleArchive,
+            Shared.Constants.SourcePrefix.swiftEvolution,
+            Shared.Constants.SourcePrefix.swiftOrg,
+            Shared.Constants.SourcePrefix.swiftBook,
             Shared.Constants.SourcePrefix.packages,
         ])
     }
 
-    @Test("silentlyIgnoresFilter covers the 7 unaware sources")
-    func silentlyIgnoresFilterMembership() {
-        // appleSampleCode is an alias of samples that the unified search
-        // tool routes to handleSearchSamples — listed here so dispatchSources
-        // can map either spelling deterministically.
-        #expect(Search.PlatformFilterScope.silentlyIgnoresFilter == [
-            Shared.Constants.SourcePrefix.appleArchive,
+    @Test("dispatchDropsFilter covers hig + the samples aliases")
+    func dispatchDropsFilterMembership() {
+        // Post-#226 expansion, `handleSearchSamples` now applies the
+        // filter via the single-platform precedence pick. The samples /
+        // apple-sample-code source remains in this bucket for the
+        // fan-out case (#732 follow-up — the fan-out's
+        // `unifiedService.searchSamples` path still uses
+        // `Sample.Index.Database.searchProjects` which doesn't accept
+        // platform args). When #732 lands and `searchProjects` gains
+        // the args, samples + apple-sample-code can move to
+        // `dispatchAppliesFilter`. HIG is structurally unfilterable
+        // (no platform-version axis on the data).
+        #expect(Search.PlatformFilterScope.dispatchDropsFilter == [
             Shared.Constants.SourcePrefix.hig,
-            Shared.Constants.SourcePrefix.swiftEvolution,
-            Shared.Constants.SourcePrefix.swiftOrg,
-            Shared.Constants.SourcePrefix.swiftBook,
             Shared.Constants.SourcePrefix.samples,
             Shared.Constants.SourcePrefix.appleSampleCode,
         ])
     }
 
-    @Test("appliesFilter and silentlyIgnoresFilter are disjoint")
+    @Test("dispatchAppliesFilter and dispatchDropsFilter are disjoint")
     func bucketsDisjoint() {
-        let overlap = Search.PlatformFilterScope.appliesFilter
-            .intersection(Search.PlatformFilterScope.silentlyIgnoresFilter)
+        let overlap = Search.PlatformFilterScope.dispatchAppliesFilter
+            .intersection(Search.PlatformFilterScope.dispatchDropsFilter)
         #expect(overlap.isEmpty, "A source cannot be in both buckets")
     }
 
@@ -68,6 +80,10 @@ struct Issue226PlatformFilterScopeBucketsTests {
 struct Issue226PartitionForNoticeTests {
     @Test("Mixed-source contributing list partitions correctly")
     func mixedSourcesPartition() {
+        // Post-#226 expansion: swift-evolution / swift-org / swift-book /
+        // apple-archive now route through `handleSearchDocs` which DOES
+        // apply the filter. Only `hig` + samples are unfiltered at the
+        // tool-handler boundary today.
         let result = Search.PlatformFilterScope.partitionForNotice(contributingSources: [
             Shared.Constants.SourcePrefix.appleDocs,
             Shared.Constants.SourcePrefix.hig,
@@ -77,10 +93,10 @@ struct Issue226PartitionForNoticeTests {
         #expect(result.filtered == [
             Shared.Constants.SourcePrefix.appleDocs,
             Shared.Constants.SourcePrefix.packages,
+            Shared.Constants.SourcePrefix.swiftEvolution,
         ])
         #expect(result.unfiltered == [
             Shared.Constants.SourcePrefix.hig,
-            Shared.Constants.SourcePrefix.swiftEvolution,
         ])
     }
 
@@ -94,11 +110,17 @@ struct Issue226PartitionForNoticeTests {
         #expect(result.filtered.count == 2)
     }
 
-    @Test("All-unaware contributing list partitions with empty filtered")
-    func allUnaware() {
+    @Test("Only hig + samples remain unaware post-#226 expansion")
+    func onlyHigAndSamplesUnaware() {
+        // Sanity-check the post-expansion bucket shape: hig + samples
+        // (+ apple-sample-code alias) are the only sources that stay in
+        // `dispatchDropsFilter`. Swift-evolution / swift-org / swift-book /
+        // apple-archive all moved to `dispatchAppliesFilter` because
+        // their dispatch goes through `handleSearchDocs` which now
+        // threads platform args at the SQL boundary.
         let result = Search.PlatformFilterScope.partitionForNotice(contributingSources: [
             Shared.Constants.SourcePrefix.hig,
-            Shared.Constants.SourcePrefix.swiftEvolution,
+            Shared.Constants.SourcePrefix.samples,
         ])
         #expect(result.filtered.isEmpty)
         #expect(result.unfiltered.count == 2)
@@ -149,10 +171,16 @@ struct Issue226DispatchSourcesTests {
         #expect(result == [Shared.Constants.SourcePrefix.samples])
     }
 
-    @Test("Unknown source returns empty list (tool throws later)")
-    func unknownSourceReturnsEmpty() {
+    @Test("Unknown source resolves to itself (tool throws later; partition treats it as unfiltered)")
+    func unknownSourceResolvesToSelf() {
+        // Post-#226 critic-pass: unknown sources resolve to `[source]`
+        // rather than `[]` so the notice partitioning treats them as
+        // unfiltered (the conservative classification). The tool-level
+        // dispatch still throws for unknown sources before any search
+        // runs, but the notice decision is made pre-dispatch so this
+        // path still has to return something honest.
         let result = Search.PlatformFilterScope.dispatchSources(for: "no-such-source")
-        #expect(result.isEmpty)
+        #expect(result == ["no-such-source"])
     }
 }
 
@@ -162,59 +190,61 @@ struct Issue226PartialNoticeMarkdownTests {
     func noPlatformDescriptionsReturnsNil() {
         let result = Search.PlatformFilterScope.partialNoticeMarkdown(
             platformDescriptions: [],
+            dispatch: .singleSource(Shared.Constants.SourcePrefix.hig),
             contributingSources: [Shared.Constants.SourcePrefix.hig]
         )
         #expect(result == nil)
     }
 
-    @Test("All-aware contributing list returns nil (no notice needed)")
-    func allAwareReturnsNil() {
+    @Test("Single-source dispatch through aware source returns nil")
+    func singleSourceAwareReturnsNil() {
         let result = Search.PlatformFilterScope.partialNoticeMarkdown(
             platformDescriptions: ["min_ios=18.0"],
-            contributingSources: [
-                Shared.Constants.SourcePrefix.appleDocs,
-                Shared.Constants.SourcePrefix.packages,
-            ]
+            dispatch: .singleSource(Shared.Constants.SourcePrefix.appleDocs),
+            contributingSources: [Shared.Constants.SourcePrefix.appleDocs]
         )
-        #expect(result == nil)
+        #expect(result == nil, "apple-docs goes through handleSearchDocs which applies the filter")
     }
 
-    @Test("Mixed-source contributing list emits notice with stable marker")
-    func mixedSourceFires() throws {
+    @Test("Single-source dispatch through unaware source fires")
+    func singleSourceUnawareFires() throws {
         let result = try #require(Search.PlatformFilterScope.partialNoticeMarkdown(
             platformDescriptions: ["min_ios=18.0"],
-            contributingSources: [
-                Shared.Constants.SourcePrefix.appleDocs,
-                Shared.Constants.SourcePrefix.hig,
-            ]
+            dispatch: .singleSource(Shared.Constants.SourcePrefix.hig),
+            contributingSources: [Shared.Constants.SourcePrefix.hig]
         ))
-        // Stable marker — AI clients grep for this rather than parsing.
         #expect(result.contains("platform_filter_partial"))
         #expect(result.contains("min_ios=18.0"))
-        #expect(result.contains(Shared.Constants.SourcePrefix.appleDocs))
         #expect(result.contains(Shared.Constants.SourcePrefix.hig))
     }
 
-    @Test("All-unaware contributing list still fires (filter completely ignored)")
-    func allUnawareFires() throws {
+    @Test("Fan-out dispatch reports ALL contributing sources as unfiltered when handleSearchAll drops them")
+    func fanOutReportsAllUnfiltered() throws {
         let result = try #require(Search.PlatformFilterScope.partialNoticeMarkdown(
             platformDescriptions: ["min_ios=18.0"],
+            dispatch: .fanOut,
             contributingSources: [
+                Shared.Constants.SourcePrefix.appleDocs,
                 Shared.Constants.SourcePrefix.hig,
-                Shared.Constants.SourcePrefix.swiftEvolution,
+                Shared.Constants.SourcePrefix.samples,
             ]
         ))
+        // Post-#226 expansion: handleSearchAll DOES thread platform args
+        // through to searchSource for 6 of 7 sources. Samples in the
+        // fan-out remains unfiltered today (#732). But the notice
+        // helper's `.fanOut` case reports all contributing sources as
+        // unfiltered conservatively — the wiring in `handleSearch`
+        // decides which dispatch kind to use; this case is the "old
+        // semantics" guard for callers that pass `.fanOut` to indicate
+        // every source is at-risk.
         #expect(result.contains("platform_filter_partial"))
-        // When no source honoured the filter we still want to be honest
-        // about what happened — message names the unfiltered list.
-        #expect(result.contains(Shared.Constants.SourcePrefix.hig))
-        #expect(result.contains(Shared.Constants.SourcePrefix.swiftEvolution))
     }
 
     @Test("Multiple platform descriptions are all listed")
     func multiplePlatforms() throws {
         let result = try #require(Search.PlatformFilterScope.partialNoticeMarkdown(
             platformDescriptions: ["min_ios=18.0", "min_macos=14.0"],
+            dispatch: .singleSource(Shared.Constants.SourcePrefix.hig),
             contributingSources: [Shared.Constants.SourcePrefix.hig]
         ))
         #expect(result.contains("min_ios=18.0"))
@@ -225,6 +255,7 @@ struct Issue226PartialNoticeMarkdownTests {
     func outputIsBlockquote() throws {
         let result = try #require(Search.PlatformFilterScope.partialNoticeMarkdown(
             platformDescriptions: ["min_ios=18.0"],
+            dispatch: .singleSource(Shared.Constants.SourcePrefix.hig),
             contributingSources: [Shared.Constants.SourcePrefix.hig]
         ))
         #expect(result.hasPrefix("> "))
@@ -234,6 +265,7 @@ struct Issue226PartialNoticeMarkdownTests {
     func outputEndsWithBlankLine() throws {
         let result = try #require(Search.PlatformFilterScope.partialNoticeMarkdown(
             platformDescriptions: ["min_ios=18.0"],
+            dispatch: .singleSource(Shared.Constants.SourcePrefix.hig),
             contributingSources: [Shared.Constants.SourcePrefix.hig]
         ))
         // Trailing "\n\n" so prepending to existing markdown produces a

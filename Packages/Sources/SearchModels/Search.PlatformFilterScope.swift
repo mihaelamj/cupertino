@@ -28,41 +28,68 @@ extension Search {
     /// `appliesFilter` here in one edit; the notice helper picks it up
     /// automatically.
     public enum PlatformFilterScope {
-        /// Sources whose tool handler applies the platform filter on
-        /// `min_*` columns at MCP dispatch time. A non-matching row is
-        /// excluded from the response. Apple-archive uses the same
-        /// `docs_metadata` table but legacy archive guides rarely carry
-        /// populated `min_*` columns — empirically the filter is a no-op
-        /// there, so we treat it as *not* applying for the notice
-        /// purposes (the notice would otherwise lie).
-        public static let appliesFilter: Set<String> = [
-            Shared.Constants.SourcePrefix.appleDocs,
-            Shared.Constants.SourcePrefix.packages,
-        ]
-
-        /// Sources whose tool handler does **not** apply the platform
-        /// filter at MCP dispatch time today. Either:
-        /// - Source has no platform-availability axis (article-shaped:
-        ///   `hig`, `swift-evolution`, `swift-org`, `swift-book`,
-        ///   `apple-archive`), so the filter is structurally not
-        ///   applicable.
-        /// - Or source's data carries `min_*` columns but the tool
-        ///   handler silently drops the filter at the MCP boundary
-        ///   (`samples` today — `handleSearchSamples` in
-        ///   `CompositeToolProvider.swift` does not thread platform args
-        ///   into `Sample.Search.Query`).
+        /// Sources whose `handleSearchDocs` dispatch DOES thread the
+        /// `min_*` platform args through to `Search.Database.search`,
+        /// causing a non-matching row to be excluded from the response.
         ///
-        /// The notice surfaces this fact to AI clients so they cannot
-        /// assume "filter applied uniformly across the result set."
-        public static let silentlyIgnoresFilter: Set<String> = [
+        /// All 6 sources here route through the same handler at
+        /// `CompositeToolProvider.handleSearch` lines 547-552. The filter
+        /// is applied uniformly; rows with NULL `min_*` are dropped per
+        /// the index's `IS NOT NULL` gate. Whether the source's data is
+        /// *populated* with `min_*` values is orthogonal to whether the
+        /// handler applies the filter — sparse data manifests as fewer
+        /// results, not as unfiltered results.
+        public static let dispatchAppliesFilter: Set<String> = [
+            Shared.Constants.SourcePrefix.appleDocs,
             Shared.Constants.SourcePrefix.appleArchive,
-            Shared.Constants.SourcePrefix.hig,
             Shared.Constants.SourcePrefix.swiftEvolution,
             Shared.Constants.SourcePrefix.swiftOrg,
             Shared.Constants.SourcePrefix.swiftBook,
+            Shared.Constants.SourcePrefix.packages,
+        ]
+
+        /// Sources whose tool handler does **not** thread the platform
+        /// filter through at all — the args are silently dropped at the
+        /// MCP boundary even when the data shape could support them.
+        ///
+        /// - `hig` → `handleSearchHIG(query:framework:limit:)` — no
+        ///   `min_*` parameters in the handler's signature.
+        /// - `samples` / `apple-sample-code` (alias) →
+        ///   `handleSearchSamples(query:framework:limit:)` — same shape.
+        ///   `samples` is the case where the data carries `min_*`
+        ///   columns (via #228) but the MCP handler doesn't pass them
+        ///   into `Sample.Search.Query`. Fixing that is filed as a
+        ///   follow-up.
+        ///
+        /// Results from these sources can carry rows that don't satisfy
+        /// the user's platform filter — the notice surfaces this so AI
+        /// clients can't assume uniform filtration.
+        public static let dispatchDropsFilter: Set<String> = [
+            Shared.Constants.SourcePrefix.hig,
             Shared.Constants.SourcePrefix.samples,
             Shared.Constants.SourcePrefix.appleSampleCode,
         ]
+
+        // MARK: - Legacy compatibility (deprecated aliases)
+
+        /// Deprecated: use `dispatchAppliesFilter` instead. Retained
+        /// as a transitional alias to avoid breaking the test suite
+        /// during the critic-pass rename in this PR; will be removed
+        /// before merge.
+        @available(*, deprecated, renamed: "dispatchAppliesFilter")
+        public static var appliesFilter: Set<String> {
+            dispatchAppliesFilter
+        }
+
+        /// Deprecated: use `dispatchDropsFilter` instead. The previous
+        /// name baked in the wrong classification of apple-archive +
+        /// swift-evolution / swift-org / swift-book (those go through
+        /// `handleSearchDocs` and DO apply the filter; the previous
+        /// classification told the user otherwise).
+        @available(*, deprecated, renamed: "dispatchDropsFilter")
+        public static var silentlyIgnoresFilter: Set<String> {
+            dispatchDropsFilter
+        }
 
         /// Filter a list of contributing source identifiers down to those
         /// that don't honour the platform filter. Used by the notice
@@ -79,7 +106,7 @@ extension Search {
             var filtered: [String] = []
             var unfiltered: [String] = []
             for source in contributingSources {
-                if appliesFilter.contains(source) {
+                if dispatchAppliesFilter.contains(source) {
                     filtered.append(source)
                 } else {
                     unfiltered.append(source)
@@ -103,39 +130,72 @@ extension Search {
             Shared.Constants.SourcePrefix.samples,
         ]
 
-        /// Resolve the source parameter of the unified MCP `search` tool
-        /// into the list of sources that will actually contribute to the
-        /// result set. Used by the notice helper before dispatch so the
-        /// caller can decide whether to fire the notice without waiting
-        /// for the search to run.
+        /// Describes how the unified `search` tool will route the user's
+        /// request. Drives the notice decision: fan-out via
+        /// `handleSearchAll` drops platform args silently for ALL
+        /// sources, so the notice must fire for every contributing
+        /// source — different from the specific-source case where only
+        /// `dispatchDropsFilter` sources need calling out.
+        public enum Dispatch: Sendable, Equatable {
+            /// Specific source dispatch: routes to `handleSearchSamples` /
+            /// `handleSearchHIG` / `handleSearchDocs`. Whether the filter
+            /// is honoured depends on which sub-handler runs.
+            case singleSource(String)
+            /// Fan-out dispatch (source = nil / empty / `"all"`):
+            /// routes to `handleSearchAll`, which today does NOT thread
+            /// platform args through to any of its 8 fetcher sources.
+            /// Every contributing source is unfiltered.
+            case fanOut
+        }
+
+        /// Resolve the user's `source` parameter into a `Dispatch`
+        /// classification + the list of sources that will contribute to
+        /// the result set. Used by the notice helper to decide what to
+        /// say.
         ///
-        /// - `nil`, `"all"`, empty string → fan-out (every source)
-        /// - any of `appleSampleCode` / `samples` → `[samples]` (alias
-        ///   canonicalisation; the data lives under the `samples` prefix)
-        /// - any known source identifier → `[source]`
-        /// - unknown source identifier → empty list (the tool throws
-        ///   later — no notice to fire pre-throw)
-        public static func dispatchSources(for source: String?) -> [String] {
+        /// - `nil`, `"all"`, empty string → `.fanOut` over all 8 sources
+        /// - `appleSampleCode` alias → `.singleSource(samples)` (canonicalised)
+        /// - any known specific source → `.singleSource(source)`
+        /// - unknown source → `.singleSource(source)` returned verbatim
+        ///   (the tool throws later; the notice would be moot)
+        public static func dispatch(
+            for source: String?
+        ) -> (kind: Dispatch, sources: [String]) {
             guard let source, !source.isEmpty, source != "all" else {
-                return allFanOutSources
+                return (.fanOut, allFanOutSources)
             }
             // Canonicalise sample-code alias to its prefix.
             if source == Shared.Constants.SourcePrefix.appleSampleCode {
-                return [Shared.Constants.SourcePrefix.samples]
+                return (
+                    .singleSource(Shared.Constants.SourcePrefix.samples),
+                    [Shared.Constants.SourcePrefix.samples]
+                )
             }
-            if appliesFilter.contains(source) || silentlyIgnoresFilter.contains(source) {
-                return [source]
-            }
-            return []
+            return (.singleSource(source), [source])
+        }
+
+        /// Deprecated alias used during the critic-pass rename. Returns
+        /// the source list from `dispatch(for:)` for callers that don't
+        /// need the dispatch kind.
+        @available(*, deprecated, message: "Use dispatch(for:) instead — the dispatch kind matters for the notice decision.")
+        public static func dispatchSources(for source: String?) -> [String] {
+            dispatch(for: source).sources
         }
 
         /// Produce the `info.platform_filter_partial` markdown notice
         /// block prepended to MCP tool responses when the user passes
-        /// platform filters AND at least one contributing source does
-        /// not honour them.
+        /// platform filters AND the dispatch path produces unfiltered
+        /// rows.
         ///
-        /// Returns `nil` when no notice is needed (no platform args set,
-        /// or every contributing source honours the filter).
+        /// Returns `nil` when no notice is needed:
+        /// - No platform descriptions provided
+        /// - Single-source dispatch through a handler that applies the
+        ///   filter (apple-docs / packages / etc. via handleSearchDocs)
+        ///
+        /// Fires when:
+        /// - `.fanOut` + any platform descriptions — `handleSearchAll`
+        ///   drops platform args for every source today
+        /// - `.singleSource(s)` where `s` ∈ `dispatchDropsFilter`
         ///
         /// The block is a Markdown blockquote with a stable bold marker
         /// (`**platform_filter_partial**`) at the start so AI clients
@@ -143,15 +203,26 @@ extension Search {
         /// parsing prose.
         public static func partialNoticeMarkdown(
             platformDescriptions: [String],
+            dispatch: Dispatch,
             contributingSources: [String]
         ) -> String? {
             guard !platformDescriptions.isEmpty else { return nil }
-            let parts = partitionForNotice(contributingSources: contributingSources)
-            guard !parts.unfiltered.isEmpty else { return nil }
-            let appliedTo = parts.filtered.isEmpty
+            let (filtered, unfiltered): ([String], [String]) = {
+                switch dispatch {
+                case .fanOut:
+                    // handleSearchAll drops platform args for every source today.
+                    // Every contributing source is reported as unfiltered.
+                    return ([], contributingSources)
+                case .singleSource:
+                    let parts = partitionForNotice(contributingSources: contributingSources)
+                    return (parts.filtered, parts.unfiltered)
+                }
+            }()
+            guard !unfiltered.isEmpty else { return nil }
+            let appliedTo = filtered.isEmpty
                 ? "no sources in this response"
-                : parts.filtered.joined(separator: ", ")
-            let notHonoured = parts.unfiltered.joined(separator: ", ")
+                : filtered.joined(separator: ", ")
+            let notHonoured = unfiltered.joined(separator: ", ")
             // Trailing "\n\n" gives a clean blank-line separation when the
             // notice is prepended to existing markdown content. Built via
             // explicit concatenation rather than relying on multi-line
