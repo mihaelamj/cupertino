@@ -29,9 +29,11 @@
 #   5. LABEL DRIFT: tracker-global checks for orphan `blocked_by_<N>`
 #      labels (target closed), `fix-in: v<X.Y.Z>` labels for shipped
 #      versions (SHIPPED_VERSIONS list), single-carrier topical labels
-#      (1 open carrier = grow or fold), and open issues missing kind
-#      or priority labels. Maintained `SHIPPED_VERSIONS` list keeps the
-#      check accurate without filesystem probes.
+#      (1 open carrier = grow or fold), and open issues missing a kind
+#      label. Canonical 5-label set is bug / enhancement / epic /
+#      `priority: high` / `good first issue`. Maintained
+#      `SHIPPED_VERSIONS` list keeps the check accurate without
+#      filesystem probes.
 #
 # Output: a markdown report on stdout (intended to be uploaded as a
 # tracking-issue body by the calling workflow). One section per check;
@@ -318,14 +320,19 @@ check_schema() {
 
 # --- Label drift (CHECK 5) -------------------------------------------
 #
-# Five sub-checks across all open + closed issues. These are NOT
+# Four sub-checks across all open + closed issues. These are NOT
 # per-issue body parses; they operate on the label list directly.
 #
 # 5a. Dead `blocked_by_<N>` labels where #N is CLOSED.
 # 5b. `fix-in: v<X.Y.Z>` labels for SHIPPED_VERSIONS (rename / delete).
 # 5c. Single-carrier labels (1 open issue carries it); grow or fold.
-# 5d. Open issues missing a kind label (enhancement / bug / etc.).
-# 5e. Open issues missing a priority label (excluding epics / wishlist).
+# 5d. Open issues missing a kind label (enhancement / bug / epic).
+#
+# Previously included a 5e "missing priority" sub-check. Dropped
+# 2026-05-17 when the label set trimmed to 5 (bug / enhancement /
+# epic / priority: high / good first issue). Priority is now
+# presence/absence, not a required axis, so the check no longer
+# applies.
 #
 # Output goes into a single LABEL_REPORT block so the workflow's
 # tracking issue keeps one section for the label axis.
@@ -372,9 +379,10 @@ check_labels_global() {
     # 5c. Single-carrier labels (1 open carrier, neither cluster nor footnote)
     while IFS= read -r lbl; do
         [ -z "$lbl" ] && continue
-        # Skip release/triage labels; they're axes, not topical
+        # Skip the canonical 5-label set; they are axes, not topical.
+        # The set: bug / enhancement / epic / priority: high / good first issue.
         case "$lbl" in
-            priority:*|complexity:*|"released-in:"*|"fix-in:"*|"fixed: "*|enhancement|bug|documentation|epic|"good first issue"|"help wanted"|duplicate|invalid|question|wontfix|blocked|blocker)
+            priority:*|"released-in:"*|"fix-in:"*|"fixed: "*|enhancement|bug|epic|"good first issue")
                 continue
                 ;;
         esac
@@ -387,23 +395,15 @@ check_labels_global() {
         fi
     done <<<"$labels_list"
 
-    # 5d + 5e. Per-open-issue: missing kind / missing priority
+    # 5d. Per-open-issue: missing kind label
     local issues_json
     issues_json=$(gh issue list -R "$REPO" --state open --limit 200 --json number,labels 2>/dev/null)
     local missing_kind
-    missing_kind=$(echo "$issues_json" | jq -r '.[] | select(([.labels[].name] | map(test("^(enhancement|bug|documentation|epic|wishlist)$")) | any) | not) | .number')
+    missing_kind=$(echo "$issues_json" | jq -r '.[] | select(([.labels[].name] | map(test("^(enhancement|bug|epic)$")) | any) | not) | .number')
     while IFS= read -r n; do
         [ -z "$n" ] && continue
-        report+="    - #${n} → missing kind label (no enhancement / bug / documentation / epic / wishlist)."$'\n'
+        report+="    - #${n} → missing kind label (no enhancement / bug / epic)."$'\n'
     done <<<"$missing_kind"
-
-    local missing_priority
-    missing_priority=$(echo "$issues_json" | jq -r '.[] | select([.labels[].name] | map(test("^(priority:|epic|wishlist)")) | any | not) | .number')
-    local count_no_priority
-    count_no_priority=$(echo "$missing_priority" | grep -c . 2>/dev/null || echo "0")
-    if [ "$count_no_priority" -gt 0 ]; then
-        report+="    - **${count_no_priority} open issues** missing \`priority:\` label (and not labeled epic / wishlist). Backfill candidates: $(echo "$missing_priority" | head -10 | tr '\n' ' ' | sed 's/ $//')$([ "$count_no_priority" -gt 10 ] && echo " ... (+$((count_no_priority - 10)) more)")."$'\n'
-    fi
 
     if [ -n "$report" ]; then
         echo "$report"
@@ -506,7 +506,7 @@ if [ -n "$LABEL_REPORT" ]; then
     DRIFT=true
     echo "## Label drift (check 5)"
     echo ""
-    echo "Tracker-level label problems: orphan \`blocked_by_<N>\` (referenced issue closed), \`fix-in: v<X.Y.Z>\` for shipped versions, single-carrier topical labels (grow or fold), and open issues missing a kind or priority label. Shipped versions are maintained in the script's \`SHIPPED_VERSIONS\` list, bump it when a new release tag drops."
+    echo "Tracker-level label problems: orphan \`blocked_by_<N>\` (referenced issue closed), \`fix-in: v<X.Y.Z>\` for shipped versions, single-carrier topical labels (grow or fold), and open issues missing a kind label (no bug / enhancement / epic). Shipped versions are maintained in the script's \`SHIPPED_VERSIONS\` list, bump it when a new release tag drops."
     echo ""
     printf "%s" "$LABEL_REPORT"
     echo ""

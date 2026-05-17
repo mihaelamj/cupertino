@@ -163,22 +163,21 @@ on bodies with 10x-wrong default values inside them.
   stale cross-refs (gh CLI state check), stale schema claims (schema
   file parse), and label drift (orphan `blocked_by_<N>`, shipped
   `fix-in: v<X.Y.Z>`, single-carrier topical labels, missing
-  kind/priority on open issues). Output is a tracking issue listing
-  each drift with a remediation hint per bullet. Shipped versions are
-  maintained in the script's `SHIPPED_VERSIONS` list; bump when a new
-  release tag drops.
+  kind label on open issues; the kind set is bug / enhancement /
+  epic). Output is a
+  tracking issue listing each drift with a remediation hint per
+  bullet. Shipped versions are maintained in the script's
+  `SHIPPED_VERSIONS` list; bump when a new release tag drops.
 - `.github/ISSUE_TEMPLATE/feature.yml` and
   `.github/ISSUE_TEMPLATE/bug.yml`. GitHub form templates. Required
-  inputs: status date. Required dropdowns: priority, complexity.
-  Required textareas: goal / acceptance (feature) or symptom /
-  expected / reproduce / acceptance (bug). Kind is determined by
-  which template the user picks (the static top-level `labels:` field
-  applies `enhancement` for feature, `bug` for bug). Priority and
-  complexity dropdown values are translated into matching labels by
-  `.github/workflows/issue-form-labeler.yml` on the `issues.opened`
-  event; form dropdowns do not auto-apply labels by themselves, they
-  only write the selected value into the issue body, so the labeler
-  closes the gap.
+  inputs: status date. Required textareas: goal / acceptance
+  (feature) or symptom / expected / reproduce / acceptance (bug).
+  No dropdowns: the brutal 5-label trim eliminated the priority
+  gradient and the complexity axis, so there is nothing for a form
+  dropdown to translate. Kind is applied by the form's static
+  top-level `labels:` field (feature picks `enhancement`, bug picks
+  `bug`). Maintainers apply `priority: high`, `epic`, `good first
+  issue` post-filing where warranted.
 
 **Rename-PR checklist (manual)**:
 
@@ -199,37 +198,55 @@ inside contains 10x-wrong default values."* The 2026-05-17 audit
 showed that without this explicit requirement, agents pattern-match on
 body polish rather than facts.
 
-**Label discipline (2026-05-17 cleanup)**:
+**Label discipline (2026-05-17 brutal trim)**:
 
-The label set is intentionally small. After the autopilot trim in
-PR #745 + sibling tracker comment in #744, the repo carries 25 labels
-across five axes:
+The label set is brutally small: **5 labels**. The Apple-Knuth-GoF
+convergent read: labels exist only to mechanically partition the
+issue space; anything else lives in the issue body.
 
-- **Kind** (5): `bug`, `enhancement`, `documentation`, `good first issue`,
-  `help wanted`. Determined at filing time by which issue template
-  the user picks (feature → `enhancement`, bug → `bug`).
-- **Priority** (3): `priority: high`, `priority: medium`, `priority: low`.
-  Required at filing time via the form dropdown; applied by
-  `issue-form-labeler.yml`.
-- **Complexity** (3): `complexity: low`, `complexity: medium`,
-  `complexity: high`. Same mechanism.
-- **Topical** (8): `epic`, `wishlist`, `source-expansion`,
-  `search-quality`, `internal-only`, `refactor`, `big-win`,
-  `transitional`, plus three `area: <surface>` namespaced labels.
-- **Lifecycle** (2): `fixed: awaiting release`, `released-in: v<X.Y.Z>`.
-  Applied at PR-merge / release-tag time.
+| Label | Apple palette | Use |
+|---|---|---|
+| `bug` | Red `#FF3B30` | Something ships incorrectly |
+| `enhancement` | Blue `#007AFF` | New feature, refactor, or design proposal |
+| `epic` | Purple `#AF52DE` | Aggregation parent of related issues; mechanically excluded from "missing kind" check |
+| `priority: high` | Red `#FF3B30` | Critical / release-gating / actively-blocking. Discriminating: absence means "do when you can." |
+| `good first issue` | Green `#34C759` | Newcomer-friendly; GitHub renders this specially in the contributor chooser |
 
-When adding a new label, ask first: does this label have at least
-3 expected open carriers? If not, fold the categorisation into the
-issue body instead. Single-carrier labels are footnotes pretending
-to be axes.
+Kind is determined at filing time (feature template applies
+`enhancement`, bug template applies `bug`). Maintainers add `epic`,
+`priority: high`, `good first issue` post-filing where appropriate.
 
-Colors follow Apple's published system palette (Red #FF3B30,
-Orange #FF9500, Yellow #FFCC00, Green #34C759, Mint #00C7BE,
-Teal #30B0C7, Cyan #32ADE6, Blue #007AFF, Indigo #5856D6,
-Purple #AF52DE, Pink #FF2D55, Brown #A2845E, Gray #8E8E93).
-Pick by semantic grouping (Red for urgent, Green for shipped /
-ready, Brown for maintainer / internal, Gray for speculative).
-Cross-axis colour overlaps are acceptable when the labels are
-unlikely to apply together (e.g., `area: distribution` and
-`priority: medium` both Orange; the same issue rarely carries both).
+What is **not** a label here:
+
+- **Complexity.** Read the diff. Knuth: if you need a label to tell
+  readers the issue is hard, your prose is failing.
+- **Priority gradient.** Apple: `priority: medium` and `priority: low`
+  collapse to "absence of `priority: high`." If the gradient doesn't
+  change behaviour, the gradient is decoration.
+- **Topical categorisation** (search-quality, source-expansion,
+  internal-only, refactor, area: distribution, etc.). GoF: these are
+  composition, not type. Encode in the body or in a milestone.
+- **Status / lifecycle** (`wishlist`, `transitional`, `blocker`,
+  `big-win`, `fixed: awaiting release`, `released-in: v<X.Y.Z>`).
+  GoF: status belongs to GitHub-native primitives (issue state,
+  Milestones, Project boards), not to labels.
+
+3-carrier rule: before creating a new label, the label must have at
+least 3 expected open carriers (today or within the next planning
+cycle). The 5 above all earn this. Single-carrier categorisations
+fold into the issue body. Apple wouldn't ship a footnote-disguised-
+as-axis; neither should we.
+
+Form templates (`.github/ISSUE_TEMPLATE/feature.yml` + `bug.yml`)
+carry NO dropdowns for priority or complexity. The form's static
+top-level `labels:` field applies the kind label at filing time;
+the labeler workflow that previously translated dropdown values is
+deleted (was `.github/workflows/issue-form-labeler.yml`).
+
+Colours follow Apple's published system palette per the Universal
+github-discipline rule (`mihaela-agents/Rules/universal/github-discipline.md`).
+Red `#FF3B30` for urgent; Blue `#007AFF` for active work; Purple
+`#AF52DE` for aggregation; Green `#34C759` for shipped / ready /
+newcomer-friendly. The other Apple system colours (Orange / Yellow /
+Mint / Teal / Cyan / Indigo / Pink / Brown / Gray) are reserved for
+labels we don't currently have.
