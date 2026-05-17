@@ -24,6 +24,9 @@ body:
     validations:
       required: true
 
+  # Dropdown values get translated into labels by .github/workflows/issue-form-labeler.yml
+  # at issues.opened time. Keep the options below in sync with the labeler's validation
+  # list, or new options will silently fail to apply.
   - type: dropdown
     id: priority
     attributes:

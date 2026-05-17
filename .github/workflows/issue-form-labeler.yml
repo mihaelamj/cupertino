@@ -39,7 +39,12 @@ jobs:
 
           add_label() {
             local val="$1"
-            # Validate against known labels to avoid arbitrary label creation.
+            # Validate against known labels to avoid arbitrary label
+            # creation. **Keep this list in sync with the dropdown
+            # options in .github/ISSUE_TEMPLATE/feature.yml and
+            # bug.yml.** If you add `priority: critical` to either
+            # form, add it here too or the labeler will silently
+            # refuse to apply it.
             case "$val" in
               "priority: high"|"priority: medium"|"priority: low") ;;
               "complexity: low"|"complexity: medium"|"complexity: high") ;;
@@ -59,12 +64,20 @@ jobs:
           #
           extract_under_heading() {
             local heading="$1"
-            # Print the next non-blank line after the heading. Robust
-            # against trailing whitespace and multiple blank lines.
-            awk -v h="$heading" '
-              $0 == "### " h { found = 1; next }
+            # Print the next non-blank line after the heading. Tolerant
+            # of trailing whitespace on the heading line (GitHub
+            # sometimes renders with stray spaces) and of multiple
+            # blank lines before the value.
+            #
+            # Escape regex metacharacters in the heading string so a
+            # heading like "Complexity (effort hint)" doesn't get
+            # parsed as a regex.
+            local escaped
+            escaped=$(printf '%s' "$heading" | sed 's/[.[\*^$()+?{|]/\\&/g')
+            awk -v h="$escaped" '
+              $0 ~ "^### " h "[[:space:]]*$" { found = 1; next }
               found && /^[[:space:]]*$/ { next }
-              found { print; exit }
+              found { sub(/[[:space:]]+$/, ""); print; exit }
             ' <<<"$ISSUE_BODY"
           }
 
