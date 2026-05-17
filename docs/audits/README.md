@@ -34,6 +34,13 @@ readiness, doc audit) lives here.
 | `doc-audit-2026-05-17.md` | Documentation audit | 7 staleness items addressed in PR #727 |
 | `release-readiness-v1.2.0.md` | Release-readiness snapshot | user-gated items the v1.2.0 ceremony needs |
 
+## Methodology
+
+[`methodology.md`](methodology.md) collects the conventions the audit
+passes surfaced — PR-body test-count discipline, source-comment
+promises, audit-doc location, and the 5 patterns Stage A protects
+against. Update it when a new lesson lands.
+
 ## Relation to the `cupertino` audit methodology
 
 Each Stage of the ironclad-sweep methodology produces one doc here:
