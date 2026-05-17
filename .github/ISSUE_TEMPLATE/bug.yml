@@ -8,6 +8,8 @@ body:
       value: |
         **Carmack discipline (`#673`)**: a bug is not closed until the class of bug can't recur. The fix lands with a pinned regression test that fails before the fix and passes after.
 
+        **Labels are minimal**: the canonical set is `bug` / `enhancement` / `epic` / `priority: high` / `good first issue`. The `bug` label is applied at filing time by this template. Maintainers add `priority: high` post-filing if the bug is genuinely critical (release-gating or correctness-blocking); otherwise the bug is implicitly low-priority by absence of that label.
+
   - type: input
     id: status_date
     attributes:
@@ -21,33 +23,6 @@ body:
     attributes:
       label: cupertino version
       description: Output of `cupertino --version` (and the commit SHA if reproduced from source).
-    validations:
-      required: true
-
-  # Dropdown values get translated into labels by .github/workflows/issue-form-labeler.yml
-  # at issues.opened time. Keep the options below in sync with the labeler's validation
-  # list, or new options will silently fail to apply.
-  - type: dropdown
-    id: priority
-    attributes:
-      label: Priority
-      description: Critical / Medium / Low. Triage signal.
-      options:
-        - "priority: high"
-        - "priority: medium"
-        - "priority: low"
-    validations:
-      required: true
-
-  - type: dropdown
-    id: complexity
-    attributes:
-      label: Complexity (effort hint)
-      description: Best guess at fix difficulty. Update once root cause is known.
-      options:
-        - "complexity: low"
-        - "complexity: medium"
-        - "complexity: high"
     validations:
       required: true
 
