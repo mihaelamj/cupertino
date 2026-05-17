@@ -8,10 +8,10 @@ import Testing
 // This file pins the source-of-truth bucket assignments + the notice-formatting
 // helper. Both behaviours must remain stable across refactors:
 //
-//   1. The `appliesFilter` / `silentlyIgnoresFilter` partition decides
-//      whether the cross-source partial-filter notice fires; getting it
-//      wrong silently misleads AI clients about which results were
-//      filtered.
+//   1. The `dispatchAppliesFilter` / `dispatchDropsFilter` partition
+//      decides whether the cross-source partial-filter notice fires;
+//      getting it wrong silently misleads AI clients about which
+//      results were filtered.
 //   2. The `partialNoticeMarkdown` output must carry the stable
 //      `platform_filter_partial` marker so AI clients can grep for it
 //      rather than parsing prose.

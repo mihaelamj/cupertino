@@ -20,13 +20,13 @@ extension Search {
     /// - "Source's data shape carries `min_*` columns" — apple-docs,
     ///   packages, samples. Theoretically filterable.
     /// - "Source's MCP tool handler actually applies the filter at query
-    ///   time" — today only apple-docs and packages.
+    ///   time" — today apple-docs, packages, and samples (#732).
     ///
     /// This type encodes the second (the user-visible behaviour), not the
-    /// first. When `handleSearchSamples` is updated to thread the filter
-    /// through, `samples` moves from `silentlyIgnoresFilter` to
-    /// `appliesFilter` here in one edit; the notice helper picks it up
-    /// automatically.
+    /// first. When a new source's handler starts threading the filter
+    /// through, the source identifier moves from `dispatchDropsFilter`
+    /// to `dispatchAppliesFilter` here in one edit; the notice helper
+    /// picks it up automatically.
     public enum PlatformFilterScope {
         /// Sources whose `handleSearchDocs` dispatch DOES thread the
         /// `min_*` platform args through to `Search.Database.search`,
