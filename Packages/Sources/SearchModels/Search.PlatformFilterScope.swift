@@ -73,27 +73,6 @@ extension Search {
             Shared.Constants.SourcePrefix.hig,
         ]
 
-        // MARK: - Legacy compatibility (deprecated aliases)
-
-        /// Deprecated: use `dispatchAppliesFilter` instead. Retained
-        /// as a transitional alias to avoid breaking the test suite
-        /// during the critic-pass rename in this PR; will be removed
-        /// before merge.
-        @available(*, deprecated, renamed: "dispatchAppliesFilter")
-        public static var appliesFilter: Set<String> {
-            dispatchAppliesFilter
-        }
-
-        /// Deprecated: use `dispatchDropsFilter` instead. The previous
-        /// name baked in the wrong classification of apple-archive +
-        /// swift-evolution / swift-org / swift-book (those go through
-        /// `handleSearchDocs` and DO apply the filter; the previous
-        /// classification told the user otherwise).
-        @available(*, deprecated, renamed: "dispatchDropsFilter")
-        public static var silentlyIgnoresFilter: Set<String> {
-            dispatchDropsFilter
-        }
-
         /// Filter a list of contributing source identifiers down to those
         /// that don't honour the platform filter. Used by the notice
         /// helper to enumerate the sources the user should know were not
