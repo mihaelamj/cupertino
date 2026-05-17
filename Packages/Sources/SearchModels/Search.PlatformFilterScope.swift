@@ -20,13 +20,13 @@ extension Search {
     /// - "Source's data shape carries `min_*` columns" — apple-docs,
     ///   packages, samples. Theoretically filterable.
     /// - "Source's MCP tool handler actually applies the filter at query
-    ///   time" — today only apple-docs and packages.
+    ///   time" — today apple-docs, packages, and samples (#732).
     ///
     /// This type encodes the second (the user-visible behaviour), not the
-    /// first. When `handleSearchSamples` is updated to thread the filter
-    /// through, `samples` moves from `silentlyIgnoresFilter` to
-    /// `appliesFilter` here in one edit; the notice helper picks it up
-    /// automatically.
+    /// first. When a new source's handler starts threading the filter
+    /// through, the source identifier moves from `dispatchDropsFilter`
+    /// to `dispatchAppliesFilter` here in one edit; the notice helper
+    /// picks it up automatically.
     public enum PlatformFilterScope {
         /// Sources whose `handleSearchDocs` dispatch DOES thread the
         /// `min_*` platform args through to `Search.Database.search`,
@@ -72,27 +72,6 @@ extension Search {
         public static let dispatchDropsFilter: Set<String> = [
             Shared.Constants.SourcePrefix.hig,
         ]
-
-        // MARK: - Legacy compatibility (deprecated aliases)
-
-        /// Deprecated: use `dispatchAppliesFilter` instead. Retained
-        /// as a transitional alias to avoid breaking the test suite
-        /// during the critic-pass rename in this PR; will be removed
-        /// before merge.
-        @available(*, deprecated, renamed: "dispatchAppliesFilter")
-        public static var appliesFilter: Set<String> {
-            dispatchAppliesFilter
-        }
-
-        /// Deprecated: use `dispatchDropsFilter` instead. The previous
-        /// name baked in the wrong classification of apple-archive +
-        /// swift-evolution / swift-org / swift-book (those go through
-        /// `handleSearchDocs` and DO apply the filter; the previous
-        /// classification told the user otherwise).
-        @available(*, deprecated, renamed: "dispatchDropsFilter")
-        public static var silentlyIgnoresFilter: Set<String> {
-            dispatchDropsFilter
-        }
 
         /// Filter a list of contributing source identifiers down to those
         /// that don't honour the platform filter. Used by the notice
