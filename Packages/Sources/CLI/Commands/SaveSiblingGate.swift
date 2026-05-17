@@ -27,9 +27,16 @@ import LoggingModels
 // - argv-derived target-DB enum (search / packages / samples)
 // - interactive [c]/[w]/[a] prompt + non-interactive abort
 //
-// Deferred to a follow-up PR (mentioned in the issue):
-// - `--force-replace` flag with typed-confirmation gate
-// - `--from-setup` suppression for the `setup → save` pipeline
+// #722 follow-up shipped on top of the must-have:
+// - `--force-replace` flag with typed-confirmation gate + SIGTERM /
+//   grace / SIGKILL termination ladder for the sibling save
+// - `--yes` non-interactive bypass for the typed-confirmation prompt
+//   (CI / scripted invocations)
+//
+// Out of scope (the `--from-setup` half from #722's issue body was
+// found moot — `cupertino setup` is a download-and-extract pipeline,
+// not a setup→save subprocess pipeline; no spawned-save false-positive
+// exists today).
 
 enum SaveSiblingGate {
     // MARK: - Target
@@ -66,6 +73,31 @@ enum SaveSiblingGate {
         case proceed
         case waitForSiblingsThenProceed(pids: [pid_t])
         case abort(reason: String)
+        /// #722 — `--force-replace` authorised by the user. Caller is
+        /// expected to invoke `terminateSiblings(pids:recording:)`
+        /// before proceeding with the save.
+        case forceReplaceSiblings(pids: [pid_t])
+    }
+
+    /// Outcome of `parseTypedReplaceConfirmation(_:)`. Lifted out so
+    /// tests can assert on the discrete branches without depending on
+    /// the I/O wrapper that reads stdin.
+    enum TypedConfirmation: Equatable {
+        case accepted
+        case rejected(input: String)
+    }
+
+    /// Parse the typed-confirmation gate's stdin response (#722). The
+    /// gate requires the literal word `replace` (case-insensitive,
+    /// surrounding whitespace tolerated) — anything else aborts.
+    ///
+    /// Pure function so the test surface doesn't need to drive stdin.
+    /// The interactive prompt at the call site reads the response with
+    /// `readLine()` and forwards into this parser.
+    static func parseTypedReplaceConfirmation(_ raw: String?) -> TypedConfirmation {
+        guard let raw else { return .rejected(input: "") }
+        let normalized = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return normalized == "replace" ? .accepted : .rejected(input: raw)
     }
 
     // MARK: - Top-level gate
@@ -82,7 +114,9 @@ enum SaveSiblingGate {
     /// run before the actor-typed composition root is even consulted.
     static func gate(
         myTargets: Set<Target>,
-        recording: any LoggingModels.Logging.Recording
+        recording: any LoggingModels.Logging.Recording,
+        forceReplace: Bool = false,
+        assumeYes: Bool = false
     ) -> Action {
         let siblings = detectSiblings()
         let conflicting = siblings.filter { !$0.targets.intersection(myTargets).isEmpty }
@@ -101,6 +135,21 @@ enum SaveSiblingGate {
             return .proceed
         }
 
+        // #722 — `--force-replace` short-circuits the [c]/[w]/[a]
+        // prompt. The user has explicitly opted into killing the
+        // sibling save. Still gated by a typed-confirmation step
+        // (interactive TTY) or `--yes` (CI / scripted) — never
+        // unconditional, because nuking a multi-hour build by
+        // accident is exactly the class-of-bug this PR exists to
+        // prevent.
+        if forceReplace {
+            return promptForceReplace(
+                conflicting: conflicting,
+                assumeYes: assumeYes,
+                recording: recording
+            )
+        }
+
         // TTY → prompt. Non-TTY → abort.
         if isatty(fileno(stdin)) != 0 {
             return promptInteractive(conflicting: conflicting, recording: recording)
@@ -114,6 +163,127 @@ enum SaveSiblingGate {
                 "Another `cupertino save` is already building [\(unique)] (\(pids)). " +
                     "Re-run interactively to choose, or wait for it to finish.")
         }
+    }
+
+    // MARK: - Force-replace path (#722)
+
+    /// Handle the `--force-replace` opt-in. Two sub-paths:
+    ///
+    /// 1. Interactive TTY + no `--yes` → typed-confirmation gate.
+    ///    User must type the literal word `replace` to authorise
+    ///    SIGTERM. Single keystroke isn't enough — this is the kind
+    ///    of action that should never happen by mistake.
+    /// 2. `--yes` set (or non-TTY with `--yes`) → log the action +
+    ///    return `.forceReplaceSiblings` immediately. Skips the
+    ///    typed-confirmation gate because the caller already opted
+    ///    in via flag.
+    ///
+    /// Non-TTY without `--yes` → abort, same as the unscripted-non-
+    /// interactive case. `--force-replace` alone is meaningless in
+    /// a non-interactive context.
+    private static func promptForceReplace(
+        conflicting: [Sibling],
+        assumeYes: Bool,
+        recording: any LoggingModels.Logging.Recording
+    ) -> Action {
+        let pids = conflicting.map(\.pid)
+        let pidsString = pids.map(String.init).joined(separator: ", ")
+
+        // `--yes` short-circuits the typed gate.
+        if assumeYes {
+            recording.info("", category: .cli)
+            for sibling in conflicting {
+                let dbs = sibling.targets.map(\.dbFilename).sorted().joined(separator: ", ")
+                recording.info(
+                    "⚠️  --force-replace --yes: will SIGTERM PID \(sibling.pid) (cupertino save, \(sibling.elapsed) elapsed, building [\(dbs)])",
+                    category: .cli
+                )
+            }
+            return .forceReplaceSiblings(pids: pids)
+        }
+
+        // Non-TTY without `--yes` → abort. `--force-replace` needs
+        // either an interactive confirmation or an explicit `--yes`;
+        // unattended force-kill is exactly the foot-gun this gate
+        // exists to prevent.
+        guard isatty(fileno(stdin)) != 0 else {
+            return .abort(reason:
+                "--force-replace requires either an interactive TTY (for the typed-confirmation gate) " +
+                    "or `--yes` to bypass. Non-interactive invocation refused — re-run with `--yes` " +
+                    "to authorise SIGTERM on PID(s) \(pidsString).")
+        }
+
+        // Typed-confirmation gate.
+        recording.info("", category: .cli)
+        recording.info("⚠️  --force-replace will SIGTERM the following sibling save(s):", category: .cli)
+        for sibling in conflicting {
+            let dbs = sibling.targets.map(\.dbFilename).sorted().joined(separator: ", ")
+            recording.info(
+                "   PID \(sibling.pid)  •  \(sibling.elapsed) elapsed  •  building [\(dbs)]",
+                category: .cli
+            )
+        }
+        recording.info("", category: .cli)
+        recording.info("This will lose any in-flight work the sibling has done.", category: .cli)
+        recording.info("Type 'replace' to confirm:", category: .cli)
+        print("> ", terminator: "")
+
+        switch parseTypedReplaceConfirmation(readLine()) {
+        case .accepted:
+            recording.info("✅ confirmed — SIGTERMing PID(s) \(pidsString)", category: .cli)
+            return .forceReplaceSiblings(pids: pids)
+        case .rejected(let input):
+            let echoed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+            return .abort(reason:
+                "Typed-confirmation gate rejected input '\(echoed)' (expected 'replace'). " +
+                    "No siblings were terminated.")
+        }
+    }
+
+    /// SIGTERM each sibling PID, wait up to `graceSeconds` for clean
+    /// exit (so SQLite has time to flush its WAL + checkpoint), then
+    /// SIGKILL any that didn't exit. Caller is expected to have already
+    /// passed the typed-confirmation gate (`promptForceReplace`).
+    ///
+    /// Logs each step via the recorder. The grace window matters: a
+    /// SIGKILL mid-INSERT leaves the DB in a corrupted state that the
+    /// next `cupertino save` will surface as `database is locked` or
+    /// `database disk image is malformed`. SIGTERM-then-wait is the
+    /// safe path; SIGKILL is the fallback for stuck processes.
+    static func terminateSiblings(
+        pids: [pid_t],
+        graceSeconds: TimeInterval = 30,
+        pollInterval: TimeInterval = 1.0,
+        recording: any LoggingModels.Logging.Recording
+    ) {
+        guard !pids.isEmpty else { return }
+        recording.info("⚠️  Sending SIGTERM to PID(s) \(pids.map(String.init).joined(separator: ", "))", category: .cli)
+        for pid in pids {
+            if kill(pid, SIGTERM) != 0, errno != ESRCH {
+                recording.warning("⚠️  SIGTERM PID \(pid) failed (errno \(errno)); will SIGKILL after grace.", category: .cli)
+            }
+        }
+
+        // Wait up to `graceSeconds`, polling each `pollInterval`. Any
+        // PID still alive after grace gets SIGKILL.
+        let deadline = Date().addingTimeInterval(graceSeconds)
+        var remaining = Set(pids)
+        while !remaining.isEmpty, Date() < deadline {
+            Thread.sleep(forTimeInterval: pollInterval)
+            remaining = remaining.filter { kill($0, 0) == 0 }
+            if !remaining.isEmpty {
+                recording.info(
+                    "⏳ waiting for clean exit: PID(s) \(remaining.map(String.init).sorted().joined(separator: ", "))",
+                    category: .cli
+                )
+            }
+        }
+        // SIGKILL stragglers.
+        for pid in remaining {
+            recording.warning("⚠️  PID \(pid) didn't exit within \(Int(graceSeconds))s — SIGKILL.", category: .cli)
+            _ = kill(pid, SIGKILL)
+        }
+        recording.info("✅ Sibling save(s) terminated. Continuing.", category: .cli)
     }
 
     // MARK: - Interactive prompt

@@ -138,6 +138,27 @@ extension CLIImpl.Command {
         )
         var dryRun: Bool = false
 
+        /// #722 — opt-in override of the concurrent-save gate. When a
+        /// sibling `cupertino save` is already targeting one of our
+        /// DBs, this flag authorises sending it SIGTERM (with a grace
+        /// window for clean WAL flush, then SIGKILL fallback) before
+        /// proceeding with our own save. Gated by a typed-confirmation
+        /// prompt (TTY) or `--yes` (CI / scripted) — never
+        /// unconditional, because nuking an in-flight multi-hour build
+        /// by accident is exactly the class-of-bug this exists to
+        /// prevent.
+        @Flag(
+            name: .long,
+            help: """
+            Authorise SIGTERM of any sibling `cupertino save` that targets the same DB(s). \
+            Requires either an interactive typed-confirmation gate (type 'replace') or `--yes` \
+            for non-interactive use (CI, scripts). Sends SIGTERM, waits up to 30s for clean WAL \
+            flush, SIGKILL fallback. Use sparingly — losing the sibling's in-flight work is the \
+            point of the typed-confirmation gate.
+            """
+        )
+        var forceReplace: Bool = false
+
         mutating func run() async throws {
             if remote {
                 try await runRemote()
@@ -160,11 +181,21 @@ extension CLIImpl.Command {
             if buildSamples { myTargets.insert(.samples) }
 
             let recording = Cupertino.Context.composition.logging.recording
-            switch SaveSiblingGate.gate(myTargets: myTargets, recording: recording) {
+            switch SaveSiblingGate.gate(
+                myTargets: myTargets,
+                recording: recording,
+                forceReplace: forceReplace,
+                assumeYes: yes
+            ) {
             case .proceed:
                 break
             case .waitForSiblingsThenProceed(let pids):
                 SaveSiblingGate.waitForSiblings(pids: pids, recording: recording)
+            case .forceReplaceSiblings(let pids):
+                // #722 — typed-confirmation gate already passed (or
+                // `--yes` bypassed it). Terminate siblings + wait for
+                // clean WAL flush before proceeding.
+                SaveSiblingGate.terminateSiblings(pids: pids, recording: recording)
             case .abort(let reason):
                 recording.info("❌ \(reason)", category: .cli)
                 throw ExitCode.failure
