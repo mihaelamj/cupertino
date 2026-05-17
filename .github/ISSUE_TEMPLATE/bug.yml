@@ -1,0 +1,99 @@
+name: Bug report
+description: Something that ships incorrectly. For new work, use the Feature template.
+title: ""
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Carmack discipline (`#673`)**: a bug is not closed until the class of bug can't recur. The fix lands with a pinned regression test that fails before the fix and passes after.
+
+  - type: input
+    id: status_date
+    attributes:
+      label: Status date (YYYY-MM-DD)
+      description: Today's date in YYYY-MM-DD format. Update the status block on root-cause / fix-in-flight / merged / awaiting-release / closed.
+    validations:
+      required: true
+
+  - type: input
+    id: cupertino_version
+    attributes:
+      label: cupertino version
+      description: Output of `cupertino --version` (and the commit SHA if reproduced from source).
+    validations:
+      required: true
+
+  # Dropdown values get translated into labels by .github/workflows/issue-form-labeler.yml
+  # at issues.opened time. Keep the options below in sync with the labeler's validation
+  # list, or new options will silently fail to apply.
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: Critical / Medium / Low. Triage signal.
+      options:
+        - "priority: high"
+        - "priority: medium"
+        - "priority: low"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Complexity (effort hint)
+      description: Best guess at fix difficulty. Update once root cause is known.
+      options:
+        - "complexity: low"
+        - "complexity: medium"
+        - "complexity: high"
+    validations:
+      required: true
+
+  - type: textarea
+    id: symptom
+    attributes:
+      label: Symptom
+      description: What goes wrong. Verbatim command and actual output where applicable.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+      description: What should happen instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduce
+      description: Minimal steps. Cite the commit SHA the symptom reproduces on.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance
+      description: The fix is done when these are true. Per Carmack discipline, close the class of bug, not just the instance.
+      value: |
+        - [ ] Root cause identified and named in the fix PR
+        - [ ] Regression test pinned: `Issue<N><Concern>Tests` (or equivalent)
+        - [ ] CHANGELOG entry under `### Fixed`
+        - [ ] If the bug surfaced a class-of-bug (multiple sites at risk), audit and fix the rest in the same PR or a follow-up named here
+    validations:
+      required: true
+
+  - type: textarea
+    id: related
+    attributes:
+      label: Related
+      description: Cross-references and prior art. File paths cited here must exist at filing time (mechanical check via `scripts/check-issue-body-staleness.sh`).
+    validations:
+      required: false

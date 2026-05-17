@@ -1,0 +1,118 @@
+name: Issue body staleness
+
+# Nightly scan of every open issue body for drift (renamed paths,
+# phantom paths, stale cross-refs, stale schema claims). Output is
+# uploaded to a single tracking issue that the pair workflow walks
+# in the next bug-list pass.
+#
+# Origin: 2026-05-17 full-tracker audit found 47 of 56 open issues had
+# at least one factual error. This workflow is the mechanical backstop
+# so the next deep audit doesn't have to hand-find the same drift.
+#
+# Methodology: docs/audits/methodology.md (section "Issue body
+# hygiene"). Script: scripts/check-issue-body-staleness.sh.
+
+on:
+  schedule:
+    # Daily at 09:00 UTC. The pair workflow checks the tracking issue
+    # in its morning bug-list triage; this ensures the report is fresh.
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+    # Allow manual invocation from the Actions tab so a contributor
+    # can run the scan ad-hoc without waiting for the cron tick.
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  scan:
+    name: Scan open issue bodies
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run staleness scan
+        id: scan
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          ./scripts/check-issue-body-staleness.sh > /tmp/staleness-report.md
+          EXIT=$?
+          echo "exit_code=$EXIT" >> "$GITHUB_OUTPUT"
+          # Always cat the report into the job log so the workflow run
+          # itself is browsable without opening the tracking issue.
+          echo "--- Scan output ---"
+          cat /tmp/staleness-report.md
+          # Don't fail the job here; the issue update is the signal.
+          exit 0
+
+      - name: Upsert tracking issue
+        if: steps.scan.outputs.exit_code != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Find an existing tracking issue by the marker title.
+          # We use a stable title so the workflow updates one issue
+          # rather than filing a new one per run.
+          TITLE="Issue body staleness tracker (auto-updated)"
+
+          # Exact-match the tracker title. `gh --search "$TITLE in:title"`
+          # is a substring search and would match "Issue body staleness
+          # tracker (auto-updated)" against any future issue whose title
+          # contained that phrase. The post-filter with jq pins it.
+          existing=$(gh issue list \
+            --repo "${{ github.repository }}" \
+            --state open \
+            --search "$TITLE in:title" \
+            --json number,title \
+            --jq "[.[] | select(.title == \"$TITLE\")] | .[0].number // empty")
+
+          if [ -n "$existing" ]; then
+            echo "Updating existing tracking issue #$existing"
+            gh issue edit "$existing" \
+              --repo "${{ github.repository }}" \
+              --body-file /tmp/staleness-report.md
+          else
+            echo "Filing new tracking issue"
+            gh issue create \
+              --repo "${{ github.repository }}" \
+              --title "$TITLE" \
+              --body-file /tmp/staleness-report.md \
+              --label "documentation"
+          fi
+
+      - name: Close tracking issue if clean
+        if: steps.scan.outputs.exit_code == '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # If a previous run filed a tracking issue and this run is
+          # clean, post a "now-clean" comment and close. Keeps the
+          # tracker honest: empty open trackers shouldn't linger.
+          TITLE="Issue body staleness tracker (auto-updated)"
+
+          # Exact-match the tracker title. `gh --search "$TITLE in:title"`
+          # is a substring search and would match "Issue body staleness
+          # tracker (auto-updated)" against any future issue whose title
+          # contained that phrase. The post-filter with jq pins it.
+          existing=$(gh issue list \
+            --repo "${{ github.repository }}" \
+            --state open \
+            --search "$TITLE in:title" \
+            --json number,title \
+            --jq "[.[] | select(.title == \"$TITLE\")] | .[0].number // empty")
+
+          if [ -n "$existing" ]; then
+            echo "Closing existing tracking issue #$existing (clean scan)"
+            gh issue comment "$existing" \
+              --repo "${{ github.repository }}" \
+              --body "✅ Clean scan at $(date -u +%Y-%m-%dT%H:%M:%SZ). Closing; will reopen on next drift."
+            gh issue close "$existing" \
+              --repo "${{ github.repository }}"
+          else
+            echo "Clean scan; no existing tracker to close."
+          fi

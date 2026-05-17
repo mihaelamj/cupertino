@@ -113,3 +113,123 @@ against — list them here in case the audit doc is later archived.
 These five patterns are how the audit catches false closures. Future
 audit passes should start from this list and probe each pattern
 explicitly per issue under review.
+
+## Issue body hygiene (2026-05-17 full-tracker audit)
+
+**Trigger**: deep one-by-one audit of all 56 open issues found that
+47 had at least one factual error in the body. Stale file paths after
+the namespacing pass, phantom paths citing files that were never
+written, wrong issue numbers in cross-refs, schema column claims that
+no longer match the schema file. Earlier shallow audits (structural
+checks against body shape) had returned "well-written, keep" verdicts
+on bodies with 10x-wrong default values inside them.
+
+**Conventions for issue bodies**:
+
+1. **Status block at the top, dated**. Every issue carries a
+   `## Status (YYYY-MM-DD)` heading as the first section. New-issue
+   templates under `.github/ISSUE_TEMPLATE/` enforce this at filing
+   time. When state changes, edit the status block in place with a
+   new date line; the rest of the body stays as the original framing.
+   Issues without a status block age into fiction within a month.
+2. **No line numbers**. File references use symbol names, not
+   `Foo.swift:142`. Lines drift on every PR; symbols don't. When you
+   absolutely need a line anchor, write it as
+   `Foo.swift (the searchSymbols function)` so the symbol survives
+   even if the line moves.
+3. **No phantom paths**. Every backtick-quoted file path in an issue
+   body must EXIST in the repo (or in a declared sibling repo) at
+   write time. The script
+   `scripts/check-issue-body-staleness.sh` greps `\`path\`` patterns
+   and checks the filesystem. If a path doesn't exist anywhere, the
+   citation is a fabrication and must be rewritten.
+4. **Cross-ref hygiene**. When citing `#NNN` in blocker phrasing
+   ("blocked on", "pending in", "depends on", "after #N lands"), the
+   referenced issue must be OPEN at write time. When the referenced
+   issue closes, the citing issue's body needs the line edited (the
+   dep shipped; say so) or the cross-ref removed. The staleness
+   script flags violations.
+5. **Schema claims are checkable**. Don't cite
+   `<table>.<column>` shapes you haven't verified against the current
+   `Search.Index.Schema.swift` (or `PackageIndex.swift` /
+   `Sample.Index.Database.swift`). Migrations move columns;
+   pre-migration bodies stay stale until rewritten.
+
+**Mechanical enforcement**:
+
+- `scripts/check-issue-body-staleness.sh`. Runs nightly via
+  `.github/workflows/issue-body-staleness.yml`. Five checks: renamed
+  paths (maintained rename map), phantom paths (filesystem check),
+  stale cross-refs (gh CLI state check), stale schema claims (schema
+  file parse), and label drift (orphan `blocked_by_<N>`, shipped
+  `fix-in: v<X.Y.Z>`, single-carrier topical labels, missing
+  kind/priority on open issues). Output is a tracking issue listing
+  each drift with a remediation hint per bullet. Shipped versions are
+  maintained in the script's `SHIPPED_VERSIONS` list; bump when a new
+  release tag drops.
+- `.github/ISSUE_TEMPLATE/feature.yml` and
+  `.github/ISSUE_TEMPLATE/bug.yml`. GitHub form templates. Required
+  inputs: status date. Required dropdowns: priority, complexity.
+  Required textareas: goal / acceptance (feature) or symptom /
+  expected / reproduce / acceptance (bug). Kind is determined by
+  which template the user picks (the static top-level `labels:` field
+  applies `enhancement` for feature, `bug` for bug). Priority and
+  complexity dropdown values are translated into matching labels by
+  `.github/workflows/issue-form-labeler.yml` on the `issues.opened`
+  event; form dropdowns do not auto-apply labels by themselves, they
+  only write the selected value into the issue body, so the labeler
+  closes the gap.
+
+**Rename-PR checklist (manual)**:
+
+When a PR renames, splits, or moves a file, the author runs the
+staleness script's renamed-paths check
+(`scripts/check-issue-body-staleness.sh --check=renamed`) and updates
+any matched issue bodies in the same PR. Adding a new rename to the
+script's `RENAME_MAP` is part of the rename PR itself, not a follow-up.
+
+**Audit-prompt requirement**:
+
+Audit agents invoked under `Stage A` / closure-replay / full-tracker
+methodology must be given this doc as required reading, and the audit
+prompt must include the line: *"verify every code reference and every
+cross-reference against current source; structural body-shape checks
+return false-positive 'well-written, keep' verdicts on bodies whose
+inside contains 10x-wrong default values."* The 2026-05-17 audit
+showed that without this explicit requirement, agents pattern-match on
+body polish rather than facts.
+
+**Label discipline (2026-05-17 cleanup)**:
+
+The label set is intentionally small. After the autopilot trim in
+PR #745 + sibling tracker comment in #744, the repo carries 25 labels
+across five axes:
+
+- **Kind** (5): `bug`, `enhancement`, `documentation`, `good first issue`,
+  `help wanted`. Determined at filing time by which issue template
+  the user picks (feature → `enhancement`, bug → `bug`).
+- **Priority** (3): `priority: high`, `priority: medium`, `priority: low`.
+  Required at filing time via the form dropdown; applied by
+  `issue-form-labeler.yml`.
+- **Complexity** (3): `complexity: low`, `complexity: medium`,
+  `complexity: high`. Same mechanism.
+- **Topical** (8): `epic`, `wishlist`, `source-expansion`,
+  `search-quality`, `internal-only`, `refactor`, `big-win`,
+  `transitional`, plus three `area: <surface>` namespaced labels.
+- **Lifecycle** (2): `fixed: awaiting release`, `released-in: v<X.Y.Z>`.
+  Applied at PR-merge / release-tag time.
+
+When adding a new label, ask first: does this label have at least
+3 expected open carriers? If not, fold the categorisation into the
+issue body instead. Single-carrier labels are footnotes pretending
+to be axes.
+
+Colors follow Apple's published system palette (Red #FF3B30,
+Orange #FF9500, Yellow #FFCC00, Green #34C759, Mint #00C7BE,
+Teal #30B0C7, Cyan #32ADE6, Blue #007AFF, Indigo #5856D6,
+Purple #AF52DE, Pink #FF2D55, Brown #A2845E, Gray #8E8E93).
+Pick by semantic grouping (Red for urgent, Green for shipped /
+ready, Brown for maintainer / internal, Gray for speculative).
+Cross-axis colour overlaps are acceptable when the labels are
+unlikely to apply together (e.g., `area: distribution` and
+`priority: medium` both Orange; the same issue rarely carries both).
