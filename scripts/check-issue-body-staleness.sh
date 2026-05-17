@@ -104,6 +104,8 @@ RENAME_MAP=$(cat <<'EOF'
 \bSources/Resources/Embedded/\b	missing Packages/ prefix: use Packages/Sources/Resources/Embedded/
 \bdocs/tools/\b	docs tree uses docs/commands/<cmd>/option (--)/<flag>.md shape; no docs/tools/ tree exists
 \bScripts/generate-embedded-catalogs\.sh\b	lowercase: scripts/generate-embedded-catalogs.sh
+\b\.github/ISSUE_TEMPLATE/feature\.md\b	converted to feature.yml GitHub form template (PR #745)
+\b\.github/ISSUE_TEMPLATE/bug\.md\b	converted to bug.yml GitHub form template (PR #745)
 EOF
 )
 
