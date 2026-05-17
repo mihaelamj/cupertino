@@ -198,3 +198,38 @@ return false-positive 'well-written, keep' verdicts on bodies whose
 inside contains 10x-wrong default values."* The 2026-05-17 audit
 showed that without this explicit requirement, agents pattern-match on
 body polish rather than facts.
+
+**Label discipline (2026-05-17 cleanup)**:
+
+The label set is intentionally small. After the autopilot trim in
+PR #745 + sibling tracker comment in #744, the repo carries 25 labels
+across five axes:
+
+- **Kind** (5): `bug`, `enhancement`, `documentation`, `good first issue`,
+  `help wanted`. Determined at filing time by which issue template
+  the user picks (feature → `enhancement`, bug → `bug`).
+- **Priority** (3): `priority: high`, `priority: medium`, `priority: low`.
+  Required at filing time via the form dropdown; applied by
+  `issue-form-labeler.yml`.
+- **Complexity** (3): `complexity: low`, `complexity: medium`,
+  `complexity: high`. Same mechanism.
+- **Topical** (8): `epic`, `wishlist`, `source-expansion`,
+  `search-quality`, `internal-only`, `refactor`, `big-win`,
+  `transitional`, plus three `area: <surface>` namespaced labels.
+- **Lifecycle** (2): `fixed: awaiting release`, `released-in: v<X.Y.Z>`.
+  Applied at PR-merge / release-tag time.
+
+When adding a new label, ask first: does this label have at least
+3 expected open carriers? If not, fold the categorisation into the
+issue body instead. Single-carrier labels are footnotes pretending
+to be axes.
+
+Colors follow Apple's published system palette (Red #FF3B30,
+Orange #FF9500, Yellow #FFCC00, Green #34C759, Mint #00C7BE,
+Teal #30B0C7, Cyan #32ADE6, Blue #007AFF, Indigo #5856D6,
+Purple #AF52DE, Pink #FF2D55, Brown #A2845E, Gray #8E8E93).
+Pick by semantic grouping (Red for urgent, Green for shipped /
+ready, Brown for maintainer / internal, Gray for speculative).
+Cross-axis colour overlaps are acceptable when the labels are
+unlikely to apply together (e.g., `area: distribution` and
+`priority: medium` both Orange; the same issue rarely carries both).
