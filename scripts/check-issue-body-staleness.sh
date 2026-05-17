@@ -8,7 +8,7 @@
 # backstop that surfaces drift before the next deep audit has to find
 # it by hand.
 #
-# Four checks, all read-only:
+# Five checks, four per-issue + one tracker-global:
 #
 #   1. RENAMED PATHS: bodies still cite a file path that was renamed
 #      or split. Maintained rename map below.
@@ -26,13 +26,20 @@
 #      schema. Caught #70 / #73 claiming `docs_metadata.abstract` and
 #      `docs_metadata.code_examples` which live elsewhere.
 #
+#   5. LABEL DRIFT: tracker-global checks for orphan `blocked_by_<N>`
+#      labels (target closed), `fix-in: v<X.Y.Z>` labels for shipped
+#      versions (SHIPPED_VERSIONS list), single-carrier topical labels
+#      (1 open carrier = grow or fold), and open issues missing kind
+#      or priority labels. Maintained `SHIPPED_VERSIONS` list keeps the
+#      check accurate without filesystem probes.
+#
 # Output: a markdown report on stdout (intended to be uploaded as a
 # tracking-issue body by the calling workflow). One section per check;
 # within each, one bullet per issue.
 #
 # Usage:
 #   ./scripts/check-issue-body-staleness.sh                  (full run)
-#   ./scripts/check-issue-body-staleness.sh --check=renamed  (single check)
+#   ./scripts/check-issue-body-staleness.sh --check=labels   (single check; renamed/phantom/xref/schema/labels)
 #   ./scripts/check-issue-body-staleness.sh --issue=70       (single issue)
 #   ./scripts/check-issue-body-staleness.sh --dry-run        (skip gh API,
 #                                                             read from
@@ -129,6 +136,15 @@ SCHEMA_TABLES=(docs_metadata docs_structured doc_symbols doc_code_examples packa
 # avoid false positives on every "see #N" / "related: #N" line.
 
 BLOCKER_PHRASES='(blocked[ -]?on|blocks?|depends on|after #?[0-9]+ lands|gated on|hard block on|pending in|awaits?|waiting on)'
+
+# --- Shipped release tags (CHECK 5 — label drift) ---------------------
+#
+# Versions for which `fix-in: v<X.Y.Z>` labels mean "shipped" rather
+# than "targeted." Append a version to this list when its tag drops.
+# The script flags any `fix-in: v<X.Y.Z>` label for these versions as
+# stale (suggest rename to `released-in: v<X.Y.Z>` or delete).
+
+SHIPPED_VERSIONS=(v1.0.0 v1.0.1 v1.0.2 v1.1.0)
 
 # --- Helpers ----------------------------------------------------------
 
@@ -298,16 +314,116 @@ check_schema() {
     fi
 }
 
+# --- Label drift (CHECK 5) -------------------------------------------
+#
+# Five sub-checks across all open + closed issues. These are NOT
+# per-issue body parses; they operate on the label list directly.
+#
+# 5a. Dead `blocked_by_<N>` labels where #N is CLOSED.
+# 5b. `fix-in: v<X.Y.Z>` labels for SHIPPED_VERSIONS (rename / delete).
+# 5c. Single-carrier labels (1 open issue carries it) — grow or fold.
+# 5d. Open issues missing a kind label (enhancement / bug / etc.).
+# 5e. Open issues missing a priority label (excluding epics / wishlist).
+#
+# Output goes into a single LABEL_REPORT block so the workflow's
+# tracking issue keeps one section for the label axis.
+
+check_labels_global() {
+    local report=""
+
+    # 5a. blocked_by_<N> orphans
+    local labels_list
+    labels_list=$(gh label list -R "$REPO" --limit 200 --json name -q '.[] | .name' 2>/dev/null)
+    while IFS= read -r lbl; do
+        [ -z "$lbl" ] && continue
+        case "$lbl" in
+            blocked_by_*)
+                local num="${lbl#blocked_by_}"
+                [[ "$num" =~ ^[0-9]+$ ]] || continue
+                local state
+                state=$(issue_state "$num")
+                if [ "$state" = "CLOSED" ]; then
+                    local carriers
+                    carriers=$(gh issue list -R "$REPO" --state open --label "$lbl" --json number -q '. | length' 2>/dev/null)
+                    report+="    - \`${lbl}\` → target #${num} is CLOSED; ${carriers} open carrier(s). Remove the label from any open carriers, then delete the label."$'\n'
+                fi
+                ;;
+        esac
+    done <<<"$labels_list"
+
+    # 5b. fix-in: v<X.Y.Z> for shipped versions
+    while IFS= read -r lbl; do
+        [ -z "$lbl" ] && continue
+        case "$lbl" in
+            "fix-in: "*)
+                local ver="${lbl#fix-in: }"
+                for shipped in "${SHIPPED_VERSIONS[@]}"; do
+                    if [ "$ver" = "$shipped" ]; then
+                        report+="    - \`${lbl}\` → version ${ver} shipped; rename to \`released-in: ${ver}\` or delete."$'\n'
+                        break
+                    fi
+                done
+                ;;
+        esac
+    done <<<"$labels_list"
+
+    # 5c. Single-carrier labels (1 open carrier — neither cluster nor footnote)
+    while IFS= read -r lbl; do
+        [ -z "$lbl" ] && continue
+        # Skip release/triage labels — they're axes, not topical
+        case "$lbl" in
+            priority:*|complexity:*|"released-in:"*|"fix-in:"*|"fixed: "*|enhancement|bug|documentation|epic|"good first issue"|"help wanted"|duplicate|invalid|question|wontfix|blocked|blocker)
+                continue
+                ;;
+        esac
+        local open_count
+        open_count=$(gh issue list -R "$REPO" --state open --label "$lbl" --json number -q '. | length' 2>/dev/null)
+        if [ "$open_count" = "1" ]; then
+            local carrier
+            carrier=$(gh issue list -R "$REPO" --state open --label "$lbl" --json number -q '.[0].number' 2>/dev/null)
+            report+="    - \`${lbl}\` → only 1 open carrier (#${carrier}); grow the cluster or fold the categorization into the body."$'\n'
+        fi
+    done <<<"$labels_list"
+
+    # 5d + 5e. Per-open-issue: missing kind / missing priority
+    local issues_json
+    issues_json=$(gh issue list -R "$REPO" --state open --limit 200 --json number,labels 2>/dev/null)
+    local missing_kind
+    missing_kind=$(echo "$issues_json" | jq -r '.[] | select(([.labels[].name] | map(test("^(enhancement|bug|documentation|epic|wishlist)$")) | any) | not) | .number')
+    while IFS= read -r n; do
+        [ -z "$n" ] && continue
+        report+="    - #${n} → missing kind label (no enhancement / bug / documentation / epic / wishlist)."$'\n'
+    done <<<"$missing_kind"
+
+    local missing_priority
+    missing_priority=$(echo "$issues_json" | jq -r '.[] | select([.labels[].name] | map(test("^(priority:|epic|wishlist)")) | any | not) | .number')
+    local count_no_priority
+    count_no_priority=$(echo "$missing_priority" | grep -c . 2>/dev/null || echo "0")
+    if [ "$count_no_priority" -gt 0 ]; then
+        report+="    - **${count_no_priority} open issues** missing \`priority:\` label (and not labeled epic / wishlist). Backfill candidates: $(echo "$missing_priority" | head -10 | tr '\n' ' ' | sed 's/ $//')$([ "$count_no_priority" -gt 10 ] && echo " ... (+$((count_no_priority - 10)) more)")."$'\n'
+    fi
+
+    if [ -n "$report" ]; then
+        echo "$report"
+    fi
+}
+
 # --- Main loop --------------------------------------------------------
 
 RENAMED_REPORT=""
 PHANTOM_REPORT=""
 XREF_REPORT=""
 SCHEMA_REPORT=""
+LABEL_REPORT=""
 
 issues=$(fetch_open_issues)
 total=$(echo "$issues" | wc -l | tr -d ' ')
 echo "Scanning $total open issues..." >&2
+
+# Label drift is global — run once, not per-issue
+if [ "$CHECK" = "all" ] || [ "$CHECK" = "labels" ]; then
+    LABEL_REPORT=$(check_labels_global)
+fi
 
 for n in $issues; do
     body=$(fetch_body "$n")
@@ -381,6 +497,16 @@ if [ -n "$SCHEMA_REPORT" ]; then
     echo "Bodies reference \`<table>.<column>\` shapes that don't match the current schema. Schema source: \`${SCHEMA_FILE}\`."
     echo ""
     printf "%s" "$SCHEMA_REPORT"
+    echo ""
+fi
+
+if [ -n "$LABEL_REPORT" ]; then
+    DRIFT=true
+    echo "## Label drift (check 5)"
+    echo ""
+    echo "Tracker-level label problems: orphan \`blocked_by_<N>\` (referenced issue closed), \`fix-in: v<X.Y.Z>\` for shipped versions, single-carrier topical labels (grow or fold), and open issues missing a kind or priority label. Shipped versions are maintained in the script's \`SHIPPED_VERSIONS\` list — bump it when a new release tag drops."
+    echo ""
+    printf "%s" "$LABEL_REPORT"
     echo ""
 fi
 

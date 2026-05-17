@@ -158,15 +158,20 @@ on bodies with 10x-wrong default values inside them.
 **Mechanical enforcement**:
 
 - `scripts/check-issue-body-staleness.sh`. Runs nightly via
-  `.github/workflows/issue-body-staleness.yml`. Four checks: renamed
+  `.github/workflows/issue-body-staleness.yml`. Five checks: renamed
   paths (maintained rename map), phantom paths (filesystem check),
   stale cross-refs (gh CLI state check), stale schema claims (schema
-  file parse). Output is a tracking issue listing each drift with a
-  remediation hint per bullet.
-- `.github/ISSUE_TEMPLATE/feature.md` and
-  `.github/ISSUE_TEMPLATE/bug.md`. Mandate the status block; remind
-  authors of the no-line-numbers / no-phantom-paths rules in the
-  Related-section guidance.
+  file parse), and label drift (orphan `blocked_by_<N>`, shipped
+  `fix-in: v<X.Y.Z>`, single-carrier topical labels, missing
+  kind/priority on open issues). Output is a tracking issue listing
+  each drift with a remediation hint per bullet. Shipped versions are
+  maintained in the script's `SHIPPED_VERSIONS` list; bump when a new
+  release tag drops.
+- `.github/ISSUE_TEMPLATE/feature.yml` and
+  `.github/ISSUE_TEMPLATE/bug.yml`. GitHub form templates with
+  required dropdowns for kind / priority / complexity / status date.
+  Forms enforce structure mechanically at filing time, rather than
+  suggesting structure via markdown templates.
 
 **Rename-PR checklist (manual)**:
 
