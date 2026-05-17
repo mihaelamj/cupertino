@@ -163,10 +163,12 @@ extension CLIImpl.Command {
             name: .long,
             help: """
             Seconds to wait between SIGTERM and SIGKILL when --force-replace terminates a \
-            sibling save. The default of 30 is a practical floor for a moderately-sized WAL; \
-            raise to 60 or higher when the sibling is near-completing a multi-GB checkpoint and \
-            the default leaves SIGKILL landing mid-checkpoint (which is what causes the \
-            corruption the gate exists to prevent).
+            sibling save. Must be >= 0. The default of 30 is a practical floor for a \
+            moderately-sized WAL; raise to 60 or higher when the sibling is near-completing a \
+            multi-GB checkpoint and the default leaves SIGKILL landing mid-checkpoint (which is \
+            what causes the corruption the gate exists to prevent). Passing 0 skips the grace \
+            window entirely and SIGKILLs immediately — only use when you've already confirmed \
+            the sibling is stuck.
             """
         )
         var forceReplaceGrace: Int = 30
@@ -210,6 +212,13 @@ extension CLIImpl.Command {
                 // `.stragglers` outcome — refuse to open the DB if
                 // SIGKILL didn't take (otherwise we'd cascade into
                 // `database is locked`).
+                guard forceReplaceGrace >= 0 else {
+                    recording.error(
+                        "❌ --force-replace-grace must be >= 0 (got \(forceReplaceGrace)).",
+                        category: .cli
+                    )
+                    throw ExitCode.failure
+                }
                 let outcome = SaveSiblingGate.terminateSiblings(
                     pids: pids,
                     graceSeconds: TimeInterval(forceReplaceGrace),

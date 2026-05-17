@@ -328,7 +328,19 @@ enum SaveSiblingGate {
             return false
         }
         guard !verifiedPIDs.isEmpty else {
-            recording.info("✅ All targeted siblings already exited; nothing to terminate.", category: .cli)
+            // Pass-2 review note: this is `.allTerminated` because we
+            // sent no signal AND we can't safely assume the PIDs are
+            // alive (kill(pid, 0) before SIGTERM would be the same
+            // race the verifier just closed). The honest log is "no
+            // verified target": if a sibling save was actually still
+            // running but verifier failed transiently (e.g. sysctl
+            // hiccup), `Save.run()` will land on the existing SQLite
+            // lock failure — same downstream as pre-#722, no
+            // regression.
+            recording.info(
+                "ℹ️  No verified siblings left to terminate (re-verification dropped every PID; siblings likely already exited).",
+                category: .cli
+            )
             return .allTerminated
         }
 

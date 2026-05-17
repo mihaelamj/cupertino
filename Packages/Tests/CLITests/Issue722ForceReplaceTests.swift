@@ -477,3 +477,39 @@ struct Issue722TerminationOutcomeShapeTests {
         #expect(allTerm != empty, "the cases mean different things and must not collapse")
     }
 }
+
+// MARK: - Pass-2 fix: graceSeconds=0 = no-grace SIGKILL-immediately
+
+@Suite("#722 — SaveSiblingGate.terminateSiblings graceSeconds boundary", .serialized)
+struct Issue722GraceSecondsBoundaryTests {
+    private final class NoopRecording: LoggingModels.Logging.Recording, @unchecked Sendable {
+        func record(_: String, level _: LoggingModels.Logging.Level, category _: LoggingModels.Logging.Category) {}
+        func output(_: String) {}
+    }
+
+    @Test("graceSeconds=0 skips the SIGTERM grace window — SIGKILL-immediately path")
+    func zeroGraceImmediate() throws {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/sleep")
+        task.arguments = ["30"]
+        try task.run()
+        defer { task.terminate() }
+        let pid = task.processIdentifier
+
+        let start = Date()
+        let outcome = SaveSiblingGate.terminateSiblings(
+            pids: [pid],
+            graceSeconds: 0,
+            pollInterval: 0.1,
+            recording: NoopRecording(),
+            verifier: { $0 == pid }
+        )
+        let elapsed = Date().timeIntervalSince(start)
+
+        // graceSeconds=0 → deadline equals "now" → while-loop never
+        // enters → straight to SIGKILL → settle window (1 poll = 0.1s).
+        // Total elapsed should be well below a full second.
+        #expect(elapsed < 0.5, "graceSeconds=0 should fall through to SIGKILL immediately; got \(elapsed)s")
+        #expect(outcome == .allTerminated, "SIGKILL on a real /bin/sleep should succeed; got: \(outcome)")
+    }
+}
