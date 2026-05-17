@@ -104,7 +104,8 @@ struct Issue101UserArchiveSelectionsTests {
         // trailing slash after `deletingLastPathComponent()` on a file URL
         // that doesn't have one — this would falsely fail the structural
         // check the test is trying to make.
-        let tmpDir = URL(fileURLWithPath: "/tmp/cupertino-test")
+        let tmpDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cupertino-test-\(UUID().uuidString)", isDirectory: true)
         let paths = Shared.Paths(baseDirectory: tmpDir)
 
         #expect(paths.userArchiveSelectionsFile.deletingLastPathComponent().path == tmpDir.path)

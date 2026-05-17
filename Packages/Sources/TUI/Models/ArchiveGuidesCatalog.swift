@@ -10,8 +10,13 @@ enum ArchiveGuidesCatalog {
     /// crawler's `Crawler.ArchiveGuideCatalog.userSelectionsFileURL(baseDirectory:)`
     /// reads from the same seam, so the TUI's write target and the crawler's
     /// read target cannot drift. Pre-#101 each side computed the literal
-    /// filename independently.
-    private static var userSelectionsURL: URL {
+    /// filename independently; a rename on either side would silently split
+    /// what the TUI wrote from what the crawler read.
+    ///
+    /// Access level is `internal` (not `private`) only so `@testable import TUI`
+    /// in `TUITests` can assert the delegation. Production callers stay
+    /// inside this file.
+    static var userSelectionsURL: URL {
         Shared.Paths.live().userArchiveSelectionsFile
     }
 
