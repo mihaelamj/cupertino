@@ -87,6 +87,31 @@ enum SaveSiblingGate {
         case rejected(input: String)
     }
 
+    /// Outcome of `terminateSiblings(...)`. Surfaces whether every
+    /// requested PID actually died so callers can refuse to proceed
+    /// (and hit `database is locked`) when SIGKILL didn't take.
+    ///
+    /// `.allTerminated` — every PID passed `kill(pid, 0) != 0` after
+    /// the SIGKILL fallback. Safe to proceed.
+    ///
+    /// `.stragglers(pids:)` — one or more PIDs are still responding
+    /// to `kill(pid, 0)` after the grace window + SIGKILL. Either
+    /// uninterruptible-sleep (D-state), zombie not yet reaped, or
+    /// we hit EPERM. Caller MUST NOT proceed — they'd land on the
+    /// same lock the sibling holds.
+    enum TerminationOutcome: Equatable {
+        case allTerminated
+        case stragglers(pids: [pid_t])
+    }
+
+    /// Errors `Save.run()` surfaces from the gate (#722 follow-up).
+    enum GateError: Error, Equatable {
+        /// `terminateSiblings(...)` returned `.stragglers`. Caller
+        /// aborts cleanly with a clear reason rather than cascading
+        /// into a SQLite `database is locked` failure.
+        case terminationFailed(stragglers: [pid_t])
+    }
+
     /// Parse the typed-confirmation gate's stdin response (#722). The
     /// gate requires the literal word `replace` (case-insensitive,
     /// surrounding whitespace tolerated) — anything else aborts.
@@ -116,9 +141,12 @@ enum SaveSiblingGate {
         myTargets: Set<Target>,
         recording: any LoggingModels.Logging.Recording,
         forceReplace: Bool = false,
-        assumeYes: Bool = false
+        assumeYes: Bool = false,
+        isInteractive: () -> Bool = { isatty(fileno(stdin)) != 0 },
+        readConfirmation: () -> String? = { readLine() },
+        siblingDetector: () -> [Sibling] = Self.detectSiblings
     ) -> Action {
-        let siblings = detectSiblings()
+        let siblings = siblingDetector()
         let conflicting = siblings.filter { !$0.targets.intersection(myTargets).isEmpty }
         guard !conflicting.isEmpty else {
             // Sibling exists but writes a different DB → log one info
@@ -146,13 +174,19 @@ enum SaveSiblingGate {
             return promptForceReplace(
                 conflicting: conflicting,
                 assumeYes: assumeYes,
-                recording: recording
+                recording: recording,
+                isInteractive: isInteractive,
+                readConfirmation: readConfirmation
             )
         }
 
         // TTY → prompt. Non-TTY → abort.
-        if isatty(fileno(stdin)) != 0 {
-            return promptInteractive(conflicting: conflicting, recording: recording)
+        if isInteractive() {
+            return promptInteractive(
+                conflicting: conflicting,
+                recording: recording,
+                readConfirmation: readConfirmation
+            )
         } else {
             let overlap = conflicting
                 .flatMap { $0.targets.intersection(myTargets) }
@@ -184,7 +218,9 @@ enum SaveSiblingGate {
     private static func promptForceReplace(
         conflicting: [Sibling],
         assumeYes: Bool,
-        recording: any LoggingModels.Logging.Recording
+        recording: any LoggingModels.Logging.Recording,
+        isInteractive: () -> Bool,
+        readConfirmation: () -> String?
     ) -> Action {
         let pids = conflicting.map(\.pid)
         let pidsString = pids.map(String.init).joined(separator: ", ")
@@ -206,7 +242,7 @@ enum SaveSiblingGate {
         // either an interactive confirmation or an explicit `--yes`;
         // unattended force-kill is exactly the foot-gun this gate
         // exists to prevent.
-        guard isatty(fileno(stdin)) != 0 else {
+        guard isInteractive() else {
             return .abort(reason:
                 "--force-replace requires either an interactive TTY (for the typed-confirmation gate) " +
                     "or `--yes` to bypass. Non-interactive invocation refused — re-run with `--yes` " +
@@ -228,7 +264,7 @@ enum SaveSiblingGate {
         recording.info("Type 'replace' to confirm:", category: .cli)
         print("> ", terminator: "")
 
-        switch parseTypedReplaceConfirmation(readLine()) {
+        switch parseTypedReplaceConfirmation(readConfirmation()) {
         case .accepted:
             recording.info("✅ confirmed — SIGTERMing PID(s) \(pidsString)", category: .cli)
             return .forceReplaceSiblings(pids: pids)
@@ -245,20 +281,59 @@ enum SaveSiblingGate {
     /// SIGKILL any that didn't exit. Caller is expected to have already
     /// passed the typed-confirmation gate (`promptForceReplace`).
     ///
-    /// Logs each step via the recorder. The grace window matters: a
-    /// SIGKILL mid-INSERT leaves the DB in a corrupted state that the
-    /// next `cupertino save` will surface as `database is locked` or
-    /// `database disk image is malformed`. SIGTERM-then-wait is the
-    /// safe path; SIGKILL is the fallback for stuck processes.
+    /// Defensive against three real failure modes:
+    ///
+    /// 1. **PID reuse race.** Between `detectSiblings()` and our
+    ///    `kill(SIGTERM)`, the sibling could have exited naturally and
+    ///    macOS could have reused the PID for an unrelated process.
+    ///    Each PID is re-verified via `verifier(pid)` (default:
+    ///    `verifyStillSibling`) before SIGTERM — checks argv[1] == "save"
+    ///    + same resolved binary path. PIDs that fail re-verification
+    ///    are dropped from the kill set and logged.
+    /// 2. **SIGKILL didn't take.** EPERM (cross-user), D-state
+    ///    (uninterruptible sleep), or any other reason a kill might
+    ///    silently fail. After the SIGKILL fallback we do one final
+    ///    `kill(pid, 0)` per PID and surface the survivors as
+    ///    `.stragglers(pids:)` so the caller can refuse to proceed
+    ///    rather than cascading into a `database is locked` failure.
+    /// 3. **Grace window too short.** A near-completed save mid-
+    ///    checkpoint may need >30s. `graceSeconds` is configurable
+    ///    (CLI flag `--force-replace-grace`); the default is a
+    ///    practical floor, not a hard cap.
+    ///
+    /// Grace ladder rationale: SIGKILL mid-INSERT leaves the DB in a
+    /// `database is locked` / `database disk image is malformed`
+    /// state — exactly the corruption class this gate exists to
+    /// prevent. SIGTERM-then-wait is the safe path; SIGKILL is the
+    /// last resort for stuck processes.
+    @discardableResult
     static func terminateSiblings(
         pids: [pid_t],
         graceSeconds: TimeInterval = 30,
         pollInterval: TimeInterval = 1.0,
-        recording: any LoggingModels.Logging.Recording
-    ) {
-        guard !pids.isEmpty else { return }
-        recording.info("⚠️  Sending SIGTERM to PID(s) \(pids.map(String.init).joined(separator: ", "))", category: .cli)
-        for pid in pids {
+        recording: any LoggingModels.Logging.Recording,
+        verifier: (pid_t) -> Bool = Self.verifyStillSibling
+    ) -> TerminationOutcome {
+        guard !pids.isEmpty else { return .allTerminated }
+
+        // #722 Bug-1 mitigation — re-verify each PID still resolves to
+        // a cupertino-save sibling before SIGTERM. Closes the
+        // detect→kill TOCTOU window from seconds to a single syscall.
+        let verifiedPIDs = pids.filter { pid in
+            if verifier(pid) { return true }
+            recording.info(
+                "ℹ️  PID \(pid) is no longer a cupertino save sibling — dropped from force-replace set (likely natural exit + PID reuse).",
+                category: .cli
+            )
+            return false
+        }
+        guard !verifiedPIDs.isEmpty else {
+            recording.info("✅ All targeted siblings already exited; nothing to terminate.", category: .cli)
+            return .allTerminated
+        }
+
+        recording.info("⚠️  Sending SIGTERM to PID(s) \(verifiedPIDs.map(String.init).joined(separator: ", "))", category: .cli)
+        for pid in verifiedPIDs {
             if kill(pid, SIGTERM) != 0, errno != ESRCH {
                 recording.warning("⚠️  SIGTERM PID \(pid) failed (errno \(errno)); will SIGKILL after grace.", category: .cli)
             }
@@ -267,7 +342,7 @@ enum SaveSiblingGate {
         // Wait up to `graceSeconds`, polling each `pollInterval`. Any
         // PID still alive after grace gets SIGKILL.
         let deadline = Date().addingTimeInterval(graceSeconds)
-        var remaining = Set(pids)
+        var remaining = Set(verifiedPIDs)
         while !remaining.isEmpty, Date() < deadline {
             Thread.sleep(forTimeInterval: pollInterval)
             remaining = remaining.filter { kill($0, 0) == 0 }
@@ -283,14 +358,52 @@ enum SaveSiblingGate {
             recording.warning("⚠️  PID \(pid) didn't exit within \(Int(graceSeconds))s — SIGKILL.", category: .cli)
             _ = kill(pid, SIGKILL)
         }
-        recording.info("✅ Sibling save(s) terminated. Continuing.", category: .cli)
+
+        // #722 Bug-2 mitigation — verify SIGKILL actually took. EPERM,
+        // D-state, or zombie-not-yet-reaped can leave the PID alive
+        // even after SIGKILL. One small settle window (SIGKILL is
+        // async on macOS) then one final probe before declaring
+        // success. Survivors are surfaced to the caller so it can
+        // abort rather than cascade into `database is locked`.
+        Thread.sleep(forTimeInterval: pollInterval)
+        let survivors = remaining.filter { kill($0, 0) == 0 }.sorted()
+        if survivors.isEmpty {
+            recording.info("✅ Sibling save(s) terminated. Continuing.", category: .cli)
+            return .allTerminated
+        } else {
+            recording.error(
+                "❌ Termination incomplete — PID(s) \(survivors.map(String.init).joined(separator: ", ")) still alive after SIGKILL. " +
+                    "Likely cross-user EPERM or stuck in uninterruptible sleep. Aborting before opening the DB.",
+                category: .cli
+            )
+            return .stragglers(pids: survivors)
+        }
+    }
+
+    /// Re-verify a PID still represents a cupertino-save sibling
+    /// (#722 Bug-1 mitigation against PID reuse race). Mirrors the
+    /// checks `detectSiblings()` does — argv[1] == "save" + same
+    /// resolved binary path. Returns `true` only when both hold;
+    /// `false` for any failure mode (dead PID, wrong process, can't
+    /// read argv, can't resolve path).
+    static func verifyStillSibling(_ pid: pid_t) -> Bool {
+        guard let ownPath = currentExecutablePath() else { return false }
+        guard let argv = argvOf(pid: pid),
+              argv.count >= 2,
+              argv[1] == "save"
+        else { return false }
+        guard let entryPath = pathOf(pid: pid),
+              entryPath == ownPath
+        else { return false }
+        return true
     }
 
     // MARK: - Interactive prompt
 
     private static func promptInteractive(
         conflicting: [Sibling],
-        recording: any LoggingModels.Logging.Recording
+        recording: any LoggingModels.Logging.Recording,
+        readConfirmation: () -> String? = { readLine() }
     ) -> Action {
         recording.info("", category: .cli)
         for sibling in conflicting {
@@ -308,7 +421,7 @@ enum SaveSiblingGate {
         recording.info("", category: .cli)
         print("[c/w/a] ", terminator: "")
 
-        guard let response = readLine() else {
+        guard let response = readConfirmation() else {
             return .abort(reason: "No response on stdin.")
         }
         let normalized = response.trimmingCharacters(in: .whitespaces).lowercased()

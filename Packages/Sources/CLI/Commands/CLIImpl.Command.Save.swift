@@ -152,12 +152,24 @@ extension CLIImpl.Command {
             help: """
             Authorise SIGTERM of any sibling `cupertino save` that targets the same DB(s). \
             Requires either an interactive typed-confirmation gate (type 'replace') or `--yes` \
-            for non-interactive use (CI, scripts). Sends SIGTERM, waits up to 30s for clean WAL \
-            flush, SIGKILL fallback. Use sparingly — losing the sibling's in-flight work is the \
-            point of the typed-confirmation gate.
+            for non-interactive use (CI, scripts). Sends SIGTERM, waits for clean WAL flush, \
+            SIGKILL fallback. Use sparingly — losing the sibling's in-flight work is the point \
+            of the typed-confirmation gate.
             """
         )
         var forceReplace: Bool = false
+
+        @Option(
+            name: .long,
+            help: """
+            Seconds to wait between SIGTERM and SIGKILL when --force-replace terminates a \
+            sibling save. The default of 30 is a practical floor for a moderately-sized WAL; \
+            raise to 60 or higher when the sibling is near-completing a multi-GB checkpoint and \
+            the default leaves SIGKILL landing mid-checkpoint (which is what causes the \
+            corruption the gate exists to prevent).
+            """
+        )
+        var forceReplaceGrace: Int = 30
 
         mutating func run() async throws {
             if remote {
@@ -194,8 +206,27 @@ extension CLIImpl.Command {
             case .forceReplaceSiblings(let pids):
                 // #722 — typed-confirmation gate already passed (or
                 // `--yes` bypassed it). Terminate siblings + wait for
-                // clean WAL flush before proceeding.
-                SaveSiblingGate.terminateSiblings(pids: pids, recording: recording)
+                // clean WAL flush before proceeding. Honour
+                // `.stragglers` outcome — refuse to open the DB if
+                // SIGKILL didn't take (otherwise we'd cascade into
+                // `database is locked`).
+                let outcome = SaveSiblingGate.terminateSiblings(
+                    pids: pids,
+                    graceSeconds: TimeInterval(forceReplaceGrace),
+                    recording: recording
+                )
+                switch outcome {
+                case .allTerminated:
+                    break
+                case .stragglers(let surviving):
+                    recording.error(
+                        "❌ Refusing to proceed — \(surviving.count) sibling save(s) still alive after SIGKILL: " +
+                            "\(surviving.map(String.init).joined(separator: ", ")). " +
+                            "Investigate (likely cross-user EPERM or stuck in D-state) before retrying.",
+                        category: .cli
+                    )
+                    throw ExitCode.failure
+                }
             case .abort(let reason):
                 recording.info("❌ \(reason)", category: .cli)
                 throw ExitCode.failure

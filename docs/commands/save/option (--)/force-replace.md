@@ -36,6 +36,30 @@ Once authorised, the gate:
 
 The grace window matters: a SIGKILL mid-INSERT leaves the DB in a `database is locked` / `database disk image is malformed` state. SIGTERM-then-wait is the safe path; SIGKILL is the fallback for stuck processes.
 
+## Pre-flight diagnostic ladder (run before `--force-replace`)
+
+Skip none of these — they take 30 seconds total and save you from losing real work:
+
+1. **Is the sibling progressing?**
+   ```bash
+   ps -p <pid> -o pid,etime,%cpu,rss
+   ```
+   Active CPU + recently-grown RSS = working. Frozen for minutes with 0% CPU = candidate for `--force-replace`.
+
+2. **Who holds the DB lock?**
+   ```bash
+   lsof ~/.cupertino/search.db ~/.cupertino/search.db-wal 2>/dev/null
+   ```
+   Confirms the sibling PID is the one cupertino's gate flagged. If a different process holds the lock, `--force-replace` won't help — investigate that PID first.
+
+3. **Is the WAL actively growing?**
+   ```bash
+   ls -lh ~/.cupertino/search.db-wal
+   ```
+   Run twice 10s apart. WAL still growing = checkpoint in progress = leave it alone.
+
+4. **Only if 1-3 confirm the sibling is genuinely stuck** — run `cupertino save --force-replace` (or `--force-replace --yes` for CI).
+
 ## When to use
 
 - **Recovery from runaway-save corruption** — exactly the scenario that motivated #253's gate. A runaway `cupertino save` process leaves a partial write + holds the lock; `cupertino save --force-replace --yes` clears it.
@@ -44,7 +68,15 @@ The grace window matters: a SIGKILL mid-INSERT leaves the DB in a `database is l
 ## When NOT to use
 
 - **Routine workflow.** The plain `cupertino save` (no flag) is the right interactive default — the existing `[c]/[w]/[a]` prompt offers wait + abort options that don't risk losing the sibling's work.
-- **Without confirming the sibling is actually stuck.** A sibling save that's progressing normally should be left alone; killing it loses real work.
+- **Without confirming the sibling is actually stuck.** A sibling save that's progressing normally should be left alone; killing it loses real work. Run the diagnostic ladder above first.
+
+## When SIGKILL doesn't take
+
+`terminateSiblings` returns a `TerminationOutcome` after the SIGKILL fallback. If any PID is still alive (cross-user EPERM, D-state uninterruptible sleep), `cupertino save` aborts with a clear `❌ Refusing to proceed` error rather than cascading into `database is locked`. Surface the PID(s) the error names, investigate manually, then retry. The defensive abort exists because silently proceeding to a SQLite lock failure would be worse than the gate refusing to start.
+
+## See also: `--force-replace-grace <seconds>`
+
+The default 30-second SIGTERM→SIGKILL window is a practical floor for a moderately-sized WAL. Raise it (`--force-replace-grace 60`, `--force-replace-grace 120`) when the sibling is near-completing a multi-GB checkpoint — SIGKILL landing mid-checkpoint is exactly the corruption class this gate exists to prevent, so giving SQLite more time to flush is the safer default.
 
 ## See Also
 
