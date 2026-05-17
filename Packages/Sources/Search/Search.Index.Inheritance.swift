@@ -149,6 +149,21 @@ extension Search.Index {
     /// in the title but a user might type `uibutton`). Source is
     /// pinned to `apple-docs` since inheritance edges only exist
     /// for that source.
+    ///
+    /// #754 — Apple's DocC stores titles in two shapes across the
+    /// corpus: the bare symbol name (e.g. `"UIView"`) and the HTML
+    /// page-title form with a site suffix (e.g.
+    /// `"NSObject | Apple Developer Documentation"`). On the
+    /// 2026-05-17 reindex the split is ~63% bare / ~37% suffixed —
+    /// both forms are widespread. Pre-fix the predicate only matched
+    /// the bare form, so high-traffic root types like NSObject (which
+    /// happen to store the suffixed form) returned empty. Fix strips
+    /// the suffix via SQLite's `REPLACE` before the equality compare,
+    /// so the bare user input (`"NSObject"`) matches whichever form
+    /// the stored title uses. No index helps either way (function
+    /// calls in the WHERE clause force a full scan; the table has
+    /// ~351k rows + the scan completes in single-digit milliseconds
+    /// per the test-suite timings).
     public func resolveSymbolURIs(title: String) async throws -> [Search.InheritanceCandidate] {
         guard let database else {
             throw Search.Error.databaseNotInitialized
@@ -157,7 +172,11 @@ extension Search.Index {
         SELECT uri, framework, COALESCE(json_extract(json_data, '$.title'), '') as t
         FROM docs_metadata
         WHERE source = 'apple-docs'
-            AND LOWER(json_extract(json_data, '$.title')) = LOWER(?)
+            AND LOWER(REPLACE(
+                json_extract(json_data, '$.title'),
+                ' | Apple Developer Documentation',
+                ''
+            )) = LOWER(?)
         ORDER BY framework;
         """
         var statement: OpaquePointer?
