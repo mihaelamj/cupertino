@@ -10,7 +10,7 @@ cupertino doctor --freshness
 
 ## Description
 
-Answers "how stale is my local index?" for users without a `cupertino-docs-private` checkout (which would otherwise let them `git log` the corpus repo to see when Apple's pages last changed). Reads `docs_metadata.last_crawled` (Unix epoch seconds, stamped at indexer save time) and reports per-source quantiles + row count.
+Answers "how stale is my local index?" for users without git-level access to the raw corpus repo (which would otherwise let them `git log` that repo to see when Apple's pages last changed). Reads `docs_metadata.last_crawled` (Unix epoch seconds, stamped at indexer save time) and reports per-source quantiles + row count.
 
 Per the [#275](https://github.com/mihaelamj/cupertino/issues/275) design discussion, this flag emits the distribution (oldest / p50 / p90 / newest) rather than a single snapshot timestamp: a long crawl can span days, so a single "bundle was built at X" hides per-page age. p50 + p90 surfaces both typical age and the long-tail.
 

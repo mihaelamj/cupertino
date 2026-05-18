@@ -165,7 +165,7 @@ extension Diagnostics {
 
         /// Per-source freshness report based on `docs_metadata.last_crawled`
         /// (Unix epoch seconds). Per the #275 spec, brew-installed users
-        /// have no `cupertino-docs-private` checkout, so neither `git log`
+        /// have no git-level access to the raw corpus repo, so neither `git log`
         /// nor filesystem mtimes give them a useful answer to "how stale
         /// is my local index?". `last_crawled` is on every row and is
         /// stamped at indexer save time, so it's the authoritative signal
