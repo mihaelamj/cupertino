@@ -8,7 +8,7 @@ import Testing
 //
 // `Diagnostics.Probes.freshnessBySource(at:)` is the read-only
 // probe that answers "how stale is my local index?" for brew-installed
-// users without a `cupertino-docs-private` checkout. Spec resolution for
+// users without git-level access to the raw corpus repo. Spec resolution for
 // the open design questions in #275:
 //
 //   Q1 (snapshot vs distribution vs save-time): per-source distribution
