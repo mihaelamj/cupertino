@@ -772,10 +772,4 @@ MCP servers across different languages follow similar patterns:
 - [NSApplication Documentation](https://developer.apple.com/documentation/appkit/nsapplication)
 - [Swift Testing Framework](https://developer.apple.com/documentation/testing)
 
----
-
-**Document Version:** 1.0
-**Created:** 2025-11-22
-**Author:** Claude (Anthropic)
-**Project:** Cupertino - Apple Documentation CLI & MCP Server
 
