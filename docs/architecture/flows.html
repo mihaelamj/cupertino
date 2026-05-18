@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cupertino — Package Flows</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root {
+    --bg: #0e1116;
+    --panel: #161b22;
+    --panel-2: #1c2128;
+    --line: #30363d;
+    --fg: #d1d5db;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --accent-2: #3fb950;
+    --warn: #d29922;
+    --pkg-bg: #21262d;
+    --pkg-active: #3a4250;
+    --pkg-on-path: #1f2d3d;
+    --edge: #4b5663;
+    --edge-active: #58a6ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; background: var(--bg); color: var(--fg); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { padding: 16px 24px; border-bottom: 1px solid var(--line); display:flex; align-items:center; gap:24px; flex-wrap:wrap; }
+  header h1 { font-size: 18px; font-weight: 600; margin:0; letter-spacing:-0.01em; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  .layout { display: grid; grid-template-columns: 280px 1fr 360px; gap: 0; min-height: calc(100vh - 60px); }
+  .flowlist, .detail { background: var(--panel); border-right: 1px solid var(--line); padding: 16px; overflow-y: auto; }
+  .detail { border-right: none; border-left: 1px solid var(--line); }
+  .flowlist h2, .detail h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 12px 0; }
+  .flow-btn {
+    display: block; width: 100%; text-align:left; background: var(--panel-2); color: var(--fg);
+    border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; margin-bottom: 8px;
+    cursor: pointer; font: inherit; font-size: 13px; line-height: 1.4;
+  }
+  .flow-btn:hover { border-color: var(--accent); }
+  .flow-btn.active { background: var(--accent); color:#0d1117; border-color: var(--accent); font-weight: 600; }
+  .flow-btn .cmd { font-family: ui-monospace, SF Mono, Menlo, monospace; font-size: 12px; color: var(--muted); display: block; margin-top: 2px; }
+  .flow-btn.active .cmd { color: rgba(13,17,23,0.75); }
+  .canvas-wrap { position: relative; overflow:auto; background: var(--bg); }
+  svg.canvas { display: block; }
+  .legend { font-size: 12px; color: var(--muted); display:flex; gap:18px; flex-wrap:wrap; }
+  .legend .chip { display:inline-flex; align-items:center; gap:6px; }
+  .legend .swatch { width:12px; height:12px; border-radius: 3px; display:inline-block; }
+  .detail h3 { margin: 0 0 4px 0; font-size: 14px; font-weight: 600; }
+  .detail .desc { color: var(--muted); font-size: 13px; line-height: 1.5; margin-bottom: 16px; }
+  .step { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; font-size: 13px; line-height: 1.45; }
+  .step .hop { font-family: ui-monospace, SF Mono, Menlo, monospace; font-size: 12px; color: var(--accent); margin-bottom: 4px; }
+  .step .label { font-weight: 600; color: var(--fg); }
+  .step .anno { color: var(--muted); margin-top: 4px; font-size: 12px; }
+  .empty { color: var(--muted); font-size: 13px; padding: 24px 0; text-align: center; }
+  footer { padding: 12px 24px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Cupertino — Package Flows</h1>
+  <span class="sub">Interactive map of how packages collaborate to fulfill each user-facing action. Click a flow on the left.</span>
+  <div class="legend" style="margin-left:auto">
+    <span class="chip"><span class="swatch" style="background:#21262d;border:1px solid #30363d;"></span> idle</span>
+    <span class="chip"><span class="swatch" style="background:#1f2d3d;border:1px solid #58a6ff;"></span> on path</span>
+    <span class="chip"><span class="swatch" style="background:#3a4250;border:1px solid #58a6ff;"></span> active step</span>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="flowlist">
+    <h2>Flows</h2>
+    <div id="flow-buttons"></div>
+  </aside>
+  <main class="canvas-wrap">
+    <svg class="canvas" id="canvas" width="1240" height="900"></svg>
+  </main>
+  <aside class="detail">
+    <h2>Steps</h2>
+    <div id="detail-panel" class="empty">Pick a flow to see what each package contributes.</div>
+  </aside>
+</div>
+
+<footer>
+  Data lives in <code>FLOWS</code> (inline JSON below). Add a flow by appending an entry to <code>FLOWS.flows</code>; everything else (layout, highlighting, annotations) follows automatically.
+  Source: <a href="https://github.com/mihaelamj/cupertino/blob/main/docs/architecture/flows.html">cupertino/docs/architecture/flows.html</a>
+</footer>
+
+<script>
+// ---------------------------------------------------------------------------
+// FLOWS — the single source of truth. Edit / extend this block to document
+// new workflows. The page rebuilds itself from this object.
+//
+// Schema:
+//   layers[].id       — unique layer key
+//   layers[].name     — human label drawn above the layer's column
+//   packages[].id     — must be unique; matches step.from / step.to refs
+//   packages[].layer  — which layer the box sits in
+//   packages[].summary — short tooltip line shown in the box body
+//   flows[].id        — slug for the flow button
+//   flows[].name      — title shown in the right-side detail panel
+//   flows[].cmd       — terminal command (rendered under the flow button)
+//   flows[].description — one paragraph describing the user-facing action
+//   flows[].steps[].from / .to — package IDs that participate in this hop
+//   flows[].steps[].label — what call / message is sent across the hop
+//   flows[].steps[].annotation — what data crosses the hop (1–2 lines)
+// ---------------------------------------------------------------------------
+const FLOWS = {
+  layers: [
+    { id: "app",        name: "Apps" },
+    { id: "feature",    name: "Features" },
+    { id: "infra",      name: "Infrastructure" },
+    { id: "foundation", name: "Foundation" },
+  ],
+  // Order within a layer is preserved when rendering top-to-bottom.
+  packages: [
+    // Apps
+    { id: "CLI",                 layer: "app",        summary: "User-facing argument-parser entry points" },
+    { id: "TUI",                 layer: "app",        summary: "Terminal UI explorer for the bundle" },
+    { id: "MockAIAgent",         layer: "app",        summary: "Local MCP client used in integration tests" },
+    { id: "ReleaseTool",         layer: "app",        summary: "cupertino-rel: bundle + GH release publishing" },
+
+    // Features
+    { id: "Indexer",             layer: "feature",    summary: "Orchestrates save: docs, samples, packages -> search.db" },
+    { id: "Ingest",              layer: "feature",    summary: "fetch session, retries, queue persistence" },
+    { id: "Distribution",        layer: "feature",    summary: "setup: download bundle from GH Releases" },
+    { id: "Diagnostics",         layer: "feature",    summary: "doctor probes: DB / corpus / config" },
+    { id: "MCPSupport",          layer: "feature",    summary: "DocsResourceProvider / SampleResourceProvider" },
+    { id: "SearchToolProvider",  layer: "feature",    summary: "MCP tools: search / list_frameworks / read_document" },
+    { id: "MCPClient",           layer: "feature",    summary: "Client side of MCP, used by MockAIAgent" },
+    { id: "Services",            layer: "feature",    summary: "Higher-level query / formatter helpers" },
+    { id: "Cleanup",             layer: "feature",    summary: "Stale-DB / corrupt-file cleanup commands" },
+
+    // Infrastructure
+    { id: "Core",                layer: "infra",      summary: "Crawler, WKWeb fetcher, JSON/HTML transformers" },
+    { id: "Search",              layer: "infra",      summary: "search.db (FTS5) read + write + index builder" },
+    { id: "SampleIndex",         layer: "infra",      summary: "samples.db read + write" },
+    { id: "Availability",        layer: "infra",      summary: "Per-page availability fetcher (iOS/macOS minimums)" },
+    { id: "ASTIndexer",          layer: "infra",      summary: "SwiftSyntax-driven symbol extraction" },
+    { id: "RemoteSync",          layer: "infra",      summary: "GitHub API + raw content fetcher" },
+    { id: "Logging",             layer: "infra",      summary: "os.log wrapper with categorized signposts" },
+    { id: "Resources",           layer: "infra",      summary: "Embedded JSON catalogs (no on-disk bundle)" },
+
+    // Foundation
+    { id: "MCP",                 layer: "foundation", summary: "MCP protocol types + JSON-RPC + StdioTransport" },
+    { id: "Shared",              layer: "foundation", summary: "Models, Constants, Configuration, URL helpers" },
+  ],
+  flows: [
+    {
+      id: "setup",
+      name: "cupertino setup",
+      cmd: "cupertino setup",
+      description: "First-time install path. Downloads the pre-built bundle (search.db + samples.db + packages.db) from a versioned GitHub Release, unzips it into ~/.cupertino/, and stamps .setup-version. No crawling required.",
+      steps: [
+        { from: "CLI",          to: "Distribution",  label: "SetupCommand.run()",               annotation: "Parses --base-dir / --keep-existing flags, hands off to Distribution" },
+        { from: "Distribution", to: "Shared",        label: "Constants.databaseVersion",        annotation: "Reads the binary's expected bundle version" },
+        { from: "Distribution", to: "RemoteSync",    label: "download(asset:)",                 annotation: "Streams cupertino-databases-vX.zip from GH Releases on mihaelamj/cupertino" },
+        { from: "RemoteSync",   to: "Distribution",  label: "Data return",                      annotation: "Returns the zip payload + progress events" },
+        { from: "Distribution", to: "CLI",           label: "writes search.db / samples.db / packages.db", annotation: "Unzips to baseDir, stamps .setup-version, reports completion" },
+      ]
+    },
+    {
+      id: "fetch-docs",
+      name: "cupertino fetch --type docs",
+      cmd: "cupertino fetch --type docs",
+      description: "Crawls Apple's developer documentation. Seeds from the technologies index, walks the JSON API where available and falls back to a WKWebView render for HTML-only pages. Writes one JSON per symbol under ~/.cupertino/docs/<framework>/.",
+      steps: [
+        { from: "CLI",          to: "Ingest",        label: "FetchCommand.run(--type docs)",    annotation: "Parses CLI flags, resolves baseDir + discovery mode" },
+        { from: "Ingest",       to: "Core",          label: "Crawler(configuration: …).crawl()", annotation: "Hands off the crawl session with persistence + retry config" },
+        { from: "Core",         to: "Core",          label: "WKWebContentFetcher / AppleJSONToMarkdown / HTMLToMarkdown", annotation: "Fetches each page, prefers JSON API, falls back to WebView render" },
+        { from: "Core",         to: "Shared",        label: "URLUtilities.normalize / filename",  annotation: "Canonicalizes URL case + derives stable on-disk filenames" },
+        { from: "Core",         to: "Ingest",        label: "PageMetadata + StructuredDocumentationPage", annotation: "Writes ~/.cupertino/docs/<framework>/<name>.json + updates metadata.json" },
+        { from: "Ingest",       to: "CLI",           label: "CrawlStatistics",                  annotation: "Returns totals: new / updated / skipped / errors / duration" },
+      ]
+    },
+    {
+      id: "save",
+      name: "cupertino save --docs",
+      cmd: "cupertino save --docs",
+      description: "Builds the search index from on-disk JSON. Reads every <framework>/<name>.json under ~/.cupertino/docs/, extracts symbols via SwiftSyntax, writes docs_metadata / docs_structured / docs_fts / doc_symbols. Skips files whose title is an HTTP error template OR whose body is the JS-disabled fallback (#284 indexer defense).",
+      steps: [
+        { from: "CLI",        to: "Indexer",       label: "SaveCommand.run()",                  annotation: "Parses --docs / --search-db / --docs-dir; runs preflight" },
+        { from: "Indexer",    to: "Search",        label: "IndexBuilder.buildIndex()",          annotation: "Initializes search.db schema v13, clears index if --clear" },
+        { from: "Search",     to: "Search",        label: "indexAppleDocsFromDirectory",        annotation: "Walks docs/ with deduplicateDocFilesByCanonicalURL, processes JSON / MD per file" },
+        { from: "Search",     to: "Search",        label: "titleLooksLikeHTTPErrorTemplate / pageLooksLikeJavaScriptFallback", annotation: "PR #289 + #291 defenses: skip + log + bump skipped counter; never reach docs_structured" },
+        { from: "Search",     to: "ASTIndexer",    label: "extract(symbols:from:)",             annotation: "Per-page Swift symbol + import extraction into doc_symbols / doc_imports" },
+        { from: "Search",     to: "Shared",        label: "deterministicID + canonicalContentHash", annotation: "Stable id / contentHash per page (#199), so re-runs are idempotent" },
+        { from: "Indexer",    to: "SampleIndex",   label: "indexSamples (optional)",            annotation: "If catalog.json present, also populate samples.db" },
+        { from: "Indexer",    to: "CLI",           label: "Final document count + framework count", annotation: "Reports '✅ Search index built: N documents' on completion" },
+      ]
+    },
+    {
+      id: "serve",
+      name: "cupertino serve (MCP)",
+      cmd: "cupertino serve",
+      description: "Runs the MCP server over stdio. Accepts JSON-RPC requests from an AI client (Claude Desktop, Claude Code, Cursor, etc.), routes them to the right provider, and streams responses back. Default tool: search (RRF over docs / samples / packages).",
+      steps: [
+        { from: "CLI",                to: "MCP",                  label: "ServeCommand.run()",        annotation: "Wires StdioTransport + JSON-RPC request loop" },
+        { from: "MCP",                to: "SearchToolProvider",   label: "tools/list, tools/call",    annotation: "Exposes 'search', 'list_frameworks', 'read_document' to the client" },
+        { from: "MCP",                to: "MCPSupport",           label: "resources/list, resources/read", annotation: "Exposes apple-docs:// + swift-evolution:// + apple-archive:// URIs" },
+        { from: "SearchToolProvider", to: "Search",               label: "Index.search(query:filters:)", annotation: "FTS5 query with RRF fusion across sources" },
+        { from: "SearchToolProvider", to: "SampleIndex",          label: "SampleDatabase.search(query:)", annotation: "Joined into the same RRF when --source samples or all" },
+        { from: "MCPSupport",         to: "Search",               label: "Index.getDocumentContent(uri:)", annotation: "Reads markdown / JSON content from search.db for resources/read" },
+        { from: "Search",             to: "Shared",               label: "StructuredDocumentationPage decode", annotation: "Renders the result rows into the MCP-facing TextContent shape" },
+        { from: "MCP",                to: "CLI",                  label: "stdout JSON-RPC response",  annotation: "Each chunk written to stdout for the client to read" },
+      ]
+    },
+    {
+      id: "search",
+      name: "cupertino search <query>",
+      cmd: "cupertino search \"withTaskGroup\" --source apple-docs",
+      description: "One-shot search from the CLI (not via MCP). Same Search.Index code path as serve uses for its 'search' tool — useful for shell scripts and CI smoke tests.",
+      steps: [
+        { from: "CLI",        to: "Services",     label: "SearchCommand.run()",                annotation: "Parses query, --source, --framework, --limit, --language" },
+        { from: "Services",   to: "Search",       label: "Index.search(query: filters:)",      annotation: "Opens search.db read-only, runs FTS5 + RRF" },
+        { from: "Search",     to: "Shared",       label: "decodes StructuredDocumentationPage rows", annotation: "Maps SQLite rows back into typed pages for formatting" },
+        { from: "Services",   to: "CLI",          label: "ranked results",                     annotation: "Formats the top-N with title / score / abstract / URI" },
+      ]
+    },
+    {
+      id: "doctor",
+      name: "cupertino doctor",
+      cmd: "cupertino doctor",
+      description: "Health probe over the installed bundle + binary. Checks DB schema versions, file presence, corpus integrity, and config sanity. Used in CI and by support to verify a clean install.",
+      steps: [
+        { from: "CLI",          to: "Diagnostics", label: "DoctorCommand.run()",                annotation: "Walks the probe registry, runs each in turn" },
+        { from: "Diagnostics",  to: "Search",      label: "Index.openReadOnly + PRAGMA user_version", annotation: "Verifies schema v13 + non-empty docs_metadata" },
+        { from: "Diagnostics",  to: "SampleIndex", label: "SampleDatabase.openReadOnly",        annotation: "Verifies samples.db present + indexable" },
+        { from: "Diagnostics",  to: "Shared",      label: "Constants.databaseVersion / paths",  annotation: "Cross-checks bundle's expected version against on-disk .setup-version" },
+        { from: "Diagnostics",  to: "CLI",         label: "ProbeReport[] + final summary",      annotation: "Prints per-probe ✓/✗ + exits non-zero on any failure" },
+      ]
+    },
+    {
+      id: "publish",
+      name: "cupertino-rel publish",
+      cmd: "cupertino-rel publish --version 1.0.3",
+      description: "Maintainer-only path. Zips the latest search.db / samples.db / packages.db into cupertino-databases-vX.zip and uploads as a GH Release asset on mihaelamj/cupertino-docs, then updates the homebrew formula.",
+      steps: [
+        { from: "ReleaseTool",   to: "Shared",       label: "Constants.App.version / databaseVersion", annotation: "Reads the binary's stamped version" },
+        { from: "ReleaseTool",   to: "ReleaseTool",  label: "databases / sha256 / homebrew sub-commands", annotation: "Composes the multi-step pipeline locally" },
+        { from: "ReleaseTool",   to: "RemoteSync",   label: "GitHub Releases API: create / upload asset", annotation: "POST /repos/mihaelamj/cupertino-docs/releases + asset upload" },
+        { from: "RemoteSync",    to: "ReleaseTool",  label: "ReleaseResponse",                 annotation: "Returns the published asset URL + sha256 + tag" },
+        { from: "ReleaseTool",   to: "RemoteSync",   label: "Homebrew formula PATCH",          annotation: "Updates mihaelamj/homebrew-tap/Formula/cupertino.rb with new URL + sha" },
+      ]
+    },
+    {
+      id: "mockai",
+      name: "MockAIAgent (test client)",
+      cmd: "mock-ai-agent",
+      description: "An in-process MCP client used to integration-test the server end-to-end. Spawns cupertino serve as a child process, sends a scripted sequence of JSON-RPC calls, asserts on responses.",
+      steps: [
+        { from: "MockAIAgent",   to: "MCPClient",         label: "Client(externalServerCommand:).run()", annotation: "Spawns cupertino serve as a subprocess + connects via stdio" },
+        { from: "MCPClient",     to: "MCP",               label: "JSON-RPC request frames",         annotation: "initialize → tools/list → tools/call(search) → resources/read" },
+        { from: "MCP",           to: "SearchToolProvider", label: "tools/call dispatch",             annotation: "Server side: same path as cupertino serve handles a real client" },
+        { from: "MCP",           to: "MCPClient",         label: "JSON-RPC response frames",        annotation: "Streaming response chunks read from the subprocess' stdout" },
+        { from: "MCPClient",     to: "MockAIAgent",       label: "Decoded tool results",            annotation: "Assertions run on titles, URIs, content match against fixtures" },
+      ]
+    },
+  ]
+};
+
+// ---------------------------------------------------------------------------
+// Renderer
+// ---------------------------------------------------------------------------
+const svg = document.getElementById("canvas");
+const NS = "http://www.w3.org/2000/svg";
+const BOX_W = 200;
+const BOX_H = 56;
+const COL_GAP = 60;
+const ROW_GAP = 14;
+const COL_PAD = 24;
+const HEADER_H = 30;
+
+function layoutPackages() {
+  const byLayer = new Map(FLOWS.layers.map(l => [l.id, []]));
+  for (const p of FLOWS.packages) byLayer.get(p.layer).push(p);
+
+  // Layers go RIGHT to LEFT: Apps on far right, Foundation on far left.
+  // This matches the dataflow direction: requests originate at Apps and
+  // bottom out at Foundation. Arrows mostly point leftward.
+  const layerOrder = ["foundation", "infra", "feature", "app"];
+  const positions = new Map();
+  layerOrder.forEach((lid, colIdx) => {
+    const pkgs = byLayer.get(lid) || [];
+    const x = COL_PAD + colIdx * (BOX_W + COL_GAP);
+    pkgs.forEach((p, rowIdx) => {
+      positions.set(p.id, { x, y: HEADER_H + 16 + rowIdx * (BOX_H + ROW_GAP), pkg: p, colIdx, rowIdx });
+    });
+  });
+
+  // Compute total dimensions
+  const cols = layerOrder.length;
+  const maxRows = Math.max(...layerOrder.map(l => (byLayer.get(l) || []).length));
+  const totalW = COL_PAD * 2 + cols * BOX_W + (cols - 1) * COL_GAP;
+  const totalH = HEADER_H + 16 + maxRows * (BOX_H + ROW_GAP) + 40;
+
+  return { positions, layerOrder, totalW, totalH };
+}
+
+function el(tag, attrs = {}, parent = svg) {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  parent.appendChild(n);
+  return n;
+}
+
+function drawCanvas() {
+  const { positions, layerOrder, totalW, totalH } = layoutPackages();
+  svg.setAttribute("width", totalW);
+  svg.setAttribute("height", totalH);
+  svg.setAttribute("viewBox", `0 0 ${totalW} ${totalH}`);
+
+  // Layer headers
+  layerOrder.forEach((lid, colIdx) => {
+    const layer = FLOWS.layers.find(l => l.id === lid);
+    const x = COL_PAD + colIdx * (BOX_W + COL_GAP);
+    el("text", {
+      x: x + BOX_W / 2, y: 18, fill: "#8b949e", "font-size": "11",
+      "text-anchor": "middle", "font-family": "ui-sans-serif",
+      "letter-spacing": "0.08em", "text-transform": "uppercase"
+    }).textContent = layer.name.toUpperCase();
+  });
+
+  // Defs (arrow markers)
+  const defs = el("defs");
+  const m1 = el("marker", { id: "arrow", viewBox: "0 0 10 10", refX: "9", refY: "5",
+                            markerWidth: "8", markerHeight: "8", orient: "auto-start-reverse" }, defs);
+  el("path", { d: "M0,0 L10,5 L0,10 z", fill: "#4b5663" }, m1);
+
+  const m2 = el("marker", { id: "arrow-active", viewBox: "0 0 10 10", refX: "9", refY: "5",
+                            markerWidth: "10", markerHeight: "10", orient: "auto-start-reverse" }, defs);
+  el("path", { d: "M0,0 L10,5 L0,10 z", fill: "#58a6ff" }, m2);
+
+  // Edge layer (drawn first so boxes sit on top)
+  const edgeLayer = el("g", { id: "edges" });
+  // Box layer
+  const boxLayer = el("g", { id: "boxes" });
+
+  for (const [id, pos] of positions) {
+    const g = el("g", { id: `pkg-${id}`, transform: `translate(${pos.x},${pos.y})`, class: "pkg-node" }, boxLayer);
+    const rect = el("rect", { width: BOX_W, height: BOX_H, rx: 6, ry: 6,
+                              fill: "#21262d", stroke: "#30363d", "stroke-width": "1" }, g);
+    rect.setAttribute("data-id", id);
+    el("text", { x: 12, y: 20, fill: "#d1d5db", "font-size": "13",
+                 "font-weight": "600", "font-family": "ui-sans-serif" }, g).textContent = pos.pkg.id;
+    const summary = el("text", { x: 12, y: 40, fill: "#8b949e", "font-size": "10.5",
+                                  "font-family": "ui-sans-serif" }, g);
+    summary.textContent = pos.pkg.summary.length > 50 ? pos.pkg.summary.slice(0, 47) + "…" : pos.pkg.summary;
+    const title = el("title", {}, g);
+    title.textContent = pos.pkg.summary;
+  }
+
+  return { positions, edgeLayer, boxLayer };
+}
+
+const { positions, edgeLayer, boxLayer } = drawCanvas();
+
+function clearHighlight() {
+  for (const node of boxLayer.querySelectorAll("rect")) {
+    node.setAttribute("fill", "#21262d");
+    node.setAttribute("stroke", "#30363d");
+    node.setAttribute("stroke-width", "1");
+  }
+  while (edgeLayer.firstChild) edgeLayer.removeChild(edgeLayer.firstChild);
+}
+
+function hl(id, mode) {
+  const rect = boxLayer.querySelector(`rect[data-id="${id}"]`);
+  if (!rect) return;
+  if (mode === "active") {
+    rect.setAttribute("fill", "#3a4250");
+    rect.setAttribute("stroke", "#58a6ff");
+    rect.setAttribute("stroke-width", "2");
+  } else if (mode === "on-path") {
+    rect.setAttribute("fill", "#1f2d3d");
+    rect.setAttribute("stroke", "#58a6ff");
+    rect.setAttribute("stroke-width", "1.5");
+  }
+}
+
+// Map each (from -> to) pair to how many edges between them so we can offset.
+function drawFlow(flow) {
+  clearHighlight();
+
+  // Highlight every package referenced by any step
+  const onPath = new Set();
+  for (const s of flow.steps) { onPath.add(s.from); onPath.add(s.to); }
+  for (const id of onPath) hl(id, "on-path");
+
+  // Pair-counter so multiple edges between the same two packages bow apart
+  const pairCount = new Map();
+  flow.steps.forEach((step, idx) => {
+    if (step.from === step.to) {
+      // Self-edge: small loop at top-right corner of the box
+      const a = positions.get(step.from); if (!a) return;
+      const cx = a.x + BOX_W - 16, cy = a.y - 6;
+      const path = el("path", {
+        d: `M ${cx-12},${cy} C ${cx-18},${cy-22} ${cx+10},${cy-22} ${cx+6},${cy}`,
+        fill: "none", stroke: "#58a6ff", "stroke-width": "1.6",
+        "marker-end": "url(#arrow-active)"
+      }, edgeLayer);
+      el("title", {}, path).textContent = `${idx+1}. ${step.label}\n${step.annotation}`;
+      el("text", { x: cx-3, y: cy-26, fill: "#58a6ff", "font-size": "10",
+                   "text-anchor": "middle" }, edgeLayer).textContent = `${idx+1}`;
+      return;
+    }
+
+    const a = positions.get(step.from), b = positions.get(step.to);
+    if (!a || !b) return;
+    const key = [step.from, step.to].sort().join("|");
+    const seen = pairCount.get(key) || 0;
+    pairCount.set(key, seen + 1);
+    const offset = seen * 14; // stagger parallel edges
+
+    // Use anchor points on horizontal edges of each box
+    const ax = a.x < b.x ? a.x + BOX_W : a.x;
+    const bx = a.x < b.x ? b.x : b.x + BOX_W;
+    const ay = a.y + BOX_H / 2 + offset;
+    const by = b.y + BOX_H / 2 + offset;
+    const mx = (ax + bx) / 2;
+
+    const path = el("path", {
+      d: `M ${ax},${ay} C ${mx},${ay} ${mx},${by} ${bx},${by}`,
+      fill: "none", stroke: "#58a6ff", "stroke-width": "1.6",
+      "marker-end": "url(#arrow-active)"
+    }, edgeLayer);
+    el("title", {}, path).textContent = `${idx+1}. ${step.label}\n${step.annotation}`;
+
+    // Step number label at midpoint
+    el("circle", { cx: mx, cy: (ay + by) / 2, r: 9, fill: "#0d1117",
+                   stroke: "#58a6ff", "stroke-width": "1.4" }, edgeLayer);
+    el("text", { x: mx, y: (ay + by) / 2 + 3.5, fill: "#58a6ff", "font-size": "10",
+                 "font-weight": "700", "text-anchor": "middle" }, edgeLayer).textContent = `${idx+1}`;
+  });
+
+  // Endpoints get the "active" treatment
+  if (flow.steps.length) {
+    hl(flow.steps[0].from, "active");
+    hl(flow.steps[flow.steps.length - 1].to, "active");
+  }
+
+  // Detail panel
+  const panel = document.getElementById("detail-panel");
+  panel.classList.remove("empty");
+  panel.innerHTML = "";
+  const h3 = document.createElement("h3"); h3.textContent = flow.name; panel.appendChild(h3);
+  const desc = document.createElement("p"); desc.className = "desc"; desc.textContent = flow.description; panel.appendChild(desc);
+  flow.steps.forEach((step, idx) => {
+    const wrap = document.createElement("div"); wrap.className = "step";
+    const hop = document.createElement("div"); hop.className = "hop";
+    hop.textContent = `${idx + 1}. ${step.from} → ${step.to}`;
+    const label = document.createElement("div"); label.className = "label"; label.textContent = step.label;
+    const anno = document.createElement("div"); anno.className = "anno"; anno.textContent = step.annotation;
+    wrap.appendChild(hop); wrap.appendChild(label); wrap.appendChild(anno);
+    panel.appendChild(wrap);
+  });
+}
+
+// Flow buttons
+const btnContainer = document.getElementById("flow-buttons");
+FLOWS.flows.forEach((f, idx) => {
+  const b = document.createElement("button");
+  b.className = "flow-btn";
+  b.innerHTML = `${f.name}<span class="cmd">${f.cmd}</span>`;
+  b.addEventListener("click", () => {
+    document.querySelectorAll(".flow-btn").forEach(x => x.classList.remove("active"));
+    b.classList.add("active");
+    drawFlow(f);
+  });
+  btnContainer.appendChild(b);
+  if (idx === 0) setTimeout(() => b.click(), 0); // pick first on load
+});
+</script>
+</body>
+</html>

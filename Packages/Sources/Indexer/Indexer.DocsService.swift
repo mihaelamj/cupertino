@@ -4,6 +4,7 @@ import SearchModels
 import SharedConstants
 
 // MARK: - Indexer.DocsService — concrete `run` orchestrator
+
 //
 // The value types (`Request`, `Outcome`, `Event`) plus the
 // `Indexer.DocsService.EventObserving` Observer protocol live in the
@@ -37,6 +38,12 @@ extension Indexer.DocsService {
             ?? request.baseDir.appendingPathComponent(Shared.Constants.Directory.hig)
         let searchDBURL = request.searchDB
             ?? request.baseDir.appendingPathComponent(Shared.Constants.FileName.searchDatabase)
+
+        // Surface the resolved output path upfront so long-running save
+        // jobs make their destination visible without the user having
+        // to re-derive base-dir + filename composition from CLI args.
+        // Fires before any disk activity.
+        events.observe(event: .databaseTarget(searchDBURL))
 
         // FTS5 doesn't tolerate INSERT OR REPLACE cleanly; fresh DB
         // every time keeps the correctness story simple.
@@ -86,6 +93,13 @@ extension Indexer.DocsService {
         events: any EventObserving
     ) -> URL? {
         if FileManager.default.fileExists(atPath: url.path) {
+            // Symmetric with the miss path: emit a positive event so
+            // long-running save jobs surface upfront which optional
+            // sources will be indexed. Pre-fix the success path was
+            // silent, leaving the user without a "yes, this source is
+            // queued" signal until the per-source strategy actually
+            // started running (potentially hours into an 11h job).
+            events.observe(event: .foundOptionalSource(label: label, url: url))
             return url
         }
         events.observe(event: .missingOptionalSource(label: label, url: url))
