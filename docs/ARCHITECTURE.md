@@ -1,8 +1,8 @@
 # Cupertino Architecture
 
-**Last tagged release:** v1.1.0 on 2026-05-13.
-**`main` HEAD as of:** 2026-05-15 — v1.2.0-staged work landed (Logging Singleton kill #548, foundation-only producer epic #536, in-progress closure-purge: 7 PRs landed, 4 remaining). No `v1.2.0` tag cut yet.
-**Swift Version:** 6.2
+**Last tagged release:** v1.1.0 on 2026-05-14.
+**`develop` HEAD as of:** 2026-05-18 — v1.2.0 work in progress (closure-purge epic, #767 foundOptionalSource lifecycle events). No `v1.2.0` tag cut yet.
+**Swift Version:** 6.3 (Xcode 26 SDK; use `xcrun swift build` not bare `swift`)
 **Language Mode:** Swift 6 with Strict Concurrency Checking
 
 ---
@@ -25,20 +25,27 @@ Cupertino is a Swift-based Apple documentation crawler and MCP (Model Context Pr
 
 ### Package Structure
 
-Cupertino uses **ExtremePackaging** with ~30 single-responsibility SPM targets, organized by role. 25 of those are "producer" targets enforced by `scripts/check-target-foundation-only.sh` to import only the foundation tier + `*Models` protocol seams + external primitives — verifiably standalone-portable via `scripts/check-target-portability.sh`. The remaining ~5 are foundation-tier (`SharedConstants`, `LoggingModels`, `Resources`, `MCPCore`, `MCPSharedTools`).
+Cupertino uses **ExtremePackaging** with ~40 single-responsibility SPM targets across 38 source directories, organized by role. The strict-DI contract (which targets may import which) is in `docs/package-import-contract.md`.
 
 ```
-Foundation:
-  ├─ MCP                  # MCP framework (Protocol + Transport + Server)
-  ├─ Logging              # os.log infrastructure
-  └─ Shared               # Configuration, models, BinaryConfig, FTSQuery, SchemaVersion
+Foundation tier (foundation-only by construction; any target may import these):
+  ├─ SharedConstants      # Config, models, URLUtilities, FTSQuery, SchemaVersion, BinaryConfig
+  ├─ LoggingModels        # Logging protocol seam (producers import this, not Logging)
+  ├─ MCPCore              # MCP protocol types
+  ├─ MCPSharedTools       # MCP shared tool types
+  └─ Resources            # Embedded catalogs (sample-code, swift-packages, archive guides)
 
-Infrastructure:
-  ├─ Core                 # Crawler, downloaders, package fetcher, AST annotation
+Infrastructure (wraps a system API; composition-root-only for Logging):
   ├─ ASTIndexer           # SwiftSyntax-driven symbol extraction
+  ├─ Diagnostics          # SQLite read-only inspection utilities
+  └─ Logging              # os.log writer (imported only by CLI/TUI/MockAIAgent/ReleaseTool)
+
+Producers (each imports only foundation tier + own *Models seam):
+  ├─ Core                 # HTML parsing, JSON parsing, package indexing
+  ├─ Crawler              # WKWebView BFS crawler, session resume
   ├─ Search               # search.db schema, IndexBuilder, PackageIndex, PackageQuery, SmartQuery
   ├─ SampleIndex          # samples.db schema + SampleIndex.Builder
-  ├─ Resources            # Embedded catalogs (apple sample-code, swift-packages, archive guides)
+  ├─ AppleConstraintsKit  # swift symbolgraph-extract constraint table
   ├─ Availability         # Availability data types
   └─ Cleanup              # Sample-code archive cleanup
 
@@ -49,8 +56,9 @@ Operation packages (per CLI verb — Tuist-style):
   └─ Ingest               # cupertino fetch        (#247) — currently just session helpers; pipeline lifts in 4b–4f
 
 Read-side services (cross-CLI + MCP):
-  └─ Services             # Read services (Read, DocsSearch, HIGSearch, SampleSearch, UnifiedSearch, Teaser),
-                          # ServiceContainer, SearchService protocol, Formatters/, SampleCandidateFetcher
+  └─ Services             # Read services (ReadService, DocsSearchService, HIGSearchService,
+                          # Sample.Search.Service, UnifiedSearchService, TeaserService),
+                          # ServiceContainer, SearchService protocol, CandidateFetcher
 
 MCP layer:
   ├─ MCPSupport           # Resource providers
@@ -74,7 +82,7 @@ Per-CLI-verb packages contain the substantive logic that drives one user-facing 
 
 | Package | CLI verb | Owns |
 |---|---|---|
-| `Distribution` | `cupertino setup` | `SetupService`, `ArtifactDownloader`, `ArtifactExtractor`, `InstalledVersion`, `PackagesReleaseURL` |
+| `Distribution` | `cupertino setup` | `SetupService`, `ArtifactDownloader`, `ArtifactExtractor`, `InstalledVersion` |
 | `Diagnostics` | `cupertino doctor` | `Probes` (DB + filesystem read-only inspection), `SchemaVersion` |
 | `Indexer` | `cupertino save` | `DocsService` (build search.db), `PackagesService` (build packages.db), `SamplesService` (build samples.db), `Preflight` |
 | `Ingest` | `cupertino fetch` | `Session` (clearSavedSession, requeueErroredURLs, requeueFromBaseline, enqueueURLsFromFile, checkForSession). Pipeline orchestrators (per fetch type) lift in follow-up sub-PRs. |
@@ -92,7 +100,7 @@ flowchart TD
     R[ReadService<br/>3-DB dispatch]
     DS[DocsSearchService<br/>search.db]
     HS[HIGSearchService<br/>HIG-only, delegates]
-    SS[SampleSearchService<br/>samples.db]
+    SS[Sample.Search.Service<br/>samples.db]
     US[UnifiedSearchService<br/>multi-DB]
     TS[TeaserService<br/>cross-source teasers]
 
@@ -111,7 +119,7 @@ flowchart TD
     US --> F
 ```
 
-**Top-level Services/:** infrastructure (`ServiceContainer`, `SearchService` protocol, `SampleCandidateFetcher` adapter, `Services.swift` namespace, `Formatters/`).
+**Top-level Services/:** infrastructure (`ServiceContainer`, `SearchService` protocol, `CandidateFetcher` adapter). Read commands live under `Services/ReadCommands/`.
 
 **Cross-CLI consumers:** `cupertino read`, `cupertino search`, `cupertino list-frameworks`, `cupertino list-samples`, `cupertino read-sample`, `cupertino read-sample-file`. The MCP `SearchToolProvider` consumes the same services.
 
@@ -121,7 +129,7 @@ flowchart TD
 - **Unified `cupertino read`** (#239 follow-up): single command dispatches across docs / samples / packages via `--source`. `Services.ReadService` + `Search.PackageQuery.fileContent` (reads from `package_files_fts.content`, no on-disk packages tree required).
 - **Default `cupertino search` is fan-out** (#239): merges what was `cupertino ask` — RRF (k=60) across every available DB, chunked excerpts, per-result `▶ Read full:` hints. `--brief`, `--per-source`, `--platform`, `--min-version`, `--skip-{docs,packages,samples}`, `--packages-db`.
 - **MCP read tools split** today by source: `read_document` / `read_sample` / `read_sample_file` (separate). The CLI's unified `cupertino read` is the single front-door for all three.
-- **`Search.Index` actor split by concern** (v1.0.2): `Sources/Search/SearchIndex.swift` was a 4598-line actor handling schema + migrations + indexing + search + ranking + counts + helpers. Split mechanically into a 97-line core file (declaration, properties, lifecycle) plus 12 `SearchIndex+<Concern>.swift` extension files. Public API unchanged; 40 declarations widened from `private` to package-internal so cross-file extension methods can share state. See diagrams below.
+- **`Search.Index` actor split by concern** (v1.0.2+): `Sources/Search/SearchIndex.swift` was a 4598-line actor. Split into a 253-line core file (declaration, properties, lifecycle) plus 21 `Search.Index.<Concern>.swift` extension files covering schema, migrations, indexing, search, semantic search, attribute search, query parsing, code examples, packages, counts/aliases, helpers, enrichment passes, inheritance, platform availability, and more. Public API unchanged; declarations widened from `private` to package-internal so cross-file extensions can share state. See diagrams below.
 
 **v0.2 Package Changes** (historical): MCPShared + MCPTransport + MCPServer → MCP; namespaced types (CupertinoLogging → Logging, etc.); unified `cupertino` binary (no separate `cupertino-mcp`).
 
@@ -131,7 +139,7 @@ The `Search.Index` actor is the on-disk search engine — one SQLite FTS5 databa
 
 ```mermaid
 flowchart LR
-    Idx["Search.Index<br/>actor (97 LoC core)"]
+    Idx["Search.Index<br/>actor (253 LoC core)"]
 
     Idx --> Schema["+Schema.swift<br/>createTables, full v13 SQL"]
     Idx --> Migr["+Migrations.swift<br/>migrate3..11, version r/w"]
@@ -145,9 +153,18 @@ flowchart LR
     Idx --> Cont["+ContentAndPackages.swift<br/>searchPackages,<br/>getDocumentContent, clearIndex"]
     Idx --> Cnt["+CountsAndAliases.swift<br/>symbolCount, listFrameworks,<br/>frameworkAlias r/w"]
     Idx --> Hlp["+Helpers.swift<br/>extractAvailability,<br/>detectLanguage, extractSummary"]
+    Idx --> ACS["+AppleStaticConstraints.swift<br/>applyAppleStaticConstraints"]
+    Idx --> HCS["+HierarchyConstraints.swift<br/>propagateConstraintsFromParents"]
+    Idx --> Inh["+Inheritance.swift<br/>class inheritance edges"]
+    Idx --> InhMD["+InheritanceFromMarkdown.swift<br/>markdown-parsed inheritance"]
+    Idx --> PA["+PlatformAvailability.swift<br/>availability extraction"]
+    Idx --> DB["+Database.swift<br/>open/close/migrate lifecycle"]
+    Idx --> IDP["+IndexDocumentParams.swift<br/>IndexDocumentParams value type"]
+    Idx --> DLR["+DocLinkRewriter.swift<br/>rewrite apple-docs links"]
+    Idx --> CS["+CamelCaseSplitter.swift<br/>symbol_components population"]
 ```
 
-Each extension file imports only the dependencies its concern needs (Foundation + Shared + SQLite3 always; ASTIndexer only on the two files that touch `ExtractedSymbol` / `ExtractedImport`). Function bodies, schema SQL, BM25 weights, and migration logic moved byte-for-byte. The single 1089-LoC outlier is `+Search.swift`, dominated by the 730-line `search()` function whose pipeline is below.
+Each extension file imports only the dependencies its concern needs (Foundation + Shared + SQLite3 always; ASTIndexer only on the files that touch `ExtractedSymbol` / `ExtractedImport`). Function bodies, schema SQL, BM25 weights, and migration logic moved byte-for-byte. The single 1325-LoC outlier is `+Search.swift`, dominated by the `search()` function whose pipeline is below.
 
 ### `search()` ranker pipeline
 
@@ -161,7 +178,7 @@ flowchart TD
     EA --> SQ["sanitizeFTS5Query<br/>quotes terms, splits on hyphens"]
 
     SQ --> SS["searchSymbolsForURIs<br/>(AST symbol → URI set, fast path)"]
-    SQ --> FTS["docs_fts MATCH<br/>bm25(1, 1, 2, 1, 10, 1, 3, 5)<br/>title 10× · symbols 5× · summary 3× · framework 2×"]
+    SQ --> FTS["docs_fts MATCH<br/>bm25(1, 1, 2, 1, 10, 1, 3, 5, 1.5)<br/>title 10× · symbols 5× · summary 3× · framework 2× · symbol_components 1.5×"]
 
     SS --> H1["HEURISTIC 1<br/>exact-title boost<br/>50× clean / 20× suffixed"]
     FTS --> H1
