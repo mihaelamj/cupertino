@@ -1,12 +1,12 @@
 # 🍎📚 Cupertino
 
-> 🕯️ *v1.1.0 released on 2026-05-13.* Refactor release: one type per file with `<Namespace>.<Type>.swift` naming across every SPM target, `Crawler` extracted into its own target, MCP target renamed to `MCPCore`, DI epic (#381) middle ring closed. `databaseVersion` jumps from `1.0.2` to `1.1.0`: `cupertino setup` from a v1.1.0 binary downloads a freshly-built `cupertino-databases-v1.1.0.zip` (685 MB compressed) carrying **285,735 indexed documents across 420 frameworks**, **0 poison rows** across the 13-category audit, and **+43 markdown gap-fillers** converted to canonical `StructuredDocumentationPage` JSON. See the [v1.1.0 release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.1.0).
+> 🕯️ *v1.1.0 released on 2026-05-14.* Refactor release: one type per file with `<Namespace>.<Type>.swift` naming across every SPM target, `Crawler` extracted into its own target, MCP target renamed to `MCPCore`, DI epic (#381) middle ring closed. `databaseVersion` jumps from `1.0.2` to `1.1.0`: `cupertino setup` from a v1.1.0 binary downloads a freshly-built `cupertino-databases-v1.1.0.zip` (685 MB compressed) carrying **285,735 indexed documents across 420 frameworks**, **0 poison rows** across the 13-category audit, and **+43 markdown gap-fillers** converted to canonical `StructuredDocumentationPage` JSON. See the [v1.1.0 release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.1.0).
 
 **Apple Documentation Crawler & MCP Server**
 
 A Swift-based tool to crawl, index, and serve Apple's developer documentation to AI agents via the Model Context Protocol (MCP).
 
-[![Swift 6.2+](https://img.shields.io/badge/Swift-6.2+-orange.svg)](https://swift.org)
+[![Swift 6.3+](https://img.shields.io/badge/Swift-6.3+-orange.svg)](https://swift.org)
 [![macOS 15+](https://img.shields.io/badge/macOS-15+-blue.svg)](https://www.apple.com/macos)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![PulseMCP](https://img.shields.io/badge/PulseMCP-listed-blue)](https://www.pulsemcp.com/servers/mihaelamj-cupertino)
@@ -40,7 +40,7 @@ Cupertino is a local, structured, AI-ready documentation system for Apple platfo
 - macOS 15+ (Sequoia)
 - ~3.5 GB disk space for the full v1.1.0 bundle (search.db ~2.4 GB, packages.db ~990 MB, samples.db ~185 MB; compressed download is ~685 MB)
 
-*Building from source additionally requires Swift 6.2+ and Xcode 16.0+*
+*Building from source additionally requires Swift 6.3+ and Xcode 26+ (use `xcrun swift build`, not bare `swift`)*
 
 ### Installation
 
@@ -435,7 +435,7 @@ A UIKit view controller that manages a SwiftUI view hierarchy.
 | Accelerate | 9,114 |
 | SwiftUI | 7,062 |
 | ... | ... |
-| **402 Frameworks** | **277,640** |
+| **420 Frameworks** | **285,735** |
 
 ## Core Features
 
@@ -496,7 +496,7 @@ These catalogs are indexed during `cupertino save` and enable instant search wit
 
 ### 3. Full-Text Search Engine
 
-- **Technology**: SQLite FTS5 with field-weighted BM25 (BM25F, Robertson/Zaragoza/Taylor 2004) over a structured 8-column index (`uri`, `source`, `framework`, `language`, `title`, `content`, `summary`, `symbols`). Title 10×, AST-extracted symbols 5×, summary 3×, framework 2×.
+- **Technology**: SQLite FTS5 with field-weighted BM25 (BM25F, Robertson/Zaragoza/Taylor 2004) over a 9-column index (`uri`, `source`, `framework`, `language`, `title`, `content`, `summary`, `symbols`, `symbol_components`). Title 10×, AST-extracted symbols 5×, summary 3×, framework 2×, CamelCase-split symbol components 1.5×.
 - **AST-aware**: a Swift source extractor pulls identifiers out of every embedded code block and the page declaration, denormalizes them into a `symbols` column, and feeds them into BM25F so a query like `Task` ranks the Swift `Task` struct above prose mentions of the word "task".
 - **smart-query**: `cupertino search` (and the underlying `Search.SmartQuery` API) fans the question across every source in parallel and fuses per-source rankings via reciprocal rank fusion (RRF, k=60, Cormack/Clarke/Büttcher 2009). One dead source never takes the whole query down.
 - **Features**:
@@ -562,15 +562,15 @@ See [docs/commands/](docs/commands/) for detailed usage and options.
 
 ## Architecture
 
-Cupertino uses an **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** architecture: 24 single-responsibility SPM targets organized by role. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full breakdown and the per-verb operation-package details added in v1.0.
+Cupertino uses an **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** architecture: ~40 single-responsibility SPM targets across 38 source packages. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full breakdown and [`docs/package-import-contract.md`](docs/package-import-contract.md) for the strict per-target import rules.
 
 ```
-Foundation:        MCP, Logging, Shared
-Infrastructure:    Core, ASTIndexer, Search, SampleIndex,
-                   Resources, Availability, Cleanup
+Foundation tier:   SharedConstants, LoggingModels, MCPCore, MCPSharedTools, Resources
+Infrastructure:    ASTIndexer, Diagnostics, Logging (concrete, composition-root only)
+Producers:         Crawler, Core, Search, SampleIndex, Services,
+                   AppleConstraintsKit, Availability, Cleanup, and more
 Operation packs:   Distribution (setup), Diagnostics (doctor),
                    Indexer (save), Ingest (fetch)
-Read-side:         Services
 MCP layer:         MCPSupport, MCPClient, SearchToolProvider
 Front doors:       CLI (cupertino), TUI (cupertino-tui)
 Auxiliary:         MockAIAgent, ReleaseTool, RemoteSync, TestSupport
@@ -581,11 +581,11 @@ Auxiliary:         MockAIAgent, ReleaseTool, RemoteSync, TestSupport
 ```
 1. Fetch:  cupertino fetch --type docs
    ↓
-   WKWebView → HTML → Markdown → disk (~/.cupertino/docs/)
+   WKWebView → Apple JSON API response → JSON files → disk (~/.cupertino/docs/)
 
 2. Save:   cupertino save
    ↓
-   Markdown files → SQLite FTS5 index (~/.cupertino/search.db)
+   JSON files → parse + AST extract → SQLite FTS5 index (~/.cupertino/search.db)
 
 3. Serve:  cupertino serve
    ↓
@@ -596,7 +596,7 @@ Auxiliary:         MockAIAgent, ReleaseTool, RemoteSync, TestSupport
 
 ### Key Design Principles
 
-- **Swift 6.2 Concurrency**: 100% strict concurrency checking with actors and async/await
+- **Swift 6.3 Concurrency**: 100% strict concurrency checking with actors and async/await
 - **Value Semantics**: Immutable structs by default, Sendable conformance
 - **Actor Isolation**: @MainActor for WKWebView, actors for shared state
 - **Explicit Dependencies**: No singletons, clear dependency injection
@@ -627,7 +627,7 @@ make lint                   # Lint with SwiftLint
 ### Testing
 
 **Test Suite:**
-- 1,234 tests across 135 test suites in 80 test files
+- 330+ test functions across 207 test files (parameterized tests expand to ~2,300+ runtime cases)
 - Swift Testing framework (`@Test`, `@Suite`, `#expect`) with `withDependencies` for injection
 - Includes unit tests, integration tests (real WKWebView + real Apple docs), and formatter tests
 
@@ -660,16 +660,16 @@ log stream --predicate 'subsystem == "com.cupertino"'
 | Operation | Time | Size |
 |-----------|------|------|
 | Build CLI | 10-15s | 4.3MB |
-| Crawl ~404,000+ raw pages (post-dedup ~277,640 indexed) | 12+ days | 2-3GB |
+| Crawl ~412,000+ raw pages (post-dedup 285,735 indexed, v1.1.0) | 12+ days | 2-3GB |
 | Swift Evolution | 2-5 min | 429 proposals |
 | Swift.org docs | 5-10 min | 501 pages |
-| Build search index | 2-5 min | ~160MB |
+| Build search index (full Apple docs corpus) | ~12h | ~2.4 GB search.db |
 | Search query | <100ms | - |
 
 ### Why Crawling Takes 12+ Days
 
 The crawler uses a **0.05 second default delay between each request** (configurable):
-- 404,000 raw pages × 0.05s = ~5.6 hours minimum
+- 412,000 raw pages × 0.05s = ~5.7 hours for delay alone; WKWebView rendering time per page makes real wall-clock significantly longer
 - Plus page rendering, parsing, and saving time
 - Crawl must reach depth 21+ to get all documentation
 - **Total: ~12+ days for initial full crawl**
@@ -765,14 +765,14 @@ For development setup, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Project Status
 
-**Released:** v1.1.0 on 2026-05-13. `databaseVersion` is `1.1.0`; `cupertino setup` downloads the v1.1.0 bundle (285,735 documents across 420 frameworks, 0 poison rows).
+**Released:** v1.1.0 on 2026-05-14. `databaseVersion` is `1.1.0`; `cupertino setup` downloads the v1.1.0 bundle (285,735 documents across 420 frameworks, 0 poison rows).
 
-**Staged for v1.2.0 (on `main`, not yet tagged):** the strict-DI epic — `Logging.Unified.shared` Singleton deleted (#548 closed), all 25 producer SPM targets enforce foundation-only imports at CI (#536 closed), and the closure-purge migration replaces every `@Sendable (X) -> Void` callback on producer-target public APIs with typed GoF Observer protocols (in flight: 7 PRs landed, 4 remaining).
+**Staged for v1.2.0 (on `develop`, not yet tagged):** the strict-DI epic — `Logging.Unified.shared` Singleton deleted (#548 closed), all 25 producer SPM targets enforce foundation-only imports at CI (#536 closed), and the closure-purge migration replaces every `@Sendable (X) -> Void` callback on producer-target public APIs with typed GoF Observer protocols (in flight; #767 landed).
 
 - ✅ All core functionality working
-- ✅ 1,609 tests across 210 suites passing (100% pass rate)
+- ✅ 330+ test functions across 207 test files (~2,300+ runtime cases with parameterized expansion)
 - ✅ 0 lint violations
-- ✅ Swift 6.2 compliant with 100% strict concurrency checking
+- ✅ Swift 6.3 compliant with 100% strict concurrency checking
 - ✅ All production bugs resolved
 
 ## License
@@ -781,7 +781,7 @@ MIT License - see [LICENSE](LICENSE) for details
 
 ## Acknowledgments
 
-- Built with Swift 6.2 and Swift Package Manager
+- Built with Swift 6.3 and Swift Package Manager
 - Uses [swift-argument-parser](https://github.com/apple/swift-argument-parser) for CLI
 - Implements [Model Context Protocol](https://modelcontextprotocol.io) specification
 - Inspired by the need for offline Apple documentation access
