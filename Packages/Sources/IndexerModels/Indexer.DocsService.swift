@@ -59,9 +59,25 @@ extension Indexer {
         }
 
         public enum Event: Sendable {
+            /// Emitted once at the start of `run`, before any disk
+            /// activity, carrying the resolved on-disk `search.db`
+            /// destination. Lets users + log readers confirm upfront
+            /// where the output is being written without having to
+            /// re-derive base-dir + filename composition from the CLI
+            /// args. Independent of `.removingExistingDB` (which only
+            /// fires when an existing DB needs to be wiped first).
+            case databaseTarget(URL)
             case removingExistingDB(URL)
             case initializingIndex
             case missingOptionalSource(label: String, url: URL)
+            /// Emitted once per optional source (Swift Evolution / Swift.org /
+            /// Apple Archive / HIG) whose directory IS present on disk at
+            /// startup. Mirrors `missingOptionalSource` on the success side
+            /// so long-running save jobs surface upfront which sources will
+            /// be indexed; without this event the success path is silent
+            /// and the user has to wait until the per-source strategy
+            /// actually runs (potentially hours later) to confirm.
+            case foundOptionalSource(label: String, url: URL)
             case availabilityMissing
             case progress(processed: Int, total: Int, percent: Double)
             case finished(Outcome)

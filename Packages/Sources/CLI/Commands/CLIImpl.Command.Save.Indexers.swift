@@ -345,12 +345,16 @@ extension CLIImpl.Command.Save {
         tracker: ProgressTracker
     ) {
         switch event {
+        case .databaseTarget(let url):
+            Cupertino.Context.composition.logging.recording.info("💾 Output: \(url.path)")
         case .removingExistingDB:
             Cupertino.Context.composition.logging.recording.info("🗑️  Removing existing database for clean re-index...")
         case .initializingIndex:
             Cupertino.Context.composition.logging.recording.info("🗄️  Initializing search database...")
         case .missingOptionalSource(let label, let url):
             Cupertino.Context.composition.logging.recording.info("ℹ️  \(label) directory not found at \(url.path), skipping")
+        case .foundOptionalSource(let label, let url):
+            Cupertino.Context.composition.logging.recording.info("✅ \(label) directory found at \(url.path)")
         case .availabilityMissing:
             Cupertino.Context.composition.logging.recording.info("")
             Cupertino.Context.composition.logging.recording.info("⚠️  Docs don't have availability data yet")
@@ -790,7 +794,9 @@ extension CLIImpl.Command.Save {
             ? ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
             : "unknown size"
         Cupertino.Context.composition.logging.recording.info(
-            "🧹 Orphan sidecar detected at \(sidecar.path) (\(sizeStr)) — cleaning up before new save. Likely a crashed prior `cupertino save`; original DB at \(sidecar.deletingPathExtension().path) is unaffected."
+            "🧹 Orphan sidecar detected at \(sidecar.path) (\(sizeStr)) — cleaning up before new save. "
+                + "Likely a crashed prior `cupertino save`; original DB at "
+                + "\(sidecar.deletingPathExtension().path) is unaffected."
         )
         try? fm.removeItem(at: sidecar)
         // Also remove SQLite companion files if they exist.

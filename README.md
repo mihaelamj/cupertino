@@ -717,6 +717,20 @@ cupertino save --base-dir ~/docs --search-db ~/docs/search.db
 cupertino serve --docs-dir ~/docs/apple --search-db ~/docs/search.db
 ```
 
+`cupertino save` emits diagnostic lines at startup so long-running re-index jobs surface their state upfront in any captured log:
+
+```
+💾 Output: <resolved-search-db-path>
+🗑️  Removing existing database for clean re-index...   (only if one was present)
+🗄️  Initializing search database...
+✅ Swift Evolution directory found at <path>          (per detected optional source)
+✅ Apple Archive directory found at <path>
+ℹ️  HIG directory not found at <path>, skipping       (per missing optional source)
+...
+```
+
+Optional sources (Swift Evolution / Swift.org / Apple Archive / HIG) are auto-detected under `--base-dir` using the standard layout (`<base>/swift-evolution`, `<base>/swift-org`, `<base>/archive`, `<base>/hig`) or symlinks at those paths; explicit `--<source>-dir` flags override the auto-detection.
+
 ## Documentation
 
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Build, test, contribute, and release workflow
