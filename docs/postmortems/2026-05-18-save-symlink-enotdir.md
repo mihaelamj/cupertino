@@ -2,10 +2,10 @@
 
 | Field | Value |
 |---|---|
-| **Status** | draft |
+| **Status** | settled |
 | **Incident date** | 2026-05-18 |
 | **Document created** | 2026-05-19 |
-| **Last revised** | 2026-05-19 |
+| **Last revised** | 2026-05-19 (settled after PR #788 fix + Issue779OptionalDirSymlinkTests landed) |
 | **Tracking issue** | [#779](https://github.com/mihaelamj/cupertino/issues/779) |
 | **Severity** | release-blocker (v1.2.0 ceremony was blocked) |
 | **Companion docs** | [docs/audits/issue-779-reindex-crash-20260518.log](../audits/issue-779-reindex-crash-20260518.log); [docs/handoff/2026-05-18.md](../handoff/2026-05-18.md) |
@@ -56,7 +56,8 @@ All times Zagreb local (CEST, +0200). Source: cupertino's `docs/audits/issue-779
 | 2026-05-19 02:13 | Reproduction in 1-FD fresh Swift process confirmed `NSUnderlyingError = NSPOSIXErrorDomain code 20 (ENOTDIR)`. EMFILE / fd-leak hypothesis retracted |
 | 2026-05-19 02:18 | Three-variant reproduction confirmed `contentsOfDirectory(at: URL)` fails on symlinked leaf; `resolvingSymlinksInPath()` and the String-based API both work |
 | 2026-05-19 02:30 | Provenance for the original launch traced to Claude transcript `58760905`; exact argv extracted |
-| 2026-05-19 (TBD) | One-line fix lands in `Indexer.DocsService.optionalDir`; defense-in-depth `do/catch` lands in `Search.IndexBuilder.buildIndex` |
+| 2026-05-19 06:08 | One-line fix lands in `Indexer.DocsService.optionalDir` (PR #788, commit `face50f`); defense-in-depth `do/catch` lands in `Search.IndexBuilder.buildIndex` in the same commit |
+| 2026-05-19 ~06:30 | Integration test `Issue779OptionalDirSymlinkTests` lands (PR for this commit), pinning both the positive case (post-fix symlink-following) and the negative ENOTDIR sentinel |
 
 ---
 
@@ -125,16 +126,20 @@ Two changes, neither merged at the time this postmortem was drafted:
 
 ### 7.1 Fixed by this postmortem
 
-- (TBD) PR landing the `optionalDir` `.resolvingSymlinksInPath()` fix and the `IndexBuilder` `do/catch`. The postmortem will be revised to `settled` status once this lands and is verified.
+- **PR [#788](https://github.com/mihaelamj/cupertino/pull/788)** (commit `face50f`, merged 2026-05-19): `Indexer.DocsService.optionalDir` returns `url.resolvingSymlinksInPath()` instead of `url`; `Search.IndexBuilder.buildIndex` wraps each strategy call in `do/catch` so a single strategy failure cannot strand the post-loop enrichment passes. End-to-end validation: ran `cupertino save --docs` against the 10% mini-corpus (41,569 doc symlinks + leaf symlinks for the four optional sources) on the fix-bearing binary; all four optional sources indexed (swift-evolution 483, swift-org 115, archive 368, hig 173), all three enrichment passes ran (`framework_aliases` has 22 synonym rows, `applyAppleStaticConstraints` logged, `propagateConstraintsFromParents` logged), `✅ Search index built successfully` in 11m 18s with zero errors.
+- **PR (this commit)**: `Issue779OptionalDirSymlinkTests` integration test under `Packages/Tests/SearchTests/` covers both the positive case (post-fix path: `SwiftEvolutionStrategy` with a URL through `resolvingSymlinksInPath()` indexes content cleanly from a leaf directory-symlink fixture) and the negative ENOTDIR sentinel (pre-fix shape: same strategy with the raw symlink URL throws NSCocoa 256 with `NSPOSIXErrorDomain` code 20 underlying). Pins the bug as a regression sentinel: any future change that breaks `resolvingSymlinksInPath()` at the composition root surfaces in the negative test.
 
 ### 7.2 Filed for later
 
 | Item | Issue | Reason |
 |---|---|---|
 | Save-log diagnostics (per-line ISO 8601, startup invocation banner) | [#780](https://github.com/mihaelamj/cupertino/issues/780), [#781](https://github.com/mihaelamj/cupertino/issues/781) | Already merged via [#782](https://github.com/mihaelamj/cupertino/pull/782) on 2026-05-19; next incident's log will be self-describing |
-| Audit other URL-variant FileManager call sites in the codebase | (TBD, file after the optionalDir fix lands) | Same class-of-bug latency; preemptive grep + resolveSymlinks at all call sites |
-| Active failure notification from the launcher (`say` / desktop notification on exit-non-zero, not just on success) | (TBD) | Detection lagged the 17:35 failure by ~12h because the launcher only documents the success signal |
-| Integration test: symlinked optional source dir | (TBD, in the fix PR) | Stop the bug from coming back |
+| Audit other URL-variant FileManager call sites in the codebase | Filed as [#786](https://github.com/mihaelamj/cupertino/issues/786); shipped via PR [#787](https://github.com/mihaelamj/cupertino/pull/787) + a follow-up commit catching a third call site (`PackageIndexer.walkDirectoryForFiles` enumerator) that c1 spotted during PR critic. Total: 7 sites migrated to `Shared.Utils.FileSystem.contentsOfDirectory` / `.enumerator` wrappers (Option C centralised approach). |
+| Active failure notification from the launcher (`say` / desktop notification on exit-non-zero, not just on success) | Still open; not filed as an issue yet. Detection lagged the 17:35 failure by ~12h because the launcher only documents the success signal. |
+| Integration test: symlinked optional source dir | Shipped: `Issue779OptionalDirSymlinkTests` (this commit). Positive + negative sentinel as described in §7.1. |
+| Drop redundant `packages` + `package_dependencies` tables from `search.db` | Filed as [#789](https://github.com/mihaelamj/cupertino/issues/789); shipped via PR [#790](https://github.com/mihaelamj/cupertino/pull/790). Schema 17 → 18 with `DROP TABLE` migration. Surfaced during the #779 mini-corpus validation when the post-crash DB showed `packages` row count of 0 despite a successful strategy run. |
+| `CREATE TABLE`-without-writer lint rule | Filed as [#791](https://github.com/mihaelamj/cupertino/issues/791); mechanical floor for the class-of-bug that #789 surfaced. Not yet routed. |
+| Post-index search-results comparator (candidate `search.db` vs brew reference) | Filed as [#792](https://github.com/mihaelamj/cupertino/issues/792); broader regression catcher (the "would have caught #779, #786, #789 earlier" tool). Not yet routed. |
 
 ### 7.3 Where we got lucky
 
