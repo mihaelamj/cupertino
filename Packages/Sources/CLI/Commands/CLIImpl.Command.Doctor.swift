@@ -532,7 +532,7 @@ extension CLIImpl.Command {
                 return
             }
 
-            let contents = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])) ?? []
+            let contents = (try? Shared.Utils.FileSystem.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])) ?? []
             let zips = contents.filter { $0.pathExtension.lowercased() == "zip" }
             let invalid = zips.filter { !Shared.Utils.ZipMagic.isValid(at: $0) }
 

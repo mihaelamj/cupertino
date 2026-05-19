@@ -619,7 +619,7 @@ extension CLIImpl.Command {
                 throw ExitCode.failure
             }
 
-            let owners = (try? fm.contentsOfDirectory(at: outputURL, includingPropertiesForKeys: nil))?
+            let owners = (try? Shared.Utils.FileSystem.contentsOfDirectory(at: outputURL, includingPropertiesForKeys: nil))?
                 .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
                 .filter { !$0.lastPathComponent.hasPrefix(".") }
                 ?? []
@@ -630,7 +630,7 @@ extension CLIImpl.Command {
             let startedAt = Date()
 
             for ownerURL in owners.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
-                let repos = (try? fm.contentsOfDirectory(at: ownerURL, includingPropertiesForKeys: nil))?
+                let repos = (try? Shared.Utils.FileSystem.contentsOfDirectory(at: ownerURL, includingPropertiesForKeys: nil))?
                     .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
                     .filter { !$0.lastPathComponent.hasPrefix(".") }
                     ?? []
