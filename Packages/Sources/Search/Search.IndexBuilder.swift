@@ -167,8 +167,32 @@ extension Search {
 
             var allStats: [Search.IndexStats] = []
             for strategy in strategies {
-                let stats = try await strategy.indexItems(into: searchIndex, progress: onProgress)
-                allStats.append(stats)
+                // #779 defense-in-depth: per-strategy do/catch so one
+                // strategy throwing cannot strand the post-loop enrichment
+                // passes (registerFrameworkSynonyms, applyAppleStaticConstraints,
+                // propagateConstraintsFromParents). The original #779
+                // production crash burned ~11h of apple-docs work because
+                // SwiftEvolution threw NSCocoa 256 and the loop aborted
+                // before enrichment ran. Even with the optionalDir
+                // resolvingSymlinksInPath() composition-root fix, the next
+                // undiscovered strategy-level bug should not have the same
+                // blast radius.
+                do {
+                    let stats = try await strategy.indexItems(into: searchIndex, progress: onProgress)
+                    allStats.append(stats)
+                } catch {
+                    logger.error(
+                        "❌ Strategy threw: \(error.localizedDescription); skipping this source, enrichment passes will still run",
+                        category: .search
+                    )
+                    allStats.append(IndexStats(
+                        source: "<unknown>", // strategy type erased post-throw; best-effort placeholder
+                        indexed: 0,
+                        skipped: 0,
+                        wasSkipped: true,
+                        skipReason: "strategy threw: \(error.localizedDescription)"
+                    ))
+                }
             }
 
             try await registerFrameworkSynonyms()

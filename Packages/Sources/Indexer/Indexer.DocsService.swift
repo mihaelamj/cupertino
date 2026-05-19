@@ -100,7 +100,16 @@ extension Indexer.DocsService {
             // queued" signal until the per-source strategy actually
             // started running (potentially hours into an 11h job).
             events.observe(event: .foundOptionalSource(label: label, url: url))
-            return url
+            // #779 fix: resolve symlinks before handing the URL to the strategies.
+            // FileManager.contentsOfDirectory(at:) (URL variant) does NOT follow
+            // a leaf directory-symlink; it operates on the symlink inode itself
+            // and the kernel returns ENOTDIR (POSIX 20), which Foundation wraps
+            // as NSCocoaErrorDomain 256 with the bare "couldn't be opened"
+            // string. resolvingSymlinksInPath() is a no-op on non-symlink URLs,
+            // so this is safe for the brew layout (no symlinks under
+            // ~/.cupertino/) and fixes the dev layout (symlinks in
+            // ~/.cupertino-dev/{swift-evolution,swift-org,archive,hig}).
+            return url.resolvingSymlinksInPath()
         }
         events.observe(event: .missingOptionalSource(label: label, url: url))
         return nil
