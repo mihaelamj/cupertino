@@ -115,7 +115,10 @@ struct Issue755MigrateToVersion17Tests {
         try #require(sqlite3_step(versionStmt) == SQLITE_ROW)
         let postVersion = sqlite3_column_int(versionStmt, 0)
         sqlite3_finalize(versionStmt)
-        #expect(postVersion == 17, "PRAGMA user_version should be stamped to 17 post-migration; got \(postVersion)")
+        #expect(
+            Int32(postVersion) == Search.Index.schemaVersion,
+            "PRAGMA user_version should match Search.Index.schemaVersion after migration; got \(postVersion) vs \(Search.Index.schemaVersion)"
+        )
 
         var columnStmt: OpaquePointer?
         let columnQuery = "SELECT generic_constraints FROM doc_symbols LIMIT 1;"
@@ -150,7 +153,10 @@ struct Issue755MigrateToVersion17Tests {
         try #require(sqlite3_step(stmt) == SQLITE_ROW)
         let version = sqlite3_column_int(stmt, 0)
         sqlite3_finalize(stmt)
-        #expect(version == 17, "PRAGMA user_version should still be 17 after second open; got \(version)")
+        #expect(
+            Int32(version) == Search.Index.schemaVersion,
+            "PRAGMA user_version should match Search.Index.schemaVersion after second open; got \(version) vs \(Search.Index.schemaVersion)"
+        )
     }
 }
 

@@ -313,25 +313,7 @@ extension Search.Index {
         return Int(sqlite3_column_int(statement, 0))
     }
 
-    /// Get total package count
-    public func packageCount() async throws -> Int {
-        guard let database else {
-            throw Search.Error.databaseNotInitialized
-        }
-
-        let sql = Shared.Utils.SQL.countRows(in: "packages")
-
-        var statement: OpaquePointer?
-        defer { sqlite3_finalize(statement) }
-
-        guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
-            throw Search.Error.searchFailed("Package count failed")
-        }
-
-        guard sqlite3_step(statement) == SQLITE_ROW else {
-            return 0
-        }
-
-        return Int(sqlite3_column_int(statement, 0))
-    }
+    // #789: packageCount() removed along with the search.db `packages`
+    // table. Package counts live in packages.db; callers needing them
+    // should query that DB directly.
 }

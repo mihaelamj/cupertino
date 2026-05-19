@@ -118,7 +118,9 @@ struct SchemaShapeTests {
         // the new column stores the constraint half of `T: Collection`
         // form so `search_generics` finally matches what its description
         // advertises).
-        #expect(Search.Index.schemaVersion == 17)
+        // Bumped 17 -> 18 by #789 (DROP `packages` + `package_dependencies`
+        // from search.db; packages now live exclusively in packages.db).
+        #expect(Search.Index.schemaVersion == 18)
     }
 
     @Test("Fresh DB has PRAGMA user_version stamped to current schemaVersion")

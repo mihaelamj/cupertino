@@ -85,7 +85,7 @@ extension Search {
         ///       `generic_constraints LIKE`. v16 DBs migrate in place
         ///       via ALTER TABLE ADD COLUMN; values stay NULL until
         ///       the next re-index populates them.
-        public static let schemaVersion: Int32 = 17
+        public static let schemaVersion: Int32 = 18
 
         // Properties are package-internal (default visibility) so the
         // SearchIndex+<Concern>.swift extension files can access them. Public
