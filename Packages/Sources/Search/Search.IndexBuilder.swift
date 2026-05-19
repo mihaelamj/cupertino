@@ -310,7 +310,12 @@ extension Search {
             if indexSampleCode {
                 strategies.append(Search.SampleCodeStrategy(sampleCatalogProvider: sampleCatalogProvider, logger: logger))
             }
-            strategies.append(Search.SwiftPackagesStrategy(logger: logger))
+            // #789: SwiftPackagesStrategy + the search.db `packages` /
+            // `package_dependencies` tables removed. The canonical packages
+            // store is `packages.db` (built by `cupertino save --packages`,
+            // queried by `cupertino package-search`); the in-search.db tables
+            // were always a shallow duplicate fed from a slimmed-to-empty
+            // bundled catalog and added zero value over packages.db.
             return strategies
         }
 

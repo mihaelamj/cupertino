@@ -2,6 +2,7 @@ import ASTIndexer
 import Foundation
 import SearchModels
 import SharedConstants
+
 // MARK: - Source Item
 
 /// Unified container for content to be indexed from any source.
@@ -503,27 +504,11 @@ extension Search {
 
 // MARK: - Packages Indexer
 
-/// Indexer for Swift Package documentation
-extension Search {
-    public struct PackagesIndexer: Search.SourceIndexer {
-        public let sourceID = "packages"
-        public let displayName = "Swift Packages"
-
-        public init() {}
-
-        public func extractCode(from item: Search.SourceItem) -> Search.ExtractedContent {
-            // Package docs have API documentation with declarations
-            let extractor = ASTIndexer.Extractor()
-            let result = extractor.extract(from: item.content)
-
-            return Search.ExtractedContent(
-                symbols: result.symbols,
-                imports: result.imports,
-                hasErrors: result.hasErrors
-            )
-        }
-    }
-}
+// #789: PackagesIndexer removed along with the search.db `packages`
+// table. Package indexing lives in packages.db via the dedicated
+// `Indexer.PackagesService` (`cupertino save --packages`); the
+// in-search.db indexer was a shallow shadow that fed the now-dropped
+// `packages` table.
 
 // MARK: - Indexer Registry
 
@@ -539,7 +524,7 @@ extension Search {
             "apple-archive": AppleArchiveIndexer(),
             "swift-book": SwiftBookIndexer(),
             "swift-org": SwiftOrgIndexer(),
-            "packages": PackagesIndexer(),
+            // #789: "packages" indexer removed; packages live in packages.db
         ]
 
         /// Get indexer for a source ID

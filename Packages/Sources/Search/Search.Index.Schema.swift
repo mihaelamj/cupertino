@@ -47,8 +47,13 @@ extension Search.Index {
             min_watchos TEXT,
             min_visionos TEXT,
             availability_source TEXT, -- 'api', 'parsed', 'inherited', 'derived'
-            implementation_swift_version TEXT, -- #225 Part B: Swift toolchain version a swift-evolution proposal landed in; NULL on non-evolution rows and on evolution rows whose markdown the parser couldn't read a version from
-            FOREIGN KEY (package_id) REFERENCES packages(id)
+            -- #225 Part B: Swift toolchain version a swift-evolution proposal
+            -- landed in; NULL on non-evolution rows and on evolution rows whose
+            -- markdown the parser couldn't read a version from.
+            implementation_swift_version TEXT
+            -- #789: removed FOREIGN KEY (package_id) REFERENCES packages(id)
+            -- along with the dropped `packages` table. `package_id` column
+            -- preserved on docs_metadata for back-compat; always NULL post-#789.
         );
 
         CREATE INDEX IF NOT EXISTS idx_source ON docs_metadata(source);
@@ -100,34 +105,11 @@ extension Search.Index {
         CREATE INDEX IF NOT EXISTS idx_alias_import ON framework_aliases(import_name);
         CREATE INDEX IF NOT EXISTS idx_alias_display ON framework_aliases(display_name);
 
-        CREATE TABLE IF NOT EXISTS packages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            owner TEXT NOT NULL,
-            repository_url TEXT NOT NULL,
-            documentation_url TEXT,
-            stars INTEGER,
-            last_updated INTEGER,
-            is_apple_official INTEGER DEFAULT 0,
-            description TEXT,
-            UNIQUE(owner, name)
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_package_owner ON packages(owner);
-        CREATE INDEX IF NOT EXISTS idx_package_official ON packages(is_apple_official);
-
-        CREATE TABLE IF NOT EXISTS package_dependencies (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            package_id INTEGER NOT NULL,
-            depends_on_package_id INTEGER NOT NULL,
-            version_requirement TEXT,
-            FOREIGN KEY (package_id) REFERENCES packages(id),
-            FOREIGN KEY (depends_on_package_id) REFERENCES packages(id),
-            UNIQUE(package_id, depends_on_package_id)
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_pkg_dep_package ON package_dependencies(package_id);
-        CREATE INDEX IF NOT EXISTS idx_pkg_dep_depends ON package_dependencies(depends_on_package_id);
+        -- #789: `packages` + `package_dependencies` tables removed from
+        -- search.db. The canonical packages store is `packages.db`
+        -- (built by `cupertino save --packages`, queried by
+        -- `cupertino package-search`). DROP-on-upgrade lives in
+        -- Search.Index.Migrations migrateToVersion18.
 
         CREATE VIRTUAL TABLE IF NOT EXISTS sample_code_fts USING fts5(
             url,

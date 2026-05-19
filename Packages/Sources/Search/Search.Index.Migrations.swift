@@ -262,11 +262,25 @@ extension Search.Index {
             // constraint half of `T: Collection` form harvested from
             // the AST extractor + where-clause patterns parsed from
             // the `signature` column at index time. Clean in-place
-            // ALTER TABLE ADD COLUMN — old rows get NULL, the next
+            // ALTER TABLE ADD COLUMN, old rows get NULL, the next
             // `cupertino save --docs` re-index populates the column.
-            // Same NULL semantics as v15→v16: filters reject NULL
+            // Same NULL semantics as v15-to-v16: filters reject NULL
             // rows when set, pass through when not set.
             try await migrateToVersion17()
+        }
+
+        if currentVersion < 18 {
+            // Version 17 -> 18: DROP the `packages` and
+            // `package_dependencies` tables from search.db (#789). The
+            // canonical packages store is `packages.db`, built by
+            // `cupertino save --packages` and queried by `cupertino
+            // package-search`. The in-search.db tables were a shallow
+            // duplicate fed from a slimmed-to-empty bundled catalog.
+            // Clean in-place DROP TABLE IF EXISTS, no data preserved
+            // (the table was empty for end users by the time v17 shipped
+            // anyway since the catalog had been slimmed to URL-only and
+            // returned empty at runtime).
+            try await migrateToVersion18()
         }
     }
 
@@ -324,12 +338,43 @@ extension Search.Index {
         for sql in statements {
             var errorPointer: UnsafeMutablePointer<CChar>?
             defer { sqlite3_free(errorPointer) }
-            // Ignore error if column/index already exists — idempotent
+            // Ignore error if column/index already exists, idempotent
             // across partial runs, same pattern as migrateToVersion16.
             sqlite3_exec(database, sql, nil, nil, &errorPointer)
         }
 
         try stampUserVersionUnchecked(17)
+    }
+
+    /// v17 -> v18: DROP `packages` and `package_dependencies` from
+    /// search.db (#789). The canonical packages store is `packages.db`
+    /// (built by `cupertino save --packages`, queried by
+    /// `cupertino package-search`). The in-search.db tables were a
+    /// shallow duplicate fed from a slimmed-to-empty bundled catalog
+    /// and added zero value over packages.db.
+    ///
+    /// Idempotent via `DROP TABLE IF EXISTS`. Indexes drop along with
+    /// the parent tables in sqlite.
+    ///
+    /// Trailing `stampUserVersionUnchecked(18)` is load-bearing per
+    /// #749. See `migrateToVersion16` for the rationale.
+    func migrateToVersion18() async throws {
+        guard let database else {
+            throw Search.Error.databaseNotInitialized
+        }
+
+        let statements = [
+            "DROP TABLE IF EXISTS package_dependencies;",
+            "DROP TABLE IF EXISTS packages;",
+        ]
+
+        for sql in statements {
+            var errorPointer: UnsafeMutablePointer<CChar>?
+            defer { sqlite3_free(errorPointer) }
+            sqlite3_exec(database, sql, nil, nil, &errorPointer)
+        }
+
+        try stampUserVersionUnchecked(18)
     }
 
     /// v10 → v11: adds `kind` + `symbols` columns to `docs_metadata`

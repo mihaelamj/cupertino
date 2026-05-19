@@ -3,12 +3,19 @@
 // Seed list of Swift package URLs, slimmed (#161 follow-up) from the original
 // 3.4 MB bundled JSON catalog to a compiled-in `[String]` of URLs. Rich
 // metadata (stars, description, license, etc.) is no longer part of the
-// bundled catalog — once v1.0.0 First Light ships `packages.db` as a
+// bundled catalog; once v1.0.0 First Light shipped `packages.db` as a
 // separately-distributed artifact, that metadata comes from the DB instead.
 //
 // The catalog retains the `SwiftPackageEntry` shape so existing consumers
 // compile unchanged; fields that used to come from the JSON (stars, license,
 // description, etc.) now default to `nil` / `0` / `false`.
+//
+// #789 (2026-05-19): this catalog is no longer fed to search.db. The
+// `Search.SwiftPackagesStrategy` was removed along with the search.db
+// `packages` and `package_dependencies` tables. The catalog now has ONE
+// consumer left: `TUI/PackageCurator` uses `allPackages` as the seed list
+// for the curate-mode picker. Package search at runtime lives in
+// packages.db via `cupertino package-search`.
 
 import Foundation
 import Resources

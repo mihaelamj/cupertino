@@ -88,10 +88,27 @@ struct Issue635SchemaStampGuardTests {
                 NSLocalizedDescriptionKey: "open(\(dbURL.path)) failed",
             ])
         }
-        // v17: drop generic_constraints + its index from doc_symbols (#755).
+        // v18: re-CREATE the dropped `packages` + `package_dependencies` tables
+        // (#789's in-place migration DROPs them). Stamping PRAGMA back to v17
+        // and reopening should re-run migrateToVersion18 and drop them again.
         let statements = [
-            "DROP INDEX IF EXISTS idx_doc_symbols_generic_constraints;",
-            "ALTER TABLE doc_symbols DROP COLUMN generic_constraints;",
+            """
+            CREATE TABLE IF NOT EXISTS packages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                owner TEXT NOT NULL,
+                repository_url TEXT NOT NULL,
+                UNIQUE(owner, name)
+            );
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS package_dependencies (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                package_id INTEGER NOT NULL,
+                depends_on_package_id INTEGER NOT NULL,
+                UNIQUE(package_id, depends_on_package_id)
+            );
+            """,
         ]
         for sql in statements {
             guard sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK else {

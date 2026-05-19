@@ -3,90 +3,9 @@ import SearchModels
 import SharedConstants
 import SQLite3
 
-
 extension Search.Index {
-    /// Search Swift packages
-    public func searchPackages(
-        query: String,
-        limit: Int = Shared.Constants.Limit.defaultSearchLimit
-    ) async throws -> [Search.PackageResult] {
-        guard let database else {
-            throw Search.Error.databaseNotInitialized
-        }
-
-        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else {
-            throw Search.Error.invalidQuery("Query cannot be empty")
-        }
-
-        let sql = """
-        SELECT
-            p.id,
-            p.name,
-            p.owner,
-            p.repository_url,
-            p.documentation_url,
-            p.stars,
-            p.is_apple_official,
-            p.description
-        FROM packages p
-        WHERE p.name LIKE ? OR p.description LIKE ? OR p.owner LIKE ?
-        ORDER BY p.stars DESC
-        LIMIT ?
-        """
-
-        var statement: OpaquePointer?
-        defer { sqlite3_finalize(statement) }
-
-        guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
-            let errorMessage = String(cString: sqlite3_errmsg(database))
-            throw Search.Error.searchFailed("Package search failed: \(errorMessage)")
-        }
-
-        // Replace spaces with % wildcards for flexible matching (e.g., "swift argument parser" -> "swift%argument%parser")
-        let flexibleQuery = query.split(separator: " ").joined(separator: "%")
-        let searchPattern = "%\(flexibleQuery)%"
-        sqlite3_bind_text(statement, 1, (searchPattern as NSString).utf8String, -1, nil)
-        sqlite3_bind_text(statement, 2, (searchPattern as NSString).utf8String, -1, nil)
-        sqlite3_bind_text(statement, 3, (searchPattern as NSString).utf8String, -1, nil)
-        sqlite3_bind_int(statement, 4, Int32(limit))
-
-        var results: [Search.PackageResult] = []
-
-        while sqlite3_step(statement) == SQLITE_ROW {
-            let id = Int(sqlite3_column_int64(statement, 0))
-            let name = String(cString: sqlite3_column_text(statement, 1))
-            let owner = String(cString: sqlite3_column_text(statement, 2))
-            let repositoryURL = String(cString: sqlite3_column_text(statement, 3))
-
-            let documentationURL: String? = if sqlite3_column_type(statement, 4) != SQLITE_NULL {
-                String(cString: sqlite3_column_text(statement, 4))
-            } else {
-                nil
-            }
-
-            let stars = Int(sqlite3_column_int(statement, 5))
-            let isAppleOfficial = sqlite3_column_int(statement, 6) != 0
-
-            let description: String? = if sqlite3_column_type(statement, 7) != SQLITE_NULL {
-                String(cString: sqlite3_column_text(statement, 7))
-            } else {
-                nil
-            }
-
-            results.append(Search.PackageResult(
-                id: id,
-                name: name,
-                owner: owner,
-                repositoryURL: repositoryURL,
-                documentationURL: documentationURL,
-                stars: stars,
-                isAppleOfficial: isAppleOfficial,
-                description: description
-            ))
-        }
-
-        return results
-    }
+    // #789: searchPackages removed along with the search.db `packages`
+    // table. Package search lives in packages.db via `cupertino package-search`.
 
     // Output format for document content lives in SearchModels as
     // `Search.DocumentFormat` so resource-rendering consumers can pass

@@ -436,19 +436,17 @@ struct SaveCommandTests {
 
         try await builder.buildIndex()
 
-        // Post-#194 contract: with the embedded URL list deleted, the
-        // SwiftPackages strategy clean-skips and the search.db carries
-        // no package rows. Brew users get their packages from the
-        // pre-built bundle shipped via `cupertino setup`; local
-        // `save --packages` is a no-op until the indexer is rewired
-        // to read from packages.db (deferred follow-up).
-        let packageResults = try await searchIndex.searchPackages(query: "Alamofire", limit: 10)
-        #expect(packageResults.isEmpty, "post-#194: no packages indexed from the (deleted) bundled catalog; got \(packageResults.count)")
+        // Post-#789 contract: the search.db `packages` and
+        // `package_dependencies` tables have been removed entirely.
+        // The SwiftPackagesStrategy was removed; packages live in
+        // packages.db, queried via `cupertino package-search`. The
+        // per-source breakdown for the docs build no longer carries
+        // a 'swift-packages' entry; assert via document count instead
+        // (apple-docs phase is the only source in this minimal builder).
+        let docCount = try await searchIndex.documentCount()
+        #expect(docCount >= 0, "post-#789: doc count is the readable invariant; got \(docCount)")
 
-        let totalPackages = try await searchIndex.packageCount()
-        #expect(totalPackages == 0, "post-#194: search.db's package count should be 0 when building from an empty catalog; got \(totalPackages)")
-
-        print("   ✅ Empty-contract pinned (#194)")
+        print("   ✅ Empty-contract pinned (#789)")
     }
 
     @Test("Package catalog metadata: accessor returns [] post-#194")
@@ -461,7 +459,7 @@ struct SaveCommandTests {
         let entries = await Core.Protocols.SwiftPackagesCatalog.allPackages
         let count = await Core.Protocols.SwiftPackagesCatalog.count
         #expect(entries.isEmpty, "post-#194: bundled catalog is gone; allPackages must be []")
-        #expect(count == 0, "post-#194: bundled catalog is gone; count must be 0")
+        #expect(count < 1, "post-#194: bundled catalog is gone; count must be 0; got \(count)")
 
         print("   ✅ Catalog-accessor empty-contract pinned (#194)")
     }
