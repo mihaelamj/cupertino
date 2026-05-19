@@ -99,6 +99,17 @@ pass() {
 DOC_SYMLINK_COUNT=$(find "$CORPUS/docs" -type l 2>/dev/null | wc -l | tr -d ' ')
 [[ "$DOC_SYMLINK_COUNT" -gt 1000 ]] || bail "$CORPUS/docs has only $DOC_SYMLINK_COUNT symlinks; coverage assertions would be unreliable (expected ~41,000 for the 10% fixture)"
 
+# Disk sleep on the active save volume is a real risk on long jobs. The
+# May 18 production save almost stalled because of disksleep=10 on the
+# Claw mini's external SSD. macOS process-level caffeinate prevents
+# SYSTEM sleep but not DISK sleep; only `sudo pmset -a disksleep 0`
+# does that. This pre-flight fails loudly so the operator fixes it
+# before paying for the 11h save, not after.
+DISKSLEEP=$(pmset -g 2>/dev/null | awk '/disksleep/ {print $2}')
+if [[ "${DISKSLEEP:-1}" != "0" ]]; then
+    bail "disksleep is ${DISKSLEEP:-unknown}, not 0; long save may stall on disk-sleep eviction. Fix: sudo pmset -a disksleep 0  (then re-run this script)"
+fi
+
 echo "=== pre-index validation gate (#794) ==="
 echo "  corpus:    $CORPUS  ($DOC_SYMLINK_COUNT doc symlinks)"
 echo "  binary:    $BINARY"
