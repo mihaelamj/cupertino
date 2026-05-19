@@ -66,3 +66,9 @@ Predicted rate at N=351,509 (end of apple-docs phase): **4.6 docs/s**. Integrate
 For the 10× headroom target (4M docs), the new exponent extrapolates to roughly **two months** of indexing, vs the ten days the old fit predicted. The gap between principle and reality is larger than we thought.
 
 **Source data for the update:** the live `cupertino save --docs --base-dir ~/.cupertino-dev` run on the Studio, log at `~/.cupertino-dev/reindex-20260519-080940.log`, sampled every 10,000 indexed docs.
+
+**Mihaela's stance (2026-05-19):** not pursuing this as a perf bug. It's a SQLite FTS5 characteristic: incremental `INSERT INTO docs_fts` cost grows with the table because FTS5 maintains its `*_docsize` / `*_idx` / `*_content` shadow tables in lockstep with each insert, and `INSERT OR REPLACE` on the dedup path pays an additional rewrite cost as the URI index grows. The classical fix is bulk-load (collect rows in a staging table, then re-create the FTS index over the full set), which is a real architectural change to the save pipeline, not a small tweak.
+
+The cost is acceptable because **`cupertino save --docs` runs once per release** (monthly-ish cadence) and users never run it themselves; they pull pre-built bundles via `cupertino setup`. The 11h is paid by the maintainer, not by users. PRINCIPLES.md §5's "10x headroom" remains the right aspirational ceiling for design discussion, but the gap between aspiration and reality on the indexing-time axis is not blocking anything user-visible right now.
+
+If at some future point a re-index has to happen mid-day under pressure (incident response, hot data refresh), the bulk-load redesign becomes worth filing. Until then, file-and-forget.
