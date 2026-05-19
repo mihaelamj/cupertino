@@ -36,3 +36,33 @@ Probably one of:
 None of which is in scope for the #779 fix. Filed as a fun fact pending a real perf-investigation issue.
 
 **Source data:** validation runs on the `feat/779-mini-corpus-setup` branch, 2026-05-19, against `~/.cupertino/docs/` on the Studio. Coordinated via the `c1`/`c2` claude-chat collab; the three throughput data points are captured in chat at `2026-05-19T04:01:30`, `04:24:50`, and the production figure was the existing `cupertino save --docs` 11h baseline from the v1.2.0 reindex (#779 crash log committed at `docs/audits/issue-779-reindex-crash-20260518.log`).
+
+---
+
+### Update 2026-05-19 (afternoon): the full-corpus run gave a better fit
+
+The original three-point fit above was extrapolated from two mini-corpus runs plus the May 18 production point. The 2026-05-19 v1.2.0-prep production reindex (PID 25122, started 08:09 against the post-#779-fix binary) gave 25 dense rate-at-N samples instead of 3. Fitting `rate = c / N^alpha` against those 25 points (log-log regression):
+
+```
+rate = 8,106,844 / N^1.126   docs/s
+```
+
+i.e. total wall time scales as **N^2.126** — even worse than N^1.9. The principle from §5 is violated harder than the three-point estimate suggested.
+
+Rate-vs-N table (every 10K docs, from log timestamps):
+
+| N (docs) | cumulative wall | docs/s in this window |
+|---|---|---|
+| 10,100 | 0.6 min | 294 |
+| 30,100 | 4.3 min | 70 |
+| 50,100 | 12.1 min | 39 |
+| 100,100 | 47.0 min | 16 |
+| 150,100 | 113.0 min | 13 |
+| 200,100 | 192.1 min | 9.7 |
+| 250,100 | 300.3 min | 7.4 |
+
+Predicted rate at N=351,509 (end of apple-docs phase): **4.6 docs/s**. Integrated total wall: **~10 h** for apple-docs alone (+~1 h for optional sources and enrichment passes = ~11 h total). The May 18 11h15m baseline wasn't a worst case; it's the steady state.
+
+For the 10× headroom target (4M docs), the new exponent extrapolates to roughly **two months** of indexing, vs the ten days the old fit predicted. The gap between principle and reality is larger than we thought.
+
+**Source data for the update:** the live `cupertino save --docs --base-dir ~/.cupertino-dev` run on the Studio, log at `~/.cupertino-dev/reindex-20260519-080940.log`, sampled every 10,000 indexed docs.
