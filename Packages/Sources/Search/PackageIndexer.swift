@@ -108,7 +108,7 @@ extension Search {
                 options: [.skipsHiddenFiles]
             )
             for ownerURL in ownerURLs {
-                let isDir = (try? ownerURL.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
+                let isDir = (try? ownerURL.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
                 guard isDir else { continue }
                 let repoURLs = (try? Shared.Utils.FileSystem.contentsOfDirectory(
                     at: ownerURL,
@@ -116,7 +116,7 @@ extension Search {
                     options: [.skipsHiddenFiles]
                 )) ?? []
                 for repoURL in repoURLs {
-                    let isRepoDir = (try? repoURL.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
+                    let isRepoDir = (try? repoURL.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
                     guard isRepoDir else { continue }
                     result.append(repoURL)
                 }
@@ -215,50 +215,67 @@ extension Search {
 
         private nonisolated func walkDirectoryForFiles(dir: URL) -> [Core.PackageIndexing.ExtractedFile] {
             var files: [Core.PackageIndexing.ExtractedFile] = []
-            let rootComponents = dir.resolvingSymlinksInPath().pathComponents
+            let contents = (try? Shared.Utils.FileSystem.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.isDirectoryKey])) ?? []
 
-            guard let enumerator = FileManager.default.enumerator(
-                at: dir,
-                includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey]
-            ) else {
-                return files
-            }
+            for item in contents {
+                let resolvedItem = item.resolvingSymlinksInPath()
+                let isDir = (try? resolvedItem.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
 
-            while let candidate = enumerator.nextObject() as? URL {
-                let name = candidate.lastPathComponent
-                // Skip the retained tarball, the manifest, and the
-                // sidecar availability annotation file (#219) — none are
-                // user-authored content.
-                if name == ".archive.tar.gz"
-                    || name == "manifest.json"
-                    || name == Core.PackageIndexing.availabilityFilename {
-                    continue
+                if isDir {
+                    guard let enumerator = Shared.Utils.FileSystem.enumerator(
+                        at: item,
+                        includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey]
+                    ) else { continue }
+
+                    let resolvedItemPath = resolvedItem.path
+                    let logicalPrefix = item.lastPathComponent
+
+                    while let candidate = enumerator.nextObject() as? URL {
+                        let candidatePath = candidate.resolvingSymlinksInPath().path
+                        if candidatePath.hasPrefix(resolvedItemPath) {
+                            let subRel = String(candidatePath.dropFirst(resolvedItemPath.count)).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+                            let relpath = logicalPrefix + (subRel.isEmpty ? "" : "/" + subRel)
+                            if let extracted = extractFile(at: candidate, relpath: relpath) {
+                                files.append(extracted)
+                            }
+                        }
+                    }
+                } else {
+                    if let extracted = extractFile(at: item, relpath: item.lastPathComponent) {
+                        files.append(extracted)
+                    }
                 }
-
-                guard
-                    let values = try? candidate.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]),
-                    values.isRegularFile == true,
-                    let size = values.fileSize
-                else { continue }
-
-                let candidateComponents = candidate.resolvingSymlinksInPath().pathComponents
-                guard candidateComponents.count > rootComponents.count else { continue }
-                let relpath = candidateComponents
-                    .dropFirst(rootComponents.count)
-                    .joined(separator: "/")
-
-                guard let classified = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: relpath) else { continue }
-                guard let content = try? String(contentsOf: candidate, encoding: .utf8) else { continue }
-
-                files.append(Core.PackageIndexing.ExtractedFile(
-                    relpath: relpath,
-                    kind: classified.kind,
-                    module: classified.module,
-                    content: content,
-                    byteSize: size
-                ))
             }
             return files
+        }
+
+        private nonisolated func extractFile(at url: URL, relpath: String) -> Core.PackageIndexing.ExtractedFile? {
+            let name = url.lastPathComponent
+            // Skip the retained tarball, the manifest, and the
+            // sidecar availability annotation file (#219) — none are
+            // user-authored content.
+            if name == ".archive.tar.gz"
+                || name == "manifest.json"
+                || name == Core.PackageIndexing.availabilityFilename {
+                return nil
+            }
+
+            guard
+                let values = try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]),
+                values.isRegularFile == true,
+                let size = values.fileSize
+            else { return nil }
+
+            guard let classified = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: relpath) else { return nil }
+            guard let content = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+
+            return Core.PackageIndexing.ExtractedFile(
+                relpath: relpath,
+                kind: classified.kind,
+                module: classified.module,
+                content: content,
+                byteSize: size
+            )
         }
     }
 }

@@ -426,7 +426,7 @@ extension CLIImpl.Command {
         private func scanCupertinoDirectory(for url: URL) async throws -> URL? {
             let cupertinoDir = Shared.Paths.live().baseDirectory
 
-            guard let contents = try? FileManager.default.contentsOfDirectory(
+            guard let contents = try? Shared.Utils.FileSystem.contentsOfDirectory(
                 at: cupertinoDir,
                 includingPropertiesForKeys: [.isDirectoryKey],
                 options: [.skipsHiddenFiles]
@@ -435,7 +435,7 @@ extension CLIImpl.Command {
             }
 
             for dir in contents {
-                let isDirectory = (try? dir.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory
+                let isDirectory = (try? dir.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory
                 guard isDirectory == true else {
                     continue
                 }
@@ -617,7 +617,7 @@ extension CLIImpl.Command {
             }
 
             let owners = (try? Shared.Utils.FileSystem.contentsOfDirectory(at: outputURL, includingPropertiesForKeys: nil))?
-                .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
+                .filter { (try? $0.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
                 .filter { !$0.lastPathComponent.hasPrefix(".") }
                 ?? []
 
@@ -628,7 +628,7 @@ extension CLIImpl.Command {
 
             for ownerURL in owners.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
                 let repos = (try? Shared.Utils.FileSystem.contentsOfDirectory(at: ownerURL, includingPropertiesForKeys: nil))?
-                    .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
+                    .filter { (try? $0.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
                     .filter { !$0.lastPathComponent.hasPrefix(".") }
                     ?? []
 

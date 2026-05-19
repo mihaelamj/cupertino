@@ -65,7 +65,7 @@ extension Core.PackageIndexing {
             var filesScanned = 0
             var totalAttrs = 0
 
-            let basePath = resolvedDir.path
+            let basePath = resolvedDir.resolvingSymlinksInPath().path
             for subdir in ["Sources", "Tests"] {
                 let root = resolvedDir.appendingPathComponent(subdir)
                 guard manager.fileExists(atPath: root.path) else { continue }
