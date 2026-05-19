@@ -174,6 +174,13 @@ extension CLIImpl.Command {
         var forceReplaceGrace: Int = 30
 
         mutating func run() async throws {
+            // #781: log the invocation banner before any other work so
+            // long-running save logs preserve a paper trail of how the
+            // process was launched. Combined with #780's per-line
+            // timestamps, the first six lines of every save log give a
+            // future operator everything they need to reproduce.
+            Cupertino.Context.composition.logging.logInvocation()
+
             if remote {
                 try await runRemote()
                 return

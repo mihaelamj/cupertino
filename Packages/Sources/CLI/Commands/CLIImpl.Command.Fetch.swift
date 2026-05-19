@@ -208,6 +208,9 @@ extension CLIImpl.Command {
         var annotateAvailability: Bool = false
 
         mutating func run() async throws {
+            // #781: invocation banner before any other work.
+            Cupertino.Context.composition.logging.logInvocation()
+
             logStartMessage()
 
             if type == .all {

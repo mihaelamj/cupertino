@@ -70,7 +70,18 @@ extension Logging {
             // and `Logging.ConsoleLogger.output` which both bypass log
             // levels entirely and exist for user-facing dumps (search
             // results, doctor output, formatted JSON).
-            print(message)
+            //
+            // #780: prefix with the same ISO 8601 timestamp used by the
+            // actor-side `logToConsole` path so every line of a save /
+            // fetch log has a wall-clock anchor. Blank messages stay
+            // blank (the formatter prefix is dropped for empty input)
+            // so spacer lines used as visual separators don't bloat
+            // into "<timestamp>  ".
+            if message.isEmpty {
+                print(message)
+            } else {
+                print("\(Logging.timestampPrefix())\(message)")
+            }
         }
 
         // MARK: - Bridges between LoggingModels and Logging.Unified
