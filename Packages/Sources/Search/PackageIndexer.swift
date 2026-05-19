@@ -102,7 +102,7 @@ extension Search {
                 return []
             }
             var result: [URL] = []
-            let ownerURLs = try FileManager.default.contentsOfDirectory(
+            let ownerURLs = try FileSystem.contentsOfDirectory(
                 at: rootDirectory,
                 includingPropertiesForKeys: [.isDirectoryKey],
                 options: [.skipsHiddenFiles]
@@ -110,7 +110,7 @@ extension Search {
             for ownerURL in ownerURLs {
                 let isDir = (try? ownerURL.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
                 guard isDir else { continue }
-                let repoURLs = (try? FileManager.default.contentsOfDirectory(
+                let repoURLs = (try? FileSystem.contentsOfDirectory(
                     at: ownerURL,
                     includingPropertiesForKeys: [.isDirectoryKey],
                     options: [.skipsHiddenFiles]

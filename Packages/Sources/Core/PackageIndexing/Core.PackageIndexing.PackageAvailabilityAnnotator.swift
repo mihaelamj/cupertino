@@ -2,6 +2,7 @@ import ASTIndexer
 import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
+import SharedConstants
 
 extension Core.PackageIndexing {
     /// Walks a downloaded package on disk and writes an `availability.json`
@@ -68,7 +69,7 @@ extension Core.PackageIndexing {
             for subdir in ["Sources", "Tests"] {
                 let root = resolvedDir.appendingPathComponent(subdir)
                 guard manager.fileExists(atPath: root.path) else { continue }
-                let enumerator = manager.enumerator(at: root, includingPropertiesForKeys: nil)
+                let enumerator = FileSystem.enumerator(at: root, includingPropertiesForKeys: nil)
                 while let next = enumerator?.nextObject() as? URL {
                     guard next.pathExtension == "swift" else { continue }
                     filesScanned += 1
