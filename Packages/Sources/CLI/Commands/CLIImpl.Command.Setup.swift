@@ -39,6 +39,9 @@ extension CLIImpl.Command {
         }
 
         mutating func run() async throws {
+            // #781: invocation banner before any other work.
+            Cupertino.Context.composition.logging.logInvocation()
+
             Cupertino.Context.composition.logging.recording.info("📦 Cupertino Setup\n")
 
             // Path-DI composition sub-root (#535): construct once at the top

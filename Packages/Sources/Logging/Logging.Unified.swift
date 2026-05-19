@@ -113,7 +113,13 @@ extension Logging {
             /// Include category in console output
             public var showCategory: Bool
 
-            /// Default options based on build configuration
+            /// Default options based on build configuration.
+            /// `showTimestamps` is on by default in both modes (#780): when a
+            /// long-running `cupertino save` crashes hours into a run, the
+            /// log file must let an operator reconstruct *when* each line
+            /// was emitted. Pre-#780, release builds had timestamps off,
+            /// which made the 2026-05-18 #779 crash diagnosis much slower
+            /// than it needed to be.
             public static var `default`: Options {
                 #if DEBUG
                 return Options(
@@ -130,7 +136,7 @@ extension Logging {
                     fileEnabled: false,
                     fileURL: nil,
                     minLevel: .info,
-                    showTimestamps: false,
+                    showTimestamps: true,
                     showCategory: false
                 )
                 #endif
@@ -169,7 +175,15 @@ extension Logging {
         public init(options: Options = .default) {
             self.options = options
             dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+            // #780: ISO 8601 with numeric timezone offset (e.g.
+            // "2026-05-19T02:30:00+0200"). Replaces the pre-#780 format
+            // "yyyy-MM-dd HH:mm:ss.SSS" which had no timezone marker
+            // and was ambiguous across DST boundaries. Locale-neutral
+            // (en_US_POSIX) so month / weekday strings can never change
+            // with user locale. Timezone is whatever the process sees as
+            // local (Zagreb CEST in the project's default convention).
+            dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZZZ"
             // File logging setup is deferred to first log call
         }
 
@@ -375,8 +389,13 @@ extension Logging {
         private func logToConsole(_ message: String, level: Level, category: Category) {
             var output = ""
 
+            // #780: bare ISO 8601 timestamp + two-space separator,
+            // no surrounding brackets. The format is already
+            // unambiguous (the "T" and timezone offset delimit the
+            // field), and dropping brackets shaves visual noise from
+            // every line of a 350k-line reindex log.
             if options.showTimestamps {
-                output += "[\(dateFormatter.string(from: Date()))] "
+                output += "\(dateFormatter.string(from: Date()))  "
             }
 
             if options.showCategory {
@@ -478,9 +497,7 @@ extension Logging {
             let path = options.fileURL?.path ?? "(unknown path)"
             let message = "⚠️  Logging.Unified \(operation) failure on \(path): " +
                 "\(error). Subsequent failures will be silent; the file log may be incomplete.\n"
-            if let data = message.data(using: .utf8) {
-                FileHandle.standardError.write(data)
-            }
+            FileHandle.standardError.write(Data(message.utf8))
         }
     }
 }

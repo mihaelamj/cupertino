@@ -78,5 +78,40 @@ extension Logging {
         public func disableFileLogging() async {
             await unified.disableFileLogging()
         }
+
+        // MARK: - #781 invocation banner
+
+        /// Emit a five-line startup banner that captures argv, binary
+        /// path, working directory, PID, and parent PID. Each line goes
+        /// through `recording.output(...)` so the timestamp prefix from
+        /// `LiveRecording.output(_:)` (per #780) is applied uniformly.
+        ///
+        /// Long-running commands (`save`, `fetch`, `setup`) should call
+        /// this once at the top of their `run()` method, before any
+        /// other logging, so the log file's first lines tell a future
+        /// operator how the process was launched. Combined with the
+        /// wrapper-side header in `~/bin/reindex-cupertino-dev.sh`,
+        /// this gives both layers of invocation paper trail:
+        ///
+        /// - wrapper layer: what the user / cron / launchd typed
+        /// - binary layer (this method): what the binary received as argv
+        ///
+        /// The two can diverge when a wrapper rewrites flags, expands
+        /// shell variables, or chains via `nohup`/`disown`. Preserving
+        /// both is what made the #779 diagnosis recoverable.
+        public func logInvocation() {
+            let argv = CommandLine.arguments
+            let binary = argv.first ?? "(unknown binary)"
+            let argString = argv.joined(separator: " ")
+            let cwd = FileManager.default.currentDirectoryPath
+            let pid = ProcessInfo.processInfo.processIdentifier
+            let ppid = getppid()
+
+            recording.output("🚀 \(argString)")
+            recording.output("📍 binary:    \(binary)")
+            recording.output("📍 cwd:       \(cwd)")
+            recording.output("📍 PID:       \(pid)")
+            recording.output("📍 parent PID: \(ppid)")
+        }
     }
 }
