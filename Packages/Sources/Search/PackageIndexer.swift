@@ -217,7 +217,7 @@ extension Search {
             var files: [Core.PackageIndexing.ExtractedFile] = []
             let rootComponents = dir.resolvingSymlinksInPath().pathComponents
 
-            guard let enumerator = FileManager.default.enumerator(
+            guard let enumerator = Shared.Utils.FileSystem.enumerator(
                 at: dir,
                 includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey]
             ) else {

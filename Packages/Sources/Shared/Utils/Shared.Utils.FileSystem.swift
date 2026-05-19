@@ -85,7 +85,7 @@ extension Shared.Utils {
             at url: URL,
             includingPropertiesForKeys keys: [URLResourceKey]?,
             options: FileManager.DirectoryEnumerationOptions = []
-        ) -> FileManager.DirectoryEnumerator? {
+        ) -> FileManager.DirectoryEnumerator? { // matches raw FileManager URL-variant default
             FileManager.default.enumerator(
                 at: url.resolvingSymlinksInPath(),
                 includingPropertiesForKeys: keys,
