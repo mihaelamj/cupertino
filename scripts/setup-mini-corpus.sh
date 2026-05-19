@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # scripts/setup-mini-corpus.sh: build a small but representative test
-# corpus by symlinking ~4.5% of the real cupertino corpus from
+# corpus by symlinking ~10% of the real cupertino corpus from
 # ~/.cupertino/ into an output directory.
 #
 # Sister of:
@@ -10,8 +10,8 @@
 #                      Validates the indexer mechanics in ~1s.
 #   make-mini-db.sh  : persistent DB on the same 7-page synthetic fixture
 #                      for repeated local MCP / CLI probes.
-#   setup-mini-corpus.sh (this script) : real Apple corpus at ~4.5%
-#                      sampled, ~14-17K docs, ~30-40 min indexing.
+#   setup-mini-corpus.sh (this script) : real Apple corpus at ~10%
+#                      sampled, ~42K docs, ~5 min indexing.
 #                      Validates the indexer pipeline END-TO-END (all
 #                      strategies + enrichment passes) against a corpus
 #                      shaped like the real one, including the leaf
@@ -33,9 +33,9 @@
 #   ├── docs/                                          REAL DIR
 #   │   ├── swiftui/                                   REAL DIR
 #   │   │   ├── doc1.json -> ~/.cupertino/docs/swiftui/doc1.json    (file symlink)
-#   │   │   ├── ...                                                  (~4.5% of files)
+#   │   │   ├── ...                                                  (~10% of files)
 #   │   ├── foundation/                                (same shape)
-#   │   └── ...                                        (all 420 frameworks at ~4.5%)
+#   │   └── ...                                        (all 402 frameworks at ~10%)
 #   ├── swift-evolution -> ~/.cupertino/swift-evolution    LEAF dir-symlink
 #   ├── swift-org       -> ~/.cupertino/swift-org          LEAF dir-symlink
 #   ├── archive         -> ~/.cupertino/archive            LEAF dir-symlink
@@ -44,9 +44,9 @@
 # Why this shape:
 #
 #   - docs/<framework>/ as real dirs with file-level symlinks: the
-#     apple-docs phase indexes only the sampled files (~14-17K total)
-#     instead of the full ~415K corpus. Keeps the validation run to
-#     ~30-40 minutes instead of 11 hours.
+#     apple-docs phase indexes only the sampled files (~42K total at
+#     10%) instead of the full ~415K corpus. Keeps the validation run
+#     to ~5 minutes instead of 11 hours.
 #
 #   - The four optional dirs as LEAF dir-symlinks: this is the exact
 #     #779 bug-trigger shape. The dev layout (~/.cupertino-dev/) has
@@ -76,7 +76,7 @@ set -euo pipefail
 OUTPUT_DIR="${1:-/Volumes/Code/DeveloperExt/public/cupertino-mini-corpus}"
 BREW_DIR="$HOME/.cupertino"
 DEV_DIR="$HOME/.cupertino-dev"
-SAMPLE_PER_MILLE=45    # 4.5% expressed as parts-per-1000 (integer math)
+SAMPLE_PER_MILLE=100   # 10.0% expressed as parts-per-1000 (integer math)
 MIN_FILES_PER_FW=3     # floor: tiny frameworks still get at least this many
 
 bail() {
@@ -94,7 +94,7 @@ DOC_FRAMEWORK_COUNT=$(find "$BREW_DIR/docs" -maxdepth 1 -mindepth 1 -type d | wc
 echo "=== mini-corpus setup ==="
 echo "  output:          $OUTPUT_DIR"
 echo "  source (brew):   $BREW_DIR ($DOC_FRAMEWORK_COUNT framework subdirs detected)"
-echo "  sample ratio:    ${SAMPLE_PER_MILLE} per 1000 (= 4.5%)"
+echo "  sample ratio:    ${SAMPLE_PER_MILLE} per 1000 (= 10%)"
 echo "  min files/fw:    $MIN_FILES_PER_FW"
 echo
 
