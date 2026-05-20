@@ -545,6 +545,107 @@ section li strong { font-weight: 600; }
     gap: 16px;
     margin-bottom: 40px;
 }
+/* ===== Hero block on Overview tab — leads with the v1.2.0 win =====
+   Replaces the dry "At a glance" paragraph with a headline + 3 big
+   numeric stats so the breakthrough is the first thing a visitor
+   sees, not buried below methodology prose. */
+.hero {
+    background: linear-gradient(135deg,
+        rgba(52, 199, 89, 0.10) 0%,
+        rgba(10, 132, 255, 0.06) 50%,
+        rgba(88, 86, 214, 0.08) 100%);
+    border-radius: var(--radius-card);
+    padding: 40px 36px 36px;
+    box-shadow: var(--shadow-card);
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+}
+.hero::before {
+    content: "";
+    position: absolute;
+    top: -40%;
+    right: -10%;
+    width: 380px;
+    height: 380px;
+    background: radial-gradient(circle, rgba(52, 199, 89, 0.18) 0%, transparent 70%);
+    pointer-events: none;
+}
+.hero-eyebrow {
+    position: relative;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--apple-green);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 16px;
+}
+.hero-headline {
+    position: relative;
+    font-size: 42px;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin: 0 0 20px 0;
+    color: var(--text-primary);
+}
+.hero-accent {
+    color: var(--apple-green);
+}
+.hero-sub {
+    position: relative;
+    font-size: 17px;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    max-width: 920px;
+    margin: 0 0 32px 0;
+}
+.hero-sub strong { color: var(--text-primary); }
+.hero-stats {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+}
+.hero-stat {
+    background: rgba(0, 0, 0, 0.18);
+    border-radius: 14px;
+    padding: 20px 22px;
+    backdrop-filter: blur(8px);
+}
+.hero-stat-num {
+    font-size: 56px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    margin-bottom: 6px;
+}
+.hero-stat-num.green { color: var(--apple-green); }
+.hero-stat-num.orange { color: var(--apple-orange); }
+.hero-stat-unit {
+    font-size: 24px;
+    font-weight: 600;
+    margin-left: 4px;
+    color: inherit;
+    opacity: 0.85;
+}
+.hero-stat-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+.hero-stat-sub {
+    font-size: 12.5px;
+    color: var(--text-tertiary);
+    line-height: 1.45;
+}
+@media (max-width: 720px) {
+    .hero-headline { font-size: 30px; }
+    .hero-stats { grid-template-columns: 1fr; }
+    .hero-stat-num { font-size: 42px; }
+}
+
 .kpi {
     background: var(--bg-card);
     border-radius: var(--radius-card);
@@ -599,6 +700,28 @@ a.step-card {
     height: 0;
     margin: 0;
     padding: 0;
+}
+/* Subsection break inside the baseline-cards grid — visually
+   separates "passing strongly / mixed" from "room for improvement"
+   without leaving the same tab. */
+.subsection-break {
+    grid-column: 1 / -1;
+    padding-top: 16px;
+    margin-top: 8px;
+    border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+.subsection-heading {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: var(--apple-orange);
+}
+.subsection-desc {
+    font-size: 14px;
+    color: var(--text-secondary);
+    max-width: 880px;
+    margin: 0;
+    line-height: 1.55;
 }
 .kpi-label {
     font-size: 12px;
