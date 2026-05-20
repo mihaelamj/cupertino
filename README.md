@@ -765,15 +765,18 @@ For development setup, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Project Status
 
-**Released:** v1.1.0 on 2026-05-14. `databaseVersion` is `1.1.0`; `cupertino setup` downloads the v1.1.0 bundle (285,735 documents across 420 frameworks, 0 poison rows).
+**Released:** v1.2.0 "ironclad" on 2026-05-21. `databaseVersion` is `1.2.0`; `cupertino setup` downloads the v1.2.0 bundle (352,712 documents across 420 frameworks, 0 poison rows under all 13 audit categories, schema `user_version = 18`).
 
-**Staged for v1.2.0 (on `develop`, not yet tagged):** the strict-DI epic — `Logging.Unified.shared` Singleton deleted (#548 closed), all 25 producer SPM targets enforce foundation-only imports at CI (#536 closed), and the closure-purge migration replaces every `@Sendable (X) -> Void` callback on producer-target public APIs with typed GoF Observer protocols (in flight; #767 landed).
+Headline jump from v1.1.0: **rank-1 accuracy on canonical-lookup queries went from 52% to 92%** on the 50-query Phase 1 corpus. **30 / 30 modern Swift wins on the deprecation pair corpus** (was 27 / 30). **Zero regressions across 110 paired queries.** Live dashboard at <https://cupertino.aleahim.com/>; full release write-up at `docs/release-writeup-v1.2.0.md`; harness at `scripts/eval/search-quality-phase1.py` (reproducible — two runs against the same `(binary, search.db)` pair produce byte-identical per-query ranks).
+
+**Previously released:** v1.1.0 on 2026-05-14 (refactor release: namespacing + Crawler extract + DI epic kickoff; 285,735 documents, schema 13). v1.0.2 on 2026-05-11 (URL canonicalization + re-indexed bundle, 277,640 documents).
 
 - ✅ All core functionality working
-- ✅ 330+ test functions across 207 test files (~2,300+ runtime cases with parameterized expansion)
+- ✅ 350+ test functions across 230+ test files (2,407 / 347 suites green at v1.2.0 ship)
 - ✅ 0 lint violations
 - ✅ Swift 6.3 compliant with 100% strict concurrency checking
-- ✅ All production bugs resolved
+- ✅ All production bugs resolved at ship time
+- ✅ Search quality measured end-to-end (Phase 1 of `docs/design/search-quality-eval.md`): single-system baselines on 7 query classes + 3 paired v1.1.0 → v1.2.0 version-diff audits, all checked into `docs/audits/`
 
 ## License
 
