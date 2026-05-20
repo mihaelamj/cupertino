@@ -180,7 +180,7 @@ extension Shared.Constants {
         public static let userAgent = "CupertinoCrawler/1.0"
 
         /// Current version
-        public static let version = "1.1.0"
+        public static let version = "1.2.0"
 
         /// Database version - separate from CLI version, only bump when schema/content changes.
         /// Controls the cupertino-docs release tag that `cupertino setup` downloads from.
@@ -198,7 +198,15 @@ extension Shared.Constants {
         /// categories, includes the 43 markdown gap-fillers converted to canonical
         /// `StructuredDocumentationPage` JSON, and benefits from the crawler-side
         /// JS-fallback gate added in PR #432.
-        public static let databaseVersion = "1.1.0"
+        ///
+        /// v1.2.0 bumps the SQLite schema to `user_version` 18 (#789 drop redundant
+        /// packages tables from search.db) and ships a re-indexed bundle against
+        /// `cupertino-docs@v1.2.0` produced by the post-#779 binary (optionalDir
+        /// resolves symlinks before FileManager URL-variant APIs; per-strategy do/catch
+        /// keeps enrichment passes running if a single strategy throws). First release
+        /// to ship documented search-quality baselines (Phase 1 + Phase 1.1-1.7) at
+        /// `docs/audits/search-quality-*-v1.2.0.md`.
+        public static let databaseVersion = "1.2.0"
 
         /// Base URL for cupertino-docs release downloads. As of v1.0.0 the
         /// single `cupertino-databases-vX.zip` artifact bundles search.db,
