@@ -48,5 +48,36 @@
             <p><a href="../versiondiff-v1.1.0-to-v1.2.0-canonical-v2.html">↑ Back to Search-quality version diff: v1.1.0 → v1.2.0 (canonical-lookup-V2 (independent corpus))</a></p>
         </footer>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+    (function() {
+        if (typeof mermaid === 'undefined') return;
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var apple = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif';
+        var dark = {
+            darkMode: true, background: '#1c1c1e',
+            primaryColor: '#2c2c2e', primaryTextColor: '#ffffff', primaryBorderColor: '#48484a',
+            secondaryColor: '#1c1c1e', tertiaryColor: '#2c2c2e',
+            lineColor: '#aeaeb2', edgeLabelBackground: '#2c2c2e',
+            clusterBkg: '#1c1c1e', clusterBorder: '#48484a',
+            mainBkg: '#2c2c2e', textColor: '#ffffff', nodeTextColor: '#ffffff',
+            fontFamily: apple,
+        };
+        var light = {
+            background: '#ffffff', primaryColor: '#ffffff', primaryTextColor: '#1d1d1f',
+            primaryBorderColor: '#d2d2d7', secondaryColor: '#f5f5f7', tertiaryColor: '#ffffff',
+            lineColor: '#6e6e73', edgeLabelBackground: '#f5f5f7',
+            clusterBkg: '#f5f5f7', clusterBorder: '#d2d2d7',
+            mainBkg: '#ffffff', textColor: '#1d1d1f', nodeTextColor: '#1d1d1f',
+            fontFamily: apple,
+        };
+        mermaid.initialize({
+            startOnLoad: true, theme: 'base',
+            themeVariables: prefersDark ? dark : light,
+            fontFamily: apple, securityLevel: 'loose',
+            flowchart: { htmlLabels: true, curve: 'basis', useMaxWidth: true },
+        });
+    })();
+    </script>
 </body>
 </html>
