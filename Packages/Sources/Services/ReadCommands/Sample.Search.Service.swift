@@ -61,6 +61,30 @@ extension Sample.Search {
                     platform: query.platform,
                     minVersion: query.minVersion
                 )
+
+                // #837 read-side wiring — boost files whose file_symbols
+                // row matches the query in name / attributes / conformances /
+                // signature / generic_constraints. Same shape as
+                // Search.Index.search's apple-docs symbol-boost path: rows
+                // returned from FTS5 keep their native BM25 rank (lower =
+                // better); we multiply the rank of symbol-matched rows by
+                // 3.0 to make it more negative (= better). RRF picks up
+                // the reordering at the SmartQuery layer.
+                let symbolMatchedKeys = try await database.searchSymbolsForFiles(query: query.text, limit: 500)
+                if !symbolMatchedKeys.isEmpty {
+                    files = files.map { file in
+                        let key = "\(file.projectId)|\(file.path)"
+                        guard symbolMatchedKeys.contains(key) else { return file }
+                        return Sample.Index.FileSearchResult(
+                            projectId: file.projectId,
+                            path: file.path,
+                            filename: file.filename,
+                            snippet: file.snippet,
+                            rank: file.rank * 3.0
+                        )
+                    }
+                    files.sort { $0.rank < $1.rank }
+                }
             }
 
             return Sample.Search.Result(projects: projects, files: files)

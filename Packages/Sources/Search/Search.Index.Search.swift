@@ -964,7 +964,9 @@ extension Search.Index {
         guard cleanQuery.count >= 3 else { return [] }
 
         // Search doc_symbols directly using LIKE patterns
-        // Matches in: symbol name, attributes (@Observable), conformances (Sendable), signature (async)
+        // Matches in: symbol name, attributes (@Observable), conformances (Sendable), signature (async),
+        // and (post-#837 read-side wiring) generic_constraints (View, Hashable, …) so queries that
+        // shape-match an authoritative Apple constraint also land here.
         let likePattern = "%\(cleanQuery)%"
         let sql = """
         SELECT DISTINCT doc_uri
@@ -973,6 +975,7 @@ extension Search.Index {
            OR attributes LIKE ?
            OR conformances LIKE ?
            OR signature LIKE ?
+           OR generic_constraints LIKE ?
         LIMIT ?;
         """
 
@@ -987,7 +990,8 @@ extension Search.Index {
         sqlite3_bind_text(statement, 2, (likePattern as NSString).utf8String, -1, nil)
         sqlite3_bind_text(statement, 3, (likePattern as NSString).utf8String, -1, nil)
         sqlite3_bind_text(statement, 4, (likePattern as NSString).utf8String, -1, nil)
-        sqlite3_bind_int(statement, 5, Int32(limit))
+        sqlite3_bind_text(statement, 5, (likePattern as NSString).utf8String, -1, nil)
+        sqlite3_bind_int(statement, 6, Int32(limit))
 
         var uris: Set<String> = []
         while sqlite3_step(statement) == SQLITE_ROW {
