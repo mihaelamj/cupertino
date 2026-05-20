@@ -2,6 +2,8 @@ import AppleConstraintsKit
 import CoreJSONParser
 import CoreProtocols
 import CoreSampleCode
+import Enrichment
+import EnrichmentModels
 import Foundation
 import Indexer
 import Logging
@@ -249,6 +251,24 @@ extension CLIImpl.Command.Save {
                 }
             }()
 
+            // #837 phase 1B-2 activation — construct the EnrichmentRunner
+            // with the three search-target passes and inject it into
+            // IndexBuilder. IndexBuilder routes the post-strategy
+            // enrichment through `runner.run(target: .search)` instead of
+            // the inline calls; the inline fallback in IndexBuilder is
+            // preserved so direct constructors (tests, smoke harnesses)
+            // continue to work without modification.
+            let enrichmentRunner: any EnrichmentRunner = Enrichment.LiveRunner(
+                passes: [
+                    Enrichment.SynonymsPass(searchIndex: searchIndex),
+                    Enrichment.AppleConstraintsPass(
+                        searchIndex: searchIndex,
+                        lookup: staticConstraintsLookup
+                    ),
+                    Enrichment.HierarchyPass(searchIndex: searchIndex),
+                ]
+            )
+
             let builder = Search.IndexBuilder(
                 searchIndex: searchIndex,
                 metadata: nil,
@@ -261,7 +281,8 @@ extension CLIImpl.Command.Save {
                 sampleCatalogProvider: input.sampleCatalogProvider,
                 logger: Cupertino.Context.composition.logging.recording,
                 importLogSink: importLogSink,
-                staticConstraintsLookup: staticConstraintsLookup
+                staticConstraintsLookup: staticConstraintsLookup,
+                enrichmentRunner: enrichmentRunner
             )
             try await builder.buildIndex(
                 clearExisting: input.clearExisting,

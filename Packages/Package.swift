@@ -662,6 +662,8 @@ let targets: [Target] = {
             "RemoteSync",
             "Availability",
             "AppleConstraintsKit",
+            "Enrichment",
+            "EnrichmentModels",
             // MCP dependencies (for mcp serve command)
             "MCPCore",
             "MCPSupport",
