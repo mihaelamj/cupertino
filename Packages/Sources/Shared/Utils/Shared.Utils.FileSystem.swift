@@ -67,7 +67,7 @@ extension Shared.Utils {
         }
 
         /// Symlink-safe wrapper around
-        /// `FileManager.enumerator(at:includingPropertiesForKeys:options:)`.
+        /// `FileManager.enumerator(at:includingPropertiesForKeys:options:errorHandler:)`.
         ///
         /// Pre-resolves the URL via `URL.resolvingSymlinksInPath()` so a
         /// leaf directory-symlink at `url` is dereferenced before
@@ -79,17 +79,23 @@ extension Shared.Utils {
         ///   - keys: Optional resource keys to prefetch (forwarded
         ///     unchanged).
         ///   - options: Enumeration options (forwarded unchanged).
+        ///   - errorHandler: Optional callback invoked on per-entry
+        ///     enumeration errors (forwarded unchanged). Return `true`
+        ///     to continue enumeration, `false` to stop. Defaults to
+        ///     `nil` (raw API's default behaviour: continue silently).
         /// - Returns: A directory enumerator, or `nil` if the underlying
         ///   API returns `nil`.
         public static func enumerator(
             at url: URL,
             includingPropertiesForKeys keys: [URLResourceKey]?,
-            options: FileManager.DirectoryEnumerationOptions = []
+            options: FileManager.DirectoryEnumerationOptions = [],
+            errorHandler: ((URL, Error) -> Bool)? = nil
         ) -> FileManager.DirectoryEnumerator? { // matches raw FileManager URL-variant default
             FileManager.default.enumerator(
                 at: url.resolvingSymlinksInPath(),
                 includingPropertiesForKeys: keys,
-                options: options
+                options: options,
+                errorHandler: errorHandler
             )
         }
     }
