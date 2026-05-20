@@ -79,6 +79,8 @@ The brew DB at `~/.cupertino/search.db` is user-production state. Use a SQLite r
 
 **All six of six §14.2 Phase 1.x classes (A-G) now have documented baselines on v1.2.0.** Last item: §14.4 Phase 1.7 anti-hallucination agent-end-to-end eval — the actual release-blocker test. Design exists at `docs/design/anti-hallucination-eval.md` (drafted 2026-05-20); implementation is the next 1-2 week work item. Until that lands and a first run publishes its baseline, the Criterion 2 (anti-hallucination) claim that motivates cupertino's existence is not yet directly measured.
 
+**Visual dashboard for non-technical readers:** `docs/dashboards/search-quality-v1.2.0.html` — single-page HTML summary of all seven tests with Apple-style design (SF Pro fallback, system colors, card layout, light/dark mode). Plain-English claims, color-coded status (strong / mixed / weak), each card links to the full audit. Open in a browser; no server or build needed.
+
 The relationship between the universal rule and the cupertino design is:
 - The **universal rule** says "this is how IR evaluation must be done if it is done."
 - The **cupertino design** says "this is how it is done here, for our specific corpus and consumer."
