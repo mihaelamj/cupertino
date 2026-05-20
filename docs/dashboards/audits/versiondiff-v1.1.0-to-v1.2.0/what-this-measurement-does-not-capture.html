@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What This Measurement Does Not Capture · Search-quality version diff: v1.1.0 → v1.2.0</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../versiondiff-v1.1.0-to-v1.2.0.html">Back to Search-quality version diff: v1.1.0 → v1.2.0</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality version diff: v1.1.0 → v1.2.0</div>
+            <h1>What This Measurement Does Not Capture</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p>Same caveats as <code>search-quality-versiondiff-v1.0.2-to-v1.2.0.md</code>:</p>
+<ul><li><strong>Criterion 2 (anti-hallucination).</strong> Whether an AI agent given the v1.2.0 top-K actually produces correct Swift. Phase 1.7 (<code>docs/design/anti-hallucination-eval.md</code>).</li><li><strong>Per-query class breakdown.</strong> The seven Phase 1.x classes (deprecation, cross-source, fragment, acronym, prose, symbol-attribute, agent-end-to-end) each have their own audit. This version diff is restricted to <strong>class A + class B</strong>.</li><li><strong>Coverage signals.</strong> The v1.2.0 round shipped <code>apple_imports_json</code> (1/183 → 164/183) and <code>swift_tools_version</code> (0/183 → 182/183) coverage on packages.db, but the canonical-lookup corpus doesn't query packages. Those gains land in a separate packages-side audit that doesn't exist yet.</li></ul></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="method-recap.html">← Method Recap</a>
+            <span></span>
+        </nav>
+        <footer>
+            <p><a href="../versiondiff-v1.1.0-to-v1.2.0.html">↑ Back to Search-quality version diff: v1.1.0 → v1.2.0</a></p>
+        </footer>
+    </div>
+</body>
+</html>

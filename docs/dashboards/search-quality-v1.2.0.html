@@ -13,17 +13,17 @@
             <div class="eyebrow">Cupertino · v1.2.0 candidate</div>
             <h1>Does the search find the right answer?</h1>
             <p class="subtitle">
-                Cupertino is an Apple-platform documentation index built to keep AI coding assistants from hallucinating. This page summarises 8 measurements of how well it does that on the v1.2.0 build.
+                Cupertino is an Apple-platform documentation index built to keep AI coding assistants from hallucinating. This page summarises 9 measurements of how well it does that on the v1.2.0 build.
             </p>
             <p class="meta">
-                <span>8 measurements</span>·<span>Auto-derived from audit markdown</span>·<span>Re-runs whenever audits change</span>
+                <span>9 measurements</span>·<span>Auto-derived from audit markdown</span>·<span>Re-runs whenever audits change</span>
             </p>
         </header>
 
         <div class="tab-container">
             <div class="tabs" role="tablist">
                 <button class="tab" data-tab="overview" role="tab">Overview</button>
-                <button class="tab active" data-tab="tests" role="tab">The 8 tests</button>
+                <button class="tab active" data-tab="tests" role="tab">The 9 tests</button>
                 <button class="tab" data-tab="sources" role="tab">Sources</button>
                 <button class="tab" data-tab="how" role="tab">How we measure</button>
             </div>
@@ -34,24 +34,24 @@
             <div class="summary">
                 <h2>At a glance</h2>
                 <p class="summary-text">
-                    <strong>4 of 8 tests pass strongly</strong> &mdash; the canonical use cases (typing a Swift type name, modern-vs-legacy choice, fragment recall, cross-source ranking) work as designed. <strong>3 surface real weaknesses</strong> in cupertino's relational-metadata-to-search routing, both tracked with open issues. <strong>1 have methodology limits</strong> that human-judged measurement would resolve.
+                    <strong>4 of 9 tests pass strongly</strong> &mdash; the canonical use cases (typing a Swift type name, modern-vs-legacy choice, fragment recall, cross-source ranking) work as designed. <strong>3 surface real weaknesses</strong> in cupertino's relational-metadata-to-search routing, both tracked with open issues. <strong>2 have methodology limits</strong> that human-judged measurement would resolve.
                 </p>
             </div>
 
             <div class="kpi-strip">
                 <div class="kpi">
                     <div class="kpi-label">Tests passing strongly</div>
-                    <div class="kpi-value green">4 / 8</div>
+                    <div class="kpi-value green">4 / 9</div>
                     <div class="kpi-desc">Auto-classified from headline metric thresholds.</div>
                 </div>
                 <div class="kpi">
                     <div class="kpi-label">Mixed results</div>
-                    <div class="kpi-value orange">1 / 8</div>
+                    <div class="kpi-value orange">2 / 9</div>
                     <div class="kpi-desc">Reasonable but methodology-bounded.</div>
                 </div>
                 <div class="kpi">
                     <div class="kpi-label">Weak results</div>
-                    <div class="kpi-value red">3 / 8</div>
+                    <div class="kpi-value red">3 / 9</div>
                     <div class="kpi-desc">Tracked, with candidate fixes documented.</div>
                 </div>
             </div>
@@ -146,6 +146,20 @@
                     <div class="progress-bar"><div class="progress-bar-fill orange" style="width: 76%;"></div></div>
                     <p class="card-finding">This audit tests <code>Search.SmartQuery.sourceWeights</code> (apple-docs=3.0, swift-evolution=1.5, packages=1.5, swift-book=1.0, swift-org=1.0, sample…</p>
                     <a class="card-link" href="audits/crosssource-v1.2.0.html">Open audit dashboard</a>
+                </article>
+                <article class="card card-versiondiff">
+                    <div class="card-header">
+                        <div class="card-icon tint-orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+                        <span class="status status-mixed">Mixed</span>
+                    </div>
+                    <span class="card-kind-badge">Δ Version diff</span>
+                    <h3 class="card-title">Search-quality version diff: v1.1.0 → v1.2.0</h3>
+                    <p class="card-subtitle">Version-to-version comparison</p>
+                    <div class="card-metric orange">0.6900</div>
+                    <div class="source-chip"><span class="source-chip-label">Method &amp; source</span><span class="source-chip-metric"><a href="sources.html#mrr">Mean Reciprocal Rank</a></span><span class="source-chip-cite"><a href="sources.html#mrr">Voorhees (1999), TREC-8 QA Report</a></span></div>
+                    <div class="progress-bar"><div class="progress-bar-fill orange" style="width: 69%;"></div></div>
+                    <p class="card-finding">This is the Phase 1.8 version-to-version comparison KPI specified in issue #830, applied to the <code>v1.1.0</code> → <code>v1.2.0</code> jump.</p>
+                    <a class="card-link" href="audits/versiondiff-v1.1.0-to-v1.2.0.html">Open audit dashboard</a>
                 </article>
                 <article class="card">
                     <div class="card-header">
