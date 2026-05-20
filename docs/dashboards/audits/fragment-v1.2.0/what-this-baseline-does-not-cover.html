@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What This Baseline Does Not Cover · Search-quality baseline: CamelCase fragment recall (Phase 1.3, v1.2.0 candidate)</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../fragment-v1.2.0.html">Back to Search-quality baseline: CamelCase fragment recall (Phase 1.3, v1.2.0 candidate)</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: CamelCase fragment recall (Phase 1.3, v1.2.0 candidate)</div>
+            <h1>What This Baseline Does Not Cover</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><ul><li><strong>Acronym-style fragments.</strong> Fragments like <code>URL</code>, <code>HTTP</code>, <code>JSON</code>, <code>XML</code> are technically multi-letter acronyms that the CamelCase splitter treats as single units (per the splitter's spec: <code>JSONDecoder</code> → <code>{JSON, Decoder}</code>, not <code>{J, S, O, N, Decoder}</code>). The test corpus uses single-word fragments only. Acronym-fragment behaviour is testable as a Phase 1.3.1 follow-up.</li><li><strong>Single-letter fragments.</strong> The splitter drops single-letter fragments (<code>V</code> from <code>LazyVGrid</code> does not become a recall unit) per #77's min-length rule. Not tested here.</li><li><strong>Multi-fragment compound queries.</strong> A query like <code>Grid Layout</code> requires both fragments to surface; this corpus tests one fragment at a time. The interaction is testable as a Phase 1.3.2 follow-up.</li><li><strong>Fragment in non-Swift symbol context.</strong> Obj-C identifiers (<code>NSURLRequest</code>, <code>NSDecimalNumber</code>) are also CamelCase. The splitter splits them too (<code>NS, URL, Request</code>); whether queries route through them at the desired weight is not separately tested.</li></ul>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="what-this-baseline-confirms.html">← What This Baseline Confirms</a>
+            <a class="section-nav-link next" href="method-recap.html">Method Recap →</a>
+        </nav>
+        <footer>
+            <p><a href="../fragment-v1.2.0.html">↑ Back to Search-quality baseline: CamelCase fragment recall (Phase 1.3, v1.2.0 candidate)</a></p>
+        </footer>
+    </div>
+</body>
+</html>

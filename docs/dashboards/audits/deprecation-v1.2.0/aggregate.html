@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aggregate · Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate)</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../deprecation-v1.2.0.html">Back to Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate)</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate)</div>
+            <h1>Aggregate</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><table class="data-table"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>Pairs evaluated</td><td class="num">30</td></tr><tr><td><strong>Swift form ranked above Obj-C form</strong></td><td><strong>30 / 30 (100%)</strong></td></tr><tr><td>Obj-C form ranked above Swift form</td><td>0 / 30</td></tr><tr><td>Both forms in top-10</td><td>7 / 30</td></tr><tr><td>Only Swift form in top-10</td><td>23 / 30</td></tr><tr><td>Both missing from top-10</td><td>0 / 30</td></tr></tbody></table>
+<p><strong>Sign test (on the 7 both-present pairs):</strong> k = 7 Swift-higher of n = 7 trials, two-sided p = 0.0156, one-sided p = 0.0078. The null hypothesis (ranker has no preference between modern and legacy form) is rejected at the 0.01 level.</p>
+<p>For the other 23 pairs the Obj-C form did not appear in the top-10 at all, which is a stronger statement than "Swift higher in pair": the legacy form is not surfaced at all under a developer's natural query.</p>
+<p>The Swift form was at rank 1 (position 1) in every one of the 30 queries.</p>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <span></span>
+            <a class="section-nav-link next" href="what-the-pairs-look-like.html">What the Pairs Look Like →</a>
+        </nav>
+        <footer>
+            <p><a href="../deprecation-v1.2.0.html">↑ Back to Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate)</a></p>
+        </footer>
+    </div>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aggregate · Search-quality baseline: v1.2.0 candidate `search.db`</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../baseline-v1.2.0.html">Back to Search-quality baseline: v1.2.0 candidate `search.db`</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: v1.2.0 candidate `search.db`</div>
+            <h1>Aggregate</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><table class="data-table"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>N queries</td><td class="num">50</td></tr><tr><td>Right answer at rank 1 (<a href="../../sources.html#precision-at-k">P@1</a> perfect)</td><td><strong>46 / 50</strong> (92%)</td></tr><tr><td>Right answer not in top 10</td><td><strong>1 / 50</strong></td></tr><tr><td><a href="../../sources.html#mrr">MRR</a></td><td><strong>0.9467</strong></td></tr><tr><td><a href="../../sources.html#precision-at-k">P@1</a></td><td class="num">0.9200</td></tr><tr><td><a href="../../sources.html#precision-at-k">P@5</a></td><td class="num">0.3280</td></tr><tr><td><a href="../../sources.html#ndcg">NDCG@10</a></td><td class="num">1.7385</td></tr></tbody></table>
+<p><a href="../../sources.html#precision-at-k">P@5</a> looks low next to <a href="../../sources.html#mrr">MRR</a>. Reason: the 50 queries each have exactly one canonical right answer in this design, so <a href="../../sources.html#precision-at-k">P@5</a> has a ceiling of 0.2 per query if at most one match is in the top 5. The observed 0.328 reflects queries whose right-answer regex also matches lower-ranked sibling URIs (e.g., the framework-root patterns like <code>apple-docs://swiftui($|/[^/]*$)</code> legitimately match many pages). The metric is correctly reported but it is not the headline number.</p>
+<p><a href="../../sources.html#ndcg">NDCG@10</a> &gt; 1 is possible here for the same reason (multi-match patterns sum gains). Per design §8.2 this is a known accounting quirk and the metric remains useful for paired comparison, just not as an absolute on the [0,1] scale.</p>
+<p><strong>Headline number is <a href="../../sources.html#mrr">MRR</a> = 0.9467.</strong> A new ranking change has to maintain or improve this on the same 50-query corpus to claim no regression.</p>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <span></span>
+            <a class="section-nav-link next" href="sub-perfect-cases.html">Sub-perfect Cases (4 of 50) →</a>
+        </nav>
+        <footer>
+            <p><a href="../baseline-v1.2.0.html">↑ Back to Search-quality baseline: v1.2.0 candidate `search.db`</a></p>
+        </footer>
+    </div>
+</body>
+</html>

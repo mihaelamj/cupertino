@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What This Baseline Says About the Ranker · Search-quality baseline: prose / conceptual (Phase 1.5, v1.2.0 candidate)</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../prose-v1.2.0.html">Back to Search-quality baseline: prose / conceptual (Phase 1.5, v1.2.0 candidate)</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: prose / conceptual (Phase 1.5, v1.2.0 candidate)</div>
+            <h1>What This Baseline Says About the Ranker</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p>Cupertino's <a href="../../sources.html#bm25f">BM25F</a> + <a href="../../sources.html#rrf">RRF</a> configuration is tuned for canonical-lookup and symbol-identifier queries (classes A, D), where it excels (92% <a href="../../sources.html#precision-at-k">P@1</a>, 100% rank-1 fragment recall). Prose multi-word queries lean on the <code>content</code> column at <a href="../../sources.html#bm25f">BM25F</a> weight 1.0, which is the smallest weight in the schema — by design, so canonical-lookup queries do not get drowned out by long-content matches.</p>
+<p>The cost of that design choice is that prose queries see worse rankings for the kind of conceptual results they want. <strong>This is a known trade-off baked into the <a href="../../sources.html#bm25f">BM25F</a> weight vector</strong>, not a bug. The right answer for a prose-focused consumer would be to expose alternate <a href="../../sources.html#bm25f">BM25F</a> weight profiles (a <code>--profile prose</code> flag that bumps <code>content</code> weight up) rather than re-tune the weights and regress the canonical-lookup case.</p>
+<p>This is consistent with cupertino's stated AI-agent-grounding purpose: agents in coding sessions issue more canonical-lookup queries than prose, so the current trade-off is the right one.</p>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="what-this-audit-measures-vs-what-it-doesn-t.html">← What This Audit Measures Vs What It Doesn&#x27;t</a>
+            <a class="section-nav-link next" href="possible-future-directions.html">Possible Future Directions (out of Scope for This Audit) →</a>
+        </nav>
+        <footer>
+            <p><a href="../prose-v1.2.0.html">↑ Back to Search-quality baseline: prose / conceptual (Phase 1.5, v1.2.0 candidate)</a></p>
+        </footer>
+    </div>
+</body>
+</html>

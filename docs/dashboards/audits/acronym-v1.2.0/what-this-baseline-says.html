@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What This Baseline Says · Search-quality baseline: acronym / synonym recall (Phase 1.4, v1.2.0 candidate)</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../acronym-v1.2.0.html">Back to Search-quality baseline: acronym / synonym recall (Phase 1.4, v1.2.0 candidate)</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: acronym / synonym recall (Phase 1.4, v1.2.0 candidate)</div>
+            <h1>What This Baseline Says</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p>The <code>framework_aliases</code> table exists in the schema and contains 22 rows with a populated <code>synonyms</code> column (verified directly via <code>SELECT identifier, synonyms FROM framework_aliases WHERE synonyms IS NOT NULL</code>). The DATA is there.</p>
+<p>But the ranking layer does not appear to consult <code>framework_aliases.synonyms</code> when scoring matches against a bare acronym query. The query <code>NFC</code> finds the literal-token <code>nfc</code> in <code>authenticationservices/.../transport/nfc</code> and ranks it at position 1 by <a href="../../sources.html#bm25f">BM25F</a> because that page's <code>content</code> happens to contain the token in a deep authentication-flow paragraph. The <code>corenfc</code> framework root, which the synonyms table says is the canonical answer for <code>nfc</code>, is at rank 3 — likely retrieved via the framework-identifier-substring path, not the synonyms path.</p>
+<p>This is <strong>not necessarily a bug.</strong> The synonyms table may be intentionally consulted only by <code>--framework &lt;slug&gt;</code> resolution (mapping <code>--framework nfc</code> to <code>corenfc</code> for explicit filtering), not by free-text query ranking. The code paths to verify are:</p>
+<ul><li><code>Search.Index.SearchByAttribute</code> for filter-time use</li><li><code>Search.Index.Search.swift</code> for query-time use</li><li><code>Search.Index.CountsAndAliases.swift</code> for alias-management</li><li><code>Search.SmartQuery</code> / <code>Search.CandidateFetcher</code> for cross-source synonym handling</li></ul>
+<p>A code reading would clarify whether the synonyms are wired into <a href="../../sources.html#bm25f">BM25F</a> scoring at all, or only into framework-name normalisation at filter time.</p>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="the-18-misses.html">← The 18 Misses</a>
+            <a class="section-nav-link next" href="possible-future-directions.html">Possible Future Directions (out of Scope for This Audit) →</a>
+        </nav>
+        <footer>
+            <p><a href="../acronym-v1.2.0.html">↑ Back to Search-quality baseline: acronym / synonym recall (Phase 1.4, v1.2.0 candidate)</a></p>
+        </footer>
+    </div>
+</body>
+</html>

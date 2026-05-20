@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aggregate · Search-quality baseline: cross-source canonical (Phase 1.2, v1.2.0 candidate)</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../crosssource-v1.2.0.html">Back to Search-quality baseline: cross-source canonical (Phase 1.2, v1.2.0 candidate)</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: cross-source canonical (Phase 1.2, v1.2.0 candidate)</div>
+            <h1>Aggregate</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><table class="data-table"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>Queries total</td><td class="num">25</td></tr><tr><td>Top-1 matches expected</td><td><strong>19 / 25 (76.0%)</strong></td></tr><tr><td>Expected source IS present in top-10</td><td><strong>19 / 25</strong></td></tr><tr><td>Top-1 match conditional on expected being present</td><td><strong>19 / 19 (100%)</strong></td></tr><tr><td>Top-1 mismatch conditional on expected being present</td><td>0 / 19</td></tr></tbody></table>
+<p><strong>Binomial test on the strict subset (expected present in top-10):</strong> k = 19 of n = 19 trials, one-sided p (top-1 matches expected vs chance 0.5) = <strong>1.9 × 10⁻⁶</strong>. The null hypothesis (no source-weight effect) is rejected emphatically.</p>
+<p>The 6 mismatches are not "ranker chose wrong source from candidates"; they are "expected source had nothing in the top-10 at all because apple-docs's source weight outcompetes the lower-weight sources." A deeper finding (see below).</p>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <span></span>
+            <a class="section-nav-link next" href="the-clean-wins-19-25.html">The Clean Wins: 19 / 25 →</a>
+        </nav>
+        <footer>
+            <p><a href="../crosssource-v1.2.0.html">↑ Back to Search-quality baseline: cross-source canonical (Phase 1.2, v1.2.0 candidate)</a></p>
+        </footer>
+    </div>
+</body>
+</html>

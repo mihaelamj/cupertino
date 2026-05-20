@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Possible Future Directions (out of Scope for This Audit) · Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../symbol-attribute-v1.2.0.html">Back to Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</div>
+            <h1>Possible Future Directions (out of Scope for This Audit)</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p>Per the <code>feedback_code_changes_as_ideas_for_future</code> rule:</p>
+<ol><li><strong>CLI flag for kind-based filtering.</strong> <code>cupertino search --kind initializer</code> or <code>--kind actor</code> would route through <code>SearchByAttribute</code> and return all pages with at least one matching symbol. Small CLI surface change; harness logic already exists. Highest-value first move.</li><li><strong>Heuristic intent routing for attribute queries.</strong> Queries that match the pattern <code>^(async|throws|public|static|init|subscript|typealias|@\w+|.* conformance)$</code> route through <code>SearchByAttribute</code> automatically. More work, but no flag-discovery burden on the consumer.</li><li><strong>Augment <a href="../../sources.html#fts5">FTS5</a> with attribute tokens.</strong> Add a <code>attributes</code> column to <code>docs_fts</code> containing concatenated per-page attribute / conformance strings, <a href="../../sources.html#bm25f">BM25F</a>-weighted (similar to <code>symbols</code>). Largest surface change; affects schema (<code>user_version</code> bump); requires reindex.</li></ol>
+<p>The acronym audit (<code>search-quality-acronym-baseline-v1.2.0.md</code>) raised analogous concerns about <code>framework_aliases.synonyms</code> not being consulted at <a href="../../sources.html#fts5">FTS5</a> ranking time. Both audits point at the same broader pattern: cupertino's relational metadata tables are richer than the default <a href="../../sources.html#fts5">FTS5</a> search path consults. A consolidated design for "non-text search modes" could address both classes simultaneously.</p>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="why-some-attribute-queries-did-work.html">← Why Some Attribute Queries Did Work</a>
+            <a class="section-nav-link next" href="implications-for-criterion-2.html">Implications for Criterion 2 (anti-hallucination) →</a>
+        </nav>
+        <footer>
+            <p><a href="../symbol-attribute-v1.2.0.html">↑ Back to Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</a></p>
+        </footer>
+    </div>
+</body>
+</html>

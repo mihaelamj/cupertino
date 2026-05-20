@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Method Recap · Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate)</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../deprecation-v1.2.0.html">Back to Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate)</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate)</div>
+            <h1>Method Recap</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p>30 (query, swift_URI, objc_URI) triples. For each: run <code>cupertino search &quot;&lt;query&gt;&quot; --limit 10</code> via the dev binary, find rank of <code>swift_URI</code> and rank of <code>objc_URI</code> in the top-10. Outcome per query: <code>swift_wins</code>, <code>objc_wins</code>, <code>both_missing</code>, or <code>tied</code>. Aggregate: count outcomes. Sign test (binomial, scipy.stats.binomtest) on the subset where both URIs appeared.</p>
+<p>Harness source: <code>/tmp/cupertino-search-eval-deprecation.py</code> (not yet versioned in repo; awaiting design §14.1.2 follow-up). Full JSON dump (all 30 top-10 lists): <code>/tmp/cupertino-search-eval-deprecation-20260520.json</code>.</p>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="what-this-baseline-does-not-cover.html">← What This Baseline Does Not Cover</a>
+            <a class="section-nav-link next" href="combined-with-the-canonical-lookup-baseline.html">Combined With the Canonical-lookup Baseline →</a>
+        </nav>
+        <footer>
+            <p><a href="../deprecation-v1.2.0.html">↑ Back to Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate)</a></p>
+        </footer>
+    </div>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Implications for Criterion 2 (anti-hallucination) · Search-quality baseline: prose / conceptual (Phase 1.5, v1.2.0 candidate)</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../prose-v1.2.0.html">Back to Search-quality baseline: prose / conceptual (Phase 1.5, v1.2.0 candidate)</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: prose / conceptual (Phase 1.5, v1.2.0 candidate)</div>
+            <h1>Implications for Criterion 2 (anti-hallucination)</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p>An AI agent issuing a prose query like "how to make a type Sendable" gets <code>appentity</code> and <code>systemcoordinator</code> at top-3, NOT the Sendable protocol page. If the agent grounds on top-3 only, it doesn't see the right reference and may hallucinate.</p>
+<p>Mitigation: agents typically chain queries. After a prose query returns unhelpful results, an agent can re-query with a more canonical form ("Sendable protocol") and the canonical-lookup baseline shows the right answer comes back at rank 1. So Criterion 2 impact is moderate: prose-query top-3 alone is not enough, but a multi-turn agent recovers.</p>
+<p>The Phase 1.7 agent-end-to-end eval (<code>docs/design/search-quality-eval.md</code> §14.4) is where this trade-off gets measured end-to-end. Until that lands, the prose-baseline result here is the closest signal available.</p>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="possible-future-directions.html">← Possible Future Directions (out of Scope for This Audit)</a>
+            <a class="section-nav-link next" href="method-recap.html">Method Recap →</a>
+        </nav>
+        <footer>
+            <p><a href="../prose-v1.2.0.html">↑ Back to Search-quality baseline: prose / conceptual (Phase 1.5, v1.2.0 candidate)</a></p>
+        </footer>
+    </div>
+</body>
+</html>

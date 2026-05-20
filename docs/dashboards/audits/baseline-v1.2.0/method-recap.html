@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Method Recap · Search-quality baseline: v1.2.0 candidate `search.db`</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../baseline-v1.2.0.html">Back to Search-quality baseline: v1.2.0 candidate `search.db`</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: v1.2.0 candidate `search.db`</div>
+            <h1>Method Recap</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p>50 canonical-lookup queries each paired with a right-answer URI regex. For each query, <code>cupertino search &quot;&lt;query&gt;&quot; --limit 10</code> was invoked via the develop-tip binary with <code>cupertino.config.json</code> set to <code>baseDirectory: ~/.cupertino-dev</code>. Top-10 URIs were extracted from stdout in document order. Per-query <a href="../../sources.html#mrr">MRR</a>, <a href="../../sources.html#precision-at-k">P@1</a>, <a href="../../sources.html#precision-at-k">P@5</a>, <a href="../../sources.html#ndcg">NDCG@10</a> computed against the regex. No statistical test reported (single-system mode); the harness's paired <a href="../../sources.html#wilcoxon">Wilcoxon</a> path is exercised only in comparison mode.</p>
+<p>Harness source: <code>/tmp/cupertino-search-eval-new-only.py</code> (not yet versioned in the repo; move to <code>scripts/eval/</code> per design §14.1 follow-up). Full JSON dump (all 50 top-10 lists): <code>/tmp/cupertino-search-eval-new-only-20260520.json</code>.</p>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="sub-perfect-cases.html">← Sub-perfect Cases (4 of 50)</a>
+            <a class="section-nav-link next" href="what-this-baseline-does-not-measure.html">What This Baseline Does Not Measure →</a>
+        </nav>
+        <footer>
+            <p><a href="../baseline-v1.2.0.html">↑ Back to Search-quality baseline: v1.2.0 candidate `search.db`</a></p>
+        </footer>
+    </div>
+</body>
+</html>

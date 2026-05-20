@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sub-perfect Cases (4 of 50) · Search-quality baseline: v1.2.0 candidate `search.db`</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../baseline-v1.2.0.html">Back to Search-quality baseline: v1.2.0 candidate `search.db`</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: v1.2.0 candidate `search.db`</div>
+            <h1>Sub-perfect Cases (4 of 50)</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p>The four queries that did not yield a top-1 match. Each is informative.</p>
+<table class="data-table"><thead><tr><th>Query</th><th>First-relevant rank</th><th>Top-1 returned</th><th>Note</th></tr></thead><tbody><tr><td><code>SwiftUI View</code></td><td>not in top 10</td><td><code>apple-docs://clockkit/swiftui-templates</code></td><td>Two-word query. <code>View</code> token bound to <code>swiftui-templates</code> URI dominates over the canonical <code>apple-docs://swiftui/view</code>. Probable cause: the query text <code>SwiftUI View</code> ranks pages with both tokens highly, and clockkit/swiftui-templates contains both, while swiftui/view contains them less prominently in the indexed body. Realistic regression class for users typing two-word lookups for framework-rooted concepts.</td></tr><tr><td><code>Combine Publisher</code></td><td class="num">2</td><td><code>apple-docs://combine</code></td><td>Top-1 is the framework root; the canonical <code>combine/publisher</code> page is at rank 2. Defensible result for a two-word query naming both the framework and the protocol; an LLM consumer reading top-2 sees what it needs.</td></tr><tr><td><code>CoreData</code></td><td class="num">3</td><td><code>apple-docs://foundation/cocoaerror/code/coredata</code></td><td>Top-1 is the <code>CocoaError.Code.coreData</code> enum case, not the Core Data framework root. Probable cause: <code>framework_aliases</code> table maps <code>coredata</code> → CoreData but the framework root isn't winning the <a href="../../sources.html#bm25f">BM25F</a> tie. The two preceding hits are deep API pages that contain the literal token <code>coredata</code>.</td></tr><tr><td><code>MapKit</code></td><td class="num">2</td><td><code>apple-docs://mapkitjs/mapkit</code></td><td>Top-1 is the JavaScript variant (<code>mapkitjs</code>) instead of the native <code>mapkit</code> framework. Probable cause: <code>mapkitjs/mapkit</code> contains the token in both framework and path positions; native <code>mapkit</code> only in the framework position. Source-authority weights should bias toward native; they don't here.</td></tr></tbody></table>
+<p>None of these is a regression vs the brew baseline (the paired pilot run on 2026-05-20 had the same outcomes); they are pre-existing ranking artefacts of the current <a href="../../sources.html#bm25f">BM25F</a> + <a href="../../sources.html#rrf">RRF</a> configuration. Each is a candidate for a per-class follow-up evaluation per <code>docs/design/search-quality-eval.md</code> §14.2 (specifically class B framework-root for <code>SwiftUI View</code>, <code>Combine Publisher</code>, <code>MapKit</code>; class C acronym/synonym for <code>CoreData</code>).</p>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="aggregate.html">← Aggregate</a>
+            <a class="section-nav-link next" href="method-recap.html">Method Recap →</a>
+        </nav>
+        <footer>
+            <p><a href="../baseline-v1.2.0.html">↑ Back to Search-quality baseline: v1.2.0 candidate `search.db`</a></p>
+        </footer>
+    </div>
+</body>
+</html>

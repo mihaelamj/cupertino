@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The 4 Wins · Search-quality baseline: acronym / synonym recall (Phase 1.4, v1.2.0 candidate)</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../acronym-v1.2.0.html">Back to Search-quality baseline: acronym / synonym recall (Phase 1.4, v1.2.0 candidate)</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: acronym / synonym recall (Phase 1.4, v1.2.0 candidate)</div>
+            <h1>The 4 Wins</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><table class="data-table"><thead><tr><th>Query</th><th>Top-1</th><th>Why this works</th></tr></thead><tbody><tr><td><code>wlan</code></td><td><code>apple-docs://corewlan</code> (rank 1)</td><td><code>wlan</code> appears in CoreWLAN's framework identifier directly; <a href="../../sources.html#fts5">FTS5</a> finds it without needing the synonyms table</td></tr><tr><td><code>mpsgraph</code></td><td><code>apple-docs://metalperformanceshadersgraph</code> (rank 1)</td><td>The synonym <code>mpsgraph</code> is a partial-token-match of the framework's identifier; the long compound name's <a href="../../sources.html#bm25f">BM25F</a> favours the exact-prefix match</td></tr><tr><td><code>sprite</code></td><td><code>apple-docs://spritekit</code> (rank 1)</td><td><code>sprite</code> is part of <code>spritekit</code>; literal substring match</td></tr><tr><td><code>location</code></td><td><code>apple-docs://corelocation</code> (rank 1)</td><td><code>location</code> is part of <code>corelocation</code>; literal substring match</td></tr></tbody></table>
+<p>All four wins are explainable by literal-substring or prefix-token matching, not by synonym lookup. The synonyms table may not be contributing to these results at all.</p></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="aggregate.html">← Aggregate</a>
+            <a class="section-nav-link next" href="the-18-misses.html">The 18 Misses →</a>
+        </nav>
+        <footer>
+            <p><a href="../acronym-v1.2.0.html">↑ Back to Search-quality baseline: acronym / synonym recall (Phase 1.4, v1.2.0 candidate)</a></p>
+        </footer>
+    </div>
+</body>
+</html>
