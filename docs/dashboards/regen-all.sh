@@ -27,6 +27,7 @@ DOCS_TO_RENDER=(
     "../design/search-quality-eval.md"
     "../design/cupertino.md"
     "../design/how-apple-imports-populates.md"
+    "../release-writeup-v1.2.0.md"
     "../architecture/database.md"
     "../database-handbook.md"
     "../PRINCIPLES.md"
