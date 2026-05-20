@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What This Baseline Confirms · Search-quality baseline: CamelCase fragment recall (Phase 1.3, v1.2.0 candidate)</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../fragment-v1.2.0.html">Back to Search-quality baseline: CamelCase fragment recall (Phase 1.3, v1.2.0 candidate)</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: CamelCase fragment recall (Phase 1.3, v1.2.0 candidate)</div>
+            <h1>What This Baseline Confirms</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p>The <code>symbol_components</code> column does what #77 designed it to do: a query for a CamelCase fragment surfaces pages whose symbols contain that fragment as a component. This works for simple compound types (<code>LazyVGrid</code> → retrievable by <code>Grid</code>, <code>Lazy</code>, or <code>VGrid</code>), for protocol families (<code>Decoder</code> → retrievable surfaces <code>JSONDecoder</code> etc.), and for SwiftUI patterns (<code>Picker</code> → retrieves <code>DatePicker</code>, <code>ColorPicker</code>, etc.).</p>
+<p>The <a href="../../sources.html#bm25f">BM25F</a> weight balance is correct: with <code>symbols=5.0</code> and <code>symbol_components=1.5</code>, an exact name match always wins (verified separately by the canonical-lookup baseline <code>search-quality-baseline-v1.2.0.md</code> where <code>LazyVGrid</code> ranks the canonical <code>apple-docs://swiftui/lazyvgrid</code> at rank 1), and a fragment-only query still retrieves the right family via the symbol_components contribution.</p>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="per-fragment.html">← Per-fragment</a>
+            <a class="section-nav-link next" href="what-this-baseline-does-not-cover.html">What This Baseline Does Not Cover →</a>
+        </nav>
+        <footer>
+            <p><a href="../fragment-v1.2.0.html">↑ Back to Search-quality baseline: CamelCase fragment recall (Phase 1.3, v1.2.0 candidate)</a></p>
+        </footer>
+    </div>
+</body>
+</html>

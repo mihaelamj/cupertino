@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What This Baseline Does Not Measure · Search-quality baseline: v1.2.0 candidate `search.db`</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../baseline-v1.2.0.html">Back to Search-quality baseline: v1.2.0 candidate `search.db`</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: v1.2.0 candidate `search.db`</div>
+            <h1>What This Baseline Does Not Measure</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p>Per <code>docs/design/search-quality-eval.md</code> §1.5 (the two-criteria framing):</p>
+<ul><li><strong>Criterion 1 classes C-H</strong> (acronym, CamelCase fragment, deprecation-aware, cross-source canonical, prose, symbol-attribute). Each needs its own corpus and metric.</li><li><strong>Criterion 2</strong> (anti-hallucination): does an LLM agent given cupertino's top-K results actually produce correct Swift? This is the actual success measure; this baseline is at best a precondition. The Phase 1.7 agent-eval (design §14.4, not yet written) is where Criterion 2 gets measured.</li></ul>
+<p>A <a href="../../sources.html#mrr">MRR</a>-0.9467 baseline is necessary but not sufficient for high-quality agent grounding. An agent can still hallucinate even when the right doc is at rank 1.</p>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="method-recap.html">← Method Recap</a>
+            <a class="section-nav-link next" href="how-to-use-this-baseline.html">How to Use This Baseline →</a>
+        </nav>
+        <footer>
+            <p><a href="../baseline-v1.2.0.html">↑ Back to Search-quality baseline: v1.2.0 candidate `search.db`</a></p>
+        </footer>
+    </div>
+</body>
+</html>

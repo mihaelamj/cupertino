@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Interesting 6: Hig and Apple-archive Starve · Search-quality baseline: cross-source canonical (Phase 1.2, v1.2.0 candidate)</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../crosssource-v1.2.0.html">Back to Search-quality baseline: cross-source canonical (Phase 1.2, v1.2.0 candidate)</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: cross-source canonical (Phase 1.2, v1.2.0 candidate)</div>
+            <h1>The Interesting 6: Hig and Apple-archive Starve</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><table class="data-table"><thead><tr><th>Query</th><th>Expected source</th><th>Actual top-1</th><th>Expected source in top-10?</th></tr></thead><tbody><tr><td><code>App icon</code></td><td>hig (0.5)</td><td><code>apple-docs://swiftui/scene/dialogicon</code></td><td>NO</td></tr><tr><td><code>Touch targets</code></td><td>hig (0.5)</td><td><code>apple-docs://webkitjs/touchevent</code></td><td>NO</td></tr><tr><td><code>Dark mode</code></td><td>hig (0.5)</td><td><code>apple-docs://appintents/defining-your-app-s-focus-filter</code></td><td>NO</td></tr><tr><td><code>Quartz 2D</code></td><td>apple-archive (0.5)</td><td><code>apple-docs://coreimage/ciimage/init(cgimage:)</code></td><td>NO</td></tr><tr><td><code>Cocoa Bindings</code></td><td>apple-archive (0.5)</td><td><code>apple-docs://appkit/cocoa-bindings</code></td><td>NO</td></tr><tr><td><code>Key Value Observing</code></td><td>apple-archive (0.5)</td><td><code>apple-docs://swift/using-key-value-observing-in-swift</code></td><td>NO</td></tr></tbody></table>
+<p>For each of these queries, the HIG or apple-archive corpus <strong>does have a relevant page</strong> (verified via <code>cupertino search &quot;&lt;query&gt;&quot; --source hig</code> and <code>--source apple-archive</code>):</p>
+<table class="data-table"><thead><tr><th>Query</th><th>Verified HIG page</th><th>Verified apple-archive page</th></tr></thead><tbody><tr><td><code>App icon</code></td><td><code>hig://general/appicons-appledeveloperdocumentation</code></td><td class="num">—</td></tr><tr><td><code>Dark mode</code></td><td><code>hig://general/darkmode-appledeveloperdocumentation</code></td><td class="num">—</td></tr><tr><td><code>Cocoa Bindings</code></td><td class="num">—</td><td><code>apple-archive://TP40001075/CocoaBindings</code></td></tr><tr><td><code>Key Value Observing</code></td><td class="num">—</td><td><code>apple-archive://10000177i/KeyValueObserving</code></td></tr><tr><td><code>Quartz 2D</code></td><td class="num">—</td><td><code>apple-archive://TP30001066/dq_data_mgr</code></td></tr><tr><td><code>Touch targets</code></td><td>(no exact-title page; HIG covers under "Gestures" / "Editing menus")</td><td class="num">—</td></tr></tbody></table>
+<p>The pages exist. The ranker doesn't surface them because the apple-docs <a href="../../sources.html#rrf">RRF</a> contribution dominates.</p>
+<h3>Why this happens, mechanically</h3>
+<p><a href="../../sources.html#rrf">RRF</a> fuses per-source rank-1 contributions weighted by source authority:</p>
+<pre><code>fused(d) = Σ_{s ∈ sources(d)} weight(s) / (k + rank_s(d))</code></pre>
+<p>For rank-1 in each source (k = 60):</p>
+<table class="data-table"><thead><tr><th>Source</th><th>Weight</th><th>Rank-1 fused contribution</th></tr></thead><tbody><tr><td>apple-docs</td><td class="num">3.0</td><td>3.0 / 61 = 0.0492</td></tr><tr><td>swift-evolution / packages</td><td class="num">1.5</td><td>1.5 / 61 = 0.0246</td></tr><tr><td>swift-book / swift-org / samples</td><td class="num">1.0</td><td>1.0 / 61 = 0.0164</td></tr><tr><td><strong>hig / apple-archive</strong></td><td><strong>0.5</strong></td><td><strong>0.5 / 61 = 0.0082</strong></td></tr></tbody></table>
+<p>Even when HIG has a perfect rank-1 hit and apple-docs has a tangential rank-1 hit, the apple-docs contribution wins by 6:1 in fused score. HIG can never surface at top-1 in the default unfiltered query unless apple-docs has nothing in its corpus to return — which essentially never happens (351K rows).</p>
+<h3>Is this a bug?</h3>
+<p><strong>No, it is the design.</strong> The source weights were tuned in <code>Search.SmartQuery.sourceWeights</code> (#254 Option B) specifically to bias toward apple-docs because that is the canonical reference for code-generating AI agents (cupertino's stated purpose per <code>README.md</code> and <code>docs/design/cupertino.md</code> §1.1). For an LLM grounding a Swift code-generation task, getting apple-docs at top-1 is the right answer even when HIG might be more conceptually relevant — the agent is writing code, not designing UX.</p>
+<p><strong>But it has a knowable cost.</strong> Designers, UX writers, and humans using cupertino to look up Apple's design guidance get apple-docs answers when HIG answers exist. The current workaround is the explicit <code>--source hig</code> flag. Documenting the cost here so it isn't a surprise the next time the question comes up.</p>
+<h3>Possible future directions (out of scope for this audit)</h3>
+<ol><li><strong>Intent routing for design-vocabulary queries.</strong> Augment <code>Search.SmartQuery.symbolPreferredSources</code> (#254) with a <code>designPreferredSources</code> analogue: when a query matches design vocabulary (<code>app icon</code>, <code>dark mode</code>, <code>accessibility</code>, <code>typography</code>, <code>gestures</code>, <code>navigation pattern</code>), route to HIG/apple-docs only.</li><li><strong>Source-weight reconfiguration as a setting.</strong> Expose source weights as user-settable so a designer can <code>cupertino config set source-weight hig 3.0</code>.</li><li><strong>Composite top-3 rather than top-1.</strong> If the consumer reads top-3, the HIG hit may appear at rank 2 or 3, mitigating the issue without weight changes. Worth measuring.</li></ol>
+<p>None of these is proposed as immediate work; each is a candidate per the <code>feedback_code_changes_as_ideas_for_future</code> rule.</p>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="the-clean-wins-19-25.html">← The Clean Wins: 19 / 25</a>
+            <a class="section-nav-link next" href="method-recap.html">Method Recap →</a>
+        </nav>
+        <footer>
+            <p><a href="../crosssource-v1.2.0.html">↑ Back to Search-quality baseline: cross-source canonical (Phase 1.2, v1.2.0 candidate)</a></p>
+        </footer>
+    </div>
+</body>
+</html>

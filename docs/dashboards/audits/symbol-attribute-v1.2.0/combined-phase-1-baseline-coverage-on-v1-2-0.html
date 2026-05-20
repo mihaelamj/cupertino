@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Combined Phase 1 Baseline Coverage on V1.2.0 · Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../symbol-attribute-v1.2.0.html">Back to Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</div>
+            <h1>Combined Phase 1 Baseline Coverage on V1.2.0</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p>All 6 of 6 query classes A-G from §1.4 (excluding Phase 1.7 which is its own design) now have documented baselines on the v1.2.0 candidate DB:</p>
+<table class="data-table"><thead><tr><th>Baseline</th><th>Class</th><th>Headline</th><th>Interpretation</th></tr></thead><tbody><tr><td><code>search-quality-baseline-v1.2.0.md</code></td><td>A + B</td><td><a href="../../sources.html#mrr">MRR</a> 0.9467, <a href="../../sources.html#precision-at-k">P@1</a> 46/50</td><td>Strong; the canonical use case</td></tr><tr><td><code>search-quality-deprecation-baseline-v1.2.0.md</code></td><td>E</td><td>30/30 Swift wins, p = 0.0078</td><td>Strong; anti-hallucination axis intact</td></tr><tr><td><code>search-quality-crosssource-baseline-v1.2.0.md</code></td><td>F</td><td>19/19 conditional, p = 1.9 × 10⁻⁶</td><td>Strong but biased (intentionally)</td></tr><tr><td><code>search-quality-fragment-baseline-v1.2.0.md</code></td><td>D</td><td><a href="../../sources.html#precision-at-k">P@1</a> = 1.0, <a href="../../sources.html#precision-at-k">P@5</a> = 0.92</td><td>Strong; symbol_components working</td></tr><tr><td><code>search-quality-acronym-baseline-v1.2.0.md</code></td><td>C</td><td>4/22 = 18%</td><td><strong>Weak</strong>; synonyms not at ranking time</td></tr><tr><td><code>search-quality-prose-baseline-v1.2.0.md</code></td><td>G</td><td>4/15 = 26.7% strict (53-67% adj)</td><td>Methodology-limited; <a href="../../sources.html#bm25f">BM25F</a> trade-off</td></tr><tr><td><strong><code>search-quality-symbol-attribute-baseline-v1.2.0.md</code></strong> (this doc)</td><td><strong>H</strong></td><td><strong><a href="../../sources.html#precision-at-k">P@5</a> = 0.25</strong></td><td><strong>Weak; default path doesn't consult doc_symbols metadata</strong></td></tr></tbody></table>
+<p>Remaining: §14.4 Phase 1.7 anti-hallucination agent-end-to-end eval. That is its own design (<code>docs/design/anti-hallucination-eval.md</code>, not yet written) and the actual release-blocker test.</p></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="method-recap.html">← Method Recap</a>
+            <span></span>
+        </nav>
+        <footer>
+            <p><a href="../symbol-attribute-v1.2.0.html">↑ Back to Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</a></p>
+        </footer>
+    </div>
+</body>
+</html>

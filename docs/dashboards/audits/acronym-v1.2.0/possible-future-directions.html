@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Possible Future Directions (out of Scope for This Audit) · Search-quality baseline: acronym / synonym recall (Phase 1.4, v1.2.0 candidate)</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../acronym-v1.2.0.html">Back to Search-quality baseline: acronym / synonym recall (Phase 1.4, v1.2.0 candidate)</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: acronym / synonym recall (Phase 1.4, v1.2.0 candidate)</div>
+            <h1>Possible Future Directions (out of Scope for This Audit)</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p>Following the <code>feedback_code_changes_as_ideas_for_future</code> rule, three candidate paths, in increasing complexity:</p>
+<ol><li><strong>Boost canonical framework root in the rewrite path.</strong> When a bare query (no <code>--framework</code>) matches a <code>framework_aliases.synonyms</code> entry, append the canonical framework slug to the query as an OR clause: <code>nfc OR corenfc</code>. This should pull the canonical framework root up. Small surgical change in the SmartQuery layer.</li></ol>
+<ol><li><strong>Per-source authority boost when the query matches a synonym.</strong> When the query matches a synonyms entry, give the matching framework a temporary <a href="../../sources.html#rrf">RRF</a> source-weight bonus. Larger change but follows the existing source-weight pattern.</li></ol>
+<ol><li><strong>Document synonym usage in the CLI help.</strong> The current <code>cupertino search</code> help doesn't mention that <code>--framework</code> arguments accept synonyms. If the synonyms are filter-only, this should be made discoverable so users know to type <code>--framework nfc</code> rather than expecting bare-query synonym routing.</li></ol>
+<p>None is proposed as immediate work. The baseline exists so that any future change to the synonyms mechanism is measured against this 18% top-1 baseline as the regression starting point.</p>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="what-this-baseline-says.html">← What This Baseline Says</a>
+            <a class="section-nav-link next" href="implications-for-criterion-2.html">Implications for Criterion 2 (anti-hallucination) →</a>
+        </nav>
+        <footer>
+            <p><a href="../acronym-v1.2.0.html">↑ Back to Search-quality baseline: acronym / synonym recall (Phase 1.4, v1.2.0 candidate)</a></p>
+        </footer>
+    </div>
+</body>
+</html>

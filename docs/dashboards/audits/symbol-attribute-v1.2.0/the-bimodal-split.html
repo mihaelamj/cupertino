@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Bimodal Split · Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../symbol-attribute-v1.2.0.html">Back to Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</div>
+            <h1>The Bimodal Split</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p><strong>Strong (<a href="../../sources.html#precision-at-k">P@5</a> ≥ 0.6):</strong></p>
+<table class="data-table"><thead><tr><th>Query</th><th>Relevant set size</th><th><a href="../../sources.html#precision-at-k">P@5</a></th><th>First-match rank</th></tr></thead><tbody><tr><td>@MainActor</td><td class="num">4,892</td><td><strong>1.00</strong></td><td class="num">1</td></tr><tr><td>protocol type</td><td class="num">2,540</td><td><strong>1.00</strong></td><td class="num">1</td></tr><tr><td>Sendable conformance</td><td class="num">179</td><td class="num">0.60</td><td class="num">2</td></tr><tr><td>Hashable conformance</td><td class="num">67</td><td class="num">0.60</td><td class="num">3</td></tr></tbody></table>
+<p><strong>Weak (0 &lt; <a href="../../sources.html#precision-at-k">P@5</a> &lt; 0.6):</strong></p>
+<table class="data-table"><thead><tr><th>Query</th><th>Relevant set size</th><th><a href="../../sources.html#precision-at-k">P@5</a></th><th>First-match rank</th></tr></thead><tbody><tr><td>public static</td><td class="num">27,846</td><td class="num">0.20</td><td class="num">1</td></tr><tr><td>@Observable</td><td class="num">13</td><td class="num">0.20</td><td class="num">3</td></tr><tr><td>@available</td><td class="num">13</td><td class="num">0.20</td><td class="num">3</td></tr></tbody></table>
+<p><strong>Zero <a href="../../sources.html#precision-at-k">P@5</a> (no relevant in top-5):</strong></p>
+<table class="data-table"><thead><tr><th>Query</th><th>Relevant set size</th><th>First-match rank</th></tr></thead><tbody><tr><td>async throws</td><td class="num">1,459</td><td>not in top-10</td></tr><tr><td>Codable conformance</td><td class="num">46</td><td class="num">10</td></tr><tr><td>View conformance</td><td class="num">599</td><td class="num">7</td></tr><tr><td>actor type</td><td class="num">3</td><td class="num">6</td></tr><tr><td>initializer</td><td class="num">18,497</td><td>not in top-10</td></tr><tr><td>subscript</td><td class="num">760</td><td>not in top-10</td></tr><tr><td>typealias</td><td class="num">2,761</td><td>not in top-10</td></tr><tr><td>generic constraint</td><td class="num">17,475</td><td>not in top-10</td></tr></tbody></table>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="aggregate.html">← Aggregate</a>
+            <a class="section-nav-link next" href="what-this-baseline-says.html">What This Baseline Says →</a>
+        </nav>
+        <footer>
+            <p><a href="../symbol-attribute-v1.2.0.html">↑ Back to Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</a></p>
+        </footer>
+    </div>
+</body>
+</html>

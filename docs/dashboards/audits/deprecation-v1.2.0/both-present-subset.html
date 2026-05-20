@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Both-present Subset (the Strict Test) · Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate)</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../deprecation-v1.2.0.html">Back to Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate)</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate)</div>
+            <h1>Both-present Subset (the Strict Test)</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p>The 7 pairs where both forms appeared in the top-10. These are the rows where the ranker had to choose between two valid alternatives.</p>
+<table class="data-table"><thead><tr><th>Query</th><th>Swift rank</th><th>Obj-C rank</th></tr></thead><tbody><tr><td>URLRequest</td><td class="num">1</td><td class="num">3</td></tr><tr><td>URLComponents</td><td class="num">1</td><td class="num">2</td></tr><tr><td>Bundle</td><td class="num">1</td><td class="num">2</td></tr><tr><td>Measurement</td><td class="num">1</td><td class="num">8</td></tr><tr><td>DateComponents</td><td class="num">1</td><td class="num">4</td></tr><tr><td>DateInterval</td><td class="num">1</td><td class="num">6</td></tr><tr><td>Decimal</td><td class="num">1</td><td class="num">7</td></tr></tbody></table>
+<p>In every case Swift is at rank 1, Obj-C at rank 2 or later. The minimum Obj-C rank is 2 (<code>URLComponents</code>, <code>Bundle</code>); the maximum is 8 (<code>Measurement</code>). The gap between the two is consistent across the corpus.</p>
+<p>For the other 23 pairs the NS-prefixed form either does not exist as a separate documented page or ranks below position 10 (not measured here; the harness limits to top-10).</p>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="what-the-pairs-look-like.html">← What the Pairs Look Like</a>
+            <a class="section-nav-link next" href="what-this-says-about-the-ranker.html">What This Says About the Ranker →</a>
+        </nav>
+        <footer>
+            <p><a href="../deprecation-v1.2.0.html">↑ Back to Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate)</a></p>
+        </footer>
+    </div>
+</body>
+</html>

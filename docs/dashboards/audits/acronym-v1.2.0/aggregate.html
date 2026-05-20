@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aggregate · Search-quality baseline: acronym / synonym recall (Phase 1.4, v1.2.0 candidate)</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../acronym-v1.2.0.html">Back to Search-quality baseline: acronym / synonym recall (Phase 1.4, v1.2.0 candidate)</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: acronym / synonym recall (Phase 1.4, v1.2.0 candidate)</div>
+            <h1>Aggregate</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><table class="data-table"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>Synonyms tested</td><td class="num">22</td></tr><tr><td><strong>Canonical framework at top-1</strong></td><td><strong>4 / 22 (18.2%)</strong></td></tr><tr><td>Canonical in top-5</td><td>11 / 22</td></tr><tr><td>Canonical in top-10</td><td>13 / 22</td></tr><tr><td>Canonical missing from top-10</td><td>9 / 22</td></tr><tr><td><a href="../../sources.html#mrr">MRR</a></td><td class="num">0.2562</td></tr></tbody></table>
+<p><strong>Binomial test (top-1 == canonical vs chance 0.5):</strong> k = 4 of n = 22, one-sided p = <strong>0.9996</strong>. The null hypothesis (synonyms-mechanism has no effect beyond chance) is not rejected; if anything, the data is consistent with the synonyms-mechanism actively producing worse results than random for top-1 retrieval.</p>
+<p><strong>Compare to the other class baselines on the same DB:</strong></p>
+<table class="data-table"><thead><tr><th>Class</th><th>Top-1 hit rate</th></tr></thead><tbody><tr><td>A canonical lookup (<code>search-quality-baseline</code>)</td><td>46/50 (92%)</td></tr><tr><td>E deprecation-aware (<code>search-quality-deprecation</code>)</td><td>30/30 (100%)</td></tr><tr><td>F cross-source canonical (<code>search-quality-crosssource</code>)</td><td>19/19 conditional (100%)</td></tr><tr><td>D CamelCase fragment (<code>search-quality-fragment</code>)</td><td>20/20 (100%) at any-match</td></tr><tr><td><strong>C acronym / synonym (this doc)</strong></td><td><strong>4/22 (18%)</strong></td></tr></tbody></table>
+<p>This is the worst-performing class baseline by a wide margin.</p>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <span></span>
+            <a class="section-nav-link next" href="the-4-wins.html">The 4 Wins →</a>
+        </nav>
+        <footer>
+            <p><a href="../acronym-v1.2.0.html">↑ Back to Search-quality baseline: acronym / synonym recall (Phase 1.4, v1.2.0 candidate)</a></p>
+        </footer>
+    </div>
+</body>
+</html>

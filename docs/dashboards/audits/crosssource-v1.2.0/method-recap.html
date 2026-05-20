@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Method Recap · Search-quality baseline: cross-source canonical (Phase 1.2, v1.2.0 candidate)</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../crosssource-v1.2.0.html">Back to Search-quality baseline: cross-source canonical (Phase 1.2, v1.2.0 candidate)</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: cross-source canonical (Phase 1.2, v1.2.0 candidate)</div>
+            <h1>Method Recap</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p>25 (query, expected_source, rationale) triples. For each: run <code>cupertino search &quot;&lt;query&gt;&quot; --limit 10</code>, extract top-1 URI, derive its source via the URI prefix, compare against expected. Aggregate: count matches; <a href="../../sources.html#sign-test">binomial test</a> on the subset where expected source IS present in top-10.</p>
+<p>Harness source: <code>/tmp/cupertino-search-eval-crosssource.py</code> (not yet versioned in repo). Full JSON dump (all 25 top-10 lists + sources): <code>/tmp/cupertino-search-eval-crosssource-20260520.json</code>.</p>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="the-interesting-6-hig-and-apple-archive-starve.html">← The Interesting 6: Hig and Apple-archive Starve</a>
+            <a class="section-nav-link next" href="implications-for-criterion-2.html">Implications for Criterion 2 (anti-hallucination) →</a>
+        </nav>
+        <footer>
+            <p><a href="../crosssource-v1.2.0.html">↑ Back to Search-quality baseline: cross-source canonical (Phase 1.2, v1.2.0 candidate)</a></p>
+        </footer>
+    </div>
+</body>
+</html>

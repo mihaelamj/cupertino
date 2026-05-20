@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What the Regex Says · Search-quality baseline: prose / conceptual (Phase 1.5, v1.2.0 candidate)</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../prose-v1.2.0.html">Back to Search-quality baseline: prose / conceptual (Phase 1.5, v1.2.0 candidate)</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: prose / conceptual (Phase 1.5, v1.2.0 candidate)</div>
+            <h1>What the Regex Says</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p>The harness defined per-query "valid" URIs as a tight enumeration: for "actor reentrancy semantics", valid = <code>apple-docs://swift/actor</code> OR <code>swift-evolution://SE-0306</code> OR <code>swift-evolution://SE-0327</code>. Any URI not on the per-query list is counted as not-relevant, even if a human judge would call it useful.</p>
+<p><strong>Wins (4 queries where the regex matched a top-3 result):</strong></p>
+<table class="data-table"><thead><tr><th>Query</th><th>First match rank</th><th>Match</th></tr></thead><tbody><tr><td>actor reentrancy semantics</td><td class="num">1</td><td><code>apple-docs://swift/actor</code></td></tr><tr><td>structured concurrency</td><td>(top-3)</td><td><code>apple-docs://swift/structured-concurrency</code></td></tr><tr><td>AsyncSequence iteration</td><td class="num">1</td><td><code>apple-docs://swift/asyncsequence</code></td></tr><tr><td>preference keys SwiftUI</td><td>(top-3)</td><td>(one of the PreferenceKey variants)</td></tr></tbody></table>
+<p><strong>Misses (11 queries where top-3 contained nothing the regex recognised):</strong></p>
+<table class="data-table"><thead><tr><th>Query</th><th>What top-3 actually returned</th></tr></thead><tbody><tr><td>how to make a type Sendable</td><td><code>appentity</code>, <code>systemcoordinator</code>, <code>storekit-views</code></td></tr><tr><td>async let semantics</td><td><code>withtaskexecutorpreference</code>, <code>withtaskgroup</code> variants</td></tr><tr><td>Result Builders proposal</td><td><code>SE-0373</code>, <code>SE-0326</code>, <code>SE-0348</code> (wrong SE numbers)</td></tr><tr><td>how does Observable invalidate views</td><td><code>xcode/analyzing-a-crash-report</code>, <code>SE-0373</code>, <code>SE-0492</code></td></tr><tr><td>MainActor isolation</td><td>various SwiftUI style protocols</td></tr><tr><td>property wrappers Swift</td><td><code>appintents/parameter-resolution</code>, <code>coreml/mlmodel</code></td></tr><tr><td>Swift macros</td><td><code>appkit/macros</code>, <code>driverkit/driverkit-macros</code>, <code>widgetkit/preview-macros</code></td></tr><tr><td>SwiftUI App lifecycle</td><td><code>corelocation/supporting-live-updates-in-swiftui</code>, <code>nshostingscenerepresentation</code></td></tr><tr><td>NavigationStack programmatic navigation</td><td><code>understanding-the-composition-of-navigation-stack</code>, <code>navigation</code></td></tr><tr><td>error handling Swift async</td><td><code>fileprovider/.../requestdiagnosticcollection</code>, <code>contactprovider/contactprovidermanager</code></td></tr><tr><td>Combine to async/await migration</td><td><code>SE-0463</code>, <code>SE-0458</code> (Swift evolution proposals but not the expected ones)</td></tr></tbody></table>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="aggregate.html">← Aggregate</a>
+            <a class="section-nav-link next" href="reading-the-misses-honestly.html">Reading the Misses Honestly →</a>
+        </nav>
+        <footer>
+            <p><a href="../prose-v1.2.0.html">↑ Back to Search-quality baseline: prose / conceptual (Phase 1.5, v1.2.0 candidate)</a></p>
+        </footer>
+    </div>
+</body>
+</html>

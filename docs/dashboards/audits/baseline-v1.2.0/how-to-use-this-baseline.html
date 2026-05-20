@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Use This Baseline · Search-quality baseline: v1.2.0 candidate `search.db`</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../baseline-v1.2.0.html">Back to Search-quality baseline: v1.2.0 candidate `search.db`</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: v1.2.0 candidate `search.db`</div>
+            <h1>How to Use This Baseline</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p>When evaluating a future ranking change (<a href="../../sources.html#bm25f">BM25F</a> weight tweak, new tokenizer, schema change), re-run the same 50-query corpus on both the unchanged binary/DB and the changed binary/DB, use the paired-comparison mode (<code>/tmp/cupertino-search-eval.py</code> as written), and report the delta against this baseline.</p>
+<p>A regression on <a href="../../sources.html#mrr">MRR</a> vs this 0.9467 mark, or on the <a href="../../sources.html#precision-at-k">P@1</a> perfect count of 46/50, demands explanation before the change ships. A regression in any of the 4 sub-perfect cases above is also worth noticing (they are where the current ranker is fragile).</p></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="what-this-baseline-does-not-measure.html">← What This Baseline Does Not Measure</a>
+            <span></span>
+        </nav>
+        <footer>
+            <p><a href="../baseline-v1.2.0.html">↑ Back to Search-quality baseline: v1.2.0 candidate `search.db`</a></p>
+        </footer>
+    </div>
+</body>
+</html>

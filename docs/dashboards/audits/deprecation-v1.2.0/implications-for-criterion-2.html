@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Implications for Criterion 2 (anti-hallucination) · Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate)</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../deprecation-v1.2.0.html">Back to Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate)</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate)</div>
+            <h1>Implications for Criterion 2 (anti-hallucination)</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p>Deprecation-axis failures are one of the four explicit anti-hallucination concerns in <code>docs/design/cupertino.md</code> §1.1 ("avoid generating code that ... uses deprecated APIs"). This baseline shows the ranker is doing its job on this axis at the v1.2.0 candidate state. An LLM agent grounded on cupertino's top-1 result for any of these 30 queries will write modern Swift, not legacy Objective-C-style code.</p>
+<p>This is <strong>necessary but not sufficient</strong> for Criterion 2. The agent could still hallucinate within the modern API surface (calling methods that don't exist on the correct type). Phase 1.7 (agent-end-to-end eval) is where that failure mode gets tested.</p>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="what-this-says-about-the-ranker.html">← What This Says About the Ranker</a>
+            <a class="section-nav-link next" href="what-this-baseline-does-not-cover.html">What This Baseline Does Not Cover →</a>
+        </nav>
+        <footer>
+            <p><a href="../deprecation-v1.2.0.html">↑ Back to Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate)</a></p>
+        </footer>
+    </div>
+</body>
+</html>

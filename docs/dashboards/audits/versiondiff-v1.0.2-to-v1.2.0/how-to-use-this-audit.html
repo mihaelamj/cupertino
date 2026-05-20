@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Use This Audit · Search-quality version diff: v1.0.2 → v1.2.0</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../versiondiff-v1.0.2-to-v1.2.0.html">Back to Search-quality version diff: v1.0.2 → v1.2.0</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality version diff: v1.0.2 → v1.2.0</div>
+            <h1>How to Use This Audit</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p>When v1.2.0 ships:</p>
+<ul><li>The "<strong>13 added, 0 removed, 1 mild degradation</strong>" headline lands in the release notes.</li><li>The <a href="../../sources.html#mcnemar">McNemar</a> <em>p</em> = 0.000244 is the citation for "statistically significant improvement" claims.</li><li>Re-running this audit at every subsequent release (v1.2.0 → v1.3.0, v1.3.0 → v1.4.0, …) produces a per-release diff card on the dashboard. The renderer is auto-deriving, so the only artefact required for a future version-diff is a new audit markdown under <code>docs/audits/</code> matching the naming pattern <code>search-quality-versiondiff-vX.Y.Z-to-vA.B.C.md</code>.</li></ul>
+<p>The <code>CoreData</code> row is a regression-watch item: a future ranker change that fixes the framework-aliases tie-break shouldn't simultaneously demote <code>CoreData</code> further. Add it to the per-class follow-up corpus when the alias work in <a href="https://github.com/mihaelamj/cupertino/issues/818">#818</a> lands.</p></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="method-recap.html">← Method Recap</a>
+            <span></span>
+        </nav>
+        <footer>
+            <p><a href="../versiondiff-v1.0.2-to-v1.2.0.html">↑ Back to Search-quality version diff: v1.0.2 → v1.2.0</a></p>
+        </footer>
+    </div>
+</body>
+</html>

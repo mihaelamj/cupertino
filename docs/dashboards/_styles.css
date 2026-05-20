@@ -245,6 +245,292 @@ section li strong { font-weight: 600; }
 .card-link::after { content: "›"; font-size: 18px; line-height: 1; transition: transform 200ms ease; }
 .card-link:hover::after { transform: translateX(2px); }
 
+.card.card-versiondiff {
+    background: linear-gradient(155deg, rgba(88, 86, 214, 0.10), rgba(0, 122, 255, 0.06) 60%, var(--bg-card) 100%);
+    border-color: rgba(88, 86, 214, 0.35);
+    box-shadow: 0 2px 14px rgba(88, 86, 214, 0.10);
+    position: relative;
+}
+.card.card-versiondiff:hover {
+    box-shadow: 0 4px 22px rgba(88, 86, 214, 0.18);
+}
+.card-kind-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--apple-indigo);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    margin-bottom: 10px;
+    align-self: flex-start;
+    width: fit-content;
+}
+@media (prefers-color-scheme: dark) {
+    .card.card-versiondiff {
+        background: linear-gradient(155deg, rgba(88, 86, 214, 0.22), rgba(0, 122, 255, 0.08) 60%, var(--bg-card) 100%);
+        border-color: rgba(88, 86, 214, 0.5);
+    }
+}
+
+/* ===== Charts (inline SVG, theme-aware) ===== */
+.diff-charts-section {
+    margin: 40px 0;
+}
+.diff-charts-intro {
+    color: var(--text-secondary);
+    font-size: 15px;
+    margin: -8px 0 28px;
+}
+.chart {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 24px 28px;
+    margin: 18px 0;
+    box-shadow: var(--shadow-card);
+}
+.chart svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+.chart-caption {
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1.5;
+    margin-top: 16px;
+    max-width: 720px;
+}
+.chart-grid {
+    stroke: var(--border);
+    stroke-width: 1;
+    stroke-dasharray: 2 3;
+    opacity: 0.7;
+}
+.chart-axis {
+    stroke: var(--border-strong);
+    stroke-width: 1.5;
+}
+.chart-axis-label {
+    fill: var(--text-secondary);
+    font-size: 12px;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+    font-variant-numeric: tabular-nums;
+}
+.chart-bar-before {
+    fill: var(--text-tertiary);
+}
+.chart-bar-after {
+    fill: var(--apple-blue);
+}
+.chart-bar-value {
+    fill: var(--text-primary);
+    font-size: 12px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.chart-delta {
+    font-size: 18px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.chart-legend {
+    fill: var(--text-secondary);
+    font-size: 13px;
+}
+.donut-center-num {
+    fill: var(--text-primary);
+    font-size: 44px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.donut-center-label {
+    fill: var(--text-secondary);
+    font-size: 14px;
+}
+.donut-legend-key {
+    fill: var(--text-primary);
+    font-size: 14px;
+    font-weight: 600;
+}
+.donut-legend-num {
+    fill: var(--text-secondary);
+    font-weight: 400;
+}
+.donut-legend-desc {
+    fill: var(--text-tertiary);
+    font-size: 12px;
+}
+.slope-name {
+    fill: var(--text-primary);
+    font-size: 13px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.slope-name-faint {
+    fill: var(--text-tertiary);
+    font-weight: 400;
+    font-style: italic;
+}
+.dumbbell-row-stripe {
+    fill: var(--bg-elevated);
+    opacity: 0.5;
+}
+.dumbbell-rank {
+    font-size: 10px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Chart hover affordances: highlight the hovered item, slightly dim others */
+.chart-hoverable {
+    cursor: pointer;
+    transition: opacity 120ms ease, filter 120ms ease;
+}
+.chart:hover .chart-hoverable {
+    opacity: 0.45;
+}
+.chart .chart-hoverable:hover {
+    opacity: 1 !important;
+    filter: drop-shadow(0 0 6px rgba(0, 122, 255, 0.35));
+}
+.chart .donut-slice:hover {
+    opacity: 1 !important;
+    stroke-width: 3;
+}
+
+/* Floating tooltip surface (one per page, shared by all charts) */
+.chart-tooltip {
+    position: fixed;
+    z-index: 200;
+    background: var(--bg-card);
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 14px));
+    transition: opacity 100ms ease;
+    max-width: 280px;
+}
+.chart-tooltip.visible { opacity: 1; }
+.chart-tooltip b { color: var(--text-primary); font-weight: 600; }
+.chart-tooltip .tip-key { color: var(--text-tertiary); font-size: 12px; }
+.chart-tooltip .tip-val { color: var(--text-primary); font-weight: 600; font-variant-numeric: tabular-nums; }
+.chart-tooltip .tip-desc { color: var(--text-secondary); font-size: 12px; font-style: italic; }
+.chart-tooltip .tip-delta {
+    display: inline-block;
+    margin-top: 4px;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.chart-tooltip .tip-improved { background: rgba(52, 199, 89, 0.15); color: var(--apple-green); }
+.chart-tooltip .tip-regressed { background: rgba(255, 59, 48, 0.15); color: var(--apple-red); }
+.chart-tooltip .tip-unchanged { background: rgba(110, 110, 115, 0.15); color: var(--text-secondary); }
+
+/* Section cards on the audit page (each links to its own subpage) */
+.section-cards-section { margin: 40px 0 24px; }
+.section-cards-intro {
+    color: var(--text-secondary);
+    font-size: 15px;
+    margin: -8px 0 24px;
+    max-width: 640px;
+}
+.section-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 14px;
+}
+.section-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 18px 20px;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+    box-shadow: var(--shadow-card);
+}
+.section-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--apple-blue);
+    box-shadow: var(--shadow-card-hover);
+    text-decoration: none;
+}
+.section-card-icon {
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.section-card-icon svg { width: 18px; height: 18px; }
+.section-card-body { flex: 1 1 auto; min-width: 0; }
+.section-card-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 4px;
+    color: var(--text-primary);
+}
+.section-card-summary {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    margin: 0 0 8px;
+}
+.section-card-cta {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--apple-blue);
+}
+
+/* Section-detail subpages */
+.section-detail .doc-section { margin-bottom: 0; }
+.section-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    gap: 16px;
+}
+.section-nav-link {
+    display: inline-flex;
+    padding: 10px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    max-width: 45%;
+}
+.section-nav-link:hover {
+    border-color: var(--apple-blue);
+    color: var(--apple-blue);
+    text-decoration: none;
+}
+
 .card-pending {
     border: 2px dashed var(--apple-blue);
     background: transparent;

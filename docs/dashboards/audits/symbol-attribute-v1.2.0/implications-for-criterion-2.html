@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Implications for Criterion 2 (anti-hallucination) · Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../symbol-attribute-v1.2.0.html">Back to Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</div>
+            <h1>Implications for Criterion 2 (anti-hallucination)</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p>An AI agent issuing <code>find async throws functions returning Result</code> gets top-10 results that don't constrain on async/throws/return-type. The agent then has to read those pages and hope they're relevant; for most of the 8-zero-<a href="../../sources.html#precision-at-k">P@5</a> queries above, none would be useful.</p>
+<p>Mitigation in current state: the agent would need to issue more concrete queries (<code>Result&lt;Success, Failure&gt;</code> plus <code>async throws</code> separately and intersect mentally) rather than rely on cupertino to filter. This is feasible but inefficient.</p>
+<p>The Phase 1.7 agent-end-to-end eval (<code>docs/design/search-quality-eval.md</code> §14.4) is where the practical impact of these attribute-query limitations gets measured end-to-end. Until that lands, this 25% baseline is the closest signal.</p>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="possible-future-directions.html">← Possible Future Directions (out of Scope for This Audit)</a>
+            <a class="section-nav-link next" href="method-recap.html">Method Recap →</a>
+        </nav>
+        <footer>
+            <p><a href="../symbol-attribute-v1.2.0.html">↑ Back to Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</a></p>
+        </footer>
+    </div>
+</body>
+</html>

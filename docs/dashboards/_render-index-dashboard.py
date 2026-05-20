@@ -66,13 +66,44 @@ def _icon_key(audit_filename: str) -> str:
     return base if base in ICON_SVGS else "default"
 
 
+def _short_subtitle(audit: Audit) -> str:
+    """Derive a short kind-of-thing label from filename, not from a clipped
+    Methodology string."""
+    name = audit.source_path.name if audit.source_path else ""
+    if "versiondiff" in name:
+        return "Version-to-version comparison"
+    if "baseline" in name and "deprecation" in name:
+        return "Deprecation-aware baseline"
+    if "baseline" in name and "crosssource" in name:
+        return "Cross-source canonical baseline"
+    if "baseline" in name and "fragment" in name:
+        return "CamelCase fragment baseline"
+    if "baseline" in name and "acronym" in name:
+        return "Acronym / synonym baseline"
+    if "baseline" in name and "prose" in name:
+        return "Prose / conceptual baseline"
+    if "baseline" in name and "symbol-attribute" in name:
+        return "Symbol-attribute baseline"
+    if "baseline" in name:
+        return "Search-quality baseline"
+    return "Cupertino audit"
+
+
 def _audit_summary(audit: Audit):
     headline = extract_headline(audit)
     dashboard_url = f"audits/{derive_dashboard_name(audit.source_path)}"
-    # First paragraph of intro becomes the card's plain-English finding
+    # First paragraph of intro becomes the card's plain-English finding;
+    # keep it terse on the index — readers can click through for the full
+    # write-up. Aim for one tight sentence (~140 chars).
     finding = audit.first_intro_paragraph
-    if len(finding) > 320:
-        finding = finding[:317] + "…"
+    if len(finding) > 140:
+        # Cut at the nearest sentence boundary under 140
+        cut = finding[:140]
+        last_dot = cut.rfind(". ")
+        if last_dot > 60:
+            finding = cut[: last_dot + 1]
+        else:
+            finding = cut.rstrip() + "…"
     icon_key = _icon_key(derive_dashboard_name(audit.source_path))
     # Tint matches the headline colour
     tint = {"green": "tint-green", "orange": "tint-orange", "red": "tint-red", "blue": "tint-blue"}.get(headline.color, "tint-blue")
@@ -95,20 +126,24 @@ def _audit_summary(audit: Audit):
             method = first_metric_link(body_html)
             if method:
                 break
+    filename = audit.source_path.name if audit.source_path else ""
+    is_versiondiff = "versiondiff" in filename
     return {
         "title": audit.title,
-        "subtitle": audit.header_block.get("Methodology", "")[:80] or "Cupertino audit",
+        # Short subtitle: kind label rather than a 80-char clip of Methodology
+        "subtitle": _short_subtitle(audit),
         "status": headline.status,
         "value": headline.value,
         "color": headline.color,
         "raw_percent": headline.raw_percent,
         "finding": finding,
         "dashboard_url": dashboard_url,
-        "audit_filename": audit.source_path.name if audit.source_path else "",
+        "audit_filename": filename,
         "icon_svg": ICON_SVGS.get(icon_key, ICON_SVGS["default"]),
         "icon_tint": tint,
         "method_label": method[0] if method else None,
         "method_anchor": method[1] if method else None,
+        "is_versiondiff": is_versiondiff,
     }
 
 
@@ -148,11 +183,17 @@ def render_card(s: dict) -> str:
     # Progress bar width derived from raw_percent (0..100); fall back to 100 for fractions
     pct = s.get("raw_percent")
     bar_width = min(100, max(0, int(pct))) if pct is not None else 100
-    return f"""                <article class="card">
+    extra_class = " card-versiondiff" if s.get("is_versiondiff") else ""
+    badge = (
+        '<span class="card-kind-badge">Δ Version diff</span>'
+        if s.get("is_versiondiff") else ""
+    )
+    return f"""                <article class="card{extra_class}">
                     <div class="card-header">
                         <div class="card-icon {s['icon_tint']}">{s['icon_svg']}</div>
                         <span class="status {STATUS_TO_CLASS.get(s['status'], 'status-info')}">{html.escape(s['status'])}</span>
                     </div>
+                    {badge}
                     <h3 class="card-title">{html.escape(s['title'])}</h3>
                     <p class="card-subtitle">{html.escape(s['subtitle'])}</p>
                     <div class="card-metric {s['color']}">{html.escape(s['value'])}</div>

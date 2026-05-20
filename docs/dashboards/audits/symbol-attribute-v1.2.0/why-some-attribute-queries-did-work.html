@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why Some Attribute Queries Did Work · Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../symbol-attribute-v1.2.0.html">Back to Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</div>
+            <h1>Why Some Attribute Queries Did Work</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p><code>@MainActor</code>, <code>Sendable conformance</code>, <code>protocol type</code>, <code>Hashable conformance</code> — these all happen to align with token-presence:</p>
+<ul><li><code>MainActor</code> is also a Swift type name, indexed in <code>docs_fts.symbols</code> at weight 5.0</li><li><code>Sendable</code> is a Swift protocol name, same</li><li><code>Hashable</code> same</li><li><code>protocol</code> is a Swift keyword that appears in titles and content</li><li><code>actor</code> (in <code>actor type</code>) appears in titles for the 3 actor-defining pages but those pages don't dominate</li></ul>
+<p>So the win isn't the symbol-attribute mechanism working; it's a coincidence that the attribute name is also a token-rich symbol name. When the attribute name is a generic English word that doesn't surface as a symbol (<code>initializer</code>, <code>subscript</code>, <code>typealias</code>, <code>generic constraint</code>), the query fails completely.</p>
+<hr></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="what-this-baseline-says.html">← What This Baseline Says</a>
+            <a class="section-nav-link next" href="possible-future-directions.html">Possible Future Directions (out of Scope for This Audit) →</a>
+        </nav>
+        <footer>
+            <p><a href="../symbol-attribute-v1.2.0.html">↑ Back to Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</a></p>
+        </footer>
+    </div>
+</body>
+</html>
