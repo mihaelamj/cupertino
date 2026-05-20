@@ -1277,6 +1277,60 @@ extension Sample.Index {
             return Int(sqlite3_column_int(statement, 0))
         }
 
+        /// #837 read-side wiring — search `file_symbols` for rows whose
+        /// `name`, `attributes`, `conformances`, `signature`, or
+        /// `generic_constraints` LIKE-match the query. Returns the set
+        /// of composite `"projectId|path"` keys identifying the files
+        /// each matching symbol belongs to. Caller
+        /// (`Sample.Search.Service`) uses the set to rank-boost
+        /// matching `Sample.Index.FileSearchResult` rows in the search
+        /// result — same pattern search.db uses in
+        /// `Search.Index.searchSymbolsForURIs`.
+        ///
+        /// JOINs `file_symbols → files` so the caller doesn't have to
+        /// round-trip through `getFileId` to identify rows. Composite
+        /// key uses `|` as the separator because neither `projectId`
+        /// (a slug) nor `path` contains it in any real corpus.
+        ///
+        /// Fails silently with an empty set when the underlying SQL
+        /// can't prepare; symbol search is an optional enhancement,
+        /// not a blocker.
+        public func searchSymbolsForFiles(query: String, limit: Int) async throws -> Set<String> {
+            guard let database else { return [] }
+            let cleanQuery = query
+                .replacingOccurrences(of: "\"", with: "")
+                .trimmingCharacters(in: .whitespaces)
+            guard cleanQuery.count >= 3 else { return [] }
+            let likePattern = "%\(cleanQuery)%"
+            let sql = """
+            SELECT DISTINCT f.project_id || '|' || f.path
+            FROM file_symbols s
+            JOIN files f ON s.file_id = f.id
+            WHERE s.name LIKE ?
+               OR s.attributes LIKE ?
+               OR s.conformances LIKE ?
+               OR s.signature LIKE ?
+               OR s.generic_constraints LIKE ?
+            LIMIT ?;
+            """
+            var statement: OpaquePointer?
+            defer { sqlite3_finalize(statement) }
+            guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else { return [] }
+            sqlite3_bind_text(statement, 1, (likePattern as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 2, (likePattern as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 3, (likePattern as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 4, (likePattern as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 5, (likePattern as NSString).utf8String, -1, nil)
+            sqlite3_bind_int(statement, 6, Int32(limit))
+            var keys: Set<String> = []
+            while sqlite3_step(statement) == SQLITE_ROW {
+                if let ptr = sqlite3_column_text(statement, 0) {
+                    keys.insert(String(cString: ptr))
+                }
+            }
+            return keys
+        }
+
         /// Get total import count (#81)
         public func importCount() async throws -> Int {
             guard let database else {

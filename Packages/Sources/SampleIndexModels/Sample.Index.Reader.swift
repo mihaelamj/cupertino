@@ -53,6 +53,14 @@ extension Sample.Index {
             minVersion: String?
         ) async throws -> [Sample.Index.FileSearchResult]
 
+        /// #837 read-side wiring — return the set of `"projectId|path"`
+        /// composite keys identifying files whose `file_symbols` row
+        /// LIKE-matches `query` in any of name / attributes / conformances
+        /// / signature / generic_constraints. Caller boosts the rank of
+        /// matching `Sample.Index.FileSearchResult` rows. Fails silently
+        /// with an empty set; symbol search is an optional enhancement.
+        func searchSymbolsForFiles(query: String, limit: Int) async throws -> Set<String>
+
         // MARK: - Project access
 
         /// Fetch a single project by its sample-code identifier
