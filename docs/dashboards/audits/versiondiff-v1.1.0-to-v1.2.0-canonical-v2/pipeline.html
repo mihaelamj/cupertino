@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipeline · Search-quality version diff: v1.1.0 → v1.2.0 (canonical-lookup-V2 (independent corpus))</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../versiondiff-v1.1.0-to-v1.2.0-canonical-v2.html">Back to Search-quality version diff: v1.1.0 → v1.2.0 (canonical-lookup-V2 (independent corpus))</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality version diff: v1.1.0 → v1.2.0 (canonical-lookup-V2 (independent corpus))</div>
+            <h1>Pipeline</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><pre class="mermaid">flowchart TD
+    Q["50 / 30 / 30 canonical query strings<br/>(per corpus, in-source)"]:::input
+    R["per-query regex pattern<br/>apple-docs://&lt;framework&gt;/&lt;concept&gt;($|/...)"]:::input
+    Q --> H[search-quality-phase1-extended.py]
+    R --> H
+
+    BA["Arm A: /opt/homebrew/bin/cupertino (v1.1.0)<br/>+ ~/.cupertino/search.db (schema 13)"]:::arm
+    BB["Arm B: Packages/.build/release/cupertino (v1.2.0)<br/>+ ~/.cupertino-dev/search.db (schema 18)"]:::arm
+    H -->|"cupertino search --format json --limit 10"| BA
+    H -->|"cupertino search --format json --limit 10"| BB
+
+    BA --> JA["top-10 URI list per query<br/>(JSON parsed)"]
+    BB --> JB["top-10 URI list per query<br/>(JSON parsed)"]
+
+    JA --> SA["per-query score:<br/>first-relevant-rank, RR=1/rank,<br/>P@1, P@5, NDCG@10"]
+    JB --> SB["per-query score:<br/>first-relevant-rank, RR=1/rank,<br/>P@1, P@5, NDCG@10"]
+
+    SA --> AGA["arm A aggregate:<br/>MRR, P@1 count, P@5 mean, NDCG@10 mean"]
+    SB --> AGB["arm B aggregate:<br/>MRR, P@1 count, P@5 mean, NDCG@10 mean"]
+
+    AGA --> PAIR["paired comparison:<br/>buckets (Added/Removed/Fixed/Degraded/<br/>Unchanged/Both-suboptimal)"]
+    AGB --> PAIR
+    PAIR --> WX["Paired Wilcoxon signed-rank<br/>on per-query RR vector<br/>(normal approximation)"]:::stat
+    PAIR --> MC["McNemar exact (binomial)<br/>on rank-1 contingency 2×2"]:::stat
+
+    WX --> MD["this audit MD<br/>(dashboard glob picks up)"]:::out
+    MC --> MD
+
+    classDef input fill:#0a84ff,stroke:#0040cc,color:#fff
+    classDef arm fill:#5856d6,stroke:#3634a3,color:#fff
+    classDef stat fill:#ff9500,stroke:#c4730a,color:#fff
+    classDef out fill:#34c759,stroke:#1f7a3a,color:#fff</pre></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="cross-validation-note.html">← Cross-validation Note</a>
+            <span></span>
+        </nav>
+        <footer>
+            <p><a href="../versiondiff-v1.1.0-to-v1.2.0-canonical-v2.html">↑ Back to Search-quality version diff: v1.1.0 → v1.2.0 (canonical-lookup-V2 (independent corpus))</a></p>
+        </footer>
+    </div>
+</body>
+</html>

@@ -15,17 +15,17 @@
             <div class="eyebrow">Cupertino · v1.2.0</div>
             <h1>Does the search find the right answer?</h1>
             <p class="subtitle">
-                Cupertino is an Apple-platform documentation index built to keep AI coding assistants from hallucinating. This page summarises 9 measurements of how well it does that on the v1.2.0 build.
+                Cupertino is an Apple-platform documentation index built to keep AI coding assistants from hallucinating. This page summarises 11 measurements of how well it does that on the v1.2.0 build.
             </p>
             <p class="meta">
-                <span>9 measurements</span>·<span>Auto-derived from audit markdown</span>·<span>Re-rendered when audits change</span>
+                <span>11 measurements</span>·<span>Auto-derived from audit markdown</span>·<span>Re-rendered when audits change</span>
             </p>
         </header>
 
         <div class="tab-container">
             <div class="tabs" role="tablist">
                 <button class="tab" data-tab="overview" role="tab">Overview</button>
-                <button class="tab active" data-tab="tests" role="tab">The 9 tests</button>
+                <button class="tab active" data-tab="tests" role="tab">The 11 tests</button>
                 <button class="tab" data-tab="sources" role="tab">Sources</button>
                 <button class="tab" data-tab="how" role="tab">How I measure</button>
             </div>
@@ -36,24 +36,24 @@
             <div class="summary">
                 <h2>At a glance</h2>
                 <p class="summary-text">
-                    <strong>4 of 9 tests pass strongly</strong> &mdash; the canonical use cases (typing a Swift type name, modern-vs-legacy choice, fragment recall, cross-source ranking) work as designed. <strong>3 surface real weaknesses</strong> in cupertino's relational-metadata-to-search routing, each tracked with an open issue. <strong>2 have methodology limits</strong> that human-judged measurement would resolve.
+                    <strong>6 of 11 tests pass strongly</strong> &mdash; the canonical use cases (typing a Swift type name, modern-vs-legacy choice, fragment recall, cross-source ranking) work as designed. <strong>3 surface real weaknesses</strong> in cupertino's relational-metadata-to-search routing, each tracked with an open issue. <strong>2 have methodology limits</strong> that human-judged measurement would resolve.
                 </p>
             </div>
 
             <div class="kpi-strip">
                 <div class="kpi">
                     <div class="kpi-label">Tests passing strongly</div>
-                    <div class="kpi-value green">4 / 9</div>
+                    <div class="kpi-value green">6 / 11</div>
                     <div class="kpi-desc">Auto-classified from headline metric thresholds.</div>
                 </div>
                 <div class="kpi">
                     <div class="kpi-label">Mixed results</div>
-                    <div class="kpi-value orange">2 / 9</div>
+                    <div class="kpi-value orange">2 / 11</div>
                     <div class="kpi-desc">Reasonable but methodology-bounded.</div>
                 </div>
                 <div class="kpi">
                     <div class="kpi-label">Weak results</div>
-                    <div class="kpi-value red">3 / 9</div>
+                    <div class="kpi-value red">3 / 11</div>
                     <div class="kpi-desc">Tracked, with candidate fixes documented.</div>
                 </div>
             </div>
@@ -135,6 +135,34 @@
                     <p class="card-finding">This is the <strong>Phase 1.8 version-to-version comparison KPI</strong> specified in issue <a href="https://github.com/mihaelamj/cupertino/issues/830">#830</a>.</p>
                     <a class="card-link" href="audits/versiondiff-v1.0.2-to-v1.2.0.html">Open audit dashboard</a>
                 </article>
+                <article class="card card-versiondiff">
+                    <div class="card-header">
+                        <div class="card-icon tint-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+                        <span class="status status-strong">Strong</span>
+                    </div>
+                    <span class="card-kind-badge">Δ Version diff</span>
+                    <h3 class="card-title">Search-quality version diff: v1.1.0 → v1.2.0 (deprecation pairs)</h3>
+                    <p class="card-subtitle">Version-to-version comparison</p>
+                    <div class="card-metric green">modern-wins rate 90.00% → 100.00%</div>
+                    <div class="source-chip missing"><span class="source-chip-label">Method &amp; source</span><span class="source-chip-metric"><a href="sources.html">Browse all citations</a></span><span class="source-chip-cite">No metric token detected in the audit text — see <a href="sources.html">sources.html</a></span></div>
+                    <div class="progress-bar"><div class="progress-bar-fill green" style="width: 100%;"></div></div>
+                    <p class="card-finding">For each (query, modern_uri, legacy_uri) triple: run <code>cupertino search &quot;&lt;query&gt;&quot; --limit 10</code>, classify the outcome as <code>modern_wins</code> (modern…</p>
+                    <a class="card-link" href="audits/versiondiff-v1.1.0-to-v1.2.0-deprecation.html">Open audit dashboard</a>
+                </article>
+                <article class="card card-versiondiff">
+                    <div class="card-header">
+                        <div class="card-icon tint-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+                        <span class="status status-strong">Strong</span>
+                    </div>
+                    <span class="card-kind-badge">Δ Version diff</span>
+                    <h3 class="card-title">Search-quality version diff: v1.1.0 → v1.2.0</h3>
+                    <p class="card-subtitle">Version-to-version comparison</p>
+                    <div class="card-metric green">+20 / 50 queries newly rank-1</div>
+                    <div class="source-chip"><span class="source-chip-label">Method &amp; source</span><span class="source-chip-metric"><a href="sources.html#mrr">Mean Reciprocal Rank</a></span><span class="source-chip-cite"><a href="sources.html#mrr">Voorhees (1999), TREC-8 QA Report</a></span></div>
+                    <div class="progress-bar"><div class="progress-bar-fill green" style="width: 100%;"></div></div>
+                    <p class="card-finding">This is the Phase 1.8 version-to-version comparison KPI specified in issue #830, applied to the <code>v1.1.0</code> → <code>v1.2.0</code> jump.</p>
+                    <a class="card-link" href="audits/versiondiff-v1.1.0-to-v1.2.0.html">Open audit dashboard</a>
+                </article>
                 <article class="card">
                     <div class="card-header">
                         <div class="card-icon tint-orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
@@ -155,13 +183,13 @@
                         <span class="status status-mixed">Mixed</span>
                     </div>
                     <span class="card-kind-badge">Δ Version diff</span>
-                    <h3 class="card-title">Search-quality version diff: v1.1.0 → v1.2.0</h3>
+                    <h3 class="card-title">Search-quality version diff: v1.1.0 → v1.2.0 (canonical-lookup-V2 (independent corpus))</h3>
                     <p class="card-subtitle">Version-to-version comparison</p>
-                    <div class="card-metric orange">0.6900</div>
+                    <div class="card-metric orange">+8 / 30 queries newly rank-1</div>
                     <div class="source-chip"><span class="source-chip-label">Method &amp; source</span><span class="source-chip-metric"><a href="sources.html#mrr">Mean Reciprocal Rank</a></span><span class="source-chip-cite"><a href="sources.html#mrr">Voorhees (1999), TREC-8 QA Report</a></span></div>
-                    <div class="progress-bar"><div class="progress-bar-fill orange" style="width: 69%;"></div></div>
-                    <p class="card-finding">This is the Phase 1.8 version-to-version comparison KPI specified in issue #830, applied to the <code>v1.1.0</code> → <code>v1.2.0</code> jump.</p>
-                    <a class="card-link" href="audits/versiondiff-v1.1.0-to-v1.2.0.html">Open audit dashboard</a>
+                    <div class="progress-bar"><div class="progress-bar-fill orange" style="width: 100%;"></div></div>
+                    <p class="card-finding">This is a cross-validation corpus. The v1.1.0 → v1.2.0 claim ("v1.2.0 is better") is being independently re-verified with a different fixed…</p>
+                    <a class="card-link" href="audits/versiondiff-v1.1.0-to-v1.2.0-canonical-v2.html">Open audit dashboard</a>
                 </article>
                 <article class="card">
                     <div class="card-header">
