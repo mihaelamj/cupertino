@@ -32,7 +32,7 @@ extension Search {
         /// pattern (#192 sec. C). Existing v1 DBs migrate via
         /// `ALTER TABLE ADD COLUMN`; fresh installs land them inline via
         /// `createTables`. No destructive migration.
-        public static let schemaVersion: Int32 = 3
+        public static let schemaVersion: Int32 = 4
 
         private var database: OpaquePointer?
         private let dbPath: URL
@@ -252,6 +252,14 @@ extension Search {
                 -- packages whose manifest doesn't declare the version
                 -- in a parseable shape.
                 swift_tools_version TEXT,
+                -- #837 stage 1: aggregate of Apple framework modules
+                -- the package imports. JSON array of module names like
+                -- ["SwiftUI","Combine"]; NULL until the
+                -- packages-apple-imports pass populates it.
+                apple_imports_json TEXT,
+                -- #837 stage 1: tracks which enrichment pass version
+                -- last wrote this row. NULL until any pass runs.
+                enrichment_version INTEGER,
                 UNIQUE(owner, repo)
             );
 
@@ -263,6 +271,7 @@ extension Search {
             CREATE INDEX IF NOT EXISTS idx_pkg_min_watchos ON package_metadata(min_watchos);
             CREATE INDEX IF NOT EXISTS idx_pkg_min_visionos ON package_metadata(min_visionos);
             CREATE INDEX IF NOT EXISTS idx_pkg_swift_tools ON package_metadata(swift_tools_version);
+            CREATE INDEX IF NOT EXISTS idx_pkg_enrichment ON package_metadata(enrichment_version);
 
             CREATE TABLE IF NOT EXISTS package_files (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -295,6 +304,48 @@ extension Search {
                 symbols,
                 tokenize='porter unicode61'
             );
+
+            -- #837 stage 2: per-symbol storage on packages.db, parallel
+            -- to samples.db's file_symbols. Populated by the AST
+            -- extraction pass during cupertino save --packages so the
+            -- postprocessor's apple-constraints pass can annotate
+            -- generic_constraints on packages the same way it does on
+            -- search.db's doc_symbols and samples.db's file_symbols.
+            CREATE TABLE IF NOT EXISTS package_symbols (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                line INTEGER NOT NULL,
+                column INTEGER NOT NULL,
+                signature TEXT,
+                is_async INTEGER NOT NULL DEFAULT 0,
+                is_throws INTEGER NOT NULL DEFAULT 0,
+                is_public INTEGER NOT NULL DEFAULT 0,
+                is_static INTEGER NOT NULL DEFAULT 0,
+                attributes TEXT,
+                conformances TEXT,
+                generic_params TEXT,
+                generic_constraints TEXT,
+                enrichment_version INTEGER,
+                FOREIGN KEY (file_id) REFERENCES package_files(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_package_symbols_file ON package_symbols(file_id);
+            CREATE INDEX IF NOT EXISTS idx_package_symbols_kind ON package_symbols(kind);
+            CREATE INDEX IF NOT EXISTS idx_package_symbols_name ON package_symbols(name);
+            CREATE INDEX IF NOT EXISTS idx_package_symbols_enrichment ON package_symbols(enrichment_version);
+
+            -- #837 stage 1: per-package aggregate of Apple frameworks
+            -- the package imports. JSON array of module names (e.g.
+            -- ["SwiftUI","Combine"]), populated by the postprocessor's
+            -- packages-apple-imports pass joining package_files.module
+            -- against the AppleSymbolGraphsKit module list. NULL = the
+            -- pass hasn't run on this package yet.
+            -- enrichment_version tracks the pass version that last
+            -- wrote the row.
+            -- (Added via ALTER below for v3→v4 migration, defined
+            -- inline here for fresh DBs.)
             """
             try execute(sql)
         }
@@ -328,6 +379,56 @@ extension Search {
             if currentVersion < 3 {
                 try migrateToVersion3()
             }
+            if currentVersion < 4 {
+                try migrateToVersion4()
+            }
+        }
+
+        /// Version 3 → 4 (#837 stage 1 + 2): adds the `package_symbols`
+        /// table parallel to samples.db's `file_symbols`, plus
+        /// `apple_imports_json` and `enrichment_version` columns on
+        /// `package_metadata`. Indexes match the samples + docs pattern.
+        /// ALTER statements ignore "duplicate column" errors so the
+        /// migration is harmless to re-run.
+        private func migrateToVersion4() throws {
+            guard let database else { throw PackageIndexError.databaseNotInitialized }
+            var errPtr: UnsafeMutablePointer<CChar>?
+
+            // package_metadata column additions
+            _ = sqlite3_exec(database, "ALTER TABLE package_metadata ADD COLUMN apple_imports_json TEXT;", nil, nil, &errPtr)
+            sqlite3_free(errPtr)
+            errPtr = nil
+            _ = sqlite3_exec(database, "ALTER TABLE package_metadata ADD COLUMN enrichment_version INTEGER;", nil, nil, &errPtr)
+            sqlite3_free(errPtr)
+
+            // package_symbols table (CREATE TABLE IF NOT EXISTS is
+            // already idempotent so no swallowed-error dance needed).
+            try execute("""
+            CREATE TABLE IF NOT EXISTS package_symbols (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                line INTEGER NOT NULL,
+                column INTEGER NOT NULL,
+                signature TEXT,
+                is_async INTEGER NOT NULL DEFAULT 0,
+                is_throws INTEGER NOT NULL DEFAULT 0,
+                is_public INTEGER NOT NULL DEFAULT 0,
+                is_static INTEGER NOT NULL DEFAULT 0,
+                attributes TEXT,
+                conformances TEXT,
+                generic_params TEXT,
+                generic_constraints TEXT,
+                enrichment_version INTEGER,
+                FOREIGN KEY (file_id) REFERENCES package_files(id) ON DELETE CASCADE
+            );
+            """)
+            try execute("CREATE INDEX IF NOT EXISTS idx_package_symbols_file ON package_symbols(file_id);")
+            try execute("CREATE INDEX IF NOT EXISTS idx_package_symbols_kind ON package_symbols(kind);")
+            try execute("CREATE INDEX IF NOT EXISTS idx_package_symbols_name ON package_symbols(name);")
+            try execute("CREATE INDEX IF NOT EXISTS idx_package_symbols_enrichment ON package_symbols(enrichment_version);")
+            try execute("CREATE INDEX IF NOT EXISTS idx_pkg_enrichment ON package_metadata(enrichment_version);")
         }
 
         /// Version 2 → 3 (#225 Part A): add `swift_tools_version` column
@@ -765,4 +866,5 @@ extension Search {
 
 /// SQLite3 convenience — the same constant SearchIndex uses, replicated here so this
 /// file doesn't depend on Search/Index's private symbols.
+// swiftlint:disable:next identifier_name
 private let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)

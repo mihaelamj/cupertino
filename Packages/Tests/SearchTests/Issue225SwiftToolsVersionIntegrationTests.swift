@@ -32,7 +32,7 @@ import Testing
 struct Issue225SwiftToolsVersionIntegrationTests {
     // MARK: - 1. Schema
 
-    @Test("fresh packages.db carries swift_tools_version column + idx_pkg_swift_tools index at schema v3")
+    @Test("fresh packages.db carries swift_tools_version column + idx_pkg_swift_tools index at current schemaVersion")
     func freshSchemaHasColumnAndIndex() async throws {
         let (dbPath, cleanup) = try await Self.makeEmptyDB()
         defer { cleanup() }
@@ -47,7 +47,8 @@ struct Issue225SwiftToolsVersionIntegrationTests {
 
         let version = try Self.readPragma(at: dbPath, sql: "PRAGMA user_version;")
         let userVersion = version.first?.first ?? ""
-        #expect(userVersion == "3", "fresh DB must stamp user_version = 3; got: \(userVersion)")
+        let expected = String(Search.PackageIndex.schemaVersion)
+        #expect(userVersion == expected, "fresh DB must stamp user_version = \(expected); got: \(userVersion)")
     }
 
     // MARK: - 2. Indexer wires swift_tools_version through
@@ -281,8 +282,8 @@ struct Issue225SwiftToolsVersionIntegrationTests {
         while sqlite3_step(statement) == SQLITE_ROW {
             let cols = sqlite3_column_count(statement)
             var row: [String] = []
-            for i in 0..<cols {
-                if let ptr = sqlite3_column_text(statement, i) {
+            for col in 0..<cols {
+                if let ptr = sqlite3_column_text(statement, col) {
                     row.append(String(cString: ptr))
                 } else {
                     row.append("")

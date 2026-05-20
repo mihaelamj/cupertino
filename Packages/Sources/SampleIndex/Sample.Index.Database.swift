@@ -30,7 +30,7 @@ extension Sample.Index {
         /// `available_attrs_json` on `files`. No migration — `save
         /// --samples` always wipes the DB and rebuilds, so existing v2
         /// databases get replaced wholesale on the next run.
-        public static let schemaVersion: Int32 = 3
+        public static let schemaVersion: Int32 = 4
 
         private var database: OpaquePointer?
         private let dbPath: URL
@@ -284,6 +284,14 @@ extension Sample.Index {
                 attributes TEXT,
                 conformances TEXT,
                 generic_params TEXT,
+                -- #837 stage 1: authoritative Apple-type generic constraints
+                -- written by the postprocessor's samples-apple-constraints
+                -- pass. Mirrors search.db's doc_symbols.generic_constraints
+                -- column. NULL until the pass runs.
+                generic_constraints TEXT,
+                -- #837: tracks which enrichment pass version last
+                -- annotated this row. NULL until any pass runs.
+                enrichment_version INTEGER,
                 FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
             );
 
@@ -291,6 +299,7 @@ extension Sample.Index {
             CREATE INDEX IF NOT EXISTS idx_file_symbols_kind ON file_symbols(kind);
             CREATE INDEX IF NOT EXISTS idx_file_symbols_name ON file_symbols(name);
             CREATE INDEX IF NOT EXISTS idx_file_symbols_async ON file_symbols(is_async);
+            CREATE INDEX IF NOT EXISTS idx_file_symbols_enrichment ON file_symbols(enrichment_version);
 
             -- FTS for symbol name search
             CREATE VIRTUAL TABLE IF NOT EXISTS file_symbols_fts USING fts5(
