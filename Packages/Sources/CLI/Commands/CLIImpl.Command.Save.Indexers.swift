@@ -535,6 +535,39 @@ extension CLIImpl.Command.Save {
             // `Search.PackageIndexingProgressReporting` Observer protocol
             // this method already receives; pass it straight through.
             let stats = try await indexer.indexAll(progress: progress)
+
+            // #837 — postprocessor pipeline for packages.db. Loads
+            // the same AppleConstraintsKit table that the docs flow
+            // uses (sibling JSON at `<base-dir>/apple-constraints.json`)
+            // and runs the two packages-target passes against the
+            // freshly indexed DB. If the file is absent the passes
+            // become no-ops; the unenriched bundle is still valid.
+            let constraintsPath = packagesDB.deletingLastPathComponent()
+                .appendingPathComponent("apple-constraints.json")
+            let lookup: (any Search.StaticConstraintsLookup)? = {
+                guard FileManager.default.fileExists(atPath: constraintsPath.path) else { return nil }
+                do {
+                    return try AppleConstraintsKit.Table.from(fileURL: constraintsPath)
+                } catch {
+                    Cupertino.Context.composition.logging.recording.warning(
+                        "Packages enrichment skipped, failed to load \(constraintsPath.lastPathComponent): \(error)",
+                        category: .search
+                    )
+                    return nil
+                }
+            }()
+            let runner = Enrichment.LiveRunner(passes: [
+                Enrichment.PackagesAppleConstraintsPass(packages: index, lookup: lookup),
+                Enrichment.PackagesAppleImportsPass(packages: index, lookup: lookup),
+            ])
+            let results = try await runner.run(target: .packages)
+            for result in results {
+                Cupertino.Context.composition.logging.recording.info(
+                    "   [enrichment/\(result.passIdentifier)] affected=\(result.rowsAffected) skipped=\(result.rowsSkipped) (\(result.durationMs)ms)",
+                    category: .search
+                )
+            }
+
             let summary = try await index.summary()
             await index.disconnect()
             return Search.PackageIndexingOutcome(
@@ -710,6 +743,33 @@ extension CLIImpl.Command.Save {
                 forceReindex: input.force,
                 progress: reporter
             )
+
+            // #837 — postprocessor pipeline for samples.db. Same
+            // AppleConstraintsKit table the docs + packages flows use.
+            let samplesConstraintsPath = input.samplesDB.deletingLastPathComponent()
+                .appendingPathComponent("apple-constraints.json")
+            let samplesLookup: (any Search.StaticConstraintsLookup)? = {
+                guard FileManager.default.fileExists(atPath: samplesConstraintsPath.path) else { return nil }
+                do {
+                    return try AppleConstraintsKit.Table.from(fileURL: samplesConstraintsPath)
+                } catch {
+                    Cupertino.Context.composition.logging.recording.warning(
+                        "Samples enrichment skipped, failed to load \(samplesConstraintsPath.lastPathComponent): \(error)",
+                        category: .search
+                    )
+                    return nil
+                }
+            }()
+            let samplesRunner = Enrichment.LiveRunner(passes: [
+                Enrichment.SamplesAppleConstraintsPass(samples: database, lookup: samplesLookup),
+            ])
+            let samplesResults = try await samplesRunner.run(target: .samples)
+            for result in samplesResults {
+                Cupertino.Context.composition.logging.recording.info(
+                    "   [enrichment/\(result.passIdentifier)] affected=\(result.rowsAffected) skipped=\(result.rowsSkipped) (\(result.durationMs)ms)",
+                    category: .search
+                )
+            }
 
             let duration = Date().timeIntervalSince(startTime)
 
