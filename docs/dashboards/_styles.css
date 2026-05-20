@@ -552,6 +552,54 @@ section li strong { font-weight: 600; }
     box-shadow: var(--shadow-card);
     text-align: left;
 }
+/* Clickable KPI tile (jumps to a section on the Tests tab) */
+a.kpi-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    transition: transform 200ms ease, box-shadow 200ms ease;
+    position: relative;
+}
+a.kpi-link::after {
+    content: "›";
+    position: absolute;
+    top: 20px;
+    right: 22px;
+    font-size: 22px;
+    color: var(--apple-blue);
+    transition: transform 200ms ease;
+}
+a.kpi-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+a.kpi-link:hover::after {
+    transform: translateX(3px);
+}
+/* Clickable Step card on the How-I-Measure tab */
+a.step-card {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    cursor: pointer;
+}
+/* Standing-baseline badge (visual counterpart to the "Δ Version diff" badge).
+   Renders muted by default; the "all-time" suffix on weak cards stays
+   neutral so it doesn't compete with the WEAK status pill. */
+.card-kind-baseline {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-tertiary);
+}
+/* Anchor markers used by the KPI-tile jump-to-section behaviour;
+   they sit between cards in the grid as zero-height invisibles so
+   scrollIntoView lands at the right spot. */
+.anchor-marker {
+    grid-column: 1 / -1;
+    height: 0;
+    margin: 0;
+    padding: 0;
+}
 .kpi-label {
     font-size: 12px;
     font-weight: 600;
