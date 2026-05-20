@@ -44,6 +44,46 @@ from _charts import (
 )
 
 
+# Mermaid bootstrap — kept in sync with the same constant in
+# `_render-doc.py`. Injected only when a rendered page contains a
+# `<pre class="mermaid">` block. Without this script tag, Mermaid
+# source ends up styled as a code block and never converts to SVG.
+# `_render-doc.py`'s hyphenated filename can't be imported as a
+# Python module without importlib gymnastics, so the bootstrap is
+# duplicated inline here. If either copy changes, change both.
+MERMAID_BOOTSTRAP = '''    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+    (function() {
+        if (typeof mermaid === 'undefined') return;
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var apple = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif';
+        var dark = {
+            darkMode: true, background: '#1c1c1e',
+            primaryColor: '#2c2c2e', primaryTextColor: '#ffffff', primaryBorderColor: '#48484a',
+            secondaryColor: '#1c1c1e', tertiaryColor: '#2c2c2e',
+            lineColor: '#aeaeb2', edgeLabelBackground: '#2c2c2e',
+            clusterBkg: '#1c1c1e', clusterBorder: '#48484a',
+            mainBkg: '#2c2c2e', textColor: '#ffffff', nodeTextColor: '#ffffff',
+            fontFamily: apple,
+        };
+        var light = {
+            background: '#ffffff', primaryColor: '#ffffff', primaryTextColor: '#1d1d1f',
+            primaryBorderColor: '#d2d2d7', secondaryColor: '#f5f5f7', tertiaryColor: '#ffffff',
+            lineColor: '#6e6e73', edgeLabelBackground: '#f5f5f7',
+            clusterBkg: '#f5f5f7', clusterBorder: '#d2d2d7',
+            mainBkg: '#ffffff', textColor: '#1d1d1f', nodeTextColor: '#1d1d1f',
+            fontFamily: apple,
+        };
+        mermaid.initialize({
+            startOnLoad: true, theme: 'base',
+            themeVariables: prefersDark ? dark : light,
+            fontFamily: apple, securityLevel: 'loose',
+            flowchart: { htmlLabels: true, curve: 'basis', useMaxWidth: true },
+        });
+    })();
+    </script>'''
+
+
 def _render_versiondiff_charts(audit: Audit) -> str:
     """If the audit is a versiondiff with a sibling JSON of per-query
     paired results, render three charts: aggregate bars, four-bucket
@@ -237,6 +277,7 @@ def render_section_subpage(
         f'<a class="section-nav-link next" href="{_section_slug(next_sec)}.html">{html.escape(title_case(next_sec))} →</a>'
         if next_sec else '<span></span>'
     )
+    mermaid_script = MERMAID_BOOTSTRAP if '<pre class="mermaid">' in body_html else ""
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -263,6 +304,7 @@ def render_section_subpage(
             <p><a href="{audit_url}">↑ Back to {html.escape(audit_title)}</a></p>
         </footer>
     </div>
+{mermaid_script}
 </body>
 </html>
 """
@@ -390,6 +432,8 @@ def render(audit: Audit) -> str:
             '</section>'
         )
 
+    parent_has_mermaid = '<pre class="mermaid">' in sections_html_blob
+    parent_mermaid_script = MERMAID_BOOTSTRAP if parent_has_mermaid else ""
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -439,6 +483,7 @@ def render(audit: Audit) -> str:
 
     </div>
 
+{parent_mermaid_script}
     <div class="chart-tooltip" id="chart-tooltip" role="tooltip" aria-hidden="true"></div>
     <script>
     (function() {{
