@@ -709,6 +709,137 @@ extension Search {
             }
         }
 
+        /// #837 stage 2 — apply the authoritative Apple-type generic
+        /// constraints table over `package_symbols.generic_constraints`.
+        /// Parallels `Search.Index.applyAppleStaticConstraints` for
+        /// search.db and `Sample.Index.Database.applyAppleStaticConstraints`
+        /// for samples.db. Matches on the lowercased symbol name (last
+        /// segment of `entry.docURI`); writes the joined-comma constraint
+        /// blob; stamps `enrichment_version`.
+        ///
+        /// Returns affected-row count. If `lookup` is nil, returns 0.
+        public func applyAppleStaticConstraints(
+            lookup: (any Search.StaticConstraintsLookup)?,
+            enrichmentVersion: Int = 1
+        ) async throws -> Int {
+            guard let lookup, let database else { return 0 }
+            let entries = try await lookup.allEntries()
+            guard !entries.isEmpty else { return 0 }
+
+            var nameToConstraints: [String: String] = [:]
+            for entry in entries {
+                guard let lastSegment = entry.docURI.split(separator: "/").last else { continue }
+                let key = String(lastSegment).lowercased()
+                let joined = entry.constraints.joined(separator: ",")
+                nameToConstraints[key] = joined
+            }
+
+            _ = sqlite3_exec(database, "BEGIN TRANSACTION", nil, nil, nil)
+            let sql = """
+            UPDATE package_symbols
+            SET generic_constraints = ?, enrichment_version = ?
+            WHERE LOWER(name) = ?;
+            """
+            var statement: OpaquePointer?
+            defer { sqlite3_finalize(statement) }
+            guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
+                _ = sqlite3_exec(database, "ROLLBACK", nil, nil, nil)
+                throw PackageIndexError.sqliteError("prepare applyAppleStaticConstraints UPDATE failed")
+            }
+            var affected = 0
+            for (lower, joined) in nameToConstraints {
+                sqlite3_reset(statement)
+                sqlite3_clear_bindings(statement)
+                sqlite3_bind_text(statement, 1, (joined as NSString).utf8String, -1, nil)
+                sqlite3_bind_int(statement, 2, Int32(enrichmentVersion))
+                sqlite3_bind_text(statement, 3, (lower as NSString).utf8String, -1, nil)
+                _ = sqlite3_step(statement)
+                affected += Int(sqlite3_changes(database))
+            }
+            _ = sqlite3_exec(database, "COMMIT", nil, nil, nil)
+            return affected
+        }
+
+        /// #837 stage 1 — populate `package_metadata.apple_imports_json`
+        /// per package: JSON array of Apple framework modules the
+        /// package imports, derived by joining `package_files.module`
+        /// against the Apple module set extracted from the constraints
+        /// lookup (entries' `docURI` second segment is the framework
+        /// slug; the union of those is our Apple-module set).
+        ///
+        /// Stamps `enrichment_version` on each updated package row.
+        public func applyAppleImports(
+            lookup: (any Search.StaticConstraintsLookup)?,
+            enrichmentVersion: Int = 1
+        ) async throws -> Int {
+            guard let lookup, let database else { return 0 }
+            let entries = try await lookup.allEntries()
+            guard !entries.isEmpty else { return 0 }
+
+            // Derive the set of Apple framework module slugs from
+            // entry docURIs (apple-docs://<framework>/...).
+            var appleModules: Set<String> = []
+            for entry in entries {
+                guard let stripped = entry.docURI.split(separator: ":").last else { continue }
+                let segments = stripped.split(separator: "/").filter { !$0.isEmpty }
+                guard let first = segments.first else { continue }
+                appleModules.insert(String(first).lowercased())
+            }
+            guard !appleModules.isEmpty else { return 0 }
+
+            // Build per-package module list from package_files.
+            let selectSQL = """
+            SELECT package_id, LOWER(module) FROM package_files
+            WHERE module IS NOT NULL AND module != '';
+            """
+            var perPackage: [Int64: Set<String>] = [:]
+            var selectStmt: OpaquePointer?
+            defer { sqlite3_finalize(selectStmt) }
+            guard sqlite3_prepare_v2(database, selectSQL, -1, &selectStmt, nil) == SQLITE_OK else {
+                throw PackageIndexError.sqliteError("prepare select package_files for apple-imports failed")
+            }
+            while sqlite3_step(selectStmt) == SQLITE_ROW {
+                let pkgId = sqlite3_column_int64(selectStmt, 0)
+                guard let modulePtr = sqlite3_column_text(selectStmt, 1) else { continue }
+                let module = String(cString: modulePtr)
+                if appleModules.contains(module) {
+                    perPackage[pkgId, default: []].insert(module)
+                }
+            }
+            sqlite3_finalize(selectStmt)
+            selectStmt = nil
+
+            // UPDATE one row per package with the (sorted) JSON array.
+            _ = sqlite3_exec(database, "BEGIN TRANSACTION", nil, nil, nil)
+            let updateSQL = """
+            UPDATE package_metadata
+            SET apple_imports_json = ?, enrichment_version = ?
+            WHERE id = ?;
+            """
+            var updateStmt: OpaquePointer?
+            defer { sqlite3_finalize(updateStmt) }
+            guard sqlite3_prepare_v2(database, updateSQL, -1, &updateStmt, nil) == SQLITE_OK else {
+                _ = sqlite3_exec(database, "ROLLBACK", nil, nil, nil)
+                throw PackageIndexError.sqliteError("prepare apple_imports UPDATE failed")
+            }
+            var affected = 0
+            for (pkgId, modules) in perPackage {
+                let sorted = modules.sorted()
+                guard let jsonData = try? JSONEncoder().encode(sorted),
+                      let jsonString = String(data: jsonData, encoding: .utf8)
+                else { continue }
+                sqlite3_reset(updateStmt)
+                sqlite3_clear_bindings(updateStmt)
+                sqlite3_bind_text(updateStmt, 1, (jsonString as NSString).utf8String, -1, nil)
+                sqlite3_bind_int(updateStmt, 2, Int32(enrichmentVersion))
+                sqlite3_bind_int64(updateStmt, 3, pkgId)
+                _ = sqlite3_step(updateStmt)
+                affected += Int(sqlite3_changes(database))
+            }
+            _ = sqlite3_exec(database, "COMMIT", nil, nil, nil)
+            return affected
+        }
+
         /// Insert AST-extracted symbols into the `package_symbols` table.
         /// Parallels `Sample.Index.Database.indexSymbols` from samples.db.
         /// Caller guarantees the surrounding transaction. Symbols that

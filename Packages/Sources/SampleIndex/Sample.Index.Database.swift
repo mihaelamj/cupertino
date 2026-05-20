@@ -2,6 +2,7 @@ import ASTIndexer
 import Foundation
 import LoggingModels
 import SampleIndexModels
+import SearchModels
 import SharedConstants
 import SQLite3
 
@@ -593,6 +594,61 @@ extension Sample.Index {
                 // Insert into FTS
                 try await indexSymbolFTS(symbol: symbol)
             }
+        }
+
+        /// #837 stage 1 — apply the authoritative Apple-type generic
+        /// constraints table over `file_symbols.generic_constraints`.
+        ///
+        /// Parallels `Search.Index.applyAppleStaticConstraints` for
+        /// search.db. Each entry's `docURI` is split to extract the
+        /// type name (last URI segment); a symbol whose lowercased
+        /// `file_symbols.name` matches that token gets its
+        /// `generic_constraints` set to the joined-comma
+        /// `entry.constraints` blob. Stamps `enrichment_version` so
+        /// idempotency checks can detect already-enriched rows.
+        ///
+        /// Returns the affected-row count. If `lookup` is nil, returns
+        /// 0 without touching the DB.
+        public func applyAppleStaticConstraints(
+            lookup: (any Search.StaticConstraintsLookup)?,
+            enrichmentVersion: Int = 1
+        ) async throws -> Int {
+            guard let lookup, let database else { return 0 }
+            let entries = try await lookup.allEntries()
+            guard !entries.isEmpty else { return 0 }
+
+            var nameToConstraints: [String: String] = [:]
+            for entry in entries {
+                guard let lastSegment = entry.docURI.split(separator: "/").last else { continue }
+                let key = String(lastSegment).lowercased()
+                let joined = entry.constraints.joined(separator: ",")
+                nameToConstraints[key] = joined
+            }
+
+            _ = sqlite3_exec(database, "BEGIN TRANSACTION", nil, nil, nil)
+            let sql = """
+            UPDATE file_symbols
+            SET generic_constraints = ?, enrichment_version = ?
+            WHERE LOWER(name) = ?;
+            """
+            var statement: OpaquePointer?
+            defer { sqlite3_finalize(statement) }
+            guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
+                _ = sqlite3_exec(database, "ROLLBACK", nil, nil, nil)
+                throw Sample.Index.Error.sqliteError("prepare applyAppleStaticConstraints UPDATE failed")
+            }
+            var affected = 0
+            for (lower, joined) in nameToConstraints {
+                sqlite3_reset(statement)
+                sqlite3_clear_bindings(statement)
+                sqlite3_bind_text(statement, 1, (joined as NSString).utf8String, -1, nil)
+                sqlite3_bind_int(statement, 2, Int32(enrichmentVersion))
+                sqlite3_bind_text(statement, 3, (lower as NSString).utf8String, -1, nil)
+                _ = sqlite3_step(statement)
+                affected += Int(sqlite3_changes(database))
+            }
+            _ = sqlite3_exec(database, "COMMIT", nil, nil, nil)
+            return affected
         }
 
         /// Index symbol into FTS table
