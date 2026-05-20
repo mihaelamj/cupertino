@@ -22,15 +22,15 @@
 
         <div class="tab-container">
             <div class="tabs" role="tablist">
-                <button class="tab active" data-tab="overview" role="tab">Overview</button>
-                <button class="tab" data-tab="tests" role="tab">The 7 tests</button>
+                <button class="tab" data-tab="overview" role="tab">Overview</button>
+                <button class="tab active" data-tab="tests" role="tab">The 7 tests</button>
                 <button class="tab" data-tab="sources" role="tab">Sources</button>
                 <button class="tab" data-tab="how" role="tab">How we measure</button>
             </div>
         </div>
 
         <!-- Tab 1: Overview -->
-        <div class="tab-panel active" id="panel-overview">
+        <div class="tab-panel" id="panel-overview">
             <div class="summary">
                 <h2>At a glance</h2>
                 <p class="summary-text">
@@ -71,8 +71,8 @@
         </div>
         </div>
 
-        <!-- Tab 2: The tests -->
-        <div class="tab-panel" id="panel-tests">
+        <!-- Tab 2: The tests (DEFAULT — landing tab so per-metric source links are visible immediately) -->
+        <div class="tab-panel active" id="panel-tests">
             <section>
                 <h2 style="margin-top: 0;">Every measurement, with a path to the full audit</h2>
                 <p style="color: var(--text-secondary); margin-bottom: 24px;">Each card below summarises one audit. The bar visualises how close to a perfect score the test scored. Open any card to see the full audit dashboard.</p>
