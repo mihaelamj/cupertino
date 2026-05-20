@@ -68,9 +68,23 @@ def render(audit: Audit) -> str:
     method_link = first_metric_link(aggregate_html) or first_metric_link("\n".join(full_body_html_for_citations))
     if method_link:
         method_label, method_anchor = method_link
-        kpi_method_html = f'<div class="kpi-desc">via <a href="../sources.html#{method_anchor}">{html.escape(method_label)}</a></div>'
+        meta = SOURCE_META.get(method_anchor, (method_label, ""))
+        full_label, cite = meta
+        kpi_method_html = (
+            '<div class="source-chip">'
+            '<span class="source-chip-label">Method &amp; source</span>'
+            f'<span class="source-chip-metric"><a href="../sources.html#{method_anchor}">{html.escape(full_label)}</a></span>'
+            f'<span class="source-chip-cite"><a href="../sources.html#{method_anchor}">{html.escape(cite)}</a></span>'
+            '</div>'
+        )
     else:
-        kpi_method_html = '<div class="kpi-desc">Method described in the audit below.</div>'
+        kpi_method_html = (
+            '<div class="source-chip missing">'
+            '<span class="source-chip-label">Method &amp; source</span>'
+            '<span class="source-chip-metric"><a href="../sources.html">Browse all citations</a></span>'
+            '<span class="source-chip-cite">No metric token detected — see <a href="../sources.html">sources.html</a></span>'
+            '</div>'
+        )
 
     # Build the "Sources cited in this measurement" card grid
     cited = find_cited_sources("\n".join(full_body_html_for_citations))
