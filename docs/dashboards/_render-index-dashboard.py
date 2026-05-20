@@ -314,7 +314,7 @@ def render_index(audits_dir: Path, out_path: Path, extras_path: Path | None = No
         <div class="tab-container">
             <div class="tabs" role="tablist">
                 <button class="tab" data-tab="overview" role="tab">Overview</button>
-                <button class="tab active" data-tab="tests" role="tab">The {n} tests</button>
+                <button class="tab active" data-tab="tests" role="tab">Tests</button>
                 <button class="tab" data-tab="sources" role="tab">Sources</button>
                 <button class="tab" data-tab="how" role="tab">How I measure</button>
             </div>
