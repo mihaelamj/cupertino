@@ -1331,6 +1331,80 @@ extension Sample.Index {
             return keys
         }
 
+        /// #857 cross-DB `search_generics` — return `FileSearchResult`
+        /// rows whose `generic_constraints`, `signature`, or `name`
+        /// LIKE-matches the constraint token. JOINs through `files` so
+        /// the caller has projectId + path + filename without a second
+        /// round-trip. Optional `framework` filter matches against the
+        /// project's framework column. Returns an empty array on prepare
+        /// failure (symbol enrichment is optional, the MCP fan-out should
+        /// still merge whatever the other DBs return).
+        ///
+        /// The snippet text uses the file-symbol's `signature` column
+        /// when available, falling back to `name` so the unified renderer
+        /// always has a non-empty body to display.
+        public func searchFilesByGenericConstraint(
+            constraint: String,
+            framework: String?,
+            limit: Int
+        ) async throws -> [Sample.Index.FileSearchResult] {
+            guard let database else { return [] }
+            let cleaned = constraint
+                .replacingOccurrences(of: "\"", with: "")
+                .trimmingCharacters(in: .whitespaces)
+            guard !cleaned.isEmpty else { return [] }
+            let likePattern = "%\(cleaned)%"
+
+            let frameworkClause = framework == nil ? "" : "AND p.framework = ?"
+            let sql = """
+            SELECT
+                f.project_id,
+                f.path,
+                f.filename,
+                COALESCE(NULLIF(s.signature, ''), s.name) AS snippet,
+                -1.0 AS rank_value
+            FROM file_symbols s
+            JOIN files f ON s.file_id = f.id
+            JOIN projects p ON f.project_id = p.id
+            WHERE (s.generic_constraints LIKE ?
+                   OR s.signature LIKE ?
+                   OR s.name LIKE ?)
+            \(frameworkClause)
+            LIMIT ?;
+            """
+
+            var statement: OpaquePointer?
+            defer { sqlite3_finalize(statement) }
+            guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else { return [] }
+
+            sqlite3_bind_text(statement, 1, (likePattern as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 2, (likePattern as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 3, (likePattern as NSString).utf8String, -1, nil)
+            var bindIdx: Int32 = 4
+            if let framework {
+                sqlite3_bind_text(statement, bindIdx, (framework as NSString).utf8String, -1, nil)
+                bindIdx += 1
+            }
+            sqlite3_bind_int(statement, bindIdx, Int32(limit))
+
+            var rows: [Sample.Index.FileSearchResult] = []
+            while sqlite3_step(statement) == SQLITE_ROW {
+                let projectId = String(cString: sqlite3_column_text(statement, 0))
+                let path = String(cString: sqlite3_column_text(statement, 1))
+                let filename = String(cString: sqlite3_column_text(statement, 2))
+                let snippet = sqlite3_column_text(statement, 3).map { String(cString: $0) } ?? ""
+                let rank = sqlite3_column_double(statement, 4)
+                rows.append(Sample.Index.FileSearchResult(
+                    projectId: projectId,
+                    path: path,
+                    filename: filename,
+                    snippet: snippet,
+                    rank: rank
+                ))
+            }
+            return rows
+        }
+
         /// Get total import count (#81)
         public func importCount() async throws -> Int {
             guard let database else {

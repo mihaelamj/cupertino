@@ -109,6 +109,7 @@ extension CLIImpl.Command {
             let archiveURL = paths.archiveDirectory
             let searchDBURL = paths.searchDatabase
             let sampleDBURL = Sample.Index.databasePath(baseDirectory: paths.baseDirectory)
+            let packagesDBURL = paths.packagesDatabase
 
             // Check if there's anything to serve
             let hasData = checkForData(
@@ -142,7 +143,8 @@ extension CLIImpl.Command {
                 evolutionURL: evolutionURL,
                 archiveURL: archiveURL,
                 searchDBURL: searchDBURL,
-                sampleDBURL: sampleDBURL
+                sampleDBURL: sampleDBURL,
+                packagesDBURL: packagesDBURL
             )
 
             printStartupMessages(
@@ -177,7 +179,8 @@ extension CLIImpl.Command {
             evolutionURL: URL,
             archiveURL: URL,
             searchDBURL: URL,
-            sampleDBURL: URL
+            sampleDBURL: URL,
+            packagesDBURL: URL
         ) async {
             // Initialize search index if available. #645: when the file
             // exists but can't be opened (schema mismatch, etc.) we keep
@@ -211,6 +214,13 @@ extension CLIImpl.Command {
             // Initialize sample code index if available
             let sampleIndex = await loadSampleIndex(sampleDBURL: sampleDBURL)
 
+            // `#789`-style architectural gap fix: load packages.db as
+            // its own searcher so the MCP layer can route
+            // `source=packages` against the rich `packages.db` schema
+            // instead of the no-op `search.db` source filter that
+            // every query pre-PR-2 fell through.
+            let packagesSearcher = await loadPackagesSearcher(packagesDBURL: packagesDBURL)
+
             // Register composite tool provider with both indexes. The
             // service-layer wrappers are constructed here at the
             // composition root and passed across the protocol seam so
@@ -222,9 +232,13 @@ extension CLIImpl.Command {
                     ? nil
                     : Services.TeaserService(searchIndex: searchIndex, sampleDatabase: sampleIndex)
             let unifiedService: (any Services.UnifiedSearcher)? =
-                (searchIndex == nil && sampleIndex == nil)
+                (searchIndex == nil && sampleIndex == nil && packagesSearcher == nil)
                     ? nil
-                    : Services.UnifiedSearchService(searchIndex: searchIndex, sampleDatabase: sampleIndex)
+                    : Services.UnifiedSearchService(
+                        searchIndex: searchIndex,
+                        sampleDatabase: sampleIndex,
+                        packagesSearcher: packagesSearcher
+                    )
             // #582: pass the same `DocsResourceProvider` instance into the
             // tool provider so `read_document` falls back through the
             // identical filesystem path `resources/read` uses. Without
@@ -240,6 +254,7 @@ extension CLIImpl.Command {
                 sampleService: sampleService,
                 teaserService: teaserService,
                 unifiedService: unifiedService,
+                packagesSearcher: packagesSearcher,
                 documentResourceProvider: resourceProvider,
                 searchIndexDisabledReason: searchIndexDisabledReason
             )
@@ -253,6 +268,30 @@ extension CLIImpl.Command {
             if sampleIndex != nil {
                 let message = "✅ Sample code search enabled (index found)"
                 Cupertino.Context.composition.logging.recording.info(message, category: .mcp)
+            }
+        }
+
+        /// Open `packages.db` for the MCP server when it's present.
+        /// Mirrors `loadSampleIndex`'s "missing-is-fine" semantic: the
+        /// fan-out search + MCP source dispatch both tolerate a nil
+        /// searcher by emitting an empty packages bucket / explicit
+        /// "Packages index not available" error frame.
+        private func loadPackagesSearcher(packagesDBURL: URL) async -> (any SearchModule.PackagesSearcher)? {
+            guard FileManager.default.fileExists(atPath: packagesDBURL.path) else {
+                let infoMsg = "ℹ️  Packages index not found at: \(packagesDBURL.path)"
+                let cmd = "\(Shared.Constants.App.commandName) save --packages"
+                let hintMsg = "   Packages MCP search will not be available. Run '\(cmd)' to enable."
+                Cupertino.Context.composition.logging.recording.info("\(infoMsg) \(hintMsg)", category: .mcp)
+                return nil
+            }
+            do {
+                return try await SearchModule.PackageQuery(dbPath: packagesDBURL)
+            } catch {
+                let errorMsg = "⚠️  Failed to open packages.db: \(error)"
+                let cmd = "\(Shared.Constants.App.commandName) save --packages"
+                let hintMsg = "   Packages MCP search will not be available. Run '\(cmd)' to rebuild."
+                Cupertino.Context.composition.logging.recording.warning("\(errorMsg) \(hintMsg)", category: .mcp)
+                return nil
             }
         }
 

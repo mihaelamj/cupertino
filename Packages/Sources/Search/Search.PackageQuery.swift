@@ -225,6 +225,128 @@ extension Search {
                 .map(\.result)
         }
 
+        // MARK: - Search.PackagesSearcher seam
+
+        /// `Search.PackagesSearcher.searchPackages` adapter. Calls into
+        /// `answer(...)` then maps each `PackageSearchResult` row onto the
+        /// unified-formatter-friendly `Search.Result` shape.
+        ///
+        /// `uri` is synthesised as `packages://<owner>/<repo>/<relpath>`
+        /// so the existing `read_document` resource path resolves the
+        /// row through the same packages.db connection.
+        /// `rank` is negated (smaller = better) to match the docs-side
+        /// BM25 convention the unified formatter expects.
+        public func searchPackages(
+            query: String,
+            limit: Int,
+            availability: AvailabilityFilter?,
+            swiftTools: SwiftToolsFilter?,
+            appleImport: String?
+        ) throws -> [Search.Result] {
+            let rows = try answer(
+                query,
+                maxResults: limit,
+                availability: availability,
+                swiftTools: swiftTools,
+                appleImport: appleImport
+            )
+            return rows.map { row in
+                let uri = "\(Shared.Constants.SourcePrefix.packages)://\(row.owner)/\(row.repo)/\(row.relpath)"
+                let framework = row.module ?? row.repo
+                return Search.Result(
+                    uri: uri,
+                    source: Shared.Constants.SourcePrefix.packages,
+                    framework: framework,
+                    title: row.title,
+                    summary: row.chunk,
+                    filePath: row.relpath,
+                    wordCount: row.chunk.split(whereSeparator: \.isWhitespace).count,
+                    rank: -row.score
+                )
+            }
+        }
+
+        /// `Search.PackagesSearcher.searchPackageSymbolsByGenericConstraint`
+        /// adapter for the `#857` cross-DB `search_generics` MCP path.
+        /// Queries `package_symbols` directly (not via the BM25 pipeline)
+        /// because constraint lookup is symbol-level, not file-level.
+        ///
+        /// LIKE union over `generic_constraints`, `signature`, `name`
+        /// matches the indexed-write coverage; generic constraints are
+        /// sparse against pure signature text, so unioning keeps recall
+        /// high while the `framework` filter scopes results down. Returns
+        /// an empty array when the prepare fails — symbol enrichment is
+        /// optional and the cross-DB merge should still ship whatever the
+        /// other DBs produced.
+        public func searchPackageSymbolsByGenericConstraint(
+            constraint: String,
+            framework: String?,
+            limit: Int
+        ) throws -> [Search.Result] {
+            guard let database else { return [] }
+            let cleaned = constraint
+                .replacingOccurrences(of: "\"", with: "")
+                .trimmingCharacters(in: .whitespaces)
+            guard !cleaned.isEmpty else { return [] }
+            let likePattern = "%\(cleaned)%"
+
+            let frameworkClause = framework == nil ? "" : "AND pf.module = ?"
+            let sql = """
+            SELECT
+                pm.owner,
+                pm.repo,
+                pf.relpath,
+                COALESCE(NULLIF(pf.module, ''), pm.repo) AS module_or_repo,
+                ps.name,
+                COALESCE(NULLIF(ps.signature, ''), ps.name) AS body
+            FROM package_symbols ps
+            JOIN package_files pf ON ps.file_id = pf.id
+            JOIN package_metadata pm ON pf.package_id = pm.id
+            WHERE (ps.generic_constraints LIKE ?
+                OR ps.signature LIKE ?
+                OR ps.name LIKE ?)
+            \(frameworkClause)
+            LIMIT ?;
+            """
+
+            var statement: OpaquePointer?
+            defer { sqlite3_finalize(statement) }
+            guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else { return [] }
+
+            sqlite3_bind_text(statement, 1, (likePattern as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 2, (likePattern as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 3, (likePattern as NSString).utf8String, -1, nil)
+            var bindIdx: Int32 = 4
+            if let framework {
+                sqlite3_bind_text(statement, bindIdx, (framework as NSString).utf8String, -1, nil)
+                bindIdx += 1
+            }
+            sqlite3_bind_int(statement, bindIdx, Int32(limit))
+
+            var results: [Search.Result] = []
+            while sqlite3_step(statement) == SQLITE_ROW {
+                let owner = String(cString: sqlite3_column_text(statement, 0))
+                let repo = String(cString: sqlite3_column_text(statement, 1))
+                let relpath = String(cString: sqlite3_column_text(statement, 2))
+                let moduleOrRepo = String(cString: sqlite3_column_text(statement, 3))
+                let name = String(cString: sqlite3_column_text(statement, 4))
+                let body = sqlite3_column_text(statement, 5).map { String(cString: $0) } ?? name
+
+                let uri = "\(Shared.Constants.SourcePrefix.packages)://\(owner)/\(repo)/\(relpath)#\(name)"
+                results.append(Search.Result(
+                    uri: uri,
+                    source: Shared.Constants.SourcePrefix.packages,
+                    framework: moduleOrRepo,
+                    title: name,
+                    summary: body,
+                    filePath: relpath,
+                    wordCount: body.split(whereSeparator: \.isWhitespace).count,
+                    rank: -1.0
+                ))
+            }
+            return results
+        }
+
         // MARK: - #837 — package_symbols read-side helper
 
         /// Returns the set of `"owner/repo/relpath"` composite keys
@@ -876,3 +998,13 @@ extension Search {
 /// private naming collisions).
 // swiftlint:disable:next identifier_name
 private let SQLITE_TRANSIENT_QUERY = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+
+// MARK: - Search.PackagesSearcher conformance witness
+
+/// `Search.PackageQuery` conforms to the `Search.PackagesSearcher` seam
+/// in SearchModels. The required `searchPackages` /
+/// `searchPackageSymbolsByGenericConstraint` methods live on the actor
+/// itself so they have direct access to the cached `database` pointer;
+/// this extension is the empty witness that exposes the conformance to
+/// downstream targets which type against `any Search.PackagesSearcher`.
+extension Search.PackageQuery: Search.PackagesSearcher {}

@@ -42,8 +42,42 @@ extension Services {
             minTvOS: String?,
             minWatchOS: String?,
             minVisionOS: String?,
-            minSwift: String?
+            minSwift: String?,
+            appleImports: String?
         ) async -> Services.Formatter.Unified.Input
+    }
+}
+
+// MARK: - Backward-compatible default (pre-`appleImports`)
+
+extension Services.UnifiedSearcher {
+    /// Legacy nine-arg overload retained so call sites that haven't been
+    /// migrated to thread the `apple_imports` MCP arg through compile
+    /// unchanged. Forwards to the new ten-arg requirement with
+    /// `appleImports: nil`.
+    public func searchAll(
+        query: String,
+        framework: String?,
+        limit: Int,
+        minIOS: String?,
+        minMacOS: String?,
+        minTvOS: String?,
+        minWatchOS: String?,
+        minVisionOS: String?,
+        minSwift: String?
+    ) async -> Services.Formatter.Unified.Input {
+        await searchAll(
+            query: query,
+            framework: framework,
+            limit: limit,
+            minIOS: minIOS,
+            minMacOS: minMacOS,
+            minTvOS: minTvOS,
+            minWatchOS: minWatchOS,
+            minVisionOS: minVisionOS,
+            minSwift: minSwift,
+            appleImports: nil
+        )
     }
 }
 
