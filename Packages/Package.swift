@@ -438,7 +438,7 @@ let targets: [Target] = {
 
     let sampleIndexTarget = Target.target(
         name: "SampleIndex",
-        dependencies: ["SampleIndexModels", "SharedConstants", "LoggingModels", "ASTIndexer"]
+        dependencies: ["SampleIndexModels", "SearchModels", "SharedConstants", "LoggingModels", "ASTIndexer"]
     )
     let sampleIndexTestsTarget = Target.testTarget(
         name: "SampleIndexTests",
@@ -616,7 +616,7 @@ let targets: [Target] = {
     // CorePackageIndexing in future phases as samples + packages passes land).
     let enrichmentTarget = Target.target(
         name: "Enrichment",
-        dependencies: ["EnrichmentModels", "Search", "SearchModels"]
+        dependencies: ["EnrichmentModels", "Search", "SearchModels", "SampleIndex", "SampleIndexModels", "SharedConstants"]
     )
     let enrichmentTestsTarget = Target.testTarget(
         name: "EnrichmentTests",
