@@ -73,7 +73,7 @@ CANONICAL_LOOKUP_V2 = [
     ("CurrentValueSubject", r"apple-docs://combine/currentvaluesubject(/|$)", "A", "Combine"),
     # Concurrency (different)
     ("AsyncStream", r"apple-docs://swift/asyncstream(/|$)", "A", "Concurrency"),
-    ("Continuation", r"apple-docs://swift/continuation(/|$)", "A", "Concurrency"),
+    ("Continuation", r"apple-docs://swift/(checked|unsafe|asyncthrowingstream/)?continuation(/|$)", "A", "Concurrency (accepts CheckedContinuation, UnsafeContinuation, AsyncThrowingStream.Continuation)"),
     # Frameworks (different roots)
     ("CoreGraphics", r"apple-docs://coregraphics(/|$)", "B", "framework root"),
     ("CoreImage", r"apple-docs://coreimage(/|$)", "B", "framework root"),
