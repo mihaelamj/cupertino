@@ -10,6 +10,8 @@ This audit tests symbol-attribute queries — queries that conceptually describe
 
 A URI is "relevant" for a query iff there's at least one row in `doc_symbols` for that `doc_uri` matching the per-query SQL filter. For "actor type" the filter is `kind = 'actor'`; for "Sendable conformance" it's `conformances LIKE '%Sendable%'`; etc. The metric is **P@5 only** per the design — MRR is meaningless when relevance is set-membership rather than a singleton.
 
+
+**Cross-validation note (added 2026-05-21):** The `Binary` cited above is `cupertino 1.1.0` — that's what was on disk when this baseline was captured. The same 50-query corpus re-run with the v1.2.0 binary on the same v1.2.0-schema search.db produces the identical headline metric (see [`search-quality-versiondiff-v1.1.0-to-v1.2.0.md`](search-quality-versiondiff-v1.1.0-to-v1.2.0.md) — v1.2.0 binary's MRR = 0.9467, matching this audit's claim). The v1.2.0-binary-specific ranking change (PR #858's `OR generic_constraints LIKE ?` clause) doesn't move this corpus's headline number. So the baseline numbers carry to the as-shipped v1.2.0 binary even though the original capture was on 1.1.0.
 ---
 
 ## Aggregate

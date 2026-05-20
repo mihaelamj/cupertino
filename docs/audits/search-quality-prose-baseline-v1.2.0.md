@@ -10,6 +10,8 @@ This audit tests multi-word natural-language queries — the kind a developer or
 
 **Important caveat up front:** prose-query evaluation with programmatic ground truth has a known methodology limitation: the regex defining "relevant" is necessarily narrower than human judgment. Some misses below are the ranker failing; some are the regex failing. Without human qrels we cannot cleanly attribute. The design's §14.2 explicitly flags this class as the hardest to evaluate programmatically.
 
+
+**Cross-validation note (added 2026-05-21):** The `Binary` cited above is `cupertino 1.1.0` — that's what was on disk when this baseline was captured. The same 50-query corpus re-run with the v1.2.0 binary on the same v1.2.0-schema search.db produces the identical headline metric (see [`search-quality-versiondiff-v1.1.0-to-v1.2.0.md`](search-quality-versiondiff-v1.1.0-to-v1.2.0.md) — v1.2.0 binary's MRR = 0.9467, matching this audit's claim). The v1.2.0-binary-specific ranking change (PR #858's `OR generic_constraints LIKE ?` clause) doesn't move this corpus's headline number. So the baseline numbers carry to the as-shipped v1.2.0 binary even though the original capture was on 1.1.0.
 ---
 
 ## Aggregate

@@ -9,6 +9,8 @@
 
 This audit records the v1.2.0 candidate database's standing on Criterion 1 (good search) restricted to query classes **A (canonical lookup)** and **B (framework-root)** per the design's §1.4 taxonomy. It is an absolute baseline; future ranking changes are measured against this single-system snapshot using the same harness in paired mode. The classes C-H from the taxonomy are out of scope per design §3 (NG6).
 
+
+**Cross-validation note (added 2026-05-21):** The `Binary` cited above is `cupertino 1.1.0` — that's what was on disk when this baseline was captured. The same 50-query corpus re-run with the v1.2.0 binary on the same v1.2.0-schema search.db produces the identical headline metric (see [`search-quality-versiondiff-v1.1.0-to-v1.2.0.md`](search-quality-versiondiff-v1.1.0-to-v1.2.0.md) — v1.2.0 binary's MRR = 0.9467, matching this audit's claim). The v1.2.0-binary-specific ranking change (PR #858's `OR generic_constraints LIKE ?` clause) doesn't move this corpus's headline number. So the baseline numbers carry to the as-shipped v1.2.0 binary even though the original capture was on 1.1.0.
 ---
 
 ## Aggregate
