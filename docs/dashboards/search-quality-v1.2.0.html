@@ -9,14 +9,16 @@
 <body>
     <div class="container">
 
+        <a href="https://aleahim.com/" class="back-link" style="margin-bottom: 24px;">Back to aleahim.com</a>
+
         <header class="centered">
-            <div class="eyebrow">Cupertino · v1.2.0 candidate</div>
+            <div class="eyebrow">Cupertino · v1.2.0</div>
             <h1>Does the search find the right answer?</h1>
             <p class="subtitle">
                 Cupertino is an Apple-platform documentation index built to keep AI coding assistants from hallucinating. This page summarises 9 measurements of how well it does that on the v1.2.0 build.
             </p>
             <p class="meta">
-                <span>9 measurements</span>·<span>Auto-derived from audit markdown</span>·<span>Re-runs whenever audits change</span>
+                <span>9 measurements</span>·<span>Auto-derived from audit markdown</span>·<span>Re-rendered when audits change</span>
             </p>
         </header>
 
@@ -25,7 +27,7 @@
                 <button class="tab" data-tab="overview" role="tab">Overview</button>
                 <button class="tab active" data-tab="tests" role="tab">The 9 tests</button>
                 <button class="tab" data-tab="sources" role="tab">Sources</button>
-                <button class="tab" data-tab="how" role="tab">How we measure</button>
+                <button class="tab" data-tab="how" role="tab">How I measure</button>
             </div>
         </div>
 
@@ -34,7 +36,7 @@
             <div class="summary">
                 <h2>At a glance</h2>
                 <p class="summary-text">
-                    <strong>4 of 9 tests pass strongly</strong> &mdash; the canonical use cases (typing a Swift type name, modern-vs-legacy choice, fragment recall, cross-source ranking) work as designed. <strong>3 surface real weaknesses</strong> in cupertino's relational-metadata-to-search routing, both tracked with open issues. <strong>2 have methodology limits</strong> that human-judged measurement would resolve.
+                    <strong>4 of 9 tests pass strongly</strong> &mdash; the canonical use cases (typing a Swift type name, modern-vs-legacy choice, fragment recall, cross-source ranking) work as designed. <strong>3 surface real weaknesses</strong> in cupertino's relational-metadata-to-search routing, each tracked with an open issue. <strong>2 have methodology limits</strong> that human-judged measurement would resolve.
                 </p>
             </div>
 
@@ -266,7 +268,7 @@
         <div class="tab-panel" id="panel-how">
             <section>
                 <h2 style="margin-top: 0;">How a cupertino search-quality measurement works</h2>
-                <p>For each test we run a fixed list of queries against cupertino, capture the top-10 results, score them against pre-defined right-answer patterns, and report the headline number plus a per-query breakdown. No anecdotes; everything is reproducible.</p>
+                <p>For each test I run a fixed list of queries against cupertino, capture the top-10 results, score them against pre-defined right-answer patterns, and report the headline number plus a per-query breakdown. No anecdotes; everything is reproducible.</p>
 
                 <div class="grid cols-2">
                     <article class="card no-hover">
