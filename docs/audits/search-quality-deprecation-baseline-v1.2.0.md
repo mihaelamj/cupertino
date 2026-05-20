@@ -9,6 +9,8 @@
 
 This audit answers a focused question: when a developer queries a concept that exists in both modern Swift form (value type / stdlib) and the original NS-prefixed Objective-C form, **does cupertino's ranker put the modern form above the legacy form?** This is the most user-visible failure mode for an AI coding agent (Criterion 2: an agent told to use `NSURLConnection` when `URLSession` is the right answer in 2026 generates wrong code).
 
+
+**Cross-validation note (added 2026-05-21):** The `Binary` cited above is `cupertino 1.1.0` — that's what was on disk when this baseline was captured. The same 50-query corpus re-run with the v1.2.0 binary on the same v1.2.0-schema search.db produces the identical headline metric (see [`search-quality-versiondiff-v1.1.0-to-v1.2.0.md`](search-quality-versiondiff-v1.1.0-to-v1.2.0.md) — v1.2.0 binary's MRR = 0.9467, matching this audit's claim). The v1.2.0-binary-specific ranking change (PR #858's `OR generic_constraints LIKE ?` clause) doesn't move this corpus's headline number. So the baseline numbers carry to the as-shipped v1.2.0 binary even though the original capture was on 1.1.0.
 ---
 
 ## Aggregate

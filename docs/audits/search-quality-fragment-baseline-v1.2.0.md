@@ -10,6 +10,8 @@ This audit tests `Search.Index.CamelCaseSplitter` (#77), the cupertino-specific 
 
 The test: for each fragment query (`Grid`, `Decoder`, `Session`, ...), check how many of the top-5 results have a URI whose path contains the fragment as a substring of one of its segments. This is a deliberate over-loose match (we accept any fragment-containing slug, not just CamelCase-derived ones) because the goal is to measure recall, not precision. Misses on this loose pattern are strong signals that `symbol_components` is not surfacing the right pages.
 
+
+**Cross-validation note (added 2026-05-21):** The `Binary` cited above is `cupertino 1.1.0` — that's what was on disk when this baseline was captured. The same 50-query corpus re-run with the v1.2.0 binary on the same v1.2.0-schema search.db produces the identical headline metric (see [`search-quality-versiondiff-v1.1.0-to-v1.2.0.md`](search-quality-versiondiff-v1.1.0-to-v1.2.0.md) — v1.2.0 binary's MRR = 0.9467, matching this audit's claim). The v1.2.0-binary-specific ranking change (PR #858's `OR generic_constraints LIKE ?` clause) doesn't move this corpus's headline number. So the baseline numbers carry to the as-shipped v1.2.0 binary even though the original capture was on 1.1.0.
 ---
 
 ## Aggregate
