@@ -574,7 +574,415 @@ Calling out gaps that surprise readers:
 
 ---
 
-**Next revisions of this doc** add §9 samples.db and §10
-packages.db at the same exhaustive level, plus a §11 cross-DB
-column mapping (which user-visible filter touches which column on
-which DB). Those land as separate PRs.
+---
+
+## 9. samples.db
+
+**On-disk path:** `~/.cupertino/samples.db` (production / brew) or
+`~/.cupertino-dev/samples.db` (dev binary).
+
+**Built by:** `cupertino save --samples` against a corpus of Apple
+sample-code projects unzipped under `~/.cupertino/sample-code/`.
+A full build takes ≈5–15 minutes on the Studio against the ~330
+sample projects (~33 K Swift files total). Output file is small
+metadata + FTS indexes — most of the bytes are the FTS shadow
+tables, not the original file contents (which are kept in `files.content`).
+
+**Schema version:** `PRAGMA user_version = 4`. Declared in
+`Packages/Sources/SampleIndex/Sample.Index.Database.swift:34` as
+`Sample.Index.Database.schemaVersion: Int32 = 4`.
+
+**Migration policy.** samples.db uses **wipe-and-rebuild** on
+schema change, not in-place ALTER. When `Sample.Index.Database`
+opens a DB whose `PRAGMA user_version` differs from the binary's
+`schemaVersion`, the file is deleted and `createTables()` runs on
+a fresh DB. Rationale: samples.db has no user-authored content —
+every row is derivable from the sample-code zips, and a full
+rebuild is fast enough (~minutes) that the wipe is operationally
+cheaper than maintaining per-version ALTER scripts. See
+`Sample.Index.Database.swift:54-69`.
+
+**Tables in this DB** (5 user-facing + the FTS5 shadow tables):
+
+| Table | Purpose | § |
+|---|---|---|
+| `projects` | One canonical row per sample-code project | 9.1 |
+| `projects_fts` | FTS5 index over project title / description / readme | 9.2 |
+| `files` | One row per source file inside any indexed project | 9.3 |
+| `files_fts` | FTS5 index over file path + content | 9.4 |
+| `file_symbols` | AST-extracted per-symbol declarations from Swift files | 9.5 |
+| `file_symbols_fts` | FTS5 index over the symbol declarations | 9.6 |
+| `file_imports` | Each `import` statement found in any Swift file | 9.7 |
+
+### 9.1 Table: `projects`
+
+**WHAT IT IS FOR, IN PLAIN TERMS.** Each row is one Apple
+sample-code project — the unit that ships as a downloadable zip
+on `developer.apple.com`. The primary key `id` is the project's
+slug (typically the framework + a short topic, e.g.
+`'building-a-list-of-things'`). Other tables (`files`,
+`file_symbols`, `file_imports`) all FK back here.
+
+| Column | SQL type | Nullable | Default | What writes it | What reads it |
+|---|---|---|---|---|---|
+| `id` | TEXT | NOT NULL (PK) | — | `Sample.Index.Database.indexProject(_:)`; derived from the project's slug | every FK target; the pivot for the whole DB |
+| `title` | TEXT | NOT NULL | — | the project's display title from the catalog entry | rendering; index `idx_projects_title` |
+| `description` | TEXT | NOT NULL | — | the catalog one-paragraph abstract | rendering; mirrored to `projects_fts.description` |
+| `frameworks` | TEXT | NOT NULL | — | comma-separated framework slugs the sample uses (`'swiftui,combine'`) | framework filter; mirrored to `projects_fts.frameworks` |
+| `readme` | TEXT | NULL | — | the full README.md text from the unzipped project | mirrored to `projects_fts.readme` for BM25 ranking |
+| `web_url` | TEXT | NOT NULL | — | the sample's `developer.apple.com` landing page | rendering; cross-ref from `search.db.sample_code_metadata.url` |
+| `zip_filename` | TEXT | NOT NULL | — | the downloadable zip's filename Apple publishes | `cupertino fetch --samples` |
+| `file_count` | INTEGER | NOT NULL | — | count of source files in the project at index time | rendering / `cupertino doctor` stats |
+| `total_size` | INTEGER | NOT NULL | — | sum of byte sizes of every indexed file | stats |
+| `indexed_at` | INTEGER | NOT NULL | — | epoch seconds when this project was last indexed | freshness reporting |
+| `min_ios` | TEXT | NULL | — | #228 phase 2 availability extraction from the project's Package.swift `platforms` block | `--min-ios` filter; index `idx_projects_min_ios` |
+| `min_macos` | TEXT | NULL | — | same as above | `--min-macos`; index `idx_projects_min_macos` |
+| `min_tvos` | TEXT | NULL | — | same | `--min-tvos`; index `idx_projects_min_tvos` |
+| `min_watchos` | TEXT | NULL | — | same | `--min-watchos`; index `idx_projects_min_watchos` |
+| `min_visionos` | TEXT | NULL | — | same | `--min-visionos`; index `idx_projects_min_visionos` |
+| `availability_source` | TEXT | NULL | — | `'sample-swift'` when populated from the per-sample `availability.json` sidecar; NULL when the sample shipped no Package.swift platforms block | provenance display |
+
+**Indexes (6):** `idx_projects_title`, `idx_projects_min_ios`,
+`idx_projects_min_macos`, `idx_projects_min_tvos`,
+`idx_projects_min_watchos`, `idx_projects_min_visionos`.
+
+### 9.2 Table: `projects_fts` (FTS5 virtual table)
+
+**WHAT IT IS FOR, IN PLAIN TERMS.** Full-text index over the
+project-level prose (title, description, readme, frameworks).
+A query like `"button styles"` against `samples.db` hits this
+table first; results are joined back to `projects` for rendering.
+
+| Column | What writes it | What reads it |
+|---|---|---|
+| `id` | bound from `projects.id` at insert | JOIN key back to `projects` |
+| `title` | mirrored from `projects.title` | BM25 ranking |
+| `description` | mirrored from `projects.description` | BM25 ranking |
+| `readme` | mirrored from `projects.readme` | BM25 ranking; the longest text column, biggest signal contributor |
+| `frameworks` | mirrored from `projects.frameworks` | framework-aware queries |
+
+**FTS5 options:** `tokenize='porter unicode61'`.
+
+### 9.3 Table: `files`
+
+**WHAT IT IS FOR, IN PLAIN TERMS.** Each row is one source file
+from one sample project. The full text of the file is stored in
+the `content` column so the FTS index over file content can
+search inside source code. `(project_id, path)` is unique so the
+same file can't end up as two rows.
+
+| Column | SQL type | Nullable | Default | What writes it | What reads it |
+|---|---|---|---|---|---|
+| `id` | INTEGER | NOT NULL (PK AUTOINCREMENT) | — | auto at insert | FK target for `file_symbols`, `file_imports`, `files_fts` |
+| `project_id` | TEXT | NOT NULL (FK→`projects.id` ON DELETE CASCADE) | — | the parent project's slug | index `idx_files_project`; per-project queries |
+| `path` | TEXT | NOT NULL (UNIQUE with project_id) | — | the file's path within the project (`'Sources/View/ContentView.swift'`) | rendering; cross-file references |
+| `filename` | TEXT | NOT NULL | — | the bare filename (`'ContentView.swift'`) | rendering; mirrored to `files_fts.filename` |
+| `folder` | TEXT | NOT NULL | — | the file's parent folder (`'Sources/View'`) | index `idx_files_folder`; folder-scoped queries |
+| `extension` | TEXT | NOT NULL | — | the file extension (`'swift'`, `'m'`, `'h'`) | extension filter; index `idx_files_extension` |
+| `content` | TEXT | NOT NULL | — | the full text of the file at index time | mirrored to `files_fts.content`; result-formatting (code excerpt rendering) |
+| `size` | INTEGER | NOT NULL | — | byte size of the original file | stats |
+| `available_attrs_json` | TEXT | NULL | — | per-file `@available` occurrences as JSON array of `{line, raw, platforms[]}` (#228 phase 2); NULL when the file had no `@available` attributes | availability-aware ranking; surfaces as "this file's symbols target iOS 17" markers in rendering |
+
+**Indexes (3):** `idx_files_project`, `idx_files_folder`,
+`idx_files_extension`.
+
+### 9.4 Table: `files_fts` (FTS5 virtual table)
+
+**WHAT IT IS FOR, IN PLAIN TERMS.** Full-text index over the
+file-level source code so a query like `"@Observable"` hits
+inside actual Swift files, not just the project-level prose.
+Tokenizer is bare `unicode61` (no Porter); code-shape matters.
+
+| Column | What writes it | What reads it |
+|---|---|---|
+| `project_id` | bound from `files.project_id` at insert | JOIN |
+| `path` | bound from `files.path` | rendering |
+| `filename` | bound from `files.filename` | BM25 ranking (filename hits rank high) |
+| `content` | bound from `files.content` | BM25 ranking; the bulk of the file-level signal |
+
+**FTS5 options:** `tokenize='unicode61'`.
+
+### 9.5 Table: `file_symbols`
+
+**WHAT IT IS FOR, IN PLAIN TERMS.** Each row is one declared
+Swift symbol inside one sample file — a struct, class, function,
+property, etc. Populated at index time by running SwiftSyntax
+over each `.swift` file (§2.5). After #837 phase 1 the
+`samples-apple-constraints` enrichment pass also writes
+`generic_constraints` + `enrichment_version` on rows whose name
+matches an Apple-type in the cupertino-symbolgraphs lookup.
+
+| Column | SQL type | Nullable | Default | What writes it | What reads it |
+|---|---|---|---|---|---|
+| `id` | INTEGER | NOT NULL (PK AUTOINCREMENT) | — | auto at insert | row identity |
+| `file_id` | INTEGER | NOT NULL (FK→`files.id` ON DELETE CASCADE) | — | parent file's row id | index `idx_file_symbols_file`; per-file queries |
+| `name` | TEXT | NOT NULL | — | the literal symbol name as SwiftSyntax sees it (`'NavigationLink'`, `'someFunction'`) | index `idx_file_symbols_name`; symbol-name queries; `samples-apple-constraints` join key (case-insensitive against lowercased URI segment) |
+| `kind` | TEXT | NOT NULL | — | the `ASTIndexer.SymbolKind` raw value (`'structDecl'`, `'classDecl'`, `'funcDecl'`, …) | kind filter; index `idx_file_symbols_kind` |
+| `line` | INTEGER | NOT NULL | — | source line offset in the file | navigation; rendering |
+| `column` | INTEGER | NOT NULL | — | source column offset | same |
+| `signature` | TEXT | NULL | — | the literal declaration signature | rendering; symbol-search |
+| `is_async` | INTEGER | NOT NULL | `0` | `1` iff signature contains `async` | index `idx_file_symbols_async`; concurrency-shape queries |
+| `is_throws` | INTEGER | NOT NULL | `0` | `1` iff signature contains `throws` | concurrency-shape queries |
+| `is_public` | INTEGER | NOT NULL | `0` | `1` iff signature carries `public` / `open` | visibility filter |
+| `is_static` | INTEGER | NOT NULL | `0` | `1` iff signature carries `static` / `class` | filter |
+| `attributes` | TEXT | NULL | — | comma-separated Swift attributes (`'@MainActor'`) | property-wrapper search; mirrored to `file_symbols_fts.attributes` |
+| `conformances` | TEXT | NULL | — | comma-separated conformed protocols | conformance search; mirrored to `file_symbols_fts.conformances` |
+| `generic_params` | TEXT | NULL | — | comma-separated generic parameter names (`'Label,Destination'`) — from SwiftSyntax | symbol-shape queries |
+| `generic_constraints` | TEXT | NULL | — | comma-separated authoritative CONSTRAINTS (`'View,Hashable'`). Written by `Enrichment.SamplesAppleConstraintsPass` post-#837 phase 1 from the same cupertino-symbolgraphs lookup search.db uses. NULL until the pass runs against the row | future ranking signal once `Sample.Index.Database.searchProjects` / `searchFiles` consult it (currently NOT wired — see `how-cupertino-answers-a-query.md` §6) |
+| `enrichment_version` | INTEGER | NULL | — | tracks which enrichment pass version last wrote this row. NULL until any pass runs | idempotency tracking; index `idx_file_symbols_enrichment`; lets future passes detect already-enriched rows without scanning every value |
+
+**Indexes (5):** `idx_file_symbols_file`, `idx_file_symbols_kind`,
+`idx_file_symbols_name`, `idx_file_symbols_async`,
+`idx_file_symbols_enrichment`.
+
+### 9.6 Table: `file_symbols_fts` (FTS5 virtual table)
+
+**WHAT IT IS FOR, IN PLAIN TERMS.** FTS5 index over the symbol
+declarations. Same shape as search.db's `doc_symbols_fts`.
+
+| Column | What writes it | What reads it |
+|---|---|---|
+| `name` | mirrored from `file_symbols.name` | symbol-name FTS match |
+| `signature` | mirrored | signature FTS match |
+| `attributes` | mirrored | attribute search |
+| `conformances` | mirrored | conformance search |
+
+**FTS5 options:** `tokenize='unicode61'`.
+
+### 9.7 Table: `file_imports`
+
+**WHAT IT IS FOR, IN PLAIN TERMS.** Each `import` statement in
+any sample file becomes a row. Useful for "which samples use
+Combine" cross-references.
+
+| Column | SQL type | Nullable | Default | What writes it | What reads it |
+|---|---|---|---|---|---|
+| `id` | INTEGER | NOT NULL (PK AUTOINCREMENT) | — | auto | identity |
+| `file_id` | INTEGER | NOT NULL (FK→`files.id` ON DELETE CASCADE) | — | parent file | index `idx_file_imports_file` |
+| `module_name` | TEXT | NOT NULL | — | the bare module name (`'SwiftUI'`, `'Combine'`) | index `idx_file_imports_module`; cross-ref |
+| `line` | INTEGER | NOT NULL | — | source line offset | navigation |
+| `is_exported` | INTEGER | NOT NULL | `0` | `1` iff `@_exported import` | rare |
+
+**Indexes (2):** `idx_file_imports_file`,
+`idx_file_imports_module`.
+
+### 9.8 samples.db migration history
+
+| Bump | Issue | What landed |
+|---|---|---|
+| → 2 | #81 | `file_symbols` + `file_imports` tables; SwiftSyntax AST indexing introduced |
+| → 3 | #228 phase 2 | availability columns on `projects` + `available_attrs_json` on `files` |
+| → 4 | #837 | `generic_constraints` + `enrichment_version` columns on `file_symbols`, plus new index `idx_file_symbols_enrichment`. Wipe-and-rebuild as usual |
+
+---
+
+## 10. packages.db
+
+**On-disk path:** `~/.cupertino/packages.db` (production / brew) or
+`~/.cupertino-dev/packages.db` (dev binary).
+
+**Built by:** `cupertino save --packages` against open-source Swift
+Package Manager packages cloned under `~/.cupertino/packages/`.
+A full build takes ≈10–30 minutes on the Studio against ~183
+packages (~20 K files total). Output file is ≈943 MB pre-#837;
+the #837 `package_symbols` addition adds a meaningful but not
+catastrophic amount of bytes (one row per Swift symbol across
+the corpus).
+
+**Schema version:** `PRAGMA user_version = 4`. Declared in
+`Packages/Sources/Search/PackageIndex.swift:36` as
+`Search.PackageIndex.schemaVersion: Int32 = 4`.
+
+**Migration policy.** packages.db uses **in-place ALTER**
+migration (not wipe-and-rebuild). The migration runner is
+`migrateSchema()` in `PackageIndex.swift`; per-version methods
+are named `migrateToVersion<N>()`. Rationale: a full rebuild
+takes 10+ minutes and would force a long wait on every schema
+bump for users running `cupertino save --packages` themselves;
+ALTER preserves the existing rows while picking up new columns.
+
+**Tables in this DB** (3 user-facing + the FTS5 shadow tables):
+
+| Table | Purpose | § |
+|---|---|---|
+| `package_metadata` | One canonical row per SwiftPM package | 10.1 |
+| `package_files` | One row per source file inside any indexed package | 10.2 |
+| `package_files_fts` | FTS5 index over package files (path + content + symbol tokens) | 10.3 |
+| `package_symbols` | AST-extracted per-symbol declarations from Swift files (#837 stage 2) | 10.4 |
+
+### 10.1 Table: `package_metadata`
+
+**WHAT IT IS FOR, IN PLAIN TERMS.** Each row is one Swift Package
+Manager package indexed by cupertino. Primary key is the synthetic
+`id` (INTEGER AUTOINCREMENT); the natural uniqueness constraint
+is `(owner, repo)` so the same GitHub repo can't land as two
+rows. After #837 phase 1 the `packages-apple-imports` enrichment
+pass writes `apple_imports_json` on each package, listing which
+Apple framework modules the package imports.
+
+| Column | SQL type | Nullable | Default | What writes it | What reads it |
+|---|---|---|---|---|---|
+| `id` | INTEGER | NOT NULL (PK AUTOINCREMENT) | — | auto at insert | FK target for `package_files`; the pivot |
+| `owner` | TEXT | NOT NULL | UNIQUE with `repo` | the GitHub repo owner / org (`'pointfreeco'`) | index `idx_pkg_owner`; per-owner queries |
+| `repo` | TEXT | NOT NULL | UNIQUE with `owner` | the GitHub repo name (`'swift-composable-architecture'`) | rendering; uniqueness with owner |
+| `url` | TEXT | NOT NULL | — | the canonical GitHub URL | rendering |
+| `branch_used` | TEXT | NULL | — | the git branch the indexer cloned (typically `main` or `master`) | provenance |
+| `stars` | INTEGER | NULL | — | GitHub star count at fetch time | popularity-aware ranking |
+| `is_apple_official` | INTEGER | NOT NULL | `0` | `1` iff the package is on `github.com/apple/...` or `github.com/swiftlang/...` (the Apple/Swift official orgs) | filter; index `idx_pkg_apple`; weights ranking |
+| `tarball_bytes` | INTEGER | NULL | — | size of the downloaded tarball (the GitHub-hosted snapshot the fetcher pulled) | stats |
+| `total_bytes` | INTEGER | NULL | — | sum of byte sizes of every indexed file in the package | stats |
+| `fetched_at` | INTEGER | NOT NULL | — | epoch seconds when the package was last fetched | freshness |
+| `cupertino_version` | TEXT | NULL | — | the cupertino binary version that indexed this row (provenance for cross-binary debugging) | rendering for `--format json`; doctor |
+| `hosted_doc_url` | TEXT | NULL | — | DocC-rendered documentation URL (some packages publish theirs at `swiftpackageindex.com`) | rendering |
+| `parents_json` | TEXT | NULL | — | JSON array of parent SwiftPM dependencies the package itself declares; deep dependency graph data | rare; reserved for future graph queries |
+| `min_ios` | TEXT | NULL | — | #219 availability extraction from the package's Package.swift `platforms` block | `--min-ios`; index `idx_pkg_min_ios` |
+| `min_macos` | TEXT | NULL | — | same | `--min-macos`; index `idx_pkg_min_macos` |
+| `min_tvos` | TEXT | NULL | — | same | `--min-tvos`; index `idx_pkg_min_tvos` |
+| `min_watchos` | TEXT | NULL | — | same | `--min-watchos`; index `idx_pkg_min_watchos` |
+| `min_visionos` | TEXT | NULL | — | same | `--min-visionos`; index `idx_pkg_min_visionos` |
+| `availability_source` | TEXT | NULL | — | provenance tag for the availability columns | rendering |
+| `swift_tools_version` | TEXT | NULL | — | #225 Part A: the `// swift-tools-version: X.Y` line from the package's Package.swift. Authored, NOT inferred from min_ios | `--swift-tools` filter; index `idx_pkg_swift_tools` |
+| `apple_imports_json` | TEXT | NULL | — | #837 stage 1 — JSON array of Apple framework modules this package imports (`["combine","swiftui"]`, sorted, lowercased). Written by `Enrichment.PackagesAppleImportsPass` post-#837. NULL until the pass runs | future `--apple-imports SwiftUI` filter — currently NOT wired into any query path (see `how-cupertino-answers-a-query.md` §6) |
+| `enrichment_version` | INTEGER | NULL | — | #837 — tracks which enrichment pass version last wrote this row | idempotency; index `idx_pkg_enrichment` |
+
+**Indexes (9):** `idx_pkg_owner`, `idx_pkg_apple`,
+`idx_pkg_min_ios`, `idx_pkg_min_macos`, `idx_pkg_min_tvos`,
+`idx_pkg_min_watchos`, `idx_pkg_min_visionos`,
+`idx_pkg_swift_tools`, `idx_pkg_enrichment`.
+
+### 10.2 Table: `package_files`
+
+**WHAT IT IS FOR, IN PLAIN TERMS.** Each row is one file inside
+one package — Swift source, README, CHANGELOG, DocC article,
+etc. UNLIKE samples.db's `files` table, this table does NOT
+store the file's text content — that lives only in the FTS index
+shadow tables (`package_files_fts_content`). Storing it twice
+would double the bundle size for negligible gain.
+
+| Column | SQL type | Nullable | Default | What writes it | What reads it |
+|---|---|---|---|---|---|
+| `id` | INTEGER | NOT NULL (PK AUTOINCREMENT) | — | auto | FK target for `package_symbols`; `package_files_fts` JOIN |
+| `package_id` | INTEGER | NOT NULL (FK→`package_metadata.id` ON DELETE CASCADE) | — | the parent package's id | index `idx_file_package`; per-package queries |
+| `relpath` | TEXT | NOT NULL (UNIQUE with package_id) | — | the file's path relative to the package root | rendering; cross-file references |
+| `kind` | TEXT | NOT NULL | — | classifier output (`'source'`, `'readme'`, `'changelog'`, `'manifest'`, `'doc'`, `'test'`, …) from `Core.PackageIndexing.PackageFileKindClassifier` | kind filter; index `idx_file_kind` |
+| `module` | TEXT | NULL | — | the Swift module name parsed from per-file `import` declarations (NULL for non-Swift files) | index `idx_file_module`; basis for the `apple_imports_json` aggregation |
+| `size_bytes` | INTEGER | NOT NULL | — | byte size of the original file | stats |
+| `indexed_at` | INTEGER | NOT NULL | — | epoch seconds when this file was indexed | freshness |
+| `available_attrs_json` | TEXT | NULL | — | per-file `@available` occurrences as JSON array (#219) | availability-aware ranking |
+
+**Indexes (3):** `idx_file_package`, `idx_file_kind`,
+`idx_file_module`.
+
+### 10.3 Table: `package_files_fts` (FTS5 virtual table)
+
+**WHAT IT IS FOR, IN PLAIN TERMS.** Full-text index over package
+file content. Several columns are marked `UNINDEXED` — those are
+metadata that gets STORED in the FTS5 shadow tables (so they
+come back in `SELECT *` results) but is NOT tokenized into the
+inverted index. Lets the FTS index stay focused on the actually-searchable
+text columns (`title`, `content`, `symbols`) while keeping the
+identifying columns accessible without a JOIN.
+
+| Column | UNINDEXED? | What writes it | What reads it |
+|---|---|---|---|
+| `package_id` | UNINDEXED | bound from `package_files.package_id` | JOIN key back to `package_metadata` |
+| `owner` | UNINDEXED | the package owner | rendering without JOIN |
+| `repo` | UNINDEXED | the package repo name | rendering without JOIN |
+| `module` | UNINDEXED | the file's Swift module | rendering |
+| `relpath` | UNINDEXED | the file's relative path | rendering |
+| `kind` | UNINDEXED | classifier output | rendering |
+| `title` | (indexed) | extracted title — first H1 for Markdown, filename for other kinds, via `Search.PackageIndex.extractTitle` | BM25 ranking |
+| `content` | (indexed) | the raw file text (prose + code) | BM25 ranking; the bulk of the signal |
+| `symbols` | (indexed) | the file text PLUS a case-split form (`makeHTTPRequest` becomes `make HTTP Request`) so Swift identifiers are searchable by token. Without this column the FTS5 default tokenizer won't split camelCase | BM25 ranking — what makes a query for `request` actually find `makeHTTPRequest` |
+
+**FTS5 options:** `tokenize='porter unicode61'`.
+
+### 10.4 Table: `package_symbols` (added in #837 stage 2)
+
+**WHAT IT IS FOR, IN PLAIN TERMS.** Each row is one Swift symbol
+declared in one `.swift` file inside one package. Populated by
+the AST extraction pass in `Search.PackageIndex.insertFile`
+(post-#837 stage 2) — for every `.swift` file the indexer
+processes, SwiftSyntax extracts symbols and writes them here.
+Schema is a full parallel of samples.db's `file_symbols`. After
+#837 stage 1+2 the `packages-apple-constraints` enrichment pass
+writes `generic_constraints` + `enrichment_version` on rows
+whose name matches an Apple-type in the lookup.
+
+| Column | SQL type | Nullable | Default | What writes it | What reads it |
+|---|---|---|---|---|---|
+| `id` | INTEGER | NOT NULL (PK AUTOINCREMENT) | — | auto | row identity |
+| `file_id` | INTEGER | NOT NULL (FK→`package_files.id` ON DELETE CASCADE) | — | parent file | index `idx_package_symbols_file` |
+| `name` | TEXT | NOT NULL | — | the literal symbol name | index `idx_package_symbols_name`; `packages-apple-constraints` join key |
+| `kind` | TEXT | NOT NULL | — | `ASTIndexer.SymbolKind` raw value | index `idx_package_symbols_kind` |
+| `line` | INTEGER | NOT NULL | — | source line offset | navigation |
+| `column` | INTEGER | NOT NULL | — | source column offset | navigation |
+| `signature` | TEXT | NULL | — | the declaration signature | rendering |
+| `is_async` | INTEGER | NOT NULL | `0` | `1` iff async | concurrency queries |
+| `is_throws` | INTEGER | NOT NULL | `0` | `1` iff throws | concurrency queries |
+| `is_public` | INTEGER | NOT NULL | `0` | `1` iff public/open | visibility filter |
+| `is_static` | INTEGER | NOT NULL | `0` | `1` iff static/class | filter |
+| `attributes` | TEXT | NULL | — | comma-separated Swift attributes | property-wrapper search |
+| `conformances` | TEXT | NULL | — | comma-separated conformed protocols | conformance search |
+| `generic_params` | TEXT | NULL | — | comma-separated generic parameter names | symbol-shape queries |
+| `generic_constraints` | TEXT | NULL | — | comma-separated authoritative CONSTRAINTS. Written by `Enrichment.PackagesAppleConstraintsPass` post-#837. NULL until the pass runs | future ranking signal — currently NOT wired into `Search.PackageIndex.searchPackages` (see `how-cupertino-answers-a-query.md` §6) |
+| `enrichment_version` | INTEGER | NULL | — | enrichment pass version | idempotency; index `idx_package_symbols_enrichment` |
+
+**Indexes (4):** `idx_package_symbols_file`,
+`idx_package_symbols_kind`, `idx_package_symbols_name`,
+`idx_package_symbols_enrichment`.
+
+### 10.5 packages.db migration history
+
+| Bump | Issue | What landed |
+|---|---|---|
+| → 2 | #219 follow-up | availability columns on `package_metadata` (`min_ios` etc.); `available_attrs_json` on `package_files`. ALTER TABLE per-version method `migrateToVersion2` |
+| → 3 | #225 Part A | `swift_tools_version` column on `package_metadata` + index. ALTER TABLE via `migrateToVersion3` |
+| → 4 | #837 stage 1+2 | new `package_symbols` table (full parallel of samples.db's `file_symbols`) + `apple_imports_json` + `enrichment_version` columns on `package_metadata` + indexes. ALTER TABLE via `migrateToVersion4` |
+
+---
+
+## 11. Cross-DB column mapping
+
+Which user-visible filter / MCP tool parameter / search-time
+behaviour touches which column on which DB.
+
+| Surface | search.db | samples.db | packages.db |
+|---|---|---|---|
+| `--framework <slug>` | `docs_metadata.framework` (filter); `framework_aliases.identifier` + `.synonyms` (resolution) | `projects.frameworks` (substring match on the comma-separated list) | not currently consulted (would join `package_files.module`) |
+| `--language swift\|objc` | `docs_metadata.language` | `files.extension` (`.swift` vs `.m`/`.h`) | not currently consulted |
+| `--min-ios <ver>` (+ macOS / tvOS / watchOS / visionOS) | `docs_metadata.min_*` | `projects.min_*` | `package_metadata.min_*` |
+| `--swift <ver>` | `docs_metadata.implementation_swift_version` (swift-evolution only) | n/a | n/a (note: `package_metadata.swift_tools_version` exists but isn't yet a CLI filter) |
+| `--source <name>` (CLI dispatch) | filters `docs_metadata.source` | dispatches to samples.db via runner | dispatches to packages.db via runner |
+| `--apple-imports <module>` (NOT yet implemented) | n/a | n/a | `package_metadata.apple_imports_json` (when wired) |
+| MCP `search_symbols` (any DB) | `doc_symbols` | `file_symbols` (not yet wired) | `package_symbols` (not yet wired) |
+| MCP `search_property_wrappers` | `doc_symbols.attributes` + `docs_structured.attributes` | `file_symbols.attributes` (not yet wired) | `package_symbols.attributes` (not yet wired) |
+| MCP `search_concurrency` | `doc_symbols.is_async` + `is_throws` + `attributes` | `file_symbols.is_async` + `is_throws` (not yet wired) | `package_symbols.is_async` + `is_throws` (not yet wired) |
+| MCP `search_conformances` | `doc_symbols.conformances` + `docs_structured.conforms_to` | `file_symbols.conformances` (not yet wired) | `package_symbols.conformances` (not yet wired) |
+| MCP `search_generics` | `doc_symbols.generic_constraints` (#759 iter 3) | `file_symbols.generic_constraints` (#837, not yet wired) | `package_symbols.generic_constraints` (#837, not yet wired) |
+| BM25 ranking on full-text query | `docs_fts.title/content/summary/symbols/symbol_components` | `projects_fts.title/description/readme/frameworks` + `files_fts.path/filename/content` | `package_files_fts.title/content/symbols` |
+| Schema-stamp safety guard | `Search.Index.schemaVersion: Int32 = 18` | `Sample.Index.Database.schemaVersion: Int32 = 4` | `Search.PackageIndex.schemaVersion: Int32 = 4` |
+
+Rows marked **(not yet wired)** in samples.db and packages.db columns
+are tracked at `docs/design/how-cupertino-answers-a-query.md` §6.
+The columns exist (added in #837) and would be populated by a real
+save run; the search-time SQL that reads them needs follow-up
+implementation before the bundle ships, otherwise the populated
+columns deliver zero user-visible benefit.
+
+---
+
+## 12. References
+
+- Source code:
+  - `Packages/Sources/Search/Search.Index.Schema.swift`
+  - `Packages/Sources/Search/Search.Index.Migrations.swift`
+  - `Packages/Sources/SampleIndex/Sample.Index.Database.swift`
+  - `Packages/Sources/Search/PackageIndex.swift`
+- Companion docs:
+  - `docs/design/per-db-enrichment.md` (the *why*)
+  - `docs/design/how-cupertino-answers-a-query.md` (the *read path*)
+  - `docs/design/post-processor.md` (the enrichment pipeline shape)
+  - `docs/design/837-pre-index-test-plan.md` (correctness gate before any save run)
+- Schema-stamp safety guard:
+  `Packages/Tests/SearchTests/Issue635SchemaStampGuardTests.swift`
