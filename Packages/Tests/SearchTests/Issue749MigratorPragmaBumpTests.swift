@@ -39,35 +39,47 @@ import Testing
 
 @Suite("#749 — in-place migrators stamp PRAGMA user_version", .serialized)
 struct Issue749MigratorPragmaBumpTests {
-    /// Drops the v15→v16 column + index from a freshly-built v16 DB
-    /// and stamps PRAGMA = 15. Produces an on-disk artefact shaped
-    /// like a DB produced by a pre-#718 binary.
+    /// Builds a fresh v16 DB through the normal path and then stamps
+    /// `PRAGMA user_version = 15`. Produces an on-disk artefact whose
+    /// **PRAGMA** is v15 even though its **schema** still carries the
+    /// v16 column. That mismatch is sufficient to exercise the bug
+    /// class this suite locks: when `Search.Index.init` reopens such a
+    /// DB it runs `checkAndMigrateSchema → migrateToVersion16 →
+    /// stampUserVersionUnchecked(16)`; before #749 the migrator
+    /// silently completed without bumping PRAGMA, and the next
+    /// reopen would loop on the same migration.
+    ///
+    /// An earlier draft of this helper also stripped the v16 column +
+    /// index via `ALTER TABLE DROP COLUMN` to produce a stricter
+    /// pre-v16 shape. That step is incompatible with SQLite's
+    /// `DROP COLUMN` rewrite path on the real `docs_metadata` schema
+    /// (the FTS5 + FK fan-out around it causes the rewrite to emit
+    /// "error in table docs_metadata after drop column: incomplete
+    /// input" on every platform). The PRAGMA-only construction still
+    /// drives the migrator, because the v15→v16 migrator is idempotent
+    /// (the `ALTER TABLE ADD COLUMN` and `CREATE INDEX IF NOT EXISTS`
+    /// are no-ops when the column or index already exists), and the
+    /// stamping step still runs unchanged. Idempotency of the
+    /// column-add is itself part of the migrator's contract; this
+    /// suite implicitly exercises that too.
     private static func makeSyntheticV15DB() async throws -> URL {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("cupertino-749-test-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         let dbPath = tempDir.appendingPathComponent("search.db")
 
-        // Build a fresh v16 DB through the normal path so every other
-        // table exists in the v15-otherwise-correct shape.
         let bootstrap = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
         await bootstrap.disconnect()
 
-        // Strip the v16-only column + index so the DB looks v15.
         var db: OpaquePointer?
         try #require(sqlite3_open(dbPath.path, &db) == SQLITE_OK)
         defer { sqlite3_close(db) }
 
-        let stripStatements = [
-            "DROP INDEX IF EXISTS idx_implementation_swift_version;",
-            "ALTER TABLE docs_metadata DROP COLUMN implementation_swift_version;",
-            "PRAGMA user_version = 15;",
-        ]
-        for sql in stripStatements {
-            var err: UnsafeMutablePointer<CChar>?
-            defer { sqlite3_free(err) }
-            try #require(sqlite3_exec(db, sql, nil, nil, &err) == SQLITE_OK, "strip statement failed: \(sql)")
-        }
+        var err: UnsafeMutablePointer<CChar>?
+        let rc = sqlite3_exec(db, "PRAGMA user_version = 15;", nil, nil, &err)
+        let errString = err.map { String(cString: $0) } ?? "(nil)"
+        sqlite3_free(err)
+        try #require(rc == SQLITE_OK, "PRAGMA stamp failed — SQLite error: \(errString)")
 
         return dbPath
     }
