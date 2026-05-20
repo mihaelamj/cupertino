@@ -1,3 +1,4 @@
+import ASTIndexer
 import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
@@ -692,6 +693,82 @@ extension Search {
                 { stmt in sqlite3_bind_text(stmt, 8, file.content, -1, SQLITE_TRANSIENT) },
                 { stmt in sqlite3_bind_text(stmt, 9, symbols, -1, SQLITE_TRANSIENT) },
             ])
+
+            // #837 stage 2: AST extraction for .swift files into the
+            // new package_symbols table. Mirrors what samples.db's
+            // Sample.Index.Database.indexSymbols does for samples. The
+            // package_files INSERT above used AUTOINCREMENT so we read
+            // the row's id via sqlite3_last_insert_rowid for the
+            // foreign key.
+            if file.relpath.hasSuffix(".swift") {
+                guard let database else { return }
+                let fileId = sqlite3_last_insert_rowid(database)
+                let extractor = ASTIndexer.Extractor()
+                let result = extractor.extract(from: file.content)
+                try indexPackageSymbols(fileId: fileId, symbols: result.symbols)
+            }
+        }
+
+        /// Insert AST-extracted symbols into the `package_symbols` table.
+        /// Parallels `Sample.Index.Database.indexSymbols` from samples.db.
+        /// Caller guarantees the surrounding transaction. Symbols that
+        /// fail to bind are silently skipped (same policy as the samples
+        /// indexer; an entire package is not torn down for one bad
+        /// symbol).
+        private func indexPackageSymbols(fileId: Int64, symbols: [ASTIndexer.Symbol]) throws {
+            guard let database else { throw PackageIndexError.databaseNotInitialized }
+            guard !symbols.isEmpty else { return }
+
+            let sql = """
+            INSERT INTO package_symbols
+            (file_id, name, kind, line, column, signature, is_async, is_throws,
+             is_public, is_static, attributes, conformances, generic_params)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            """
+
+            for symbol in symbols {
+                var statement: OpaquePointer?
+                defer { sqlite3_finalize(statement) }
+                guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
+                    continue
+                }
+                sqlite3_bind_int64(statement, 1, fileId)
+                sqlite3_bind_text(statement, 2, (symbol.name as NSString).utf8String, -1, nil)
+                sqlite3_bind_text(statement, 3, (symbol.kind.rawValue as NSString).utf8String, -1, nil)
+                sqlite3_bind_int(statement, 4, Int32(symbol.line))
+                sqlite3_bind_int(statement, 5, Int32(symbol.column))
+                if let signature = symbol.signature {
+                    sqlite3_bind_text(statement, 6, (signature as NSString).utf8String, -1, nil)
+                } else {
+                    sqlite3_bind_null(statement, 6)
+                }
+                sqlite3_bind_int(statement, 7, symbol.isAsync ? 1 : 0)
+                sqlite3_bind_int(statement, 8, symbol.isThrows ? 1 : 0)
+                sqlite3_bind_int(statement, 9, symbol.isPublic ? 1 : 0)
+                sqlite3_bind_int(statement, 10, symbol.isStatic ? 1 : 0)
+
+                let attributesStr = symbol.attributes.isEmpty ? nil : symbol.attributes.joined(separator: ",")
+                let conformancesStr = symbol.conformances.isEmpty ? nil : symbol.conformances.joined(separator: ",")
+                let genericParamsStr = symbol.genericParameters.isEmpty
+                    ? nil
+                    : symbol.genericParameters.joined(separator: ",")
+                if let attrs = attributesStr {
+                    sqlite3_bind_text(statement, 11, (attrs as NSString).utf8String, -1, nil)
+                } else {
+                    sqlite3_bind_null(statement, 11)
+                }
+                if let confs = conformancesStr {
+                    sqlite3_bind_text(statement, 12, (confs as NSString).utf8String, -1, nil)
+                } else {
+                    sqlite3_bind_null(statement, 12)
+                }
+                if let generics = genericParamsStr {
+                    sqlite3_bind_text(statement, 13, (generics as NSString).utf8String, -1, nil)
+                } else {
+                    sqlite3_bind_null(statement, 13)
+                }
+                _ = sqlite3_step(statement)
+            }
         }
 
         // MARK: - Helpers
