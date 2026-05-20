@@ -34,7 +34,7 @@ struct EnrichmentModelsTests {
             let dependsOn: [String] = []
             let target = EnrichmentModels.Target.search
 
-            func run(database: OpaquePointer) async throws -> EnrichmentModels.Result {
+            func run(database: OpaquePointer?) async throws -> EnrichmentModels.Result {
                 EnrichmentModels.Result(passIdentifier: identifier, rowsAffected: 0, rowsSkipped: 0, durationMs: 0)
             }
         }

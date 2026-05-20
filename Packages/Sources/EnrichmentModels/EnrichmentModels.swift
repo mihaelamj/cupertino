@@ -46,6 +46,23 @@ public enum EnrichmentModels {
     }
 }
 
+/// Coordinator that runs a registered set of `EnrichmentPass` instances in
+/// dependency order against the cupertino DBs.
+///
+/// Lives in the foundation tier so `Search.IndexBuilder` can depend on the
+/// protocol without importing the live `Enrichment` package (that would
+/// create a Search → Enrichment → Search cycle since Enrichment imports
+/// Search for DB access). The composition root constructs the concrete
+/// runner (currently `Enrichment.LiveRunner`) and injects it into
+/// `IndexBuilder`.
+public protocol EnrichmentRunner: Sendable {
+    /// Run every registered pass whose `target` matches `target`, in
+    /// `dependsOn` topological order. Passes whose dependencies were
+    /// skipped (or threw) are themselves skipped with a recorded reason.
+    /// Returns the per-pass results in run order.
+    func run(target: EnrichmentModels.Target) async throws -> [EnrichmentModels.Result]
+}
+
 /// A single enrichment pass that operates on one of the cupertino DBs.
 ///
 /// Implementations live in the `Enrichment` package (or in a target-specific
@@ -71,8 +88,14 @@ public protocol EnrichmentPass: Sendable {
     /// right SQLite handle.
     var target: EnrichmentModels.Target { get }
 
-    /// Run the pass against an open SQLite handle. Implementations MUST be
-    /// idempotent: re-running against the same DB at the same `schemaVersion`
-    /// returns a `Result` with `rowsAffected == 0` (or close to it).
-    func run(database: OpaquePointer) async throws -> EnrichmentModels.Result
+    /// Run the pass. Implementations MUST be idempotent: re-running against
+    /// the same DB at the same `schemaVersion` returns a `Result` with
+    /// `rowsAffected == 0` (or close to it).
+    ///
+    /// The `database` parameter is **advisory**. Stateless passes (e.g. the
+    /// ones the standalone `cupertino-postprocessor` binary will open a DB
+    /// for) read from it directly. Live passes that hold their own DB-access
+    /// objects (e.g. an injected `Search.Index`) receive `nil` and ignore
+    /// the parameter.
+    func run(database: OpaquePointer?) async throws -> EnrichmentModels.Result
 }
