@@ -433,6 +433,7 @@ let targets: [Target] = {
             "SampleIndex",
             "SampleIndexModels",
             "Diagnostics",
+            "LoggingModels",
         ]
     )
 
@@ -442,7 +443,15 @@ let targets: [Target] = {
     )
     let sampleIndexTestsTarget = Target.testTarget(
         name: "SampleIndexTests",
-        dependencies: ["SampleIndex", "SampleIndexModels", "SharedConstants", "TestSupport"]
+        dependencies: [
+            "SampleIndex",
+            "SampleIndexModels",
+            "SearchModels",
+            "SharedConstants",
+            "ASTIndexer",
+            "LoggingModels",
+            "TestSupport",
+        ]
     )
 
     // ---------- ServicesModels (#408: value types + namespace anchor lifted out of Services
