@@ -35,6 +35,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Diagnostics"),
     .singleTargetLibrary("Indexer"),
     .singleTargetLibrary("IndexerModels"),
+    .singleTargetLibrary("EnrichmentModels"),
     .singleTargetLibrary("Ingest"),
     .singleTargetLibrary("Resources"),
     .singleTargetLibrary("Availability"),
@@ -594,6 +595,19 @@ let targets: [Target] = {
         dependencies: ["IndexerModels", "TestSupport"]
     )
 
+    // ---------- EnrichmentModels (#837: foundation-only seam for the postprocessor
+    // pipeline — EnrichmentPass protocol + Target/Result value types. Per epic #769,
+    // the live passes and the cupertino-postprocessor CLI binary both build against
+    // this target without dragging in Search / SampleIndex / CorePackageIndexing).
+    let enrichmentModelsTarget = Target.target(
+        name: "EnrichmentModels",
+        dependencies: []
+    )
+    let enrichmentModelsTestsTarget = Target.testTarget(
+        name: "EnrichmentModelsTests",
+        dependencies: ["EnrichmentModels", "TestSupport"]
+    )
+
     // ---------- Indexer (#244: SaveCommand indexer + preflight lift) ----------
     let indexerTarget = Target.target(
         name: "Indexer",
@@ -832,6 +846,8 @@ let targets: [Target] = {
         diagnosticsTestsTarget,
         indexerModelsTarget,
         indexerModelsTestsTarget,
+        enrichmentModelsTarget,
+        enrichmentModelsTestsTarget,
         indexerTarget,
         indexerTestsTarget,
         ingestTarget,

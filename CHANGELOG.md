@@ -1,3 +1,9 @@
+## Unreleased — staged for 1.3.0
+
+### Added
+
+- **#837 phase 1A / `EnrichmentModels` foundation-only protocol seam.** New `Packages/Sources/EnrichmentModels/` target containing the `EnrichmentPass` protocol, `EnrichmentModels.Target` enum (search / samples / packages), and `EnrichmentModels.Result` value type. Lives in the foundation tier (zero dependencies, Foundation import only) so subsequent work can build against the protocol without dragging in `Search` / `SampleIndex` / `CorePackageIndexing`. Mirrors the `IndexerModels` target layout. 4 unit tests cover the value types plus a `DummyPass` conformance check (all green). No behavior change in any shipped binary; pure scaffolding for the cupertino-postprocessor pipeline. Touches: `Packages/Sources/EnrichmentModels/EnrichmentModels.swift` (new), `Packages/Tests/EnrichmentModelsTests/EnrichmentModelsTests.swift` (new), `Packages/Package.swift` (+ target + test target + library product). Refs: #837, epic #769, design doc `docs/design/post-processor.md`.
+
 ## 1.2.0 (2026-05-20)
 
 _The "ironclad" round. 107 CHANGELOG entries below; +762 net new tests since v1.1.0 (2218 / 303 suites green); 0 open bug-labeled issues at tag time. First release to ship documented search-quality baselines (Phase 1 canonical lookup + Phase 1.1 deprecation-aware + Phase 1.2 cross-source + Phase 1.3 CamelCase fragment + Phase 1.4 acronym/synonym + Phase 1.5 prose/conceptual + Phase 1.6 symbol-attribute + Phase 1.7 agent-end-to-end), with the version-diff audit (Phase 1.8) pairing v1.0.2 against v1.2.0 via McNemar. Audits live at `docs/audits/search-quality-*-v1.2.0.md`; the live dashboard at https://cupertino.aleahim.com/. #514 perf measurement (WAL throughput on the docs workload) is deferred to v1.3.x as backlog per `docs/audits/release-readiness-v1.2.0.md`; the samples-workload measurement already landed via PR #515 and the original #236 lock-contention symptom is observably gone._
