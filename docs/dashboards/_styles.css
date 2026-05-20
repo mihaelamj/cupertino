@@ -821,6 +821,17 @@ a.step-card {
 .data-table .red { color: var(--apple-red); font-weight: 500; }
 .data-table .orange { color: var(--apple-orange); font-weight: 500; }
 
+/* Right-align headers + cells for every column past the first
+   (label) column so numeric data and its header line up visually.
+   Without this, the auto-detected `.num` cells (text-align: right)
+   floated to the right edge of wide columns while their headers
+   stayed left-aligned — looked broken. */
+.data-table th:not(:first-child),
+.data-table td:not(:first-child) {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
 /* ===== Tabs ===== */
 .tabs {
     display: flex;
