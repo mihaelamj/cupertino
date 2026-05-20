@@ -4,477 +4,113 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cupertino search quality · v1.2.0</title>
-    <style>
-        :root {
-            --bg: #f5f5f7;
-            --bg-card: #ffffff;
-            --text-primary: #1d1d1f;
-            --text-secondary: #6e6e73;
-            --text-tertiary: #86868b;
-            --border: #d2d2d7;
-            --apple-blue: #007AFF;
-            --apple-green: #34C759;
-            --apple-orange: #FF9500;
-            --apple-red: #FF3B30;
-            --apple-yellow: #FFCC00;
-            --apple-purple: #AF52DE;
-            --apple-indigo: #5856D6;
-            --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.04);
-            --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.08);
-            --radius-card: 18px;
-            --radius-pill: 999px;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg: #000000;
-                --bg-card: #1c1c1e;
-                --text-primary: #ffffff;
-                --text-secondary: #aeaeb2;
-                --text-tertiary: #8e8e93;
-                --border: #2c2c2e;
-                --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.4);
-                --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.6);
-            }
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            background: var(--bg);
-            color: var(--text-primary);
-            line-height: 1.5;
-            min-height: 100vh;
-        }
-
-        .container {
-            max-width: 1180px;
-            margin: 0 auto;
-            padding: 60px 24px 80px;
-        }
-
-        /* ===== Header ===== */
-        header {
-            text-align: center;
-            margin-bottom: 56px;
-        }
-        .eyebrow {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--apple-blue);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 12px;
-        }
-        h1 {
-            font-size: 48px;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            line-height: 1.08;
-            margin-bottom: 20px;
-        }
-        .subtitle {
-            font-size: 21px;
-            color: var(--text-secondary);
-            max-width: 720px;
-            margin: 0 auto;
-            line-height: 1.4;
-        }
-        .meta {
-            margin-top: 20px;
-            font-size: 14px;
-            color: var(--text-tertiary);
-        }
-        .meta span { margin: 0 8px; }
-
-        /* ===== Hero summary ===== */
-        .summary {
-            background: var(--bg-card);
-            border-radius: var(--radius-card);
-            padding: 32px 36px;
-            margin-bottom: 48px;
-            box-shadow: var(--shadow-card);
-        }
-        .summary h2 {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-tertiary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 16px;
-        }
-        .summary-text {
-            font-size: 20px;
-            line-height: 1.5;
-            color: var(--text-primary);
-        }
-        .summary-text strong { font-weight: 600; }
-        .summary-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 24px;
-            margin-top: 28px;
-            padding-top: 28px;
-            border-top: 1px solid var(--border);
-        }
-        .stat {
-            text-align: center;
-        }
-        .stat-num {
-            font-size: 36px;
-            font-weight: 700;
-            color: var(--text-primary);
-            letter-spacing: -0.02em;
-            display: block;
-        }
-        .stat-num.green { color: var(--apple-green); }
-        .stat-num.orange { color: var(--apple-orange); }
-        .stat-num.blue { color: var(--apple-blue); }
-        .stat-label {
-            font-size: 13px;
-            color: var(--text-secondary);
-            margin-top: 4px;
-        }
-
-        /* ===== Section heading ===== */
-        section h2 {
-            font-size: 28px;
-            font-weight: 700;
-            letter-spacing: -0.01em;
-            margin: 48px 0 24px;
-        }
-
-        /* ===== Card grid ===== */
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 20px;
-        }
-
-        .card {
-            background: var(--bg-card);
-            border-radius: var(--radius-card);
-            padding: 28px;
-            box-shadow: var(--shadow-card);
-            transition: box-shadow 200ms ease, transform 200ms ease;
-            display: flex;
-            flex-direction: column;
-        }
-        .card:hover {
-            box-shadow: var(--shadow-card-hover);
-            transform: translateY(-2px);
-        }
-
-        .card-status {
-            display: inline-block;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            padding: 4px 12px;
-            border-radius: var(--radius-pill);
-            margin-bottom: 16px;
-            align-self: flex-start;
-        }
-        .status-strong {
-            background: rgba(52, 199, 89, 0.12);
-            color: var(--apple-green);
-        }
-        .status-mixed {
-            background: rgba(255, 149, 0, 0.12);
-            color: var(--apple-orange);
-        }
-        .status-weak {
-            background: rgba(255, 59, 48, 0.12);
-            color: var(--apple-red);
-        }
-        .status-pending {
-            background: rgba(0, 122, 255, 0.12);
-            color: var(--apple-blue);
-        }
-
-        .card-title {
-            font-size: 21px;
-            font-weight: 600;
-            letter-spacing: -0.01em;
-            margin-bottom: 8px;
-        }
-        .card-subtitle {
-            font-size: 14px;
-            color: var(--text-tertiary);
-            margin-bottom: 20px;
-        }
-        .card-metric {
-            font-size: 48px;
-            font-weight: 700;
-            letter-spacing: -0.03em;
-            line-height: 1;
-            margin-bottom: 6px;
-        }
-        .card-metric.green { color: var(--apple-green); }
-        .card-metric.orange { color: var(--apple-orange); }
-        .card-metric.red { color: var(--apple-red); }
-        .card-metric.blue { color: var(--apple-blue); }
-        .card-metric-label {
-            font-size: 14px;
-            color: var(--text-secondary);
-            margin-bottom: 20px;
-        }
-        .card-question {
-            font-size: 16px;
-            color: var(--text-primary);
-            font-weight: 500;
-            margin-bottom: 12px;
-            line-height: 1.4;
-        }
-        .card-finding {
-            font-size: 15px;
-            color: var(--text-secondary);
-            line-height: 1.5;
-            flex-grow: 1;
-            margin-bottom: 20px;
-        }
-        .card-link {
-            font-size: 14px;
-            color: var(--apple-blue);
-            text-decoration: none;
-            font-weight: 500;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            margin-top: auto;
-        }
-        .card-link:hover { text-decoration: underline; }
-        .card-link::after {
-            content: "›";
-            font-size: 18px;
-            line-height: 1;
-            transition: transform 200ms ease;
-        }
-        .card-link:hover::after { transform: translateX(2px); }
-
-        /* ===== Pending card (Phase 1.7) ===== */
-        .card-pending {
-            border: 2px dashed var(--apple-blue);
-            background: transparent;
-            box-shadow: none;
-        }
-        .card-pending:hover {
-            box-shadow: none;
-            transform: none;
-            background: rgba(0, 122, 255, 0.04);
-        }
-
-        /* ===== Architectural finding callout ===== */
-        .callout {
-            background: var(--bg-card);
-            border-left: 4px solid var(--apple-orange);
-            border-radius: 12px;
-            padding: 24px 28px;
-            margin: 32px 0;
-        }
-        .callout h3 {
-            font-size: 17px;
-            font-weight: 600;
-            color: var(--apple-orange);
-            margin-bottom: 10px;
-        }
-        .callout p {
-            font-size: 15px;
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-        .callout p strong { color: var(--text-primary); font-weight: 600; }
-        .callout-issues {
-            margin-top: 12px;
-            font-size: 14px;
-            color: var(--text-tertiary);
-        }
-        .callout-issues a {
-            color: var(--apple-blue);
-            text-decoration: none;
-            margin-right: 12px;
-        }
-        .callout-issues a:hover { text-decoration: underline; }
-
-        /* ===== Footer ===== */
-        footer {
-            margin-top: 64px;
-            padding-top: 32px;
-            border-top: 1px solid var(--border);
-            text-align: center;
-            font-size: 13px;
-            color: var(--text-tertiary);
-            line-height: 1.6;
-        }
-        footer a {
-            color: var(--apple-blue);
-            text-decoration: none;
-        }
-        footer a:hover { text-decoration: underline; }
-        footer p { margin: 6px 0; }
-
-        /* ===== Responsive ===== */
-        @media (max-width: 640px) {
-            .container { padding: 40px 16px 60px; }
-            h1 { font-size: 34px; }
-            .subtitle { font-size: 17px; }
-            .summary-stats { grid-template-columns: 1fr; gap: 16px; }
-            .card-metric { font-size: 40px; }
-        }
-    </style>
+    <link rel="stylesheet" href="_styles.css">
 </head>
 <body>
     <div class="container">
 
-        <!-- ===== Header ===== -->
-        <header>
+        <header class="centered">
             <div class="eyebrow">Cupertino · v1.2.0 candidate</div>
             <h1>Does the search find the right answer?</h1>
             <p class="subtitle">
-                Cupertino is an Apple-platform documentation index built to keep AI coding assistants from hallucinating. This page summarises seven tests of how well it does that on the v1.2.0 build.
+                Cupertino is an Apple-platform documentation index built to keep AI coding assistants from hallucinating. This page summarises 7 measurements of how well it does that on the v1.2.0 build.
             </p>
             <p class="meta">
-                <span>352,712 documents</span>·<span>420 frameworks</span>·<span>Measured 2026-05-20</span>
+                <span>7 measurements</span>·<span>Auto-derived from audit markdown</span>·<span>Re-runs whenever audits change</span>
             </p>
         </header>
 
-        <!-- ===== Hero summary ===== -->
         <div class="summary">
-            <h2>What we found</h2>
+            <h2>At a glance</h2>
             <p class="summary-text">
-                <strong>Cupertino is strong at the queries it was tuned for</strong> — typing a Swift type name returns the canonical Apple documentation page at position 1 nine times out of ten, and the modern Swift form always wins over the legacy Objective-C form. <strong>Two tests surface real weaknesses</strong>: abbreviations (typing <em>NFC</em> instead of <em>CoreNFC</em>) and attribute-only queries (typing <em>initializer</em> or <em>subscript</em>) often fail to return the right pages. Both weaknesses point at the same architectural gap — the same fix can address both.
+                <strong>3 of 7 tests pass strongly</strong> &mdash; the canonical use cases (typing a Swift type name, modern-vs-legacy choice, fragment recall, cross-source ranking) all work as designed. <strong>3 surface real weaknesses</strong> in cupertino's relational-metadata-to-search routing, both tracked with open issues and candidate fixes. <strong>1 have methodology limits</strong> that proper measurement (human-judged) would resolve.
             </p>
-            <div class="summary-stats">
-                <div class="stat">
-                    <span class="stat-num green">5/7</span>
-                    <span class="stat-label">tests pass strongly</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-num orange">2/7</span>
-                    <span class="stat-label">surface known weaknesses</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-num blue">1</span>
-                    <span class="stat-label">measurement still pending</span>
-                </div>
-            </div>
         </div>
 
-        <!-- ===== Cards ===== -->
         <section>
-            <h2>The seven tests</h2>
+            <h2>The measurements</h2>
             <div class="grid">
-
-                <!-- A + B: canonical lookup -->
                 <article class="card">
-                    <span class="card-status status-strong">Strong</span>
-                    <h3 class="card-title">Looking up a Swift type by name</h3>
-                    <p class="card-subtitle">Test A + B · Canonical lookup &amp; framework root</p>
-                    <div class="card-metric green">92<span style="font-size: 28px; font-weight: 500;">%</span></div>
-                    <p class="card-metric-label">right answer at position 1</p>
-                    <p class="card-question">When you type <em>Hashable</em>, <em>URLSession</em>, or <em>LazyVGrid</em>, does the canonical Apple documentation page come up first?</p>
-                    <p class="card-finding">Out of 50 typed type-names, the canonical Apple page came up first for 46. One didn't return the right page at all. The three other near-misses had the right page at position 2 or 3.</p>
-                    <a class="card-link" href="../audits/search-quality-baseline-v1.2.0.md">Read full audit</a>
+                    <span class="status status-strong">Strong</span>
+                    <h3 class="card-title">Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate)</h3>
+                    <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.1 (deprecation-aware), query </p>
+                    <div class="card-metric green">30 / 30 (100%)</div>
+                    <p class="card-metric-label">headline measurement</p>
+                    <p class="card-finding">This audit answers a focused question: when a developer queries a concept that exists in both modern Swift form (value type / stdlib) and the original NS-prefixed Objective-C form, <strong>does cupertino's ranker put the modern form above the legacy form?</strong> This is the most user-visible failure mode for an AI coding agent…</p>
+                    <a class="card-link" href="audits/deprecation-v1.2.0.html">Open audit dashboard</a>
                 </article>
-
-                <!-- E: deprecation-aware -->
                 <article class="card">
-                    <span class="card-status status-strong">Strong</span>
-                    <h3 class="card-title">Modern Swift over legacy Objective-C</h3>
-                    <p class="card-subtitle">Test E · Deprecation awareness</p>
-                    <div class="card-metric green">100<span style="font-size: 28px; font-weight: 500;">%</span></div>
-                    <p class="card-metric-label">modern form wins every time</p>
-                    <p class="card-question">When you type <em>URL</em>, does the modern <code>URL</code> value type come up above the legacy <code>NSURL</code> class?</p>
-                    <p class="card-finding">All 30 pairs tested. The modern Swift form was at position 1 for every single one. The legacy NS-prefixed form was either absent from the top 10 or buried at position 2-8. This is the single most user-visible anti-hallucination axis.</p>
-                    <a class="card-link" href="../audits/search-quality-deprecation-baseline-v1.2.0.md">Read full audit</a>
+                    <span class="status status-strong">Strong</span>
+                    <h3 class="card-title">Search-quality baseline: v1.2.0 candidate `search.db`</h3>
+                    <p class="card-subtitle">`docs/design/search-quality-eval.md` Phase 1 (single-system mode, no Phase 2 hum</p>
+                    <div class="card-metric green">46 / 50</div>
+                    <p class="card-metric-label">headline measurement</p>
+                    <p class="card-finding">This audit records the v1.2.0 candidate database's standing on Criterion 1 (good search) restricted to query classes <strong>A (canonical lookup)</strong> and <strong>B (framework-root)</strong> per the design's §1.4 taxonomy. It is an absolute baseline; future ranking changes are measured against this single-system snapshot using the same h…</p>
+                    <a class="card-link" href="audits/baseline-v1.2.0.html">Open audit dashboard</a>
                 </article>
-
-                <!-- D: CamelCase fragment -->
                 <article class="card">
-                    <span class="card-status status-strong">Strong</span>
-                    <h3 class="card-title">Recognising parts of compound names</h3>
-                    <p class="card-subtitle">Test D · CamelCase fragments</p>
-                    <div class="card-metric green">100<span style="font-size: 28px; font-weight: 500;">%</span></div>
-                    <p class="card-metric-label">finds something relevant at position 1</p>
-                    <p class="card-question">When you type just <em>Grid</em>, does cupertino find <code>LazyVGrid</code>, <code>LazyHGrid</code>, <code>GridRow</code>? When you type <em>Decoder</em>, does it find <code>JSONDecoder</code>?</p>
-                    <p class="card-finding">All 20 fragment queries returned a relevant page at position 1. The mechanism that splits CamelCase identifiers into recall-aiding parts is working as designed.</p>
-                    <a class="card-link" href="../audits/search-quality-fragment-baseline-v1.2.0.md">Read full audit</a>
+                    <span class="status status-strong">Strong</span>
+                    <h3 class="card-title">Search-quality baseline: CamelCase fragment recall (Phase 1.3, v1.2.0 candidate)</h3>
+                    <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.3 (CamelCase fragment recall)</p>
+                    <div class="card-metric green">0.9200</div>
+                    <p class="card-metric-label">headline measurement</p>
+                    <p class="card-finding">This audit tests <code>Search.Index.CamelCaseSplitter</code> (#77), the cupertino-specific mechanism that expands CamelCase identifiers like <code>LazyVGrid</code> into recall-aiding components <code>{Lazy, VGrid, Grid}</code> stored in the <code>docs_fts.symbol_components</code> column. The column carries BM25F weight 1.5 (one-tenth of <code>docs_fts.symbols</code> at …</p>
+                    <a class="card-link" href="audits/fragment-v1.2.0.html">Open audit dashboard</a>
                 </article>
-
-                <!-- F: cross-source canonical -->
                 <article class="card">
-                    <span class="card-status status-strong">Strong (with caveat)</span>
-                    <h3 class="card-title">Choosing the right source</h3>
-                    <p class="card-subtitle">Test F · Cross-source canonical answer</p>
-                    <div class="card-metric green">19/19</div>
-                    <p class="card-metric-label">when the right source has any page at all</p>
-                    <p class="card-question">When multiple Apple sources (docs, Swift Evolution, HIG) all have something to say, does cupertino pick the most authoritative one?</p>
-                    <p class="card-finding">For all 19 queries where the expected source was even in the top 10, that source's hit was at position 1. The remaining 6 queries asked things only HIG or Apple Archive answers well — those got drowned out by Apple-docs because the system is intentionally tuned to favour API references over design guidance.</p>
-                    <a class="card-link" href="../audits/search-quality-crosssource-baseline-v1.2.0.md">Read full audit</a>
+                    <span class="status status-mixed">Mixed</span>
+                    <h3 class="card-title">Search-quality baseline: cross-source canonical (Phase 1.2, v1.2.0 candidate)</h3>
+                    <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.2 (cross-source canonical), q</p>
+                    <div class="card-metric orange">19 / 25 (76.0%)</div>
+                    <p class="card-metric-label">headline measurement</p>
+                    <p class="card-finding">This audit tests <code>Search.SmartQuery.sourceWeights</code> (apple-docs=3.0, swift-evolution=1.5, packages=1.5, swift-book=1.0, swift-org=1.0, samples=1.0, apple-archive=0.5, hig=0.5) — the per-source authority bias applied during cross-source RRF fan-out. This machinery had no test coverage before today.</p>
+                    <a class="card-link" href="audits/crosssource-v1.2.0.html">Open audit dashboard</a>
                 </article>
-
-                <!-- C: acronym -->
                 <article class="card">
-                    <span class="card-status status-weak">Weak</span>
-                    <h3 class="card-title">Abbreviated framework names</h3>
-                    <p class="card-subtitle">Test C · Acronym &amp; synonym routing</p>
-                    <div class="card-metric red">18<span style="font-size: 28px; font-weight: 500;">%</span></div>
-                    <p class="card-metric-label">canonical framework at position 1</p>
-                    <p class="card-question">When you type <em>NFC</em>, <em>wifi</em>, <em>bluetooth</em>, or <em>ml</em>, does cupertino take you to <code>CoreNFC</code>, <code>CoreWLAN</code>, <code>CoreBluetooth</code>, or <code>CoreML</code>?</p>
-                    <p class="card-finding">Only 4 of 22 abbreviations routed to their canonical framework at position 1. The synonym table exists in the database but the ranking layer doesn't appear to consult it for free-text queries. <em>NFC</em> lands on a deep authentication-services page that happens to contain the word "nfc", not the CoreNFC framework.</p>
-                    <a class="card-link" href="../audits/search-quality-acronym-baseline-v1.2.0.md">Read full audit</a>
+                    <span class="status status-weak">Weak</span>
+                    <h3 class="card-title">Search-quality baseline: prose / conceptual (Phase 1.5, v1.2.0 candidate)</h3>
+                    <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.5 (prose / conceptual), query</p>
+                    <div class="card-metric red">4 / 15 (26.7%)</div>
+                    <p class="card-metric-label">headline measurement</p>
+                    <p class="card-finding">This audit tests multi-word natural-language queries — the kind a developer or AI agent would actually issue in a coding session, like "how to make a type Sendable" or "actor reentrancy semantics" — that have no single canonical URI. The right answer is a small SET of relevant documents spread across apple-docs and …</p>
+                    <a class="card-link" href="audits/prose-v1.2.0.html">Open audit dashboard</a>
                 </article>
-
-                <!-- H: symbol-attribute -->
                 <article class="card">
-                    <span class="card-status status-weak">Weak</span>
-                    <h3 class="card-title">Finding code by what it is</h3>
-                    <p class="card-subtitle">Test H · Symbol attributes &amp; kinds</p>
-                    <div class="card-metric red">25<span style="font-size: 28px; font-weight: 500;">%</span></div>
-                    <p class="card-metric-label">average match rate in top 5</p>
-                    <p class="card-question">When you ask for <em>@MainActor properties</em>, <em>initializers</em>, or <em>subscripts</em>, does cupertino return pages that actually have those things?</p>
-                    <p class="card-finding">Mixed results. Queries where the attribute is also a Swift type name (<em>@MainActor</em>, <em>Sendable conformance</em>) work well. Queries that only describe a symbol kind (<em>initializer</em>, <em>subscript</em>, <em>typealias</em>) return zero relevant results. Same architectural gap as the acronym test: the relational symbol metadata isn't reached by the default search path.</p>
-                    <a class="card-link" href="../audits/search-quality-symbol-attribute-baseline-v1.2.0.md">Read full audit</a>
+                    <span class="status status-weak">Weak</span>
+                    <h3 class="card-title">Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</h3>
+                    <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.6 (symbol-attribute), query c</p>
+                    <div class="card-metric red">0.2533</div>
+                    <p class="card-metric-label">headline measurement</p>
+                    <p class="card-finding">This audit tests symbol-attribute queries — queries that conceptually describe symbols by attribute (<code>@MainActor</code>, <code>@Observable</code>), by signature flag (<code>async throws</code>, <code>public static</code>), by conformance (<code>Sendable conformance</code>, <code>Hashable conformance</code>), or by kind (<code>actor type</code>, <code>protocol type</code>, <code>initializer</code>, `subscript…</p>
+                    <a class="card-link" href="audits/symbol-attribute-v1.2.0.html">Open audit dashboard</a>
                 </article>
-
-                <!-- G: prose -->
                 <article class="card">
-                    <span class="card-status status-mixed">Mixed</span>
-                    <h3 class="card-title">Natural-language questions</h3>
-                    <p class="card-subtitle">Test G · Prose &amp; conceptual queries</p>
-                    <div class="card-metric orange">27<span style="font-size: 28px; font-weight: 500;">%</span></div>
-                    <p class="card-metric-label">strict; ~55-65% useful-but-loose</p>
-                    <p class="card-question">When you type a full question like <em>how does Observable invalidate views</em> or <em>actor reentrancy semantics</em>, do useful results come up in the top 3?</p>
-                    <p class="card-finding">By the strict measure, 4 of 15 prose queries returned exactly the document we expected. Reading the misses honestly, about half of them returned tangentially-useful pages a human would accept. The system is tuned for short keyword queries; longer multi-word questions need a different ranking profile.</p>
-                    <a class="card-link" href="../audits/search-quality-prose-baseline-v1.2.0.md">Read full audit</a>
+                    <span class="status status-weak">Weak</span>
+                    <h3 class="card-title">Search-quality baseline: acronym / synonym recall (Phase 1.4, v1.2.0 candidate)</h3>
+                    <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.4 (acronym / synonym), query </p>
+                    <div class="card-metric red">4 / 22 (18.2%)</div>
+                    <p class="card-metric-label">headline measurement</p>
+                    <p class="card-finding">This audit tests <code>framework_aliases.synonyms</code> — the cupertino-specific table that maps colloquial / abbreviated names to canonical framework slugs (<code>nfc → corenfc</code>, <code>wifi → corewlan</code>, <code>bluetooth → corebluetooth</code>, <code>ml → coreml</code>, etc.). The expectation: when a developer types the synonym alone as a query, cupertino sh…</p>
+                    <a class="card-link" href="audits/acronym-v1.2.0.html">Open audit dashboard</a>
                 </article>
-
-                <!-- Phase 1.7 pending -->
                 <article class="card card-pending">
-                    <span class="card-status status-pending">Coming next</span>
+                    <span class="status status-pending">Coming next</span>
                     <h3 class="card-title">Does an AI agent then write correct Swift?</h3>
                     <p class="card-subtitle">Test 1.7 · Anti-hallucination, end-to-end</p>
                     <div class="card-metric blue" style="opacity: 0.4;">—</div>
                     <p class="card-metric-label">design exists, implementation pending</p>
-                    <p class="card-question">All seven tests above measure whether the right document is findable. <strong>This test measures whether an AI coding agent, given cupertino's top results, actually produces Swift that compiles, calls real APIs, and respects platform availability.</strong></p>
-                    <p class="card-finding">This is the real success measure for cupertino. The design is written; the implementation is the next 1-2 weeks of work. Until it lands, the anti-hallucination claim is unmeasured end-to-end.</p>
+                    <p class="card-finding">All the other tests measure whether the right document is findable. <strong>This test measures whether an AI coding agent, given cupertino's top results, actually produces Swift that compiles, calls real APIs, and respects platform availability.</strong> The actual success measure for cupertino. Design written; implementation is the next 1-2 weeks of work (issue #816).</p>
                     <a class="card-link" href="../design/anti-hallucination-eval.md">Read the design</a>
                 </article>
-
             </div>
         </section>
 
-        <!-- ===== Architectural callout ===== -->
-        <div class="callout">
+                <div class="callout">
             <h3>One architectural pattern surfaces twice</h3>
             <p>
-                The two weak tests (<strong>C abbreviations</strong> and <strong>H symbol attributes</strong>) both reveal the same gap: <strong>cupertino has rich relational metadata (synonym tables, symbol kinds, attributes, conformances) that the default search path doesn't consult.</strong> A consolidated fix for one likely fixes both. Tracking issues are open with three candidate approaches each, ranging from a small CLI flag to a full schema augmentation.
+                The two weak tests (<strong>abbreviations</strong> and <strong>symbol attributes</strong>) both reveal the same gap: <strong>cupertino has rich relational metadata (synonym tables, symbol kinds, attributes, conformances) that the default search path doesn't consult.</strong> A consolidated fix likely closes both. Tracking issues are open with three candidate approaches each.
             </p>
-            <p class="callout-issues">
+            <p class="callout-links">
                 Related issues:
                 <a href="https://github.com/mihaelamj/cupertino/issues/818">#818 acronym routing</a>
                 <a href="https://github.com/mihaelamj/cupertino/issues/819">#819 attribute filters</a>
@@ -483,19 +119,20 @@
             </p>
         </div>
 
-        <!-- ===== Footer ===== -->
         <footer>
             <p>
-                Methodology and per-test numbers in
-                <a href="../design/search-quality-eval.md">docs/design/search-quality-eval.md</a>
-                ·
-                Database architecture in
-                <a href="../architecture/database.md">docs/architecture/database.md</a>
-                ·
-                Index in
-                <a href="../database-handbook.md">docs/database-handbook.md</a>
+                Index card content is auto-derived from the audit markdown files under
+                <a href="../audits/">docs/audits/</a> by <code>_render-index-dashboard.py</code>.
+                Per-audit dashboards (the cards above link to them) are derived from the same source by <code>_render-audit-dashboard.py</code>.
+                When an audit changes, re-run <code>regen-all.sh</code> in this folder.
             </p>
-            <p>All numbers measured against <code>~/.cupertino-dev/search.db</code> on 2026-05-20 with the v1.2.0 candidate binary.</p>
+            <p>
+                Methodology in <a href="../design/search-quality-eval.md">docs/design/search-quality-eval.md</a>
+                ·
+                Architecture in <a href="../architecture/database.md">docs/architecture/database.md</a>
+                ·
+                Index in <a href="../database-handbook.md">docs/database-handbook.md</a>
+            </p>
         </footer>
 
     </div>

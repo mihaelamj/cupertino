@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate) · cupertino search quality</title>
+    <link rel="stylesheet" href="../_styles.css">
+</head>
+<body>
+    <div class="container">
+
+        <a class="back-link" href="../search-quality-v1.2.0.html">Back to dashboard</a>
+
+        <header>
+            <div class="eyebrow">`docs/design/search-quality-eval.md` §14.2 Phase 1.1 (deprecation-aware), query class E from §1.4</div>
+            <h1>Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate)</h1>
+            <p class="subtitle">This audit answers a focused question: when a developer queries a concept that exists in both modern Swift form (value type / stdlib) and the original NS-prefixed Objective-C form, <strong>does cupertino's ranker put the modern form above the legacy form?</strong> This is the most user-visible failure mode for an AI coding agent (Criterion 2: an agent told to use <code>NSURLConnection</code> when <code>URLSession</code> is the right answer in 2026 generates wrong code).</p>
+            <p class="meta">
+                <span>Measured 2026-05-20</span>·<span class="status status-strong" style="margin: 0 8px;">Strong</span>
+            </p>
+        </header>
+
+        <div class="kpi-strip">
+            <div class="kpi">
+                <div class="kpi-label">Headline result</div>
+                <div class="kpi-value green">30 / 30 (100%)</div>
+                <div class="kpi-desc">Auto-extracted from the audit's first measured section. Full data below.</div>
+            </div>
+        </div>
+
+        <section><h2>Aggregate</h2><table class="data-table"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>Pairs evaluated</td><td class="num">30</td></tr><tr><td><strong>Swift form ranked above Obj-C form</strong></td><td><strong>30 / 30 (100%)</strong></td></tr><tr><td>Obj-C form ranked above Swift form</td><td>0 / 30</td></tr><tr><td>Both forms in top-10</td><td>7 / 30</td></tr><tr><td>Only Swift form in top-10</td><td>23 / 30</td></tr><tr><td>Both missing from top-10</td><td>0 / 30</td></tr></tbody></table>
+<p><strong>Sign test (on the 7 both-present pairs):</strong> k = 7 Swift-higher of n = 7 trials, two-sided p = 0.0156, one-sided p = 0.0078. The null hypothesis (ranker has no preference between modern and legacy form) is rejected at the 0.01 level.</p>
+<p>For the other 23 pairs the Obj-C form did not appear in the top-10 at all, which is a stronger statement than "Swift higher in pair": the legacy form is not surfaced at all under a developer's natural query.</p>
+<p>The Swift form was at rank 1 (position 1) in every one of the 30 queries.</p>
+<p>---</p></section><section><h2>What the Pairs Look Like</h2><p>The 30 pairs cover three concept families:</p>
+<table class="data-table"><thead><tr><th>Family</th><th>Examples</th><th>Count</th></tr></thead><tbody><tr><td>Foundation value-type vs NS-class</td><td><code>URL</code>/<code>NSURL</code>, <code>Data</code>/<code>NSData</code>, <code>Date</code>/<code>NSDate</code>, <code>UUID</code>/<code>NSUUID</code>, <code>URLSession</code>/<code>NSURLSession</code>, <code>FileManager</code>/<code>NSFileManager</code>, <code>DateFormatter</code>/<code>NSDateFormatter</code>, <code>Bundle</code>/<code>NSBundle</code>, <code>Calendar</code>/<code>NSCalendar</code>, <code>TimeZone</code>/<code>NSTimeZone</code>, <code>Locale</code>/<code>NSLocale</code>, <code>Predicate</code>/<code>NSPredicate</code>, <code>AttributedString</code>/<code>NSAttributedString</code>, <code>Measurement</code>/<code>NSMeasurement</code> and others</td><td class="num">27</td></tr><tr><td>Swift stdlib vs NS-class</td><td><code>String</code>/<code>NSString</code>, <code>Array</code>/<code>NSArray</code>, <code>Dictionary</code>/<code>NSDictionary</code></td><td class="num">3</td></tr></tbody></table>
+<p>For each pair the query is the modern name as a developer would type it. The expected hits are documented as exact-URI patterns (<code>apple-docs://foundation/url</code> vs <code>apple-docs://foundation/nsurl</code>, etc.), verified to exist in the v1.2.0 candidate DB before the corpus was finalised.</p>
+<p>---</p></section><section><h2>Both-present Subset (the Strict Test)</h2><p>The 7 pairs where both forms appeared in the top-10. These are the rows where the ranker had to choose between two valid alternatives.</p>
+<table class="data-table"><thead><tr><th>Query</th><th>Swift rank</th><th>Obj-C rank</th></tr></thead><tbody><tr><td>URLRequest</td><td class="num">1</td><td class="num">3</td></tr><tr><td>URLComponents</td><td class="num">1</td><td class="num">2</td></tr><tr><td>Bundle</td><td class="num">1</td><td class="num">2</td></tr><tr><td>Measurement</td><td class="num">1</td><td class="num">8</td></tr><tr><td>DateComponents</td><td class="num">1</td><td class="num">4</td></tr><tr><td>DateInterval</td><td class="num">1</td><td class="num">6</td></tr><tr><td>Decimal</td><td class="num">1</td><td class="num">7</td></tr></tbody></table>
+<p>In every case Swift is at rank 1, Obj-C at rank 2 or later. The minimum Obj-C rank is 2 (<code>URLComponents</code>, <code>Bundle</code>); the maximum is 8 (<code>Measurement</code>). The gap between the two is consistent across the corpus.</p>
+<p>For the other 23 pairs the NS-prefixed form either does not exist as a separate documented page or ranks below position 10 (not measured here; the harness limits to top-10).</p>
+<p>---</p></section><section><h2>What This Says About the Ranker</h2><p>Cupertino's BM25F weights combined with the RRF source authority produce a strong preference for the modern Swift form. The behaviour is not accidental:</p>
+<ol><li>The Swift form is the framework-root for its concept (e.g., <code>foundation/url</code> is a struct page, not just a method on a class). Framework-root pages have a small BM25F boost (<code>framework=2.0</code> weight) and are favoured by the dedicated kind-multiplier in <code>Search.Index.Search.swift</code>.</li><li>The Swift form's <code>title</code> (e.g., "URL") matches the query exactly; the Obj-C form's title (e.g., "NSURL") matches the query as a prefix-of-token only, costing BM25F. With <code>title=10.0</code> weight, this is the dominant signal.</li><li>Modern Apple-docs pages have richer <code>content</code> (longer overview prose, more code examples). The Obj-C reference pages are largely stubs with declaration-only content. Length normalisation in BM25F penalises stubs.</li><li>The Apple-docs source weight in RRF (<code>apple-docs = 3.0</code>) treats both forms equally as far as fusion goes; the within-source BM25F decides the order, and within-source the above three factors all favour Swift.</li></ol>
+<p>The result is empirically what an AI coding agent in 2026 needs: searching "URLSession" returns the Swift <code>foundation/urlsession</code> value-type page at rank 1, with <code>foundation/nsurlsession</code> (if present at all) buried at rank 2-8.</p>
+<p>---</p></section><section><h2>Implications for Criterion 2 (anti-hallucination)</h2><p>Deprecation-axis failures are one of the four explicit anti-hallucination concerns in <code>docs/design/cupertino.md</code> §1.1 ("avoid generating code that ... uses deprecated APIs"). This baseline shows the ranker is doing its job on this axis at the v1.2.0 candidate state. An LLM agent grounded on cupertino's top-1 result for any of these 30 queries will write modern Swift, not legacy Objective-C-style code.</p>
+<p>This is <strong>necessary but not sufficient</strong> for Criterion 2. The agent could still hallucinate within the modern API surface (calling methods that don't exist on the correct type). Phase 1.7 (agent-end-to-end eval) is where that failure mode gets tested.</p>
+<p>---</p></section><section><h2>What This Baseline Does Not Cover</h2><ul><li><strong>Pairs where both forms have similar BM25 signals.</strong> If a Swift type carried sparser documentation than its NS counterpart, the ranker's content-length normalisation might flip the result. None of the 30 pairs tested exhibit this, but the test does not actively search for adversarial cases.</li><li><strong>Cross-source deprecation.</strong> The HIG might document a deprecated pattern that Swift Evolution later modernised; this evaluation does not look at that axis. Class F (cross-source canonical) is the relevant Phase 1.x companion.</li><li><strong>Symbol-level deprecation.</strong> Method-level deprecation (<code>init(string:)</code> deprecated in favour of <code>init?(string:)</code> on the same type) is not tested. Doc_symbols has the data; this corpus does not exercise it.</li><li><strong>Platform-availability-axis "deprecation."</strong> A Swift API marked <code>@available(*, deprecated)</code> is structurally the same as a legacy NS class for an agent's purposes; this corpus tests one shape of the problem, not all shapes.</li></ul>
+<p>---</p></section><section><h2>Method Recap</h2><p>30 (query, swift_URI, objc_URI) triples. For each: run <code>cupertino search &quot;&lt;query&gt;&quot; --limit 10</code> via the dev binary, find rank of <code>swift_URI</code> and rank of <code>objc_URI</code> in the top-10. Outcome per query: <code>swift_wins</code>, <code>objc_wins</code>, <code>both_missing</code>, or <code>tied</code>. Aggregate: count outcomes. Sign test (binomial, scipy.stats.binomtest) on the subset where both URIs appeared.</p>
+<p>Harness source: <code>/tmp/cupertino-search-eval-deprecation.py</code> (not yet versioned in repo; awaiting design §14.1.2 follow-up). Full JSON dump (all 30 top-10 lists): <code>/tmp/cupertino-search-eval-deprecation-20260520.json</code>.</p>
+<p>---</p></section><section><h2>Combined With the Canonical-lookup Baseline</h2><table class="data-table"><thead><tr><th>Baseline</th><th>Class</th><th>Headline</th></tr></thead><tbody><tr><td><code>search-quality-baseline-v1.2.0.md</code></td><td>A + B (canonical lookup + framework root)</td><td>MRR 0.9467, P@1 perfect on 46/50</td></tr><tr><td><code>search-quality-deprecation-baseline-v1.2.0.md</code> (this doc)</td><td>E (deprecation-aware)</td><td>Swift wins 30/30, sign-test p = 0.0078</td></tr></tbody></table>
+<p>Two of the eight query classes from §1.4 now have documented baselines on the v1.2.0 candidate DB. Six remain (C acronym, D CamelCase fragment, F cross-source, G prose, H symbol-attribute, and the Phase 1.7 agent-eval).</p></section>
+
+        <footer>
+            <p>
+                Generated from <a href="../../audits/search-quality-deprecation-baseline-v1.2.0.md">../../audits/search-quality-deprecation-baseline-v1.2.0.md</a> by <code>_render-audit-dashboard.py</code>.
+                Re-run after editing the audit; nothing here is hardcoded per-audit.
+            </p>
+            <p>
+                Part of <a href="../search-quality-v1.2.0.html">cupertino search-quality dashboards</a>.
+                Methodology in <a href="../../design/search-quality-eval.md">docs/design/search-quality-eval.md</a>.
+            </p>
+        </footer>
+
+    </div>
+</body>
+</html>
