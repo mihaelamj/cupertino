@@ -1,3 +1,4 @@
+import ASTIndexer
 import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
@@ -181,6 +182,20 @@ extension Search {
         /// Returns nil when the file is missing or unparseable so callers
         /// pass `availability: nil` and the new columns stay NULL — caller
         /// can still distinguish "not annotated" from "annotated but empty".
+        ///
+        /// #861 fallback: an older `PackageAvailabilityAnnotator` shipped
+        /// before #225 Part A and wrote `availability.json` files
+        /// WITHOUT the `swiftToolsVersion` field. Brew-shipped package
+        /// corpora that were annotated by that older annotator therefore
+        /// decode here with `result.swiftToolsVersion == nil` even
+        /// though `<dir>/Package.swift` line 1 carries a valid
+        /// `// swift-tools-version: X.Y` declaration. Caused 0/183
+        /// coverage on the dev corpus pre-fix. The fallback below reads
+        /// `<dir>/Package.swift` directly and parses line 1 via the
+        /// shared `ASTIndexer.AvailabilityParsers.parseSwiftToolsVersion`
+        /// path — same parser the annotator uses — so coverage tracks
+        /// what's actually on disk, not what the (possibly-stale)
+        /// availability.json captured.
         nonisolated static func loadAvailability(at dir: URL) -> PackageIndex.AvailabilityPayload? {
             let url = dir.appendingPathComponent(Core.PackageIndexing.availabilityFilename)
             guard FileManager.default.fileExists(atPath: url.path) else { return nil }
@@ -202,15 +217,35 @@ extension Search {
                     )
                 }
             }
+
+            // #861 — fall back to a direct Package.swift line-1 read
+            // when the decoded JSON lacks the field (pre-#225-Part-A
+            // annotator shape). Same parser as the annotator's own
+            // call site so both paths converge on the same value.
+            let swiftToolsVersion: String? = result.swiftToolsVersion
+                ?? readSwiftToolsVersionFromPackageManifest(at: dir)
+
             return PackageIndex.AvailabilityPayload(
                 deploymentTargets: result.deploymentTargets,
                 attributesByRelpath: attrsByRelpath,
                 source: "package-swift",
                 // #225 Part A — propagate the swift-tools-version from the
                 // annotator's read of Package.swift line 1. Nil when the
-                // manifest didn't carry a declaration we could parse.
-                swiftToolsVersion: result.swiftToolsVersion
+                // manifest didn't carry a declaration we could parse AND
+                // the fallback read of Package.swift also turned up empty.
+                swiftToolsVersion: swiftToolsVersion
             )
+        }
+
+        /// #861 fallback helper. Read `<dir>/Package.swift` if present
+        /// and run the shared `// swift-tools-version: X.Y` parser
+        /// over it. Returns nil when the file is missing, unreadable,
+        /// or carries no recognisable declaration.
+        nonisolated static func readSwiftToolsVersionFromPackageManifest(at dir: URL) -> String? {
+            let url = dir.appendingPathComponent("Package.swift")
+            guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+            guard let manifest = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+            return ASTIndexer.AvailabilityParsers.parseSwiftToolsVersion(from: manifest)
         }
 
         private nonisolated func walkDirectoryForFiles(dir: URL) -> [Core.PackageIndexing.ExtractedFile] {

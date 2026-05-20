@@ -114,21 +114,22 @@ struct Issue837PackagesV4MigrationTests {
 
     // MARK: - 1. Migration advances user_version + adds new columns
 
-    @Test("v3 DB advances to user_version=4, two new columns + package_symbols table land")
-    func migratesV3ToV4() async throws {
+    @Test("v3 DB advances to current schema (5), two new columns + package_symbols + package_imports tables land")
+    func migratesV3ToCurrent() async throws {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let path = dir.appendingPathComponent("packages.db")
         try Self.seedV3(at: path)
         #expect(try (Self.readPragma(at: path, sql: "PRAGMA user_version;").first?.first ?? "") == "3")
 
-        // Trigger the migration by opening with the v4 binary.
+        // Trigger the migration by opening with the current binary.
         let index = try await Search.PackageIndex(dbPath: path, logger: Logging.NoopRecording())
         await index.disconnect()
 
         let version = try Self.readPragma(at: path, sql: "PRAGMA user_version;").first?.first ?? ""
         #expect(version == String(Search.PackageIndex.schemaVersion))
-        #expect(version == "4")
+        // Current schema is v5 (#860 added `package_imports`).
+        #expect(version == "5")
 
         // New columns on package_metadata
         let metaCols = try Self.readPragma(at: path, sql: "PRAGMA table_info(package_metadata);")
@@ -136,10 +137,11 @@ struct Issue837PackagesV4MigrationTests {
         #expect(metaCols.contains("apple_imports_json"))
         #expect(metaCols.contains("enrichment_version"))
 
-        // New table package_symbols
+        // New tables: package_symbols (v4) + package_imports (v5).
         let tables = try Self.readPragma(at: path, sql: "SELECT name FROM sqlite_master WHERE type='table';")
             .compactMap(\.first)
         #expect(tables.contains("package_symbols"))
+        #expect(tables.contains("package_imports"))
 
         let symbolCols = try Self.readPragma(at: path, sql: "PRAGMA table_info(package_symbols);")
             .compactMap { $0.count >= 2 ? $0[1] : nil }
@@ -150,6 +152,12 @@ struct Issue837PackagesV4MigrationTests {
             "generic_constraints", "enrichment_version",
         ] {
             #expect(symbolCols.contains(expected), "expected column \(expected) on package_symbols; got \(symbolCols)")
+        }
+
+        let importCols = try Self.readPragma(at: path, sql: "PRAGMA table_info(package_imports);")
+            .compactMap { $0.count >= 2 ? $0[1] : nil }
+        for expected in ["id", "file_id", "module_name", "line", "is_exported"] {
+            #expect(importCols.contains(expected), "expected column \(expected) on package_imports; got \(importCols)")
         }
     }
 
@@ -177,7 +185,7 @@ struct Issue837PackagesV4MigrationTests {
 
     // MARK: - 3. Re-running the migration on the now-v4 DB is idempotent
 
-    @Test("re-opening a v4 DB does not re-migrate or error")
+    @Test("re-opening a migrated DB does not re-migrate or error")
     func idempotentReopen() async throws {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -191,7 +199,8 @@ struct Issue837PackagesV4MigrationTests {
         await second.disconnect()
 
         let version = try Self.readPragma(at: path, sql: "PRAGMA user_version;").first?.first ?? ""
-        #expect(version == "4")
+        #expect(version == String(Search.PackageIndex.schemaVersion))
+        #expect(version == "5")
 
         let metaCount = try Self.readPragma(at: path, sql: "SELECT COUNT(*) FROM package_metadata;")
             .first?.first ?? ""

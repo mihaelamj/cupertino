@@ -25,15 +25,26 @@ extension Search {
     /// - `kind` is stored `UNINDEXED` so it survives in SELECTs but doesn't bloat
     ///   the FTS index. Callers filter on it via the plain-column path.
     public actor PackageIndex {
-        /// Bumped 1 → 2 in the #219 follow-up: added six availability
-        /// columns to `package_metadata` (`min_ios`, `min_macos`,
-        /// `min_tvos`, `min_watchos`, `min_visionos`,
-        /// `availability_source`) and one column to `package_files`
-        /// (`available_attrs_json`). Mirrors the SearchIndex docs_metadata
-        /// pattern (#192 sec. C). Existing v1 DBs migrate via
-        /// `ALTER TABLE ADD COLUMN`; fresh installs land them inline via
-        /// `createTables`. No destructive migration.
-        public static let schemaVersion: Int32 = 4
+        /// Bumped 4 → 5 in the #860 fix: new `package_imports` table
+        /// (mirrors samples.db's `file_imports`). Captures the
+        /// `import X` statements the AST extractor surfaces per .swift
+        /// file. `Search.PackageIndex.applyAppleImports` now joins
+        /// against `package_imports.module_name` instead of
+        /// `package_files.module` (the package's OWN module name was
+        /// the wrong RHS for "frameworks this package imports").
+        ///
+        /// Earlier history: 1 → 2 in the #219 follow-up (six
+        /// availability columns on `package_metadata` + one on
+        /// `package_files`); 2 → 3 in #225 Part A
+        /// (`swift_tools_version` column); 3 → 4 in #837
+        /// (`apple_imports_json` + `enrichment_version` columns +
+        /// `package_symbols` table); 4 → 5 in #860 (this).
+        ///
+        /// Existing v1-v4 DBs migrate idempotently via `ALTER TABLE
+        /// ADD COLUMN` (pre-v4 columns) and `CREATE TABLE IF NOT
+        /// EXISTS` (`package_symbols` + `package_imports`). No
+        /// destructive migration.
+        public static let schemaVersion: Int32 = 5
 
         private var database: OpaquePointer?
         private let dbPath: URL
@@ -359,13 +370,33 @@ extension Search {
             -- #837 stage 1: per-package aggregate of Apple frameworks
             -- the package imports. JSON array of module names (e.g.
             -- ["SwiftUI","Combine"]), populated by the postprocessor's
-            -- packages-apple-imports pass joining package_files.module
-            -- against the AppleSymbolGraphsKit module list. NULL = the
-            -- pass hasn't run on this package yet.
+            -- packages-apple-imports pass joining `package_imports`
+            -- (see below) against the AppleSymbolGraphsKit module list.
+            -- NULL = the pass hasn't run on this package yet.
             -- enrichment_version tracks the pass version that last
             -- wrote the row.
             -- (Added via ALTER below for v3→v4 migration, defined
             -- inline here for fresh DBs.)
+
+            -- #860 fix: per-file capture of `import X` statements the
+            -- AST extractor surfaces. Mirrors samples.db's
+            -- `file_imports`. Pre-#860, the apple-imports pass joined
+            -- against `package_files.module` (the package's OWN Swift
+            -- module name, e.g. Soto / Vapor / Rules) which made
+            -- coverage 1/183 because that's the wrong RHS for
+            -- "frameworks this package imports". Post-#860, the pass
+            -- joins against `package_imports.module_name` and gets
+            -- the actual `import SwiftUI` / `import Combine` set.
+            CREATE TABLE IF NOT EXISTS package_imports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_id INTEGER NOT NULL,
+                module_name TEXT NOT NULL,
+                line INTEGER NOT NULL,
+                is_exported INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY (file_id) REFERENCES package_files(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_package_imports_file ON package_imports(file_id);
+            CREATE INDEX IF NOT EXISTS idx_package_imports_module ON package_imports(module_name);
             """
             try execute(sql)
         }
@@ -402,6 +433,33 @@ extension Search {
             if currentVersion < 4 {
                 try migrateToVersion4()
             }
+            if currentVersion < 5 {
+                try migrateToVersion5()
+            }
+        }
+
+        /// Version 4 → 5 (#860): adds the `package_imports` table
+        /// parallel to samples.db's `file_imports`. Captures the
+        /// `import X` statements the AST extractor surfaces per .swift
+        /// file. Idempotent CREATE TABLE IF NOT EXISTS pattern; no
+        /// destructive migration. The `AppleImportsPass` join column
+        /// flips from `package_files.module` (which carried the
+        /// package's OWN module name, the wrong RHS for "frameworks
+        /// this package imports") to `package_imports.module_name`
+        /// (the actual import statements).
+        private func migrateToVersion5() throws {
+            try execute("""
+            CREATE TABLE IF NOT EXISTS package_imports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_id INTEGER NOT NULL,
+                module_name TEXT NOT NULL,
+                line INTEGER NOT NULL,
+                is_exported INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY (file_id) REFERENCES package_files(id) ON DELETE CASCADE
+            );
+            """)
+            try execute("CREATE INDEX IF NOT EXISTS idx_package_imports_file ON package_imports(file_id);")
+            try execute("CREATE INDEX IF NOT EXISTS idx_package_imports_module ON package_imports(module_name);")
         }
 
         /// Version 3 → 4 (#837 stage 1 + 2): adds the `package_symbols`
@@ -719,12 +777,22 @@ extension Search {
             // package_files INSERT above used AUTOINCREMENT so we read
             // the row's id via sqlite3_last_insert_rowid for the
             // foreign key.
+            //
+            // #860 fix: the same AST extraction result carries the
+            // `import X` statements as `result.imports`. Pipe those
+            // into the new `package_imports` table so the
+            // apple-imports enrichment pass has a real RHS to join
+            // against. Pre-#860, the pass joined against
+            // `package_files.module` (the package's OWN Swift module
+            // name) and got 1/183 coverage because that wasn't the
+            // shape of "frameworks this package imports".
             if file.relpath.hasSuffix(".swift") {
                 guard let database else { return }
                 let fileId = sqlite3_last_insert_rowid(database)
                 let extractor = ASTIndexer.Extractor()
                 let result = extractor.extract(from: file.content)
                 try indexPackageSymbols(fileId: fileId, symbols: result.symbols)
+                try indexPackageImports(fileId: fileId, imports: result.imports)
             }
         }
 
@@ -806,16 +874,46 @@ extension Search {
             }
             guard !appleModules.isEmpty else { return 0 }
 
-            // Build per-package module list from package_files.
+            // #860 fix: build per-package module list from
+            // `package_imports` (the canonical `import X` statements
+            // the AST extractor surfaced per .swift file), JOINed up
+            // to `package_files` for `package_id`. Pre-#860 this
+            // query read `LOWER(package_files.module)` — which is the
+            // package's OWN module name (Soto / Vapor / Rules), not
+            // the Apple frameworks the package imports — so coverage
+            // was 1/183 (only matched by accident on `apple/swift-
+            // system` whose module is literally `System`). Post-#860
+            // the join column is `package_imports.module_name` and
+            // coverage tracks the real `import SwiftUI` /
+            // `import Combine` pattern.
+            //
+            // #860 follow-up — submodule-path normalisation. Swift
+            // allows `import Foundation.URL` /
+            // `import Foundation.ProcessInfo` to import a specific
+            // submodule. The AST extractor preserves the dotted
+            // suffix in `module_name`, but the constraint lookup's
+            // Apple framework slug is the bare framework prefix
+            // (`foundation`). Without normalisation, packages like
+            // `mxcl/Version` (which only carries `Foundation.*`
+            // submodule imports) showed up empty even though every
+            // `Foundation.X` import is semantically importing
+            // Foundation. The SQL splits at the first dot via
+            // `INSTR(module_name || '.', '.')` so a row like
+            // `Foundation.URL` reduces to `foundation` for join
+            // purposes; bare imports like `SwiftUI` stay `swiftui`
+            // unchanged.
             let selectSQL = """
-            SELECT package_id, LOWER(module) FROM package_files
-            WHERE module IS NOT NULL AND module != '';
+            SELECT
+                pf.package_id,
+                LOWER(SUBSTR(pi.module_name, 1, INSTR(pi.module_name || '.', '.') - 1))
+            FROM package_imports pi
+            JOIN package_files pf ON pi.file_id = pf.id;
             """
             var perPackage: [Int64: Set<String>] = [:]
             var selectStmt: OpaquePointer?
             defer { sqlite3_finalize(selectStmt) }
             guard sqlite3_prepare_v2(database, selectSQL, -1, &selectStmt, nil) == SQLITE_OK else {
-                throw PackageIndexError.sqliteError("prepare select package_files for apple-imports failed")
+                throw PackageIndexError.sqliteError("prepare select package_imports for apple-imports failed")
             }
             while sqlite3_step(selectStmt) == SQLITE_ROW {
                 let pkgId = sqlite3_column_int64(selectStmt, 0)
@@ -917,6 +1015,46 @@ extension Search {
                 } else {
                     sqlite3_bind_null(statement, 13)
                 }
+                _ = sqlite3_step(statement)
+            }
+        }
+
+        /// #860 — insert AST-extracted `import X` statements into
+        /// `package_imports`. Parallels
+        /// `Sample.Index.Database.indexImports` from samples.db. The
+        /// `Search.PackageIndexer.indexPackage` AST-extraction block
+        /// calls this once per .swift file after `indexPackageSymbols`,
+        /// inside the same per-package transaction.
+        ///
+        /// The pre-#860 indexer never captured imports at all, which
+        /// is why `applyAppleImports` had no join column with the
+        /// right shape. Now `package_imports.module_name` carries the
+        /// canonical `SwiftUI` / `Combine` / `Foundation` set per
+        /// file; the pass groups by package_id and writes the JSON
+        /// aggregate into `package_metadata.apple_imports_json`.
+        ///
+        /// Empty `imports` is a fast-path no-op. Bind failures are
+        /// silently skipped (one bad import shouldn't tear down the
+        /// whole package).
+        private func indexPackageImports(fileId: Int64, imports: [ASTIndexer.Import]) throws {
+            guard let database else { throw PackageIndexError.databaseNotInitialized }
+            guard !imports.isEmpty else { return }
+
+            let sql = """
+            INSERT INTO package_imports (file_id, module_name, line, is_exported)
+            VALUES (?, ?, ?, ?);
+            """
+
+            for imp in imports {
+                var statement: OpaquePointer?
+                defer { sqlite3_finalize(statement) }
+                guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
+                    continue
+                }
+                sqlite3_bind_int64(statement, 1, fileId)
+                sqlite3_bind_text(statement, 2, (imp.moduleName as NSString).utf8String, -1, nil)
+                sqlite3_bind_int(statement, 3, Int32(imp.line))
+                sqlite3_bind_int(statement, 4, imp.isExported ? 1 : 0)
                 _ = sqlite3_step(statement)
             }
         }
