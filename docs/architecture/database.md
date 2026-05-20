@@ -389,6 +389,20 @@ The following table positions cupertino against the comparable systems on the ax
 
 No prior system to our knowledge combines (a) embedded deployment, (b) BM25F field weighting on AST-extracted code identifiers, (c) multi-source weighted reciprocal rank fusion, and (d) authoritative-symbol-graph constraint enrichment within a single open-source pipeline. The combination is motivated by the specific structure of the Apple developer documentation corpus and is not a general claim about IR design.
 
+## 10.8 Search-quality measurement
+
+The architecture would be incomplete without a way to claim "the new build is better" or "no regression" from rigorous measurement rather than anecdote. Cupertino ships its evaluation harness alongside the indexer.
+
+**Methodology design:** `docs/design/search-quality-eval.md` (Cranfield-paradigm; 8 query classes with class-appropriate metrics; Phase 1 single-system mode + Phase 1.x per-class baselines + Phase 1.7 agent-end-to-end + Phase 1.8 version-diff comparison).
+
+**Harness:** `scripts/eval/search-quality-phase1.py` invokes `cupertino search --format json` against a `(binary, search.db)` pair for each query in a fixed corpus, parses the top-10 URI list, scores against per-query right-answer regexes, computes P@1 / P@5 / MRR / NDCG@10. Paired comparison mode: same corpus against two `(binary, db)` pairs, with Wilcoxon signed-rank on per-query reciprocal rank + McNemar 2 × 2 on the rank-1 outcome + bucketed query-list deltas (Added / Removed / Fixed / Degraded / Unchanged / Both-suboptimal). Sibling harness `search-quality-phase1-extended.py` extends to multi-corpus paired comparison (canonical-V2 + deprecation-pair corpora). Both deterministic — two runs against the same inputs produce byte-identical per-query ranks.
+
+**Audits:** `docs/audits/search-quality-*-v1.2.0.md`. Seven absolute baselines (one per query class) + three paired v1.1.0 → v1.2.0 version-diff audits land in this folder. The dashboard at `docs/dashboards/` auto-derives every card on the live site (https://cupertino.aleahim.com/) from the audit MDs via `regen-all.sh`; no per-audit hardcoding.
+
+**Headline result for v1.2.0:** rank-1 accuracy on the 50-query canonical-lookup corpus went from 52% (v1.1.0) to 92% (v1.2.0). McNemar two-sided p = 2 × 10⁻⁶; Wilcoxon one-sided p (v1.2.0 > v1.1.0) = 2.5 × 10⁻⁵. Zero queries regressed across 110 paired queries on three independent corpora. Full breakdown in `docs/release-writeup-v1.2.0.md`.
+
+**Why this lives in the architecture doc:** the harness is a fundamental piece of cupertino's design discipline. Every ranking change must justify itself against the existing baselines via this paired-comparison shape, or document why no regression test applies. The dashboard makes that disciplined comparison visible.
+
 ## 11. Where in the code
 
 | Concern | Path |
@@ -409,6 +423,10 @@ No prior system to our knowledge combines (a) embedded deployment, (b) BM25F fie
 | Source-specific strategies | `Packages/Sources/Search/Search.Strategies.*` |
 | Door dedup and garbage filter | per-source strategy classes |
 | Three-database save command | `Packages/Sources/CLI/Commands/CLIImpl.Command.Save.swift` |
+| Phase 1 search-quality harness (single-arm + paired) | `scripts/eval/search-quality-phase1.py` |
+| Phase 1 extended (multi-corpus paired) | `scripts/eval/search-quality-phase1-extended.py` |
+| Audit MDs (per-class baselines + version-diff) | `docs/audits/search-quality-*-v1.2.0.md` |
+| Dashboard renderer (auto-derived from audit MDs) | `docs/dashboards/_render-index-dashboard.py` + `regen-all.sh` |
 
 ## 12. Related documentation
 
@@ -416,7 +434,9 @@ No prior system to our knowledge combines (a) embedded deployment, (b) BM25F fie
 - `docs/PRINCIPLES.md`: the engineering principles (lossless URIs, collisions handled at the door, garbage filtered at input, 10x scale headroom) that constrain the indexer pipeline.
 - `docs/package-import-contract.md`: the strict-DI import contract between cupertino's Swift targets.
 - `docs/audits/release-readiness-v1.2.0.md`: a worked example of schema-shape and count-shape validation.
-- `docs/audits/search-quality-eval-methodology.md` (forthcoming): the IR-evaluation methodology used to compare two `search.db` builds quantitatively.
+- `docs/design/search-quality-eval.md`: the Cranfield-paradigm IR-evaluation methodology used to compare two `search.db` builds quantitatively. Implements §G1-G4 via `scripts/eval/search-quality-phase1.py`.
+- `docs/design/anti-hallucination-eval.md`: Phase 1.7 design (forward-looking) — measures whether an AI agent given cupertino's top-K results actually produces correct Swift code.
+- `docs/release-writeup-v1.2.0.md`: long-form v1.2.0 release narrative — what changed, where the gains came from (#77, #192, #254, #858), what v1.2.0 still gets wrong, how the measurement works, honest disclosure of the canonical-V2 corpus's one rank-shift case.
 - `docs/perf/2026-05-19-fts5-bulk-load-research.md`: deferred-work note on FTS5 bulk-load mitigations.
 - `docs/fun-facts.md`: empirical indexing-throughput curve.
 
