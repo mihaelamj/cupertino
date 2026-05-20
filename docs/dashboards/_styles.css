@@ -710,10 +710,23 @@ a.step-card {
     margin-top: 8px;
     border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
 }
+/* Tests-tab subsection titles ("Version-diff comparisons" + "Absolute
+   baselines"): sized halfway between the page H2 and the per-card H3
+   so the eye lands on the section break, not on the card titles. */
+.tests-subsection-heading {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    margin: 0 0 12px 0;
+    color: var(--text-primary);
+}
 .subsection-heading {
-    font-size: 18px;
-    font-weight: 600;
-    margin: 0 0 8px 0;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    margin: 0 0 10px 0;
     color: var(--apple-orange);
 }
 .subsection-desc {
