@@ -36,6 +36,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Indexer"),
     .singleTargetLibrary("IndexerModels"),
     .singleTargetLibrary("EnrichmentModels"),
+    .singleTargetLibrary("Enrichment"),
     .singleTargetLibrary("Ingest"),
     .singleTargetLibrary("Resources"),
     .singleTargetLibrary("Availability"),
@@ -608,6 +609,19 @@ let targets: [Target] = {
         dependencies: ["EnrichmentModels", "TestSupport"]
     )
 
+    // ---------- Enrichment (#837 phase 1B: live concrete EnrichmentRunner + the
+    // pass implementations that move out of Search.IndexBuilder in follow-up PRs).
+    // Depends on EnrichmentModels for the protocol seam plus Search / SampleIndex /
+    // CorePackageIndexing for the DB-specific calls each pass makes.
+    let enrichmentTarget = Target.target(
+        name: "Enrichment",
+        dependencies: ["EnrichmentModels"]
+    )
+    let enrichmentTestsTarget = Target.testTarget(
+        name: "EnrichmentTests",
+        dependencies: ["Enrichment", "EnrichmentModels", "TestSupport"]
+    )
+
     // ---------- Indexer (#244: SaveCommand indexer + preflight lift) ----------
     let indexerTarget = Target.target(
         name: "Indexer",
@@ -848,6 +862,8 @@ let targets: [Target] = {
         indexerModelsTestsTarget,
         enrichmentModelsTarget,
         enrichmentModelsTestsTarget,
+        enrichmentTarget,
+        enrichmentTestsTarget,
         indexerTarget,
         indexerTestsTarget,
         ingestTarget,
