@@ -30,6 +30,7 @@ from pathlib import Path
 
 from _audit_parser import (
     Audit,
+    SOURCE_META,
     derive_dashboard_name,
     discover_audits,
     extract_headline,
@@ -75,13 +76,25 @@ def _audit_summary(audit: Audit):
     icon_key = _icon_key(derive_dashboard_name(audit.source_path))
     # Tint matches the headline colour
     tint = {"green": "tint-green", "orange": "tint-orange", "red": "tint-red", "blue": "tint-blue"}.get(headline.color, "tint-blue")
-    # Derive the metric method from the audit's Aggregate section (or first section).
-    agg_html = ""
+    # Derive the metric method from the audit's Aggregate section first, then
+    # fall back to scanning every other section so audits whose prose doesn't
+    # name a metric in the Aggregate section still get a link.
+    method = None
     for key in ("aggregate", "results", "result", "summary"):
         if key in audit.sections:
             agg_html = linkify_metrics(md_to_html(audit.sections[key]), sources_url="sources.html")
-            break
-    method = first_metric_link(agg_html) if agg_html else None
+            method = first_metric_link(agg_html)
+            if method:
+                break
+    if not method:
+        # Scan the rest of the audit for the first metric mention
+        for sec_name in audit.sections_order:
+            if sec_name in ("aggregate", "results", "result", "summary"):
+                continue
+            body_html = linkify_metrics(md_to_html(audit.sections[sec_name]), sources_url="sources.html")
+            method = first_metric_link(body_html)
+            if method:
+                break
     return {
         "title": audit.title,
         "subtitle": audit.header_block.get("Methodology", "")[:80] or "Cupertino audit",
@@ -107,6 +120,30 @@ STATUS_TO_CLASS = {
 }
 
 
+def _source_chip(s: dict) -> str:
+    """Render the citation chip that appears under each card's metric.
+    Shows the metric name + the source citation, both linked. If no metric
+    was auto-detected, render a dashed placeholder pointing at sources.html."""
+    if s.get("method_label") and s.get("method_anchor"):
+        meta = SOURCE_META.get(s["method_anchor"], (s["method_label"], ""))
+        full_label, cite = meta
+        return (
+            '<div class="source-chip">'
+            '<span class="source-chip-label">Method &amp; source</span>'
+            f'<span class="source-chip-metric"><a href="sources.html#{s["method_anchor"]}">{html.escape(full_label)}</a></span>'
+            f'<span class="source-chip-cite"><a href="sources.html#{s["method_anchor"]}">{html.escape(cite)}</a></span>'
+            '</div>'
+        )
+    # Fallback when no metric token was found in the audit text
+    return (
+        '<div class="source-chip missing">'
+        '<span class="source-chip-label">Method &amp; source</span>'
+        '<span class="source-chip-metric"><a href="sources.html">Browse all citations</a></span>'
+        '<span class="source-chip-cite">No metric token detected in the audit text — see <a href="sources.html">sources.html</a></span>'
+        '</div>'
+    )
+
+
 def render_card(s: dict) -> str:
     # Progress bar width derived from raw_percent (0..100); fall back to 100 for fractions
     pct = s.get("raw_percent")
@@ -119,7 +156,7 @@ def render_card(s: dict) -> str:
                     <h3 class="card-title">{html.escape(s['title'])}</h3>
                     <p class="card-subtitle">{html.escape(s['subtitle'])}</p>
                     <div class="card-metric {s['color']}">{html.escape(s['value'])}</div>
-                    {("<p class='card-metric-label'>via <a href='sources.html#" + s['method_anchor'] + "'>" + html.escape(s['method_label']) + "</a></p>") if s['method_label'] else ""}
+                    {_source_chip(s)}
                     <div class="progress-bar"><div class="progress-bar-fill {s['color']}" style="width: {bar_width}%;"></div></div>
                     <p class="card-finding">{linkify_metrics(render_inline(s['finding']), sources_url='sources.html')}</p>
                     <a class="card-link" href="{html.escape(s['dashboard_url'], quote=True)}">Open audit dashboard</a>

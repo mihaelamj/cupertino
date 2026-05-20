@@ -540,6 +540,54 @@ footer p { margin: 6px 0; }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 
+/* Source citation chip — visibly prominent under each card metric */
+.source-chip {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 14px;
+    margin: 12px 0 16px;
+    font-size: 13px;
+    line-height: 1.35;
+    max-width: 100%;
+}
+.source-chip-label {
+    color: var(--text-tertiary);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.source-chip-metric {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+.source-chip-metric a {
+    color: var(--apple-blue);
+    text-decoration: none;
+}
+.source-chip-metric a:hover { text-decoration: underline; }
+.source-chip-cite {
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+.source-chip-cite a {
+    color: var(--text-secondary);
+    text-decoration: underline;
+    text-decoration-color: var(--border-strong);
+    text-underline-offset: 2px;
+}
+.source-chip-cite a:hover { color: var(--apple-blue); text-decoration-color: var(--apple-blue); }
+.source-chip.missing {
+    border-style: dashed;
+    background: transparent;
+}
+.source-chip.missing .source-chip-metric { color: var(--text-tertiary); font-weight: 500; }
+
 /* ===== Responsive ===== */
 @media (max-width: 640px) {
     .container { padding: 40px 16px 60px; }
