@@ -21,8 +21,12 @@ from pathlib import Path
 
 from _audit_parser import (
     Audit,
+    SOURCE_META,
     derive_dashboard_name,
     extract_headline,
+    find_cited_sources,
+    first_metric_link,
+    linkify_metrics,
     md_to_html,
     parse_audit,
     render_inline,
@@ -47,10 +51,49 @@ def render(audit: Audit) -> str:
     rel_audit = f"../../audits/{audit.source_path.name}" if audit.source_path else ""
 
     sections_html: list[str] = []
+    full_body_html_for_citations: list[str] = []
+    aggregate_html = ""
     for sec_name in audit.sections_order:
         body_md = audit.sections[sec_name]
+        body_html = linkify_metrics(md_to_html(body_md), sources_url="../sources.html")
+        if sec_name in ("aggregate", "results", "result", "summary") and not aggregate_html:
+            aggregate_html = body_html
+        full_body_html_for_citations.append(body_html)
         sections_html.append(
-            f'<section><h2>{html.escape(title_case(sec_name))}</h2>{md_to_html(body_md)}</section>'
+            f'<section><h2>{html.escape(title_case(sec_name))}</h2>{body_html}</section>'
+        )
+
+    # Derive the KPI-level method link from the Aggregate section (preferred)
+    # or the full body fallback.
+    method_link = first_metric_link(aggregate_html) or first_metric_link("\n".join(full_body_html_for_citations))
+    if method_link:
+        method_label, method_anchor = method_link
+        kpi_method_html = f'<div class="kpi-desc">via <a href="../sources.html#{method_anchor}">{html.escape(method_label)}</a></div>'
+    else:
+        kpi_method_html = '<div class="kpi-desc">Method described in the audit below.</div>'
+
+    # Build the "Sources cited in this measurement" card grid
+    cited = find_cited_sources("\n".join(full_body_html_for_citations))
+    sources_cards = []
+    for anchor, label in cited:
+        meta = SOURCE_META.get(anchor, (label, ""))
+        title, cite = meta
+        sources_cards.append(
+            f'<article class="card no-hover">'
+            f'<div class="card-icon tint-indigo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>'
+            f'<h3 class="card-title">{html.escape(title)}</h3>'
+            f'<p class="card-finding">{html.escape(cite)}</p>'
+            f'<a class="card-link" href="../sources.html#{anchor}">Open citation</a>'
+            f'</article>'
+        )
+    sources_section = ""
+    if sources_cards:
+        sources_section = (
+            '<section>'
+            '<h2>Sources cited in this measurement</h2>'
+            '<p style="color: var(--text-secondary); margin-bottom: 20px;">Every metric and method this audit relies on, with a link to the foundational source. Auto-collected from the audit text.</p>'
+            f'<div class="grid cols-2">{"".join(sources_cards)}</div>'
+            '</section>'
         )
 
     return f"""<!DOCTYPE html>
@@ -79,11 +122,13 @@ def render(audit: Audit) -> str:
             <div class="kpi">
                 <div class="kpi-label">Headline result</div>
                 <div class="kpi-value {headline.color}">{html.escape(headline.value)}</div>
-                <div class="kpi-desc">Auto-extracted from the audit's first measured section. Full data below.</div>
+                {kpi_method_html}
             </div>
         </div>
 
         {"".join(sections_html)}
+
+        {sources_section}
 
         <footer>
             <p>

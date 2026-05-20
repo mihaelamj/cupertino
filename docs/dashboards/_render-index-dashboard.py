@@ -33,6 +33,9 @@ from _audit_parser import (
     derive_dashboard_name,
     discover_audits,
     extract_headline,
+    first_metric_link,
+    linkify_metrics,
+    md_to_html,
     parse_audit,
     render_inline,
     title_case,
@@ -72,6 +75,13 @@ def _audit_summary(audit: Audit):
     icon_key = _icon_key(derive_dashboard_name(audit.source_path))
     # Tint matches the headline colour
     tint = {"green": "tint-green", "orange": "tint-orange", "red": "tint-red", "blue": "tint-blue"}.get(headline.color, "tint-blue")
+    # Derive the metric method from the audit's Aggregate section (or first section).
+    agg_html = ""
+    for key in ("aggregate", "results", "result", "summary"):
+        if key in audit.sections:
+            agg_html = linkify_metrics(md_to_html(audit.sections[key]), sources_url="sources.html")
+            break
+    method = first_metric_link(agg_html) if agg_html else None
     return {
         "title": audit.title,
         "subtitle": audit.header_block.get("Methodology", "")[:80] or "Cupertino audit",
@@ -84,6 +94,8 @@ def _audit_summary(audit: Audit):
         "audit_filename": audit.source_path.name if audit.source_path else "",
         "icon_svg": ICON_SVGS.get(icon_key, ICON_SVGS["default"]),
         "icon_tint": tint,
+        "method_label": method[0] if method else None,
+        "method_anchor": method[1] if method else None,
     }
 
 
@@ -107,8 +119,9 @@ def render_card(s: dict) -> str:
                     <h3 class="card-title">{html.escape(s['title'])}</h3>
                     <p class="card-subtitle">{html.escape(s['subtitle'])}</p>
                     <div class="card-metric {s['color']}">{html.escape(s['value'])}</div>
+                    {("<p class='card-metric-label'>via <a href='sources.html#" + s['method_anchor'] + "'>" + html.escape(s['method_label']) + "</a></p>") if s['method_label'] else ""}
                     <div class="progress-bar"><div class="progress-bar-fill {s['color']}" style="width: {bar_width}%;"></div></div>
-                    <p class="card-finding">{render_inline(s['finding'])}</p>
+                    <p class="card-finding">{linkify_metrics(render_inline(s['finding']), sources_url='sources.html')}</p>
                     <a class="card-link" href="{html.escape(s['dashboard_url'], quote=True)}">Open audit dashboard</a>
                 </article>"""
 

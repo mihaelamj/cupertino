@@ -85,6 +85,7 @@
                     <h3 class="card-title">Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate)</h3>
                     <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.1 (deprecation-aware), query </p>
                     <div class="card-metric green">30 / 30 (100%)</div>
+                    
                     <div class="progress-bar"><div class="progress-bar-fill green" style="width: 100%;"></div></div>
                     <p class="card-finding">This audit answers a focused question: when a developer queries a concept that exists in both modern Swift form (value type / stdlib) and the original NS-prefixed Objective-C form, <strong>does cupertino's ranker put the modern form above the legacy form?</strong> This is the most user-visible failure mode for an AI coding agent…</p>
                     <a class="card-link" href="audits/deprecation-v1.2.0.html">Open audit dashboard</a>
@@ -97,6 +98,7 @@
                     <h3 class="card-title">Search-quality baseline: v1.2.0 candidate `search.db`</h3>
                     <p class="card-subtitle">`docs/design/search-quality-eval.md` Phase 1 (single-system mode, no Phase 2 hum</p>
                     <div class="card-metric green">46 / 50</div>
+                    <p class='card-metric-label'>via <a href='sources.html#precision-at-k'>P@1</a></p>
                     <div class="progress-bar"><div class="progress-bar-fill green" style="width: 92%;"></div></div>
                     <p class="card-finding">This audit records the v1.2.0 candidate database's standing on Criterion 1 (good search) restricted to query classes <strong>A (canonical lookup)</strong> and <strong>B (framework-root)</strong> per the design's §1.4 taxonomy. It is an absolute baseline; future ranking changes are measured against this single-system snapshot using the same h…</p>
                     <a class="card-link" href="audits/baseline-v1.2.0.html">Open audit dashboard</a>
@@ -109,8 +111,9 @@
                     <h3 class="card-title">Search-quality baseline: CamelCase fragment recall (Phase 1.3, v1.2.0 candidate)</h3>
                     <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.3 (CamelCase fragment recall)</p>
                     <div class="card-metric green">0.9200</div>
+                    <p class='card-metric-label'>via <a href='sources.html#precision-at-k'>P@1</a></p>
                     <div class="progress-bar"><div class="progress-bar-fill green" style="width: 92%;"></div></div>
-                    <p class="card-finding">This audit tests <code>Search.Index.CamelCaseSplitter</code> (#77), the cupertino-specific mechanism that expands CamelCase identifiers like <code>LazyVGrid</code> into recall-aiding components <code>{Lazy, VGrid, Grid}</code> stored in the <code>docs_fts.symbol_components</code> column. The column carries BM25F weight 1.5 (one-tenth of <code>docs_fts.symbols</code> at …</p>
+                    <p class="card-finding">This audit tests <code>Search.Index.CamelCaseSplitter</code> (#77), the cupertino-specific mechanism that expands CamelCase identifiers like <code>LazyVGrid</code> into recall-aiding components <code>{Lazy, VGrid, Grid}</code> stored in the <code>docs_fts.symbol_components</code> column. The column carries <a href="sources.html#bm25f">BM25F</a> weight 1.5 (one-tenth of <code>docs_fts.symbols</code> at …</p>
                     <a class="card-link" href="audits/fragment-v1.2.0.html">Open audit dashboard</a>
                 </article>
                 <article class="card">
@@ -121,8 +124,9 @@
                     <h3 class="card-title">Search-quality baseline: cross-source canonical (Phase 1.2, v1.2.0 candidate)</h3>
                     <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.2 (cross-source canonical), q</p>
                     <div class="card-metric orange">19 / 25 (76.0%)</div>
+                    
                     <div class="progress-bar"><div class="progress-bar-fill orange" style="width: 76%;"></div></div>
-                    <p class="card-finding">This audit tests <code>Search.SmartQuery.sourceWeights</code> (apple-docs=3.0, swift-evolution=1.5, packages=1.5, swift-book=1.0, swift-org=1.0, samples=1.0, apple-archive=0.5, hig=0.5) — the per-source authority bias applied during cross-source RRF fan-out. This machinery had no test coverage before today.</p>
+                    <p class="card-finding">This audit tests <code>Search.SmartQuery.sourceWeights</code> (apple-docs=3.0, swift-evolution=1.5, packages=1.5, swift-book=1.0, swift-org=1.0, samples=1.0, apple-archive=0.5, hig=0.5) — the per-source authority bias applied during cross-source <a href="sources.html#rrf">RRF</a> fan-out. This machinery had no test coverage before today.</p>
                     <a class="card-link" href="audits/crosssource-v1.2.0.html">Open audit dashboard</a>
                 </article>
                 <article class="card">
@@ -133,6 +137,7 @@
                     <h3 class="card-title">Search-quality baseline: prose / conceptual (Phase 1.5, v1.2.0 candidate)</h3>
                     <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.5 (prose / conceptual), query</p>
                     <div class="card-metric red">4 / 15 (26.7%)</div>
+                    <p class='card-metric-label'>via <a href='sources.html#precision-at-k'>P@3</a></p>
                     <div class="progress-bar"><div class="progress-bar-fill red" style="width: 26%;"></div></div>
                     <p class="card-finding">This audit tests multi-word natural-language queries — the kind a developer or AI agent would actually issue in a coding session, like "how to make a type Sendable" or "actor reentrancy semantics" — that have no single canonical URI. The right answer is a small SET of relevant documents spread across apple-docs and …</p>
                     <a class="card-link" href="audits/prose-v1.2.0.html">Open audit dashboard</a>
@@ -145,6 +150,7 @@
                     <h3 class="card-title">Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</h3>
                     <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.6 (symbol-attribute), query c</p>
                     <div class="card-metric red">0.2533</div>
+                    <p class='card-metric-label'>via <a href='sources.html#precision-at-k'>P@5</a></p>
                     <div class="progress-bar"><div class="progress-bar-fill red" style="width: 25%;"></div></div>
                     <p class="card-finding">This audit tests symbol-attribute queries — queries that conceptually describe symbols by attribute (<code>@MainActor</code>, <code>@Observable</code>), by signature flag (<code>async throws</code>, <code>public static</code>), by conformance (<code>Sendable conformance</code>, <code>Hashable conformance</code>), or by kind (<code>actor type</code>, <code>protocol type</code>, <code>initializer</code>, `subscript…</p>
                     <a class="card-link" href="audits/symbol-attribute-v1.2.0.html">Open audit dashboard</a>
@@ -157,6 +163,7 @@
                     <h3 class="card-title">Search-quality baseline: acronym / synonym recall (Phase 1.4, v1.2.0 candidate)</h3>
                     <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.4 (acronym / synonym), query </p>
                     <div class="card-metric red">4 / 22 (18.2%)</div>
+                    <p class='card-metric-label'>via <a href='sources.html#mrr'>MRR</a></p>
                     <div class="progress-bar"><div class="progress-bar-fill red" style="width: 18%;"></div></div>
                     <p class="card-finding">This audit tests <code>framework_aliases.synonyms</code> — the cupertino-specific table that maps colloquial / abbreviated names to canonical framework slugs (<code>nfc → corenfc</code>, <code>wifi → corewlan</code>, <code>bluetooth → corebluetooth</code>, <code>ml → coreml</code>, etc.). The expectation: when a developer types the synonym alone as a query, cupertino sh…</p>
                     <a class="card-link" href="audits/acronym-v1.2.0.html">Open audit dashboard</a>

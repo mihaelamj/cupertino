@@ -327,6 +327,143 @@ def _parse_code_fence(lines: list[str], start: int) -> tuple[str, int]:
 # Path conventions
 # ============================================================================
 
+# ============================================================================
+# Source citation linkification
+# ============================================================================
+# Wrap every known metric / method mention with a link to the corresponding
+# anchor on sources.html. Run after the audit MD has been converted to HTML.
+# Order matters: most-specific first (so "Mean Reciprocal Rank" wins over MRR).
+
+METRIC_LINKS = [
+    # (regex, anchor)
+    (r"\bMean Reciprocal Rank\b",       "mrr"),
+    (r"\bMRR\b",                         "mrr"),
+    (r"\bNormalized Discounted Cumulative Gain\b", "ndcg"),
+    (r"\bNDCG(@\d+)?\b",                "ndcg"),
+    (r"\bMean Average Precision\b",     "map"),
+    (r"\bMAP\b",                         "map"),
+    (r"\bR-Precision\b",                 "r-precision"),
+    (r"\bP@\d+\b",                       "precision-at-k"),
+    (r"\bPrecision at \d+\b",            "precision-at-k"),
+    (r"\bBM25F\b",                       "bm25f"),
+    (r"\bBM25\b",                        "bm25"),
+    (r"\bReciprocal Rank Fusion\b",      "rrf"),
+    (r"\bRRF\b",                         "rrf"),
+    (r"\bWilcoxon signed-rank test\b",   "wilcoxon"),
+    (r"\bWilcoxon\b",                    "wilcoxon"),
+    (r"\bMcNemar(?:'s)?(?: test)?\b",    "mcnemar"),
+    (r"\bsign test\b",                   "sign-test"),
+    (r"\bbinomial test\b",               "sign-test"),
+    (r"\bCohen'?s kappa\b",              "cohens-kappa"),
+    (r"\bCranfield(?: paradigm)?\b",     "cranfield"),
+    (r"\bTREC pooling\b",                "trec-pooling"),
+    (r"\bFTS5\b",                        "fts5"),
+    (r"\bPorter stemmer\b",              "porter"),
+    (r"\bswift-syntax\b",                "swift-syntax"),
+    (r"\bsymbolgraph-extract\b",         "symbolgraph"),
+]
+
+_LINKED_TOKEN_RE = re.compile(r"(?:" + "|".join(p for p, _ in METRIC_LINKS) + r")")
+
+
+def linkify_metrics(html_text: str, sources_url: str = "../sources.html") -> str:
+    """Wrap each known metric / method mention with an <a> linking to its
+    citation. Skips anything already inside an <a>, <code>, or attribute value.
+    Tracks per-doc usage so the audit dashboard can list 'sources cited here'.
+    """
+    # Tokenise html into chunks; skip <a> and <code> bodies and tags.
+    out = []
+    i = 0
+    skip_until = None
+    n = len(html_text)
+    while i < n:
+        if skip_until and html_text[i:i+len(skip_until)] == skip_until:
+            out.append(skip_until)
+            i += len(skip_until)
+            skip_until = None
+            continue
+        if skip_until:
+            out.append(html_text[i])
+            i += 1
+            continue
+        # Detect <a ... > or <code ... > and skip to closing tag
+        if html_text[i] == "<":
+            close = html_text.find(">", i)
+            if close == -1:
+                out.append(html_text[i])
+                i += 1
+                continue
+            tag = html_text[i:close+1]
+            out.append(tag)
+            tag_name = tag[1:].split()[0].rstrip(">").lower()
+            if tag_name in ("a", "code", "pre") and not tag.startswith("</") and not tag.endswith("/>"):
+                skip_until = f"</{tag_name}>"
+            i = close + 1
+            continue
+        # Regular text region: find next < to bound it
+        nxt = html_text.find("<", i)
+        if nxt == -1:
+            nxt = n
+        region = html_text[i:nxt]
+        # Linkify metrics in this region
+        def repl(m):
+            tok = m.group(0)
+            # Find which pattern matched, in order
+            for pat, anchor in METRIC_LINKS:
+                if re.fullmatch(pat, tok):
+                    return f'<a href="{sources_url}#{anchor}">{tok}</a>'
+            return tok
+        out.append(_LINKED_TOKEN_RE.sub(repl, region))
+        i = nxt
+    return "".join(out)
+
+
+def first_metric_link(html_text: str) -> Optional[tuple[str, str]]:
+    """Return (label, anchor) of the first metric source link in the HTML, or
+    None if no metric was linkified. Used to label the headline KPI with the
+    method that produced it."""
+    m = re.search(r'<a href="[^"]*#([a-z-]+)">([^<]+)</a>', html_text)
+    if not m:
+        return None
+    return (m.group(2), m.group(1))
+
+
+def find_cited_sources(html_text: str) -> list[tuple[str, str]]:
+    """Walk the linkified HTML and return ordered unique (label, anchor) pairs
+    of every source mentioned. Used to render a 'Sources cited' section per
+    dashboard."""
+    seen: dict[str, str] = {}  # anchor -> first-seen label
+    for m in re.finditer(r'<a href="[^"]*#([a-z-]+)">([^<]+)</a>', html_text):
+        anchor, label = m.group(1), m.group(2)
+        if anchor not in seen:
+            seen[anchor] = label
+    return list(seen.items())
+
+
+# Source metadata for the per-audit "Sources cited" cards. Hand-curated since
+# this is the only place these labels need to stay short + consistent.
+SOURCE_META = {
+    "mrr": ("Mean Reciprocal Rank", "Voorhees (1999), TREC-8 QA Report"),
+    "ndcg": ("NDCG", "Järvelin & Kekäläinen (2002)"),
+    "map": ("Mean Average Precision", "Manning, Raghavan, Schütze (2008) IIR §8.4"),
+    "r-precision": ("R-Precision", "Manning, Raghavan, Schütze (2008) IIR §8.4"),
+    "precision-at-k": ("P@k (Precision at k)", "Manning, Raghavan, Schütze (2008) IIR §8.4"),
+    "bm25": ("BM25", "Robertson & Walker (1994), SIGIR"),
+    "bm25f": ("BM25F (field-weighted)", "Robertson, Zaragoza, Taylor (2004), CIKM"),
+    "rrf": ("Reciprocal Rank Fusion (k=60)", "Cormack, Clarke, Büttcher (2009), SIGIR"),
+    "wilcoxon": ("Wilcoxon signed-rank test", "Wilcoxon (1945), Biometrics Bulletin"),
+    "mcnemar": ("McNemar's test", "McNemar (1947), Psychometrika"),
+    "sign-test": ("Sign / binomial test", "Conover (1999), Practical Nonparametric Statistics"),
+    "cohens-kappa": ("Cohen's kappa", "Cohen (1960)"),
+    "cranfield": ("Cranfield paradigm", "Cleverdon (1967), Aslib Proceedings"),
+    "trec-pooling": ("TREC pooling", "Sparck Jones & van Rijsbergen (1975); TREC/NIST since 1992"),
+    "fts5": ("SQLite FTS5", "SQLite documentation"),
+    "porter": ("Porter stemmer", "Porter (1980)"),
+    "swift-syntax": ("swift-syntax", "Apple swift-syntax library"),
+    "symbolgraph": ("swift symbolgraph-extract", "Apple Swift toolchain"),
+}
+
+
 def derive_dashboard_name(audit_path: Path) -> str:
     """search-quality-acronym-baseline-v1.2.0.md → acronym-v1.2.0.html"""
     name = audit_path.stem
