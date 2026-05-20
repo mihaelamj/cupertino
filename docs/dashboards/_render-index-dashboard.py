@@ -183,11 +183,22 @@ def render_card(s: dict) -> str:
     # Progress bar width derived from raw_percent (0..100); fall back to 100 for fractions
     pct = s.get("raw_percent")
     bar_width = min(100, max(0, int(pct))) if pct is not None else 100
-    extra_class = " card-versiondiff" if s.get("is_versiondiff") else ""
-    badge = (
-        '<span class="card-kind-badge">Δ Version diff</span>'
-        if s.get("is_versiondiff") else ""
-    )
+    is_vd = bool(s.get("is_versiondiff"))
+    extra_class = " card-versiondiff" if is_vd else " card-baseline"
+    # Kind badge:
+    # - version-diff cards: "Δ Version diff" badge in the indigo accent
+    # - standing baselines (especially the weak ones): "Standing baseline"
+    #   badge so the reader sees the card describes a v1.2.0 absolute
+    #   weak spot that has existed for releases, NOT a v1.1.0 regression.
+    if is_vd:
+        badge = '<span class="card-kind-badge">Δ Version diff</span>'
+    else:
+        badge_text = (
+            "Standing baseline · all-time"
+            if s.get("status") == "Weak"
+            else "Standing baseline"
+        )
+        badge = f'<span class="card-kind-badge card-kind-baseline">{html.escape(badge_text)}</span>'
     return f"""                <article class="card{extra_class}">
                     <div class="card-header">
                         <div class="card-icon {s['icon_tint']}">{s['icon_svg']}</div>
@@ -245,6 +256,18 @@ def render_index(audits_dir: Path, out_path: Path, extras_path: Path | None = No
     versiondiffs, baselines = split_by_type(summaries)
     agg_vd = compute_aggregate(versiondiffs)
     agg_bl = compute_aggregate(baselines)
+    versiondiff_cards_html = "\n".join(render_card(s) for s in versiondiffs)
+    # Within baselines, the weak ones sit at the bottom (sorted by status).
+    # Find the first Weak baseline and insert an anchor right before it
+    # so the "Standing weak spots" KPI tile lands there.
+    baseline_cards_parts = []
+    weak_anchor_inserted = False
+    for s in baselines:
+        if (not weak_anchor_inserted) and s["status"] == "Weak":
+            baseline_cards_parts.append('<div id="tests-weak" class="anchor-marker"></div>')
+            weak_anchor_inserted = True
+        baseline_cards_parts.append(render_card(s))
+    baseline_cards_html = "\n".join(baseline_cards_parts)
     cards_html = "\n".join(render_card(s) for s in summaries)
 
     extras = {}
@@ -301,21 +324,21 @@ def render_index(audits_dir: Path, out_path: Path, extras_path: Path | None = No
             </div>
 
             <div class="kpi-strip">
-                <div class="kpi">
+                <a class="kpi kpi-link" href="#tests-versiondiff" data-jump-tab="tests" data-jump-anchor="tests-versiondiff">
                     <div class="kpi-label">v1.2.0 vs earlier releases</div>
                     <div class="kpi-value {'green' if agg_vd['weak'] == 0 else 'orange'}">{agg_vd['strong']} / {agg_vd['total']}</div>
                     <div class="kpi-desc">Version-diff audits showing v1.2.0 improvement. {agg_vd['weak']} regression{'s' if agg_vd['weak'] != 1 else ''}.</div>
-                </div>
-                <div class="kpi">
+                </a>
+                <a class="kpi kpi-link" href="#tests-baseline" data-jump-tab="tests" data-jump-anchor="tests-baseline">
                     <div class="kpi-label">v1.2.0 absolute quality</div>
                     <div class="kpi-value green">{agg_bl['strong']} / {agg_bl['total']}</div>
                     <div class="kpi-desc">Baselines passing strongly on their own terms (not vs v1.1.0).</div>
-                </div>
-                <div class="kpi">
+                </a>
+                <a class="kpi kpi-link" href="#tests-weak" data-jump-tab="tests" data-jump-anchor="tests-weak">
                     <div class="kpi-label">Standing weak spots</div>
                     <div class="kpi-value {'red' if agg_bl['weak'] > 0 else 'green'}">{agg_bl['weak']} / {agg_bl['total']}</div>
                     <div class="kpi-desc">Baseline classes where v1.2.0 has known weaknesses; tracked with open issues. <strong>Not regressions against any prior release.</strong></div>
-                </div>
+                </a>
             </div>
 
             {callout_html}
@@ -326,8 +349,17 @@ def render_index(audits_dir: Path, out_path: Path, extras_path: Path | None = No
             <section>
                 <h2 style="margin-top: 0;">Every measurement, with a path to the full audit</h2>
                 <p style="color: var(--text-secondary); margin-bottom: 24px;">Each card below summarises one audit. The bar visualises how close to a perfect score the test scored. Open any card to see the full audit dashboard.</p>
+
+                <h3 id="tests-versiondiff" style="margin-top: 8px;">Version-diff comparisons &mdash; how v1.2.0 stacks against earlier releases</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 16px;">{agg_vd['total']} paired measurements covering 110+ queries. {agg_vd['strong']} strong, {agg_vd['mixed']} mixed, {agg_vd['weak']} regression. All show v1.2.0 improving over its predecessor.</p>
                 <div class="grid">
-{cards_html}
+{versiondiff_cards_html}
+                </div>
+
+                <h3 id="tests-baseline" style="margin-top: 48px;">Absolute baselines &mdash; how v1.2.0 stands on its own terms</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 16px;">{agg_bl['total']} single-system measurements (no comparison to any prior release). {agg_bl['strong']} pass strongly, {agg_bl['mixed']} mixed, {agg_bl['weak']} weak. The weak entries below are <strong>standing weaknesses</strong> &mdash; query classes where v1.2.0's ranker has known gaps; each has an open issue tracking the candidate fix. <strong>These are not v1.1.0 / v1.0.2 regressions.</strong></p>
+                <div class="grid">
+{baseline_cards_html}
 {pending_card}
                 </div>
             </section>
@@ -377,26 +409,30 @@ def render_index(audits_dir: Path, out_path: Path, extras_path: Path | None = No
                 <p>For each test I run a fixed list of queries against cupertino, capture the top-10 results, score them against pre-defined right-answer patterns, and report the headline number plus a per-query breakdown. No anecdotes; everything is reproducible.</p>
 
                 <div class="grid cols-2">
-                    <article class="card no-hover">
+                    <a class="card step-card" href="https://github.com/mihaelamj/cupertino/blob/main/scripts/eval/search-quality-phase1.py#L74-L133">
                         <div class="card-icon tint-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
                         <h3 class="card-title">Step 1 · A query corpus</h3>
                         <p class="card-finding">~30-50 queries per test, hand-curated to cover breadth (types, protocols, methods, framework concepts). Each query carries a right-answer pattern.</p>
-                    </article>
-                    <article class="card no-hover">
+                        <span class="card-link">View corpus source on GitHub →</span>
+                    </a>
+                    <a class="card step-card" href="https://github.com/mihaelamj/cupertino/blob/main/scripts/eval/search-quality-phase1.py">
                         <div class="card-icon tint-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></div>
                         <h3 class="card-title">Step 2 · Run the binary</h3>
                         <p class="card-finding">A Python harness invokes <code>cupertino search</code> via subprocess for each query, extracts the top-10 URIs from stdout. Read-only against the database.</p>
-                    </article>
-                    <article class="card no-hover">
+                        <span class="card-link">View harness on GitHub →</span>
+                    </a>
+                    <a class="card step-card" href="docs/design-search-quality-eval.html#section-1-2-the-cranfield-paradigm-and-its-metrics">
                         <div class="card-icon tint-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
                         <h3 class="card-title">Step 3 · Score</h3>
                         <p class="card-finding">Per-query MRR / P@k / NDCG / per-class custom metric. Auto-extracted, no human in the loop for Phase 1.</p>
-                    </article>
-                    <article class="card no-hover">
+                        <span class="card-link">Read methodology →</span>
+                    </a>
+                    <a class="card step-card" href="https://github.com/mihaelamj/cupertino/tree/main/docs/audits">
                         <div class="card-icon tint-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
                         <h3 class="card-title">Step 4 · Report</h3>
                         <p class="card-finding">Markdown audit at <code>docs/audits/</code>, JSON raw data at <code>/tmp/</code>, this dashboard auto-derived from the markdown. Future ranking changes pair against the baseline using Wilcoxon / McNemar significance tests.</p>
-                    </article>
+                        <span class="card-link">Browse all audits →</span>
+                    </a>
                 </div>
 
                 <p style="margin-top: 32px;">
@@ -430,13 +466,30 @@ def render_index(audits_dir: Path, out_path: Path, extras_path: Path | None = No
         (function() {{
             const tabs = document.querySelectorAll('.tab');
             const panels = document.querySelectorAll('.tab-panel');
+            function switchTab(target) {{
+                tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === target));
+                panels.forEach(p => p.classList.toggle('active', p.id === 'panel-' + target));
+            }}
             tabs.forEach(tab => {{
-                tab.addEventListener('click', () => {{
-                    const target = tab.dataset.tab;
-                    tabs.forEach(t => t.classList.remove('active'));
-                    panels.forEach(p => p.classList.remove('active'));
-                    tab.classList.add('active');
-                    document.getElementById('panel-' + target).classList.add('active');
+                tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+            }});
+            // KPI tiles in the Overview tab link to anchors inside the
+            // Tests tab. Hijack the click so we switch tabs FIRST, then
+            // let the browser handle the anchor scroll.
+            document.querySelectorAll('.kpi-link').forEach(link => {{
+                link.addEventListener('click', (e) => {{
+                    const tab = link.dataset.jumpTab;
+                    const anchor = link.dataset.jumpAnchor;
+                    if (!tab || !anchor) return;
+                    e.preventDefault();
+                    switchTab(tab);
+                    // setTimeout so the panel display:block takes effect
+                    // before the scroll, otherwise we scroll to an
+                    // offset that's still inside the (hidden) panel.
+                    setTimeout(() => {{
+                        const el = document.getElementById(anchor);
+                        if (el) el.scrollIntoView({{behavior: 'smooth', block: 'start'}});
+                    }}, 0);
                 }});
             }});
         }})();
