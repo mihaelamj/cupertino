@@ -71,8 +71,9 @@ The brew DB at `~/.cupertino/search.db` is user-production state. Use a SQLite r
 **Concrete baselines on the v1.2.0 candidate DB (2026-05-20):**
 - `docs/audits/search-quality-baseline-v1.2.0.md` — classes A + B (canonical lookup, framework root): **MRR 0.9467, P@1 perfect on 46/50**. The reference for paired ranking-change comparisons.
 - `docs/audits/search-quality-deprecation-baseline-v1.2.0.md` — class E (deprecation-aware): **Swift form wins 30/30 (100%) over NS-prefixed Obj-C form, sign-test p = 0.0078**. Cupertino reliably promotes modern Swift over legacy NS-class for the most user-visible anti-hallucination concern.
+- `docs/audits/search-quality-crosssource-baseline-v1.2.0.md` — class F (cross-source canonical): **19/19 OK when the expected source is in top-10, p = 1.9 × 10⁻⁶**. Reveals that HIG and apple-archive content is systematically out-competed by apple-docs at top-1 due to the 6:1 source-weight ratio. This is the intended bias for AI-agent code-generation grounding but has a cost for design-vocabulary queries.
 
-Remaining classes per the design's §14.2 priority order: C (acronym), D (CamelCase fragment), F (cross-source canonical), G (prose), H (symbol-attribute) — not yet baselined. Plus §14.4 Phase 1.7 agent-end-to-end eval.
+Remaining classes per the design's §14.2 priority order: C (acronym), D (CamelCase fragment), G (prose), H (symbol-attribute) — not yet baselined. Plus §14.4 Phase 1.7 agent-end-to-end eval.
 
 The relationship between the universal rule and the cupertino design is:
 - The **universal rule** says "this is how IR evaluation must be done if it is done."
