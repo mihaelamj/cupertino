@@ -1,8 +1,8 @@
-## Unreleased — staged for 1.2.0
+## 1.2.0 (2026-05-20)
 
-_Code on `origin/main` past the v1.1.0 tag. No binary tag yet — the v1.2.0 release is gated on the live `cupertino save --docs` WAL run captured in #514 (currently running against the post-Claw-merge 414,807-file corpus). All work below is mergeable, tested, and pre-flight-clean; the tag drops once #514 verifies the WAL concurrency win on the docs workload (the samples workload was already verified in PR #515)._
+_The "ironclad" round. 107 CHANGELOG entries below; +762 net new tests since v1.1.0 (2218 / 303 suites green); 0 open bug-labeled issues at tag time. First release to ship documented search-quality baselines (Phase 1 canonical lookup + Phase 1.1 deprecation-aware + Phase 1.2 cross-source + Phase 1.3 CamelCase fragment + Phase 1.4 acronym/synonym + Phase 1.5 prose/conceptual + Phase 1.6 symbol-attribute + Phase 1.7 agent-end-to-end), with the version-diff audit (Phase 1.8) pairing v1.0.2 against v1.2.0 via McNemar. Audits live at `docs/audits/search-quality-*-v1.2.0.md`; the live dashboard at https://cupertino.aleahim.com/. #514 perf measurement (WAL throughput on the docs workload) is deferred to v1.3.x as backlog per `docs/audits/release-readiness-v1.2.0.md`; the samples-workload measurement already landed via PR #515 and the original #236 lock-contention symptom is observably gone._
 
-_The v1.1.1 corpus tag exists on `cupertino-docs` only (not on this repo). It marks the post-Claw-merge source corpus snapshot: 414,807 source files, +2,285 new pages + 498 richer overwrites from Claw mini's 5.5-day crawl, with 153 React-SPA-404 poison files filtered out at the merge boundary. The 13-category poison audit returns zero matches on the merged corpus. The matching bundle (`cupertino-databases-v1.2.0.zip`) is rebuilt from the same source state when v1.2.0 ships._
+_The matching corpus snapshot is `cupertino-docs@v1.2.0` (post-Claw-merge: 414,807 source files, +2,285 new pages + 498 richer overwrites from the Claw mini 5.5-day crawl, 153 React-SPA-404 poison files filtered out at the merge boundary, 13-category poison audit zero-matches on the merged corpus). The bundle `cupertino-databases-v1.2.0.zip` is rebuilt from that source state._
 
 ### Added
 

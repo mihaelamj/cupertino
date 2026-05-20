@@ -2,7 +2,26 @@
 
 ## Active focus
 
-[#183 — bugs → recrawl → vector → tutor](https://github.com/mihaelamj/cupertino/issues/183). v1.0.0 "First Light" shipped 2026-05-05, v1.0.1 shipped 2026-05-08, v1.0.2 shipped 2026-05-11.
+[#183 — bugs → recrawl → vector → tutor](https://github.com/mihaelamj/cupertino/issues/183). Shipped: v1.0.0 "First Light" (2026-05-05), v1.0.1 (2026-05-08), v1.0.2 (2026-05-11), v1.1.0 (2026-05-14), **v1.2.0 "ironclad" (2026-05-20)**. Live search-quality dashboard: https://cupertino.aleahim.com/.
+
+## v1.2.0 (shipped 2026-05-20)
+
+The "ironclad" round. 107 CHANGELOG entries; +762 net new tests since v1.1.0 (2218 / 303 suites green); 0 open bug-labeled issues at tag time. First release to ship documented search-quality baselines: Phase 1 canonical lookup, Phase 1.1 deprecation-aware, Phase 1.2 cross-source, Phase 1.3 CamelCase fragment, Phase 1.4 acronym/synonym, Phase 1.5 prose/conceptual, Phase 1.6 symbol-attribute, Phase 1.7 agent-end-to-end, plus the Phase 1.8 version-diff audit pairing v1.0.2 against v1.2.0 via McNemar. Audits at `docs/audits/search-quality-*-v1.2.0.md`. Headlines:
+
+- **Concurrent-save infrastructure:** #253 SaveSiblingGate + #722 `--force-replace` recovery flag with typed-confirmation gate
+- **MCP surface:** #226 platform filter on 4 AST tools + #665 `search_generics` (12th MCP tool) + platform filter on `search_generics`
+- **Schema bumps:** packages.db v2→v3 (#225 Part A `swift_tools_version`), search.db v15→v18 (#225 Part B + #789 drop redundant packages tables)
+- **Indexer hardening:** #113 `doc://` → `https://` rewriter + audit-count, #668 `docs_structured` coverage, #669 inheritance fallback, #673 ironclad phases E/F/G/H
+- **Save pipeline robustness:** #779 `optionalDir` resolves symlinks before FileManager URL-variant APIs + per-strategy `do/catch` keeps enrichment passes running if one strategy throws; #786 `Shared.Utils.FileSystem` wrappers at 6 call sites
+- **Observability:** #780 / #781 per-line ISO 8601 timestamps + startup invocation banner in CLI logs
+- **Triage discipline:** `scripts/check-canonical-db-shape.sh` smoke check + `scripts/check-pre-index.sh` pre-flight validation gate (#794)
+- **Documented design + architecture:** `docs/design/cupertino.md` rewrite + `docs/architecture/database.md` + `docs/database-handbook.md` single entry point
+
+Upgrade path: `cupertino setup` to download the v1.2.0 bundle. The new bundle was indexed against the post-#779 binary against `cupertino-docs@v1.2.0` (post-Claw-merge: 414,807 source files, +2,285 new pages + 498 richer overwrites from Claw mini's 5.5-day crawl, 153 React-SPA-404 poison files filtered at the merge boundary; 13-category poison audit zero-matches on the merged corpus).
+
+## v1.1.0 (shipped 2026-05-14)
+
+Bundle rebuilt against the post-cleanup corpus (`cupertino-docs@v1.1.0`): 285,735 documents across 420 frameworks, 0 poison rows under all 13 audit categories, includes 43 markdown gap-fillers converted to canonical `StructuredDocumentationPage` JSON, benefits from the crawler-side JS-fallback gate (PR #432). Same SQLite schema as v1.0.x (`user_version` 13).
 
 ## v1.0.2 (shipped 2026-05-11)
 
@@ -18,9 +37,9 @@ Closed:
 
 Upgrade path: `cupertino setup` to download the v1.0.2 bundle. v12 DBs are rejected at open with "rebuild required" message. No in-place migration ships (an earlier draft was deleted before tag).
 
-## v1.0.3 (next)
+## v1.3.x (next)
 
-Open follow-ups from the #283 audit: [#284](https://github.com/mihaelamj/cupertino/issues/284) crawler error-page filter (45 rows of 403/502 content in the old bundle), [#285](https://github.com/mihaelamj/cupertino/issues/285) dash/underscore URI canonicalization (31 clusters / 62 rows, low priority). Plus carried-over [#236](https://github.com/mihaelamj/cupertino/issues/236) WAL on local DBs, [#241](https://github.com/mihaelamj/cupertino/issues/241) help-text audit, [#253](https://github.com/mihaelamj/cupertino/issues/253) concurrent `save` detection.
+Carried-over backlog: [#514](https://github.com/mihaelamj/cupertino/issues/514) WAL throughput measurement on the docs workload (samples-workload measurement landed via PR #515); [#410](https://github.com/mihaelamj/cupertino/issues/410) split search.db; [#708](https://github.com/mihaelamj/cupertino/issues/708) / [#709](https://github.com/mihaelamj/cupertino/issues/709) / [#715](https://github.com/mihaelamj/cupertino/issues/715) / [#719](https://github.com/mihaelamj/cupertino/issues/719) search-quality cluster (all closed as false positives this round, refile if real); [#713](https://github.com/mihaelamj/cupertino/issues/713) fastlane + [#714](https://github.com/mihaelamj/cupertino/issues/714) tuist external sources; [#624](https://github.com/mihaelamj/cupertino/issues/624) test-everything skill.
 
 Live bug list: https://github.com/mihaelamj/cupertino/issues?q=is%3Aopen+is%3Aissue+label%3Abug
 
@@ -28,7 +47,7 @@ Workflow: trunk-based development. Branch from `main` per bug (`fix/<issue>-<top
 
 ## Phase 2 onwards
 
-See #183. v1.1+ design and academic research review live in `mihaela-blog-ideas/cupertino/research/`. The diagnostic block in MCP responses (Phase 2.1) is the keystone for everything that follows; do not start it until v1.0.3 ships.
+See #183. v1.1+ design and academic research review live in `mihaela-blog-ideas/cupertino/research/`. The diagnostic block in MCP responses (Phase 2.1) is the keystone for everything that follows; do not start it until the v1.3.x backlog above is drained.
 
 ## Conventions
 
