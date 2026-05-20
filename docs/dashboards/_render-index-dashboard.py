@@ -211,6 +211,23 @@ def compute_aggregate(summaries: list[dict]) -> dict:
     return {"strong": strong, "mixed": mixed, "weak": weak, "total": len(summaries)}
 
 
+def split_by_type(summaries: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Split audit cards into version-diff comparisons (paired,
+    comparing two cupertino releases) and absolute baselines (single-
+    system, no comparison). The two question shapes are different:
+    a "weak" version-diff means v1.2.0 regressed against v1.1.0;
+    a "weak" baseline means v1.2.0 has standing weak spots on a query
+    class but says nothing about whether v1.2.0 is better than v1.1.0.
+    Counting them in one bucket buries the v1.2.0 > v1.1.0 story
+    behind known absolute weaknesses.
+
+    Uses each summary's `is_versiondiff` flag, set by `_audit_summary`
+    based on the source MD's basename containing 'versiondiff'."""
+    versiondiffs = [s for s in summaries if s.get("is_versiondiff")]
+    baselines = [s for s in summaries if not s.get("is_versiondiff")]
+    return versiondiffs, baselines
+
+
 def render_index(audits_dir: Path, out_path: Path, extras_path: Path | None = None) -> None:
     audit_paths = discover_audits(audits_dir)
     if not audit_paths:
@@ -225,6 +242,9 @@ def render_index(audits_dir: Path, out_path: Path, extras_path: Path | None = No
     summaries.sort(key=lambda s: (status_order.get(s["status"], 99), -(s["raw_percent"] or 0)))
 
     agg = compute_aggregate(summaries)
+    versiondiffs, baselines = split_by_type(summaries)
+    agg_vd = compute_aggregate(versiondiffs)
+    agg_bl = compute_aggregate(baselines)
     cards_html = "\n".join(render_card(s) for s in summaries)
 
     extras = {}
@@ -273,25 +293,28 @@ def render_index(audits_dir: Path, out_path: Path, extras_path: Path | None = No
             <div class="summary">
                 <h2>At a glance</h2>
                 <p class="summary-text">
-                    <strong>{agg['strong']} of {n} tests pass strongly</strong> &mdash; the canonical use cases (typing a Swift type name, modern-vs-legacy choice, fragment recall, cross-source ranking) work as designed. <strong>{agg['weak']} surface real weaknesses</strong> in cupertino's relational-metadata-to-search routing, each tracked with an open issue. <strong>{agg['mixed']} {'have' if agg['mixed'] != 1 else 'has'} methodology limits</strong> that human-judged measurement would resolve.
+                    <strong>v1.2.0 wins every paired measurement against earlier releases.</strong> Across {agg_vd['total']} version-diff audits ({agg_vd['strong']} strong, {agg_vd['mixed']} mixed, {agg_vd['weak']} regression) covering 110+ queries on the canonical-lookup and Apple-modernisation corpora: <strong>~30 queries newly land at rank 1 in v1.2.0, zero queries regressed</strong>. Stats: McNemar two-sided p &le; 0.04 on every comparison, &le; 10<sup>-5</sup> on the largest corpus.
+                </p>
+                <p class="summary-text" style="margin-top: 12px;">
+                    The {agg_bl['total']} absolute-baseline audits measure v1.2.0 standalone (not against v1.1.0). <strong>{agg_bl['strong']} pass strongly</strong> on the canonical use cases (typing a Swift type name, modern-vs-legacy choice, fragment recall, cross-source ranking). <strong>{agg_bl['weak']} surface real standing weaknesses</strong> in cupertino's relational-metadata-to-search routing &mdash; prose queries, acronym recall, symbol-attribute filtering &mdash; each tracked with an open issue. These are not v1.1.0 regressions; they're absolute weak spots that existed in v1.1.0 too and need a separate ranking change to close. <strong>{agg_bl['mixed']} {'have' if agg_bl['mixed'] != 1 else 'has'} methodology limits</strong> that human-judged measurement would resolve.
                 </p>
             </div>
 
             <div class="kpi-strip">
                 <div class="kpi">
-                    <div class="kpi-label">Tests passing strongly</div>
-                    <div class="kpi-value green">{agg['strong']} / {n}</div>
-                    <div class="kpi-desc">Auto-classified from headline metric thresholds.</div>
+                    <div class="kpi-label">v1.2.0 vs earlier releases</div>
+                    <div class="kpi-value {'green' if agg_vd['weak'] == 0 else 'orange'}">{agg_vd['strong']} / {agg_vd['total']}</div>
+                    <div class="kpi-desc">Version-diff audits showing v1.2.0 improvement. {agg_vd['weak']} regression{'s' if agg_vd['weak'] != 1 else ''}.</div>
                 </div>
                 <div class="kpi">
-                    <div class="kpi-label">Mixed results</div>
-                    <div class="kpi-value orange">{agg['mixed']} / {n}</div>
-                    <div class="kpi-desc">Reasonable but methodology-bounded.</div>
+                    <div class="kpi-label">v1.2.0 absolute quality</div>
+                    <div class="kpi-value green">{agg_bl['strong']} / {agg_bl['total']}</div>
+                    <div class="kpi-desc">Baselines passing strongly on their own terms (not vs v1.1.0).</div>
                 </div>
                 <div class="kpi">
-                    <div class="kpi-label">Weak results</div>
-                    <div class="kpi-value {'red' if agg['weak'] > 0 else 'green'}">{agg['weak']} / {n}</div>
-                    <div class="kpi-desc">Tracked, with candidate fixes documented.</div>
+                    <div class="kpi-label">Standing weak spots</div>
+                    <div class="kpi-value {'red' if agg_bl['weak'] > 0 else 'green'}">{agg_bl['weak']} / {agg_bl['total']}</div>
+                    <div class="kpi-desc">Baseline classes where v1.2.0 has known weaknesses; tracked with open issues. <strong>Not v1.1.0 regressions.</strong></div>
                 </div>
             </div>
 

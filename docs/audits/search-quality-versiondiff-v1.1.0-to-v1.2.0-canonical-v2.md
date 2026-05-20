@@ -19,10 +19,10 @@ This is a cross-validation corpus. The v1.1.0 → v1.2.0 claim ("v1.2.0 is bette
 | Metric | v1.1.0 (brew) | v1.2.0 (dev) | Delta |
 |---|---|---|---|
 | N queries | 30 | 30 | — |
-| **MRR** | **0.7974** | **0.9367** | **+0.1393** |
+| **MRR** | **0.7974** | **0.9533** | **+0.1560** |
 | P@1 | 0.7000 (21 / 30) | 0.9333 (28 / 30) | +0.2333 |
-| P@5 (mean) | 0.3000 | 0.3733 | +0.0733 |
-| NDCG@10 | 1.3183 | 1.8486 | +0.5303 |
+| P@5 (mean) | 0.3133 | 0.3933 | +0.0800 |
+| NDCG@10 | 1.3493 | 1.9102 | +0.5609 |
 
 **Headline:** 8 / 30 queries newly rank-1 in v1.2.0; 1 regression.
 
@@ -33,9 +33,9 @@ This is a cross-validation corpus. The v1.1.0 → v1.2.0 claim ("v1.2.0 is bette
 **Paired Wilcoxon signed-rank on per-query RR (B vs A):**
 
 - N_nonzero = 10
-- W+ = 44.50, W− = 10.50
-- Two-sided p = 0.083131
-- One-sided p (v1.2.0 > v1.1.0) = 0.041566
+- W+ = 50.00, W− = 5.00
+- Two-sided p = 0.021824
+- One-sided p (v1.2.0 > v1.1.0) = 0.010912
 
 **McNemar on rank-1 outcome:**
 
@@ -71,31 +71,24 @@ If this audit's headline + significance numbers agree directionally with `search
 
 ```mermaid
 flowchart TD
-    Q["50 / 30 / 30 canonical query strings<br/>(per corpus, in-source)"]:::input
-    R["per-query regex pattern<br/>apple-docs://&lt;framework&gt;/&lt;concept&gt;($|/...)"]:::input
-    Q --> H[search-quality-phase1-extended.py]
+    Q["30 canonical-lookup query strings (corpus V2)<br/>zero overlap with the original 50-query corpus"]:::input
+    R["per-query regex pattern<br/>accepts canonical + specific-variant URIs"]:::input
+    Q --> H[scripts/eval/search-quality-phase1-extended.py]
     R --> H
 
-    BA["Arm A: /opt/homebrew/bin/cupertino (v1.1.0)<br/>+ ~/.cupertino/search.db (schema 13)"]:::arm
-    BB["Arm B: Packages/.build/release/cupertino (v1.2.0)<br/>+ ~/.cupertino-dev/search.db (schema 18)"]:::arm
-    H -->|"cupertino search --format json --limit 10"| BA
-    H -->|"cupertino search --format json --limit 10"| BB
+    BA["Arm A: brew cupertino 1.1.0<br/>+ ~/.cupertino/search.db (schema 13)"]:::arm
+    BB["Arm B: dev cupertino 1.2.0<br/>+ ~/.cupertino-dev/search.db (schema 18)"]:::arm
+    H --> BA
+    H --> BB
 
-    BA --> JA["top-10 URI list per query<br/>(JSON parsed)"]
-    BB --> JB["top-10 URI list per query<br/>(JSON parsed)"]
+    BA --> SA["per-query rank → RR, P@1, P@5, NDCG@10"]
+    BB --> SB["per-query rank → RR, P@1, P@5, NDCG@10"]
 
-    JA --> SA["per-query score:<br/>first-relevant-rank, RR=1/rank,<br/>P@1, P@5, NDCG@10"]
-    JB --> SB["per-query score:<br/>first-relevant-rank, RR=1/rank,<br/>P@1, P@5, NDCG@10"]
-
-    SA --> AGA["arm A aggregate:<br/>MRR, P@1 count, P@5 mean, NDCG@10 mean"]
-    SB --> AGB["arm B aggregate:<br/>MRR, P@1 count, P@5 mean, NDCG@10 mean"]
-
-    AGA --> PAIR["paired comparison:<br/>buckets (Added/Removed/Fixed/Degraded/<br/>Unchanged/Both-suboptimal)"]
-    AGB --> PAIR
-    PAIR --> WX["Paired Wilcoxon signed-rank<br/>on per-query RR vector<br/>(normal approximation)"]:::stat
-    PAIR --> MC["McNemar exact (binomial)<br/>on rank-1 contingency 2×2"]:::stat
-
-    WX --> MD["this audit MD<br/>(dashboard glob picks up)"]:::out
+    SA --> PAIR["paired buckets"]
+    SB --> PAIR
+    PAIR --> WX["Wilcoxon signed-rank"]:::stat
+    PAIR --> MC["McNemar 2×2"]:::stat
+    WX --> MD["audit MD"]:::out
     MC --> MD
 
     classDef input fill:#0a84ff,stroke:#0040cc,color:#fff
