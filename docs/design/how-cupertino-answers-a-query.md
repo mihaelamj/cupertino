@@ -68,7 +68,29 @@ selects which of these the query reaches.
 ## 2. The two dispatch shapes
 
 cupertino has two completely different code paths depending on
-whether the caller specified a source.
+whether the caller specified a source. The decision tree:
+
+```mermaid
+flowchart TD
+    A[Query arrives]:::entry --> B{Entry point?}
+    B -->|CLI argv| C[CLIImpl.Command.Search.run]
+    B -->|MCP tools/call JSON| D[CompositeToolProvider.handleSearch]
+    C --> E{--source set?}
+    D --> E
+    E -->|nil or 'all'| F[Fan-out + RRF<br/>SearchModule.SmartQuery.answer]
+    E -->|samples| G[runSampleSearch<br/>samples.db only]
+    E -->|packages| H[runPackageSearch<br/>packages.db only]
+    E -->|hig| I[runHIGSearch<br/>search.db WHERE source='hig']
+    E -->|apple-docs<br/>apple-archive<br/>swift-evolution<br/>swift-org<br/>swift-book| J[runDocsSearch<br/>search.db WHERE source=...]
+    F --> K[Chunked excerpts<br/>cross-source ranked]:::out
+    G --> L[Per-source list view]:::out
+    H --> L
+    I --> L
+    J --> L
+
+    classDef entry fill:#0a84ff,stroke:#0040cc,color:#fff
+    classDef out fill:#34c759,stroke:#1f7a3a,color:#fff
+```
 
 ### 2a. Without `--source`: fan-out + Reciprocal Rank Fusion (RRF)
 
@@ -76,7 +98,42 @@ This is the default when the user types `cupertino search "..."`
 with no `--source`, and the MCP equivalent when an agent calls the
 `search` tool (or `search_all`) without a source filter.
 
-What happens, step by step:
+Sequence of what happens across the parallel fetchers:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User / Agent
+    participant E as Entry<br/>(CLI run / MCP handleSearch)
+    participant SQ as SmartQuery
+    participant F1 as apple-docs fetcher<br/>(search.db)
+    participant F2 as samples fetcher<br/>(samples.db)
+    participant F3 as packages fetcher<br/>(packages.db)
+    participant Fn as ... other fetchers
+
+    U->>E: "destination view", limit=20
+    E->>E: buildFetchers(): one per available DB
+    E->>SQ: answer(question, limit, perFetcherLimit=10)
+    par fetchers run in parallel
+        SQ->>F1: top-10 candidates
+        F1-->>SQ: 10 rows (rank 1..10)
+    and
+        SQ->>F2: top-10 candidates
+        F2-->>SQ: 10 rows (rank 1..10)
+    and
+        SQ->>F3: top-10 candidates
+        F3-->>SQ: 10 rows (rank 1..10)
+    and
+        SQ->>Fn: top-10 candidates
+        Fn-->>SQ: 10 rows (rank 1..10)
+    end
+    SQ->>SQ: RRF merge<br/>score = sum(1 / (60 + rank))<br/>per candidate across fetchers
+    SQ->>SQ: chunk each top-20 result into<br/>~200-word excerpts
+    SQ-->>E: ranked list + degradedSources
+    E-->>U: stdout text (CLI) or<br/>CallToolResult (MCP)
+```
+
+What happens, step by step (text version mirroring the diagram):
 
 1. **`CLIImpl.Command.Search.run()` reaches the `default` arm of
    its switch** (line ~227 in `CLIImpl.Command.Search.swift`) and
@@ -208,6 +265,63 @@ Filters apply uniformly across both dispatch shapes EXCEPT for
 fan-out-mode-only.
 
 ---
+
+## 4a. How a human typically invokes the MCP path
+
+The MCP entry point in §0's table is reached when an AI agent (Claude
+Code or Codex) talks JSON-RPC to cupertino's MCP server. The human
+typically starts that conversation from a shell alias that runs the
+agent in its no-prompt-for-permission mode, so the agent can call
+the cupertino MCP tool without intervention:
+
+```bash
+alias claude!='claude --dangerously-skip-permissions'
+alias codex!='codex --dangerously-bypass-approvals-and-sandbox'
+```
+
+These aliases live in `~/.zshrc` and are portable across every Mac
+the user works from. The canonical source is:
+
+```
+mihaela-automate/dotfiles/zsh/aliases.zsh
+```
+
+…which is installed onto each machine's home directory by
+`mihaela-automate/dotfiles/install.sh`. That installer is in turn
+invoked by `mihaela-agents/setup-mac.sh` step 10b ("Install
+repo-managed dotfiles") during the standard new-Mac bootstrap. The
+relevant lines as of 2026-05-20:
+
+```bash
+alias claude!='claude --dangerously-skip-permissions'
+alias codex!='codex --dangerously-bypass-approvals-and-sandbox'
+```
+
+To pick these up on a fresh Mac:
+
+1. Clone `mihaela-agents` and `mihaela-automate` into the per-Mac
+   private repos directory (see `mihaela-agents/MACHINES.md` for
+   the canonical paths).
+2. Run `bash mihaela-agents/setup-mac.sh` once. Step 10b runs
+   `mihaela-automate/dotfiles/install.sh`, which symlinks (or
+   appends to) `~/.zshrc` so the aliases load on every new shell.
+3. `source ~/.zshrc` or open a new terminal. `claude!` and
+   `codex!` are now available.
+
+With those aliases active, the typical invocation is just:
+
+```text
+claude!
+> how do I make a SwiftUI view observable
+```
+
+The agent receives the question, decides to call cupertino's MCP
+`search` tool (or `search_docs`, `search_samples`, etc.), and the
+flow proceeds exactly as the MCP column of §0's table describes.
+The `--dangerously-skip-permissions` / `--dangerously-bypass-approvals-and-sandbox`
+flags only suppress the agent's per-tool-call confirmation prompts;
+they do not change cupertino's behaviour, since cupertino itself is
+read-only and has no escalation to skip.
 
 ## 5. MCP tool surface — how an agent picks its dispatch
 
