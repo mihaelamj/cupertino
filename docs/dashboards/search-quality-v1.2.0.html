@@ -20,92 +20,43 @@
             </p>
         </header>
 
-        <div class="summary">
-            <h2>At a glance</h2>
-            <p class="summary-text">
-                <strong>3 of 7 tests pass strongly</strong> &mdash; the canonical use cases (typing a Swift type name, modern-vs-legacy choice, fragment recall, cross-source ranking) all work as designed. <strong>3 surface real weaknesses</strong> in cupertino's relational-metadata-to-search routing, both tracked with open issues and candidate fixes. <strong>1 have methodology limits</strong> that proper measurement (human-judged) would resolve.
-            </p>
+        <div class="tab-container">
+            <div class="tabs" role="tablist">
+                <button class="tab active" data-tab="overview" role="tab">Overview</button>
+                <button class="tab" data-tab="tests" role="tab">The 7 tests</button>
+                <button class="tab" data-tab="sources" role="tab">Sources</button>
+                <button class="tab" data-tab="how" role="tab">How we measure</button>
+            </div>
         </div>
 
-        <section>
-            <h2>The measurements</h2>
-            <div class="grid">
-                <article class="card">
-                    <span class="status status-strong">Strong</span>
-                    <h3 class="card-title">Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate)</h3>
-                    <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.1 (deprecation-aware), query </p>
-                    <div class="card-metric green">30 / 30 (100%)</div>
-                    <p class="card-metric-label">headline measurement</p>
-                    <p class="card-finding">This audit answers a focused question: when a developer queries a concept that exists in both modern Swift form (value type / stdlib) and the original NS-prefixed Objective-C form, <strong>does cupertino's ranker put the modern form above the legacy form?</strong> This is the most user-visible failure mode for an AI coding agent…</p>
-                    <a class="card-link" href="audits/deprecation-v1.2.0.html">Open audit dashboard</a>
-                </article>
-                <article class="card">
-                    <span class="status status-strong">Strong</span>
-                    <h3 class="card-title">Search-quality baseline: v1.2.0 candidate `search.db`</h3>
-                    <p class="card-subtitle">`docs/design/search-quality-eval.md` Phase 1 (single-system mode, no Phase 2 hum</p>
-                    <div class="card-metric green">46 / 50</div>
-                    <p class="card-metric-label">headline measurement</p>
-                    <p class="card-finding">This audit records the v1.2.0 candidate database's standing on Criterion 1 (good search) restricted to query classes <strong>A (canonical lookup)</strong> and <strong>B (framework-root)</strong> per the design's §1.4 taxonomy. It is an absolute baseline; future ranking changes are measured against this single-system snapshot using the same h…</p>
-                    <a class="card-link" href="audits/baseline-v1.2.0.html">Open audit dashboard</a>
-                </article>
-                <article class="card">
-                    <span class="status status-strong">Strong</span>
-                    <h3 class="card-title">Search-quality baseline: CamelCase fragment recall (Phase 1.3, v1.2.0 candidate)</h3>
-                    <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.3 (CamelCase fragment recall)</p>
-                    <div class="card-metric green">0.9200</div>
-                    <p class="card-metric-label">headline measurement</p>
-                    <p class="card-finding">This audit tests <code>Search.Index.CamelCaseSplitter</code> (#77), the cupertino-specific mechanism that expands CamelCase identifiers like <code>LazyVGrid</code> into recall-aiding components <code>{Lazy, VGrid, Grid}</code> stored in the <code>docs_fts.symbol_components</code> column. The column carries BM25F weight 1.5 (one-tenth of <code>docs_fts.symbols</code> at …</p>
-                    <a class="card-link" href="audits/fragment-v1.2.0.html">Open audit dashboard</a>
-                </article>
-                <article class="card">
-                    <span class="status status-mixed">Mixed</span>
-                    <h3 class="card-title">Search-quality baseline: cross-source canonical (Phase 1.2, v1.2.0 candidate)</h3>
-                    <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.2 (cross-source canonical), q</p>
-                    <div class="card-metric orange">19 / 25 (76.0%)</div>
-                    <p class="card-metric-label">headline measurement</p>
-                    <p class="card-finding">This audit tests <code>Search.SmartQuery.sourceWeights</code> (apple-docs=3.0, swift-evolution=1.5, packages=1.5, swift-book=1.0, swift-org=1.0, samples=1.0, apple-archive=0.5, hig=0.5) — the per-source authority bias applied during cross-source RRF fan-out. This machinery had no test coverage before today.</p>
-                    <a class="card-link" href="audits/crosssource-v1.2.0.html">Open audit dashboard</a>
-                </article>
-                <article class="card">
-                    <span class="status status-weak">Weak</span>
-                    <h3 class="card-title">Search-quality baseline: prose / conceptual (Phase 1.5, v1.2.0 candidate)</h3>
-                    <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.5 (prose / conceptual), query</p>
-                    <div class="card-metric red">4 / 15 (26.7%)</div>
-                    <p class="card-metric-label">headline measurement</p>
-                    <p class="card-finding">This audit tests multi-word natural-language queries — the kind a developer or AI agent would actually issue in a coding session, like "how to make a type Sendable" or "actor reentrancy semantics" — that have no single canonical URI. The right answer is a small SET of relevant documents spread across apple-docs and …</p>
-                    <a class="card-link" href="audits/prose-v1.2.0.html">Open audit dashboard</a>
-                </article>
-                <article class="card">
-                    <span class="status status-weak">Weak</span>
-                    <h3 class="card-title">Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</h3>
-                    <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.6 (symbol-attribute), query c</p>
-                    <div class="card-metric red">0.2533</div>
-                    <p class="card-metric-label">headline measurement</p>
-                    <p class="card-finding">This audit tests symbol-attribute queries — queries that conceptually describe symbols by attribute (<code>@MainActor</code>, <code>@Observable</code>), by signature flag (<code>async throws</code>, <code>public static</code>), by conformance (<code>Sendable conformance</code>, <code>Hashable conformance</code>), or by kind (<code>actor type</code>, <code>protocol type</code>, <code>initializer</code>, `subscript…</p>
-                    <a class="card-link" href="audits/symbol-attribute-v1.2.0.html">Open audit dashboard</a>
-                </article>
-                <article class="card">
-                    <span class="status status-weak">Weak</span>
-                    <h3 class="card-title">Search-quality baseline: acronym / synonym recall (Phase 1.4, v1.2.0 candidate)</h3>
-                    <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.4 (acronym / synonym), query </p>
-                    <div class="card-metric red">4 / 22 (18.2%)</div>
-                    <p class="card-metric-label">headline measurement</p>
-                    <p class="card-finding">This audit tests <code>framework_aliases.synonyms</code> — the cupertino-specific table that maps colloquial / abbreviated names to canonical framework slugs (<code>nfc → corenfc</code>, <code>wifi → corewlan</code>, <code>bluetooth → corebluetooth</code>, <code>ml → coreml</code>, etc.). The expectation: when a developer types the synonym alone as a query, cupertino sh…</p>
-                    <a class="card-link" href="audits/acronym-v1.2.0.html">Open audit dashboard</a>
-                </article>
-                <article class="card card-pending">
-                    <span class="status status-pending">Coming next</span>
-                    <h3 class="card-title">Does an AI agent then write correct Swift?</h3>
-                    <p class="card-subtitle">Test 1.7 · Anti-hallucination, end-to-end</p>
-                    <div class="card-metric blue" style="opacity: 0.4;">—</div>
-                    <p class="card-metric-label">design exists, implementation pending</p>
-                    <p class="card-finding">All the other tests measure whether the right document is findable. <strong>This test measures whether an AI coding agent, given cupertino's top results, actually produces Swift that compiles, calls real APIs, and respects platform availability.</strong> The actual success measure for cupertino. Design written; implementation is the next 1-2 weeks of work (issue #816).</p>
-                    <a class="card-link" href="../design/anti-hallucination-eval.md">Read the design</a>
-                </article>
+        <!-- Tab 1: Overview -->
+        <div class="tab-panel active" id="panel-overview">
+            <div class="summary">
+                <h2>At a glance</h2>
+                <p class="summary-text">
+                    <strong>3 of 7 tests pass strongly</strong> &mdash; the canonical use cases (typing a Swift type name, modern-vs-legacy choice, fragment recall, cross-source ranking) work as designed. <strong>3 surface real weaknesses</strong> in cupertino's relational-metadata-to-search routing, both tracked with open issues. <strong>1 have methodology limits</strong> that human-judged measurement would resolve.
+                </p>
             </div>
-        </section>
 
-                <div class="callout">
+            <div class="kpi-strip">
+                <div class="kpi">
+                    <div class="kpi-label">Tests passing strongly</div>
+                    <div class="kpi-value green">3 / 7</div>
+                    <div class="kpi-desc">Auto-classified from headline metric thresholds.</div>
+                </div>
+                <div class="kpi">
+                    <div class="kpi-label">Mixed results</div>
+                    <div class="kpi-value orange">1 / 7</div>
+                    <div class="kpi-desc">Reasonable but methodology-bounded.</div>
+                </div>
+                <div class="kpi">
+                    <div class="kpi-label">Weak results</div>
+                    <div class="kpi-value red">3 / 7</div>
+                    <div class="kpi-desc">Tracked, with candidate fixes documented.</div>
+                </div>
+            </div>
+
+                    <div class="callout">
             <h3>One architectural pattern surfaces twice</h3>
             <p>
                 The two weak tests (<strong>abbreviations</strong> and <strong>symbol attributes</strong>) both reveal the same gap: <strong>cupertino has rich relational metadata (synonym tables, symbol kinds, attributes, conformances) that the default search path doesn't consult.</strong> A consolidated fix likely closes both. Tracking issues are open with three candidate approaches each.
@@ -118,23 +69,227 @@
                 <a href="https://github.com/mihaelamj/cupertino/issues/821">#821 prose profile</a>
             </p>
         </div>
+        </div>
+
+        <!-- Tab 2: The tests -->
+        <div class="tab-panel" id="panel-tests">
+            <section>
+                <h2 style="margin-top: 0;">Every measurement, with a path to the full audit</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 24px;">Each card below summarises one audit. The bar visualises how close to a perfect score the test scored. Open any card to see the full audit dashboard.</p>
+                <div class="grid">
+                <article class="card">
+                    <div class="card-header">
+                        <div class="card-icon tint-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></div>
+                        <span class="status status-strong">Strong</span>
+                    </div>
+                    <h3 class="card-title">Search-quality baseline: deprecation-aware (Phase 1.1, v1.2.0 candidate)</h3>
+                    <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.1 (deprecation-aware), query </p>
+                    <div class="card-metric green">30 / 30 (100%)</div>
+                    <div class="progress-bar"><div class="progress-bar-fill green" style="width: 100%;"></div></div>
+                    <p class="card-finding">This audit answers a focused question: when a developer queries a concept that exists in both modern Swift form (value type / stdlib) and the original NS-prefixed Objective-C form, <strong>does cupertino's ranker put the modern form above the legacy form?</strong> This is the most user-visible failure mode for an AI coding agent…</p>
+                    <a class="card-link" href="audits/deprecation-v1.2.0.html">Open audit dashboard</a>
+                </article>
+                <article class="card">
+                    <div class="card-header">
+                        <div class="card-icon tint-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+                        <span class="status status-strong">Strong</span>
+                    </div>
+                    <h3 class="card-title">Search-quality baseline: v1.2.0 candidate `search.db`</h3>
+                    <p class="card-subtitle">`docs/design/search-quality-eval.md` Phase 1 (single-system mode, no Phase 2 hum</p>
+                    <div class="card-metric green">46 / 50</div>
+                    <div class="progress-bar"><div class="progress-bar-fill green" style="width: 92%;"></div></div>
+                    <p class="card-finding">This audit records the v1.2.0 candidate database's standing on Criterion 1 (good search) restricted to query classes <strong>A (canonical lookup)</strong> and <strong>B (framework-root)</strong> per the design's §1.4 taxonomy. It is an absolute baseline; future ranking changes are measured against this single-system snapshot using the same h…</p>
+                    <a class="card-link" href="audits/baseline-v1.2.0.html">Open audit dashboard</a>
+                </article>
+                <article class="card">
+                    <div class="card-header">
+                        <div class="card-icon tint-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+                        <span class="status status-strong">Strong</span>
+                    </div>
+                    <h3 class="card-title">Search-quality baseline: CamelCase fragment recall (Phase 1.3, v1.2.0 candidate)</h3>
+                    <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.3 (CamelCase fragment recall)</p>
+                    <div class="card-metric green">0.9200</div>
+                    <div class="progress-bar"><div class="progress-bar-fill green" style="width: 92%;"></div></div>
+                    <p class="card-finding">This audit tests <code>Search.Index.CamelCaseSplitter</code> (#77), the cupertino-specific mechanism that expands CamelCase identifiers like <code>LazyVGrid</code> into recall-aiding components <code>{Lazy, VGrid, Grid}</code> stored in the <code>docs_fts.symbol_components</code> column. The column carries BM25F weight 1.5 (one-tenth of <code>docs_fts.symbols</code> at …</p>
+                    <a class="card-link" href="audits/fragment-v1.2.0.html">Open audit dashboard</a>
+                </article>
+                <article class="card">
+                    <div class="card-header">
+                        <div class="card-icon tint-orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+                        <span class="status status-mixed">Mixed</span>
+                    </div>
+                    <h3 class="card-title">Search-quality baseline: cross-source canonical (Phase 1.2, v1.2.0 candidate)</h3>
+                    <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.2 (cross-source canonical), q</p>
+                    <div class="card-metric orange">19 / 25 (76.0%)</div>
+                    <div class="progress-bar"><div class="progress-bar-fill orange" style="width: 76%;"></div></div>
+                    <p class="card-finding">This audit tests <code>Search.SmartQuery.sourceWeights</code> (apple-docs=3.0, swift-evolution=1.5, packages=1.5, swift-book=1.0, swift-org=1.0, samples=1.0, apple-archive=0.5, hig=0.5) — the per-source authority bias applied during cross-source RRF fan-out. This machinery had no test coverage before today.</p>
+                    <a class="card-link" href="audits/crosssource-v1.2.0.html">Open audit dashboard</a>
+                </article>
+                <article class="card">
+                    <div class="card-header">
+                        <div class="card-icon tint-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div>
+                        <span class="status status-weak">Weak</span>
+                    </div>
+                    <h3 class="card-title">Search-quality baseline: prose / conceptual (Phase 1.5, v1.2.0 candidate)</h3>
+                    <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.5 (prose / conceptual), query</p>
+                    <div class="card-metric red">4 / 15 (26.7%)</div>
+                    <div class="progress-bar"><div class="progress-bar-fill red" style="width: 26%;"></div></div>
+                    <p class="card-finding">This audit tests multi-word natural-language queries — the kind a developer or AI agent would actually issue in a coding session, like "how to make a type Sendable" or "actor reentrancy semantics" — that have no single canonical URI. The right answer is a small SET of relevant documents spread across apple-docs and …</p>
+                    <a class="card-link" href="audits/prose-v1.2.0.html">Open audit dashboard</a>
+                </article>
+                <article class="card">
+                    <div class="card-header">
+                        <div class="card-icon tint-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+                        <span class="status status-weak">Weak</span>
+                    </div>
+                    <h3 class="card-title">Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</h3>
+                    <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.6 (symbol-attribute), query c</p>
+                    <div class="card-metric red">0.2533</div>
+                    <div class="progress-bar"><div class="progress-bar-fill red" style="width: 25%;"></div></div>
+                    <p class="card-finding">This audit tests symbol-attribute queries — queries that conceptually describe symbols by attribute (<code>@MainActor</code>, <code>@Observable</code>), by signature flag (<code>async throws</code>, <code>public static</code>), by conformance (<code>Sendable conformance</code>, <code>Hashable conformance</code>), or by kind (<code>actor type</code>, <code>protocol type</code>, <code>initializer</code>, `subscript…</p>
+                    <a class="card-link" href="audits/symbol-attribute-v1.2.0.html">Open audit dashboard</a>
+                </article>
+                <article class="card">
+                    <div class="card-header">
+                        <div class="card-icon tint-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></div>
+                        <span class="status status-weak">Weak</span>
+                    </div>
+                    <h3 class="card-title">Search-quality baseline: acronym / synonym recall (Phase 1.4, v1.2.0 candidate)</h3>
+                    <p class="card-subtitle">`docs/design/search-quality-eval.md` §14.2 Phase 1.4 (acronym / synonym), query </p>
+                    <div class="card-metric red">4 / 22 (18.2%)</div>
+                    <div class="progress-bar"><div class="progress-bar-fill red" style="width: 18%;"></div></div>
+                    <p class="card-finding">This audit tests <code>framework_aliases.synonyms</code> — the cupertino-specific table that maps colloquial / abbreviated names to canonical framework slugs (<code>nfc → corenfc</code>, <code>wifi → corewlan</code>, <code>bluetooth → corebluetooth</code>, <code>ml → coreml</code>, etc.). The expectation: when a developer types the synonym alone as a query, cupertino sh…</p>
+                    <a class="card-link" href="audits/acronym-v1.2.0.html">Open audit dashboard</a>
+                </article>
+                <article class="card card-pending">
+                    <div class="card-header">
+                        <div class="card-icon tint-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>
+                        <span class="status status-pending">Coming next</span>
+                    </div>
+                    <h3 class="card-title">Does an AI agent then write correct Swift?</h3>
+                    <p class="card-subtitle">Test 1.7 · Anti-hallucination, end-to-end</p>
+                    <p class="card-question" style="margin-top: 16px;">All seven other tests measure whether the right document is findable. <strong>This test measures whether an AI agent, given cupertino's top results, produces Swift that compiles, calls real APIs, and respects platform availability.</strong> The actual success measure for cupertino.</p>
+                    <div class="milestones">
+                        <div class="milestone done"><div class="milestone-icon">✓</div><div class="milestone-text">Design written (PR #815)</div></div>
+                        <div class="milestone done"><div class="milestone-icon">✓</div><div class="milestone-text">Implementation issue filed (#816)</div></div>
+                        <div class="milestone in-progress"><div class="milestone-icon">●</div><div class="milestone-text">Build task corpus (~30 Swift tasks)</div></div>
+                        <div class="milestone pending"><div class="milestone-icon"></div><div class="milestone-text">Wire agent driver (LLM + MCP)</div></div>
+                        <div class="milestone pending"><div class="milestone-icon"></div><div class="milestone-text">Wire scoring pipeline (compile + symbol + availability + deprecation)</div></div>
+                        <div class="milestone pending"><div class="milestone-icon"></div><div class="milestone-text">First formal run; publish baseline</div></div>
+                    </div>
+                    <a class="card-link" href="../design/anti-hallucination-eval.md">Read the design</a>
+                </article>
+                </div>
+            </section>
+        </div>
+
+        <!-- Tab 3: Sources -->
+        <div class="tab-panel" id="panel-sources">
+            <section>
+                <h2 style="margin-top: 0;">Every metric, with its scientific source</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 24px;">Every number on the cards above traces back to a peer-reviewed source. The full citation list with paper / book / standard links is at <a href="sources.html">sources.html</a>. Highlights:</p>
+                <div class="grid cols-2">
+                    <article class="card no-hover">
+                        <div class="card-icon tint-indigo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+                        <h3 class="card-title">MRR</h3>
+                        <p class="card-finding">Voorhees (1999), TREC-8 QA Report. The reference for evaluating "the first relevant answer" rank.</p>
+                        <a class="card-link" href="sources.html#mrr">See citation</a>
+                    </article>
+                    <article class="card no-hover">
+                        <div class="card-icon tint-indigo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+                        <h3 class="card-title">BM25F</h3>
+                        <p class="card-finding">Robertson, Zaragoza, Taylor (2004). The field-weighted ranking formula cupertino tunes per-column.</p>
+                        <a class="card-link" href="sources.html#bm25f">See citation</a>
+                    </article>
+                    <article class="card no-hover">
+                        <div class="card-icon tint-indigo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+                        <h3 class="card-title">Reciprocal Rank Fusion</h3>
+                        <p class="card-finding">Cormack, Clarke, Büttcher (2009). The cross-source fusion formula cupertino uses with <code>k=60</code>.</p>
+                        <a class="card-link" href="sources.html#rrf">See citation</a>
+                    </article>
+                    <article class="card no-hover">
+                        <div class="card-icon tint-indigo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+                        <h3 class="card-title">Wilcoxon + McNemar</h3>
+                        <p class="card-finding">The two paired statistical tests cupertino uses to compare two builds. Wilcoxon (1945) for rank metrics, McNemar (1947) for binary outcomes.</p>
+                        <a class="card-link" href="sources.html#wilcoxon">See citation</a>
+                    </article>
+                </div>
+                <p style="margin-top: 24px;">
+                    <a class="card-link" href="sources.html" style="display: inline-flex;">Full sources page</a>
+                </p>
+            </section>
+        </div>
+
+        <!-- Tab 4: How we measure -->
+        <div class="tab-panel" id="panel-how">
+            <section>
+                <h2 style="margin-top: 0;">How a cupertino search-quality measurement works</h2>
+                <p>For each test we run a fixed list of queries against cupertino, capture the top-10 results, score them against pre-defined right-answer patterns, and report the headline number plus a per-query breakdown. No anecdotes; everything is reproducible.</p>
+
+                <div class="grid cols-2">
+                    <article class="card no-hover">
+                        <div class="card-icon tint-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+                        <h3 class="card-title">Step 1 · A query corpus</h3>
+                        <p class="card-finding">~30-50 queries per test, hand-curated to cover breadth (types, protocols, methods, framework concepts). Each query carries a right-answer pattern.</p>
+                    </article>
+                    <article class="card no-hover">
+                        <div class="card-icon tint-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></div>
+                        <h3 class="card-title">Step 2 · Run the binary</h3>
+                        <p class="card-finding">A Python harness invokes <code>cupertino search</code> via subprocess for each query, extracts the top-10 URIs from stdout. Read-only against the database.</p>
+                    </article>
+                    <article class="card no-hover">
+                        <div class="card-icon tint-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+                        <h3 class="card-title">Step 3 · Score</h3>
+                        <p class="card-finding">Per-query MRR / P@k / NDCG / per-class custom metric. Auto-extracted, no human in the loop for Phase 1.</p>
+                    </article>
+                    <article class="card no-hover">
+                        <div class="card-icon tint-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+                        <h3 class="card-title">Step 4 · Report</h3>
+                        <p class="card-finding">Markdown audit at <code>docs/audits/</code>, JSON raw data at <code>/tmp/</code>, this dashboard auto-derived from the markdown. Future ranking changes pair against the baseline using Wilcoxon / McNemar significance tests.</p>
+                    </article>
+                </div>
+
+                <p style="margin-top: 32px;">
+                    Full methodology in
+                    <a href="../design/search-quality-eval.md">docs/design/search-quality-eval.md</a>.
+                    The universal rule lives at <code>mihaela-agents/Rules/universal/search-quality-eval.md</code>.
+                </p>
+            </section>
+        </div>
 
         <footer>
             <p>
                 Index card content is auto-derived from the audit markdown files under
                 <a href="../audits/">docs/audits/</a> by <code>_render-index-dashboard.py</code>.
-                Per-audit dashboards (the cards above link to them) are derived from the same source by <code>_render-audit-dashboard.py</code>.
-                When an audit changes, re-run <code>regen-all.sh</code> in this folder.
+                When an audit changes, re-run <code>regen-all.sh</code>.
             </p>
             <p>
                 Methodology in <a href="../design/search-quality-eval.md">docs/design/search-quality-eval.md</a>
                 ·
                 Architecture in <a href="../architecture/database.md">docs/architecture/database.md</a>
                 ·
+                Citations in <a href="sources.html">sources.html</a>
+                ·
                 Index in <a href="../database-handbook.md">docs/database-handbook.md</a>
             </p>
         </footer>
 
     </div>
+
+    <script>
+        (function() {
+            const tabs = document.querySelectorAll('.tab');
+            const panels = document.querySelectorAll('.tab-panel');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const target = tab.dataset.tab;
+                    tabs.forEach(t => t.classList.remove('active'));
+                    panels.forEach(p => p.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.getElementById('panel-' + target).classList.add('active');
+                });
+            });
+        })();
+    </script>
 </body>
 </html>

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sources · cupertino search-quality dashboards</title>
+    <link rel="stylesheet" href="_styles.css">
+</head>
+<body>
+    <div class="container">
+
+        <a class="back-link" href="search-quality-v1.2.0.html">Back to dashboard</a>
+
+        <header>
+            <div class="eyebrow">Citations and sources</div>
+            <h1>Where every metric on the dashboards comes from</h1>
+            <p class="subtitle">
+                Every number on the cupertino search-quality dashboards is a measurement using methods from peer-reviewed information-retrieval research and standard statistics. Nothing is invented for this project. This page lists, for each metric or method we use, the foundational source.
+            </p>
+            <p class="meta">
+                <span>Compiled 2026-05-20</span>·<span>All sources are publicly accessible, most are free to read</span>
+            </p>
+        </header>
+
+        <!-- ============================================================ -->
+        <section>
+            <h2>The textbook this whole thing builds on</h2>
+
+            <article class="card no-hover" id="iir">
+                <h3 class="card-title">Manning, Raghavan, Schütze (2008). <em>Introduction to Information Retrieval.</em></h3>
+                <p class="card-subtitle">Cambridge University Press. Stanford NLP. Free full text online.</p>
+                <p class="card-finding">
+                    The reference for everything we do on the search-quality side. Chapter 8 (Evaluation in information retrieval) defines all the metrics on the dashboards. The cupertino universal IR-eval rule and the cupertino-specific design both cite this book extensively.
+                </p>
+                <a class="card-link" href="https://nlp.stanford.edu/IR-book/" target="_blank" rel="noopener">Read free online</a>
+            </article>
+        </section>
+
+        <!-- ============================================================ -->
+        <section>
+            <h2>Metrics we compute on the dashboards</h2>
+            <div class="grid">
+
+                <article class="card no-hover" id="mrr">
+                    <span class="status status-info">MRR</span>
+                    <h3 class="card-title">Mean Reciprocal Rank</h3>
+                    <p class="card-subtitle">The position of the first right answer, averaged across queries.</p>
+                    <p class="card-finding">
+                        For each query, take 1 / (rank of the first relevant document). Average across all queries. If the right doc is at position 1 for every query, MRR = 1.0. If always at position 2, MRR = 0.5. Used when each query has one canonical right answer — cupertino's canonical-lookup case.
+                    </p>
+                    <p class="card-finding">
+                        <strong>Source:</strong> Voorhees, E.M. (1999). <em>The TREC-8 Question Answering Track Report.</em> NIST Special Publication.
+                    </p>
+                    <a class="card-link" href="https://trec.nist.gov/pubs/trec8/papers/qa_report.pdf" target="_blank" rel="noopener">Read the paper (PDF)</a>
+                </article>
+
+                <article class="card no-hover" id="precision-at-k">
+                    <span class="status status-info">P@k</span>
+                    <h3 class="card-title">Precision at <em>k</em></h3>
+                    <p class="card-subtitle">Of the top <em>k</em> results, what fraction is relevant.</p>
+                    <p class="card-finding">
+                        If the top-5 returns 3 relevant docs, P@5 = 0.6. P@1 = whether the very first result is relevant. We use P@1, P@5, P@10 on the dashboards.
+                    </p>
+                    <p class="card-finding">
+                        <strong>Source:</strong> Manning, Raghavan, Schütze (2008), §8.4 "Evaluation of ranked retrieval results."
+                    </p>
+                    <a class="card-link" href="https://nlp.stanford.edu/IR-book/html/htmledition/evaluation-of-ranked-retrieval-results-1.html" target="_blank" rel="noopener">Read the chapter</a>
+                </article>
+
+                <article class="card no-hover" id="ndcg">
+                    <span class="status status-info">NDCG@k</span>
+                    <h3 class="card-title">Normalized Discounted Cumulative Gain</h3>
+                    <p class="card-subtitle">Like P@k but penalises relevant results that appear lower down.</p>
+                    <p class="card-finding">
+                        Each relevant doc contributes a smaller "gain" the further down it appears, divided by IDCG (the gain of a perfect ranking). Used when ranking position matters and relevance can be graded. Standard in modern machine-learning ranking work.
+                    </p>
+                    <p class="card-finding">
+                        <strong>Source:</strong> Järvelin, K., &amp; Kekäläinen, J. (2002). <em>Cumulated gain-based evaluation of IR techniques.</em> ACM Transactions on Information Systems, 20(4).
+                    </p>
+                    <a class="card-link" href="https://doi.org/10.1145/582415.582418" target="_blank" rel="noopener">DOI: 10.1145/582415.582418</a>
+                </article>
+
+                <article class="card no-hover" id="map">
+                    <span class="status status-info">MAP</span>
+                    <h3 class="card-title">Mean Average Precision</h3>
+                    <p class="card-subtitle">Precision averaged across positions, then averaged across queries.</p>
+                    <p class="card-finding">
+                        For each query, compute precision at every position where a relevant document appears, then average. Then average across queries. Known for "especially good discrimination and stability" (Manning IIR §8.4). The default headline metric at TREC.
+                    </p>
+                    <p class="card-finding">
+                        <strong>Source:</strong> Manning, Raghavan, Schütze (2008), §8.4.
+                    </p>
+                    <a class="card-link" href="https://nlp.stanford.edu/IR-book/html/htmledition/evaluation-of-ranked-retrieval-results-1.html" target="_blank" rel="noopener">Read the chapter</a>
+                </article>
+
+                <article class="card no-hover" id="r-precision">
+                    <span class="status status-info">R-Precision</span>
+                    <h3 class="card-title">R-Precision</h3>
+                    <p class="card-subtitle">P@k where k equals the number of known relevant docs.</p>
+                    <p class="card-finding">
+                        Adjusts for queries that have widely-different numbers of relevant documents. Cleanest when the relevant-set size is known up front; used for prose / conceptual queries where multiple documents jointly answer the question.
+                    </p>
+                    <p class="card-finding">
+                        <strong>Source:</strong> Manning, Raghavan, Schütze (2008), §8.4.
+                    </p>
+                    <a class="card-link" href="https://nlp.stanford.edu/IR-book/html/htmledition/evaluation-of-ranked-retrieval-results-1.html" target="_blank" rel="noopener">Read the chapter</a>
+                </article>
+
+            </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <section>
+            <h2>Statistical tests on the dashboards</h2>
+            <div class="grid">
+
+                <article class="card no-hover" id="wilcoxon">
+                    <span class="status status-info">Paired test</span>
+                    <h3 class="card-title">Wilcoxon signed-rank test</h3>
+                    <p class="card-subtitle">The right significance test for rank metrics.</p>
+                    <p class="card-finding">
+                        When comparing two search systems on the same queries, the per-query MRR differences aren't normally distributed (rank metrics are bounded and discrete). The Wilcoxon signed-rank test is the standard non-parametric paired test for this case. Used in any future cupertino comparison of two builds.
+                    </p>
+                    <p class="card-finding">
+                        <strong>Source:</strong> Wilcoxon, F. (1945). <em>Individual comparisons by ranking methods.</em> Biometrics Bulletin, 1(6).
+                    </p>
+                    <a class="card-link" href="https://www.jstor.org/stable/3001968" target="_blank" rel="noopener">JSTOR: 3001968</a>
+                </article>
+
+                <article class="card no-hover" id="mcnemar">
+                    <span class="status status-info">Paired binary test</span>
+                    <h3 class="card-title">McNemar's test</h3>
+                    <p class="card-subtitle">For paired binary outcomes — does X help or not?</p>
+                    <p class="card-finding">
+                        When the per-task outcome is binary (compiled / didn't compile, agent's code was correct / wasn't), the right paired test is McNemar's. Used in the Phase 1.7 anti-hallucination eval design to compare LLM-with-cupertino vs LLM-alone.
+                    </p>
+                    <p class="card-finding">
+                        <strong>Source:</strong> McNemar, Q. (1947). <em>Note on the sampling error of the difference between correlated proportions or percentages.</em> Psychometrika, 12(2): 153-157.
+                    </p>
+                    <a class="card-link" href="https://doi.org/10.1007/BF02295996" target="_blank" rel="noopener">DOI: 10.1007/BF02295996</a>
+                </article>
+
+                <article class="card no-hover" id="sign-test">
+                    <span class="status status-info">Sign test</span>
+                    <h3 class="card-title">Binomial / sign test</h3>
+                    <p class="card-subtitle">For "did X win or lose" on each query.</p>
+                    <p class="card-finding">
+                        Simplest paired non-parametric test: count wins vs losses on a pre-defined event, compare against 50/50 chance via the binomial distribution. Used in the deprecation-aware audit ("Swift form wins over Obj-C form 30 / 30 times, p = 0.0078").
+                    </p>
+                    <p class="card-finding">
+                        <strong>Source:</strong> Conover, W.J. (1999). <em>Practical Nonparametric Statistics</em>, 3rd ed., Wiley. The sign test goes back further (Arbuthnot 1710), but Conover is the modern canonical reference.
+                    </p>
+                    <a class="card-link" href="https://en.wikipedia.org/wiki/Sign_test" target="_blank" rel="noopener">Background</a>
+                </article>
+
+                <article class="card no-hover" id="cohens-kappa">
+                    <span class="status status-info">Agreement</span>
+                    <h3 class="card-title">Cohen's kappa (κ)</h3>
+                    <p class="card-subtitle">How much two human judges agree, beyond chance.</p>
+                    <p class="card-finding">
+                        When two people independently judge the same documents as relevant or not, you need to know whether their agreement is real or accidental. κ corrects for chance agreement. The Phase 2 TREC-grade human-pooling step would measure κ on a double-judged subset; cupertino targets κ ≥ 0.8 (Manning IIR §8.5).
+                    </p>
+                    <p class="card-finding">
+                        <strong>Source:</strong> Cohen, J. (1960). <em>A coefficient of agreement for nominal scales.</em> Educational and Psychological Measurement, 20(1).
+                    </p>
+                    <a class="card-link" href="https://doi.org/10.1177/001316446002000104" target="_blank" rel="noopener">DOI: 10.1177/001316446002000104</a>
+                </article>
+
+            </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <section>
+            <h2>Methodology paradigms</h2>
+            <div class="grid">
+
+                <article class="card no-hover" id="cranfield">
+                    <span class="status status-info">Paradigm</span>
+                    <h3 class="card-title">Cranfield paradigm</h3>
+                    <p class="card-subtitle">The basic recipe for evaluating any IR system.</p>
+                    <p class="card-finding">
+                        A test collection has three components: a document corpus, a set of queries, and relevance judgments for each (query, document) pair. Then run both systems on every query and compute metrics. Every dashboard on this page is a Cranfield-style evaluation.
+                    </p>
+                    <p class="card-finding">
+                        <strong>Source:</strong> Cleverdon, C. (1967). <em>The Cranfield tests on index language devices.</em> Aslib Proceedings, 19(6).
+                    </p>
+                    <a class="card-link" href="https://doi.org/10.1108/eb050097" target="_blank" rel="noopener">DOI: 10.1108/eb050097</a>
+                </article>
+
+                <article class="card no-hover" id="trec-pooling">
+                    <span class="status status-info">Paradigm</span>
+                    <h3 class="card-title">TREC pooling</h3>
+                    <p class="card-subtitle">How to build relevance judgments without judging every document.</p>
+                    <p class="card-finding">
+                        Take the top-K from every system being evaluated, take the union (the "pool"), and have humans judge only that subset. Used to make human-judging cost-bounded. The Phase 2 cupertino plan follows this. NIST's TREC has operated on pooled judgments since 1992.
+                    </p>
+                    <p class="card-finding">
+                        <strong>Source:</strong> Sparck Jones, K., &amp; van Rijsbergen, C.J. (1975). <em>Report on the need for and provision of an ideal information retrieval test collection.</em> British Library R&amp;D Report 5266. Operationalised by TREC since 1992.
+                    </p>
+                    <a class="card-link" href="https://trec.nist.gov/overview.html" target="_blank" rel="noopener">TREC overview</a>
+                </article>
+
+            </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <section>
+            <h2>Ranking algorithms inside cupertino</h2>
+            <div class="grid">
+
+                <article class="card no-hover" id="bm25">
+                    <span class="status status-info">Ranking</span>
+                    <h3 class="card-title">BM25</h3>
+                    <p class="card-subtitle">The classical "best match" relevance score.</p>
+                    <p class="card-finding">
+                        For each query term, weight by term-frequency-in-document and inverse-document-frequency, with a saturating function so very-frequent-in-doc terms don't dominate. The default ranking primitive in SQLite's FTS5 extension that cupertino uses.
+                    </p>
+                    <p class="card-finding">
+                        <strong>Source:</strong> Robertson, S.E., &amp; Walker, S. (1994). <em>Some simple effective approximations to the 2-Poisson model for probabilistic weighted retrieval.</em> Proceedings of SIGIR 1994.
+                    </p>
+                    <a class="card-link" href="https://dl.acm.org/doi/10.5555/188490.188561" target="_blank" rel="noopener">ACM DL</a>
+                </article>
+
+                <article class="card no-hover" id="bm25f">
+                    <span class="status status-info">Ranking</span>
+                    <h3 class="card-title">BM25F (field-weighted BM25)</h3>
+                    <p class="card-subtitle">BM25 with per-column weights.</p>
+                    <p class="card-finding">
+                        Each indexed column gets its own weight. Cupertino's main FTS5 table uses a 9-weight vector: <code>title=10</code>, <code>symbols=5</code>, <code>summary=3</code>, <code>framework=2</code>, <code>symbol_components=1.5</code>, others=1. The cupertino-specific tuning lives in <code>Packages/Sources/Search/Search.Index.Search.swift</code>.
+                    </p>
+                    <p class="card-finding">
+                        <strong>Source:</strong> Robertson, S., Zaragoza, H., &amp; Taylor, M. (2004). <em>Simple BM25 extension to multiple weighted fields.</em> Proceedings of CIKM 2004.
+                    </p>
+                    <a class="card-link" href="https://doi.org/10.1145/1031171.1031181" target="_blank" rel="noopener">DOI: 10.1145/1031171.1031181</a>
+                </article>
+
+                <article class="card no-hover" id="rrf">
+                    <span class="status status-info">Fusion</span>
+                    <h3 class="card-title">Reciprocal Rank Fusion</h3>
+                    <p class="card-subtitle">Combining rankings from multiple sources without per-source score normalisation.</p>
+                    <p class="card-finding">
+                        For each document, sum <code>weight(source) / (k + rank_in_source(doc))</code> across all sources that returned it. Robust to incompatible per-source score scales. Cupertino uses RRF with k=60 (the paper's default) to fuse apple-docs, Swift Evolution, HIG, Apple Archive, Swift Book, Swift.org, and packages.
+                    </p>
+                    <p class="card-finding">
+                        <strong>Source:</strong> Cormack, G.V., Clarke, C.L.A., &amp; Büttcher, S. (2009). <em>Reciprocal rank fusion outperforms Condorcet and individual rank learning methods.</em> Proceedings of SIGIR 2009.
+                    </p>
+                    <a class="card-link" href="https://doi.org/10.1145/1571941.1572114" target="_blank" rel="noopener">DOI: 10.1145/1571941.1572114</a>
+                </article>
+
+            </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <section>
+            <h2>Substrate cupertino sits on</h2>
+            <div class="grid">
+
+                <article class="card no-hover" id="fts5">
+                    <span class="status status-info">Engine</span>
+                    <h3 class="card-title">SQLite FTS5</h3>
+                    <p class="card-subtitle">The full-text-search extension bundled with SQLite.</p>
+                    <p class="card-finding">
+                        Cupertino uses off-the-shelf FTS5 — no custom build, no third-party loadable extensions. The 9-weight BM25F vector is configured at query time; the tokenizer is FTS5's bundled <code>porter unicode61</code>. See the database architecture doc for the full schema.
+                    </p>
+                    <p class="card-finding">
+                        <strong>Source:</strong> SQLite documentation, <em>FTS5: Full Text Search.</em>
+                    </p>
+                    <a class="card-link" href="https://sqlite.org/fts5.html" target="_blank" rel="noopener">sqlite.org/fts5.html</a>
+                </article>
+
+                <article class="card no-hover" id="porter">
+                    <span class="status status-info">Tokenizer</span>
+                    <h3 class="card-title">Porter stemmer</h3>
+                    <p class="card-subtitle">English-language word stemming.</p>
+                    <p class="card-finding">
+                        Reduces inflected forms to a common stem (<em>running</em>, <em>ran</em>, <em>runs</em> → <em>run</em>). Cupertino enables Porter stemming on the prose-bearing FTS5 tables and disables it on identifier-bearing tables (you don't want <code>URLSession</code> stemmed).
+                    </p>
+                    <p class="card-finding">
+                        <strong>Source:</strong> Porter, M.F. (1980). <em>An algorithm for suffix stripping.</em> Program, 14(3).
+                    </p>
+                    <a class="card-link" href="https://tartarus.org/martin/PorterStemmer/" target="_blank" rel="noopener">Reference implementation</a>
+                </article>
+
+                <article class="card no-hover" id="swift-syntax">
+                    <span class="status status-info">Apple toolchain</span>
+                    <h3 class="card-title">swift-syntax</h3>
+                    <p class="card-subtitle">Apple's Swift parser library, used by cupertino to extract symbols from code snippets.</p>
+                    <p class="card-finding">
+                        Cupertino's AST indexer (issue #81) uses swift-syntax to walk Swift code embedded in Apple's documentation, extract every declaration's name, kind, signature, attributes, and generic constraints, then store them in a dedicated <code>doc_symbols</code> table and feed identifier columns into the FTS5 ranking.
+                    </p>
+                    <a class="card-link" href="https://github.com/swiftlang/swift-syntax" target="_blank" rel="noopener">github.com/swiftlang/swift-syntax</a>
+                </article>
+
+                <article class="card no-hover" id="symbolgraph">
+                    <span class="status status-info">Apple toolchain</span>
+                    <h3 class="card-title">swift symbolgraph-extract</h3>
+                    <p class="card-subtitle">Apple's authoritative SDK symbol-graph emitter.</p>
+                    <p class="card-finding">
+                        Runs on the active Xcode toolchain to produce a per-module JSON describing every public API surface in the SDK. Cupertino's sibling repo <code>cupertino-symbolgraphs</code> runs it for every Apple framework and uses the output to populate the authoritative generic-constraints table for cupertino's iteration-3 enrichment pass (#759).
+                    </p>
+                    <a class="card-link" href="https://www.swift.org/" target="_blank" rel="noopener">Swift toolchain</a>
+                </article>
+
+            </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <section>
+            <h2>The benchmark we deliberately don't replicate</h2>
+
+            <article class="card no-hover" id="swe-bench">
+                <h3 class="card-title">SWE-bench</h3>
+                <p class="card-subtitle">A general-purpose benchmark for LLM-driven code generation.</p>
+                <p class="card-finding">
+                    Phase 1.7's design borrows the "compile + functional-correctness" scoring approach from SWE-bench but does not attempt to replicate the full benchmark. Cupertino's task corpus is Apple-platform-Swift-specific and ~30 tasks; SWE-bench targets thousands of Python repository tasks. The right answer when we need broader coverage is to adopt SWE-bench wholesale, not extend our harness toward it.
+                </p>
+                <p class="card-finding">
+                    <strong>Source:</strong> Jimenez, C., Yang, J., Wettig, A., Yao, S., Pei, K., Press, O., Narasimhan, K. (2024). <em>SWE-bench: Can Language Models Resolve Real-World GitHub Issues?</em> ICLR 2024.
+                </p>
+                <a class="card-link" href="https://arxiv.org/abs/2310.06770" target="_blank" rel="noopener">arXiv:2310.06770</a>
+            </article>
+        </section>
+
+        <footer>
+            <p>
+                Every metric on the cupertino dashboards is cited here. If you spot a number on a dashboard that isn't traceable back to one of these sources, that's a bug — file an issue.
+            </p>
+            <p>
+                Methodology in <a href="../design/search-quality-eval.md">docs/design/search-quality-eval.md</a>
+                ·
+                Universal rule in <code>mihaela-agents/Rules/universal/search-quality-eval.md</code>
+                ·
+                Index in <a href="../database-handbook.md">docs/database-handbook.md</a>
+            </p>
+        </footer>
+
+    </div>
+</body>
+</html>

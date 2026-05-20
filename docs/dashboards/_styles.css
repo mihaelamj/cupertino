@@ -438,6 +438,108 @@ footer {
 }
 footer p { margin: 6px 0; }
 
+/* ===== Card visual enhancements (icons, progress, milestones) ===== */
+
+.card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    background: rgba(0, 122, 255, 0.12);
+    color: var(--apple-blue);
+    flex-shrink: 0;
+}
+.card-icon svg { width: 24px; height: 24px; }
+.card-icon.tint-green { background: rgba(52, 199, 89, 0.12); color: var(--apple-green); }
+.card-icon.tint-orange { background: rgba(255, 149, 0, 0.12); color: var(--apple-orange); }
+.card-icon.tint-red { background: rgba(255, 59, 48, 0.12); color: var(--apple-red); }
+.card-icon.tint-blue { background: rgba(0, 122, 255, 0.12); color: var(--apple-blue); }
+.card-icon.tint-purple { background: rgba(175, 82, 222, 0.12); color: var(--apple-purple); }
+.card-icon.tint-indigo { background: rgba(88, 86, 214, 0.12); color: var(--apple-indigo); }
+
+/* Header layout: icon + status pill side-by-side */
+.card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+/* Progress bar (horizontal, for percentages) */
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--bg-elevated);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 12px 0 20px;
+    position: relative;
+}
+.progress-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 600ms ease;
+}
+.progress-bar-fill.green { background: linear-gradient(90deg, var(--apple-green), #30B956); }
+.progress-bar-fill.orange { background: linear-gradient(90deg, var(--apple-orange), #FF8800); }
+.progress-bar-fill.red { background: linear-gradient(90deg, var(--apple-red), #E62E24); }
+.progress-bar-fill.blue { background: linear-gradient(90deg, var(--apple-blue), #0058CC); }
+
+/* Milestones (checklist for the pending card) */
+.milestones {
+    margin: 16px 0 20px;
+    padding: 16px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-small);
+    border-left: 3px solid var(--apple-blue);
+}
+.milestone {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+.milestone-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+}
+.milestone.done .milestone-icon {
+    background: var(--apple-green);
+    color: white;
+}
+.milestone.done .milestone-text { color: var(--text-primary); }
+.milestone.pending .milestone-icon {
+    background: transparent;
+    border: 2px solid var(--border-strong);
+    color: var(--text-tertiary);
+}
+.milestone.in-progress .milestone-icon {
+    background: var(--apple-blue);
+    color: white;
+    animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* Tab content panels */
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
 /* ===== Responsive ===== */
 @media (max-width: 640px) {
     .container { padding: 40px 16px 60px; }
@@ -446,4 +548,6 @@ footer p { margin: 6px 0; }
     .card-metric { font-size: 40px; }
     .kpi-value { font-size: 28px; }
     .tabs { width: 100%; justify-content: flex-start; }
+    .card-icon { width: 40px; height: 40px; }
+    .card-icon svg { width: 20px; height: 20px; }
 }
