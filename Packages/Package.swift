@@ -419,7 +419,7 @@ let targets: [Target] = {
         // the Strategies/ folder moves to Sources/SearchStrategies/ and gets its own
         // SPM target with deps: [SearchIndexCore, CoreJSONParser, CorePackageIndexing,
         // Core, SharedModels, SharedConstants, Resources, Logging].
-        dependencies: ["SearchModels", "SharedConstants", "LoggingModels", "CoreProtocols", "CorePackageIndexingModels", "ASTIndexer"]
+        dependencies: ["SearchModels", "SharedConstants", "LoggingModels", "CoreProtocols", "CorePackageIndexingModels", "ASTIndexer", "EnrichmentModels"]
     )
     let searchTestsTarget = Target.testTarget(
         name: "SearchTests",
@@ -611,11 +611,12 @@ let targets: [Target] = {
 
     // ---------- Enrichment (#837 phase 1B: live concrete EnrichmentRunner + the
     // pass implementations that move out of Search.IndexBuilder in follow-up PRs).
-    // Depends on EnrichmentModels for the protocol seam plus Search / SampleIndex /
-    // CorePackageIndexing for the DB-specific calls each pass makes.
+    // Depends on EnrichmentModels for the protocol seam plus Search for the
+    // DB-specific calls the search-target passes make (and on SampleIndex /
+    // CorePackageIndexing in future phases as samples + packages passes land).
     let enrichmentTarget = Target.target(
         name: "Enrichment",
-        dependencies: ["EnrichmentModels"]
+        dependencies: ["EnrichmentModels", "Search", "SearchModels"]
     )
     let enrichmentTestsTarget = Target.testTarget(
         name: "EnrichmentTests",

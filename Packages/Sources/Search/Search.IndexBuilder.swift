@@ -1,3 +1,4 @@
+import EnrichmentModels
 import Foundation
 import LoggingModels
 import SearchModels
@@ -55,6 +56,16 @@ extension Search {
         /// pass 3 becomes a no-op and the build relies on iter 1 +
         /// iter 2 alone.
         private let staticConstraintsLookup: (any Search.StaticConstraintsLookup)?
+        /// #837 phase 1B-2 — optional postprocessor pipeline. When non-nil,
+        /// `buildIndex` runs `enrichmentRunner.run(target: .search)` after
+        /// the strategy loop instead of the three inline pass calls
+        /// (registerFrameworkSynonyms, applyAppleStaticConstraints,
+        /// propagateConstraintsFromParents). When nil, the inline calls run
+        /// as before — keeps existing callers (tests, smoke harnesses)
+        /// working without changes. Composition root constructs an
+        /// `Enrichment.LiveRunner` and passes it here once #837 lands the
+        /// full pipeline.
+        private let enrichmentRunner: (any EnrichmentRunner)?
 
         // MARK: - Designated Initialiser
 
@@ -77,12 +88,14 @@ extension Search {
             searchIndex: Search.Index,
             strategies: [any Search.SourceIndexingStrategy],
             logger: any LoggingModels.Logging.Recording,
-            staticConstraintsLookup: (any Search.StaticConstraintsLookup)? = nil
+            staticConstraintsLookup: (any Search.StaticConstraintsLookup)? = nil,
+            enrichmentRunner: (any EnrichmentRunner)? = nil
         ) {
             self.searchIndex = searchIndex
             self.strategies = strategies
             self.logger = logger
             self.staticConstraintsLookup = staticConstraintsLookup
+            self.enrichmentRunner = enrichmentRunner
         }
 
         // MARK: - Convenience Initialiser
@@ -118,7 +131,8 @@ extension Search {
             sampleCatalogProvider: any Search.SampleCatalogProvider,
             logger: any LoggingModels.Logging.Recording,
             importLogSink: (any Search.ImportLogSink)? = nil,
-            staticConstraintsLookup: (any Search.StaticConstraintsLookup)? = nil
+            staticConstraintsLookup: (any Search.StaticConstraintsLookup)? = nil,
+            enrichmentRunner: (any EnrichmentRunner)? = nil
         ) {
             self.init(
                 searchIndex: searchIndex,
@@ -136,7 +150,8 @@ extension Search {
                     importLogSink: importLogSink
                 ),
                 logger: logger,
-                staticConstraintsLookup: staticConstraintsLookup
+                staticConstraintsLookup: staticConstraintsLookup,
+                enrichmentRunner: enrichmentRunner
             )
         }
 
@@ -195,33 +210,51 @@ extension Search {
                 }
             }
 
-            try await registerFrameworkSynonyms()
+            // #837 phase 1B-2 — postprocessor pipeline. If the composition
+            // root injected an `enrichmentRunner`, defer to it for the three
+            // enrichment passes (synonyms, constraints, hierarchy). The
+            // runner topologically sorts the registered passes and logs
+            // per-pass timing/affected counts. If no runner was injected,
+            // fall back to the historical inline calls so existing callers
+            // (tests, smoke harnesses, downstream binaries that haven't
+            // adopted the pipeline yet) keep working unchanged.
+            if let enrichmentRunner {
+                let results = try await enrichmentRunner.run(target: .search)
+                for result in results {
+                    logger.info(
+                        "   [enrichment/\(result.passIdentifier)] affected=\(result.rowsAffected) skipped=\(result.rowsSkipped) (\(result.durationMs)ms)",
+                        category: .search
+                    )
+                }
+            } else {
+                try await registerFrameworkSynonyms()
 
-            // #759 iteration 3 — apply the authoritative Apple-type
-            // constraints table BEFORE iter 2's hierarchy walk runs,
-            // so the walk's parent map reads from the authoritative
-            // post-iter-3 state. When `staticConstraintsLookup` is
-            // nil (no table wired in at the composition root) the
-            // call is a no-op and the build falls back to iter 1 +
-            // iter 2 alone.
-            if staticConstraintsLookup != nil {
-                try await searchIndex.applyAppleStaticConstraints(lookup: staticConstraintsLookup)
-                logger.info("   Applied authoritative Apple constraints table (#759 iteration 3)", category: .search)
+                // #759 iteration 3 — apply the authoritative Apple-type
+                // constraints table BEFORE iter 2's hierarchy walk runs,
+                // so the walk's parent map reads from the authoritative
+                // post-iter-3 state. When `staticConstraintsLookup` is
+                // nil (no table wired in at the composition root) the
+                // call is a no-op and the build falls back to iter 1 +
+                // iter 2 alone.
+                if staticConstraintsLookup != nil {
+                    try await searchIndex.applyAppleStaticConstraints(lookup: staticConstraintsLookup)
+                    logger.info("   Applied authoritative Apple constraints table (#759 iteration 3)", category: .search)
+                }
+
+                // #755 / #759 iteration 2 — hierarchy walk. Iteration 1's
+                // AST extractor captures the constraints declared on each
+                // page's own declaration (`<T: View>` inline form +
+                // `where T: View` clauses). Iteration 3 (above) overrides
+                // those with the authoritative symbolgraph values where
+                // available. Iteration 2 here propagates the now-richer
+                // parent constraints down to the bare-generic methods
+                // (NavigationLink's init whose signature carries
+                // `Destination` but no constraint clause inherits the
+                // struct's `Destination: View`). Sub-second on the full
+                // 351k-row corpus.
+                try await searchIndex.propagateConstraintsFromParents()
+                logger.info("   Inherited generic constraints from parents (#759 iteration 2)", category: .search)
             }
-
-            // #755 / #759 iteration 2 — hierarchy walk. Iteration 1's
-            // AST extractor captures the constraints declared on each
-            // page's own declaration (`<T: View>` inline form +
-            // `where T: View` clauses). Iteration 3 (above) overrides
-            // those with the authoritative symbolgraph values where
-            // available. Iteration 2 here propagates the now-richer
-            // parent constraints down to the bare-generic methods
-            // (NavigationLink's init whose signature carries
-            // `Destination` but no constraint clause inherits the
-            // struct's `Destination: View`). Sub-second on the full
-            // 351k-row corpus.
-            try await searchIndex.propagateConstraintsFromParents()
-            logger.info("   Inherited generic constraints from parents (#759 iteration 2)", category: .search)
 
             // Log per-source breakdown so operators can diagnose index-build issues
             // without having to re-run with verbose logging.
