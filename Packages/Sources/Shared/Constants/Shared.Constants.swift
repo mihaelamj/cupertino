@@ -772,6 +772,13 @@ extension Shared.Constants {
         /// the search index's `--swift` filter surface.
         public static let schemaParamMinSwift = "min_swift"
 
+        /// JSON Schema parameter: apple_imports (#837 read-side). When
+        /// set, the packages fetcher restricts results to packages
+        /// whose `package_metadata.apple_imports_json` JSON array
+        /// includes the named Apple framework module (`SwiftUI`,
+        /// `Combine`, …). No-op on non-packages sources.
+        public static let schemaParamAppleImports = "apple_imports"
+
         // MARK: Semantic Search Parameters (#81)
 
         /// JSON Schema parameter: kind (symbol kind)

@@ -175,7 +175,8 @@ extension CLIImpl.Command.Search {
         let availabilityFilter = try resolveAvailabilityFilter()
         let fetcher = SearchModule.PackageFTSCandidateFetcher(
             dbPath: dbURL,
-            availability: availabilityFilter
+            availability: availabilityFilter,
+            appleImport: appleImports
         )
         let smartQuery = SearchModule.SmartQuery(fetchers: [fetcher])
         let result = await smartQuery.answer(

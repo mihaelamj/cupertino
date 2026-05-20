@@ -134,6 +134,17 @@ extension CLIImpl.Command {
 
         @Option(
             name: .long,
+            help: """
+            Restrict packages results to packages that import the given \
+            Apple framework module (e.g., SwiftUI, Combine). Filters by \
+            package_metadata.apple_imports_json, populated by the #837 \
+            postprocessor. No-op on non-packages sources.
+            """
+        )
+        var appleImports: String?
+
+        @Option(
+            name: .long,
             help: "Path to search database (search.db)"
         )
         var searchDb: String?

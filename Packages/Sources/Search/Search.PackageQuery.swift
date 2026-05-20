@@ -94,7 +94,8 @@ extension Search {
             _ question: String,
             maxResults: Int = 3,
             availability: AvailabilityFilter? = nil,
-            swiftTools: SwiftToolsFilter? = nil
+            swiftTools: SwiftToolsFilter? = nil,
+            appleImport: String? = nil
         ) throws -> [PackageSearchResult] {
             guard database != nil else { throw PackageQueryError.databaseNotOpen }
 
@@ -109,7 +110,8 @@ extension Search {
                 kinds: config.kindFilter,
                 limit: 20,
                 availability: availability,
-                swiftTools: swiftTools
+                swiftTools: swiftTools,
+                appleImport: appleImport
             )
 
             let queryTokens = Self.tokens(from: question)
@@ -130,7 +132,18 @@ extension Search {
                 weights: config.columnWeights,
                 kinds: config.kindFilter,
                 availability: availability,
-                swiftTools: swiftTools
+                swiftTools: swiftTools,
+                appleImport: appleImport
+            )
+
+            // #837 read-side wiring — collect the set of
+            // owner/repo/relpath keys whose package_symbols row
+            // LIKE-matches the query. Files that match through the
+            // symbol column get a score boost below.
+            let symbolMatchedKeys = try fetchPackageSymbolMatches(
+                question: question,
+                appleImport: appleImport,
+                limit: 500
             )
 
             var scored: [(score: Double, result: PackageSearchResult)] = []
@@ -183,7 +196,13 @@ extension Search {
                 // lower bm25 = better; invert so bigger is better
                 let baseScore = -cand.bm25
                 let bonus = config.kindBonus(for: cand.kind)
-                let finalScore = baseScore + bonus
+                // #837 read-side wiring — boost files whose
+                // package_symbols row LIKE-matches the query in any
+                // of name / attributes / conformances / signature /
+                // generic_constraints. Multiplier 3.0 matches the
+                // search.db apple-docs symbol-boost convention.
+                let symbolBoost: Double = symbolMatchedKeys.contains(key) ? 3.0 : 1.0
+                let finalScore = (baseScore + bonus) * symbolBoost
 
                 scored.append((
                     finalScore,
@@ -206,6 +225,79 @@ extension Search {
                 .map(\.result)
         }
 
+        // MARK: - #837 — package_symbols read-side helper
+
+        /// Returns the set of `"owner/repo/relpath"` composite keys
+        /// whose `package_symbols` row LIKE-matches the query in any
+        /// of `name`, `attributes`, `conformances`, `signature`,
+        /// `generic_constraints`. JOINs through
+        /// `package_files` (file_id → id) and `package_metadata`
+        /// (package_id → id) so the caller doesn't have to round-trip.
+        ///
+        /// When `appleImport` is non-nil, an additional
+        /// `AND pm.apple_imports_json LIKE '%"<module>"%'` clause
+        /// restricts the join. The literal quote brackets in the
+        /// LIKE pattern (`%"swiftui"%`) are deliberate — they match
+        /// the JSON array element exactly and prevent `'swiftui'`
+        /// from substring-matching `'swiftuihelper'` or similar
+        /// false-positives. apple_imports_json is stored lowercased
+        /// by the write-side pass, so the query module is lowercased
+        /// to match.
+        ///
+        /// Fails silently with an empty set when SQL prepare fails;
+        /// symbol search is an optional ranking enhancement.
+        private func fetchPackageSymbolMatches(
+            question: String,
+            appleImport: String?,
+            limit: Int
+        ) throws -> Set<String> {
+            guard let database else { return [] }
+            let cleanQuery = question
+                .replacingOccurrences(of: "\"", with: "")
+                .trimmingCharacters(in: .whitespaces)
+            guard cleanQuery.count >= 3 else { return [] }
+            let likePattern = "%\(cleanQuery)%"
+
+            var appleImportClause = ""
+            if appleImport != nil {
+                // Quote brackets around the JSON array element prevent
+                // substring false-positives. See docstring.
+                appleImportClause = "AND pm.apple_imports_json LIKE '%\"' || ? || '\"%'"
+            }
+
+            let sql = """
+            SELECT DISTINCT pm.owner || '/' || pm.repo || '/' || pf.relpath
+            FROM package_symbols ps
+            JOIN package_files pf ON ps.file_id = pf.id
+            JOIN package_metadata pm ON pf.package_id = pm.id
+            WHERE (ps.name LIKE ?
+                OR ps.attributes LIKE ?
+                OR ps.conformances LIKE ?
+                OR ps.signature LIKE ?
+                OR ps.generic_constraints LIKE ?)
+              \(appleImportClause)
+            LIMIT \(limit);
+            """
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            guard sqlite3_prepare_v2(database, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
+            sqlite3_bind_text(stmt, 1, (likePattern as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(stmt, 2, (likePattern as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(stmt, 3, (likePattern as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(stmt, 4, (likePattern as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(stmt, 5, (likePattern as NSString).utf8String, -1, nil)
+            if let appleImport {
+                sqlite3_bind_text(stmt, 6, (appleImport.lowercased() as NSString).utf8String, -1, nil)
+            }
+            var keys: Set<String> = []
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                if let ptr = sqlite3_column_text(stmt, 0) {
+                    keys.insert(String(cString: ptr))
+                }
+            }
+            return keys
+        }
+
         // MARK: - Canonical-repo force-include (parallel to Search.Index #256 follow-on)
 
         /// Resolves repo-name candidates from the query tokens and, for each
@@ -219,7 +311,8 @@ extension Search {
             weights: IntentConfig.Weights,
             kinds: Set<String>,
             availability: AvailabilityFilter?,
-            swiftTools: SwiftToolsFilter? = nil
+            swiftTools: SwiftToolsFilter? = nil,
+            appleImport: String? = nil
         ) throws -> [Candidate] {
             // Two priority tiers:
             //
@@ -271,7 +364,8 @@ extension Search {
                     weights: weights,
                     kinds: kinds,
                     availability: availability,
-                    swiftTools: swiftTools
+                    swiftTools: swiftTools,
+                    appleImport: appleImport
                 ) {
                     hits.append(candidate)
                 }
@@ -296,6 +390,7 @@ extension Search {
             guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
                 throw PackageQueryError.sqliteError(String(cString: sqlite3_errmsg(database)))
             }
+            // swiftlint:disable:next identifier_name
             for (i, name) in repoNames.enumerated() {
                 sqlite3_bind_text(statement, Int32(i + 1), name, -1, SQLITE_TRANSIENT_QUERY)
             }
@@ -319,7 +414,8 @@ extension Search {
             weights: IntentConfig.Weights,
             kinds: Set<String>,
             availability: AvailabilityFilter?,
-            swiftTools: SwiftToolsFilter? = nil
+            swiftTools: SwiftToolsFilter? = nil,
+            appleImport: String? = nil
         ) throws -> Candidate? {
             guard let database else { throw PackageQueryError.databaseNotOpen }
 
@@ -340,6 +436,14 @@ extension Search {
                   AND m.swift_tools_version >= ?
                 """
             }
+            // #837 read-side wiring — same quote-bracketed JSON match
+            // as `fetchCandidates`. See that method's docstring.
+            var appleImportClause = ""
+            if appleImport != nil {
+                appleImportClause = """
+                  AND m.apple_imports_json LIKE '%"' || ? || '"%'
+                """
+            }
 
             let sql = """
             SELECT f.owner, f.repo, f.module, f.relpath, f.kind, f.title, f.content,
@@ -352,6 +456,7 @@ extension Search {
               AND f.kind IN (\(kindList))
               \(availabilityClause)
               \(swiftToolsClause)
+              \(appleImportClause)
             ORDER BY score
             LIMIT 1
             """
@@ -372,6 +477,10 @@ extension Search {
             }
             if let swiftTools {
                 sqlite3_bind_text(statement, nextBind, swiftTools.minVersion, -1, SQLITE_TRANSIENT_QUERY)
+                nextBind += 1
+            }
+            if let appleImport {
+                sqlite3_bind_text(statement, nextBind, appleImport.lowercased(), -1, SQLITE_TRANSIENT_QUERY)
                 nextBind += 1
             }
 
@@ -428,7 +537,8 @@ extension Search {
             kinds: Set<String>,
             limit: Int,
             availability: AvailabilityFilter? = nil,
-            swiftTools: SwiftToolsFilter? = nil
+            swiftTools: SwiftToolsFilter? = nil,
+            appleImport: String? = nil
         ) throws -> [Candidate] {
             guard let database else { throw PackageQueryError.databaseNotOpen }
 
@@ -467,6 +577,19 @@ extension Search {
                 """
             }
 
+            // #837 read-side wiring — optional apple_imports_json
+            // filter. Quote brackets around the JSON array element
+            // prevent substring false-positives ('swiftui' matching
+            // 'swiftuihelper' or similar). apple_imports_json is
+            // stored lowercased by the write-side pass; the query
+            // module is lowercased to match.
+            var appleImportClause = ""
+            if appleImport != nil {
+                appleImportClause = """
+                  AND m.apple_imports_json LIKE '%"' || ? || '"%'
+                """
+            }
+
             let sql = """
             SELECT f.owner, f.repo, f.module, f.relpath, f.kind, f.title, f.content,
                    bm25(package_files_fts, \(weights.title), \(weights.content), \(weights.symbols)) AS score
@@ -476,6 +599,7 @@ extension Search {
               AND f.kind IN (\(kindList))
               \(availabilityClause)
               \(swiftToolsClause)
+              \(appleImportClause)
             ORDER BY score
             LIMIT \(limit)
             """
@@ -494,6 +618,10 @@ extension Search {
             }
             if let swiftTools {
                 sqlite3_bind_text(statement, nextBind, swiftTools.minVersion, -1, SQLITE_TRANSIENT_QUERY)
+                nextBind += 1
+            }
+            if let appleImport {
+                sqlite3_bind_text(statement, nextBind, appleImport.lowercased(), -1, SQLITE_TRANSIENT_QUERY)
                 nextBind += 1
             }
 
@@ -746,4 +874,5 @@ extension Search {
 /// Separate name to avoid collision with the same constant in PackageIndex.swift
 /// (both files define a private SQLITE_TRANSIENT but Swift is fine with per-file
 /// private naming collisions).
+// swiftlint:disable:next identifier_name
 private let SQLITE_TRANSIENT_QUERY = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
