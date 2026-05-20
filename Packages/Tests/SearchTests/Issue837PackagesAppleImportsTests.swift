@@ -26,7 +26,21 @@ struct Issue837PackagesAppleImportsTests {
         return (path, index)
     }
 
-    /// Seed one package with `modules` rows in `package_files`.
+    /// Seed one package with one file per `modules` entry, and ALSO
+    /// seed `package_imports` rows so the post-#860 `applyAppleImports`
+    /// join finds something. The legacy parameter name `modules` is
+    /// retained for source compatibility with i1/i2/i3/i4/i5 case
+    /// authors; semantically it now represents "the `import X`
+    /// statements that the package's source carries", which is the
+    /// correct shape for "frameworks this package imports".
+    ///
+    /// Pre-#860: this helper only seeded `package_files.module`, which
+    /// was the wrong RHS for the apple-imports join (it carried the
+    /// package's OWN Swift module name, not the imported framework
+    /// set). Post-#860: the helper seeds `package_imports.module_name`
+    /// in addition; the legacy `package_files.module` write stays so
+    /// existing assertions about the column's shape (NULL passthrough,
+    /// case preservation) continue to hold.
     @discardableResult
     private static func seedPackage(
         at dbPath: URL,
@@ -69,8 +83,27 @@ struct Issue837PackagesAppleImportsTests {
                 sqlite3_bind_null(stmt, 3)
             }
             try #require(sqlite3_step(stmt) == SQLITE_DONE)
+            let fileId = sqlite3_last_insert_rowid(conn)
             sqlite3_finalize(stmt)
             stmt = nil
+
+            // #860 — also seed the per-file import row that the
+            // post-fix apple-imports pass joins against. NULL module
+            // → no import row (mirrors the production behaviour where
+            // the AST extractor returns an empty `imports` array for
+            // files that don't declare any `import X`).
+            if let module {
+                let impSQL = """
+                INSERT INTO package_imports (file_id, module_name, line, is_exported)
+                VALUES (?, ?, 1, 0);
+                """
+                try #require(sqlite3_prepare_v2(conn, impSQL, -1, &stmt, nil) == SQLITE_OK)
+                sqlite3_bind_int64(stmt, 1, fileId)
+                sqlite3_bind_text(stmt, 2, (module as NSString).utf8String, -1, nil)
+                try #require(sqlite3_step(stmt) == SQLITE_DONE)
+                sqlite3_finalize(stmt)
+                stmt = nil
+            }
         }
 
         return pkgId
