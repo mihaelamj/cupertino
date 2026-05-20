@@ -335,7 +335,7 @@ def render_index(audits_dir: Path, out_path: Path, extras_path: Path | None = No
 
                 <p style="margin-top: 32px;">
                     Full methodology in
-                    <a href="../design/search-quality-eval.md">docs/design/search-quality-eval.md</a>.
+                    <a href="docs/design-search-quality-eval.html">design/search-quality-eval</a>.
                     The universal rule lives at <code>mihaela-agents/Rules/universal/search-quality-eval.md</code>.
                 </p>
             </section>
@@ -348,13 +348,13 @@ def render_index(audits_dir: Path, out_path: Path, extras_path: Path | None = No
                 When an audit changes, re-run <code>regen-all.sh</code>.
             </p>
             <p>
-                Methodology in <a href="../design/search-quality-eval.md">docs/design/search-quality-eval.md</a>
+                Methodology in <a href="docs/design-search-quality-eval.html">design/search-quality-eval</a>
                 ·
-                Architecture in <a href="../architecture/database.md">docs/architecture/database.md</a>
+                Architecture in <a href="docs/architecture-database.html">architecture/database</a>
                 ·
                 Citations in <a href="sources.html">sources.html</a>
                 ·
-                Index in <a href="../database-handbook.md">docs/database-handbook.md</a>
+                Index in <a href="docs/database-handbook.html">database-handbook</a>
             </p>
         </footer>
 

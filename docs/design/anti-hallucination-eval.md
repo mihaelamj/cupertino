@@ -115,47 +115,18 @@ Six Phase 1.x baselines landed on develop on 2026-05-20. Two of them surface mec
 
 ## 5. Design Overview
 
-```
-                     ┌─────────────────────────────────────┐
-                     │  Task Corpus (5.1)                  │
-                     │   30 hand-curated Swift coding tasks│
-                     │   (prompt, target_platform,         │
-                     │    target_swift, success_hints)     │
-                     └─────────────────┬───────────────────┘
-                                       │ per task
-                                       ▼
-                ┌──────────────────────────────────────┐
-                │  Agent Driver (5.2)                  │
-                │  for mode in [grounded, ungrounded]: │
-                │    call LLM(prompt + maybe(MCP top-K)│
-                │    capture: generated_code, prompt_log│
-                └──────────────────┬───────────────────┘
-                                   │ per (task, mode)
-                                   ▼
-                ┌────────────────────────────────────────────────┐
-                │  Scoring Pipeline (5.3, 6 / 8)                 │
-                │   1. compile_check  (xcrun swift -c <code>)    │
-                │   2. symbol_exists  (symbolgraph lookup)       │
-                │   3. availability   (parse @available, target) │
-                │   4. deprecation    (curated map lookup)       │
-                │   outcome = AND(1, 2, 3, 4)                    │
-                └────────────────────┬───────────────────────────┘
-                                     │ per (task, mode) → bool
-                                     ▼
-                ┌────────────────────────────────────────────────┐
-                │  Paired Aggregator + McNemar's (5.4, 8.1)      │
-                │   per-task pairing of grounded vs ungrounded   │
-                │   contingency table, McNemar χ² + exact p      │
-                └────────────────────┬───────────────────────────┘
-                                     │
-                                     ▼
-                ┌────────────────────────────────────────────────┐
-                │  Report (5.5)                                  │
-                │   stdout: contingency table, stat tests,       │
-                │     per-task outcome diff                      │
-                │   JSON dump for archival                       │
-                │   Markdown summary at docs/audits/             │
-                └────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A["<b>Task Corpus</b> · §5.1<br/>30 hand-curated Swift coding tasks<br/>(prompt, target_platform, target_swift, success_hints)"]
+    B["<b>Agent Driver</b> · §5.2<br/>for mode in [grounded, ungrounded]:<br/>&nbsp;&nbsp;call LLM(prompt + maybe(MCP top-K))<br/>&nbsp;&nbsp;capture: generated_code, prompt_log"]
+    C["<b>Scoring Pipeline</b> · §5.3, §§6 and 8<br/>1. compile_check (xcrun swift -c)<br/>2. symbol_exists (symbolgraph lookup)<br/>3. availability (parse @available)<br/>4. deprecation (curated map lookup)<br/>outcome = AND(1, 2, 3, 4)"]
+    D["<b>Paired Aggregator + McNemar's</b> · §5.4, §8.1<br/>per-task pairing of grounded vs ungrounded<br/>contingency table, McNemar χ² + exact p"]
+    E["<b>Report</b> · §5.5<br/>stdout: contingency table, stat tests, per-task outcome diff<br/>JSON dump for archival<br/>Markdown summary under docs/audits/"]
+
+    A -- "per task" --> B
+    B -- "per (task, mode)" --> C
+    C -- "per (task, mode) → bool" --> D
+    D --> E
 ```
 
 Five components, all stateless beyond the task corpus and the LLM cache (if any). The agent driver and the scoring pipeline are the two non-trivial components; the rest is glue.

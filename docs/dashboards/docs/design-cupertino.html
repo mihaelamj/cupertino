@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design: Cupertino · cupertino docs</title>
+    <link rel="stylesheet" href="../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="doc-progress"><div class="doc-progress-bar"></div></div>
+
+    <div class="container doc-container">
+
+        <a class="back-link" href="../search-quality-v1.2.0.html">Back to dashboard</a>
+
+        <header class="doc-header">
+            <div class="eyebrow">Design</div>
+            <h1>Design: Cupertino</h1>
+        </header>
+
+        <div class="doc-meta-card"><div class="meta-row"><span class="meta-key">Status</span><span class="meta-val">Living document. Sections are revised in PRs that change the corresponding subsystem.</span></div><div class="meta-row"><span class="meta-key">Latest release</span><span class="meta-val">v1.1.0 (2026-05-14). v1.2.0 in flight on develop.</span></div><div class="meta-row"><span class="meta-key">Roadmap</span><span class="meta-val">GitHub issue #183</span></div><div class="meta-row"><span class="meta-key">Companion docs</span><span class="meta-val">docs/PRINCIPLES.md, docs/ARCHITECTURE.md, docs/package-import-contract.md, docs/design/post-processor.md</span></div></div>
+
+        <div class="companion-card"><div class="companion-title">Companion docs</div><div class="companion-grid"><a class="companion-link" href="PRINCIPLES.html"><span class="companion-path">docs/PRINCIPLES.md</span><span class="companion-note">, `docs/ARCHITECTURE.md`, `docs/package-import-contract.md`, `docs/design/post-processor.md`</span></a></div></div>
+
+        <div class="doc-layout">
+            <aside class="toc-sidebar"><div class="toc-title">On this page</div><nav class="toc-list"><a class="toc-row" href="#tl-dr"><span class="toc-num toc-num-glyph">§</span><span class="toc-label">TL;DR</span></a><a class="toc-row" href="#1-context"><span class="toc-num">1</span><span class="toc-label">Context</span></a><a class="toc-row" href="#2-goals"><span class="toc-num">2</span><span class="toc-label">Goals</span></a><a class="toc-row" href="#3-non-goals"><span class="toc-num">3</span><span class="toc-label">Non-goals</span></a><a class="toc-row" href="#4-requirements"><span class="toc-num">4</span><span class="toc-label">Requirements</span></a><a class="toc-row" href="#5-design-overview"><span class="toc-num">5</span><span class="toc-label">Design Overview</span></a><a class="toc-row" href="#6-detailed-design-crawl"><span class="toc-num">6</span><span class="toc-label">Detailed Design: Crawl</span></a><a class="toc-row" href="#7-detailed-design-import-index"><span class="toc-num">7</span><span class="toc-label">Detailed Design: Import / Index</span></a><a class="toc-row" href="#8-detailed-design-enrich"><span class="toc-num">8</span><span class="toc-label">Detailed Design: Enrich</span></a><a class="toc-row" href="#9-detailed-design-serve"><span class="toc-num">9</span><span class="toc-label">Detailed Design: Serve</span></a><a class="toc-row" href="#10-scalability-analysis"><span class="toc-num">10</span><span class="toc-label">Scalability Analysis</span></a><a class="toc-row" href="#11-reliability-failure-modes"><span class="toc-num">11</span><span class="toc-label">Reliability &amp; Failure Modes</span></a><a class="toc-row" href="#12-security-privacy"><span class="toc-num">12</span><span class="toc-label">Security &amp; Privacy</span></a><a class="toc-row" href="#13-observability"><span class="toc-num">13</span><span class="toc-label">Observability</span></a><a class="toc-row" href="#14-testing-strategy"><span class="toc-num">14</span><span class="toc-label">Testing Strategy</span></a><a class="toc-row" href="#15-rollout-distribution"><span class="toc-num">15</span><span class="toc-label">Rollout &amp; Distribution</span></a><a class="toc-row" href="#16-alternatives-considered"><span class="toc-num">16</span><span class="toc-label">Alternatives Considered</span></a><a class="toc-row" href="#17-open-questions-risks"><span class="toc-num">17</span><span class="toc-label">Open Questions &amp; Risks</span></a><a class="toc-row" href="#18-future-work"><span class="toc-num">18</span><span class="toc-label">Future Work</span></a><a class="toc-row" href="#19-references"><span class="toc-num">19</span><span class="toc-label">References</span></a></nav></aside>
+
+            <main class="doc-content">
+                <section id="tl-dr" class="doc-section"><h2><span class="section-title">TL;DR</span></h2><p class="lead">Cupertino is a local-first indexing and serving system for Apple developer documentation. It crawls the full Apple docs JSON API (~412,000 pages, ~420 frameworks), imports the result into a SQLite <a href="../sources.html#fts5">FTS5</a> database with a multi-pass <a href="../sources.html#bm25f">BM25F</a> ranker, and serves it to AI agents over the Model Context Protocol from a single hand-rolled Swift binary. Search latency is sub-100ms p99; the entire system runs offline after a one-time bundle download. The bundle is rebuilt and distributed via GitHub Releases (~685 MB compressed). Crawl-to-bundle is a ~14-day pipeline that runs out-of-band; the user-facing install path skips the crawl entirely.</p>
+<hr></section><section id="1-context" class="doc-section"><h2><span class="section-number-badge">1</span><span class="section-title">Context</span></h2><h3>1.1 Problem</h3>
+<p class="lead">Apple publishes developer documentation as a JavaScript-rendered single-page application backed by an undocumented JSON API. AI coding agents (Claude, Copilot, Cursor, etc.) need accurate, current Apple API references to avoid generating code that calls nonexistent symbols, uses deprecated APIs, or violates platform availability constraints. The naive approaches all fail:</p>
+<ul><li><strong>Web scraping at query time</strong> is too slow, fragile against Apple's JS changes, and hits Apple's rate limits.</li><li><strong>Inline embedding in the agent's prompt</strong> is too large (the full docs corpus is ~3 GB structured, would not fit in any current context window).</li><li><strong>Vector embedding the corpus</strong> loses the symbol-name token-match signal that 80%+ of Apple-docs queries depend on, and adds an inference dependency to every query.</li><li><strong>Training the agent on the docs</strong> is stale within months and can't be updated incrementally.</li></ul>
+<h3>1.2 Why a local index</h3>
+<p>The corpus has favorable properties for a local index:</p>
+<ul><li><strong>Bounded size</strong>: ~412k pages, ~3 GB structured JSON, ~2.4 GB compressed <a href="../sources.html#fts5">FTS5</a> index. Fits on consumer hardware.</li><li><strong>Slow churn</strong>: Apple ships major doc revisions once per OS release cycle (twice a year). Daily delta is small.</li><li><strong>Symbol-structured content</strong>: most queries match on exact symbol names (<code>URLSession</code>, <code>@Observable</code>, <code>dataTaskPublisher</code>). <a href="../sources.html#fts5">FTS5</a> + <a href="../sources.html#bm25f">BM25F</a> handles this at sub-millisecond latency without an embeddings pipeline.</li><li><strong>Public</strong>: Apple ships the docs under no auth.</li></ul>
+<h3>1.3 Why MCP</h3>
+<p>The Model Context Protocol (Anthropic, 2024) standardizes how AI agents discover and invoke tools and read external resources. MCP-compatible agents (Claude Desktop, Claude Code, Cursor, VS Code Copilot, Zed, Windsurf, OpenAI Codex, GitHub Copilot for Xcode) can consume Cupertino without per-agent integration work. Targeting MCP avoids building N adapter binaries.</p>
+<hr></section><section id="2-goals" class="doc-section"><h2><span class="section-number-badge">2</span><span class="section-title">Goals</span></h2><h3>P0 (release blockers)</h3>
+<div class="def-list"><div class="def-row"><span class="def-chip chip-good">G1</span><div class="def-body">Index the full Apple developer docs corpus locally. Coverage measured by frameworks present in <code>framework_aliases</code> and document count in <code>docs_metadata</code>.</div></div><div class="def-row"><span class="def-chip chip-good">G2</span><div class="def-body">Serve via MCP at p99 &lt; 100ms for typical search queries against the local index.</div></div><div class="def-row"><span class="def-chip chip-good">G3</span><div class="def-body">Lossless URI canonicalization (zero hash-collision floor, fully reversible to source URL).</div></div><div class="def-row"><span class="def-chip chip-good">G4</span><div class="def-body">Single-binary install via Homebrew with a one-command setup that downloads the prebuilt bundle.</div></div><div class="def-row"><span class="def-chip chip-good">G5</span><div class="def-body">Multi-source ranking. Apple docs, Apple sample code, Swift Evolution, Swift.org, Swift Book, Apple Archive, HIG, and Swift packages all queryable from one CLI/MCP entry point.</div></div></div>
+<h3>P1 (high priority, not release blockers)</h3>
+<div class="def-list"><div class="def-row"><span class="def-chip chip-good">G6</span><div class="def-body">Incremental re-crawl. Skip unchanged pages via content hashing.</div></div><div class="def-row"><span class="def-chip chip-good">G7</span><div class="def-body">Resumable crawl session. Killed processes resume from checkpoint, not from scratch.</div></div><div class="def-row"><span class="def-chip chip-good">G8</span><div class="def-body">AST-aware ranking. Swift symbol declarations get a <a href="../sources.html#bm25">BM25</a> column boost so <code>Task</code> finds Swift's <code>Task</code> struct above the Mach kernel's <code>task_*</code> C functions.</div></div><div class="def-row"><span class="def-chip chip-good">G9</span><div class="def-body">Attribute search. Filter by <code>kind</code>, <code>conforms_to</code>, <code>@MainActor</code>, platform availability (<code>min_ios</code>, <code>min_macos</code>, etc.), and other DocC-extracted fields without parsing JSON at query time.</div></div><div class="def-row"><span class="def-chip chip-good">G10</span><div class="def-body">Audit log. Every rejected, deduplicated, or skipped row is recorded with its reason in a JSONL log for offline forensics.</div></div></div>
+<h3>P2 (nice to have, post-1.x)</h3>
+<div class="def-list"><div class="def-row"><span class="def-chip chip-good">G11</span><div class="def-body">Vector/semantic search as a complement to token-match (Phase 2.5 per #183).</div></div><div class="def-row"><span class="def-chip chip-good">G12</span><div class="def-body">Diagnostic block in MCP responses surfacing why a result was ranked where it was (Phase 2.1).</div></div><div class="def-row"><span class="def-chip chip-good">G13</span><div class="def-body">Differential re-crawl. Use the corpus git history to fetch only pages Apple changed since the last commit.</div></div></div>
+<hr></section><section id="3-non-goals" class="doc-section"><h2><span class="section-number-badge">3</span><span class="section-title">Non-goals</span></h2><p class="lead">These are explicit non-goals so future contributors don't waste cycles re-proposing them:</p>
+<div class="def-list"><div class="def-row"><span class="def-chip chip-warn">NG1</span><div class="def-body">Authenticated Apple endpoints. <code>FASTLANE_SESSION</code> and xcodes-style SRP authentication were evaluated and rejected; no consumer in the design needs them.</div></div><div class="def-row"><span class="def-chip chip-warn">NG2</span><div class="def-body">Real-time documentation updates. Apple's API isn't push-based and the bundle re-build cadence is multi-day; users expect a snapshot, not a live feed.</div></div><div class="def-row"><span class="def-chip chip-warn">NG3</span><div class="def-body">Indexing non-Apple-published content. Third-party tutorials, Stack Overflow, blog posts are out of scope. The trust model is "Apple shipped it" and that boundary is load-bearing for the no-hallucinations guarantee.</div></div><div class="def-row"><span class="def-chip chip-warn">NG4</span><div class="def-body">Cross-platform crawling. WKWebView is macOS-only. A Linux crawl variant is open future work but not in scope for v1.x.</div></div><div class="def-row"><span class="def-chip chip-warn">NG5</span><div class="def-body">User-content storage. Cupertino does not collect, store, or transmit user queries, telemetry, or personally identifying information. The MCP server is stateless across sessions.</div></div><div class="def-row"><span class="def-chip chip-warn">NG6</span><div class="def-body">In-place schema migrations. When the schema bumps, users re-run <code>cupertino setup</code> to get a clean bundle. Migration code paths are a known source of subtle bugs in long-lived databases; we chose to skip them entirely and rebuild from source.</div></div></div>
+<hr></section><section id="4-requirements" class="doc-section"><h2><span class="section-number-badge">4</span><span class="section-title">Requirements</span></h2><h3>4.1 Functional</h3>
+<table class="data-table"><thead><tr><th>ID</th><th>Requirement</th><th>Verified by</th></tr></thead><tbody><tr><td>F1</td><td>Full-text search across all indexed sources</td><td><code>cupertino search</code>, MCP <code>search</code> tool</td></tr><tr><td>F2</td><td>Read a full document by <code>apple-docs://</code> URI</td><td><code>cupertino read</code>, MCP <code>read_document</code></td></tr><tr><td>F3</td><td>List indexed frameworks with document counts</td><td><code>cupertino list-frameworks</code>, MCP <code>list_frameworks</code></td></tr><tr><td>F4</td><td>Filter search results by framework, platform version, source</td><td>CLI flags and MCP tool parameters</td></tr><tr><td>F5</td><td>Symbol-shape queries (find all <code>actor</code>s conforming to <code>Sendable</code>)</td><td>MCP <code>search_symbols</code>, <code>search_conformances</code></td></tr><tr><td>F6</td><td>Property-wrapper and concurrency pattern lookup</td><td>MCP <code>search_property_wrappers</code>, <code>search_concurrency</code></td></tr><tr><td>F7</td><td>Sample code read at file granularity</td><td>MCP <code>read_sample</code>, <code>read_sample_file</code></td></tr><tr><td>F8</td><td>Crawl resume from arbitrary kill point</td><td><code>Crawler</code> session checkpoint, keyed by start URL</td></tr><tr><td>F9</td><td>Content-hash-based incremental re-crawl</td><td>SHA-256 per JSON file; skip on hash match</td></tr><tr><td>F10</td><td>Audit log of all rejected and deduplicated rows</td><td><code>Search.JSONLImportLogSink</code> writes JSONL</td></tr></tbody></table>
+<h3>4.2 Non-functional</h3>
+<table class="data-table"><thead><tr><th>ID</th><th>Requirement</th><th>Target</th><th>Current state</th></tr></thead><tbody><tr><td>N1</td><td>Search latency p99</td><td>&lt; 100ms</td><td>Holds on v1.1.0 bundle (~285k docs); tracked in integration test</td></tr><tr><td>N2</td><td>Read latency p99</td><td>&lt; 50ms</td><td>SQLite single-row lookup on indexed PK</td></tr><tr><td>N3</td><td>Memory at serve time</td><td>&lt; 500MB resident</td><td>SQLite mmap; process is the binary + open file handles</td></tr><tr><td>N4</td><td>Storage footprint</td><td>&lt; 5 GB bundle on disk</td><td>search.db 2.4 GB + packages.db 990 MB + samples.db 185 MB = ~3.6 GB (v1.1.0)</td></tr><tr><td>N5</td><td>Setup time</td><td>&lt; 60s</td><td>bundle download from GitHub Releases, ~685 MB compressed</td></tr><tr><td>N6</td><td>Scale headroom</td><td>10x current corpus</td><td>analyzed in §10</td></tr><tr><td>N7</td><td>Correctness</td><td>zero data loss on power loss; zero tier-C collisions on healthy run</td><td>SQLite ACID + door classification (<code>docs/PRINCIPLES.md</code> §2-3)</td></tr><tr><td>N8</td><td>Reproducibility</td><td>same crawl → same bundle (modulo Apple changes)</td><td>content hashing + deterministic URI canonicalization</td></tr><tr><td>N9</td><td>Portability</td><td>single Homebrew formula, no runtime deps</td><td>binary is self-contained except for SQLite (system)</td></tr><tr><td>N10</td><td>Build hygiene</td><td>zero producer→producer imports; CI-enforced</td><td><code>scripts/check-package-purity.sh</code> + <code>scripts/check-target-foundation-only.sh</code></td></tr></tbody></table>
+<hr></section><section id="5-design-overview" class="doc-section"><h2><span class="section-number-badge">5</span><span class="section-title">Design Overview</span></h2><h3>5.1 Pipeline</h3>
+<p class="lead">Four sequential stages. Each is independently runnable; the user-facing <code>cupertino save --docs</code> chains them inline today, but they are designed to decouple cleanly (epic #769):</p>
+<pre><code>┌────────┐    ┌──────────────┐    ┌────────┐    ┌────────┐
+│ Crawl  │ →  │ Import/Index │ →  │ Enrich │ →  │ Serve  │
+└────────┘    └──────────────┘    └────────┘    └────────┘
+   ~14d            ~12h            ~5 min        runtime</code></pre>
+<table class="data-table"><thead><tr><th>Stage</th><th>Binary</th><th>Input</th><th>Output</th><th>Idempotent</th></tr></thead><tbody><tr><td>Crawl</td><td><code>cupertino fetch --type docs</code></td><td>Apple JSON API over the network</td><td><code>~/.cupertino/docs/**/*.json</code></td><td>Yes (content hash skip)</td></tr><tr><td>Import / Index</td><td><code>cupertino save --docs</code></td><td>JSON files on disk</td><td><code>search.db</code></td><td>Yes (<code>INSERT OR REPLACE</code>)</td></tr><tr><td>Enrich</td><td><code>cupertino-postprocessor</code> (after #769)</td><td><code>search.db</code></td><td>enrichment columns in same DB</td><td>Yes (upsert + version column)</td></tr><tr><td>Serve</td><td><code>cupertino serve</code></td><td><code>search.db</code></td><td>MCP responses over stdio</td><td>Read-only</td></tr></tbody></table>
+<p>The decoupling lets us re-run enrichment without a re-crawl, ship pre-built bundles via GitHub Releases (skipping crawl + index for end users), and run the crawl on dedicated hardware.</p>
+<h3>5.2 Topology</h3>
+<pre><code>            ┌──────────────────────────────────────────┐
+            │           Apple developer docs           │
+            │  developer.apple.com/tutorials/data/...  │
+            └─────────────────┬────────────────────────┘
+                              │ WKWebView, 0.05s delay, BFS
+                              ▼
+            ┌──────────────────────────────────────────┐
+            │    ~/.cupertino/docs/&lt;framework&gt;/*.json  │
+            │   git-tracked corpus repo (cupertino-docs) │
+            └─────────────────┬────────────────────────┘
+                              │ cupertino save --docs
+                              ▼
+            ┌──────────────────────────────────────────┐
+            │  search.db (SQLite FTS5 + metadata + AST)│
+            └─────────────────┬────────────────────────┘
+                              │ enrichment passes
+                              ▼
+            ┌──────────────────────────────────────────┐
+            │ search.db (synonyms, constraints,        │
+            │ hierarchy, recovery applied)             │
+            └─────────────────┬────────────────────────┘
+                              │ cupertino serve / search
+                  ┌───────────┴───────────────┐
+                  ▼                           ▼
+        ┌───────────────────┐    ┌──────────────────────┐
+        │  MCP (stdio JSON- │    │  CLI (search, read,  │
+        │  RPC) for agents  │    │  list, doctor)       │
+        └───────────────────┘    └──────────────────────┘</code></pre>
+<h3>5.3 Process model</h3>
+<p>Cupertino is a single Swift binary that runs in one of two modes, detected at startup:</p>
+<table class="data-table"><thead><tr><th>stdin shape</th><th>argv</th><th>Mode</th></tr></thead><tbody><tr><td>pipe</td><td>none or <code>serve</code></td><td>MCP server (long-lived, reads JSON-RPC, replies on stdout)</td></tr><tr><td>TTY</td><td>none or <code>serve</code></td><td>error: <code>serve</code> from terminal is almost always wrong</td></tr><tr><td>any</td><td>subcommand (<code>search</code>, <code>read</code>, <code>fetch</code>, <code>save</code>, <code>doctor</code>, <code>setup</code>, <code>cleanup</code>, <code>list-frameworks</code>, ...)</td><td>CLI mode, executes subcommand, exits</td></tr></tbody></table>
+<p>The single-binary topology was chosen over a separate <code>cupertino-mcp</code> to simplify deployment: one Homebrew formula, one PATH entry, one update path. Per-mode dispatch is a 5-line check at startup.</p>
+<hr></section><section id="6-detailed-design-crawl" class="doc-section"><h2><span class="section-number-badge">6</span><span class="section-title">Detailed Design: Crawl</span></h2><h3>6.1 Source format</h3>
+<p class="lead">Apple's developer documentation site is an SPA. The page at <code>https://developer.apple.com/documentation/swiftui/view</code> fetches its content from a parallel JSON endpoint:</p>
+<pre><code>https://developer.apple.com/tutorials/data/documentation/swiftui/view.json</code></pre>
+<p>The JSON response is structured. Key fields:</p>
+<table class="data-table"><thead><tr><th>Field</th><th>Type</th><th>Used for</th></tr></thead><tbody><tr><td><code>metadata.title</code></td><td>string</td><td>display name, <a href="../sources.html#fts5">FTS5</a> <code>title</code> column</td></tr><tr><td><code>metadata.role</code></td><td>string</td><td>maps to <code>kind</code> column (<code>func</code>, <code>struct</code>, ...)</td></tr><tr><td><code>metadata.externalID</code></td><td>string</td><td>stable symbol identifier (e.g., <code>c:@S@exclave_textlayout_info_v1</code>)</td></tr><tr><td><code>metadata.modules[].name</code></td><td>string</td><td>framework slug</td></tr><tr><td><code>metadata.platforms[]</code></td><td>array</td><td>drives <code>min_ios</code>/<code>min_macos</code>/etc columns</td></tr><tr><td><code>abstract</code></td><td>array</td><td>short summary, <a href="../sources.html#fts5">FTS5</a> <code>summary</code> column</td></tr><tr><td><code>primaryContentSections[]</code></td><td>array</td><td>declarations, discussion, code examples</td></tr><tr><td><code>references</code></td><td>dict</td><td>linked symbol metadata</td></tr><tr><td><code>diffAvailability</code></td><td>dict</td><td>version diff vs previous SDKs</td></tr></tbody></table>
+<p>The shape is not publicly documented. Cupertino reverse-engineers it. Schema drift is a known risk (§13).</p>
+<h3>6.2 Why WKWebView</h3>
+<p>For ~99% of pages, a direct HTTP GET against the JSON endpoint works. For the remaining ~1%, Apple's CDN returns one of:</p>
+<ul><li><code>&quot;title&quot;: null</code> with otherwise valid JSON</li><li>A 3,297-byte React shell with no content (server-side rendering fell back)</li><li>A redirect chain that breaks without cookies</li></ul>
+<p>WKWebView executes the page's JavaScript, follows redirects with browser semantics, and gives us the fully-resolved JSON. The cost is macOS-only crawling. The benefit is complete coverage.</p>
+<p><code>Crawler</code> runs WKWebView with <code>@MainActor</code> isolation, navigates to the page URL, waits for the JS to settle, extracts the embedded JSON via a small JS bridge, and writes it to disk. Each navigation uses a fresh WKWebView instance to avoid state leakage; instances are pooled via a small actor.</p>
+<h3>6.3 BFS crawl strategy</h3>
+<p>Starting from <code>https://developer.apple.com/documentation/technologies</code>, BFS over <code>references[]</code> links, scoped to documentation paths. Frameworks are also seeded from <code>technologies.json</code> (Apple's framework directory) to catch the ~200 frameworks not reachable from the homepage at depth ≤ 5.</p>
+<p>Configurable knobs:</p>
+<table class="data-table"><thead><tr><th>Flag</th><th>Default</th><th>Purpose</th></tr></thead><tbody><tr><td><code>--max-pages</code></td><td>unbounded for <code>--type docs --type all</code></td><td>safety bound for testing</td></tr><tr><td><code>--max-depth</code></td><td class="num">21</td><td>empirical; depth at which Apple's deeper symbol pages live</td></tr><tr><td><code>--request-delay</code></td><td>0.05s</td><td>conservative rate limit; nothing publicly documented but 50ms is well below Apple's threshold</td></tr><tr><td><code>--start-url</code></td><td>docs home</td><td>for targeted re-crawls</td></tr><tr><td><code>--allowed-prefixes</code></td><td>none</td><td>filter BFS to a path prefix</td></tr></tbody></table>
+<h3>6.4 URI canonicalization</h3>
+<p>Every fetched URL is canonicalized to an <code>apple-docs://</code> URI before storage. The canonicalization is <strong>lossless and reversible</strong>:</p>
+<ol><li>Lowercase the URL path (Apple's routing is case-insensitive; preserving case creates phantom duplicates).</li><li>Strip fragment and query.</li><li>Normalize dash/underscore in path segments (Apple serves the same content at <code>building-a-pass</code> and <code>building_a_pass</code>; in progress #285).</li><li>Emit <code>apple-docs://&lt;framework&gt;/&lt;path-tail-joined-by-slashes&gt;</code>.</li></ol>
+<p>The URI is reversible to the original URL by string substitution. No hashing. This guarantees:</p>
+<ul><li><strong>No collision floor</strong>. A hash-suffix scheme (e.g., 8-byte SHA truncation) carries <code>1 - exp(-N²/2·2⁶⁴)</code> collision probability; at 40M docs the expected collisions are non-zero. Lossless URIs make collisions impossible by construction.</li><li><strong>Debugability</strong>. Any URI is grep-able. A user reporting a bug names the URI and we know exactly which page they hit.</li></ul>
+<h3>6.5 Content hashing</h3>
+<p>Each fetched JSON is hashed with SHA-256 and compared against the previously stored file at the canonicalized URI. If the hashes match, the new fetch is discarded (the disk file is already current). This makes re-crawls incremental: a re-fetch of an unchanged page is one HTTP request + one SHA computation, no disk write.</p>
+<p>The hash uses the raw JSON bytes after canonicalizing JSON key order. JSON serialization can vary across crawls even when content hasn't changed; key-order canonicalization removes that source of false positives.</p>
+<h3>6.6 Session checkpoint</h3>
+<p>The BFS queue and visited-URI set are periodically serialized to disk under a session key derived from the start URL. A killed crawler that resumes with the same start URL picks up where it left off. Sessions from a different start URL do not collide.</p>
+<h3>6.7 Failure handling</h3>
+<ul><li><strong>Network error</strong>: retry with exponential backoff, max 5 attempts. After 5 failures the URI is logged to the error file and the crawl continues.</li><li><strong>WKWebView timeout</strong>: page rendering is bounded at 30s. Timeouts are recorded and the URI is requeued at the end of the BFS frontier for one retry.</li><li><strong>Page returns null/empty title</strong>: handled at the door, not at the crawler. The crawler stores the file as-is; the indexer rejects it.</li></ul>
+<hr></section><section id="7-detailed-design-import-index" class="doc-section"><h2><span class="section-number-badge">7</span><span class="section-title">Detailed Design: Import / Index</span></h2><h3>7.1 The door</h3>
+<p class="lead">Every JSON file crosses a door before any DB write. The door has three responsibilities, executed in order:</p>
+<h4>7.1.1 Validity check</h4>
+<p><code>URLUtilities.appleDocsURI(from:)</code> returns the canonical URI or <code>nil</code>. A <code>nil</code> return rejects the file (it doesn't represent a doc page; e.g., a marketing page that strayed into the BFS).</p>
+<h4>7.1.2 Placeholder filter</h4>
+<p><code>Search.StrategyHelpers.titleLooksLikePlaceholderError</code> rejects files whose extracted title matches one of:</p>
+<table class="data-table"><thead><tr><th>Pattern</th><th>Example</th><th>Why</th></tr></thead><tbody><tr><td>empty</td><td><code>&quot;&quot;</code></td><td>server-side rendering returned nothing</td></tr><tr><td><code>Apple Developer Documentation</code></td><td>bare shell, never rendered</td><td>React fallback when JS failed</td></tr><tr><td><code>error</code> (case-insensitive, when URL leaf is also <code>error</code>)</td><td>WebKitJS <code>FileReader.error</code>, <code>IDBRequest.error</code></td><td>Apple's renderer collapsed the property name into the title field</td></tr></tbody></table>
+<p>Rejections are written to the JSONL import log with reason <code>placeholderTitle</code>. The associated symbol can be recovered downstream by the recovery enrichment pass (§8.4) using the URL leaf as a synthetic title.</p>
+<h4>7.1.3 Deduplication</h4>
+<p>The door maintains a per-run <code>seen</code> map keyed by URI. For any URI that's already been accepted in this run, classify the encounter:</p>
+<table class="data-table"><thead><tr><th>Tier</th><th>Match criteria</th><th>Action</th><th>Log</th></tr></thead><tbody><tr><td>A</td><td>same URI + same <code>contentHash</code></td><td>silent skip (byte-identical)</td><td>none</td></tr><tr><td>B</td><td>same URI + same canonical title + different <code>contentHash</code></td><td>richest variant wins; loser logged</td><td><code>⏭️</code></td></tr><tr><td>C</td><td>same URI + different canonical title</td><td>first arrival stays; collision surfaced</td><td><code>🚨</code></td></tr></tbody></table>
+<p>Tier-A is byte-equality. Tier-B is the case of "same logical Apple page, slightly drifted JSON between crawls" (a 2-byte trailing-slash difference, a rendering nondeterminism). Tier-C is the case where URI canonicalization conflated two genuinely different pages; this is a correctness bug that must be fixed in canonicalization, not papered over in the index.</p>
+<p>Tier-C non-zero at end-of-run causes <code>cupertino save</code> to exit non-zero with a "work-not-done" banner. The full contract is in <code>docs/PRINCIPLES.md</code> §2-3.</p>
+<h4>7.1.4 Richest-variant selection (Tier B)</h4>
+<p>When a Tier-B match fires, the door picks the "richest" variant deterministically:</p>
+<ol><li>More non-empty fields among <code>{abstract, declaration, sections, codeExamples, rawMarkdown}</code>.</li><li>Tie → larger total byte length across those fields.</li><li>Tie → first arrived (stable order).</li></ol>
+<p>This guarantees Tier-B drift produces a monotonic improvement in the indexed row: a populated abstract never loses to an empty one, a full declaration never loses to an empty one. The corpus on disk preserves both variants for offline audit.</p>
+<h3>7.2 Schema</h3>
+<p>Six primary structures in <code>search.db</code>. The schema is in <code>Search.Index.Schema.swift</code>; columns called out here are the load-bearing ones for the design.</p>
+<h4>7.2.1 <code>docs_fts</code></h4>
+<p>Virtual <a href="../sources.html#fts5">FTS5</a> table, porter + unicode61 tokenizer. Column order matches the <a href="../sources.html#bm25">BM25</a> weight vector:</p>
+<pre><code>CREATE VIRTUAL TABLE docs_fts USING fts5(
+  uri,                -- weight 1.0
+  source,             -- weight 1.0
+  framework,          -- weight 2.0
+  language,           -- weight 1.0
+  title,              -- weight 10.0
+  content,            -- weight 1.0
+  summary,            -- weight 3.0
+  symbols,            -- weight 5.0 (AST-extracted Swift symbol names)
+  symbol_components,  -- weight 1.5 (CamelCase splits: LazyVGrid → Lazy / VGrid / Grid)
+  tokenize=&#x27;porter unicode61&#x27;
+);</code></pre>
+<p>Weight rationale:</p>
+<ul><li><code>title</code> dominates at 10× because Apple titles are concise, symbol-named, and the highest-signal field for "I'm looking for X" queries.</li><li><code>symbols</code> at 5× ensures AST-extracted symbol names beat random prose mentions. Without this, <code>Task</code> matches every page that uses the English word "task".</li><li><code>summary</code> at 3× boosts the curated 1-sentence abstract over the discussion body.</li><li><code>framework</code> at 2× breaks ties between <code>swiftui/view</code> and <code>webkit/view</code> when the query is <code>View SwiftUI</code>.</li><li><code>symbol_components</code> at 1.5× lets <code>vgrid</code> match <code>LazyVGrid</code> without requiring users to know the exact CamelCase form.</li><li>All other columns at 1.0× are kept in the index for filterability, not for ranking signal.</li></ul>
+<h4>7.2.2 <code>docs_metadata</code></h4>
+<p>One row per document. Non-FTS columns for filtering and JSON retrieval:</p>
+<pre><code>CREATE TABLE docs_metadata (
+  uri TEXT PRIMARY KEY,
+  source TEXT, framework TEXT, language TEXT,
+  kind TEXT,                          -- func | class | struct | enum | actor | protocol | ...
+  symbols TEXT,                       -- denormalized from doc_symbols for fast column read
+  file_path TEXT, content_hash TEXT, last_crawled INTEGER, word_count INTEGER,
+  source_type TEXT, package_id INTEGER, json_data TEXT,
+  min_ios TEXT, min_macos TEXT, min_tvos TEXT, min_watchos TEXT, min_visionos TEXT,
+  availability_source TEXT,           -- api | parsed | inherited | derived
+  implementation_swift_version TEXT,  -- for swift-evolution rows: toolchain version
+  FOREIGN KEY (package_id) REFERENCES packages(id)
+);</code></pre>
+<p><code>json_data</code> carries the full raw JSON, so <code>read_document</code> returns the original Apple payload without re-parsing the disk file. Trade-off: doubles the DB size. We accept it for read latency (§N2).</p>
+<p>Indexes on <code>source</code>, <code>framework</code>, <code>language</code>, <code>kind</code>, <code>min_ios</code>, <code>min_macos</code>, <code>min_tvos</code>, <code>min_watchos</code>, <code>min_visionos</code>, <code>implementation_swift_version</code> keep attribute-filter queries &lt; 10ms even at full corpus size.</p>
+<h4>7.2.3 <code>docs_structured</code></h4>
+<p>DocC-extracted declaration fields, one row per doc:</p>
+<pre><code>CREATE TABLE docs_structured (
+  uri TEXT PRIMARY KEY,
+  url TEXT, title TEXT, kind TEXT,
+  abstract TEXT, declaration TEXT, overview TEXT,
+  module TEXT, platforms TEXT,
+  conforms_to TEXT, inherited_by TEXT, conforming_types TEXT,
+  attributes TEXT,  -- @MainActor, @Sendable, @available comma-separated
+  FOREIGN KEY (uri) REFERENCES docs_metadata(uri) ON DELETE CASCADE
+);</code></pre>
+<p>This table is the surface for attribute queries: "find all protocols that inherit from <code>Equatable</code>" hits <code>inherited_by</code> directly, no <a href="../sources.html#fts5">FTS5</a> needed.</p>
+<h4>7.2.4 <code>doc_symbols</code></h4>
+<p>AST-extracted symbols, one row per declared symbol per doc:</p>
+<pre><code>CREATE TABLE doc_symbols (
+  id INTEGER PRIMARY KEY,
+  doc_uri TEXT, name TEXT, kind TEXT,
+  line INTEGER, column INTEGER, signature TEXT,
+  is_async INTEGER, is_throws INTEGER, is_public INTEGER, is_static INTEGER,
+  attributes TEXT, conformances TEXT,
+  generic_params TEXT, generic_constraints TEXT,
+  FOREIGN KEY (doc_uri) REFERENCES docs_metadata(uri) ON DELETE CASCADE
+);</code></pre>
+<p><code>generic_constraints</code> is populated by the enrichment passes (§8). A separate <a href="../sources.html#fts5">FTS5</a> table <code>doc_symbols_fts</code> indexes <code>name</code>, <code>signature</code>, <code>attributes</code>, <code>conformances</code> for the semantic-search tools.</p>
+<h4>7.2.5 <code>inheritance</code></h4>
+<p>Edge table for class inheritance, populated from DocC's <code>relationshipsSections.inheritsFrom</code> and <code>inheritedBy</code> arrays:</p>
+<pre><code>CREATE TABLE inheritance (
+  parent_uri TEXT, child_uri TEXT,
+  PRIMARY KEY (parent_uri, child_uri)
+);</code></pre>
+<p>A dedicated table (vs a JSON column on <code>docs_metadata</code>) because <code>NSObject</code> and <code>UIView</code> have thousands of descendants; a JSON-blob column would be unscannable and bloated.</p>
+<h4>7.2.6 <code>framework_aliases</code></h4>
+<p>Maps framework identifier, import name, display name, and search synonyms:</p>
+<pre><code>CREATE TABLE framework_aliases (
+  identifier TEXT PRIMARY KEY,   -- &quot;corebluetooth&quot;
+  import_name TEXT,              -- &quot;CoreBluetooth&quot;
+  display_name TEXT,             -- &quot;Core Bluetooth&quot;
+  synonyms TEXT                  -- &quot;bluetooth&quot;
+);</code></pre>
+<p>Populated during indexing; the synonym column is updated by the <code>synonyms</code> enrichment pass (§8.1).</p>
+<h3>7.3 AST symbol extraction</h3>
+<p>After each doc is inserted, <code>ASTIndexer.Extractor</code> (SwiftSyntax) runs on two paths:</p>
+<p><strong>Declaration path</strong>: if the page has a <code>declaration.code</code> field (Apple's structured Swift declaration), extract symbol names, signatures, attributes, and import statements. Writes to <code>doc_symbols</code>.</p>
+<p><strong>Code example path</strong> (<code>extractCodeExampleSymbols</code>): for all pages with Swift code blocks in <code>discussion</code> sections, extract symbol names from usage snippets. This catches symbols that are used in examples but not formally declared by the page's own type. The extracted names are added to the page's <code>symbols</code> column for <a href="../sources.html#bm25">BM25</a> boost.</p>
+<p>Coverage on the v1.2.0 corpus: ~165,000 of ~285,000 pages have at least one <code>doc_symbols</code> row. The remainder are pages with no Swift code (Objective-C frameworks, conceptual articles, HIG, sample-code metadata).</p>
+<h3>7.4 Audit log</h3>
+<p>Every door event (accept, Tier-A, Tier-B, Tier-C, placeholder reject, validity reject) is recorded as a <code>Search.ImportLogEntry</code> and serialized to JSONL via <code>Search.JSONLImportLogSink</code>. Writes are actor-isolated so concurrent strategies (apple-docs, swift-evolution, samples, etc.) interleave cleanly. The log path is surfaced in the <code>cupertino save</code> final report. JSONL was chosen over a DB-internal log table because:</p>
+<ul><li>Crash-safe: each <code>\n</code> flush is durable. A killed indexer leaves a valid prefix.</li><li>Diffable: between two runs we can diff the logs to spot regressions.</li><li>Tooling-friendly: <code>jq</code>, <code>grep</code>, anything line-oriented.</li></ul>
+<hr></section><section id="8-detailed-design-enrich" class="doc-section"><h2><span class="section-number-badge">8</span><span class="section-title">Detailed Design: Enrich</span></h2><p class="lead">Four passes run after the main indexing loop. Today they execute inline inside <code>Search.IndexBuilder.buildIndex()</code>; epic <a href="https://github.com/mihaelamj/cupertino/issues/769">#769</a> extracts them into a standalone <code>cupertino-postprocessor</code> binary. Full design in <code>docs/design/post-processor.md</code>.</p>
+<table class="data-table"><thead><tr><th>Pass</th><th>Writes to</th><th>Reads from</th><th>Depends on</th></tr></thead><tbody><tr><td><code>synonyms</code></td><td><code>framework_aliases.synonyms</code></td><td>hardcoded list of 22 mappings (<code>corebluetooth → bluetooth</code>, etc.)</td><td>nothing</td></tr><tr><td><code>constraints</code></td><td><code>doc_symbols.generic_constraints</code></td><td><code>apple-constraints.json</code> (output of <code>swift symbolgraph-extract</code>)</td><td>nothing</td></tr><tr><td><code>hierarchy</code></td><td>same column</td><td><code>doc_symbols</code> parent/child rows</td><td><code>constraints</code></td></tr><tr><td><code>recovery</code></td><td>re-inserts placeholder-title rejects</td><td>JSONL import log + URL leaf</td><td>nothing</td></tr></tbody></table>
+<h3>8.1 Synonyms</h3>
+<p>22 framework aliases get search-time alternate names so <code>bluetooth</code> finds <code>CoreBluetooth</code>, <code>nfc</code> finds <code>CoreNFC</code>, <code>mpsgraph</code> finds <code>MetalPerformanceShadersGraph</code>. The list is hardcoded (it doesn't change frequently and is small). The pass updates the <code>synonyms</code> column on existing <code>framework_aliases</code> rows; rows for frameworks not in the list keep <code>synonyms IS NULL</code>.</p>
+<h3>8.2 Constraints</h3>
+<p>Apple ships authoritative generic constraints for stdlib symbols via <code>swift symbolgraph-extract</code>. The <code>cupertino-constraints-gen</code> binary parses that output once at build time and produces <code>apple-constraints.json</code>. The <code>constraints</code> pass loads that JSON and joins it into <code>doc_symbols.generic_constraints</code> for symbols whose <code>pathComponents</code> match an entry.</p>
+<p>This makes queries like "all stdlib protocols requiring <code>Self == X</code>" cheap: a WHERE on <code>generic_constraints LIKE &#x27;%Self == %&#x27;</code> against an indexed column.</p>
+<h3>8.3 Hierarchy</h3>
+<p>Symbol hierarchies in Apple's docs are flat: each page declares its own constraints but doesn't inherit parent constraints. The <code>hierarchy</code> pass walks parent→child edges in <code>doc_symbols</code> and propagates <code>generic_constraints</code> from parent to child. Required for accurate constraint queries on extensions and conformances.</p>
+<p>Depends on <code>constraints</code> because it propagates the constraint values that pass writes.</p>
+<h3>8.4 Recovery</h3>
+<p>Some Apple JSON pages return <code>title: null</code> or <code>title: &quot;error&quot;</code> at fetch time and get rejected by the placeholder filter (§7.1.2). The recovery pass reads the JSONL import log, finds <code>placeholderTitle</code> rejections that have a recoverable URL leaf (e.g., <code>apple-docs://webkitjs/filereader/error</code>), and re-inserts the row with a synthesized title derived from the URL.</p>
+<p>This is design tradeoff: recovered rows have a worse title than they would if Apple's renderer were healthy, but they exist in the index instead of being dropped. The alternative (drop them) loses content the user can clearly see exists on the live site.</p>
+<p>Tracked at #777.</p>
+<hr></section><section id="9-detailed-design-serve" class="doc-section"><h2><span class="section-number-badge">9</span><span class="section-title">Detailed Design: Serve</span></h2><h3>9.1 Multi-pass ranker</h3>
+<p class="lead">The default <code>cupertino search &lt;query&gt;</code> is not a plain <a href="../sources.html#fts5">FTS5</a> MATCH. It is a multi-pass pipeline:</p>
+<pre><code>input query
+   │
+   ▼
+┌──────────────────────────────────────────┐
+│ 1. extractSourcePrefix                   │  &quot;swift-evolution://&quot; → source filter
+│ 2. extractAttributeFilters                │  &quot;@MainActor&quot; → SQL WHERE clause
+│ 3. sanitizeFTS5Query                      │  quote terms, split hyphens
+└──────────────┬───────────────────────────┘
+               │
+       ┌───────┴───────────┐
+       ▼                   ▼
+┌──────────────┐   ┌──────────────────────┐
+│ Symbol fast  │   │ BM25F                │
+│ path (URI    │   │ bm25(docs_fts,       │
+│ set from     │   │   1, 1, 2, 1,        │
+│ doc_symbols_ │   │   10, 1, 3, 5, 1.5)  │
+│ fts)         │   │                      │
+└──────┬───────┘   └────────┬─────────────┘
+       │                    │
+       └────────┬───────────┘
+                ▼
+┌──────────────────────────────────────────┐
+│ 4. HEURISTIC 1 (exact-title boost, #254) │
+│    50× for clean match, 20× for suffix   │
+│    Separates Swift&#x27;s Task from           │
+│    Mach kernel task_*                    │
+└──────────────┬───────────────────────────┘
+               ▼
+┌──────────────────────────────────────────┐
+│ 5. HEURISTIC 1.5 (URI simplicity + #256) │
+│    shorter URI ranks above longer        │
+│    + frameworkAuthority tiebreak         │
+│    (swift, swiftui, foundation ↑;        │
+│     webkitjs, installer_js ↓)            │
+└──────────────┬───────────────────────────┘
+               ▼
+┌──────────────────────────────────────────┐
+│ 6. HEURISTIC 1.6 (kind tiebreak, #610)   │
+│    canonical type kinds (class, struct,  │
+│    enum, protocol, actor) win over       │
+│    property/method/initializer pages     │
+│    Closes Task / View / Hashable wins    │
+└──────────────┬───────────────────────────┘
+               ▼
+┌──────────────────────────────────────────┐
+│ 7. fetchCanonicalTypePages (#254)        │
+│    Force-include canonical apple-docs    │
+│    page even if BM25 missed it           │
+└──────────────┬───────────────────────────┘
+               ▼
+┌──────────────────────────────────────────┐
+│ 8. RRF fusion (k=60, #192)               │
+│    Reciprocal Rank Fusion across sources │
+│    apple-docs 3.0 · evolution 1.5 ·     │
+│    packages 1.5                          │
+└──────────────┬───────────────────────────┘
+               ▼
+           results</code></pre>
+<p><a href="../sources.html#bm25">BM25</a> scores are negative in <a href="../sources.html#fts5">FTS5</a> convention (lower = better match). Adjusted rank divides by the combined boost multiplier; a 50× exact-title boost moves a candidate above a 10× raw-<a href="../sources.html#bm25">BM25</a> winner.</p>
+<h4>9.1.1 Why heuristics on top of <a href="../sources.html#bm25">BM25</a></h4>
+<p>Pure <a href="../sources.html#bm25f">BM25F</a> gets the right answer most of the time and the wrong answer in a small but high-visibility set of cases. The wrong answers cluster around:</p>
+<ul><li><strong>Common nouns colliding with framework symbols</strong>: <code>Array</code> matches every page that uses the word. <a href="../sources.html#bm25">BM25</a> buries the canonical <code>swift/array</code> type page under thousands of <code>someArray</code> prose mentions.</li><li><strong>Property/method pages outranking type pages</strong>: <code>URLSession.dataTask</code> is shorter than <code>URLSession</code> and has fewer terms, so <a href="../sources.html#bm25">BM25</a> with title weight ranks it above the type page.</li><li><strong>JS framework pages matching Swift query intent</strong>: <code>webkitjs/element</code> matches <code>Element</code> queries that meant <code>XMLDocument.element</code> or <code>Mirror.Element</code>.</li></ul>
+<p>Each heuristic addresses one of these failure modes empirically. #610 audit on v1.1.0 documents 14 wrong-winner cases; heuristic 1.6 closes 9 of them (Task, View, String, Array, Hashable, Equatable, Codable, Identifiable, Sendable). The remaining 5 (URL, Color, Font, List, Data) are Class B and recover via lossless URI canonicalization (#283), not via ranking.</p>
+<h3>9.2 <a href="../sources.html#rrf">RRF</a> fusion</h3>
+<p>For a query without an explicit source prefix, the ranker runs per-source (apple-docs, swift-evolution, packages, ...) and fuses results via <a href="../sources.html#rrf">Reciprocal Rank Fusion</a> (Cormack, Clarke, Büttcher 2009):</p>
+<pre><code>score(d) = Σ over sources s   weight(s) / (k + rank_in_s(d))</code></pre>
+<p>with <code>k = 60</code> (the standard <a href="../sources.html#rrf">RRF</a> constant) and source weights tuned empirically: apple-docs gets 3.0, others get 1.5. The 2:1 ratio reflects that apple-docs is the largest and highest-signal source; we want it to dominate unless another source has a stronger match.</p>
+<p>One dead source (e.g., samples.db missing because the user didn't run <code>--samples</code>) does not take the whole query down: its contribution is <code>0 / (60 + rank) = 0</code>.</p>
+<h3>9.3 MCP transport</h3>
+<p>JSON-RPC 2.0 over stdio. Each message is a single compact line plus a <code>\n</code> delimiter. No embedded newlines (MCP spec requirement). The server reads with line buffering, parses, dispatches, and writes the response on stdout. stderr is reserved for log output.</p>
+<p>The MCP tools provided are summarized in <code>docs/ARCHITECTURE.md</code>. Tool implementations live in <code>SearchToolProvider</code>, which depends only on <code>ServicesModels</code>, <code>SearchModels</code>, <code>SampleIndexModels</code> (the protocol seams), not on <code>Search</code> or <code>SampleIndex</code> concrete writers. This keeps the MCP layer testable in isolation.</p>
+<h3>9.4 Read services</h3>
+<p><code>cupertino read --source &lt;s&gt;</code> and the MCP <code>read_document</code> / <code>read_sample</code> / <code>read_sample_file</code> tools all delegate to <code>Services.ReadService</code>. The service dispatches on source:</p>
+<table class="data-table"><thead><tr><th>Source</th><th>Backing</th><th>Returns</th></tr></thead><tbody><tr><td><code>apple-docs</code>, <code>hig</code>, <code>apple-archive</code>, <code>swift-org</code>, <code>swift-book</code>, <code>swift-evolution</code></td><td><code>docs_metadata.json_data</code></td><td>full JSON payload</td></tr><tr><td><code>samples</code></td><td><code>Sample.Search.Service</code></td><td>sample project metadata</td></tr><tr><td><code>packages</code></td><td><code>Search.PackageQuery.fileContent</code></td><td>package file content from <code>package_files_fts</code></td></tr></tbody></table>
+<p>No on-disk file reads at serve time. Everything is served from the SQLite databases.</p>
+<hr></section><section id="10-scalability-analysis" class="doc-section"><h2><span class="section-number-badge">10</span><span class="section-title">Scalability Analysis</span></h2><h3>10.1 Current scale (v1.1.0)</h3>
+<table class="data-table"><thead><tr><th>Quantity</th><th>Value</th></tr></thead><tbody><tr><td>Apple docs pages crawled</td><td>~412,000</td></tr><tr><td>Apple docs pages indexed (post-dedup)</td><td class="num">285,735</td></tr><tr><td>Frameworks</td><td class="num">420</td></tr><tr><td>Pages with <code>doc_symbols</code> rows</td><td>~165,000</td></tr><tr><td><code>search.db</code> size</td><td>~2.4 GB</td></tr><tr><td><code>packages.db</code> size</td><td>~990 MB</td></tr><tr><td><code>samples.db</code> size</td><td>~185 MB</td></tr><tr><td>Sample projects</td><td class="num">619</td></tr><tr><td>Indexed Swift sample files</td><td>~18,000</td></tr><tr><td>Compressed bundle</td><td>~685 MB</td></tr></tbody></table>
+<h3>10.2 Design target: 10x</h3>
+<p class="lead">The principles file commits to designing for 10x current scale (4M docs). Per-component analysis:</p>
+<p><strong>SQLite <a href="../sources.html#fts5">FTS5</a></strong>. Production <a href="../sources.html#fts5">FTS5</a> deployments index O(10⁸) documents (Mozilla, Notion). At 4M docs, expected index size ~24 GB (linear with corpus). Query latency for <a href="../sources.html#fts5">FTS5</a> is <code>O(log N)</code> on the index; p99 stays well under 100ms at 4M docs.</p>
+<p><strong>Door dedup map</strong>. Per-run hashmap keyed by URI. At 4M docs:</p>
+<ul><li>Average URI length: ~80 bytes</li><li>Per-entry overhead (Swift Dictionary): ~64 bytes</li><li>Total: ~570 MB resident during indexing</li></ul>
+<p>Acceptable on a build host. If we hit 40x (40M docs), we switch the hashmap to a bloom filter front + SQLite back, costing one extra DB hit per insert in exchange for O(1) memory.</p>
+<p><strong>Per-row work at the door</strong>: hashmap lookup (<code>O(1)</code>), SHA-256 (~40 μs on M1), one INSERT. No scans. The door is <code>O(N)</code> over the corpus; linear scaling.</p>
+<p><strong>AST extraction</strong>: SwiftSyntax parse of one declaration is ~5ms. At 4M docs × 50% AST coverage = 2M extractions × 5ms = ~2.8 hours. Acceptable.</p>
+<p><strong>Crawl</strong>: bottleneck is network + Apple's rate limit. We can't go below ~14 days at current delay; a 10x corpus would be ~140 days. <strong>This is the binding constraint at scale</strong>. Mitigation: parallel crawl from multiple IPs (operational, not in this design); incremental crawl (only fetch changed pages) is the design answer (G13).</p>
+<p><strong>Bundle distribution</strong>: GitHub Releases caps artifact size at 2 GB per file. At 10x corpus the compressed bundle is ~7 GB and needs chunking. Mitigation: split bundle by source (<code>search.db.zip</code>, <code>packages.db.zip</code>, <code>samples.db.zip</code>); <code>cupertino setup</code> already supports this.</p>
+<h3>10.3 Where scaling will hurt first</h3>
+<table class="data-table"><thead><tr><th>Component</th><th>Scales to</th><th>Limit</th></tr></thead><tbody><tr><td><a href="../sources.html#fts5">FTS5</a> query</td><td>~10⁸ docs</td><td>tens of GB index</td></tr><tr><td>Door hashmap</td><td>~10⁷ docs</td><td>host RAM</td></tr><tr><td>WKWebView crawl</td><td>~10⁶ pages</td><td>crawl time, not memory</td></tr><tr><td>Setup download</td><td>~5 GB compressed</td><td>GitHub Releases per-file limit</td></tr><tr><td>os.log volume</td><td>~10⁵ events/sec</td><td>macOS log subsystem throttling</td></tr></tbody></table>
+<p>The first limit we hit at 10x is <strong>crawl time, not architectural</strong>. Incremental crawl (G13) is the long-pole feature.</p>
+<hr></section><section id="11-reliability-failure-modes" class="doc-section"><h2><span class="section-number-badge">11</span><span class="section-title">Reliability &amp; Failure Modes</span></h2><table class="data-table"><thead><tr><th>Failure mode</th><th>Detection</th><th>Mitigation</th></tr></thead><tbody><tr><td>Crawler killed mid-run</td><td>none (silent)</td><td>session checkpoint resumes from last serialized BFS state</td></tr><tr><td>Indexer killed mid-run</td><td>partial DB rows</td><td>SQLite transactions; partial inserts rolled back on <code>cupertino save --clear</code></td></tr><tr><td>Power loss during indexing</td><td>DB may have uncommitted</td><td>SQLite WAL keeps DB consistent; #236 is open for explicit WAL on local builds</td></tr><tr><td>Apple API returns malformed JSON</td><td>parser throws</td><td>per-page error; doesn't kill the crawl; rejected URLs logged</td></tr><tr><td>Apple changes JSON schema</td><td>parser fails on every page</td><td>manual: regression caught in next crawl; CI canary not yet implemented (open work)</td></tr><tr><td>Apple rate-limits</td><td>HTTP 429</td><td>retry with backoff; <code>--request-delay</code> knob exposes the rate</td></tr><tr><td>Disk full</td><td>SQLite write fails</td><td>crawl/save exits non-zero with the SQLite error</td></tr><tr><td>Corpus repo corrupted (bad JSON)</td><td>door rejects per-page</td><td>logged to JSONL; manual recovery</td></tr><tr><td>Schema mismatch (old DB, new binary)</td><td>open-time version check</td><td>binary refuses to open; user runs <code>cupertino setup</code> for fresh bundle</td></tr><tr><td>Tier-C collision in run</td><td><code>🚨</code> log + non-zero exit</td><td>save report names both URIs + content paths; user audits</td></tr><tr><td>MCP transport closed mid-response</td><td>error frame</td><td>host re-spawns server (host responsibility); <code>--no-reap</code> for Codex-style spawn-per-call</td></tr><tr><td>Concurrent <code>save</code> against same DB</td><td>undefined (SQLite write lock)</td><td>#253 open: detection and bail with clear error</td></tr></tbody></table>
+<h3>11.1 What we explicitly do NOT recover</h3>
+<ul><li><strong>In-place schema migrations</strong>. We don't write them; users rebuild. Documented in #4 PRINCIPLES + <code>feedback_assume_no_local_db.md</code> memory.</li><li><strong>Bad Apple content</strong>. If Apple ships a page with a wrong title, we faithfully index the wrong title and the search ranker rewards the canonical (presumably correct) page.</li></ul>
+<hr></section><section id="12-security-privacy" class="doc-section"><h2><span class="section-number-badge">12</span><span class="section-title">Security &amp; Privacy</span></h2><h3>12.1 Threat model</h3>
+<table class="data-table"><thead><tr><th>Threat</th><th>Vector</th><th>Mitigation</th></tr></thead><tbody><tr><td>Malicious documentation injecting prompts via MCP response</td><td>Apple's docs themselves</td><td>trust boundary: we trust apple.com content; same trust model as any agent that consults docs</td></tr><tr><td>Sandbox escape via WKWebView</td><td>crawler runtime</td><td>WKWebView is JS-isolated by macOS; we don't execute fetched JS, we only read its data layer</td></tr><tr><td>SQLite injection via search query</td><td>user input</td><td><code>Search.Index.QueryParsing</code> sanitizes <a href="../sources.html#fts5">FTS5</a> special characters; parameterized SQL throughout</td></tr><tr><td>MCP server reads files outside corpus</td><td>path traversal</td><td>DB-backed reads only; <code>read_document</code> requires an <code>apple-docs://</code> URI, not a file path</td></tr><tr><td>Local DB tampered with</td><td>filesystem</td><td>DB is signed-and-notarized via Homebrew distribution; user-built DBs are user-trusted</td></tr></tbody></table>
+<h3>12.2 Data collected</h3>
+<p class="lead">None. The MCP server is stateless across sessions. Queries are not logged, not persisted, not transmitted. The os.log output stays on the local machine.</p>
+<p>Telemetry, analytics, crash reporting, usage metrics: all explicitly <strong>not</strong> implemented. Adding any of these is a design change that requires an opt-in flag and a separate privacy review.</p>
+<h3>12.3 Network access at serve time</h3>
+<p>The serve binary makes <strong>zero outbound network calls</strong>. <code>cupertino setup</code> does (downloads the bundle from GitHub Releases over HTTPS); <code>cupertino fetch</code> does (crawls Apple); <code>cupertino serve</code> reads <code>search.db</code> and never opens a socket. This is enforceable by the <code>MCP layer</code> and <code>Search</code> packages not importing <code>URLSession</code> or <code>Network</code>.</p>
+<hr></section><section id="13-observability" class="doc-section"><h2><span class="section-number-badge">13</span><span class="section-title">Observability</span></h2><h3>13.1 Logging</h3>
+<p class="lead"><code>os.log</code> with subsystem <code>com.cupertino</code> and categories <code>crawler</code>, <code>mcp</code>, <code>search</code>, <code>cli</code>, <code>transport</code>, <code>pdf</code>, <code>evolution</code>, <code>samples</code>. Categories let consumers filter:</p>
+<pre><code>log show --predicate &#x27;subsystem == &quot;com.cupertino&quot; AND category == &quot;search&quot;&#x27; --last 1h</code></pre>
+<p>The <code>Logging</code> concrete writer is composition-root-only: producer packages depend on <code>LoggingModels</code> (a protocol seam) and receive a <code>Recording</code> instance via init injection. This keeps producers testable without an os.log backend.</p>
+<h3>13.2 Progress signals</h3>
+<p>Long-running phases emit progress to stderr/stdout:</p>
+<ul><li>Crawl: per-page <code>Saved</code> lines (configurable verbosity)</li><li>Save: every-100-files <code>Progress: X/Y (indexed, skipped)</code> lines (#588)</li><li>Door rejections: <code>⛔</code> for placeholder, <code>⏭️</code> for Tier-B, <code>🚨</code> for Tier-C</li><li>Enrichment passes: <strong>currently silent for 5+ minutes at end of save (#768)</strong>; epic #769 fixes this by emitting per-pass start/end lines</li></ul>
+<h3>13.3 Save report</h3>
+<p>End of <code>cupertino save</code> prints a structured summary:</p>
+<pre><code>✅ Indexed: N documents
+⛔ Skipped (placeholder title): X
+⏭️  Skipped (Tier-B dedup): Y
+🚨 Collisions (Tier-C): Z   ← non-zero is a build failure
+Audit log: /path/to/import-log.jsonl</code></pre>
+<h3>13.4 Doctor</h3>
+<p><code>cupertino doctor</code> is a read-only inspection over the local DB and filesystem state. It verifies:</p>
+<ul><li>DB exists and opens at the expected schema version</li><li>Framework coverage matches a baseline (no missing frameworks)</li><li>Document counts are within expected ranges</li><li>Sample DB optional sources are detected</li></ul>
+<p>Used as a smoke test after <code>setup</code> or <code>save</code>.</p>
+<hr></section><section id="14-testing-strategy" class="doc-section"><h2><span class="section-number-badge">14</span><span class="section-title">Testing Strategy</span></h2><h3>14.1 Test pyramid</h3>
+<table class="data-table"><thead><tr><th>Tier</th><th>Tool</th><th>Scope</th><th>Count</th></tr></thead><tbody><tr><td>Unit</td><td>Swift Testing (<code>@Test</code>, <code>@Suite</code>)</td><td>one type, one method, mocked deps via <code>withDependencies</code></td><td>majority</td></tr><tr><td>Integration</td><td>Swift Testing tagged <code>.integration</code></td><td>real SQLite, real WKWebView, real Apple docs (network)</td><td>smaller set</td></tr><tr><td>End-to-end</td><td>external (manual)</td><td><code>cupertino save</code> on real corpus + golden-query regression</td><td>manual, pre-release</td></tr></tbody></table>
+<p class="lead">Current count: ~330 test functions across 207 files, expanding to ~2,300+ runtime cases via <code>@Test(arguments:)</code> parameterization.</p>
+<h3>14.2 CI gates</h3>
+<p>Every PR runs:</p>
+<ul><li><code>xcrun swift build</code> (must compile)</li><li><code>xcrun swift test</code> (must pass)</li><li><code>swiftformat --lint</code> (zero diffs)</li><li><code>swiftlint</code> (zero violations)</li><li><code>scripts/check-package-purity.sh</code> (no producer→producer imports)</li><li><code>scripts/check-target-foundation-only.sh</code> (strict producer allow-list)</li><li><code>scripts/check-docs-commands-drift.sh</code> (CLI surface matches <code>docs/commands/</code>)</li><li><code>scripts/check-issue-body-staleness.sh</code> (issue refs in PR body are valid)</li></ul>
+<h3>14.3 Regression locks</h3>
+<p><code>docs/audits/stage-d-regression-locks-2026-05-17.md</code> documents the manual regression set (specific queries, specific expected top results) that must pass before any v1.x release. These are the queries that motivated heuristics 1, 1.5, and 1.6.</p>
+<hr></section><section id="15-rollout-distribution" class="doc-section"><h2><span class="section-number-badge">15</span><span class="section-title">Rollout &amp; Distribution</span></h2><h3>15.1 Channels</h3>
+<table class="data-table"><thead><tr><th>Channel</th><th>Path</th><th>Audience</th></tr></thead><tbody><tr><td>Homebrew</td><td><code>mihaelamj/tap/cupertino</code></td><td>macOS users</td></tr><tr><td>Direct binary</td><td>GitHub Releases attached binaries</td><td>scripted installs, CI</td></tr><tr><td>Source</td><td><code>git clone + make build</code></td><td>contributors</td></tr><tr><td>Pre-built bundle</td><td>GitHub Releases <code>cupertino-databases-vX.Y.Z.zip</code></td><td>every install path (downloaded by <code>cupertino setup</code>)</td></tr></tbody></table>
+<h3>15.2 Version policy</h3>
+<p class="lead">Two version numbers are tracked separately:</p>
+<ul><li><strong>Binary version</strong> (<code>Shared.Constants.App.version</code>): the released cupertino CLI version.</li><li><strong>Database version</strong> (<code>Shared.Constants.App.databaseVersion</code>): the schema/content version of <code>search.db</code>.</li></ul>
+<p>They are decoupled. A binary version bump that doesn't touch the schema does not bump <code>databaseVersion</code>. A schema-bumping change bumps both. <code>cupertino setup</code> downloads the bundle whose name matches the binary's <code>databaseVersion</code>.</p>
+<p>Backward compatibility:</p>
+<ul><li>Binary refuses to open a <code>search.db</code> whose schema version is newer than the binary supports.</li><li>Binary refuses to open a <code>search.db</code> whose schema version is older than the minimum supported. User runs <code>cupertino setup</code> for a fresh bundle.</li></ul>
+<p>There is no in-place migration. The rebuild-instead policy is documented in <code>docs/PRINCIPLES.md</code> and in the <code>assume-no-local-DB</code> memory entry.</p>
+<h3>15.3 Crawl-to-bundle cadence</h3>
+<p>The full pipeline runs out-of-band on the maintainer's hardware:</p>
+<ol><li>Apple changes its docs (continuously).</li><li>Maintainer kicks off <code>cupertino fetch --type all</code> (~14 days wall clock).</li><li>Cron-committed to <code>cupertino-docs</code> git repo (one commit per crawl session).</li><li>Maintainer runs <code>cupertino save</code> on the corpus (~12 hours).</li><li>Maintainer verifies via doctor + regression queries.</li><li>Maintainer tags a release, attaches the bundle to GitHub Releases.</li><li>Users run <code>cupertino setup</code> to pull the new bundle.</li></ol>
+<p>The crawl + save cost is paid once by the maintainer and amortized across every user. End users never run the full pipeline.</p>
+<hr></section><section id="16-alternatives-considered" class="doc-section"><h2><span class="section-number-badge">16</span><span class="section-title">Alternatives Considered</span></h2><h3>16.1 Headless HTTP instead of WKWebView</h3>
+<p class="lead"><strong>Considered</strong>: pure URLSession + JSON decode against <code>tutorials/data/...</code>.</p>
+<p><strong>Rejected</strong>: ~1% of pages return <code>title: null</code> or a 3,297-byte React shell to non-browser fetches. Examples include some kernel pages (<code>exclave_textlayout_info_v1</code>) and certain WebKitJS property pages. WKWebView's JS execution is the only reliable way to get full content.</p>
+<p><strong>Cost paid</strong>: macOS-only crawling.</p>
+<h3>16.2 Vector / semantic search</h3>
+<p><strong>Considered</strong>: embed every page via a sentence-transformer model; serve cosine similarity.</p>
+<p><strong>Rejected as primary</strong>: Apple-docs queries are symbol-named ~80% of the time. <code>URLSession.dataTaskPublisher</code> is a token-match query, not a semantic query. Adding an embedding lookup to every query adds 50-200ms of inference latency and a model dependency. The 20% of queries that benefit from semantic matching (conceptual queries: "how do I make a network request") are a real win but a complement, not a replacement.</p>
+<p><strong>Status</strong>: planned as Phase 2.5 (#183) as a parallel index, not a replacement.</p>
+<h3>16.3 Hash-based URIs</h3>
+<p><strong>Considered</strong>: <code>apple-docs://&lt;8-byte-SHA-of-URL&gt;</code> instead of lossless path encoding.</p>
+<p><strong>Rejected</strong>: non-zero collision floor at any corpus size. At 4M docs (10x target), the expected number of 8-byte SHA collisions is <code>4e6² / 2 / 2⁶⁴ ≈ 4e-7</code> (one in 2.5 million corpora). Sounds small, but it's nonzero; a single collision corrupts the affected pages silently. The principles file commits to a zero-collision-floor design (<code>docs/PRINCIPLES.md</code> §1). Lossless URIs cost ~30% more bytes per row; we accept that cost.</p>
+<h3>16.4 Separate <code>cupertino-mcp</code> binary</h3>
+<p><strong>Considered</strong>: ship the MCP server as a separate binary from the CLI.</p>
+<p><strong>Rejected</strong>: doubles deployment surface (two binaries, two formulas, two PATH entries, two update paths). Mode detection at startup (pipe-vs-TTY on stdin) is 5 lines of code. The binary contains both at ~4.3 MB total; the duplication is in compiled code, not in deployment friction.</p>
+<h3>16.5 Single fat library</h3>
+<p><strong>Considered</strong>: one large SPM package containing all source.</p>
+<p><strong>Rejected</strong>: import boundaries cannot be enforced at compile time. The risk we've avoided by ExtremePackaging is <code>Search</code> accidentally importing <code>Crawler</code> because someone added a helper. With one library, every type is reachable from every other type. With 40 packages and a CI-enforced import contract, the build fails when the boundary is crossed. The cost is <code>Package.swift</code> boilerplate (large but mechanical); the benefit is structural.</p>
+<h3>16.6 PostgreSQL or MongoDB</h3>
+<p><strong>Considered</strong>: server-backed DB for richer query and concurrent writes.</p>
+<p><strong>Rejected</strong>: deployment friction kills the "single binary, brew install" goal. SQLite is single-file portable, has <a href="../sources.html#fts5">FTS5</a> built in, and has zero operational overhead. The cost is no concurrent writers (one <code>cupertino save</code> at a time); we accept that.</p>
+<h3>16.7 Pre-rendered Markdown corpus</h3>
+<p><strong>Considered</strong>: convert all Apple JSON to Markdown at crawl time, ship Markdown.</p>
+<p><strong>Rejected</strong>: loses structural metadata (declaration tokens, availability ranges, references). The structured JSON is the source of truth; Markdown is a lossy projection.</p>
+<h3>16.8 Solr / Elasticsearch</h3>
+<p><strong>Considered</strong>: industry-standard search backends.</p>
+<p><strong>Rejected</strong>: external service, deployment burden, JVM dependency. SQLite <a href="../sources.html#fts5">FTS5</a> gives us 95% of Solr's <a href="../sources.html#bm25f">BM25F</a> capabilities at zero operational overhead. The 5% we lose (distributed sharding, more sophisticated analyzers) is not needed at our scale.</p>
+<h3>16.9 Official Swift MCP SDK</h3>
+<p><strong>Considered</strong>: depend on the official <code>@anthropic-ai/mcp-swift-sdk</code>.</p>
+<p><strong>Rejected</strong>: longer line count, more dependencies, and missing several edge cases that real MCP clients (Claude Desktop, Codex, GitHub Copilot for Xcode) exercise around stdio framing and <code>Transport closed</code> recovery. Cupertino's hand-rolled implementation in the <code>MCP</code> package covers exactly the protocol surface needed (<code>docs/ARCHITECTURE.md</code> §"MCP Server Implementation"). When the official SDK matures and adds the missing edge-case coverage, this is worth re-evaluating.</p>
+<hr></section><section id="17-open-questions-risks" class="doc-section"><h2><span class="section-number-badge">17</span><span class="section-title">Open Questions &amp; Risks</span></h2><h3>Open</h3>
+<table class="data-table"><thead><tr><th>ID</th><th>Question</th><th>Tracking</th></tr></thead><tbody><tr><td>Q1</td><td>When does vector search enter the ranker?</td><td>Phase 2.5, after v1.0.3 ships</td></tr><tr><td>Q2</td><td>What's the minimum-viable diagnostic block for MCP responses?</td><td>Phase 2.1 design pending</td></tr><tr><td>Q3</td><td>Apple's JSON schema drift: do we add a CI canary that re-fetches N representative pages weekly?</td><td>Open work</td></tr><tr><td>Q4</td><td>Can we ship a Linux server crawler variant by replacing WKWebView with a headless Chrome wrapper?</td><td>Open work, not in scope for v1.x</td></tr><tr><td>Q5</td><td>Concurrent <code>cupertino save</code> against the same DB: detect and bail</td><td>#253 open</td></tr><tr><td>Q6</td><td>Recovery pass: how aggressive should URL-leaf title derivation be? Just split on <code>_</code> and titlecase, or LLM-based?</td><td>#777, leaning toward mechanical only</td></tr><tr><td>Q7</td><td>What happens to the 12-hour <code>save</code> time at 10x corpus?</td><td>open; AST extraction is the bottleneck</td></tr></tbody></table>
+<h3>Risks</h3>
+<table class="data-table"><thead><tr><th>ID</th><th>Risk</th><th>Likelihood</th><th>Impact</th><th>Mitigation</th></tr></thead><tbody><tr><td>R1</td><td>Apple changes JSON API shape</td><td>medium</td><td>high (parser breaks)</td><td>parser fails fast; manual fix cycle; CI canary (Q3)</td></tr><tr><td>R2</td><td>Apple rate-limits aggressive crawlers</td><td>low</td><td>medium (slower crawls)</td><td>conservative default delay; respectful UA; back off on 429</td></tr><tr><td>R3</td><td>WKWebView macOS-only locks us out of cloud crawl</td><td>high (already the case)</td><td>medium</td><td>Linux crawler variant is open work (Q4)</td></tr><tr><td>R4</td><td>12-hour <code>save</code> makes iteration slow</td><td>high (current pain)</td><td>medium</td><td>enrichment separated (#769) so small fixes don't need full re-index</td></tr><tr><td>R5</td><td>SQLite <a href="../sources.html#fts5">FTS5</a> <a href="../sources.html#bm25f">BM25F</a> doesn't scale past ~10⁸ docs</td><td>low at current scale</td><td>hypothetical</td><td>sharding architecture is well-understood; defer until needed</td></tr><tr><td>R6</td><td>New MCP client doesn't tolerate our transport edge cases</td><td>medium</td><td>low (per-client fix)</td><td>mock agent + tagged integration tests per client family</td></tr></tbody></table>
+<hr></section><section id="18-future-work" class="doc-section"><h2><span class="section-number-badge">18</span><span class="section-title">Future Work</span></h2><p class="lead">These are deliberately out of scope for the current design but worth flagging for sequencing:</p>
+<ul><li><strong>Phase 2.1</strong>: Diagnostic block in MCP responses (<code>why_this_result</code>, <code>bm25_breakdown</code>, <code>heuristics_applied</code>) so agents can reason about ranking decisions instead of treating the response as opaque.</li><li><strong>Phase 2.5</strong>: Vector index as a parallel signal, fused into the existing ranker via <a href="../sources.html#rrf">RRF</a>. Embedding model TBD; preference is for a small local-runnable model (~100M params) to preserve the offline guarantee.</li><li><strong>Differential re-crawl</strong>: read the <code>cupertino-docs</code> git history to enumerate pages Apple changed since the last commit; re-fetch only those. Cuts daily-update wall time from 14 days to hours.</li><li><strong>Linux server crawler</strong>: replace WKWebView with a Playwright/Chrome wrapper. Enables crawling from cloud VMs and CI.</li><li><strong>Symbolgraph integration</strong>: parse <code>swift symbolgraph-extract</code> output for more frameworks (not just stdlib) to richen the constraint table beyond what Apple's docs JSON exposes.</li><li><strong>Agent skill mode beyond MCP</strong>: stateless CLI invocations via OpenSkills; partially shipped, more work on response shape.</li><li><strong>Tutor mode</strong>: extension that scaffolds end-to-end SwiftUI / iOS sample code using indexed Apple sample-code projects as templates (Phase 3 per #183).</li></ul>
+<hr></section><section id="19-references" class="doc-section"><h2><span class="section-number-badge">19</span><span class="section-title">References</span></h2><h3>Internal</h3>
+<ul><li><code>docs/PRINCIPLES.md</code>: six engineering principles</li><li><code>docs/ARCHITECTURE.md</code>: package layout, file maps, ranker diagrams</li><li><code>docs/package-import-contract.md</code>: per-target allowed/forbidden imports</li><li><code>docs/design/post-processor.md</code>: enrichment-pass pipeline design (epic #769)</li><li><code>docs/audits/methodology.md</code>: audit and issue-hygiene policy</li><li><code>docs/audits/stage-d-regression-locks-2026-05-17.md</code>: pre-release regression set</li><li><code>docs/portability.md</code>: cross-Mac development setup</li></ul>
+<h3>External</h3>
+<ul><li>Robertson, Zaragoza, Taylor (2004), <em>Simple <a href="../sources.html#bm25">BM25</a> Extension to Multiple Weighted Fields</em>. The <a href="../sources.html#bm25f">BM25F</a> formula <code>docs_fts</code> implements.</li><li>Cormack, Clarke, Büttcher (2009), <em><a href="../sources.html#rrf">Reciprocal Rank Fusion</a> outperforms Condorcet and individual Rank Learning Methods</em>. The <a href="../sources.html#rrf">RRF</a> fusion <code>Search.SmartQuery</code> uses.</li><li>Peng &amp; Dabek (2010), <em>Large-scale Incremental Processing Using Distributed Transactions and Notifications</em>. Google Percolator; precedent for the enrichment-pass pattern in <code>cupertino-postprocessor</code>.</li><li>Apache Solr Update Request Processor chain. Closest structural analogue to our enrichment passes.</li><li>Elasticsearch enrich processor. Closest semantic analogue.</li><li>Anthropic, <em>Model Context Protocol Specification</em> (2024). The serve protocol.</li><li>SQLite <a href="../sources.html#fts5">FTS5</a> documentation. The full-text engine.</li><li>SwiftSyntax / SwiftParser. The AST extraction toolchain.</li></ul>
+<h3>Roadmap</h3>
+<ul><li>GitHub issue <a href="https://github.com/mihaelamj/cupertino/issues/183">#183</a>: canonical roadmap</li><li>GitHub issue <a href="https://github.com/mihaelamj/cupertino/issues/769">#769</a>: layer-separation epic (crawler / indexer / postprocessor / search+MCP)</li><li>GitHub issue <a href="https://github.com/mihaelamj/cupertino/issues/283">#283</a>: URL case canonicalization (shipped v1.0.2)</li><li>GitHub issue <a href="https://github.com/mihaelamj/cupertino/issues/285">#285</a>: dash/underscore canonicalization (in progress)</li><li>GitHub issue <a href="https://github.com/mihaelamj/cupertino/issues/777">#777</a>: placeholder-title recovery pass</li><li>GitHub issue <a href="https://github.com/mihaelamj/cupertino/issues/768">#768</a>: per-pass progress logging</li></ul></section>
+
+                <section class="doc-section"><h2><span class="section-number-badge">§</span><span class="section-title">Sources referenced in this document</span></h2><p>Auto-collected from the metric and method mentions in the text above.</p><div class="grid cols-2"><article class="card no-hover"><div class="card-icon tint-indigo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><h3 class="card-title">Reciprocal Rank Fusion (k=60)</h3><p class="card-finding">Cormack, Clarke, Büttcher (2009), SIGIR</p><a class="card-link" href="../sources.html#rrf">Open citation</a></article></div></section>
+            </main>
+        </div>
+
+        <footer>
+            <p>
+                Rendered from <a href="https://github.com/mihaelamj/cupertino/blob/main/docs/design/cupertino.md" target="_blank" rel="noopener">design/cupertino.md</a> by <code>_render-doc.py</code>.
+                Re-run after editing the source; nothing here is hardcoded.
+            </p>
+            <p>
+                Methodology in <a href="design-search-quality-eval.html">design/search-quality-eval</a>
+                ·
+                Architecture in <a href="architecture-database.html">architecture/database</a>
+                ·
+                Citations in <a href="../sources.html">sources.html</a>
+                ·
+                Index in <a href="database-handbook.html">database-handbook</a>
+            </p>
+        </footer>
+
+    </div>
+
+    
+
+    <script>
+    (function() {
+        // Reading-progress bar
+        var bar = document.querySelector('.doc-progress-bar');
+        if (bar) {
+            window.addEventListener('scroll', function() {
+                var h = document.documentElement;
+                var scrolled = h.scrollTop / Math.max(1, (h.scrollHeight - h.clientHeight));
+                bar.style.width = (scrolled * 100).toFixed(2) + '%';
+            }, { passive: true });
+        }
+
+        // TOC active highlight
+        var rows = document.querySelectorAll('.toc-row');
+        if ('IntersectionObserver' in window && rows.length) {
+            var byHash = {};
+            rows.forEach(function(r) { byHash[r.getAttribute('href')] = r; });
+            var io = new IntersectionObserver(function(entries) {
+                entries.forEach(function(e) {
+                    if (e.isIntersecting) {
+                        rows.forEach(function(r) { r.classList.remove('active'); });
+                        var row = byHash['#' + e.target.id];
+                        if (row) row.classList.add('active');
+                    }
+                });
+            }, { rootMargin: '-25% 0px -65% 0px' });
+            document.querySelectorAll('section.doc-section[id]').forEach(function(s) { io.observe(s); });
+        }
+    })();
+    </script>
+</body>
+</html>

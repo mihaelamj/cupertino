@@ -588,6 +588,370 @@ footer p { margin: 6px 0; }
 }
 .source-chip.missing .source-chip-metric { color: var(--text-tertiary); font-weight: 500; }
 
+/* ===== Doc pages (design / architecture / handbook) ===== */
+body.doc-page { background: var(--bg); }
+
+.doc-progress {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: transparent;
+    z-index: 100;
+}
+.doc-progress-bar {
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, var(--apple-blue), var(--apple-indigo));
+    transition: width 80ms linear;
+}
+
+.doc-container {
+    max-width: 1280px;
+}
+
+.doc-header {
+    margin-bottom: 32px;
+}
+
+.doc-meta-card {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px 28px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-card);
+}
+.doc-meta-card .meta-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.doc-meta-card .meta-key {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-tertiary);
+    font-weight: 600;
+}
+.doc-meta-card .meta-val {
+    font-size: 15px;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.companion-card {
+    background: linear-gradient(180deg, rgba(0, 122, 255, 0.06), rgba(88, 86, 214, 0.04));
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 20px 24px;
+    margin-bottom: 40px;
+}
+.companion-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-tertiary);
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+.companion-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 10px;
+}
+.companion-link {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-small);
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: transform 150ms ease, border-color 150ms ease;
+}
+.companion-link:hover {
+    transform: translateY(-1px);
+    border-color: var(--apple-blue);
+    text-decoration: none;
+}
+.companion-path {
+    font-family: "SF Mono", "Menlo", monospace;
+    font-size: 13px;
+    color: var(--apple-blue);
+    font-weight: 500;
+}
+.companion-note {
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+/* Two-column layout: sticky TOC + flowing content */
+.doc-layout {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 56px;
+    align-items: flex-start;
+}
+@media (max-width: 960px) {
+    .doc-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+}
+
+.toc-sidebar {
+    position: sticky;
+    top: 24px;
+    align-self: flex-start;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    padding: 4px 0;
+}
+@media (max-width: 960px) {
+    .toc-sidebar {
+        position: static;
+        max-height: none;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        padding: 16px 20px;
+    }
+}
+.toc-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+    font-weight: 700;
+    margin-bottom: 12px;
+    padding-left: 12px;
+}
+.toc-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+.toc-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 7px 12px;
+    border-left: 2px solid transparent;
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1.35;
+    text-decoration: none;
+    border-radius: 0 6px 6px 0;
+    transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+.toc-row:hover {
+    background: rgba(0, 122, 255, 0.05);
+    color: var(--text-primary);
+    text-decoration: none;
+}
+.toc-row.active {
+    border-left-color: var(--apple-blue);
+    color: var(--text-primary);
+    background: rgba(0, 122, 255, 0.07);
+    font-weight: 600;
+}
+.toc-num {
+    flex: 0 0 auto;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-tertiary);
+    font-size: 12px;
+    font-weight: 600;
+    min-width: 22px;
+}
+.toc-row.active .toc-num { color: var(--apple-blue); }
+.toc-num-glyph { font-style: italic; }
+.toc-label { flex: 1 1 auto; }
+
+/* Doc content */
+.doc-content { min-width: 0; }
+
+.doc-section {
+    margin-bottom: 56px;
+}
+.doc-section:last-child { margin-bottom: 0; }
+
+.doc-section > h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    font-size: 28px;
+    font-weight: 600;
+    margin: 0 0 20px;
+    letter-spacing: -0.01em;
+    scroll-margin-top: 24px;
+}
+.doc-section h2 .section-title { flex: 1 1 auto; }
+
+.section-number-badge {
+    flex: 0 0 auto;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--apple-blue), var(--apple-indigo));
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    border-radius: 12px;
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 2px 6px rgba(0, 122, 255, 0.25);
+}
+
+.doc-section h3 {
+    font-size: 19px;
+    font-weight: 600;
+    margin: 32px 0 12px;
+    color: var(--text-primary);
+    scroll-margin-top: 24px;
+}
+.doc-section h4 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 24px 0 8px;
+    color: var(--text-primary);
+}
+
+.doc-section p {
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--text-primary);
+    margin: 0 0 14px;
+}
+.doc-section p.lead {
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--text-primary);
+    margin-bottom: 22px;
+    font-weight: 400;
+}
+.doc-section ul, .doc-section ol {
+    padding-left: 24px;
+    margin: 0 0 18px;
+}
+.doc-section li {
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.doc-section blockquote {
+    border-left: 4px solid var(--apple-indigo);
+    background: linear-gradient(90deg, rgba(88, 86, 214, 0.07), rgba(88, 86, 214, 0));
+    padding: 14px 22px;
+    margin: 22px 0;
+    color: var(--text-primary);
+    font-size: 17px;
+    line-height: 1.55;
+    font-style: italic;
+    border-radius: 0 var(--radius-small) var(--radius-small) 0;
+}
+
+.doc-section hr {
+    border: 0;
+    border-top: 1px solid var(--border);
+    margin: 36px 0;
+}
+
+.doc-section pre {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
+    padding: 18px 22px;
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+
+/* Mermaid diagram surface */
+.doc-section pre.mermaid {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 24px;
+    margin: 22px 0;
+    text-align: center;
+    overflow-x: auto;
+    font-size: 14px;
+    line-height: 1.4;
+}
+.doc-section pre.mermaid svg {
+    max-width: 100%;
+    height: auto;
+}
+/* While the JS is still loading, hide the raw mermaid source so it
+   doesn't flash as ugly DSL text before the diagram renders. */
+.doc-section pre.mermaid:not([data-processed="true"]) {
+    color: var(--text-tertiary);
+    font-family: "SF Mono", "Menlo", monospace;
+    font-size: 11px;
+    opacity: 0.4;
+}
+
+/* Definition lists (G1, NG1, F1, P0…) */
+.def-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0 0 22px;
+}
+.def-row {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 18px;
+    align-items: baseline;
+    padding: 14px 18px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-card);
+}
+.def-chip {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+.def-chip.chip-good { background: rgba(52, 199, 89, 0.12); color: var(--apple-green); }
+.def-chip.chip-warn { background: rgba(255, 59, 48, 0.12); color: var(--apple-red); }
+.def-chip.chip-info { background: rgba(0, 122, 255, 0.12); color: var(--apple-blue); }
+.def-chip.chip-neutral { background: rgba(110, 110, 115, 0.14); color: var(--text-secondary); }
+.def-body { font-size: 15.5px; line-height: 1.55; color: var(--text-primary); }
+.def-body p:last-child { margin-bottom: 0; }
+.def-body em {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* Tables inside doc sections */
+.doc-section table.data-table { margin: 14px 0 22px; }
+
+/* Intro section (prelude before first ##) */
+.doc-section.doc-intro {
+    background: linear-gradient(180deg, rgba(0, 122, 255, 0.04), transparent);
+    border-left: 3px solid var(--apple-blue);
+    border-radius: 0 var(--radius-card) var(--radius-card) 0;
+    padding: 22px 28px;
+    margin-bottom: 48px;
+}
+.doc-section.doc-intro p.lead { font-size: 18px; }
+
 /* ===== Responsive ===== */
 @media (max-width: 640px) {
     .container { padding: 40px 16px 60px; }
@@ -598,4 +962,9 @@ footer p { margin: 6px 0; }
     .tabs { width: 100%; justify-content: flex-start; }
     .card-icon { width: 40px; height: 40px; }
     .card-icon svg { width: 20px; height: 20px; }
+
+    .doc-section > h2 { font-size: 24px; gap: 12px; }
+    .section-number-badge { min-width: 34px; height: 34px; font-size: 14px; }
+    .def-row { grid-template-columns: 64px 1fr; gap: 12px; padding: 12px 14px; }
+    .doc-meta-card { padding: 16px 18px; }
 }

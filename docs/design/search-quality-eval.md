@@ -146,49 +146,19 @@ Each of properties 1-6 is testable. None is tested by Phase 1 as designed. Prope
 
 ## 5. Design Overview
 
-```
-                       50 queries × 2 systems
-                                │
-                                ▼
-                ┌───────────────────────────────┐
-                │      Query Corpus (5.2)       │
-                │   [(query, right-answer       │
-                │    URI regex), ...]           │
-                └───────────────────────────────┘
-                                │
-                                ▼
-                ┌───────────────────────────────┐
-                │  Subprocess runner (6.1)      │
-                │  cupertino search --limit 10  │
-                │   ↓                           │
-                │  URI extractor: parse top-10  │
-                │   ordered list from stdout    │
-                └───────────────────────────────┘
-                       │              │
-                  System A         System B
-                       ▼              ▼
-                ┌───────────────────────────────┐
-                │  Per-query scorer (6.2)       │
-                │   MRR, P@1, P@5, NDCG@10      │
-                │   against right-answer regex  │
-                └───────────────────────────────┘
-                                │
-                                ▼
-                ┌───────────────────────────────┐
-                │  Aggregator + significance    │
-                │  (6.3, 8.1)                   │
-                │   mean per metric             │
-                │   paired Wilcoxon on MRR      │
-                └───────────────────────────────┘
-                                │
-                                ▼
-                ┌───────────────────────────────┐
-                │  Report (6.4)                 │
-                │   stdout: aggregate table,    │
-                │     per-query table,          │
-                │     stat tests                │
-                │   JSON dump for archive       │
-                └───────────────────────────────┘
+```mermaid
+flowchart TD
+    Q["<b>Query Corpus</b> · §5.2<br/>50 queries × 2 systems<br/>[(query, right-answer URI regex), …]"]
+    R["<b>Subprocess Runner</b> · §6.1<br/>cupertino search --limit 10<br/>URI extractor: parse top-10 ordered list from stdout"]
+    S["<b>Per-query Scorer</b> · §6.2<br/>MRR, P@1, P@5, NDCG@10<br/>scored against right-answer regex"]
+    A["<b>Aggregator + Significance</b> · §6.3, §8.1<br/>mean per metric<br/>paired Wilcoxon on MRR"]
+    Re["<b>Report</b> · §6.4<br/>stdout: aggregate table, per-query table, stat tests<br/>JSON dump for archive"]
+
+    Q --> R
+    R -- "System A" --> S
+    R -- "System B" --> S
+    S --> A
+    A --> Re
 ```
 
 Single Python script, no daemons, no service dependencies. Each component is a function in the same module. Tested as a unit by re-running.
