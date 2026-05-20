@@ -98,6 +98,25 @@ extension Search {
             return sqlite3_column_int64(stmt, 0)
         }
 
+        /// Inspect `PRAGMA foreign_keys` on the actor's own connection
+        /// (0 = OFF, 1 = ON). Per-connection setting, not persisted in
+        /// the file header — `Diagnostics.Probes` opening its own
+        /// connection would see SQLite's default (0). Test-facing
+        /// (#864): if a future edit removes the `PRAGMA foreign_keys
+        /// = ON` line from `openDatabase`, the regression test in
+        /// `Issue864PackagesReRunOrphansTests` fails by reading this.
+        public func currentForeignKeysMode() -> Int32? {
+            guard let database else { return nil }
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            guard sqlite3_prepare_v2(database, "PRAGMA foreign_keys;", -1, &stmt, nil) == SQLITE_OK,
+                  sqlite3_step(stmt) == SQLITE_ROW
+            else {
+                return nil
+            }
+            return sqlite3_column_int(stmt, 0)
+        }
+
         // MARK: - Public API
 
         public struct IndexResult: Sendable {
@@ -984,6 +1003,31 @@ extension Search {
                 let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
                 logger.warning(
                     "Failed to set journal_size_limit on \(dbPath.lastPathComponent): \(errorMessage)",
+                    category: .packages
+                )
+            }
+
+            // #864: turn on foreign-key enforcement so the schema's
+            // declared `ON DELETE CASCADE` relationships (package_files
+            // → package_metadata, package_symbols → package_files,
+            // package_files_fts → package_files) actually fire when
+            // a re-run wipes a package before re-inserting. SQLite
+            // ships with `foreign_keys = OFF` per connection by
+            // default; the indexer's wipe-then-insert path issues a
+            // `DELETE FROM package_metadata WHERE owner = ? AND repo
+            // = ?` and relies on the cascade to clear dependent rows
+            // — without this PRAGMA, every re-run leaks ~1.4M orphan
+            // `package_symbols` rows that inflate counts, slow scans,
+            // and double-affect every enrichment pass.
+            //
+            // Per-connection, so set it for every open. Persisted in
+            // the WAL header? No — `foreign_keys` is connection-
+            // scoped, not stored in the file. That's why this lives
+            // here next to the other open-time pragmas.
+            if sqlite3_exec(dbPointer, "PRAGMA foreign_keys = ON", nil, nil, nil) != SQLITE_OK {
+                let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
+                logger.warning(
+                    "Failed to enable foreign_keys on \(dbPath.lastPathComponent): \(errorMessage)",
                     category: .packages
                 )
             }
