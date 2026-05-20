@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate) · cupertino search quality</title>
+    <link rel="stylesheet" href="../_styles.css">
+</head>
+<body>
+    <div class="container">
+
+        <a class="back-link" href="../search-quality-v1.2.0.html">Back to dashboard</a>
+
+        <header>
+            <div class="eyebrow">`docs/design/search-quality-eval.md` §14.2 Phase 1.6 (symbol-attribute), query class H from §1.4</div>
+            <h1>Search-quality baseline: symbol-attribute (Phase 1.6, v1.2.0 candidate)</h1>
+            <p class="subtitle">This audit tests symbol-attribute queries — queries that conceptually describe symbols by attribute (<code>@MainActor</code>, <code>@Observable</code>), by signature flag (<code>async throws</code>, <code>public static</code>), by conformance (<code>Sendable conformance</code>, <code>Hashable conformance</code>), or by kind (<code>actor type</code>, <code>protocol type</code>, <code>initializer</code>, <code>subscript</code>, <code>typealias</code>). Unlike previous phases where relevance was defined by a URI regex, here relevance is defined by a SQL filter against the <code>doc_symbols</code> table.</p>
+            <p class="meta">
+                <span>Measured 2026-05-20</span>·<span class="status status-weak" style="margin: 0 8px;">Weak</span>
+            </p>
+        </header>
+
+        <div class="kpi-strip">
+            <div class="kpi">
+                <div class="kpi-label">Headline result</div>
+                <div class="kpi-value red">0.2533</div>
+                <div class="kpi-desc">Auto-extracted from the audit's first measured section. Full data below.</div>
+            </div>
+        </div>
+
+        <section><h2>Aggregate</h2><table class="data-table"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>Queries</td><td class="num">15</td></tr><tr><td><strong>Mean P@5 (headline)</strong></td><td><strong>0.2533</strong></td></tr><tr><td>Mean P@1</td><td class="num">0.2000</td></tr><tr><td>Mean P@10</td><td class="num">0.2667</td></tr><tr><td>Zero P@5 queries</td><td>8 / 15</td></tr></tbody></table>
+<p>This is the second-poorest baseline by P@5 after acronym (which was even more dramatic: 4/22 = 18%). For symbol-attribute, the picture is bimodal: some queries score near 1.0, many score 0.</p>
+<p>---</p></section><section><h2>The Bimodal Split</h2><p><strong>Strong (P@5 ≥ 0.6):</strong></p>
+<table class="data-table"><thead><tr><th>Query</th><th>Relevant set size</th><th>P@5</th><th>First-match rank</th></tr></thead><tbody><tr><td>@MainActor</td><td class="num">4,892</td><td><strong>1.00</strong></td><td class="num">1</td></tr><tr><td>protocol type</td><td class="num">2,540</td><td><strong>1.00</strong></td><td class="num">1</td></tr><tr><td>Sendable conformance</td><td class="num">179</td><td class="num">0.60</td><td class="num">2</td></tr><tr><td>Hashable conformance</td><td class="num">67</td><td class="num">0.60</td><td class="num">3</td></tr></tbody></table>
+<p><strong>Weak (0 &lt; P@5 &lt; 0.6):</strong></p>
+<table class="data-table"><thead><tr><th>Query</th><th>Relevant set size</th><th>P@5</th><th>First-match rank</th></tr></thead><tbody><tr><td>public static</td><td class="num">27,846</td><td class="num">0.20</td><td class="num">1</td></tr><tr><td>@Observable</td><td class="num">13</td><td class="num">0.20</td><td class="num">3</td></tr><tr><td>@available</td><td class="num">13</td><td class="num">0.20</td><td class="num">3</td></tr></tbody></table>
+<p><strong>Zero P@5 (no relevant in top-5):</strong></p>
+<table class="data-table"><thead><tr><th>Query</th><th>Relevant set size</th><th>First-match rank</th></tr></thead><tbody><tr><td>async throws</td><td class="num">1,459</td><td>not in top-10</td></tr><tr><td>Codable conformance</td><td class="num">46</td><td class="num">10</td></tr><tr><td>View conformance</td><td class="num">599</td><td class="num">7</td></tr><tr><td>actor type</td><td class="num">3</td><td class="num">6</td></tr><tr><td>initializer</td><td class="num">18,497</td><td>not in top-10</td></tr><tr><td>subscript</td><td class="num">760</td><td>not in top-10</td></tr><tr><td>typealias</td><td class="num">2,761</td><td>not in top-10</td></tr><tr><td>generic constraint</td><td class="num">17,475</td><td>not in top-10</td></tr></tbody></table>
+<p>---</p></section><section><h2>What This Baseline Says</h2><p>The split is consistent with cupertino's actual search architecture. The default search path goes through FTS5 over <code>docs_fts</code> columns (<code>uri</code>, <code>source</code>, <code>framework</code>, <code>language</code>, <code>title</code>, <code>content</code>, <code>summary</code>, <code>symbols</code>, <code>symbol_components</code>). It does NOT consult <code>doc_symbols.kind</code>, <code>doc_symbols.is_async</code>, <code>doc_symbols.attributes</code>, or <code>doc_symbols.conformances</code> directly.</p>
+<p>A query for <code>@MainActor</code> works because the literal token <code>MainActor</code> appears in <code>docs_fts.symbols</code> (extracted by ASTIndexer at index time) and in <code>docs_fts.content</code> (Apple's prose mentions @MainActor). A query for <code>initializer</code> does NOT work because the token <code>initializer</code> rarely appears in titles or content (the title might say <code>init(_:)</code> instead), and the <code>kind=&#x27;initializer&#x27;</code> filter is not part of the default search path.</p>
+<p>This is <strong>architecturally consistent with the database design</strong> documented in <code>docs/architecture/database.md</code>. The <code>doc_symbols</code> table is a relational store for symbol-level metadata; the default FTS5 search is a separate path. The intended access pattern for attribute-style queries is via <code>Search.Index.SearchByAttribute</code> (file: <code>Packages/Sources/Search/Search.Index.SearchByAttribute.swift</code>), which exists in the codebase but is invoked only by code paths that explicitly want filter-based search, not by <code>cupertino search &quot;&lt;query&gt;&quot;</code>.</p>
+<p>For an LLM agent or human typing <code>cupertino search initializer</code> and expecting initializer-defining pages, the current path returns nothing useful. To get attribute-filtered results today the consumer must reach for filter-style query operators that the CLI does not currently expose as a first-class flag.</p>
+<p>---</p></section><section><h2>Why Some Attribute Queries Did Work</h2><p><code>@MainActor</code>, <code>Sendable conformance</code>, <code>protocol type</code>, <code>Hashable conformance</code> — these all happen to align with token-presence:</p>
+<ul><li><code>MainActor</code> is also a Swift type name, indexed in <code>docs_fts.symbols</code> at weight 5.0</li><li><code>Sendable</code> is a Swift protocol name, same</li><li><code>Hashable</code> same</li><li><code>protocol</code> is a Swift keyword that appears in titles and content</li><li><code>actor</code> (in <code>actor type</code>) appears in titles for the 3 actor-defining pages but those pages don't dominate</li></ul>
+<p>So the win isn't the symbol-attribute mechanism working; it's a coincidence that the attribute name is also a token-rich symbol name. When the attribute name is a generic English word that doesn't surface as a symbol (<code>initializer</code>, <code>subscript</code>, <code>typealias</code>, <code>generic constraint</code>), the query fails completely.</p>
+<p>---</p></section><section><h2>Possible Future Directions (out of Scope for This Audit)</h2><p>Per the <code>feedback_code_changes_as_ideas_for_future</code> rule:</p>
+<ol><li><strong>CLI flag for kind-based filtering.</strong> <code>cupertino search --kind initializer</code> or <code>--kind actor</code> would route through <code>SearchByAttribute</code> and return all pages with at least one matching symbol. Small CLI surface change; harness logic already exists. Highest-value first move.</li><li><strong>Heuristic intent routing for attribute queries.</strong> Queries that match the pattern <code>^(async|throws|public|static|init|subscript|typealias|@\w+|.* conformance)$</code> route through <code>SearchByAttribute</code> automatically. More work, but no flag-discovery burden on the consumer.</li><li><strong>Augment FTS5 with attribute tokens.</strong> Add a <code>attributes</code> column to <code>docs_fts</code> containing concatenated per-page attribute / conformance strings, BM25F-weighted (similar to <code>symbols</code>). Largest surface change; affects schema (<code>user_version</code> bump); requires reindex.</li></ol>
+<p>The acronym audit (<code>search-quality-acronym-baseline-v1.2.0.md</code>) raised analogous concerns about <code>framework_aliases.synonyms</code> not being consulted at FTS5 ranking time. Both audits point at the same broader pattern: cupertino's relational metadata tables are richer than the default FTS5 search path consults. A consolidated design for "non-text search modes" could address both classes simultaneously.</p>
+<p>---</p></section><section><h2>Implications for Criterion 2 (anti-hallucination)</h2><p>An AI agent issuing <code>find async throws functions returning Result</code> gets top-10 results that don't constrain on async/throws/return-type. The agent then has to read those pages and hope they're relevant; for most of the 8-zero-P@5 queries above, none would be useful.</p>
+<p>Mitigation in current state: the agent would need to issue more concrete queries (<code>Result&lt;Success, Failure&gt;</code> plus <code>async throws</code> separately and intersect mentally) rather than rely on cupertino to filter. This is feasible but inefficient.</p>
+<p>The Phase 1.7 agent-end-to-end eval (<code>docs/design/search-quality-eval.md</code> §14.4) is where the practical impact of these attribute-query limitations gets measured end-to-end. Until that lands, this 25% baseline is the closest signal.</p>
+<p>---</p></section><section><h2>Method Recap</h2><p>15 (query, sql_filter) pairs. For each:</p>
+<ol><li>Compute <code>relevant_uris = {row.doc_uri for row in doc_symbols WHERE &lt;filter&gt;}</code></li><li>Run <code>cupertino search &quot;&lt;query&gt;&quot; --limit 10</code></li><li>Compute P@1, P@5, P@10 against <code>relevant_uris</code> membership</li></ol>
+<p>Read-only SQLite via <code>file:...?mode=ro</code>. No writes anywhere.</p>
+<p>Harness source: <code>/tmp/cupertino-search-eval-symbol-attribute.py</code>. Full JSON dump: <code>/tmp/cupertino-search-eval-symbol-attribute-20260520.json</code>.</p>
+<p>---</p></section><section><h2>Combined Phase 1 Baseline Coverage on V1.2.0</h2><p>All 6 of 6 query classes A-G from §1.4 (excluding Phase 1.7 which is its own design) now have documented baselines on the v1.2.0 candidate DB:</p>
+<table class="data-table"><thead><tr><th>Baseline</th><th>Class</th><th>Headline</th><th>Interpretation</th></tr></thead><tbody><tr><td><code>search-quality-baseline-v1.2.0.md</code></td><td>A + B</td><td>MRR 0.9467, P@1 46/50</td><td>Strong; the canonical use case</td></tr><tr><td><code>search-quality-deprecation-baseline-v1.2.0.md</code></td><td>E</td><td>30/30 Swift wins, p = 0.0078</td><td>Strong; anti-hallucination axis intact</td></tr><tr><td><code>search-quality-crosssource-baseline-v1.2.0.md</code></td><td>F</td><td>19/19 conditional, p = 1.9 × 10⁻⁶</td><td>Strong but biased (intentionally)</td></tr><tr><td><code>search-quality-fragment-baseline-v1.2.0.md</code></td><td>D</td><td>P@1 = 1.0, P@5 = 0.92</td><td>Strong; symbol_components working</td></tr><tr><td><code>search-quality-acronym-baseline-v1.2.0.md</code></td><td>C</td><td>4/22 = 18%</td><td><strong>Weak</strong>; synonyms not at ranking time</td></tr><tr><td><code>search-quality-prose-baseline-v1.2.0.md</code></td><td>G</td><td>4/15 = 26.7% strict (53-67% adj)</td><td>Methodology-limited; BM25F trade-off</td></tr><tr><td><strong><code>search-quality-symbol-attribute-baseline-v1.2.0.md</code></strong> (this doc)</td><td><strong>H</strong></td><td><strong>P@5 = 0.25</strong></td><td><strong>Weak; default path doesn't consult doc_symbols metadata</strong></td></tr></tbody></table>
+<p>Remaining: §14.4 Phase 1.7 anti-hallucination agent-end-to-end eval. That is its own design (<code>docs/design/anti-hallucination-eval.md</code>, not yet written) and the actual release-blocker test.</p></section>
+
+        <footer>
+            <p>
+                Generated from <a href="../../audits/search-quality-symbol-attribute-baseline-v1.2.0.md">../../audits/search-quality-symbol-attribute-baseline-v1.2.0.md</a> by <code>_render-audit-dashboard.py</code>.
+                Re-run after editing the audit; nothing here is hardcoded per-audit.
+            </p>
+            <p>
+                Part of <a href="../search-quality-v1.2.0.html">cupertino search-quality dashboards</a>.
+                Methodology in <a href="../../design/search-quality-eval.md">docs/design/search-quality-eval.md</a>.
+            </p>
+        </footer>
+
+    </div>
+</body>
+</html>

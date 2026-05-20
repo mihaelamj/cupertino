@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search-quality baseline: CamelCase fragment recall (Phase 1.3, v1.2.0 candidate) · cupertino search quality</title>
+    <link rel="stylesheet" href="../_styles.css">
+</head>
+<body>
+    <div class="container">
+
+        <a class="back-link" href="../search-quality-v1.2.0.html">Back to dashboard</a>
+
+        <header>
+            <div class="eyebrow">`docs/design/search-quality-eval.md` §14.2 Phase 1.3 (CamelCase fragment recall), query class D f…</div>
+            <h1>Search-quality baseline: CamelCase fragment recall (Phase 1.3, v1.2.0 candidate)</h1>
+            <p class="subtitle">This audit tests <code>Search.Index.CamelCaseSplitter</code> (#77), the cupertino-specific mechanism that expands CamelCase identifiers like <code>LazyVGrid</code> into recall-aiding components <code>{Lazy, VGrid, Grid}</code> stored in the <code>docs_fts.symbol_components</code> column. The column carries BM25F weight 1.5 (one-tenth of <code>docs_fts.symbols</code> at 5.0) so an exact identifier match wins over a fragment match, but a query for a fragment alone should still surface pages whose symbols contain it.</p>
+            <p class="meta">
+                <span>Measured 2026-05-20</span>·<span class="status status-strong" style="margin: 0 8px;">Strong</span>
+            </p>
+        </header>
+
+        <div class="kpi-strip">
+            <div class="kpi">
+                <div class="kpi-label">Headline result</div>
+                <div class="kpi-value green">0.9200</div>
+                <div class="kpi-desc">Auto-extracted from the audit's first measured section. Full data below.</div>
+            </div>
+        </div>
+
+        <section><h2>Aggregate</h2><table class="data-table"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>Fragments evaluated</td><td class="num">20</td></tr><tr><td><strong>Mean P@1</strong></td><td><strong>1.0000</strong> (every fragment has a match at rank 1)</td></tr><tr><td><strong>Mean P@5 (headline)</strong></td><td><strong>0.9200</strong></td></tr><tr><td>Mean P@10</td><td class="num">0.8700</td></tr><tr><td>Fragments with zero matches in top-5</td><td>0 / 20</td></tr><tr><td>Fragments with 5 / 5 matches in top-5</td><td>14 / 20</td></tr></tbody></table>
+<p>Every one of the 20 fragment queries returned a fragment-containing URI at rank 1. The symbol_components mechanism is doing its job at the top of the ranking.</p>
+<p>The 8% gap from 1.0 in P@5 comes from fragments where 1 or 2 of the top-5 positions are taken by pages that don't carry the fragment in their URI (likely prose pages that happen to use the word as a query token via the <code>content</code> column).</p>
+<p>---</p></section><section><h2>Per-fragment</h2><table class="data-table"><thead><tr><th>Fragment</th><th>First match rank</th><th>P@5</th><th>Sample of top-5 matches</th></tr></thead><tbody><tr><td>Grid</td><td class="num">1</td><td class="num">1.00</td><td>grid, grid, gridlayout, gridrow, lazyvgrid</td></tr><tr><td>Decoder</td><td class="num">1</td><td class="num">1.00</td><td>decoder, decoder, compressormediadecoder, mevideodecoder, topleveldecoder</td></tr><tr><td>Encoder</td><td class="num">1</td><td class="num">0.80</td><td>encoder, encoder, onehotencoder, networkencoder</td></tr><tr><td>Session</td><td class="num">1</td><td class="num">0.80</td><td>session, session, session, session</td></tr><tr><td>Stack</td><td class="num">1</td><td class="num">1.00</td><td>stack, stack, lazyhstack, lazyvstack, hstack</td></tr><tr><td>Picker</td><td class="num">1</td><td class="num">1.00</td><td>picker, defaultpickerstyle, colorpicker, popupbuttonpickerstyle, pickerstyle</td></tr><tr><td>Style</td><td class="num">1</td><td class="num">0.80</td><td>style, style, style, style</td></tr><tr><td>View</td><td class="num">1</td><td class="num">1.00</td><td>view, view, view, view, view</td></tr><tr><td>Controller</td><td class="num">1</td><td class="num">1.00</td><td>controller, controller, controller, controller, controller</td></tr><tr><td>Manager</td><td class="num">1</td><td class="num">1.00</td><td>manager, manager, accessorynotificationmanagerfactory, avdisplaymanager, badownloadmanager</td></tr><tr><td>Layout</td><td class="num">1</td><td class="num">0.60</td><td>layout, layout, layout</td></tr><tr><td>Button</td><td class="num">1</td><td class="num">1.00</td><td>button, button, button, button, button</td></tr><tr><td>Image</td><td class="num">1</td><td class="num">0.80</td><td>image, image, image, image</td></tr><tr><td>Field</td><td class="num">1</td><td class="num">1.00</td><td>defaulttextfieldstyle, fielddatepickerstyle, textfieldstyle, plaintextfieldstyle, field</td></tr><tr><td>Animation</td><td class="num">1</td><td class="num">1.00</td><td>animation, animation, animation, animation, animation</td></tr><tr><td>Color</td><td class="num">1</td><td class="num">1.00</td><td>color, color, color, color, color</td></tr><tr><td>Container</td><td class="num">1</td><td class="num">1.00</td><td>container, container, container, container, container</td></tr><tr><td>Builder</td><td class="num">1</td><td class="num">1.00</td><td>builderconditional, axiscontentbuilder, previewbodybuilder, axismarkbuilder, previewcamerabuilder</td></tr><tr><td>Wrapper</td><td class="num">1</td><td class="num">1.00</td><td>wrapper, wrapper, wrapper, mdimporterbundlewrapperurlinterfacestruct, filewrapper</td></tr><tr><td>Provider</td><td class="num">1</td><td class="num">0.60</td><td>provider, provider, provider</td></tr></tbody></table>
+<p>---</p></section><section><h2>What This Baseline Confirms</h2><p>The <code>symbol_components</code> column does what #77 designed it to do: a query for a CamelCase fragment surfaces pages whose symbols contain that fragment as a component. This works for simple compound types (<code>LazyVGrid</code> → retrievable by <code>Grid</code>, <code>Lazy</code>, or <code>VGrid</code>), for protocol families (<code>Decoder</code> → retrievable surfaces <code>JSONDecoder</code> etc.), and for SwiftUI patterns (<code>Picker</code> → retrieves <code>DatePicker</code>, <code>ColorPicker</code>, etc.).</p>
+<p>The BM25F weight balance is correct: with <code>symbols=5.0</code> and <code>symbol_components=1.5</code>, an exact name match always wins (verified separately by the canonical-lookup baseline <code>search-quality-baseline-v1.2.0.md</code> where <code>LazyVGrid</code> ranks the canonical <code>apple-docs://swiftui/lazyvgrid</code> at rank 1), and a fragment-only query still retrieves the right family via the symbol_components contribution.</p>
+<p>---</p></section><section><h2>What This Baseline Does Not Cover</h2><ul><li><strong>Acronym-style fragments.</strong> Fragments like <code>URL</code>, <code>HTTP</code>, <code>JSON</code>, <code>XML</code> are technically multi-letter acronyms that the CamelCase splitter treats as single units (per the splitter's spec: <code>JSONDecoder</code> → <code>{JSON, Decoder}</code>, not <code>{J, S, O, N, Decoder}</code>). The test corpus uses single-word fragments only. Acronym-fragment behaviour is testable as a Phase 1.3.1 follow-up.</li><li><strong>Single-letter fragments.</strong> The splitter drops single-letter fragments (<code>V</code> from <code>LazyVGrid</code> does not become a recall unit) per #77's min-length rule. Not tested here.</li><li><strong>Multi-fragment compound queries.</strong> A query like <code>Grid Layout</code> requires both fragments to surface; this corpus tests one fragment at a time. The interaction is testable as a Phase 1.3.2 follow-up.</li><li><strong>Fragment in non-Swift symbol context.</strong> Obj-C identifiers (<code>NSURLRequest</code>, <code>NSDecimalNumber</code>) are also CamelCase. The splitter splits them too (<code>NS, URL, Request</code>); whether queries route through them at the desired weight is not separately tested.</li></ul>
+<p>---</p></section><section><h2>Method Recap</h2><p>20 fragment queries. For each: run <code>cupertino search &quot;&lt;fragment&gt;&quot; --limit 10</code>, extract top-10 URIs, apply a loose regex that matches URIs whose path contains the fragment as a substring in any segment. Compute P@1, P@5, P@10, and first-match rank. Aggregate as means.</p>
+<p>Note on the initial regex bug: an earlier strict regex (requiring the terminal slug to END in the fragment) reported P@5 = 0.49, with <code>Field</code> and <code>Provider</code> showing zero matches. Investigation revealed the strict regex was rejecting valid deeply-nested results like <code>appintents/appshortcutoptionscollectionprotocol/provider</code> and embedded results like <code>defaulttextfieldstyle</code>. The corrected loose regex (substring anywhere in any path segment) measures the actual recall and is what this audit reports.</p>
+<p>Harness source: <code>/tmp/cupertino-search-eval-fragment.py</code> (not yet versioned in repo). Full JSON dump (all 20 top-10 lists): <code>/tmp/cupertino-search-eval-fragment-20260520.json</code>.</p>
+<p>---</p></section><section><h2>Combined Phase 1 Baseline Coverage on V1.2.0</h2><table class="data-table"><thead><tr><th>Baseline</th><th>Class</th><th>Headline</th></tr></thead><tbody><tr><td><code>search-quality-baseline-v1.2.0.md</code></td><td>A + B (canonical lookup + framework root)</td><td>MRR 0.9467, P@1 perfect on 46/50</td></tr><tr><td><code>search-quality-deprecation-baseline-v1.2.0.md</code></td><td>E (deprecation-aware)</td><td>Swift wins 30/30, sign-test p = 0.0078</td></tr><tr><td><code>search-quality-crosssource-baseline-v1.2.0.md</code></td><td>F (cross-source canonical)</td><td>19/19 OK when expected source in top-10, p = 1.9 × 10⁻⁶</td></tr><tr><td><strong><code>search-quality-fragment-baseline-v1.2.0.md</code></strong> (this doc)</td><td><strong>D (CamelCase fragment)</strong></td><td><strong>mean P@1 = 1.0, mean P@5 = 0.92 across 20 fragment queries. 14 / 20 returned 5/5 matches. The #77 symbol_components mechanism is working.</strong></td></tr></tbody></table>
+<p>Four of eight Phase 1.x classes from §1.4 now have documented baselines. Four remain: C (acronym), G (prose), H (symbol-attribute), and Phase 1.7 agent-end-to-end.</p></section>
+
+        <footer>
+            <p>
+                Generated from <a href="../../audits/search-quality-fragment-baseline-v1.2.0.md">../../audits/search-quality-fragment-baseline-v1.2.0.md</a> by <code>_render-audit-dashboard.py</code>.
+                Re-run after editing the audit; nothing here is hardcoded per-audit.
+            </p>
+            <p>
+                Part of <a href="../search-quality-v1.2.0.html">cupertino search-quality dashboards</a>.
+                Methodology in <a href="../../design/search-quality-eval.md">docs/design/search-quality-eval.md</a>.
+            </p>
+        </footer>
+
+    </div>
+</body>
+</html>

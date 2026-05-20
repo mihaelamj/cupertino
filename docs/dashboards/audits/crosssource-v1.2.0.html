@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search-quality baseline: cross-source canonical (Phase 1.2, v1.2.0 candidate) · cupertino search quality</title>
+    <link rel="stylesheet" href="../_styles.css">
+</head>
+<body>
+    <div class="container">
+
+        <a class="back-link" href="../search-quality-v1.2.0.html">Back to dashboard</a>
+
+        <header>
+            <div class="eyebrow">`docs/design/search-quality-eval.md` §14.2 Phase 1.2 (cross-source canonical), query class F from…</div>
+            <h1>Search-quality baseline: cross-source canonical (Phase 1.2, v1.2.0 candidate)</h1>
+            <p class="subtitle">This audit tests <code>Search.SmartQuery.sourceWeights</code> (apple-docs=3.0, swift-evolution=1.5, packages=1.5, swift-book=1.0, swift-org=1.0, samples=1.0, apple-archive=0.5, hig=0.5) — the per-source authority bias applied during cross-source RRF fan-out. This machinery had no test coverage before today.</p>
+            <p class="meta">
+                <span>Measured 2026-05-20</span>·<span class="status status-mixed" style="margin: 0 8px;">Mixed</span>
+            </p>
+        </header>
+
+        <div class="kpi-strip">
+            <div class="kpi">
+                <div class="kpi-label">Headline result</div>
+                <div class="kpi-value orange">19 / 25 (76.0%)</div>
+                <div class="kpi-desc">Auto-extracted from the audit's first measured section. Full data below.</div>
+            </div>
+        </div>
+
+        <section><h2>Aggregate</h2><table class="data-table"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>Queries total</td><td class="num">25</td></tr><tr><td>Top-1 matches expected</td><td><strong>19 / 25 (76.0%)</strong></td></tr><tr><td>Expected source IS present in top-10</td><td><strong>19 / 25</strong></td></tr><tr><td>Top-1 match conditional on expected being present</td><td><strong>19 / 19 (100%)</strong></td></tr><tr><td>Top-1 mismatch conditional on expected being present</td><td>0 / 19</td></tr></tbody></table>
+<p><strong>Binomial test on the strict subset (expected present in top-10):</strong> k = 19 of n = 19 trials, one-sided p (top-1 matches expected vs chance 0.5) = <strong>1.9 × 10⁻⁶</strong>. The null hypothesis (no source-weight effect) is rejected emphatically.</p>
+<p>The 6 mismatches are not "ranker chose wrong source from candidates"; they are "expected source had nothing in the top-10 at all because apple-docs's source weight outcompetes the lower-weight sources." A deeper finding (see below).</p>
+<p>---</p></section><section><h2>The Clean Wins: 19 / 25</h2><p>For 19 queries where the expected top-1 source was apple-docs (weight 3.0), the actual top-1 was always apple-docs:</p>
+<p><code>concurrency</code>, <code>actor</code>, <code>Hashable</code>, <code>Sendable</code>, <code>Result Builders</code>, <code>Property Wrappers</code>, <code>async await</code>, <code>Generics</code>, <code>Observation</code>, <code>Optional</code>, <code>Protocol</code>, <code>Closure</code>, <code>Color</code>, <code>Navigation</code>, <code>Button</code>, <code>Typography</code>, <code>Materials</code>, <code>Privacy</code>, <code>Widget</code>.</p>
+<p>The source-weight machinery is doing exactly the work the design intends for the apple-docs-canonical case.</p>
+<p>---</p></section><section><h2>The Interesting 6: Hig and Apple-archive Starve</h2><table class="data-table"><thead><tr><th>Query</th><th>Expected source</th><th>Actual top-1</th><th>Expected source in top-10?</th></tr></thead><tbody><tr><td><code>App icon</code></td><td>hig (0.5)</td><td><code>apple-docs://swiftui/scene/dialogicon</code></td><td>NO</td></tr><tr><td><code>Touch targets</code></td><td>hig (0.5)</td><td><code>apple-docs://webkitjs/touchevent</code></td><td>NO</td></tr><tr><td><code>Dark mode</code></td><td>hig (0.5)</td><td><code>apple-docs://appintents/defining-your-app-s-focus-filter</code></td><td>NO</td></tr><tr><td><code>Quartz 2D</code></td><td>apple-archive (0.5)</td><td><code>apple-docs://coreimage/ciimage/init(cgimage:)</code></td><td>NO</td></tr><tr><td><code>Cocoa Bindings</code></td><td>apple-archive (0.5)</td><td><code>apple-docs://appkit/cocoa-bindings</code></td><td>NO</td></tr><tr><td><code>Key Value Observing</code></td><td>apple-archive (0.5)</td><td><code>apple-docs://swift/using-key-value-observing-in-swift</code></td><td>NO</td></tr></tbody></table>
+<p>For each of these queries, the HIG or apple-archive corpus <strong>does have a relevant page</strong> (verified via <code>cupertino search &quot;&lt;query&gt;&quot; --source hig</code> and <code>--source apple-archive</code>):</p>
+<table class="data-table"><thead><tr><th>Query</th><th>Verified HIG page</th><th>Verified apple-archive page</th></tr></thead><tbody><tr><td><code>App icon</code></td><td><code>hig://general/appicons-appledeveloperdocumentation</code></td><td class="num">—</td></tr><tr><td><code>Dark mode</code></td><td><code>hig://general/darkmode-appledeveloperdocumentation</code></td><td class="num">—</td></tr><tr><td><code>Cocoa Bindings</code></td><td class="num">—</td><td><code>apple-archive://TP40001075/CocoaBindings</code></td></tr><tr><td><code>Key Value Observing</code></td><td class="num">—</td><td><code>apple-archive://10000177i/KeyValueObserving</code></td></tr><tr><td><code>Quartz 2D</code></td><td class="num">—</td><td><code>apple-archive://TP30001066/dq_data_mgr</code></td></tr><tr><td><code>Touch targets</code></td><td>(no exact-title page; HIG covers under "Gestures" / "Editing menus")</td><td class="num">—</td></tr></tbody></table>
+<p>The pages exist. The ranker doesn't surface them because the apple-docs RRF contribution dominates.</p>
+<h4>Why this happens, mechanically</h4>
+<p>RRF fuses per-source rank-1 contributions weighted by source authority:</p>
+<pre><code>fused(d) = Σ_{s ∈ sources(d)} weight(s) / (k + rank_s(d))</code></pre>
+<p>For rank-1 in each source (k = 60):</p>
+<table class="data-table"><thead><tr><th>Source</th><th>Weight</th><th>Rank-1 fused contribution</th></tr></thead><tbody><tr><td>apple-docs</td><td class="num">3.0</td><td>3.0 / 61 = 0.0492</td></tr><tr><td>swift-evolution / packages</td><td class="num">1.5</td><td>1.5 / 61 = 0.0246</td></tr><tr><td>swift-book / swift-org / samples</td><td class="num">1.0</td><td>1.0 / 61 = 0.0164</td></tr><tr><td><strong>hig / apple-archive</strong></td><td><strong>0.5</strong></td><td><strong>0.5 / 61 = 0.0082</strong></td></tr></tbody></table>
+<p>Even when HIG has a perfect rank-1 hit and apple-docs has a tangential rank-1 hit, the apple-docs contribution wins by 6:1 in fused score. HIG can never surface at top-1 in the default unfiltered query unless apple-docs has nothing in its corpus to return — which essentially never happens (351K rows).</p>
+<h4>Is this a bug?</h4>
+<p><strong>No, it is the design.</strong> The source weights were tuned in <code>Search.SmartQuery.sourceWeights</code> (#254 Option B) specifically to bias toward apple-docs because that is the canonical reference for code-generating AI agents (cupertino's stated purpose per <code>README.md</code> and <code>docs/design/cupertino.md</code> §1.1). For an LLM grounding a Swift code-generation task, getting apple-docs at top-1 is the right answer even when HIG might be more conceptually relevant — the agent is writing code, not designing UX.</p>
+<p><strong>But it has a knowable cost.</strong> Designers, UX writers, and humans using cupertino to look up Apple's design guidance get apple-docs answers when HIG answers exist. The current workaround is the explicit <code>--source hig</code> flag. Documenting the cost here so it isn't a surprise the next time the question comes up.</p>
+<h4>Possible future directions (out of scope for this audit)</h4>
+<ol><li><strong>Intent routing for design-vocabulary queries.</strong> Augment <code>Search.SmartQuery.symbolPreferredSources</code> (#254) with a <code>designPreferredSources</code> analogue: when a query matches design vocabulary (<code>app icon</code>, <code>dark mode</code>, <code>accessibility</code>, <code>typography</code>, <code>gestures</code>, <code>navigation pattern</code>), route to HIG/apple-docs only.</li><li><strong>Source-weight reconfiguration as a setting.</strong> Expose source weights as user-settable so a designer can <code>cupertino config set source-weight hig 3.0</code>.</li><li><strong>Composite top-3 rather than top-1.</strong> If the consumer reads top-3, the HIG hit may appear at rank 2 or 3, mitigating the issue without weight changes. Worth measuring.</li></ol>
+<p>None of these is proposed as immediate work; each is a candidate per the <code>feedback_code_changes_as_ideas_for_future</code> rule.</p>
+<p>---</p></section><section><h2>Method Recap</h2><p>25 (query, expected_source, rationale) triples. For each: run <code>cupertino search &quot;&lt;query&gt;&quot; --limit 10</code>, extract top-1 URI, derive its source via the URI prefix, compare against expected. Aggregate: count matches; binomial test on the subset where expected source IS present in top-10.</p>
+<p>Harness source: <code>/tmp/cupertino-search-eval-crosssource.py</code> (not yet versioned in repo). Full JSON dump (all 25 top-10 lists + sources): <code>/tmp/cupertino-search-eval-crosssource-20260520.json</code>.</p>
+<p>---</p></section><section><h2>Implications for Criterion 2 (anti-hallucination)</h2><p>For the LLM-agent consumer, this baseline is good news: the agent grounding on cupertino's top-1 will always get apple-docs (the API reference) for any Swift-code-generation query that has an apple-docs answer. This is the intended bias.</p>
+<p>For mixed-modality queries (an agent doing UX work, or generating SwiftUI code while also reasoning about HIG guidance), the agent would need to explicitly issue <code>--source hig</code> queries to discover design guidance — a behaviour the MCP server's tool surface would need to advertise so the agent knows to do this. Worth tracking as a separate concern.</p>
+<p>---</p></section><section><h2>Combined Phase 1 Baseline Coverage on V1.2.0</h2><table class="data-table"><thead><tr><th>Baseline</th><th>Class</th><th>Headline</th></tr></thead><tbody><tr><td><code>search-quality-baseline-v1.2.0.md</code></td><td>A + B (canonical lookup + framework root)</td><td>MRR 0.9467, P@1 perfect on 46/50</td></tr><tr><td><code>search-quality-deprecation-baseline-v1.2.0.md</code></td><td>E (deprecation-aware)</td><td>Swift wins 30/30, sign-test p = 0.0078</td></tr><tr><td><strong><code>search-quality-crosssource-baseline-v1.2.0.md</code></strong> (this doc)</td><td><strong>F (cross-source canonical)</strong></td><td><strong>19/19 OK when expected source present in top-10, p = 1.9 × 10⁻⁶. 6/25 reveal that HIG/apple-archive are systematically out-competed by apple-docs (by design).</strong></td></tr></tbody></table>
+<p>Three of eight query classes from §1.4 now have documented baselines. Five remain: C (acronym), D (CamelCase fragment), G (prose), H (symbol-attribute), and Phase 1.7 agent-end-to-end.</p></section>
+
+        <footer>
+            <p>
+                Generated from <a href="../../audits/search-quality-crosssource-baseline-v1.2.0.md">../../audits/search-quality-crosssource-baseline-v1.2.0.md</a> by <code>_render-audit-dashboard.py</code>.
+                Re-run after editing the audit; nothing here is hardcoded per-audit.
+            </p>
+            <p>
+                Part of <a href="../search-quality-v1.2.0.html">cupertino search-quality dashboards</a>.
+                Methodology in <a href="../../design/search-quality-eval.md">docs/design/search-quality-eval.md</a>.
+            </p>
+        </footer>
+
+    </div>
+</body>
+</html>
