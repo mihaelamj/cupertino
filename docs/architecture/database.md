@@ -36,6 +36,46 @@ The bundle distributed to end users comprises three SQLite files, each with its 
 
 The split is functional, not normalisation-driven: each file is built by a separate `cupertino save` subcommand (`--docs`, `--packages`, `--samples`), can be shipped or skipped independently, and is queried by largely disjoint code paths. The remainder of this document concerns `search.db`. The other two follow analogous design patterns at smaller scale.
 
+```mermaid
+flowchart TB
+    subgraph Bundle["cupertino bundle · v1.2.0"]
+        direction LR
+        SDB["<b>search.db</b><br/>2.87 GB · docs across 6 sources"]
+        PDB["<b>packages.db</b><br/>Swift packages, READMEs, deps"]
+        XDB["<b>samples.db</b><br/>Apple sample-code projects"]
+    end
+
+    subgraph SearchDB["search.db · layered storage"]
+        direction TB
+        subgraph Relational["B-tree (relational) tables"]
+            DM["docs_metadata · 352,712 rows<br/>authoritative per-doc record"]
+            DS["docs_structured<br/>parsed DocC fields"]
+            FA["framework_aliases · 340<br/>canonicalisation"]
+            IN["inheritance · 8,560<br/>class graph"]
+            CE["doc_code_examples · 15,760"]
+            SY["doc_symbols · 240,794"]
+        end
+        subgraph FTS["FTS5 virtual tables (full-text-search surface)"]
+            DF["docs_fts<br/>porter unicode61<br/>prose + AST symbol cols"]
+            SF["doc_symbols_fts<br/>unicode61 (no stem)<br/>identifier names"]
+            CF["doc_code_fts<br/>unicode61<br/>raw code snippets"]
+        end
+        subgraph Shadow["FTS5 shadow tables (read-only artefacts)"]
+            SH["*_config · *_content · *_data<br/>*_docsize · *_idx"]
+        end
+        DM --- DF
+        SY --- SF
+        CE --- CF
+        DF --- SH
+        SF --- SH
+        CF --- SH
+    end
+
+    SDB --> SearchDB
+```
+
+The diagram above zooms from the three-database bundle down into `search.db`'s three storage layers: relational B-tree tables (the authoritative per-row data), FTS5 virtual tables (the queryable text surface paired with selected B-tree columns), and the SQLite-managed shadow tables that hold the inverted-index artefacts of each FTS5 table.
+
 ## 3. Schema
 
 The live schema definition is in `Packages/Sources/Search/Search.Index.Schema.swift`. The current value of `PRAGMA user_version` is **18**. We describe each table by the role it plays in the indexing or query pipeline, deferring the detailed column lists to the schema file itself.
@@ -148,6 +188,31 @@ The entire save operation writes to `search.db.in-flight` rather than `search.db
 ## 5. Query layer
 
 The query path is implemented in `Packages/Sources/Search/Search.Index.Search.swift`. Three components warrant explicit treatment.
+
+```mermaid
+flowchart TD
+    UQ["<b>User query</b><br/>cupertino search 'URLSession' --min-ios 17"]
+    INT{"Identifier query?<br/>(CamelCase, no whitespace)"}
+    SQ["<b>Search.SmartQuery</b> · §5.3<br/>fan-out across enabled sources"]
+    SR["<b>Single-source path</b><br/>--source filter present<br/>or symbol-only routing"]
+
+    UQ --> NORM["<b>Normalize</b><br/>lowercase, strip, expand framework_aliases"]
+    NORM --> INT
+    INT -- "no" --> SQ
+    INT -- "yes" --> SR
+    SR --> TOK
+    SQ --> TOK
+
+    TOK["<b>FTS5 MATCH</b><br/>tokenize: porter unicode61 (prose) or unicode61 (identifiers)"]
+    TOK --> JOIN["<b>JOIN on uri</b><br/>docs_fts × docs_metadata<br/>apply --framework / --language / --min-* filters via B-tree indices"]
+    JOIN --> BM["<b>BM25F rerank</b> · §5.1<br/>9-column weights<br/>title=10 · symbols=5 · summary=3 · framework=2 · symbol_components=1.5 · rest=1"]
+    BM --> SMod["<b>Source / kind multipliers</b><br/>downstream of raw BM25"]
+    SMod --> RRF["<b>Reciprocal Rank Fusion</b> · §5.3<br/>k=60 · per-source authority weights<br/>(only when fan-out)"]
+    RRF --> OUT["<b>Top-K results</b><br/>(URI, rank, score, source, framework, kind)"]
+    SMod -. "single-source" .-> OUT
+```
+
+The diagram traces a query from raw input to ranked output. Two routing decisions matter: whether the query looks like a Swift identifier (which prunes the fan-out to symbol-preferred sources), and whether the user passed `--source` (which short-circuits the RRF stage entirely). Filter predicates resolve to B-tree index lookups on `docs_metadata`, not to FTS5 scans.
 
 ### 5.1 BM25F field weighting
 

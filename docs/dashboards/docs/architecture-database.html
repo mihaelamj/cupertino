@@ -36,7 +36,43 @@
 <h3>2.2 Three-database split</h3>
 <p>The bundle distributed to end users comprises three SQLite files, each with its own schema:</p>
 <table class="data-table"><thead><tr><th>File</th><th>Domain</th><th>Size (v1.2.0 bundle)</th></tr></thead><tbody><tr><td><code>search.db</code></td><td>Documentation pages from all six sources</td><td>2.87 GB</td></tr><tr><td><code>packages.db</code></td><td>Swift package metadata, READMEs, dependency edges</td><td>varies</td></tr><tr><td><code>samples.db</code></td><td>Apple sample-code project metadata and source files</td><td>varies</td></tr></tbody></table>
-<p>The split is functional, not normalisation-driven: each file is built by a separate <code>cupertino save</code> subcommand (<code>--docs</code>, <code>--packages</code>, <code>--samples</code>), can be shipped or skipped independently, and is queried by largely disjoint code paths. The remainder of this document concerns <code>search.db</code>. The other two follow analogous design patterns at smaller scale.</p></section><section id="3-schema" class="doc-section"><h2><span class="section-number-badge">3</span><span class="section-title">Schema</span></h2><p class="lead">The live schema definition is in <code>Packages/Sources/Search/Search.Index.Schema.swift</code>. The current value of <code>PRAGMA user_version</code> is <strong>18</strong>. We describe each table by the role it plays in the indexing or query pipeline, deferring the detailed column lists to the schema file itself.</p>
+<p>The split is functional, not normalisation-driven: each file is built by a separate <code>cupertino save</code> subcommand (<code>--docs</code>, <code>--packages</code>, <code>--samples</code>), can be shipped or skipped independently, and is queried by largely disjoint code paths. The remainder of this document concerns <code>search.db</code>. The other two follow analogous design patterns at smaller scale.</p>
+<pre class="mermaid">flowchart TB
+    subgraph Bundle["cupertino bundle · v1.2.0"]
+        direction LR
+        SDB["<b>search.db</b><br/>2.87 GB · docs across 6 sources"]
+        PDB["<b>packages.db</b><br/>Swift packages, READMEs, deps"]
+        XDB["<b>samples.db</b><br/>Apple sample-code projects"]
+    end
+
+    subgraph SearchDB["search.db · layered storage"]
+        direction TB
+        subgraph Relational["B-tree (relational) tables"]
+            DM["docs_metadata · 352,712 rows<br/>authoritative per-doc record"]
+            DS["docs_structured<br/>parsed DocC fields"]
+            FA["framework_aliases · 340<br/>canonicalisation"]
+            IN["inheritance · 8,560<br/>class graph"]
+            CE["doc_code_examples · 15,760"]
+            SY["doc_symbols · 240,794"]
+        end
+        subgraph FTS["FTS5 virtual tables (full-text-search surface)"]
+            DF["docs_fts<br/>porter unicode61<br/>prose + AST symbol cols"]
+            SF["doc_symbols_fts<br/>unicode61 (no stem)<br/>identifier names"]
+            CF["doc_code_fts<br/>unicode61<br/>raw code snippets"]
+        end
+        subgraph Shadow["FTS5 shadow tables (read-only artefacts)"]
+            SH["*_config · *_content · *_data<br/>*_docsize · *_idx"]
+        end
+        DM --- DF
+        SY --- SF
+        CE --- CF
+        DF --- SH
+        SF --- SH
+        CF --- SH
+    end
+
+    SDB --> SearchDB</pre>
+<p>The diagram above zooms from the three-database bundle down into <code>search.db</code>'s three storage layers: relational B-tree tables (the authoritative per-row data), <a href="../sources.html#fts5">FTS5</a> virtual tables (the queryable text surface paired with selected B-tree columns), and the SQLite-managed shadow tables that hold the inverted-index artefacts of each <a href="../sources.html#fts5">FTS5</a> table.</p></section><section id="3-schema" class="doc-section"><h2><span class="section-number-badge">3</span><span class="section-title">Schema</span></h2><p class="lead">The live schema definition is in <code>Packages/Sources/Search/Search.Index.Schema.swift</code>. The current value of <code>PRAGMA user_version</code> is <strong>18</strong>. We describe each table by the role it plays in the indexing or query pipeline, deferring the detailed column lists to the schema file itself.</p>
 <h3>3.1 Relational (B-tree) tables</h3>
 <table class="data-table"><thead><tr><th>Table</th><th>Cardinality at v1.2.0</th><th>Function</th></tr></thead><tbody><tr><td><code>docs_metadata</code></td><td class="num">352,712</td><td>Authoritative per-document record. Primary key is the cupertino URI (<code>apple-docs://swiftui/view</code>). Holds source, framework, language, kind, content hash, last-crawl timestamp, word count, and the six availability columns (<code>min_ios</code>, <code>min_macos</code>, <code>min_tvos</code>, <code>min_watchos</code>, <code>min_visionos</code>, plus <code>implementation_swift_version</code> for evolution rows). All filter predicates on <code>cupertino search</code> resolve to constraints on this table.</td></tr><tr><td><code>docs_structured</code></td><td>parity with <code>docs_metadata</code></td><td>Parsed DocC fields: title, abstract, declaration, overview, module, platforms, conformances, attributes. Decoupled from <code>docs_metadata</code> so the JSON-parse output can evolve without altering the primary index.</td></tr><tr><td><code>framework_aliases</code></td><td class="num">340</td><td>Maps framework identifier (<code>appintents</code>), import name (<code>AppIntents</code>), display name (<code>App Intents</code>), and a comma-separated synonyms list (<code>nfc → corenfc</code>). Consulted at query time to canonicalise <code>--framework</code> arguments and to expand abbreviated user input.</td></tr><tr><td><code>inheritance</code></td><td class="num">8,560</td><td>Class inheritance edges, one row per <code>(parent_uri, child_uri)</code> pair. Both <code>parent_uri</code> and <code>child_uri</code> are indexed so walks in either direction are equally efficient. Populated by reading Apple's DocC <code>relationshipsSections.inheritsFrom</code> / <code>inheritedBy</code> arrays from the corpus JSON (#274).</td></tr><tr><td><code>doc_code_examples</code></td><td class="num">15,760</td><td>Code snippets extracted from doc pages. One row per snippet, with parent <code>doc_uri</code>, language, and intra-page position.</td></tr><tr><td><code>doc_symbols</code></td><td class="num">240,794</td><td>One row per Swift symbol extracted from snippets. Columns: <code>name</code>, <code>kind</code>, source position (line, column), full signature, async/throws/public/static flags, <code>attributes</code> (e.g. <code>@MainActor</code>), <code>conformances</code>, <code>generic_params</code>, <code>generic_constraints</code>. Used both for symbol-targeted searches and as the substrate for the constraint-enrichment pipeline of Section 4.3.</td></tr><tr><td><code>doc_imports</code></td><td>small</td><td>Per-snippet import declarations, used for module-graph queries.</td></tr></tbody></table>
 <p>A small number of FOREIGN KEY declarations exist on the secondary tables (<code>doc_symbols.doc_uri → docs_metadata.uri</code>) for documentation purposes. <code>PRAGMA foreign_keys</code> is not enabled at runtime: deletion is rare, and the supported recovery path for inconsistency is a full rebuild rather than referential repair.</p>
@@ -78,6 +114,27 @@
 <p>After per-document parsing concludes, a second pass walks the cached DocC JSON for <code>relationshipsSections</code> entries of type <code>inheritsFrom</code> or <code>inheritedBy</code>, emitting one <code>(parent_uri, child_uri)</code> row in <code>inheritance</code> per edge (#274). The PRIMARY KEY on the pair prevents duplicate edges when the same relationship is described from both directions. The resulting graph is queried at runtime to support ancestor and descendant walks.</p>
 <h3>4.7 Sidecar writes and atomic rename</h3>
 <p>The entire save operation writes to <code>search.db.in-flight</code> rather than <code>search.db</code> directly (#673 Phase G). On successful completion, the in-flight file is atomically renamed over the prior <code>search.db</code>; on crash or kill, the prior file remains intact and queryable. The version of the indexer binary shipped via Homebrew supports this mode; older binaries do not, in which case the database is written in-place and a mid-save kill produces an incomplete file.</p></section><section id="5-query-layer" class="doc-section"><h2><span class="section-number-badge">5</span><span class="section-title">Query layer</span></h2><p class="lead">The query path is implemented in <code>Packages/Sources/Search/Search.Index.Search.swift</code>. Three components warrant explicit treatment.</p>
+<pre class="mermaid">flowchart TD
+    UQ["<b>User query</b><br/>cupertino search 'URLSession' --min-ios 17"]
+    INT{"Identifier query?<br/>(CamelCase, no whitespace)"}
+    SQ["<b>Search.SmartQuery</b> · §5.3<br/>fan-out across enabled sources"]
+    SR["<b>Single-source path</b><br/>--source filter present<br/>or symbol-only routing"]
+
+    UQ --> NORM["<b>Normalize</b><br/>lowercase, strip, expand framework_aliases"]
+    NORM --> INT
+    INT -- "no" --> SQ
+    INT -- "yes" --> SR
+    SR --> TOK
+    SQ --> TOK
+
+    TOK["<b>FTS5 MATCH</b><br/>tokenize: porter unicode61 (prose) or unicode61 (identifiers)"]
+    TOK --> JOIN["<b>JOIN on uri</b><br/>docs_fts × docs_metadata<br/>apply --framework / --language / --min-* filters via B-tree indices"]
+    JOIN --> BM["<b>BM25F rerank</b> · §5.1<br/>9-column weights<br/>title=10 · symbols=5 · summary=3 · framework=2 · symbol_components=1.5 · rest=1"]
+    BM --> SMod["<b>Source / kind multipliers</b><br/>downstream of raw BM25"]
+    SMod --> RRF["<b>Reciprocal Rank Fusion</b> · §5.3<br/>k=60 · per-source authority weights<br/>(only when fan-out)"]
+    RRF --> OUT["<b>Top-K results</b><br/>(URI, rank, score, source, framework, kind)"]
+    SMod -. "single-source" .-> OUT</pre>
+<p>The diagram traces a query from raw input to ranked output. Two routing decisions matter: whether the query looks like a Swift identifier (which prunes the fan-out to symbol-preferred sources), and whether the user passed <code>--source</code> (which short-circuits the <a href="../sources.html#rrf">RRF</a> stage entirely). Filter predicates resolve to B-tree index lookups on <code>docs_metadata</code>, not to <a href="../sources.html#fts5">FTS5</a> scans.</p>
 <h3>5.1 <a href="../sources.html#bm25f">BM25F</a> field weighting</h3>
 <p>The single SQL expression that determines ranking is:</p>
 <pre><code>bm25(docs_fts, 1.0, 1.0, 2.0, 1.0, 10.0, 1.0, 3.0, 5.0, 1.5) AS rank</code></pre>
@@ -154,6 +211,59 @@
         </footer>
 
     </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+    (function() {
+        if (typeof mermaid === 'undefined') {
+            console.warn('mermaid failed to load from CDN');
+            return;
+        }
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var apple = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif';
+        var light = {
+            background: '#ffffff',
+            primaryColor: '#ffffff',
+            primaryTextColor: '#1d1d1f',
+            primaryBorderColor: '#d2d2d7',
+            secondaryColor: '#f5f5f7',
+            tertiaryColor: '#ffffff',
+            lineColor: '#6e6e73',
+            edgeLabelBackground: '#f5f5f7',
+            clusterBkg: '#f5f5f7',
+            clusterBorder: '#d2d2d7',
+            mainBkg: '#ffffff',
+            textColor: '#1d1d1f',
+            nodeTextColor: '#1d1d1f',
+            fontFamily: apple,
+        };
+        var dark = {
+            darkMode: true,
+            background: '#1c1c1e',
+            primaryColor: '#2c2c2e',
+            primaryTextColor: '#ffffff',
+            primaryBorderColor: '#48484a',
+            secondaryColor: '#1c1c1e',
+            tertiaryColor: '#2c2c2e',
+            lineColor: '#aeaeb2',
+            edgeLabelBackground: '#2c2c2e',
+            clusterBkg: '#1c1c1e',
+            clusterBorder: '#48484a',
+            mainBkg: '#2c2c2e',
+            textColor: '#ffffff',
+            nodeTextColor: '#ffffff',
+            fontFamily: apple,
+        };
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: prefersDark ? dark : light,
+            fontFamily: apple,
+            securityLevel: 'loose',
+            flowchart: { htmlLabels: true, curve: 'basis', useMaxWidth: true },
+        });
+    })();
+    </script>
 
     <script>
     (function() {

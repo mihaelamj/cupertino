@@ -62,48 +62,18 @@
 <table class="data-table"><thead><tr><th>ID</th><th>Requirement</th><th>Verified by</th></tr></thead><tbody><tr><td>F1</td><td>Curated query corpus of at least 50 canonical-lookup queries with right-answer URI regex patterns.</td><td>Script source: count of <code>Query(...)</code> entries ≥ 50</td></tr><tr><td>F2</td><td>Each query is run against System A and System B using their respective <code>cupertino</code> binaries (the binary that built the DB, or any binary compatible with the DB's schema).</td><td>Harness <code>run_search()</code> invokes the binary subprocess</td></tr><tr><td>F3</td><td>Top-K results (K=10) extracted as ordered URI list per query per system.</td><td>URI regex captures from CLI output</td></tr><tr><td>F4</td><td>Per-query <a href="../sources.html#mrr">MRR</a>, <a href="../sources.html#precision-at-k">P@1</a>, <a href="../sources.html#precision-at-k">P@5</a>, <a href="../sources.html#ndcg">NDCG@10</a> computed for both systems against the right-answer pattern.</td><td>Aggregate table in report</td></tr><tr><td>F5</td><td>Paired <a href="../sources.html#wilcoxon">Wilcoxon signed-rank test</a> computed on per-query <a href="../sources.html#mrr">MRR</a> differences.</td><td>Report includes W, p two-sided, p one-sided</td></tr><tr><td>F6</td><td>Full per-query data (top-10 URIs both systems, all four metrics, first-relevant rank) dumped to JSON.</td><td>File exists at <code>/tmp/cupertino-search-eval-results.json</code> after run</td></tr></tbody></table>
 <h3>4.2 Non-functional</h3>
 <table class="data-table"><thead><tr><th>ID</th><th>Requirement</th><th>Target</th><th>Current state</th></tr></thead><tbody><tr><td>N1</td><td>Total wall-clock for 50 queries × 2 systems</td><td>&lt; 5 min</td><td>~70 seconds on Studio (M4 Max), Phase 1 pilot 2026-05-20</td></tr><tr><td>N2</td><td>Reproducibility: same inputs produce identical output</td><td>Bit-identical JSON modulo SQLite tie-break ordering</td><td>Verified informally on pilot; formal verification pending</td></tr><tr><td>N3</td><td>Dependencies</td><td>Python stdlib + SciPy only</td><td>Met; no third-party fetch beyond SciPy</td></tr><tr><td>N4</td><td>Read-only against the systems under test</td><td>Never write to either DB or its WAL</td><td>The harness calls <code>cupertino search</code>, which is read-only by design</td></tr></tbody></table>
-<hr></section><section id="5-design-overview" class="doc-section"><h2><span class="section-number-badge">5</span><span class="section-title">Design Overview</span></h2><pre><code>                       50 queries × 2 systems
-                                │
-                                ▼
-                ┌───────────────────────────────┐
-                │      Query Corpus (5.2)       │
-                │   [(query, right-answer       │
-                │    URI regex), ...]           │
-                └───────────────────────────────┘
-                                │
-                                ▼
-                ┌───────────────────────────────┐
-                │  Subprocess runner (6.1)      │
-                │  cupertino search --limit 10  │
-                │   ↓                           │
-                │  URI extractor: parse top-10  │
-                │   ordered list from stdout    │
-                └───────────────────────────────┘
-                       │              │
-                  System A         System B
-                       ▼              ▼
-                ┌───────────────────────────────┐
-                │  Per-query scorer (6.2)       │
-                │   MRR, P@1, P@5, NDCG@10      │
-                │   against right-answer regex  │
-                └───────────────────────────────┘
-                                │
-                                ▼
-                ┌───────────────────────────────┐
-                │  Aggregator + significance    │
-                │  (6.3, 8.1)                   │
-                │   mean per metric             │
-                │   paired Wilcoxon on MRR      │
-                └───────────────────────────────┘
-                                │
-                                ▼
-                ┌───────────────────────────────┐
-                │  Report (6.4)                 │
-                │   stdout: aggregate table,    │
-                │     per-query table,          │
-                │     stat tests                │
-                │   JSON dump for archive       │
-                └───────────────────────────────┘</code></pre>
+<hr></section><section id="5-design-overview" class="doc-section"><h2><span class="section-number-badge">5</span><span class="section-title">Design Overview</span></h2><pre class="mermaid">flowchart TD
+    Q["<b>Query Corpus</b> · §5.2<br/>50 queries × 2 systems<br/>[(query, right-answer URI regex), …]"]
+    R["<b>Subprocess Runner</b> · §6.1<br/>cupertino search --limit 10<br/>URI extractor: parse top-10 ordered list from stdout"]
+    S["<b>Per-query Scorer</b> · §6.2<br/>MRR, P@1, P@5, NDCG@10<br/>scored against right-answer regex"]
+    A["<b>Aggregator + Significance</b> · §6.3, §8.1<br/>mean per metric<br/>paired Wilcoxon on MRR"]
+    Re["<b>Report</b> · §6.4<br/>stdout: aggregate table, per-query table, stat tests<br/>JSON dump for archive"]
+
+    Q --> R
+    R -- "System A" --> S
+    R -- "System B" --> S
+    S --> A
+    A --> Re</pre>
 <p class="lead">Single Python script, no daemons, no service dependencies. Each component is a function in the same module. Tested as a unit by re-running.</p>
 <hr></section><section id="6-detailed-design" class="doc-section"><h2><span class="section-number-badge">6</span><span class="section-title">Detailed Design</span></h2><h3>6.1 Subprocess runner</h3>
 <p class="lead"><em>Goal: turn one query into an ordered list of top-K URIs for one system.</em></p>
@@ -217,6 +187,59 @@ class Query:
         </footer>
 
     </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+    (function() {
+        if (typeof mermaid === 'undefined') {
+            console.warn('mermaid failed to load from CDN');
+            return;
+        }
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var apple = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif';
+        var light = {
+            background: '#ffffff',
+            primaryColor: '#ffffff',
+            primaryTextColor: '#1d1d1f',
+            primaryBorderColor: '#d2d2d7',
+            secondaryColor: '#f5f5f7',
+            tertiaryColor: '#ffffff',
+            lineColor: '#6e6e73',
+            edgeLabelBackground: '#f5f5f7',
+            clusterBkg: '#f5f5f7',
+            clusterBorder: '#d2d2d7',
+            mainBkg: '#ffffff',
+            textColor: '#1d1d1f',
+            nodeTextColor: '#1d1d1f',
+            fontFamily: apple,
+        };
+        var dark = {
+            darkMode: true,
+            background: '#1c1c1e',
+            primaryColor: '#2c2c2e',
+            primaryTextColor: '#ffffff',
+            primaryBorderColor: '#48484a',
+            secondaryColor: '#1c1c1e',
+            tertiaryColor: '#2c2c2e',
+            lineColor: '#aeaeb2',
+            edgeLabelBackground: '#2c2c2e',
+            clusterBkg: '#1c1c1e',
+            clusterBorder: '#48484a',
+            mainBkg: '#2c2c2e',
+            textColor: '#ffffff',
+            nodeTextColor: '#ffffff',
+            fontFamily: apple,
+        };
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: prefersDark ? dark : light,
+            fontFamily: apple,
+            securityLevel: 'loose',
+            flowchart: { htmlLabels: true, curve: 'basis', useMaxWidth: true },
+        });
+    })();
+    </script>
 
     <script>
     (function() {

@@ -82,29 +82,29 @@ Auxiliary executables / utilities:
 <p>Each operation package emits progress via callback events (<code>Distribution.SetupService.Event</code>, <code>Indexer.DocsService.Event</code>, etc.) so consumers (CLI, MCP, future agent shell) can render whatever they want without the package taking on UI dependencies.</p>
 <h3>Read-side services layer</h3>
 <p>The Services package provides shared read services used by <strong>both</strong> CLI commands and MCP tool providers:</p>
-<pre><code>flowchart TD
-    SC[ServiceContainer&lt;br/&gt;lifecycle mgmt: with*Service { … }]
+<pre class="mermaid">flowchart TD
+    SC[ServiceContainer<br/>lifecycle mgmt: with*Service { … }]
 
-    R[ReadService&lt;br/&gt;3-DB dispatch]
-    DS[DocsSearchService&lt;br/&gt;search.db]
-    HS[HIGSearchService&lt;br/&gt;HIG-only, delegates]
-    SS[Sample.Search.Service&lt;br/&gt;samples.db]
-    US[UnifiedSearchService&lt;br/&gt;multi-DB]
-    TS[TeaserService&lt;br/&gt;cross-source teasers]
+    R[ReadService<br/>3-DB dispatch]
+    DS[DocsSearchService<br/>search.db]
+    HS[HIGSearchService<br/>HIG-only, delegates]
+    SS[Sample.Search.Service<br/>samples.db]
+    US[UnifiedSearchService<br/>multi-DB]
+    TS[TeaserService<br/>cross-source teasers]
 
-    F[Formatters/&lt;br/&gt;Text · JSON · Markdown]
+    F[Formatters/<br/>Text · JSON · Markdown]
 
-    SC --&gt; R
-    SC --&gt; DS
-    SC --&gt; HS
-    SC --&gt; SS
-    SC --&gt; US
-    SC --&gt; TS
+    SC --> R
+    SC --> DS
+    SC --> HS
+    SC --> SS
+    SC --> US
+    SC --> TS
 
-    DS --&gt; F
-    HS --&gt; F
-    SS --&gt; F
-    US --&gt; F</code></pre>
+    DS --> F
+    HS --> F
+    SS --> F
+    US --> F</pre>
 <p><strong>Top-level Services/:</strong> infrastructure (<code>ServiceContainer</code>, <code>SearchService</code> protocol, <code>CandidateFetcher</code> adapter). Read commands live under <code>Services/ReadCommands/</code>.</p>
 <p><strong>Cross-CLI consumers:</strong> <code>cupertino read</code>, <code>cupertino search</code>, <code>cupertino list-frameworks</code>, <code>cupertino list-samples</code>, <code>cupertino read-sample</code>, <code>cupertino read-sample-file</code>. The MCP <code>SearchToolProvider</code> consumes the same services.</p>
 <h3>Recent architectural changes (1.0)</h3>
@@ -112,48 +112,48 @@ Auxiliary executables / utilities:
 <p><strong>v0.2 Package Changes</strong> (historical): MCPShared + MCPTransport + MCPServer → MCP; namespaced types (CupertinoLogging → Logging, etc.); unified <code>cupertino</code> binary (no separate <code>cupertino-mcp</code>).</p>
 <h3>Search.Index file map</h3>
 <p>The <code>Search.Index</code> actor is the on-disk search engine — one SQLite <a href="../sources.html#fts5">FTS5</a> database (<code>search.db</code>), one actor that owns it. After the v1.0.2 split, every concern lives in its own file:</p>
-<pre><code>flowchart LR
-    Idx[&quot;Search.Index&lt;br/&gt;actor (253 LoC core)&quot;]
+<pre class="mermaid">flowchart LR
+    Idx["Search.Index<br/>actor (253 LoC core)"]
 
-    Idx --&gt; Schema[&quot;+Schema.swift&lt;br/&gt;createTables, full v13 SQL&quot;]
-    Idx --&gt; Migr[&quot;+Migrations.swift&lt;br/&gt;migrate3..11, version r/w&quot;]
-    Idx --&gt; IxP[&quot;+Indexing.swift&lt;br/&gt;indexPackage, indexSampleCode,&lt;br/&gt;code examples, AST clear/recompute&quot;]
-    Idx --&gt; IxD[&quot;+IndexingDocs.swift&lt;br/&gt;indexDocument, indexItem,&lt;br/&gt;indexStructuredDocument,&lt;br/&gt;indexDocSymbols/Imports&quot;]
-    Idx --&gt; Sch[&quot;+Search.swift&lt;br/&gt;search() + multi-pass ranker,&lt;br/&gt;fetchCanonicalTypePages,&lt;br/&gt;fetchFrameworkRoot&quot;]
-    Idx --&gt; Sem[&quot;+SemanticSearch.swift&lt;br/&gt;searchSymbols, propertyWrappers,&lt;br/&gt;concurrencyPatterns, conformances&quot;]
-    Idx --&gt; Attr[&quot;+SearchByAttribute.swift&lt;br/&gt;byKind, conformsTo, byModule,&lt;br/&gt;inheritedBy, byDeclaration,&lt;br/&gt;byPlatform, getDocumentJSON&quot;]
-    Idx --&gt; QP[&quot;+QueryParsing.swift&lt;br/&gt;extractSourcePrefix,&lt;br/&gt;extractAttributeFilters,&lt;br/&gt;sanitizeFTS5Query&quot;]
-    Idx --&gt; Code[&quot;+CodeExamples.swift&lt;br/&gt;searchCodeExamples,&lt;br/&gt;searchSampleCode&quot;]
-    Idx --&gt; Cont[&quot;+ContentAndPackages.swift&lt;br/&gt;searchPackages,&lt;br/&gt;getDocumentContent, clearIndex&quot;]
-    Idx --&gt; Cnt[&quot;+CountsAndAliases.swift&lt;br/&gt;symbolCount, listFrameworks,&lt;br/&gt;frameworkAlias r/w&quot;]
-    Idx --&gt; Hlp[&quot;+Helpers.swift&lt;br/&gt;extractAvailability,&lt;br/&gt;detectLanguage, extractSummary&quot;]
-    Idx --&gt; ACS[&quot;+AppleStaticConstraints.swift&lt;br/&gt;applyAppleStaticConstraints&quot;]
-    Idx --&gt; HCS[&quot;+HierarchyConstraints.swift&lt;br/&gt;propagateConstraintsFromParents&quot;]
-    Idx --&gt; Inh[&quot;+Inheritance.swift&lt;br/&gt;class inheritance edges&quot;]
-    Idx --&gt; InhMD[&quot;+InheritanceFromMarkdown.swift&lt;br/&gt;markdown-parsed inheritance&quot;]
-    Idx --&gt; PA[&quot;+PlatformAvailability.swift&lt;br/&gt;availability extraction&quot;]
-    Idx --&gt; DB[&quot;+Database.swift&lt;br/&gt;open/close/migrate lifecycle&quot;]
-    Idx --&gt; IDP[&quot;+IndexDocumentParams.swift&lt;br/&gt;IndexDocumentParams value type&quot;]
-    Idx --&gt; DLR[&quot;+DocLinkRewriter.swift&lt;br/&gt;rewrite apple-docs links&quot;]
-    Idx --&gt; CS[&quot;+CamelCaseSplitter.swift&lt;br/&gt;symbol_components population&quot;]</code></pre>
+    Idx --> Schema["+Schema.swift<br/>createTables, full v13 SQL"]
+    Idx --> Migr["+Migrations.swift<br/>migrate3..11, version r/w"]
+    Idx --> IxP["+Indexing.swift<br/>indexPackage, indexSampleCode,<br/>code examples, AST clear/recompute"]
+    Idx --> IxD["+IndexingDocs.swift<br/>indexDocument, indexItem,<br/>indexStructuredDocument,<br/>indexDocSymbols/Imports"]
+    Idx --> Sch["+Search.swift<br/>search() + multi-pass ranker,<br/>fetchCanonicalTypePages,<br/>fetchFrameworkRoot"]
+    Idx --> Sem["+SemanticSearch.swift<br/>searchSymbols, propertyWrappers,<br/>concurrencyPatterns, conformances"]
+    Idx --> Attr["+SearchByAttribute.swift<br/>byKind, conformsTo, byModule,<br/>inheritedBy, byDeclaration,<br/>byPlatform, getDocumentJSON"]
+    Idx --> QP["+QueryParsing.swift<br/>extractSourcePrefix,<br/>extractAttributeFilters,<br/>sanitizeFTS5Query"]
+    Idx --> Code["+CodeExamples.swift<br/>searchCodeExamples,<br/>searchSampleCode"]
+    Idx --> Cont["+ContentAndPackages.swift<br/>searchPackages,<br/>getDocumentContent, clearIndex"]
+    Idx --> Cnt["+CountsAndAliases.swift<br/>symbolCount, listFrameworks,<br/>frameworkAlias r/w"]
+    Idx --> Hlp["+Helpers.swift<br/>extractAvailability,<br/>detectLanguage, extractSummary"]
+    Idx --> ACS["+AppleStaticConstraints.swift<br/>applyAppleStaticConstraints"]
+    Idx --> HCS["+HierarchyConstraints.swift<br/>propagateConstraintsFromParents"]
+    Idx --> Inh["+Inheritance.swift<br/>class inheritance edges"]
+    Idx --> InhMD["+InheritanceFromMarkdown.swift<br/>markdown-parsed inheritance"]
+    Idx --> PA["+PlatformAvailability.swift<br/>availability extraction"]
+    Idx --> DB["+Database.swift<br/>open/close/migrate lifecycle"]
+    Idx --> IDP["+IndexDocumentParams.swift<br/>IndexDocumentParams value type"]
+    Idx --> DLR["+DocLinkRewriter.swift<br/>rewrite apple-docs links"]
+    Idx --> CS["+CamelCaseSplitter.swift<br/>symbol_components population"]</pre>
 <p>Each extension file imports only the dependencies its concern needs (Foundation + Shared + SQLite3 always; ASTIndexer only on the files that touch <code>ExtractedSymbol</code> / <code>ExtractedImport</code>). Function bodies, schema SQL, <a href="../sources.html#bm25">BM25</a> weights, and migration logic moved byte-for-byte. The single 1325-LoC outlier is <code>+Search.swift</code>, dominated by the <code>search()</code> function whose pipeline is below.</p>
 <h3><code>search()</code> ranker pipeline</h3>
 <p>The default <code>cupertino search &lt;query&gt;</code> against apple-docs is a multi-pass ranker, not a plain <a href="../sources.html#fts5">FTS5</a> query. Stages from input to results:</p>
-<pre><code>flowchart TD
+<pre class="mermaid">flowchart TD
     Q[query: String]
-    Q --&gt; EP[&quot;extractSourcePrefix&lt;br/&gt;strips &#x27;swift-evolution&#x27;, &#x27;apple-archive&#x27;, …&quot;]
-    EP --&gt; EA[&quot;extractAttributeFilters&lt;br/&gt;strips @attribute filters → SQL WHERE&quot;]
-    EA --&gt; SQ[&quot;sanitizeFTS5Query&lt;br/&gt;quotes terms, splits on hyphens&quot;]
+    Q --> EP["extractSourcePrefix<br/>strips 'swift-evolution', 'apple-archive', …"]
+    EP --> EA["extractAttributeFilters<br/>strips @attribute filters → SQL WHERE"]
+    EA --> SQ["sanitizeFTS5Query<br/>quotes terms, splits on hyphens"]
 
-    SQ --&gt; SS[&quot;searchSymbolsForURIs&lt;br/&gt;(AST symbol → URI set, fast path)&quot;]
-    SQ --&gt; FTS[&quot;docs_fts MATCH&lt;br/&gt;bm25(1, 1, 2, 1, 10, 1, 3, 5, 1.5)&lt;br/&gt;title 10× · symbols 5× · summary 3× · framework 2× · symbol_components 1.5×&quot;]
+    SQ --> SS["searchSymbolsForURIs<br/>(AST symbol → URI set, fast path)"]
+    SQ --> FTS["docs_fts MATCH<br/>bm25(1, 1, 2, 1, 10, 1, 3, 5, 1.5)<br/>title 10× · symbols 5× · summary 3× · framework 2× · symbol_components 1.5×"]
 
-    SS --&gt; H1[&quot;HEURISTIC 1&lt;br/&gt;exact-title boost&lt;br/&gt;50× clean / 20× suffixed&quot;]
-    FTS --&gt; H1
-    H1 --&gt; H15[&quot;HEURISTIC 1.5&lt;br/&gt;URI simplicity&lt;br/&gt;+ frameworkAuthority tiebreak&lt;br/&gt;(swift / swiftui / foundation ↑;&lt;br/&gt;installer_js / webkitjs ↓)&quot;]
-    H15 --&gt; CTP[&quot;fetchCanonicalTypePages&lt;br/&gt;force-include canonical Swift /&lt;br/&gt;SwiftUI / Foundation type pages&quot;]
-    CTP --&gt; RRF[&quot;RRF fusion (k=60)&lt;br/&gt;weighted by source&lt;br/&gt;apple-docs 3.0 · evolution/packages 1.5&quot;]
-    RRF --&gt; R[Search.Result array]</code></pre>
+    SS --> H1["HEURISTIC 1<br/>exact-title boost<br/>50× clean / 20× suffixed"]
+    FTS --> H1
+    H1 --> H15["HEURISTIC 1.5<br/>URI simplicity<br/>+ frameworkAuthority tiebreak<br/>(swift / swiftui / foundation ↑;<br/>installer_js / webkitjs ↓)"]
+    H15 --> CTP["fetchCanonicalTypePages<br/>force-include canonical Swift /<br/>SwiftUI / Foundation type pages"]
+    CTP --> RRF["RRF fusion (k=60)<br/>weighted by source<br/>apple-docs 3.0 · evolution/packages 1.5"]
+    RRF --> R[Search.Result array]</pre>
 <p>Heuristic 1 (#254) flattens <a href="../sources.html#bm25">BM25</a> ties between pages whose title exactly matches the query — Swift's <code>Task</code> struct vs Mach kernel <code>task_*</code> C functions. Heuristic 1.5 (#256) breaks the resulting tie by preferring shorter URIs (canonical type pages) and authoritative frameworks. Force-include (#254) guarantees the canonical apple-docs page lands in the result set even if <a href="../sources.html#bm25">BM25</a> misses it. <a href="../sources.html#rrf">RRF</a> (#192 E4) fuses across the multi-source fan-out (<code>Search.SmartQuery</code>) when the query isn't <code>--source</code>-pinned.</p>
 <h3>Key Features</h3>
 <ul><li><strong>WKWebView-based crawling</strong> - Uses native WebKit for accurate JavaScript rendering</li><li><strong>HTML to Markdown conversion</strong> - Clean, readable documentation with code syntax highlighting</li><li><strong>Smart change detection</strong> - SHA-256 content hashing to skip unchanged pages</li><li><strong>Full-text search</strong> - SQLite <a href="../sources.html#fts5">FTS5</a> search index for instant documentation lookup</li><li><strong>MCP server</strong> - Serves documentation to AI agents like Claude</li><li><strong>Swift Evolution proposals</strong> - Downloads all accepted Swift Evolution proposals</li><li><strong>Sample code downloads</strong> - Downloads Apple sample code projects</li></ul>
@@ -407,6 +407,59 @@ Auxiliary executables / utilities:
         </footer>
 
     </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+    (function() {
+        if (typeof mermaid === 'undefined') {
+            console.warn('mermaid failed to load from CDN');
+            return;
+        }
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var apple = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif';
+        var light = {
+            background: '#ffffff',
+            primaryColor: '#ffffff',
+            primaryTextColor: '#1d1d1f',
+            primaryBorderColor: '#d2d2d7',
+            secondaryColor: '#f5f5f7',
+            tertiaryColor: '#ffffff',
+            lineColor: '#6e6e73',
+            edgeLabelBackground: '#f5f5f7',
+            clusterBkg: '#f5f5f7',
+            clusterBorder: '#d2d2d7',
+            mainBkg: '#ffffff',
+            textColor: '#1d1d1f',
+            nodeTextColor: '#1d1d1f',
+            fontFamily: apple,
+        };
+        var dark = {
+            darkMode: true,
+            background: '#1c1c1e',
+            primaryColor: '#2c2c2e',
+            primaryTextColor: '#ffffff',
+            primaryBorderColor: '#48484a',
+            secondaryColor: '#1c1c1e',
+            tertiaryColor: '#2c2c2e',
+            lineColor: '#aeaeb2',
+            edgeLabelBackground: '#2c2c2e',
+            clusterBkg: '#1c1c1e',
+            clusterBorder: '#48484a',
+            mainBkg: '#2c2c2e',
+            textColor: '#ffffff',
+            nodeTextColor: '#ffffff',
+            fontFamily: apple,
+        };
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: prefersDark ? dark : light,
+            fontFamily: apple,
+            securityLevel: 'loose',
+            flowchart: { htmlLabels: true, curve: 'basis', useMaxWidth: true },
+        });
+    })();
+    </script>
 
     <script>
     (function() {

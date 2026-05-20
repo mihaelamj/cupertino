@@ -56,46 +56,17 @@
 <table class="data-table"><thead><tr><th>ID</th><th>Requirement</th><th>Verified by</th></tr></thead><tbody><tr><td>F1</td><td>Task corpus of ≥30 Swift coding tasks, each with (prompt, target_platform, target_swift_toolchain).</td><td>Source: count of <code>Task(...)</code> entries ≥ 30</td></tr><tr><td>F2</td><td>Agent driver protocol with two implementations: grounded (cupertino MCP available) and ungrounded (no MCP).</td><td>Same prompt produces different LLM context; driver records both.</td></tr><tr><td>F3</td><td>Each generated code response scored on 4 criteria (compile, symbol-exists, availability, no-deprecated).</td><td>Scoring report has 4 pass/fail flags per task per mode.</td></tr><tr><td>F4</td><td>Per-task binary "compiles-and-correct" outcome (all 4 criteria pass).</td><td>Outcome appears in report.</td></tr><tr><td>F5</td><td>Paired <a href="../sources.html#mcnemar">McNemar's test</a> on per-task binary outcome between grounded and ungrounded modes.</td><td>Output includes <a href="../sources.html#mcnemar">McNemar's</a> χ² and exact-test p-value.</td></tr><tr><td>F6</td><td>JSON dump of full per-task records for post-hoc inspection.</td><td>File exists at <code>/tmp/cupertino-anti-hallucination-eval-&lt;TS&gt;.json</code> after run.</td></tr></tbody></table>
 <h3>4.2 Non-functional</h3>
 <table class="data-table"><thead><tr><th>ID</th><th>Requirement</th><th>Target</th><th>Current state</th></tr></thead><tbody><tr><td>N1</td><td>Wall time per full run (30 tasks × 2 modes)</td><td>&lt; 30 min</td><td>not measured (harness not built)</td></tr><tr><td>N2</td><td>Cost per run</td><td>&lt; $5 on Claude-class models</td><td>not measured</td></tr><tr><td>N3</td><td>Reproducibility</td><td>Same model + same prompt + same seed (where supported) produces same outcome</td><td>not measured</td></tr><tr><td>N4</td><td>Cupertino DB / binary unchanged after run</td><td>Read-only against the DB; no writes</td><td>trivial; only <code>cupertino search</code> invocations</td></tr><tr><td>N5</td><td>Toolchain version pinning</td><td>The Swift toolchain used for compile-check matches a declared version</td><td>pin via <code>xcrun --toolchain swift-&lt;X&gt;.&lt;Y&gt;</code></td></tr></tbody></table>
-<hr></section><section id="5-design-overview" class="doc-section"><h2><span class="section-number-badge">5</span><span class="section-title">Design Overview</span></h2><pre><code>                     ┌─────────────────────────────────────┐
-                     │  Task Corpus (5.1)                  │
-                     │   30 hand-curated Swift coding tasks│
-                     │   (prompt, target_platform,         │
-                     │    target_swift, success_hints)     │
-                     └─────────────────┬───────────────────┘
-                                       │ per task
-                                       ▼
-                ┌──────────────────────────────────────┐
-                │  Agent Driver (5.2)                  │
-                │  for mode in [grounded, ungrounded]: │
-                │    call LLM(prompt + maybe(MCP top-K)│
-                │    capture: generated_code, prompt_log│
-                └──────────────────┬───────────────────┘
-                                   │ per (task, mode)
-                                   ▼
-                ┌────────────────────────────────────────────────┐
-                │  Scoring Pipeline (5.3, 6 / 8)                 │
-                │   1. compile_check  (xcrun swift -c &lt;code&gt;)    │
-                │   2. symbol_exists  (symbolgraph lookup)       │
-                │   3. availability   (parse @available, target) │
-                │   4. deprecation    (curated map lookup)       │
-                │   outcome = AND(1, 2, 3, 4)                    │
-                └────────────────────┬───────────────────────────┘
-                                     │ per (task, mode) → bool
-                                     ▼
-                ┌────────────────────────────────────────────────┐
-                │  Paired Aggregator + McNemar&#x27;s (5.4, 8.1)      │
-                │   per-task pairing of grounded vs ungrounded   │
-                │   contingency table, McNemar χ² + exact p      │
-                └────────────────────┬───────────────────────────┘
-                                     │
-                                     ▼
-                ┌────────────────────────────────────────────────┐
-                │  Report (5.5)                                  │
-                │   stdout: contingency table, stat tests,       │
-                │     per-task outcome diff                      │
-                │   JSON dump for archival                       │
-                │   Markdown summary at docs/audits/             │
-                └────────────────────────────────────────────────┘</code></pre>
+<hr></section><section id="5-design-overview" class="doc-section"><h2><span class="section-number-badge">5</span><span class="section-title">Design Overview</span></h2><pre class="mermaid">flowchart TD
+    A["<b>Task Corpus</b> · §5.1<br/>30 hand-curated Swift coding tasks<br/>(prompt, target_platform, target_swift, success_hints)"]
+    B["<b>Agent Driver</b> · §5.2<br/>for mode in [grounded, ungrounded]:<br/>&nbsp;&nbsp;call LLM(prompt + maybe(MCP top-K))<br/>&nbsp;&nbsp;capture: generated_code, prompt_log"]
+    C["<b>Scoring Pipeline</b> · §5.3, §§6 and 8<br/>1. compile_check (xcrun swift -c)<br/>2. symbol_exists (symbolgraph lookup)<br/>3. availability (parse @available)<br/>4. deprecation (curated map lookup)<br/>outcome = AND(1, 2, 3, 4)"]
+    D["<b>Paired Aggregator + McNemar's</b> · §5.4, §8.1<br/>per-task pairing of grounded vs ungrounded<br/>contingency table, McNemar χ² + exact p"]
+    E["<b>Report</b> · §5.5<br/>stdout: contingency table, stat tests, per-task outcome diff<br/>JSON dump for archival<br/>Markdown summary under docs/audits/"]
+
+    A -- "per task" --> B
+    B -- "per (task, mode)" --> C
+    C -- "per (task, mode) → bool" --> D
+    D --> E</pre>
 <p class="lead">Five components, all stateless beyond the task corpus and the LLM cache (if any). The agent driver and the scoring pipeline are the two non-trivial components; the rest is glue.</p>
 <hr></section><section id="6-detailed-design" class="doc-section"><h2><span class="section-number-badge">6</span><span class="section-title">Detailed Design</span></h2><h3>6.1 Task corpus</h3>
 <p class="lead"><em>Goal: define what "a representative Swift coding task" looks like for cupertino's user.</em></p>
@@ -237,6 +208,59 @@ exact p = 2 × min(P(X ≤ min(b,c)), P(X ≥ min(b,c)))   for X ~ Binom(b+c, 0.
         </footer>
 
     </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+    (function() {
+        if (typeof mermaid === 'undefined') {
+            console.warn('mermaid failed to load from CDN');
+            return;
+        }
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var apple = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif';
+        var light = {
+            background: '#ffffff',
+            primaryColor: '#ffffff',
+            primaryTextColor: '#1d1d1f',
+            primaryBorderColor: '#d2d2d7',
+            secondaryColor: '#f5f5f7',
+            tertiaryColor: '#ffffff',
+            lineColor: '#6e6e73',
+            edgeLabelBackground: '#f5f5f7',
+            clusterBkg: '#f5f5f7',
+            clusterBorder: '#d2d2d7',
+            mainBkg: '#ffffff',
+            textColor: '#1d1d1f',
+            nodeTextColor: '#1d1d1f',
+            fontFamily: apple,
+        };
+        var dark = {
+            darkMode: true,
+            background: '#1c1c1e',
+            primaryColor: '#2c2c2e',
+            primaryTextColor: '#ffffff',
+            primaryBorderColor: '#48484a',
+            secondaryColor: '#1c1c1e',
+            tertiaryColor: '#2c2c2e',
+            lineColor: '#aeaeb2',
+            edgeLabelBackground: '#2c2c2e',
+            clusterBkg: '#1c1c1e',
+            clusterBorder: '#48484a',
+            mainBkg: '#2c2c2e',
+            textColor: '#ffffff',
+            nodeTextColor: '#ffffff',
+            fontFamily: apple,
+        };
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: prefersDark ? dark : light,
+            fontFamily: apple,
+            securityLevel: 'loose',
+            flowchart: { htmlLabels: true, curve: 'basis', useMaxWidth: true },
+        });
+    })();
+    </script>
 
     <script>
     (function() {

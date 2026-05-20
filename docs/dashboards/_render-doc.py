@@ -39,6 +39,69 @@ from _audit_parser import (
 )
 
 
+# Mermaid bootstrap. Injected only when the page actually contains a
+# `<pre class="mermaid">` block. Uses the official ESM CDN. Picks light
+# vs dark theme from `prefers-color-scheme` so the diagram matches the
+# page (the doc pages already react to that media query via CSS tokens).
+#
+# We render Mermaid eagerly with `mermaid.run()` rather than relying on
+# `startOnLoad`, because when this HTML is embedded into a blog post the
+# `DOMContentLoaded` event may have already fired by the time the script
+# runs.
+MERMAID_BOOTSTRAP = """    <script src=\"https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js\"></script>
+    <script>
+    (function() {
+        if (typeof mermaid === 'undefined') {
+            console.warn('mermaid failed to load from CDN');
+            return;
+        }
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var apple = '-apple-system, BlinkMacSystemFont, \"SF Pro Display\", \"SF Pro Text\", \"Helvetica Neue\", Arial, sans-serif';
+        var light = {
+            background: '#ffffff',
+            primaryColor: '#ffffff',
+            primaryTextColor: '#1d1d1f',
+            primaryBorderColor: '#d2d2d7',
+            secondaryColor: '#f5f5f7',
+            tertiaryColor: '#ffffff',
+            lineColor: '#6e6e73',
+            edgeLabelBackground: '#f5f5f7',
+            clusterBkg: '#f5f5f7',
+            clusterBorder: '#d2d2d7',
+            mainBkg: '#ffffff',
+            textColor: '#1d1d1f',
+            nodeTextColor: '#1d1d1f',
+            fontFamily: apple,
+        };
+        var dark = {
+            darkMode: true,
+            background: '#1c1c1e',
+            primaryColor: '#2c2c2e',
+            primaryTextColor: '#ffffff',
+            primaryBorderColor: '#48484a',
+            secondaryColor: '#1c1c1e',
+            tertiaryColor: '#2c2c2e',
+            lineColor: '#aeaeb2',
+            edgeLabelBackground: '#2c2c2e',
+            clusterBkg: '#1c1c1e',
+            clusterBorder: '#48484a',
+            mainBkg: '#2c2c2e',
+            textColor: '#ffffff',
+            nodeTextColor: '#ffffff',
+            fontFamily: apple,
+        };
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: prefersDark ? dark : light,
+            fontFamily: apple,
+            securityLevel: 'loose',
+            flowchart: { htmlLabels: true, curve: 'basis', useMaxWidth: true },
+        });
+    })();
+    </script>"""
+
+
 # ---------------------------------------------------------------------------
 # Parse
 # ---------------------------------------------------------------------------
@@ -414,6 +477,9 @@ def render(doc_path: Path, docs_root: Path, dashboards_dir: Path) -> Path:
 
     gh_url = f"https://github.com/mihaelamj/cupertino/blob/main/docs/{doc_path.relative_to(docs_root)}"
 
+    has_mermaid = '<pre class="mermaid">' in "".join(section_blocks)
+    mermaid_script = MERMAID_BOOTSTRAP if has_mermaid else ""
+
     body = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -465,6 +531,8 @@ def render(doc_path: Path, docs_root: Path, dashboards_dir: Path) -> Path:
         </footer>
 
     </div>
+
+    {mermaid_script}
 
     <script>
     (function() {{

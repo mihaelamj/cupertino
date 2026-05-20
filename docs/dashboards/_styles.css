@@ -872,6 +872,31 @@ body.doc-page { background: var(--bg); }
     line-height: 1.5;
 }
 
+/* Mermaid diagram surface */
+.doc-section pre.mermaid {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 24px;
+    margin: 22px 0;
+    text-align: center;
+    overflow-x: auto;
+    font-size: 14px;
+    line-height: 1.4;
+}
+.doc-section pre.mermaid svg {
+    max-width: 100%;
+    height: auto;
+}
+/* While the JS is still loading, hide the raw mermaid source so it
+   doesn't flash as ugly DSL text before the diagram renders. */
+.doc-section pre.mermaid:not([data-processed="true"]) {
+    color: var(--text-tertiary);
+    font-family: "SF Mono", "Menlo", monospace;
+    font-size: 11px;
+    opacity: 0.4;
+}
+
 /* Definition lists (G1, NG1, F1, P0…) */
 .def-list {
     display: flex;

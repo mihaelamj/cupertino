@@ -336,10 +336,18 @@ def _parse_list(lines: list[str], start: int, ordered: bool) -> tuple[str, int]:
 
 
 def _parse_code_fence(lines: list[str], start: int) -> tuple[str, int]:
+    info = lines[start][3:].strip().lower()
     body: list[str] = []
     i = start + 1
     while i < len(lines) and not lines[i].startswith("```"):
         body.append(lines[i]); i += 1
+    if info == "mermaid":
+        # Mermaid expects its raw source inside <pre class="mermaid">.
+        # Do NOT html-escape — the lib reads textContent and parses it.
+        return (
+            f'<pre class="mermaid">{chr(10).join(body)}</pre>',
+            i - start + 1,
+        )
     return (f"<pre><code>{html.escape(chr(10).join(body))}</code></pre>", i - start + 1)
 
 
