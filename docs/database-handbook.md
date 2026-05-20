@@ -74,8 +74,9 @@ The brew DB at `~/.cupertino/search.db` is user-production state. Use a SQLite r
 - `docs/audits/search-quality-crosssource-baseline-v1.2.0.md` — class F (cross-source canonical): **19/19 OK when the expected source is in top-10, p = 1.9 × 10⁻⁶**. Reveals that HIG and apple-archive content is systematically out-competed by apple-docs at top-1 due to the 6:1 source-weight ratio. This is the intended bias for AI-agent code-generation grounding but has a cost for design-vocabulary queries.
 - `docs/audits/search-quality-fragment-baseline-v1.2.0.md` — class D (CamelCase fragment recall, #77): **mean P@1 = 1.0, mean P@5 = 0.92 across 20 fragment queries** (`Grid`, `Decoder`, `Session`, etc.). 14/20 fragments returned 5/5 matches. The `symbol_components` column is working as designed.
 - `docs/audits/search-quality-acronym-baseline-v1.2.0.md` — class C (acronym / synonym): **4/22 top-1 (18%)**. `framework_aliases.synonyms` data exists in the schema but does not appear to route bare acronym queries (`NFC`, `wifi`, `bluetooth`, `ml`, `av`) to their canonical framework root. The worst-performing baseline so far; three candidate future directions in the audit doc.
+- `docs/audits/search-quality-prose-baseline-v1.2.0.md` — class G (prose / conceptual): **4/15 strict any-top-3 (26.7%)**; estimated **8-10/15 (53-67%) human-adjusted** after honestly reading the misses. Hardest class to evaluate programmatically; the design's §14.3 (Phase 2 TREC-grade pooling) was designed for this case. BM25F `content=1.0` weight is the intentional trade-off that disadvantages prose; the audit notes a `--profile prose` weight-vector option as a candidate future direction.
 
-Remaining classes per the design's §14.2 priority order: G (prose), H (symbol-attribute) — not yet baselined. Plus §14.4 Phase 1.7 agent-end-to-end eval.
+Remaining class per the design's §14.2 priority order: H (symbol-attribute) — not yet baselined. Plus §14.4 Phase 1.7 agent-end-to-end eval.
 
 The relationship between the universal rule and the cupertino design is:
 - The **universal rule** says "this is how IR evaluation must be done if it is done."
