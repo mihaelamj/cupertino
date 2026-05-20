@@ -1,6 +1,8 @@
 # Search-quality version diff: v1.1.0 → v1.2.0
 
-**Date:** 2026-05-20
+**Date:** 2026-05-21
+**Status:** Strong
+**Headline:** +20 / 50 queries newly rank-1
 **Arm A:** v1.1.0 (brew) — `/opt/homebrew/bin/cupertino` × `/Users/mmj/.cupertino/search.db` (v13, 285,735 docs)
 **Arm B:** v1.2.0 (dev) — `/Volumes/Code/DeveloperExt/public/cupertino/Packages/.build/release/cupertino` × `/Users/mmj/.cupertino-dev/search.db` (v18, 352,712 docs)
 **Methodology:** `docs/design/search-quality-eval.md` Phase 1 (Class A canonical lookup + Class B framework-root, paired comparison mode)
@@ -73,3 +75,39 @@ Same caveats as `search-quality-versiondiff-v1.0.2-to-v1.2.0.md`:
 - **Criterion 2 (anti-hallucination).** Whether an AI agent given the v1.2.0 top-K actually produces correct Swift. Phase 1.7 (`docs/design/anti-hallucination-eval.md`).
 - **Per-query class breakdown.** The seven Phase 1.x classes (deprecation, cross-source, fragment, acronym, prose, symbol-attribute, agent-end-to-end) each have their own audit. This version diff is restricted to **class A + class B**.
 - **Coverage signals.** The v1.2.0 round shipped `apple_imports_json` (1/183 → 164/183) and `swift_tools_version` (0/183 → 182/183) coverage on packages.db, but the canonical-lookup corpus doesn't query packages. Those gains land in a separate packages-side audit that doesn't exist yet.
+
+---
+
+## Pipeline
+
+```mermaid
+flowchart TD
+    Q["50 canonical-lookup query strings<br/>(Class A + B, in-source)"]:::input
+    R["per-query regex pattern<br/>apple-docs://&lt;framework&gt;/&lt;concept&gt;($|/...)"]:::input
+    Q --> H[scripts/eval/search-quality-phase1.py]
+    R --> H
+
+    BA["Arm A: /opt/homebrew/bin/cupertino (v1.1.0)<br/>+ ~/.cupertino/search.db (schema 13, 285k docs)"]:::arm
+    BB["Arm B: Packages/.build/release/cupertino (v1.2.0)<br/>+ ~/.cupertino-dev/search.db (schema 18, 352k docs)"]:::arm
+    H -->|"cupertino search --format json --limit 10"| BA
+    H -->|"cupertino search --format json --limit 10"| BB
+
+    BA --> JA["top-10 URI list per query<br/>(parsed; strips v1.2.0's ISO timestamp prefix)"]
+    BB --> JB["top-10 URI list per query<br/>(parsed)"]
+
+    JA --> SA["per-query score:<br/>first-relevant-rank → RR = 1/rank<br/>P@1, P@5, NDCG@10"]
+    JB --> SB["per-query score:<br/>first-relevant-rank → RR = 1/rank<br/>P@1, P@5, NDCG@10"]
+
+    SA --> PAIR["paired comparison:<br/>buckets (Added/Removed/Fixed/Degraded/<br/>Unchanged/Both-suboptimal)"]
+    SB --> PAIR
+    PAIR --> WX["Paired Wilcoxon signed-rank<br/>on per-query RR vector"]:::stat
+    PAIR --> MC["McNemar exact (binomial)<br/>on rank-1 contingency 2×2"]:::stat
+
+    WX --> MD["this audit MD<br/>(dashboard glob picks up)"]:::out
+    MC --> MD
+
+    classDef input fill:#0a84ff,stroke:#0040cc,color:#fff
+    classDef arm fill:#5856d6,stroke:#3634a3,color:#fff
+    classDef stat fill:#ff9500,stroke:#c4730a,color:#fff
+    classDef out fill:#34c759,stroke:#1f7a3a,color:#fff
+```
