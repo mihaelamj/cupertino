@@ -33,15 +33,22 @@ extension Search {
         /// `availability` (platform deployment target) so both can be
         /// set on the same query.
         private let swiftTools: Search.SwiftToolsFilter?
+        /// #837 read-side wiring — when non-nil, restricts BM25
+        /// candidates + canonical-repo force-includes to packages
+        /// whose `package_metadata.apple_imports_json` contains the
+        /// given Apple framework module (`SwiftUI`, `Combine`, …).
+        private let appleImport: String?
 
         public init(
             dbPath: URL,
             availability: Search.AvailabilityFilter? = nil,
-            swiftTools: Search.SwiftToolsFilter? = nil
+            swiftTools: Search.SwiftToolsFilter? = nil,
+            appleImport: String? = nil
         ) {
             self.dbPath = dbPath
             self.availability = availability
             self.swiftTools = swiftTools
+            self.appleImport = appleImport
         }
 
         public func fetch(question: String, limit: Int) async throws -> [SmartCandidate] {
@@ -52,7 +59,8 @@ extension Search {
                 question,
                 maxResults: limit,
                 availability: availability,
-                swiftTools: swiftTools
+                swiftTools: swiftTools,
+                appleImport: appleImport
             )
             return results.map { row in
                 SmartCandidate(

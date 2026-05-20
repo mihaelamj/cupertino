@@ -61,6 +61,19 @@ extension Sample.Index {
         /// with an empty set; symbol search is an optional enhancement.
         func searchSymbolsForFiles(query: String, limit: Int) async throws -> Set<String>
 
+        /// #857 — return file-symbol rows whose `generic_constraints`,
+        /// `signature`, or `name` match the given constraint token,
+        /// joined to `files` so the caller has project + file path. Used
+        /// by the MCP `search_generics` tool's cross-DB fan-out. The
+        /// optional `framework` argument matches against the parent
+        /// project's framework column when set; pass nil to span every
+        /// indexed project. Fails silently with an empty array.
+        func searchFilesByGenericConstraint(
+            constraint: String,
+            framework: String?,
+            limit: Int
+        ) async throws -> [Sample.Index.FileSearchResult]
+
         // MARK: - Project access
 
         /// Fetch a single project by its sample-code identifier
@@ -126,5 +139,19 @@ extension Sample.Index.Reader {
             minWatchOS: nil,
             minVisionOS: nil
         )
+    }
+
+    /// #857 default implementation. Conformers that haven't been
+    /// updated to ship the new symbol-level cross-DB query return an
+    /// empty array; the cross-DB merge in
+    /// `CompositeToolProvider.handleSearchGenerics` then simply omits
+    /// samples from the merged result. The production conformer
+    /// `Sample.Index.Database` overrides this with a real implementation.
+    public func searchFilesByGenericConstraint(
+        constraint _: String,
+        framework _: String?,
+        limit _: Int
+    ) async throws -> [Sample.Index.FileSearchResult] {
+        []
     }
 }

@@ -103,6 +103,7 @@ extension CLIImpl.Command.Search {
             override: packagesDb,
             skip: skipPackages,
             availability: availabilityFilter,
+            appleImport: appleImports,
             into: &fetchers
         )
 
@@ -204,6 +205,7 @@ extension CLIImpl.Command.Search {
         override: String?,
         skip: Bool,
         availability: SearchModels.Search.AvailabilityFilter?,
+        appleImport: String?,
         into fetchers: inout [any Search.CandidateFetcher]
     ) {
         guard !skip else { return }
@@ -219,7 +221,8 @@ extension CLIImpl.Command.Search {
         }
         fetchers.append(SearchModule.PackageFTSCandidateFetcher(
             dbPath: url,
-            availability: availability
+            availability: availability,
+            appleImport: appleImport
         ))
     }
 

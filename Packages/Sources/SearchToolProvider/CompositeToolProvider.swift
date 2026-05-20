@@ -26,6 +26,19 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     private let searchIndex: (any Search.Database)?
     private let sampleDatabase: (any Sample.Index.Reader)?
 
+    /// `#789`-style architectural gap fix landed in v1.2.0 PR-2. Pre-fix,
+    /// MCP `search source=packages` routed through
+    /// `handleSearchDocs(source:"packages")` → `docsService.search` →
+    /// `Search.Database.search` against `search.db`, which returns zero
+    /// rows because `packages` isn't one of the six source values
+    /// search.db knows. The fix wires `packages.db` directly through this
+    /// seam; the new `handleSearchPackages` dispatch path consults it.
+    /// When nil (no packages.db on disk, composition root didn't wire),
+    /// the `packages` single-source MCP path responds with the same
+    /// "Documentation index not available"-style error frame as the
+    /// docs path uses for a missing search.db.
+    private let packagesSearcher: (any Search.PackagesSearcher)?
+
     /// #645 — set when `search.db` exists on disk but couldn't be
     /// opened (schema mismatch, corrupt file, "not a database"). When
     /// non-nil the tool provider still advertises the search.db-
@@ -63,6 +76,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         sampleService: (any Sample.Search.Searcher)?,
         teaserService: (any Services.Teaser)?,
         unifiedService: (any Services.UnifiedSearcher)?,
+        packagesSearcher: (any Search.PackagesSearcher)? = nil,
         documentResourceProvider: (any MCP.Core.ResourceProvider)? = nil,
         searchIndexDisabledReason: String? = nil
     ) {
@@ -72,6 +86,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         self.sampleService = sampleService
         self.teaserService = teaserService
         self.unifiedService = unifiedService
+        self.packagesSearcher = packagesSearcher
         self.documentResourceProvider = documentResourceProvider
         self.searchIndexDisabledReason = searchIndexDisabledReason
     }
@@ -160,7 +175,10 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 description: "Minimum visionOS version filter (e.g. 1.0)."
             ),
             Shared.Constants.Search.schemaParamMinSwift: stringSchema(
-                description: "Maximum Swift toolchain version for swift-evolution results (e.g. 5.5, 6.0). Filters swift-evolution proposals to those implemented at or below the given version; rows from other sources (apple-docs, samples, hig, swift-org, swift-book, packages) are filtered out when this is set."
+                description: Self.schemaDescriptionMinSwift
+            ),
+            Shared.Constants.Search.schemaParamAppleImports: stringSchema(
+                description: Self.schemaDescriptionAppleImports
             ),
         ]
 
@@ -537,6 +555,13 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         // rows are rejected by the index's NULL-rejection semantic when
         // this is set. nil when the MCP arg is absent (filter off).
         let minSwift: String? = args.optional(Shared.Constants.Search.schemaParamMinSwift)
+        // `#837` PR-2 — apple-framework-import filter on the packages
+        // bucket. Threaded through both the single-source path
+        // (`handleSearchPackages`) and the fan-out path
+        // (`handleSearchAll` → `Services.UnifiedSearchService.searchAll`).
+        // No-op when source is anything other than `packages` (the
+        // search.db-backed sources don't carry apple_imports_json).
+        let appleImports: String? = args.optional(Shared.Constants.Search.schemaParamAppleImports)
 
         // #226 — decide the cross-source partial-filter notice before
         // dispatch. The notice prepends to the response markdown when
@@ -591,8 +616,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
              Shared.Constants.SourcePrefix.appleArchive,
              Shared.Constants.SourcePrefix.swiftEvolution,
              Shared.Constants.SourcePrefix.swiftOrg,
-             Shared.Constants.SourcePrefix.swiftBook,
-             Shared.Constants.SourcePrefix.packages:
+             Shared.Constants.SourcePrefix.swiftBook:
             // Specific source requested: search only that source
             raw = try await handleSearchDocs(
                 query: query,
@@ -608,6 +632,18 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 minVisionOS: minVisionOS,
                 minSwift: minSwift
             )
+        case Shared.Constants.SourcePrefix.packages:
+            // `#789`-style fix: packages live in `packages.db` with a
+            // richer schema (BM25 + chunk + apple_imports_json); the
+            // pre-PR-2 fall-through to `handleSearchDocs(source:"packages")`
+            // returned zero rows because `search.db` doesn't carry the
+            // `packages` source value. Route to the dedicated handler.
+            raw = try await handleSearchPackages(
+                query: query,
+                framework: framework,
+                limit: limit,
+                appleImports: appleImports
+            )
         default:
             // Default (nil or "all"): search ALL sources for comprehensive results
             raw = try await handleSearchAll(
@@ -619,7 +655,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 minTvOS: minTvOS,
                 minWatchOS: minWatchOS,
                 minVisionOS: minVisionOS,
-                minSwift: minSwift
+                minSwift: minSwift,
+                appleImports: appleImports
             )
         }
         return Self.prependNoticeIfNeeded(notice: notice, to: raw)
@@ -808,6 +845,89 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
     }
 
+    // MARK: - Packages Search (packages.db)
+
+    /// `#789`-style architectural gap fix. Pre-PR-2, MCP
+    /// `search source=packages` fell through the docs path against
+    /// `search.db`, which never carries the `packages` source value, so
+    /// every query returned zero rows. This handler routes through the
+    /// dedicated `Search.PackagesSearcher` seam against `packages.db`
+    /// (which has the rich `package_metadata` + `package_files` +
+    /// `package_symbols` schema). The `--apple-imports` filter applies
+    /// here too. Result formatting reuses
+    /// `Services.Formatter.Markdown` so the output shape matches the
+    /// docs and HIG handlers; the `packages` source label naturally
+    /// flows through `Search.Result.source`.
+    private func handleSearchPackages(
+        query: String,
+        framework: String?,
+        limit: Int,
+        appleImports: String?
+    ) async throws -> MCP.Core.Protocols.CallToolResult {
+        guard let packagesSearcher else {
+            // Composition root didn't wire a `packages.db`-backed
+            // searcher (file missing, schema mismatch handled at open
+            // time, or test bootstrap took the legacy two-arg init).
+            // Fall back to the pre-PR-2 path against `Search.Database`:
+            // production search.db doesn't carry `packages` source rows
+            // so this returns empty for real users (matching the
+            // historical zero-result behaviour). Test fixtures that
+            // synthesise `source = packages` rows in search.db continue
+            // to be served by the legacy path. `apple_imports` is
+            // dropped on the fallback — search.db has no
+            // `apple_imports_json` column to filter against.
+            return try await handleSearchDocs(
+                query: query,
+                source: Shared.Constants.SourcePrefix.packages,
+                framework: framework,
+                language: nil,
+                limit: limit,
+                includeArchive: false,
+                minIOS: nil,
+                minMacOS: nil,
+                minTvOS: nil,
+                minWatchOS: nil,
+                minVisionOS: nil,
+                minSwift: nil
+            )
+        }
+
+        let results = try await packagesSearcher.searchPackages(
+            query: query,
+            limit: limit,
+            availability: nil,
+            swiftTools: nil,
+            appleImport: appleImports
+        )
+
+        let teasers = await fetchAllTeasers(
+            query: query,
+            framework: framework,
+            currentSource: Shared.Constants.SourcePrefix.packages,
+            includeArchive: false
+        )
+
+        let filters = Services.SearchFilters(
+            source: Shared.Constants.SourcePrefix.packages,
+            framework: framework,
+            language: nil,
+            minimumiOS: nil,
+            minimumMacOS: nil,
+            minimumTvOS: nil,
+            minimumWatchOS: nil,
+            minimumVisionOS: nil
+        )
+        let formatter = Services.Formatter.Markdown(
+            query: query,
+            filters: filters,
+            config: .mcpDefault,
+            teasers: teasers
+        )
+        let markdown = formatter.format(results)
+
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
+    }
+
     // MARK: - HIG Search
 
     private func handleSearchHIG(
@@ -856,7 +976,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         minTvOS: String? = nil,
         minWatchOS: String? = nil,
         minVisionOS: String? = nil,
-        minSwift: String? = nil
+        minSwift: String? = nil,
+        appleImports: String? = nil
     ) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let unifiedService else {
             throw Shared.Core.ToolError.invalidArgument("source", "No indexes available for unified search")
@@ -868,6 +989,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         // — `PlatformFilterScope` partitions samples into the unaware
         // bucket so the partial-filter notice still fires for fan-out +
         // platform args (see `handleSearch` line 535).
+        //
+        // `#837` PR-2 expansion: `appleImports` is threaded into the
+        // packages bucket only. The other 7 sources ignore it.
         let rawInput = await unifiedService.searchAll(
             query: query,
             framework: framework,
@@ -877,7 +1001,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             minTvOS: minTvOS,
             minWatchOS: minWatchOS,
             minVisionOS: minVisionOS,
-            minSwift: minSwift
+            minSwift: minSwift,
+            appleImports: appleImports
         )
 
         // #648 (open-time path) — main's post-#642 retest found that the
@@ -1503,8 +1628,26 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     /// #226 follow-up — applies the MCP-level platform filter post-search
     /// to match the other 4 AST tools (search_symbols /
     /// search_property_wrappers / search_concurrency / search_conformances).
+    ///
+    /// `#857` v1.2.0 expansion: fan out across all three databases
+    /// (search.db apple-docs, samples.db `file_symbols`, packages.db
+    /// `package_symbols`). The search.db arm preserves the pre-`#857`
+    /// rich `Search.SymbolSearchResult` rendering (`formatSymbolResults`)
+    /// so callers that relied on the structured output for apple-docs
+    /// keep their behaviour. Samples + packages get appended below the
+    /// apple-docs block, each in their own section so the response is
+    /// readable as a single markdown blob. When `searchIndex` is nil but
+    /// `sampleDatabase` or `packagesSearcher` is available, the apple-
+    /// docs arm is skipped silently and the response is built from the
+    /// remaining sources — closer to the `SmartQuery` fan-out behaviour
+    /// for default search than the pre-`#857` all-or-nothing path.
     private func handleSearchGenerics(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
-        guard let searchIndex else {
+        // `#645` semantic preserved: when search.db is in the
+        // disabled-reason state (file present but unopenable, e.g.
+        // schema mismatch), still throw an explicit error frame so MCP
+        // clients see the configuration-level failure rather than a
+        // silently-degraded cross-DB response.
+        if searchIndex == nil, let _ = searchIndexDisabledReason {
             throw searchIndexUnavailableError("index")
         }
 
@@ -1513,23 +1656,121 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let limit = args.limit()
         let platform = try Self.extractPlatformArgs(args)
 
-        let raw = try await searchIndex.searchByGenericConstraint(
+        // Source A: search.db apple-docs (rich `Search.SymbolSearchResult`).
+        var appleDocsMarkdown: String?
+        if let searchIndex {
+            let raw = try await searchIndex.searchByGenericConstraint(
+                constraint: constraint,
+                framework: framework,
+                limit: limit
+            )
+            let results = try await Self.applyPlatformFilter(
+                results: raw, platform: platform, searchIndex: searchIndex
+            )
+            appleDocsMarkdown = formatSymbolResults(
+                results: results,
+                title: "Apple Docs",
+                query: constraint,
+                filters: ["constraint": constraint, "framework": framework]
+            )
+        }
+
+        // Source B: samples.db `file_symbols`. Default-impl returns
+        // empty array when the reader hasn't been updated, keeping the
+        // fan-out resilient to mixed bundle versions.
+        var samplesRows: [Sample.Index.FileSearchResult] = []
+        if let sampleDatabase {
+            samplesRows = await (try? sampleDatabase.searchFilesByGenericConstraint(
+                constraint: constraint,
+                framework: framework,
+                limit: limit
+            )) ?? []
+        }
+
+        // Source C: packages.db `package_symbols` (joined to
+        // `package_files` + `package_metadata` for owner/repo/module).
+        var packagesRows: [Search.Result] = []
+        if let packagesSearcher {
+            packagesRows = await (try? packagesSearcher.searchPackageSymbolsByGenericConstraint(
+                constraint: constraint,
+                framework: framework,
+                limit: limit
+            )) ?? []
+        }
+
+        let markdown = Self.formatCrossDBGenerics(
             constraint: constraint,
             framework: framework,
-            limit: limit
-        )
-        let results = try await Self.applyPlatformFilter(
-            results: raw, platform: platform, searchIndex: searchIndex
-        )
-
-        let markdown = formatSymbolResults(
-            results: results,
-            title: "Generic Constraint: \(constraint)",
-            query: constraint,
-            filters: ["constraint": constraint, "framework": framework]
+            appleDocsMarkdown: appleDocsMarkdown,
+            samples: samplesRows,
+            packages: packagesRows
         )
 
         return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
+    }
+
+    /// `#857` cross-DB result renderer. Each contributing source emits
+    /// its own section, source-tagged in the header so AI agents reading
+    /// the response can identify provenance per row without parsing the
+    /// surrounding markdown. The apple-docs section reuses the existing
+    /// `formatSymbolResults` output so legacy parsers continue to work
+    /// against the pre-`#857` shape for that source.
+    static func formatCrossDBGenerics(
+        constraint: String,
+        framework: String?,
+        appleDocsMarkdown: String?,
+        samples: [Sample.Index.FileSearchResult],
+        packages: [Search.Result]
+    ) -> String {
+        var blocks: [String] = []
+
+        let headerFilters: String = {
+            var parts = ["constraint=\(constraint)"]
+            if let framework, !framework.isEmpty { parts.append("framework=\(framework)") }
+            return parts.joined(separator: ", ")
+        }()
+        blocks.append("# Generic Constraint: \(constraint)\n")
+        blocks.append("**Filters:** \(headerFilters)\n")
+
+        if let appleDocsMarkdown, !appleDocsMarkdown.isEmpty {
+            blocks.append("## Apple Docs (search.db)\n")
+            blocks.append(appleDocsMarkdown)
+        } else {
+            blocks.append("## Apple Docs (search.db)\n_No symbols found in apple-docs._\n")
+        }
+
+        blocks.append("## Sample Code (samples.db)\n")
+        if samples.isEmpty {
+            blocks.append("_No symbols found in samples._\n")
+        } else {
+            blocks.append("Found **\(samples.count)** matching files:\n")
+            for row in samples {
+                blocks.append("- **\(row.filename)** (`\(row.projectId)`) — \(row.path)")
+                if !row.snippet.isEmpty {
+                    blocks.append("  ``")
+                    blocks.append("  \(row.snippet.replacingOccurrences(of: "\n", with: " "))")
+                    blocks.append("  ``")
+                }
+            }
+            blocks.append("")
+        }
+
+        blocks.append("## Swift Packages (packages.db)\n")
+        if packages.isEmpty {
+            blocks.append("_No symbols found in packages._\n")
+        } else {
+            blocks.append("Found **\(packages.count)** matching symbols:\n")
+            for row in packages {
+                blocks.append("- **\(row.title)** (`\(row.framework)`) — `\(row.uri)`")
+                if !row.summary.isEmpty {
+                    let oneLiner = row.summary.replacingOccurrences(of: "\n", with: " ")
+                    blocks.append("  ``\(oneLiner)``")
+                }
+            }
+            blocks.append("")
+        }
+
+        return blocks.joined(separator: "\n")
     }
 
     /// Format symbol search results as markdown
@@ -1616,4 +1857,24 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         default: return ext
         }
     }
+
+    // MARK: - Schema descriptions
+
+    /// Pulled out as `static let` constants so each description can be
+    /// long without tripping SwiftLint's 200-char line-length cap.
+    private static let schemaDescriptionMinSwift = """
+    Maximum Swift toolchain version for swift-evolution results \
+    (e.g. 5.5, 6.0). Filters swift-evolution proposals to those \
+    implemented at or below the given version; rows from other \
+    sources (apple-docs, samples, hig, swift-org, swift-book, \
+    packages) are filtered out when this is set.
+    """
+
+    private static let schemaDescriptionAppleImports = """
+    Restrict packages results to packages that import the given \
+    Apple framework (e.g. SwiftUI, Combine, CryptoKit). Filters on \
+    packages.db's apple_imports_json column via a quote-bracketed \
+    JSON LIKE so SwiftUI does not match SwiftUIHelper. No effect on \
+    rows from sources other than packages.
+    """
 }

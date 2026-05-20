@@ -954,21 +954,43 @@ behaviour touches which column on which DB.
 | `--min-ios <ver>` (+ macOS / tvOS / watchOS / visionOS) | `docs_metadata.min_*` | `projects.min_*` | `package_metadata.min_*` |
 | `--swift <ver>` | `docs_metadata.implementation_swift_version` (swift-evolution only) | n/a | n/a (note: `package_metadata.swift_tools_version` exists but isn't yet a CLI filter) |
 | `--source <name>` (CLI dispatch) | filters `docs_metadata.source` | dispatches to samples.db via runner | dispatches to packages.db via runner |
-| `--apple-imports <module>` (NOT yet implemented) | n/a | n/a | `package_metadata.apple_imports_json` (when wired) |
+| `--apple-imports <module>` (#837 PR-2, v1.2.0) | n/a | n/a | `package_metadata.apple_imports_json` (quote-bracketed JSON `LIKE`) |
 | MCP `search_symbols` (any DB) | `doc_symbols` | `file_symbols` (not yet wired) | `package_symbols` (not yet wired) |
 | MCP `search_property_wrappers` | `doc_symbols.attributes` + `docs_structured.attributes` | `file_symbols.attributes` (not yet wired) | `package_symbols.attributes` (not yet wired) |
 | MCP `search_concurrency` | `doc_symbols.is_async` + `is_throws` + `attributes` | `file_symbols.is_async` + `is_throws` (not yet wired) | `package_symbols.is_async` + `is_throws` (not yet wired) |
 | MCP `search_conformances` | `doc_symbols.conformances` + `docs_structured.conforms_to` | `file_symbols.conformances` (not yet wired) | `package_symbols.conformances` (not yet wired) |
-| MCP `search_generics` | `doc_symbols.generic_constraints` (#759 iter 3) | `file_symbols.generic_constraints` (#837, not yet wired) | `package_symbols.generic_constraints` (#837, not yet wired) |
+| MCP `search_generics` | `doc_symbols.generic_constraints` (#759 iter 3) | `file_symbols.generic_constraints` (#837 PR-2, cross-DB fan-out) | `package_symbols.generic_constraints` (#837 PR-2, cross-DB fan-out) |
+| Default-search symbol boost on `generic_constraints` | `doc_symbols.generic_constraints` (#837 PR-1, `rank * 3.0`) | `file_symbols.generic_constraints` (#837 PR-1, `rank * 3.0`) | `package_symbols.generic_constraints` (#837 PR-2, `rank * 3.0`) |
+| MCP `search source=packages` dispatch | n/a (search.db carries no `packages` source rows) | n/a | `Search.PackagesSearcher` against `package_files_fts` (#837 PR-2 fix for the pre-v1.2.0 dead-letter path) |
 | BM25 ranking on full-text query | `docs_fts.title/content/summary/symbols/symbol_components` | `projects_fts.title/description/readme/frameworks` + `files_fts.path/filename/content` | `package_files_fts.title/content/symbols` |
 | Schema-stamp safety guard | `Search.Index.schemaVersion: Int32 = 18` | `Sample.Index.Database.schemaVersion: Int32 = 4` | `Search.PackageIndex.schemaVersion: Int32 = 4` |
 
-Rows marked **(not yet wired)** in samples.db and packages.db columns
-are tracked at `docs/design/how-cupertino-answers-a-query.md` §6.
-The columns exist (added in #837) and would be populated by a real
-save run; the search-time SQL that reads them needs follow-up
-implementation before the bundle ships, otherwise the populated
-columns deliver zero user-visible benefit.
+Rows marked **(not yet wired)** in samples.db / packages.db columns
+remain tracked at `docs/design/how-cupertino-answers-a-query.md` §6.
+The four AST tools (`search_symbols`, `search_property_wrappers`,
+`search_concurrency`, `search_conformances`) still hit search.db only;
+extending each to fan out across all three databases is the v1.2.1+
+follow-up that mirrors the v1.2.0 `search_generics` cross-DB path
+(see issue #857 for the methodology used).
+
+PR-2 of the v1.2.0 round closed the previously-open rows in the
+matrix:
+
+- `--apple-imports` is now wired CLI → MCP → `Search.PackagesSearcher`
+  → SQL `LIKE` on `package_metadata.apple_imports_json`.
+- `search_generics` now fans out across all three databases and
+  renders source-tagged sections in its markdown response.
+- Default-search now applies the `rank * 3.0` symbol-match boost on
+  `generic_constraints` in all three databases (the boost convention
+  carries through samples.db's `searchSymbolsForFiles` and packages.db's
+  `Search.PackageQuery.fetchPackageSymbolMatches`).
+- The MCP `search source=packages` dispatch is fixed: the pre-v1.2.0
+  path routed through `Search.Database.search(source: "packages")` against
+  search.db, which never carries the `packages` source value, so every
+  single-source MCP packages query returned zero rows. PR-2 routes
+  through a dedicated `handleSearchPackages` against `packages.db` with
+  a graceful fallback to the legacy path when no `packages.db` is
+  configured.
 
 ---
 

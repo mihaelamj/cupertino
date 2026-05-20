@@ -1,3 +1,12 @@
+// swiftlint:disable identifier_name
+// Short single-letter locals (`q`, `f`, `c`, `r`) date back to the
+// pre-#837 test style for ServicesModels value-type round-trips —
+// each function is short enough that the meaning is obvious in
+// context. Touching this file for the v1.2.0 PR-2 protocol update
+// re-scoped SwiftLint over the whole file; disabling the rule at the
+// file level preserves the existing convention without sweeping
+// renames in an unrelated PR.
+
 import Foundation
 import SampleIndexModels
 import SearchModels
@@ -391,9 +400,9 @@ struct ServicesProtocolWitnessTests {
 
     /// Stub UnifiedSearcher returns an empty unified input.
     private struct StubUnified: Services.UnifiedSearcher {
-        /// #226 expansion: the protocol now requires the 10-arg shape
-        /// including 5 `min_*` platform filters + `minSwift`. Stub
-        /// ignores them and returns an empty input regardless — pure
+        /// `#837` PR-2: the protocol gained an `appleImports` arg so the
+        /// MCP `--apple-imports` filter applies on the fan-out path.
+        /// Stub ignores all args and returns an empty input — pure
         /// conformance witness.
         func searchAll(
             query: String,
@@ -404,7 +413,8 @@ struct ServicesProtocolWitnessTests {
             minTvOS: String?,
             minWatchOS: String?,
             minVisionOS: String?,
-            minSwift: String?
+            minSwift: String?,
+            appleImports: String?
         ) async -> Services.Formatter.Unified.Input {
             Services.Formatter.Unified.Input(limit: limit)
         }

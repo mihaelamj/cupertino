@@ -12,14 +12,32 @@ extension Services {
     public actor UnifiedSearchService {
         private let searchIndex: (any Search.Database)?
         private let sampleDatabase: (any Sample.Index.Reader)?
+        /// `#789`-style architectural fix landed in v1.2.0 PR-2. Pre-fix,
+        /// the `packages` async-let below routed through
+        /// `searchIndex.search(source: "packages")` which queries
+        /// `search.db` — but search.db never carries `packages` rows
+        /// (the six source values are apple-docs, apple-archive, hig,
+        /// swift-evolution, swift-org, swift-book). Packages live in
+        /// `packages.db` with a richer schema; the MCP path now consults
+        /// `packagesSearcher` against `packages.db` directly. When nil
+        /// (no packages.db on disk, or the composition root didn't wire
+        /// the seam), the packages bucket of the unified result is
+        /// silently empty — the rest of the fan-out is unaffected.
+        private let packagesSearcher: (any Search.PackagesSearcher)?
 
         /// Initialize with existing database connections. The concrete
         /// `Search.Index?` form continues to compile because `Search.Index`
         /// conforms to `Search.Database`; same for `Sample.Index.Database`
-        /// conforming to `Sample.Index.Reader`.
-        public init(searchIndex: (any Search.Database)?, sampleDatabase: (any Sample.Index.Reader)?) {
+        /// conforming to `Sample.Index.Reader` and `Search.PackageQuery`
+        /// conforming to `Search.PackagesSearcher`.
+        public init(
+            searchIndex: (any Search.Database)?,
+            sampleDatabase: (any Sample.Index.Reader)?,
+            packagesSearcher: (any Search.PackagesSearcher)? = nil
+        ) {
             self.searchIndex = searchIndex
             self.sampleDatabase = sampleDatabase
+            self.packagesSearcher = packagesSearcher
         }
 
         // MARK: - Unified Search
@@ -46,7 +64,8 @@ extension Services {
             minTvOS: String? = nil,
             minWatchOS: String? = nil,
             minVisionOS: String? = nil,
-            minSwift: String? = nil
+            minSwift: String? = nil,
+            appleImports: String? = nil
         ) async -> Services.Formatter.Unified.Input {
             async let docs = searchSource(
                 query: query,
@@ -143,17 +162,21 @@ extension Services {
                 minSwift: minSwift
             )
 
-            async let packages = searchSource(
+            // #789-style architectural gap fix: packages now route through
+            // the dedicated `packagesSearcher` seam against `packages.db`
+            // instead of the no-op `searchIndex.search(source: "packages")`
+            // path against `search.db`. `appleImports` is threaded here so
+            // the MCP `--apple-imports` filter applies on the fan-out path
+            // too, not just on the single-source CLI command.
+            async let packages = searchPackagesBucket(
                 query: query,
-                source: Shared.Constants.SourcePrefix.packages,
-                framework: nil,
                 limit: limit,
                 minIOS: minIOS,
                 minMacOS: minMacOS,
                 minTvOS: minTvOS,
                 minWatchOS: minWatchOS,
                 minVisionOS: minVisionOS,
-                minSwift: minSwift
+                appleImports: appleImports
             )
 
             let outcomes = await [docs, archive, hig, swiftEvolution, swiftOrg, swiftBook, packages]
@@ -260,6 +283,73 @@ extension Services {
                 return "database unopenable — check the `--search-db` path"
             }
             return nil
+        }
+
+        /// `#789`-style architectural gap fix — search the packages.db
+        /// bucket via the `Search.PackagesSearcher` seam. The five
+        /// `min<Platform>` arguments are accepted for signature parity
+        /// with the rest of the fan-out but are not pushed down: the
+        /// packages-side availability filter ships as the legacy
+        /// single-platform `Search.AvailabilityFilter` shape on
+        /// `PackageQuery.answer`, and translating the 5-field shape onto
+        /// it is out of scope for this round. The CLI's single-source
+        /// `--source packages` path (which builds a single-platform
+        /// filter from `--platform` + `--min-version`) is unaffected.
+        ///
+        /// `appleImports` IS pushed down. When set, the underlying
+        /// `package_metadata.apple_imports_json LIKE '%"<module>"%'`
+        /// clause filters candidates to packages that import the given
+        /// Apple framework.
+        private func searchPackagesBucket(
+            query: String,
+            limit: Int,
+            minIOS: String?,
+            minMacOS: String?,
+            minTvOS: String?,
+            minWatchOS: String?,
+            minVisionOS: String?,
+            appleImports: String?
+        ) async -> SourceOutcome {
+            guard let packagesSearcher else {
+                // Pre-PR-2 fallback: composition root didn't wire a
+                // packages.db-backed searcher. Production search.db
+                // doesn't carry `packages` source rows, but test
+                // fixtures sometimes synthesise them. Route the bucket
+                // through the legacy `searchIndex.search(source:)` path
+                // so those fixtures continue to render.
+                return await searchSource(
+                    query: query,
+                    source: Shared.Constants.SourcePrefix.packages,
+                    framework: nil,
+                    limit: limit,
+                    minIOS: minIOS,
+                    minMacOS: minMacOS,
+                    minTvOS: minTvOS,
+                    minWatchOS: minWatchOS,
+                    minVisionOS: minVisionOS,
+                    minSwift: nil
+                )
+            }
+            do {
+                let rows = try await packagesSearcher.searchPackages(
+                    query: query,
+                    limit: limit,
+                    availability: nil,
+                    swiftTools: nil,
+                    appleImport: appleImports
+                )
+                return SourceOutcome(
+                    sourceName: Shared.Constants.SourcePrefix.packages,
+                    results: rows,
+                    degradationReason: nil
+                )
+            } catch {
+                return SourceOutcome(
+                    sourceName: Shared.Constants.SourcePrefix.packages,
+                    results: [],
+                    degradationReason: Self.classifyDegradation(error)
+                )
+            }
         }
 
         /// Search sample code projects.
