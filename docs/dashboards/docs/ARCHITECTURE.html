@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cupertino Architecture · cupertino docs</title>
+    <link rel="stylesheet" href="../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="doc-progress"><div class="doc-progress-bar"></div></div>
+
+    <div class="container doc-container">
+
+        <a class="back-link" href="../search-quality-v1.2.0.html">Back to dashboard</a>
+
+        <header class="doc-header">
+            <div class="eyebrow">Cupertino Docs</div>
+            <h1>Cupertino Architecture</h1>
+        </header>
+
+        <div class="doc-meta-card"><div class="meta-row"><span class="meta-key">Last tagged release</span><span class="meta-val">v1.1.0 on 2026-05-14.</span></div><div class="meta-row"><span class="meta-key">`develop` HEAD as of</span><span class="meta-val">2026-05-18 — v1.2.0 work in progress (closure-purge epic, #767 foundOptionalSource lifecycle events). No v1.2.0 tag cut yet.</span></div><div class="meta-row"><span class="meta-key">Swift Version</span><span class="meta-val">6.3 (Xcode 26 SDK; use xcrun swift build not bare swift)</span></div><div class="meta-row"><span class="meta-key">Language Mode</span><span class="meta-val">Swift 6 with Strict Concurrency Checking</span></div></div>
+
+        
+
+        <div class="doc-layout">
+            <aside class="toc-sidebar"><div class="toc-title">On this page</div><nav class="toc-list"><a class="toc-row" href="#table-of-contents"><span class="toc-num toc-num-glyph">§</span><span class="toc-label">Table of Contents</span></a><a class="toc-row" href="#overview-package-structure"><span class="toc-num toc-num-glyph">§</span><span class="toc-label">Overview &amp; Package Structure</span></a><a class="toc-row" href="#error-handling-patterns"><span class="toc-num toc-num-glyph">§</span><span class="toc-label">Error Handling Patterns</span></a><a class="toc-row" href="#json-coding-standards"><span class="toc-num toc-num-glyph">§</span><span class="toc-label">JSON Coding Standards</span></a><a class="toc-row" href="#mcp-server-implementation"><span class="toc-num toc-num-glyph">§</span><span class="toc-label">MCP Server Implementation</span></a><a class="toc-row" href="#cli-architecture"><span class="toc-num toc-num-glyph">§</span><span class="toc-label">CLI Architecture</span></a><a class="toc-row" href="#wkwebview-testing"><span class="toc-num toc-num-glyph">§</span><span class="toc-label">WKWebView Testing</span></a><a class="toc-row" href="#mcp-testing-guide"><span class="toc-num toc-num-glyph">§</span><span class="toc-label">MCP Testing Guide</span></a><a class="toc-row" href="#further-reading"><span class="toc-num toc-num-glyph">§</span><span class="toc-label">Further Reading</span></a></nav></aside>
+
+            <main class="doc-content">
+                <section class="doc-section doc-intro"><hr></section><section id="table-of-contents" class="doc-section"><h2><span class="section-title">Table of Contents</span></h2><ol><li><a href="#overview--package-structure">Overview &amp; Package Structure</a></li><li><a href="#error-handling-patterns">Error Handling Patterns</a></li><li><a href="#json-coding-standards">JSON Coding Standards</a></li><li><a href="#mcp-server-implementation">MCP Server Implementation</a></li><li><a href="#cli-architecture">CLI Architecture</a></li><li><a href="#wkwebview-testing">WKWebView Testing</a></li><li><a href="#mcp-testing-guide">MCP Testing Guide</a></li></ol>
+<hr></section><section id="overview-package-structure" class="doc-section"><h2><span class="section-title">Overview &amp; Package Structure</span></h2><p class="lead">Cupertino is a Swift-based Apple documentation crawler and MCP (Model Context Protocol) server. The project uses <strong>ExtremePackaging</strong> architecture to organize code into focused, reusable modules.</p>
+<h3>Package Structure</h3>
+<p>Cupertino uses <strong>ExtremePackaging</strong> with ~40 single-responsibility SPM targets across 38 source directories, organized by role. The strict-DI contract (which targets may import which) is in <code>docs/package-import-contract.md</code>.</p>
+<pre><code>Foundation tier (foundation-only by construction; any target may import these):
+  ├─ SharedConstants      # Config, models, URLUtilities, FTSQuery, SchemaVersion, BinaryConfig
+  ├─ LoggingModels        # Logging protocol seam (producers import this, not Logging)
+  ├─ MCPCore              # MCP protocol types
+  ├─ MCPSharedTools       # MCP shared tool types
+  └─ Resources            # Embedded catalogs (sample-code, swift-packages, archive guides)
+
+Infrastructure (wraps a system API; composition-root-only for Logging):
+  ├─ ASTIndexer           # SwiftSyntax-driven symbol extraction
+  ├─ Diagnostics          # SQLite read-only inspection utilities
+  └─ Logging              # os.log writer (imported only by CLI/TUI/MockAIAgent/ReleaseTool)
+
+Producers (each imports only foundation tier + own *Models seam):
+  ├─ Core                 # HTML parsing, JSON parsing, package indexing
+  ├─ Crawler              # WKWebView BFS crawler, session resume
+  ├─ Search               # search.db schema, IndexBuilder, PackageIndex, PackageQuery, SmartQuery
+  ├─ SampleIndex          # samples.db schema + SampleIndex.Builder
+  ├─ AppleConstraintsKit  # swift symbolgraph-extract constraint table
+  ├─ Availability         # Availability data types
+  └─ Cleanup              # Sample-code archive cleanup
+
+Operation packages (per CLI verb — Tuist-style):
+  ├─ Distribution         # cupertino setup        (#246) — download + extract DB zips
+  ├─ Diagnostics          # cupertino doctor probes (#245) — read-only DB + filesystem inspection
+  ├─ Indexer              # cupertino save         (#244) — build search.db / packages.db / samples.db + preflight
+  └─ Ingest               # cupertino fetch        (#247) — currently just session helpers; pipeline lifts in 4b–4f
+
+Read-side services (cross-CLI + MCP):
+  └─ Services             # Read services (ReadService, DocsSearchService, HIGSearchService,
+                          # Sample.Search.Service, UnifiedSearchService, TeaserService),
+                          # ServiceContainer, SearchService protocol, CandidateFetcher
+
+MCP layer:
+  ├─ MCPSupport           # Resource providers
+  ├─ MCPClient            # Client side helpers
+  └─ SearchToolProvider   # Search tool implementations
+
+Front doors:
+  ├─ CLI                  # `cupertino` binary — thin: parse flags → call into operation packages
+  └─ TUI                  # `cupertino-tui` (alt UI)
+
+Auxiliary executables / utilities:
+  ├─ MockAIAgent          # `mock-ai-agent` (testing harness)
+  ├─ ReleaseTool          # `cupertino-rel` (release scripts)
+  ├─ RemoteSync           # GitHub-streamed indexing helper
+  └─ TestSupport          # Shared test fixtures</code></pre>
+<h3>Operation packages (#244–#247)</h3>
+<p>Per-CLI-verb packages contain the substantive logic that drives one user-facing command. CLI is then a thin front-door: parse flags → call into the operation package → render progress events. Mirrors Tuist's <code>&lt;Verb&gt;Command</code> precedent.</p>
+<table class="data-table"><thead><tr><th>Package</th><th>CLI verb</th><th>Owns</th></tr></thead><tbody><tr><td><code>Distribution</code></td><td><code>cupertino setup</code></td><td><code>SetupService</code>, <code>ArtifactDownloader</code>, <code>ArtifactExtractor</code>, <code>InstalledVersion</code></td></tr><tr><td><code>Diagnostics</code></td><td><code>cupertino doctor</code></td><td><code>Probes</code> (DB + filesystem read-only inspection), <code>SchemaVersion</code></td></tr><tr><td><code>Indexer</code></td><td><code>cupertino save</code></td><td><code>DocsService</code> (build search.db), <code>PackagesService</code> (build packages.db), <code>SamplesService</code> (build samples.db), <code>Preflight</code></td></tr><tr><td><code>Ingest</code></td><td><code>cupertino fetch</code></td><td><code>Session</code> (clearSavedSession, requeueErroredURLs, requeueFromBaseline, enqueueURLsFromFile, checkForSession). Pipeline orchestrators (per fetch type) lift in follow-up sub-PRs.</td></tr></tbody></table>
+<p>Each operation package emits progress via callback events (<code>Distribution.SetupService.Event</code>, <code>Indexer.DocsService.Event</code>, etc.) so consumers (CLI, MCP, future agent shell) can render whatever they want without the package taking on UI dependencies.</p>
+<h3>Read-side services layer</h3>
+<p>The Services package provides shared read services used by <strong>both</strong> CLI commands and MCP tool providers:</p>
+<pre><code>flowchart TD
+    SC[ServiceContainer&lt;br/&gt;lifecycle mgmt: with*Service { … }]
+
+    R[ReadService&lt;br/&gt;3-DB dispatch]
+    DS[DocsSearchService&lt;br/&gt;search.db]
+    HS[HIGSearchService&lt;br/&gt;HIG-only, delegates]
+    SS[Sample.Search.Service&lt;br/&gt;samples.db]
+    US[UnifiedSearchService&lt;br/&gt;multi-DB]
+    TS[TeaserService&lt;br/&gt;cross-source teasers]
+
+    F[Formatters/&lt;br/&gt;Text · JSON · Markdown]
+
+    SC --&gt; R
+    SC --&gt; DS
+    SC --&gt; HS
+    SC --&gt; SS
+    SC --&gt; US
+    SC --&gt; TS
+
+    DS --&gt; F
+    HS --&gt; F
+    SS --&gt; F
+    US --&gt; F</code></pre>
+<p><strong>Top-level Services/:</strong> infrastructure (<code>ServiceContainer</code>, <code>SearchService</code> protocol, <code>CandidateFetcher</code> adapter). Read commands live under <code>Services/ReadCommands/</code>.</p>
+<p><strong>Cross-CLI consumers:</strong> <code>cupertino read</code>, <code>cupertino search</code>, <code>cupertino list-frameworks</code>, <code>cupertino list-samples</code>, <code>cupertino read-sample</code>, <code>cupertino read-sample-file</code>. The MCP <code>SearchToolProvider</code> consumes the same services.</p>
+<h3>Recent architectural changes (1.0)</h3>
+<ul><li><strong>Per-verb operation packages</strong> (#244, #245, #246, #247): SetupCommand 478→177 LoC, DoctorCommand 596→400 LoC, SaveCommand 828→312 LoC + 229 LoC, FetchCommand 1279→1022 LoC. CLI front-doors are now thin.</li><li><strong>Unified <code>cupertino read</code></strong> (#239 follow-up): single command dispatches across docs / samples / packages via <code>--source</code>. <code>Services.ReadService</code> + <code>Search.PackageQuery.fileContent</code> (reads from <code>package_files_fts.content</code>, no on-disk packages tree required).</li><li><strong>Default <code>cupertino search</code> is fan-out</strong> (#239): merges what was <code>cupertino ask</code> — <a href="../sources.html#rrf">RRF</a> (k=60) across every available DB, chunked excerpts, per-result <code>▶ Read full:</code> hints. <code>--brief</code>, <code>--per-source</code>, <code>--platform</code>, <code>--min-version</code>, <code>--skip-{docs,packages,samples}</code>, <code>--packages-db</code>.</li><li><strong>MCP read tools split</strong> today by source: <code>read_document</code> / <code>read_sample</code> / <code>read_sample_file</code> (separate). The CLI's unified <code>cupertino read</code> is the single front-door for all three.</li><li><strong><code>Search.Index</code> actor split by concern</strong> (v1.0.2+): <code>Sources/Search/SearchIndex.swift</code> was a 4598-line actor. Split into a 253-line core file (declaration, properties, lifecycle) plus 21 <code>Search.Index.&lt;Concern&gt;.swift</code> extension files covering schema, migrations, indexing, search, semantic search, attribute search, query parsing, code examples, packages, counts/aliases, helpers, enrichment passes, inheritance, platform availability, and more. Public API unchanged; declarations widened from <code>private</code> to package-internal so cross-file extensions can share state. See diagrams below.</li></ul>
+<p><strong>v0.2 Package Changes</strong> (historical): MCPShared + MCPTransport + MCPServer → MCP; namespaced types (CupertinoLogging → Logging, etc.); unified <code>cupertino</code> binary (no separate <code>cupertino-mcp</code>).</p>
+<h3>Search.Index file map</h3>
+<p>The <code>Search.Index</code> actor is the on-disk search engine — one SQLite <a href="../sources.html#fts5">FTS5</a> database (<code>search.db</code>), one actor that owns it. After the v1.0.2 split, every concern lives in its own file:</p>
+<pre><code>flowchart LR
+    Idx[&quot;Search.Index&lt;br/&gt;actor (253 LoC core)&quot;]
+
+    Idx --&gt; Schema[&quot;+Schema.swift&lt;br/&gt;createTables, full v13 SQL&quot;]
+    Idx --&gt; Migr[&quot;+Migrations.swift&lt;br/&gt;migrate3..11, version r/w&quot;]
+    Idx --&gt; IxP[&quot;+Indexing.swift&lt;br/&gt;indexPackage, indexSampleCode,&lt;br/&gt;code examples, AST clear/recompute&quot;]
+    Idx --&gt; IxD[&quot;+IndexingDocs.swift&lt;br/&gt;indexDocument, indexItem,&lt;br/&gt;indexStructuredDocument,&lt;br/&gt;indexDocSymbols/Imports&quot;]
+    Idx --&gt; Sch[&quot;+Search.swift&lt;br/&gt;search() + multi-pass ranker,&lt;br/&gt;fetchCanonicalTypePages,&lt;br/&gt;fetchFrameworkRoot&quot;]
+    Idx --&gt; Sem[&quot;+SemanticSearch.swift&lt;br/&gt;searchSymbols, propertyWrappers,&lt;br/&gt;concurrencyPatterns, conformances&quot;]
+    Idx --&gt; Attr[&quot;+SearchByAttribute.swift&lt;br/&gt;byKind, conformsTo, byModule,&lt;br/&gt;inheritedBy, byDeclaration,&lt;br/&gt;byPlatform, getDocumentJSON&quot;]
+    Idx --&gt; QP[&quot;+QueryParsing.swift&lt;br/&gt;extractSourcePrefix,&lt;br/&gt;extractAttributeFilters,&lt;br/&gt;sanitizeFTS5Query&quot;]
+    Idx --&gt; Code[&quot;+CodeExamples.swift&lt;br/&gt;searchCodeExamples,&lt;br/&gt;searchSampleCode&quot;]
+    Idx --&gt; Cont[&quot;+ContentAndPackages.swift&lt;br/&gt;searchPackages,&lt;br/&gt;getDocumentContent, clearIndex&quot;]
+    Idx --&gt; Cnt[&quot;+CountsAndAliases.swift&lt;br/&gt;symbolCount, listFrameworks,&lt;br/&gt;frameworkAlias r/w&quot;]
+    Idx --&gt; Hlp[&quot;+Helpers.swift&lt;br/&gt;extractAvailability,&lt;br/&gt;detectLanguage, extractSummary&quot;]
+    Idx --&gt; ACS[&quot;+AppleStaticConstraints.swift&lt;br/&gt;applyAppleStaticConstraints&quot;]
+    Idx --&gt; HCS[&quot;+HierarchyConstraints.swift&lt;br/&gt;propagateConstraintsFromParents&quot;]
+    Idx --&gt; Inh[&quot;+Inheritance.swift&lt;br/&gt;class inheritance edges&quot;]
+    Idx --&gt; InhMD[&quot;+InheritanceFromMarkdown.swift&lt;br/&gt;markdown-parsed inheritance&quot;]
+    Idx --&gt; PA[&quot;+PlatformAvailability.swift&lt;br/&gt;availability extraction&quot;]
+    Idx --&gt; DB[&quot;+Database.swift&lt;br/&gt;open/close/migrate lifecycle&quot;]
+    Idx --&gt; IDP[&quot;+IndexDocumentParams.swift&lt;br/&gt;IndexDocumentParams value type&quot;]
+    Idx --&gt; DLR[&quot;+DocLinkRewriter.swift&lt;br/&gt;rewrite apple-docs links&quot;]
+    Idx --&gt; CS[&quot;+CamelCaseSplitter.swift&lt;br/&gt;symbol_components population&quot;]</code></pre>
+<p>Each extension file imports only the dependencies its concern needs (Foundation + Shared + SQLite3 always; ASTIndexer only on the files that touch <code>ExtractedSymbol</code> / <code>ExtractedImport</code>). Function bodies, schema SQL, <a href="../sources.html#bm25">BM25</a> weights, and migration logic moved byte-for-byte. The single 1325-LoC outlier is <code>+Search.swift</code>, dominated by the <code>search()</code> function whose pipeline is below.</p>
+<h3><code>search()</code> ranker pipeline</h3>
+<p>The default <code>cupertino search &lt;query&gt;</code> against apple-docs is a multi-pass ranker, not a plain <a href="../sources.html#fts5">FTS5</a> query. Stages from input to results:</p>
+<pre><code>flowchart TD
+    Q[query: String]
+    Q --&gt; EP[&quot;extractSourcePrefix&lt;br/&gt;strips &#x27;swift-evolution&#x27;, &#x27;apple-archive&#x27;, …&quot;]
+    EP --&gt; EA[&quot;extractAttributeFilters&lt;br/&gt;strips @attribute filters → SQL WHERE&quot;]
+    EA --&gt; SQ[&quot;sanitizeFTS5Query&lt;br/&gt;quotes terms, splits on hyphens&quot;]
+
+    SQ --&gt; SS[&quot;searchSymbolsForURIs&lt;br/&gt;(AST symbol → URI set, fast path)&quot;]
+    SQ --&gt; FTS[&quot;docs_fts MATCH&lt;br/&gt;bm25(1, 1, 2, 1, 10, 1, 3, 5, 1.5)&lt;br/&gt;title 10× · symbols 5× · summary 3× · framework 2× · symbol_components 1.5×&quot;]
+
+    SS --&gt; H1[&quot;HEURISTIC 1&lt;br/&gt;exact-title boost&lt;br/&gt;50× clean / 20× suffixed&quot;]
+    FTS --&gt; H1
+    H1 --&gt; H15[&quot;HEURISTIC 1.5&lt;br/&gt;URI simplicity&lt;br/&gt;+ frameworkAuthority tiebreak&lt;br/&gt;(swift / swiftui / foundation ↑;&lt;br/&gt;installer_js / webkitjs ↓)&quot;]
+    H15 --&gt; CTP[&quot;fetchCanonicalTypePages&lt;br/&gt;force-include canonical Swift /&lt;br/&gt;SwiftUI / Foundation type pages&quot;]
+    CTP --&gt; RRF[&quot;RRF fusion (k=60)&lt;br/&gt;weighted by source&lt;br/&gt;apple-docs 3.0 · evolution/packages 1.5&quot;]
+    RRF --&gt; R[Search.Result array]</code></pre>
+<p>Heuristic 1 (#254) flattens <a href="../sources.html#bm25">BM25</a> ties between pages whose title exactly matches the query — Swift's <code>Task</code> struct vs Mach kernel <code>task_*</code> C functions. Heuristic 1.5 (#256) breaks the resulting tie by preferring shorter URIs (canonical type pages) and authoritative frameworks. Force-include (#254) guarantees the canonical apple-docs page lands in the result set even if <a href="../sources.html#bm25">BM25</a> misses it. <a href="../sources.html#rrf">RRF</a> (#192 E4) fuses across the multi-source fan-out (<code>Search.SmartQuery</code>) when the query isn't <code>--source</code>-pinned.</p>
+<h3>Key Features</h3>
+<ul><li><strong>WKWebView-based crawling</strong> - Uses native WebKit for accurate JavaScript rendering</li><li><strong>HTML to Markdown conversion</strong> - Clean, readable documentation with code syntax highlighting</li><li><strong>Smart change detection</strong> - SHA-256 content hashing to skip unchanged pages</li><li><strong>Full-text search</strong> - SQLite <a href="../sources.html#fts5">FTS5</a> search index for instant documentation lookup</li><li><strong>MCP server</strong> - Serves documentation to AI agents like Claude</li><li><strong>Swift Evolution proposals</strong> - Downloads all accepted Swift Evolution proposals</li><li><strong>Sample code downloads</strong> - Downloads Apple sample code projects</li></ul>
+<h3>Technology Stack</h3>
+<ul><li><strong>Swift 6.2</strong> with strict concurrency checking</li><li><strong>WKWebView</strong> for web page rendering</li><li><strong>SQLite <a href="../sources.html#fts5">FTS5</a></strong> for full-text search</li><li><strong>ArgumentParser</strong> for CLI interface</li><li><strong>MCP Protocol</strong> for AI agent integration</li><li><strong>JSON-RPC 2.0</strong> for MCP communication</li></ul>
+<hr></section><section id="error-handling-patterns" class="doc-section"><h2><span class="section-title">Error Handling Patterns</span></h2><p class="lead"><strong>Based on:</strong> <a href="documents/ERROR_HANDLING.md">ERROR_HANDLING.md</a></p>
+<p>This section defines the error handling and functional programming patterns used in Cupertino. The goal is to maintain clean, idiomatic Swift 6 code while incorporating practical functional programming concepts where they provide clear value.</p>
+<h3>Philosophy</h3>
+<ul><li><strong>Pragmatic over theoretical</strong> - Use patterns that solve real problems</li><li><strong>Swift-first</strong> - Prefer Swift stdlib and language features over custom abstractions</li><li><strong>Modern async/await</strong> - Leverage Swift 6 concurrency for error handling</li><li><strong>Minimal abstractions</strong> - Only introduce patterns that reduce boilerplate or improve safety</li></ul>
+<h3>Modern Swift Error Handling</h3>
+<h4>1. Use <code>async throws</code> for Most Code (Priority: HIGH)</h4>
+<p><strong>Purpose</strong>: Clean, idiomatic error handling for async/await</p>
+<p><strong>Use cases</strong>: 95% of our code</p>
+<ul><li>Sequential operations</li><li>Single async calls</li><li>Normal error flows</li><li>Any code that can propagate errors synchronously</li></ul>
+<p><strong>Why</strong>: Apple's recommended pattern for Swift 6 concurrency</p>
+<h4>2. Built-in Result Type - ONLY for Specific Cases (Priority: LOW)</h4>
+<p><strong>IMPORTANT</strong>: Use Swift stdlib <code>Result&lt;Success, Failure&gt;</code> - don't create custom implementation</p>
+<p><strong>Apple's guidance</strong>: "Use when you can't return errors synchronously"</p>
+<p><strong>When to use</strong>:</p>
+<ul><li>Collecting errors from parallel operations with <code>TaskGroup</code></li><li>Serialization/memoization of throwing operations</li><li>Converting between throwing and non-throwing APIs</li></ul>
+<p><strong>When NOT to use</strong>:</p>
+<ul><li>Sequential operations → use <code>async throws</code></li><li>Normal async/await code → use <code>async throws</code></li><li>Callback-based APIs → use async/await instead</li></ul>
+<h3>Functional Programming Patterns</h3>
+<h4>Sum Types - Enums with Associated Values</h4>
+<p><strong>Purpose</strong>: Model mutually exclusive states and detailed error cases</p>
+<p><strong>Current usage</strong>: 13 error enums in codebase</p>
+<ul><li><code>SearchError</code></li><li><code>PackageFetchError</code></li><li><code>CrawlerError</code></li><li><code>SampleCodeError</code></li><li>And 9 more...</li></ul>
+<p>This approach provides type-safe error handling with associated context for each error case.</p>
+<h4>Product Types - Immutable Structs</h4>
+<p><strong>Purpose</strong>: Model data with multiple fields</p>
+<p><strong>Current usage</strong>: All models use immutable <code>struct</code> with <code>let</code>, <code>Sendable</code>, <code>Codable</code></p>
+<p>This ensures thread-safe data sharing across concurrency boundaries and prevents unintended mutations.</p>
+<h4>Functors &amp; Monads - map/flatMap</h4>
+<p><strong>Purpose</strong>: Transform and chain operations on wrapped values</p>
+<p><strong>Current usage</strong>: Swift stdlib implementations</p>
+<ul><li><code>Array.map</code>, <code>Array.flatMap</code></li><li><code>Optional.map</code>, <code>Optional.flatMap</code></li><li><code>Result.map</code>, <code>Result.flatMap</code></li><li><code>AsyncSequence.map</code>, <code>AsyncSequence.flatMap</code></li></ul>
+<p>These standard library functions enable functional composition patterns for transforming and chaining operations.</p>
+<h3>Summary</h3>
+<h4>Primary Approach</h4>
+<p><strong>Use <code>async throws</code> for 95% of code</strong> - This is Apple's modern Swift 6 pattern for error handling.</p>
+<h4>Result Type</h4>
+<p><strong>Only use Swift stdlib <code>Result</code> for <code>TaskGroup.nextResult()</code></strong> - For parallel error collection, not sequential code.</p>
+<h4>FP Patterns</h4>
+<p><strong>Focus on practical patterns we're already using</strong>:</p>
+<ul><li>Sum types (enums with associated values)</li><li>Product types (immutable structs)</li><li>map/flatMap from Swift stdlib</li></ul>
+<h4>Avoid</h4>
+<ul><li>Heavy category theory abstractions</li><li>Custom Result implementations</li><li>Haskell-style naming</li><li>IO monads (use actors + async/await)</li></ul>
+<hr></section><section id="json-coding-standards" class="doc-section"><h2><span class="section-title">JSON Coding Standards</span></h2><p class="lead"><strong>Based on:</strong> <a href="documents/UNIFIED_JSON_CODING.md">UNIFIED_JSON_CODING.md</a></p>
+<p>A unified <code>JSONCoding</code> utility ensures consistent JSON encoding/decoding across the entire codebase, especially for date handling.</p>
+<h3>Problem Solved</h3>
+<p><strong>Before:</strong> Date encoding/decoding strategies were scattered and inconsistent:</p>
+<ul><li>Some places used ISO8601</li><li>Some places used default (Double timestamps)</li><li>Some places forgot to set any strategy</li><li>Led to "Expected Double but found String" errors</li></ul>
+<p><strong>After:</strong> All code that handles dates uses the unified <code>JSONCoding</code> utility:</p>
+<ul><li>Consistent ISO8601 date format everywhere</li><li>Single source of truth for encoding/decoding configuration</li><li>Easy to update date strategy project-wide if needed</li></ul>
+<h3>API</h3>
+<p>The <code>JSONCoding</code> utility provides:</p>
+<h4>Encoders</h4>
+<ul><li>Standard encoder with ISO8601 dates</li><li>Pretty-printed encoder with ISO8601 dates</li></ul>
+<h4>Decoders</h4>
+<ul><li>Standard decoder with ISO8601 dates</li></ul>
+<h4>Convenience Methods</h4>
+<ul><li>Encode to Data</li><li>Encode pretty-printed to Data</li><li>Decode from Data</li><li>Decode from file</li><li>Encode to file (auto-creates directory, pretty-printed)</li></ul>
+<h3>Benefits</h3>
+<h4>1. Consistency</h4>
+<p>All date-related JSON operations use ISO8601 format</p>
+<h4>2. Maintainability</h4>
+<p>Single place to change date strategy if needed in future</p>
+<h4>3. Less Code</h4>
+<p>Convenience methods reduce boilerplate significantly</p>
+<h4>4. Error Prevention</h4>
+<p>Impossible to forget date strategy when using <code>JSONCoding</code></p>
+<hr></section><section id="mcp-server-implementation" class="doc-section"><h2><span class="section-title">MCP Server Implementation</span></h2><p class="lead"><strong>Based on:</strong> <a href="documents/MCP_SERVER_README.md">MCP_SERVER_README.md</a> and <a href="documents/MCP_SERVER_USAGE.md">MCP_SERVER_USAGE.md</a></p>
+<p>An MCP (Model Context Protocol) server that provides Apple documentation and Swift Evolution proposals to AI agents like Claude.</p>
+<h3>What is MCP?</h3>
+<p>MCP (Model Context Protocol) is a standardized protocol for providing context to AI models. It allows AI agents to:</p>
+<ul><li>Browse available documentation resources</li><li>Read specific documentation pages</li><li>Search through documentation collections</li><li>Access up-to-date information from your local documentation cache</li></ul>
+<h3>Single-binary MCP architecture</h3>
+<p>The MCP server is integrated into the main <code>cupertino</code> binary (since v0.2). The binary defaults to starting the MCP server when run without arguments, making configuration simpler — no separate <code>cupertino-mcp</code> install or path to manage.</p>
+<h3>Features</h3>
+<ul><li><strong>AI Agent Integration</strong> - Works with Claude, Claude Code, and other MCP-compatible agents</li><li><strong>Dual Documentation Sources</strong> - Serves both Apple docs and Swift Evolution proposals</li><li><strong>Resource Templates</strong> - Easy URI-based access patterns</li><li><strong>Stdio Transport</strong> - Standard input/output for seamless integration</li><li><strong>Fast Access</strong> - Instant document retrieval from local cache</li></ul>
+<h3>Prerequisites</h3>
+<p>Before starting the MCP server, you need to download documentation using the fetch commands for Apple documentation and Swift Evolution proposals.</p>
+<h3>Integration with Claude Desktop</h3>
+<p>Configure Claude Desktop by editing the configuration file at the appropriate location for your platform:</p>
+<p><strong>macOS</strong>: <code>~/Library/Application Support/Claude/claude_desktop_config.json</code></p>
+<p><strong>Linux</strong>: <code>~/.config/Claude/claude_desktop_config.json</code></p>
+<p><strong>Windows</strong>: <code>%APPDATA%\Claude\claude_desktop_config.json</code></p>
+<p>Add the Cupertino MCP server configuration with the path to your binary. The <code>cupertino</code> binary defaults to serving the MCP protocol, so no additional arguments are needed.</p>
+<p>After editing the config, restart Claude Desktop for changes to take effect.</p>
+<h3>Resource URI Patterns</h3>
+<h4>Apple Documentation</h4>
+<p>Pattern: <code>apple-docs://{framework}/{page}</code></p>
+<p>Examples include swift/array, swiftui/view, foundation/url</p>
+<h4>Swift Evolution Proposals</h4>
+<p>Pattern: <code>swift-evolution://{proposalID}</code></p>
+<p>Examples include SE-0001, SE-0255, SE-0400</p>
+<h3>Available MCP Operations</h3>
+<h4>1. List Resources</h4>
+<p>The server provides a list of all available documentation resources with their URIs.</p>
+<h4>2. Read Resource</h4>
+<p>Fetch specific documentation content by URI, returning the full markdown content of the documentation page.</p>
+<h4>3. List Resource Templates</h4>
+<p>Get available URI patterns with descriptions for accessing documentation.</p>
+<h3>Architecture</h3>
+<p>The architecture follows a layered approach:</p>
+<ul><li>AI agents connect to the cupertino MCP server via JSON-RPC 2.0</li><li>The server reads from local documentation directories</li><li>Apple docs are organized by framework</li><li>Swift Evolution proposals are stored as individual markdown files</li></ul>
+<h3>Performance</h3>
+<ul><li><strong>Startup time</strong>: &lt; 1 second</li><li><strong>Resource list</strong>: Instant (metadata cached)</li><li><strong>Document read</strong>: &lt; 100ms (from local disk)</li><li><strong>Memory usage</strong>: ~10-50 MB</li></ul>
+<h3>Security Notes</h3>
+<ul><li>Server only reads local files (no network access)</li><li>Only serves files from specified directories</li><li>No write operations performed</li><li>Uses stdio (no network ports exposed)</li></ul>
+<hr></section><section id="cli-architecture" class="doc-section"><h2><span class="section-title">CLI Architecture</span></h2><p class="lead"><strong>Based on:</strong> <a href="documents/CUPERTINO_CLI_README.md">CUPERTINO_CLI_README.md</a></p>
+<p>A Swift command-line tool for downloading and converting Apple documentation to Markdown format.</p>
+<h3>Features</h3>
+<ul><li><strong>Fast WKWebView-based crawling</strong> - Uses native WebKit for accurate rendering</li><li><strong>HTML to Markdown conversion</strong> - Clean, readable documentation in Markdown format with code syntax highlighting</li><li><strong>Smart change detection</strong> - SHA-256 content hashing to skip unchanged pages</li><li><strong>Progress tracking</strong> - Real-time statistics and progress updates</li><li><strong>Framework organization</strong> - Automatically organizes docs by framework</li><li><strong>Incremental updates</strong> - Only re-downloads changed content</li><li><strong>Swift Evolution proposals</strong> - Download all accepted Swift Evolution proposals from GitHub</li><li><strong>Sample code downloads</strong> - Download Apple sample code projects as zip/tar files</li><li><strong>PDF export</strong> - Convert markdown documentation to beautifully formatted PDF files</li></ul>
+<h3>Commands</h3>
+<h4>1. Download All Apple Documentation</h4>
+<p>Downloads the complete Apple documentation library with configurable parameters for:</p>
+<ul><li>Starting URL to crawl from</li><li>Maximum number of pages to download (default: 15000)</li><li>Maximum link depth to follow (default: 15)</li><li>Output directory location (default: <code>~/.cupertino/docs</code>)</li><li>Force recrawl option to ignore cache</li></ul>
+<p>Estimated time: 2-4 hours for full documentation Estimated size: ~2-3 GB</p>
+<h4>2. Download Specific Framework Documentation</h4>
+<p>Download documentation for specific frameworks like SwiftUI by targeting the framework's documentation URL.</p>
+<h4>3. Download All Swift Evolution Proposals</h4>
+<p>Downloads all accepted Swift Evolution proposals from GitHub, including:</p>
+<ul><li>Fetching the list of all proposals from swift-evolution GitHub repo</li><li>Downloading each markdown file from the proposals directory</li><li>Saving them with original filenames</li><li>Tracking which proposals are new/updated</li></ul>
+<p>Estimated time: 2-5 minutes Estimated size: ~10-20 MB</p>
+<h4>4. Download Apple Sample Code Projects</h4>
+<p>Downloads Apple sample code projects as zip/tar files. First-time use requires authentication with Apple ID, after which authentication cookies are saved for subsequent downloads.</p>
+<h4>5. Clean Up Sample Code Archives</h4>
+<p>Cleans up downloaded sample code ZIP archives by removing unnecessary files like .git folders, xcuserdata, and build artifacts. This significantly reduces storage (from ~26GB to ~2-3GB) and improves indexing quality.</p>
+<h4>6. Index Sample Code for Search</h4>
+<p>Indexes sample code projects for full-text search using a separate SQLite <a href="../sources.html#fts5">FTS5</a> database (<code>~/.cupertino/samples.db</code>). The index includes:</p>
+<ul><li>Project metadata (title, description, frameworks)</li><li>README content</li><li>Source files (Swift, Objective-C, Metal, etc.)</li></ul>
+<p><strong>Important:</strong> Run cleanup before indexing to remove unnecessary files.</p>
+<h4>7. Build Search Index</h4>
+<p>Builds a full-text search index from downloaded documentation with parameters for:</p>
+<ul><li>Directory containing Apple documentation</li><li>Directory containing Swift Evolution proposals</li><li>Output database path</li><li>Option to clear existing index</li></ul>
+<p>Creates a SQLite <a href="../sources.html#fts5">FTS5</a> search index enabling fast full-text search across all documentation.</p>
+<p>Estimated time: ~2-5 minutes Estimated size: ~50MB</p>
+<h3>Output Format</h3>
+<h4>Directory Structure</h4>
+<p>Documentation is organized hierarchically:</p>
+<ul><li>Top level organized by framework (swift, swiftui, foundation, etc.)</li><li>Each framework contains markdown files for individual documentation pages</li><li>Metadata stored in hidden .cupertino directory</li><li>File naming follows consistent pattern based on URL structure</li></ul>
+<h4>Markdown Format</h4>
+<p>Each page includes YAML front matter with source URL and crawl timestamp, followed by the markdown-converted documentation content with proper heading hierarchy and code formatting.</p>
+<h3>Statistics &amp; Progress</h3>
+<p>During crawling, real-time progress is displayed showing:</p>
+<ul><li>Current page being processed with depth and framework</li><li>Save status (new, updated, or skipped)</li><li>Progress percentage and page title</li><li>Final statistics including total pages, new/updated/skipped counts, errors, and duration</li></ul>
+<hr></section><section id="wkwebview-testing" class="doc-section"><h2><span class="section-title">WKWebView Testing</span></h2><p class="lead"><strong>Based on:</strong> <a href="documents/WKWEBVIEW_HEADLESS_TESTING.md">WKWEBVIEW_HEADLESS_TESTING.md</a></p>
+<p>This section explains how to test WKWebView-based code in headless Swift tests without a GUI.</p>
+<h3>The Problem: WKWebView Tests Crash in <code>swift test</code></h3>
+<p>When running tests that use WKWebView through <code>swift test</code>, the test runner exits with signal 11 (segmentation fault).</p>
+<p>This is confusing because:</p>
+<ol><li>Production code works perfectly when run as a CLI executable</li><li>No GUI is displayed - the app runs headless in terminal</li><li>Tests crash even though they do the exact same thing</li></ol>
+<h3>Understanding the Root Cause</h3>
+<h4>WKWebView's Hidden Requirements</h4>
+<p>WKWebView is part of WebKit, a complex framework that requires:</p>
+<ol><li><strong>NSApplication singleton</strong> - The application object</li><li><strong>Main run loop</strong> - For processing events and async operations</li><li><strong>App bundle context</strong> - Metadata about the running application</li><li><strong>Proper thread isolation</strong> - Must run on main thread (@MainActor)</li></ol>
+<p>Even though WKWebView runs "headless" (no visible window), it still needs the application infrastructure.</p>
+<h4>Why CLI Executables Work</h4>
+<p>When you run a Swift executable from the terminal, Swift's runtime automatically initializes:</p>
+<ul><li>NSApplication.shared</li><li>Main run loop</li><li>Event handling system</li><li>App bundle context</li></ul>
+<h4>Why <code>swift test</code> Crashes</h4>
+<p>The test runner is optimized for speed and isolation. The test framework provides:</p>
+<ul><li>Basic process execution</li><li>Test discovery and running</li><li>Assertion checking</li><li>But NO macOS application infrastructure</li></ul>
+<p>When WKWebView tries to initialize without these prerequisites, it crashes.</p>
+<h3>The Solution: Bootstrap NSApplication</h3>
+<h4>The Fix</h4>
+<p>The solution is to initialize NSApplication before using WKWebView in tests. Accessing <code>NSApplication.shared</code> for the first time triggers initialization:</p>
+<ol><li>Creates the singleton NSApplication instance</li><li>Sets up the main run loop (CFRunLoop)</li><li>Initializes event handling infrastructure</li><li>Creates app bundle context</li><li>Registers event handlers</li></ol>
+<p>After this initialization, WKWebView can initialize successfully.</p>
+<h3>Important Considerations</h3>
+<h4>1. Thread Safety: Always Use @MainActor</h4>
+<p>WKWebView operations must run on the main thread. The <code>@MainActor</code> annotation ensures this requirement is met.</p>
+<h4>2. Test Tags for Separation</h4>
+<p>Using test tags allows separating WKWebView integration tests from fast unit tests. This enables running unit tests quickly while keeping slower integration tests separate.</p>
+<h3>Best Practices</h3>
+<p>Complete integration tests should:</p>
+<ul><li>Import AppKit for NSApplication access</li><li>Use the integration test tag</li><li>Apply @MainActor annotation</li><li>Initialize NSApplication before WKWebView usage</li></ul>
+<p>Tests missing critical components will crash:</p>
+<ul><li>Missing @MainActor annotation</li><li>Missing async throws</li><li>Missing NSApplication initialization</li></ul>
+<h3>Key Takeaways</h3>
+<ol><li><strong>WKWebView requires application infrastructure</strong> even when running headless</li><li><strong>CLI executables get NSApplication automatically</strong>, tests don't</li><li><strong>NSApplication must be initialized</strong> before WKWebView usage in tests</li><li><strong>Thread safety matters</strong>: Always use <code>@MainActor</code></li><li><strong>Tagging helps</strong>: Separate integration tests from unit tests</li></ol>
+<hr></section><section id="mcp-testing-guide" class="doc-section"><h2><span class="section-title">MCP Testing Guide</span></h2><p class="lead"><strong>Based on:</strong> <a href="documents/MCP_TEST_SERVERS.md">MCP_TEST_SERVERS.md</a> and <a href="documents/TESTING_MCP_SERVERS.md">TESTING_MCP_SERVERS.md</a></p>
+<p>This section explains how to test MCP servers from the command line using the <code>mock-ai-agent</code> tool.</p>
+<h3>Quick Start</h3>
+<p>The mock AI agent is a Swift-based MCP client that demonstrates the complete request/response cycle with detailed JSON logging. It helps you verify that your MCP server implements the stdio transport correctly.</p>
+<h3>What the Mock Agent Does</h3>
+<p>The mock agent executes a complete MCP interaction flow:</p>
+<ol><li><strong>Initialize</strong> - Establishes connection and exchanges capabilities</li><li><strong>List Tools</strong> - Retrieves available tools from the server</li><li><strong>Call Tool</strong> - Executes a tool (search_nodes for memory server, search for cupertino)</li><li><strong>List Resources</strong> - Gets available resources (skipped for servers without resources)</li><li><strong>Read Resource</strong> - Reads a specific resource (skipped for servers without resources)</li><li><strong>Shutdown</strong> - Sends cleanup notification</li></ol>
+<h3>Available Test Servers</h3>
+<h4>1. MCP Memory Server (TypeScript)</h4>
+<p><strong>Description</strong>: Knowledge graph-based persistent memory system that demonstrates basic MCP capabilities including tools and resources.</p>
+<p><strong>Features</strong>:</p>
+<ul><li>Tools for storing and retrieving information</li><li>Knowledge graph relationships</li><li>Persistent memory across sessions</li></ul>
+<h4>2. MCP Filesystem Server (TypeScript)</h4>
+<p><strong>Description</strong>: Secure file operations with configurable access controls. Demonstrates resource-based MCP interactions.</p>
+<p><strong>Features</strong>:</p>
+<ul><li>Secure file reading/writing</li><li>Directory listing</li><li>Configurable access boundaries</li><li>File search capabilities</li></ul>
+<h4>3. GitHub MCP Server (Go)</h4>
+<p><strong>Description</strong>: GitHub's official MCP server providing repository management, issue tracking, and code operations.</p>
+<p><strong>Prerequisites</strong>:</p>
+<ul><li>Docker installed and running</li><li>GitHub Personal Access Token with required scopes: <code>repo</code>, <code>read:packages</code>, <code>read:org</code></li></ul>
+<p><strong>Features</strong>:</p>
+<ul><li>Repository operations (read files, search code)</li><li>Issue management (list, create, update)</li><li>Pull request operations</li><li>GitHub Actions integration</li><li>User and organization queries</li></ul>
+<h3>Quick Comparison</h3>
+<table class="data-table"><thead><tr><th>Server</th><th>Language</th><th>Complexity</th><th>Auth Required</th><th>Best For</th></tr></thead><tbody><tr><td>Memory</td><td>TypeScript</td><td>Simple</td><td>No</td><td>Basic tool/resource testing</td></tr><tr><td>Filesystem</td><td>TypeScript</td><td>Simple</td><td>No</td><td>File operations, resources</td></tr><tr><td>GitHub</td><td>Go</td><td>Medium</td><td>Yes (PAT)</td><td>Real-world API integration</td></tr></tbody></table>
+<h3>Verifying MCP Stdio Compliance</h3>
+<p>The mock agent helps verify your MCP server follows the stdio transport specification:</p>
+<h4>What to Look For</h4>
+<ol><li><strong>Server starts successfully</strong> with process ID and startup messages</li><li><strong>Initialize response received</strong> with protocol version and server information</li><li><strong>Tools are listed</strong> with names and descriptions</li><li><strong>Tool execution succeeds</strong> with expected content</li></ol>
+<h3>MCP Stdio Transport Specification</h3>
+<h4>Message Framing Rules</h4>
+<p>Per the MCP specification, messages are delimited by newlines and must not contain embedded newlines.</p>
+<p>Correct format: Complete JSON-RPC 2.0 message on a single line followed by newline delimiter.</p>
+<p>Incorrect format: Pretty-printed JSON with embedded newlines.</p>
+<h4>Wire Protocol</h4>
+<p>Communication flows in both directions using compact JSON messages, where each line contains:</p>
+<ol><li>A complete JSON-RPC 2.0 message</li><li>Single-line format (no embedded newlines)</li><li>Exactly one newline delimiter at the end</li></ol>
+<h3>Common Server Implementation Patterns</h3>
+<p>MCP servers across different languages follow similar patterns:</p>
+<p><strong>Node.js</strong>: Use readline interface to process line-by-line input, parse JSON, handle requests, and output compact JSON responses.</p>
+<p><strong>Python</strong>: Iterate over stdin lines, parse JSON, handle requests, and print compact JSON with flush.</p>
+<p><strong>Swift</strong>: Read lines in a loop, decode JSON-RPC messages, handle requests, encode responses, and print compact JSON.</p>
+<h3>Troubleshooting Checklist</h3>
+<ul><li>Server starts without errors</li><li>Server logs appear correctly</li><li>Initialize response received within timeout</li><li>Response is valid JSON-RPC 2.0 format</li><li>Response contains required fields (result or error)</li><li>Tools are listed correctly</li><li>Tool execution returns expected content</li><li>No timeout or hanging</li><li>Clean shutdown without errors</li></ul>
+<hr></section><section id="further-reading" class="doc-section"><h2><span class="section-title">Further Reading</span></h2><h3>Swift Concurrency</h3>
+<ul><li><a href="https://docs.swift.org/swift-book/LanguageGuide/Concurrency.html">Swift Concurrency Documentation</a></li><li><a href="https://github.com/apple/swift-evolution/blob/main/proposals/0296-async-await.md">Swift Evolution SE-0296: Async/await</a></li><li><a href="https://github.com/apple/swift-evolution/blob/main/proposals/0306-actors.md">Swift Evolution SE-0306: Actors</a></li><li><a href="https://github.com/apple/swift-evolution/blob/main/proposals/0302-sendable-and-sendable-closures.md">Swift Evolution SE-0302: Sendable</a></li></ul>
+<h3>MCP Protocol</h3>
+<ul><li><a href="https://spec.modelcontextprotocol.io/">MCP Specification</a></li><li><a href="https://spec.modelcontextprotocol.io/specification/basic/transports/#stdio">MCP Stdio Transport</a></li><li><a href="https://github.com/modelcontextprotocol/servers">Official MCP Servers</a></li></ul>
+<h3>WKWebView</h3>
+<ul><li><a href="https://developer.apple.com/documentation/webkit/wkwebview">WKWebView Documentation</a></li><li><a href="https://developer.apple.com/documentation/appkit/nsapplication">NSApplication Documentation</a></li><li><a href="https://developer.apple.com/documentation/testing">Swift Testing Framework</a></li></ul></section>
+
+                <section class="doc-section"><h2><span class="section-number-badge">§</span><span class="section-title">Sources referenced in this document</span></h2><p>Auto-collected from the metric and method mentions in the text above.</p><div class="grid cols-2"><article class="card no-hover"><div class="card-icon tint-indigo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><h3 class="card-title">Overview &amp;amp; Package Structure</h3><p class="card-finding"></p><a class="card-link" href="../sources.html#overview--package-structure">Open citation</a></article><article class="card no-hover"><div class="card-icon tint-indigo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><h3 class="card-title">Error Handling Patterns</h3><p class="card-finding"></p><a class="card-link" href="../sources.html#error-handling-patterns">Open citation</a></article><article class="card no-hover"><div class="card-icon tint-indigo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><h3 class="card-title">JSON Coding Standards</h3><p class="card-finding"></p><a class="card-link" href="../sources.html#json-coding-standards">Open citation</a></article><article class="card no-hover"><div class="card-icon tint-indigo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><h3 class="card-title">MCP Server Implementation</h3><p class="card-finding"></p><a class="card-link" href="../sources.html#mcp-server-implementation">Open citation</a></article><article class="card no-hover"><div class="card-icon tint-indigo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><h3 class="card-title">CLI Architecture</h3><p class="card-finding"></p><a class="card-link" href="../sources.html#cli-architecture">Open citation</a></article><article class="card no-hover"><div class="card-icon tint-indigo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><h3 class="card-title">WKWebView Testing</h3><p class="card-finding"></p><a class="card-link" href="../sources.html#wkwebview-testing">Open citation</a></article><article class="card no-hover"><div class="card-icon tint-indigo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><h3 class="card-title">MCP Testing Guide</h3><p class="card-finding"></p><a class="card-link" href="../sources.html#mcp-testing-guide">Open citation</a></article><article class="card no-hover"><div class="card-icon tint-indigo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><h3 class="card-title">Reciprocal Rank Fusion (k=60)</h3><p class="card-finding">Cormack, Clarke, Büttcher (2009), SIGIR</p><a class="card-link" href="../sources.html#rrf">Open citation</a></article><article class="card no-hover"><div class="card-icon tint-indigo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><h3 class="card-title">MCP Stdio Transport</h3><p class="card-finding"></p><a class="card-link" href="../sources.html#stdio">Open citation</a></article></div></section>
+            </main>
+        </div>
+
+        <footer>
+            <p>
+                Rendered from <a href="https://github.com/mihaelamj/cupertino/blob/main/docs/ARCHITECTURE.md" target="_blank" rel="noopener">ARCHITECTURE.md</a> by <code>_render-doc.py</code>.
+                Re-run after editing the source; nothing here is hardcoded.
+            </p>
+            <p>
+                Methodology in <a href="design-search-quality-eval.html">design/search-quality-eval</a>
+                ·
+                Architecture in <a href="architecture-database.html">architecture/database</a>
+                ·
+                Citations in <a href="../sources.html">sources.html</a>
+                ·
+                Index in <a href="database-handbook.html">database-handbook</a>
+            </p>
+        </footer>
+
+    </div>
+
+    <script>
+    (function() {
+        // Reading-progress bar
+        var bar = document.querySelector('.doc-progress-bar');
+        if (bar) {
+            window.addEventListener('scroll', function() {
+                var h = document.documentElement;
+                var scrolled = h.scrollTop / Math.max(1, (h.scrollHeight - h.clientHeight));
+                bar.style.width = (scrolled * 100).toFixed(2) + '%';
+            }, { passive: true });
+        }
+
+        // TOC active highlight
+        var rows = document.querySelectorAll('.toc-row');
+        if ('IntersectionObserver' in window && rows.length) {
+            var byHash = {};
+            rows.forEach(function(r) { byHash[r.getAttribute('href')] = r; });
+            var io = new IntersectionObserver(function(entries) {
+                entries.forEach(function(e) {
+                    if (e.isIntersecting) {
+                        rows.forEach(function(r) { r.classList.remove('active'); });
+                        var row = byHash['#' + e.target.id];
+                        if (row) row.classList.add('active');
+                    }
+                });
+            }, { rootMargin: '-25% 0px -65% 0px' });
+            document.querySelectorAll('section.doc-section[id]').forEach(function(s) { io.observe(s); });
+        }
+    })();
+    </script>
+</body>
+</html>

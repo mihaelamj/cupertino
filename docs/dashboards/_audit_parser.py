@@ -244,11 +244,17 @@ def md_to_html(md: str) -> str:
             out.append(f"<h4>{render_inline(line[5:])}</h4>")
             i += 1; continue
         if line.startswith("### "):
-            out.append(f"<h4>{render_inline(line[4:])}</h4>")
+            out.append(f"<h3>{render_inline(line[4:])}</h3>")
             i += 1; continue
         if line.startswith("## "):
             out.append(f"<h3>{render_inline(line[3:])}</h3>")
             i += 1; continue
+        if line.strip() in ("---", "***", "___"):
+            out.append("<hr>")
+            i += 1; continue
+        if line.startswith("> "):
+            t, n = _parse_blockquote(lines, i)
+            out.append(t); i += n; continue
         if line.startswith("|") and i + 1 < len(lines) and re.match(r"^\|[\s:-]+\|", lines[i + 1]):
             t, n = _parse_table(lines, i)
             out.append(t); i += n; continue
@@ -278,7 +284,21 @@ def _is_block_start(line: str, all_lines: list[str], idx: int) -> bool:
         return True
     if line.startswith("```"):
         return True
+    if line.strip() in ("---", "***", "___"):
+        return True
+    if line.startswith("> "):
+        return True
     return False
+
+
+def _parse_blockquote(lines: list[str], start: int) -> tuple[str, int]:
+    body: list[str] = []
+    i = start
+    while i < len(lines) and (lines[i].startswith("> ") or lines[i].strip() == ">"):
+        body.append(lines[i][2:] if lines[i].startswith("> ") else "")
+        i += 1
+    inner = render_inline(" ".join(b.strip() for b in body if b.strip()))
+    return (f"<blockquote>{inner}</blockquote>", i - start)
 
 
 def _parse_table(lines: list[str], start: int) -> tuple[str, int]:

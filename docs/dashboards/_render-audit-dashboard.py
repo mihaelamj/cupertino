@@ -151,7 +151,7 @@ def render(audit: Audit) -> str:
             </p>
             <p>
                 Part of <a href="../search-quality-v1.2.0.html">cupertino search-quality dashboards</a>.
-                Methodology in <a href="../../design/search-quality-eval.md">docs/design/search-quality-eval.md</a>.
+                Methodology in <a href="../docs/design-search-quality-eval.html">design/search-quality-eval</a>.
             </p>
         </footer>
 

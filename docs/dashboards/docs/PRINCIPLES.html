@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cupertino Engineering Principles · cupertino docs</title>
+    <link rel="stylesheet" href="../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="doc-progress"><div class="doc-progress-bar"></div></div>
+
+    <div class="container doc-container">
+
+        <a class="back-link" href="../search-quality-v1.2.0.html">Back to dashboard</a>
+
+        <header class="doc-header">
+            <div class="eyebrow">Cupertino Docs</div>
+            <h1>Cupertino Engineering Principles</h1>
+        </header>
+
+        
+
+        
+
+        <div class="doc-layout">
+            <aside class="toc-sidebar"><div class="toc-title">On this page</div><nav class="toc-list"><a class="toc-row" href="#1-lossless-uris"><span class="toc-num">1</span><span class="toc-label">Lossless URIs</span></a><a class="toc-row" href="#2-handle-collisions-at-the-door"><span class="toc-num">2</span><span class="toc-label">Handle collisions at the door</span></a><a class="toc-row" href="#3-don-t-let-content-be-lost-at-the-door"><span class="toc-num">3</span><span class="toc-label">Don&#x27;t let content be lost at the door</span></a><a class="toc-row" href="#4-be-smart-at-the-input-don-t-let-garbage-in"><span class="toc-num">4</span><span class="toc-label">Be smart at the input. Don&#x27;t let garbage in.</span></a><a class="toc-row" href="#5-one-order-of-magnitude-over-the-task"><span class="toc-num">5</span><span class="toc-label">One order of magnitude over the task</span></a><a class="toc-row" href="#6-correctness-first"><span class="toc-num">6</span><span class="toc-label">Correctness first</span></a><a class="toc-row" href="#companion-docs"><span class="toc-num toc-num-glyph">§</span><span class="toc-label">Companion docs</span></a></nav></aside>
+
+            <main class="doc-content">
+                <section class="doc-section doc-intro"><p class="lead">These are the principles the cupertino refactor stands on. Specific rules (code style, package shape, DI mechanics) live in <code>AGENTS.md</code>, <code>CLAUDE.md</code>, the imported <code>mihaela-agents/Rules/</code> set, and the per-area docs under <code>docs/</code>. This file is the <strong>why</strong> behind those rules: the short list of stances we re-derive everything else from.</p>
+<p>If a rule and a principle disagree, the principle wins and the rule gets updated.</p>
+<hr></section><section id="1-lossless-uris" class="doc-section"><h2><span class="section-number-badge">1</span><span class="section-title">Lossless URIs</span></h2><p class="lead">Two different Apple URLs <strong>must</strong> produce two different URIs by construction. The URI literally encodes the URL path under <code>/documentation/</code>: framework slug, then every remaining segment joined by <code>/</code>. Lowercased + fragment / query stripped + sub-page underscores to dashes per the canonicalisation in <code>Shared.Models.URLUtilities.normalize(_:)</code> (#283, #285).</p>
+<p>No hashing. No truncation. No special-character sanitisation at the URI layer. The shape is reversible: any URI consumer can recover the source URL by string substitution.</p>
+<p>Why: probabilistic disambiguators (8-byte SHA suffixes, 32-bit hash caps) carry a non-zero collision floor at any corpus size. Lossless removes the entire class of collisions before they happen, and gives us URIs that are debuggable by eye.</p>
+<p>Helper: <code>Shared.Models.URLUtilities.appleDocsURI(from:)</code> / <code>appleDocsURI(fromString:)</code>.</p></section><section id="2-handle-collisions-at-the-door" class="doc-section"><h2><span class="section-number-badge">2</span><span class="section-title">Handle collisions at the door</span></h2><p class="lead">Detect duplicate or colliding URIs at the <strong>input boundary</strong>, before any DB write. Not via SQLite <code>UNIQUE</code> constraint catch, not via a later audit pass.</p>
+<p>The "door" is the import / <code>cupertino save</code> entry point. Each row that crosses the door:</p>
+<ol><li>Compute its URI from its source URL.</li><li>Look up that URI in a per-run "seen" map (and / or the existing</li></ol>
+<p>index, depending on mode).</p>
+<ol><li>Classify before writing.</li></ol>
+<p>The point of the door is to make the indexer's invariants visible at the entry, where the source URL and the raw content are still in hand. By the time you're catching a constraint error inside SQLite, the context that would have told you which collision class this is has been thrown away.</p></section><section id="3-don-t-let-content-be-lost-at-the-door" class="doc-section"><h2><span class="section-number-badge">3</span><span class="section-title">Don&#x27;t let content be lost at the door</span></h2><p class="lead">Collision handling <strong>must never silently drop a row whose content differs from the row it collided with</strong>. Be meticulous when you decide two rows are "the same."</p>
+<h3>Equivalence tiers (must pass ANY to collapse)</h3>
+<table class="data-table"><thead><tr><th>Tier</th><th>Match criteria</th><th>Action</th></tr></thead><tbody><tr><td>A</td><td>same URI + same <code>contentHash</code></td><td>Collapse silently (byte-identical)</td></tr><tr><td>B</td><td>same URI + same canonical title</td><td>Collapse, but <strong>pick richest variant</strong> (see below). Log every losing variant's source path + contentHash.</td></tr><tr><td>C</td><td>same URI + <strong>different</strong> canonical title</td><td><strong>Do not collapse.</strong> First-arrived stays in index; second surfaced as <code>collision</code>, source path recorded.</td></tr></tbody></table>
+<p>Tier A is byte-equal proof. Tier B leans on the fact that Apple's server-side case-insensitive routing serves one logical page per canonical URL, so a same-URI cluster is provably the same page even if rendering drifted between crawls. Tier C is the URI canonicalization itself colliding two distinct pages — the only case where we could truly lose content.</p>
+<h3>Richest-variant selection (deterministic)</h3>
+<ol><li>More non-empty fields among `{abstract, declaration, sections,</li></ol>
+<p>codeExamples, rawMarkdown}`</p>
+<ol><li>Tie → larger total byte length across those fields</li><li>Tie → first arrived</li></ol>
+<p>The "pick richest" rule guarantees a populated abstract never loses to an empty one, a full declaration never loses to an empty one, and so on. Drift between crawls becomes a monotonic improvement, not a silent downgrade.</p>
+<h3>Logging guarantees</h3>
+<p>For every collapsed row, the per-doc log records:</p>
+<ul><li>the chosen variant's source path and contentHash</li><li>every losing variant's source path and contentHash</li></ul>
+<p>For every tier-C collision, the log records both source paths, both content hashes, both titles, both abstracts — plus a <code>.error</code>-level log line and a structured <code>CollisionRecord</code> in the save report. The source files are still on disk, so an auditor can always diff and recover. The index is one storage location; the corpus is another. Tier-C non-zero at end of run → save exits non-zero with a "work- not-done" banner.</p>
+<h3>Why this principle exists</h3>
+<p>BUG 1 in main's 2026-05-15 real-life test report. The pre-#293 indexer's <code>INSERT OR REPLACE</code> silently dropped Apple docs because their URLs shared a leaf name with a sibling. The <code>.lastPathComponent</code> URI shape was the root cause; the silent overwrite was the trap that made the data loss invisible until a user hit it. The lossless URI (principle 1) and the door check (principle 2) prevent the root cause; the tiered, meticulous equivalence test prevents the trap from ever mattering again.</p></section><section id="4-be-smart-at-the-input-don-t-let-garbage-in" class="doc-section"><h2><span class="section-number-badge">4</span><span class="section-title">Be smart at the input. Don&#x27;t let garbage in.</span></h2><p class="lead">Pre-INSERT validation at the door. Reject and count, by reason:</p>
+<ul><li>Empty title.</li><li>Empty content / content under a small threshold.</li><li>Placeholder strings: bare <code>&quot;Error&quot;</code>, bare</li></ul>
+<p><code>&quot;Apple Developer Documentation&quot;</code>, JS-disabled fallback templates.</p>
+<ul><li>HTTP error response bodies (403, 404, 500, 502, 503) reaching the</li></ul>
+<p>indexer (defence-in-depth for #284).</p>
+<ul><li>URI helper miss (URL doesn't decompose into a documentation URI).</li></ul>
+<p>Each rejection class gets a counter in <code>Search.IndexStats</code>. The <code>cupertino save</code> final report surfaces all classes with non-zero counts. The crawl-side filter at #284 / #289 / #291 is the first line of defence; the indexer-side filter here is defence-in-depth so any single layer failing doesn't ship bad rows.</p></section><section id="5-one-order-of-magnitude-over-the-task" class="doc-section"><h2><span class="section-number-badge">5</span><span class="section-title">One order of magnitude over the task</span></h2><p class="lead">Design for 40M docs when today's corpus is 400K. Pick algorithms whose memory and time profile hold at the larger scale.</p>
+<p>Concretely:</p>
+<ul><li>Per-row work at the door is <code>O(log N)</code> or <code>O(1)</code> against the URI</li></ul>
+<p>index. No <code>O(N)</code> scans during normal import.</p>
+<ul><li>Per-run memory is bounded by URI count, not by document size or</li></ul>
+<p>content. Materialised hashmaps with HTML bodies don't fit at 40M; hashmaps of <code>URI to (canonical-title-hash, content-hash)</code> do.</p>
+<ul><li>If the obvious data structure stops fitting at the 10x target,</li></ul>
+<p>switch to a streaming / probabilistic structure (bloom filter + DB lookup on hit) before the 1x target trips it.</p>
+<p>Why: re-indexing the bundle takes hours; re-crawling Apple takes half a day. Algorithms that fall over at scale fall over slowly and quietly. The "10x headroom" rule keeps us from shipping a structure that works on the laptop and bricks on the build farm.</p>
+<p>Carmack-on-NeXT, not Carmack-on-PC. The day you need the headroom is the day you don't have time to retrofit it.</p></section><section id="6-correctness-first" class="doc-section"><h2><span class="section-number-badge">6</span><span class="section-title">Correctness first</span></h2><p class="lead">Correctness ranks above re-index cost, build time, refactor cost, refactor scope.</p>
+<p>If a fix needs a 12-hour re-index, take the 12-hour re-index. If a fix needs a re-crawl, take the re-crawl. The cost of shipping wrong data is paid by every user every query, forever; the cost of correctness is paid once.</p>
+<p>This principle is <strong>why</strong> the previous five exist. They're operational expressions of "correctness first" at the import layer.</p>
+<hr></section><section id="companion-docs" class="doc-section"><h2><span class="section-title">Companion docs</span></h2><ul><li><code>docs/ARCHITECTURE.md</code> — package layout, layer rules.</li><li><code>docs/package-import-contract.md</code> — what each package may import.</li><li><code>AGENTS.md</code> — agent-facing rule index.</li><li><code>CLAUDE.md</code> — project-level focus + workflow.</li></ul></section>
+
+                
+            </main>
+        </div>
+
+        <footer>
+            <p>
+                Rendered from <a href="https://github.com/mihaelamj/cupertino/blob/main/docs/PRINCIPLES.md" target="_blank" rel="noopener">PRINCIPLES.md</a> by <code>_render-doc.py</code>.
+                Re-run after editing the source; nothing here is hardcoded.
+            </p>
+            <p>
+                Methodology in <a href="design-search-quality-eval.html">design/search-quality-eval</a>
+                ·
+                Architecture in <a href="architecture-database.html">architecture/database</a>
+                ·
+                Citations in <a href="../sources.html">sources.html</a>
+                ·
+                Index in <a href="database-handbook.html">database-handbook</a>
+            </p>
+        </footer>
+
+    </div>
+
+    <script>
+    (function() {
+        // Reading-progress bar
+        var bar = document.querySelector('.doc-progress-bar');
+        if (bar) {
+            window.addEventListener('scroll', function() {
+                var h = document.documentElement;
+                var scrolled = h.scrollTop / Math.max(1, (h.scrollHeight - h.clientHeight));
+                bar.style.width = (scrolled * 100).toFixed(2) + '%';
+            }, { passive: true });
+        }
+
+        // TOC active highlight
+        var rows = document.querySelectorAll('.toc-row');
+        if ('IntersectionObserver' in window && rows.length) {
+            var byHash = {};
+            rows.forEach(function(r) { byHash[r.getAttribute('href')] = r; });
+            var io = new IntersectionObserver(function(entries) {
+                entries.forEach(function(e) {
+                    if (e.isIntersecting) {
+                        rows.forEach(function(r) { r.classList.remove('active'); });
+                        var row = byHash['#' + e.target.id];
+                        if (row) row.classList.add('active');
+                    }
+                });
+            }, { rootMargin: '-25% 0px -65% 0px' });
+            document.querySelectorAll('section.doc-section[id]').forEach(function(s) { io.observe(s); });
+        }
+    })();
+    </script>
+</body>
+</html>

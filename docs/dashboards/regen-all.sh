@@ -21,6 +21,23 @@ for f in ../audits/search-quality-*-v*.md; do
 done
 
 echo ""
+echo "==> Design + architecture docs as HTML"
+DOCS_TO_RENDER=(
+    "../design/anti-hallucination-eval.md"
+    "../design/search-quality-eval.md"
+    "../design/cupertino.md"
+    "../architecture/database.md"
+    "../database-handbook.md"
+    "../PRINCIPLES.md"
+    "../ARCHITECTURE.md"
+)
+for f in "${DOCS_TO_RENDER[@]}"; do
+    if [ -f "$f" ]; then
+        python3 _render-doc.py "$f"
+    fi
+done
+
+echo ""
 echo "==> Index dashboard"
 python3 _render-index-dashboard.py
 
