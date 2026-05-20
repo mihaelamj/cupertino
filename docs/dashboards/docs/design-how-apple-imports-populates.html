@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design: How `apple_imports_json` Gets Populated on packages.db · cupertino docs</title>
+    <link rel="stylesheet" href="../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="doc-progress"><div class="doc-progress-bar"></div></div>
+
+    <div class="container doc-container">
+
+        <a class="back-link" href="../search-quality-v1.2.0.html">Back to dashboard</a>
+
+        <header class="doc-header">
+            <div class="eyebrow">Design</div>
+            <h1>Design: How `apple_imports_json` Gets Populated on packages.db</h1>
+        </header>
+
+        
+
+        
+
+        <div class="doc-layout">
+            <aside class="toc-sidebar"><div class="toc-title">On this page</div><nav class="toc-list"><a class="toc-row" href="#status-2026-05-20"><span class="toc-num toc-num-glyph">§</span><span class="toc-label">Status (2026-05-20)</span></a><a class="toc-row" href="#0-what-apple-imports-json-is"><span class="toc-num">0</span><span class="toc-label">What `apple_imports_json` is</span></a><a class="toc-row" href="#1-end-to-end-pipeline"><span class="toc-num">1</span><span class="toc-label">End-to-end pipeline</span></a><a class="toc-row" href="#2-stage-1-ast-capture"><span class="toc-num">2</span><span class="toc-label">Stage 1 — AST capture</span></a><a class="toc-row" href="#3-stage-2-write-to-package-imports"><span class="toc-num">3</span><span class="toc-label">Stage 2 — write to `package_imports`</span></a><a class="toc-row" href="#4-stage-3-derive-the-apple-module-set"><span class="toc-num">4</span><span class="toc-label">Stage 3 — derive the Apple-module set</span></a><a class="toc-row" href="#5-stage-4-the-join-this-is-the-860-fix"><span class="toc-num">5</span><span class="toc-label">Stage 4 — the JOIN (this is the #860 fix)</span></a><a class="toc-row" href="#6-stage-5-aggregate-update"><span class="toc-num">6</span><span class="toc-label">Stage 5 — aggregate + UPDATE</span></a><a class="toc-row" href="#7-how-the-read-side-consumes-it"><span class="toc-num">7</span><span class="toc-label">How the read-side consumes it</span></a><a class="toc-row" href="#8-coverage-on-the-dev-corpus-post-fix"><span class="toc-num">8</span><span class="toc-label">Coverage on the dev corpus (post-fix)</span></a><a class="toc-row" href="#9-the-companion-861-fix-swift-tools-version"><span class="toc-num">9</span><span class="toc-label">The companion #861 fix (`swift_tools_version`)</span></a><a class="toc-row" href="#10-references"><span class="toc-num">10</span><span class="toc-label">References</span></a></nav></aside>
+
+            <main class="doc-content">
+                <section id="status-2026-05-20" class="doc-section"><h2><span class="section-title">Status (2026-05-20)</span></h2><p class="lead">Reference / explanation doc covering the v1.2.0 fix for #860 + #861. Walks through what happens when <code>cupertino save --packages</code> writes the <code>package_metadata.apple_imports_json</code> column. The single number that summarises the fix: dev-corpus coverage went from <strong>1/183</strong> populated to <strong>164/183</strong> populated on the same 183-package brew corpus, with no extra IO and no constraint corpus change — only the indexer's join column changed.</p>
+<p>Companion to:</p>
+<ul><li><code>docs/design/per-db-enrichment.md</code> (the <em>why</em> — what apple-imports</li></ul>
+<p>is and why packages.db carries it)</p>
+<ul><li><code>docs/design/per-db-schema-spec.md</code> §11 (the cross-DB column map)</li><li><code>docs/handoff/autopilot-build-dev-dbs.md</code> (the operator recipe that</li></ul>
+<p>produced this fix)</p>
+<hr></section><section id="0-what-apple-imports-json-is" class="doc-section"><h2><span class="section-number-badge">0</span><span class="section-title">What `apple_imports_json` is</span></h2><p class="lead"><code>apple_imports_json</code> is a column on <code>packages.db.package_metadata</code>, one value per indexed package. The value is a sorted JSON array of lowercased Apple-framework module slugs that the package's source imports. Two examples from the dev corpus:</p>
+<table class="data-table"><thead><tr><th>owner/repo</th><th><code>apple_imports_json</code></th></tr></thead><tbody><tr><td><code>AvdLee/Roadmap</code></td><td><code>[&quot;foundation&quot;,&quot;oslog&quot;,&quot;swiftui&quot;]</code></td></tr><tr><td><code>krzysztofzablocki/Inject</code></td><td><code>[&quot;appkit&quot;,&quot;combine&quot;,&quot;foundation&quot;,&quot;swiftui&quot;,&quot;uikit&quot;]</code></td></tr><tr><td><code>mxcl/Version</code></td><td><code>[&quot;foundation&quot;]</code></td></tr><tr><td><code>vapor/swift-getting-started-web-server</code></td><td><code>NULL</code> (no Apple imports)</td></tr></tbody></table>
+<p>This column is what the <code>--apple-imports SwiftUI</code> CLI flag + MCP <code>apple_imports</code> parameter filter on. A query with <code>--apple-imports SwiftUI</code> narrows packages.db results to packages whose <code>apple_imports_json</code> JSON array contains <code>swiftui</code>. The filter uses a quote-bracketed JSON <code>LIKE</code> (<code>&#x27;%&quot;swiftui&quot;%&#x27;</code>) so <code>swiftui</code> matches <code>[&quot;swiftui&quot;]</code> and <code>[&quot;combine&quot;,&quot;swiftui&quot;]</code> but not <code>[&quot;swiftuihelper&quot;]</code>.</p>
+<hr></section><section id="1-end-to-end-pipeline" class="doc-section"><h2><span class="section-number-badge">1</span><span class="section-title">End-to-end pipeline</span></h2><p class="lead">Five stages, each with a single responsibility. The fix in #860 was entirely localised to stage 4 (the join column).</p>
+<pre class="mermaid">flowchart TD
+    A[".swift file on disk<br/>(in ~/.cupertino/packages/owner/repo/)"]:::input
+    A --> B["ASTIndexer.Extractor.extract<br/>SwiftSyntax visitor walks ImportDeclSyntax"]
+    B --> C["Result.imports[]<br/>(moduleName, line, isExported)"]
+    C --> D["Search.PackageIndex.indexPackageImports<br/>INSERT INTO package_imports"]
+    D --> E[("package_imports table<br/>file_id, module_name, line, is_exported<br/>42,875 rows on dev corpus")]:::store
+
+    F["~/.cupertino-dev/<br/>apple-constraints.json<br/>(61,040 entries)"]:::input
+    F --> G["Enrichment.PackagesAppleImportsPass.run<br/>extract first segment of each docURI"]
+    G --> H{"Set<String><br/>227 apple slugs<br/>swiftui, combine, foundation, …"}:::derived
+
+    E --> J["SELECT pf.package_id,<br/>LOWER(SUBSTR(pi.module_name, 1,<br/>INSTR(pi.module_name || '.', '.') - 1))<br/>FROM package_imports pi<br/>JOIN package_files pf …"]
+    J --> K["per-package raw module list<br/>(SwiftUI, UIKit, AppKit,<br/>Foundation.URL→foundation, …)"]
+    H --> L["Filter: keep only<br/>appleModules.contains(slug)"]
+    K --> L
+    L --> M["Per-package: sort, JSON-encode<br/>[appkit, combine, foundation, swiftui, uikit]"]
+    M --> N[("UPDATE package_metadata<br/>SET apple_imports_json = ?,<br/>enrichment_version = ?")]:::store
+
+    classDef input fill:#0a84ff,stroke:#0040cc,color:#fff
+    classDef store fill:#34c759,stroke:#1f7a3a,color:#fff
+    classDef derived fill:#ff9500,stroke:#c4730a,color:#fff</pre>
+<p>Two inputs converge: the <strong>imports</strong> the AST extractor finds in source (left), and the <strong>Apple-module set</strong> derived from the constraints corpus (right). The join in stage 4 keeps every row where the imported module is in the Apple set.</p>
+<hr></section><section id="2-stage-1-ast-capture" class="doc-section"><h2><span class="section-number-badge">2</span><span class="section-title">Stage 1 — AST capture</span></h2><p class="lead"><code>ASTIndexer.Extractor</code> is a SwiftSyntax <code>SyntaxVisitor</code>. It walks each <code>.swift</code> file's syntax tree and accumulates <code>Symbol</code> + <code>Import</code> nodes. For imports, the visitor handles <code>ImportDeclSyntax</code>:</p>
+<pre><code>override func visit(_ node: ImportDeclSyntax) -&gt; SyntaxVisitorContinueKind {
+    imports.append(ASTIndexer.Import(
+        moduleName: node.path.last?.name.text ?? &quot;&quot;,
+        line: ...,
+        isExported: node.attributes.contains { $0.description.contains(&quot;_exported&quot;) }
+    ))
+    return .skipChildren
+}</code></pre>
+<p><code>moduleName</code> carries the full dotted path: <code>import Foundation</code> → <code>&quot;Foundation&quot;</code>; <code>import Foundation.URL</code> → <code>&quot;Foundation.URL&quot;</code>; <code>import struct SwiftUI.View</code> → <code>&quot;SwiftUI&quot;</code> (last path component).</p>
+<hr></section><section id="3-stage-2-write-to-package-imports" class="doc-section"><h2><span class="section-number-badge">3</span><span class="section-title">Stage 2 — write to `package_imports`</span></h2><p class="lead"><code>Search.PackageIndex.indexPackage</code> opens a per-package transaction. For each <code>.swift</code> file, it inserts the <code>package_files</code> row, reads the new <code>file_id</code> via <code>sqlite3_last_insert_rowid</code>, then calls TWO extractors: <code>indexPackageSymbols</code> and (post-#860) <code>indexPackageImports</code>.</p>
+<pre class="mermaid">sequenceDiagram
+    autonumber
+    participant Indexer as PackageIndex.indexPackage
+    participant Extractor as ASTIndexer.Extractor
+    participant Files as package_files
+    participant Symbols as package_symbols
+    participant Imports as package_imports
+
+    loop per .swift file in the package
+        Indexer->>Files: INSERT (package_id, relpath, …)
+        Files-->>Indexer: file_id (last_insert_rowid)
+        Indexer->>Extractor: extract(from: source)
+        Extractor-->>Indexer: Result{symbols, imports}
+        Indexer->>Symbols: INSERT × symbols.count
+        Indexer->>Imports: INSERT × imports.count
+    end</pre>
+<p>Pre-#860, the <code>Imports</code> step did not exist. The bug was that <code>AppleImportsPass</code> had nothing useful to join against; the indexer captured imports per AST visit but discarded them.</p>
+<hr></section><section id="4-stage-3-derive-the-apple-module-set" class="doc-section"><h2><span class="section-number-badge">4</span><span class="section-title">Stage 3 — derive the Apple-module set</span></h2><p class="lead">The enrichment pass loads <code>apple-constraints.json</code> from the dev base directory (61,040 entries on the current bundle). Each entry has shape:</p>
+<pre><code>{ &quot;docURI&quot;: &quot;apple-docs://swiftui/view&quot;, &quot;constraints&quot;: [...] }</code></pre>
+<p>The pass walks every entry, takes the URI substring after <code>://</code>, splits on <code>/</code>, and keeps the <strong>first segment</strong> lowercased. That's the framework slug. On the current dev corpus this produces 227 distinct slugs: <code>accelerate</code>, <code>accessibility</code>, <code>appintents</code>, <code>appkit</code>, <code>combine</code>, <code>foundation</code>, …, <code>swiftui</code>, <code>uikit</code>, …</p>
+<p>The set is a <code>Set&lt;String&gt;</code>, not a SQL table — it lives in-process during the pass run.</p>
+<hr></section><section id="5-stage-4-the-join-this-is-the-860-fix" class="doc-section"><h2><span class="section-number-badge">5</span><span class="section-title">Stage 4 — the JOIN (this is the #860 fix)</span></h2><h3>Pre-#860 (broken)</h3>
+<pre><code>SELECT package_id, LOWER(module) FROM package_files
+WHERE module IS NOT NULL AND module != &#x27;&#x27;;</code></pre>
+<p class="lead"><code>package_files.module</code> is the package's OWN Swift module name, set at indexing time from the package's <code>Package.swift</code> target declarations. Examples from the corpus: <code>Soto</code>, <code>Vapor</code>, <code>Rules</code>, <code>SwiftDocC</code>, <code>ComposableArchitecture</code>. These are <strong>never</strong> Apple framework slugs. Coverage was 1/183 — the lone match was <code>apple/swift-system</code> whose module is literally named <code>System</code>, accidentally colliding with the <code>SystemConfiguration</code> Apple slug.</p>
+<h3>Post-#860 (fixed)</h3>
+<pre><code>SELECT
+    pf.package_id,
+    LOWER(SUBSTR(pi.module_name, 1, INSTR(pi.module_name || &#x27;.&#x27;, &#x27;.&#x27;) - 1))
+FROM package_imports pi
+JOIN package_files pf ON pi.file_id = pf.id;</code></pre>
+<p>Two changes:</p>
+<ul><li><strong>Source table:</strong> <code>package_imports</code>, not <code>package_files</code>. RHS is</li></ul>
+<p>now the canonical <code>import X</code> set per file.</p>
+<ul><li><strong>Submodule normalisation:</strong> <code>SUBSTR / INSTR</code> splits at the first</li></ul>
+<p>dot so <code>Foundation.URL</code> → <code>foundation</code> for join purposes; bare <code>SwiftUI</code> → <code>swiftui</code> unchanged. This added 3 more populated packages (e.g. <code>mxcl/Version</code>, whose only Apple signal is <code>Foundation.OperatingSystemVersion</code>).</p>
+<p>The <code>INSTR(module_name || &#x27;.&#x27;, &#x27;.&#x27;)</code> trick avoids a special-case branch for bare imports: appending <code>.</code> to the string guarantees the position is <code>length + 1</code> when there's no dot, so the SUBSTR returns the whole string unchanged.</p>
+<h3>Worked example: <code>krzysztofzablocki/Inject</code></h3>
+<p>The package's source has these imports (one row per import in <code>package_imports</code>):</p>
+<pre><code>Foundation × 4, PackageDescription × 1, SwiftUI × 2, UIKit × 2,
+AppKit × 2, Combine × 1</code></pre>
+<p>The JOIN returns 12 <code>(package_id=72, slug)</code> rows. After the Swift filter on <code>appleModules.contains(slug)</code>, <code>packagedescription</code> is dropped (not in the 227-slug Apple set). The remaining slugs deduplicate to <code>{appkit, combine, foundation, swiftui, uikit}</code>.</p>
+<hr></section><section id="6-stage-5-aggregate-update" class="doc-section"><h2><span class="section-number-badge">6</span><span class="section-title">Stage 5 — aggregate + UPDATE</span></h2><p class="lead">The pass groups by <code>package_id</code>, sorts each set lexicographically (so output is byte-stable across re-runs), JSON-encodes the array, and <code>UPDATE package_metadata SET apple_imports_json = ?, enrichment_version = ? WHERE id = ?</code>.</p>
+<p>For Inject:</p>
+<pre><code>UPDATE package_metadata
+   SET apple_imports_json = &#x27;[&quot;appkit&quot;,&quot;combine&quot;,&quot;foundation&quot;,&quot;swiftui&quot;,&quot;uikit&quot;]&#x27;,
+       enrichment_version = 1
+ WHERE id = 72;</code></pre>
+<p>That's what <code>SELECT apple_imports_json FROM package_metadata WHERE owner = &#x27;krzysztofzablocki&#x27; AND repo = &#x27;Inject&#x27;</code> returns now.</p>
+<hr></section><section id="7-how-the-read-side-consumes-it" class="doc-section"><h2><span class="section-number-badge">7</span><span class="section-title">How the read-side consumes it</span></h2><p class="lead">The default-search path through <code>Search.PackageQuery.answer</code> applies the filter at SQL time:</p>
+<pre><code>SELECT … FROM package_files_fts fts
+JOIN package_metadata pm ON fts.package_id = pm.id
+WHERE fts MATCH ?
+  AND pm.apple_imports_json LIKE &#x27;%&quot;&#x27; || ? || &#x27;&quot;%&#x27;;</code></pre>
+<p>The quote-bracketed pattern (<code>%&quot;swiftui&quot;%</code>, not <code>%swiftui%</code>) matches <code>[&quot;swiftui&quot;]</code> exactly and prevents <code>swiftui</code> from substring-matching <code>[&quot;swiftuihelper&quot;]</code>. The same wrap applies in the MCP path through <code>CompositeToolProvider.handleSearch</code> → <code>Services.UnifiedSearchService.searchAll(appleImports:)</code> → <code>Search.PackagesSearcher.searchPackages(appleImport:)</code>.</p>
+<pre class="mermaid">flowchart LR
+    A["User CLI:<br/>--apple-imports SwiftUI"]:::entry
+    B["MCP tool args:<br/>apple_imports=SwiftUI"]:::entry
+    A --> C["PackageFTSCandidateFetcher.appleImport"]
+    B --> D["UnifiedSearchService.searchAll<br/>appleImports param"]
+    C --> E
+    D --> E["PackageQuery.answer<br/>appleImport: 'swiftui'"]
+    E --> F["AND pm.apple_imports_json<br/>LIKE '%\"swiftui\"%'"]
+    F --> G["filtered FTS5 result list"]:::out
+
+    classDef entry fill:#0a84ff,stroke:#0040cc,color:#fff
+    classDef out fill:#34c759,stroke:#1f7a3a,color:#fff</pre>
+<hr></section><section id="8-coverage-on-the-dev-corpus-post-fix" class="doc-section"><h2><span class="section-number-badge">8</span><span class="section-title">Coverage on the dev corpus (post-fix)</span></h2><table class="data-table"><thead><tr><th>metric</th><th>pre-#860 fix</th><th>post-#860 fix</th></tr></thead><tbody><tr><td>packages with non-empty <code>apple_imports_json</code></td><td>1/183 (0.5%)</td><td>164/183 (90%)</td></tr><tr><td><code>package_imports</code> rows written</td><td>n/a (table didn't exist)</td><td class="num">42,875</td></tr><tr><td><code>[enrichment/packages-apple-imports] affected=N</code></td><td class="num">1</td><td class="num">164</td></tr><tr><td>save wall-clock (whole indexer + enrichment)</td><td>504s / 940s (cache effects)</td><td>~520s</td></tr></tbody></table>
+<p class="lead">The 19 packages still NULL on <code>apple_imports_json</code> were verified <strong>by inspection, not presumption</strong>: server-only Vapor extensions (<code>vapor/jwt</code>, <code>vapor/leaf</code>, <code>vapor/fluent-mysql-driver</code>), <code>swiftlang/swift-cmark</code>, <code>swiftlang/swift-llbuild</code> (only imports <code>Foundation.ProcessInfo</code> from PackageDescription target which the indexer doesn't reach), and a handful of NIO / cross-platform libraries that genuinely don't pull in any Apple framework. None of those is a bug.</p>
+<hr></section><section id="9-the-companion-861-fix-swift-tools-version" class="doc-section"><h2><span class="section-number-badge">9</span><span class="section-title">The companion #861 fix (`swift_tools_version`)</span></h2><p class="lead">Same v1.2.0 round, smaller fix, lives next door. The <code>Search.PackageIndexer.loadAvailability</code> path used to take <code>swiftToolsVersion</code> straight from the per-package <code>availability.json</code> file. Those files predate the #225 annotator that added the field, so brew-shipped corpora carried no value.</p>
+<p>Post-fix, <code>loadAvailability</code> does:</p>
+<pre><code>let swiftToolsVersion: String? = result.swiftToolsVersion
+    ?? readSwiftToolsVersionFromPackageManifest(at: dir)</code></pre>
+<p>The fallback opens <code>&lt;dir&gt;/Package.swift</code>, reads it, runs <code>ASTIndexer.AvailabilityParsers.parseSwiftToolsVersion</code> over line 1 (the same parser the annotator uses). Coverage on the dev corpus went 0/183 → 182/183. The 1 NULL is <code>swiftlang/swift</code> itself, whose top-level Package.swift uses a non-standard pattern the parser doesn't recognise.</p>
+<hr></section><section id="10-references" class="doc-section"><h2><span class="section-number-badge">10</span><span class="section-title">References</span></h2><ul><li>Source files modified by the fix:</li><li><code>Packages/Sources/Search/PackageIndex.swift</code> (schema v4 → v5 + new</li></ul>
+<p class="lead">table + <code>indexPackageImports</code> + join rewrite)</p>
+<ul><li><code>Packages/Sources/Search/PackageIndexer.swift</code> (#861 fallback</li></ul>
+<p>helper + <code>loadAvailability</code> glue)</p>
+<ul><li>Source files modified by #864 companion (FK CASCADE on re-run):</li></ul>
+<p>same <code>PackageIndex.swift</code> (PRAGMA line in <code>openDatabase</code>).</p>
+<ul><li>Tests pinning the fix:</li><li><code>Packages/Tests/SearchTests/Issue860861PackageImportsAndSwiftToolsTests.swift</code></li></ul>
+<p>(7 cases)</p>
+<ul><li><code>Packages/Tests/SearchTests/Issue864PackagesReRunOrphansTests.swift</code></li></ul>
+<p>(3 cases)</p>
+<ul><li>Merged PRs: #863 (autopilot doc), #865 (#864 FK), #866 (this</li></ul>
+<p>walkthrough's #860 + #861 fixes).</p>
+<ul><li>Live dashboard hosting: https://cupertino.aleahim.com/</li></ul></section>
+
+                
+            </main>
+        </div>
+
+        <footer>
+            <p>
+                Rendered from <a href="https://github.com/mihaelamj/cupertino/blob/main/docs/design/how-apple-imports-populates.md" target="_blank" rel="noopener">design/how-apple-imports-populates.md</a> by <code>_render-doc.py</code>.
+                Re-run after editing the source; nothing here is hardcoded.
+            </p>
+            <p>
+                Methodology in <a href="design-search-quality-eval.html">design/search-quality-eval</a>
+                ·
+                Architecture in <a href="architecture-database.html">architecture/database</a>
+                ·
+                Citations in <a href="../sources.html">sources.html</a>
+                ·
+                Index in <a href="database-handbook.html">database-handbook</a>
+            </p>
+        </footer>
+
+    </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+    (function() {
+        if (typeof mermaid === 'undefined') {
+            console.warn('mermaid failed to load from CDN');
+            return;
+        }
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var apple = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif';
+        var light = {
+            background: '#ffffff',
+            primaryColor: '#ffffff',
+            primaryTextColor: '#1d1d1f',
+            primaryBorderColor: '#d2d2d7',
+            secondaryColor: '#f5f5f7',
+            tertiaryColor: '#ffffff',
+            lineColor: '#6e6e73',
+            edgeLabelBackground: '#f5f5f7',
+            clusterBkg: '#f5f5f7',
+            clusterBorder: '#d2d2d7',
+            mainBkg: '#ffffff',
+            textColor: '#1d1d1f',
+            nodeTextColor: '#1d1d1f',
+            fontFamily: apple,
+        };
+        var dark = {
+            darkMode: true,
+            background: '#1c1c1e',
+            primaryColor: '#2c2c2e',
+            primaryTextColor: '#ffffff',
+            primaryBorderColor: '#48484a',
+            secondaryColor: '#1c1c1e',
+            tertiaryColor: '#2c2c2e',
+            lineColor: '#aeaeb2',
+            edgeLabelBackground: '#2c2c2e',
+            clusterBkg: '#1c1c1e',
+            clusterBorder: '#48484a',
+            mainBkg: '#2c2c2e',
+            textColor: '#ffffff',
+            nodeTextColor: '#ffffff',
+            fontFamily: apple,
+        };
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: prefersDark ? dark : light,
+            fontFamily: apple,
+            securityLevel: 'loose',
+            flowchart: { htmlLabels: true, curve: 'basis', useMaxWidth: true },
+        });
+    })();
+    </script>
+
+    <script>
+    (function() {
+        // Reading-progress bar
+        var bar = document.querySelector('.doc-progress-bar');
+        if (bar) {
+            window.addEventListener('scroll', function() {
+                var h = document.documentElement;
+                var scrolled = h.scrollTop / Math.max(1, (h.scrollHeight - h.clientHeight));
+                bar.style.width = (scrolled * 100).toFixed(2) + '%';
+            }, { passive: true });
+        }
+
+        // TOC active highlight
+        var rows = document.querySelectorAll('.toc-row');
+        if ('IntersectionObserver' in window && rows.length) {
+            var byHash = {};
+            rows.forEach(function(r) { byHash[r.getAttribute('href')] = r; });
+            var io = new IntersectionObserver(function(entries) {
+                entries.forEach(function(e) {
+                    if (e.isIntersecting) {
+                        rows.forEach(function(r) { r.classList.remove('active'); });
+                        var row = byHash['#' + e.target.id];
+                        if (row) row.classList.add('active');
+                    }
+                });
+            }, { rootMargin: '-25% 0px -65% 0px' });
+            document.querySelectorAll('section.doc-section[id]').forEach(function(s) { io.observe(s); });
+        }
+    })();
+    </script>
+</body>
+</html>

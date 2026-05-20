@@ -26,6 +26,7 @@ DOCS_TO_RENDER=(
     "../design/anti-hallucination-eval.md"
     "../design/search-quality-eval.md"
     "../design/cupertino.md"
+    "../design/how-apple-imports-populates.md"
     "../architecture/database.md"
     "../database-handbook.md"
     "../PRINCIPLES.md"
