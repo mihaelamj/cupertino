@@ -68,7 +68,11 @@ The brew DB at `~/.cupertino/search.db` is user-production state. Use a SQLite r
 | `docs/design/search-quality-eval.md` | The cupertino-specific specialisation. Eight-class query taxonomy (canonical lookup, framework root, acronym, CamelCase fragment, deprecation-aware, cross-source canonical, prose, symbol-attribute), each with the appropriate metric. **Both success criteria** (good search C1 + anti-hallucination C2). Phased plan including Phase 1.7 agent-end-to-end eval. |
 | Memory `feedback_code_changes_as_ideas_for_future.md` | During research / audit / documentation work, frame code direction as ideas for future releases, not patches to land now. |
 
-**Concrete baseline:** `docs/audits/search-quality-baseline-v1.2.0.md` records the first formal Phase 1 measurement (50 canonical-lookup queries against the v1.2.0 candidate DB on 2026-05-20, MRR = 0.9467, P@1 perfect on 46/50). All future ranking changes are compared against this baseline using the same harness in paired mode.
+**Concrete baselines on the v1.2.0 candidate DB (2026-05-20):**
+- `docs/audits/search-quality-baseline-v1.2.0.md` — classes A + B (canonical lookup, framework root): **MRR 0.9467, P@1 perfect on 46/50**. The reference for paired ranking-change comparisons.
+- `docs/audits/search-quality-deprecation-baseline-v1.2.0.md` — class E (deprecation-aware): **Swift form wins 30/30 (100%) over NS-prefixed Obj-C form, sign-test p = 0.0078**. Cupertino reliably promotes modern Swift over legacy NS-class for the most user-visible anti-hallucination concern.
+
+Remaining classes per the design's §14.2 priority order: C (acronym), D (CamelCase fragment), F (cross-source canonical), G (prose), H (symbol-attribute) — not yet baselined. Plus §14.4 Phase 1.7 agent-end-to-end eval.
 
 The relationship between the universal rule and the cupertino design is:
 - The **universal rule** says "this is how IR evaluation must be done if it is done."
