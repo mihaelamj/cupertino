@@ -39,7 +39,7 @@
                     <strong>v1.2.0 wins every paired measurement against earlier releases.</strong> Across 4 version-diff audits (3 strong, 1 mixed, 0 regression) covering 110+ queries on the canonical-lookup and Apple-modernisation corpora: <strong>~30 queries newly land at rank 1 in v1.2.0, zero queries regressed</strong>. Stats: McNemar two-sided p &le; 0.04 on every comparison, &le; 10<sup>-5</sup> on the largest corpus.
                 </p>
                 <p class="summary-text" style="margin-top: 12px;">
-                    The 7 absolute-baseline audits measure v1.2.0 standalone (not against v1.1.0). <strong>3 pass strongly</strong> on the canonical use cases (typing a Swift type name, modern-vs-legacy choice, fragment recall, cross-source ranking). <strong>3 surface real standing weaknesses</strong> in cupertino's relational-metadata-to-search routing &mdash; prose queries, acronym recall, symbol-attribute filtering &mdash; each tracked with an open issue. These are not v1.1.0 regressions; they're absolute weak spots that existed in v1.1.0 too and need a separate ranking change to close. <strong>1 has methodology limits</strong> that human-judged measurement would resolve.
+                    The 7 absolute-baseline audits measure v1.2.0 standalone (not against any prior release). <strong>3 pass strongly</strong> on the canonical use cases (typing a Swift type name, modern-vs-legacy choice, fragment recall, cross-source ranking). <strong>3 surface real standing weaknesses</strong> in cupertino's relational-metadata-to-search routing &mdash; prose queries, acronym recall, symbol-attribute filtering &mdash; each tracked with an open issue. These are not regressions against any prior release; they're absolute weak spots that existed in earlier versions too and need a separate ranking change to close. <strong>1 has methodology limits</strong> that human-judged measurement would resolve.
                 </p>
             </div>
 
@@ -57,7 +57,7 @@
                 <div class="kpi">
                     <div class="kpi-label">Standing weak spots</div>
                     <div class="kpi-value red">3 / 7</div>
-                    <div class="kpi-desc">Baseline classes where v1.2.0 has known weaknesses; tracked with open issues. <strong>Not v1.1.0 regressions.</strong></div>
+                    <div class="kpi-desc">Baseline classes where v1.2.0 has known weaknesses; tracked with open issues. <strong>Not regressions against any prior release.</strong></div>
                 </div>
             </div>
 

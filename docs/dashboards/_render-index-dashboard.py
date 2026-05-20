@@ -296,7 +296,7 @@ def render_index(audits_dir: Path, out_path: Path, extras_path: Path | None = No
                     <strong>v1.2.0 wins every paired measurement against earlier releases.</strong> Across {agg_vd['total']} version-diff audits ({agg_vd['strong']} strong, {agg_vd['mixed']} mixed, {agg_vd['weak']} regression) covering 110+ queries on the canonical-lookup and Apple-modernisation corpora: <strong>~30 queries newly land at rank 1 in v1.2.0, zero queries regressed</strong>. Stats: McNemar two-sided p &le; 0.04 on every comparison, &le; 10<sup>-5</sup> on the largest corpus.
                 </p>
                 <p class="summary-text" style="margin-top: 12px;">
-                    The {agg_bl['total']} absolute-baseline audits measure v1.2.0 standalone (not against v1.1.0). <strong>{agg_bl['strong']} pass strongly</strong> on the canonical use cases (typing a Swift type name, modern-vs-legacy choice, fragment recall, cross-source ranking). <strong>{agg_bl['weak']} surface real standing weaknesses</strong> in cupertino's relational-metadata-to-search routing &mdash; prose queries, acronym recall, symbol-attribute filtering &mdash; each tracked with an open issue. These are not v1.1.0 regressions; they're absolute weak spots that existed in v1.1.0 too and need a separate ranking change to close. <strong>{agg_bl['mixed']} {'have' if agg_bl['mixed'] != 1 else 'has'} methodology limits</strong> that human-judged measurement would resolve.
+                    The {agg_bl['total']} absolute-baseline audits measure v1.2.0 standalone (not against any prior release). <strong>{agg_bl['strong']} pass strongly</strong> on the canonical use cases (typing a Swift type name, modern-vs-legacy choice, fragment recall, cross-source ranking). <strong>{agg_bl['weak']} surface real standing weaknesses</strong> in cupertino's relational-metadata-to-search routing &mdash; prose queries, acronym recall, symbol-attribute filtering &mdash; each tracked with an open issue. These are not regressions against any prior release; they're absolute weak spots that existed in earlier versions too and need a separate ranking change to close. <strong>{agg_bl['mixed']} {'have' if agg_bl['mixed'] != 1 else 'has'} methodology limits</strong> that human-judged measurement would resolve.
                 </p>
             </div>
 
@@ -314,7 +314,7 @@ def render_index(audits_dir: Path, out_path: Path, extras_path: Path | None = No
                 <div class="kpi">
                     <div class="kpi-label">Standing weak spots</div>
                     <div class="kpi-value {'red' if agg_bl['weak'] > 0 else 'green'}">{agg_bl['weak']} / {agg_bl['total']}</div>
-                    <div class="kpi-desc">Baseline classes where v1.2.0 has known weaknesses; tracked with open issues. <strong>Not v1.1.0 regressions.</strong></div>
+                    <div class="kpi-desc">Baseline classes where v1.2.0 has known weaknesses; tracked with open issues. <strong>Not regressions against any prior release.</strong></div>
                 </div>
             </div>
 
