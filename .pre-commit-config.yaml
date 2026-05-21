@@ -21,13 +21,28 @@ repos:
         # Only run when Swift sources or the script itself change.
         files: '(Packages/Sources/.*\.swift|scripts/check-package-purity\.sh)$'
 
+      - id: changelog-auto-inject
+        name: Auto-inject TODO CHANGELOG entry from commit subject
+        entry: scripts/changelog-auto-inject.sh
+        language: script
+        pass_filenames: false
+        # prepare-commit-msg stage: runs before the editor opens so the
+        # injected CHANGELOG line is part of the same commit. Reads the
+        # conventional-commit type from the subject and maps to a
+        # CHANGELOG section. Bails out for amend / merge / docs-only /
+        # explicit `[no-changelog]` opt-out. See script header for the
+        # full bail-out list.
+        stages: [prepare-commit-msg]
+
       - id: changelog-touched
         name: CHANGELOG.md updated for source changes (post-2026-05-17 audit guard)
         entry: scripts/check-changelog-touched.sh
         language: script
         pass_filenames: false
-        # Always run on every commit — the script decides whether the
+        # Always run on every commit. The script decides whether the
         # change set requires CHANGELOG (cheap: just a diff inspect).
         # Use `git commit --no-verify` or include `[no-changelog]` in
-        # the commit message body to opt out per-commit.
+        # the commit message body to opt out per-commit. Now usually
+        # passes because the prepare-commit-msg auto-inject above stages
+        # a TODO entry on the author's behalf.
         stages: [commit]
