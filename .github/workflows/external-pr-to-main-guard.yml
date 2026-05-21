@@ -18,9 +18,11 @@ name: External PR to main guard
 #
 # Idempotency: the comment is edited in place across pushes (find-by-marker
 # then update), and the review is submitted only when the PR doesn't yet
-# have a REQUEST_CHANGES from this workflow. Maintainers in the MAINTAINERS
-# list short-circuit the whole job (no-op) so the workflow doesn't bother
-# legitimate release PRs.
+# have a CHANGES_REQUESTED OR DISMISSED review from this workflow. The
+# DISMISSED case is the explicit-maintainer-override path; once a maintainer
+# dismisses the review, subsequent pushes don't re-submit (so the override
+# stays in effect). Maintainers in the MAINTAINERS list short-circuit the
+# whole job (no-op) so the workflow doesn't bother legitimate release PRs.
 #
 # Implements #761.
 
@@ -83,12 +85,9 @@ jobs:
       - name: Post sticky warning + REQUEST_CHANGES review
         if: steps.maintainer-check.outputs.is_maintainer == 'false'
         uses: actions/github-script@v7
-        env:
-          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         with:
           script: |
             const prNumber = context.payload.pull_request.number;
-            const prAuthor = process.env.PR_AUTHOR;
             const marker = '<!-- external-pr-to-main-guard:sticky -->';
             const body = [
               marker,
