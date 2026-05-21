@@ -63,7 +63,32 @@ cd "$REPO_ROOT" || { echo "❌ cannot cd to repo root" >&2; exit 2; }
 CHECK="all"
 SINGLE_ISSUE=""
 DRY_RUN=false
-SCHEMA_FILE="Packages/Sources/Search/Search.Index.Schema.swift"
+
+# Per-table schema source routing. Each cited `<table>.<col>` reference
+# in an issue body is validated against the file that defines that
+# table's `CREATE TABLE` block. Pre-#886 the script read only
+# search.db's schema, so any packages.db or samples.db column citation
+# false-flagged as "column not found." Origin: #886.
+SCHEMA_SEARCH="Packages/Sources/Search/Search.Index.Schema.swift"
+SCHEMA_PACKAGES="Packages/Sources/Search/PackageIndex.swift"
+SCHEMA_SAMPLES="Packages/Sources/SampleIndex/Sample.Index.Database.swift"
+
+# Resolve the schema source file for a given table name. Echoes the
+# file path (relative to repo root) or empty if the table isn't routed.
+schema_source_for() {
+    case "$1" in
+        docs_metadata|docs_structured|doc_symbols|doc_code_examples|doc_imports|framework_aliases|inheritance|sample_code_metadata)
+            echo "$SCHEMA_SEARCH"
+            ;;
+        package_metadata|package_files|package_symbols|package_imports)
+            echo "$SCHEMA_PACKAGES"
+            ;;
+        files|file_imports|file_symbols|projects)
+            echo "$SCHEMA_SAMPLES"
+            ;;
+        *) echo "" ;;
+    esac
+}
 
 for arg in "$@"; do
     case "$arg" in
@@ -126,12 +151,21 @@ EOF
 
 # --- Schema claims to validate (CHECK 4) ------------------------------
 #
-# Format: regex pattern matched against issue bodies. If the pattern
-# matches but the SCHEMA_FILE doesn't define the column, flag it.
-# Conservative: only checks `docs_metadata.<col>` and the most-cited
-# tables. Expand as needed.
+# Each table in `SCHEMA_TABLES` is matched against issue bodies via the
+# `<table>.<col>` shape; the column is then validated against the
+# schema source file that `schema_source_for` routes the table to
+# (search.db / packages.db / samples.db, see the SCHEMA_* paths above).
+# Conservative: only the most-cited tables are listed; expand as
+# citations enter issue bodies.
 
-SCHEMA_TABLES=(docs_metadata docs_structured doc_symbols doc_code_examples package_metadata package_files sample_code_metadata)
+SCHEMA_TABLES=(
+    # search.db tables
+    docs_metadata docs_structured doc_symbols doc_code_examples sample_code_metadata
+    # packages.db tables
+    package_metadata package_files package_symbols package_imports
+    # samples.db tables
+    file_imports file_symbols
+)
 
 # --- Cross-ref blocker phrases (CHECK 3) ------------------------------
 #
@@ -181,13 +215,15 @@ issue_state() {
     fi
 }
 
-# Returns the column list for a given table by reading SCHEMA_FILE.
-# Crude: extracts the lines between `CREATE TABLE <table> (` and the
-# matching `);`, pulls the first whitespace-separated token on each
-# row, drops constraints. Good enough for `docs_metadata` / friends.
+# Returns the column list for a given table by reading the schema source
+# file passed in. Crude: extracts the lines between `CREATE TABLE <table> (`
+# and the matching `);`, pulls the first whitespace-separated token on
+# each row, drops constraints. Good enough for `docs_metadata` /
+# `package_files` / `file_imports` and friends.
 schema_columns_for() {
-    local table="$1"
-    [ -f "$SCHEMA_FILE" ] || return
+    local table="$1" schema_file="$2"
+    [ -n "$schema_file" ] || return
+    [ -f "$schema_file" ] || return
     awk -v t="$table" '
         BEGIN { inside = 0 }
         $0 ~ "CREATE (VIRTUAL )?TABLE (IF NOT EXISTS )?" t " *\\(|CREATE (VIRTUAL )?TABLE (IF NOT EXISTS )?" t "\\(" { inside = 1; next }
@@ -202,7 +238,7 @@ schema_columns_for() {
             gsub(/[",;()]/, "", col)
             if (col != "") print col
         }
-    ' "$SCHEMA_FILE" | sort -u
+    ' "$schema_file" | sort -u
 }
 
 # --- Per-issue checks ------------------------------------------------
@@ -210,11 +246,27 @@ schema_columns_for() {
 check_renamed() {
     local n="$1" body="$2"
     local hits=""
+    # Pre-strip legitimate `Packages/Sources/` prefixes to a sentinel so
+    # "missing Packages/ prefix" patterns (those starting with `Sources/`)
+    # only fire on genuinely-bare references. Without this, a body that
+    # correctly cites `Packages/Sources/TUI/Foo.swift` substring-matches
+    # the `Sources/TUI/` rename-map entry and gets falsely flagged.
+    # Sentinel choice: `__PKG_PREFIX_OK__` (no regex metachars, never
+    # appears in legitimate bodies). Origin: #886.
+    local body_clean
+    body_clean=$(echo "$body" | sed 's|Packages/Sources/|__PKG_PREFIX_OK__|g')
     while IFS=$'\t' read -r pat hint; do
         [ -z "$pat" ] && continue
-        if echo "$body" | grep -qE "$pat"; then
+        # Detect missing-prefix patterns by their leading `Sources/`
+        # literal. For those, search the sentinel-stripped body so the
+        # match counts only bare references.
+        local search="$body"
+        if [[ "$pat" == 'Sources/'* ]]; then
+            search="$body_clean"
+        fi
+        if echo "$search" | grep -qE "$pat"; then
             local sample
-            sample=$(echo "$body" | grep -oE "$pat" | head -1)
+            sample=$(echo "$search" | grep -oE "$pat" | head -1)
             hits+="    - \`${sample}\` → ${hint}"$'\n'
         fi
     done <<<"$RENAME_MAP"
@@ -296,19 +348,22 @@ check_xref() {
 
 check_schema() {
     local n="$1" body="$2"
-    [ -f "$SCHEMA_FILE" ] || return
     local hits=""
     for table in "${SCHEMA_TABLES[@]}"; do
         local refs
         refs=$(echo "$body" | grep -oE "${table}\.[a-z_]+" | sort -u)
         [ -z "$refs" ] && continue
+        local schema_file
+        schema_file=$(schema_source_for "$table")
+        [ -z "$schema_file" ] && continue
+        [ -f "$schema_file" ] || continue
         local cols
-        cols=$(schema_columns_for "$table")
+        cols=$(schema_columns_for "$table" "$schema_file")
         while IFS= read -r ref; do
             [ -z "$ref" ] && continue
             local col="${ref#${table}.}"
             if ! echo "$cols" | grep -qx "$col"; then
-                hits+="    - \`${ref}\` → column \`${col}\` not found in \`${table}\` (\`${SCHEMA_FILE}\`)"$'\n'
+                hits+="    - \`${ref}\` → column \`${col}\` not found in \`${table}\` (\`${schema_file}\`)"$'\n'
             fi
         done <<<"$refs"
     done
@@ -496,7 +551,7 @@ if [ -n "$SCHEMA_REPORT" ]; then
     DRIFT=true
     echo "## Stale schema claims (check 4)"
     echo ""
-    echo "Bodies reference \`<table>.<column>\` shapes that don't match the current schema. Schema source: \`${SCHEMA_FILE}\`."
+    echo "Bodies reference \`<table>.<column>\` shapes that don't match the current schema. Per-table schema sources: \`${SCHEMA_SEARCH}\` (search.db), \`${SCHEMA_PACKAGES}\` (packages.db), \`${SCHEMA_SAMPLES}\` (samples.db)."
     echo ""
     printf "%s" "$SCHEMA_REPORT"
     echo ""
