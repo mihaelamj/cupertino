@@ -772,7 +772,7 @@ Headline jump from v1.1.0: **rank-1 accuracy on canonical-lookup queries went fr
 **Previously released:** v1.1.0 on 2026-05-14 (refactor release: namespacing + Crawler extract + DI epic kickoff; 285,735 documents, schema 13). v1.0.2 on 2026-05-11 (URL canonicalization + re-indexed bundle, 277,640 documents).
 
 - ✅ All core functionality working
-- ✅ 350+ test functions across 230+ test files (2,407 / 347 suites green at v1.2.0 ship)
+- ✅ 350+ test functions across 230+ test files (2,408 / 347 suites green at v1.2.0 ship)
 - ✅ 0 lint violations
 - ✅ Swift 6.3 compliant with 100% strict concurrency checking
 - ✅ All production bugs resolved at ship time
