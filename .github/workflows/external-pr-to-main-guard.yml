@@ -37,6 +37,17 @@ permissions:
   contents: read
   pull-requests: write
 
+# Serialize runs per PR. Without this, two near-simultaneous pushes (a
+# rapid amend-and-force-push, say) could both observe "no sticky comment
+# yet" and both post one, leading to duplicates. The concurrency group
+# is keyed on the PR number so different PRs don't block each other.
+# cancel-in-progress is false because we want the second run to wait for
+# the first to finish, not cancel it (otherwise the second push might
+# leave the PR in an inconsistent state).
+concurrency:
+  group: external-pr-to-main-guard-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
 jobs:
   guard:
     name: Block accidental external merges to main
