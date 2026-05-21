@@ -2,7 +2,7 @@
 
 ### Fixed
 
-- **#883 `install.sh`: stop calling removed `cupertino setup --force` flag.** The `--force` flag was removed from `cupertino setup` (v1.2.0 `Removed` entry: *"use `--keep-existing` or the new default-downloads behaviour"*) but `install.sh` kept calling it on the reinstall code path. Any user with an existing cupertino binary (e.g. via Homebrew) who re-ran `bash <(curl -sSL .../install.sh)` hit `Error: Unknown option '--force'` before any database download. Fix collapses the `if [[ "$REINSTALL" == "true" ]]` branching — both arms now do the same thing, since `cupertino setup` overwrites by default unless `--keep-existing` is passed. Refs: #883.
+- **#883 `install.sh`: stop calling removed `cupertino setup --force` flag.** The `--force` flag was removed from `cupertino setup` (v1.2.0 `Removed` entry: *"use `--keep-existing` or the new default-downloads behaviour"*) but `install.sh` kept calling it on the reinstall code path. Any user with an existing cupertino binary (e.g. via Homebrew) who re-ran `bash <(curl -sSL .../install.sh)` hit `Error: Unknown option '--force'` before any database download. Fix collapses the `if [[ "$REINSTALL" == "true" ]]` branching: both arms now do the same thing, since `cupertino setup` overwrites by default unless `--keep-existing` is passed. README also gets a migration note in the "Instant Setup" section so users with the old `--force` muscle memory know what changed. Refs: #883.
 
 ## 1.2.0 (2026-05-20)
 
