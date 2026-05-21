@@ -49,10 +49,14 @@ jobs:
         run: |
           # MAINTAINERS list: keep in sync with the project's pair-workflow
           # roster. Anyone here pushes legitimate release / hotfix PRs to
-          # main and shouldn't see the guard fire.
+          # main and shouldn't see the guard fire. GitHub usernames are
+          # case-insensitive (MihaelaMj and mihaelamj are the same account),
+          # so lowercase before comparing.
+          author_lc=$(echo "$PR_AUTHOR" | tr '[:upper:]' '[:lower:]')
           maintainers=("mihaelamj")
           for m in "${maintainers[@]}"; do
-            if [[ "$PR_AUTHOR" == "$m" ]]; then
+            m_lc=$(echo "$m" | tr '[:upper:]' '[:lower:]')
+            if [[ "$author_lc" == "$m_lc" ]]; then
               echo "is_maintainer=true" >> "$GITHUB_OUTPUT"
               echo "Author '$PR_AUTHOR' is a maintainer; guard short-circuits."
               exit 0
@@ -73,7 +77,7 @@ jobs:
             const marker = '<!-- external-pr-to-main-guard:sticky -->';
             const body = [
               marker,
-              `### 🛑 This PR targets \`main\`, which is reserved for maintainer-driven release merges.`,
+              `### This PR targets \`main\`, which is reserved for maintainer-driven release merges.`,
               ``,
               `**What this means.** cupertino uses a pair-workflow where release-prep state lives on \`develop\` and is fast-forward-pushed to \`main\` only when develop's tip is ready. An external PR merging directly to \`main\` bypasses that handshake and forces a back-flow push (\`origin/main:refs/heads/develop\`) to restore the invariant. The 2026-05-17 incident with PR #661 (where this happened by accident) is what motivated this guard.`,
               ``,
@@ -84,7 +88,7 @@ jobs:
               ``,
               `**Why the merge button is blocked.** This workflow submits a programmatic \`REQUEST_CHANGES\` review on every external PR against \`main\`. The review must be dismissed by a maintainer before merge becomes available, which gives the maintainer one explicit confirmation step.`,
               ``,
-              `_Posted automatically by \`.github/workflows/external-pr-to-main-guard.yml\`. Edited in place on every push update; review is only submitted once. Hi @${prAuthor} 👋, thanks for the contribution._`,
+              `_Posted automatically by \`.github/workflows/external-pr-to-main-guard.yml\`. Edited in place on every push update; review is only submitted once._`,
             ].join('\n');
 
             // Find the sticky comment by marker (edit-in-place on subsequent
@@ -115,7 +119,9 @@ jobs:
             }
 
             // Submit REQUEST_CHANGES review only when no prior review from
-            // this workflow exists. Subsequent pushes don't re-submit.
+            // this workflow exists. Subsequent pushes don't re-submit, AND
+            // a dismissed-by-maintainer review also short-circuits so an
+            // explicit dismissal isn't undone on the next push.
             const { data: reviews } = await github.rest.pulls.listReviews({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -123,11 +129,12 @@ jobs:
               per_page: 100,
             });
             const guardLogin = 'github-actions[bot]';
-            const priorRequestChanges = reviews.find(r =>
-              r.user && r.user.login === guardLogin && r.state === 'CHANGES_REQUESTED'
+            const priorReview = reviews.find(r =>
+              r.user && r.user.login === guardLogin &&
+              (r.state === 'CHANGES_REQUESTED' || r.state === 'DISMISSED')
             );
-            if (priorRequestChanges) {
-              core.info(`REQUEST_CHANGES review already exists from ${guardLogin}; skipping submission.`);
+            if (priorReview) {
+              core.info(`Prior review from ${guardLogin} found (state=${priorReview.state}); skipping submission.`);
             } else {
               await github.rest.pulls.createReview({
                 owner: context.repo.owner,
