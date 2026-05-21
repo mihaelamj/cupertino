@@ -1,0 +1,114 @@
+{
+  "5": {
+    "feature": "--request-delay CLI option",
+    "pattern": "--request-delay|requestDelay.*Option",
+    "hits": 0,
+    "verdict": "NOT_IMPLEMENTED"
+  },
+  "9": {
+    "feature": "search highlighting",
+    "pattern": "highlightedSnippet|highlight.*search|<mark>",
+    "hits": 2,
+    "verdict": "CODE_PRESENT"
+  },
+  "10": {
+    "feature": "BK-tree spelling",
+    "pattern": "BKTree|vocabulary_bktree|spelling_candidates",
+    "hits": 0,
+    "verdict": "NOT_IMPLEMENTED"
+  },
+  "13": {
+    "feature": "extra resource templates",
+    "pattern": "templateSamples|templateHIG|templateSwiftOrg",
+    "hits": 0,
+    "verdict": "NOT_IMPLEMENTED"
+  },
+  "21": {
+    "feature": "cupertino-bench binary",
+    "pattern": "executable.*cupertino-bench|cupertino-bench",
+    "hits": 0,
+    "verdict": "NOT_IMPLEMENTED"
+  },
+  "43": {
+    "feature": "homebrew-core formula",
+    "pattern": "homebrew-core",
+    "hits": 0,
+    "verdict": "NOT_IMPLEMENTED"
+  },
+  "103": {
+    "feature": "Kernel/IOKit guides in archive catalog",
+    "pattern": "KernelProgrammingGuide|IOKitFundamentals",
+    "hits": 0,
+    "verdict": "NOT_IMPLEMENTED"
+  },
+  "175": {
+    "feature": "MCP server restart",
+    "pattern": "serverRestart|restart.*MCP|tools/restart",
+    "hits": 0,
+    "verdict": "NOT_IMPLEMENTED"
+  },
+  "223": {
+    "feature": "Apple SDK availability for package source symbols",
+    "pattern": "sdkAvailability.*package|applePackageSDK",
+    "hits": 0,
+    "verdict": "NOT_IMPLEMENTED"
+  },
+  "269": {
+    "feature": "linux / iPadOS in platform enum",
+    "pattern": "\\.linux\\b|\\.iPadOS\\b|case linux|case iPadOS",
+    "hits": 0,
+    "verdict": "NOT_IMPLEMENTED"
+  },
+  "272": {
+    "feature": "RelatedSampleResolver",
+    "pattern": "RelatedSampleResolver",
+    "hits": 0,
+    "verdict": "NOT_IMPLEMENTED"
+  },
+  "410": {
+    "feature": "split search.db",
+    "pattern": "docs\\.db|hig\\.db|archive\\.db",
+    "hits": 4,
+    "verdict": "CODE_PRESENT"
+  },
+  "713": {
+    "feature": "Crawler.Fastlane",
+    "pattern": "Crawler\\.Fastlane|fastlane.*strategy",
+    "hits": 0,
+    "verdict": "NOT_IMPLEMENTED"
+  },
+  "714": {
+    "feature": "Crawler.Tuist",
+    "pattern": "Crawler\\.Tuist|tuist.*strategy",
+    "hits": 0,
+    "verdict": "NOT_IMPLEMENTED"
+  },
+  "724": {
+    "feature": "doctor path-provenance check",
+    "pattern": "pathProvenance|path-provenance|baseDirectory",
+    "hits": 29,
+    "verdict": "CODE_PRESENT"
+  },
+  "730": {
+    "feature": "SwiftPackagesCatalog deletion",
+    "pattern": "SwiftPackagesCatalog",
+    "hits": 4,
+    "verdict": "CODE_PRESENT"
+  },
+  "800": {
+    "feature": "(no probe pattern defined)",
+    "verdict": "PROBE_PENDING"
+  },
+  "801": {
+    "feature": "(no probe pattern defined)",
+    "verdict": "PROBE_PENDING"
+  },
+  "885": {
+    "feature": "(no probe pattern defined)",
+    "verdict": "PROBE_PENDING"
+  },
+  "886": {
+    "feature": "(no probe pattern defined)",
+    "verdict": "PROBE_PENDING"
+  }
+}
