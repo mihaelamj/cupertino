@@ -120,6 +120,8 @@ cupertino setup
 cupertino serve
 ```
 
+> **Note:** `cupertino setup --force` is no longer valid (the flag was removed in v1.2.0). `cupertino setup` overwrites by default; pass `--keep-existing` to skip the download when databases are already installed.
+
 ### Alternative: Build from GitHub
 
 ```bash

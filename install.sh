@@ -174,11 +174,7 @@ success "Installed: cupertino $VERSION"
 # Download databases
 echo ""
 info "Downloading documentation databases (~230 MB)..."
-if [[ "$REINSTALL" == "true" ]]; then
-    cupertino setup --force
-else
-    cupertino setup
-fi
+cupertino setup
 
 # Done!
 echo ""
