@@ -413,7 +413,10 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 name: Shared.Constants.Search.toolGetInheritance,
                 description: "Walk class-inheritance chains (UIKit / AppKit / Foundation). " +
                     "Returns ancestors (`direction=up`), descendants (`direction=down`), or both. " +
-                    "Non-class kinds return empty — Swift value types and protocols don't carry inherits-from edges.",
+                    "When the walk is empty, the response carries the `_No inheritance data` " +
+                    "semantic marker with a kind-aware reason: a class at the root of its " +
+                    "hierarchy reads 'Root type'; a protocol directs at `search_conformances`; " +
+                    "value types (struct / enum / actor) say 'Swift value type'.",
                 inputSchema: objectSchema(
                     properties: getInheritanceProperties,
                     required: [Shared.Constants.Search.schemaParamSymbol]
@@ -1450,8 +1453,10 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         var body = "# Inheritance: \(candidate.title)\n\n"
         body += "**URI:** `\(candidate.uri)`  **Framework:** `\(candidate.framework)`  **Direction:** `\(direction.rawValue)`  **Depth:** `\(depth)`\n\n"
         if tree.isEmpty {
-            body += "_No inheritance data — Swift value types and protocols don't carry inherits-from edges. " +
-                "Check `search_conformances` if you're looking for protocol conformance instead._\n"
+            // #754 secondary: pick the empty-tree message based on
+            // candidate.kind. A class with no ancestors going `up` is a
+            // root type (NSObject), not a Swift value type or protocol.
+            body += Search.emptyInheritanceMessage(kind: candidate.kind, direction: direction) + "\n"
             return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: body))])
         }
         if !tree.ancestors.isEmpty {
