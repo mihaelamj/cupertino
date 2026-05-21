@@ -129,3 +129,32 @@ The pattern: when I declared convergence by pattern-matching ("looks idle"), I w
 ### Right calibration
 
 **"High confidence, not maximal."** Both previous "yes I'm sure" answers were wrong. The loop is converged against every probe angle I can construct, but probe-angle enumeration is itself a fallible exercise.
+
+## Hygiene-gate audit (after the autopilot loop)
+
+After the autopilot loop and its two re-check loops claimed convergence, user asked: "did you reach each gate?" Selected gate to verify: **hygiene gate** (every open issue body has a Status block, no em-dashes, no line numbers, no phantom paths beyond aspirational acceptance items).
+
+Pre-audit: across all 79 open bodies, fresh-fetched and machine-checked.
+
+**Findings: 10 violations** that 30 autopilot passes + 4 re-check passes had missed.
+
+| Issue | Violation type | Cause |
+|---|---|---|
+| #16 | 3 line refs (`Cleanup.swift:153/176/180`, `Logging.Composition.swift:59`, `Serve.swift:94`) | Line numbers inside the Status block itself; my pass-23 substitution replaced the blockquote-style status header without dropping the inline line numbers |
+| #50 | 1 line ref (`Serve.swift:259`) | Inside the 2026-05-17 audit footnote; not absorbed during batch refresh |
+| #78 | 1 line ref (`Search.Index.Schema.swift:145`) | Same: trailing footnote |
+| #80 | 2 line refs (`Shared.Constants.swift:177`, `MCP.Core.Protocols.Implementation.swift:5`) | Same: trailing footnote |
+| #223 | 4 line refs (`AvailabilityParsers.swift:79`, `:118`, `:122`, `:277`) | Same: trailing footnote |
+| #235 | 1 line ref (`AvailabilityParsers.swift:79` + line 118 mention) | Same: trailing footnote |
+| #724 | 1 line ref (`BinaryConfigTests.swift:111`) | Same: trailing footnote |
+| #730 | 3 line refs in body (`SwiftPackages.swift:51`, `PackageCurator.swift:44`, `CoreProtocolsTests.swift:123`) | Embedded in acceptance steps, not in a footnote |
+| #183 | Missing canonical Status block at top | Had `## Current state (YYYY-MM-DD)` instead of `## Status (YYYY-MM-DD)`; functionally same, but didn't match the canonical header name |
+| #190 | Missing Status block at top | Had `## Status (2026-05-21)` at the bottom of the body, not the top |
+
+**Fix pass**: all 10 violations resolved (line numbers replaced with symbol/callsite descriptions, `Current state` renamed to `Status`, #190 Status block lifted to top). Re-audit across all 79 open bodies: **0 violations**.
+
+## Calibration lesson from the hygiene-gate find
+
+Three checks ran today: the autopilot loop's "no new findings" criterion, two re-check loops, and the hygiene-gate audit. The first three did not surface the 10 violations the fourth did. The gap: my pass-by-pass probe heuristics (CLI surface, schema state, MCP tools, test runs) didn't include a fresh structural audit of every open body. The hygiene-gate check was a different shape of check (per-body, mechanical, against the canonical hygiene rule).
+
+Pattern across all three corrections today (false convergence at pass 17, false convergence at pass 21, missed hygiene gate): **my probe heuristics were narrower than the completeness criterion the user actually wanted enforced.** The right convergence stops both keep iterating new probe shapes AND enforce structural acceptance gates, not just absence-of-new-findings.
