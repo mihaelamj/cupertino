@@ -168,16 +168,25 @@ extension Search.Index {
         guard let database else {
             throw Search.Error.databaseNotInitialized
         }
+        // #754 secondary: fetch the finer-grained kind (`class` / `protocol`
+        // / `struct` / `enum` / `actor` / ...) from `docs_structured.kind`
+        // so the response formatter can distinguish a class-at-root
+        // (NSObject going `up`) from a value type or protocol. The
+        // coarser `docs_metadata.kind` is always `symbolPage` for symbol
+        // pages, which doesn't help. LEFT JOIN so rows without a
+        // `docs_structured` companion still return a candidate (kind = nil
+        // routes to the legacy fallback message).
         let sql = """
-        SELECT uri, framework, COALESCE(json_extract(json_data, '$.title'), '') as t
-        FROM docs_metadata
-        WHERE source = 'apple-docs'
+        SELECT m.uri, m.framework, COALESCE(json_extract(m.json_data, '$.title'), '') as t, s.kind
+        FROM docs_metadata m
+        LEFT JOIN docs_structured s ON s.uri = m.uri
+        WHERE m.source = 'apple-docs'
             AND LOWER(REPLACE(
-                json_extract(json_data, '$.title'),
+                json_extract(m.json_data, '$.title'),
                 ' | Apple Developer Documentation',
                 ''
             )) = LOWER(?)
-        ORDER BY framework;
+        ORDER BY m.framework;
         """
         var statement: OpaquePointer?
         defer { sqlite3_finalize(statement) }
@@ -190,10 +199,12 @@ extension Search.Index {
             guard let uriPtr = sqlite3_column_text(statement, 0) else { continue }
             let framework = sqlite3_column_text(statement, 1).map { String(cString: $0) } ?? ""
             let title = sqlite3_column_text(statement, 2).map { String(cString: $0) } ?? ""
+            let kind = sqlite3_column_text(statement, 3).map { String(cString: $0) }
             candidates.append(Search.InheritanceCandidate(
                 uri: String(cString: uriPtr),
                 framework: framework,
-                title: title
+                title: title,
+                kind: kind
             ))
         }
         return candidates

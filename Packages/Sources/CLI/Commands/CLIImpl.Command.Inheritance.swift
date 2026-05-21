@@ -138,11 +138,11 @@ extension CLIImpl.Command {
 
             switch format {
             case .text:
-                emitText(symbol: candidate.title, candidate: candidate, tree: tree)
+                emitText(symbol: candidate.title, candidate: candidate, tree: tree, direction: direction.searchDirection)
             case .json:
                 try emitJSON(symbol: candidate.title, candidate: candidate, tree: tree)
             case .markdown:
-                emitMarkdown(symbol: candidate.title, candidate: candidate, tree: tree)
+                emitMarkdown(symbol: candidate.title, candidate: candidate, tree: tree, direction: direction.searchDirection)
             }
         }
 
@@ -163,10 +163,13 @@ extension CLIImpl.Command {
             Cupertino.Context.composition.logging.recording.error(out)
         }
 
-        private func emitText(symbol: String, candidate: SearchModule.InheritanceCandidate, tree: SearchModule.InheritanceTree) {
+        private func emitText(symbol: String, candidate: SearchModule.InheritanceCandidate, tree: SearchModule.InheritanceTree, direction: SearchModule.InheritanceDirection) {
             var out = "\(symbol) (\(candidate.uri))\n"
             if tree.isEmpty {
-                out += "  no inheritance data — Swift value types and protocols don't carry inherits-from edges.\n"
+                // #754 secondary: kind-aware empty-tree message.
+                let msg = SearchModule.emptyInheritanceMessage(kind: candidate.kind, direction: direction)
+                    .trimmingCharacters(in: CharacterSet(charactersIn: "_"))
+                out += "  \(msg)\n"
             }
             if !tree.ancestors.isEmpty {
                 out += "  inherits from:\n"
@@ -189,11 +192,12 @@ extension CLIImpl.Command {
             }
         }
 
-        private func emitMarkdown(symbol: String, candidate: SearchModule.InheritanceCandidate, tree: SearchModule.InheritanceTree) {
+        private func emitMarkdown(symbol: String, candidate: SearchModule.InheritanceCandidate, tree: SearchModule.InheritanceTree, direction: SearchModule.InheritanceDirection) {
             var out = "# Inheritance: \(symbol)\n\n"
             out += "**URI:** `\(candidate.uri)`  **Framework:** `\(candidate.framework)`\n\n"
             if tree.isEmpty {
-                out += "_No inheritance data — Swift value types and protocols don't carry inherits-from edges._\n"
+                // #754 secondary: kind-aware empty-tree message.
+                out += SearchModule.emptyInheritanceMessage(kind: candidate.kind, direction: direction) + "\n"
             }
             if !tree.ancestors.isEmpty {
                 out += "## Inherits from\n\n"

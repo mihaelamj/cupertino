@@ -212,12 +212,19 @@ struct Issue669GetInheritanceSemanticMarkerTests {
         )
         #expect(
             textContent.text.contains("_No inheritance data"),
-            "no-edges response must contain '_No inheritance data' marker — body was: \(textContent.text.prefix(300))"
+            "no-edges response must contain '_No inheritance data' marker (semantic-marker contract preserved across #754 wording fix) — body was: \(textContent.text.prefix(300))"
         )
-        // Suggestion to check conformances (the disambiguation phrase).
+        // #754 secondary: for a `class` going `up` with no ancestors, the
+        // kind-aware reason is "Root type" (not the pre-fix "Swift value
+        // types and protocols" prose, which was wrong for a class).
         #expect(
-            textContent.text.contains("search_conformances"),
-            "no-edges response should suggest the search_conformances alternative"
+            textContent.text.contains("Root type"),
+            "class going up with empty tree should be tagged as 'Root type'; body was: \(textContent.text.prefix(300))"
+        )
+        // Negative-side: must NOT use the pre-#754 wrong-category prose for a class.
+        #expect(
+            !textContent.text.contains("Swift value types and protocols don't carry"),
+            "the pre-#754 'Swift value types and protocols' prose was wrong for a class going up — must not regress"
         )
         // Negative-side: not-found and ambiguous shapes are different paths.
         #expect(!textContent.text.contains("No symbol named"))
