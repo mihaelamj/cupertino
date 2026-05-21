@@ -1,13 +1,13 @@
 name: External PR to main guard
 
 # Block external (non-maintainer) PRs against `main` from being merged
-# accidentally. The pair-workflow (per memory cupertino-claude-pair-workflow)
-# keeps release-prep state on `develop` and FF-pushes to `main` only when
-# develop's tip is ready; an external PR merging directly to `main` bypasses
-# that handshake and forces a back-flow push.
+# accidentally. The pair-workflow keeps release-prep state on `develop` and
+# FF-pushes to `main` only when develop's tip is ready; an external PR
+# merging directly to `main` bypasses that handshake and forces a back-flow
+# push.
 #
 # Trigger: 2026-05-17 incident where Vignesh's external PR #661 was merged
-# straight to `main` while Claude-develop was building v1.2.0. The merge
+# straight to `main` while v1.2.0 was being prepared on `develop`. The merge
 # button is one click and the PR's base branch wasn't visually highlighted,
 # so the accidental merge was easy. This workflow makes the merge button
 # visually blocked: when an external PR opens against `main`, it posts a
