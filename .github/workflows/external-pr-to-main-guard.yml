@@ -1,0 +1,144 @@
+name: External PR to main guard
+
+# Block external (non-maintainer) PRs against `main` from being merged
+# accidentally. The pair-workflow (per memory cupertino-claude-pair-workflow)
+# keeps release-prep state on `develop` and FF-pushes to `main` only when
+# develop's tip is ready; an external PR merging directly to `main` bypasses
+# that handshake and forces a back-flow push.
+#
+# Trigger: 2026-05-17 incident where Vignesh's external PR #661 was merged
+# straight to `main` while Claude-develop was building v1.2.0. The merge
+# button is one click and the PR's base branch wasn't visually highlighted,
+# so the accidental merge was easy. This workflow makes the merge button
+# visually blocked: when an external PR opens against `main`, it posts a
+# sticky warning comment AND submits a programmatic REQUEST_CHANGES review
+# so the PR header shows "Changes requested by github-actions[bot]" and the
+# merge button greys out until the maintainer explicitly dismisses the
+# review.
+#
+# Idempotency: the comment is edited in place across pushes (find-by-marker
+# then update), and the review is submitted only when the PR doesn't yet
+# have a REQUEST_CHANGES from this workflow. Maintainers in the MAINTAINERS
+# list short-circuit the whole job (no-op) so the workflow doesn't bother
+# legitimate release PRs.
+#
+# Implements #761.
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  guard:
+    name: Block accidental external merges to main
+    runs-on: ubuntu-latest
+    # `pull_request_target` runs in the context of the base repo, with
+    # access to the base repo's secrets. The job body must NOT check out
+    # untrusted PR head code; we only inspect metadata via the GitHub API.
+
+    steps:
+      - name: Short-circuit for maintainer authors
+        id: maintainer-check
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          # MAINTAINERS list: keep in sync with the project's pair-workflow
+          # roster. Anyone here pushes legitimate release / hotfix PRs to
+          # main and shouldn't see the guard fire.
+          maintainers=("mihaelamj")
+          for m in "${maintainers[@]}"; do
+            if [[ "$PR_AUTHOR" == "$m" ]]; then
+              echo "is_maintainer=true" >> "$GITHUB_OUTPUT"
+              echo "Author '$PR_AUTHOR' is a maintainer; guard short-circuits."
+              exit 0
+            fi
+          done
+          echo "is_maintainer=false" >> "$GITHUB_OUTPUT"
+          echo "Author '$PR_AUTHOR' is external; guard will fire."
+
+      - name: Post sticky warning + REQUEST_CHANGES review
+        if: steps.maintainer-check.outputs.is_maintainer == 'false'
+        uses: actions/github-script@v7
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const prAuthor = process.env.PR_AUTHOR;
+            const marker = '<!-- external-pr-to-main-guard:sticky -->';
+            const body = [
+              marker,
+              `### 🛑 This PR targets \`main\`, which is reserved for maintainer-driven release merges.`,
+              ``,
+              `**What this means.** cupertino uses a pair-workflow where release-prep state lives on \`develop\` and is fast-forward-pushed to \`main\` only when develop's tip is ready. An external PR merging directly to \`main\` bypasses that handshake and forces a back-flow push (\`origin/main:refs/heads/develop\`) to restore the invariant. The 2026-05-17 incident with PR #661 (where this happened by accident) is what motivated this guard.`,
+              ``,
+              `**What to do.**`,
+              ``,
+              `1. **Recommended:** retarget this PR's base branch to \`develop\` via the "Edit" button next to the PR title, then choose \`develop\` from the base-branch dropdown. The maintainer will FF-push to \`main\` as part of the next release ceremony.`,
+              `2. **If retargeting isn't right** (e.g. this is a true emergency hotfix), the maintainer can dismiss this review explicitly. Please add a comment explaining the override so the audit trail records why.`,
+              ``,
+              `**Why the merge button is blocked.** This workflow submits a programmatic \`REQUEST_CHANGES\` review on every external PR against \`main\`. The review must be dismissed by a maintainer before merge becomes available, which gives the maintainer one explicit confirmation step.`,
+              ``,
+              `_Posted automatically by \`.github/workflows/external-pr-to-main-guard.yml\`. Edited in place on every push update; review is only submitted once. Hi @${prAuthor} 👋, thanks for the contribution._`,
+            ].join('\n');
+
+            // Find the sticky comment by marker (edit-in-place on subsequent
+            // pushes; spam-free).
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              per_page: 100,
+            });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+              core.info(`Updated sticky guard comment ${existing.id}.`);
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body,
+              });
+              core.info(`Posted sticky guard comment.`);
+            }
+
+            // Submit REQUEST_CHANGES review only when no prior review from
+            // this workflow exists. Subsequent pushes don't re-submit.
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+              per_page: 100,
+            });
+            const guardLogin = 'github-actions[bot]';
+            const priorRequestChanges = reviews.find(r =>
+              r.user && r.user.login === guardLogin && r.state === 'CHANGES_REQUESTED'
+            );
+            if (priorRequestChanges) {
+              core.info(`REQUEST_CHANGES review already exists from ${guardLogin}; skipping submission.`);
+            } else {
+              await github.rest.pulls.createReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                event: 'REQUEST_CHANGES',
+                body: [
+                  `External PR against \`main\` requires maintainer dismissal before merge.`,
+                  ``,
+                  `See the sticky comment above for the pair-workflow context and how to retarget to \`develop\`.`,
+                ].join('\n'),
+              });
+              core.info(`Submitted REQUEST_CHANGES review.`);
+            }
