@@ -1,6 +1,6 @@
 # 🍎📚 Cupertino
 
-> 🕯️ *v1.1.0 released on 2026-05-14.* Refactor release: one type per file with `<Namespace>.<Type>.swift` naming across every SPM target, `Crawler` extracted into its own target, MCP target renamed to `MCPCore`, DI epic (#381) middle ring closed. `databaseVersion` jumps from `1.0.2` to `1.1.0`: `cupertino setup` from a v1.1.0 binary downloads a freshly-built `cupertino-databases-v1.1.0.zip` (685 MB compressed) carrying **285,735 indexed documents across 420 frameworks**, **0 poison rows** across the 13-category audit, and **+43 markdown gap-fillers** converted to canonical `StructuredDocumentationPage` JSON. See the [v1.1.0 release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.1.0).
+> 🕯️ *v1.2.0 "ironclad" released on 2026-05-20.* Search-quality release: rank-1 accuracy on canonical-lookup queries jumped from 52% to 92% on the Phase 1 corpus, zero regressions across 110 paired queries, 30 / 30 modern Swift wins on the deprecation-pair corpus. `databaseVersion` jumps from `1.1.0` to `1.2.0`: `cupertino setup` from a v1.2.0 binary downloads `cupertino-databases-v1.2.0.zip` (690 MiB compressed, sha256 `097d6633…f47747`) carrying **352,712 indexed documents across 420 frameworks**, `search.db` `user_version` 18, `packages.db` 5, `samples.db` 4, **0 poison rows** across the 13-category audit. Live dashboard at <https://cupertino.aleahim.com/>; full write-up at `docs/release-writeup-v1.2.0.md`. See the [v1.2.0 release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.2.0).
 
 **Apple Documentation Crawler & MCP Server**
 
@@ -21,7 +21,7 @@ Cupertino is a local, structured, AI-ready documentation system for Apple platfo
 - **Crawls** Apple Developer documentation, Swift.org, Swift Evolution proposals, Human Interface Guidelines, Apple Archive legacy guides, and Swift package metadata
 - **Indexes** everything into a fast, searchable SQLite FTS5 database with field-weighted BM25 (BM25F) ranking and AST-extracted symbol columns
 - **Serves** documentation to AI agents like Claude via the Model Context Protocol
-- **Provides** offline access to 285,735+ documentation pages across 420 frameworks (v1.1.0 bundle, post-dedup)
+- **Provides** offline access to 352,712+ documentation pages across 420 frameworks (v1.2.0 bundle)
 
 ### Why Build This?
 
@@ -38,7 +38,7 @@ Cupertino is a local, structured, AI-ready documentation system for Apple platfo
 ### Requirements
 
 - macOS 15+ (Sequoia)
-- ~3.5 GB disk space for the full v1.1.0 bundle (search.db ~2.4 GB, packages.db ~990 MB, samples.db ~185 MB; compressed download is ~685 MB)
+- ~4.1 GB disk space for the full v1.2.0 bundle (search.db ~2.87 GB, packages.db ~1.06 GB, samples.db ~187 MB; compressed download is ~690 MiB)
 
 *Building from source additionally requires Swift 6.3+ and Xcode 26+ (use `xcrun swift build`, not bare `swift`)*
 
@@ -389,7 +389,7 @@ cupertino list-samples --framework swiftui --format json
 All commands support `--format json` for structured output that agents can parse.
 
 **Available Sources:**
-- `apple-docs` - Official Apple documentation (~285,735 pages indexed in v1.1.0)
+- `apple-docs` - Official Apple documentation (~352,712 pages indexed in v1.2.0)
 - `samples` - Apple sample code projects
 - `hig` - Human Interface Guidelines
 - `swift-evolution` - Swift Evolution proposals
@@ -435,13 +435,13 @@ A UIKit view controller that manages a SwiftUI view hierarchy.
 | Accelerate | 9,114 |
 | SwiftUI | 7,062 |
 | ... | ... |
-| **420 Frameworks** | **285,735** |
+| **420 Frameworks** | **352,712** |
 
 ## Core Features
 
 ### 1. Multi-Source Documentation Fetching
 
-- **Apple Developer Documentation** (~285,735 indexed pages in the v1.1.0 bundle)
+- **Apple Developer Documentation** (~352,712 indexed pages in the v1.2.0 bundle)
   - JavaScript-aware rendering via WKWebView
   - HTML to Markdown conversion
   - Smart change detection
@@ -505,7 +505,7 @@ These catalogs are indexed during `cupertino save` and enable instant search wit
   - Platform availability filtering (iOS/macOS version)
   - Snippet generation
   - Sub-100ms query performance
-- **Size**: ~2.4 GB search.db + ~990 MB packages.db + ~185 MB samples.db for full documentation (285,735 documents across 420 frameworks, v1.1.0 bundle)
+- **Size**: ~2.87 GB search.db + ~1.06 GB packages.db + ~187 MB samples.db for full documentation (352,712 documents across 420 frameworks, v1.2.0 bundle)
 - **Storage**: Database must be on local filesystem - SQLite does not work reliably on network drives (NFS/SMB)
 
 ### 4. Model Context Protocol Server
@@ -660,10 +660,10 @@ log stream --predicate 'subsystem == "com.cupertino"'
 | Operation | Time | Size |
 |-----------|------|------|
 | Build CLI | 10-15s | 4.3MB |
-| Crawl ~412,000+ raw pages (post-dedup 285,735 indexed, v1.1.0) | 12+ days | 2-3GB |
+| Crawl ~414,000+ raw pages (post-dedup 352,712 indexed, v1.2.0) | 12+ days | 2-3GB |
 | Swift Evolution | 2-5 min | 429 proposals |
 | Swift.org docs | 5-10 min | 501 pages |
-| Build search index (full Apple docs corpus) | ~12h | ~2.4 GB search.db |
+| Build search index (full Apple docs corpus) | ~12h | ~2.87 GB search.db |
 | Search query | <100ms | - |
 
 ### Why Crawling Takes 12+ Days
@@ -765,7 +765,7 @@ For development setup, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Project Status
 
-**Released:** v1.2.0 "ironclad" on 2026-05-21. `databaseVersion` is `1.2.0`; `cupertino setup` downloads the v1.2.0 bundle (352,712 documents across 420 frameworks, 0 poison rows under all 13 audit categories, schema `user_version = 18`).
+**Released:** v1.2.0 "ironclad" on 2026-05-20. `databaseVersion` is `1.2.0`; `cupertino setup` downloads the v1.2.0 bundle (352,712 documents across 420 frameworks, 0 poison rows under all 13 audit categories, schema `user_version = 18`).
 
 Headline jump from v1.1.0: **rank-1 accuracy on canonical-lookup queries went from 52% to 92%** on the 50-query Phase 1 corpus. **30 / 30 modern Swift wins on the deprecation pair corpus** (was 27 / 30). **Zero regressions across 110 paired queries.** Live dashboard at <https://cupertino.aleahim.com/>; full release write-up at `docs/release-writeup-v1.2.0.md`; harness at `scripts/eval/search-quality-phase1.py` (reproducible — two runs against the same `(binary, search.db)` pair produce byte-identical per-query ranks).
 
