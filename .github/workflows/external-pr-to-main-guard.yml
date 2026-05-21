@@ -27,7 +27,11 @@ name: External PR to main guard
 on:
   pull_request_target:
     branches: [main]
-    types: [opened, reopened, synchronize]
+    # `edited` fires when the base branch changes (retargeting a PR from
+    # develop to main via the GitHub UI's "Edit" action), which is exactly
+    # when the guard should re-evaluate. Without it, a retarget-to-main
+    # wouldn't trigger the guard.
+    types: [opened, reopened, synchronize, edited]
 
 permissions:
   contents: read
@@ -92,14 +96,21 @@ jobs:
             ].join('\n');
 
             // Find the sticky comment by marker (edit-in-place on subsequent
-            // pushes; spam-free).
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-              per_page: 100,
-            });
-            const existing = comments.find(c => c.body && c.body.includes(marker));
+            // pushes; spam-free). Iterate via paginate so long-running PRs
+            // with > 100 comments still match the marker on older pages.
+            let existing = null;
+            for await (const page of github.paginate.iterator(
+              github.rest.issues.listComments,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                per_page: 100,
+              }
+            )) {
+              existing = page.data.find(c => c.body && c.body.includes(marker));
+              if (existing) break;
+            }
             if (existing) {
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
@@ -121,18 +132,25 @@ jobs:
             // Submit REQUEST_CHANGES review only when no prior review from
             // this workflow exists. Subsequent pushes don't re-submit, AND
             // a dismissed-by-maintainer review also short-circuits so an
-            // explicit dismissal isn't undone on the next push.
-            const { data: reviews } = await github.rest.pulls.listReviews({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: prNumber,
-              per_page: 100,
-            });
+            // explicit dismissal isn't undone on the next push. Iterate
+            // via paginate so > 100 reviews still find the prior one.
             const guardLogin = 'github-actions[bot]';
-            const priorReview = reviews.find(r =>
-              r.user && r.user.login === guardLogin &&
-              (r.state === 'CHANGES_REQUESTED' || r.state === 'DISMISSED')
-            );
+            let priorReview = null;
+            for await (const page of github.paginate.iterator(
+              github.rest.pulls.listReviews,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                per_page: 100,
+              }
+            )) {
+              priorReview = page.data.find(r =>
+                r.user && r.user.login === guardLogin &&
+                (r.state === 'CHANGES_REQUESTED' || r.state === 'DISMISSED')
+              );
+              if (priorReview) break;
+            }
             if (priorReview) {
               core.info(`Prior review from ${guardLogin} found (state=${priorReview.state}); skipping submission.`);
             } else {
