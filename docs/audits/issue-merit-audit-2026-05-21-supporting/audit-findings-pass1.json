@@ -1,0 +1,1045 @@
+{
+  "5": {
+    "labels": "enhancement,good first issue",
+    "title": "Add --request-delay parameter to FetchCommand",
+    "bucket": "CODE_PRESENT_PROBE",
+    "note": "no CHANGELOG mention; paths cited: 1/1 exist; symbols cited: 1/2 in code",
+    "paths_cited": [
+      "Packages/Sources/CLI/Commands/CLIImpl.Command.Fetch.swift"
+    ],
+    "paths_exist_count": 1,
+    "paths_missing_count": 0,
+    "symbols_cited": [
+      "Shared.Configuration.Crawler",
+      "CLIImpl.Command.Fetch.Options"
+    ],
+    "changelog_mentions": 0
+  },
+  "8": {
+    "labels": "enhancement",
+    "title": "Add vector/semantic search using sqlite-vec embeddings",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "9": {
+    "labels": "enhancement",
+    "title": "Implement search highlighting",
+    "bucket": "CODE_PRESENT_PROBE",
+    "note": "no CHANGELOG mention; paths cited: 2/2 exist; symbols cited: 3/5 in code",
+    "paths_cited": [
+      "Packages/Sources/CLI/Commands/CLIImpl.Command.Search.SourceRunners.swift",
+      "Packages/Sources/SearchToolProvider/CompositeToolProvider.swift"
+    ],
+    "paths_exist_count": 2,
+    "paths_missing_count": 0,
+    "symbols_cited": [
+      "Services.Formatter.HTML",
+      "Services.Formatter.ANSI",
+      "CLIImpl.Command.Search",
+      "Services.Formatter.Markdown",
+      "Search.Index.Search"
+    ],
+    "changelog_mentions": 0
+  },
+  "10": {
+    "labels": "enhancement",
+    "title": "Spelling correction via BK-tree on indexed vocabulary (per-framework, no model)",
+    "bucket": "CODE_PRESENT_PROBE",
+    "note": "no CHANGELOG mention; paths cited: 0/2 exist; symbols cited: 1/2 in code",
+    "paths_cited": [
+      "Packages/Sources/Search/Search.BKTree.swift",
+      "Packages/Tests/SearchTests/Issue10BKTreeSpellingTests.swift"
+    ],
+    "paths_exist_count": 0,
+    "paths_missing_count": 2,
+    "symbols_cited": [
+      "DiagnosticBlock.SpellingCandidates",
+      "Search.Index.Search"
+    ],
+    "changelog_mentions": 0
+  },
+  "13": {
+    "labels": "enhancement,good first issue",
+    "title": "MCP resource templates: typed URI patterns per source for direct read-by-construction",
+    "bucket": "CODE_PRESENT_PROBE",
+    "note": "no CHANGELOG mention; paths cited: 0/2 exist; symbols cited: 1/1 in code",
+    "paths_cited": [
+      "Packages/Tests/MCPSupportTests/Issue13ResourceTemplatesTests.swift",
+      "Packages/Sources/MCP/Core/Protocol/MCP.Core.Protocols.ResourceTemplate.swift"
+    ],
+    "paths_exist_count": 0,
+    "paths_missing_count": 2,
+    "symbols_cited": [
+      "MCP.Core.Protocols.ResourceTemplate"
+    ],
+    "changelog_mentions": 0
+  },
+  "16": {
+    "labels": "enhancement,good first issue",
+    "title": "CLI verbosity controls: --verbose, --quiet, and the default tier (3-tier design)",
+    "bucket": "POSSIBLY_PARTIAL",
+    "note": "CHANGELOG mentions #16 1x; symbols cited: 0/1 in code",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [
+      "Logging.Verbosity"
+    ],
+    "changelog_mentions": 1
+  },
+  "17": {
+    "labels": "enhancement",
+    "title": "CLI progress indicator for search fan-out (per-source state in tty mode)",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "21": {
+    "labels": "enhancement",
+    "title": "cupertino-bench: annotated query suite + retrieval-quality benchmark (literature-backed)",
+    "bucket": "CODE_PRESENT_PROBE",
+    "note": "no CHANGELOG mention; paths cited: 1/1 exist",
+    "paths_cited": [
+      "Packages/Tests/SearchTests/CanonicalTypeRankingTests.swift"
+    ],
+    "paths_exist_count": 1,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "22": {
+    "labels": "enhancement",
+    "title": "Memory budgets per operation (concrete RSS targets, regression thresholds)",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "43": {
+    "labels": "enhancement",
+    "title": "Submit to Homebrew Core (first-class citizen)",
+    "bucket": "CODE_PRESENT_PROBE",
+    "note": "no CHANGELOG mention; paths cited: 1/1 exist",
+    "paths_cited": [
+      "Packages/Package.swift"
+    ],
+    "paths_exist_count": 1,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "50": {
+    "labels": "enhancement",
+    "title": "MCP: extend conditional tool registration to all sources (only advertise indexed data)",
+    "bucket": "POSSIBLY_PARTIAL",
+    "note": "CHANGELOG mentions #50 1x; symbols cited: 5/5 in code",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [
+      "Search.Index",
+      "Diagnostics.Probes",
+      "Diagnostics.SchemaVersion",
+      "Sample.Index.Database",
+      "Diagnostics.DiskPreflight"
+    ],
+    "changelog_mentions": 1
+  },
+  "58": {
+    "labels": "enhancement",
+    "title": "Add WWDC session transcripts to search index",
+    "bucket": "POSSIBLY_PARTIAL",
+    "note": "CHANGELOG mentions #58 1x; paths cited: 1/1 exist; symbols cited: 0/1 in code",
+    "paths_cited": [
+      "Packages/Sources/Search/DocKind.swift"
+    ],
+    "paths_exist_count": 1,
+    "paths_missing_count": 0,
+    "symbols_cited": [
+      "Crawler.WWDC"
+    ],
+    "changelog_mentions": 1
+  },
+  "70": {
+    "labels": "enhancement",
+    "title": "Add cupertino summary <symbol> command + get_symbol_summary MCP tool (token-efficient lookup)",
+    "bucket": "POSSIBLY_SHIPPED",
+    "note": "CHANGELOG mentions #70 2x; paths cited: 1/1 exist",
+    "paths_cited": [
+      "Packages/Sources/Search/Search.Index.Schema.swift"
+    ],
+    "paths_exist_count": 1,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 2
+  },
+  "73": {
+    "labels": "enhancement",
+    "title": "Add cupertino framework <name> command + get_framework_overview MCP tool (token-efficient lookup)",
+    "bucket": "POSSIBLY_PARTIAL",
+    "note": "CHANGELOG mentions #73 1x; symbols cited: 1/2 in code",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [
+      "Search.Index",
+      "SampleIndex.Database"
+    ],
+    "changelog_mentions": 1
+  },
+  "76": {
+    "labels": "enhancement",
+    "title": "Add wildcard pattern matching to symbol-family exploration (search_symbols extension)",
+    "bucket": "POSSIBLY_SHIPPED",
+    "note": "CHANGELOG mentions #76 2x; paths cited: 0/1 exist",
+    "paths_cited": [
+      "Packages/Sources/Search/SearchIndex.swift"
+    ],
+    "paths_exist_count": 0,
+    "paths_missing_count": 1,
+    "symbols_cited": [],
+    "changelog_mentions": 2
+  },
+  "78": {
+    "labels": "enhancement",
+    "title": "Add `cupertino stats` content inventory command",
+    "bucket": "POSSIBLY_PARTIAL",
+    "note": "CHANGELOG mentions #78 1x",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 1
+  },
+  "80": {
+    "labels": "enhancement",
+    "title": "Submit to MCP registries for discoverability",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "89": {
+    "labels": "enhancement",
+    "title": "Add Swift Forums discussions to search index",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "103": {
+    "labels": "enhancement",
+    "title": "Index Kernel Programming Guide and IOKit Fundamentals from Apple Archive",
+    "bucket": "CODE_PRESENT_PROBE",
+    "note": "no CHANGELOG mention; paths cited: 1/1 exist",
+    "paths_cited": [
+      "Packages/Sources/Resources/Embedded/Resources.Embedded.ArchiveGuidesCatalog.swift"
+    ],
+    "paths_exist_count": 1,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "175": {
+    "labels": "enhancement",
+    "title": "Add MCP server restart capability",
+    "bucket": "CODE_PRESENT_PROBE",
+    "note": "no CHANGELOG mention; paths cited: 1/1 exist; symbols cited: 2/2 in code",
+    "paths_cited": [
+      "Packages/Sources/Shared/Constants/Shared.Paths.swift"
+    ],
+    "paths_exist_count": 1,
+    "paths_missing_count": 0,
+    "symbols_cited": [
+      "Sample.Index.Reader",
+      "Search.Database"
+    ],
+    "changelog_mentions": 0
+  },
+  "183": {
+    "labels": "enhancement",
+    "title": "Roadmap",
+    "bucket": "POSSIBLY_SHIPPED",
+    "note": "CHANGELOG mentions #183 2x",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 2
+  },
+  "189": {
+    "labels": "enhancement,epic",
+    "title": "TUI internal-only work tracker (was Epic: TUI polish)",
+    "bucket": "EPIC",
+    "note": "parent tracker; paths cited: 2/5 exist",
+    "paths_cited": [
+      "Packages/Sources/TUI/Components/ConfirmDialog.swift",
+      "Packages/Sources/TUI/PackageCurator.swift",
+      "Packages/Sources/TUI/Views/HelpView.swift",
+      "Packages/Sources/TUI/Models/ViewMode.swift",
+      "Packages/Sources/TUI/Views/PackageDetailsView.swift"
+    ],
+    "paths_exist_count": 2,
+    "paths_missing_count": 3,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "190": {
+    "labels": "enhancement,epic",
+    "title": "Epic: Source expansion",
+    "bucket": "EPIC",
+    "note": "parent tracker",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "191": {
+    "labels": "enhancement,epic",
+    "title": "Epic: Search quality and FTS tuning",
+    "bucket": "EPIC",
+    "note": "parent tracker",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "195": {
+    "labels": "enhancement",
+    "title": "AI-enriched semantic tags: topic / complexity / audience / task-intent",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "196": {
+    "labels": "enhancement",
+    "title": "Set up + run GoFundMe for AI semantic-tags corpus pass",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "197": {
+    "labels": "enhancement",
+    "title": "Roadmap maintenance protocol (editor / agent internals)",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "216": {
+    "labels": "enhancement",
+    "title": "Add Apple tutorials as a new fetch source (--type tutorials)",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "222": {
+    "labels": "enhancement",
+    "title": "Associate @available attributes with their declarations (AST)",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention; symbols cited: 0/1 in code",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [
+      "ASTIndexer.SwiftSourceExtractor"
+    ],
+    "changelog_mentions": 0
+  },
+  "223": {
+    "labels": "enhancement",
+    "title": "Annotate Apple SDK availability for symbols referenced inside package source",
+    "bucket": "CODE_PRESENT_PROBE",
+    "note": "no CHANGELOG mention; symbols cited: 1/2 in code",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [
+      "Concurrency.Task",
+      "Search.SourceIndexer"
+    ],
+    "changelog_mentions": 0
+  },
+  "224": {
+    "labels": "enhancement",
+    "title": "Doctor: report availability annotation status for packages",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "227": {
+    "labels": "enhancement",
+    "title": "Per-sample availability annotation (analog of #219 for sample code)",
+    "bucket": "POSSIBLY_PARTIAL",
+    "note": "CHANGELOG mentions #227 1x; paths cited: 1/1 exist; symbols cited: 0/1 in code",
+    "paths_cited": [
+      "Packages/Sources/Search/Search.IndexBuilder.swift"
+    ],
+    "paths_exist_count": 1,
+    "paths_missing_count": 0,
+    "symbols_cited": [
+      "Core.PackageAvailabilityAnnotator"
+    ],
+    "changelog_mentions": 1
+  },
+  "235": {
+    "labels": "enhancement",
+    "title": "Fast availability-refresh path that skips full re-index",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "240": {
+    "labels": "enhancement",
+    "title": "New cupertino query command for raw SQL against the local DBs",
+    "bucket": "POSSIBLY_PARTIAL",
+    "note": "CHANGELOG mentions #240 1x; paths cited: 1/1 exist",
+    "paths_cited": [
+      "Packages/Sources/CLI/Commands/CLIImpl.Command.PackageSearch.swift"
+    ],
+    "paths_exist_count": 1,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 1
+  },
+  "247": {
+    "labels": "enhancement",
+    "title": "Lift FetchCommand logic to new Ingest package (largest)",
+    "bucket": "POSSIBLY_SHIPPED",
+    "note": "CHANGELOG mentions #247 2x; paths cited: 1/1 exist; symbols cited: 1/1 in code",
+    "paths_cited": [
+      "Packages/Sources/Ingest/Ingest.Session.swift"
+    ],
+    "paths_exist_count": 1,
+    "paths_missing_count": 0,
+    "symbols_cited": [
+      "Ingest.Session"
+    ],
+    "changelog_mentions": 2
+  },
+  "248": {
+    "labels": "enhancement",
+    "title": "Declarative database registry \u2014 plug DBs by descriptor instead of hand-coded triples",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "251": {
+    "labels": "enhancement,epic",
+    "title": "Refactor: unify sources + databases \u2014 adding a source IS adding/refactoring a DB",
+    "bucket": "EPIC",
+    "note": "parent tracker; paths cited: 5/5 exist; symbols cited: 4/5 in code",
+    "paths_cited": [
+      "Packages/Sources/Search/DocKind.swift",
+      "Packages/Sources/Shared/Constants/Shared.Constants.swift",
+      "Packages/Sources/Search/Search.ComposableResult.swift",
+      "Packages/Sources/Search/PackageIndex.swift",
+      "Packages/Sources/SampleIndex/Sample.Index.Database.swift"
+    ],
+    "paths_exist_count": 5,
+    "paths_missing_count": 0,
+    "symbols_cited": [
+      "Search.SearchSource",
+      "Search.Source",
+      "Search.SourceIndexer",
+      "Search.DocKind",
+      "Search.IndexBuilder"
+    ],
+    "changelog_mentions": 0
+  },
+  "266": {
+    "labels": "enhancement,epic",
+    "title": "Epic: availability annotation v2 (bundles #222, #223, #224, #227, #235 \u2014 children #221 + #225 closed)",
+    "bucket": "EPIC",
+    "note": "parent tracker",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 1
+  },
+  "268": {
+    "labels": "enhancement,epic",
+    "title": "Epic: MCP capability expansion (bundles #13, #50, #175, #226 + research-review items)",
+    "bucket": "EPIC",
+    "note": "parent tracker",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "269": {
+    "labels": "enhancement",
+    "title": "Expand platform enum: add linux + split iPadOS from iOS (across availability, filtering, MCP)",
+    "bucket": "CODE_PRESENT_PROBE",
+    "note": "no CHANGELOG mention; symbols cited: 1/1 in code",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [
+      "Search.IndexBuilder"
+    ],
+    "changelog_mentions": 0
+  },
+  "270": {
+    "labels": "enhancement",
+    "title": "Tier 4: per-device-model tracking (iPhone X, Apple TV HD, capability profiles)",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "271": {
+    "labels": "enhancement",
+    "title": "Token-budget aware results: return relevance-ranked chunks within a budget (supersedes #14)",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "272": {
+    "labels": "enhancement",
+    "title": "Always enrich docs results with sample-code cross-links from embedded catalog (split from #50)",
+    "bucket": "CODE_PRESENT_PROBE",
+    "note": "no CHANGELOG mention; paths cited: 0/1 exist; symbols cited: 2/2 in code",
+    "paths_cited": [
+      "Packages/Sources/Resources/Embedded/SampleCodeCatalogEmbedded.swift"
+    ],
+    "paths_exist_count": 0,
+    "paths_missing_count": 1,
+    "symbols_cited": [
+      "Sample.Core.Catalog",
+      "Services.Formatter.Markdown"
+    ],
+    "changelog_mentions": 0
+  },
+  "273": {
+    "labels": "enhancement",
+    "title": "Add Apple Tech Talks as a new source (sibling to #58 WWDC, shares schema)",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "410": {
+    "labels": "enhancement",
+    "title": "Split search.db: Apple docs+archive in one DB, each external source in its own DB",
+    "bucket": "CODE_PRESENT_PROBE",
+    "note": "no CHANGELOG mention; symbols cited: 2/4 in code",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [
+      "Search.IndexRouter",
+      "Search.IndexBuilder",
+      "Search.Index",
+      "Search.IndexRouterTests"
+    ],
+    "changelog_mentions": 0
+  },
+  "449": {
+    "labels": "enhancement",
+    "title": "docs: add CupertinoDocumentation DocC catalog target + full /// coverage audit",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention; paths cited: 0/1 exist",
+    "paths_cited": [
+      "Packages/Sources/CupertinoDocumentation/CupertinoDocumentation.swift"
+    ],
+    "paths_exist_count": 0,
+    "paths_missing_count": 1,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "514": {
+    "labels": "enhancement",
+    "title": "perf(measurement): #236 quantify the WAL+synchronous=NORMAL throughput win on a real cupertino save",
+    "bucket": "POSSIBLY_SHIPPED",
+    "note": "CHANGELOG mentions #514 3x",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 3
+  },
+  "517": {
+    "labels": "enhancement",
+    "title": "Search results: shift the primary target from human-terminal to AI-agent consumer",
+    "bucket": "POSSIBLY_PARTIAL",
+    "note": "CHANGELOG mentions #517 1x; symbols cited: 0/1 in code",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [
+      "Shared.Utils.TokenCounter"
+    ],
+    "changelog_mentions": 1
+  },
+  "713": {
+    "labels": "enhancement",
+    "title": "external sources: index fastlane (open-source toolchain docs + source)",
+    "bucket": "CODE_PRESENT_PROBE",
+    "note": "no CHANGELOG mention; symbols cited: 1/4 in code",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [
+      "Crawler.SwiftOrg",
+      "Crawler.Fastlane",
+      "Crawler.SwiftEvolution",
+      "Crawler.HIG"
+    ],
+    "changelog_mentions": 0
+  },
+  "714": {
+    "labels": "enhancement",
+    "title": "external sources: index tuist (Xcode project generation toolchain docs + source)",
+    "bucket": "CODE_PRESENT_PROBE",
+    "note": "no CHANGELOG mention; symbols cited: 1/4 in code",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [
+      "Crawler.SwiftOrg",
+      "Crawler.SwiftEvolution",
+      "Crawler.Tuist",
+      "Crawler.HIG"
+    ],
+    "changelog_mentions": 0
+  },
+  "724": {
+    "labels": "enhancement",
+    "title": "doctor: assert binary path-provenance classification matches resolved baseDirectory (#675 safety rail)",
+    "bucket": "CODE_PRESENT_PROBE",
+    "note": "no CHANGELOG mention; paths cited: 1/1 exist",
+    "paths_cited": [
+      "Packages/Sources/CLI/Commands/CLIImpl.Command.Doctor.swift"
+    ],
+    "paths_exist_count": 1,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "730": {
+    "labels": "enhancement",
+    "title": "Delete neutered Core.Protocols.SwiftPackagesCatalog accessor + caller rewrite (post-#194 follow-up)",
+    "bucket": "CODE_PRESENT_PROBE",
+    "note": "no CHANGELOG mention; paths cited: 2/2 exist; symbols cited: 2/2 in code",
+    "paths_cited": [
+      "Packages/Tests/CoreProtocolsTests/CoreProtocolsTests.swift",
+      "Packages/Sources/CoreProtocols/Core.Protocols.SwiftPackagesCatalog.swift"
+    ],
+    "paths_exist_count": 2,
+    "paths_missing_count": 0,
+    "symbols_cited": [
+      "Search.PackageQuery",
+      "Core.Protocols.SwiftPackageEntry"
+    ],
+    "changelog_mentions": 0
+  },
+  "742": {
+    "labels": "enhancement,priority: high,epic",
+    "title": "MCP diagnostic block \u2014 structured-uncertainty response surface (Phase 2.1 keystone)",
+    "bucket": "EPIC",
+    "note": "parent tracker; symbols cited: 1/5 in code",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [
+      "DiagnosticBlock.Degradation",
+      "DiagnosticBlock.PlatformFilterPartial",
+      "MCP.Core.Protocols.DiagnosticBlock",
+      "MCP.Core.Protocols.CallToolResult",
+      "DiagnosticBlock.ToolsListHonesty"
+    ],
+    "changelog_mentions": 2
+  },
+  "744": {
+    "labels": "enhancement",
+    "title": "Label-axis cleanup: release-tracking model, dead labels, single-carriers, priority backfill (PR #743 follow-up)",
+    "bucket": "POSSIBLY_SHIPPED",
+    "note": "CHANGELOG mentions #744 2x",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 2
+  },
+  "747": {
+    "labels": "enhancement",
+    "title": "Add 'md' as an alias for 'markdown' in --format",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "748": {
+    "labels": "enhancement",
+    "title": "README: frame cupertino as dual-consumer (CLI for humans + MCP for AI agents)",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "754": {
+    "labels": "bug,priority: high",
+    "title": "get_inheritance: symbol-name resolver misses on NSObject despite data being present",
+    "bucket": "POSSIBLY_PARTIAL",
+    "note": "CHANGELOG mentions #754 1x; paths cited: 3/3 exist; symbols cited: 1/1 in code",
+    "paths_cited": [
+      "Packages/Tests/SearchTests/Issue274InheritanceWalkTests.swift",
+      "Packages/Sources/SearchToolProvider/CompositeToolProvider.swift",
+      "Packages/Sources/Search/Search.Index.Search.swift"
+    ],
+    "paths_exist_count": 3,
+    "paths_missing_count": 0,
+    "symbols_cited": [
+      "Search.Index"
+    ],
+    "changelog_mentions": 1
+  },
+  "761": {
+    "labels": "enhancement,priority: high",
+    "title": "ci: external-PR-to-main guardrail (REQUEST_CHANGES on base=main from non-maintainers)",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "768": {
+    "labels": "enhancement",
+    "title": "log: add progress lines for post-indexing passes (applyAppleStaticConstraints, propagateConstraintsFromParents, registerFrameworkSynonyms)",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "769": {
+    "labels": "epic",
+    "title": "epic: layer separation \u2014 Crawler / Indexer / Search+MCP independently buildable, shipped as one binary",
+    "bucket": "EPIC",
+    "note": "parent tracker",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 1
+  },
+  "770": {
+    "labels": "enhancement",
+    "title": "arch: define and document the Crawler\u2192Indexer handoff contract",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "771": {
+    "labels": "enhancement",
+    "title": "arch: split Core into CoreCrawler + CoreIndexer",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "772": {
+    "labels": "enhancement",
+    "title": "arch: promote Ingest to own the JSON\u2192StructuredPage pipeline",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "773": {
+    "labels": "enhancement",
+    "title": "arch: add IndexerCLI standalone executable target (cupertino-indexer)",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "774": {
+    "labels": "enhancement",
+    "title": "arch: add CrawlerCLI standalone executable target (cupertino-crawler)",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "775": {
+    "labels": "enhancement",
+    "title": "ci: build and test CrawlerCLI + IndexerCLI standalone binaries on every push",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "776": {
+    "labels": "enhancement",
+    "title": "arch: thin CLI composition root after layer extraction",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "777": {
+    "labels": "enhancement",
+    "title": "indexer: post-indexer recovery pass \u2014 derive title from URL for placeholder-title rejects",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "778": {
+    "labels": "enhancement",
+    "title": "arch: add PostProcessorCLI standalone executable target (cupertino-postprocessor)",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "792": {
+    "labels": "enhancement",
+    "title": "post-index: compare new search.db search results against the brew-installed search.db to catch regressions",
+    "bucket": "POSSIBLY_SHIPPED",
+    "note": "CHANGELOG mentions #792 2x",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 2
+  },
+  "800": {
+    "labels": "enhancement",
+    "title": "perf: cupertino save throughput scales near-quadratically with N (FTS5 incremental insert)",
+    "bucket": "CODE_PRESENT_PROBE",
+    "note": "no CHANGELOG mention; symbols cited: 3/3 in code",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [
+      "Search.Index",
+      "Search.Strategies.AppleDocs",
+      "Search.Index.IndexingDocs"
+    ],
+    "changelog_mentions": 0
+  },
+  "801": {
+    "labels": "enhancement",
+    "title": "feat(cli): include git-commit-count build number in --version output",
+    "bucket": "CODE_PRESENT_PROBE",
+    "note": "no CHANGELOG mention; paths cited: 3/5 exist; symbols cited: 1/1 in code",
+    "paths_cited": [
+      "Packages/Plugins/BuildNumberPlugin/BuildNumberPlugin.swift",
+      "Packages/Sources/CLI/Commands/CLIImpl.Command.Serve.swift",
+      "Packages/Sources/BuildNumberGenerator/BuildNumberGenerator.swift",
+      "Packages/Sources/CLI/Commands/CLIImpl.Command.Fetch.swift",
+      "Packages/Sources/CLI/Commands/CLIImpl.Command.Save.swift"
+    ],
+    "paths_exist_count": 3,
+    "paths_missing_count": 2,
+    "symbols_cited": [
+      "Shared.Constants.App"
+    ],
+    "changelog_mentions": 0
+  },
+  "816": {
+    "labels": "enhancement",
+    "title": "feat(eval): implement Phase 1.7 anti-hallucination agent-end-to-end eval",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "817": {
+    "labels": "enhancement",
+    "title": "chore(eval): move Phase 1.x search-quality harnesses from /tmp to scripts/eval/",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "818": {
+    "labels": "enhancement",
+    "title": "feat(search): consult framework_aliases.synonyms at ranking time (acronym audit follow-up)",
+    "bucket": "POSSIBLY_PARTIAL",
+    "note": "CHANGELOG mentions #818 1x",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 1
+  },
+  "819": {
+    "labels": "enhancement",
+    "title": "feat(search): expose symbol-attribute filters via CLI (symbol-attribute audit follow-up)",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "820": {
+    "labels": "enhancement",
+    "title": "feat(search): design-vocabulary intent routing (cross-source audit follow-up)",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "821": {
+    "labels": "enhancement",
+    "title": "feat(search): --profile prose alternate BM25F weight vector",
+    "bucket": "POSSIBLY_PARTIAL",
+    "note": "CHANGELOG mentions #821 1x",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 1
+  },
+  "822": {
+    "labels": "enhancement",
+    "title": "research(eval): Phase 2 TREC-grade human pooling for class G (prose)",
+    "bucket": "NOT_STARTED",
+    "note": "no CHANGELOG mention",
+    "paths_cited": [],
+    "paths_exist_count": 0,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "885": {
+    "labels": "enhancement,good first issue",
+    "title": "CLI hint: `cupertino setup --force` should suggest `--keep-existing` instead of generic argument-parser error",
+    "bucket": "CODE_PRESENT_PROBE",
+    "note": "no CHANGELOG mention; paths cited: 1/1 exist",
+    "paths_cited": [
+      "Packages/Sources/CLI/Commands/CLIImpl.Command.Setup.swift"
+    ],
+    "paths_exist_count": 1,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  },
+  "886": {
+    "labels": "bug",
+    "title": "check-issue-body-staleness.sh: two false-positive patterns surfaced during 2026-05-21 hygiene walk",
+    "bucket": "CODE_PRESENT_PROBE",
+    "note": "no CHANGELOG mention; paths cited: 3/3 exist",
+    "paths_cited": [
+      "Packages/Sources/TUI/Infrastructure/Screen.swift",
+      "Packages/Sources/Search/PackageIndex.swift",
+      "Packages/Sources/Search/Search.Index.Schema.swift"
+    ],
+    "paths_exist_count": 3,
+    "paths_missing_count": 0,
+    "symbols_cited": [],
+    "changelog_mentions": 0
+  }
+}
