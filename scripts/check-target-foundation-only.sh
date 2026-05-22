@@ -222,18 +222,17 @@ STRICT_PRODUCERS=(
     # + SharedConstants and audits clean against the foundation-only
     # allow-list.
     #
-    # Intentionally omitted: `SearchSQLite` (#898 sub-PR E). The
-    # SQLite-backed concrete imports `Search` because several domain
-    # types still live on the Search orchestration target (Search.Source,
-    # Search.QueryIntent, Search.IndexerRegistry, Search.Classify,
-    # DocKind, detectQueryIntent, DocLinkRewriter, Search.SourceItem,
-    # Search.SourceIndexer protocol, Search.SampleCodeResult,
-    # Search.PackageResult). Lifting those domain types to SearchModels
-    # is a queued follow-up; once it lands, SearchSQLite's `import Search`
-    # drops and the target opts into STRICT_PRODUCERS. Net win shipped
-    # in #898 sub-PR E: the Search orchestration target no longer
-    # imports SQLite3, so any backend conforming SearchModels can plug
-    # in via the composition root.
+    # `SearchSQLite` graduated in #898F (the domain-types lift follow-up
+    # to #898 sub-PR E): `Search.Source`, `Search.QueryIntent`,
+    # `detectQueryIntent`, and `Search.SourceProperties` moved out of
+    # `Search.ComposableResult.swift` into `SearchModels`;
+    # `Search.SourceDefinition` + `Search.SourceRegistry` whole-file
+    # moved to `SearchModels`; `Search.SearchResult` (SampleCodeResult +
+    # PackageResult), `DocKind`/`Classify`, `Search.SourceIndexer`
+    # protocol + indexer concretes + `Search.IndexerRegistry`, and
+    # `DocLinkRewriter` whole-file moved to `SearchSQLite` (no external
+    # consumers in the Search target). The target now imports only
+    # foundation + Models + SQLite3 and audits clean.
 
     # Producer (#759): AppleConstraintsKit ships `Search.StaticConstraintsLookup`
     # conformance built from `swift symbolgraph-extract` output. Foundation
@@ -258,6 +257,7 @@ STRICT_PRODUCERS=(
     SampleIndex
     SampleIndexSQLite
     Search
+    SearchSQLite
     SearchToolProvider
     Services
 )

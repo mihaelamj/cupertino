@@ -440,7 +440,6 @@ let targets: [Target] = {
         dependencies: [
             "SearchModels",
             "SearchSchema",
-            "Search",
             "SharedConstants",
             "LoggingModels",
             "CoreProtocols",

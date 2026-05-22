@@ -94,32 +94,25 @@ the layers below it. The portability test enforces this empirically.
   `Core`, `CoreJSONParser`, `CorePackageIndexing`, `CoreSampleCode`,
   `Crawler`, `Distribution`, `Enrichment`, `Indexer`, `Ingest`,
   `Logging`, `MCPSupport`, `RemoteSync`, `SampleIndex`,
-  `SampleIndexSQLite`, `Search`, `SearchToolProvider`, `Services`.
-  (`Logging` is a writer concrete: the audited feature producer over
-  `LoggingModels` + `OSLog`, and composition roots are the only
-  places that may import the `Logging` target. Producers import
-  `LoggingModels` only. `SampleIndexSQLite` (added by #902) is the
-  SQLite-backed concrete for the `Sample.Index.Reader` +
-  `Sample.Index.Writer` protocol seams in `SampleIndexModels`; its
-  declared deps are foundation-only so it audits cleanly against the
-  strict rule on day one. `Enrichment` graduated in #906 once the 6
-  sibling passes were rewired to take `any Search.IndexWriter` /
-  `any Search.PackageWriter` / `any Sample.Index.Writer` via init
-  injection; the target now imports only Models + foundation tier.
-  Its sibling `SearchSQLite` is documented below as the one concrete
-  that is NOT yet strict.)
-- **Documented producer not yet audited**: `SearchSQLite` (added by
-  #898 sub-PR E) is the SQLite-backed concrete of the `SearchModels`
-  protocol seams; it imports `Search` because several domain types
-  (Source / QueryIntent / IndexerRegistry / Classify / DocKind /
-  SourceItem / SourceIndexer protocol / detectQueryIntent /
-  DocLinkRewriter / SampleCodeResult / PackageResult) still live on
-  the Search orchestration target. A queued follow-up lifts those
-  to SearchModels; once it lands, SearchSQLite's `import Search`
-  drops and the target opts into STRICT_PRODUCERS. The net win
-  shipped in #898 sub-PR E is that the Search orchestration target
-  no longer imports SQLite3, so any backend conforming the
-  `SearchModels` seams can plug in via the composition root.
+  `SampleIndexSQLite`, `Search`, `SearchSQLite`, `SearchToolProvider`,
+  `Services`. (`Logging` is a writer concrete: the audited feature
+  producer over `LoggingModels` + `OSLog`, and composition roots are
+  the only places that may import the `Logging` target. Producers
+  import `LoggingModels` only. The two `*SQLite` producers
+  (`SearchSQLite` and `SampleIndexSQLite`) are the SQLite-backed
+  concretes for their `*Models` protocol seams; both now audit
+  cleanly against the strict rule after the domain-types lift in
+  #898F let `SearchSQLite` drop its `import Search`. `Enrichment`
+  graduated in #906 once the 6 sibling passes were rewired to take
+  `any Search.IndexWriter` / `any Search.PackageWriter` /
+  `any Sample.Index.Writer` via init injection.)
+- **No documented producers remain outside `STRICT_PRODUCERS`.** The
+  prior holdouts (`Enrichment`, `SearchSQLite`) both graduated:
+  `Enrichment` via the protocol-rewire in #906, `SearchSQLite` via
+  the domain-types lift in #898F. Every producer documented in
+  `docs/package-import-contract.md`'s Producers table is now audited
+  against the foundation-only allow-list, and
+  `check-package-purity.sh`'s `GRANDFATHERED_TARGETS` array is empty.
 - **Other producers not audited by these scripts**: `MCPClient` is
   declared in `Package.swift` but is consumed only by the test target
   + MockAIAgent; it does not pass through the `STRICT_PRODUCERS` or

@@ -379,20 +379,26 @@ extension Search {
 
 // MARK: - Sample Code Indexer
 
-/// Indexer for Apple Sample Code projects
-extension Sample {
-    public struct Indexer: SearchModule.SourceIndexer {
+/// Indexer for Apple Sample Code projects. Renamed from `Sample.Indexer`
+/// to `Search.SampleCodeIndexer` by #898F so the type lives under the
+/// same `Search` namespace as its 7 sibling indexer concretes
+/// (AppleDocsIndexer, HIGIndexer, etc.); the previous `extension Sample`
+/// nesting made `Search.SourceIndexer` references resolve to
+/// `Sample.Search.SourceIndexer` once the file moved out of the Search
+/// target.
+extension Search {
+    public struct SampleCodeIndexer: Search.SourceIndexer {
         public let sourceID = "samples"
         public let displayName = "Sample Code"
 
         public init() {}
 
-        public func extractCode(from item: SearchModule.SourceItem) -> SearchModule.ExtractedContent {
+        public func extractCode(from item: Search.SourceItem) -> Search.ExtractedContent {
             // Sample code is full Swift files - extract everything
             let extractor = ASTIndexer.Extractor()
             let result = extractor.extract(from: item.content)
 
-            return SearchModule.ExtractedContent(
+            return Search.ExtractedContent(
                 symbols: result.symbols,
                 imports: result.imports,
                 hasErrors: result.hasErrors
@@ -520,7 +526,7 @@ extension Search {
             "apple-docs": AppleDocsIndexer(),
             "hig": HIGIndexer(),
             "swift-evolution": SwiftEvolutionIndexer(),
-            "samples": Sample.Indexer(),
+            "samples": Search.SampleCodeIndexer(),
             "apple-archive": AppleArchiveIndexer(),
             "swift-book": SwiftBookIndexer(),
             "swift-org": SwiftOrgIndexer(),

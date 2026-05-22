@@ -1,6 +1,5 @@
 import ASTIndexer
 import Foundation
-import Search
 import SearchModels
 import SharedConstants
 import SQLite3
