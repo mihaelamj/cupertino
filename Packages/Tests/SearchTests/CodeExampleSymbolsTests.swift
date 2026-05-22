@@ -96,7 +96,7 @@ struct CodeExampleSymbolsTests {
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
         let uri = "apple-docs://swiftui/view"
-        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         try await seedDoc(index: index, uri: uri)
 
         let examples: [(code: String, language: String)] = [
@@ -123,7 +123,7 @@ struct CodeExampleSymbolsTests {
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
         let uri = "apple-docs://swiftui/zebra"
-        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         try await seedDoc(index: index, uri: uri)
 
         // Two blocks. `Beta` appears in both — must dedupe. `Alpha` and `Zulu`
@@ -150,7 +150,7 @@ struct CodeExampleSymbolsTests {
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
         let uri = "apple-docs://swiftui/only-shell"
-        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         try await seedDoc(index: index, uri: uri)
 
         let examples: [(code: String, language: String)] = [
@@ -171,7 +171,7 @@ struct CodeExampleSymbolsTests {
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
         let uri = "apple-docs://swiftui/empty"
-        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         try await seedDoc(index: index, uri: uri)
 
         try await index.extractCodeExampleSymbols(docUri: uri, codeExamples: [])
@@ -192,7 +192,7 @@ struct CodeExampleSymbolsTests {
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
         let uri = "apple-docs://swiftui/observable"
-        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         let page = try Shared.Models.StructuredDocumentationPage(
             url: #require(URL(string: "https://developer.apple.com/documentation/swiftui/observable")),
@@ -226,7 +226,7 @@ struct CodeExampleSymbolsTests {
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
         let uri = "apple-docs://swiftui/noop-swift"
-        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         try await seedDoc(index: index, uri: uri)
 
         // Swift block that has no declarations — only an expression statement.

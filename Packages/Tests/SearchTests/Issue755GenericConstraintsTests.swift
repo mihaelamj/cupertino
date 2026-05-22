@@ -63,7 +63,7 @@ struct Issue755MigrateToVersion17Tests {
 
         // Build a fresh v17 DB through the normal path so every other
         // table exists in the v16-otherwise-correct shape.
-        let bootstrap = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let bootstrap = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         await bootstrap.disconnect()
 
         // Strip the v17-only column + index so the DB looks v16.
@@ -103,7 +103,7 @@ struct Issue755MigrateToVersion17Tests {
 
         // Act: open the DB via Search.Index.init → checkAndMigrateSchema
         // → migrateToVersion17 → stampUserVersionUnchecked(17).
-        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         await index.disconnect()
 
         // Post-condition: PRAGMA stamped to 17, column reachable, index present.
@@ -140,10 +140,10 @@ struct Issue755MigrateToVersion17Tests {
         let dbPath = try await Self.makeSyntheticV16DB()
         defer { try? FileManager.default.removeItem(at: dbPath.deletingLastPathComponent()) }
 
-        let firstOpen = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let firstOpen = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         await firstOpen.disconnect()
 
-        let secondOpen = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let secondOpen = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         await secondOpen.disconnect()
 
         var db: OpaquePointer?

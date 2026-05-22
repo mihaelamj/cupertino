@@ -228,7 +228,30 @@ extension CLIImpl.Command.Save {
             let importLogSink = try? Search.JSONLImportLogSink(path: logURL)
             logPathCapture.path = importLogSink == nil ? nil : logURL
 
-            let searchIndex = try await Search.Index(dbPath: input.searchDBPath, logger: Cupertino.Context.composition.logging.recording)
+            // #932: composition root assembles the production indexer dict
+            // inline so `Search.Index.indexItem`-style dispatch reads from
+            // an injected dependency instead of a static registry. This is
+            // the SOLE production assembly point: a new source appends one
+            // line here and nothing else. No `Search.productionIndexers()`
+            // helper exists (gof-di-rules.md Rule 1: no Service Locator
+            // surface on producer namespaces). The 7 indexer concretes
+            // referenced below all live in SearchSQLite today; the
+            // protocol-move-to-SearchModels follow-up will let new
+            // indexers live in their own packages.
+            let searchIndex = try await Search.Index(
+                dbPath: input.searchDBPath,
+                logger: Cupertino.Context.composition.logging.recording,
+                indexers: [
+                    Shared.Constants.SourcePrefix.appleDocs: Search.AppleDocsIndexer(),
+                    Shared.Constants.SourcePrefix.hig: Search.HIGIndexer(),
+                    Shared.Constants.SourcePrefix.swiftEvolution: Search.SwiftEvolutionIndexer(),
+                    Shared.Constants.SourcePrefix.samples: Search.SampleCodeIndexer(),
+                    Shared.Constants.SourcePrefix.appleArchive: Search.AppleArchiveIndexer(),
+                    Shared.Constants.SourcePrefix.swiftBook: Search.SwiftBookIndexer(),
+                    Shared.Constants.SourcePrefix.swiftOrg: Search.SwiftOrgIndexer(),
+                    // #789: "packages" indexer removed; packages live in packages.db
+                ]
+            )
 
             // #759 iteration 3 — load the authoritative Apple-type
             // constraints table from `<base-dir>/apple-constraints.json`

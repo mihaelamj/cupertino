@@ -86,7 +86,7 @@ struct Issue754ResolverKindPopulationTests {
     func kindRoundTrips(pair: (Shared.Models.StructuredDocumentationPage.Kind, String)) async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await Self.indexSymbolWithKind(
             idx,
@@ -110,7 +110,7 @@ struct Issue754ResolverKindPopulationTests {
     func missingStructuredReturnsNilKind() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // Index docs_metadata only; no docs_structured row.
         let jsonData = #"{"title":"OrphanSymbol","framework":"test","source":"apple-docs"}"#

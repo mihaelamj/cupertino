@@ -60,7 +60,7 @@ struct ExactTitlePeerTiebreakTests {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -93,7 +93,7 @@ struct ExactTitlePeerTiebreakTests {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -124,7 +124,7 @@ struct ExactTitlePeerTiebreakTests {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -161,7 +161,7 @@ struct ExactTitlePeerTiebreakTests {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,

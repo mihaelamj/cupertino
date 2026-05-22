@@ -516,40 +516,11 @@ extension Search {
 // in-search.db indexer was a shallow shadow that fed the now-dropped
 // `packages` table.
 
-// MARK: - Indexer Registry
-
-/// Registry of all available source indexers
-extension Search {
-    public enum IndexerRegistry {
-        /// All registered indexers
-        private static let indexers: [String: any Search.SourceIndexer] = [
-            Shared.Constants.SourcePrefix.appleDocs: AppleDocsIndexer(),
-            Shared.Constants.SourcePrefix.hig: HIGIndexer(),
-            Shared.Constants.SourcePrefix.swiftEvolution: SwiftEvolutionIndexer(),
-            Shared.Constants.SourcePrefix.samples: Search.SampleCodeIndexer(),
-            Shared.Constants.SourcePrefix.appleArchive: AppleArchiveIndexer(),
-            Shared.Constants.SourcePrefix.swiftBook: SwiftBookIndexer(),
-            Shared.Constants.SourcePrefix.swiftOrg: SwiftOrgIndexer(),
-            // #789: "packages" indexer removed; packages live in packages.db
-        ]
-
-        /// Get indexer for a source ID
-        /// - Parameter sourceID: The source identifier
-        /// - Returns: The indexer, or nil if not found
-        public static func indexer(for sourceID: String) -> (any Search.SourceIndexer)? {
-            indexers[sourceID]
-        }
-
-        /// Get all registered source IDs
-        public static var allSourceIDs: [String] {
-            Array(indexers.keys).sorted()
-        }
-
-        /// Register a custom indexer (for extensions)
-        /// Note: This is not thread-safe, should only be called at startup
-        public static func register(_ indexer: some Search.SourceIndexer) {
-            // Would need to make indexers mutable for this
-            // For now, custom indexers should be added to the static dictionary
-        }
-    }
-}
+// #932: the static `Search.IndexerRegistry` enum that lived here was
+// dissolved. The 7 production indexer concretes are assembled inline
+// at the composition root in `CLIImpl.Command.Save.Indexers.swift`,
+// not via a named helper on the `Search` namespace. Naming a helper
+// here would reintroduce a Service Locator surface (gof-di-rules.md
+// Rule 1): the composition root is the only place that should hold
+// the production list. Tests that need a fake-indexer dict construct
+// their own literal.

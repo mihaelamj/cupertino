@@ -69,7 +69,7 @@ struct ReadDocumentFallbackTests {
     private func makeEmptySearchIndex() async throws -> (index: Search.Index, cleanup: () throws -> Void) {
         let tempDB = FileManager.default.temporaryDirectory
             .appendingPathComponent("readdoc-fallback-\(UUID().uuidString).db")
-        let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording())
+        let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording(), indexers: [:])
         // Return the real throwing form directly. The previous shape
         // wrapped it in `{ try? ... }` and then re-wrapped that in
         // `{ try cleanup() ?? () }` — but the inner `try?` already

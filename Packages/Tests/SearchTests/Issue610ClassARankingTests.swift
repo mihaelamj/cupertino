@@ -83,7 +83,7 @@ struct Issue610ClassARankingTests {
     func taskClassBeatsProperty() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await Self.indexRow(
             on: idx,
@@ -111,7 +111,7 @@ struct Issue610ClassARankingTests {
     func viewProtocolBeatsAppkitProperty() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await Self.indexRow(
             on: idx,
@@ -138,7 +138,7 @@ struct Issue610ClassARankingTests {
     func stringStructBeatsFunction() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await Self.indexRow(
             on: idx,
@@ -165,7 +165,7 @@ struct Issue610ClassARankingTests {
     func arrayStructBeatsProperty() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await Self.indexRow(
             on: idx,
@@ -192,7 +192,7 @@ struct Issue610ClassARankingTests {
     func hashableProtocolBeatsSubsymbol() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await Self.indexRow(
             on: idx,
@@ -219,7 +219,7 @@ struct Issue610ClassARankingTests {
     func equatableProtocolBeatsImpls() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await Self.indexRow(
             on: idx,
@@ -246,7 +246,7 @@ struct Issue610ClassARankingTests {
     func codableTypealiasBeatsPeer() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await Self.indexRow(
             on: idx,
@@ -273,7 +273,7 @@ struct Issue610ClassARankingTests {
     func identifiableProtocolBeatsImpls() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await Self.indexRow(
             on: idx,
@@ -300,7 +300,7 @@ struct Issue610ClassARankingTests {
     func sendableProtocolBeatsPeer() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await Self.indexRow(
             on: idx,
@@ -331,7 +331,7 @@ struct Issue610ClassARankingTests {
         // should NOT spuriously demote it.
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await Self.indexRow(
             on: idx,

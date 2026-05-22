@@ -152,7 +152,7 @@ struct Issue635SchemaStampGuardTests {
         // path: openDatabase → checkAndMigrateSchema (no-op for v0)
         // → createTables → setSchemaVersion. The DB must end up
         // stamped at `Self.schemaVersion`.
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         await idx.disconnect()
 
         let onDisk = try Self.readRawUserVersion(at: dbPath)
@@ -170,7 +170,7 @@ struct Issue635SchemaStampGuardTests {
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
         // First open stamps the fresh DB to `schemaVersion`.
-        let idx1 = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx1 = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         await idx1.disconnect()
         let stampedAt = try Self.readRawUserVersion(at: dbPath)
         try #require(stampedAt == Search.Index.schemaVersion)
@@ -178,7 +178,7 @@ struct Issue635SchemaStampGuardTests {
         // Second open with a matching binary must be a clean no-op —
         // no throw, version unchanged. The guard's skip-path runs
         // before the stamp guard fires.
-        let idx2 = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx2 = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         await idx2.disconnect()
         let afterReopen = try Self.readRawUserVersion(at: dbPath)
         #expect(afterReopen == stampedAt, "reopen must not change user_version")
@@ -198,7 +198,7 @@ struct Issue635SchemaStampGuardTests {
         try Self.writeRawUserVersion(13, at: dbPath)
 
         await #expect(throws: Search.Error.self) {
-            _ = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+            _ = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         }
 
         // The DB version must remain at 13 — the throw happens before
@@ -220,7 +220,7 @@ struct Issue635SchemaStampGuardTests {
         try Self.writeRawUserVersion(Search.Index.schemaVersion + 1, at: dbPath)
 
         await #expect(throws: Search.Error.self) {
-            _ = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+            _ = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         }
 
         let after = try Self.readRawUserVersion(at: dbPath)
@@ -259,7 +259,7 @@ struct Issue635SchemaStampGuardTests {
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
         // Bring up an Index normally (stamps to current schemaVersion).
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         await idx.disconnect()
 
         // Strip the latest-version column + index, then stamp PRAGMA back
@@ -272,7 +272,7 @@ struct Issue635SchemaStampGuardTests {
         // Reopening triggers checkAndMigrateSchema → migrateToVersion16
         // (which now stamps the version) → setSchemaVersion (early-exits
         // because PRAGMA already matches target).
-        let reopened = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let reopened = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         await reopened.disconnect()
 
         // The DB should now be stamped at the current schemaVersion.
@@ -293,7 +293,7 @@ struct Issue635SchemaStampGuardTests {
         try Self.writeRawUserVersion(13, at: dbPath)
 
         do {
-            _ = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+            _ = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
             Issue.record("expected Search.Index init to throw, but it succeeded")
         } catch let error as Search.Error {
             let message = error.localizedDescription

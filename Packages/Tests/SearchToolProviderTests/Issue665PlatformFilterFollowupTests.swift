@@ -49,7 +49,7 @@ struct Issue665PlatformFilterFollowupTests {
         seed: (Search.Index) async throws -> Void
     ) async throws -> (provider: CompositeToolProvider, cleanup: () -> Void) {
         let dbPath = tempDB()
-        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         try await seed(index)
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
         return (provider, {

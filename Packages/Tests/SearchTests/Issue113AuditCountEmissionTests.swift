@@ -50,7 +50,7 @@ struct Issue113AuditCountEmissionTests {
     private func makeIndex(logger: any LoggingModels.Logging.Recording) async throws -> (Search.Index, URL) {
         let tempDB = FileManager.default.temporaryDirectory
             .appendingPathComponent("test-113-audit-\(UUID().uuidString).db")
-        let index = try await Search.Index(dbPath: tempDB, logger: logger)
+        let index = try await Search.Index(dbPath: tempDB, logger: logger, indexers: [:])
         return (index, tempDB)
     }
 

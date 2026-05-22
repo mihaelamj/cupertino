@@ -52,7 +52,7 @@ struct CanonicalTypeRankingTests {
     func taskBeatsKernel() async throws {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -85,7 +85,7 @@ struct CanonicalTypeRankingTests {
     func viewBeatsDeviceManagement() async throws {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -111,7 +111,7 @@ struct CanonicalTypeRankingTests {
     func urlSessionBeatsIterator() async throws {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -137,7 +137,7 @@ struct CanonicalTypeRankingTests {
     func colorBeatsAppKitSubsymbols() async throws {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -163,7 +163,7 @@ struct CanonicalTypeRankingTests {
     func stringBeatsPeers() async throws {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -191,7 +191,7 @@ struct CanonicalTypeRankingTests {
     func arrayCanonical() async throws {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -217,7 +217,7 @@ struct CanonicalTypeRankingTests {
     func optionalCanonical() async throws {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -245,7 +245,7 @@ struct CanonicalTypeRankingTests {
     func imageCanonical() async throws {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -271,7 +271,7 @@ struct CanonicalTypeRankingTests {
     func textCanonical() async throws {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -299,7 +299,7 @@ struct CanonicalTypeRankingTests {
     func urlCanonical() async throws {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -325,7 +325,7 @@ struct CanonicalTypeRankingTests {
     func dataCanonical() async throws {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -353,7 +353,7 @@ struct CanonicalTypeRankingTests {
     func dateBeatsWebKitJS() async throws {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -383,7 +383,7 @@ struct CanonicalTypeRankingTests {
         // as any other framework offers a more relevant page.
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -411,7 +411,7 @@ struct CanonicalTypeRankingTests {
     func appIntentsFrameworkSpecific() async throws {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -438,7 +438,7 @@ struct CanonicalTypeRankingTests {
     func visionRequestFrameworkSpecific() async throws {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -468,7 +468,7 @@ struct CanonicalTypeRankingTests {
         // land at #1.
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -498,7 +498,7 @@ struct CanonicalTypeRankingTests {
         // when authority is identical.
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -524,7 +524,7 @@ struct CanonicalTypeRankingTests {
     func subsymbolShadowCrossFramework() async throws {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -552,7 +552,7 @@ struct CanonicalTypeRankingTests {
     func asyncSequenceCanonical() async throws {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -585,7 +585,7 @@ struct CanonicalTypeRankingTests {
         // wrong page when the canonical doesn't exist.
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -618,7 +618,7 @@ struct CanonicalTypeRankingTests {
         // helper probes by URI shape and force-includes it.
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -656,7 +656,7 @@ struct CanonicalTypeRankingTests {
     func forceIncludeRespectsFrameworkSpecific() async throws {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // No swift/swiftui/foundation `JSValue` exists; only JavaScriptCore has it.
         // The canonical-page probe should return nothing and JavaScriptCore must
@@ -681,7 +681,7 @@ struct CanonicalTypeRankingTests {
         // swift > swiftui > foundation; the result list must reflect that.
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,
@@ -718,7 +718,7 @@ struct CanonicalTypeRankingTests {
     func resultClusterFivePeers() async throws {
         let dbPath = tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await indexPage(
             on: idx,

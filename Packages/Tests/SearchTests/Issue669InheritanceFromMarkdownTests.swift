@@ -232,7 +232,7 @@ struct Issue669InheritanceFromMarkdownTests {
         let dbPath = FileManager.default.temporaryDirectory
             .appendingPathComponent("issue669-fallback-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // Shape: pre-#638 JSON. The crawler-generated rawMarkdown carries
         // the relationship sections verbatim; the dedicated URI arrays
@@ -294,7 +294,7 @@ struct Issue669InheritanceFromMarkdownTests {
         let dbPath = FileManager.default.temporaryDirectory
             .appendingPathComponent("issue669-bypass-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // rawMarkdown says UIControl, dedicated arrays say UIResponder.
         // Dedicated arrays must win.

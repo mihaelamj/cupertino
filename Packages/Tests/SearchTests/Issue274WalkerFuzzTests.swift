@@ -33,7 +33,7 @@ struct Issue274WalkerFuzzTests {
     func depthZeroIsEmpty() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await idx.writeInheritanceEdges(
             pageURI: "apple-docs://uikit/uibutton",
@@ -56,7 +56,7 @@ struct Issue274WalkerFuzzTests {
     func depthOneOnlyImmediate() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // Chain: UIButton → UIControl → UIView
         try await idx.writeInheritanceEdges(
@@ -85,7 +85,7 @@ struct Issue274WalkerFuzzTests {
     func depthOverEstimateClampsToActual() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // Build a 5-deep chain: A → B → C → D → E
         let chain = ["a", "b", "c", "d", "e"]
@@ -116,7 +116,7 @@ struct Issue274WalkerFuzzTests {
     func negativeDepthIsEmpty() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await idx.writeInheritanceEdges(
             pageURI: "apple-docs://uikit/uibutton",
@@ -140,7 +140,7 @@ struct Issue274WalkerFuzzTests {
     func selfLoopBounded() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // Pathological: A inherits from A.
         try await idx.writeInheritanceEdges(
@@ -165,7 +165,7 @@ struct Issue274WalkerFuzzTests {
     func twoNodeCycleBounded() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // A → B and B → A.
         try await idx.writeInheritanceEdges(
@@ -195,7 +195,7 @@ struct Issue274WalkerFuzzTests {
     func threeNodeCycleBounded() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await idx.writeInheritanceEdges(
             pageURI: "apple-docs://test/a",
@@ -232,7 +232,7 @@ struct Issue274WalkerFuzzTests {
     func diamondShapeVisitOnce() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // A → B → D
         // A → C → D
@@ -276,7 +276,7 @@ struct Issue274WalkerFuzzTests {
     func missingStartURI() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await idx.writeInheritanceEdges(
             pageURI: "apple-docs://uikit/uibutton",
@@ -299,7 +299,7 @@ struct Issue274WalkerFuzzTests {
     func emptyDB() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // No edges written; query immediately.
         let tree = try await idx.walkInheritance(
@@ -315,7 +315,7 @@ struct Issue274WalkerFuzzTests {
     func emptyStringStartURI() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await idx.writeInheritanceEdges(
             pageURI: "apple-docs://uikit/uibutton",
@@ -339,7 +339,7 @@ struct Issue274WalkerFuzzTests {
     func highFanoutChildren() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // Root has 100 children.
         let children = (0..<100).map { "apple-docs://test/child\($0)" }
@@ -361,7 +361,7 @@ struct Issue274WalkerFuzzTests {
     func deepChainNoStackOverflow() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // 20-deep chain: node0 ← node1 ← ... ← node19
         for index in 0..<19 {
@@ -394,7 +394,7 @@ struct Issue274WalkerFuzzTests {
     func resolveEmptyTitle() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // Note: resolveSymbolURIs reads from `doc_symbols`, not from the
         // `inheritance` table. To exercise it properly we'd need to seed
@@ -408,7 +408,7 @@ struct Issue274WalkerFuzzTests {
     func resolveUnicodeTitle() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         let candidates = try await idx.resolveSymbolURIs(title: "🌟UnicodeTitle🎉")
         #expect(candidates.isEmpty)
     }
@@ -417,7 +417,7 @@ struct Issue274WalkerFuzzTests {
     func resolveSQLInjectionTitle() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         // Classic SQL injection attempt — must be safely bound via sqlite3_bind_text,
         // not interpolated. Contract: no crash, no rows returned (the title
         // is just "treated as text").
@@ -433,7 +433,7 @@ struct Issue274WalkerFuzzTests {
     func cycleWithinDiamond() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await idx.writeInheritanceEdges(
             pageURI: "apple-docs://test/a",

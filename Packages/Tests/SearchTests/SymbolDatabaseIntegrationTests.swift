@@ -24,7 +24,7 @@ struct SearchDbSymbolIntegrationTests {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let dbPath = tempDir.appendingPathComponent("search.db")
-        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         let cleanup = {
             Task { await index.disconnect() }

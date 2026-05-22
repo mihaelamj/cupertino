@@ -161,7 +161,7 @@ struct MCPCommandTests {
 
         // Create search index with test data
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
+        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // Index a test document
         try await searchIndex.indexDocument(Search.IndexDocumentParams(
@@ -208,7 +208,7 @@ struct MCPCommandTests {
 
         // Create and populate search index
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
+        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await searchIndex.indexDocument(Search.IndexDocumentParams(
             uri: "https://developer.apple.com/documentation/swift/array",
@@ -409,7 +409,7 @@ struct MCPServerIntegrationTests {
         // Step 2: Build index
         print("\n   🔍 Step 2: Building search index...")
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
+        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         let metadata = try Shared.Models.CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
         let strategies = Search.makeDefaultStrategies(
