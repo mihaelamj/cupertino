@@ -674,7 +674,10 @@ let targets: [Target] = {
     // ---------- DistributionModels (foundation-only seam — value types + Observer protocols) ----------
     let distributionModelsTarget = Target.target(
         name: "DistributionModels",
-        dependencies: ["SharedConstants"]
+        // LoggingModels added in #930 so Distribution.DatabaseHealthCheck
+        // (the Doctor per-DB strategy seam) can take `any Logging.Recording`
+        // as its output sink without leaking the live recorder concrete.
+        dependencies: ["SharedConstants", "LoggingModels"]
     )
     let distributionModelsTestsTarget = Target.testTarget(
         name: "DistributionModelsTests",
@@ -775,6 +778,7 @@ let targets: [Target] = {
             "Services",
             "ServicesModels",
             "Distribution",
+            "DistributionModels",
             "Diagnostics",
             "Indexer",
             "Ingest",
@@ -920,7 +924,10 @@ let targets: [Target] = {
     )
     let cliTestsTarget = Target.testTarget(
         name: "CLITests",
-        dependencies: ["CLI"]
+        // DistributionModels added in #930 so tests can name
+        // `Distribution.DatabaseHealthCheck` for the strategy-seam
+        // conformance checks on the 3 CLI conformers.
+        dependencies: ["CLI", "DistributionModels"]
     )
     let mockAIAgentTestsTarget = Target.testTarget(
         name: "MockAIAgentTests",
