@@ -24,19 +24,25 @@ extension Distribution.InstalledVersion {
         try version.write(to: url, atomically: true, encoding: .utf8)
     }
 
-    /// Classify the install state given which DB files are present and
-    /// what the stamp says. All three DBs (search, samples, packages)
-    /// must exist for any non-`.missing` state — `cupertino setup`
-    /// installs all three since the packages-overhaul, so a missing
-    /// one means the install is incomplete and should be re-run.
+    /// Classify the install state given which DBs are present on disk and
+    /// what the version stamp says. The set of databases the install is
+    /// considered "complete" against is `required`; any member of
+    /// `required` missing from `present` triggers `.missing`. Cupertino
+    /// can grow a 4th DB by adding a descriptor to the caller's
+    /// `required` set without touching this signature (#248).
+    ///
+    /// `required` MUST be non-empty: an install with zero required
+    /// databases is structurally meaningless and would silently
+    /// classify any baseDir (including an empty one) as
+    /// `.unknown` or `.current` purely on the version-stamp value.
     public static func classify(
-        searchDBExists: Bool,
-        samplesDBExists: Bool,
-        packagesDBExists: Bool,
+        present: Set<Shared.Models.DatabaseDescriptor>,
+        required: Set<Shared.Models.DatabaseDescriptor>,
         installedVersion: String?,
         currentVersion: String
     ) -> Status {
-        guard searchDBExists, samplesDBExists, packagesDBExists else { return .missing }
+        precondition(!required.isEmpty, "Distribution.InstalledVersion.classify requires at least one required database")
+        guard required.isSubset(of: present) else { return .missing }
         guard let installed = installedVersion else { return .unknown(current: currentVersion) }
         if installed == currentVersion {
             return .current(version: currentVersion)

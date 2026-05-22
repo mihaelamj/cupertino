@@ -29,10 +29,35 @@ extension Distribution.SetupService {
             .appendingPathComponent(Shared.Constants.FileName.packagesIndexDatabase)
 
         let installedVersion = Distribution.InstalledVersion.read(in: request.baseDir)
+        // #248 first cut: classify is DB-count-agnostic. The required
+        // descriptor set is constructed locally here for now; a
+        // follow-up wires this through a composition-root registry
+        // so a 4th DB plugs in without touching this file.
+        let searchDescriptor = Shared.Models.DatabaseDescriptor(
+            id: "search", filename: Shared.Constants.FileName.searchDatabase, displayName: "Documentation"
+        )
+        let samplesDescriptor = Shared.Models.DatabaseDescriptor(
+            id: "samples", filename: Shared.Constants.FileName.samplesDatabase, displayName: "Sample code"
+        )
+        let packagesDescriptor = Shared.Models.DatabaseDescriptor(
+            id: "packages", filename: Shared.Constants.FileName.packagesIndexDatabase, displayName: "Packages"
+        )
+        let required: Set<Shared.Models.DatabaseDescriptor> = [
+            searchDescriptor, samplesDescriptor, packagesDescriptor,
+        ]
+        let onDiskByFilename: [(URL, Shared.Models.DatabaseDescriptor)] = [
+            (searchDBURL, searchDescriptor),
+            (samplesDBURL, samplesDescriptor),
+            (packagesDBURL, packagesDescriptor),
+        ]
+        let present: Set<Shared.Models.DatabaseDescriptor> = Set(
+            onDiskByFilename.compactMap { url, descriptor in
+                FileManager.default.fileExists(atPath: url.path) ? descriptor : nil
+            }
+        )
         let status = Distribution.InstalledVersion.classify(
-            searchDBExists: FileManager.default.fileExists(atPath: searchDBURL.path),
-            samplesDBExists: FileManager.default.fileExists(atPath: samplesDBURL.path),
-            packagesDBExists: FileManager.default.fileExists(atPath: packagesDBURL.path),
+            present: present,
+            required: required,
             installedVersion: installedVersion,
             currentVersion: request.currentDocsVersion
         )
