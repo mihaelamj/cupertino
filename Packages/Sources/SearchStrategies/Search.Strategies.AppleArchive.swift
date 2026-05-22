@@ -21,7 +21,7 @@ extension Search {
     /// ```
     public struct AppleArchiveStrategy: SourceIndexingStrategy {
         /// The source identifier written into the FTS index.
-        public let source = "apple-archive"
+        public let source = Shared.Constants.SourcePrefix.appleArchive
 
         /// Root directory containing the Apple Archive Markdown files.
         public let archiveDirectory: URL

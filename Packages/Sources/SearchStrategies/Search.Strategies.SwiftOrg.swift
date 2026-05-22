@@ -200,7 +200,7 @@ extension Search {
 
                 do {
                     // The Swift Book covers all platforms that ship Swift support.
-                    let isSwiftBook = pageSource == "swift-book"
+                    let isSwiftBook = pageSource == Shared.Constants.SourcePrefix.swiftBook
                     try await index.indexStructuredDocument(
                         uri: uri,
                         source: pageSource,
