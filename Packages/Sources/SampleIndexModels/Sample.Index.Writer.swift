@@ -1,5 +1,6 @@
 import ASTIndexer
 import Foundation
+import SearchModels
 import SharedConstants
 
 // MARK: - Sample.Index.Writer
@@ -53,5 +54,16 @@ extension Sample.Index {
         /// FTS entries, project row itself). Used by Builder's
         /// force-reindex path.
         func deleteProject(id: String) async throws
+
+        /// Apply the authoritative Apple-type static-constraints lookup
+        /// to the sample-code file_symbols table. Idempotent; stamps
+        /// `enrichment_version` on each updated row. Used by the
+        /// `Enrichment.SamplesAppleConstraintsPass`. Returns the
+        /// affected-row count; nil `lookup` short-circuits to 0
+        /// without touching the DB.
+        func applyAppleStaticConstraints(
+            lookup: (any Search.StaticConstraintsLookup)?,
+            enrichmentVersion: Int
+        ) async throws -> Int
     }
 }

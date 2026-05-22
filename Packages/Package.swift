@@ -405,7 +405,7 @@ let targets: [Target] = {
     // the SearchModels split.
     let sampleIndexModelsTarget = Target.target(
         name: "SampleIndexModels",
-        dependencies: ["SharedConstants", "ASTIndexer"]
+        dependencies: ["SharedConstants", "ASTIndexer", "SearchModels"]
     )
     let sampleIndexModelsTestsTarget = Target.testTarget(
         name: "SampleIndexModelsTests",
@@ -700,13 +700,15 @@ let targets: [Target] = {
     )
 
     // ---------- Enrichment (#837 phase 1B: live concrete EnrichmentRunner + the
-    // pass implementations that move out of Search.IndexBuilder in follow-up PRs).
-    // Depends on EnrichmentModels for the protocol seam plus Search for the
-    // DB-specific calls the search-target passes make (and on SampleIndex /
-    // CorePackageIndexing in future phases as samples + packages passes land).
+    // 6 pass implementations that moved out of `Search.IndexBuilder`).
+    // After #906 the passes take `any Search.IndexWriter` /
+    // `any Search.PackageWriter` / `any Sample.Index.Writer` via init
+    // injection, so the target's deps shrink to the foundation-only
+    // Models seams + SharedConstants and audit clean against
+    // STRICT_PRODUCERS.
     let enrichmentTarget = Target.target(
         name: "Enrichment",
-        dependencies: ["EnrichmentModels", "Search", "SearchSQLite", "SearchModels", "SampleIndex", "SampleIndexSQLite", "SampleIndexModels", "SharedConstants"]
+        dependencies: ["EnrichmentModels", "SearchModels", "SampleIndexModels", "SharedConstants"]
     )
     let enrichmentTestsTarget = Target.testTarget(
         name: "EnrichmentTests",

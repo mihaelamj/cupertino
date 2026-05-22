@@ -97,17 +97,6 @@ EXEMPT_TARGETS=(
 # from these targets still fail; the goal is to migrate each
 # grandfathered target out of this list as its leaks are cleaned up.
 #
-# - Enrichment: #837 shipped 6 sibling EnrichmentPass implementations
-#   (SynonymsPass, AppleConstraintsPass, HierarchyPass,
-#   PackagesAppleConstraintsPass, PackagesAppleImportsPass,
-#   SamplesAppleConstraintsPass) wrapping public methods on Search.Index
-#   and Sample.Index.Database. The seam extraction (per-pass SPM targets
-#   conforming `EnrichmentModels.EnrichmentPass` against protocol-fronted
-#   Search / SampleIndex writers) is queued as #906 (child of epic #893).
-#   Grandfathered here until #906 lands; opt-in into
-#   `scripts/check-target-foundation-only.sh`'s `STRICT_PRODUCERS` is
-#   gated on the same follow-up.
-#
 # - SearchSQLite: #898 sub-PR E lifted Search.Index + 19 extensions +
 #   PackageIndex + Search.PackageQuery + PackageIndexer + the two
 #   CandidateFetcher concretes into this dedicated SQLite-backed
@@ -122,7 +111,14 @@ EXEMPT_TARGETS=(
 #   the grandfather entry is removed. Net win shipped here: the Search
 #   target no longer imports SQLite3, so anyone implementing the
 #   SearchModels protocol seams can plug a non-SQLite backend in.
-GRANDFATHERED_TARGETS=("Enrichment" "SearchSQLite")
+#
+# Note: `Enrichment` graduated out of this list in #906 once the 6
+# sibling passes were rewired to take `any Search.IndexWriter` /
+# `any Search.PackageWriter` / `any Sample.Index.Writer` via init
+# injection. The target now imports only foundation-tier and Models
+# modules and opts directly into STRICT_PRODUCERS in
+# `check-target-foundation-only.sh`.
+GRANDFATHERED_TARGETS=("SearchSQLite")
 
 is_exempt() {
     local target="$1"

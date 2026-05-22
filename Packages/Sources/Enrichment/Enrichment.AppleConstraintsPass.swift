@@ -1,8 +1,6 @@
 import EnrichmentModels
 import Foundation
-import Search
 import SearchModels
-import SearchSQLite
 
 extension Enrichment {
     /// Applies the authoritative Apple-type generic-constraints table to
@@ -21,7 +19,7 @@ extension Enrichment {
         public let dependsOn: [String] = []
         public let target = EnrichmentModels.Target.search
 
-        private let searchIndex: Search.Index
+        private let searchIndex: any Search.IndexWriter
         private let lookup: (any Search.StaticConstraintsLookup)?
 
         /// - Parameters:
@@ -30,7 +28,7 @@ extension Enrichment {
         ///     (no symbolgraph corpus wired in at the composition root)
         ///     the pass is a no-op and the build falls back to the
         ///     iter 1 + iter 2 inline constraint extraction alone.
-        public init(searchIndex: Search.Index, lookup: (any Search.StaticConstraintsLookup)?) {
+        public init(searchIndex: any Search.IndexWriter, lookup: (any Search.StaticConstraintsLookup)?) {
             self.searchIndex = searchIndex
             self.lookup = lookup
         }
