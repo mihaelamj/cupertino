@@ -130,3 +130,64 @@ jobs:
       - name: Run check-package-purity.sh
         timeout-minutes: 2
         run: ./scripts/check-package-purity.sh
+
+  portability:
+    name: Standalone-portability proof
+    runs-on: macos-15
+    # Empirical companion to `package-audits`. Lifts each strategic
+    # producer out of the monorepo into a tmp directory, generates a
+    # minimal `Package.swift` that lists only its declared deps + their
+    # transitive closure, and runs `swift build` against that subset.
+    # A green run proves the producer is genuinely standalone-portable:
+    # a downstream consumer could copy the same files into a fresh repo
+    # with the printed manifest and it would compile against the
+    # declared deps alone.
+    #
+    # The audit pair under `package-audits` answers "do you import what
+    # you declare?" via source-level inspection; THIS job answers "do
+    # you declare what you actually need?" by physically building the
+    # lifted-out subset. Together they pin the full standalone-package
+    # contract from `mihaela-agents/Rules/swift/gof-di-rules.md` rule 5.
+    #
+    # Producers checked: the SQLite-backed concretes + the orchestration
+    # targets the pluggability arc cared about (epic #893 + #919). New
+    # producers added under those epics should be appended here.
+    #
+    # Runs on macos-15 because the script uses `xcrun swift build`. The
+    # job is gated by `pull_request` + `push to develop/main`; same
+    # cadence as build-and-test.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Show Swift Version
+        run: swift --version
+
+      - name: "Portability: Search"
+        timeout-minutes: 5
+        run: ./scripts/check-target-portability.sh Search
+
+      - name: "Portability: SearchSQLite"
+        timeout-minutes: 5
+        run: ./scripts/check-target-portability.sh SearchSQLite
+
+      - name: "Portability: SampleIndex"
+        timeout-minutes: 5
+        run: ./scripts/check-target-portability.sh SampleIndex
+
+      - name: "Portability: SampleIndexSQLite"
+        timeout-minutes: 5
+        run: ./scripts/check-target-portability.sh SampleIndexSQLite
+
+      - name: "Portability: Enrichment"
+        timeout-minutes: 5
+        run: ./scripts/check-target-portability.sh Enrichment
+
+      - name: "Portability: SearchStrategies"
+        timeout-minutes: 5
+        run: ./scripts/check-target-portability.sh SearchStrategies
