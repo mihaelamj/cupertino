@@ -189,20 +189,31 @@ extension CLIImpl.Command {
         /// three local databases (#234). Each DB stores the version in the
         /// SQLite header, so reading is cheap and works without
         /// instantiating any actor. Missing files are reported but don't
-        /// fail the check — they're already covered by the per-DB sections
-        /// above.
+        /// fail the check (they're already covered by the per-DB sections
+        /// above).
+        ///
+        /// #248 third cut: the entries list inside THIS method is keyed
+        /// by canonical `Shared.Models.DatabaseDescriptor` constants, so
+        /// adding a 4th DB to the schema-versions section is a 2-line
+        /// edit. The 3 sibling per-DB sections (`checkSearchDatabase`,
+        /// `checkSamplesDatabase`, `checkPackagesDatabase`) still
+        /// hardcode their DB inline because each carries distinct
+        /// verdict policies (required vs optional vs warning-only) plus
+        /// distinct probes; lifting those into descriptor-driven
+        /// `DatabaseHealthCheck` conformers is queued as the next cut.
         private func printSchemaVersions() {
             Cupertino.Context.composition.logging.recording.output("")
             Cupertino.Context.composition.logging.recording.output("8. Schema versions (#234)")
             Cupertino.Context.composition.logging.recording.output("")
             // Path-DI composition sub-root (#535).
             let paths = Shared.Paths.live()
-            let entries: [(String, URL)] = [
-                ("search.db", URL(fileURLWithPath: searchDB).expandingTildeInPath),
-                ("packages.db", paths.packagesDatabase),
-                ("samples.db", Sample.Index.databasePath(baseDirectory: paths.baseDirectory)),
+            let entries: [(Shared.Models.DatabaseDescriptor, URL)] = [
+                (.search, URL(fileURLWithPath: searchDB).expandingTildeInPath),
+                (.packages, paths.packagesDatabase),
+                (.samples, Sample.Index.databasePath(baseDirectory: paths.baseDirectory)),
             ]
-            for (label, url) in entries {
+            for (descriptor, url) in entries {
+                let label = descriptor.filename
                 guard FileManager.default.fileExists(atPath: url.path) else {
                     Cupertino.Context.composition.logging.recording.output("   ⚠ \(label): not built")
                     continue
