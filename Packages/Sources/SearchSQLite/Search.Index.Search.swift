@@ -89,7 +89,7 @@ extension Search.Index {
         }
 
         // Check if user explicitly requested archive
-        let archiveRequested = effectiveSource == "apple-archive"
+        let archiveRequested = effectiveSource == Shared.Constants.SourcePrefix.appleArchive
 
         // Use remaining query after extracting source prefix
         let queryToSearch = remainingQuery.isEmpty ? query : remainingQuery
