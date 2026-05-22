@@ -1,8 +1,60 @@
 # Cupertino Refactor Plan (v1.2)
 
-Status: **draft, pending review**. Tracks the package split work that lands on `develop` after v1.0.2 ships from `main`.
+Status: **superseded, 2026-05-22 (v3 refresh)**. The original 2026-05-12 plan organised package splitting around v1.2.0 ship cadence; that ship landed on 2026-05-20 with a partially-different shape than this plan called for, and the strict-DI / standalone-portability principle layer (`mihaela-agents/Rules/swift/gof-di-rules.md`) consolidated in the intervening period now drives the refactor's end-state more than the modularity-for-compile-speed framing this doc started with. The v3 refresh at §0a below is the current direction; the body below (§0-§12) is preserved as historical reference, with per-phase status markers inline.
 
-This document is the single source of truth for refactor sequencing. Every refactor PR links back to a numbered task here.
+## 0a. v3 refresh (2026-05-22, current direction)
+
+Companion documents:
+- `docs/research/pluggability-analysis-2026-05-22.md`: measured analysis of where cupertino sits against the strict-DI canon + the secret-life reference implementation, and the topology the refactor targets.
+- Epic [#893](https://github.com/mihaelamj/cupertino/issues/893): the canonical sequencing record for the producer-backend split (the v3 refactor). 13 child issues #895-#907 enumerate the per-arc PRs.
+- `mihaela-agents/Rules/swift/gof-di-rules.md` rules 5 + 8: the principle layer (every package lifts out; producer foundation-only target regime).
+- `mihaela-analytics/secret-life/Docs/protocol-seam-audit.md`: the reference implementation (4 protocol seams + 27 importer concretes + a 2026-05-20 lift-out trace).
+
+### What the v3 refresh changes vs the 2026-05-12 plan
+
+The original plan's value proposition was modularity for compile-speed and review surface (no package > 2,500 LOC, no file > 800 LOC). The v3 refresh keeps those wins where they overlap with the strict-DI shape, and **extends** the plan with one new axis: every producer's concrete backend (`SQLite3`, `WebKit`, `FoundationNetworking`) lifts to a sibling SPM target conforming a protocol seam declared in the producer's `*Models` companion. After the refresh, the end-state is mechanically pluggable: `scripts/check-target-portability.sh <Producer>` passes for every producer with only its `*Models` + `SharedConstants` declared, and `grep '^import SQLite3' Packages/Sources/<Target>/` is empty for every non-`*SQLite` target.
+
+The plan's per-phase status as of 2026-05-22:
+
+| Phase | Original scope | Today's status |
+|---|---|---|
+| **Phase 1** (Shared dissection) | 6 sub-targets: `SharedCore`, `SharedConstants`, `SharedUtils`, `SharedModels`, `SharedConfiguration`, `MCPSharedTools` | **DONE in a different shape per #536.** 4 of the 6 (`SharedCore`, `SharedUtils`, `SharedModels`, `SharedConfiguration`) were absorbed into `SharedConstants` rather than kept as separate sub-targets. Only `SharedConstants` + `MCPSharedTools` exist as distinct targets today. |
+| **Phase 2** (Core dissection) | 8 sub-targets: `CoreProtocols`, `CoreHTMLParser`, `CoreJSONParser`, `CorePackageIndexing`, `CoreSampleCode`, `CoreArchive`, `CoreSpecializedCrawlers`, `CoreCrawler` | **PARTIAL: 4 of 8 done.** `CoreProtocols`, `CoreJSONParser`, `CorePackageIndexing`, `CoreSampleCode` exist. `CoreHTMLParser` (extract `Core/HTMLParser/`), `CoreArchive`, `CoreSpecializedCrawlers`, and the `CoreCrawler` rename are not done. Carried forward; see the "Phase 2 carry-over" sub-section at the end of §0a for sequencing. |
+| **Phase 3** (Search dissection) | 8 sub-targets: `SearchSchema`, `SearchUtilities`, `SearchIntent`, `SearchRanking`, `SearchIndexCore`, `SearchStrategies`, `SearchQuery`, `SearchAPI` | **0 done; superseded by Option D shape**, which keeps the modularity wins of the original 8-target split AND extracts a `SearchSQLite` concrete that owns the only `import SQLite3` site for the docs index, AND lifts the 7 source-indexing strategies into 7 separate SPM targets (mirror of secret-life's one-concrete-per-target shape). End-state: ~15 sub-targets for the Search-side surface, not 8. Detail: epic #893 children #896-#901; analysis doc §6.2 + §7.2. |
+| **Phase 4** (Cleanup) | 8 small PRs (force-unwrap fixes, EmptyParams dedupe, etc.) | **PARTIAL.** Track per-PR; not the v3 refresh's focus. |
+| **Phase 5** (SampleIndex dissection) | 4 sub-targets: `SampleIndexSchema`, `SampleIndexCore`, `SampleIndexQuery`, `SampleIndexAPI` | **0 done; superseded by Option D shape**, mirroring the Search arc at smaller scale (only 5 files today). End-state: add a `SampleIndexSQLite` concrete and write-side protocol seam. Detail: epic #893 child #902; analysis doc §7.3. |
+| **(new) Phase 7** (welded-backend producers) | not in original plan | **0 done.** Five additional producers carry welded backends the original plan did not address: `Crawler/WebKit`, `Core/WebKit`, `CoreJSONParser/WebKit`, `CoreSampleCode/WebKit`, `Availability/FoundationNetworking`. Each gets a `*WebKit` / `*FoundationNetworking` sibling concrete + a protocol seam in the producer's `*Models`. Detail: epic #893 children #903-#905; analysis doc §7.4-§7.6. |
+
+### v3 end-state target topology
+
+After the v3 refresh lands, cupertino has roughly 35-42 producer SPM targets (vs 30 today, post-#908). The shape is:
+
+- **Foundation tier** (allowed to every producer): `SharedConstants`, `LoggingModels`, `Resources`, `Diagnostics`, `ASTIndexer`, `MCPCore`, `MCPSharedTools`. Source of truth: `scripts/check-target-foundation-only.sh` `FOUNDATION_TIER` array.
+- **`*Models` protocol seams** (foundation-only, allowed to every producer): 12 today (`CoreProtocols`, `CrawlerModels`, `CorePackageIndexingModels`, `SearchModels`, `SampleIndexModels`, `ServicesModels`, `IndexerModels`, `DistributionModels`, `CleanupModels`, `CoreSampleCodeModels`, `RemoteSyncModels`, `EnrichmentModels`); v3 extends each `*Models` with write-side protocols where its producer has welded backends today.
+- **Per-strategy concrete targets** (the secret-life pattern, one concrete per SPM target): 7 source-indexing strategies inside Search → 7 targets, 6 enrichment passes → 6 targets, plus the `*SQLite` and `*WebKit` concrete siblings.
+- **Composition root** (`CLI`): grows to wire every new `Live*Factory`. Per `gof-di-rules.md` §6 this is expected, not a problem.
+
+### v3 sequencing (mirror of epic #893's child issues)
+
+1. **#895**: Pre-flight hygiene. Parts A + B shipped via PR #908 (the `EnrichmentModels` allow-list catchup + `docs/package-import-contract.md` refresh). Part C is this very plan refresh, landing as a docs-only PR.
+2. **#896**: `SearchModels` write-side protocols + `Search.Index` witness conformances. Zero file moves; zero SQLite migration; protocol fronting only.
+3. **#897**: Rewire `Search.IndexBuilder` + 7 strategies to take `any Search.IndexWriter` via init.
+4. **#898**: Search target dissection (`SearchSchema`, `SearchUtilities`, `SearchIntent`, `SearchRanking`, `SearchSQLite` extract). 5 sub-PRs; the final one is the SQLite move.
+5. **#899**: 7 source-indexing strategies → 7 SPM targets.
+6. **#900**: `SearchQuery` extraction + `SearchAPI` rename of the residue.
+7. **#901**: Search arc lift-out traces (verification PRs).
+8. **#902**: SampleIndex arc (write-side protocols → `SampleIndexSQLite` → lift-out).
+9. **#903**: Crawler arc (`HTTPFetching` protocol → `CrawlerWebKit` → lift-out).
+10. **#904**: Core / CoreJSONParser / CoreSampleCode WebKit extraction (or shared `WebFetcher` producer-tier concrete behind a `WebFetcherModels` foundation-only seam; decision pinned in #904's PR body).
+11. **#905**: Availability arc (`Networking` protocol → `AvailabilityFoundationNetworking` → lift-out).
+12. **#906**: Enrichment per-pass split (6 passes → 6 SPM targets).
+13. **#907**: Closing: full audit, plan-doc finalisation, epic close.
+
+#909 tracks a separate set of pre-existing audit-script consistency gaps (Logging missing from FORBIDDEN_MODULES, Diagnostics dual classification, MCPClient unaudited, etc.) that surfaced during PR #908's critic-review and are out-of-scope for the strict pluggability arc.
+
+### Phase 2 carry-over
+
+The 4 undone Phase-2 items (`CoreHTMLParser`, `CoreArchive`, `CoreSpecializedCrawlers`, `CoreCrawler` rename) are not strictly required by the v3 producer-backend split. They remain on the plan but get lower priority than the Search / SampleIndex / welded-backend arcs above. Re-evaluate after epic #893 closes.
 
 ---
 
@@ -119,6 +171,8 @@ Operations / MCP / Apps:
 ---
 
 ## 3. Phase 1: Shared dissection (6 PRs)
+
+> **Status: DONE in a different shape per #536 (2026-05-14).** Original plan called for 6 sub-targets; #536 absorbed `SharedCore` / `SharedUtils` / `SharedModels` / `SharedConfiguration` into `SharedConstants` instead. Only `SharedConstants` + `MCPSharedTools` exist as distinct targets today. The per-PR detail below is preserved as the historical record; do not re-execute. See §0a above for current direction.
 
 `Shared` is the dependency hub: 15+ packages import it. Splitting it first means every downstream extraction in Phases 2 and 3 imports a smaller, more targeted surface. Each PR keeps the public API source-compatible by re-exporting moved types from the originating module, then a final pass removes the re-exports.
 
@@ -268,6 +322,8 @@ Builds on 1.2.
 
 ## 4. Phase 2: Core dissection (8 PRs)
 
+> **Status: PARTIAL (4 of 8 done).** `CoreProtocols`, `CoreJSONParser`, `CorePackageIndexing`, `CoreSampleCode` exist as distinct SPM targets. The remaining 4 (`CoreHTMLParser`, `CoreArchive`, `CoreSpecializedCrawlers`, the `CoreCrawler` rename) are carried forward at lower priority than the v3 producer-backend arc; re-evaluate after epic #893 closes. See §0a above.
+
 `Core` is split by source-kind boundaries already implicit in the file layout. Each extraction is followed by an import sweep across `Search`, `Indexer`, `Ingest`, `CLI`.
 
 Throughout this phase, `Core` continues to exist as an umbrella that re-exports each extracted submodule until 2.8 renames the residue to `CoreCrawler`. That keeps Phase 1 import-sweep work from compounding here.
@@ -374,6 +430,8 @@ Throughout this phase, `Core` continues to exist as an umbrella that re-exports 
 ---
 
 ## 5. Phase 3: Search dissection (8 PRs)
+
+> **Status: 0 done; SUPERSEDED by Option D shape under epic #893 (children #896-#901).** The original 8-target split (`SearchSchema` / `SearchUtilities` / `SearchIntent` / `SearchRanking` / `SearchIndexCore` / `SearchStrategies` / `SearchQuery` / `SearchAPI`) is partially adopted by Option D, but Option D additionally extracts a `SearchSQLite` concrete that owns the only `import SQLite3` site and lifts the 7 source-indexing strategies into 7 separate SPM targets (mirror of secret-life's one-concrete-per-target shape). End-state: ~15 sub-targets for the Search-side surface, not 8. The original task definitions §5.1-§5.8 below are useful boundary references; the v3 sequencing replaces them. See `docs/research/pluggability-analysis-2026-05-22.md` §6.2 + §7.2.
 
 Phase 3 is the hardest. Unlike Phase 2, several files require **code refactoring**, not just relocation. Specifically:
 
@@ -541,6 +599,8 @@ In `SharedUtils/SQL.swift`. Replace the 40+ inline `SELECT COUNT(*) FROM ...` st
 
 ## 7. Phase 5: SampleIndex dissection (4 PRs)
 
+> **Status: 0 done; SUPERSEDED by Option D shape under epic #893 (child #902).** Original 4-target split mirrors what the v3 refresh does to SampleIndex, but Option D additionally extracts a `SampleIndexSQLite` concrete. SampleIndex today is only 5 files (1 SQLite-importing), so the v3 sub-target count is smaller (~3-4 total) than the Search arc. Read-side protocol `Sample.Index.Reader` already exists in `SampleIndexModels`. The original task definitions §7.1-§7.4 are boundary references; v3 sequencing under epic #893 supersedes.
+
 `SampleIndex` is a structurally self-contained god: `SampleIndexDatabase.swift` is 1,164 LOC with 18 public funcs covering schema, CRUD, query, and availability annotation. Same split pattern as `Search`.
 
 `SampleIndex` depends only on `["Shared", "Logging", "ASTIndexer"]` today and has only one downstream consumer in this round (`Services`), so the sweep is small.
@@ -624,6 +684,43 @@ Open follow-ups (decide before the relevant PR is cut, not blocking the plan):
 
 - Phase 4 fold-in: keep 4.1–4.7 as a clean Phase 4 series (current default), or attach individual cleanups to the package PR that touches the same file?
 - 5.3 scope: `SampleIndexBuilder.swift` location (in `SampleIndexQuery` vs its own subpackage) is confirmed in the 5.3 design note before the branch is cut.
+
+---
+
+## 11a. Phase 7 (new in v3 refresh): welded-backend producers
+
+> **Status: 0 done.** Added to the plan in v3 refresh (2026-05-22). Original plan did not address the welded-backend dimension; v3 makes it explicit. Detail under epic #893 children #903-#905.
+
+5 producers carry a welded backend (`WebKit` or `FoundationNetworking`) that the original plan did not separate from the producer:
+
+| Producer | Welded backend | v3 child | Treatment |
+|---|---|---|---|
+| `Crawler` | `WebKit` | #903 | Add `CrawlerModels.HTTPFetching` protocol + `CrawlerWebKit` sibling concrete. Future Linux unblock via `CrawlerAsyncHTTPClient`. (Crawler's `import os` is logging-shaped, handled separately via the `LoggingModels` pattern; out of scope here.) |
+| `Core` | `WebKit` | #904 | Per inspection during this plan refresh: 4 WebKit-touching producers (`Core` + `CoreJSONParser` + `CoreSampleCode` + `Crawler`) may collapse to a single shared `WebFetcher` producer-tier concrete (its own SPM target, with a foundation-only `WebFetcherModels` protocol seam) if the WebKit surface is uniform; otherwise per-producer `*WebKit` siblings. WebKit cannot live in the foundation tier because the foundation contract demands platform-agnostic deps; the shared option still ends up in the producer tier behind a `*Models` seam. Decision pinned in #904's PR body before any code lands. |
+| `CoreJSONParser` | `WebKit` | #904 | Same |
+| `CoreSampleCode` | `WebKit` | #904 | Same |
+| `Availability` | `FoundationNetworking` | #905 | Add `AvailabilityModels.Networking` protocol (or move to `CoreProtocols`) + `AvailabilityFoundationNetworking` sibling concrete. |
+
+Each step ends with a lift-out trace per the §0a v3 sequencing.
+
+---
+
+## 11b. Phase 8 (new in v3 refresh): per-pass Enrichment split
+
+> **Status: 0 done.** Added to the plan in v3 refresh (2026-05-22). The original plan did not anticipate the postprocessor pipeline (`#837` shipped it after this plan was authored). Detail: epic #893 child #906.
+
+The `Enrichment` producer today is the one cupertino producer NOT yet in `STRICT_PRODUCERS` (its 6 sibling passes import `Search` + `SampleIndex` concretes directly). v3 lifts each pass into its own SPM target conforming `EnrichmentModels.EnrichmentPass`:
+
+| Sub-target | Source file moved | Notes |
+|---|---|---|
+| `Enrichment.AppleConstraintsPass` (own target) | `Enrichment.AppleConstraintsPass.swift` | search.db side |
+| `Enrichment.HierarchyPass` | `Enrichment.HierarchyPass.swift` | search.db side |
+| `Enrichment.PackagesAppleConstraintsPass` | `Enrichment.PackagesAppleConstraintsPass.swift` | packages.db side |
+| `Enrichment.PackagesAppleImportsPass` | `Enrichment.PackagesAppleImportsPass.swift` | packages.db side |
+| `Enrichment.SamplesAppleConstraintsPass` | `Enrichment.SamplesAppleConstraintsPass.swift` | samples.db side |
+| `Enrichment.SynonymsPass` | `Enrichment.SynonymsPass.swift` | search.db side |
+
+Each consumes the protocol-fronted Search / SampleIndex writers; `Enrichment` (or the dissolved orchestrator residue) gets opted into `STRICT_PRODUCERS` once the passes split clean.
 
 ---
 
