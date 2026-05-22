@@ -27,7 +27,7 @@ struct IndexNilJsonDataInlinesContentTests {
         let dbURL = Self.makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbURL) }
 
-        let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:])
+        let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         let body = "## Heading\n\nBody with \"quotes\" and a backslash \\ plus newlines.\n"
 
@@ -69,7 +69,7 @@ struct IndexNilJsonDataInlinesContentTests {
         let dbURL = Self.makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbURL) }
 
-        let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:])
+        let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         // Markdown bodies routinely carry fenced code, embedded quotes,
         // and tabs. JSONSerialization handles all of them; the pre-#607
@@ -110,7 +110,7 @@ struct IndexNilJsonDataInlinesContentTests {
         let dbURL = Self.makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbURL) }
 
-        let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:])
+        let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         let supplied = #"{"abstract":"Already structured","custom":"shape","rawMarkdown":"original"}"#
 

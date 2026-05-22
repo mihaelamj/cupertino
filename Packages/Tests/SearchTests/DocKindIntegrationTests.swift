@@ -128,7 +128,7 @@ struct SchemaShapeTests {
     func freshDBStampedVersion() async throws {
         let dbPath = makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         await idx.disconnect()
 
         #expect(try readSchemaVersion(at: dbPath) == Int(Search.Index.schemaVersion))
@@ -138,7 +138,7 @@ struct SchemaShapeTests {
     func idxKindExists() async throws {
         let dbPath = makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         await idx.disconnect()
 
         #expect(try indexExists(at: dbPath, name: "idx_kind"))
@@ -157,7 +157,7 @@ struct IndexDocumentKindTests {
         let dbPath = makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         try await idx.indexDocument(Search.IndexDocumentParams(
             uri: uri,
             source: source,
@@ -225,7 +225,7 @@ struct SymbolsColumnTests {
         let dbPath = makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         try await idx.indexDocument(Search.IndexDocumentParams(
             uri: "test://nosym",
             source: "swift-book",

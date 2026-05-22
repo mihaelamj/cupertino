@@ -54,7 +54,7 @@ struct Issue673PhaseESchemaMismatchTests {
         makeStampedDB(at: dbURL, userVersion: 99) // Far-future version.
 
         do {
-            _ = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:])
+            _ = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
             Issue.record("expected .schemaVersionMismatch to throw; nothing was thrown")
         } catch let error as Search.Error {
             guard case .schemaVersionMismatch(let dbVersion, let binaryVersion, let path) = error else {
@@ -79,7 +79,7 @@ struct Issue673PhaseESchemaMismatchTests {
         makeStampedDB(at: dbURL, userVersion: staleVersion)
 
         do {
-            _ = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:])
+            _ = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
             Issue.record("expected .schemaVersionMismatch to throw for v\(staleVersion); nothing was thrown")
         } catch let error as Search.Error {
             guard case .schemaVersionMismatch(let dbVersion, _, _) = error else {
@@ -151,7 +151,7 @@ struct Issue673PhaseESchemaMismatchTests {
 
         // Should open without throwing — the migrator returns immediately
         // because currentVersion == Self.schemaVersion at line 33.
-        let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:])
+        let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         await index.disconnect()
     }
 }

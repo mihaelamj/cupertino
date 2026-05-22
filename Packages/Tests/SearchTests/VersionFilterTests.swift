@@ -233,7 +233,7 @@ struct VersionFilterTests {
     func noAvailabilityData() async throws {
         let tempDB = FileManager.default.temporaryDirectory
             .appendingPathComponent("test-\(UUID().uuidString).db")
-        let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording(), indexers: [:])
+        let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         defer {
             Task { await index.disconnect() }
             try? FileManager.default.removeItem(at: tempDB)
@@ -371,7 +371,7 @@ struct VersionFilterTests {
     ) async throws -> (index: Search.Index, cleanup: @Sendable () -> Void) {
         let tempDB = FileManager.default.temporaryDirectory
             .appendingPathComponent("test-\(UUID().uuidString).db")
-        let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording(), indexers: [:])
+        let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         try await index.indexDocument(Search.IndexDocumentParams(
             uri: uri,

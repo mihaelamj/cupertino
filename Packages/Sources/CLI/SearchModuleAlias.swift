@@ -57,7 +57,7 @@ struct LiveSearchDatabaseFactory: Search.DatabaseFactory {
         // its own production-dict composition site; this factory's
         // consumers never call `indexItem`. Empty dict is the honest
         // dependency declaration for read paths.
-        try await SearchModule.Index(dbPath: url, logger: Cupertino.Context.composition.logging.recording, indexers: [:])
+        try await SearchModule.Index(dbPath: url, logger: Cupertino.Context.composition.logging.recording, indexers: [:], sourceLookup: .empty)
     }
 }
 
@@ -86,7 +86,7 @@ struct LiveSearchIndexWriterFactory: Search.IndexWriterFactory {
         // `indexItem`. Empty dict is correct; the only production
         // `indexItem` consumer (when it lands, e.g. #58 WWDC) will use the
         // explicit dict assembled in `CLIImpl.Command.Save.Indexers.swift`.
-        try await SearchModule.Index(dbPath: url, logger: Cupertino.Context.composition.logging.recording, indexers: [:])
+        try await SearchModule.Index(dbPath: url, logger: Cupertino.Context.composition.logging.recording, indexers: [:], sourceLookup: .empty)
     }
 }
 

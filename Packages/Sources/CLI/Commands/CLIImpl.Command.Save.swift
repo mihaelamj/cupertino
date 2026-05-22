@@ -502,7 +502,7 @@ extension CLIImpl.Command.Save {
         // #932: this Save path indexes via `RemoteSync.Indexer.run` +
         // `SearchIndexDocumentIndexer` which calls bare `indexDocument` on
         // the actor, NOT `indexItem`. Empty dict is correct.
-        let searchIndex = try await SearchModule.Index(dbPath: searchDBURL, logger: Cupertino.Context.composition.logging.recording, indexers: [:])
+        let searchIndex = try await SearchModule.Index(dbPath: searchDBURL, logger: Cupertino.Context.composition.logging.recording, indexers: [:], sourceLookup: .empty)
 
         let progressDisplay = RemoteSync.AnimatedProgress(barWidth: 20, useEmoji: true)
         let reporter = RemoteSync.ProgressReporter(display: progressDisplay)

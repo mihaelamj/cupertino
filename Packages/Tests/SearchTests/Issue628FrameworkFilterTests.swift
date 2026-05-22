@@ -93,7 +93,7 @@ struct Issue628FrameworkFilterTests {
     func canonicalPrependRespectsFrameworkFilter() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         // Two canonical-shape rows that the safety net would normally prepend:
         // the SwiftUI View protocol and a Foundation-side stand-in. With
@@ -134,7 +134,7 @@ struct Issue628FrameworkFilterTests {
     func canonicalPrependFiresWhenFrameworkMatches() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         try await Self.indexRow(
             on: idx,
@@ -171,7 +171,7 @@ struct Issue628FrameworkFilterTests {
     func bogusFrameworkThrows() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         // Seed the alias table with one real framework so the lookup has
         // a populated table to consult.
@@ -198,7 +198,7 @@ struct Issue628FrameworkFilterTests {
     func emptyFrameworkTreatedAsAbsent() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         try await Self.indexRow(
             on: idx,
@@ -226,7 +226,7 @@ struct Issue628FrameworkFilterTests {
     func unifiedDocsFetcherRespectsFramework() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         try await Self.indexRow(
             on: idx,
@@ -262,7 +262,7 @@ struct Issue628FrameworkFilterTests {
     func unifiedFetcherDoesNotZeroOutNonAppleSources() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         // Stamp a swift-evolution-style row with empty framework (matches
         // the real corpus shape — non-Apple sources don't carry a

@@ -29,7 +29,7 @@ struct ReadDocumentFTSFallbackTests {
         // metadata row to simulate the pre-#608 wrapper shape (with
         // `rawMarkdown: null`). The FTS row, written by `indexDocument`
         // up front, already carries the full body.
-        let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:])
+        let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         let body = "## Heading\n\nFull body with \"quotes\" and a backslash \\ and a backtick `."
         try await index.indexDocument(Search.IndexDocumentParams(
@@ -54,7 +54,7 @@ struct ReadDocumentFTSFallbackTests {
         )
 
         // Re-open and ask the read path for the document.
-        let index2 = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:])
+        let index2 = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         let returned = try await index2.getDocumentContent(uri: "swift-evolution://SE-0304", format: .json)
         await index2.disconnect()
 
@@ -79,7 +79,7 @@ struct ReadDocumentFTSFallbackTests {
         let dbURL = Self.makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbURL) }
 
-        let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:])
+        let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         let body = "Body is here."
         try await index.indexDocument(Search.IndexDocumentParams(
@@ -111,7 +111,7 @@ struct ReadDocumentFTSFallbackTests {
         let dbURL = Self.makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbURL) }
 
-        let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:])
+        let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         let body = "Real body."
         try await index.indexDocument(Search.IndexDocumentParams(
             uri: "apple-archive://10000047i/RevisionHistory",
@@ -134,7 +134,7 @@ struct ReadDocumentFTSFallbackTests {
             jsonString: #"{"title":"Revision History","url":"apple-archive://10000047i/RevisionHistory","rawMarkdown":"","source":"apple-archive","framework":"Foundation"}"#
         )
 
-        let index2 = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:])
+        let index2 = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         let returned = try await index2.getDocumentContent(uri: "apple-archive://10000047i/RevisionHistory", format: .json)
         await index2.disconnect()
 
@@ -150,7 +150,7 @@ struct ReadDocumentFTSFallbackTests {
         let dbURL = Self.makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbURL) }
 
-        let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:])
+        let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         try await index.indexDocument(Search.IndexDocumentParams(
             uri: "swift-evolution://SE-0001",
             source: "swift-evolution",
@@ -168,7 +168,7 @@ struct ReadDocumentFTSFallbackTests {
         let malformed = "{not even JSON"
         try Self.overwriteJsonData(at: dbURL, uri: "swift-evolution://SE-0001", jsonString: malformed)
 
-        let index2 = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:])
+        let index2 = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         let returned = try await index2.getDocumentContent(uri: "swift-evolution://SE-0001", format: .json)
         await index2.disconnect()
 

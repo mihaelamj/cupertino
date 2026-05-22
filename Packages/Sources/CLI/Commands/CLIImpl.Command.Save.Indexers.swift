@@ -250,7 +250,8 @@ extension CLIImpl.Command.Save {
                     Shared.Constants.SourcePrefix.swiftBook: Search.SwiftBookIndexer(),
                     Shared.Constants.SourcePrefix.swiftOrg: Search.SwiftOrgIndexer(),
                     // #789: "packages" indexer removed; packages live in packages.db
-                ]
+                ],
+                sourceLookup: CLIImpl.makeProductionSourceLookup()
             )
 
             // #759 iteration 3 — load the authoritative Apple-type

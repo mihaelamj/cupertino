@@ -70,7 +70,7 @@ struct BM25TitleWeightingTests {
         let dbPath = makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         // A: query term lives in the title, body is unrelated.
         try await idx.indexDocument(Search.IndexDocumentParams(
@@ -114,7 +114,7 @@ struct BM25TitleWeightingTests {
         let dbPath = makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         // A: query term appears in the first sentence (becomes the summary).
         try await idx.indexDocument(Search.IndexDocumentParams(

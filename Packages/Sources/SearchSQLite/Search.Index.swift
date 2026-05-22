@@ -123,15 +123,27 @@ extension Search {
         /// assembly is the sole source of truth. Sendable holds because
         /// `Search.SourceIndexer` requires Sendable conformance.
         public nonisolated let indexers: [String: any Search.SourceIndexer]
+        /// Composition-root-injected `Search.SourceLookup` carrying the
+        /// full set of `Search.SourceDefinition` rows the binary knows
+        /// about. Replaces pre-#934 reach-for-the-static lookups against
+        /// `Search.SourceRegistry.all`. The ranking path in
+        /// `Search.Index.Search` reads source properties + boosted-source
+        /// lists from this value; the composition root in CLI inlines
+        /// the 8-entry production list. Defaulted to `.empty` is NOT
+        /// allowed at the init level: every call site explicitly passes
+        /// `sourceLookup:` per `gof-di-rules.md` Rule 2.
+        public nonisolated let sourceLookup: Search.SourceLookup
 
         public init(
             dbPath: URL,
             logger: any LoggingModels.Logging.Recording,
-            indexers: [String: any Search.SourceIndexer]
+            indexers: [String: any Search.SourceIndexer],
+            sourceLookup: Search.SourceLookup
         ) async throws {
             self.dbPath = dbPath
             self.logger = logger
             self.indexers = indexers
+            self.sourceLookup = sourceLookup
 
             // Ensure directory exists
             let directory = dbPath.deletingLastPathComponent()

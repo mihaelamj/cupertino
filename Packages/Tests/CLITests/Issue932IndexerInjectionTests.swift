@@ -77,7 +77,8 @@ struct Issue932IndexerInjectionContractTests {
         let index = try await Search.Index(
             dbPath: dbPath,
             logger: LoggingModels.Logging.NoopRecording(),
-            indexers: [:]
+            indexers: [:],
+            sourceLookup: .empty
         )
         #expect(index.indexers.isEmpty)
         await index.disconnect()
@@ -164,7 +165,8 @@ struct Issue932IndexItemDispatchTests {
         let index = try await Search.Index(
             dbPath: dbPath,
             logger: LoggingModels.Logging.NoopRecording(),
-            indexers: ["wwdc-transcripts": fake]
+            indexers: ["wwdc-transcripts": fake],
+            sourceLookup: .empty
         )
         defer { Task { await index.disconnect() } }
 
@@ -211,7 +213,8 @@ struct Issue932IndexItemDispatchTests {
         let index = try await Search.Index(
             dbPath: dbPath,
             logger: LoggingModels.Logging.NoopRecording(),
-            indexers: ["wwdc-transcripts": fake]
+            indexers: ["wwdc-transcripts": fake],
+            sourceLookup: .empty
         )
         defer { Task { await index.disconnect() } }
 

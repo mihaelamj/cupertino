@@ -469,12 +469,13 @@ extension Search.Index {
                 // chain collapses to direct lookups.
                 let searchSource = Search.Source(rawValue: source)
 
-                // Check if this source is boosted for the detected intent.
-                let isIntentBoosted = queryIntent.boostedSources.contains(searchSource)
+                // #934: Reads from the injected `self.sourceLookup`
+                // instead of the static `SourceRegistry`. The lookup is
+                // composition-root-supplied at `Search.Index.init`.
+                let isIntentBoosted = self.sourceLookup.boostedSources(for: queryIntent).contains(searchSource)
 
                 // Get SourceProperties for quality-based scoring (#81)
-                // Uses empirical data from SourceRegistry (single source of truth)
-                let sourceProps = Search.SourceRegistry.properties(for: searchSource.rawValue)
+                let sourceProps = self.sourceLookup.properties(for: searchSource.rawValue)
 
                 // Calculate base multiplier from SourceProperties or fallback to static values
                 let baseMultiplier: Double = {
