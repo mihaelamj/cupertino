@@ -147,13 +147,18 @@ struct IndexBuilderSymbolsIntegrationTests {
 
         let dbPath = tempRoot.appendingPathComponent("search.db")
         let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
-        let builder = Search.IndexBuilder(
-            searchIndex: index,
+        let strategies = Search.makeDefaultStrategies(
             metadata: nil,
             docsDirectory: docsDir,
             indexSampleCode: false,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogProvider: MissingSampleCatalogProvider(), logger: Logging.NoopRecording()
+            sampleCatalogProvider: MissingSampleCatalogProvider(),
+            logger: Logging.NoopRecording()
+        )
+        let builder = Search.IndexBuilder(
+            searchIndex: index,
+            strategies: strategies,
+            logger: Logging.NoopRecording()
         )
 
         try await builder.buildIndex(clearExisting: true)

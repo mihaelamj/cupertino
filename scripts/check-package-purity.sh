@@ -75,6 +75,7 @@ FORBIDDEN_MODULES=(
     SampleIndex
     Search
     SearchSQLite
+    SearchStrategies
     SampleIndexSQLite
 )
 

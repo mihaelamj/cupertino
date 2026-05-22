@@ -13,6 +13,7 @@ import SampleIndexSQLite
 import Search
 import SearchModels
 import SearchSQLite
+import SearchStrategies
 import SharedConstants
 
 // MARK: - Indexer dispatch + progress rendering (#244)
@@ -271,8 +272,7 @@ extension CLIImpl.Command.Save {
                 ]
             )
 
-            let builder = Search.IndexBuilder(
-                searchIndex: searchIndex,
+            let strategies = Search.makeDefaultStrategies(
                 metadata: nil,
                 docsDirectory: input.docsDirectory,
                 evolutionDirectory: input.evolutionDirectory,
@@ -282,7 +282,12 @@ extension CLIImpl.Command.Save {
                 markdownStrategy: input.markdownStrategy,
                 sampleCatalogProvider: input.sampleCatalogProvider,
                 logger: Cupertino.Context.composition.logging.recording,
-                importLogSink: importLogSink,
+                importLogSink: importLogSink
+            )
+            let builder = Search.IndexBuilder(
+                searchIndex: searchIndex,
+                strategies: strategies,
+                logger: Cupertino.Context.composition.logging.recording,
                 staticConstraintsLookup: staticConstraintsLookup,
                 enrichmentRunner: enrichmentRunner
             )

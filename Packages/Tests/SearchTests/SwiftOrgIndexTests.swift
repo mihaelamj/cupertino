@@ -1,4 +1,5 @@
 import Foundation
+@testable import SearchStrategies
 @testable import Search
 import SearchModels
 @testable import SearchSQLite
