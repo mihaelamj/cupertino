@@ -47,11 +47,11 @@ extension Search {
         /// ``Shared/Constants/Interval/progressLogEvery`` items.
         ///
         /// - Parameters:
-        ///   - index: The ``Search/Index`` to write into.
+        ///   - index: An object conforming to both ``SearchModels/Search/Database`` and ``SearchModels/Search/IndexWriter`` (the production conformer is the ``Search/Index`` actor).
         ///   - progress: Optional progress callback, called at regular intervals.
         /// - Returns: ``Search/IndexStats`` with indexed and skipped counts.
         public func indexItems(
-            into index: Search.Index,
+            into index: any Search.Database & Search.IndexWriter,
             progress: (any Search.IndexingProgressReporting)?
         ) async throws -> Search.IndexStats {
             guard FileManager.default.fileExists(atPath: evolutionDirectory.path) else {
@@ -152,11 +152,11 @@ extension Search {
         /// - Parameters:
         ///   - file: The proposal `.md` file URL.
         ///   - content: The file's raw Markdown content.
-        ///   - index: The ``Search/Index`` to write into.
+        ///   - index: An object conforming to both ``SearchModels/Search/Database`` and ``SearchModels/Search/IndexWriter`` (the production conformer is the ``Search/Index`` actor).
         private func indexProposal(
             file: URL,
             content: String,
-            into index: Search.Index
+            into index: any Search.Database & Search.IndexWriter
         ) async throws {
             let filename = file.deletingPathExtension().lastPathComponent
             let proposalID = Search.StrategyHelpers.extractProposalID(from: filename) ?? filename

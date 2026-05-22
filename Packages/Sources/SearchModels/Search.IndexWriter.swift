@@ -7,7 +7,7 @@ extension Search {
     /// Write-side seam for the search-index database.
     ///
     /// Production implementation: `Search.Index` (the actor in the
-    /// Search SPM target). Consumers ( `Search.IndexBuilder`, the 7
+    /// Search SPM target). Consumers ( `Search.IndexBuilder`, the 6
     /// source-indexing strategies, the indexer-side CLI runner ) accept
     /// this protocol instead of taking a behavioural dependency on the
     /// concrete Search target.
@@ -33,7 +33,7 @@ extension Search {
     /// re-declared here.
     ///
     /// Added by epic #893's child #896. The rewire of `Search.IndexBuilder`
-    /// + the 7 strategies to consume `any Search.IndexWriter` via init
+    /// + the 6 strategies to consume `any Search.IndexWriter` via init
     /// lands separately under child #897.
     public protocol IndexWriter: Sendable {
         /// Index one document via the unified parameter bundle. The
@@ -67,12 +67,13 @@ extension Search {
         // Swift protocol method declarations cannot carry default
         // parameter values, so existing strategy call sites
         // (`Search.Strategies.SwiftEvolution`, `Search.Strategies.HIG`,
-        // others) rely on those defaults today. The convenience
-        // extension on this protocol (immediately below this `protocol`
-        // block) reproduces the default-shape so the rewire in #897 can
-        // change strategies' `searchIndex: Search.Index` init parameter
-        // to `searchIndex: any Search.IndexWriter` without rewriting
-        // every call to pass all 12 arguments explicitly.
+        // others) rely on those defaults. The convenience extension on
+        // this protocol (immediately below the `protocol` block)
+        // reproduces the default-shape so the #897 rewire of the
+        // strategies' `indexItems(into index:)` parameter from
+        // `Search.Index` to `any Search.Database & Search.IndexWriter`
+        // does not force every call site to pass all 12 arguments
+        // explicitly.
 
         /// Index one Apple sample-code project into both the FTS table
         /// and the structured `sample_code_metadata` table. Called by
@@ -168,10 +169,16 @@ extension Search {
 // MUST implement the full-arity primary methods, not rely on these
 // defaults.
 //
-// Unused on `develop` at the time #911 lands (the strategies still
-// take `searchIndex: Search.Index` directly and dispatch into the
-// concrete actor's `= nil` defaults). Activates when #897 rewires
-// the strategy initialisers onto `any Search.IndexWriter`.
+// Activated by #897 (the rewire of `Search.IndexBuilder` + the 6
+// concrete strategies to receive `any Search.Database & Search.IndexWriter`
+// via init). Strategies whose existing call sites pass fewer than the
+// full primary-requirement arity (`Search.Strategies.SwiftEvolution`,
+// `Search.Strategies.HIG`, etc.) reach these convenience defaults
+// through the composed-existential dispatch path. Pre-#897 (i.e. on
+// `develop` after #911 / #896 landed and before #897), these defaults
+// existed but were unreachable because the strategies still took the
+// concrete `Search.Index` directly and dispatched into the actor's
+// `= nil` defaults.
 
 public extension Search.IndexWriter {
     /// Convenience overload that defaults every optional override

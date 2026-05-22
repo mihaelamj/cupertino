@@ -11,7 +11,7 @@ extension Search {
     /// composition root (the CLI binary) supplies a concrete factory
     /// that opens the production `Search.Index` actor against
     /// `search.db`; tests supply a stub. The rewire that switches
-    /// `Search.IndexBuilder` + the 7 source-indexing strategies to
+    /// `Search.IndexBuilder` + the 6 source-indexing strategies to
     /// consume `any Search.IndexWriterFactory` instead of constructing
     /// `Search.Index` directly lands separately under epic #893's child
     /// #897.

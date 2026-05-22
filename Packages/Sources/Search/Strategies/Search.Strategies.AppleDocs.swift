@@ -73,11 +73,11 @@ extension Search {
         /// ``indexFromMetadata(into:metadata:progress:)`` instead.
         ///
         /// - Parameters:
-        ///   - index: The ``Search/Index`` to write into.
+        ///   - index: An object conforming to both ``SearchModels/Search/Database`` and ``SearchModels/Search/IndexWriter`` (the production conformer is the ``Search/Index`` actor).
         ///   - progress: Optional progress callback, called every 100 items.
         /// - Returns: ``Search/IndexStats`` with indexed and skipped counts.
         public func indexItems(
-            into index: Search.Index,
+            into index: any Search.Database & Search.IndexWriter,
             progress: (any Search.IndexingProgressReporting)?
         ) async throws -> Search.IndexStats {
             // Always use the directory-scan path; metadata is for crawling, not indexing.
@@ -93,11 +93,11 @@ extension Search {
         /// documents including code examples and AST symbols.
         ///
         /// - Parameters:
-        ///   - index: The ``Search/Index`` to write into.
+        ///   - index: An object conforming to both ``SearchModels/Search/Database`` and ``SearchModels/Search/IndexWriter`` (the production conformer is the ``Search/Index`` actor).
         ///   - progress: Optional progress callback, called every 100 items.
         /// - Returns: ``Search/IndexStats`` with indexed and skipped counts.
         func indexFromDirectory(
-            into index: Search.Index,
+            into index: any Search.Database & Search.IndexWriter,
             progress: (any Search.IndexingProgressReporting)?
         ) async throws -> Search.IndexStats {
             guard FileManager.default.fileExists(atPath: docsDirectory.path) else {
@@ -464,12 +464,12 @@ extension Search {
         /// crashing the build (fix for PR #288).
         ///
         /// - Parameters:
-        ///   - index: The ``Search/Index`` to write into.
+        ///   - index: An object conforming to both ``SearchModels/Search/Database`` and ``SearchModels/Search/IndexWriter`` (the production conformer is the ``Search/Index`` actor).
         ///   - metadata: The crawl metadata map to iterate.
         ///   - progress: Optional progress callback, called every 100 items.
         /// - Returns: ``Search/IndexStats`` with indexed and skipped counts.
         func indexFromMetadata(
-            into index: Search.Index,
+            into index: any Search.Database & Search.IndexWriter,
             metadata: Shared.Models.CrawlMetadata,
             progress: (any Search.IndexingProgressReporting)?
         ) async throws -> Search.IndexStats {

@@ -6,7 +6,7 @@ import SearchModels
 // `Search.Index` (the concrete actor in this Search SPM target) already
 // implements every method on `Search.IndexWriter` (defined in
 // `SearchModels`): the protocol is the exact write surface that
-// `Search.IndexBuilder`, the 7 source-indexing strategies, and the
+// `Search.IndexBuilder`, the 6 source-indexing strategies, and the
 // indexer-side CLI runner call. This one-line witness lets those
 // consumers receive `any Search.IndexWriter` while the concrete actor
 // stays unchanged.
