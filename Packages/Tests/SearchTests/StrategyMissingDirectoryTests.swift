@@ -30,7 +30,7 @@ struct StrategyMissingDirectoryTests {
 
     /// A temporary Search.Index backed by an in-memory-style path unique per test.
     private func makeIndex(in tempRoot: URL) async throws -> Search.Index {
-        try await Search.Index(dbPath: tempRoot.appendingPathComponent("search.db"), logger: Logging.NoopRecording())
+        try await Search.Index(dbPath: tempRoot.appendingPathComponent("search.db"), logger: Logging.NoopRecording(), indexers: [:])
     }
 
     private func makeTempRoot() throws -> URL {

@@ -146,7 +146,7 @@ struct IndexBuilderSymbolsIntegrationTests {
         _ = try writeFixtureDoc(framework: "swiftui", name: "sample", into: docsDir)
 
         let dbPath = tempRoot.appendingPathComponent("search.db")
-        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         let strategies = Search.makeDefaultStrategies(
             metadata: nil,
             docsDirectory: docsDir,

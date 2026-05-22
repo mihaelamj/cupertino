@@ -79,7 +79,7 @@ struct Issue837SearchDBGenericConstraintsBoostTests {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let path = dir.appendingPathComponent("search.db")
-        let index = try await Search.Index(dbPath: path, logger: Logging.NoopRecording())
+        let index = try await Search.Index(dbPath: path, logger: Logging.NoopRecording(), indexers: [:])
         try Self.seedRow(at: path, uri: "apple-docs://swiftui/picker", constraints: "View,Hashable")
 
         let uris = try await index.searchSymbolsForURIs(query: "View", limit: 50)
@@ -94,7 +94,7 @@ struct Issue837SearchDBGenericConstraintsBoostTests {
         let dir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let path = dir.appendingPathComponent("search.db")
-        let index = try await Search.Index(dbPath: path, logger: Logging.NoopRecording())
+        let index = try await Search.Index(dbPath: path, logger: Logging.NoopRecording(), indexers: [:])
         try Self.seedRow(at: path, uri: "apple-docs://swiftui/foo", constraints: "Equatable,Comparable")
 
         let uris = try await index.searchSymbolsForURIs(query: "View", limit: 50)

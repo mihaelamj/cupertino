@@ -69,7 +69,7 @@ struct Issue749MigratorPragmaBumpTests {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         let dbPath = tempDir.appendingPathComponent("search.db")
 
-        let bootstrap = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let bootstrap = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         await bootstrap.disconnect()
 
         var db: OpaquePointer?
@@ -105,7 +105,7 @@ struct Issue749MigratorPragmaBumpTests {
         // triggers checkAndMigrateSchema → migrateToVersion16 →
         // stampUserVersionUnchecked(16). Before #749 fix, this threw at
         // setSchemaVersion's guard.
-        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         await index.disconnect()
 
         // Post-condition: PRAGMA stamped to 16, column reachable.
@@ -145,11 +145,11 @@ struct Issue749MigratorPragmaBumpTests {
         defer { try? FileManager.default.removeItem(at: dbPath.deletingLastPathComponent()) }
 
         // First open migrates from v15 to v16.
-        let firstOpen = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let firstOpen = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         await firstOpen.disconnect()
 
         // Second open should be a no-op (DB is already at target).
-        let secondOpen = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let secondOpen = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         await secondOpen.disconnect()
 
         // No throw is the test. Also verify PRAGMA is still 16.
@@ -179,7 +179,7 @@ struct Issue749MigratorPragmaBumpTests {
         // arbitrary value. This pins that the helper bypasses the
         // setSchemaVersion #635 guard; the guard's "currentVersion ==
         // 0" precondition is irrelevant to the helper.
-        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         try await index.stampUserVersionUnchecked(99)
         await index.disconnect()
 

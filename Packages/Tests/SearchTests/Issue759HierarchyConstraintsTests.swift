@@ -220,7 +220,7 @@ struct Issue759PropagateEndToEndTests {
     func triggerAOwnGenericParams() async throws {
         let dbPath = Issue759Fixture.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // Open a raw handle to insert fixtures (production indexer code
         // path does this via its own write helpers; here we go direct
@@ -264,7 +264,7 @@ struct Issue759PropagateEndToEndTests {
     func triggerBSignatureMatch() async throws {
         let dbPath = Issue759Fixture.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         var db: OpaquePointer?
         guard sqlite3_open(dbPath.path, &db) == SQLITE_OK else {
@@ -304,7 +304,7 @@ struct Issue759PropagateEndToEndTests {
     func noInheritanceStaysNull() async throws {
         let dbPath = Issue759Fixture.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         var db: OpaquePointer?
         guard sqlite3_open(dbPath.path, &db) == SQLITE_OK else {
@@ -341,7 +341,7 @@ struct Issue759PropagateEndToEndTests {
     func idempotent() async throws {
         let dbPath = Issue759Fixture.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         var db: OpaquePointer?
         guard sqlite3_open(dbPath.path, &db) == SQLITE_OK else {
@@ -383,7 +383,7 @@ struct Issue759PropagateEndToEndTests {
     func emptyParentMapNoOp() async throws {
         let dbPath = Issue759Fixture.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         var db: OpaquePointer?
         guard sqlite3_open(dbPath.path, &db) == SQLITE_OK else {
@@ -411,7 +411,7 @@ struct Issue759PropagateEndToEndTests {
     func methodNotAParent() async throws {
         let dbPath = Issue759Fixture.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         var db: OpaquePointer?
         guard sqlite3_open(dbPath.path, &db) == SQLITE_OK else {
@@ -448,7 +448,7 @@ struct Issue759PropagateEndToEndTests {
     func mixedCorpus() async throws {
         let dbPath = Issue759Fixture.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         var db: OpaquePointer?
         guard sqlite3_open(dbPath.path, &db) == SQLITE_OK else {

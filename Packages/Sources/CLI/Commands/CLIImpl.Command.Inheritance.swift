@@ -96,9 +96,13 @@ extension CLIImpl.Command {
                 throw ExitCode.failure
             }
 
+            // #932: read-only consumer; passes an empty indexer dict
+            // explicitly because no `indexItem` dispatch happens on this
+            // path (this command only resolves URIs + reads metadata).
             let index = try await SearchModule.Index(
                 dbPath: searchDBURL,
-                logger: Cupertino.Context.composition.logging.recording
+                logger: Cupertino.Context.composition.logging.recording,
+                indexers: [:]
             )
             defer { Task { await index.disconnect() } }
 

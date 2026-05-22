@@ -35,7 +35,7 @@ struct Issue759HierarchyDefensiveTests {
             .appendingPathComponent("cupertino-759-defensive-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         let dbPath = tempDir.appendingPathComponent("search.db")
-        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         return (dbPath, index)
     }
 

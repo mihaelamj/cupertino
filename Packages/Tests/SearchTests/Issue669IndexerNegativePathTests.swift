@@ -90,7 +90,7 @@ struct Issue669IndexerNegativePathTests {
     func nilEverythingNoEdges() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         let page = Self.makePage(url: "https://developer.apple.com/documentation/uikit/uibutton")
         try await idx.indexStructuredDocument(
@@ -109,7 +109,7 @@ struct Issue669IndexerNegativePathTests {
     func emptyRawMarkdownNoEdges() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         let page = Self.makePage(
             url: "https://developer.apple.com/documentation/uikit/uibutton",
@@ -131,7 +131,7 @@ struct Issue669IndexerNegativePathTests {
     func whitespaceOnlyRawMarkdownNoEdges() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         let page = Self.makePage(
             url: "https://developer.apple.com/documentation/uikit/uibutton",
@@ -153,7 +153,7 @@ struct Issue669IndexerNegativePathTests {
     func emptyArrayURIsNoEdges() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         let page = Self.makePage(
             url: "https://developer.apple.com/documentation/uikit/uibutton",
@@ -178,7 +178,7 @@ struct Issue669IndexerNegativePathTests {
     func nilInheritsFromPopulatedInheritedByEdges() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         let page = Self.makePage(
             url: "https://developer.apple.com/documentation/uikit/uicontrol",
@@ -206,7 +206,7 @@ struct Issue669IndexerNegativePathTests {
     func populatedInheritsFromNilInheritedByEdges() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         let page = Self.makePage(
             url: "https://developer.apple.com/documentation/uikit/uibutton",
@@ -236,7 +236,7 @@ struct Issue669IndexerNegativePathTests {
     func rawMarkdownWithoutRelationshipsNoEdges() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         let page = Self.makePage(
             url: "https://developer.apple.com/documentation/uikit/uibutton",
@@ -269,7 +269,7 @@ struct Issue669IndexerNegativePathTests {
     func fallbackOnlyInheritsFromWritesOneEdge() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         let page = Self.makePage(
             url: "https://developer.apple.com/documentation/uikit/uibutton",
@@ -300,7 +300,7 @@ struct Issue669IndexerNegativePathTests {
     func fallbackOnlyInheritedByWritesChildEdges() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         let page = Self.makePage(
             url: "https://developer.apple.com/documentation/uikit/uicontrol",
@@ -337,7 +337,7 @@ struct Issue669IndexerNegativePathTests {
     func reindexIdempotent() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         let page = Self.makePage(
             url: "https://developer.apple.com/documentation/uikit/uibutton",
@@ -362,7 +362,7 @@ struct Issue669IndexerNegativePathTests {
     func crossDirectionDedup() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // UIButton page says "inherits from UIControl".
         let buttonPage = Self.makePage(
@@ -401,7 +401,7 @@ struct Issue669IndexerNegativePathTests {
     func nonAppleHostInRawMarkdownDropped() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         let page = Self.makePage(
             url: "https://developer.apple.com/documentation/uikit/uibutton",
@@ -435,7 +435,7 @@ struct Issue669IndexerNegativePathTests {
     func malformedJSONInRawMarkdown() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         let page = Self.makePage(
             url: "https://developer.apple.com/documentation/uikit/uibutton",
@@ -470,7 +470,7 @@ struct Issue669IndexerNegativePathTests {
     func veryLargeRawMarkdown() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // 1 MB of random-ish bullets before the real relationship section.
         let filler = String(repeating: "- some content with no link target\n", count: 25000)

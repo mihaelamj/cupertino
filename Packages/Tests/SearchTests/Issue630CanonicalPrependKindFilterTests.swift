@@ -82,7 +82,7 @@ struct Issue630CanonicalPrependKindFilterTests {
     func propertyKindNotPrepended() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // foundation/widget carries kind=property (collision-clobbered shape,
         // mirrors v1.1.0's foundation/url being URLRequest.url).
@@ -120,7 +120,7 @@ struct Issue630CanonicalPrependKindFilterTests {
     func dottedTitleNotPrepended() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // swift/url stores `String.IntentInputOptions.KeyboardType.URL`
         // (the KeyboardType.url enum case) — kind=unknown but the title
@@ -159,7 +159,7 @@ struct Issue630CanonicalPrependKindFilterTests {
     func protocolKindStillPrepended() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // foundation/urlsessionish — canonical protocol page.
         try await Self.indexRow(
@@ -192,7 +192,7 @@ struct Issue630CanonicalPrependKindFilterTests {
     func unknownKindWithBareTitleStillPrepends() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // Mirrors swift/codable in v1.1.0: kind=unknown but title is
         // `Codable | Apple Developer Documentation`. The pre-#630
@@ -227,7 +227,7 @@ struct Issue630CanonicalPrependKindFilterTests {
     func instanceMethodKindRejected() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await Self.indexRow(
             on: idx,

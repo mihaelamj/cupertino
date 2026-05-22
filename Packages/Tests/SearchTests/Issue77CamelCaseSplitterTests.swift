@@ -141,7 +141,7 @@ struct Issue77CamelCaseSplitterTests {
             .appendingPathComponent("issue77-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // Seed a doc + a doc_symbols row with `LazyVGrid`.
         try await idx.indexDocument(Search.IndexDocumentParams(
@@ -176,7 +176,7 @@ struct Issue77CamelCaseSplitterTests {
             .appendingPathComponent("issue77-empty-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         try await idx.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://demo/article",
             source: "apple-docs",

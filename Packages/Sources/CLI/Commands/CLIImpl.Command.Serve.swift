@@ -342,9 +342,14 @@ extension CLIImpl.Command {
             }
 
             do {
+                // #932: MCP serve opens the index for READ. Indexing
+                // happens via `cupertino save` (a separate process); the
+                // server never calls `indexItem`. Pass an empty indexer
+                // dict explicitly to reflect that.
                 let index = try await SearchModule.Index(
                     dbPath: searchDBURL,
-                    logger: Cupertino.Context.composition.logging.recording
+                    logger: Cupertino.Context.composition.logging.recording,
+                    indexers: [:]
                 )
                 return SearchIndexLoadResult(index: index, disabledReason: nil)
             } catch {

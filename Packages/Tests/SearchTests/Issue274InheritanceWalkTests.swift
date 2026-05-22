@@ -70,7 +70,7 @@ struct Issue274InheritanceWalkTests {
     func walkUpFullChain() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         try await Self.seedUIButtonChain(idx)
 
         let tree = try await idx.walkInheritance(
@@ -102,7 +102,7 @@ struct Issue274InheritanceWalkTests {
     func walkUpHonoursDepth() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         try await Self.seedUIButtonChain(idx)
 
         let tree = try await idx.walkInheritance(
@@ -125,7 +125,7 @@ struct Issue274InheritanceWalkTests {
     func walkDownReturnsChildren() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         try await Self.seedUIButtonChain(idx)
 
         let tree = try await idx.walkInheritance(
@@ -150,7 +150,7 @@ struct Issue274InheritanceWalkTests {
     func walkBothReturnsBothSides() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
         try await Self.seedUIButtonChain(idx)
 
         let tree = try await idx.walkInheritance(
@@ -172,7 +172,7 @@ struct Issue274InheritanceWalkTests {
     func walkEmptyForLeafNode() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         let tree = try await idx.walkInheritance(
             startURI: "apple-docs://swiftui/text",
@@ -190,7 +190,7 @@ struct Issue274InheritanceWalkTests {
     func resolveUniqueTitle() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await Self.indexSymbol(idx, uri: "apple-docs://uikit/uibutton", framework: "uikit", title: "UIButton")
 
@@ -206,7 +206,7 @@ struct Issue274InheritanceWalkTests {
     func resolveAmbiguousTitle() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await Self.indexSymbol(idx, uri: "apple-docs://swiftui/color", framework: "swiftui", title: "Color")
         try await Self.indexSymbol(idx, uri: "apple-docs://appkit/nscolor", framework: "appkit", title: "Color")
@@ -223,7 +223,7 @@ struct Issue274InheritanceWalkTests {
     func resolveCaseInsensitive() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await Self.indexSymbol(idx, uri: "apple-docs://uikit/uibutton", framework: "uikit", title: "UIButton")
 
@@ -239,7 +239,7 @@ struct Issue274InheritanceWalkTests {
     func resolveEmptyForUnknownTitle() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         let candidates = try await idx.resolveSymbolURIs(title: "ThisClassDoesNotExist")
         await idx.disconnect()

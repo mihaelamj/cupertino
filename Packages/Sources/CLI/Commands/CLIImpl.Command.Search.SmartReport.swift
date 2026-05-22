@@ -168,7 +168,8 @@ extension CLIImpl.Command.Search {
             return DocsFetchersResult(index: nil, disabledReason: nil)
         }
         do {
-            let index = try await SearchModule.Index(dbPath: url, logger: Cupertino.Context.composition.logging.recording)
+            // #932: read-only smart-report path; no `indexItem` dispatch happens.
+            let index = try await SearchModule.Index(dbPath: url, logger: Cupertino.Context.composition.logging.recording, indexers: [:])
             for source in docsSources {
                 fetchers.append(Search.DocsSourceCandidateFetcher(
                     searchIndex: index,

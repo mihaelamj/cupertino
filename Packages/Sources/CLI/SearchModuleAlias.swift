@@ -52,7 +52,12 @@ typealias SearchModule = Search
 
 struct LiveSearchDatabaseFactory: Search.DatabaseFactory {
     func openDatabase(at url: URL) async throws -> any Search.Database {
-        try await SearchModule.Index(dbPath: url, logger: Cupertino.Context.composition.logging.recording)
+        // #932: factory feeds read-only consumers (MCP serve, smart-search,
+        // doctor, etc.). Indexing happens through `cupertino save` which has
+        // its own production-dict composition site; this factory's
+        // consumers never call `indexItem`. Empty dict is the honest
+        // dependency declaration for read paths.
+        try await SearchModule.Index(dbPath: url, logger: Cupertino.Context.composition.logging.recording, indexers: [:])
     }
 }
 
@@ -75,7 +80,13 @@ struct LiveSearchDatabaseFactory: Search.DatabaseFactory {
 
 struct LiveSearchIndexWriterFactory: Search.IndexWriterFactory {
     func openWriter(at url: URL) async throws -> any Search.IndexWriter {
-        try await SearchModule.Index(dbPath: url, logger: Cupertino.Context.composition.logging.recording)
+        // #932: write factory but not the indexItem-dispatch surface.
+        // The 7 strategies in `Search.IndexBuilder` call lower-level write
+        // APIs (`indexStructuredDocument`, `indexCodeExamples`, etc.), not
+        // `indexItem`. Empty dict is correct; the only production
+        // `indexItem` consumer (when it lands, e.g. #58 WWDC) will use the
+        // explicit dict assembled in `CLIImpl.Command.Save.Indexers.swift`.
+        try await SearchModule.Index(dbPath: url, logger: Cupertino.Context.composition.logging.recording, indexers: [:])
     }
 }
 

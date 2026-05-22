@@ -106,13 +106,32 @@ extension Search {
         /// GoF Strategy seam for log emission (1994 p. 315). Injected by
         /// the binary's composition root.
         let logger: any LoggingModels.Logging.Recording
+        /// Composition-root-injected map from source id to its indexer
+        /// concrete. Consumed by `indexItem(_:extractSymbols:)` to
+        /// dispatch a `Search.SourceItem` to the right indexer. Pre-#932
+        /// this lookup went through the static `Search.IndexerRegistry`
+        /// enum; #932 deleted that and lifted the dict onto the actor so
+        /// adding a new source no longer means editing a static dict.
+        /// Defaulted to `[:]` so test fixtures that never call
+        /// `indexItem` keep zero churn; the production composition root
+        /// in `CLIImpl.Command.Save.Indexers.swift` passes the full
+        /// production dict at construction.
+        ///
+        /// Marked `nonisolated public` because the value is set at init
+        /// and never mutated; downstream tests (and future stricter
+        /// consumers) need read access to verify the composition-root
+        /// assembly is the sole source of truth. Sendable holds because
+        /// `Search.SourceIndexer` requires Sendable conformance.
+        public nonisolated let indexers: [String: any Search.SourceIndexer]
 
         public init(
             dbPath: URL,
-            logger: any LoggingModels.Logging.Recording
+            logger: any LoggingModels.Logging.Recording,
+            indexers: [String: any Search.SourceIndexer]
         ) async throws {
             self.dbPath = dbPath
             self.logger = logger
+            self.indexers = indexers
 
             // Ensure directory exists
             let directory = dbPath.deletingLastPathComponent()

@@ -42,7 +42,8 @@ struct Issue779OptionalDirSymlinkTests {
     private func makeIndex(in tempRoot: URL) async throws -> Search.Index {
         try await Search.Index(
             dbPath: tempRoot.appendingPathComponent("search.db"),
-            logger: Logging.NoopRecording()
+            logger: Logging.NoopRecording(),
+            indexers: [:]
         )
     }
 

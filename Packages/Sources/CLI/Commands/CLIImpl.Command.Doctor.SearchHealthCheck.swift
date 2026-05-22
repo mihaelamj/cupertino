@@ -56,7 +56,8 @@ extension CLIImpl.Command.Doctor {
             //     can't `await` so this is expressed as explicit calls.
             let searchIndex: SearchModule.Index
             do {
-                searchIndex = try await SearchModule.Index(dbPath: searchDBURL, logger: recording)
+                // #932: doctor read-only probe; never calls indexItem.
+                searchIndex = try await SearchModule.Index(dbPath: searchDBURL, logger: recording, indexers: [:])
             } catch {
                 recording.output("   ✗ Database error: \(error)")
                 recording.output("     → rm \(searchDBURL.path) && cupertino save")

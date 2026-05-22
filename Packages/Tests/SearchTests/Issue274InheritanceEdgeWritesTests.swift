@@ -57,7 +57,7 @@ struct Issue274InheritanceEdgeWritesTests {
     func writesInheritsFromEdges() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // UIButton inherits from UIControl (and transitively UIView, etc.).
         // Edge direction: UIButton (child) inherits from UIControl (parent).
@@ -80,7 +80,7 @@ struct Issue274InheritanceEdgeWritesTests {
     func writesInheritedByEdges() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // UIControl is inherited by UIButton + UISwitch.
         try await idx.writeInheritanceEdges(
@@ -111,7 +111,7 @@ struct Issue274InheritanceEdgeWritesTests {
     func compositeKeyDedupesCrossDirectionEdges() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // Index UIButton first (writes UIControl → UIButton via inheritsFrom).
         try await idx.writeInheritanceEdges(
@@ -142,7 +142,7 @@ struct Issue274InheritanceEdgeWritesTests {
     func emptyInputsLeaveTableEmpty() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await idx.writeInheritanceEdges(
             pageURI: "apple-docs://swiftui/view",
@@ -166,7 +166,7 @@ struct Issue274InheritanceEdgeWritesTests {
     func parentsOfReturnsImmediateParents() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // Build a single chain: UIButton → UIControl → UIView.
         try await idx.writeInheritanceEdges(
@@ -191,7 +191,7 @@ struct Issue274InheritanceEdgeWritesTests {
     func childrenOfReturnsImmediateChildren() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         try await idx.writeInheritanceEdges(
             pageURI: "apple-docs://uikit/uicontrol",
@@ -217,7 +217,7 @@ struct Issue274InheritanceEdgeWritesTests {
     func edgeCountReports() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // 1 edge from UIButton's inheritsFrom + 2 from UIControl's
         // inheritedBy; UIButton-edge dedupes so total = 1 + 2 = 3? No,
@@ -250,7 +250,7 @@ struct Issue274InheritanceEdgeWritesTests {
     func endToEndIndexerWritesEdgeFromPage() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         // Index a synthetic UIButton page with inheritsFromURIs already
         // populated (the JSON extractor produces these in real use).
