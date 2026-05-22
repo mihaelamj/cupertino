@@ -567,13 +567,12 @@ extension Search {
             )
         }
 
-        public static func tryOtherSourceTip(current: SearchModule.Source, suggested: SearchModule.Source) -> Search.Tip {
-            Search.Tip(
-                category: .source,
-                message: "Also check \(suggested.displayName) for \(suggested == .hig ? "design guidance" : "more context")",
-                actionHint: "Use source: \(suggested.rawValue)"
-            )
-        }
+        // #934 Step 3b: `tryOtherSourceTip(current:suggested:)` deleted.
+        // It read `suggested.displayName` which reached for the static
+        // `Search.SourceRegistry`. The factory had zero callers in the
+        // production tree at deletion time. If a future caller wants
+        // this tip, take a `Search.SourceLookup` as a third parameter
+        // and route the display name through `lookup.displayName(for:)`.
 
         public static func availabilityTip(platform: String, minVersion: String) -> Search.Tip {
             Search.Tip(
