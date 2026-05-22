@@ -8,6 +8,7 @@ import Foundation
 import LoggingModels
 import SampleIndex
 import Search
+import SearchSQLite
 import SharedConstants
 import Testing
 

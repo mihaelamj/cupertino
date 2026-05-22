@@ -95,10 +95,11 @@ extension Search {
         /// `Search.Schema.currentVersion` directly.
         public static let schemaVersion: Int32 = Search.Schema.currentVersion
 
-        // Properties are package-internal (default visibility) so the
-        // SearchIndex+<Concern>.swift extension files can access them. Public
-        // API surface is unchanged — internal only widens visibility within
-        // this Search package, not outside.
+        // Properties are module-internal (default visibility) so the
+        // Search.Index.<Concern>.swift extension files (all in this same
+        // SearchSQLite target) can access them. Public API surface is
+        // unchanged; internal only widens visibility within this
+        // SearchSQLite target, not outside.
         var database: OpaquePointer?
         let dbPath: URL
         var isInitialized = false

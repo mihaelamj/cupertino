@@ -2,6 +2,7 @@ import Foundation
 import LoggingModels
 @testable import Search
 import SearchModels
+@testable import SearchSQLite
 import SharedConstants
 import SQLite3
 import Testing
@@ -162,9 +163,9 @@ struct Issue668DocsStructuredCoverageTests {
     // MARK: - Helper-function unit tests
 
     @Test("makeArticleStructuredPage builds a page with kind=.article and source=.custom")
-    func makeArticleStructuredPageShape() {
-        let page = Search.StrategyHelpers.makeArticleStructuredPage(
-            url: URL(string: "https://example.com/x")!,
+    func makeArticleStructuredPageShape() throws {
+        let page = try Search.StrategyHelpers.makeArticleStructuredPage(
+            url: #require(URL(string: "https://example.com/x")),
             title: "Test Title",
             rawMarkdown: "# Body",
             crawledAt: Date(timeIntervalSince1970: 0),
@@ -183,8 +184,8 @@ struct Issue668DocsStructuredCoverageTests {
 
     @Test("encodeStructuredPageToJSON returns valid JSON; fallback is `{}` on failure")
     func encodeStructuredPageToJSONReturnsValidJSON() throws {
-        let page = Search.StrategyHelpers.makeArticleStructuredPage(
-            url: URL(string: "https://example.com/x")!,
+        let page = try Search.StrategyHelpers.makeArticleStructuredPage(
+            url: #require(URL(string: "https://example.com/x")),
             title: "JSON Test",
             rawMarkdown: "body",
             crawledAt: Date(timeIntervalSince1970: 0),

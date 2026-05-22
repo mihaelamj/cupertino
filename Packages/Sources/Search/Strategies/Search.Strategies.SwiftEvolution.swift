@@ -47,9 +47,11 @@ extension Search {
         /// ``Shared/Constants/Interval/progressLogEvery`` items.
         ///
         /// - Parameters:
-        ///   - index: An object conforming to both ``SearchModels/Search/Database`` and ``SearchModels/Search/IndexWriter`` (the production conformer is the ``Search/Index`` actor).
+        ///   - index: An object conforming to both ``SearchModels/Search/Database`` and ``SearchModels/Search/IndexWriter`` (the production conformer is the
+        /// ``SearchSQLite/Search/Index``
+        /// actor).
         ///   - progress: Optional progress callback, called at regular intervals.
-        /// - Returns: ``Search/IndexStats`` with indexed and skipped counts.
+        /// - Returns: ``SearchModels/Search/IndexStats`` with indexed and skipped counts.
         public func indexItems(
             into index: any Search.Database & Search.IndexWriter,
             progress: (any Search.IndexingProgressReporting)?
@@ -147,12 +149,14 @@ extension Search {
         ///
         /// Extracts the proposal ID from the filename, derives a Swift-version-based
         /// availability range, and calls
-        /// ``Search/Index/indexDocument(uri:source:framework:title:content:filePath:contentHash:lastCrawled:minIOS:minMacOS:minTvOS:minWatchOS:minVisionOS:availabilitySource:)``.
+        /// ``SearchSQLite/Search/Index/indexDocument(uri:source:framework:title:content:filePath:contentHash:lastCrawled:minIOS:minMacOS:minTvOS:minWatchOS:minVisionOS:availabilitySource:)``.
         ///
         /// - Parameters:
         ///   - file: The proposal `.md` file URL.
         ///   - content: The file's raw Markdown content.
-        ///   - index: An object conforming to both ``SearchModels/Search/Database`` and ``SearchModels/Search/IndexWriter`` (the production conformer is the ``Search/Index`` actor).
+        ///   - index: An object conforming to both ``SearchModels/Search/Database`` and ``SearchModels/Search/IndexWriter`` (the production conformer is the
+        /// ``SearchSQLite/Search/Index``
+        /// actor).
         private func indexProposal(
             file: URL,
             content: String,

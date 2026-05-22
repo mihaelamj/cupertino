@@ -2,6 +2,7 @@ import Foundation
 import LoggingModels
 @testable import Search
 import SearchModels
+@testable import SearchSQLite
 import Testing
 
 /// Regression suite for the #274 walk + symbol-resolution helpers

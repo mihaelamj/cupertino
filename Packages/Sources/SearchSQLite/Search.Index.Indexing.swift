@@ -3,7 +3,6 @@ import Foundation
 import SearchModels
 import SQLite3
 
-
 extension Search.Index {
     /// Index a Swift package
     public func indexPackage(

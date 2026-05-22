@@ -3,6 +3,7 @@ import LoggingModels
 import MCPCore
 @testable import Search
 import SearchModels
+@testable import SearchSQLite
 @testable import SearchToolProvider
 import SharedConstants
 import Testing
@@ -99,21 +100,21 @@ struct Issue673PhaseCRemainingMCPMarkerTests {
         }
         defer { cleanup() }
         let result = try await provider.callTool(name: "list_frameworks", arguments: [:])
-        guard case let .text(t) = result.content.first else {
+        guard case let .text(body) = result.content.first else {
             Issue.record("expected text content")
             return
         }
         #expect(
-            t.text.contains("# Available Frameworks"),
-            "list_frameworks must contain the canonical header — body: \(t.text.prefix(200))"
+            body.text.contains("# Available Frameworks"),
+            "list_frameworks must contain the canonical header — body: \(body.text.prefix(200))"
         )
         #expect(
-            t.text.contains("Total documents:"),
+            body.text.contains("Total documents:"),
             "list_frameworks must contain 'Total documents:' line"
         )
         // Empty path should NOT emit the table header.
         #expect(
-            !t.text.contains("| Framework | Documents |"),
+            !body.text.contains("| Framework | Documents |"),
             "empty-DB response must NOT contain the populated-table header"
         )
     }
@@ -145,30 +146,30 @@ struct Issue673PhaseCRemainingMCPMarkerTests {
         }
         defer { cleanup() }
         let result = try await provider.callTool(name: "list_frameworks", arguments: [:])
-        guard case let .text(t) = result.content.first else {
+        guard case let .text(body) = result.content.first else {
             Issue.record("expected text content")
             return
         }
-        #expect(t.text.contains("# Available Frameworks"))
-        #expect(t.text.contains("Total documents:"))
+        #expect(body.text.contains("# Available Frameworks"))
+        #expect(body.text.contains("Total documents:"))
         // Table format markers.
         #expect(
-            t.text.contains("| Framework | Documents |"),
-            "populated response must contain markdown table header — body: \(t.text.prefix(300))"
+            body.text.contains("| Framework | Documents |"),
+            "populated response must contain markdown table header — body: \(body.text.prefix(300))"
         )
         // Each seeded framework appears in a row.
         #expect(
-            t.text.contains("`swiftui`"),
+            body.text.contains("`swiftui`"),
             "swiftui framework row missing"
         )
         #expect(
-            t.text.contains("`uikit`"),
+            body.text.contains("`uikit`"),
             "uikit framework row missing"
         )
         // uikit has 2 docs, swiftui has 1; uikit should appear before swiftui
         // (sorted desc by doc count). Verify ordering.
-        guard let uikitIdx = t.text.range(of: "`uikit`")?.lowerBound,
-              let swiftuiIdx = t.text.range(of: "`swiftui`")?.lowerBound
+        guard let uikitIdx = body.text.range(of: "`uikit`")?.lowerBound,
+              let swiftuiIdx = body.text.range(of: "`swiftui`")?.lowerBound
         else {
             Issue.record("couldn't find both framework rows for ordering check")
             return
@@ -201,17 +202,17 @@ struct Issue673PhaseCRemainingMCPMarkerTests {
             "pattern": MCP.Core.Protocols.AnyCodable("async"),
         ]
         let result = try await provider.callTool(name: "search_concurrency", arguments: args)
-        guard case let .text(t) = result.content.first else {
+        guard case let .text(body) = result.content.first else {
             Issue.record("expected text content")
             return
         }
         #expect(
-            t.text.contains("Concurrency Pattern: async"),
-            "header missing — body: \(t.text.prefix(200))"
+            body.text.contains("Concurrency Pattern: async"),
+            "header missing — body: \(body.text.prefix(200))"
         )
         #expect(
-            t.text.contains("_No symbols found matching your criteria._"),
-            "empty-results marker missing — body: \(t.text.prefix(300))"
+            body.text.contains("_No symbols found matching your criteria._"),
+            "empty-results marker missing — body: \(body.text.prefix(300))"
         )
     }
 
@@ -232,20 +233,20 @@ struct Issue673PhaseCRemainingMCPMarkerTests {
             "pattern": MCP.Core.Protocols.AnyCodable("async"),
         ]
         let result = try await provider.callTool(name: "search_concurrency", arguments: args)
-        guard case let .text(t) = result.content.first else {
+        guard case let .text(body) = result.content.first else {
             Issue.record("expected text content")
             return
         }
-        #expect(t.text.contains("Concurrency Pattern: async"))
+        #expect(body.text.contains("Concurrency Pattern: async"))
         // Lenient assertion — AST extraction of `async` keyword from
         // function declarations is well-tested elsewhere; here we just
         // confirm the response shape is the success path OR the
         // empty-results path (not a different shape).
-        let isEmpty = t.text.contains("_No symbols found matching your criteria._")
-        let hasName = t.text.contains("fetchData")
+        let isEmpty = body.text.contains("_No symbols found matching your criteria._")
+        let hasName = body.text.contains("fetchData")
         #expect(
             isEmpty || hasName,
-            "must be either empty-results OR contain the seeded fn name — body: \(t.text.prefix(300))"
+            "must be either empty-results OR contain the seeded fn name — body: \(body.text.prefix(300))"
         )
     }
 
@@ -262,16 +263,16 @@ struct Issue673PhaseCRemainingMCPMarkerTests {
             arguments: ["pattern": MCP.Core.Protocols.AnyCodable("foo")]
         )
 
-        guard case let .text(f) = frameworks.content.first,
-              case let .text(c) = concurrency.content.first
+        guard case let .text(frameworksBody) = frameworks.content.first,
+              case let .text(concurrencyBody) = concurrency.content.first
         else {
             Issue.record("expected text on both")
             return
         }
-        #expect(f.text.contains("# Available Frameworks"))
-        #expect(!f.text.contains("Concurrency Pattern:"))
+        #expect(frameworksBody.text.contains("# Available Frameworks"))
+        #expect(!frameworksBody.text.contains("Concurrency Pattern:"))
 
-        #expect(c.text.contains("Concurrency Pattern:"))
-        #expect(!c.text.contains("# Available Frameworks"))
+        #expect(concurrencyBody.text.contains("Concurrency Pattern:"))
+        #expect(!concurrencyBody.text.contains("# Available Frameworks"))
     }
 }

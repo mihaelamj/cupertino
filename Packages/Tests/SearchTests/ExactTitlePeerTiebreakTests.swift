@@ -2,6 +2,7 @@ import Foundation
 import LoggingModels
 @testable import Search
 import SearchModels
+@testable import SearchSQLite
 import Testing
 
 // Exact-title peer tiebreak inside HEURISTIC 1 (#256).

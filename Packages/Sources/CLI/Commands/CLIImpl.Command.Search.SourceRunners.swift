@@ -4,6 +4,7 @@ import Logging
 import LoggingModels
 import Search
 import SearchModels
+import SearchSQLite
 import Services
 import ServicesModels
 import SharedConstants

@@ -2,6 +2,7 @@ import Foundation
 import LoggingModels
 @testable import Search
 import SearchModels
+@testable import SearchSQLite
 import Testing
 
 // Covers H5 from #192: `DocsSourceCandidateFetcher` against a fixture

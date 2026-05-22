@@ -13,9 +13,11 @@ import SampleIndex
 import SampleIndexModels
 import Search
 import SearchModels
+import SearchSQLite
 import Services
 import ServicesModels
 import SharedConstants
+
 // MARK: - Search Module Disambiguator
 
 // `CLIImpl.Command.Search` (the subcommand struct under `Sources/CLI/Commands/`) and

@@ -4,6 +4,7 @@ import SharedConstants
 import Testing
 
 // MARK: - #587 — MCP read_document URI normalisation
+
 //
 // Mirrors the CLI side's `Services.ReadService.normalizeIdentifier`
 // tests. Both transports must accept the same input shapes; this

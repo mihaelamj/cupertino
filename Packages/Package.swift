@@ -29,6 +29,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("CoreSampleCodeModels"),
     .singleTargetLibrary("Search"),
     .singleTargetLibrary("SearchSchema"),
+    .singleTargetLibrary("SearchSQLite"),
     .singleTargetLibrary("SampleIndex"),
     .singleTargetLibrary("Services"),
     .singleTargetLibrary("Distribution"),
@@ -412,12 +413,9 @@ let targets: [Target] = {
 
     // ---------- SearchSchema (#898 sub-PR A: foundation-only target carrying the
     // DDL SQL strings + the `Search.Schema.currentVersion` Int32 constant.
-    // Executor methods (`Search.Index.createTables`, the migration methods)
-    // stay in the Search target because they need access to the Search.Index
-    // actor's internal `database` stored property; sub-PR E (SearchSQLite)
-    // moves those alongside the rest of the SQLite-using code into a sibling
-    // concrete target. SearchSchema mirrors the SearchModels shape:
-    // foundation-only, no actors, no I/O, no SQLite import.
+    // SearchSchema mirrors the SearchModels shape: foundation-only, no
+    // actors, no I/O, no SQLite import. Both the orchestration Search target
+    // and the concrete SearchSQLite target consume it.
     let searchSchemaTarget = Target.target(
         name: "SearchSchema",
         dependencies: ["SearchModels"]
@@ -427,22 +425,51 @@ let targets: [Target] = {
         dependencies: ["SearchSchema", "SearchModels"]
     )
 
-    let searchTarget = Target.target(
-        name: "Search",
-        // Sources/Search/Strategies/ contains SourceIndexingStrategy, StrategyHelpers,
-        // and the 6 concrete strategy types. They remain in the Search target for
-        // now because a clean per-strategy SPM extraction (epic #893 child #899)
-        // requires the SearchSQLite extraction (#898 sub-PR E) to be done first;
-        // the strategies still call methods that mutate the Search.Index actor's
-        // internal `database` stored property. Once #898 sub-PR E lands, the
-        // strategies will move to dedicated `<Source>Strategy` SPM targets.
+    // ---------- SearchSQLite (#898 sub-PR E: concrete SQLite-backed implementation
+    // of `Search.Database` / `Search.IndexWriter` from SearchModels). Owns the
+    // `Search.Index` actor + all its extensions, `PackageIndex` actor +
+    // `Search.PackageQuery` actor (packages.db reader), plus the orchestration
+    // pieces tightly coupled to those concretes (`Search.PackageIndexer`,
+    // `Search.PackageFTSCandidateFetcher`, `Search.DocsSourceCandidateFetcher`).
+    // This is the ONLY producer target that imports `SQLite3` for the
+    // search.db / packages.db handles; the orchestration Search target now
+    // operates exclusively through the SearchModels protocol seams.
+    let searchSQLiteTarget = Target.target(
+        name: "SearchSQLite",
         dependencies: [
             "SearchModels",
             "SearchSchema",
+            "Search",
             "SharedConstants",
             "LoggingModels",
             "CoreProtocols",
             "CorePackageIndexingModels",
+            "ASTIndexer",
+        ]
+    )
+    let searchSQLiteTestsTarget = Target.testTarget(
+        name: "SearchSQLiteTests",
+        dependencies: ["SearchSQLite", "SearchModels", "SearchSchema"]
+    )
+
+    let searchTarget = Target.target(
+        name: "Search",
+        // Search is the orchestration layer over the SearchModels protocol
+        // seams. After #898 sub-PR E it no longer imports `SQLite3` and no
+        // longer depends on the concrete SearchSQLite target: `Search.Index`,
+        // `PackageIndex`, `Search.PackageQuery`, `Search.PackageIndexer`,
+        // and the two `CandidateFetcher` concretes live in SearchSQLite.
+        // `Search.IndexBuilder` + the 6 strategies + `Search.SmartQuery` here
+        // operate over `any Search.Database & Search.IndexWriter` and
+        // `any Search.CandidateFetcher`. The `CLI` composition root imports
+        // both targets and wires the concrete in via the
+        // `Search.DatabaseFactory` / `Search.IndexWriterFactory` GoF Factory
+        // Method seams.
+        dependencies: [
+            "SearchModels",
+            "SharedConstants",
+            "LoggingModels",
+            "CoreProtocols",
             "ASTIndexer",
             "EnrichmentModels",
         ]
@@ -451,6 +478,7 @@ let targets: [Target] = {
         name: "SearchTests",
         dependencies: [
             "Search",
+            "SearchSQLite",
             "SearchModels",
             "SharedConstants",
             "TestSupport",
@@ -523,6 +551,7 @@ let targets: [Target] = {
         dependencies: [
             "SearchToolProvider",
             "Search",
+            "SearchSQLite",
             "SearchModels",
             "SampleIndex",
             "SampleIndexModels",
@@ -651,7 +680,7 @@ let targets: [Target] = {
     // CorePackageIndexing in future phases as samples + packages passes land).
     let enrichmentTarget = Target.target(
         name: "Enrichment",
-        dependencies: ["EnrichmentModels", "Search", "SearchModels", "SampleIndex", "SampleIndexModels", "SharedConstants"]
+        dependencies: ["EnrichmentModels", "Search", "SearchSQLite", "SearchModels", "SampleIndex", "SampleIndexModels", "SharedConstants"]
     )
     let enrichmentTestsTarget = Target.testTarget(
         name: "EnrichmentTests",
@@ -686,6 +715,7 @@ let targets: [Target] = {
             "Crawler",
             "Cleanup",
             "Search",
+            "SearchSQLite",
             "SampleIndex",
             "Services",
             "ServicesModels",
@@ -884,6 +914,8 @@ let targets: [Target] = {
         sampleIndexModelsTestsTarget,
         searchSchemaTarget,
         searchSchemaTestsTarget,
+        searchSQLiteTarget,
+        searchSQLiteTestsTarget,
         searchTarget,
         searchTestsTarget,
         sampleIndexTarget,

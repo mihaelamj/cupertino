@@ -6,6 +6,7 @@ import CoreProtocols
 import Foundation
 import LoggingModels
 @testable import Search
+@testable import SearchSQLite
 import SQLite3
 import Testing
 

@@ -2,6 +2,7 @@ import EnrichmentModels
 import Foundation
 import Search
 import SearchModels
+import SearchSQLite
 
 extension Enrichment {
     /// #837 stage 1 — populates packages.db's

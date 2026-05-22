@@ -1,8 +1,8 @@
 import Foundation
+import Search
 import SearchModels
 import SharedConstants
 import SQLite3
-
 
 extension Search.Index {
     public func searchCodeExamples(

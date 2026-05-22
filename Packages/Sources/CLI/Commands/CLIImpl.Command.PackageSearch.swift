@@ -4,6 +4,7 @@ import Logging
 import LoggingModels
 import Search
 import SearchModels
+import SearchSQLite
 import SharedConstants
 
 // MARK: - Package Search Command (hidden)

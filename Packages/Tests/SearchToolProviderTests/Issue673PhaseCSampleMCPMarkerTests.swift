@@ -4,6 +4,7 @@ import MCPCore
 @testable import SampleIndex
 @testable import Search
 import SearchModels
+@testable import SearchSQLite
 @testable import SearchToolProvider
 import SharedConstants
 import Testing

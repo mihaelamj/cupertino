@@ -1,6 +1,7 @@
 import Foundation
 @testable import Search
 import SearchModels
+@testable import SearchSQLite
 import Testing
 
 // Truth-table coverage for `Search.AppleDocsIndexer.validate(_:)`. The function was

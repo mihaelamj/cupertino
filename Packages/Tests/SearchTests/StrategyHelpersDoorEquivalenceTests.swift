@@ -1,10 +1,12 @@
 import Foundation
 @testable import Search
 import SearchModels
+@testable import SearchSQLite
 import SharedConstants
 import Testing
 
 // MARK: - #588 door-equivalence (tier A / B / C) tests
+
 //
 // Truth-table coverage for the pure helpers that drive the import-time
 // door check in `Search.Strategies.AppleDocs`. Pure functions, no I/O —
@@ -126,7 +128,7 @@ struct ClassifyDoorEncounterTests {
     func deterministic() {
         let prior = SUT.SeenURIRecord(canonicalTitle: "x", contentHash: "h")
         let incoming = SUT.SeenURIRecord(canonicalTitle: "y", contentHash: "h2")
-        for _ in 0 ..< 50 {
+        for _ in 0..<50 {
             #expect(SUT.classifyDoorEncounter(prior: prior, incoming: incoming) == .malignantTitleMismatch)
         }
     }

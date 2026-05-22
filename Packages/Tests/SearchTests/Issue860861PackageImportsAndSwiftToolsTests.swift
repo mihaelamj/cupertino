@@ -2,6 +2,7 @@ import Foundation
 import LoggingModels
 @testable import Search
 import SearchModels
+@testable import SearchSQLite
 import SQLite3
 import Testing
 
@@ -31,7 +32,9 @@ import Testing
 struct Issue860PackageImportsAndSwiftToolsTests {
     private struct InMemoryLookup: Search.StaticConstraintsLookup {
         let entries: [Search.StaticConstraintEntry]
-        func allEntries() async throws -> [Search.StaticConstraintEntry] { entries }
+        func allEntries() async throws -> [Search.StaticConstraintEntry] {
+            entries
+        }
     }
 
     private static func makeFreshDB() async throws -> (path: URL, index: Search.PackageIndex) {
@@ -265,7 +268,7 @@ struct Issue860PackageImportsAndSwiftToolsTests {
     // MARK: - #861: swift_tools_version fallback
 
     @Test("#861 — loadAvailability falls back to Package.swift when JSON omits swiftToolsVersion")
-    func loadAvailabilityFallback() async throws {
+    func loadAvailabilityFallback() throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("cupertino-861-fallback-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -304,7 +307,7 @@ struct Issue860PackageImportsAndSwiftToolsTests {
     }
 
     @Test("#861 — fallback returns nil when Package.swift is absent")
-    func fallbackHandlesMissingManifest() async throws {
+    func fallbackHandlesMissingManifest() throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("cupertino-861-no-manifest-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -332,7 +335,7 @@ struct Issue860PackageImportsAndSwiftToolsTests {
     }
 
     @Test("#861 — when JSON carries swiftToolsVersion, it wins over the fallback (no double-read)")
-    func jsonValueWinsOverFallback() async throws {
+    func jsonValueWinsOverFallback() throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("cupertino-861-json-wins-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)

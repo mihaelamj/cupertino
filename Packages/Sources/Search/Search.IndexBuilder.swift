@@ -82,7 +82,7 @@ extension Search {
         ///   - searchIndex: An object conforming to both
         ///     ``SearchModels/Search/Database`` and
         ///     ``SearchModels/Search/IndexWriter`` (the production
-        ///     conformer is the ``Search/Index`` actor, which the
+        ///     conformer is the ``SearchSQLite/Search/Index`` actor, which the
         ///     CLI composition root passes through implicit conformance).
         ///   - strategies: The ordered list of strategies to execute.
         ///   - logger: GoF Strategy seam for log emission.
@@ -120,7 +120,7 @@ extension Search {
         ///   - searchIndex: An object conforming to both
         ///     ``SearchModels/Search/Database`` and
         ///     ``SearchModels/Search/IndexWriter`` (the production
-        ///     conformer is the ``Search/Index`` actor, which the
+        ///     conformer is the ``SearchSQLite/Search/Index`` actor, which the
         ///     CLI composition root passes through implicit conformance).
         ///   - metadata: Optional crawl metadata (passed to ``AppleDocsStrategy``).
         ///   - docsDirectory: Root directory of the Apple documentation corpus.

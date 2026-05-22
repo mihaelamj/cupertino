@@ -75,7 +75,7 @@ public extension Search {
 
         /// Element-wise sum. Used by the CLI to aggregate per-strategy
         /// breakdowns into a single per-build report.
-        public static func + (lhs: ImportDiligenceBreakdown, rhs: ImportDiligenceBreakdown) -> ImportDiligenceBreakdown {
+        public static func +(lhs: ImportDiligenceBreakdown, rhs: ImportDiligenceBreakdown) -> ImportDiligenceBreakdown {
             ImportDiligenceBreakdown(
                 benignDupTierA: lhs.benignDupTierA + rhs.benignDupTierA,
                 benignDupTierB: lhs.benignDupTierB + rhs.benignDupTierB,
