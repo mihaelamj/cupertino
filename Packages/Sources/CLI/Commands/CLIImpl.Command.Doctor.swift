@@ -3,6 +3,7 @@ import Core
 import CorePackageIndexing
 import CoreProtocols
 import Diagnostics
+import DistributionModels
 import Foundation
 import Indexer
 import Logging
@@ -116,10 +117,40 @@ extension CLIImpl.Command {
             // #68 moved them behind `--save` because a setup-only user has
             // no corpus on disk and the `0 files` line looked like a failure.
             allChecks = checkServerInitialization() && allChecks
-            allChecks = checkPackagesDatabase() && allChecks
-            checkSamplesDatabase()
+
+            // #930: per-DB sections lifted into `Distribution.DatabaseHealthCheck`
+            // conformers. `healthChecks` is the canonical ordered list; the
+            // composition-root assembly is the sole edit point. Adding a 4th
+            // DB is one new conformer + one append to this list, no other
+            // changes. Every element of the list is iterated (no `prefix`,
+            // no out-of-loop calls), so a new conformer cannot silently
+            // disappear from `cupertino doctor`'s output.
+            let recording = Cupertino.Context.composition.logging.recording
+            let paths = Shared.Paths.live()
+            let healthChecks: [any Distribution.DatabaseHealthCheck] = [
+                PackagesHealthCheck(packagesDBURL: paths.packagesDatabase),
+                SamplesHealthCheck(samplesDBURL: Sample.Index.databasePath(baseDirectory: paths.baseDirectory)),
+                SearchHealthCheck(searchDBURL: URL(fileURLWithPath: searchDB).expandingTildeInPath),
+            ]
+            for check in healthChecks {
+                let ok = await check.run(output: recording)
+                if check.isRequired { allChecks = ok && allChecks }
+            }
+
+            // `checkSampleArchiveIntegrity` is intentionally OUTSIDE the
+            // healthChecks loop: it probes on-disk sample-code zip files
+            // (`~/.cupertino/sample-code/*.zip`), not the samples SQLite
+            // database. Pre-#930 it rendered between the Samples and Search
+            // sections, keyed on textual sequence; coupling it to a DB
+            // conformer would make a future "drop samples.db" refactor
+            // silently kill this orthogonal probe. Running it after the
+            // DB loop keeps its presence explicit and trivially auditable
+            // (one line, one call, no coupling). The section order changes
+            // from {Packages, Samples, SampleArchive, Search, Resources}
+            // to {Packages, Samples, Search, SampleArchive, Resources};
+            // both are descriptive sequences with no functional dependency.
             checkSampleArchiveIntegrity()
-            allChecks = await checkSearchDatabase() && allChecks
+
             allChecks = checkResourceProviders() && allChecks
             // Schema versions across all three DBs (#234)
             printSchemaVersions()
@@ -195,12 +226,11 @@ extension CLIImpl.Command {
         /// #248 third cut: the entries list inside THIS method is keyed
         /// by canonical `Shared.Models.DatabaseDescriptor` constants, so
         /// adding a 4th DB to the schema-versions section is a 2-line
-        /// edit. The 3 sibling per-DB sections (`checkSearchDatabase`,
-        /// `checkSamplesDatabase`, `checkPackagesDatabase`) still
-        /// hardcode their DB inline because each carries distinct
-        /// verdict policies (required vs optional vs warning-only) plus
-        /// distinct probes; lifting those into descriptor-driven
-        /// `DatabaseHealthCheck` conformers is queued as the next cut.
+        /// edit. #930 (fourth cut) lifted the 3 sibling per-DB sections
+        /// into `Distribution.DatabaseHealthCheck` conformers (each with
+        /// its own verdict policy + probe set); this method retains its
+        /// own iteration because its policy is "missing is informational,
+        /// never gates the verdict" which differs from every conformer.
         private func printSchemaVersions() {
             Cupertino.Context.composition.logging.recording.output("")
             Cupertino.Context.composition.logging.recording.output("8. Schema versions (#234)")
@@ -436,118 +466,6 @@ extension CLIImpl.Command {
             return true
         }
 
-        private func checkSearchDatabase() async -> Bool {
-            let searchDBURL = URL(fileURLWithPath: searchDB).expandingTildeInPath
-
-            Cupertino.Context.composition.logging.recording.output("🔍 Search Index")
-
-            guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
-                Cupertino.Context.composition.logging.recording.output("   ✗ Database: \(searchDBURL.path) (not found)")
-                Cupertino.Context.composition.logging.recording.output("     → Run: cupertino setup  (or `cupertino save` if building locally)")
-                Cupertino.Context.composition.logging.recording.output("")
-                return false
-            }
-
-            let fileSize = (try? FileManager.default.attributesOfItem(atPath: searchDBURL.path)[.size] as? UInt64) ?? 0
-            Cupertino.Context.composition.logging.recording.output("   ✓ Database: \(searchDBURL.path)")
-            Cupertino.Context.composition.logging.recording.output("   ✓ Size: \(Shared.Utils.Formatting.formatBytes(Int64(fileSize)))")
-
-            if !reportSchemaVersion(at: searchDBURL) {
-                return false
-            }
-
-            do {
-                let searchIndex = try await SearchModule.Index(dbPath: searchDBURL, logger: Cupertino.Context.composition.logging.recording)
-                let frameworks = try await searchIndex.listFrameworks()
-                Cupertino.Context.composition.logging.recording.output("   ✓ Frameworks: \(frameworks.count)")
-                await searchIndex.disconnect()
-                return reportIndexedSources(at: searchDBURL)
-            } catch {
-                Cupertino.Context.composition.logging.recording.output("   ✗ Database error: \(error)")
-                Cupertino.Context.composition.logging.recording.output("     → rm \(searchDBURL.path) && cupertino save")
-                Cupertino.Context.composition.logging.recording.output("")
-                return false
-            }
-        }
-
-        /// Read `PRAGMA user_version` and compare against the binary's expected
-        /// schema. Returns false on mismatch (with a precise rebuild hint), true
-        /// on match or unreadable. Read BEFORE opening via `SearchModule.Index` because
-        /// migrating from an incompatible version throws during init, and the
-        /// user wants to know which version they're stuck on.
-        private func reportSchemaVersion(at searchDBURL: URL) -> Bool {
-            let onDiskVersion = Diagnostics.Probes.userVersion(at: searchDBURL)
-            let expected = SearchModule.Index.schemaVersion
-            guard let onDiskVersion else {
-                Cupertino.Context.composition.logging.recording.output("   ⚠  Schema version: could not read PRAGMA user_version")
-                return true
-            }
-            if onDiskVersion == expected {
-                Cupertino.Context.composition.logging.recording.output("   ✓ Schema version: \(onDiskVersion) (matches installed binary)")
-                return true
-            }
-            if onDiskVersion < expected {
-                Cupertino.Context.composition.logging.recording.output("   ✗ Schema version: \(onDiskVersion) (binary expects \(expected), rebuild required)")
-                Cupertino.Context.composition.logging.recording.output("     → rm \(searchDBURL.path) && cupertino save")
-            } else {
-                Cupertino.Context.composition.logging.recording.output("   ✗ Schema version: \(onDiskVersion) (newer than binary — expected \(expected))")
-                Cupertino.Context.composition.logging.recording.output("     → Upgrade cupertino: brew upgrade cupertino")
-            }
-            Cupertino.Context.composition.logging.recording.output("")
-            return false
-        }
-
-        /// Per-source indexed counts via direct sqlite read. This is the truth
-        /// for "can my MCP answer queries about source X?". Hard-fails if the DB
-        /// opens but has zero indexed rows (silent-empty MCP otherwise).
-        private func reportIndexedSources(at searchDBURL: URL) -> Bool {
-            let perSource = Diagnostics.Probes.perSourceCounts(at: searchDBURL)
-            if !perSource.isEmpty {
-                Cupertino.Context.composition.logging.recording.output("   📚 Indexed sources:")
-                for (source, count) in perSource {
-                    Cupertino.Context.composition.logging.recording.output("     ✓ \(source): \(count) entries")
-                }
-            }
-            Cupertino.Context.composition.logging.recording.output("")
-            let totalIndexed = perSource.reduce(0) { $0 + $1.count }
-            if totalIndexed == 0 {
-                Cupertino.Context.composition.logging.recording.output("   ✗ Search index is empty (0 rows in docs_metadata)")
-                Cupertino.Context.composition.logging.recording.output("     → Rebuild: rm \(searchDBURL.path) && cupertino setup")
-                Cupertino.Context.composition.logging.recording.output("")
-                return false
-            }
-            return true
-        }
-
-        /// Report `samples.db` presence, size, and row counts (sample projects +
-        /// indexed source files). Built by `cupertino save --samples` after sample-code
-        /// download + cleanup. Missing is a warning (server runs without it; the
-        /// sample-code search just isn't available).
-        private func checkSamplesDatabase() {
-            let samplesDBURL = Sample.Index.databasePath(baseDirectory: Shared.Paths.live().baseDirectory)
-
-            Cupertino.Context.composition.logging.recording.output("🧪 Sample Code Index (samples.db)")
-
-            guard FileManager.default.fileExists(atPath: samplesDBURL.path) else {
-                Cupertino.Context.composition.logging.recording.output("   ⚠  Database: \(samplesDBURL.path) (not found)")
-                Cupertino.Context.composition.logging.recording.output("     → Run: cupertino fetch --type samples && cupertino cleanup && cupertino save --samples")
-                Cupertino.Context.composition.logging.recording.output("")
-                return
-            }
-
-            let fileSize = (try? FileManager.default.attributesOfItem(atPath: samplesDBURL.path)[.size] as? UInt64) ?? 0
-            Cupertino.Context.composition.logging.recording.output("   ✓ Database: \(samplesDBURL.path)")
-            Cupertino.Context.composition.logging.recording.output("   ✓ Size: \(Shared.Utils.Formatting.formatBytes(Int64(fileSize)))")
-
-            let projectCount = Diagnostics.Probes.rowCount(at: samplesDBURL, sql: Shared.Utils.SQL.countRows(in: "projects"))
-            let fileCount = Diagnostics.Probes.rowCount(at: samplesDBURL, sql: Shared.Utils.SQL.countRows(in: "files"))
-            let symbolCount = Diagnostics.Probes.rowCount(at: samplesDBURL, sql: Shared.Utils.SQL.countRows(in: "file_symbols"))
-            if let projectCount { Cupertino.Context.composition.logging.recording.output("   ✓ Projects: \(projectCount)") }
-            if let fileCount { Cupertino.Context.composition.logging.recording.output("   ✓ Indexed files: \(fileCount)") }
-            if let symbolCount { Cupertino.Context.composition.logging.recording.output("   ✓ Indexed symbols: \(symbolCount)") }
-            Cupertino.Context.composition.logging.recording.output("")
-        }
-
         /// #657 — scan `~/.cupertino/sample-code/*.zip` for files whose
         /// first 4 bytes don't match a ZIP magic signature. Apple's CDN
         /// occasionally returns an HTML landing page or partial body
@@ -733,38 +651,6 @@ extension CLIImpl.Command {
             guard epoch > 0 else { return "(unset)   " }
             let date = Date(timeIntervalSince1970: TimeInterval(epoch))
             return formatter.string(from: date)
-        }
-
-        /// #192 F1. Report `packages.db` presence, size, and row counts (packages,
-        /// files). Schema version tracked via the bundle-wide
-        /// `Shared.Constants.App.databaseVersion` constant rather than a PRAGMA
-        /// (packages.db is downloaded as part of the v1.0+ bundle, not migrated).
-        private func checkPackagesDatabase() -> Bool {
-            let packagesDBURL = Shared.Paths.live().packagesDatabase
-
-            Cupertino.Context.composition.logging.recording.output("📦 Packages Index (packages.db)")
-
-            guard FileManager.default.fileExists(atPath: packagesDBURL.path) else {
-                Cupertino.Context.composition.logging.recording.output("   ⚠  Database: \(packagesDBURL.path) (not found)")
-                Cupertino.Context.composition.logging.recording.output("     → Run: cupertino setup  (downloads the pre-built packages index)")
-                Cupertino.Context.composition.logging.recording.output("     Expected version: \(Shared.Constants.App.databaseVersion)")
-                Cupertino.Context.composition.logging.recording.output("")
-                // Missing packages.db is a warning, not a failure — server still
-                // runs, just without the packages tool. Doctor summary stays green.
-                return true
-            }
-
-            let fileSize = (try? FileManager.default.attributesOfItem(atPath: packagesDBURL.path)[.size] as? UInt64) ?? 0
-            Cupertino.Context.composition.logging.recording.output("   ✓ Database: \(packagesDBURL.path)")
-            Cupertino.Context.composition.logging.recording.output("   ✓ Size: \(Shared.Utils.Formatting.formatBytes(Int64(fileSize)))")
-
-            let packageCount = Diagnostics.Probes.rowCount(at: packagesDBURL, sql: Shared.Utils.SQL.countRows(in: "packages"))
-            let fileCount = Diagnostics.Probes.rowCount(at: packagesDBURL, sql: Shared.Utils.SQL.countRows(in: "package_files"))
-            if let packageCount { Cupertino.Context.composition.logging.recording.output("   ✓ Packages: \(packageCount)") }
-            if let fileCount { Cupertino.Context.composition.logging.recording.output("   ✓ Indexed files: \(fileCount)") }
-            Cupertino.Context.composition.logging.recording.output("   ℹ  Bundled version: \(Shared.Constants.App.databaseVersion)")
-            Cupertino.Context.composition.logging.recording.output("")
-            return true
         }
 
         private func checkPackages() async {

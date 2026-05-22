@@ -57,6 +57,16 @@ See the imported `mihaela-agents/Rules/AGENTS.md` (resolved below) for code styl
 
 See `docs/PRINCIPLES.md` for the engineering principles the import + indexer paths stand on (lossless URIs, collisions handled at the door, no content lost at the door, garbage filtered at input, 10x scale headroom, correctness first).
 
+## Pluggability invariant (load-bearing)
+
+**Each content source must be 100% pluggable, not 80% with caveats.** Adding a new source (WWDC transcripts #58, Swift Forums #89, Tech Talks #273, anything later) is a declarative PR that touches no existing concretes. Target shape: 2 files (a descriptor + an indexer concrete) with zero edits to any existing source's code, zero edits to a static registry dictionary, zero edits to a closed enum.
+
+Same standard for databases: adding a new DB (if a future source ships as its own SQLite, not as another source in `search.db`) is one `Distribution.DatabaseHealthCheck` conformer + one list append at the composition root.
+
+This invariant is the load-bearing goal of the `#919` declarative source + DB pluggability epic. It is NOT optional polish. Do not declare any plug-in / descriptor / registry refactor "done" until the end-to-end 2-file PR claim is empirically proven (a fake source plugs in via a test fixture, the existing 8 source concretes are untouched, and the full test + audit suite stays green).
+
+Status today (2026-05-22): partial. The `#248` + `#251` arcs (PRs #920 to #929 + #930) collapsed source identity to one constant per source and lifted the `Distribution.SetupService` / `Doctor` / `InstalledVersion` surfaces onto descriptors. Still hardcoded: the `IndexerRegistry` static `[String: any Search.SourceIndexer]` dictionary in `SearchSQLite/Search.SourceIndexer.swift` is the remaining edit-point per new source; lifting it to composition-root injection is the next structural cut.
+
 ## Database and search quality
 
 See `docs/database-handbook.md` for the canonical entry point to everything about cupertino's database design, schema, indexer pipeline, probing, and search-quality evaluation. Start there for any database / FTS5 / ranking / eval question — it indexes every related artefact (architecture doc, design docs, audit methodology, universal IR rule, memory invariants) and prescribes the cold-start bootstrap order. If a database-related doc is not linked from the handbook, it is undiscoverable; the fix is to add it there in the same PR.
