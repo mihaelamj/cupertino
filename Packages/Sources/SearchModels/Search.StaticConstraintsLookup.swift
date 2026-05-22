@@ -30,7 +30,7 @@ extension Search {
     /// **Use site.** `Search.IndexBuilder.buildIndex(...)` takes an
     /// optional `lookup: any StaticConstraintsLookup`. When non-nil,
     /// the build's post-iteration-2 pass calls
-    /// `Search.Index.applyAppleStaticConstraints(table:)`, which
+    /// `Search.Index.applyAppleStaticConstraints(lookup:)`, which
     /// iterates the lookup's entries and overrides
     /// `doc_symbols.generic_constraints` for matching URIs.
     public protocol StaticConstraintsLookup: Sendable {

@@ -598,7 +598,7 @@ extension Search {
                 seenURIs[uri] = incoming
 
                 do {
-                    try await index.indexDocument(Search.Index.IndexDocumentParams(
+                    try await index.indexDocument(Search.IndexDocumentParams(
                         uri: uri,
                         source: source,
                         framework: pageMetadata.framework,

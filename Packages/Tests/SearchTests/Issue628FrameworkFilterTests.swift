@@ -67,7 +67,7 @@ struct Issue628FrameworkFilterTests {
         {"title":"\(escapedTitle)","url":"https://developer.apple.com/documentation/\(framework)/\(title
             .lowercased())","rawMarkdown":"\(escapedContent)","source":"apple-docs","framework":"\(framework)","kind":"\(kind)"}
         """
-        try await idx.indexDocument(Search.Index.IndexDocumentParams(
+        try await idx.indexDocument(Search.IndexDocumentParams(
             uri: uri,
             source: "apple-docs",
             framework: framework,
@@ -266,7 +266,7 @@ struct Issue628FrameworkFilterTests {
         // Stamp a swift-evolution-style row with empty framework (matches
         // the real corpus shape — non-Apple sources don't carry a
         // framework column value).
-        try await idx.indexDocument(Search.Index.IndexDocumentParams(
+        try await idx.indexDocument(Search.IndexDocumentParams(
             uri: "swift-evolution://SE-0001",
             source: "swift-evolution",
             framework: "",

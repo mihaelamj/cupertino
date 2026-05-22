@@ -63,7 +63,7 @@ struct Issue610ClassARankingTests {
         {"title":"\(escapedTitle)","url":"https://developer.apple.com/documentation/\(framework)/\(title
             .lowercased())","rawMarkdown":"\(escapedContent)","source":"apple-docs","framework":"\(framework)","kind":"\(kind)"}
         """
-        try await idx.indexDocument(Search.Index.IndexDocumentParams(
+        try await idx.indexDocument(Search.IndexDocumentParams(
             uri: uri,
             source: "apple-docs",
             framework: framework,

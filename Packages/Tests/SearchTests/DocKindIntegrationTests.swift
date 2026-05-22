@@ -157,7 +157,7 @@ struct IndexDocumentKindTests {
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
         let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
-        try await idx.indexDocument(Search.Index.IndexDocumentParams(
+        try await idx.indexDocument(Search.IndexDocumentParams(
             uri: uri,
             source: source,
             framework: framework,
@@ -225,7 +225,7 @@ struct SymbolsColumnTests {
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
         let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
-        try await idx.indexDocument(Search.Index.IndexDocumentParams(
+        try await idx.indexDocument(Search.IndexDocumentParams(
             uri: "test://nosym",
             source: "swift-book",
             framework: nil,

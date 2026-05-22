@@ -16,7 +16,7 @@ private func seedIndex() async throws -> (Search.Index, URL) {
 
     // Two docs in apple-docs source, plus one in swift-evolution so we can
     // verify source scoping.
-    try await index.indexDocument(Search.Index.IndexDocumentParams(
+    try await index.indexDocument(Search.IndexDocumentParams(
         uri: "apple-docs://swiftui/view",
         source: "apple-docs",
         framework: "swiftui",
@@ -26,7 +26,7 @@ private func seedIndex() async throws -> (Search.Index, URL) {
         contentHash: "h1",
         lastCrawled: Date()
     ))
-    try await index.indexDocument(Search.Index.IndexDocumentParams(
+    try await index.indexDocument(Search.IndexDocumentParams(
         uri: "apple-docs://swiftui/animation",
         source: "apple-docs",
         framework: "swiftui",
@@ -36,7 +36,7 @@ private func seedIndex() async throws -> (Search.Index, URL) {
         contentHash: "h2",
         lastCrawled: Date()
     ))
-    try await index.indexDocument(Search.Index.IndexDocumentParams(
+    try await index.indexDocument(Search.IndexDocumentParams(
         uri: "swift-evolution://SE-0306",
         source: "swift-evolution",
         framework: nil,

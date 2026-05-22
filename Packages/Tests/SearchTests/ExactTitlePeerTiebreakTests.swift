@@ -36,7 +36,7 @@ private func indexPage(
     title: String,
     content: String
 ) async throws {
-    try await idx.indexDocument(Search.Index.IndexDocumentParams(
+    try await idx.indexDocument(Search.IndexDocumentParams(
         uri: uri,
         source: "apple-docs",
         framework: framework,

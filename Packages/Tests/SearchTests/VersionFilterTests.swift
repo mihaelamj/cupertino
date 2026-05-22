@@ -239,7 +239,7 @@ struct VersionFilterTests {
         }
 
         // Index document WITHOUT availability data
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "test://noavail",
             source: "apple-docs",
             framework: "test",
@@ -372,7 +372,7 @@ struct VersionFilterTests {
             .appendingPathComponent("test-\(UUID().uuidString).db")
         let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording())
 
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: uri,
             source: "apple-docs",
             framework: "test",

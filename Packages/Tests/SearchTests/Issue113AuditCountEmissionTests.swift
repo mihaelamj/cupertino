@@ -68,7 +68,7 @@ struct Issue113AuditCountEmissionTests {
         """
         let dirtyJSON = #"{"raw":"doc://Z/documentation/swiftui/text"}"#
 
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://swiftui/view",
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: "swiftui",
@@ -105,7 +105,7 @@ struct Issue113AuditCountEmissionTests {
         let (index, dbPath) = try await makeIndex(logger: recorder)
         defer { cleanup(dbPath) }
 
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://swiftui/clean",
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: "swiftui",
@@ -173,7 +173,7 @@ struct Issue113AuditCountEmissionTests {
         ]
 
         for page in pages {
-            try await index.indexDocument(Search.Index.IndexDocumentParams(
+            try await index.indexDocument(Search.IndexDocumentParams(
                 uri: page.uri,
                 source: Shared.Constants.SourcePrefix.appleDocs,
                 framework: "uikit",

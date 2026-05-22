@@ -35,7 +35,7 @@ struct Issue625UnifiedSearchDedupTests {
         let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording())
 
         // Seed one row through the normal indexer path.
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://demo/string",
             source: "apple-docs",
             framework: "demo",
@@ -55,7 +55,7 @@ struct Issue625UnifiedSearchDedupTests {
         // could trigger — pre-fix the duplicate fixture would sum 3 RRF
         // increments and outrank this one.
         let index2 = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording())
-        try await index2.indexDocument(Search.Index.IndexDocumentParams(
+        try await index2.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://swift/string",
             source: "apple-docs",
             framework: "swift",
@@ -86,7 +86,7 @@ struct Issue625UnifiedSearchDedupTests {
 
         let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording())
         for i in 1...5 {
-            try await index.indexDocument(Search.Index.IndexDocumentParams(
+            try await index.indexDocument(Search.IndexDocumentParams(
                 uri: "apple-docs://demo/x\(i)",
                 source: "apple-docs",
                 framework: "demo",

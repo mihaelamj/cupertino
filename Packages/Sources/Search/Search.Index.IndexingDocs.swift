@@ -7,11 +7,13 @@ import SQLite3
 extension Search.Index {
     /// Index a document for searching.
     ///
-    /// All per-page values flow through `Search.Index.IndexDocumentParams`
+    /// All per-page values flow through `Search.IndexDocumentParams`
+    /// (lifted from a previous nested location inside this `Search.Index`
+    /// actor up to the foundation-only `SearchModels` target in #896)
     /// so adding a new column (the indexer learns new sources / metadata
-    /// over time) doesn't touch every call site — the struct's init
-    /// gains a defaulted parameter and existing callers compile unchanged.
-    public func indexDocument(_ params: IndexDocumentParams) async throws {
+    /// over time) does not touch every call site: the struct's init gains
+    /// a defaulted parameter and existing callers compile unchanged.
+    public func indexDocument(_ params: Search.IndexDocumentParams) async throws {
         guard let database else {
             throw Search.Error.databaseNotInitialized
         }
@@ -211,7 +213,7 @@ extension Search.Index {
         // Get the indexer for this source
         guard let indexer = Search.IndexerRegistry.indexer(for: item.source) else {
             // Fall back to generic indexing if no specific indexer
-            try await indexDocument(IndexDocumentParams(
+            try await indexDocument(Search.IndexDocumentParams(
                 uri: item.uri,
                 source: item.source,
                 framework: item.framework,
@@ -243,7 +245,7 @@ extension Search.Index {
         let processedItem = indexer.preprocess(item)
 
         // Index the document
-        try await indexDocument(IndexDocumentParams(
+        try await indexDocument(Search.IndexDocumentParams(
             uri: processedItem.uri,
             source: processedItem.source,
             framework: processedItem.framework,

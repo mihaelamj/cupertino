@@ -46,7 +46,7 @@ struct Issue113IndexerRewriteIntegrationTests {
         Related: doc://X/documentation/swiftui/viewbuilder.
         """
 
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://swiftui/view",
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: "swiftui",
@@ -83,7 +83,7 @@ struct Issue113IndexerRewriteIntegrationTests {
         {"title":"View","rawMarkdown":"See doc://X/documentation/swiftui/view for the protocol."}
         """#
 
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://swiftui/view",
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: "swiftui",
@@ -187,7 +187,7 @@ struct Issue113IndexerRewriteIntegrationTests {
         ]
 
         for page in pages {
-            try await index.indexDocument(Search.Index.IndexDocumentParams(
+            try await index.indexDocument(Search.IndexDocumentParams(
                 uri: page.uri,
                 source: Shared.Constants.SourcePrefix.appleDocs,
                 framework: page.framework,
@@ -230,7 +230,7 @@ struct Issue113IndexerRewriteIntegrationTests {
         defer { cleanup(dbPath) }
 
         let cleanContent = "Plain prose with https://developer.apple.com/documentation/swiftui/view and no internal scheme refs."
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://swiftui/clean",
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: "swiftui",

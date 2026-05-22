@@ -143,7 +143,7 @@ struct Issue77CamelCaseSplitterTests {
         let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
 
         // Seed a doc + a doc_symbols row with `LazyVGrid`.
-        try await idx.indexDocument(Search.Index.IndexDocumentParams(
+        try await idx.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://swiftui/lazyvgrid",
             source: "apple-docs",
             framework: "swiftui",
@@ -176,7 +176,7 @@ struct Issue77CamelCaseSplitterTests {
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
         let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
-        try await idx.indexDocument(Search.Index.IndexDocumentParams(
+        try await idx.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://demo/article",
             source: "apple-docs",
             framework: "demo",

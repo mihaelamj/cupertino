@@ -75,7 +75,7 @@ private func countImportRows(at dbPath: URL, uri: String) throws -> Int {
 }
 
 private func seedDoc(index: Search.Index, uri: String) async throws {
-    try await index.indexDocument(Search.Index.IndexDocumentParams(
+    try await index.indexDocument(Search.IndexDocumentParams(
         uri: uri,
         source: "apple-docs",
         framework: "swiftui",

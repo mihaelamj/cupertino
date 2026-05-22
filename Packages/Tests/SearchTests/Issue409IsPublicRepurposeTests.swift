@@ -77,7 +77,7 @@ struct Issue409IsPublicRepurposeTests {
 
         // First write the parent docs_metadata + docs_fts row so the FTS
         // foreign-key constraint in indexDocSymbolFTS is satisfied.
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: docURI,
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: "swiftui",
@@ -118,7 +118,7 @@ struct Issue409IsPublicRepurposeTests {
         )
         let docURI = "samples://my-sample-project/internal-helper"
 
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: docURI,
             source: Shared.Constants.SourcePrefix.samples,
             framework: "samples",
@@ -155,7 +155,7 @@ struct Issue409IsPublicRepurposeTests {
         )
         let docURI = "apple-docs://framework-design-article/rarely-seen-public-keyword"
 
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: docURI,
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: "framework-design-article",
