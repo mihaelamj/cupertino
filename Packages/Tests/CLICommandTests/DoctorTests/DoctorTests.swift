@@ -56,7 +56,7 @@ struct MCPDoctorCommandTests {
         let searchDBURL = tempDir.appendingPathComponent("search.db")
 
         // Create a search database
-        let searchIndex = try await Search.Index(dbPath: searchDBURL, logger: Logging.NoopRecording(), indexers: [:])
+        let searchIndex = try await Search.Index(dbPath: searchDBURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         await searchIndex.disconnect()
 
         // Verify database file exists
@@ -74,7 +74,7 @@ struct MCPDoctorCommandTests {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let dbPath = tempDir.appendingPathComponent("search.db")
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         await idx.disconnect()
 
         // A fresh DB stamps user_version to the current schema version.
@@ -96,7 +96,7 @@ struct MCPDoctorCommandTests {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let dbPath = tempDir.appendingPathComponent("search.db")
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         await idx.disconnect()
 
         // `packages` is a packages.db table, not present in search.db.
@@ -111,7 +111,7 @@ struct MCPDoctorCommandTests {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let dbPath = tempDir.appendingPathComponent("search.db")
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         await idx.disconnect()
 
         let result = Diagnostics.Probes.rowCount(at: dbPath, sql: "SELECT COUNT(*) FROM docs_metadata;")
@@ -167,7 +167,7 @@ struct MCPDoctorCommandTests {
         // breaking-migration throw is what produces the "rebuild required"
         // user message.
         await #expect(throws: (any Error).self) {
-            _ = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+            _ = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         }
     }
 }

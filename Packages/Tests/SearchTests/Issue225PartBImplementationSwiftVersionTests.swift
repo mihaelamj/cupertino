@@ -134,7 +134,7 @@ struct Issue225PartBPersistenceTests {
             .appendingPathComponent("cupertino-225-part-b-test-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         let dbPath = tempDir.appendingPathComponent("search.db")
-        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         return (index, tempDir)
     }
 
@@ -214,7 +214,7 @@ struct Issue225PartBPersistenceTests {
         try Self.makeV15RawDB(at: dbPath)
 
         // Opening via Search.Index.init triggers checkAndMigrateSchema → migrateToVersion16()
-        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         defer { Task { await index.disconnect() } }
 
         // Assert: user_version == current schemaVersion on disk. The init runs

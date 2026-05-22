@@ -41,7 +41,7 @@ struct Issue673PhaseCSearchAndReadDocumentMarkerTests {
         seed: (Search.Index) async throws -> Void
     ) async throws -> (provider: CompositeToolProvider, cleanup: () -> Void) {
         let dbPath = tempDB()
-        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         try await seed(index)
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
         return (provider, {

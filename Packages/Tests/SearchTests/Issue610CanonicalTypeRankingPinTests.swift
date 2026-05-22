@@ -58,7 +58,7 @@ struct Issue610CanonicalTypeRankingPinTests {
     func navigationStackBeatsToolbarRoleSubSymbol() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         try await Self.indexPage(
             on: idx,
@@ -84,7 +84,7 @@ struct Issue610CanonicalTypeRankingPinTests {
     func fontBeatsEnvironmentValuesProperty() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         try await Self.indexPage(
             on: idx,
@@ -117,7 +117,7 @@ struct Issue610CanonicalTypeRankingPinTests {
     func listBeatsDragDropSubSymbol() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         try await Self.indexPage(
             on: idx,
@@ -145,7 +145,7 @@ struct Issue610CanonicalTypeRankingPinTests {
     func jsonDecoderIsCanonical() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         try await Self.indexPage(
             on: idx,
@@ -174,7 +174,7 @@ struct Issue610CanonicalTypeRankingPinTests {
     func hashableProtocolBeatsConformanceMentions() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         try await Self.indexPage(
             on: idx,
@@ -207,7 +207,7 @@ struct Issue610CanonicalTypeRankingPinTests {
     func sendableProtocolBeatsCheckedSendable() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         try await Self.indexPage(
             on: idx,
@@ -233,7 +233,7 @@ struct Issue610CanonicalTypeRankingPinTests {
     func codableBeatsEncodableDecodableMentions() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         try await Self.indexPage(
             on: idx,
@@ -266,7 +266,7 @@ struct Issue610CanonicalTypeRankingPinTests {
     func equatableProtocolBeatsEqualsOperatorPages() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         try await Self.indexPage(
             on: idx,
@@ -319,7 +319,7 @@ struct Issue610CanonicalTypeRankingPinTests {
     func canonicalTypePinMatrix(query: String, expectedURI: String, framework: String) async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         // Canonical page — short, encyclopedic, BM25 should win on the
         // boosted title path.

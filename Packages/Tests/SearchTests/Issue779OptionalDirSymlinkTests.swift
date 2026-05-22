@@ -43,7 +43,8 @@ struct Issue779OptionalDirSymlinkTests {
         try await Search.Index(
             dbPath: tempRoot.appendingPathComponent("search.db"),
             logger: Logging.NoopRecording(),
-            indexers: [:]
+            indexers: [:],
+            sourceLookup: .empty
         )
     }
 

@@ -57,7 +57,7 @@ extension CLIImpl.Command.Doctor {
             let searchIndex: SearchModule.Index
             do {
                 // #932: doctor read-only probe; never calls indexItem.
-                searchIndex = try await SearchModule.Index(dbPath: searchDBURL, logger: recording, indexers: [:])
+                searchIndex = try await SearchModule.Index(dbPath: searchDBURL, logger: recording, indexers: [:], sourceLookup: .empty)
             } catch {
                 recording.output("   ✗ Database error: \(error)")
                 recording.output("     → rm \(searchDBURL.path) && cupertino save")

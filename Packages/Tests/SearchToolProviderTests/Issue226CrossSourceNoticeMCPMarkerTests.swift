@@ -50,7 +50,7 @@ struct Issue226CrossSourceNoticeMCPMarkerTests {
 
     private static func makeProvider() async throws -> (provider: CompositeToolProvider, cleanup: () -> Void) {
         let dbPath = tempDB()
-        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
         return (provider, {
             Task { await index.disconnect() }

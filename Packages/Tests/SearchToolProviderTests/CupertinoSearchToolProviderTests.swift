@@ -21,7 +21,7 @@ import SearchModels
 /// - Returns: A tuple containing the search index and cleanup function
 func createTestSearchIndex() async throws -> (index: Search.Index, cleanup: () throws -> Void) {
     let tempDB = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString).db")
-    let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording(), indexers: [:])
+    let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
     let cleanup = {
         try FileManager.default.removeItem(at: tempDB)

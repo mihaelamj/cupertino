@@ -33,7 +33,7 @@ struct Issue625UnifiedSearchDedupTests {
             .appendingPathComponent("issue625-dedup-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: dbURL) }
 
-        let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:])
+        let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         // Seed one row through the normal indexer path.
         try await index.indexDocument(Search.IndexDocumentParams(
@@ -55,7 +55,7 @@ struct Issue625UnifiedSearchDedupTests {
         // Add a competing legitimate row so the "wrong winner" condition
         // could trigger — pre-fix the duplicate fixture would sum 3 RRF
         // increments and outrank this one.
-        let index2 = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:])
+        let index2 = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         try await index2.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://swift/string",
             source: "apple-docs",
@@ -85,7 +85,7 @@ struct Issue625UnifiedSearchDedupTests {
             .appendingPathComponent("issue625-multi-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: dbURL) }
 
-        let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:])
+        let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         for i in 1...5 {
             try await index.indexDocument(Search.IndexDocumentParams(
                 uri: "apple-docs://demo/x\(i)",

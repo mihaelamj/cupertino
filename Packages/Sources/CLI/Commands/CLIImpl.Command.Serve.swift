@@ -349,7 +349,8 @@ extension CLIImpl.Command {
                 let index = try await SearchModule.Index(
                     dbPath: searchDBURL,
                     logger: Cupertino.Context.composition.logging.recording,
-                    indexers: [:]
+                    indexers: [:],
+                    sourceLookup: .empty
                 )
                 return SearchIndexLoadResult(index: index, disabledReason: nil)
             } catch {

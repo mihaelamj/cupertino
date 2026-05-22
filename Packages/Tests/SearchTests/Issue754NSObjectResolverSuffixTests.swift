@@ -89,7 +89,7 @@ struct Issue754NSObjectResolverSuffixTests {
     func resolveSuffixedTitleShape(root: (name: String, uri: String, framework: String)) async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         // Seed with the SUFFIXED form Apple's DocC writes for these pages.
         let suffixedTitle = "\(root.name) | Apple Developer Documentation"
@@ -119,7 +119,7 @@ struct Issue754NSObjectResolverSuffixTests {
     func resolveBareTitleShape(root: (name: String, uri: String, framework: String)) async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         // Seed with the BARE form (no suffix) — the pre-#754-fix happy path.
         try await Self.indexSymbol(
@@ -143,7 +143,7 @@ struct Issue754NSObjectResolverSuffixTests {
     func resolveMixedShapes() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         // Real-world: NSObject exists under apple-docs://objectivec/nsobject-swift.class
         // with the suffixed title. Imagine a future ObjC port keeps the same name under
@@ -176,7 +176,7 @@ struct Issue754NSObjectResolverSuffixTests {
     func resolveCaseInsensitive() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         try await Self.indexSymbol(
             idx,
             uri: "apple-docs://objectivec/nsobject-swift.class",
@@ -199,7 +199,7 @@ struct Issue754NSObjectResolverSuffixTests {
     func resolveUnknownReturnsEmpty() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         try await Self.indexSymbol(
             idx,
             uri: "apple-docs://uikit/uiview",

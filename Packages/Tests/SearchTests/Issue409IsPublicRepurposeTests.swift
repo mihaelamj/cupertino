@@ -28,7 +28,7 @@ struct Issue409IsPublicRepurposeTests {
     private func makeIndex() async throws -> (Search.Index, URL) {
         let tempDB = FileManager.default.temporaryDirectory
             .appendingPathComponent("test-409-\(UUID().uuidString).db")
-        let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording(), indexers: [:])
+        let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         return (index, tempDB)
     }
 
