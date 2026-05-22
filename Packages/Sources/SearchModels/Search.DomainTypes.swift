@@ -78,34 +78,14 @@ extension Search {
         public static let swiftBook = Source(rawValue: Shared.Constants.SourcePrefix.swiftBook)
         public static let packages = Source(rawValue: Shared.Constants.SourcePrefix.packages)
 
-        // MARK: - Descriptor-backed display surface
-
-        /// Human-readable display name. Reads from the
-        /// `Search.SourceRegistry` descriptor; falls back to `rawValue`
-        /// when no descriptor is registered (e.g. a brand-new source
-        /// whose SourceDefinition row hasn't landed yet).
-        public var displayName: String {
-            Search.SourceRegistry.definition(for: rawValue)?.displayName ?? rawValue
-        }
-
-        /// Emoji prefix for display. Reads from the
-        /// `Search.SourceRegistry` descriptor; falls back to an empty
-        /// string when no descriptor is registered.
-        public var emoji: String {
-            Search.SourceRegistry.definition(for: rawValue)?.emoji ?? ""
-        }
-
-        /// Whether this source has a `SourceDefinition` row in
-        /// `Search.SourceRegistry.all`. Replaces the structural
-        /// validation the closed enum's failable init used to perform:
-        /// pre-#251 `Search.Source(rawValue: "wwdc-transcripts")`
-        /// returned nil, and callers branched on that to reject
-        /// unknown source strings. Post-#251 every string round-trips
-        /// into a valid Source, so callers that need the old "is this
-        /// a real source?" gate should check `isRegistered` directly.
-        public var isRegistered: Bool {
-            Search.SourceRegistry.definition(for: rawValue) != nil
-        }
+        // #934 Step 3b: the displayName / emoji / isRegistered
+        // convenience properties that reached for the static
+        // `Search.SourceRegistry.all` are deleted. They violated
+        // `gof-di-rules.md` Rule 1 (Service Locator on a value type).
+        // Callers now route through an injected `Search.SourceLookup`
+        // (`lookup.displayName(for: source)`, `lookup.emoji(for: source)`,
+        // `lookup.isRegistered(source)`). The composition root in
+        // `CLIImpl.SourceLookup.swift` supplies the production lookup.
     }
 }
 
@@ -125,17 +105,13 @@ extension Search {
         case packageDiscovery // "networking library", "JSON parsing package" → packages
         case legacy // "Objective-C", "NSObject", older frameworks → archive, apple-docs
 
-        /// Sources boosted for this intent (in priority order)
-        /// Now data-driven via SourceRegistry instead of hardcoded
-        public var boostedSources: [Search.Source] {
-            // Use registry-based lookup (data-driven)
-            registryBoostedSources
-        }
-
-        /// Boost multiplier for boosted sources (1.0 = no boost)
-        public var boostMultiplier: Double {
-            2.0 // Boosted sources get 2x score
-        }
+        // #934 Step 3b: the `boostedSources` / `boostMultiplier` /
+        // `boostedSourceIDs` / `registryBoostedSources` properties
+        // that reached for the static `Search.SourceRegistry` are
+        // deleted. Callers route through an injected
+        // `Search.SourceLookup.boostedSources(for: intent)`. The
+        // boost multiplier (was a hardcoded 2.0) is now the ranking
+        // path's local responsibility (still 2.0 there).
     }
 }
 
@@ -352,34 +328,6 @@ extension Search {
     }
 }
 
-/// Source properties for each source
-/// @deprecated Use `SourceRegistry` instead - this is kept for backward compatibility
-/// Values now consolidated in `SourceDefinition.swift`
-@available(*, deprecated, message: "Use SourceRegistry.properties(for:) instead")
-extension Search {
-    public enum SourcePropertiesRegistry {
-        /// @deprecated Use `SourceRegistry.properties(for:)` instead.
-        ///
-        /// Post-#251 second cut, `Search.Source` is no longer a closed
-        /// `CaseIterable` enum, so the historical "iterate all cases"
-        /// build pattern was rewritten to iterate the `SourceRegistry`
-        /// definitions directly. Behaviour-preserving for the
-        /// known-sources set; future sources registered in
-        /// `SourceRegistry` are picked up here automatically.
-        public static var properties: [Search.Source: SourceProperties] {
-            var result: [Search.Source: SourceProperties] = [:]
-            for definition in SourceRegistry.all {
-                result[Search.Source(rawValue: definition.id)] = definition.properties
-            }
-            return result
-        }
-
-        /// @deprecated Use `SourceRegistry.properties(for:)` instead
-        public static func properties(for source: Search.Source) -> SourceProperties {
-            SourceRegistry.properties(for: source.rawValue) ?? SourceProperties(
-                authority: 0.5, freshness: 0.5, comprehensiveness: 0.5, codeExamples: 0.5,
-                hasAvailability: 0.5, designFocus: 0.5, languageFocus: 0.5, searchQuality: 0.5
-            )
-        }
-    }
-}
+// #934 Step 3b: `Search.SourcePropertiesRegistry` (deprecated since
+// #251) deleted. It read from the now-deleted `SourceRegistry.all`
+// static; callers route through `Search.SourceLookup.properties(for:)`.

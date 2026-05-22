@@ -40,30 +40,14 @@ struct Issue251SourceStructTests {
     func unregisteredSourcesAreLegal() {
         let wwdc = Search.Source(rawValue: "wwdc-transcripts")
         #expect(wwdc.rawValue == "wwdc-transcripts")
-        #expect(wwdc.isRegistered == false)
-        // Fallbacks for unregistered sources:
-        #expect(wwdc.displayName == "wwdc-transcripts")
-        #expect(wwdc.emoji == "")
-    }
-
-    @Test("isRegistered is true for the 8 historical sources and false otherwise")
-    func isRegisteredMatchesSourceRegistry() {
-        #expect(Search.Source.appleDocs.isRegistered)
-        #expect(Search.Source.samples.isRegistered)
-        #expect(Search.Source.hig.isRegistered)
-        #expect(Search.Source.appleArchive.isRegistered)
-        #expect(Search.Source.swiftEvolution.isRegistered)
-        #expect(Search.Source.swiftOrg.isRegistered)
-        #expect(Search.Source.swiftBook.isRegistered)
-        #expect(Search.Source.packages.isRegistered)
-        #expect(Search.Source(rawValue: "definitely-not-a-source").isRegistered == false)
-    }
-
-    @Test("displayName for appleArchive preserves the historical 'Apple Archive (Legacy)' label")
-    func appleArchiveDisplayNameByteIdentical() {
-        // Pre-#251 the enum's switch returned "Apple Archive (Legacy)".
-        // SourceRegistry's row was aligned to the same value as part of
-        // the second cut so the user-visible label doesn't drift.
-        #expect(Search.Source.appleArchive.displayName == "Apple Archive (Legacy)")
+        // #934 Step 3b: the `.isRegistered` / `.displayName` /
+        // `.emoji` convenience properties are GONE (they reached for
+        // the static `Search.SourceRegistry.all`). Registered-ness
+        // is now a `Search.SourceLookup.isRegistered(_:)` instance
+        // method call against the composition-root lookup.
+        let lookup = Search.SourceLookup.empty
+        #expect(lookup.isRegistered(wwdc) == false)
+        #expect(lookup.displayName(for: wwdc) == "wwdc-transcripts")
+        #expect(lookup.emoji(for: wwdc) == "")
     }
 }
