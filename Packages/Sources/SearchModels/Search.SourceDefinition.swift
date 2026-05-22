@@ -86,19 +86,31 @@ extension Search {
     public enum SourceRegistry {
         // MARK: - All Source Definitions
         //
-        // #251 first cut: every `id:` value reads from
+        // #251 first cut (PR #923): every `id:` value reads from
         // `Shared.Constants.SourcePrefix.*`. SourcePrefix is the single
         // source of truth for source identifiers between this registry
         // and any consumer that historically used a string literal.
         //
-        // **Remaining #251 work:** `Search.Source` (in
-        // `Search.DomainTypes.swift`) is a `String`-rawValue enum whose
-        // raw values are byte-identical to these ids; renaming any
-        // SourcePrefix constant still requires touching the Search.Source
-        // case's raw value separately. Swift forbids `static let`
-        // rawValues on a String enum, so collapsing this third copy
-        // needs a structural change (e.g. dropping the enum in favour
-        // of descriptor lookups via SourceRegistry). Queued.
+        // #251 second cut (this branch): `Search.Source` is now a
+        // `String`-wrapping struct rather than a closed `enum` with
+        // hand-curated cases. The 8 historical sources remain reachable
+        // as static constants (`Search.Source.appleDocs`, etc.), and
+        // each constant reads from the same `Shared.Constants.SourcePrefix.*`
+        // constants this registry uses for `id:`. Renaming a SourcePrefix
+        // constant now propagates to all three sites (Source struct,
+        // SourceRegistry id, SearchSQLite indexer sourceID) without
+        // touching this file or the Source definition.
+        //
+        // **Adding a new content source post-#251:** one descriptor row
+        // here, one `Shared.Constants.SourcePrefix.<name>` constant. No
+        // edit to `Search.Source` (the struct accepts any rawValue).
+        // The IndexerRegistry static dictionary in
+        // `SearchSQLite/Search.SourceIndexer.swift` still hardcodes the
+        // 8 historical indexer concretes (`AppleDocsIndexer()`,
+        // `HIGIndexer()`, etc.); that collapse is a separate refactor
+        // not yet filed (the closest related work is #248's queued
+        // `DatabaseHealthCheck` protocol lift on DoctorCommand's three
+        // sibling check methods, which addresses a different concern).
 
         /// All registered source definitions
         public static let all: [SourceDefinition] = [
@@ -176,7 +188,7 @@ extension Search {
             // Apple Archive (legacy)
             SourceDefinition(
                 id: Shared.Constants.SourcePrefix.appleArchive,
-                displayName: "Apple Archive",
+                displayName: "Apple Archive (Legacy)",
                 emoji: "📚",
                 properties: SourceProperties(
                     authority: 0.8,
@@ -361,8 +373,10 @@ public extension Search.QueryIntent {
         Search.SourceRegistry.sourceIDs(for: self)
     }
 
-    /// Get boosted SearchSources from registry
+    /// Get boosted SearchSources from registry. Post-#251 second cut,
+    /// `Search.Source(rawValue:)` is a non-failing init, so this maps
+    /// (not `compactMap`) over the registered ids.
     var registryBoostedSources: [Search.Source] {
-        boostedSourceIDs.compactMap { Search.Source(rawValue: $0) }
+        boostedSourceIDs.map { Search.Source(rawValue: $0) }
     }
 }
