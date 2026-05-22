@@ -232,7 +232,7 @@ public extension Search.SourceIndexer {
 /// Indexer for Apple Developer Documentation
 extension Search {
     public struct AppleDocsIndexer: Search.SourceIndexer {
-        public let sourceID = "apple-docs"
+        public let sourceID = Shared.Constants.SourcePrefix.appleDocs
         public let displayName = "Apple Documentation"
 
         public init() {}
@@ -309,7 +309,7 @@ extension Search {
 /// Indexer for Human Interface Guidelines
 extension Search {
     public struct HIGIndexer: Search.SourceIndexer {
-        public let sourceID = "hig"
+        public let sourceID = Shared.Constants.SourcePrefix.hig
         public let displayName = "Human Interface Guidelines"
 
         public init() {}
@@ -326,7 +326,7 @@ extension Search {
 /// Indexer for Swift Evolution proposals
 extension Search {
     public struct SwiftEvolutionIndexer: Search.SourceIndexer {
-        public let sourceID = "swift-evolution"
+        public let sourceID = Shared.Constants.SourcePrefix.swiftEvolution
         public let displayName = "Swift Evolution"
 
         public init() {}
@@ -388,7 +388,7 @@ extension Search {
 /// target.
 extension Search {
     public struct SampleCodeIndexer: Search.SourceIndexer {
-        public let sourceID = "samples"
+        public let sourceID = Shared.Constants.SourcePrefix.samples
         public let displayName = "Sample Code"
 
         public init() {}
@@ -412,7 +412,7 @@ extension Search {
 /// Indexer for Apple Archive (legacy documentation)
 extension Search {
     public struct AppleArchiveIndexer: Search.SourceIndexer {
-        public let sourceID = "apple-archive"
+        public let sourceID = Shared.Constants.SourcePrefix.appleArchive
         public let displayName = "Apple Archive"
 
         public init() {}
@@ -445,7 +445,7 @@ extension Search {
 /// Indexer for The Swift Programming Language book
 extension Search {
     public struct SwiftBookIndexer: Search.SourceIndexer {
-        public let sourceID = "swift-book"
+        public let sourceID = Shared.Constants.SourcePrefix.swiftBook
         public let displayName = "The Swift Programming Language"
 
         public init() {}
@@ -501,7 +501,7 @@ extension Search {
 /// Indexer for Swift.org content
 extension Search {
     public struct SwiftOrgIndexer: Search.SourceIndexer {
-        public let sourceID = "swift-org"
+        public let sourceID = Shared.Constants.SourcePrefix.swiftOrg
         public let displayName = "Swift.org"
 
         public init() {}
@@ -523,13 +523,13 @@ extension Search {
     public enum IndexerRegistry {
         /// All registered indexers
         private static let indexers: [String: any Search.SourceIndexer] = [
-            "apple-docs": AppleDocsIndexer(),
-            "hig": HIGIndexer(),
-            "swift-evolution": SwiftEvolutionIndexer(),
-            "samples": Search.SampleCodeIndexer(),
-            "apple-archive": AppleArchiveIndexer(),
-            "swift-book": SwiftBookIndexer(),
-            "swift-org": SwiftOrgIndexer(),
+            Shared.Constants.SourcePrefix.appleDocs: AppleDocsIndexer(),
+            Shared.Constants.SourcePrefix.hig: HIGIndexer(),
+            Shared.Constants.SourcePrefix.swiftEvolution: SwiftEvolutionIndexer(),
+            Shared.Constants.SourcePrefix.samples: Search.SampleCodeIndexer(),
+            Shared.Constants.SourcePrefix.appleArchive: AppleArchiveIndexer(),
+            Shared.Constants.SourcePrefix.swiftBook: SwiftBookIndexer(),
+            Shared.Constants.SourcePrefix.swiftOrg: SwiftOrgIndexer(),
             // #789: "packages" indexer removed; packages live in packages.db
         ]
 
