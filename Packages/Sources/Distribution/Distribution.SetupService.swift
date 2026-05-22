@@ -33,22 +33,13 @@ extension Distribution.SetupService {
         // descriptor set is constructed locally here for now; a
         // follow-up wires this through a composition-root registry
         // so a 4th DB plugs in without touching this file.
-        let searchDescriptor = Shared.Models.DatabaseDescriptor(
-            id: "search", filename: Shared.Constants.FileName.searchDatabase, displayName: "Documentation"
-        )
-        let samplesDescriptor = Shared.Models.DatabaseDescriptor(
-            id: "samples", filename: Shared.Constants.FileName.samplesDatabase, displayName: "Sample code"
-        )
-        let packagesDescriptor = Shared.Models.DatabaseDescriptor(
-            id: "packages", filename: Shared.Constants.FileName.packagesIndexDatabase, displayName: "Packages"
-        )
         let required: Set<Shared.Models.DatabaseDescriptor> = [
-            searchDescriptor, samplesDescriptor, packagesDescriptor,
+            .search, .samples, .packages,
         ]
         let onDiskByFilename: [(URL, Shared.Models.DatabaseDescriptor)] = [
-            (searchDBURL, searchDescriptor),
-            (samplesDBURL, samplesDescriptor),
-            (packagesDBURL, packagesDescriptor),
+            (searchDBURL, .search),
+            (samplesDBURL, .samples),
+            (packagesDBURL, .packages),
         ]
         let present: Set<Shared.Models.DatabaseDescriptor> = Set(
             onDiskByFilename.compactMap { url, descriptor in
@@ -63,13 +54,21 @@ extension Distribution.SetupService {
         )
         events.observe(event: .statusResolved(status))
 
+        // Database placement list, ordered by the historical printable
+        // order: search → samples → packages. The CLI's success-summary
+        // printer iterates this list rather than addressing 3 fixed
+        // outcome fields, so a 4th DB drops in by extending this array.
+        let placements: [DatabasePlacement] = [
+            .init(descriptor: .search, path: searchDBURL),
+            .init(descriptor: .samples, path: samplesDBURL),
+            .init(descriptor: .packages, path: packagesDBURL),
+        ]
+
         // Honour --keep-existing only when every DB is already on disk.
         if request.keepExisting,
            case .current = status {
             let outcome = Outcome(
-                searchDBPath: searchDBURL,
-                samplesDBPath: samplesDBURL,
-                packagesDBPath: packagesDBURL,
+                databases: placements,
                 docsVersionWritten: installedVersion ?? request.currentDocsVersion,
                 skippedDownload: true,
                 priorStatus: status
@@ -137,9 +136,7 @@ extension Distribution.SetupService {
         }
 
         let outcome = Outcome(
-            searchDBPath: searchDBURL,
-            samplesDBPath: samplesDBURL,
-            packagesDBPath: packagesDBURL,
+            databases: placements,
             docsVersionWritten: request.currentDocsVersion,
             skippedDownload: false,
             priorStatus: status

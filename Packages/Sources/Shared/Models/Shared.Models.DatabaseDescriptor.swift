@@ -22,6 +22,32 @@ import Foundation
 /// namespace that already exists in this target).
 extension Shared.Models {
     public struct DatabaseDescriptor: Sendable, Hashable, Identifiable {
+        // MARK: - Canonical descriptors for the three databases cupertino ships today
+        //
+        // Single source of truth used by production code AND tests. Pre-#248,
+        // both sides duplicated the literals; a rename to `id` / `filename` /
+        // `displayName` in production silently left tests green while live
+        // callers got nil from `Outcome.path(forDatabaseId:)`. Centralising
+        // here makes that drift structurally impossible.
+
+        public static let search: DatabaseDescriptor = .init(
+            id: "search",
+            filename: Shared.Constants.FileName.searchDatabase,
+            displayName: "Documentation"
+        )
+
+        public static let samples: DatabaseDescriptor = .init(
+            id: "samples",
+            filename: Shared.Constants.FileName.samplesDatabase,
+            displayName: "Sample code"
+        )
+
+        public static let packages: DatabaseDescriptor = .init(
+            id: "packages",
+            filename: Shared.Constants.FileName.packagesIndexDatabase,
+            displayName: "Packages"
+        )
+
         /// Stable identifier the CLI uses to route per-DB commands
         /// (`cupertino setup`, `cupertino doctor`,
         /// `cupertino save --<db>`). Matches the historical short

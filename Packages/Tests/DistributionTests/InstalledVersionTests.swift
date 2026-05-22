@@ -8,21 +8,9 @@ import Testing
 @Suite("Distribution.InstalledVersion.classify")
 struct InstalledVersionStatusTests {
     // Descriptor fixtures (#248 first cut: classify takes Set<Shared.Models.DatabaseDescriptor>).
-    private static let searchDB = Shared.Models.DatabaseDescriptor(
-        id: "search",
-        filename: Shared.Constants.FileName.searchDatabase,
-        displayName: "Documentation"
-    )
-    private static let samplesDB = Shared.Models.DatabaseDescriptor(
-        id: "samples",
-        filename: Shared.Constants.FileName.samplesDatabase,
-        displayName: "Sample code"
-    )
-    private static let packagesDB = Shared.Models.DatabaseDescriptor(
-        id: "packages",
-        filename: Shared.Constants.FileName.packagesIndexDatabase,
-        displayName: "Packages"
-    )
+    private static let searchDB: Shared.Models.DatabaseDescriptor = .search
+    private static let samplesDB: Shared.Models.DatabaseDescriptor = .samples
+    private static let packagesDB: Shared.Models.DatabaseDescriptor = .packages
     private static let requiredAll: Set<Shared.Models.DatabaseDescriptor> = [searchDB, samplesDB, packagesDB]
 
     @Test("Missing search.db classifies as .missing")
