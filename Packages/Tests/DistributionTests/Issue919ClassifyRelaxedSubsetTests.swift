@@ -3,10 +3,18 @@ import Foundation
 import SharedConstants
 import Testing
 
-// MARK: - #919 coverage pins: classify(present:required:...) empty-required precondition
+// MARK: - #919 coverage pins: classify(present:required:...) relaxed-subset semantic
+//
+// Note on the empty-required precondition: `classify` carries a
+// `precondition(!required.isEmpty, ...)` guard that crashes the process
+// when violated. Swift Testing does not yet ship a built-in
+// `expectCrash` / trap-catcher, so the precondition itself is not
+// directly tested here. The non-empty-required happy paths below
+// confirm the post-precondition behaviour; a unit-level test for the
+// precondition trap is tracked as a known gap.
 
-@Suite("#919 coverage: classify empty-required precondition")
-struct Issue919EmptyRequiredPreconditionTests {
+@Suite("#919 coverage: classify relaxed-subset semantic")
+struct Issue919ClassifyRelaxedSubsetTests {
     @Test("classify(...) with a non-empty required set behaves identically pre/post-#919")
     func nonEmptyRequiredBehavesAsBefore() {
         // Pins the happy-path contract that the empty-required

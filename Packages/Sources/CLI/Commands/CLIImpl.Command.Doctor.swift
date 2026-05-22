@@ -278,8 +278,36 @@ extension CLIImpl.Command {
                 // corruption guide).
                 let volumeNote = volumeWarning(for: url)
 
-                Cupertino.Context.composition.logging.recording.output("   ✓ \(label): \(formatted), journal=\(journalNote)\(walNote)\(volumeNote)")
+                let line = Self.renderSchemaVersionLine(
+                    descriptor: descriptor,
+                    formatted: formatted,
+                    journalNote: journalNote,
+                    walNote: walNote,
+                    volumeNote: volumeNote
+                )
+                Cupertino.Context.composition.logging.recording.output(line)
             }
+        }
+
+        /// Pure formatter for one schema-version line in
+        /// `cupertino doctor`'s output. Extracted out of
+        /// `printSchemaVersions` so the line format can be pinned by a
+        /// unit test (#919 ironclad coverage pins, 2026-05-22).
+        ///
+        /// The label is `descriptor.filename` (NOT `descriptor.id`)
+        /// because the doctor's output is filesystem-oriented: users
+        /// looking at the line want to see `search.db` / `samples.db` /
+        /// `packages.db` to correlate against their `~/.cupertino/`
+        /// directory listing, not the short identifier the indexer
+        /// uses internally.
+        static func renderSchemaVersionLine(
+            descriptor: Shared.Models.DatabaseDescriptor,
+            formatted: String,
+            journalNote: String,
+            walNote: String,
+            volumeNote: String
+        ) -> String {
+            "   ✓ \(descriptor.filename): \(formatted), journal=\(journalNote)\(walNote)\(volumeNote)"
         }
 
         /// Returns a warning suffix if the DB at `url` lives on a
