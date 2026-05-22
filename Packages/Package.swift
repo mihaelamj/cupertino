@@ -28,6 +28,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("CleanupModels"),
     .singleTargetLibrary("CoreSampleCodeModels"),
     .singleTargetLibrary("Search"),
+    .singleTargetLibrary("SearchSchema"),
     .singleTargetLibrary("SampleIndex"),
     .singleTargetLibrary("Services"),
     .singleTargetLibrary("Distribution"),
@@ -409,17 +410,42 @@ let targets: [Target] = {
         dependencies: ["SampleIndexModels", "SharedConstants", "TestSupport"]
     )
 
+    // ---------- SearchSchema (#898 sub-PR A: foundation-only target carrying the
+    // DDL SQL strings + the `Search.Schema.currentVersion` Int32 constant.
+    // Executor methods (`Search.Index.createTables`, the migration methods)
+    // stay in the Search target because they need access to the Search.Index
+    // actor's internal `database` stored property; sub-PR E (SearchSQLite)
+    // moves those alongside the rest of the SQLite-using code into a sibling
+    // concrete target. SearchSchema mirrors the SearchModels shape:
+    // foundation-only, no actors, no I/O, no SQLite import.
+    let searchSchemaTarget = Target.target(
+        name: "SearchSchema",
+        dependencies: ["SearchModels"]
+    )
+    let searchSchemaTestsTarget = Target.testTarget(
+        name: "SearchSchemaTests",
+        dependencies: ["SearchSchema", "SearchModels"]
+    )
+
     let searchTarget = Target.target(
         name: "Search",
         // Sources/Search/Strategies/ contains SourceIndexingStrategy, StrategyHelpers,
-        // and the 7 concrete strategy types (refactor-plan §3.6 / ADR-CUPERTINO-0002).
-        // They remain in the Search target for now because a clean `SearchStrategies`
-        // package extraction requires SearchIndexCore (§3.5) to be done first —
-        // strategies need Search.Index which is still in this target.  Once §3.5 lands,
-        // the Strategies/ folder moves to Sources/SearchStrategies/ and gets its own
-        // SPM target with deps: [SearchIndexCore, CoreJSONParser, CorePackageIndexing,
-        // Core, SharedModels, SharedConstants, Resources, Logging].
-        dependencies: ["SearchModels", "SharedConstants", "LoggingModels", "CoreProtocols", "CorePackageIndexingModels", "ASTIndexer", "EnrichmentModels"]
+        // and the 6 concrete strategy types. They remain in the Search target for
+        // now because a clean per-strategy SPM extraction (epic #893 child #899)
+        // requires the SearchSQLite extraction (#898 sub-PR E) to be done first;
+        // the strategies still call methods that mutate the Search.Index actor's
+        // internal `database` stored property. Once #898 sub-PR E lands, the
+        // strategies will move to dedicated `<Source>Strategy` SPM targets.
+        dependencies: [
+            "SearchModels",
+            "SearchSchema",
+            "SharedConstants",
+            "LoggingModels",
+            "CoreProtocols",
+            "CorePackageIndexingModels",
+            "ASTIndexer",
+            "EnrichmentModels",
+        ]
     )
     let searchTestsTarget = Target.testTarget(
         name: "SearchTests",
@@ -856,6 +882,8 @@ let targets: [Target] = {
         searchModelsTestsTarget,
         sampleIndexModelsTarget,
         sampleIndexModelsTestsTarget,
+        searchSchemaTarget,
+        searchSchemaTestsTarget,
         searchTarget,
         searchTestsTarget,
         sampleIndexTarget,
