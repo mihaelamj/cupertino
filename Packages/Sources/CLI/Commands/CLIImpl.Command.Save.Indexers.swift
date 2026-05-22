@@ -295,18 +295,54 @@ extension CLIImpl.Command.Save {
                 ]
             )
 
-            let strategies = Search.makeDefaultStrategies(
-                metadata: nil,
-                docsDirectory: input.docsDirectory,
-                evolutionDirectory: input.evolutionDirectory,
-                swiftOrgDirectory: input.swiftOrgDirectory,
-                archiveDirectory: input.archiveDirectory,
-                higDirectory: input.higDirectory,
-                markdownStrategy: input.markdownStrategy,
+            // #933: strategy assembly inlined at the composition root.
+            // Pre-#933 the `Search.makeDefaultStrategies(...)` factory in
+            // SearchStrategies named the production list as a static
+            // helper on the `Search` namespace, a Service Locator
+            // surface per `gof-di-rules.md` Rule 1. Post-#933 the 6
+            // strategy concretes are assembled inline here: the
+            // composition root is the SOLE production assembly point.
+            // Conditional appends mirror the pre-#933 factory's
+            // optional-directory pattern (no behavioural change).
+            // Adding a new source's strategy = one `strategies.append(...)`
+            // here; no edits to SearchStrategies.
+            var strategies: [any Search.SourceIndexingStrategy] = [
+                Search.AppleDocsStrategy(
+                    docsDirectory: input.docsDirectory,
+                    markdownStrategy: input.markdownStrategy,
+                    logger: Cupertino.Context.composition.logging.recording,
+                    importLogSink: importLogSink
+                ),
+            ]
+            if let dir = input.evolutionDirectory {
+                strategies.append(Search.SwiftEvolutionStrategy(
+                    evolutionDirectory: dir,
+                    logger: Cupertino.Context.composition.logging.recording
+                ))
+            }
+            if let dir = input.swiftOrgDirectory {
+                strategies.append(Search.SwiftOrgStrategy(
+                    swiftOrgDirectory: dir,
+                    markdownStrategy: input.markdownStrategy,
+                    logger: Cupertino.Context.composition.logging.recording
+                ))
+            }
+            if let dir = input.archiveDirectory {
+                strategies.append(Search.AppleArchiveStrategy(
+                    archiveDirectory: dir,
+                    logger: Cupertino.Context.composition.logging.recording
+                ))
+            }
+            if let dir = input.higDirectory {
+                strategies.append(Search.HIGStrategy(
+                    higDirectory: dir,
+                    logger: Cupertino.Context.composition.logging.recording
+                ))
+            }
+            strategies.append(Search.SampleCodeStrategy(
                 sampleCatalogProvider: input.sampleCatalogProvider,
-                logger: Cupertino.Context.composition.logging.recording,
-                importLogSink: importLogSink
-            )
+                logger: Cupertino.Context.composition.logging.recording
+            ))
             let builder = Search.IndexBuilder(
                 searchIndex: searchIndex,
                 strategies: strategies,

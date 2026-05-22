@@ -147,14 +147,16 @@ struct IndexBuilderSymbolsIntegrationTests {
 
         let dbPath = tempRoot.appendingPathComponent("search.db")
         let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:])
-        let strategies = Search.makeDefaultStrategies(
-            metadata: nil,
-            docsDirectory: docsDir,
-            indexSampleCode: false,
-            markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogProvider: MissingSampleCatalogProvider(),
-            logger: Logging.NoopRecording()
-        )
+        // #933: inline strategy assembly (factory dissolved). AppleDocs
+        // only; pre-#933 factory took `indexSampleCode: false` to skip
+        // the samples strategy. Inline assembly omits it entirely.
+        let strategies: [any Search.SourceIndexingStrategy] = [
+            Search.AppleDocsStrategy(
+                docsDirectory: docsDir,
+                markdownStrategy: NoopMarkdownStrategy(),
+                logger: Logging.NoopRecording()
+            ),
+        ]
         let builder = Search.IndexBuilder(
             searchIndex: index,
             strategies: strategies,

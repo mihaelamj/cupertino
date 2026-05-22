@@ -28,17 +28,17 @@ extension Search {
     ///
     /// ```swift
     /// import Search
-    /// import SearchStrategies
+    /// import SearchSQLite
     ///
-    /// let strategies = Search.makeDefaultStrategies(
-    ///     metadata: crawlMetadata,
-    ///     docsDirectory: docsDir,
-    ///     evolutionDirectory: evolutionDir,
-    ///     swiftOrgDirectory: swiftOrgDir,
-    ///     markdownStrategy: markdownStrategy,
-    ///     sampleCatalogProvider: sampleCatalogProvider,
-    ///     logger: logger
-    /// )
+    /// // #933: composition root assembles strategies inline; the
+    /// // pre-#933 `Search.makeDefaultStrategies(...)` factory was
+    /// // deleted as a Service Locator violation. The 6 strategy
+    /// // concretes are appended directly to the array; adding a new
+    /// // source = one `strategies.append(...)` here.
+    /// let strategies: [any Search.SourceIndexingStrategy] = [
+    ///     Search.AppleDocsStrategy(docsDirectory: docsDir, markdownStrategy: markdownStrategy, logger: logger),
+    ///     // ... other strategies as needed
+    /// ]
     /// let builder = Search.IndexBuilder(
     ///     searchIndex: index,
     ///     strategies: strategies,

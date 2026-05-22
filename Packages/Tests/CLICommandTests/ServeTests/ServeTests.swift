@@ -412,14 +412,15 @@ struct MCPServerIntegrationTests {
         let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording(), indexers: [:])
 
         let metadata = try Shared.Models.CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
-        let strategies = Search.makeDefaultStrategies(
-            metadata: metadata,
-            docsDirectory: tempDir,
-            evolutionDirectory: nil,
-            markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogProvider: MissingSampleCatalogProvider(),
-            logger: Logging.NoopRecording()
-        )
+        // #933: inline strategy assembly (factory dissolved).
+        let strategies: [any Search.SourceIndexingStrategy] = [
+            Search.AppleDocsStrategy(
+                docsDirectory: tempDir,
+                markdownStrategy: NoopMarkdownStrategy(),
+                logger: Logging.NoopRecording()
+            ),
+        ]
+        _ = metadata // pre-#933 factory took this but ignored it
         let builder = Search.IndexBuilder(
             searchIndex: searchIndex,
             strategies: strategies,
