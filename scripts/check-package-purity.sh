@@ -97,28 +97,26 @@ EXEMPT_TARGETS=(
 # from these targets still fail; the goal is to migrate each
 # grandfathered target out of this list as its leaks are cleaned up.
 #
-# - SearchSQLite: #898 sub-PR E lifted Search.Index + 19 extensions +
-#   PackageIndex + Search.PackageQuery + PackageIndexer + the two
-#   CandidateFetcher concretes into this dedicated SQLite-backed
-#   concrete target. SearchSQLite imports `Search` because several
-#   domain types referenced inside the moved code (Search.Source,
-#   Search.QueryIntent, Search.IndexerRegistry, Search.Classify,
-#   DocKind, detectQueryIntent, DocLinkRewriter, Search.SourceItem,
-#   Search.SourceIndexer protocol, Search.SampleCodeResult,
-#   Search.PackageResult) still live in the Search orchestration target.
-#   Lifting those shared domain types to SearchModels is queued as a
-#   follow-up; once it lands, SearchSQLite's `import Search` drops and
-#   the grandfather entry is removed. Net win shipped here: the Search
-#   target no longer imports SQLite3, so anyone implementing the
-#   SearchModels protocol seams can plug a non-SQLite backend in.
+# Notes (kept here for archaeology; both entries are no longer active):
 #
-# Note: `Enrichment` graduated out of this list in #906 once the 6
-# sibling passes were rewired to take `any Search.IndexWriter` /
-# `any Search.PackageWriter` / `any Sample.Index.Writer` via init
-# injection. The target now imports only foundation-tier and Models
-# modules and opts directly into STRICT_PRODUCERS in
-# `check-target-foundation-only.sh`.
-GRANDFATHERED_TARGETS=("SearchSQLite")
+# - `Enrichment` graduated out of this list in #906 once the 6 sibling
+#   passes were rewired to take `any Search.IndexWriter` /
+#   `any Search.PackageWriter` / `any Sample.Index.Writer` via init
+#   injection. The target now imports only foundation-tier and Models
+#   modules and opts directly into STRICT_PRODUCERS in
+#   `check-target-foundation-only.sh`.
+#
+# - `SearchSQLite` graduated out of this list in #898F (the domain-types
+#   lift follow-up to #898 sub-PR E). `Search.Source` + `Search.QueryIntent`
+#   + `detectQueryIntent` + `Search.SourceProperties` were carved out of
+#   `Search.ComposableResult.swift` into `SearchModels`;
+#   `Search.SourceDefinition.swift` (carrying `SourceDefinition` +
+#   `SourceRegistry` + extensions on Source/QueryIntent) whole-file moved
+#   to `SearchModels`; `Search.SearchResult.swift`, `DocKind.swift`,
+#   `Search.SourceIndexer.swift`, and `Search.Index.DocLinkRewriter.swift`
+#   whole-file moved to `SearchSQLite`. SearchSQLite no longer
+#   `import Search` and opts directly into STRICT_PRODUCERS.
+GRANDFATHERED_TARGETS=()
 
 is_exempt() {
     local target="$1"

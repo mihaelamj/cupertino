@@ -19,8 +19,9 @@ import Foundation
 /// - `Sample.Search.*`    — sample search service + query / result types
 ///                          (was Services.ReadCommands.SampleSearchService).
 /// - `Sample.Index.*`     — the SampleIndex SPM target's contents.
-/// - `Sample.Indexer`     — search indexer for sample code (was
-///                          Search.SampleCodeIndexer).
+/// `Sample.Indexer` lived here briefly in 2026-05; #898F moved the
+/// type back to `Search.SampleCodeIndexer` so it sits with its 7
+/// sibling indexer concretes under the Search namespace.
 /// - `Sample.Atom`        — `ResultAtom` conformance for sample search
 ///                          hits (was Search.SampleAtom).
 /// - `Sample.Format.*`    — sample-flavoured `Result`s in
