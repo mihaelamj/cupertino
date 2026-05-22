@@ -1,4 +1,13 @@
-## Unreleased
+## v1.2.1 (2026-05-23)
+
+Maintenance release. Architectural cleanup + DI / pluggability lift. Zero schema delta, zero indexer-logic delta vs v1.2.0; the v1.2.0 bundle works as-is with the v1.2.1 binary (`cupertino setup` continues to download `cupertino-databases-v1.2.0.zip`). Spot-checked parity vs the brew-installed v1.2.0 binary on `doctor`, `search "SwiftUI View modifier"`, `search "async await"`, `list-frameworks`, `package-search "alamofire"`: byte-identical search ranking and row counts in every test. The headline structural moves:
+
+- **Source Independence Day reached** ([#919](https://github.com/mihaelamj/cupertino/issues/919) closed). Adding a new content source is now a composition-root-only PR: 1 new package carrying strategy + indexer + descriptor, plus 3 list-append edits at `CLIImpl.makeProductionSourceLookup()` + `CLIImpl.Command.Save.Indexers.swift`. Zero edits to existing source concretes, zero edits to any static registry, zero closed enums. Empirically verified by PR [#941](https://github.com/mihaelamj/cupertino/pull/941)'s end-to-end test fixture, which plugs in a fake `wwdc-transcripts` source via 247 lines in a single new test file (Sources/ diff is empty).
+- **Strict-DI + standalone-portability** ([#893](https://github.com/mihaelamj/cupertino/issues/893)). Every Search-side producer (Search, SearchSQLite, SampleIndex, SampleIndexSQLite, Enrichment, SearchStrategies) opted into `STRICT_PRODUCERS` against `scripts/check-target-foundation-only.sh`. The `GRANDFATHERED_TARGETS` array in `scripts/check-package-purity.sh` is now `()`. New `portability` CI job on macos-15 mechanically lifts each producer out of the monorepo and rebuilds against its declared deps + transitive closure.
+- **Doctor command refactor**. Three sibling per-DB sections (`checkSearchDatabase` / `checkSamplesDatabase` / `checkPackagesDatabase`) lifted into `Distribution.DatabaseHealthCheck` conformers. Adding a 4th DB is one conformer + one list append.
+- **CI infrastructure**: external-PR-to-main guard ([#761](https://github.com/mihaelamj/cupertino/issues/761)); portability check job; CHANGELOG-touched verification; package import audits.
+
+Per-PR detail follows.
 
 ### Added
 
