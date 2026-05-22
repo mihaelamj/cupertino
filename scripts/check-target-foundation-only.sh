@@ -122,6 +122,7 @@ MODELS_TARGETS=(
     CleanupModels
     CoreSampleCodeModels
     RemoteSyncModels
+    EnrichmentModels
 )
 
 # Producers that have been audited + opt into the strict rule.
@@ -189,7 +190,13 @@ STRICT_PRODUCERS=(
     # (can't be extended from this foundation-only seam).
     RemoteSyncModels
 
+    # Postprocessor pipeline seam (#837): foundation-only target carrying
+    # the EnrichmentPass protocol + value types every enrichment pass
+    # emits. Audited alongside the other *Models seams.
+    EnrichmentModels
+
     # Phase 3 (#536): producer / feature targets.
+    AppleConstraintsKit
     Availability
     Cleanup
     Core
@@ -207,6 +214,11 @@ STRICT_PRODUCERS=(
     Search
     SearchToolProvider
     Services
+    # Enrichment is intentionally NOT here yet. Its 6 sibling passes import
+    # `Search` and `SampleIndex` concretes directly (write-side coupling).
+    # Epic #893 child issue #906 lifts each pass into its own SPM target
+    # conforming `EnrichmentModels.EnrichmentPass`; once those land, add
+    # `Enrichment` (or the dissolved orchestrator residue) here.
 )
 
 # Grandfathered: producers still under the legacy contract (enforced
