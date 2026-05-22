@@ -1,7 +1,5 @@
 import EnrichmentModels
 import Foundation
-import SampleIndex
-import SampleIndexSQLite
 import SampleIndexModels
 import SearchModels
 import SharedConstants
@@ -16,10 +14,10 @@ extension Enrichment {
         public let dependsOn: [String] = []
         public let target = EnrichmentModels.Target.samples
 
-        private let samples: Sample.Index.Database
+        private let samples: any Sample.Index.Writer
         private let lookup: (any Search.StaticConstraintsLookup)?
 
-        public init(samples: Sample.Index.Database, lookup: (any Search.StaticConstraintsLookup)?) {
+        public init(samples: any Sample.Index.Writer, lookup: (any Search.StaticConstraintsLookup)?) {
             self.samples = samples
             self.lookup = lookup
         }

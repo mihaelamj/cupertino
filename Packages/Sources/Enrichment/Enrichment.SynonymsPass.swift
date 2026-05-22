@@ -1,8 +1,6 @@
 import EnrichmentModels
 import Foundation
-import Search
 import SearchModels
-import SearchSQLite
 
 extension Enrichment {
     /// Registers the framework alias table on search.db so queries like
@@ -18,9 +16,9 @@ extension Enrichment {
         public let dependsOn: [String] = []
         public let target = EnrichmentModels.Target.search
 
-        private let searchIndex: Search.Index
+        private let searchIndex: any Search.IndexWriter
 
-        public init(searchIndex: Search.Index) {
+        public init(searchIndex: any Search.IndexWriter) {
             self.searchIndex = searchIndex
         }
 

@@ -1,8 +1,6 @@
 import EnrichmentModels
 import Foundation
-import Search
 import SearchModels
-import SearchSQLite
 
 extension Enrichment {
     /// Propagates the generic-constraints map from parent symbols down to
@@ -20,9 +18,9 @@ extension Enrichment {
         public let dependsOn: [String] = ["constraints"]
         public let target = EnrichmentModels.Target.search
 
-        private let searchIndex: Search.Index
+        private let searchIndex: any Search.IndexWriter
 
-        public init(searchIndex: Search.Index) {
+        public init(searchIndex: any Search.IndexWriter) {
             self.searchIndex = searchIndex
         }
 

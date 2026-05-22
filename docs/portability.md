@@ -92,37 +92,34 @@ the layers below it. The portability test enforces this empirically.
 - **Features** (the producers in the `STRICT_PRODUCERS` array's
   Phase 3 block): `AppleConstraintsKit`, `Availability`, `Cleanup`,
   `Core`, `CoreJSONParser`, `CorePackageIndexing`, `CoreSampleCode`,
-  `Crawler`, `Distribution`, `Indexer`, `Ingest`, `Logging`,
-  `MCPSupport`, `RemoteSync`, `SampleIndex`, `SampleIndexSQLite`,
-  `Search`, `SearchToolProvider`, `Services`. (`Logging` is a writer
-  concrete: the audited feature producer over `LoggingModels` +
-  `OSLog`, and composition roots are the only places that may import
-  the `Logging` target. Producers import `LoggingModels` only.
-  `SampleIndexSQLite` (added by #902) is the SQLite-backed concrete
-  for the `Sample.Index.Reader` + `Sample.Index.Writer` protocol seams
-  in `SampleIndexModels`; its declared deps are foundation-only so it
-  audits cleanly against the strict rule on day one. Its sibling
-  `SearchSQLite` is documented below as the one concrete that is
-  NOT yet strict.)
-- **Documented producers not yet audited**: `Enrichment` and
-  `SearchSQLite` are documented in `docs/package-import-contract.md`'s
-  Producers table but are not yet in `STRICT_PRODUCERS`. Enrichment's 6
-  sibling passes import `Search` + `SampleIndex` concretes directly
-  (write-side coupling); #906 (child of epic #893) lifts each pass
-  into its own SPM target conforming `EnrichmentModels.EnrichmentPass`,
-  after which `Enrichment` (or the dissolved residue) gets opted in.
-  `SearchSQLite` (added by #898 sub-PR E) is the SQLite-backed
-  concrete of the `SearchModels` protocol seams; it imports `Search`
-  because several domain types (Source / QueryIntent / IndexerRegistry
-  / Classify / DocKind / SourceItem / SourceIndexer protocol /
-  detectQueryIntent / DocLinkRewriter / SampleCodeResult /
-  PackageResult) still live on the Search orchestration target.
-  A queued follow-up lifts those to SearchModels; once it lands,
-  SearchSQLite's `import Search` drops and the target opts into
-  STRICT_PRODUCERS. The net win shipped in #898 sub-PR E is that the
-  Search orchestration target no longer imports SQLite3, so any
-  backend conforming the `SearchModels` seams can plug in via the
-  composition root.
+  `Crawler`, `Distribution`, `Enrichment`, `Indexer`, `Ingest`,
+  `Logging`, `MCPSupport`, `RemoteSync`, `SampleIndex`,
+  `SampleIndexSQLite`, `Search`, `SearchToolProvider`, `Services`.
+  (`Logging` is a writer concrete: the audited feature producer over
+  `LoggingModels` + `OSLog`, and composition roots are the only
+  places that may import the `Logging` target. Producers import
+  `LoggingModels` only. `SampleIndexSQLite` (added by #902) is the
+  SQLite-backed concrete for the `Sample.Index.Reader` +
+  `Sample.Index.Writer` protocol seams in `SampleIndexModels`; its
+  declared deps are foundation-only so it audits cleanly against the
+  strict rule on day one. `Enrichment` graduated in #906 once the 6
+  sibling passes were rewired to take `any Search.IndexWriter` /
+  `any Search.PackageWriter` / `any Sample.Index.Writer` via init
+  injection; the target now imports only Models + foundation tier.
+  Its sibling `SearchSQLite` is documented below as the one concrete
+  that is NOT yet strict.)
+- **Documented producer not yet audited**: `SearchSQLite` (added by
+  #898 sub-PR E) is the SQLite-backed concrete of the `SearchModels`
+  protocol seams; it imports `Search` because several domain types
+  (Source / QueryIntent / IndexerRegistry / Classify / DocKind /
+  SourceItem / SourceIndexer protocol / detectQueryIntent /
+  DocLinkRewriter / SampleCodeResult / PackageResult) still live on
+  the Search orchestration target. A queued follow-up lifts those
+  to SearchModels; once it lands, SearchSQLite's `import Search`
+  drops and the target opts into STRICT_PRODUCERS. The net win
+  shipped in #898 sub-PR E is that the Search orchestration target
+  no longer imports SQLite3, so any backend conforming the
+  `SearchModels` seams can plug in via the composition root.
 - **Other producers not audited by these scripts**: `MCPClient` is
   declared in `Package.swift` but is consumed only by the test target
   + MockAIAgent; it does not pass through the `STRICT_PRODUCERS` or

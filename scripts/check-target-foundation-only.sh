@@ -215,13 +215,12 @@ STRICT_PRODUCERS=(
 
     # Phase 3 (#536): producer / feature targets.
     #
-    # Intentionally omitted: `Enrichment` (#906). Its 6 sibling passes
-    # import `Search` and `SampleIndex` concretes directly (write-side
-    # coupling, surfaced by #837's postprocessor pipeline landing
-    # under the legacy single-target shape). Epic #893 child issue
-    # #906 lifts each pass into its own SPM target conforming
-    # `EnrichmentModels.EnrichmentPass`; once those land, add
-    # `Enrichment` (or the dissolved orchestrator residue) here.
+    # `Enrichment` graduated in #906: the 6 sibling passes now take
+    # `any Search.IndexWriter` / `any Search.PackageWriter` /
+    # `any Sample.Index.Writer` via init injection, so the target
+    # imports only SearchModels + SampleIndexModels + EnrichmentModels
+    # + SharedConstants and audits clean against the foundation-only
+    # allow-list.
     #
     # Intentionally omitted: `SearchSQLite` (#898 sub-PR E). The
     # SQLite-backed concrete imports `Search` because several domain
@@ -250,6 +249,7 @@ STRICT_PRODUCERS=(
     CoreSampleCode
     Crawler
     Distribution
+    Enrichment
     Indexer
     Ingest
     Logging
