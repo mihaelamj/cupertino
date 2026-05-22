@@ -463,15 +463,18 @@ extension Search.Index {
                     return 2.5 // Strong penalty - release notes pollute general searches
                 }
 
-                // Convert source string to Search.Source for intent matching
+                // Convert source string to Search.Source for intent matching.
+                // Post-#251 second cut Search.Source is a non-failing
+                // string-wrapping struct, so the previous Optional unwrap
+                // chain collapses to direct lookups.
                 let searchSource = Search.Source(rawValue: source)
 
-                // Check if this source is boosted for the detected intent
-                let isIntentBoosted = searchSource.map { queryIntent.boostedSources.contains($0) } ?? false
+                // Check if this source is boosted for the detected intent.
+                let isIntentBoosted = queryIntent.boostedSources.contains(searchSource)
 
                 // Get SourceProperties for quality-based scoring (#81)
                 // Uses empirical data from SourceRegistry (single source of truth)
-                let sourceProps = searchSource.flatMap { Search.SourceRegistry.properties(for: $0.rawValue) }
+                let sourceProps = Search.SourceRegistry.properties(for: searchSource.rawValue)
 
                 // Calculate base multiplier from SourceProperties or fallback to static values
                 let baseMultiplier: Double = {

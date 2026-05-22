@@ -1,4 +1,5 @@
 import Foundation
+import SharedConstants
 
 // MARK: - Domain types lifted from `Search/Search.ComposableResult.swift`
 // to `SearchModels` by the #898F follow-up to #898 sub-PR E. Carrying
@@ -11,43 +12,99 @@ import Foundation
 // MARK: - Source Identity
 
 /// Identifies which documentation source produced a result
+// MARK: - Source (formerly an enum, now a String-wrapping struct)
+//
+// Open. The closed `enum Source: String, CaseIterable { case appleDocs;
+// case samples; ... }` shape was the single biggest blocker to adding a
+// new content source as a 2-file PR (the #919 epic goal): every new
+// source required a new enum case, every `switch source` site became
+// non-exhaustive, every `allCases` consumer required a recompile.
+//
+// Post-#251 second cut, `Search.Source` is a value type that wraps a
+// raw `String` identifier. The 8 historical sources (`apple-docs`,
+// `samples`, `hig`, `apple-archive`, `swift-evolution`, `swift-org`,
+// `swift-book`, `packages`) remain reachable as static constants
+// (`Search.Source.appleDocs`, etc.) so every existing call site keeps
+// compiling. New sources land by registering a `SourceDefinition` in
+// `Search.SourceRegistry.all` plus a `SourcePrefix` constant in
+// `Shared.Constants`; no edit to this file required.
+//
+// `displayName` and `emoji` were closed switches on the enum cases;
+// they now look up the descriptor in `Search.SourceRegistry` and fall
+// back to the raw identifier when no descriptor is registered. The
+// fallback keeps existing call sites non-Optional without forcing every
+// reader to handle nil for the 8 known sources; for new sources the
+// human-facing fallback is "wwdc-transcripts" rather than a typed
+// rename ceremony, and the descriptor's `displayName` takes over the
+// moment the SourceRegistry row lands.
 extension Search {
-    public enum Source: String, Codable, Sendable, CaseIterable {
-        case appleDocs = "apple-docs"
-        case samples
-        case hig
-        case appleArchive = "apple-archive"
-        case swiftEvolution = "swift-evolution"
-        case swiftOrg = "swift-org"
-        case swiftBook = "swift-book"
-        case packages
+    public struct Source: Hashable, Sendable, Codable, RawRepresentable {
+        public let rawValue: String
 
-        /// Human-readable display name
-        public var displayName: String {
-            switch self {
-            case .appleDocs: return "Apple Documentation"
-            case .samples: return "Sample Code"
-            case .hig: return "Human Interface Guidelines"
-            case .appleArchive: return "Apple Archive (Legacy)"
-            case .swiftEvolution: return "Swift Evolution"
-            case .swiftOrg: return "Swift.org"
-            case .swiftBook: return "The Swift Programming Language"
-            case .packages: return "Swift Packages"
-            }
+        public init(rawValue: String) {
+            self.rawValue = rawValue
         }
 
-        /// Emoji prefix for display
+        // MARK: - Codable (preserve bare-string wire format from the pre-#251 enum)
+
+        // The pre-refactor `enum Source: String, Codable` encoded to a
+        // bare JSON string ("apple-docs"). Swift's synthesised Codable
+        // for a struct with a stored `rawValue: String` would encode to
+        // a keyed container (`{"rawValue":"apple-docs"}`); RawRepresentable
+        // does NOT auto-bridge to single-value Codable for structs (only
+        // for raw-typed enums). The explicit init/encode below preserve
+        // the historical bare-string wire format so MCP responses,
+        // snapshot fixtures, dashboard payloads, and on-disk JSON
+        // round-trip byte-identically pre/post #251.
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            self.rawValue = try container.decode(String.self)
+        }
+
+        public func encode(to encoder: Encoder) throws {
+            var container = encoder.singleValueContainer()
+            try container.encode(rawValue)
+        }
+
+        // MARK: - Canonical constants for the 8 historical sources
+
+        public static let appleDocs = Source(rawValue: Shared.Constants.SourcePrefix.appleDocs)
+        public static let samples = Source(rawValue: Shared.Constants.SourcePrefix.samples)
+        public static let hig = Source(rawValue: Shared.Constants.SourcePrefix.hig)
+        public static let appleArchive = Source(rawValue: Shared.Constants.SourcePrefix.appleArchive)
+        public static let swiftEvolution = Source(rawValue: Shared.Constants.SourcePrefix.swiftEvolution)
+        public static let swiftOrg = Source(rawValue: Shared.Constants.SourcePrefix.swiftOrg)
+        public static let swiftBook = Source(rawValue: Shared.Constants.SourcePrefix.swiftBook)
+        public static let packages = Source(rawValue: Shared.Constants.SourcePrefix.packages)
+
+        // MARK: - Descriptor-backed display surface
+
+        /// Human-readable display name. Reads from the
+        /// `Search.SourceRegistry` descriptor; falls back to `rawValue`
+        /// when no descriptor is registered (e.g. a brand-new source
+        /// whose SourceDefinition row hasn't landed yet).
+        public var displayName: String {
+            Search.SourceRegistry.definition(for: rawValue)?.displayName ?? rawValue
+        }
+
+        /// Emoji prefix for display. Reads from the
+        /// `Search.SourceRegistry` descriptor; falls back to an empty
+        /// string when no descriptor is registered.
         public var emoji: String {
-            switch self {
-            case .appleDocs: return "📘"
-            case .samples: return "💻"
-            case .hig: return "🎨"
-            case .appleArchive: return "📚"
-            case .swiftEvolution: return "🔮"
-            case .swiftOrg: return "🦅"
-            case .swiftBook: return "📖"
-            case .packages: return "📦"
-            }
+            Search.SourceRegistry.definition(for: rawValue)?.emoji ?? ""
+        }
+
+        /// Whether this source has a `SourceDefinition` row in
+        /// `Search.SourceRegistry.all`. Replaces the structural
+        /// validation the closed enum's failable init used to perform:
+        /// pre-#251 `Search.Source(rawValue: "wwdc-transcripts")`
+        /// returned nil, and callers branched on that to reject
+        /// unknown source strings. Post-#251 every string round-trips
+        /// into a valid Source, so callers that need the old "is this
+        /// a real source?" gate should check `isRegistered` directly.
+        public var isRegistered: Bool {
+            Search.SourceRegistry.definition(for: rawValue) != nil
         }
     }
 }
@@ -301,13 +358,18 @@ extension Search {
 @available(*, deprecated, message: "Use SourceRegistry.properties(for:) instead")
 extension Search {
     public enum SourcePropertiesRegistry {
-        /// @deprecated Use `SourceRegistry.properties(for:)` instead
+        /// @deprecated Use `SourceRegistry.properties(for:)` instead.
+        ///
+        /// Post-#251 second cut, `Search.Source` is no longer a closed
+        /// `CaseIterable` enum, so the historical "iterate all cases"
+        /// build pattern was rewritten to iterate the `SourceRegistry`
+        /// definitions directly. Behaviour-preserving for the
+        /// known-sources set; future sources registered in
+        /// `SourceRegistry` are picked up here automatically.
         public static var properties: [Search.Source: SourceProperties] {
             var result: [Search.Source: SourceProperties] = [:]
-            for source in Search.Source.allCases {
-                if let props = SourceRegistry.properties(for: source.rawValue) {
-                    result[source] = props
-                }
+            for definition in SourceRegistry.all {
+                result[Search.Source(rawValue: definition.id)] = definition.properties
             }
             return result
         }
