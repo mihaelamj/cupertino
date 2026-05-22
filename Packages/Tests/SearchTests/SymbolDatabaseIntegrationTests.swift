@@ -7,6 +7,7 @@ import ASTIndexer
 import Foundation
 import LoggingModels
 import SampleIndex
+import SampleIndexSQLite
 import Search
 import SearchSQLite
 import SharedConstants

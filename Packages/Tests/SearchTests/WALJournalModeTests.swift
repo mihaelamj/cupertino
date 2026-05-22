@@ -2,6 +2,7 @@ import Diagnostics
 import Foundation
 import LoggingModels
 import SampleIndex
+import SampleIndexSQLite
 import SampleIndexModels
 @testable import Search
 import SearchModels

@@ -9,6 +9,7 @@ import Indexer
 import Logging
 import LoggingModels
 import SampleIndex
+import SampleIndexSQLite
 import Search
 import SearchModels
 import SearchSQLite

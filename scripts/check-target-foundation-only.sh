@@ -256,6 +256,7 @@ STRICT_PRODUCERS=(
     MCPSupport
     RemoteSync
     SampleIndex
+    SampleIndexSQLite
     Search
     SearchToolProvider
     Services

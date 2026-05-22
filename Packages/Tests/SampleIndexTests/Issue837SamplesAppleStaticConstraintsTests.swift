@@ -2,6 +2,7 @@ import ASTIndexer
 import Foundation
 import LoggingModels
 @testable import SampleIndex
+import SampleIndexSQLite
 import SampleIndexModels
 import SearchModels
 import SharedConstants

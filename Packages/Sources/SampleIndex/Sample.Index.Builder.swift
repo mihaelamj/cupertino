@@ -14,12 +14,12 @@ extension Sample.Index {
     /// DB writes). Splits scatter the cohesive build workflow.
     // swiftlint:disable:next type_body_length
     public actor Builder {
-        private let database: Database
+        private let database: any Sample.Index.Reader & Sample.Index.Writer
         private let sampleCodeDirectory: URL
         private let logger = os.Logger(subsystem: "com.cupertino", category: "SampleIndex")
 
         public init(
-            database: Database,
+            database: any Sample.Index.Reader & Sample.Index.Writer,
             sampleCodeDirectory: URL
         ) {
             self.database = database

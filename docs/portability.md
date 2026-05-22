@@ -93,11 +93,17 @@ the layers below it. The portability test enforces this empirically.
   Phase 3 block): `AppleConstraintsKit`, `Availability`, `Cleanup`,
   `Core`, `CoreJSONParser`, `CorePackageIndexing`, `CoreSampleCode`,
   `Crawler`, `Distribution`, `Indexer`, `Ingest`, `Logging`,
-  `MCPSupport`, `RemoteSync`, `SampleIndex`, `Search`,
-  `SearchToolProvider`, `Services`. (`Logging` is a writer concrete:
-  the audited feature producer over `LoggingModels` + `OSLog`, and
-  composition roots are the only places that may import the
-  `Logging` target. Producers import `LoggingModels` only.)
+  `MCPSupport`, `RemoteSync`, `SampleIndex`, `SampleIndexSQLite`,
+  `Search`, `SearchToolProvider`, `Services`. (`Logging` is a writer
+  concrete: the audited feature producer over `LoggingModels` +
+  `OSLog`, and composition roots are the only places that may import
+  the `Logging` target. Producers import `LoggingModels` only.
+  `SampleIndexSQLite` (added by #902) is the SQLite-backed concrete
+  for the `Sample.Index.Reader` + `Sample.Index.Writer` protocol seams
+  in `SampleIndexModels`; its declared deps are foundation-only so it
+  audits cleanly against the strict rule on day one. Its sibling
+  `SearchSQLite` is documented below as the one concrete that is
+  NOT yet strict.)
 - **Documented producers not yet audited**: `Enrichment` and
   `SearchSQLite` are documented in `docs/package-import-contract.md`'s
   Producers table but are not yet in `STRICT_PRODUCERS`. Enrichment's 6

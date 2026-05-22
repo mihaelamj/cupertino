@@ -1,6 +1,7 @@
 import Foundation
 import LoggingModels
 import SampleIndex
+import SampleIndexSQLite
 import SampleIndexModels
 import SearchModels
 @testable import Services

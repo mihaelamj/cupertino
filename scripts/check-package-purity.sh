@@ -75,6 +75,7 @@ FORBIDDEN_MODULES=(
     SampleIndex
     Search
     SearchSQLite
+    SampleIndexSQLite
 )
 
 # Targets that ARE composition roots; they may import any concrete.

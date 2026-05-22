@@ -10,6 +10,7 @@ import LoggingModels
 import MCPCore
 import MCPSupport
 import SampleIndex
+import SampleIndexSQLite
 import SampleIndexModels
 import Search
 import SearchModels

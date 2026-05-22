@@ -31,6 +31,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("SearchSchema"),
     .singleTargetLibrary("SearchSQLite"),
     .singleTargetLibrary("SampleIndex"),
+    .singleTargetLibrary("SampleIndexSQLite"),
     .singleTargetLibrary("Services"),
     .singleTargetLibrary("Distribution"),
     .singleTargetLibrary("DistributionModels"),
@@ -404,7 +405,7 @@ let targets: [Target] = {
     // the SearchModels split.
     let sampleIndexModelsTarget = Target.target(
         name: "SampleIndexModels",
-        dependencies: ["SharedConstants"]
+        dependencies: ["SharedConstants", "ASTIndexer"]
     )
     let sampleIndexModelsTestsTarget = Target.testTarget(
         name: "SampleIndexModelsTests",
@@ -485,6 +486,7 @@ let targets: [Target] = {
             "CorePackageIndexingModels",
             "ASTIndexer",
             "SampleIndex",
+            "SampleIndexSQLite",
             "SampleIndexModels",
             "Diagnostics",
             "LoggingModels",
@@ -499,6 +501,7 @@ let targets: [Target] = {
         name: "SampleIndexTests",
         dependencies: [
             "SampleIndex",
+            "SampleIndexSQLite",
             "SampleIndexModels",
             "SearchModels",
             "SharedConstants",
@@ -506,6 +509,28 @@ let targets: [Target] = {
             "LoggingModels",
             "TestSupport",
         ]
+    )
+
+    // ---------- SampleIndexSQLite (#902 mirror of #898 sub-PR E:
+    // SQLite-backed concrete for the `Sample.Index.Reader` +
+    // `Sample.Index.Writer` protocol seams in SampleIndexModels.
+    // Owns the `Sample.Index.Database` actor + its read-side conformance
+    // witness. The SampleIndex orchestration target keeps `Builder` +
+    // `AvailabilitySidecar` + `Error` and operates exclusively through
+    // the SampleIndexModels protocol seams.
+    let sampleIndexSQLiteTarget = Target.target(
+        name: "SampleIndexSQLite",
+        dependencies: [
+            "SampleIndexModels",
+            "SearchModels",
+            "SharedConstants",
+            "LoggingModels",
+            "ASTIndexer",
+        ]
+    )
+    let sampleIndexSQLiteTestsTarget = Target.testTarget(
+        name: "SampleIndexSQLiteTests",
+        dependencies: ["SampleIndexSQLite", "SampleIndexModels", "SharedConstants"]
     )
 
     // ---------- ServicesModels (#408: value types + namespace anchor lifted out of Services
@@ -528,7 +553,7 @@ let targets: [Target] = {
     )
     let servicesTestsTarget = Target.testTarget(
         name: "ServicesTests",
-        dependencies: ["Services", "ServicesModels", "SearchModels", "SampleIndex", "SampleIndexModels", "TestSupport"]
+        dependencies: ["Services", "ServicesModels", "SearchModels", "SampleIndex", "SampleIndexSQLite", "SampleIndexModels", "TestSupport"]
     )
 
     let mcpSupportTarget = Target.target(
@@ -554,6 +579,7 @@ let targets: [Target] = {
             "SearchSQLite",
             "SearchModels",
             "SampleIndex",
+            "SampleIndexSQLite",
             "SampleIndexModels",
             "Services",
             "ServicesModels",
@@ -680,7 +706,7 @@ let targets: [Target] = {
     // CorePackageIndexing in future phases as samples + packages passes land).
     let enrichmentTarget = Target.target(
         name: "Enrichment",
-        dependencies: ["EnrichmentModels", "Search", "SearchSQLite", "SearchModels", "SampleIndex", "SampleIndexModels", "SharedConstants"]
+        dependencies: ["EnrichmentModels", "Search", "SearchSQLite", "SearchModels", "SampleIndex", "SampleIndexSQLite", "SampleIndexModels", "SharedConstants"]
     )
     let enrichmentTestsTarget = Target.testTarget(
         name: "EnrichmentTests",
@@ -717,6 +743,7 @@ let targets: [Target] = {
             "Search",
             "SearchSQLite",
             "SampleIndex",
+            "SampleIndexSQLite",
             "Services",
             "ServicesModels",
             "Distribution",
@@ -814,6 +841,7 @@ let targets: [Target] = {
             "SearchModels",
             "SearchToolProvider",
             "SampleIndex",
+            "SampleIndexSQLite",
             "SampleIndexModels",
             "Services",
             "ServicesModels",
@@ -868,7 +896,8 @@ let targets: [Target] = {
     )
     let mockAIAgentTestsTarget = Target.testTarget(
         name: "MockAIAgentTests",
-        dependencies: ["MCPCore", "SampleIndex", "TestSupport"]
+        dependencies: ["MCPCore", "SampleIndex",
+            "SampleIndexSQLite", "TestSupport"]
     )
 
     let cupertinoTargets: [Target] = [
@@ -920,6 +949,8 @@ let targets: [Target] = {
         searchTestsTarget,
         sampleIndexTarget,
         sampleIndexTestsTarget,
+        sampleIndexSQLiteTarget,
+        sampleIndexSQLiteTestsTarget,
         servicesModelsTarget,
         servicesModelsTestsTarget,
         servicesTarget,
