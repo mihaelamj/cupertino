@@ -56,17 +56,20 @@ The architecture, from `CLAUDE.md`:
 Foundation -> Infrastructure -> Features -> Apps   (one direction only)
 ```
 
-Refreshed 2026-05-22 (PR #908). The lists below match
-`scripts/check-target-foundation-only.sh`'s `FOUNDATION_TIER` +
-`MODELS_TARGETS` + `STRICT_PRODUCERS` arrays exactly (the audit script
-is the source of truth). Changes since the previous refresh: the four
-legacy `Shared*` sub-targets (`SharedCore`, `SharedUtils`,
-`SharedModels`, `SharedConfiguration`) were absorbed into
-`SharedConstants` per #536; the closures-to-Observer epic added 5 new
-`*Models` seams (Indexer / Distribution / Cleanup / CoreSampleCode /
-RemoteSync); #837 added `EnrichmentModels` for the postprocessor
-pipeline; `ReleaseTool` + `ConstraintsGen` added to Apps;
-`AppleConstraintsKit` (PR #908) added to Features.
+Refreshed 2026-05-22 (PR #908). The Foundation, Models, and Features
+bullets below mirror `scripts/check-target-foundation-only.sh`'s
+`FOUNDATION_TIER` + `MODELS_TARGETS` + `STRICT_PRODUCERS` arrays
+respectively (the audit script is the source of truth). Two
+additional bullets enumerate documented producers that the script
+arrays do NOT cover, so the doc is a superset, not an exact mirror.
+Changes since the previous refresh: the four legacy `Shared*`
+sub-targets (`SharedCore`, `SharedUtils`, `SharedModels`,
+`SharedConfiguration`) were absorbed into `SharedConstants` per #536;
+the closures-to-Observer epic added 5 new `*Models` seams
+(Indexer / Distribution / Cleanup / CoreSampleCode / RemoteSync);
+#837 added `EnrichmentModels` for the postprocessor pipeline;
+`ReleaseTool` + `ConstraintsGen` added to Apps; `AppleConstraintsKit`
+(PR #908) added to Features.
 
 Each producer target must build given only its declared dependencies on
 the layers below it. The portability test enforces this empirically.
@@ -84,15 +87,15 @@ the layers below it. The portability test enforces this empirically.
   `CleanupModels`, `CoreSampleCodeModels`, `RemoteSyncModels`,
   `EnrichmentModels`. (`CoreProtocols` is grouped with the seams
   despite the unsuffixed name.)
-- **Features** (the producers `STRICT_PRODUCERS` Phase 3 block audits):
-  `AppleConstraintsKit`, `Availability`, `Cleanup`, `Core`,
-  `CoreJSONParser`, `CorePackageIndexing`, `CoreSampleCode`, `Crawler`,
-  `Distribution`, `Indexer`, `Ingest`, `Logging`, `MCPSupport`,
-  `RemoteSync`, `SampleIndex`, `Search`, `SearchToolProvider`,
-  `Services`. (`Logging` is a writer concrete: it is the audited
-  feature producer over `LoggingModels` + `OSLog`, and composition
-  roots are the only places that may import the `Logging` target.
-  Producers import `LoggingModels` only.)
+- **Features** (the producers in the `STRICT_PRODUCERS` array's
+  Phase 3 block): `AppleConstraintsKit`, `Availability`, `Cleanup`,
+  `Core`, `CoreJSONParser`, `CorePackageIndexing`, `CoreSampleCode`,
+  `Crawler`, `Distribution`, `Indexer`, `Ingest`, `Logging`,
+  `MCPSupport`, `RemoteSync`, `SampleIndex`, `Search`,
+  `SearchToolProvider`, `Services`. (`Logging` is a writer concrete:
+  the audited feature producer over `LoggingModels` + `OSLog`, and
+  composition roots are the only places that may import the
+  `Logging` target. Producers import `LoggingModels` only.)
 - **Documented producer not yet audited**: `Enrichment` is documented
   in `docs/package-import-contract.md`'s Producers table but is not
   yet in `STRICT_PRODUCERS`. Its 6 sibling passes import `Search` +

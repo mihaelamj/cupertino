@@ -242,14 +242,16 @@ STRICT_PRODUCERS=(
 
 # Grandfathered: producers still under the legacy contract (enforced
 # by scripts/check-package-purity.sh, not this script). Stayed empty
-# after #536 phase 3. PR #908 introduced one explicit omission from
-# STRICT_PRODUCERS (`Enrichment`, see the comment block at the top of
-# Phase 3 above); that target is also grandfathered there, not here,
-# because check-package-purity.sh holds the per-producer leak tolerance
-# in its `GRANDFATHERED_TARGETS` array. This array stays empty until a
-# future producer needs the foundation-only opt-in deferred for reasons
-# different from Enrichment's (e.g. a producer that wants to opt in but
-# carries an audited interim violation pinned by a tracking issue).
+# after #536 phase 3. `Enrichment` has been the one producer outside
+# STRICT_PRODUCERS since #837 (its 6 sibling passes import `Search` +
+# `SampleIndex` concretes); PR #908 documented that pre-existing
+# omission explicitly via the comment block at the top of Phase 3
+# above. `Enrichment`'s leak tolerance lives in
+# `check-package-purity.sh`'s `GRANDFATHERED_TARGETS` array, not here.
+# This array stays empty until a future producer needs the
+# foundation-only opt-in deferred for reasons different from
+# Enrichment's (e.g. a producer that wants to opt in but carries an
+# audited interim violation pinned by a tracking issue).
 GRANDFATHERED_TARGETS=(
 )
 
