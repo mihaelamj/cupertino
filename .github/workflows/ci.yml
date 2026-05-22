@@ -103,3 +103,22 @@ jobs:
         #   fetchWithResume — developer.apple.com + on-disk resume state (CrawlTests)
         #   httpErrorPageDefersAndRetriesSuccessfully — real HTTP error pages (RetryQueueTests)
         #   lapackFunctionsURLIsProblematic — developer.apple.com (CrawlerTests; the curiosity URL)
+
+  package-audits:
+    name: Package import audits
+    runs-on: ubuntu-latest
+    # Cheap PR-level gate (added by #908 / epic #893 pre-flight). Both
+    # audit scripts are pure bash, no Swift required, run in seconds.
+    # Catches foundation-only and producer-purity violations as early
+    # as possible so the 15-min build-and-test job doesn't have to.
+    # Pre-commit runs the same scripts locally; this job is the
+    # second net (per the CHANGELOG-touched pattern above).
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run check-target-foundation-only.sh
+        run: ./scripts/check-target-foundation-only.sh
+
+      - name: Run check-package-purity.sh
+        run: ./scripts/check-package-purity.sh

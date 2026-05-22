@@ -58,6 +58,7 @@ fi
 #     acts as a kernel for path resolution. Importing it is the
 #     same as importing Foundation.
 FORBIDDEN_MODULES=(
+    AppleConstraintsKit
     Availability
     Cleanup
     Core
@@ -67,6 +68,7 @@ FORBIDDEN_MODULES=(
     Crawler
     Diagnostics
     Distribution
+    Enrichment
     Indexer
     Ingest
     RemoteSync
@@ -74,14 +76,18 @@ FORBIDDEN_MODULES=(
     Search
 )
 
-# Targets that ARE composition roots — they may import any concrete.
+# Targets that ARE composition roots; they may import any concrete.
 # CLI and TUI ship as binaries. MockAIAgent and ReleaseTool are
 # additional binary-like roots that need direct access to concretes.
+# ConstraintsGen is the cupertino-constraints-gen executable (#759)
+# that bundles AppleConstraintsKit for shipping the apple-constraints.json
+# table; treated as a binary composition root for purity audit.
 EXEMPT_TARGETS=(
     CLI
     TUI
     MockAIAgent
     ReleaseTool
+    ConstraintsGen
 )
 
 # Grandfathered targets — pre-existing leaks acknowledged here so

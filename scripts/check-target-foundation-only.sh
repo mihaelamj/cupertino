@@ -127,21 +127,31 @@ MODELS_TARGETS=(
 
 # Producers that have been audited + opt into the strict rule.
 #
-# Phase 2 of #536 (2026-05-15) opted in the 6 `*Models` protocol-seam
-# companions. All carry Foundation + foundation-tier + other *Models
-# imports only — no actors with I/O, no URLSession, no FileManager.
+# Phase 2 of #536 (2026-05-15) opted in the original 6 `*Models`
+# protocol-seam companions. The closures-to-Observer epic added 5 more
+# `*Models` seams (IndexerModels, DistributionModels, CleanupModels,
+# CoreSampleCodeModels, RemoteSyncModels), and #837 added
+# EnrichmentModels for the postprocessor pipeline, bringing the total
+# in this array to 12 (the 11 `*Models`-suffixed entries below + the
+# unsuffixed CoreProtocols, which is grouped with the seams).
+# All carry Foundation + foundation-tier + other `*Models` imports only;
+# no actors with I/O, no URLSession, no FileManager.
 # Phase 2a (#542) moved `Core.PackageIndexing.GitHubCanonicalizer` +
 # `Core.PackageIndexing.ExclusionList` out of `CoreProtocols` before
 # this opt-in.
 #
-# Phase 3 of #536 (2026-05-15) opts in all 17 producer / feature
-# targets at once. Each target was empirically verified standalone-
-# portable via `scripts/check-target-portability.sh <Target>` — the
-# script physically copies the target + its declared deps into a tmp
-# repo and runs `xcrun swift build` against a fresh SwiftPM checkout.
-# All 17 built green, confirming the Shared-layer absorption (#536
-# phases 1a-1d) automatically brought every producer into compliance
-# with the foundation-only rule.
+# Phase 3 of #536 (2026-05-15) opted in 17 producer / feature targets
+# at once. Each target was empirically verified standalone-portable via
+# `scripts/check-target-portability.sh <Target>`: the script physically
+# copies the target + its declared deps into a tmp repo and runs
+# `xcrun swift build` against a fresh SwiftPM checkout. All 17 built
+# green, confirming the Shared-layer absorption (#536 phases 1a-1d)
+# automatically brought every producer into compliance with the
+# foundation-only rule. PR #908 added AppleConstraintsKit as the 18th,
+# bringing the producer block to 18 entries; AppleConstraintsKit's
+# imports (`Foundation`, `SearchModels`) match the foundation-only
+# allow-list trivially, but the portability test for it is queued, not
+# run.
 STRICT_PRODUCERS=(
     # Phase 2b-2f (#536): protocol-seam companions, foundation-only.
     CoreProtocols
@@ -196,7 +206,21 @@ STRICT_PRODUCERS=(
     EnrichmentModels
 
     # Phase 3 (#536): producer / feature targets.
+    #
+    # Intentionally omitted: `Enrichment` (#906). Its 6 sibling passes
+    # import `Search` and `SampleIndex` concretes directly (write-side
+    # coupling, surfaced by #837's postprocessor pipeline landing
+    # under the legacy single-target shape). Epic #893 child issue
+    # #906 lifts each pass into its own SPM target conforming
+    # `EnrichmentModels.EnrichmentPass`; once those land, add
+    # `Enrichment` (or the dissolved orchestrator residue) here.
+
+    # Producer (#759): AppleConstraintsKit ships `Search.StaticConstraintsLookup`
+    # conformance built from `swift symbolgraph-extract` output. Foundation
+    # + SearchModels only; matches foundation-only allow-list trivially.
+    # Opted into the audit by PR #908 (2026-05-22).
     AppleConstraintsKit
+
     Availability
     Cleanup
     Core
@@ -214,11 +238,6 @@ STRICT_PRODUCERS=(
     Search
     SearchToolProvider
     Services
-    # Enrichment is intentionally NOT here yet. Its 6 sibling passes import
-    # `Search` and `SampleIndex` concretes directly (write-side coupling).
-    # Epic #893 child issue #906 lifts each pass into its own SPM target
-    # conforming `EnrichmentModels.EnrichmentPass`; once those land, add
-    # `Enrichment` (or the dissolved orchestrator residue) here.
 )
 
 # Grandfathered: producers still under the legacy contract (enforced

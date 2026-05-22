@@ -59,18 +59,34 @@ Foundation -> Infrastructure -> Features -> Apps   (one direction only)
 Each producer target must build given only its declared dependencies on
 the layers below it. The portability test enforces this empirically:
 
-- **Foundation**: `SharedCore`, `SharedConstants`, `SharedUtils`,
-  `SharedModels`, `SharedConfiguration`, `Logging`, `Resources`
-- **Models**: `CoreProtocols`, `SearchModels`, `SampleIndexModels`,
-  `ServicesModels`, `CorePackageIndexingModels`, `CrawlerModels`,
+Refreshed 2026-05-22 (PR #908). The four legacy `Shared*` sub-targets
+(`SharedCore`, `SharedUtils`, `SharedModels`, `SharedConfiguration`)
+were absorbed into `SharedConstants` per #536. The closures-to-Observer
+epic added 5 new `*Models` seams (Indexer / Distribution / Cleanup /
+CoreSampleCode / RemoteSync). #837 added `EnrichmentModels` for the
+postprocessor pipeline. `Logging` moved from Foundation to Infrastructure
+(it is a writer concrete; only `LoggingModels` is foundation-only).
+`ReleaseTool` + `ConstraintsGen` added to Apps.
+
+- **Foundation**: `SharedConstants`, `LoggingModels`, `Resources`,
   `MCPCore`, `MCPSharedTools`
-- **Infrastructure**: `ASTIndexer`, `Diagnostics`
-- **Features**: `Core`, `CoreJSONParser`, `CorePackageIndexing`,
-  `CoreSampleCode`, `Search`, `SampleIndex`, `Services`, `Crawler`,
-  `Cleanup`, `MCPSupport`, `SearchToolProvider`, `RemoteSync`,
-  `Availability`, `Distribution`, `Indexer`, `Ingest`, `MCPClient`
-- **Apps**: `CLI`, `MCP`, `TUI`, `MockAIAgent` (composition roots,
-  allowed to import any feature)
+- **Models** (foundation-only protocol seams; `*Models` companions):
+  `CoreProtocols`, `SearchModels`, `SampleIndexModels`, `ServicesModels`,
+  `CorePackageIndexingModels`, `CrawlerModels`, `IndexerModels`,
+  `DistributionModels`, `CleanupModels`, `CoreSampleCodeModels`,
+  `RemoteSyncModels`, `EnrichmentModels`
+- **Infrastructure**: `ASTIndexer`, `Diagnostics`, `Logging` (the writer
+  concrete; only composition roots may import it)
+- **Features**: `AppleConstraintsKit`, `Availability`, `Cleanup`, `Core`,
+  `CoreJSONParser`, `CorePackageIndexing`, `CoreSampleCode`, `Crawler`,
+  `Distribution`, `Enrichment` (write-side coupling, pending #906),
+  `Indexer`, `Ingest`, `MCPSupport`, `RemoteSync`, `SampleIndex`,
+  `Search`, `SearchToolProvider`, `Services`, `MCPClient`
+- **Apps**: `CLI`, `MCP`, `TUI`, `MockAIAgent`, `ReleaseTool`,
+  `ConstraintsGen` (composition roots, allowed to import any feature)
+
+For the per-target allowed-imports contract, see
+`docs/package-import-contract.md`.
 
 ## Background
 
