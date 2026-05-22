@@ -95,12 +95,16 @@ EXEMPT_TARGETS=(
 # from these targets still fail; the goal is to migrate each
 # grandfathered target out of this list as its leaks are cleaned up.
 #
-# - Enrichment: #837 phase 1B-2 lands the three concrete EnrichmentPass
-#   implementations (SynonymsPass / AppleConstraintsPass / HierarchyPass)
-#   wrapping public methods on Search.Index. The seam extraction (define
-#   per-method protocols in SearchModels, have Search.Index conform) is
-#   a real refactor and tracked as a follow-up so this phase stays
-#   reviewable. Grandfathered until that follow-up lands.
+# - Enrichment: #837 shipped 6 sibling EnrichmentPass implementations
+#   (SynonymsPass, AppleConstraintsPass, HierarchyPass,
+#   PackagesAppleConstraintsPass, PackagesAppleImportsPass,
+#   SamplesAppleConstraintsPass) wrapping public methods on Search.Index
+#   and Sample.Index.Database. The seam extraction (per-pass SPM targets
+#   conforming `EnrichmentModels.EnrichmentPass` against protocol-fronted
+#   Search / SampleIndex writers) is queued as #906 (child of epic #893).
+#   Grandfathered here until #906 lands; opt-in into
+#   `scripts/check-target-foundation-only.sh`'s `STRICT_PRODUCERS` is
+#   gated on the same follow-up.
 GRANDFATHERED_TARGETS=("Enrichment")
 
 is_exempt() {

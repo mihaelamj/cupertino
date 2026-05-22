@@ -56,34 +56,60 @@ The architecture, from `CLAUDE.md`:
 Foundation -> Infrastructure -> Features -> Apps   (one direction only)
 ```
 
+Refreshed 2026-05-22 (PR #908). The lists below match
+`scripts/check-target-foundation-only.sh`'s `FOUNDATION_TIER` +
+`MODELS_TARGETS` + `STRICT_PRODUCERS` arrays exactly (the audit script
+is the source of truth). Changes since the previous refresh: the four
+legacy `Shared*` sub-targets (`SharedCore`, `SharedUtils`,
+`SharedModels`, `SharedConfiguration`) were absorbed into
+`SharedConstants` per #536; the closures-to-Observer epic added 5 new
+`*Models` seams (Indexer / Distribution / Cleanup / CoreSampleCode /
+RemoteSync); #837 added `EnrichmentModels` for the postprocessor
+pipeline; `ReleaseTool` + `ConstraintsGen` added to Apps;
+`AppleConstraintsKit` (PR #908) added to Features.
+
 Each producer target must build given only its declared dependencies on
-the layers below it. The portability test enforces this empirically:
+the layers below it. The portability test enforces this empirically.
 
-Refreshed 2026-05-22 (PR #908). The four legacy `Shared*` sub-targets
-(`SharedCore`, `SharedUtils`, `SharedModels`, `SharedConfiguration`)
-were absorbed into `SharedConstants` per #536. The closures-to-Observer
-epic added 5 new `*Models` seams (Indexer / Distribution / Cleanup /
-CoreSampleCode / RemoteSync). #837 added `EnrichmentModels` for the
-postprocessor pipeline. `Logging` moved from Foundation to Infrastructure
-(it is a writer concrete; only `LoggingModels` is foundation-only).
-`ReleaseTool` + `ConstraintsGen` added to Apps.
-
-- **Foundation**: `SharedConstants`, `LoggingModels`, `Resources`,
-  `MCPCore`, `MCPSharedTools`
-- **Models** (foundation-only protocol seams; `*Models` companions):
-  `CoreProtocols`, `SearchModels`, `SampleIndexModels`, `ServicesModels`,
-  `CorePackageIndexingModels`, `CrawlerModels`, `IndexerModels`,
-  `DistributionModels`, `CleanupModels`, `CoreSampleCodeModels`,
-  `RemoteSyncModels`, `EnrichmentModels`
-- **Infrastructure**: `ASTIndexer`, `Diagnostics`, `Logging` (the writer
-  concrete; only composition roots may import it)
-- **Features**: `AppleConstraintsKit`, `Availability`, `Cleanup`, `Core`,
+- **Foundation** (allowed to every producer): `SharedConstants`,
+  `LoggingModels`, `Resources`, `Diagnostics`, `ASTIndexer`, `MCPCore`,
+  `MCPSharedTools`. (`Diagnostics` wraps SQLite3 for read-only probes;
+  `ASTIndexer` wraps SwiftSyntax. Both are foundation-tier by
+  construction because they have no actors with I/O beyond their
+  declared system-framework deps.)
+- **Models** (foundation-only protocol seams; allowed to every
+  producer): `CoreProtocols`, `CrawlerModels`,
+  `CorePackageIndexingModels`, `SearchModels`, `SampleIndexModels`,
+  `ServicesModels`, `IndexerModels`, `DistributionModels`,
+  `CleanupModels`, `CoreSampleCodeModels`, `RemoteSyncModels`,
+  `EnrichmentModels`. (`CoreProtocols` is grouped with the seams
+  despite the unsuffixed name.)
+- **Features** (the producers `STRICT_PRODUCERS` Phase 3 block audits):
+  `AppleConstraintsKit`, `Availability`, `Cleanup`, `Core`,
   `CoreJSONParser`, `CorePackageIndexing`, `CoreSampleCode`, `Crawler`,
-  `Distribution`, `Enrichment` (write-side coupling, pending #906),
-  `Indexer`, `Ingest`, `MCPSupport`, `RemoteSync`, `SampleIndex`,
-  `Search`, `SearchToolProvider`, `Services`, `MCPClient`
-- **Apps**: `CLI`, `MCP`, `TUI`, `MockAIAgent`, `ReleaseTool`,
-  `ConstraintsGen` (composition roots, allowed to import any feature)
+  `Distribution`, `Indexer`, `Ingest`, `Logging`, `MCPSupport`,
+  `RemoteSync`, `SampleIndex`, `Search`, `SearchToolProvider`,
+  `Services`. (`Logging` is a writer concrete: it is the audited
+  feature producer over `LoggingModels` + `OSLog`, and composition
+  roots are the only places that may import the `Logging` target.
+  Producers import `LoggingModels` only.)
+- **Documented producer not yet audited**: `Enrichment` is documented
+  in `docs/package-import-contract.md`'s Producers table but is not
+  yet in `STRICT_PRODUCERS`. Its 6 sibling passes import `Search` +
+  `SampleIndex` concretes directly (write-side coupling); #906 (child
+  of epic #893) lifts each pass into its own SPM target conforming
+  `EnrichmentModels.EnrichmentPass`, after which `Enrichment` (or the
+  dissolved residue) gets opted in.
+- **Other producers not audited by these scripts**: `MCPClient` is
+  declared in `Package.swift` but is consumed only by the test target
+  + MockAIAgent; it does not pass through the `STRICT_PRODUCERS` or
+  `MODELS_TARGETS` allow-lists today (pre-existing gap; tracked
+  separately for the strict-DI epic).
+- **Apps** (composition roots, allowed to import any feature):
+  `CLI`, `TUI`, `MockAIAgent`, `ReleaseTool`, `ConstraintsGen`.
+  (Library targets `MCPCore`, `MCPClient`, `MCPSupport`,
+  `MCPSharedTools` are NOT apps; the MCP server runs inside the
+  `CLI` binary via `cupertino serve`.)
 
 For the per-target allowed-imports contract, see
 `docs/package-import-contract.md`.

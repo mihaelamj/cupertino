@@ -111,14 +111,22 @@ jobs:
     # audit scripts are pure bash, no Swift required, run in seconds.
     # Catches foundation-only and producer-purity violations as early
     # as possible so the 15-min build-and-test job doesn't have to.
-    # Pre-commit runs the same scripts locally; this job is the
-    # second net (per the CHANGELOG-touched pattern above).
+    #
+    # Pre-commit already runs `check-package-purity.sh` locally
+    # (`.pre-commit-config.yaml`); `check-target-foundation-only.sh`
+    # has no pre-commit hook yet, so this CI job is the FIRST gate
+    # for the foundation-only rule and the SECOND gate for the
+    # purity rule. Extending pre-commit to invoke both scripts is a
+    # follow-up.
     steps:
       - name: Checkout
+        # Default shallow clone is fine: neither script invokes git.
         uses: actions/checkout@v4
 
       - name: Run check-target-foundation-only.sh
+        timeout-minutes: 2
         run: ./scripts/check-target-foundation-only.sh
 
       - name: Run check-package-purity.sh
+        timeout-minutes: 2
         run: ./scripts/check-package-purity.sh
