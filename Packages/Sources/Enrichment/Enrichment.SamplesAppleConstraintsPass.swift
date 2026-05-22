@@ -1,6 +1,7 @@
 import EnrichmentModels
 import Foundation
 import SampleIndex
+import SampleIndexSQLite
 import SampleIndexModels
 import SearchModels
 import SharedConstants

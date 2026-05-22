@@ -2,6 +2,7 @@ import Foundation
 import LoggingModels
 @testable import MCPCore
 @testable import SampleIndex
+import SampleIndexSQLite
 import SharedConstants
 import Testing
 @testable import TestSupport

@@ -2,6 +2,7 @@ import Foundation
 import LoggingModels
 import MCPCore
 @testable import SampleIndex
+import SampleIndexSQLite
 @testable import Search
 import SearchModels
 @testable import SearchSQLite
