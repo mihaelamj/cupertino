@@ -2,36 +2,6 @@ import Foundation
 import SearchModels
 import SharedConstants
 
-// MARK: - Framework Availability (Search Module)
-
-/// Minimum platform versions for a framework (used for availability filtering)
-extension Search {
-    public struct FrameworkAvailability: Sendable {
-        public let minIOS: String?
-        public let minMacOS: String?
-        public let minTvOS: String?
-        public let minWatchOS: String?
-        public let minVisionOS: String?
-
-        public init(
-            minIOS: String? = nil,
-            minMacOS: String? = nil,
-            minTvOS: String? = nil,
-            minWatchOS: String? = nil,
-            minVisionOS: String? = nil
-        ) {
-            self.minIOS = minIOS
-            self.minMacOS = minMacOS
-            self.minTvOS = minTvOS
-            self.minWatchOS = minWatchOS
-            self.minVisionOS = minVisionOS
-        }
-
-        /// Empty availability (no platform data)
-        public static let empty = FrameworkAvailability()
-    }
-}
-
 // MARK: - Sample Code Search Result
 
 /// A sample code search result with metadata and local file information

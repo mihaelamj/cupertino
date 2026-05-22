@@ -19,7 +19,10 @@ extension Search {
     /// Per-source logic (directory scanning, file parsing, URI construction, availability
     /// look-up) lives entirely in the concrete strategy types (``AppleDocsStrategy``,
     /// ``SwiftEvolutionStrategy``, ``SwiftOrgStrategy``, ``AppleArchiveStrategy``,
-    /// ``HIGStrategy``, ``SampleCodeStrategy``, ``SwiftPackagesStrategy``).
+    /// ``HIGStrategy``, ``SampleCodeStrategy``). The previous
+    /// `SwiftPackagesStrategy` was removed in #789 (single backticks
+    /// because the symbol no longer exists; DocC cannot resolve a
+    /// double-backtick reference).
     ///
     /// ## Building with the convenience initialiser
     ///
@@ -47,7 +50,7 @@ extension Search {
     /// try await builder.buildIndex()
     /// ```
     public actor IndexBuilder {
-        private let searchIndex: Search.Index
+        private let searchIndex: any Search.Database & Search.IndexWriter
         private let strategies: [any Search.SourceIndexingStrategy]
         /// GoF Strategy seam for log emission (1994 p. 315).
         private let logger: any LoggingModels.Logging.Recording
@@ -72,11 +75,15 @@ extension Search {
         /// Create an ``IndexBuilder`` with an explicit strategy array.
         ///
         /// Use this initialiser when you need full control over which sources are indexed
-        /// and in what order.  For the standard seven-source build use the convenience
+        /// and in what order.  For the standard six-source build use the convenience
         /// initialiser instead.
         ///
         /// - Parameters:
-        ///   - searchIndex: The ``Search/Index`` to write into.
+        ///   - searchIndex: An object conforming to both
+        ///     ``SearchModels/Search/Database`` and
+        ///     ``SearchModels/Search/IndexWriter`` (the production
+        ///     conformer is the ``Search/Index`` actor, which the
+        ///     CLI composition root passes through implicit conformance).
         ///   - strategies: The ordered list of strategies to execute.
         ///   - logger: GoF Strategy seam for log emission.
         ///   - staticConstraintsLookup: Optional authoritative
@@ -85,7 +92,7 @@ extension Search {
         ///     every URI the table covers. Pass nil to fall back to
         ///     iter 1 + iter 2 alone.
         public init(
-            searchIndex: Search.Index,
+            searchIndex: any Search.Database & Search.IndexWriter,
             strategies: [any Search.SourceIndexingStrategy],
             logger: any LoggingModels.Logging.Recording,
             staticConstraintsLookup: (any Search.StaticConstraintsLookup)? = nil,
@@ -100,7 +107,7 @@ extension Search {
 
         // MARK: - Convenience Initialiser
 
-        /// Create an ``IndexBuilder`` configured for the standard seven documentation sources.
+        /// Create an ``IndexBuilder`` configured for the standard six documentation sources.
         ///
         /// Strategies are only added for optional sources (Evolution, Swift.org, Archive,
         /// HIG) when their corresponding directory is non-nil.  Sample code indexing is
@@ -110,7 +117,11 @@ extension Search {
         /// sites require no changes.
         ///
         /// - Parameters:
-        ///   - searchIndex: The ``Search/Index`` to write into.
+        ///   - searchIndex: An object conforming to both
+        ///     ``SearchModels/Search/Database`` and
+        ///     ``SearchModels/Search/IndexWriter`` (the production
+        ///     conformer is the ``Search/Index`` actor, which the
+        ///     CLI composition root passes through implicit conformance).
         ///   - metadata: Optional crawl metadata (passed to ``AppleDocsStrategy``).
         ///   - docsDirectory: Root directory of the Apple documentation corpus.
         ///   - evolutionDirectory: Optional directory containing Swift Evolution proposals.
@@ -119,7 +130,7 @@ extension Search {
         ///   - higDirectory: Optional directory containing Human Interface Guidelines files.
         ///   - indexSampleCode: Whether to include the sample code catalog. Defaults to `true`.
         public init(
-            searchIndex: Search.Index,
+            searchIndex: any Search.Database & Search.IndexWriter,
             metadata: Shared.Models.CrawlMetadata?,
             docsDirectory: URL,
             evolutionDirectory: URL? = nil,
@@ -159,7 +170,9 @@ extension Search {
 
         /// Build the search index by running all active strategies in sequence.
         ///
-        /// Each strategy is given the shared ``Search/Index`` instance.  Per-item errors
+        /// Each strategy receives the same shared composed-protocol value
+        /// (``SearchModels/Search/Database`` & ``SearchModels/Search/IndexWriter``)
+        /// that was passed to this `IndexBuilder` instance.  Per-item errors
         /// are caught inside each strategy; only unrecoverable failures propagate here.
         ///
         /// After all strategies complete, framework synonyms are registered so that common
@@ -290,7 +303,7 @@ extension Search {
 
         // MARK: - Factory
 
-        /// Build the default strategy array for the standard seven documentation sources.
+        /// Build the default strategy array for the standard six documentation sources.
         ///
         /// Optional sources are only included when their directory parameter is non-nil.
         ///

@@ -57,11 +57,11 @@ extension Search {
         /// returns with zero counts.
         ///
         /// - Parameters:
-        ///   - index: The ``Search/Index`` to write into.
+        ///   - index: An object conforming to both ``SearchModels/Search/Database`` and ``SearchModels/Search/IndexWriter`` (the production conformer is the ``Search/Index`` actor).
         ///   - progress: Optional progress callback, called every 100 items.
         /// - Returns: ``Search/IndexStats`` with indexed and skipped counts.
         public func indexItems(
-            into index: Search.Index,
+            into index: any Search.Database & Search.IndexWriter,
             progress: (any Search.IndexingProgressReporting)?
         ) async throws -> Search.IndexStats {
             let state = await sampleCatalogProvider.fetch()

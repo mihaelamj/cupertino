@@ -144,6 +144,23 @@ extension Search {
         func fetchPlatformMinima(
             uris: [String]
         ) async throws -> [String: Search.PlatformMinima]
+
+        // MARK: - Framework availability (per-framework minimum versions)
+
+        /// Fetch the minimum platform versions for an indexed framework
+        /// by looking up the framework's root document in `docs_metadata`.
+        /// Returns `Search.FrameworkAvailability.empty` when the framework
+        /// has no indexed root document or no `min_*` columns set.
+        ///
+        /// Used by indexing strategies that need to stamp per-framework
+        /// minima onto pages that don't carry their own
+        /// (`Search.Strategies.SampleCode`, `Search.Strategies.AppleArchive`).
+        /// Lifted onto the `Search.Database` read protocol by #897 so
+        /// those strategies can consume the seam instead of the concrete
+        /// `Search.Index` actor.
+        func getFrameworkAvailability(
+            framework: String
+        ) async -> Search.FrameworkAvailability
     }
 
     /// #226 — `[uri → minimum platform versions]` value returned by
