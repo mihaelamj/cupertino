@@ -187,17 +187,41 @@ struct MCPIntegrationTests {
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
 
-        // Try to run nonexistent command - Process.run() may not throw
-        // but the command will fail when executed
+        // Try to run nonexistent command. `/usr/bin/env` launches, fails
+        // to find the named command, and exits non-zero. The exit is
+        // fast on a developer Mac (sub-100ms) but slower on the macos-15
+        // CI runner; the previous hard-coded `Task.sleep(for: .milliseconds(100))`
+        // raced against `terminationStatus`, which throws
+        // `NSConcreteTask terminationStatus: task still running` when
+        // the Process hasn't yet exited. The previous `||` short-circuit
+        // also evaluated `terminationStatus` whenever `isRunning` was
+        // true, triggering the NSException reliably on slow CI.
         try process.run()
 
-        // Wait a bit and check if it's still running
-        try await Task.sleep(for: .milliseconds(100))
+        // Poll for exit, bounded by 5 seconds. A nonexistent command
+        // exits in milliseconds in steady state; 5 s is the CI-flake
+        // headroom.
+        let deadline = Date().addingTimeInterval(5)
+        while process.isRunning, Date() < deadline {
+            try await Task.sleep(for: .milliseconds(50))
+        }
 
-        // Process should have exited with error
-        #expect(!process.isRunning || process.terminationStatus != 0)
+        #expect(
+            !process.isRunning,
+            "Process should have exited within 5s (nonexistent command should fail fast)"
+        )
 
-        process.terminate()
+        if process.isRunning {
+            // If the deadline expired with the process still running,
+            // terminate it so the test doesn't leak a child. Do NOT
+            // read terminationStatus (it would throw NSException).
+            process.terminate()
+        } else {
+            #expect(
+                process.terminationStatus != 0,
+                "Expected non-zero termination status from nonexistent command"
+            )
+        }
         #else
         // Skip on non-macOS platforms
         #endif

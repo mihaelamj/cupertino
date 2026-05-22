@@ -2,6 +2,7 @@ import ASTIndexer
 import Foundation
 import LoggingModels
 import SearchModels
+import SearchSchema
 import SharedConstants
 import SQLite3
 
@@ -85,7 +86,14 @@ extension Search {
         ///       `generic_constraints LIKE`. v16 DBs migrate in place
         ///       via ALTER TABLE ADD COLUMN; values stay NULL until
         ///       the next re-index populates them.
-        public static let schemaVersion: Int32 = 18
+        /// Current `search.db` schema version. Source of truth lives at
+        /// `Search.Schema.currentVersion` in the foundation-only
+        /// `SearchSchema` target (lifted by epic #893's child #898 sub-PR A).
+        /// Re-exported here so existing call sites that reference
+        /// `Search.Index.schemaVersion` (test fixtures, doctor diagnostics)
+        /// compile unchanged. New code should prefer
+        /// `Search.Schema.currentVersion` directly.
+        public static let schemaVersion: Int32 = Search.Schema.currentVersion
 
         // Properties are package-internal (default visibility) so the
         // SearchIndex+<Concern>.swift extension files can access them. Public

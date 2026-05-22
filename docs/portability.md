@@ -80,13 +80,15 @@ the layers below it. The portability test enforces this empirically.
   `ASTIndexer` wraps SwiftSyntax. Both are foundation-tier by
   construction because they have no actors with I/O beyond their
   declared system-framework deps.)
-- **Models** (foundation-only protocol seams; allowed to every
-  producer): `CoreProtocols`, `CrawlerModels`,
+- **Models** (foundation-only protocol seams + value-type / constants
+  targets; allowed to every producer): `CoreProtocols`, `CrawlerModels`,
   `CorePackageIndexingModels`, `SearchModels`, `SampleIndexModels`,
   `ServicesModels`, `IndexerModels`, `DistributionModels`,
   `CleanupModels`, `CoreSampleCodeModels`, `RemoteSyncModels`,
-  `EnrichmentModels`. (`CoreProtocols` is grouped with the seams
-  despite the unsuffixed name.)
+  `EnrichmentModels`, `SearchSchema`. (`CoreProtocols` is grouped with
+  the seams despite the unsuffixed name. `SearchSchema` carries the
+  search.db DDL SQL constants + `Search.Schema.currentVersion`; lifted
+  out of the Search target by #898 sub-PR A.)
 - **Features** (the producers in the `STRICT_PRODUCERS` array's
   Phase 3 block): `AppleConstraintsKit`, `Availability`, `Cleanup`,
   `Core`, `CoreJSONParser`, `CorePackageIndexing`, `CoreSampleCode`,

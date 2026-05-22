@@ -123,6 +123,7 @@ MODELS_TARGETS=(
     CoreSampleCodeModels
     RemoteSyncModels
     EnrichmentModels
+    SearchSchema
 )
 
 # Producers that have been audited + opt into the strict rule.
@@ -204,6 +205,13 @@ STRICT_PRODUCERS=(
     # the EnrichmentPass protocol + value types every enrichment pass
     # emits. Audited alongside the other *Models seams.
     EnrichmentModels
+
+    # Search-schema constants target (#898 sub-PR A): foundation-only
+    # target carrying the DDL SQL strings + the
+    # `Search.Schema.currentVersion` Int32. Executor methods on
+    # Search.Index that consume these constants stay in the Search
+    # target until #898 sub-PR E (SearchSQLite extraction).
+    SearchSchema
 
     # Phase 3 (#536): producer / feature targets.
     #
