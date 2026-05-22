@@ -85,12 +85,26 @@ extension Search {
 extension Search {
     public enum SourceRegistry {
         // MARK: - All Source Definitions
+        //
+        // #251 first cut: every `id:` value reads from
+        // `Shared.Constants.SourcePrefix.*`. SourcePrefix is the single
+        // source of truth for source identifiers between this registry
+        // and any consumer that historically used a string literal.
+        //
+        // **Remaining #251 work:** `Search.Source` (in
+        // `Search.DomainTypes.swift`) is a `String`-rawValue enum whose
+        // raw values are byte-identical to these ids; renaming any
+        // SourcePrefix constant still requires touching the Search.Source
+        // case's raw value separately. Swift forbids `static let`
+        // rawValues on a String enum, so collapsing this third copy
+        // needs a structural change (e.g. dropping the enum in favour
+        // of descriptor lookups via SourceRegistry). Queued.
 
         /// All registered source definitions
         public static let all: [SourceDefinition] = [
             // Apple Documentation (modern)
             SourceDefinition(
-                id: "apple-docs",
+                id: Shared.Constants.SourcePrefix.appleDocs,
                 displayName: "Apple Documentation",
                 emoji: "📘",
                 properties: SourceProperties(
@@ -115,7 +129,7 @@ extension Search {
 
             // Sample Code
             SourceDefinition(
-                id: "samples",
+                id: Shared.Constants.SourcePrefix.samples,
                 displayName: "Sample Code",
                 emoji: "💻",
                 properties: SourceProperties(
@@ -139,7 +153,7 @@ extension Search {
 
             // Human Interface Guidelines
             SourceDefinition(
-                id: "hig",
+                id: Shared.Constants.SourcePrefix.hig,
                 displayName: "Human Interface Guidelines",
                 emoji: "🎨",
                 properties: SourceProperties(
@@ -161,7 +175,7 @@ extension Search {
 
             // Apple Archive (legacy)
             SourceDefinition(
-                id: "apple-archive",
+                id: Shared.Constants.SourcePrefix.appleArchive,
                 displayName: "Apple Archive",
                 emoji: "📚",
                 properties: SourceProperties(
@@ -185,7 +199,7 @@ extension Search {
 
             // Swift Evolution
             SourceDefinition(
-                id: "swift-evolution",
+                id: Shared.Constants.SourcePrefix.swiftEvolution,
                 displayName: "Swift Evolution",
                 emoji: "🔮",
                 properties: SourceProperties(
@@ -209,7 +223,7 @@ extension Search {
 
             // Swift.org
             SourceDefinition(
-                id: "swift-org",
+                id: Shared.Constants.SourcePrefix.swiftOrg,
                 displayName: "Swift.org",
                 emoji: "🦅",
                 properties: SourceProperties(
@@ -233,7 +247,7 @@ extension Search {
 
             // The Swift Programming Language (book)
             SourceDefinition(
-                id: "swift-book",
+                id: Shared.Constants.SourcePrefix.swiftBook,
                 displayName: "The Swift Programming Language",
                 emoji: "📖",
                 properties: SourceProperties(
@@ -257,7 +271,7 @@ extension Search {
 
             // Swift Packages
             SourceDefinition(
-                id: "packages",
+                id: Shared.Constants.SourcePrefix.packages,
                 displayName: "Swift Packages",
                 emoji: "📦",
                 properties: SourceProperties(
