@@ -3,6 +3,7 @@ import SearchModels
 // swiftlint:disable identifier_name
 import Foundation
 @testable import Search
+@testable import SearchSQLite
 import SharedConstants
 import Testing
 

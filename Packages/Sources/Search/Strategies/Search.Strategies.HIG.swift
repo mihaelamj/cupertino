@@ -46,9 +46,11 @@ extension Search {
         /// (iOS 2.0 / macOS 10.0 / tvOS 9.0 / watchOS 2.0 / visionOS 1.0).
         ///
         /// - Parameters:
-        ///   - index: An object conforming to both ``SearchModels/Search/Database`` and ``SearchModels/Search/IndexWriter`` (the production conformer is the ``Search/Index`` actor).
+        ///   - index: An object conforming to both ``SearchModels/Search/Database`` and ``SearchModels/Search/IndexWriter`` (the production conformer is the
+        /// ``SearchSQLite/Search/Index``
+        /// actor).
         ///   - progress: Optional progress callback, called every 100 items.
-        /// - Returns: ``Search/IndexStats`` with indexed and skipped counts.
+        /// - Returns: ``SearchModels/Search/IndexStats`` with indexed and skipped counts.
         public func indexItems(
             into index: any Search.Database & Search.IndexWriter,
             progress: (any Search.IndexingProgressReporting)?

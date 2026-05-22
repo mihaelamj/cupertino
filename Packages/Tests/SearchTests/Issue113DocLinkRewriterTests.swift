@@ -1,5 +1,6 @@
 import Foundation
 @testable import Search
+@testable import SearchSQLite
 import Testing
 
 // MARK: - #113 — `doc://` → `https://` link rewriter (pure-function contract)

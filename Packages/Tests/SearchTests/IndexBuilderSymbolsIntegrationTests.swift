@@ -4,6 +4,7 @@ import Logging
 import LoggingModels
 @testable import Search
 import SearchModels
+@testable import SearchSQLite
 import SharedConstants
 import SQLite3
 import Testing

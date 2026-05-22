@@ -2,6 +2,7 @@ import EnrichmentModels
 import Foundation
 import Search
 import SearchModels
+import SearchSQLite
 
 extension Enrichment {
     /// Applies the authoritative Apple-type generic-constraints table to

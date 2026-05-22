@@ -1,6 +1,7 @@
 import Foundation
 @testable import Search
 import SearchModels
+@testable import SearchSQLite
 import SharedConstants
 import Testing
 
@@ -272,15 +273,16 @@ struct StrategyHelpersPlaceholderErrorDefenceTests {
             "\n\t  \n",
         ]
     )
-    func unconditionalPlaceholderTitlesAreDetected(title: String) {
+    func unconditionalPlaceholderTitlesAreDetected(title: String) throws {
         // No URL — these patterns trip regardless of context.
         #expect(SUT.titleLooksLikePlaceholderError(title) == true)
         // With a URL — still trip.
-        let anyURL = URL(string: "https://developer.apple.com/documentation/pdfkit/pdfviewdelegate/pdfviewparentviewcontroller()")!
+        let anyURL = try #require(URL(string: "https://developer.apple.com/documentation/pdfkit/pdfviewdelegate/pdfviewparentviewcontroller()"))
         #expect(SUT.titleLooksLikePlaceholderError(title, url: anyURL) == true)
     }
 
     // MARK: - "Error" title needs URL context (corpus dry-run found
+
     //         legitimate Apple `error` enum cases at URL leafs == "error")
 
     @Test(
@@ -340,9 +342,9 @@ struct StrategyHelpersPlaceholderErrorDefenceTests {
             "PDFViewParentViewController()",
         ]
     )
-    func realTitlesAreNotFalsePositives(title: String) {
+    func realTitlesAreNotFalsePositives(title: String) throws {
         #expect(SUT.titleLooksLikePlaceholderError(title) == false)
-        let anyURL = URL(string: "https://developer.apple.com/documentation/swiftui/view")!
+        let anyURL = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/view"))
         #expect(SUT.titleLooksLikePlaceholderError(title, url: anyURL) == false)
     }
 }

@@ -74,6 +74,7 @@ FORBIDDEN_MODULES=(
     RemoteSync
     SampleIndex
     Search
+    SearchSQLite
 )
 
 # Targets that ARE composition roots; they may import any concrete.
@@ -105,7 +106,22 @@ EXEMPT_TARGETS=(
 #   Grandfathered here until #906 lands; opt-in into
 #   `scripts/check-target-foundation-only.sh`'s `STRICT_PRODUCERS` is
 #   gated on the same follow-up.
-GRANDFATHERED_TARGETS=("Enrichment")
+#
+# - SearchSQLite: #898 sub-PR E lifted Search.Index + 19 extensions +
+#   PackageIndex + Search.PackageQuery + PackageIndexer + the two
+#   CandidateFetcher concretes into this dedicated SQLite-backed
+#   concrete target. SearchSQLite imports `Search` because several
+#   domain types referenced inside the moved code (Search.Source,
+#   Search.QueryIntent, Search.IndexerRegistry, Search.Classify,
+#   DocKind, detectQueryIntent, DocLinkRewriter, Search.SourceItem,
+#   Search.SourceIndexer protocol, Search.SampleCodeResult,
+#   Search.PackageResult) still live in the Search orchestration target.
+#   Lifting those shared domain types to SearchModels is queued as a
+#   follow-up; once it lands, SearchSQLite's `import Search` drops and
+#   the grandfather entry is removed. Net win shipped here: the Search
+#   target no longer imports SQLite3, so anyone implementing the
+#   SearchModels protocol seams can plug a non-SQLite backend in.
+GRANDFATHERED_TARGETS=("Enrichment" "SearchSQLite")
 
 is_exempt() {
     local target="$1"

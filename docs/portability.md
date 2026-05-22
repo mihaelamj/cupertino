@@ -98,13 +98,25 @@ the layers below it. The portability test enforces this empirically.
   the audited feature producer over `LoggingModels` + `OSLog`, and
   composition roots are the only places that may import the
   `Logging` target. Producers import `LoggingModels` only.)
-- **Documented producer not yet audited**: `Enrichment` is documented
-  in `docs/package-import-contract.md`'s Producers table but is not
-  yet in `STRICT_PRODUCERS`. Its 6 sibling passes import `Search` +
-  `SampleIndex` concretes directly (write-side coupling); #906 (child
-  of epic #893) lifts each pass into its own SPM target conforming
-  `EnrichmentModels.EnrichmentPass`, after which `Enrichment` (or the
-  dissolved residue) gets opted in.
+- **Documented producers not yet audited**: `Enrichment` and
+  `SearchSQLite` are documented in `docs/package-import-contract.md`'s
+  Producers table but are not yet in `STRICT_PRODUCERS`. Enrichment's 6
+  sibling passes import `Search` + `SampleIndex` concretes directly
+  (write-side coupling); #906 (child of epic #893) lifts each pass
+  into its own SPM target conforming `EnrichmentModels.EnrichmentPass`,
+  after which `Enrichment` (or the dissolved residue) gets opted in.
+  `SearchSQLite` (added by #898 sub-PR E) is the SQLite-backed
+  concrete of the `SearchModels` protocol seams; it imports `Search`
+  because several domain types (Source / QueryIntent / IndexerRegistry
+  / Classify / DocKind / SourceItem / SourceIndexer protocol /
+  detectQueryIntent / DocLinkRewriter / SampleCodeResult /
+  PackageResult) still live on the Search orchestration target.
+  A queued follow-up lifts those to SearchModels; once it lands,
+  SearchSQLite's `import Search` drops and the target opts into
+  STRICT_PRODUCERS. The net win shipped in #898 sub-PR E is that the
+  Search orchestration target no longer imports SQLite3, so any
+  backend conforming the `SearchModels` seams can plug in via the
+  composition root.
 - **Other producers not audited by these scripts**: `MCPClient` is
   declared in `Package.swift` but is consumed only by the test target
   + MockAIAgent; it does not pass through the `STRICT_PRODUCERS` or

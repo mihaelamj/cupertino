@@ -2,6 +2,7 @@ import Foundation
 import LoggingModels
 @testable import Search
 import SearchModels
+@testable import SearchSQLite
 import Testing
 
 // MARK: - #754 — resolveSymbolURIs handles Apple's site-suffix title shape

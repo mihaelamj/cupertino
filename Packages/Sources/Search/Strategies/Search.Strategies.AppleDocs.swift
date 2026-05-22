@@ -73,9 +73,11 @@ extension Search {
         /// ``indexFromMetadata(into:metadata:progress:)`` instead.
         ///
         /// - Parameters:
-        ///   - index: An object conforming to both ``SearchModels/Search/Database`` and ``SearchModels/Search/IndexWriter`` (the production conformer is the ``Search/Index`` actor).
+        ///   - index: An object conforming to both ``SearchModels/Search/Database`` and ``SearchModels/Search/IndexWriter`` (the production conformer is the
+        /// ``SearchSQLite/Search/Index``
+        /// actor).
         ///   - progress: Optional progress callback, called every 100 items.
-        /// - Returns: ``Search/IndexStats`` with indexed and skipped counts.
+        /// - Returns: ``SearchModels/Search/IndexStats`` with indexed and skipped counts.
         public func indexItems(
             into index: any Search.Database & Search.IndexWriter,
             progress: (any Search.IndexingProgressReporting)?
@@ -93,9 +95,11 @@ extension Search {
         /// documents including code examples and AST symbols.
         ///
         /// - Parameters:
-        ///   - index: An object conforming to both ``SearchModels/Search/Database`` and ``SearchModels/Search/IndexWriter`` (the production conformer is the ``Search/Index`` actor).
+        ///   - index: An object conforming to both ``SearchModels/Search/Database`` and ``SearchModels/Search/IndexWriter`` (the production conformer is the
+        /// ``SearchSQLite/Search/Index``
+        /// actor).
         ///   - progress: Optional progress callback, called every 100 items.
-        /// - Returns: ``Search/IndexStats`` with indexed and skipped counts.
+        /// - Returns: ``SearchModels/Search/IndexStats`` with indexed and skipped counts.
         func indexFromDirectory(
             into index: any Search.Database & Search.IndexWriter,
             progress: (any Search.IndexingProgressReporting)?
@@ -464,10 +468,12 @@ extension Search {
         /// crashing the build (fix for PR #288).
         ///
         /// - Parameters:
-        ///   - index: An object conforming to both ``SearchModels/Search/Database`` and ``SearchModels/Search/IndexWriter`` (the production conformer is the ``Search/Index`` actor).
+        ///   - index: An object conforming to both ``SearchModels/Search/Database`` and ``SearchModels/Search/IndexWriter`` (the production conformer is the
+        /// ``SearchSQLite/Search/Index``
+        /// actor).
         ///   - metadata: The crawl metadata map to iterate.
         ///   - progress: Optional progress callback, called every 100 items.
-        /// - Returns: ``Search/IndexStats`` with indexed and skipped counts.
+        /// - Returns: ``SearchModels/Search/IndexStats`` with indexed and skipped counts.
         func indexFromMetadata(
             into index: any Search.Database & Search.IndexWriter,
             metadata: Shared.Models.CrawlMetadata,

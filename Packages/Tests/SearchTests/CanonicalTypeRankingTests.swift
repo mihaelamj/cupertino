@@ -2,6 +2,7 @@ import Foundation
 import LoggingModels
 @testable import Search
 import SearchModels
+@testable import SearchSQLite
 import Testing
 
 // Wide canonical-type ranking battery covering #254 + #256 acceptance.

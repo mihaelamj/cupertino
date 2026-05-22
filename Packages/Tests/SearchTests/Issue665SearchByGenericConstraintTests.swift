@@ -3,6 +3,7 @@ import Foundation
 import LoggingModels
 @testable import Search
 import SearchModels
+@testable import SearchSQLite
 import SharedConstants
 import Testing
 
@@ -266,13 +267,13 @@ struct Issue665SearchByGenericConstraintTests {
         let (index, dbPath) = try await makeIndex()
         defer { cleanup(dbPath) }
 
-        for i in 0..<5 {
+        for idx in 0..<5 {
             try await seed(
                 index: index,
-                uri: "apple-docs://framework/holder-\(i)",
+                uri: "apple-docs://framework/holder-\(idx)",
                 framework: "framework",
-                title: "Holder\(i)",
-                symbolName: "Holder\(i)",
+                title: "Holder\(idx)",
+                symbolName: "Holder\(idx)",
                 kind: "struct",
                 genericParameters: ["T: Sendable"]
             )

@@ -1,6 +1,7 @@
 import Foundation
 @testable import Search
 import SearchModels
+@testable import SearchSQLite
 import Testing
 
 // MARK: - #588 JSONL audit log sink tests
@@ -84,7 +85,7 @@ struct JSONLImportLogSinkTests {
         let logPath = tempDir.appendingPathComponent("save.jsonl")
 
         let sink = try Search.JSONLImportLogSink(path: logPath)
-        for i in 0 ..< 50 {
+        for i in 0..<50 {
             await sink.record(Search.ImportLogEntry(
                 sourceFile: "/tmp/file\(i).json",
                 resolvedURL: "https://developer.apple.com/documentation/test/\(i)",

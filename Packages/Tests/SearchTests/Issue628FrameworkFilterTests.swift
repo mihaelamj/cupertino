@@ -2,6 +2,7 @@ import Foundation
 import LoggingModels
 @testable import Search
 import SearchModels
+@testable import SearchSQLite
 import Testing
 
 /// Regression suite for [#628](https://github.com/mihaelamj/cupertino/issues/628).

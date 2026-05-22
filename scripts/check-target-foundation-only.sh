@@ -222,6 +222,19 @@ STRICT_PRODUCERS=(
     # #906 lifts each pass into its own SPM target conforming
     # `EnrichmentModels.EnrichmentPass`; once those land, add
     # `Enrichment` (or the dissolved orchestrator residue) here.
+    #
+    # Intentionally omitted: `SearchSQLite` (#898 sub-PR E). The
+    # SQLite-backed concrete imports `Search` because several domain
+    # types still live on the Search orchestration target (Search.Source,
+    # Search.QueryIntent, Search.IndexerRegistry, Search.Classify,
+    # DocKind, detectQueryIntent, DocLinkRewriter, Search.SourceItem,
+    # Search.SourceIndexer protocol, Search.SampleCodeResult,
+    # Search.PackageResult). Lifting those domain types to SearchModels
+    # is a queued follow-up; once it lands, SearchSQLite's `import Search`
+    # drops and the target opts into STRICT_PRODUCERS. Net win shipped
+    # in #898 sub-PR E: the Search orchestration target no longer
+    # imports SQLite3, so any backend conforming SearchModels can plug
+    # in via the composition root.
 
     # Producer (#759): AppleConstraintsKit ships `Search.StaticConstraintsLookup`
     # conformance built from `swift symbolgraph-extract` output. Foundation

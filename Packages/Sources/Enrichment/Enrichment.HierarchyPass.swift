@@ -2,6 +2,7 @@ import EnrichmentModels
 import Foundation
 import Search
 import SearchModels
+import SearchSQLite
 
 extension Enrichment {
     /// Propagates the generic-constraints map from parent symbols down to

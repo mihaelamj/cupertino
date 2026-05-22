@@ -2,34 +2,35 @@ import Foundation
 import LoggingModels
 @testable import Search
 import SearchModels
+@testable import SearchSQLite
 import SQLite3
 import Testing
 
-/// Test suite for the iter-2 hierarchy walk introduced by
-/// [#759](https://github.com/mihaelamj/cupertino/issues/759). Covers the
-/// four surfaces that shipped in PR #760 with only `parentURI(of:)`
-/// unit-tested:
-///
-/// 1. `extractBareParamNames(from:)` — parses the `generic_params` column
-///    shape to recover the bare type-parameter names (`T`, `Data`, `ID`)
-///    after the AST extractor joined bare + where-clause entries in one
-///    comma-separated string.
-/// 2. `signatureReferencesAnyParam(_:paramNames:)` — the word-boundary
-///    regex match that decides trigger B (child has no own generics but
-///    its signature uses one of the parent's type-parameter names).
-/// 3. `buildParentConstraintsMap` — pass-1 SELECT against doc_symbols,
-///    filtered to type kinds, de-dup-on-collision on doc_uri.
-/// 4. `propagateConstraintsFromParents` — the full orchestrator end to
-///    end: triggers A and B, idempotence, empty-input no-op.
-///
-/// In-memory SQLite fixtures (temp files) mirror the production schema
-/// from `Search.Index.Schema`. The full `Search.Index` is opened so the
-/// async public surface (`propagateConstraintsFromParents`) is exercised
-/// in the same shape the indexer hits at save time.
+// Test suite for the iter-2 hierarchy walk introduced by
+// [#759](https://github.com/mihaelamj/cupertino/issues/759). Covers the
+// four surfaces that shipped in PR #760 with only `parentURI(of:)`
+// unit-tested:
+//
+// 1. `extractBareParamNames(from:)`. parses the `generic_params` column
+//    shape to recover the bare type-parameter names (`T`, `Data`, `ID`)
+//    after the AST extractor joined bare + where-clause entries in one
+//    comma-separated string.
+// 2. `signatureReferencesAnyParam(_:paramNames:)`. the word-boundary
+//    regex match that decides trigger B (child has no own generics but
+//    its signature uses one of the parent's type-parameter names).
+// 3. `buildParentConstraintsMap`. pass-1 SELECT against doc_symbols,
+//    filtered to type kinds, de-dup-on-collision on doc_uri.
+// 4. `propagateConstraintsFromParents`. the full orchestrator end to
+//    end: triggers A and B, idempotence, empty-input no-op.
+//
+// In-memory SQLite fixtures (temp files) mirror the production schema
+// from `Search.Index.Schema`. The full `Search.Index` is opened so the
+// async public surface (`propagateConstraintsFromParents`) is exercised
+// in the same shape the indexer hits at save time.
 
 // MARK: - pure helpers (no SQLite)
 
-@Suite("#759 iter-2 — extractBareParamNames (pure)")
+@Suite("#759 iter-2. extractBareParamNames (pure)")
 struct Issue759ExtractBareParamNamesTests {
     @Test(
         "Splits comma-separated entries and drops the constraint half after `:`",
@@ -54,9 +55,9 @@ struct Issue759ExtractBareParamNamesTests {
             ("T,", ["T"]),
             // Pathological: only commas → empty list.
             (",,,", []),
-            // Same name listed twice without constraint — dedup.
+            // Same name listed twice without constraint. dedup.
             ("T,T", ["T"]),
-            // Same name bare then with constraint — dedup; first wins.
+            // Same name bare then with constraint. dedup; first wins.
             ("T,T: View", ["T"]),
         ] as [(String, [String])]
     )
@@ -66,7 +67,7 @@ struct Issue759ExtractBareParamNamesTests {
     }
 }
 
-@Suite("#759 iter-2 — signatureReferencesAnyParam (word-boundary regex)")
+@Suite("#759 iter-2. signatureReferencesAnyParam (word-boundary regex)")
 struct Issue759SignatureReferencesAnyParamTests {
     @Test(
         "Matches at identifier word boundaries; rejects substring matches",
@@ -80,7 +81,7 @@ struct Issue759SignatureReferencesAnyParamTests {
             ("Binding<Destination>", ["Destination"], true),
             // After comma, end-of-string.
             ("(items: [Data], content: Content)", ["Data", "Content"], true),
-            // Multiple param names — alternation picks any.
+            // Multiple param names. alternation picks any.
             ("(_ data: Data) -> Content", ["Data", "Content"], true),
             // After `(`, before `,`.
             ("init(_ Label: Label, destination: Destination)", ["Label", "Destination"], true),
@@ -90,7 +91,7 @@ struct Issue759SignatureReferencesAnyParamTests {
             ("(_ row: RowValue) -> Bool", ["Row"], false),
             // Suffix substring: `Destination` followed by alnum.
             ("(_ key: DestinationKey)", ["Destination"], false),
-            // Prefix substring: `_Data` — leading `_` is identifier-char.
+            // Prefix substring: `_Data`. leading `_` is identifier-char.
             ("(_ x: _Data)", ["Data"], false),
 
             // -- FALSE: empty inputs --------------------------------------
@@ -143,7 +144,7 @@ private enum Issue759Fixture {
     }
 
     /// Insert a `doc_symbols` row. Caller supplies the kind, generic_params,
-    /// generic_constraints, signature — the four columns iter-2 reads.
+    /// generic_constraints, signature. the four columns iter-2 reads.
     static func insertSymbol(
         _ db: OpaquePointer,
         docUri: String,
@@ -213,7 +214,7 @@ private enum Issue759Fixture {
     }
 }
 
-@Suite("#759 iter-2 — propagateConstraintsFromParents end-to-end", .serialized)
+@Suite("#759 iter-2. propagateConstraintsFromParents end-to-end", .serialized)
 struct Issue759PropagateEndToEndTests {
     @Test("Trigger A: child with own generic_params + NULL constraints inherits from parent type")
     func triggerAOwnGenericParams() async throws {
@@ -233,17 +234,17 @@ struct Issue759PropagateEndToEndTests {
 
         let parentURI = "apple-docs://swiftui/foreach"
         let childURI = "apple-docs://swiftui/foreach/init-_-content"
-        try Issue759Fixture.insertMetadata(db!, uri: parentURI)
-        try Issue759Fixture.insertMetadata(db!, uri: childURI)
+        try Issue759Fixture.insertMetadata(#require(db), uri: parentURI)
+        try Issue759Fixture.insertMetadata(#require(db), uri: childURI)
         // Parent struct with constraints.
         try Issue759Fixture.insertSymbol(
-            db!, docUri: parentURI, name: "ForEach", kind: "struct",
+            #require(db), docUri: parentURI, name: "ForEach", kind: "struct",
             genericParams: "Data,ID,Content,Data: RandomAccessCollection,ID: Hashable",
             genericConstraints: "RandomAccessCollection,Hashable"
         )
         // Child: own generic_params present (trigger A) but constraints NULL.
         try Issue759Fixture.insertSymbol(
-            db!, docUri: childURI, name: "init", kind: "init",
+            #require(db), docUri: childURI, name: "init", kind: "init",
             signature: "init(data: Data, content: () -> Content)",
             genericParams: "Data,Content",
             genericConstraints: nil
@@ -252,7 +253,7 @@ struct Issue759PropagateEndToEndTests {
         try await idx.propagateConstraintsFromParents()
         await idx.disconnect()
 
-        let inherited = try Issue759Fixture.readConstraints(db!, docUri: childURI)
+        let inherited = try Issue759Fixture.readConstraints(#require(db), docUri: childURI)
         #expect(
             inherited == "RandomAccessCollection,Hashable",
             "child should have inherited parent's constraints under trigger A; got \(inherited ?? "nil")"
@@ -274,16 +275,16 @@ struct Issue759PropagateEndToEndTests {
 
         let parentURI = "apple-docs://swiftui/navigationlink"
         let childURI = "apple-docs://swiftui/navigationlink/init-_-isactive-destination"
-        try Issue759Fixture.insertMetadata(db!, uri: parentURI)
-        try Issue759Fixture.insertMetadata(db!, uri: childURI)
+        try Issue759Fixture.insertMetadata(#require(db), uri: parentURI)
+        try Issue759Fixture.insertMetadata(#require(db), uri: childURI)
         try Issue759Fixture.insertSymbol(
-            db!, docUri: parentURI, name: "NavigationLink", kind: "struct",
+            #require(db), docUri: parentURI, name: "NavigationLink", kind: "struct",
             genericParams: "Label,Destination,Label: View,Destination: View",
             genericConstraints: "View,View"
         )
         // Child: no own generic_params; signature references `Destination`.
         try Issue759Fixture.insertSymbol(
-            db!, docUri: childURI, name: "init", kind: "init",
+            #require(db), docUri: childURI, name: "init", kind: "init",
             signature: "init(_ titleKey: LocalizedStringKey, isActive: Binding<Bool>, destination: () -> Destination)",
             genericParams: nil,
             genericConstraints: nil
@@ -292,7 +293,7 @@ struct Issue759PropagateEndToEndTests {
         try await idx.propagateConstraintsFromParents()
         await idx.disconnect()
 
-        let inherited = try Issue759Fixture.readConstraints(db!, docUri: childURI)
+        let inherited = try Issue759Fixture.readConstraints(#require(db), docUri: childURI)
         #expect(
             inherited == "View,View",
             "child should have inherited parent's constraints under trigger B; got \(inherited ?? "nil")"
@@ -314,16 +315,16 @@ struct Issue759PropagateEndToEndTests {
 
         let parentURI = "apple-docs://swiftui/navigationlink"
         let childURI = "apple-docs://swiftui/navigationlink/static-helper"
-        try Issue759Fixture.insertMetadata(db!, uri: parentURI)
-        try Issue759Fixture.insertMetadata(db!, uri: childURI)
+        try Issue759Fixture.insertMetadata(#require(db), uri: parentURI)
+        try Issue759Fixture.insertMetadata(#require(db), uri: childURI)
         try Issue759Fixture.insertSymbol(
-            db!, docUri: parentURI, name: "NavigationLink", kind: "struct",
+            #require(db), docUri: parentURI, name: "NavigationLink", kind: "struct",
             genericParams: "Label,Destination",
             genericConstraints: "View,View"
         )
         // Child: no generic_params, signature references nothing from parent.
         try Issue759Fixture.insertSymbol(
-            db!, docUri: childURI, name: "isSelected", kind: "func",
+            #require(db), docUri: childURI, name: "isSelected", kind: "func",
             signature: "isSelected() -> Bool",
             genericParams: nil,
             genericConstraints: nil
@@ -332,7 +333,7 @@ struct Issue759PropagateEndToEndTests {
         try await idx.propagateConstraintsFromParents()
         await idx.disconnect()
 
-        let constraints = try Issue759Fixture.readConstraints(db!, docUri: childURI)
+        let constraints = try Issue759Fixture.readConstraints(#require(db), docUri: childURI)
         #expect(constraints == nil, "non-generic child should stay NULL; got \(constraints ?? "nil")")
     }
 
@@ -351,25 +352,25 @@ struct Issue759PropagateEndToEndTests {
 
         let parentURI = "apple-docs://swiftui/foreach"
         let childURI = "apple-docs://swiftui/foreach/init-_-content"
-        try Issue759Fixture.insertMetadata(db!, uri: parentURI)
-        try Issue759Fixture.insertMetadata(db!, uri: childURI)
+        try Issue759Fixture.insertMetadata(#require(db), uri: parentURI)
+        try Issue759Fixture.insertMetadata(#require(db), uri: childURI)
         try Issue759Fixture.insertSymbol(
-            db!, docUri: parentURI, name: "ForEach", kind: "struct",
+            #require(db), docUri: parentURI, name: "ForEach", kind: "struct",
             genericParams: "Data,Content",
             genericConstraints: "RandomAccessCollection,Hashable"
         )
         try Issue759Fixture.insertSymbol(
-            db!, docUri: childURI, name: "init", kind: "init",
+            #require(db), docUri: childURI, name: "init", kind: "init",
             genericParams: "Data,Content"
         )
 
         try await idx.propagateConstraintsFromParents()
-        let afterFirst = try Issue759Fixture.readConstraints(db!, docUri: childURI)
-        let nullCountAfterFirst = try Issue759Fixture.nullConstraintsCount(db!)
+        let afterFirst = try Issue759Fixture.readConstraints(#require(db), docUri: childURI)
+        let nullCountAfterFirst = try Issue759Fixture.nullConstraintsCount(#require(db))
 
         try await idx.propagateConstraintsFromParents()
-        let afterSecond = try Issue759Fixture.readConstraints(db!, docUri: childURI)
-        let nullCountAfterSecond = try Issue759Fixture.nullConstraintsCount(db!)
+        let afterSecond = try Issue759Fixture.readConstraints(#require(db), docUri: childURI)
+        let nullCountAfterSecond = try Issue759Fixture.nullConstraintsCount(#require(db))
 
         await idx.disconnect()
 
@@ -393,16 +394,16 @@ struct Issue759PropagateEndToEndTests {
 
         // Only a child row; no parent type with constraints exists.
         let childURI = "apple-docs://swiftui/foreach/init-_-content"
-        try Issue759Fixture.insertMetadata(db!, uri: childURI)
+        try Issue759Fixture.insertMetadata(#require(db), uri: childURI)
         try Issue759Fixture.insertSymbol(
-            db!, docUri: childURI, name: "init", kind: "init",
+            #require(db), docUri: childURI, name: "init", kind: "init",
             genericParams: "Data,Content"
         )
 
         try await idx.propagateConstraintsFromParents()
         await idx.disconnect()
 
-        let after = try Issue759Fixture.readConstraints(db!, docUri: childURI)
+        let after = try Issue759Fixture.readConstraints(#require(db), docUri: childURI)
         #expect(after == nil, "no parent → child stays NULL; got \(after ?? "nil")")
     }
 
@@ -419,31 +420,31 @@ struct Issue759PropagateEndToEndTests {
         }
         defer { sqlite3_close(db) }
 
-        // "Parent" row is a method, not a type — buildParentConstraintsMap
+        // "Parent" row is a method, not a type. buildParentConstraintsMap
         // must skip it (kind IN (...) filter). Even though the method
         // has constraints, no child should inherit from it.
         let methodURI = "apple-docs://swiftui/foreach/helper-method"
         let childURI = "apple-docs://swiftui/foreach/helper-method/nested-init"
-        try Issue759Fixture.insertMetadata(db!, uri: methodURI)
-        try Issue759Fixture.insertMetadata(db!, uri: childURI)
+        try Issue759Fixture.insertMetadata(#require(db), uri: methodURI)
+        try Issue759Fixture.insertMetadata(#require(db), uri: childURI)
         try Issue759Fixture.insertSymbol(
-            db!, docUri: methodURI, name: "helper", kind: "func",
+            #require(db), docUri: methodURI, name: "helper", kind: "func",
             genericParams: "T",
             genericConstraints: "Equatable"
         )
         try Issue759Fixture.insertSymbol(
-            db!, docUri: childURI, name: "init", kind: "init",
+            #require(db), docUri: childURI, name: "init", kind: "init",
             genericParams: "T"
         )
 
         try await idx.propagateConstraintsFromParents()
         await idx.disconnect()
 
-        let after = try Issue759Fixture.readConstraints(db!, docUri: childURI)
+        let after = try Issue759Fixture.readConstraints(#require(db), docUri: childURI)
         #expect(after == nil, "method-parent must NOT propagate (kind filter); got \(after ?? "nil")")
     }
 
-    @Test("Mixed corpus: trigger-A child + trigger-B child + no-inheritance sibling — only the two qualifying rows update")
+    @Test("Mixed corpus: trigger-A child + trigger-B child + no-inheritance sibling. only the two qualifying rows update")
     func mixedCorpus() async throws {
         let dbPath = Issue759Fixture.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
@@ -462,27 +463,27 @@ struct Issue759PropagateEndToEndTests {
         let nURI = "apple-docs://swiftui/navigationlink/static-helper" // neither
 
         for uri in [parentURI, aURI, bURI, nURI] {
-            try Issue759Fixture.insertMetadata(db!, uri: uri)
+            try Issue759Fixture.insertMetadata(#require(db), uri: uri)
         }
         try Issue759Fixture.insertSymbol(
-            db!, docUri: parentURI, name: "NavigationLink", kind: "struct",
+            #require(db), docUri: parentURI, name: "NavigationLink", kind: "struct",
             genericParams: "Label,Destination",
             genericConstraints: "View,View"
         )
         try Issue759Fixture.insertSymbol(
-            db!, docUri: aURI, name: "init", kind: "init",
+            #require(db), docUri: aURI, name: "init", kind: "init",
             signature: "init(_ x: Int)",
             genericParams: "Label", // trigger A
             genericConstraints: nil
         )
         try Issue759Fixture.insertSymbol(
-            db!, docUri: bURI, name: "init", kind: "init",
+            #require(db), docUri: bURI, name: "init", kind: "init",
             signature: "init(_ y: () -> Destination)", // trigger B
             genericParams: nil,
             genericConstraints: nil
         )
         try Issue759Fixture.insertSymbol(
-            db!, docUri: nURI, name: "isSelected", kind: "func",
+            #require(db), docUri: nURI, name: "isSelected", kind: "func",
             signature: "isSelected() -> Bool",
             genericParams: nil,
             genericConstraints: nil
@@ -491,8 +492,8 @@ struct Issue759PropagateEndToEndTests {
         try await idx.propagateConstraintsFromParents()
         await idx.disconnect()
 
-        #expect(try Issue759Fixture.readConstraints(db!, docUri: aURI) == "View,View")
-        #expect(try Issue759Fixture.readConstraints(db!, docUri: bURI) == "View,View")
-        #expect(try Issue759Fixture.readConstraints(db!, docUri: nURI) == nil)
+        #expect(try Issue759Fixture.readConstraints(#require(db), docUri: aURI) == "View,View")
+        #expect(try Issue759Fixture.readConstraints(#require(db), docUri: bURI) == "View,View")
+        #expect(try Issue759Fixture.readConstraints(#require(db), docUri: nURI) == nil)
     }
 }

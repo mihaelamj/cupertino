@@ -2,6 +2,7 @@ import Foundation
 import MCPCore
 @testable import Search
 import SearchModels
+@testable import SearchSQLite
 @testable import SearchToolProvider
 import SharedConstants
 import Testing

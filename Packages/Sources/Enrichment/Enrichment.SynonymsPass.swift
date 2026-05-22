@@ -2,6 +2,7 @@ import EnrichmentModels
 import Foundation
 import Search
 import SearchModels
+import SearchSQLite
 
 extension Enrichment {
     /// Registers the framework alias table on search.db so queries like

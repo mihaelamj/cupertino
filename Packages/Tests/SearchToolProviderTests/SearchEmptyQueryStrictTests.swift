@@ -2,12 +2,14 @@ import Foundation
 import MCPCore
 @testable import Search
 import SearchModels
+@testable import SearchSQLite
 @testable import SearchToolProvider
 import SharedConstants
 import Testing
 import TestSupport
 
 // MARK: - #596 — MCP search rejects empty / whitespace-only query
+
 //
 // Pre-#596, the MCP `search` tool returned a 620-char "no results"
 // content payload (exit 0) for `query=""`, while CLI `cupertino

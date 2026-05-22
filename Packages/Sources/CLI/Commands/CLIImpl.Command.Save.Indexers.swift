@@ -11,6 +11,7 @@ import LoggingModels
 import SampleIndex
 import Search
 import SearchModels
+import SearchSQLite
 import SharedConstants
 
 // MARK: - Indexer dispatch + progress rendering (#244)

@@ -2,6 +2,7 @@ import Foundation
 import LoggingModels
 @testable import Search
 import SearchModels
+@testable import SearchSQLite
 import SQLite3
 import Testing
 
@@ -20,7 +21,9 @@ import Testing
 struct Issue837PackagesAppleStaticConstraintsTests {
     private struct InMemoryLookup: Search.StaticConstraintsLookup {
         let entries: [Search.StaticConstraintEntry]
-        func allEntries() async throws -> [Search.StaticConstraintEntry] { entries }
+        func allEntries() async throws -> [Search.StaticConstraintEntry] {
+            entries
+        }
     }
 
     private static func makeFreshDB() async throws -> (path: URL, index: Search.PackageIndex) {
