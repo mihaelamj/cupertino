@@ -66,7 +66,7 @@ struct Issue665SearchByGenericConstraintTests {
         kind: String,
         genericParameters: [String]
     ) async throws {
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: uri,
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: framework,

@@ -50,7 +50,7 @@ struct Issue754NSObjectResolverSuffixTests {
         // contains a literal pipe (no JSON-special chars in either shape
         // we test, but tolerate `"` by avoiding it).
         let jsonData = #"{"title":"\#(storedTitle)","kind":"class","framework":"\#(framework)","source":"apple-docs"}"#
-        try await idx.indexDocument(Search.Index.IndexDocumentParams(
+        try await idx.indexDocument(Search.IndexDocumentParams(
             uri: uri,
             source: "apple-docs",
             framework: framework,

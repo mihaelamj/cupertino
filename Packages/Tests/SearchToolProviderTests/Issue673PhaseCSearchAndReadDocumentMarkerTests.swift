@@ -56,7 +56,7 @@ struct Issue673PhaseCSearchAndReadDocumentMarkerTests {
         framework: String,
         content: String
     ) async throws {
-        try await idx.indexDocument(Search.Index.IndexDocumentParams(
+        try await idx.indexDocument(Search.IndexDocumentParams(
             uri: uri,
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: framework,

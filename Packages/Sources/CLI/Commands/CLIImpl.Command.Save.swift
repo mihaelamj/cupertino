@@ -411,7 +411,7 @@ extension CLIImpl.Command.Save {
             content: String,
             jsonData: String?
         ) async throws {
-            try await searchIndex.indexDocument(Search.Index.IndexDocumentParams(
+            try await searchIndex.indexDocument(Search.IndexDocumentParams(
                 uri: uri,
                 source: source,
                 framework: framework,

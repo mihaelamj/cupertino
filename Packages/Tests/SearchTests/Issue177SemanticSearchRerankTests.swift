@@ -62,7 +62,7 @@ struct Issue177SemanticSearchRerankTests {
         attributes: String? = nil,
         conformances: String? = nil
     ) async throws {
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: uri,
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: framework,

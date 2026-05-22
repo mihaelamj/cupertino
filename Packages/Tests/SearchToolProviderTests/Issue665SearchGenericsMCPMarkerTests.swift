@@ -55,7 +55,7 @@ struct Issue665SearchGenericsMCPMarkerTests {
         kind: String,
         genericParameters: [String]
     ) async throws {
-        try await idx.indexDocument(Search.Index.IndexDocumentParams(
+        try await idx.indexDocument(Search.IndexDocumentParams(
             uri: uri,
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: framework,

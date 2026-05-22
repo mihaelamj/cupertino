@@ -164,7 +164,7 @@ struct MCPCommandTests {
         let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
 
         // Index a test document
-        try await searchIndex.indexDocument(Search.Index.IndexDocumentParams(
+        try await searchIndex.indexDocument(Search.IndexDocumentParams(
             uri: "https://developer.apple.com/documentation/swift",
             source: "apple-docs",
             framework: "swift",
@@ -210,7 +210,7 @@ struct MCPCommandTests {
         let searchDbPath = tempDir.appendingPathComponent("search.db")
         let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
 
-        try await searchIndex.indexDocument(Search.Index.IndexDocumentParams(
+        try await searchIndex.indexDocument(Search.IndexDocumentParams(
             uri: "https://developer.apple.com/documentation/swift/array",
             source: "apple-docs",
             framework: "swift",

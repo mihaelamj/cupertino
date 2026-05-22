@@ -72,7 +72,7 @@ struct BM25TitleWeightingTests {
         let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
 
         // A: query term lives in the title, body is unrelated.
-        try await idx.indexDocument(Search.Index.IndexDocumentParams(
+        try await idx.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://swift/task",
             source: "apple-docs",
             framework: "Swift",
@@ -84,7 +84,7 @@ struct BM25TitleWeightingTests {
         ))
 
         // B: query term appears only in the body, title is unrelated.
-        try await idx.indexDocument(Search.Index.IndexDocumentParams(
+        try await idx.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://kernel/task-info",
             source: "apple-docs",
             framework: "Kernel",
@@ -116,7 +116,7 @@ struct BM25TitleWeightingTests {
         let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording())
 
         // A: query term appears in the first sentence (becomes the summary).
-        try await idx.indexDocument(Search.Index.IndexDocumentParams(
+        try await idx.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://foundation/bundle",
             source: "apple-docs",
             framework: "Foundation",
@@ -129,7 +129,7 @@ struct BM25TitleWeightingTests {
 
         // B: query term only appears deep in the body, past the summary cut.
         let bodyB = String(repeating: "Unrelated padding text. ", count: 60) + " Bundle is mentioned only here at the end."
-        try await idx.indexDocument(Search.Index.IndexDocumentParams(
+        try await idx.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://misc/other",
             source: "apple-docs",
             framework: "Misc",

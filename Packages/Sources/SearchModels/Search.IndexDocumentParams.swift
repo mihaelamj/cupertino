@@ -1,20 +1,28 @@
 import Foundation
-import SearchModels
 import SharedConstants
 
-// MARK: - Search.Index.IndexDocumentParams
+// MARK: - Search.IndexDocumentParams
 
-extension Search.Index {
-    /// Parameter bundle for `Search.Index.indexDocument(_:)`.
+extension Search {
+    /// Parameter bundle for `Search.IndexWriter.indexDocument(_:)` and
+    /// the concrete `Search.Index.indexDocument(_:)` actor method that
+    /// conforms it.
     ///
-    /// The original signature accepted 18 parameters — most of them with
-    /// defaults, several added incrementally as the indexer learned new
-    /// sources (`minIOS` / `minMacOS` / …) and new database layouts
-    /// (`packageId`, `jsonData`, `availabilitySource`). 18-arg call sites
-    /// were unreadable and any new field meant re-touching every caller.
+    /// The underlying indexer originally accepted 18 parameters, most
+    /// with defaults, several added incrementally as the indexer learned
+    /// new sources (`minIOS` / `minMacOS` / `minTvOS` / `minWatchOS` /
+    /// `minVisionOS`) and new database layouts (`packageId`, `jsonData`,
+    /// `availabilitySource`). 18-arg call sites were unreadable and any
+    /// new field meant re-touching every caller. `IndexDocumentParams`
+    /// groups the fields so call sites can name only what's specific to
+    /// the page; defaults flow through.
     ///
-    /// `IndexDocumentParams` groups the fields so call sites can name
-    /// only what's specific to the page; defaults flow through.
+    /// Lifted from the previous nested location inside the `Search.Index`
+    /// actor in the Search target up to top-level `Search.IndexDocumentParams`
+    /// here in `SearchModels` by epic #893's child #896, so the new
+    /// `Search.IndexWriter` protocol seam can name the parameter type
+    /// without taking a behavioural dependency on the concrete Search
+    /// target.
     public struct IndexDocumentParams: Sendable {
         public let uri: String
         public let source: String

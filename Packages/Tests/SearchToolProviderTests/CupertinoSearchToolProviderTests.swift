@@ -12,6 +12,7 @@ import MCPCore
 import SearchModels
 @testable import SearchToolProvider
 @testable import Services
+
 // MARK: - Test Helpers
 
 /// Creates a temporary search index for testing
@@ -32,7 +33,7 @@ func createMultiSourceSearchIndex() async throws -> (index: Search.Index, cleanu
     let (index, cleanup) = try await createTestSearchIndex()
 
     // Apple docs
-    try await index.indexDocument(Search.Index.IndexDocumentParams(
+    try await index.indexDocument(Search.IndexDocumentParams(
         uri: "apple-docs://swiftui/animation",
         source: Shared.Constants.SourcePrefix.appleDocs,
         framework: "swiftui",
@@ -45,7 +46,7 @@ func createMultiSourceSearchIndex() async throws -> (index: Search.Index, cleanu
     ))
 
     // Apple archive
-    try await index.indexDocument(Search.Index.IndexDocumentParams(
+    try await index.indexDocument(Search.IndexDocumentParams(
         uri: "apple-archive://coreanim/animation",
         source: Shared.Constants.SourcePrefix.appleArchive,
         framework: "coreanimation",
@@ -58,7 +59,7 @@ func createMultiSourceSearchIndex() async throws -> (index: Search.Index, cleanu
     ))
 
     // HIG
-    try await index.indexDocument(Search.Index.IndexDocumentParams(
+    try await index.indexDocument(Search.IndexDocumentParams(
         uri: "hig://motion/animation",
         source: Shared.Constants.SourcePrefix.hig,
         framework: nil,
@@ -71,7 +72,7 @@ func createMultiSourceSearchIndex() async throws -> (index: Search.Index, cleanu
     ))
 
     // Swift Evolution
-    try await index.indexDocument(Search.Index.IndexDocumentParams(
+    try await index.indexDocument(Search.IndexDocumentParams(
         uri: "swift-evolution://SE-0392",
         source: Shared.Constants.SourcePrefix.swiftEvolution,
         framework: nil,
@@ -84,7 +85,7 @@ func createMultiSourceSearchIndex() async throws -> (index: Search.Index, cleanu
     ))
 
     // Swift.org
-    try await index.indexDocument(Search.Index.IndexDocumentParams(
+    try await index.indexDocument(Search.IndexDocumentParams(
         uri: "swift-org://docs/animation",
         source: Shared.Constants.SourcePrefix.swiftOrg,
         framework: nil,
@@ -97,7 +98,7 @@ func createMultiSourceSearchIndex() async throws -> (index: Search.Index, cleanu
     ))
 
     // Swift Book
-    try await index.indexDocument(Search.Index.IndexDocumentParams(
+    try await index.indexDocument(Search.IndexDocumentParams(
         uri: "swift-book://chapter/animation",
         source: Shared.Constants.SourcePrefix.swiftBook,
         framework: nil,
@@ -110,7 +111,7 @@ func createMultiSourceSearchIndex() async throws -> (index: Search.Index, cleanu
     ))
 
     // Packages
-    try await index.indexDocument(Search.Index.IndexDocumentParams(
+    try await index.indexDocument(Search.IndexDocumentParams(
         uri: "packages://swift-animations",
         source: Shared.Constants.SourcePrefix.packages,
         framework: nil,
@@ -478,7 +479,7 @@ struct UnifiedSearchTests {
         defer { try? cleanup() }
 
         // Only index apple-docs
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://swift/string",
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: "swift",
@@ -546,7 +547,7 @@ struct TeaserResultsTests {
 
         // Add multiple archive docs
         for docNumber in 1...5 {
-            try await index.indexDocument(Search.Index.IndexDocumentParams(
+            try await index.indexDocument(Search.IndexDocumentParams(
                 uri: "apple-archive://doc\(docNumber)",
                 source: Shared.Constants.SourcePrefix.appleArchive,
                 framework: nil,
@@ -560,7 +561,7 @@ struct TeaserResultsTests {
         }
 
         // Add apple-docs to search
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://animation",
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: "swiftui",
@@ -601,7 +602,7 @@ struct TeaserResultsTests {
         defer { try? cleanup() }
 
         // Add docs for "networking" query
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://networking",
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: "foundation",
@@ -614,7 +615,7 @@ struct TeaserResultsTests {
         ))
 
         // Add archive doc that matches "networking"
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "apple-archive://network-guide",
             source: Shared.Constants.SourcePrefix.appleArchive,
             framework: nil,
@@ -627,7 +628,7 @@ struct TeaserResultsTests {
         ))
 
         // Add archive doc about "graphics" - completely different topic
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "apple-archive://graphics-guide",
             source: Shared.Constants.SourcePrefix.appleArchive,
             framework: nil,
@@ -689,7 +690,7 @@ struct TeaserResultsTests {
         defer { try? cleanup() }
 
         // Only add apple-docs
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://unique-topic",
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: "foundation",
@@ -726,7 +727,7 @@ struct SearchFilteringTests {
         let (index, cleanup) = try await createTestSearchIndex()
         defer { try? cleanup() }
 
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://swiftui/view",
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: "swiftui",
@@ -738,7 +739,7 @@ struct SearchFilteringTests {
             sourceType: "apple"
         ))
 
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://uikit/view",
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: "uikit",
@@ -773,7 +774,7 @@ struct SearchFilteringTests {
 
         // Add multiple docs
         for docNumber in 1...10 {
-            try await index.indexDocument(Search.Index.IndexDocumentParams(
+            try await index.indexDocument(Search.IndexDocumentParams(
                 uri: "apple-docs://swift\(docNumber)",
                 source: Shared.Constants.SourcePrefix.appleDocs,
                 framework: "swift",
@@ -811,7 +812,7 @@ struct SearchFilteringTests {
         let (index, cleanup) = try await createTestSearchIndex()
         defer { try? cleanup() }
 
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://swift/string",
             source: Shared.Constants.SourcePrefix.appleDocs,
             framework: "swift",
@@ -823,7 +824,7 @@ struct SearchFilteringTests {
             sourceType: "apple"
         ))
 
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "apple-archive://string-guide",
             source: Shared.Constants.SourcePrefix.appleArchive,
             framework: nil,

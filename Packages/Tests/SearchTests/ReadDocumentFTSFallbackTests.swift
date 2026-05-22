@@ -31,7 +31,7 @@ struct ReadDocumentFTSFallbackTests {
         let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording())
 
         let body = "## Heading\n\nFull body with \"quotes\" and a backslash \\ and a backtick `."
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "swift-evolution://SE-0304",
             source: "swift-evolution",
             framework: nil,
@@ -81,7 +81,7 @@ struct ReadDocumentFTSFallbackTests {
         let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording())
 
         let body = "Body is here."
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "hig://components/buttons",
             source: "hig",
             framework: "components",
@@ -112,7 +112,7 @@ struct ReadDocumentFTSFallbackTests {
 
         let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording())
         let body = "Real body."
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "apple-archive://10000047i/RevisionHistory",
             source: "apple-archive",
             framework: "Foundation",
@@ -150,7 +150,7 @@ struct ReadDocumentFTSFallbackTests {
         defer { try? FileManager.default.removeItem(at: dbURL) }
 
         let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording())
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "swift-evolution://SE-0001",
             source: "swift-evolution",
             framework: nil,

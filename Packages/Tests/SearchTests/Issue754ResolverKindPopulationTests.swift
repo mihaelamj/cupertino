@@ -39,7 +39,7 @@ struct Issue754ResolverKindPopulationTests {
         structuredKind: Shared.Models.StructuredDocumentationPage.Kind
     ) async throws {
         let jsonData = #"{"title":"\#(title)","framework":"\#(framework)","source":"apple-docs"}"#
-        try await idx.indexDocument(Search.Index.IndexDocumentParams(
+        try await idx.indexDocument(Search.IndexDocumentParams(
             uri: uri,
             source: "apple-docs",
             framework: framework,
@@ -113,7 +113,7 @@ struct Issue754ResolverKindPopulationTests {
 
         // Index docs_metadata only; no docs_structured row.
         let jsonData = #"{"title":"OrphanSymbol","framework":"test","source":"apple-docs"}"#
-        try await idx.indexDocument(Search.Index.IndexDocumentParams(
+        try await idx.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://test/orphan",
             source: "apple-docs",
             framework: "test",

@@ -30,7 +30,7 @@ struct IndexNilJsonDataInlinesContentTests {
 
         let body = "## Heading\n\nBody with \"quotes\" and a backslash \\ plus newlines.\n"
 
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "swift-evolution://SE-0304",
             source: "swift-evolution",
             framework: nil,
@@ -80,7 +80,7 @@ struct IndexNilJsonDataInlinesContentTests {
         ```
         """
 
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "hig://components/buttons",
             source: "hig",
             framework: "components",
@@ -113,7 +113,7 @@ struct IndexNilJsonDataInlinesContentTests {
 
         let supplied = #"{"abstract":"Already structured","custom":"shape","rawMarkdown":"original"}"#
 
-        try await index.indexDocument(Search.Index.IndexDocumentParams(
+        try await index.indexDocument(Search.IndexDocumentParams(
             uri: "apple-docs://swiftui/view",
             source: "apple-docs",
             framework: "swiftui",
