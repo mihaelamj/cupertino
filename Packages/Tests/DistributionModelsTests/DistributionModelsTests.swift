@@ -80,19 +80,31 @@ struct SetupServiceModelTests {
         #expect(request.keepExisting == false)
     }
 
+    // #248 second cut: tests share the canonical descriptor constants
+    // with production via `Shared.Models.DatabaseDescriptor.search` etc.
+    // Pre-#248 the test file duplicated the id / filename / displayName
+    // literals, so a production rename silently left tests green while
+    // live callers got nil from `Outcome.path(forDatabaseId:)`. Reading
+    // the constants here makes that drift structurally impossible.
+    private static let searchDB: Shared.Models.DatabaseDescriptor = .search
+    private static let samplesDB: Shared.Models.DatabaseDescriptor = .samples
+    private static let packagesDB: Shared.Models.DatabaseDescriptor = .packages
+
     @Test("Outcome stores every public field via init")
     func outcomeRoundTrip() {
         let outcome = Distribution.SetupService.Outcome(
-            searchDBPath: URL(fileURLWithPath: "/tmp/search.db"),
-            samplesDBPath: URL(fileURLWithPath: "/tmp/samples.db"),
-            packagesDBPath: URL(fileURLWithPath: "/tmp/packages.db"),
+            databases: [
+                .init(descriptor: Self.searchDB, path: URL(fileURLWithPath: "/tmp/search.db")),
+                .init(descriptor: Self.samplesDB, path: URL(fileURLWithPath: "/tmp/samples.db")),
+                .init(descriptor: Self.packagesDB, path: URL(fileURLWithPath: "/tmp/packages.db")),
+            ],
             docsVersionWritten: "1.0.0",
             skippedDownload: false,
             priorStatus: .missing
         )
-        #expect(outcome.searchDBPath.lastPathComponent == "search.db")
-        #expect(outcome.samplesDBPath.lastPathComponent == "samples.db")
-        #expect(outcome.packagesDBPath.lastPathComponent == "packages.db")
+        #expect(outcome.path(forDatabaseId: "search")?.lastPathComponent == "search.db")
+        #expect(outcome.path(forDatabaseId: "samples")?.lastPathComponent == "samples.db")
+        #expect(outcome.path(forDatabaseId: "packages")?.lastPathComponent == "packages.db")
         #expect(outcome.docsVersionWritten == "1.0.0")
         #expect(outcome.skippedDownload == false)
         #expect(outcome.priorStatus == .missing)
@@ -101,9 +113,11 @@ struct SetupServiceModelTests {
     @Test("Outcome is Equatable")
     func outcomeEquatable() {
         let a = Distribution.SetupService.Outcome(
-            searchDBPath: URL(fileURLWithPath: "/tmp/x.db"),
-            samplesDBPath: URL(fileURLWithPath: "/tmp/y.db"),
-            packagesDBPath: URL(fileURLWithPath: "/tmp/z.db"),
+            databases: [
+                .init(descriptor: Self.searchDB, path: URL(fileURLWithPath: "/tmp/x.db")),
+                .init(descriptor: Self.samplesDB, path: URL(fileURLWithPath: "/tmp/y.db")),
+                .init(descriptor: Self.packagesDB, path: URL(fileURLWithPath: "/tmp/z.db")),
+            ],
             docsVersionWritten: "1.0",
             skippedDownload: true,
             priorStatus: .current(version: "1.0")
@@ -117,9 +131,11 @@ struct SetupServiceModelTests {
         // Pin the case list so a rename or deletion breaks compilation.
         let req = Distribution.SetupService.Request(baseDir: URL(fileURLWithPath: "/tmp/x"))
         let outcome = Distribution.SetupService.Outcome(
-            searchDBPath: URL(fileURLWithPath: "/tmp/s"),
-            samplesDBPath: URL(fileURLWithPath: "/tmp/sa"),
-            packagesDBPath: URL(fileURLWithPath: "/tmp/p"),
+            databases: [
+                .init(descriptor: Self.searchDB, path: URL(fileURLWithPath: "/tmp/s")),
+                .init(descriptor: Self.samplesDB, path: URL(fileURLWithPath: "/tmp/sa")),
+                .init(descriptor: Self.packagesDB, path: URL(fileURLWithPath: "/tmp/p")),
+            ],
             docsVersionWritten: "1.0",
             skippedDownload: false,
             priorStatus: .missing

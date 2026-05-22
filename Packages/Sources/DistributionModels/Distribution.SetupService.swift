@@ -32,12 +32,35 @@ extension Distribution {
             }
         }
 
+        /// One database entry in the Outcome's `databases` list. Carries
+        /// the descriptor that identifies the database plus the on-disk
+        /// URL where it landed.
+        public struct DatabasePlacement: Sendable, Equatable {
+            public let descriptor: Shared.Models.DatabaseDescriptor
+            public let path: URL
+
+            public init(descriptor: Shared.Models.DatabaseDescriptor, path: URL) {
+                self.descriptor = descriptor
+                self.path = path
+            }
+        }
+
         /// Outcome of a single `run` invocation. The CLI uses this to
         /// render the success summary and decide what hint to print.
+        /// `databases` is ordered by the construction sequence in
+        /// `SetupService.run`; the CLI's success-summary printer
+        /// iterates the list rather than addressing 3 fixed fields, so
+        /// adding a 4th DB never touches this struct (#248 second cut).
+        ///
+        /// **Equatable semantics:** `Outcome` derives `==` from the
+        /// `databases` array, which is order-sensitive. Two Outcomes
+        /// covering the same descriptors in a different order are
+        /// NOT equal. Production code constructs the list in a single
+        /// place (`SetupService.run`'s `placements` literal); call
+        /// sites that compare Outcomes from heterogeneous constructions
+        /// must align their construction order.
         public struct Outcome: Sendable, Equatable {
-            public let searchDBPath: URL
-            public let samplesDBPath: URL
-            public let packagesDBPath: URL
+            public let databases: [DatabasePlacement]
             public let docsVersionWritten: String
             /// Hits when `keepExisting: true` and every DB was already
             /// present. The CLI uses this to skip the "downloaded" log.
@@ -45,19 +68,23 @@ extension Distribution {
             public let priorStatus: Distribution.InstalledVersion.Status
 
             public init(
-                searchDBPath: URL,
-                samplesDBPath: URL,
-                packagesDBPath: URL,
+                databases: [DatabasePlacement],
                 docsVersionWritten: String,
                 skippedDownload: Bool,
                 priorStatus: Distribution.InstalledVersion.Status
             ) {
-                self.searchDBPath = searchDBPath
-                self.samplesDBPath = samplesDBPath
-                self.packagesDBPath = packagesDBPath
+                self.databases = databases
                 self.docsVersionWritten = docsVersionWritten
                 self.skippedDownload = skippedDownload
                 self.priorStatus = priorStatus
+            }
+
+            /// Look up the on-disk path for a database by descriptor `id`.
+            /// Returns nil when no entry matches. Used by tests and
+            /// downstream consumers that need to address a specific
+            /// database without iterating the full list.
+            public func path(forDatabaseId id: String) -> URL? {
+                databases.first(where: { $0.descriptor.id == id })?.path
             }
         }
 

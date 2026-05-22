@@ -153,9 +153,18 @@ private final class SetupRenderer: @unchecked Sendable {
         } else {
             Cupertino.Context.composition.logging.recording.info("✅ Setup complete!")
         }
-        Cupertino.Context.composition.logging.recording.info("   Documentation: \(outcome.searchDBPath.path)")
-        Cupertino.Context.composition.logging.recording.info("   Sample code:   \(outcome.samplesDBPath.path)")
-        Cupertino.Context.composition.logging.recording.info("   Packages:      \(outcome.packagesDBPath.path)")
+        // #248 second cut: iterate the descriptor-driven placement list
+        // instead of addressing 3 fixed outcome fields. Adding a 4th DB
+        // no longer touches this renderer; the descriptor's displayName
+        // drives the label and the list's construction order in
+        // SetupService.run drives the print order. Label is right-padded
+        // to 15 chars (including the trailing colon) to preserve the
+        // historical column alignment exactly: "Documentation: ",
+        // "Sample code:   ", "Packages:      ", "Version:       ".
+        for placement in outcome.databases {
+            let label = "\(placement.descriptor.displayName):".padding(toLength: 15, withPad: " ", startingAt: 0)
+            Cupertino.Context.composition.logging.recording.info("   \(label)\(placement.path.path)")
+        }
         Cupertino.Context.composition.logging.recording.info("   Version:       \(outcome.docsVersionWritten)")
         Cupertino.Context.composition.logging.recording.info("\n💡 Start the server with: cupertino serve")
     }
