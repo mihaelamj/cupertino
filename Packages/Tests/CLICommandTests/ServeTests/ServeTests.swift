@@ -412,13 +412,18 @@ struct MCPServerIntegrationTests {
         let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording())
 
         let metadata = try Shared.Models.CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
-        let builder = Search.IndexBuilder(
-            searchIndex: searchIndex,
+        let strategies = Search.makeDefaultStrategies(
             metadata: metadata,
             docsDirectory: tempDir,
             evolutionDirectory: nil,
             markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogProvider: MissingSampleCatalogProvider(), logger: Logging.NoopRecording()
+            sampleCatalogProvider: MissingSampleCatalogProvider(),
+            logger: Logging.NoopRecording()
+        )
+        let builder = Search.IndexBuilder(
+            searchIndex: searchIndex,
+            strategies: strategies,
+            logger: Logging.NoopRecording()
         )
         try await builder.buildIndex()
         print("   ✅ Index built")

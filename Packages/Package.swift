@@ -30,6 +30,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Search"),
     .singleTargetLibrary("SearchSchema"),
     .singleTargetLibrary("SearchSQLite"),
+    .singleTargetLibrary("SearchStrategies"),
     .singleTargetLibrary("SampleIndex"),
     .singleTargetLibrary("SampleIndexSQLite"),
     .singleTargetLibrary("Services"),
@@ -479,6 +480,7 @@ let targets: [Target] = {
         dependencies: [
             "Search",
             "SearchSQLite",
+            "SearchStrategies",
             "SearchModels",
             "SharedConstants",
             "TestSupport",
@@ -490,6 +492,30 @@ let targets: [Target] = {
             "Diagnostics",
             "LoggingModels",
         ]
+    )
+
+    // ---------- SearchStrategies (#899: 6 source-indexing strategy
+    // concretes + StrategyHelpers + `Search.makeDefaultStrategies`
+    // factory function, lifted out of the orchestration Search target
+    // so Search has no concrete strategy dependency. Strict-compliant:
+    // imports SearchModels + Foundation tier only; the strategies
+    // operate through the `Search.SourceIndexingStrategy` protocol seam.
+    // Composition roots (CLI) consume the factory and pass the
+    // resulting array to `Search.IndexBuilder.init(searchIndex:strategies:...)`.
+    // The further split into 6 individual SPM targets (one per
+    // strategy) is queued; this target ships the first cut.
+    let searchStrategiesTarget = Target.target(
+        name: "SearchStrategies",
+        dependencies: [
+            "SearchModels",
+            "SharedConstants",
+            "LoggingModels",
+            "CoreProtocols",
+        ]
+    )
+    let searchStrategiesTestsTarget = Target.testTarget(
+        name: "SearchStrategiesTests",
+        dependencies: ["SearchStrategies", "SearchModels", "SharedConstants"]
     )
 
     let sampleIndexTarget = Target.target(
@@ -743,6 +769,7 @@ let targets: [Target] = {
             "Cleanup",
             "Search",
             "SearchSQLite",
+            "SearchStrategies",
             "SampleIndex",
             "SampleIndexSQLite",
             "Services",
@@ -948,6 +975,8 @@ let targets: [Target] = {
         searchSQLiteTestsTarget,
         searchTarget,
         searchTestsTarget,
+        searchStrategiesTarget,
+        searchStrategiesTestsTarget,
         sampleIndexTarget,
         sampleIndexTestsTarget,
         sampleIndexSQLiteTarget,

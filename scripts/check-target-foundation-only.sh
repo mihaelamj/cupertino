@@ -258,6 +258,7 @@ STRICT_PRODUCERS=(
     SampleIndexSQLite
     Search
     SearchSQLite
+    SearchStrategies
     SearchToolProvider
     Services
 )

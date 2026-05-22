@@ -24,15 +24,25 @@ extension Search {
     /// because the symbol no longer exists; DocC cannot resolve a
     /// double-backtick reference).
     ///
-    /// ## Building with the convenience initialiser
+    /// ## Building with the default strategy set
     ///
     /// ```swift
-    /// let builder = Search.IndexBuilder(
-    ///     searchIndex: index,
+    /// import Search
+    /// import SearchStrategies
+    ///
+    /// let strategies = Search.makeDefaultStrategies(
     ///     metadata: crawlMetadata,
     ///     docsDirectory: docsDir,
     ///     evolutionDirectory: evolutionDir,
-    ///     swiftOrgDirectory: swiftOrgDir
+    ///     swiftOrgDirectory: swiftOrgDir,
+    ///     markdownStrategy: markdownStrategy,
+    ///     sampleCatalogProvider: sampleCatalogProvider,
+    ///     logger: logger
+    /// )
+    /// let builder = Search.IndexBuilder(
+    ///     searchIndex: index,
+    ///     strategies: strategies,
+    ///     logger: logger
     /// )
     /// try await builder.buildIndex()
     /// ```
@@ -75,8 +85,9 @@ extension Search {
         /// Create an ``IndexBuilder`` with an explicit strategy array.
         ///
         /// Use this initialiser when you need full control over which sources are indexed
-        /// and in what order.  For the standard six-source build use the convenience
-        /// initialiser instead.
+        /// and in what order. For the standard six-source build, call
+        /// `Search.makeDefaultStrategies(...)` from the `SearchStrategies` target and
+        /// pass its result here.
         ///
         /// - Parameters:
         ///   - searchIndex: An object conforming to both
@@ -105,68 +116,14 @@ extension Search {
             self.enrichmentRunner = enrichmentRunner
         }
 
-        // MARK: - Convenience Initialiser
-
-        /// Create an ``IndexBuilder`` configured for the standard six documentation sources.
-        ///
-        /// Strategies are only added for optional sources (Evolution, Swift.org, Archive,
-        /// HIG) when their corresponding directory is non-nil.  Sample code indexing is
-        /// conditional on `indexSampleCode`.
-        ///
-        /// This initialiser is source-compatible with the pre-refactor actor; existing call
-        /// sites require no changes.
-        ///
-        /// - Parameters:
-        ///   - searchIndex: An object conforming to both
-        ///     ``SearchModels/Search/Database`` and
-        ///     ``SearchModels/Search/IndexWriter`` (the production
-        ///     conformer is the ``SearchSQLite/Search/Index`` actor, which the
-        ///     CLI composition root passes through implicit conformance).
-        ///   - metadata: Optional crawl metadata (passed to ``AppleDocsStrategy``).
-        ///   - docsDirectory: Root directory of the Apple documentation corpus.
-        ///   - evolutionDirectory: Optional directory containing Swift Evolution proposals.
-        ///   - swiftOrgDirectory: Optional directory containing Swift.org documentation.
-        ///   - archiveDirectory: Optional directory containing Apple Archive documentation.
-        ///   - higDirectory: Optional directory containing Human Interface Guidelines files.
-        ///   - indexSampleCode: Whether to include the sample code catalog. Defaults to `true`.
-        public init(
-            searchIndex: any Search.Database & Search.IndexWriter,
-            metadata: Shared.Models.CrawlMetadata?,
-            docsDirectory: URL,
-            evolutionDirectory: URL? = nil,
-            swiftOrgDirectory: URL? = nil,
-            archiveDirectory: URL? = nil,
-            higDirectory: URL? = nil,
-            indexSampleCode: Bool = true,
-            markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
-            sampleCatalogProvider: any Search.SampleCatalogProvider,
-            logger: any LoggingModels.Logging.Recording,
-            importLogSink: (any Search.ImportLogSink)? = nil,
-            staticConstraintsLookup: (any Search.StaticConstraintsLookup)? = nil,
-            enrichmentRunner: (any EnrichmentRunner)? = nil
-        ) {
-            self.init(
-                searchIndex: searchIndex,
-                strategies: Self.makeDefaultStrategies(
-                    metadata: metadata,
-                    docsDirectory: docsDirectory,
-                    evolutionDirectory: evolutionDirectory,
-                    swiftOrgDirectory: swiftOrgDirectory,
-                    archiveDirectory: archiveDirectory,
-                    higDirectory: higDirectory,
-                    indexSampleCode: indexSampleCode,
-                    markdownStrategy: markdownStrategy,
-                    sampleCatalogProvider: sampleCatalogProvider,
-                    logger: logger,
-                    importLogSink: importLogSink
-                ),
-                logger: logger,
-                staticConstraintsLookup: staticConstraintsLookup,
-                enrichmentRunner: enrichmentRunner
-            )
-        }
-
         // MARK: - Build
+        //
+        // The pre-#899 convenience initialiser (`init(searchIndex:metadata:docsDirectory:...)`)
+        // that took the source-directory tuple and built strategies inline
+        // was removed when the strategies moved to the sibling
+        // `SearchStrategies` SPM target. Composition roots now call
+        // `Search.makeDefaultStrategies(...)` (from `SearchStrategies`) and
+        // pass the resulting array to the primary init above.
 
         /// Build the search index by running all active strategies in sequence.
         ///
@@ -301,69 +258,10 @@ extension Search {
         /// breakdown after `buildIndex` returns. Nil until a build completes.
         public private(set) var lastBuildStats: [Search.IndexStats] = []
 
-        // MARK: - Factory
-
-        /// Build the default strategy array for the standard six documentation sources.
-        ///
-        /// Optional sources are only included when their directory parameter is non-nil.
-        ///
-        /// - Parameters:
-        ///   - metadata: Optional crawl metadata for ``AppleDocsStrategy``.
-        ///   - docsDirectory: Root directory of the Apple documentation corpus.
-        ///   - evolutionDirectory: Optional Swift Evolution proposals directory.
-        ///   - swiftOrgDirectory: Optional Swift.org documentation directory.
-        ///   - archiveDirectory: Optional Apple Archive documentation directory.
-        ///   - higDirectory: Optional Human Interface Guidelines directory.
-        ///   - indexSampleCode: Whether to include the ``SampleCodeStrategy``.
-        /// - Returns: An ordered array of active ``SourceIndexingStrategy`` values.
-        public static func makeDefaultStrategies(
-            metadata: Shared.Models.CrawlMetadata?,
-            docsDirectory: URL,
-            evolutionDirectory: URL? = nil,
-            swiftOrgDirectory: URL? = nil,
-            archiveDirectory: URL? = nil,
-            higDirectory: URL? = nil,
-            indexSampleCode: Bool = true,
-            markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
-            sampleCatalogProvider: any Search.SampleCatalogProvider,
-            logger: any LoggingModels.Logging.Recording,
-            importLogSink: (any Search.ImportLogSink)? = nil
-        ) -> [any Search.SourceIndexingStrategy] {
-            var strategies: [any Search.SourceIndexingStrategy] = [
-                Search.AppleDocsStrategy(
-                    docsDirectory: docsDirectory,
-                    markdownStrategy: markdownStrategy,
-                    logger: logger,
-                    importLogSink: importLogSink
-                ),
-            ]
-            if let dir = evolutionDirectory {
-                strategies.append(Search.SwiftEvolutionStrategy(evolutionDirectory: dir, logger: logger))
-            }
-            if let dir = swiftOrgDirectory {
-                strategies.append(Search.SwiftOrgStrategy(
-                    swiftOrgDirectory: dir,
-                    markdownStrategy: markdownStrategy,
-                    logger: logger
-                ))
-            }
-            if let dir = archiveDirectory {
-                strategies.append(Search.AppleArchiveStrategy(archiveDirectory: dir, logger: logger))
-            }
-            if let dir = higDirectory {
-                strategies.append(Search.HIGStrategy(higDirectory: dir, logger: logger))
-            }
-            if indexSampleCode {
-                strategies.append(Search.SampleCodeStrategy(sampleCatalogProvider: sampleCatalogProvider, logger: logger))
-            }
-            // #789: SwiftPackagesStrategy + the search.db `packages` /
-            // `package_dependencies` tables removed. The canonical packages
-            // store is `packages.db` (built by `cupertino save --packages`,
-            // queried by `cupertino package-search`); the in-search.db tables
-            // were always a shallow duplicate fed from a slimmed-to-empty
-            // bundled catalog and added zero value over packages.db.
-            return strategies
-        }
+        // `makeDefaultStrategies` lifted to `SearchStrategies/Search.Strategies.Factory.swift`
+        // by #899 alongside the 6 strategy concretes. Composition roots
+        // construct strategies through that factory and pass the resulting
+        // array to this target's primary init.
 
         // MARK: - Framework Synonyms
 
