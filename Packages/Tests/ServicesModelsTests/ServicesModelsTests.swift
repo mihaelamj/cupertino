@@ -184,32 +184,13 @@ struct ServicesFormatterConfigTests {
         #expect(c.emptyMessage == "No results found")
     }
 
-    @Test("Config.shared turns on score/wordCount/availability/separators")
-    func sharedConfigShape() {
-        let c = Services.Formatter.Config.shared
-        #expect(c.showScore == true)
-        #expect(c.showWordCount == true)
-        #expect(c.showSource == false)
-        #expect(c.showAvailability == true)
-        #expect(c.showSeparators == true)
-        #expect(c.emptyMessage == "_No results found. Try broader search terms._")
-    }
-
-    @Test("cliDefault and mcpDefault are aliases of shared (identical CLI/MCP output)")
-    func cliMCPAliasShared() {
-        let cli = Services.Formatter.Config.cliDefault
-        let mcp = Services.Formatter.Config.mcpDefault
-        let shared = Services.Formatter.Config.shared
-        // Field-by-field equality: shared aliases must match shared.
-        #expect(cli.showScore == shared.showScore)
-        #expect(cli.showWordCount == shared.showWordCount)
-        #expect(cli.showSource == shared.showSource)
-        #expect(cli.showAvailability == shared.showAvailability)
-        #expect(cli.showSeparators == shared.showSeparators)
-        #expect(cli.emptyMessage == shared.emptyMessage)
-        #expect(mcp.showScore == shared.showScore)
-        #expect(mcp.emptyMessage == shared.emptyMessage)
-    }
+    // #976: `Config.shared` / `.cliDefault` / `.mcpDefault` statics
+    // were removed as Rule 1 Service Locator. Two prior tests
+    // (`sharedConfigShape`, `cliMCPAliasShared`) were deleted along
+    // with the statics. The canonical-config shape is now asserted at
+    // its consumer sites via `Self.makeStandardConfig()` factories in
+    // `SearchToolProvider/CompositeToolProvider.swift` and
+    // `CLI/.../CLIImpl.Command.Search.SourceRunners.swift`.
 }
 
 // MARK: - Services.Formatter.TeaserResults

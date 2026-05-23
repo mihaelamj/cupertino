@@ -2,6 +2,7 @@ import Foundation
 import SampleIndexModels
 import SearchModels
 import SharedConstants
+
 // MARK: - Unified Search Text Formatter
 
 extension Services.Formatter.Unified {
@@ -11,7 +12,18 @@ extension Services.Formatter.Unified {
         private let framework: String?
         private let config: Services.Formatter.Config
 
-        public init(query: String, framework: String?, config: Services.Formatter.Config = .cliDefault) {
+        public init(
+            query: String,
+            framework: String?,
+            config: Services.Formatter.Config = Services.Formatter.Config(
+                showScore: true,
+                showWordCount: true,
+                showSource: false,
+                showAvailability: true,
+                showSeparators: true,
+                emptyMessage: "_No results found. Try broader search terms._"
+            )
+        ) {
             self.query = query
             self.framework = framework
             self.config = config

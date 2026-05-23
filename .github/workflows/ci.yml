@@ -188,9 +188,43 @@ jobs:
         timeout-minutes: 5
         run: ./scripts/check-target-portability.sh Enrichment
 
-      - name: "Portability: SearchStrategies"
+      # #899 sub-PR G deleted SearchStrategies as a target (the 6
+      # strategies moved to their own SPM siblings: AppleDocsStrategy,
+      # HIGStrategy, SampleCodeStrategy, SwiftEvolutionStrategy,
+      # SwiftOrgStrategy, AppleArchiveStrategy, with SearchStrategyHelpers
+      # as the shared seam). Portability proofs for the 6 + helpers
+      # follow as separate steps.
+      - name: "Portability: AppleDocsStrategy"
         timeout-minutes: 5
-        run: ./scripts/check-target-portability.sh SearchStrategies
+        run: ./scripts/check-target-portability.sh AppleDocsStrategy
+
+      - name: "Portability: AppleArchiveStrategy"
+        timeout-minutes: 5
+        run: ./scripts/check-target-portability.sh AppleArchiveStrategy
+
+      - name: "Portability: HIGStrategy"
+        timeout-minutes: 5
+        run: ./scripts/check-target-portability.sh HIGStrategy
+
+      - name: "Portability: SampleCodeStrategy"
+        timeout-minutes: 5
+        run: ./scripts/check-target-portability.sh SampleCodeStrategy
+
+      - name: "Portability: SwiftEvolutionStrategy"
+        timeout-minutes: 5
+        run: ./scripts/check-target-portability.sh SwiftEvolutionStrategy
+
+      - name: "Portability: SwiftOrgStrategy"
+        timeout-minutes: 5
+        run: ./scripts/check-target-portability.sh SwiftOrgStrategy
+
+      - name: "Portability: SearchStrategyHelpers"
+        timeout-minutes: 5
+        run: ./scripts/check-target-portability.sh SearchStrategyHelpers
+
+      - name: "Portability: AppleConstraintsPass"
+        timeout-minutes: 5
+        run: ./scripts/check-target-portability.sh AppleConstraintsPass
 
   query-batteries-smoke:
     name: Query batteries smoke

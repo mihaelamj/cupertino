@@ -1,6 +1,7 @@
 import Foundation
 import SearchModels
 import SharedConstants
+
 // MARK: - Text Search Result Formatter
 
 extension Services.Formatter {
@@ -14,7 +15,14 @@ extension Services.Formatter {
         public init(
             query: String,
             source: String? = nil,
-            config: Services.Formatter.Config = .cliDefault,
+            config: Services.Formatter.Config = Services.Formatter.Config(
+                showScore: true,
+                showWordCount: true,
+                showSource: false,
+                showAvailability: true,
+                showSeparators: true,
+                emptyMessage: "_No results found. Try broader search terms._"
+            ),
             teasers: TeaserResults? = nil
         ) {
             self.query = query
