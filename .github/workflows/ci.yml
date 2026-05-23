@@ -191,3 +191,42 @@ jobs:
       - name: "Portability: SearchStrategies"
         timeout-minutes: 5
         run: ./scripts/check-target-portability.sh SearchStrategies
+
+  query-batteries-smoke:
+    name: Query batteries smoke
+    runs-on: macos-15
+    # Per `docs/audits/eval-harness-standard-v1.0.md` § 5.1. Runs every
+    # phase harness (`scripts/eval/search-quality-phase*.py`) with the
+    # `--smoke` flag (1 fixture per phase, total wall-time budget < 30s
+    # not counting build). Full runs are reserved for tagged releases
+    # because Phase 1 alone is ~5 minutes wall-time.
+    #
+    # The dev binary auto-isolates to `~/.cupertino-dev/` via the
+    # bundled `cupertino.config.json` per `make build-release`. The
+    # smoke step relies on the dev base dir being seeded with the
+    # bundle; in CI this is a no-op because we use `cupertino setup`
+    # against the v1.2.x bundle URL.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Build release binary
+        working-directory: Packages
+        run: make build-release
+
+      - name: Setup cupertino-dev DB
+        run: Packages/.build/release/cupertino setup
+
+      - name: "Smoke: Phase 1 (search canonical-lookup)"
+        timeout-minutes: 2
+        run: |
+          python3 scripts/eval/search-quality-phase1.py \
+            --binary Packages/.build/release/cupertino \
+            --search-db ~/.cupertino-dev/search.db \
+            --label smoke --version smoke \
+            --smoke
