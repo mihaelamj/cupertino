@@ -63,6 +63,8 @@ struct SaveCommandTests {
             htmlParser: LiveTestHTMLParserStrategy(),
             appleJSONParser: LiveTestAppleJSONParserStrategy(),
             priorityPackageStrategy: LiveTestPriorityPackageStrategy(),
+
+            fetcherFactory: Crawler.NoopHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )
         _ = try await crawler.crawl()
@@ -132,6 +134,8 @@ struct SaveCommandTests {
             htmlParser: LiveTestHTMLParserStrategy(),
             appleJSONParser: LiveTestAppleJSONParserStrategy(),
             priorityPackageStrategy: LiveTestPriorityPackageStrategy(),
+
+            fetcherFactory: Crawler.NoopHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )
         _ = try await crawler.crawl()

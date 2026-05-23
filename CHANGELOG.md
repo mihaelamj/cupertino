@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Changed
+
+- **#903: extract WebKit out of the Crawler producer into `CrawlerWebKit` sibling.** Closes #903 (one PR covering all 4 sub-PRs A-D). Strict-DI shape: the Crawler producer is now foundation-only (`grep '^import WebKit' Packages/Sources/Crawler/` returns zero); WebKit-backed concretes live in the new `Packages/Sources/CrawlerWebKit/` target; HIG + AppleDocs take `any Crawler.HTTPFetcherFactory` via init injection and call `.makeFetcher(pageLoadTimeout:javascriptWaitTime:)` to obtain per-crawl `StringContentFetcher` instances. Pieces: new `Crawler.HTTPFetcherFactory` protocol in `CrawlerModels` (foundation seam, `@MainActor`); new `Core.Protocols.StringContentFetcher` non-generic counterpart to `ContentFetcher` (Swift doesn't synthesise primary-associated-type machinery on protocols declared inside an `extension` block, so a String-specialised companion sidesteps the issue cleanly); new `Crawler.WebKit.LiveHTTPFetcherFactory` production conformer; new `Crawler.NoopHTTPFetcherFactory` + `Crawler.NoopStringContentFetcher` test stubs in `CrawlerModels`. `Crawler.Engine` typealias moved to `CrawlerModels` (foundation tier) so the CrawlerWebKit sibling can name the alias without linking the Crawler producer. CLI composition root (`CLIImpl.Command.Fetch.swift`) constructs `Crawler.WebKit.LiveHTTPFetcherFactory()` and passes it; 12 test callers updated to pass `Crawler.NoopHTTPFetcherFactory()`. `STRICT_PRODUCERS` grows to 47. Future Linux `CrawlerAsyncHTTPClient` variant unblocked but explicitly deferred per memory `cupertino_no_linux_for_now.md`. Build + #919 audit-invariant tests (3) pass. Refs: closes #903.
+
 ### Fixed
 
 - **Critic-pass cleanup of #906 rebase artefacts: stale counts + prose + one duplicate contract row.** Five-PR rebase chain (#988-#992) left stale numeric/prose claims behind in three places. Findings from the post-#906 code-review pass:

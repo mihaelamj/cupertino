@@ -1,11 +1,8 @@
+import CoreProtocols
 import CrawlerModels
 import Foundation
 import LoggingModels
-#if canImport(WebKit)
-import CoreProtocols
 import SharedConstants
-import WebKit
-#endif
 
 // MARK: - HIG Crawler
 
@@ -24,20 +21,24 @@ extension Crawler {
         /// GoF Strategy seam for log emission (1994 p. 315). Threaded
         /// in from the CLI composition root.
         private let logger: any LoggingModels.Logging.Recording
+        /// Strategy seam (#903): the CLI composition root constructs
+        /// `Crawler.WebKit.LiveHTTPFetcherFactory()` and passes it here.
+        /// The Crawler producer is foundation-only and never links WebKit.
+        private let fetcherFactory: any Crawler.HTTPFetcherFactory
 
-        #if canImport(WebKit)
-        private var fetcher: Crawler.WebKit.ContentFetcher?
-        #endif
+        private var fetcher: (any Core.Protocols.StringContentFetcher)?
 
         public init(
             outputDirectory: URL,
             forceRecrawl: Bool = false,
             maxPages: Int = 500,
+            fetcherFactory: any Crawler.HTTPFetcherFactory,
             logger: any LoggingModels.Logging.Recording
         ) {
             self.outputDirectory = outputDirectory
             self.forceRecrawl = forceRecrawl
             self.maxPages = maxPages
+            self.fetcherFactory = fetcherFactory
             self.logger = logger
         }
 
@@ -61,9 +62,10 @@ extension Crawler {
                 withIntermediateDirectories: true
             )
 
-            #if canImport(WebKit)
-            // Initialize content fetcher with HIG-specific wait time
-            fetcher = Crawler.WebKit.ContentFetcher(
+            // Initialize content fetcher via the injected factory (#903).
+            // HIG needs the longer javascript-wait because the HIG SPA
+            // settles in stages.
+            fetcher = fetcherFactory.makeFetcher(
                 pageLoadTimeout: Shared.Constants.Timeout.pageLoad,
                 javascriptWaitTime: Shared.Constants.Timeout.higJavascriptWait
             )
@@ -111,10 +113,6 @@ extension Crawler {
 
             // Cleanup
             fetcher = nil
-            #else
-            logError("WebKit not available - HIG crawler requires macOS")
-            throw Error.webKitNotAvailable
-            #endif
 
             stats.endTime = Date()
 

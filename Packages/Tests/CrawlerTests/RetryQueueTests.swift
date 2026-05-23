@@ -106,7 +106,10 @@ struct RetryQueueTests {
     ///
     /// - Requires: network access and WKWebView (macOS only). Tagged `.integration`.
     /// - Runtime: ~30s (one retry-queue window).
-    @Test("looksLikeHTTPErrorPage defers URL; successful retry increments retriesSucceeded not errors", .tags(.integration))
+    @Test(
+        "looksLikeHTTPErrorPage defers URL; successful retry increments retriesSucceeded not errors",
+        .tags(.integration)
+    )
     @MainActor
     func httpErrorPageDefersAndRetriesSuccessfully() async throws {
         let tempDir = FileManager.default.temporaryDirectory
@@ -137,6 +140,8 @@ struct RetryQueueTests {
             htmlParser: htmlParser,
             appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
             priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy(),
+
+            fetcherFactory: Crawler.NoopHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )
 
@@ -211,6 +216,8 @@ struct RetryQueueTests {
             htmlParser: AlwaysHTTPErrorHTMLParserStrategy(),
             appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
             priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy(),
+
+            fetcherFactory: Crawler.NoopHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )
 
@@ -231,7 +238,7 @@ struct RetryQueueTests {
         decoder.dateDecodingStrategy = .iso8601
         let record = try decoder.decode(
             Crawler.AppleDocs.State.RejectedURLRecord.self,
-            from: try #require(logLines.first?.data(using: .utf8))
+            from: Data(#require(logLines.first).utf8)
         )
         #expect(record.reason == .httpErrorTemplate)
         #expect(record.url == targetURL)
@@ -276,7 +283,7 @@ private final class RecoveringHTTPErrorHTMLParserStrategy: Crawler.HTMLParserStr
 
     func looksLikeHTTPErrorPage(html: String) -> Bool {
         callCount += 1
-        return callCount == 1  // true only on the first call
+        return callCount == 1 // true only on the first call
     }
 
     func looksLikeJavaScriptFallback(html: String) -> Bool { false }

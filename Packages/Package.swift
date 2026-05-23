@@ -58,6 +58,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("AvailabilityModels"),
     .singleTargetLibrary("Availability"),
     .singleTargetLibrary("AvailabilityFoundationNetworking"),
+    .singleTargetLibrary("CrawlerWebKit"),
     .singleTargetLibrary("ASTIndexer"),
     .singleTargetLibrary("MCPSupport"),
     .singleTargetLibrary("SearchToolProvider"),
@@ -374,6 +375,21 @@ let targets: [Target] = {
             "SharedConstants",
             "LoggingModels",
             "Resources",
+        ]
+    )
+
+    // #903: CrawlerWebKit sibling target carrying the WebKit-backed
+    // concretes (`Crawler.WebKit.ContentFetcher`, `Crawler.WebKit.Engine`)
+    // + `LiveHTTPFetcherFactory`. The Crawler producer is foundation-only
+    // (`grep '^import WebKit' Packages/Sources/Crawler/` returns zero).
+    // Composition root constructs the factory and passes it via
+    // `Crawler.HTTPFetcherFactory` (declared in `CrawlerModels`).
+    let crawlerWebKitTarget = Target.target(
+        name: "CrawlerWebKit",
+        dependencies: [
+            "CrawlerModels",
+            "CoreProtocols",
+            "SharedConstants",
         ]
     )
     let crawlerTestsTarget = Target.testTarget(
@@ -961,6 +977,7 @@ let targets: [Target] = {
             "SharedConstants",
             "CoreProtocols", "CoreJSONParser", "CorePackageIndexing", "CorePackageIndexingModels", "Core", "CoreSampleCode",
             "Crawler",
+            "CrawlerWebKit",
             "Cleanup",
             "Search",
             "SearchSQLite",
@@ -1178,6 +1195,7 @@ let targets: [Target] = {
         crawlerModelsTarget,
         crawlerModelsTestsTarget,
         crawlerTarget,
+        crawlerWebKitTarget,
         crawlerTestsTarget,
         cleanupModelsTarget,
         cleanupModelsTestsTarget,

@@ -46,6 +46,8 @@ func downloadRealAppleDocPage() async throws {
         htmlParser: LiveTestHTMLParserStrategy(),
         appleJSONParser: LiveTestAppleJSONParserStrategy(),
         priorityPackageStrategy: LiveTestPriorityPackageStrategy(),
+
+        fetcherFactory: Crawler.NoopHTTPFetcherFactory(),
         logger: Logging.NoopRecording()
     )
     let stats = try await crawler.crawl()

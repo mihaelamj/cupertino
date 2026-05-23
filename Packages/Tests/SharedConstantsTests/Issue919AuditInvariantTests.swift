@@ -45,7 +45,7 @@ struct Issue919AuditInvariantTests {
         #expect(arrayDecl.trimmingCharacters(in: .whitespaces) == "GRANDFATHERED_TARGETS=()")
     }
 
-    @Test("check-target-foundation-only.sh STRICT_PRODUCERS contains exactly 46 entries (post-#906 sub-PR G SynonymsPass extract closes the epic)")
+    @Test("check-target-foundation-only.sh STRICT_PRODUCERS contains exactly 47 entries (post-#903 Crawler WebKit extraction lifts to CrawlerWebKit sibling)")
     func strictProducersHasExpectedCount() throws {
         let scriptURL = Self.repoRoot().appendingPathComponent("scripts/check-target-foundation-only.sh")
         let body = try String(contentsOf: scriptURL, encoding: .utf8)
@@ -71,15 +71,12 @@ struct Issue919AuditInvariantTests {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
             .filter { $0.first.map { $0.isLetter || $0 == "_" } ?? false } // identifier-shaped
-        // Post-#906 sub-PR G: 46 producers strict. Closes #906.
+        // Post-#903: 47 producers strict. Crawler WebKit extraction lifts
+        // the WebKit-backed concretes to the new CrawlerWebKit sibling.
         // - #899 sub-PR G closed the 6-of-6 strategy split (net +5).
-        // - #906 sub-PR B extracts AppleConstraintsPass (+1).
-        // - #906 sub-PR C extracts HierarchyPass (+1).
-        // - #906 sub-PR D extracts PackagesAppleConstraintsPass (+1).
-        // - #906 sub-PR E extracts PackagesAppleImportsPass (+1).
-        // - #906 sub-PR F extracts SamplesAppleConstraintsPass (+1).
-        // - #906 sub-PR G extracts SynonymsPass (+1).
-        #expect(entries.count == 46, "expected 46 strict producers, found \(entries.count): \(entries)")
+        // - #906 sub-PRs B-G: 6 enrichment-pass siblings (+6).
+        // - #903: CrawlerWebKit sibling (+1).
+        #expect(entries.count == 47, "expected 47 strict producers, found \(entries.count): \(entries)")
     }
 
     @Test("FORBIDDEN_MODULES list contains every concrete + the two *SQLite siblings")

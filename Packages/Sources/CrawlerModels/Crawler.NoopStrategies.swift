@@ -1,5 +1,7 @@
+import CoreProtocols
 import Foundation
 import SharedConstants
+
 // MARK: - No-op test fixtures
 
 /// Inert implementations of the three Crawler strategies — return
@@ -77,5 +79,36 @@ public extension Crawler {
         ) async throws -> PriorityPackageOutcome {
             PriorityPackageOutcome(totalUniqueReposFound: 0)
         }
+    }
+
+    /// Inert `HTTPFetcherFactory` (#903) — every call to `makeFetcher`
+    /// returns the same no-op `StringContentFetcher` that throws
+    /// `NotImplementedError` on `.fetch(url:)`. Used by tests that
+    /// construct `Crawler.AppleDocs` / `Crawler.HIG` for state /
+    /// statistics coverage without actually walking the network.
+    /// Integration tests that need real fetches inject
+    /// `Crawler.WebKit.LiveHTTPFetcherFactory()` directly.
+    @MainActor
+    struct NoopHTTPFetcherFactory: HTTPFetcherFactory {
+        public init() {}
+
+        public func makeFetcher(
+            pageLoadTimeout _: Duration,
+            javascriptWaitTime _: Duration
+        ) -> any Core.Protocols.StringContentFetcher {
+            NoopStringContentFetcher()
+        }
+    }
+
+    struct NoopStringContentFetcher: Core.Protocols.StringContentFetcher {
+        public init() {}
+
+        public func fetch(url: URL) async throws -> Core.Protocols.FetchResult<String> {
+            throw NoopFetcherError.notImplemented(url)
+        }
+    }
+
+    enum NoopFetcherError: Swift.Error {
+        case notImplemented(URL)
     }
 }

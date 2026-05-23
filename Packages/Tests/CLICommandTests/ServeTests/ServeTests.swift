@@ -84,7 +84,12 @@ struct MCPCommandTests {
             changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
-        let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir, archiveDirectory: tempDir, logger: Logging.NoopRecording())
+        let provider = MCP.Support.DocsResourceProvider(
+            configuration: config,
+            evolutionDirectory: tempDir,
+            archiveDirectory: tempDir,
+            logger: Logging.NoopRecording()
+        )
 
         await server.registerResourceProvider(provider)
 
@@ -128,7 +133,12 @@ struct MCPCommandTests {
             changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
-        let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir, archiveDirectory: tempDir, logger: Logging.NoopRecording())
+        let provider = MCP.Support.DocsResourceProvider(
+            configuration: config,
+            evolutionDirectory: tempDir,
+            archiveDirectory: tempDir,
+            logger: Logging.NoopRecording()
+        )
 
         // Read resource
         let result = try await provider.readResource(uri: "apple-docs://swift/documentation_swift")
@@ -162,7 +172,12 @@ struct MCPCommandTests {
 
         // Create search index with test data
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let searchIndex = try await Search.Index(
+            dbPath: searchDbPath,
+            logger: Logging.NoopRecording(),
+            indexers: [:],
+            sourceLookup: .empty
+        )
 
         // Index a test document
         try await searchIndex.indexDocument(Search.IndexDocumentParams(
@@ -209,7 +224,12 @@ struct MCPCommandTests {
 
         // Create and populate search index
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let searchIndex = try await Search.Index(
+            dbPath: searchDbPath,
+            logger: Logging.NoopRecording(),
+            indexers: [:],
+            sourceLookup: .empty
+        )
 
         try await searchIndex.indexDocument(Search.IndexDocumentParams(
             uri: "https://developer.apple.com/documentation/swift/array",
@@ -263,7 +283,12 @@ struct MCPCommandTests {
             changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
-        let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir, archiveDirectory: tempDir, logger: Logging.NoopRecording())
+        let provider = MCP.Support.DocsResourceProvider(
+            configuration: config,
+            evolutionDirectory: tempDir,
+            archiveDirectory: tempDir,
+            logger: Logging.NoopRecording()
+        )
 
         // List resources
         let listResult = try await provider.listResources(cursor: nil as String?)
@@ -315,7 +340,12 @@ struct MCPCommandTests {
             changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
-        let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir, archiveDirectory: tempDir, logger: Logging.NoopRecording())
+        let provider = MCP.Support.DocsResourceProvider(
+            configuration: config,
+            evolutionDirectory: tempDir,
+            archiveDirectory: tempDir,
+            logger: Logging.NoopRecording()
+        )
 
         // List resources — should include both SE and ST
         let listResult = try await provider.listResources(cursor: nil as String?)
@@ -351,7 +381,12 @@ struct MCPCommandTests {
             changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
-        let provider = MCP.Support.DocsResourceProvider(configuration: config, evolutionDirectory: tempDir, archiveDirectory: tempDir, logger: Logging.NoopRecording())
+        let provider = MCP.Support.DocsResourceProvider(
+            configuration: config,
+            evolutionDirectory: tempDir,
+            archiveDirectory: tempDir,
+            logger: Logging.NoopRecording()
+        )
 
         // Try to read non-existent resource
         await #expect(throws: Shared.Core.ToolError.self) {
@@ -401,6 +436,8 @@ struct MCPServerIntegrationTests {
             htmlParser: Crawler.NoopHTMLParserStrategy(),
             appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
             priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy(),
+
+            fetcherFactory: Crawler.NoopHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )
         let stats = try await crawler.crawl()
@@ -410,7 +447,12 @@ struct MCPServerIntegrationTests {
         // Step 2: Build index
         print("\n   🔍 Step 2: Building search index...")
         let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let searchIndex = try await Search.Index(
+            dbPath: searchDbPath,
+            logger: Logging.NoopRecording(),
+            indexers: [:],
+            sourceLookup: .empty
+        )
 
         let metadata = try Shared.Models.CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
         // #933: inline strategy assembly (factory dissolved).

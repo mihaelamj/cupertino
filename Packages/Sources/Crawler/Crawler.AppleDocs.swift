@@ -16,7 +16,7 @@ extension Crawler {
         private let output: Shared.Configuration.Output
         private let state: State
 
-        private var webPageFetcher: Crawler.WebKit.ContentFetcher!
+        private var webPageFetcher: (any Core.Protocols.StringContentFetcher)!
         private var visited = Set<String>()
         private var queue: [(url: URL, depth: Int)] = []
         private var retryQueue: [Shared.Models.QueuedRetryURL] = []
@@ -45,6 +45,10 @@ extension Crawler {
         /// protocol surface) and never reaches for the `Logging.Log`
         /// static.
         private let logger: any LoggingModels.Logging.Recording
+        /// Strategy seam (#903). CLI composition root constructs
+        /// `Crawler.WebKit.LiveHTTPFetcherFactory()`; the Crawler producer
+        /// itself is foundation-only and never links WebKit.
+        private let fetcherFactory: any Crawler.HTTPFetcherFactory
 
         private var progressObserver: (any Crawler.AppleDocsProgressObserving)?
         private var logFileHandle: FileHandle?
@@ -54,6 +58,7 @@ extension Crawler {
             htmlParser: any Crawler.HTMLParserStrategy,
             appleJSONParser: any Crawler.AppleJSONParserStrategy,
             priorityPackageStrategy: any Crawler.PriorityPackageStrategy,
+            fetcherFactory: any Crawler.HTTPFetcherFactory,
             logger: any LoggingModels.Logging.Recording
         ) async {
             self.configuration = configuration.crawler
@@ -64,11 +69,16 @@ extension Crawler {
             self.htmlParser = htmlParser
             self.appleJSONParser = appleJSONParser
             self.priorityPackageStrategy = priorityPackageStrategy
+            self.fetcherFactory = fetcherFactory
             self.logger = logger
             super.init()
 
-            // Initialize Crawler.WebKit.ContentFetcher from WKWebCrawler namespace
-            webPageFetcher = Crawler.WebKit.ContentFetcher()
+            // Initialize web-page fetcher via the injected factory (#903).
+            // AppleDocs uses default timeouts (the docs site is not a SPA).
+            webPageFetcher = fetcherFactory.makeFetcher(
+                pageLoadTimeout: Shared.Constants.Timeout.pageLoad,
+                javascriptWaitTime: Shared.Constants.Timeout.javascriptWait
+            )
 
             // Temporary debug logging for #25
             let logPath = self.configuration.outputDirectory
