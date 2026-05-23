@@ -548,7 +548,10 @@ let targets: [Target] = {
             "AppleArchiveStrategy",
             "AppleConstraintsPass",
             "SearchModels",
+            "SearchSQLite",
             "SharedConstants",
+            "LoggingModels",
+            "EnrichmentModels",
         ]
     )
 
