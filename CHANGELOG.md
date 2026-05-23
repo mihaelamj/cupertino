@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Docs
+
+- **README architecture-count sweep.** Refreshed the line under `## Architecture` from the pre-#906 "~40 single-responsibility SPM targets across 38 source packages" to the post-#906 "46 strict-producer SPM targets across 58 source packages". Counts derived from `STRICT_PRODUCERS` in `scripts/check-target-foundation-only.sh` (the foundation-only opt-in list, the load-bearing definition for the strict-producer total) + a `ls Packages/Sources` count of declared sibling targets. Sweep batched at the natural merge boundary closing #906 (B-G all landed); per per-PR feedback the README is the second half of the CHANGELOG-pair and gets refreshed when drift is observed, not on every commit.
+
 ### Changed
 
 - **#906 sub-PR G: extract `Enrichment.SynonymsPass` to SPM sibling.** Sixth and final per-pass split. New foundation-tier `Packages/Sources/SynonymsPass/` target with EnrichmentModels + SearchModels deps. The 22-entry framework-alias table (`corebluetooth ← bluetooth`, etc.) moves with the pass. CLI composition root imports the sibling; STRICT_PRODUCERS list (46 producers) + contract-doc row updated. After this lands the `Enrichment` package retains only the `LiveRunner` orchestrator. Build green. Refs: #906 sub-PR G; closes #906.

@@ -566,7 +566,7 @@ See [docs/commands/](docs/commands/) for detailed usage and options.
 
 ## Architecture
 
-Cupertino uses an **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** architecture: ~40 single-responsibility SPM targets across 38 source packages. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full breakdown and [`docs/package-import-contract.md`](docs/package-import-contract.md) for the strict per-target import rules.
+Cupertino uses an **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** architecture: 46 strict-producer SPM targets across 58 source packages. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full breakdown and [`docs/package-import-contract.md`](docs/package-import-contract.md) for the strict per-target import rules.
 
 ```
 Foundation tier:   SharedConstants, LoggingModels, MCPCore, MCPSharedTools, Resources
