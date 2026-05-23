@@ -1,5 +1,13 @@
 ## Unreleased
 
+### Changed
+
+- **#974: split 3 multi-type files per code-style.md one-non-private-type-per-file rule.** Surfaced by today's full-app rule-canon audit (`docs/audits/2026-05-23-rule-canon-audit.md` HIGH-1). The rule's acceptance grep says output MUST be empty; pre-#974 found 3 violations:
+  - `CLI/SearchModuleAlias.swift` carried 8 `Live*` factory / strategy structs (`LiveSearchDatabaseFactory`, `LiveSearchIndexWriterFactory`, `LiveMarkdownLookupStrategy`, `LivePackageFileLookupStrategy`, `LiveSampleIndexDatabaseFactory`, `LiveHTMLParserStrategy`, `LiveAppleJSONParserStrategy`, `LivePriorityPackageStrategy`). Each moved to its own file. The original is reduced to the `typealias SearchModule = Search` declaration that gives the file its name.
+  - `EnrichmentModels/EnrichmentModels.swift` carried the namespace enum + `EnrichmentRunner` protocol + `EnrichmentPass` protocol. Two protocols moved to `EnrichmentRunner.swift` + `EnrichmentPass.swift`.
+  - `AvailabilityFoundationNetworking/LiveAvailabilityNetworking.swift` carried both the concrete + its factory; factory moved to `LiveAvailabilityNetworkingFactory.swift`.
+  Build green; 2492/372 tests pass; `check-package-purity.sh` + `check-target-foundation-only.sh` audits unchanged (41 producers strict). Refs: closes #974.
+
 ### Added
 
 - **#975: close package-import-contract drift; ship coverage-check CI script.** Surfaced by today's full-app rule-canon audit (`docs/audits/2026-05-23-rule-canon-audit.md` HIGH-2). The contract is `per-package-import-contract.md`'s "single source of truth a reviewer can grep against", but no CI script enforced row presence, so drift was silent. The 14-PR merge batch surfaced 9 production targets without contract rows (6 strategy siblings + `AppleConstraintsPass` + older `MCPClient` + `SampleIndexSQLite`). Append 9 contract rows + ship `scripts/check-import-contract-coverage.sh` (wired into the `package-audits` CI job) that diffs `Packages/Package.swift` declared targets against `docs/package-import-contract.md` row identifiers and fails CI on missing rows. Composition-root binaries (CLI/TUI/MockAIAgent/ReleaseTool/ConstraintsGen) + `TestSupport` are excluded as intentional exemptions, called out explicitly in the script. Initial run: 52 production targets, all rows present. Refs: closes #975.
