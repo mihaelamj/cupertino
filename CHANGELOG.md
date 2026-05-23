@@ -1,5 +1,15 @@
 ## Unreleased
 
+### Fixed
+
+- **Critic-pass cleanup of #906 rebase artefacts: stale counts + prose + one duplicate contract row.** Five-PR rebase chain (#988-#992) left stale numeric/prose claims behind in three places. Findings from the post-#906 code-review pass:
+  - `Issue919AuditInvariantTests.swift`: `@Test` display name said "41 entries (post-#906 sub-PR B AppleConstraintsPass extract)"; assertion checked 46. Display name now matches: "46 entries (post-#906 sub-PR G SynonymsPass extract closes the epic)". Otherwise a future regression dropping a producer 46→45 would surface with a misleading test-title story.
+  - `docs/package-import-contract.md`: duplicate `AppleDocsStrategy` row (lines 102 + 116) collapsed into a single row at the strategy-grouped position; the better "pattern-setter for remaining 5 strategy splits" prose merged into it.
+  - `docs/package-import-contract.md`: closing summary updated from "34 producers strict / 13 seam + 21 feature" to "46 producers strict / 14 seam + 32 feature" with the #899 (6 strategy siblings) + #906 (6 enrichment-pass siblings) sources called out; header `Last refresh:` bumped to 2026-05-23 with the post-#906 numbers, prior 33-producers blurb demoted to "Previous refresh".
+  - `scripts/check-target-foundation-only.sh`: comment-block above `GRANDFATHERED_TARGETS=()` claimed Enrichment was the one producer outside STRICT_PRODUCERS and its leak tolerance lived in `check-package-purity.sh`'s grandfather array. Both false post-#906 (Enrichment is in STRICT_PRODUCERS via the protocol-rewire; every pass is its own foundation-tier sibling). Rewritten to reflect end-state.
+  - `scripts/check-package-purity.sh`: `FORBIDDEN_MODULES` array dropped the long-deleted `SearchStrategies` target (deleted during #899 sub-PR G). The line was harmless (no Swift file imports a non-existent module) but polluted failure messages with stale taxonomy.
+  Build green; foundation-only / package-purity / import-contract audits all green (46 producers, 57 production targets, 62 contract rows); `Issue919AuditInvariantTests` (3 tests) pass.
+
 ### Docs
 
 - **README architecture-count sweep.** Refreshed the line under `## Architecture` from the pre-#906 "~40 single-responsibility SPM targets across 38 source packages" to the post-#906 "46 strict-producer SPM targets across 58 source packages". Counts derived from `STRICT_PRODUCERS` in `scripts/check-target-foundation-only.sh` (the foundation-only opt-in list, the load-bearing definition for the strict-producer total) + a `ls Packages/Sources` count of declared sibling targets. Sweep batched at the natural merge boundary closing #906 (B-G all landed); per per-PR feedback the README is the second half of the CHANGELOG-pair and gets refreshed when drift is observed, not on every commit.
