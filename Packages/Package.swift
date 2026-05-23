@@ -31,6 +31,8 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("SearchSchema"),
     .singleTargetLibrary("SearchSQLite"),
     .singleTargetLibrary("SearchStrategies"),
+    .singleTargetLibrary("SearchStrategyHelpers"),
+    .singleTargetLibrary("AppleDocsStrategy"),
     .singleTargetLibrary("SampleIndex"),
     .singleTargetLibrary("SampleIndexSQLite"),
     .singleTargetLibrary("Services"),
@@ -483,6 +485,7 @@ let targets: [Target] = {
             "Search",
             "SearchSQLite",
             "SearchStrategies",
+            "AppleDocsStrategy",
             "SearchModels",
             "SharedConstants",
             "TestSupport",
@@ -506,6 +509,19 @@ let targets: [Target] = {
     // resulting array to `Search.IndexBuilder.init(searchIndex:strategies:...)`.
     // The further split into 6 individual SPM targets (one per
     // strategy) is queued; this target ships the first cut.
+    // #899 prerequisite: extract shared `Search.StrategyHelpers`
+    // into its own foundation-only target so per-strategy SPM
+    // targets can consume the helpers without depending on the
+    // SearchStrategies concrete (which would violate the
+    // foundation-only + package-purity rules).
+    let searchStrategyHelpersTarget = Target.target(
+        name: "SearchStrategyHelpers",
+        dependencies: [
+            "SearchModels",
+            "SharedConstants",
+        ]
+    )
+
     let searchStrategiesTarget = Target.target(
         name: "SearchStrategies",
         dependencies: [
@@ -513,11 +529,29 @@ let targets: [Target] = {
             "SharedConstants",
             "LoggingModels",
             "CoreProtocols",
+            "SearchStrategyHelpers",
         ]
     )
     let searchStrategiesTestsTarget = Target.testTarget(
         name: "SearchStrategiesTests",
-        dependencies: ["SearchStrategies", "SearchModels", "SharedConstants"]
+        dependencies: ["SearchStrategies", "AppleDocsStrategy", "SearchModels", "SharedConstants"]
+    )
+
+    // #899 sub-PR B: extract AppleDocsStrategy into its own SPM
+    // target. Pattern-setter for the remaining 5 per-strategy splits
+    // (HIG, SwiftEvolution, SwiftOrg, AppleArchive, SampleCode). Each
+    // strategy ends up as a sibling SPM target conforming
+    // `Search.SourceIndexingStrategy`; the composition root (CLI)
+    // registers each via `import <X>Strategy` + struct construction.
+    let appleDocsStrategyTarget = Target.target(
+        name: "AppleDocsStrategy",
+        dependencies: [
+            "SearchModels",
+            "SharedConstants",
+            "LoggingModels",
+            "CoreProtocols",
+            "SearchStrategyHelpers",
+        ]
     )
 
     let sampleIndexTarget = Target.target(
@@ -783,6 +817,7 @@ let targets: [Target] = {
             "Search",
             "SearchSQLite",
             "SearchStrategies",
+            "AppleDocsStrategy",
             "SampleIndex",
             "SampleIndexSQLite",
             "Services",
@@ -877,6 +912,7 @@ let targets: [Target] = {
     let serveTestsTarget = Target.testTarget(
         name: "ServeTests",
         dependencies: [
+            "AppleDocsStrategy",
             "CLI",
             "Crawler",
             "MCPCore",
@@ -910,6 +946,7 @@ let targets: [Target] = {
     let saveTestsTarget = Target.testTarget(
         name: "SaveTests",
         dependencies: [
+            "AppleDocsStrategy",
             "CLI",
             "CoreProtocols",
             "Core",
@@ -998,8 +1035,10 @@ let targets: [Target] = {
         searchSQLiteTestsTarget,
         searchTarget,
         searchTestsTarget,
+        searchStrategyHelpersTarget,
         searchStrategiesTarget,
         searchStrategiesTestsTarget,
+        appleDocsStrategyTarget,
         sampleIndexTarget,
         sampleIndexTestsTarget,
         sampleIndexSQLiteTarget,

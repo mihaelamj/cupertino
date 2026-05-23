@@ -1,4 +1,5 @@
 import AppKit
+import AppleDocsStrategy
 @testable import Core
 import CoreProtocols
 import Crawler

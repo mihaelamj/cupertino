@@ -1,3 +1,4 @@
+import AppleDocsStrategy
 import Foundation
 import LoggingModels
 @testable import Search
