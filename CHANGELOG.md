@@ -2,7 +2,7 @@
 
 ### Changed
 
-- **#906 sub-PR C: extract `Enrichment.HierarchyPass` into its own SPM sibling target.** Second per-pass split following the AppleConstraintsPass pattern-setter from #908. New `Packages/Sources/HierarchyPass/` target with foundation-only deps (`EnrichmentModels` + `SearchModels` + `Foundation`); the source moves from `Packages/Sources/Enrichment/Enrichment.HierarchyPass.swift` to the new sibling, registered in the CLI composition root via `import HierarchyPass`. Added to `STRICT_PRODUCERS` (`scripts/check-target-foundation-only.sh` → 42 strict producers) + a new row in `docs/package-import-contract.md`. Build green; #759 hierarchy suite (9 tests) pass. Refs: #906 sub-PR C.
+- **#906 sub-PR D: extract `Enrichment.PackagesAppleConstraintsPass` to SPM sibling.** Third per-pass split. New foundation-tier `Packages/Sources/PackagesAppleConstraintsPass/` target with EnrichmentModels + SearchModels deps. CLI composition root imports the sibling; STRICT_PRODUCERS list (43 producers) + contract-doc row updated. Build green. Refs: #906 sub-PR D.
 
 ### Added
 
