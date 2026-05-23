@@ -47,6 +47,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("IndexerModels"),
     .singleTargetLibrary("EnrichmentModels"),
     .singleTargetLibrary("Enrichment"),
+    .singleTargetLibrary("AppleConstraintsPass"),
     .singleTargetLibrary("Ingest"),
     .singleTargetLibrary("Resources"),
     .singleTargetLibrary("AvailabilityModels"),
@@ -494,6 +495,7 @@ let targets: [Target] = {
             "SwiftEvolutionStrategy",
             "SwiftOrgStrategy",
             "AppleArchiveStrategy",
+            "AppleConstraintsPass",
             "SearchModels",
             "SharedConstants",
             "TestSupport",
@@ -544,6 +546,7 @@ let targets: [Target] = {
             "SwiftEvolutionStrategy",
             "SwiftOrgStrategy",
             "AppleArchiveStrategy",
+            "AppleConstraintsPass",
             "SearchModels",
             "SharedConstants",
         ]
@@ -860,7 +863,19 @@ let targets: [Target] = {
     )
     let enrichmentTestsTarget = Target.testTarget(
         name: "EnrichmentTests",
-        dependencies: ["Enrichment", "EnrichmentModels", "TestSupport"]
+        dependencies: ["Enrichment", "EnrichmentModels", "AppleConstraintsPass", "TestSupport"]
+    )
+
+    // #906 sub-PR B: extract AppleConstraintsPass. Pattern-setter for
+    // the remaining 5 per-pass extractions (Hierarchy, PackagesAppleConstraints,
+    // PackagesAppleImports, SamplesAppleConstraints, Synonyms).
+    let appleConstraintsPassTarget = Target.target(
+        name: "AppleConstraintsPass",
+        dependencies: [
+            "EnrichmentModels",
+            "SearchModels",
+            "SharedConstants",
+        ]
     )
 
     // ---------- Indexer (#244: SaveCommand indexer + preflight lift) ----------
@@ -898,6 +913,7 @@ let targets: [Target] = {
             "SwiftEvolutionStrategy",
             "SwiftOrgStrategy",
             "AppleArchiveStrategy",
+            "AppleConstraintsPass",
             "SampleIndex",
             "SampleIndexSQLite",
             "Services",
@@ -1142,6 +1158,7 @@ let targets: [Target] = {
         enrichmentModelsTarget,
         enrichmentModelsTestsTarget,
         enrichmentTarget,
+        appleConstraintsPassTarget,
         enrichmentTestsTarget,
         indexerTarget,
         indexerTestsTarget,
