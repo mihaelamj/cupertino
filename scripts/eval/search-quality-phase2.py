@@ -35,9 +35,21 @@ from lib_harness import QueryOutcome, make_argparser, run_main  # noqa: E402
 # MARK: Corpus
 
 PHASE2_FIXTURES = [
-    # search_symbols
+    # search_symbols. NSObject runs first because it is the most
+    # corpus-stable AST query in the battery: every Apple-release
+    # bundle indexes Foundation, and NSObject is the root class of
+    # the Objective-C runtime, indexed under `kind=class` with the
+    # exact symbol name `NSObject`. The Phase 2 smoke job (#949)
+    # runs only the first fixture with `--smoke --strict`; before
+    # the iter-3 reorder, the first fixture was `search_symbols
+    # struct View`, whose match depends on whether the v1.2.x
+    # release bundle (smaller than the local dev DB) happens to
+    # have a SwiftUI struct named with `View` substring. The View
+    # fixture passes on the full dev corpus but failed on every
+    # CI smoke run (#956). Keeping the View fixture in the full
+    # battery for coverage of the `kind=struct` filter.
+    {"name": "search_symbols class NSObject","tool": "search_symbols",            "args": {"query": "NSObject", "kind": "class", "limit": 10},  "expect_any": ["NSObject"],                  "qclass": "B", "notes": "root class (smoke-stable: NSObject is in every Apple bundle)"},
     {"name": "search_symbols struct View",   "tool": "search_symbols",            "args": {"query": "View", "kind": "struct", "limit": 10},     "expect_any": ["View"],                      "qclass": "B", "notes": "SwiftUI View struct"},
-    {"name": "search_symbols class NSObject","tool": "search_symbols",            "args": {"query": "NSObject", "kind": "class", "limit": 10},  "expect_any": ["NSObject"],                  "qclass": "B", "notes": "root class"},
     {"name": "search_symbols enum Result",   "tool": "search_symbols",            "args": {"query": "Result", "kind": "enum", "limit": 10},     "expect_any": ["Result"],                    "qclass": "B", "notes": "stdlib enum"},
     {"name": "search_symbols is_async",      "tool": "search_symbols",            "args": {"is_async": True, "limit": 10},                      "expect_nonempty": True,                     "qclass": "B", "notes": "async function filter"},
 
