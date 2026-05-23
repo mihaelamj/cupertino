@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Phase 1 search-quality harness — canonical-lookup query class.
+Phase 1 search-quality harness , canonical-lookup query class.
 
 Per `docs/design/search-quality-eval.md` §G1-G4 + universal rule
 `mihaela-agents/Rules/universal/search-quality-eval.md`.
@@ -76,7 +76,7 @@ from lib_harness import (  # noqa: E402
 # the *first* matching rank counts as the rank for that query. That
 # matches the existing baseline's accounting.
 CANONICAL_QUERIES = [
-    # Swift stdlib types — Class A
+    # Swift stdlib types , Class A
     ("Hashable", r"apple-docs://swift/hashable(/|$)", "A", "stdlib protocol"),
     ("Equatable", r"apple-docs://swift/equatable(/|$)", "A", "stdlib protocol"),
     ("Comparable", r"apple-docs://swift/comparable(/|$)", "A", "stdlib protocol"),
@@ -90,7 +90,7 @@ CANONICAL_QUERIES = [
     ("Array", r"apple-docs://swift/array(/|$)", "A", "stdlib struct"),
     ("Dictionary", r"apple-docs://swift/dictionary(/|$)", "A", "stdlib struct"),
     ("Set", r"apple-docs://swift/set(/|$)", "A", "stdlib struct"),
-    # Foundation — Class A
+    # Foundation , Class A
     ("URLSession", r"apple-docs://foundation/urlsession(/|$)", "A", "Foundation class"),
     ("JSONDecoder", r"apple-docs://foundation/jsondecoder(/|$)", "A", "Foundation class"),
     ("JSONEncoder", r"apple-docs://foundation/jsonencoder(/|$)", "A", "Foundation class"),
@@ -101,7 +101,7 @@ CANONICAL_QUERIES = [
     ("Bundle", r"apple-docs://foundation/bundle(/|$)", "A", "Foundation class"),
     ("FileManager", r"apple-docs://foundation/filemanager(/|$)", "A", "Foundation class"),
     ("NotificationCenter", r"apple-docs://foundation/notificationcenter(/|$)", "A", "Foundation class"),
-    # SwiftUI — Class A
+    # SwiftUI , Class A
     ("Observable", r"apple-docs://(observation|swiftui)/observable(/|$)", "A", "Observation macro"),
     ("Observation", r"apple-docs://observation(/|$)", "A", "Observation module"),
     ("State property wrapper", r"apple-docs://swiftui/state(/|$)", "A", "SwiftUI property wrapper"),
@@ -111,23 +111,23 @@ CANONICAL_QUERIES = [
     ("ForEach", r"apple-docs://swiftui/foreach(/|$)", "A", "SwiftUI"),
     ("LazyVGrid", r"apple-docs://swiftui/lazyvgrid(/|$)", "A", "SwiftUI"),
     ("NavigationStack", r"apple-docs://swiftui/navigationstack(/|$)", "A", "SwiftUI"),
-    # UIKit / AppKit — Class A
+    # UIKit / AppKit , Class A
     ("UIColor", r"apple-docs://uikit/uicolor(/|$)", "A", "UIKit"),
     ("UIView", r"apple-docs://uikit/uiview(/|$)", "A", "UIKit"),
     ("UIViewController", r"apple-docs://uikit/uiviewcontroller(/|$)", "A", "UIKit"),
     ("NSView", r"apple-docs://appkit/nsview(/|$)", "A", "AppKit"),
     ("NSWindow", r"apple-docs://appkit/nswindow(/|$)", "A", "AppKit"),
-    # Combine — Class A
+    # Combine , Class A
     ("Combine Publisher", r"apple-docs://combine/publisher(/|$)", "A", "Combine"),
     ("AnyCancellable", r"apple-docs://combine/anycancellable(/|$)", "A", "Combine"),
-    # Concurrency — Class A
+    # Concurrency , Class A
     ("MainActor", r"apple-docs://swift/mainactor(/|$)", "A", "Concurrency"),
     ("Task", r"apple-docs://swift/task(/|$)", "A", "Concurrency"),
     ("TaskGroup", r"apple-docs://swift/taskgroup(/|$)", "A", "Concurrency"),
     # CoreData / MapKit / others mentioned in v1.0.2 diff
     ("CoreData", r"apple-docs://coredata(/|$)", "B", "framework root"),
     ("MapKit", r"apple-docs://mapkit(/|$)", "B", "framework root"),
-    # Framework roots — Class B
+    # Framework roots , Class B
     ("SwiftUI", r"apple-docs://swiftui(/|$)", "B", "framework root"),
     ("UIKit", r"apple-docs://uikit(/|$)", "B", "framework root"),
     ("AppKit", r"apple-docs://appkit(/|$)", "B", "framework root"),
@@ -209,7 +209,7 @@ def score_query(binary: str, search_db: str, fixture: tuple) -> QueryOutcome:
     # Ideal DCG for single-relevant: gain=1 at rank 1 → 1/log2(2)=1.0
     # With multi-match (sibling URIs), the ideal would be the same N
     # matches packed at ranks 1..N. We use 1.0 as IDCG so NDCG > 1 is
-    # possible — same accounting quirk as the v1.0.2 baseline §8.2.
+    # possible , same accounting quirk as the v1.0.2 baseline §8.2.
     ndcg = dcg / 1.0
     return QueryOutcome(
         query=query, pattern=pattern, qclass=qclass, notes=notes,
@@ -235,14 +235,14 @@ def write_versiondiff_md(
     delta_p5 = arm_b_agg["p_at_5_mean"] - arm_a_agg["p_at_5_mean"]
     delta_ndcg = arm_b_agg["ndcg_at_10_mean"] - arm_a_agg["ndcg_at_10_mean"]
 
-    def fmt_list(xs, fallback="—"):
+    def fmt_list(xs, fallback="n/a"):
         return ", ".join(f"`{q}`" for q in xs) if xs else fallback
 
     md = f"""# Search-quality version diff: {version_a} → {version_b}
 
 **Date:** 2026-05-20
-**Arm A:** {arm_a_label} — `{arm_a_meta.get('binary','?')}` × `{arm_a_meta.get('db','?')}` ({arm_a_meta.get('schema','?')}, {arm_a_meta.get('docs','?')} docs)
-**Arm B:** {arm_b_label} — `{arm_b_meta.get('binary','?')}` × `{arm_b_meta.get('db','?')}` ({arm_b_meta.get('schema','?')}, {arm_b_meta.get('docs','?')} docs)
+**Arm A:** {arm_a_label} , `{arm_a_meta.get('binary','?')}` × `{arm_a_meta.get('db','?')}` ({arm_a_meta.get('schema','?')}, {arm_a_meta.get('docs','?')} docs)
+**Arm B:** {arm_b_label} , `{arm_b_meta.get('binary','?')}` × `{arm_b_meta.get('db','?')}` ({arm_b_meta.get('schema','?')}, {arm_b_meta.get('docs','?')} docs)
 **Methodology:** `docs/design/search-quality-eval.md` Phase 1 (Class A canonical lookup + Class B framework-root, paired comparison mode)
 **Harness:** `scripts/eval/search-quality-phase1.py`
 **Universal rule:** `../private/mihaela-agents/Rules/universal/search-quality-eval.md`
@@ -256,7 +256,7 @@ This is the Phase 1.8 version-to-version comparison KPI specified in issue #830,
 
 | Metric | {arm_a_label} | {arm_b_label} | Delta |
 |---|---|---|---|
-| N queries | {arm_a_agg['n']} | {arm_b_agg['n']} | — |
+| N queries | {arm_a_agg['n']} | {arm_b_agg['n']} | n/a |
 | **MRR** | **{arm_a_agg['mrr']:.4f}** | **{arm_b_agg['mrr']:.4f}** | **{delta_mrr:+.4f}** |
 | P@1 | {arm_a_agg['p_at_1']:.4f} ({arm_a_agg['p_at_1_count']} / {arm_a_agg['n']}) | {arm_b_agg['p_at_1']:.4f} ({arm_b_agg['p_at_1_count']} / {arm_b_agg['n']}) | {delta_p1:+.4f} |
 | P@5 | {arm_a_agg['p_at_5_mean']:.4f} | {arm_b_agg['p_at_5_mean']:.4f} | {delta_p5:+.4f} |

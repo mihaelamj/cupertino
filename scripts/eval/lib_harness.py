@@ -50,7 +50,7 @@ class QueryOutcome:
     - `rr`: reciprocal rank (1 / first_relevant_rank); 0 if no match
     - `p_at_1`: 1 if rank 1 matches, else 0
     - `p_at_5`: fraction of top-5 that match
-    - `ndcg_at_10`: standard NDCG@10 with gain=1 per match
+    - `ndcg_at_10`: NDCG@10. Phase 1 uses the standard `1/log2(rank+1)` formula. Phases 2-5 use simpler per-phase variants (binary at rank-1 or a custom curve) because their fixtures score on semantic-pass criteria rather than fine-grained ranking, and the per-phase score functions document the exact form. Aggregate `ndcg_at_10_mean` is therefore comparable WITHIN a phase across paired runs but NOT comparable across phases.
     - `top_uris`: first N raw result identifiers for audit
 
     Phases that need extra per-result payload should subclass
@@ -229,6 +229,8 @@ def make_argparser(phase_name: str) -> argparse.ArgumentParser:
     ap.add_argument("--out", help="JSON results dump path")
     ap.add_argument("--md-out", help="paired-mode markdown audit output path")
     ap.add_argument("--smoke", action="store_true", help="run only 1 fixture (CI smoke mode)")
+    ap.add_argument("--strict", action="store_true",
+                    help="exit non-zero if any fixture failed (no rank). Use in CI smoke mode so silent binary regressions surface as a failed step rather than a green MRR=0 line.")
     return ap
 
 
@@ -298,6 +300,11 @@ def run_main(
         print(f"  Delta MRR: {arm_b_agg['mrr'] - arm_a_agg['mrr']:+.4f}")
         print(f"  McNemar two-sided p: {paired['mcnemar']['p_two_sided']:.6f}")
         print(f"  Wilcoxon one-sided (B > A) p: {paired['wilcoxon']['p_one_sided_b_gt_a']:.6f}")
+        if args.strict:
+            failed = [o.query for o in arm_a_outcomes + arm_b_outcomes if o.first_relevant_rank is None]
+            if failed:
+                print(f"\nerror: --strict and {len(failed)} fixture(s) scored no rank: {failed[:5]}", file=sys.stderr)
+                sys.exit(1)
     else:
         if not args.binary or not args.search_db:
             print(f"error: single-arm mode needs --binary AND --search-db (or use paired-arm with --arm-a-* and --arm-b-* flags)", file=sys.stderr)
@@ -317,3 +324,8 @@ def run_main(
         print(f"  P@5 (mean): {agg['p_at_5_mean']:.4f}")
         print(f"  NDCG@10 (mean): {agg['ndcg_at_10_mean']:.4f}")
         print(f"  not in top-10: {agg['not_in_top_10']}")
+        if args.strict:
+            failed = [o.query for o in outcomes if o.first_relevant_rank is None]
+            if failed:
+                print(f"\nerror: --strict and {len(failed)} fixture(s) scored no rank: {failed[:5]}", file=sys.stderr)
+                sys.exit(1)
