@@ -7,6 +7,7 @@ import SearchModels
 @testable import SearchSQLite
 import SharedConstants
 import SwiftEvolutionStrategy
+import SwiftOrgStrategy
 import Testing
 
 // MARK: - Test Doubles
