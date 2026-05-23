@@ -31,10 +31,17 @@ public enum EnrichmentModels {
         public let rowsAffected: Int
 
         /// Rows the pass examined and skipped (already at current
-        /// `enrichment_version`, or no eligible data).
+        /// `enrichment_version`, or no eligible data). SET-based UPDATE
+        /// passes (e.g. constraints, hierarchy) report 0 here. only
+        /// row-iteration passes that filter by `enrichment_version`
+        /// populate it.
         public let rowsSkipped: Int
 
-        /// Wall-clock milliseconds the pass ran for.
+        /// Wall-clock milliseconds the pass ran for. A pass may return 0
+        /// as a sentinel. `Enrichment.LiveRunner` measures the elapsed
+        /// time and patches the result before surfacing it. So callers
+        /// always observe a non-zero value for non-trivial passes even
+        /// when the pass left this field blank.
         public let durationMs: Int
 
         public init(passIdentifier: String, rowsAffected: Int, rowsSkipped: Int, durationMs: Int) {

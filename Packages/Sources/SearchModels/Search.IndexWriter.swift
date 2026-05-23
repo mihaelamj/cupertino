@@ -135,15 +135,25 @@ extension Search {
         /// `Search.StaticConstraintsLookup` entries and applies the
         /// `generic_constraints` column updates to matching
         /// `doc_symbols` rows. Idempotent.
+        ///
+        /// Returns the affected-row count summed across both the exact
+        /// match and hash-prefix UPDATE statements. Zero when `lookup`
+        /// is nil, the entries list is empty, or no row matched.
+        @discardableResult
         func applyAppleStaticConstraints(
             lookup: (any Search.StaticConstraintsLookup)?
-        ) async throws
+        ) async throws -> Int
 
         /// Run the hierarchy-derived constraint propagation pass. Walks
         /// the indexed inheritance edges and propagates parent
         /// constraints onto descendants where the child symbol has no
         /// direct constraint entry. Idempotent.
-        func propagateConstraintsFromParents() async throws
+        ///
+        /// Returns the count of child rows whose `generic_constraints`
+        /// were filled in from a parent. Zero when no parent rows
+        /// carried constraints or no child row qualified for inheritance.
+        @discardableResult
+        func propagateConstraintsFromParents() async throws -> Int
 
         /// Drop every row from every search-index table. Used by
         /// `IndexBuilder.buildIndex` when `--clear` is passed and by
