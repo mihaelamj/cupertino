@@ -37,13 +37,3 @@ public struct LiveAvailabilityNetworking: Availability.Networking {
         return (data, httpResponse.statusCode)
     }
 }
-
-// MARK: - Factory
-
-public struct LiveAvailabilityNetworkingFactory: Availability.NetworkingFactory {
-    public init() {}
-
-    public func make(timeout: TimeInterval, concurrency: Int) -> any Availability.Networking {
-        LiveAvailabilityNetworking(timeout: timeout, concurrency: concurrency)
-    }
-}
