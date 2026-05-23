@@ -10,6 +10,7 @@ import HIGStrategy
 import Indexer
 import Logging
 import LoggingModels
+import SampleCodeStrategy
 import SampleIndex
 import SampleIndexSQLite
 import Search
