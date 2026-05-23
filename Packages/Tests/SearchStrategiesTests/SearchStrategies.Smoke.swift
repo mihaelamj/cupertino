@@ -3,6 +3,7 @@ import HIGStrategy
 import SampleCodeStrategy
 import SearchModels
 import SearchStrategies
+import SwiftEvolutionStrategy
 import Testing
 
 @Suite("SearchStrategies smoke")

@@ -10,6 +10,7 @@ import LoggingModels
 @testable import Search
 import SearchModels
 import SharedConstants
+import SwiftEvolutionStrategy
 import Testing
 import TestSupport
 

@@ -264,6 +264,7 @@ STRICT_PRODUCERS=(
     AppleDocsStrategy
     HIGStrategy
     SampleCodeStrategy
+    SwiftEvolutionStrategy
     SearchToolProvider
     Services
 )

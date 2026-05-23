@@ -35,6 +35,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("AppleDocsStrategy"),
     .singleTargetLibrary("HIGStrategy"),
     .singleTargetLibrary("SampleCodeStrategy"),
+    .singleTargetLibrary("SwiftEvolutionStrategy"),
     .singleTargetLibrary("SampleIndex"),
     .singleTargetLibrary("SampleIndexSQLite"),
     .singleTargetLibrary("Services"),
@@ -490,6 +491,7 @@ let targets: [Target] = {
             "AppleDocsStrategy",
             "HIGStrategy",
             "SampleCodeStrategy",
+            "SwiftEvolutionStrategy",
             "SearchModels",
             "SharedConstants",
             "TestSupport",
@@ -538,7 +540,7 @@ let targets: [Target] = {
     )
     let searchStrategiesTestsTarget = Target.testTarget(
         name: "SearchStrategiesTests",
-        dependencies: ["SearchStrategies", "AppleDocsStrategy", "HIGStrategy", "SampleCodeStrategy", "SearchModels", "SharedConstants"]
+        dependencies: ["SearchStrategies", "AppleDocsStrategy", "HIGStrategy", "SampleCodeStrategy", "SwiftEvolutionStrategy", "SearchModels", "SharedConstants"]
     )
 
     // #899 sub-PR B: extract AppleDocsStrategy into its own SPM
@@ -573,6 +575,18 @@ let targets: [Target] = {
     // #899 sub-PR D: extract SampleCodeStrategy.
     let sampleCodeStrategyTarget = Target.target(
         name: "SampleCodeStrategy",
+        dependencies: [
+            "SearchModels",
+            "SharedConstants",
+            "LoggingModels",
+            "CoreProtocols",
+            "SearchStrategyHelpers",
+        ]
+    )
+
+    // #899 sub-PR E: extract SwiftEvolutionStrategy.
+    let swiftEvolutionStrategyTarget = Target.target(
+        name: "SwiftEvolutionStrategy",
         dependencies: [
             "SearchModels",
             "SharedConstants",
@@ -848,6 +862,7 @@ let targets: [Target] = {
             "AppleDocsStrategy",
             "HIGStrategy",
             "SampleCodeStrategy",
+            "SwiftEvolutionStrategy",
             "SampleIndex",
             "SampleIndexSQLite",
             "Services",
@@ -1071,6 +1086,7 @@ let targets: [Target] = {
         appleDocsStrategyTarget,
         higStrategyTarget,
         sampleCodeStrategyTarget,
+        swiftEvolutionStrategyTarget,
         sampleIndexTarget,
         sampleIndexTestsTarget,
         sampleIndexSQLiteTarget,
