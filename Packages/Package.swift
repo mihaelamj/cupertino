@@ -34,6 +34,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("SearchStrategyHelpers"),
     .singleTargetLibrary("AppleDocsStrategy"),
     .singleTargetLibrary("HIGStrategy"),
+    .singleTargetLibrary("SampleCodeStrategy"),
     .singleTargetLibrary("SampleIndex"),
     .singleTargetLibrary("SampleIndexSQLite"),
     .singleTargetLibrary("Services"),
@@ -488,6 +489,7 @@ let targets: [Target] = {
             "SearchStrategies",
             "AppleDocsStrategy",
             "HIGStrategy",
+            "SampleCodeStrategy",
             "SearchModels",
             "SharedConstants",
             "TestSupport",
@@ -536,7 +538,7 @@ let targets: [Target] = {
     )
     let searchStrategiesTestsTarget = Target.testTarget(
         name: "SearchStrategiesTests",
-        dependencies: ["SearchStrategies", "AppleDocsStrategy", "HIGStrategy", "SearchModels", "SharedConstants"]
+        dependencies: ["SearchStrategies", "AppleDocsStrategy", "HIGStrategy", "SampleCodeStrategy", "SearchModels", "SharedConstants"]
     )
 
     // #899 sub-PR B: extract AppleDocsStrategy into its own SPM
@@ -559,6 +561,18 @@ let targets: [Target] = {
     // #899 sub-PR C: extract HIGStrategy.
     let higStrategyTarget = Target.target(
         name: "HIGStrategy",
+        dependencies: [
+            "SearchModels",
+            "SharedConstants",
+            "LoggingModels",
+            "CoreProtocols",
+            "SearchStrategyHelpers",
+        ]
+    )
+
+    // #899 sub-PR D: extract SampleCodeStrategy.
+    let sampleCodeStrategyTarget = Target.target(
+        name: "SampleCodeStrategy",
         dependencies: [
             "SearchModels",
             "SharedConstants",
@@ -833,6 +847,7 @@ let targets: [Target] = {
             "SearchStrategies",
             "AppleDocsStrategy",
             "HIGStrategy",
+            "SampleCodeStrategy",
             "SampleIndex",
             "SampleIndexSQLite",
             "Services",
@@ -1055,6 +1070,7 @@ let targets: [Target] = {
         searchStrategiesTestsTarget,
         appleDocsStrategyTarget,
         higStrategyTarget,
+        sampleCodeStrategyTarget,
         sampleIndexTarget,
         sampleIndexTestsTarget,
         sampleIndexSQLiteTarget,

@@ -2,6 +2,8 @@
 
 ### Changed
 
+- **#899 sub-PR D: extract `SampleCodeStrategy` into its own SPM target.** Pattern continues from sub-PRs B + C. Same shape: foundation-only deps, file moved from SearchStrategies, CLI + tests import the new target. STRICT_PRODUCERS bumped 37 -> 38. Refs: #899.
+
 - **#899 sub-PR C: extract `HIGStrategy` into its own SPM target.** Follows the pattern set by sub-PR B (#967). New target depends on Foundation + SearchModels + SharedConstants + LoggingModels + CoreProtocols + SearchStrategyHelpers. SearchStrategies drops the HIG file. CLI composition root + 4 test targets gain `import HIGStrategy`. STRICT_PRODUCERS bumped 36 -> 37. Test count 2496 / 373 preserved. Refs: #899.
 
 - **#899 sub-PR B: extract `AppleDocsStrategy` into its own SPM target; ship `SearchStrategyHelpers` as the prerequisite foundation-only seam.** Pattern-setter for the remaining 5 per-strategy splits (HIG / SwiftEvolution / SwiftOrg / AppleArchive / SampleCode). Two new SPM targets: `SearchStrategyHelpers` (foundation-only) carries the 824-line `Search.StrategyHelpers` enum so per-strategy targets can consume the helpers without depending on the SearchStrategies concrete. `AppleDocsStrategy` ships `Search.AppleDocsStrategy` struct. SearchStrategies target gains the helpers dep + drops the AppleDocs file. CLI composition root adds `import AppleDocsStrategy`. Both audits green; 36 producers strict (up 1). Test count 2496 / 373 preserved. Refs: #899.
