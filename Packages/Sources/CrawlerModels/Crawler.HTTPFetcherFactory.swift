@@ -16,10 +16,9 @@ import Foundation
 /// Implementations:
 /// - `Crawler.WebKit.LiveHTTPFetcherFactory` (in `CrawlerWebKit`) wraps
 ///   `WKWebView` for production crawls.
-/// - A future `Crawler.AsyncHTTPClient.LiveHTTPFetcherFactory` (in a
-///   `CrawlerAsyncHTTPClient` Linux sibling) would conform here; per
-///   memory `cupertino_no_linux_for_now.md` that variant is deferred.
-/// - Tests inject a stub conformer that returns an in-memory fetcher.
+/// - Tests inject a stub conformer that returns an in-memory fetcher
+///   (`Crawler.NoopHTTPFetcherFactory` throws on `.fetch`;
+///   `Crawler.CannedHTMLFetcherFactory` returns canned HTML).
 ///
 /// Each call to `makeFetcher` produces a fresh instance. `Crawler.HIG`
 /// and `Crawler.AppleDocs` recycle their fetchers on a memory-pressure

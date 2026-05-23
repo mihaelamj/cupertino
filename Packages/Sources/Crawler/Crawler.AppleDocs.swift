@@ -16,7 +16,7 @@ extension Crawler {
         private let output: Shared.Configuration.Output
         private let state: State
 
-        private var webPageFetcher: (any Core.Protocols.StringContentFetcher)!
+        private let webPageFetcher: any Core.Protocols.StringContentFetcher
         private var visited = Set<String>()
         private var queue: [(url: URL, depth: Int)] = []
         private var retryQueue: [Shared.Models.QueuedRetryURL] = []
@@ -71,14 +71,17 @@ extension Crawler {
             self.priorityPackageStrategy = priorityPackageStrategy
             self.fetcherFactory = fetcherFactory
             self.logger = logger
-            super.init()
-
-            // Initialize web-page fetcher via the injected factory (#903).
+            // Initialize the web-page fetcher via the injected factory (#903).
             // AppleDocs uses default timeouts (the docs site is not a SPA).
+            // Set as `let` before `super.init()` so the field is non-optional;
+            // the IUO pattern from the pre-#903 inner `WKWebView` no longer
+            // applies at this layer (recycle() is a method call on the same
+            // protocol-existential, never a reassignment).
             webPageFetcher = fetcherFactory.makeFetcher(
                 pageLoadTimeout: Shared.Constants.Timeout.pageLoad,
                 javascriptWaitTime: Shared.Constants.Timeout.javascriptWait
             )
+            super.init()
 
             // Temporary debug logging for #25
             let logPath = self.configuration.outputDirectory

@@ -18,6 +18,6 @@ import Foundation
 public enum Crawler {
     /// Sub-namespace for WKWebView-based fetching (used by HIG + as
     /// fallback from AppleDocs). The concrete actors live in the
-    /// `Crawler` target.
+    /// `CrawlerWebKit` sibling target post-#903.
     public enum WebKit {}
 }

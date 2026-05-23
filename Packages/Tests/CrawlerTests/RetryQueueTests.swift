@@ -141,8 +141,7 @@ struct RetryQueueTests {
             htmlParser: htmlParser,
             appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
             priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy(),
-
-            fetcherFactory: Crawler.NoopHTTPFetcherFactory(),
+            fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )
 
@@ -253,18 +252,26 @@ struct RetryQueueTests {
 
 /// HTML parser that always signals an HTTP error page. Used to drive the retry-exhaustion path.
 private struct AlwaysHTTPErrorHTMLParserStrategy: Crawler.HTMLParserStrategy {
-    func convert(html: String, url: URL) -> String { "" }
+    func convert(html: String, url: URL) -> String {
+        ""
+    }
 
     func toStructuredPage(
         html: String,
         url: URL,
         source: Shared.Models.StructuredDocumentationPage.Source,
         depth: Int?
-    ) -> Shared.Models.StructuredDocumentationPage? { nil }
+    ) -> Shared.Models.StructuredDocumentationPage? {
+        nil
+    }
 
-    func looksLikeHTTPErrorPage(html: String) -> Bool { true }
+    func looksLikeHTTPErrorPage(html: String) -> Bool {
+        true
+    }
 
-    func looksLikeJavaScriptFallback(html: String) -> Bool { false }
+    func looksLikeJavaScriptFallback(html: String) -> Bool {
+        false
+    }
 }
 
 /// HTML parser that signals an HTTP error page on the first call only, then acts normally.
@@ -272,19 +279,25 @@ private struct AlwaysHTTPErrorHTMLParserStrategy: Crawler.HTMLParserStrategy {
 private final class RecoveringHTTPErrorHTMLParserStrategy: Crawler.HTMLParserStrategy, @unchecked Sendable {
     private var callCount = 0
 
-    func convert(html: String, url: URL) -> String { "" }
+    func convert(html: String, url: URL) -> String {
+        ""
+    }
 
     func toStructuredPage(
         html: String,
         url: URL,
         source: Shared.Models.StructuredDocumentationPage.Source,
         depth: Int?
-    ) -> Shared.Models.StructuredDocumentationPage? { nil }
+    ) -> Shared.Models.StructuredDocumentationPage? {
+        nil
+    }
 
     func looksLikeHTTPErrorPage(html: String) -> Bool {
         callCount += 1
         return callCount == 1 // true only on the first call
     }
 
-    func looksLikeJavaScriptFallback(html: String) -> Bool { false }
+    func looksLikeJavaScriptFallback(html: String) -> Bool {
+        false
+    }
 }

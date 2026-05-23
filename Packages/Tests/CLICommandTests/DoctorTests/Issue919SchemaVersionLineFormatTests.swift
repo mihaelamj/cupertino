@@ -23,7 +23,7 @@ struct Issue919SchemaVersionLineFormatTests {
         // the label from "search.db" to "search" and confuse users.
         #expect(line == "   ✓ search.db: v18, journal=wal")
         #expect(line.contains("search.db"))
-        #expect(!line.contains(": search,"))  // not the id
+        #expect(!line.contains(": search,")) // not the id
     }
 
     @Test("All 3 historical descriptors render with their canonical filenames")
