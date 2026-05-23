@@ -24,9 +24,10 @@ struct CommandRegistrationTests {
         // into `search` in #239 (default fan-out path produces the same
         // chunked output as `ask` did). `inheritance` added in #274
         // (walks the class-inheritance edge table introduced at schema
-        // v15). `search-symbols` added in #948 phase 1 as the first of
-        // 5 AST-tool CLI subcommands mirroring the MCP surface.
-        #expect(config.subcommands.count == 16)
+        // v15). `search-symbols` added in #948 phase 1; `search-property-
+        // wrappers` added in #948 phase 2; the remaining 3 AST-tool CLI
+        // subcommands land separately under #948.
+        #expect(config.subcommands.count == 17)
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.Setup.self })
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.Fetch.self })
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.Save.self })
@@ -43,6 +44,7 @@ struct CommandRegistrationTests {
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.ResolveRefs.self })
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.Inheritance.self })
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.SearchSymbols.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.SearchPropertyWrappers.self })
     }
 
     @Test("Default subcommand is CLIImpl.Command.Serve")

@@ -46,6 +46,7 @@ COMMANDS=(
     doctor cleanup resolve-refs
     package-search   # hidden
     search-symbols   # #948 phase 1 of CLI/MCP parity
+    search-property-wrappers  # #948 phase 2 of CLI/MCP parity
 )
 
 # --- structural drift: option .md files vs --help OPTIONS section ---------
