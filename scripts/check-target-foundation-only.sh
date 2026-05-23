@@ -267,6 +267,7 @@ STRICT_PRODUCERS=(
     SwiftOrgStrategy
     AppleArchiveStrategy
     AppleConstraintsPass
+    HierarchyPass
     SearchToolProvider
     Services
 )

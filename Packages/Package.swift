@@ -48,6 +48,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("EnrichmentModels"),
     .singleTargetLibrary("Enrichment"),
     .singleTargetLibrary("AppleConstraintsPass"),
+    .singleTargetLibrary("HierarchyPass"),
     .singleTargetLibrary("Ingest"),
     .singleTargetLibrary("Resources"),
     .singleTargetLibrary("AvailabilityModels"),
@@ -881,6 +882,16 @@ let targets: [Target] = {
         ]
     )
 
+    // #906 sub-PR C: extract HierarchyPass. Same shape as the AppleConstraintsPass
+    // pattern-setter above. Foundation-only deps; no Search / SearchSQLite link.
+    let hierarchyPassTarget = Target.target(
+        name: "HierarchyPass",
+        dependencies: [
+            "EnrichmentModels",
+            "SearchModels",
+        ]
+    )
+
     // ---------- Indexer (#244: SaveCommand indexer + preflight lift) ----------
     let indexerTarget = Target.target(
         name: "Indexer",
@@ -917,6 +928,7 @@ let targets: [Target] = {
             "SwiftOrgStrategy",
             "AppleArchiveStrategy",
             "AppleConstraintsPass",
+            "HierarchyPass",
             "SampleIndex",
             "SampleIndexSQLite",
             "Services",
@@ -1162,6 +1174,7 @@ let targets: [Target] = {
         enrichmentModelsTestsTarget,
         enrichmentTarget,
         appleConstraintsPassTarget,
+        hierarchyPassTarget,
         enrichmentTestsTarget,
         indexerTarget,
         indexerTestsTarget,

@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Changed
+
+- **#906 sub-PR C: extract `Enrichment.HierarchyPass` into its own SPM sibling target.** Second per-pass split following the AppleConstraintsPass pattern-setter from #908. New `Packages/Sources/HierarchyPass/` target with foundation-only deps (`EnrichmentModels` + `SearchModels` + `Foundation`); the source moves from `Packages/Sources/Enrichment/Enrichment.HierarchyPass.swift` to the new sibling, registered in the CLI composition root via `import HierarchyPass`. Added to `STRICT_PRODUCERS` (`scripts/check-target-foundation-only.sh` → 42 strict producers) + a new row in `docs/package-import-contract.md`. Build green; #759 hierarchy suite (9 tests) pass. Refs: #906 sub-PR C.
+
 ### Added
 
 - **#978: behavioural tests for the 6 strategy siblings + AppleConstraintsPass.** Surfaced by today's full-app rule-canon audit (`docs/audits/2026-05-23-rule-canon-audit.md` MED-4). Pre-#978 the only coverage for the strategy family was a 26-line metatype-existence smoke (`_ = Search.X.self`); `AppleConstraintsPass` had zero test files. Per testing-discipline.md the rule is "real tests, not green totals". Added `Packages/Tests/SearchStrategiesTests/SearchStrategiesBehaviouralTests.swift` with one fixture test per strategy exercising the `indexItems(into:progress:)` clean-skip path (the load-bearing #671 guard) plus a `source`-identifier assertion that catches copy-paste regressions; plus two `AppleConstraintsPass` tests (nil-lookup no-op + non-matching-lookup `rowsAffected == 0`, both verifying the #979 honest-metrics contract). 9 new behavioural tests; metatype smoke retained as type-export guard. Test target dependencies widened to include `SearchSQLite`, `LoggingModels`, `EnrichmentModels` for real `Search.Index` construction. Refs: closes #978.

@@ -8,6 +8,7 @@ import CoreSampleCode
 import Enrichment
 import EnrichmentModels
 import Foundation
+import HierarchyPass
 import HIGStrategy
 import Indexer
 import Logging
