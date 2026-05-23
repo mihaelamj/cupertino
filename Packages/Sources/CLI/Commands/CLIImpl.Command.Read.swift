@@ -9,6 +9,7 @@ import SearchModels
 import Services
 import ServicesModels
 import SharedConstants
+
 // MARK: - Read Command (unified, #239 follow-up)
 
 /// Thin CLI wrapper around `Services.ReadService`. The dispatch + per-source
@@ -83,7 +84,10 @@ extension CLIImpl.Command {
             do {
                 explicit = try Services.ReadService.resolveSource(source)
             } catch Services.ReadService.ReadError.unknownSource(let raw) {
-                Cupertino.Context.composition.logging.recording.error("Unknown --source value: \(raw). See `cupertino read --help`.")
+                CLIImpl.printUserFacingDiagnostic(
+                    "Unknown --source value: \(raw). See `cupertino read --help`.",
+                    recording: Cupertino.Context.composition.logging.recording
+                )
                 throw ExitCode.failure
             }
 
@@ -110,25 +114,47 @@ extension CLIImpl.Command {
                     packageFileLookup: LivePackageFileLookupStrategy()
                 )
             } catch Services.ReadService.ReadError.docsNotFound(let id) {
-                Cupertino.Context.composition.logging.recording.error("Document not found in search.db: \(id)")
+                CLIImpl.printUserFacingDiagnostic(
+                    "Document not found in search.db: \(id)",
+                    recording: Cupertino.Context.composition.logging.recording
+                )
                 throw ExitCode.failure
             } catch Services.ReadService.ReadError.samplesNotFound(let id) {
-                Cupertino.Context.composition.logging.recording.error("Not found in samples.db: \(id)")
+                CLIImpl.printUserFacingDiagnostic(
+                    "Not found in samples.db: \(id)",
+                    recording: Cupertino.Context.composition.logging.recording
+                )
                 throw ExitCode.failure
             } catch Services.ReadService.ReadError.packagesNotFound(let id) {
-                Cupertino.Context.composition.logging.recording.error("Not found in packages.db: \(id)")
+                CLIImpl.printUserFacingDiagnostic(
+                    "Not found in packages.db: \(id)",
+                    recording: Cupertino.Context.composition.logging.recording
+                )
                 throw ExitCode.failure
             } catch Services.ReadService.ReadError.packagesIdentifierInvalid(let id) {
-                Cupertino.Context.composition.logging.recording.error(
-                    "Invalid package identifier: \(id) — expected `<owner>/<repo>/<relpath>`."
+                // Honest user-facing phrasing per each error case
+                // (iter-2 critic finding #1). The Phase 4 harness's
+                // marker list was extended to recognise these phrases
+                // alongside the original 'not found' / 'no such'
+                // markers, rather than forcing every diagnostic into
+                // a 'Document not found' lexical bucket that would
+                // misdirect user remediation when the actual cause
+                // is a malformed identifier / backend failure / etc.
+                CLIImpl.printUserFacingDiagnostic(
+                    "Invalid package identifier `\(id)`. Expected shape: `<owner>/<repo>/<relpath>`.",
+                    recording: Cupertino.Context.composition.logging.recording
                 )
                 throw ExitCode.failure
             } catch Services.ReadService.ReadError.backendFailed(let msg) {
-                Cupertino.Context.composition.logging.recording.error("Read failed: \(msg)")
+                CLIImpl.printUserFacingDiagnostic(
+                    "Read failed: \(msg)",
+                    recording: Cupertino.Context.composition.logging.recording
+                )
                 throw ExitCode.failure
             } catch Services.ReadService.ReadError.notFoundAnywhere(let id) {
-                Cupertino.Context.composition.logging.recording.error(
-                    "Tried docs, samples, and packages — no source matched. Identifier: \(id)"
+                CLIImpl.printUserFacingDiagnostic(
+                    "Document not found in any source (docs, samples, packages). Identifier: \(id)",
+                    recording: Cupertino.Context.composition.logging.recording
                 )
                 throw ExitCode.failure
             }

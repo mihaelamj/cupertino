@@ -49,12 +49,12 @@ extension CLIImpl.Command {
                 // invalid project IDs get a distinct "Project not found"
                 // error that matches read-sample's behaviour.
                 guard let _ = try await service.getProject(id: projectId) else {
-                    Cupertino.Context.composition.logging.recording.error("Project not found: \(projectId)")
+                    CLIImpl.printUserFacingDiagnostic("Project not found: \(projectId)", recording: Cupertino.Context.composition.logging.recording)
                     Cupertino.Context.composition.logging.recording.output("Use 'cupertino list-samples' or 'cupertino search --source samples' to find valid project IDs.")
                     throw ExitCode.failure
                 }
                 guard let file = try await service.getFile(projectId: projectId, path: filePath) else {
-                    Cupertino.Context.composition.logging.recording.error("File not found: \(filePath) in project \(projectId)")
+                    CLIImpl.printUserFacingDiagnostic("File not found: \(filePath) in project \(projectId)", recording: Cupertino.Context.composition.logging.recording)
                     Cupertino.Context.composition.logging.recording.output("Use 'cupertino read-sample \(projectId)' to list available files.")
                     throw ExitCode.failure
                 }
