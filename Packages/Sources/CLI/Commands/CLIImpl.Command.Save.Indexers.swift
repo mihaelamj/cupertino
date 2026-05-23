@@ -14,6 +14,7 @@ import Indexer
 import Logging
 import LoggingModels
 import PackagesAppleConstraintsPass
+import PackagesAppleImportsPass
 import SampleCodeStrategy
 import SampleIndex
 import SampleIndexSQLite

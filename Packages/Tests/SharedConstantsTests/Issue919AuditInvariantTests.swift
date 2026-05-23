@@ -71,12 +71,13 @@ struct Issue919AuditInvariantTests {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
             .filter { $0.first.map { $0.isLetter || $0 == "_" } ?? false } // identifier-shaped
-        // Post-#906 sub-PR D: 43 producers strict.
+        // Post-#906 sub-PR E: 44 producers strict.
         // - #899 sub-PR G closed the 6-of-6 strategy split (net +5).
         // - #906 sub-PR B extracts AppleConstraintsPass (+1).
         // - #906 sub-PR C extracts HierarchyPass (+1).
         // - #906 sub-PR D extracts PackagesAppleConstraintsPass (+1).
-        #expect(entries.count == 43, "expected 43 strict producers, found \(entries.count): \(entries)")
+        // - #906 sub-PR E extracts PackagesAppleImportsPass (+1).
+        #expect(entries.count == 44, "expected 44 strict producers, found \(entries.count): \(entries)")
     }
 
     @Test("FORBIDDEN_MODULES list contains every concrete + the two *SQLite siblings")
