@@ -260,12 +260,12 @@ STRICT_PRODUCERS=(
     SampleIndexSQLite
     Search
     SearchSQLite
-    SearchStrategies
     AppleDocsStrategy
     HIGStrategy
     SampleCodeStrategy
     SwiftEvolutionStrategy
     SwiftOrgStrategy
+    AppleArchiveStrategy
     SearchToolProvider
     Services
 )

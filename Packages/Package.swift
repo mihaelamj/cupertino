@@ -30,13 +30,13 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Search"),
     .singleTargetLibrary("SearchSchema"),
     .singleTargetLibrary("SearchSQLite"),
-    .singleTargetLibrary("SearchStrategies"),
     .singleTargetLibrary("SearchStrategyHelpers"),
     .singleTargetLibrary("AppleDocsStrategy"),
     .singleTargetLibrary("HIGStrategy"),
     .singleTargetLibrary("SampleCodeStrategy"),
     .singleTargetLibrary("SwiftEvolutionStrategy"),
     .singleTargetLibrary("SwiftOrgStrategy"),
+    .singleTargetLibrary("AppleArchiveStrategy"),
     .singleTargetLibrary("SampleIndex"),
     .singleTargetLibrary("SampleIndexSQLite"),
     .singleTargetLibrary("Services"),
@@ -488,12 +488,12 @@ let targets: [Target] = {
         dependencies: [
             "Search",
             "SearchSQLite",
-            "SearchStrategies",
             "AppleDocsStrategy",
             "HIGStrategy",
             "SampleCodeStrategy",
             "SwiftEvolutionStrategy",
             "SwiftOrgStrategy",
+            "AppleArchiveStrategy",
             "SearchModels",
             "SharedConstants",
             "TestSupport",
@@ -530,25 +530,20 @@ let targets: [Target] = {
         ]
     )
 
-    let searchStrategiesTarget = Target.target(
-        name: "SearchStrategies",
-        dependencies: [
-            "SearchModels",
-            "SharedConstants",
-            "LoggingModels",
-            "CoreProtocols",
-            "SearchStrategyHelpers",
-        ]
-    )
+    // #899 sub-PR G: SearchStrategies target deleted; all 6 strategies
+    // have moved to their own SPM siblings, the StrategyHelpers companion
+    // lives in SearchStrategyHelpers (foundation-only seam). The
+    // SearchStrategiesTests target retains its name + smoke coverage
+    // but depends only on the 6 sibling targets now.
     let searchStrategiesTestsTarget = Target.testTarget(
         name: "SearchStrategiesTests",
         dependencies: [
-            "SearchStrategies",
             "AppleDocsStrategy",
             "HIGStrategy",
             "SampleCodeStrategy",
             "SwiftEvolutionStrategy",
             "SwiftOrgStrategy",
+            "AppleArchiveStrategy",
             "SearchModels",
             "SharedConstants",
         ]
@@ -610,6 +605,22 @@ let targets: [Target] = {
     // #899 sub-PR F: extract SwiftOrgStrategy.
     let swiftOrgStrategyTarget = Target.target(
         name: "SwiftOrgStrategy",
+        dependencies: [
+            "SearchModels",
+            "SharedConstants",
+            "LoggingModels",
+            "CoreProtocols",
+            "SearchStrategyHelpers",
+        ]
+    )
+
+    // #899 sub-PR G: extract AppleArchiveStrategy (final per-strategy
+    // split; closes the 6-of-6 extraction. After this, SearchStrategies
+    // is empty of strategy concretes; only the StrategyHelpers
+    // companion target remains, which itself was extracted as
+    // SearchStrategyHelpers in sub-PR B.).
+    let appleArchiveStrategyTarget = Target.target(
+        name: "AppleArchiveStrategy",
         dependencies: [
             "SearchModels",
             "SharedConstants",
@@ -881,12 +892,12 @@ let targets: [Target] = {
             "Cleanup",
             "Search",
             "SearchSQLite",
-            "SearchStrategies",
             "AppleDocsStrategy",
             "HIGStrategy",
             "SampleCodeStrategy",
             "SwiftEvolutionStrategy",
             "SwiftOrgStrategy",
+            "AppleArchiveStrategy",
             "SampleIndex",
             "SampleIndexSQLite",
             "Services",
@@ -1105,13 +1116,13 @@ let targets: [Target] = {
         searchTarget,
         searchTestsTarget,
         searchStrategyHelpersTarget,
-        searchStrategiesTarget,
         searchStrategiesTestsTarget,
         appleDocsStrategyTarget,
         higStrategyTarget,
         sampleCodeStrategyTarget,
         swiftEvolutionStrategyTarget,
         swiftOrgStrategyTarget,
+        appleArchiveStrategyTarget,
         sampleIndexTarget,
         sampleIndexTestsTarget,
         sampleIndexSQLiteTarget,

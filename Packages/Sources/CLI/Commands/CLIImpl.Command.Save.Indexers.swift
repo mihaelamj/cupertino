@@ -1,3 +1,4 @@
+import AppleArchiveStrategy
 import AppleConstraintsKit
 import AppleDocsStrategy
 import CoreJSONParser
@@ -16,7 +17,6 @@ import SampleIndexSQLite
 import Search
 import SearchModels
 import SearchSQLite
-import SearchStrategies
 import SharedConstants
 import SwiftEvolutionStrategy
 import SwiftOrgStrategy
