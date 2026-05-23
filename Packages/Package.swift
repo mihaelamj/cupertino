@@ -43,7 +43,9 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Enrichment"),
     .singleTargetLibrary("Ingest"),
     .singleTargetLibrary("Resources"),
+    .singleTargetLibrary("AvailabilityModels"),
     .singleTargetLibrary("Availability"),
+    .singleTargetLibrary("AvailabilityFoundationNetworking"),
     .singleTargetLibrary("ASTIndexer"),
     .singleTargetLibrary("MCPSupport"),
     .singleTargetLibrary("SearchToolProvider"),
@@ -650,13 +652,21 @@ let targets: [Target] = {
         dependencies: ["RemoteSync", "RemoteSyncModels", "TestSupport"]
     )
 
+    let availabilityModelsTarget = Target.target(
+        name: "AvailabilityModels",
+        dependencies: []
+    )
     let availabilityTarget = Target.target(
         name: "Availability",
-        dependencies: ["SharedConstants"]
+        dependencies: ["AvailabilityModels", "SharedConstants"]
+    )
+    let availabilityFoundationNetworkingTarget = Target.target(
+        name: "AvailabilityFoundationNetworking",
+        dependencies: ["AvailabilityModels"]
     )
     let availabilityTestsTarget = Target.testTarget(
         name: "AvailabilityTests",
-        dependencies: ["Availability", "TestSupport"]
+        dependencies: ["Availability", "AvailabilityFoundationNetworking", "TestSupport"]
     )
 
     let astIndexerTarget = Target.target(
@@ -785,6 +795,8 @@ let targets: [Target] = {
             "Logging",
             "RemoteSync",
             "Availability",
+            "AvailabilityFoundationNetworking",
+            "AvailabilityModels",
             "AppleConstraintsKit",
             "Enrichment",
             "EnrichmentModels",
@@ -931,8 +943,12 @@ let targets: [Target] = {
     )
     let mockAIAgentTestsTarget = Target.testTarget(
         name: "MockAIAgentTests",
-        dependencies: ["MCPCore", "SampleIndex",
-            "SampleIndexSQLite", "TestSupport"]
+        dependencies: [
+            "MCPCore",
+            "SampleIndex",
+            "SampleIndexSQLite",
+            "TestSupport",
+        ]
     )
 
     let cupertinoTargets: [Target] = [
@@ -1018,7 +1034,9 @@ let targets: [Target] = {
         remoteSyncModelsTestsTarget,
         remoteSyncTarget,
         remoteSyncTestsTarget,
+        availabilityModelsTarget,
         availabilityTarget,
+        availabilityFoundationNetworkingTarget,
         availabilityTestsTarget,
         astIndexerTarget,
         astIndexerTestsTarget,

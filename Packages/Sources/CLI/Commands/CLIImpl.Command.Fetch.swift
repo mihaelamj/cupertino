@@ -1,5 +1,7 @@
 import ArgumentParser
 import Availability
+import AvailabilityFoundationNetworking
+import AvailabilityModels
 import Core
 import CorePackageIndexing
 import CorePackageIndexingModels
@@ -1117,7 +1119,8 @@ extension CLIImpl.Command {
 
             let fetcher = Availability.Fetcher(
                 docsDirectory: docsDir,
-                configuration: configuration
+                configuration: configuration,
+                networkingFactory: LiveAvailabilityNetworkingFactory()
             )
 
             let stats = try await fetcher.fetch { progress in

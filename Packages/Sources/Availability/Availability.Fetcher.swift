@@ -1,8 +1,6 @@
+import AvailabilityModels
 import Foundation
 import SharedConstants
-#if canImport(FoundationNetworking)
-import FoundationNetworking
-#endif
 
 // MARK: - Availability Fetcher
 
@@ -56,7 +54,7 @@ extension Availability {
 
         private let docsDirectory: URL
         private let configuration: Configuration
-        private let urlSession: URLSession
+        private let networking: any Availability.Networking
 
         /// Cache of framework-level availability for inheritance
         private var frameworkAvailabilityCache: [String: [Availability.Platform]] = [:]
@@ -68,17 +66,20 @@ extension Availability {
 
         public init(
             docsDirectory: URL,
-            configuration: Configuration = .default
+            configuration: Configuration = .default,
+            networkingFactory: any Availability.NetworkingFactory
         ) {
             self.docsDirectory = docsDirectory
             self.configuration = configuration
-
-            // Configure URLSession with timeout
-            let config = URLSessionConfiguration.default
-            config.timeoutIntervalForRequest = configuration.timeout
-            config.timeoutIntervalForResource = configuration.timeout * 2
-            config.httpMaximumConnectionsPerHost = configuration.concurrency
-            urlSession = URLSession(configuration: config)
+            // #905: URLSession construction moved to the factory's
+            // LiveAvailabilityNetworking concrete in
+            // AvailabilityFoundationNetworking. The factory reads
+            // the per-Fetcher timeout + concurrency knobs and
+            // returns a Networking witness configured with them.
+            networking = networkingFactory.make(
+                timeout: configuration.timeout,
+                concurrency: configuration.concurrency
+            )
         }
 
         // MARK: - Public API
@@ -573,18 +574,17 @@ extension Availability {
                 apiPath = path
             }
 
+            // swiftlint:disable:next force_try
             return try! URL(knownGood: "\(configuration.apiBaseURL)/\(apiPath).json")
         }
 
         private func fetchAvailability(from url: URL) async -> Availability.Info? {
             do {
-                let (data, response) = try await urlSession.data(from: url)
-
-                guard let httpResponse = response as? HTTPURLResponse else {
-                    return nil
-                }
-
-                guard httpResponse.statusCode == 200 else {
+                // #905: protocol seam returns (data, statusCode).
+                // statusCode == 0 means non-HTTP response; any non-200
+                // means upstream API rejected our request.
+                let (data, statusCode) = try await networking.fetch(from: url)
+                guard statusCode == 200 else {
                     return nil
                 }
 

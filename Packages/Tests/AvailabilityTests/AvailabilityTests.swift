@@ -1,4 +1,6 @@
 @testable import Availability
+import AvailabilityFoundationNetworking
+import AvailabilityModels
 import Foundation
 import Testing
 
@@ -579,7 +581,8 @@ struct AvailabilityAnnotationParserTests {
 @Suite("Availability.Fetcher.buildAPIURL Tests")
 struct FetcherBuildAPIURLTests {
     private let defaultFetcher = Availability.Fetcher(
-        docsDirectory: URL(fileURLWithPath: "/tmp")
+        docsDirectory: URL(fileURLWithPath: "/tmp"),
+        networkingFactory: LiveAvailabilityNetworkingFactory()
     )
 
     @Test("strips /documentation/ prefix, lowercases path, and appends .json")
@@ -603,7 +606,8 @@ struct FetcherBuildAPIURLTests {
         )
         let fetcher = Availability.Fetcher(
             docsDirectory: URL(fileURLWithPath: "/tmp"),
-            configuration: config
+            configuration: config,
+            networkingFactory: LiveAvailabilityNetworkingFactory()
         )
         let docURL = try #require(URL(string: "https://developer.apple.com/documentation/Combine/Publisher"))
         let result = await fetcher.buildAPIURL(from: docURL)
@@ -615,5 +619,74 @@ struct FetcherBuildAPIURLTests {
         let docURL = try #require(URL(string: "https://developer.apple.com/documentation/SwiftUI"))
         let result = await defaultFetcher.buildAPIURL(from: docURL)
         #expect(result.absoluteString.hasSuffix(".json"))
+    }
+}
+
+// MARK: - Availability.Networking seam tests (#905)
+
+/// Deterministic fake `Availability.Networking` for the seam tests:
+/// returns a pre-canned `(Data, status)` per URL match, fails fast on
+/// unknown URLs. Proves the protocol seam is usable for testing the
+/// Fetcher's status-code branching without an actual URLSession.
+private struct FakeAvailabilityNetworking: Availability.Networking {
+    let responses: [URL: (Data, Int)]
+
+    func fetch(from url: URL) async throws -> (Data, Int) {
+        guard let response = responses[url] else {
+            throw FakeError.noStub(url: url)
+        }
+        return response
+    }
+
+    enum FakeError: Error {
+        case noStub(url: URL)
+    }
+}
+
+private struct FakeAvailabilityNetworkingFactory: Availability.NetworkingFactory {
+    let networking: FakeAvailabilityNetworking
+
+    func make(timeout _: TimeInterval, concurrency _: Int) -> any Availability.Networking {
+        networking
+    }
+}
+
+@Suite("Availability.Networking protocol seam")
+struct AvailabilityNetworkingSeamTests {
+    @Test("fake networking conforms to the protocol contract and returns canned response")
+    func fakeConformsToContract() async throws {
+        let url = try #require(URL(string: "https://example.com/foo.json"))
+        let fake = FakeAvailabilityNetworking(responses: [url: (Data("{}".utf8), 200)])
+        let (data, status) = try await fake.fetch(from: url)
+        #expect(status == 200)
+        #expect(data == Data("{}".utf8))
+    }
+
+    @Test("non-HTTP status surfaces as `0` per the documented contract")
+    func nonHTTPStatusContract() async throws {
+        let url = try #require(URL(string: "ftp://example.com/foo"))
+        let fake = FakeAvailabilityNetworking(responses: [url: (Data(), 0)])
+        let (_, status) = try await fake.fetch(from: url)
+        #expect(status == 0, "non-HTTP status must be `0` per Availability.Networking docstring")
+    }
+
+    @Test("transport-error path throws and does not return a status")
+    func transportErrorThrows() async throws {
+        let fake = FakeAvailabilityNetworking(responses: [:])
+        let unknownURL = try #require(URL(string: "https://example.com/missing"))
+        await #expect(throws: FakeAvailabilityNetworking.FakeError.self) {
+            try await fake.fetch(from: unknownURL)
+        }
+    }
+
+    @Test("factory returns the configured networking witness regardless of timeout / concurrency knobs")
+    func factoryReturnsConfiguredWitness() async throws {
+        let url = try #require(URL(string: "https://example.com/foo"))
+        let networking = FakeAvailabilityNetworking(responses: [url: (Data("payload".utf8), 200)])
+        let factory = FakeAvailabilityNetworkingFactory(networking: networking)
+        let made = factory.make(timeout: 5.0, concurrency: 10)
+        let (data, status) = try await made.fetch(from: url)
+        #expect(status == 200)
+        #expect(data == Data("payload".utf8))
     }
 }
