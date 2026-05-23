@@ -24,11 +24,11 @@ public typealias SearchModule = Search
 //
 
 // MARK: - Source Identity
+
 // `Search.Source` lifted to `SearchModels/Search.DomainTypes.swift` by
 // the #898F follow-up. ComposableResult still uses `SearchModule.Source`
 // (the `Search` namespace alias declared at the top of this file) and
 // `Search.SourceRegistry` (in `SearchModels`).
-
 
 // MARK: - Result Atom (Single Item)
 
@@ -371,6 +371,13 @@ extension Search {
 
 /// Builder for assembling ComposedSearchResult piece by piece
 extension Search {
+    // @unchecked Sendable per concurrency.md §24: builder pattern;
+    // the class accumulates mutable per-source result lists during
+    // assembly. Builders are single-threaded by convention (each
+    // caller constructs + finalises its own builder); @unchecked
+    // acknowledges the convention without converting to an actor
+    // (which would force the builder API to be async).
+
     public final class ComposedResultBuilder: @unchecked Sendable {
         private var query: String = ""
         private var framework: String?
@@ -487,14 +494,14 @@ extension Search {
 }
 
 // MARK: - Query Intent (For Source Prioritization)
+
 // `Search.QueryIntent` + `detectQueryIntent(_:)` lifted to
 // `SearchModels/Search.DomainTypes.swift` by the #898F follow-up.
 
-
 // MARK: - Source Properties (Quarks - Measurable Attributes)
+
 // `Search.SourceProperties` lifted to
 // `SearchModels/Search.DomainTypes.swift` by the #898F follow-up.
-
 
 // MARK: - Unified Search Summary
 

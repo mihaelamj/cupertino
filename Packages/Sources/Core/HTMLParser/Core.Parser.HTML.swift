@@ -6,11 +6,20 @@ import WebKit
 #endif
 
 // MARK: - HTML to Markdown Converter
+
 // File length: 580+ lines | Type body length: 400+ lines
 // Disabling: file_length (400 line limit), type_body_length (250 line limit)
 
 extension Core.Parser {
     /// Converts HTML documentation to clean Markdown
+    // @unchecked Sendable per concurrency.md §24: stateless value type
+    // with no stored properties; every public method is a pure function
+    // (parsing input -> output, no shared state, no thread-local cache).
+    // @unchecked is required only because the
+    // Core.Protocols.ContentTransformer protocol declares Sendable, and
+    // the WKWebView-based fallback path uses bridging types that aren't
+    // statically Sendable; the bridging is wrapped + synchronised inside
+    // the static helpers.
     public struct HTML: Core.Protocols.ContentTransformer, @unchecked Sendable {
         public typealias RawContent = String
 

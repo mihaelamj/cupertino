@@ -1,11 +1,18 @@
 import CoreProtocols
 import Foundation
+
 // MARK: - Apple JSON Crawler Engine
 
 /// Complete crawler engine for Apple documentation using JSON API
 /// Uses Core.JSONParser.ContentFetcher for fetching and
 /// Core.JSONParser.AppleJSONToMarkdown for transformation.
 extension Core.JSONParser {
+    // @unchecked Sendable per concurrency.md §24: reference type with
+    // injected URLSession + transformer dependencies; URLSession is
+    // documented Sendable and the transformer struct is stateless.
+    // No mutable instance state; the class form is for protocol
+    // conformance (Core.Protocols.CrawlerEngine is class-bound).
+
     public final class Engine: Core.Protocols.CrawlerEngine, @unchecked Sendable {
         private let fetcher: ContentFetcher
 

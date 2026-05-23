@@ -9,6 +9,11 @@ extension Core.JSONParser {
     /// This is a lightweight alternative to WKWebView rendering that avoids memory issues
     /// with large index pages like lapack-functions (1600+ items)
     // swiftlint:disable:next type_body_length
+    // @unchecked Sendable per concurrency.md §24: stateless value type;
+    // every method is a pure JSON-to-Markdown function with no shared
+    // mutable state. @unchecked only because the ContentTransformer
+    // protocol declares Sendable and conformance is structural.
+
     public struct AppleJSONToMarkdown: Core.Protocols.ContentTransformer, @unchecked Sendable {
         public typealias RawContent = Data
 
