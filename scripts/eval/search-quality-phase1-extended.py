@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Phase 1 extended harness — multi-corpus paired-comparison.
+Phase 1 extended harness , multi-corpus paired-comparison.
 
 Sibling of `search-quality-phase1.py` (Class A + B canonical lookup,
 50 queries). This script adds two more independent corpora so we can
@@ -372,7 +372,7 @@ def write_canonical_md(out_path: Path, corpus_name: str, arm_a_label: str, arm_b
     status = "Strong" if (rank1_removed == 0 and delta_mrr > 0) else ("Mixed" if delta_mrr > 0 else "Weak")
     headline = f"+{rank1_added_or_fixed} / {a_agg['n']} queries newly rank-1"
 
-    def fmt_list(xs, fallback="—"):
+    def fmt_list(xs, fallback="n/a"):
         return ", ".join(f"`{q}`" for q in xs) if xs else fallback
 
     md = f"""# Search-quality version diff: {version_a} → {version_b} ({corpus_name})
@@ -380,9 +380,9 @@ def write_canonical_md(out_path: Path, corpus_name: str, arm_a_label: str, arm_b
 **Date:** 2026-05-21
 **Status:** {status}
 **Headline:** {headline}
-**Corpus:** {corpus_name} — independent of `search-quality-versiondiff-v1.1.0-to-v1.2.0.md`'s 50-query corpus (zero overlap, different queries chosen to cross-validate)
-**Arm A:** {arm_a_label} — `{a_meta.get('binary','?')}` × `{a_meta.get('db','?')}` ({a_meta.get('schema','?')}, {a_meta.get('docs','?')} docs)
-**Arm B:** {arm_b_label} — `{b_meta.get('binary','?')}` × `{b_meta.get('db','?')}` ({b_meta.get('schema','?')}, {b_meta.get('docs','?')} docs)
+**Corpus:** {corpus_name} , independent of `search-quality-versiondiff-v1.1.0-to-v1.2.0.md`'s 50-query corpus (zero overlap, different queries chosen to cross-validate)
+**Arm A:** {arm_a_label} , `{a_meta.get('binary','?')}` × `{a_meta.get('db','?')}` ({a_meta.get('schema','?')}, {a_meta.get('docs','?')} docs)
+**Arm B:** {arm_b_label} , `{b_meta.get('binary','?')}` × `{b_meta.get('db','?')}` ({b_meta.get('schema','?')}, {b_meta.get('docs','?')} docs)
 **Methodology:** `docs/design/search-quality-eval.md` Phase 1 (Class A + B, paired-comparison mode)
 **Harness:** `scripts/eval/search-quality-phase1-extended.py`
 **Universal rule:** `../private/mihaela-agents/Rules/universal/search-quality-eval.md`
@@ -395,7 +395,7 @@ This is a cross-validation corpus. The v1.1.0 → v1.2.0 claim ("v1.2.0 is bette
 
 | Metric | {arm_a_label} | {arm_b_label} | Delta |
 |---|---|---|---|
-| N queries | {a_agg['n']} | {b_agg['n']} | — |
+| N queries | {a_agg['n']} | {b_agg['n']} | n/a |
 | **MRR** | **{a_agg['mrr']:.4f}** | **{b_agg['mrr']:.4f}** | **{delta_mrr:+.4f}** |
 | P@1 | {a_agg['p_at_1']:.4f} ({a_agg['p_at_1_count']} / {a_agg['n']}) | {b_agg['p_at_1']:.4f} ({b_agg['p_at_1_count']} / {b_agg['n']}) | {delta_p1:+.4f} |
 | P@5 (mean) | {a_agg['p_at_5_mean']:.4f} | {b_agg['p_at_5_mean']:.4f} | {b_agg['p_at_5_mean']-a_agg['p_at_5_mean']:+.4f} |
@@ -433,7 +433,7 @@ This is a cross-validation corpus. The v1.1.0 → v1.2.0 claim ("v1.2.0 is bette
 | **Removed** | **{len(b['removed'])}** | {fmt_list(b['removed'])} |
 | **Fixed** | **{len(b['fixed'])}** | {fmt_list(b['fixed'])} |
 | **Degraded** | **{len(b['degraded'])}** | {fmt_list(b['degraded'])} |
-| Unchanged (both rank-1) | {len(b['unchanged_rank1'])} | — |
+| Unchanged (both rank-1) | {len(b['unchanged_rank1'])} | n/a |
 | Both still suboptimal | {len(b['both_suboptimal'])} | {fmt_list(b['both_suboptimal'])} |
 
 ---
@@ -464,8 +464,8 @@ def write_deprecation_md(out_path: Path, arm_a_label: str, arm_b_label: str,
 **Status:** {status}
 **Headline:** {headline}
 **Corpus:** 30 (modern, legacy) Foundation + Swift-stdlib pairs harvested from `docs/audits/search-quality-deprecation-baseline-v1.2.0.md`
-**Arm A:** {arm_a_label} — `{a_meta.get('binary','?')}` × `{a_meta.get('db','?')}` ({a_meta.get('schema','?')}, {a_meta.get('docs','?')} docs)
-**Arm B:** {arm_b_label} — `{b_meta.get('binary','?')}` × `{b_meta.get('db','?')}` ({b_meta.get('schema','?')}, {b_meta.get('docs','?')} docs)
+**Arm A:** {arm_a_label} , `{a_meta.get('binary','?')}` × `{a_meta.get('db','?')}` ({a_meta.get('schema','?')}, {a_meta.get('docs','?')} docs)
+**Arm B:** {arm_b_label} , `{b_meta.get('binary','?')}` × `{b_meta.get('db','?')}` ({b_meta.get('schema','?')}, {b_meta.get('docs','?')} docs)
 **Methodology:** `docs/design/search-quality-eval.md` Phase 1.1 (Class C deprecation-aware, paired-comparison mode)
 **Harness:** `scripts/eval/search-quality-phase1-extended.py`
 
@@ -493,10 +493,10 @@ For each (query, modern_uri, legacy_uri) triple: run `cupertino search "<query>"
 
 | Transition | Count | Queries |
 |---|---|---|
-| A loses → B wins (improvement) | {len(t['a_lose_b_win'])} | {', '.join(f'`{q}`' for q in t['a_lose_b_win']) if t['a_lose_b_win'] else '—'} |
-| A wins → B loses (regression) | {len(t['a_win_b_lose'])} | {', '.join(f'`{q}`' for q in t['a_win_b_lose']) if t['a_win_b_lose'] else '—'} |
-| Both win (concordant +) | {len(t['both_win'])} | — |
-| Both lose (concordant −) | {len(t['both_lose'])} | {', '.join(f'`{q}`' for q in t['both_lose']) if t['both_lose'] else '—'} |
+| A loses → B wins (improvement) | {len(t['a_lose_b_win'])} | {', '.join(f'`{q}`' for q in t['a_lose_b_win']) if t['a_lose_b_win'] else 'n/a'} |
+| A wins → B loses (regression) | {len(t['a_win_b_lose'])} | {', '.join(f'`{q}`' for q in t['a_win_b_lose']) if t['a_win_b_lose'] else 'n/a'} |
+| Both win (concordant +) | {len(t['both_win'])} | n/a |
+| Both lose (concordant −) | {len(t['both_lose'])} | {', '.join(f'`{q}`' for q in t['both_lose']) if t['both_lose'] else 'n/a'} |
 
 A zero "regression" column with a positive "improvement" column is the clean-win shape.
 """

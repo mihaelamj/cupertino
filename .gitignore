@@ -61,3 +61,4 @@ CLAUDE.md
 # Local-only mihaela-agents clone (never pushed to public GitHub)
 .agents
 .swift-version
+scripts/eval/__pycache__/

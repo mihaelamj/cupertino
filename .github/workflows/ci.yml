@@ -229,4 +229,40 @@ jobs:
             --binary Packages/.build/release/cupertino \
             --search-db ~/.cupertino-dev/search.db \
             --label smoke --version smoke \
-            --smoke
+            --smoke --strict
+
+      - name: "Smoke: Phase 2 (AST tools via MCP stdio)"
+        timeout-minutes: 2
+        run: |
+          python3 scripts/eval/search-quality-phase2.py \
+            --binary Packages/.build/release/cupertino \
+            --search-db ~/.cupertino-dev/search.db \
+            --label smoke --version smoke \
+            --smoke --strict
+
+      - name: "Smoke: Phase 3 (inheritance)"
+        timeout-minutes: 2
+        run: |
+          python3 scripts/eval/search-quality-phase3.py \
+            --binary Packages/.build/release/cupertino \
+            --search-db ~/.cupertino-dev/search.db \
+            --label smoke --version smoke \
+            --smoke --strict
+
+      - name: "Smoke: Phase 4 (read commands)"
+        timeout-minutes: 2
+        run: |
+          python3 scripts/eval/search-quality-phase4.py \
+            --binary Packages/.build/release/cupertino \
+            --search-db ~/.cupertino-dev/search.db \
+            --label smoke --version smoke \
+            --smoke --strict
+
+      - name: "Smoke: Phase 5 (list / doctor / package-search)"
+        timeout-minutes: 2
+        run: |
+          python3 scripts/eval/search-quality-phase5.py \
+            --binary Packages/.build/release/cupertino \
+            --search-db ~/.cupertino-dev/search.db \
+            --label smoke --version smoke \
+            --smoke --strict
