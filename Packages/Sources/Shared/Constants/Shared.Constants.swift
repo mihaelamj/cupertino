@@ -114,7 +114,7 @@ extension Shared.Constants {
         /// other top-level state files under `<baseDirectory>/`. **Sole
         /// source of truth for this filename** — `Shared.Paths.userArchiveSelectionsFile`
         /// is the canonical computed URL, consumed by both `Crawler.ArchiveGuideCatalog`
-        /// and `TUI/Models/ArchiveGuidesCatalog` so the two paths cannot drift.
+        /// and `TUI/State/ArchiveGuidesCatalog` so the two paths cannot drift.
         public static let userArchiveSelections = "selected-archive-guides.json"
 
         // MARK: Package Data Files

@@ -30,7 +30,7 @@ extension Crawler {
         /// crawler and TUI cannot drift on the filename. The seam lives in
         /// `Shared.Paths` because both producers already depend on
         /// `SharedConstants`; pre-#101 the TUI computed the same URL
-        /// independently in `TUI/Models/ArchiveGuidesCatalog`.
+        /// independently in `TUI/State/ArchiveGuidesCatalog`.
         private static func userSelectionsURL(baseDirectory: URL) -> URL {
             Shared.Paths(baseDirectory: baseDirectory).userArchiveSelectionsFile
         }
@@ -319,6 +319,7 @@ extension Crawler {
         public static var testGuides: [URL] {
             [
                 // Just the Objective-C Runtime Guide - well-structured, moderate size
+                // swiftlint:disable:next force_try
                 try! URL(knownGood: "\(baseURL)/Cocoa/Conceptual/ObjCRuntimeGuide"),
             ]
         }
