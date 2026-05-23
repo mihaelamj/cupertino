@@ -2,6 +2,8 @@
 
 ### Changed
 
+- **#899 sub-PR E: extract `SwiftEvolutionStrategy` into its own SPM target.** Pattern continues from sub-PRs B-D. STRICT_PRODUCERS 38 -> 39. Refs: #899.
+
 - **#899 sub-PR D: extract `SampleCodeStrategy` into its own SPM target.** Pattern continues from sub-PRs B + C. Same shape: foundation-only deps, file moved from SearchStrategies, CLI + tests import the new target. STRICT_PRODUCERS bumped 37 -> 38. Refs: #899.
 
 - **#899 sub-PR C: extract `HIGStrategy` into its own SPM target.** Follows the pattern set by sub-PR B (#967). New target depends on Foundation + SearchModels + SharedConstants + LoggingModels + CoreProtocols + SearchStrategyHelpers. SearchStrategies drops the HIG file. CLI composition root + 4 test targets gain `import HIGStrategy`. STRICT_PRODUCERS bumped 36 -> 37. Test count 2496 / 373 preserved. Refs: #899.

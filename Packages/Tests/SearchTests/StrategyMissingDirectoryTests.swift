@@ -6,6 +6,7 @@ import LoggingModels
 import SearchModels
 @testable import SearchSQLite
 import SharedConstants
+import SwiftEvolutionStrategy
 import Testing
 
 // MARK: - Test Doubles
