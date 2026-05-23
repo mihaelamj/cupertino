@@ -185,9 +185,20 @@ def score_query(binary: str, search_db: str, fixture: dict) -> QueryOutcome:
             if line.startswith("### "):
                 result_headers.append(line[4:].strip())
         # Also capture the URI / type-decl lines that follow each
-        # header (the actual indexed symbol metadata).
+        # header (the actual indexed symbol metadata). Indented
+        # metadata sub-lines (`  - Attributes: @State`,
+        # `  - Conformances: View`, etc.) are also included so that
+        # property-wrapper / conformance / generic-constraint
+        # fixtures whose expected token only appears in the
+        # attributes / conformances column (not the URI / framework /
+        # symbol name) can still match. Pre-#952 the matcher only
+        # saw header + URI + Framework lines, which silently
+        # failed when the queried wrapper appeared only as a symbol
+        # attribute (e.g. `@State` on `delay(_:)` whose URI carries
+        # no "state" substring).
         result_body_lines = [line for line in text.splitlines()
-                             if line.startswith(("### ", "_Framework:", "- **", "URI: `"))]
+                             if line.startswith(("### ", "_Framework:", "- **", "URI: `"))
+                             or line.lstrip().startswith(("- Attributes:", "- Conforms to:", "- Generic params:"))]
         result_body = "\n".join(result_body_lines)
 
         top_uris = result_headers[:10] if result_headers else [text[:80] + "..."]
