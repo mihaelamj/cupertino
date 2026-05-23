@@ -16,15 +16,17 @@ struct CommandRegistrationTests {
     func subcommandsRegistered() {
         let config = Cupertino.configuration
 
-        // 13 visible + 1 hidden (package-search) + `inheritance` (#274).
-        // `setup` now owns every database — packages-setup was collapsed
-        // into it. `resolve-refs` post-processes saved pages against
-        // #208. `index` removed in #231 (samples now build via
-        // `save --samples`). `ask` absorbed into `search` in #239
-        // (default fan-out path produces the same chunked output as
-        // `ask` did). `inheritance` added in #274 — walks the class-
-        // inheritance edge table introduced at schema v15.
-        #expect(config.subcommands.count == 15)
+        // 13 visible + 1 hidden (package-search) + `inheritance` (#274)
+        // + `search-symbols` (#948 phase 1). `setup` now owns every
+        // database (packages-setup was collapsed into it). `resolve-refs`
+        // post-processes saved pages against #208. `index` removed in
+        // #231 (samples now build via `save --samples`). `ask` absorbed
+        // into `search` in #239 (default fan-out path produces the same
+        // chunked output as `ask` did). `inheritance` added in #274
+        // (walks the class-inheritance edge table introduced at schema
+        // v15). `search-symbols` added in #948 phase 1 as the first of
+        // 5 AST-tool CLI subcommands mirroring the MCP surface.
+        #expect(config.subcommands.count == 16)
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.Setup.self })
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.Fetch.self })
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.Save.self })
@@ -40,6 +42,7 @@ struct CommandRegistrationTests {
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.PackageSearch.self })
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.ResolveRefs.self })
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.Inheritance.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.SearchSymbols.self })
     }
 
     @Test("Default subcommand is CLIImpl.Command.Serve")
