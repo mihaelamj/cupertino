@@ -47,6 +47,9 @@ COMMANDS=(
     package-search   # hidden
     search-symbols   # #948 phase 1 of CLI/MCP parity
     search-property-wrappers  # #948 phase 2 of CLI/MCP parity
+    search-concurrency        # #948 phase 3 of CLI/MCP parity
+    search-conformances       # #948 phase 4 of CLI/MCP parity
+    search-generics           # #948 phase 5 of CLI/MCP parity
 )
 
 # --- structural drift: option .md files vs --help OPTIONS section ---------
