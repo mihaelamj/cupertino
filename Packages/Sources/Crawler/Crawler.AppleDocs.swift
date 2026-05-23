@@ -7,7 +7,9 @@ import SharedConstants
 
 // MARK: - Documentation Crawler
 
-/// Main crawler for Apple documentation using WKWebView
+/// Main crawler for Apple documentation. Fetches HTML via an injected
+/// `Crawler.HTTPFetcherFactory` (the production composition root wires
+/// `Crawler.WebKit.LiveHTTPFetcherFactory`).
 extension Crawler {
     @MainActor
     public final class AppleDocs: NSObject {
@@ -825,7 +827,6 @@ extension Crawler.AppleDocs {
         case timeout
         case invalidState
         case invalidHTML
-        case unsupportedPlatform
         /// Apple's CDN served a styled HTTP error page (502/429/403 at HTTP 200).
         /// Thrown by `crawlPage` so callers can defer the URL for retry (#292).
         case httpErrorPage
@@ -838,8 +839,6 @@ extension Crawler.AppleDocs {
                 return "Invalid crawler state"
             case .invalidHTML:
                 return "Invalid HTML received"
-            case .unsupportedPlatform:
-                return "Fetcher backend is not available on this platform"
             case .httpErrorPage:
                 return "HTTP error template page received"
             }

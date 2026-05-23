@@ -7,7 +7,9 @@ import SharedConstants
 // MARK: - HIG Crawler
 
 /// Crawls Apple's Human Interface Guidelines
-/// The HIG website is a JavaScript SPA, requiring WKWebView-based crawling
+/// The HIG website is a JavaScript SPA, requiring a JS-rendering
+/// fetcher (the production composition root wires
+/// `Crawler.WebKit.LiveHTTPFetcherFactory`).
 extension Crawler {
     @MainActor
     // #673 Phase D iter-5: 395-line class — page discovery + HTML parsing
