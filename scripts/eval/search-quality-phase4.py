@@ -125,12 +125,22 @@ def score_query(binary: str, search_db: str, fixture: dict) -> QueryOutcome:
         # other failure modes should NOT silently pass as
         # "expected not-found."
         all_text = (plain + (stderr or "")).lower()
+        # Marker list expanded post-iter-2 critic so honest per-error
+        # phrasing in Read.swift (e.g. "Read failed:" for backend
+        # failures, "Invalid package identifier" for malformed
+        # `<owner>/<repo>/<path>`) doesn't have to be lexically
+        # mangled into "Document not found" just to satisfy the
+        # harness. Each marker corresponds to one canonical negative
+        # path in the binary's `Services.ReadService.ReadError`
+        # surface.
         explicit_not_found = (
             "not found" in all_text
             or "no such" in all_text
             or "no document" in all_text
             or "project not found" in all_text
             or "no project named" in all_text
+            or "read failed" in all_text
+            or "invalid package identifier" in all_text
         )
         # Require explicit marker AND non-zero exit. Iter-2 critic
         # caught that marker-only acceptance would mask a refactor
@@ -192,7 +202,7 @@ def write_versiondiff_md(out_path, **kwargs):
 
 ## Method
 
-Each fixture probes one URI / project-id and asserts the format-appropriate signal: JSON parses with a content field, markdown body has at least 100 chars, sample read returns at least 50 chars. Negative-path probes (Class C) require BOTH an explicit not-found marker (`not found`, `no such`, `no document`, `project not found`, `no project named`) AND non-zero exit. The conjunction prevents two failure modes from being silently scored as PASS: a binary refactor that flips ExitCode.failure to ExitCode.success while still emitting the marker (semantic regression), and crashes / DB-open errors that exit non-zero with an unrelated message containing the substring `error` (iter-2 critic finding).
+Each fixture probes one URI / project-id and asserts the format-appropriate signal: JSON parses with a content field, markdown body has at least 100 chars, sample read returns at least 50 chars. Negative-path probes (Class C) require BOTH an explicit per-error marker AND non-zero exit. Accepted marker substrings (post-iter-2 critic): `not found`, `no such`, `no document`, `project not found`, `no project named`, `read failed`, `invalid package identifier`. The marker list mirrors the user-facing diagnostic phrases emitted by each `Services.ReadService.ReadError` case after the #953 helper migration. The conjunction prevents two failure modes from being silently scored as PASS: a binary refactor that flips ExitCode.failure to ExitCode.success while still emitting the marker (semantic regression), and crashes / DB-open errors that exit non-zero with an unrelated message containing the substring `error` (iter-2 critic finding).
 """
     out_path.write_text(md)
 

@@ -43,7 +43,7 @@ extension CLIImpl.Command {
             // Use Services.ServiceContainer for managed lifecycle
             let (project, files) = try await Services.ServiceContainer.withSampleService(samplesDB: dbPath, sampleDatabaseFactory: sampleDatabaseFactory) { service in
                 guard let project = try await service.getProject(id: projectId) else {
-                    Cupertino.Context.composition.logging.recording.error("Project not found: \(projectId)")
+                    CLIImpl.printUserFacingDiagnostic("Project not found: \(projectId)", recording: Cupertino.Context.composition.logging.recording)
                     Cupertino.Context.composition.logging.recording.output("Use 'cupertino list-samples' or 'cupertino search --source samples' to find valid project IDs.")
                     throw ExitCode.failure
                 }
@@ -150,7 +150,7 @@ extension CLIImpl.Command {
                     Cupertino.Context.composition.logging.recording.output(jsonString)
                 }
             } catch {
-                Cupertino.Context.composition.logging.recording.error("Error encoding JSON: \(error)")
+                CLIImpl.printUserFacingDiagnostic("Error encoding JSON: \(error)", recording: Cupertino.Context.composition.logging.recording)
             }
         }
 

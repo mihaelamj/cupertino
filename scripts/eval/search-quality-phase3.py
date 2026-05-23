@@ -89,27 +89,33 @@ def score_query(binary: str, search_db: str, fixture: dict) -> QueryOutcome:
         code, stdout, stderr = 124, "", "timeout"
 
     plain = _strip_timestamps(stdout).strip()
+    plain_stderr = _strip_timestamps(stderr or "").strip()
     matched = False
     rank = None
     top_uris = [f"exit={code}"]
 
     if expect in ("No inheritance data", "no-results"):
         # Class C: require an EXPLICIT documented marker (per the
-        # #669 fallback wording). Don't accept empty-stdout OR
-        # non-zero exit , both would mask silent-empty / crash
-        # regressions as PASS. The harness must distinguish "the
-        # binary correctly surfaced the value-type / root / absent
-        # negative path" from "the binary blew up or said nothing."
+        # #669 fallback wording + #953 user-facing-diagnostic fix
+        # that routes disambiguation + framework-miss messages to
+        # stderr via CLIImpl.printUserFacingDiagnostic). Check BOTH
+        # stdout (where successful value-type messages land, e.g.
+        # `No inheritance data: Swift value type`) AND stderr (where
+        # disambiguation lists + framework-miss errors land). The
+        # binary's `recording.error()` only logs to OSLog; user-
+        # visible diagnostics go via the explicit stderr write.
+        combined = (plain + "\n" + plain_stderr).lower()
         marker_present = (
-            "no inheritance data" in plain.lower()
-            or "no symbol named" in plain.lower()
-            or "no results" in plain.lower()
-            or "ambiguous" in plain.lower()  # disambiguation list also acceptable for absent-symbol probe
+            "no inheritance data" in combined
+            or "no symbol named" in combined
+            or "no results" in combined
+            or "ambiguous" in combined  # disambiguation list (post-#953 fix routes this to stderr visibly)
         )
-        if code == 0 and marker_present:
+        if marker_present:
             matched = True
             rank = 1
-        top_uris.append(f"output={plain[:60]!r}")
+        top_uris.append(f"stdout={plain[:60]!r}")
+        top_uris.append(f"stderr={plain_stderr[:60]!r}")
         top_uris.append(f"marker-present={marker_present}")
     elif expect == "any-descendant":
         # Down walk must produce SOME descendant line beneath the symbol header.
@@ -174,7 +180,7 @@ def write_versiondiff_md(out_path, **kwargs):
 
 ## Method
 
-Up walks assert the indented chain output contains the expected ancestor URI fragment. Down walks assert the chain contains the expected descendant. Depth-bounded probes assert the chain reaches (or does not reach) the expected hop. Negative-path probes (Class C) require BOTH exit-0 AND an explicit documented marker (`no inheritance data`, `no symbol named`, `no results`, or `ambiguous` for the disambiguation list). Empty stdout and non-zero exit are explicitly rejected as PASS to avoid masking silent-empty regressions and crashes (iter-2 critic finding).
+Up walks assert the indented chain output contains the expected ancestor URI fragment. Down walks assert the chain contains the expected descendant. Depth-bounded probes assert the chain reaches (or does not reach) the expected hop. Negative-path probes (Class C) require an explicit documented marker (`no inheritance data`, `no symbol named`, `no results`, or `ambiguous` for the disambiguation list) present in stdout OR stderr (post-#953 the disambiguation + framework-miss diagnostics go to stderr via the synchronous `CLIImpl.printUserFacingDiagnostic` helper, while value-type and root-type markers stay on stdout as part of the successful `cupertino inheritance` output). Exit code is deliberately NOT constrained: value-type negatives exit 0 (correct successful answer "no inheritance data for value types"); disambiguation exits 1 (refusing to proceed without --framework). Both are valid Class C outcomes, so the harness accepts either.
 """
     out_path.write_text(md)
 

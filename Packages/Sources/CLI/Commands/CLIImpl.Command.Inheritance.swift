@@ -79,10 +79,9 @@ extension CLIImpl.Command {
 
         // swiftlint:disable:next function_body_length
         mutating func run() async throws {
+            let recording = Cupertino.Context.composition.logging.recording
             guard depth > 0 else {
-                Cupertino.Context.composition.logging.recording.error(
-                    "❌ --depth must be at least 1"
-                )
+                CLIImpl.printUserFacingDiagnostic("❌ --depth must be at least 1", recording: recording)
                 throw ExitCode.failure
             }
 
@@ -90,8 +89,9 @@ extension CLIImpl.Command {
                 ?? Shared.Paths.live().searchDatabase
 
             guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
-                Cupertino.Context.composition.logging.recording.error(
-                    "❌ search.db not found at \(searchDBURL.path). Run `cupertino setup` first."
+                CLIImpl.printUserFacingDiagnostic(
+                    "❌ search.db not found at \(searchDBURL.path). Run `cupertino setup` first.",
+                    recording: recording
                 )
                 throw ExitCode.failure
             }
@@ -122,9 +122,10 @@ extension CLIImpl.Command {
             default:
                 if let framework {
                     guard let match = candidates.first(where: { $0.framework.lowercased() == framework.lowercased() }) else {
-                        Cupertino.Context.composition.logging.recording.error(
+                        CLIImpl.printUserFacingDiagnostic(
                             "❌ Symbol `\(symbol)` not found in framework `\(framework)`. " +
-                                "Try `cupertino list-frameworks` to see valid values."
+                                "Try `cupertino list-frameworks` to see valid values.",
+                            recording: recording
                         )
                         throw ExitCode.failure
                     }
@@ -165,7 +166,7 @@ extension CLIImpl.Command {
                 out += "  - \(candidate.title) in \(candidate.framework) (\(candidate.uri))\n"
             }
             out += "\nRe-run with `--framework <name>` to pick one."
-            Cupertino.Context.composition.logging.recording.error(out)
+            CLIImpl.printUserFacingDiagnostic(out, recording: Cupertino.Context.composition.logging.recording)
         }
 
         private func emitText(symbol: String, candidate: SearchModule.InheritanceCandidate, tree: SearchModule.InheritanceTree, direction: SearchModule.InheritanceDirection) {
