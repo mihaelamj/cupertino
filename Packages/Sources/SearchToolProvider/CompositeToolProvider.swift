@@ -754,8 +754,11 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             minimumVisionOS: minVisionOS
         )
 
-        // Configure empty message to suggest archive if not already searching it
-        var config = Services.Formatter.Config.mcpDefault
+        // #976: was `Services.Formatter.Config.mcpDefault`; the static
+        // was removed as a Rule 1 Service Locator. `makeStandardConfig`
+        // is a private factory on this actor (Rule 1 carve-out: internal
+        // helper, not a Service Locator reachable from outside).
+        var config = Self.makeStandardConfig()
         if results.isEmpty, !includeArchive, source != Shared.Constants.SourcePrefix.appleArchive {
             config = Services.Formatter.Config(
                 showScore: true,
@@ -923,7 +926,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let formatter = Services.Formatter.Markdown(
             query: query,
             filters: filters,
-            config: .mcpDefault,
+            config: Self.makeStandardConfig(),
             teasers: teasers
         )
         let markdown = formatter.format(results)
@@ -962,7 +965,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
         // Use shared formatter
         let higQuery = Services.HIGQuery(text: query, platform: nil, category: nil)
-        let formatter = Services.Formatter.HIG.Markdown(query: higQuery, config: .mcpDefault, teasers: teasers)
+        let formatter = Services.Formatter.HIG.Markdown(query: higQuery, config: Self.makeStandardConfig(), teasers: teasers)
         let markdown = formatter.format(results)
 
         return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
@@ -1034,7 +1037,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let formatter = Services.Formatter.Unified.Markdown(
             query: query,
             framework: framework,
-            config: .mcpDefault
+            config: Self.makeStandardConfig()
         )
         let markdown = formatter.format(input)
 
@@ -1882,4 +1885,21 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     JSON LIKE so SwiftUI does not match SwiftUIHelper. No effect on \
     rows from sources other than packages.
     """
+
+    /// #976: private factory for the canonical MCP-side
+    /// `Services.Formatter.Config`. Pre-#976 the 4 call sites used
+    /// `Services.Formatter.Config.mcpDefault`, a Rule 1 Service Locator
+    /// static. The static was removed; this private helper constructs
+    /// the same Config on demand. Rule 1 carve-out (b): internal
+    /// factory, not reachable from outside the provider.
+    private static func makeStandardConfig() -> Services.Formatter.Config {
+        Services.Formatter.Config(
+            showScore: true,
+            showWordCount: true,
+            showSource: false,
+            showAvailability: true,
+            showSeparators: true,
+            emptyMessage: "_No results found. Try broader search terms._"
+        )
+    }
 }

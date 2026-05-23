@@ -185,7 +185,14 @@ Formats search results as markdown for MCP tools.
 let formatter = Services.Formatters.MarkdownSearchResultFormatter(
     query: "View",
     filters: Services.SearchFilters(framework: "swiftui"),
-    config: .mcpDefault
+    config: Services.Formatter.Config(
+        showScore: true,
+        showWordCount: true,
+        showSource: false,
+        showAvailability: true,
+        showSeparators: true,
+        emptyMessage: "_No results found. Try broader search terms._"
+    )
 )
 let markdown = formatter.format(results)
 ```
@@ -210,15 +217,11 @@ let json = formatter.format(results)
 
 ### Format Configuration
 
+Post-#976: there are no `cliDefault` / `mcpDefault` statics on `Services.Formatter.Config`. The canonical Config is constructed at the composition root via a private `makeStandardConfig()` factory (see `Packages/Sources/SearchToolProvider/CompositeToolProvider.swift` + `Packages/Sources/CLI/Commands/CLIImpl.Command.Search.SourceRunners.swift`). Custom configurations are constructed inline:
+
 ```swift
-// CLI defaults: no score/word count, show source, no separators
-let cliConfig = Services.Formatters.SearchResultFormatConfig.cliDefault
-
-// MCP defaults: show score/word count, separators between results
-let mcpConfig = Services.Formatters.SearchResultFormatConfig.mcpDefault
-
 // Custom configuration
-let config = Services.Formatters.SearchResultFormatConfig(
+let config = Services.Formatter.Config(
     showScore: true,
     showWordCount: false,
     showSource: true,

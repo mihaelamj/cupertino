@@ -27,21 +27,15 @@ extension Services.Formatter {
             self.showSeparators = showSeparators
             self.emptyMessage = emptyMessage
         }
-
-        /// Shared configuration for both CLI and MCP markdown output (identical results)
-        public static let shared = Config(
-            showScore: true,
-            showWordCount: true,
-            showSource: false,
-            showAvailability: true,
-            showSeparators: true,
-            emptyMessage: "_No results found. Try broader search terms._"
-        )
-
-        /// Alias for CLI (uses shared config for identical output)
-        public static let cliDefault = shared
-
-        /// Alias for MCP (uses shared config for identical output)
-        public static let mcpDefault = shared
     }
 }
+
+// #976: `Services.Formatter.Config.shared` + `.cliDefault` + `.mcpDefault`
+// statics were removed per `gof-di-rules.md` Rule 1. Pre-#976
+// consumers reached into the static as a Service Locator; the rule
+// forbids that even on Sendable value types. The canonical
+// "standard" configuration is constructed inline at the 2
+// composition-root call sites (`CLI/Commands/CLIImpl.Command.Search.SourceRunners.swift`
+// and `SearchToolProvider/CompositeToolProvider.swift`); both pass
+// the resulting Config down to the formatter as an explicit init
+// parameter rather than letting the formatter reach into a holder.

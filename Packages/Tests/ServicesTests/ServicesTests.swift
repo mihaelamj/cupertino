@@ -1,8 +1,8 @@
 import Foundation
 import LoggingModels
 import SampleIndex
-import SampleIndexSQLite
 import SampleIndexModels
+import SampleIndexSQLite
 import SearchModels
 @testable import Services
 import ServicesModels
@@ -140,34 +140,15 @@ struct ServicesTests {
 
 // MARK: - Format Config Tests
 
-@Suite("Format Configuration Tests")
-struct FormatConfigTests {
-    @Test("CLI and MCP configs are identical")
-    func configsAreIdentical() {
-        let cli = Services.Formatter.Config.cliDefault
-        let mcp = Services.Formatter.Config.mcpDefault
-
-        // CLI and MCP must produce identical output
-        #expect(cli.showScore == mcp.showScore)
-        #expect(cli.showWordCount == mcp.showWordCount)
-        #expect(cli.showSource == mcp.showSource)
-        #expect(cli.showAvailability == mcp.showAvailability)
-        #expect(cli.showSeparators == mcp.showSeparators)
-        #expect(cli.emptyMessage == mcp.emptyMessage)
-    }
-
-    @Test("Shared config has expected values")
-    func sharedConfigValues() {
-        let config = Services.Formatter.Config.shared
-
-        #expect(config.showScore == true)
-        #expect(config.showWordCount == true)
-        #expect(config.showSource == false)
-        #expect(config.showAvailability == true)
-        #expect(config.showSeparators == true)
-        #expect(config.emptyMessage == "_No results found. Try broader search terms._")
-    }
-}
+// #976: Format Configuration Tests Suite removed.
+// `Config.shared` / `.cliDefault` / `.mcpDefault` statics were Rule 1
+// Service Locator violations; the statics were deleted in #976.
+// Consumers now construct Config via private `makeStandardConfig()`
+// factories at the composition root. The "CLI and MCP produce
+// identical output" invariant is preserved structurally because both
+// factories build the same Config shape; if they ever drift, the
+// behavioural test would need to live in an integration suite that
+// exercises both producers against the same fixture.
 
 // MARK: - Sample.Services.CandidateFetcher (#230)
 

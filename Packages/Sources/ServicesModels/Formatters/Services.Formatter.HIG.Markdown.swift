@@ -1,6 +1,7 @@
 import Foundation
 import SearchModels
 import SharedConstants
+
 // MARK: - HIG Markdown Formatter
 
 extension Services.Formatter.HIG {
@@ -12,7 +13,14 @@ extension Services.Formatter.HIG {
 
         public init(
             query: Services.HIGQuery,
-            config: Services.Formatter.Config = .mcpDefault,
+            config: Services.Formatter.Config = Services.Formatter.Config(
+                showScore: true,
+                showWordCount: true,
+                showSource: false,
+                showAvailability: true,
+                showSeparators: true,
+                emptyMessage: "_No results found. Try broader search terms._"
+            ),
             teasers: Services.Formatter.TeaserResults? = nil
         ) {
             self.query = query

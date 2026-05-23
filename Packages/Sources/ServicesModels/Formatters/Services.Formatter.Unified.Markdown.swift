@@ -15,7 +15,14 @@ extension Services.Formatter.Unified {
         public init(
             query: String,
             framework: String? = nil,
-            config: Services.Formatter.Config = .mcpDefault
+            config: Services.Formatter.Config = Services.Formatter.Config(
+                showScore: true,
+                showWordCount: true,
+                showSource: false,
+                showAvailability: true,
+                showSeparators: true,
+                emptyMessage: "_No results found. Try broader search terms._"
+            )
         ) {
             self.query = query
             self.framework = framework

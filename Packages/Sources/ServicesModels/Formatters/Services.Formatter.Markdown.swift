@@ -1,6 +1,7 @@
 import Foundation
 import SearchModels
 import SharedConstants
+
 // MARK: - Markdown Search Result Formatter
 
 extension Services.Formatter {
@@ -15,7 +16,14 @@ extension Services.Formatter {
         public init(
             query: String,
             filters: Services.SearchFilters? = nil,
-            config: Services.Formatter.Config = .mcpDefault,
+            config: Services.Formatter.Config = Services.Formatter.Config(
+                showScore: true,
+                showWordCount: true,
+                showSource: false,
+                showAvailability: true,
+                showSeparators: true,
+                emptyMessage: "_No results found. Try broader search terms._"
+            ),
             teasers: Services.Formatter.TeaserResults? = nil,
             showPlatformTip: Bool = true
         ) {

@@ -83,7 +83,7 @@ extension CLIImpl.Command.Search {
                     minimumWatchOS: minWatchos,
                     minimumVisionOS: minVisionos
                 ),
-                config: .cliDefault,
+                config: Self.makeStandardConfig(),
                 teasers: teasers
             )
             Cupertino.Context.composition.logging.recording.output(formatter.format(results))
@@ -241,8 +241,25 @@ extension CLIImpl.Command.Search {
             let formatter = Services.Formatter.HIG.JSON(query: higQuery)
             Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         case .markdown:
-            let formatter = Services.Formatter.HIG.Markdown(query: higQuery, config: .cliDefault, teasers: teasers)
+            let formatter = Services.Formatter.HIG.Markdown(query: higQuery, config: Self.makeStandardConfig(), teasers: teasers)
             Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         }
+    }
+
+    /// #976: private factory for the canonical CLI-side
+    /// `Services.Formatter.Config`. Pre-#976 the 2 call sites used
+    /// `Services.Formatter.Config.cliDefault`, a Rule 1 Service Locator
+    /// static. The static was removed; this private helper constructs
+    /// the same Config on demand. Rule 1 carve-out (b): internal
+    /// factory, not reachable from outside CLIImpl.Command.Search.
+    fileprivate static func makeStandardConfig() -> Services.Formatter.Config {
+        Services.Formatter.Config(
+            showScore: true,
+            showWordCount: true,
+            showSource: false,
+            showAvailability: true,
+            showSeparators: true,
+            emptyMessage: "_No results found. Try broader search terms._"
+        )
     }
 }
