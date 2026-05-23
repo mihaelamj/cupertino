@@ -81,7 +81,7 @@ public extension Crawler {
         }
     }
 
-    /// Inert `HTTPFetcherFactory` (#903) — every call to `makeFetcher`
+    /// Inert `HTTPFetcherFactory` (#903). Every call to `makeFetcher`
     /// returns the same no-op `StringContentFetcher` that throws
     /// `NotImplementedError` on `.fetch(url:)`. Used by tests that
     /// construct `Crawler.AppleDocs` / `Crawler.HIG` for state /
@@ -110,5 +110,38 @@ public extension Crawler {
 
     enum NoopFetcherError: Swift.Error {
         case notImplemented(URL)
+    }
+
+    /// Returns the same canned HTML for every URL. Used by tests that
+    /// need the fetch path to succeed (so a parser-side strategy can
+    /// run its assertions) without making a real network call. Example:
+    /// `RetryQueueTests` pairs this with `AlwaysHTTPErrorHTMLParserStrategy`
+    /// to drive the retry/rejection pipeline deterministically.
+    @MainActor
+    struct CannedHTMLFetcherFactory: HTTPFetcherFactory {
+        public let html: String
+
+        public init(html: String = "<html><body>canned</body></html>") {
+            self.html = html
+        }
+
+        public func makeFetcher(
+            pageLoadTimeout _: Duration,
+            javascriptWaitTime _: Duration
+        ) -> any Core.Protocols.StringContentFetcher {
+            CannedStringContentFetcher(html: html)
+        }
+    }
+
+    struct CannedStringContentFetcher: Core.Protocols.StringContentFetcher {
+        public let html: String
+
+        public init(html: String) {
+            self.html = html
+        }
+
+        public func fetch(url: URL) async throws -> Core.Protocols.FetchResult<String> {
+            Core.Protocols.FetchResult(content: html, url: url)
+        }
     }
 }

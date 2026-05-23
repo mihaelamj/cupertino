@@ -4,6 +4,7 @@ import AppKit
 import CoreProtocols
 import Crawler
 import CrawlerModels
+import CrawlerWebKit
 import Foundation
 import LoggingModels
 @testable import Search
@@ -49,7 +50,7 @@ struct WebCrawlTests {
             appleJSONParser: LiveTestAppleJSONParserStrategy(),
             priorityPackageStrategy: LiveTestPriorityPackageStrategy(),
 
-            fetcherFactory: Crawler.NoopHTTPFetcherFactory(),
+            fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )
         let stats = try await crawler.crawl()
@@ -119,7 +120,7 @@ struct WebCrawlTests {
             appleJSONParser: LiveTestAppleJSONParserStrategy(),
             priorityPackageStrategy: LiveTestPriorityPackageStrategy(),
 
-            fetcherFactory: Crawler.NoopHTTPFetcherFactory(),
+            fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )
         let stats1 = try await crawler1.crawl()
@@ -132,7 +133,7 @@ struct WebCrawlTests {
             appleJSONParser: LiveTestAppleJSONParserStrategy(),
             priorityPackageStrategy: LiveTestPriorityPackageStrategy(),
 
-            fetcherFactory: Crawler.NoopHTTPFetcherFactory(),
+            fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )
         let stats2 = try await crawler2.crawl()

@@ -1,5 +1,6 @@
 @testable import Crawler
 import CrawlerModels
+import CrawlerWebKit
 import Foundation
 import LoggingModels
 import SharedConstants
@@ -216,8 +217,7 @@ struct RetryQueueTests {
             htmlParser: AlwaysHTTPErrorHTMLParserStrategy(),
             appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
             priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy(),
-
-            fetcherFactory: Crawler.NoopHTTPFetcherFactory(),
+            fetcherFactory: Crawler.CannedHTMLFetcherFactory(),
             logger: Logging.NoopRecording()
         )
 

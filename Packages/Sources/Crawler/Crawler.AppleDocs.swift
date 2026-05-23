@@ -639,7 +639,7 @@ extension Crawler {
         }
 
         private func loadPage(url: URL) async throws -> String {
-            // Delegate to WKWebCrawler's Crawler.WebKit.ContentFetcher
+            // Delegate to the injected StringContentFetcher (#903)
             try await webPageFetcher.fetch(url: url).content
         }
 
@@ -775,18 +775,18 @@ extension Crawler {
         }
 
         private func getMemoryUsageMB() -> Double {
-            // Delegate to WKWebCrawler's Crawler.WebKit.ContentFetcher
+            // Delegate to the injected StringContentFetcher (#903)
             webPageFetcher.getMemoryUsageMB()
         }
 
         private func recycleWebView() async {
             let memBefore = getMemoryUsageMB()
-            // Delegate to WKWebCrawler's Crawler.WebKit.ContentFetcher
+            // Delegate to the injected StringContentFetcher (#903)
             webPageFetcher.recycle()
             let memAfter = getMemoryUsageMB()
             let before = String(format: "%.1f", memBefore)
             let after = String(format: "%.1f", memAfter)
-            logInfo("♻️ Recycled Crawler.WebKit.ContentFetcher: \(before)MB → \(after)MB")
+            logInfo("♻️ Recycled fetcher: \(before)MB → \(after)MB")
         }
 
         /// Auto-generate priority package list if this was a Swift.org crawl

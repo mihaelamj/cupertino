@@ -21,7 +21,7 @@ import Foundation
 ///   memory `cupertino_no_linux_for_now.md` that variant is deferred.
 /// - Tests inject a stub conformer that returns an in-memory fetcher.
 ///
-/// Each call to `makeFetcher` produces a fresh instance — `Crawler.HIG`
+/// Each call to `makeFetcher` produces a fresh instance. `Crawler.HIG`
 /// and `Crawler.AppleDocs` recycle their fetchers on a memory-pressure
 /// interval, so the factory must produce distinct objects, not return
 /// a cached shared instance.

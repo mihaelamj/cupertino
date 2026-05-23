@@ -124,7 +124,6 @@ extension Crawler {
 
         // MARK: - Private Methods
 
-        #if canImport(WebKit)
         private func discoverPages(
             from rootURL: URL,
             stats: inout Crawler.HIGStatistics
@@ -235,7 +234,6 @@ extension Crawler {
 
             stats.totalPages += 1
         }
-        #endif
 
         private func extractTitle(from html: String) -> String? {
             // Try to extract from <title> tag
@@ -521,13 +519,9 @@ extension Crawler {
         // MARK: - Logging
 
         private func logInfo(_ message: String) {
-            #if canImport(WebKit)
             let memoryMB = fetcher?.getMemoryUsageMB() ?? 0
             let memoryMsg = "\(String(format: "%.1f", memoryMB))MB | \(message)"
             logger.info(memoryMsg, category: .hig)
-            #else
-            logger.info(message, category: .hig)
-            #endif
         }
 
         private func logError(_ message: String) {
@@ -625,15 +619,12 @@ extension Crawler.HIG {
 extension Crawler.HIG {
     public enum Error: Swift.Error, LocalizedError, Sendable {
         case invalidResponse(URL)
-        case webKitNotAvailable
         case webViewNotInitialized
 
         public var errorDescription: String? {
             switch self {
             case .invalidResponse(let url):
                 return "Invalid response from \(url)"
-            case .webKitNotAvailable:
-                return "WebKit not available - HIG crawler requires macOS"
             case .webViewNotInitialized:
                 return "WebView not initialized"
             }

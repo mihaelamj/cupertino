@@ -44,9 +44,13 @@ public extension Core.Protocols.ContentFetcher {
 /// can name the existential `any StringContentFetcher` without needing
 /// generic-existential primary-associated-type machinery (which Swift
 /// does not synthesise on protocols declared inside an `extension`
-/// block). Concretes that already conform `ContentFetcher` with
-/// `RawContent == String` (`Crawler.WebKit.ContentFetcher`) get this
-/// conformance for free via the extension below.
+/// block). The two protocols are deliberately parallel: concretes that
+/// already conform `ContentFetcher` with `RawContent == String`
+/// (`Crawler.WebKit.ContentFetcher`) declare the conformance twice (the
+/// generic and the String-specialised one) at the conformer site. There
+/// is no automatic bridge: Swift can't synthesise a conformance to a
+/// non-generic protocol from a conditional `where RawContent == String`
+/// clause on a protocol with an associatedtype.
 extension Core.Protocols {
     public protocol StringContentFetcher: Sendable {
         func fetch(url: URL) async throws -> FetchResult<String>

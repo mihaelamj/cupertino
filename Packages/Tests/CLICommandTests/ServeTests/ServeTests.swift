@@ -4,6 +4,7 @@ import AppleDocsStrategy
 import CoreProtocols
 import Crawler
 import CrawlerModels
+import CrawlerWebKit
 import Foundation
 import LoggingModels
 @testable import MCPCore
@@ -437,7 +438,7 @@ struct MCPServerIntegrationTests {
             appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
             priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy(),
 
-            fetcherFactory: Crawler.NoopHTTPFetcherFactory(),
+            fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )
         let stats = try await crawler.crawl()

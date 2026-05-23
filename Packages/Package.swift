@@ -394,7 +394,16 @@ let targets: [Target] = {
     )
     let crawlerTestsTarget = Target.testTarget(
         name: "CrawlerTests",
-        dependencies: ["Crawler", "CrawlerModels", "Core", "CoreJSONParser", "CorePackageIndexing", "SharedConstants", "TestSupport"]
+        dependencies: [
+            "Crawler",
+            "CrawlerModels",
+            "CrawlerWebKit",
+            "Core",
+            "CoreJSONParser",
+            "CorePackageIndexing",
+            "SharedConstants",
+            "TestSupport",
+        ]
     )
 
     // ---------- CleanupModels (foundation-only seam — Observer protocol for Sample.Cleanup.Cleaner) ----------
@@ -1090,6 +1099,7 @@ let targets: [Target] = {
             "AppleDocsStrategy",
             "CLI",
             "Crawler",
+            "CrawlerWebKit",
             "MCPCore",
             "MCPSupport",
             "Search",
@@ -1114,7 +1124,7 @@ let targets: [Target] = {
 
     let fetchTestsTarget = Target.testTarget(
         name: "FetchTests",
-        dependencies: ["CLI", "CoreProtocols", "CorePackageIndexing", "CoreJSONParser", "Core", "Crawler", "CrawlerModels", "Ingest", "TestSupport"],
+        dependencies: ["CLI", "CoreProtocols", "CorePackageIndexing", "CoreJSONParser", "Core", "Crawler", "CrawlerModels", "CrawlerWebKit", "Ingest", "TestSupport"],
         path: "Tests/CLICommandTests/FetchTests"
     )
 
@@ -1129,6 +1139,7 @@ let targets: [Target] = {
             "CorePackageIndexing",
             "Crawler",
             "CrawlerModels",
+            "CrawlerWebKit",
             "Indexer",
             "Search",
             "SearchModels",
