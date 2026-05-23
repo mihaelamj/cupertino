@@ -44,6 +44,107 @@ ORDER BY
     s.name
 """
 
+/// #952: one-shot debug-only invariant check that
+/// `signalRankOrderClause` begins with the literal `"ORDER BY\n"`
+/// prefix that the property-wrapper search relies on for its
+/// canonical-framework-boost splice. Evaluated lazily on first
+/// reference (Swift evaluates `let` once per process); the
+/// reference site is inside `searchPropertyWrappers`. In release
+/// builds the assert is compiled out and the constant is
+/// effectively `Void()`, zero runtime cost.
+private let signalRankOrderClausePrefixCheck: Void = {
+    assert(
+        signalRankOrderClause.hasPrefix("ORDER BY\n"),
+        "signalRankOrderClause prefix drifted; canonical-framework boost splice will produce malformed SQL"
+    )
+}()
+
+/// #952: canonical-usage-framework lookup for `searchPropertyWrappers`.
+///
+/// Each Apple-defined property wrapper / attribute has one or more
+/// frameworks where its USAGE examples are densest in the indexed
+/// corpus. Pre-#952 the property-wrapper search used the shared
+/// `signalRankOrderClause` whose tertiary tie-break is alphabetic
+/// `s.name`. For `wrapper: "State"` the v1.2.x bundle has 537
+/// SwiftUI `@State` usages + 2 `secureelementcredential` usages;
+/// alphabetic ordering put `activeSession` (secureelementcredential)
+/// at rank-1 ahead of all 537 SwiftUI hits because "active" sorts
+/// before "adjust" / "alarms" / etc.
+///
+/// Post-#952 the `searchPropertyWrappers` SQL injects a new tier-0
+/// boost: rows whose framework matches the queried wrapper's
+/// canonical-usage set rank above all others. Wrappers not in this
+/// table get no boost (ranking falls through to the existing
+/// operator-demote / kind-shape tiers).
+///
+/// Lookup is case-insensitive on both wrapper and framework name.
+/// Wrapper key is unprefixed (`State`, not `@State`).
+///
+/// The table targets the framework(s) where USAGE rows are densest,
+/// NOT the framework where the wrapper attribute is declared.
+/// `@MainActor` is declared in the Swift standard library but USED
+/// across UIKit / SwiftUI / AppKit / RealityKit (988 / 915 / 753 /
+/// 713 rows respectively in v1.2.x); a `["swift"]` boost would
+/// have surfaced the single `swift`-framework `CoffeeData` sample
+/// class above all 3,369 usage rows. Iter-2 of the #952 critic
+/// loop caught and corrected this declaration-vs-usage mismatch.
+///
+/// Wrappers with zero rows in `doc_symbols.attributes` corpus-wide
+/// (`@Environment`, `@SceneStorage`, `@ScaledMetric`, `@FetchRequest`,
+/// `@SectionedFetchRequest`, `@ObservationIgnored`,
+/// `@ObservationTracked`, `@Sendable`, `@Attribute`, `@Relationship`,
+/// the four `@Focused*` wrappers) are intentionally absent from
+/// this table; the WHERE clause filters them out before the boost
+/// can fire, so an entry would be dead weight.
+///
+/// Future-maintainer note: after a corpus refresh (v1.3+ release
+/// bundle), re-measure the per-wrapper framework distribution with:
+/// ```
+/// SELECT m.framework, COUNT(*) FROM doc_symbols s
+///   JOIN docs_metadata m ON s.doc_uri = m.uri
+///   WHERE (',' || s.attributes || ',') LIKE '%,@<Wrapper>,%'
+///   GROUP BY m.framework ORDER BY 2 DESC LIMIT 5;
+/// ```
+/// for each currently-absent wrapper, plus the 16 already in the
+/// table. Add an entry for a previously-absent wrapper when the
+/// rank-1 framework row-count exceeds ~50 (below that, alphabetic
+/// noise dominates the boost signal anyway). Repoint an existing
+/// entry when the rank-1 framework changes by more than a 2x
+/// factor relative to the entry's current target set.
+private let propertyWrapperCanonicalFrameworks: [String: Set<String>] = [
+    // SwiftUI-declared, SwiftUI-used (boost direction matches).
+    "state": ["swiftui"],
+    "binding": ["swiftui"],
+    "stateobject": ["swiftui"],
+    "observedobject": ["swiftui"],
+    "environmentobject": ["swiftui"],
+    "appstorage": ["swiftui"],
+    "focusstate": ["swiftui"],
+    "gesturestate": ["swiftui"],
+    "namespace": ["swiftui"],
+    // Observation-declared, SwiftUI-used (declaration ≠ usage).
+    "observable": ["swiftui"],
+    // Combine-declared, SwiftUI-used (declaration ≠ usage; SwiftUI
+    // ViewModels apply @Published far more often than Combine's
+    // own docs demonstrate it).
+    "published": ["swiftui"],
+    // SwiftData-declared, SwiftUI-used (SwiftData @Model / @Query
+    // usages live in SwiftUI sample-code apps that bind a
+    // SwiftData model into a View).
+    "model": ["swiftui"],
+    "query": ["swiftui"],
+    // Swift standard-library, used across the Apple SDK fleet.
+    // @MainActor has 988 / 915 / 753 / 713 rows in the four
+    // umbrella UI frameworks; the boost matches the set rather
+    // than the declaration framework.
+    "mainactor": ["uikit", "swiftui", "appkit", "realitykit"],
+    // Swift standard-library, declared + used in the swift
+    // framework's own pages. Small (4 / 1 rows) but the boost
+    // direction matches.
+    "tasklocal": ["swift"],
+    "globalactor": ["swift"],
+]
+
 /// #670 — variant of `signalRankOrderClause` with an additional
 /// tier between kind-shape and `s.name` that boosts rows whose
 /// symbol name exactly equals the query string (case-insensitive).
@@ -213,12 +314,27 @@ extension Search.Index {
             throw Search.Error.databaseNotInitialized
         }
 
-        // Normalize wrapper name (add @ if not present)
+        // Normalize wrapper name (add @ if not present). Strip the
+        // leading `@` for the canonical-framework lookup; the
+        // attribute-column LIKE pattern keeps it.
         let normalizedWrapper = wrapper.hasPrefix("@") ? wrapper : "@\(wrapper)"
-        let wrapperPattern = "%\(normalizedWrapper)%"
+        let unprefixedWrapper = normalizedWrapper.hasPrefix("@")
+            ? String(normalizedWrapper.dropFirst())
+            : normalizedWrapper
 
-        var conditions = ["s.attributes LIKE ?"]
-        var params: [String] = [wrapperPattern]
+        // #952: precision attribute match. Pre-#952 used
+        // `s.attributes LIKE '%@State%'` which also matched
+        // `@StateObject` (21 false-positive rows in the v1.2.x
+        // bundle). The wrapped form
+        // `(',' || s.attributes || ',') LIKE '%,@State,%'` matches
+        // the `@State` token only when it is bounded by commas on
+        // both sides; the wrapping ensures the boundary holds for
+        // single-attribute rows, leading-attribute rows, and
+        // trailing-attribute rows alike.
+        let precisePattern = "%,\(normalizedWrapper),%"
+
+        var conditions = ["(',' || s.attributes || ',') LIKE ?"]
+        var params: [String] = [precisePattern]
 
         if let framework, !framework.isEmpty {
             conditions.append("m.framework = ?")
@@ -226,6 +342,47 @@ extension Search.Index {
         }
 
         let whereClause = "WHERE " + conditions.joined(separator: " AND ")
+
+        // #952: canonical-framework boost. If the queried wrapper
+        // has a known home framework, prefix the shared
+        // `signalRankOrderClause` with a tier-0 boost so rows in
+        // the canonical framework rank above all others. The boost
+        // is conditional, not unconditional: if a row's framework
+        // is null OR not in the canonical set, it falls through to
+        // the operator-demote / kind-shape tiers as before.
+        let canonicalFrameworks = propertyWrapperCanonicalFrameworks[unprefixedWrapper.lowercased()]
+        let orderByClause: String
+        if let canonicalFrameworks, !canonicalFrameworks.isEmpty {
+            let placeholders = canonicalFrameworks.map { _ in "?" }.joined(separator: ", ")
+            // Splice the canonical-framework boost as the FIRST
+            // tier of the ORDER BY by extracting the shared
+            // clause's body and prepending the new tier. The
+            // shared clause already begins with `ORDER BY`, so
+            // we strip that prefix once and rejoin.
+            //
+            // Structural dependency: `signalRankOrderClause` must
+            // begin with the literal byte sequence `ORDER BY\n`.
+            // The one-shot `signalRankOrderClausePrefixCheck`
+            // file-scope constant asserts this once per process in
+            // debug builds (referenced here for evaluation order);
+            // release builds rely on the empirical test coverage at
+            // `Issue952PropertyWrapperRankingTests` to catch any
+            // drift via the thrown `Search.Error.searchFailed`
+            // from `sqlite3_prepare_v2`.
+            _ = signalRankOrderClausePrefixCheck
+            let sharedBody = signalRankOrderClause
+                .replacingOccurrences(of: "ORDER BY\n", with: "")
+            orderByClause = """
+            ORDER BY
+                CASE WHEN LOWER(m.framework) IN (\(placeholders)) THEN 0 ELSE 1 END,
+                \(sharedBody)
+            """
+            for fw in canonicalFrameworks.sorted() {
+                params.append(fw)
+            }
+        } else {
+            orderByClause = signalRankOrderClause
+        }
 
         let sql = """
         SELECT DISTINCT
@@ -243,7 +400,7 @@ extension Search.Index {
         JOIN docs_fts f ON s.doc_uri = f.uri
         LEFT JOIN docs_metadata m ON s.doc_uri = m.uri
         \(whereClause)
-        \(signalRankOrderClause)
+        \(orderByClause)
         LIMIT ?;
         """
 

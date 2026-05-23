@@ -1,4 +1,4 @@
-# Search-quality version diff (Phase 2): 1.2.0 to 1.2.1
+# Search-quality version diff (Phase 2): v1.2.0 to v1.2.1-dev
 
 **Date:** 2026-05-23
 **Phase:** 2 (5 AST tools via MCP stdio)
@@ -8,11 +8,11 @@
 
 ## Aggregate
 
-| Metric | v1.2.0 | v1.2.1 | Delta |
+| Metric | v1.2.0 release | v1.2.1+#952 dev | Delta |
 |---|---|---|---|
 | N | 20 | 20 | n/a |
-| **MRR** | **0.6000** | **0.6000** | **+0.0000** |
-| P@1 | 0.6000 (12/20) | 0.6000 (12/20) | +0.0000 |
+| **MRR** | **0.8000** | **0.8000** | **+0.0000** |
+| P@1 | 0.8000 (16/20) | 0.8000 (16/20) | +0.0000 |
 
 ## Paired tests
 
