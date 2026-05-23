@@ -273,7 +273,7 @@ extension Crawler {
                     // minutes later, confirming the rate-limit-burst hypothesis.
                     let delay = Shared.Constants.Delay.retryBackoff(attempt: attempt)
                     let last = url.lastPathComponent
-                    logInfo("🔄 Retry \(attempt)/\(maxRetries) for \(last) — waiting \(delay), recycling WebView")
+                    logInfo("🔄 Retry \(attempt)/\(maxRetries) for \(last), waiting \(delay), recycling fetcher")
                     await recycleWebView()
                     try await Task.sleep(for: delay)
                 }
@@ -839,7 +839,7 @@ extension Crawler.AppleDocs {
             case .invalidHTML:
                 return "Invalid HTML received"
             case .unsupportedPlatform:
-                return "WKWebView is not available on this platform"
+                return "Fetcher backend is not available on this platform"
             case .httpErrorPage:
                 return "HTTP error template page received"
             }
