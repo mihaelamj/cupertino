@@ -87,7 +87,7 @@ PHASE2_FIXTURES = [
 # wall-time for 20 fixtures: ~12 seconds.
 
 
-def _mcp_call(binary: str, search_db: str, tool: str, arguments: dict, timeout: int = 15) -> Optional[dict]:
+def _mcp_call(binary: str, search_db: str, tool: str, arguments: dict, timeout: int = 60) -> Optional[dict]:
     init_req = {"jsonrpc": "2.0", "method": "initialize", "params": {
         "protocolVersion": "2025-11-25",
         "capabilities": {},
