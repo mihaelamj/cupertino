@@ -2,6 +2,8 @@
 
 ### Changed
 
+- **#906 sub-PR B: extract `Enrichment.AppleConstraintsPass` into its own SPM target.** Pattern-setter for the per-pass split (mirrors #899's strategy split). New `AppleConstraintsPass` SPM target depends on EnrichmentModels + SearchModels + SharedConstants. The `Enrichment` namespace anchor moved from the Enrichment producer to EnrichmentModels (foundation-only seam) so per-pass sibling targets can extend `Enrichment.<X>Pass` without depending on the Enrichment producer concrete. CLI composition root + EnrichmentTests gain the new import. STRICT_PRODUCERS 40 -> 41. Remaining 5 per-pass extractions (HierarchyPass, PackagesAppleConstraintsPass, PackagesAppleImportsPass, SamplesAppleConstraintsPass, SynonymsPass) follow the same shape. Refs: #906.
+
 - **#899 sub-PR G: extract `AppleArchiveStrategy` + delete the now-empty `SearchStrategies` umbrella target. 6-of-6 strategy split complete.** The 6 source-indexing strategies (AppleDocs, HIG, SampleCode, SwiftEvolution, SwiftOrg, AppleArchive) now each ship as their own SPM target conforming `Search.SourceIndexingStrategy`. The SearchStrategies umbrella target had no remaining source files after the 6 extractions and is deleted. Adding a new source indexer (e.g. WWDC transcripts #58 or Tech Talks #273) is now a 2-file PR: new `<X>Strategy` target + CLI composition-root registration. STRICT_PRODUCERS 39 -> 40 (added AppleArchiveStrategy, removed SearchStrategies, net +1). The SearchStrategyHelpers seam from sub-PR B carries the shared utility helpers. Closes #899.
 
 - **#899 sub-PR F: extract `SwiftOrgStrategy` into its own SPM target.** Pattern from B-E. STRICT_PRODUCERS 39 -> 40. Refs: #899.

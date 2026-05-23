@@ -45,7 +45,7 @@ struct Issue919AuditInvariantTests {
         #expect(arrayDecl.trimmingCharacters(in: .whitespaces) == "GRANDFATHERED_TARGETS=()")
     }
 
-    @Test("check-target-foundation-only.sh STRICT_PRODUCERS contains exactly 40 entries (post-#899 sub-PR G: 6-of-6 strategy split complete, SearchStrategies umbrella deleted)")
+    @Test("check-target-foundation-only.sh STRICT_PRODUCERS contains exactly 41 entries (post-#906 sub-PR B AppleConstraintsPass extract)")
     func strictProducersHasExpectedCount() throws {
         let scriptURL = Self.repoRoot().appendingPathComponent("scripts/check-target-foundation-only.sh")
         let body = try String(contentsOf: scriptURL, encoding: .utf8)
@@ -71,14 +71,11 @@ struct Issue919AuditInvariantTests {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
             .filter { $0.first.map { $0.isLetter || $0 == "_" } ?? false } // identifier-shaped
-        // Post-#899 sub-PR G: 40 producers strict. 6-of-6 strategy
-        // split complete (B AppleDocs, C HIG, D SampleCode,
-        // E SwiftEvolution, F SwiftOrg, G AppleArchive). The
-        // SearchStrategies umbrella target was deleted in sub-PR G
-        // (no source files remaining), so STRICT_PRODUCERS gained 6
-        // and lost 1 = net +5 from the pre-#899 baseline of 35.
-        // SearchStrategyHelpers lives in MODELS_TARGETS, not here.
-        #expect(entries.count == 40, "expected 40 strict producers, found \(entries.count): \(entries)")
+        // Post-#906 sub-PR B: 41 producers strict.
+        // - #899 sub-PR G closed the 6-of-6 strategy split (net +5).
+        // - #906 sub-PR B extracts the first Enrichment pass:
+        //   AppleConstraintsPass (+1).
+        #expect(entries.count == 41, "expected 41 strict producers, found \(entries.count): \(entries)")
     }
 
     @Test("FORBIDDEN_MODULES list contains every concrete + the two *SQLite siblings")
