@@ -1,4 +1,5 @@
 import AppKit
+import AppleDocsStrategy
 @testable import CLI
 @testable import Core
 import CoreProtocols

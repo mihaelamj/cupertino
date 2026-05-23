@@ -125,6 +125,7 @@ MODELS_TARGETS=(
     EnrichmentModels
     SearchSchema
     AvailabilityModels
+    SearchStrategyHelpers
 )
 
 # Producers that have been audited + opt into the strict rule.
@@ -260,6 +261,7 @@ STRICT_PRODUCERS=(
     Search
     SearchSQLite
     SearchStrategies
+    AppleDocsStrategy
     SearchToolProvider
     Services
 )

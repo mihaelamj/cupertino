@@ -1,6 +1,7 @@
 import Foundation
 import LoggingModels
 import SearchModels
+import SearchStrategyHelpers
 import SharedConstants
 
 // MARK: - SampleCodeStrategy
