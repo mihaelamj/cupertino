@@ -278,16 +278,16 @@ STRICT_PRODUCERS=(
 
 # Grandfathered: producers still under the legacy contract (enforced
 # by scripts/check-package-purity.sh, not this script). Stayed empty
-# after #536 phase 3. `Enrichment` has been the one producer outside
-# STRICT_PRODUCERS since #837 (its 6 sibling passes import `Search` +
-# `SampleIndex` concretes); PR #908 documented that pre-existing
-# omission explicitly via the comment block at the top of Phase 3
-# above. `Enrichment`'s leak tolerance lives in
-# `check-package-purity.sh`'s `GRANDFATHERED_TARGETS` array, not here.
-# This array stays empty until a future producer needs the
-# foundation-only opt-in deferred for reasons different from
-# Enrichment's (e.g. a producer that wants to opt in but carries an
-# audited interim violation pinned by a tracking issue).
+# after #536 phase 3 and remains empty post-#906: the per-pass split
+# (sub-PRs B-G, closed 2026-05-23) lifted every pass out of the
+# Enrichment producer into its own foundation-tier sibling
+# (`AppleConstraintsPass`, `HierarchyPass`, `PackagesAppleConstraintsPass`,
+# `PackagesAppleImportsPass`, `SamplesAppleConstraintsPass`,
+# `SynonymsPass`); each opted into STRICT_PRODUCERS directly. The
+# `Enrichment` package now retains only `LiveRunner` and is itself in
+# STRICT_PRODUCERS via the #906 protocol-rewire. There is no longer a
+# producer with deferred foundation-only opt-in. This array stays
+# empty until a future producer needs that deferral.
 GRANDFATHERED_TARGETS=(
 )
 

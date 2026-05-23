@@ -45,7 +45,7 @@ struct Issue919AuditInvariantTests {
         #expect(arrayDecl.trimmingCharacters(in: .whitespaces) == "GRANDFATHERED_TARGETS=()")
     }
 
-    @Test("check-target-foundation-only.sh STRICT_PRODUCERS contains exactly 41 entries (post-#906 sub-PR B AppleConstraintsPass extract)")
+    @Test("check-target-foundation-only.sh STRICT_PRODUCERS contains exactly 46 entries (post-#906 sub-PR G SynonymsPass extract closes the epic)")
     func strictProducersHasExpectedCount() throws {
         let scriptURL = Self.repoRoot().appendingPathComponent("scripts/check-target-foundation-only.sh")
         let body = try String(contentsOf: scriptURL, encoding: .utf8)
