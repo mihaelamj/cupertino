@@ -2,7 +2,7 @@
 
 ### Changed
 
-- **#906 sub-PR D: extract `Enrichment.PackagesAppleConstraintsPass` to SPM sibling.** Third per-pass split. New foundation-tier `Packages/Sources/PackagesAppleConstraintsPass/` target with EnrichmentModels + SearchModels deps. CLI composition root imports the sibling; STRICT_PRODUCERS list (43 producers) + contract-doc row updated. Build green. Refs: #906 sub-PR D.
+- **#906 sub-PR E: extract `Enrichment.PackagesAppleImportsPass` to SPM sibling.** Fourth per-pass split. New foundation-tier `Packages/Sources/PackagesAppleImportsPass/` target with EnrichmentModels + SearchModels deps. CLI composition root imports the sibling; STRICT_PRODUCERS list (44 producers) + contract-doc row updated. Build green. Refs: #906 sub-PR E.
 
 ### Added
 

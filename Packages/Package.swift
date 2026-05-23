@@ -50,6 +50,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("AppleConstraintsPass"),
     .singleTargetLibrary("HierarchyPass"),
     .singleTargetLibrary("PackagesAppleConstraintsPass"),
+    .singleTargetLibrary("PackagesAppleImportsPass"),
     .singleTargetLibrary("Ingest"),
     .singleTargetLibrary("Resources"),
     .singleTargetLibrary("AvailabilityModels"),
@@ -902,6 +903,15 @@ let targets: [Target] = {
         ]
     )
 
+    // #906 sub-PR E: extract PackagesAppleImportsPass.
+    let packagesAppleImportsPassTarget = Target.target(
+        name: "PackagesAppleImportsPass",
+        dependencies: [
+            "EnrichmentModels",
+            "SearchModels",
+        ]
+    )
+
     // ---------- Indexer (#244: SaveCommand indexer + preflight lift) ----------
     let indexerTarget = Target.target(
         name: "Indexer",
@@ -940,6 +950,7 @@ let targets: [Target] = {
             "AppleConstraintsPass",
             "HierarchyPass",
             "PackagesAppleConstraintsPass",
+            "PackagesAppleImportsPass",
             "SampleIndex",
             "SampleIndexSQLite",
             "Services",
@@ -1187,6 +1198,7 @@ let targets: [Target] = {
         appleConstraintsPassTarget,
         hierarchyPassTarget,
         packagesAppleConstraintsPassTarget,
+        packagesAppleImportsPassTarget,
         enrichmentTestsTarget,
         indexerTarget,
         indexerTestsTarget,
