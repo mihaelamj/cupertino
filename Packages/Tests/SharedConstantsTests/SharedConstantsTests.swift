@@ -63,7 +63,7 @@ struct SharedConstantsPublicSurfaceTests {
 // MARK: - #101: user-archive-selections single source of truth
 
 /// Both `Crawler.ArchiveGuideCatalog.userSelectionsFileURL(baseDirectory:)`
-/// and `TUI/Models/ArchiveGuidesCatalog.userSelectionsURL` now resolve
+/// and `TUI/State/ArchiveGuidesCatalog.userSelectionsURL` now resolve
 /// the selection-file path through `Shared.Paths.userArchiveSelectionsFile`,
 /// which itself reads the filename from
 /// `Shared.Constants.FileName.userArchiveSelections`. The tests below
