@@ -2,7 +2,7 @@
 
 ### Changed
 
-- **#906 sub-PR F: extract `Enrichment.SamplesAppleConstraintsPass` to SPM sibling.** Fifth per-pass split. New foundation-tier `Packages/Sources/SamplesAppleConstraintsPass/` target with EnrichmentModels + SampleIndexModels + SearchModels + SharedConstants deps. CLI composition root imports the sibling; STRICT_PRODUCERS list (45 producers) + contract-doc row updated. Build green. Refs: #906 sub-PR F.
+- **#906 sub-PR G: extract `Enrichment.SynonymsPass` to SPM sibling.** Sixth and final per-pass split. New foundation-tier `Packages/Sources/SynonymsPass/` target with EnrichmentModels + SearchModels deps. The 22-entry framework-alias table (`corebluetooth ← bluetooth`, etc.) moves with the pass. CLI composition root imports the sibling; STRICT_PRODUCERS list (46 producers) + contract-doc row updated. After this lands the `Enrichment` package retains only the `LiveRunner` orchestrator. Build green. Refs: #906 sub-PR G; closes #906.
 
 ### Added
 

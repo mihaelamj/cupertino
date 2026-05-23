@@ -271,6 +271,7 @@ STRICT_PRODUCERS=(
     PackagesAppleConstraintsPass
     PackagesAppleImportsPass
     SamplesAppleConstraintsPass
+    SynonymsPass
     SearchToolProvider
     Services
 )
