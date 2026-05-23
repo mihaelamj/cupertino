@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Added
+
+- **#975: close package-import-contract drift; ship coverage-check CI script.** Surfaced by today's full-app rule-canon audit (`docs/audits/2026-05-23-rule-canon-audit.md` HIGH-2). The contract is `per-package-import-contract.md`'s "single source of truth a reviewer can grep against", but no CI script enforced row presence, so drift was silent. The 14-PR merge batch surfaced 9 production targets without contract rows (6 strategy siblings + `AppleConstraintsPass` + older `MCPClient` + `SampleIndexSQLite`). Append 9 contract rows + ship `scripts/check-import-contract-coverage.sh` (wired into the `package-audits` CI job) that diffs `Packages/Package.swift` declared targets against `docs/package-import-contract.md` row identifiers and fails CI on missing rows. Composition-root binaries (CLI/TUI/MockAIAgent/ReleaseTool/ConstraintsGen) + `TestSupport` are excluded as intentional exemptions, called out explicitly in the script. Initial run: 52 production targets, all rows present. Refs: closes #975.
+
 ### Changed
 
 - **#976 iter-1 critic fixes: CI portability matrix updated for the #899 strategy split; `Services/README.md` examples refreshed.** The `.github/workflows/ci.yml` `Standalone-portability proof` job had a hardcoded step for the now-deleted `SearchStrategies` umbrella target; replaced with 8 portability steps covering the 6 strategy siblings + `SearchStrategyHelpers` + `AppleConstraintsPass`. `Packages/Sources/Services/README.md` examples (lines 188 / 215 / 218) referenced the now-deleted `.mcpDefault` / `.cliDefault` statics; rewritten to inline-construct `Services.Formatter.Config` and document the composition-root `makeStandardConfig()` factory pattern.

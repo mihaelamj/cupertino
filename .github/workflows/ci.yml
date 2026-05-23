@@ -131,6 +131,10 @@ jobs:
         timeout-minutes: 2
         run: ./scripts/check-package-purity.sh
 
+      - name: Run check-import-contract-coverage.sh
+        timeout-minutes: 2
+        run: ./scripts/check-import-contract-coverage.sh
+
   portability:
     name: Standalone-portability proof
     runs-on: macos-15
