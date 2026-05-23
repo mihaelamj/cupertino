@@ -6,6 +6,11 @@ import Foundation
 extension Core.Parser {
     /// Transforms XML content (like sitemaps or RSS feeds) into structured data
     /// Useful for parsing web crawled pages that return XML format
+    // @unchecked Sendable per concurrency.md §24: stateless value type with
+    // no stored properties; every method is a pure function. Marked
+    // @unchecked only because the Core.Protocols.ContentTransformer
+    // protocol declares Sendable and conformance is structural; there is
+    // no shared mutable state to protect.
     public struct XML: Core.Protocols.ContentTransformer, @unchecked Sendable {
         public typealias RawContent = Data
 

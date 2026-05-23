@@ -4,6 +4,12 @@ import Foundation
 
 extension RemoteSync {
     /// Reports progress to terminal with animated updates
+    // @unchecked Sendable per concurrency.md §24: class holds animation
+    // state (lastUpdate, lineCount) mutated only on a single MainActor
+    // queue from the RemoteSync.Indexer actor. Mutation isolation is
+    // by-convention via the caller actor; @unchecked acknowledges that
+    // the compiler cannot verify the convention.
+
     public final class ProgressReporter: @unchecked Sendable {
         private let display: AnimatedProgress
         private let output: TerminalOutput

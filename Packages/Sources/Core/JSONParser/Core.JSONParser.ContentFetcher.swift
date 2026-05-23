@@ -6,6 +6,10 @@ import Foundation
 /// Fetches JSON content from Apple's documentation API
 /// Uses URLSession for direct HTTP requests, avoiding WKWebView memory issues
 extension Core.JSONParser {
+    // @unchecked Sendable per concurrency.md §24: stateless value type
+    // wrapping URLSession (URLSession is documented Sendable). Every
+    // method is async + returns Data; no caller-visible mutable state.
+
     public struct ContentFetcher: Core.Protocols.ContentFetcher, @unchecked Sendable {
         public typealias RawContent = Data
 
