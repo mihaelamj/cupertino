@@ -52,6 +52,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("PackagesAppleConstraintsPass"),
     .singleTargetLibrary("PackagesAppleImportsPass"),
     .singleTargetLibrary("SamplesAppleConstraintsPass"),
+    .singleTargetLibrary("SynonymsPass"),
     .singleTargetLibrary("Ingest"),
     .singleTargetLibrary("Resources"),
     .singleTargetLibrary("AvailabilityModels"),
@@ -924,6 +925,16 @@ let targets: [Target] = {
         ]
     )
 
+    // #906 sub-PR G: extract SynonymsPass. Final per-pass extraction; after
+    // this lands the Enrichment package retains only the LiveRunner orchestrator.
+    let synonymsPassTarget = Target.target(
+        name: "SynonymsPass",
+        dependencies: [
+            "EnrichmentModels",
+            "SearchModels",
+        ]
+    )
+
     // ---------- Indexer (#244: SaveCommand indexer + preflight lift) ----------
     let indexerTarget = Target.target(
         name: "Indexer",
@@ -964,6 +975,7 @@ let targets: [Target] = {
             "PackagesAppleConstraintsPass",
             "PackagesAppleImportsPass",
             "SamplesAppleConstraintsPass",
+            "SynonymsPass",
             "SampleIndex",
             "SampleIndexSQLite",
             "Services",
@@ -1213,6 +1225,7 @@ let targets: [Target] = {
         packagesAppleConstraintsPassTarget,
         packagesAppleImportsPassTarget,
         samplesAppleConstraintsPassTarget,
+        synonymsPassTarget,
         enrichmentTestsTarget,
         indexerTarget,
         indexerTestsTarget,

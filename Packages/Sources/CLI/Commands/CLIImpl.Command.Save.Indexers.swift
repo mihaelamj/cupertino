@@ -25,6 +25,7 @@ import SearchSQLite
 import SharedConstants
 import SwiftEvolutionStrategy
 import SwiftOrgStrategy
+import SynonymsPass
 
 // MARK: - Indexer dispatch + progress rendering (#244)
 
