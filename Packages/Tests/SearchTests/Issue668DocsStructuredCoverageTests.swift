@@ -1,9 +1,10 @@
 import Foundation
-@testable import SearchStrategies
+@testable import HIGStrategy
 import LoggingModels
 @testable import Search
 import SearchModels
 @testable import SearchSQLite
+@testable import SearchStrategies
 import SharedConstants
 import SQLite3
 import Testing

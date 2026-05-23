@@ -1,5 +1,6 @@
 import AppleDocsStrategy
 import Foundation
+import HIGStrategy
 import LoggingModels
 @testable import Search
 import SearchModels

@@ -1,4 +1,5 @@
 import AppleDocsStrategy
+import HIGStrategy
 import SearchModels
 import SearchStrategies
 import Testing

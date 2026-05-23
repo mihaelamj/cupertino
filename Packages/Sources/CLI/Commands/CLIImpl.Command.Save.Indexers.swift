@@ -6,6 +6,7 @@ import CoreSampleCode
 import Enrichment
 import EnrichmentModels
 import Foundation
+import HIGStrategy
 import Indexer
 import Logging
 import LoggingModels
