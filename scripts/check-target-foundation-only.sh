@@ -268,6 +268,7 @@ STRICT_PRODUCERS=(
     AppleArchiveStrategy
     AppleConstraintsPass
     HierarchyPass
+    PackagesAppleConstraintsPass
     SearchToolProvider
     Services
 )

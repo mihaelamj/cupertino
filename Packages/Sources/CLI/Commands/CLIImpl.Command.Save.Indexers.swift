@@ -13,6 +13,7 @@ import HIGStrategy
 import Indexer
 import Logging
 import LoggingModels
+import PackagesAppleConstraintsPass
 import SampleCodeStrategy
 import SampleIndex
 import SampleIndexSQLite
