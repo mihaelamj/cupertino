@@ -63,6 +63,7 @@ struct Cupertino: AsyncParsableCommand {
             CLIImpl.Command.ResolveRefs.self,
             CLIImpl.Command.Inheritance.self,
             CLIImpl.Command.SearchSymbols.self,
+            CLIImpl.Command.SearchPropertyWrappers.self,
         ],
         defaultSubcommand: CLIImpl.Command.Serve.self
     )
