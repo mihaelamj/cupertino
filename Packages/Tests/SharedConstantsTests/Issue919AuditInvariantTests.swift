@@ -45,7 +45,7 @@ struct Issue919AuditInvariantTests {
         #expect(arrayDecl.trimmingCharacters(in: .whitespaces) == "GRANDFATHERED_TARGETS=()")
     }
 
-    @Test("check-target-foundation-only.sh STRICT_PRODUCERS contains exactly 39 entries (post-#899 sub-PR E SwiftEvolutionStrategy extract)")
+    @Test("check-target-foundation-only.sh STRICT_PRODUCERS contains exactly 40 entries (post-#899 sub-PR F SwiftOrgStrategy extract)")
     func strictProducersHasExpectedCount() throws {
         let scriptURL = Self.repoRoot().appendingPathComponent("scripts/check-target-foundation-only.sh")
         let body = try String(contentsOf: scriptURL, encoding: .utf8)
@@ -71,9 +71,8 @@ struct Issue919AuditInvariantTests {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
             .filter { $0.first.map { $0.isLetter || $0 == "_" } ?? false } // identifier-shaped
-        // Post-#899 sub-PR E: 39 producers strict (B AppleDocs 36;
-        // C HIG 37; D SampleCode 38; E SwiftEvolution 39).
-        #expect(entries.count == 39, "expected 39 strict producers, found \(entries.count): \(entries)")
+        // Post-#899 sub-PR F: 40 producers strict (added SwiftOrgStrategy).
+        #expect(entries.count == 40, "expected 40 strict producers, found \(entries.count): \(entries)")
     }
 
     @Test("FORBIDDEN_MODULES list contains every concrete + the two *SQLite siblings")

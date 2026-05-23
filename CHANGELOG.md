@@ -2,6 +2,8 @@
 
 ### Changed
 
+- **#899 sub-PR F: extract `SwiftOrgStrategy` into its own SPM target.** Pattern from B-E. STRICT_PRODUCERS 39 -> 40. Refs: #899.
+
 - **#899 sub-PR E: extract `SwiftEvolutionStrategy` into its own SPM target.** Pattern continues from sub-PRs B-D. STRICT_PRODUCERS 38 -> 39. Refs: #899.
 
 - **#899 sub-PR D: extract `SampleCodeStrategy` into its own SPM target.** Pattern continues from sub-PRs B + C. Same shape: foundation-only deps, file moved from SearchStrategies, CLI + tests import the new target. STRICT_PRODUCERS bumped 37 -> 38. Refs: #899.

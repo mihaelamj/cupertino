@@ -19,6 +19,7 @@ import SearchSQLite
 import SearchStrategies
 import SharedConstants
 import SwiftEvolutionStrategy
+import SwiftOrgStrategy
 
 // MARK: - Indexer dispatch + progress rendering (#244)
 
