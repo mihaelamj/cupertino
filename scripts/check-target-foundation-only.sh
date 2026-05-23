@@ -124,6 +124,7 @@ MODELS_TARGETS=(
     RemoteSyncModels
     EnrichmentModels
     SearchSchema
+    AvailabilityModels
 )
 
 # Producers that have been audited + opt into the strict rule.

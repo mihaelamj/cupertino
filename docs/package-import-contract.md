@@ -80,7 +80,9 @@ Validated against five independent references (see `mihaela-agents/Rules/swift/p
 | Target | Allowed imports | Current state |
 |---|---|---|
 | `AppleConstraintsKit` | Foundation, SearchModels | ✅ Foundation, SearchModels (#759 iter 3 — parses `swift symbolgraph-extract` output via local Codable schema, maps `pathComponents → apple-docs://...` URIs, ships the filtered table as `Search.StaticConstraintsLookup` conformance) |
-| `Availability` | Foundation, FoundationNetworking, SharedConstants | ✅ Foundation, FoundationNetworking, SharedConstants |
+| `AvailabilityModels` | Foundation | ✅ Foundation (#905: namespace anchor + value types + Networking / NetworkingFactory protocols) |
+| `Availability` | Foundation, AvailabilityModels, SharedConstants | ✅ Foundation, AvailabilityModels, SharedConstants (#905: FoundationNetworking removed: URLSession moved to AvailabilityFoundationNetworking) |
+| `AvailabilityFoundationNetworking` | Foundation, FoundationNetworking, AvailabilityModels | ✅ Foundation, FoundationNetworking, AvailabilityModels (#905: `LiveAvailabilityNetworking` + factory: isolates URLSession use to this target so Availability stays foundation-only) |
 | `Cleanup` | Foundation, CleanupModels, LoggingModels, SharedConstants | ✅ Foundation, CleanupModels, LoggingModels, SharedConstants (closures-to-Observer epic: `cleanup` signature now takes `any Sample.Cleanup.CleanerProgressObserving` from seam) |
 | `Core` | Foundation, WebKit, LoggingModels, Resources, ASTIndexer, CoreProtocols, CorePackageIndexingModels, SharedConstants | ✅ ASTIndexer, CorePackageIndexingModels, CoreProtocols, Foundation, LoggingModels, Resources, SharedConstants, WebKit |
 | `CoreJSONParser` | Foundation, CoreProtocols, SharedConstants | ✅ |

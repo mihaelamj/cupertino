@@ -42,39 +42,6 @@ extension Availability {
     }
 }
 
-// MARK: - API Response Models
-
-extension Availability {
-    /// Response from Apple's /tutorials/data/documentation API
-    struct APIResponse: Codable {
-        let metadata: Metadata?
-
-        struct Metadata: Codable {
-            let platforms: [PlatformInfo]?
-        }
-
-        struct PlatformInfo: Codable {
-            let name: String
-            let introducedAt: String?
-            let deprecated: Bool?
-            let deprecatedAt: String?
-            let unavailable: Bool?
-            let beta: Bool?
-
-            func toPlatform() -> Availability.Platform {
-                Availability.Platform(
-                    name: name,
-                    introducedAt: introducedAt,
-                    deprecated: deprecated ?? false,
-                    deprecatedAt: deprecatedAt,
-                    unavailable: unavailable ?? false,
-                    beta: beta ?? false
-                )
-            }
-        }
-    }
-}
-
 // MARK: - Availability Info
 
 extension Availability {
