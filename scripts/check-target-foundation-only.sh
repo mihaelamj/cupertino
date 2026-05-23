@@ -262,6 +262,7 @@ STRICT_PRODUCERS=(
     SearchSQLite
     SearchStrategies
     AppleDocsStrategy
+    HIGStrategy
     SearchToolProvider
     Services
 )

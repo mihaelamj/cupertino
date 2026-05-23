@@ -45,7 +45,7 @@ struct Issue919AuditInvariantTests {
         #expect(arrayDecl.trimmingCharacters(in: .whitespaces) == "GRANDFATHERED_TARGETS=()")
     }
 
-    @Test("check-target-foundation-only.sh STRICT_PRODUCERS contains exactly 36 entries (post-#899 AppleDocsStrategy extract)")
+    @Test("check-target-foundation-only.sh STRICT_PRODUCERS contains exactly 37 entries (post-#899 AppleDocs + HIG extracts)")
     func strictProducersHasExpectedCount() throws {
         let scriptURL = Self.repoRoot().appendingPathComponent("scripts/check-target-foundation-only.sh")
         let body = try String(contentsOf: scriptURL, encoding: .utf8)
@@ -71,10 +71,11 @@ struct Issue919AuditInvariantTests {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
             .filter { $0.first.map { $0.isLetter || $0 == "_" } ?? false } // identifier-shaped
-        // Post-#899 (AppleDocsStrategy + SearchStrategyHelpers extract):
-        // 36 producers strict (added 1: AppleDocsStrategy; the 7th /
-        // SearchStrategyHelpers lands in MODELS_TARGETS not STRICT_PRODUCERS).
-        #expect(entries.count == 36, "expected 36 strict producers, found \(entries.count): \(entries)")
+        // Post-#899 sub-PR C: 37 producers strict (sub-PR B added
+        // AppleDocsStrategy: 35 -> 36; sub-PR C added HIGStrategy:
+        // 36 -> 37). SearchStrategyHelpers lands in MODELS_TARGETS,
+        // not STRICT_PRODUCERS.
+        #expect(entries.count == 37, "expected 37 strict producers, found \(entries.count): \(entries)")
     }
 
     @Test("FORBIDDEN_MODULES list contains every concrete + the two *SQLite siblings")
