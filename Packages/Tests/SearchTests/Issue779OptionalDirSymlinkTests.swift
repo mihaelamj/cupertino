@@ -3,7 +3,6 @@ import LoggingModels
 @testable import Search
 import SearchModels
 @testable import SearchSQLite
-@testable import SearchStrategies
 import SharedConstants
 @testable import SwiftEvolutionStrategy
 import Testing

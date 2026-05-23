@@ -2,6 +2,8 @@
 
 ### Changed
 
+- **#899 sub-PR G: extract `AppleArchiveStrategy` + delete the now-empty `SearchStrategies` umbrella target. 6-of-6 strategy split complete.** The 6 source-indexing strategies (AppleDocs, HIG, SampleCode, SwiftEvolution, SwiftOrg, AppleArchive) now each ship as their own SPM target conforming `Search.SourceIndexingStrategy`. The SearchStrategies umbrella target had no remaining source files after the 6 extractions and is deleted. Adding a new source indexer (e.g. WWDC transcripts #58 or Tech Talks #273) is now a 2-file PR: new `<X>Strategy` target + CLI composition-root registration. STRICT_PRODUCERS 39 -> 40 (added AppleArchiveStrategy, removed SearchStrategies, net +1). The SearchStrategyHelpers seam from sub-PR B carries the shared utility helpers. Closes #899.
+
 - **#899 sub-PR F: extract `SwiftOrgStrategy` into its own SPM target.** Pattern from B-E. STRICT_PRODUCERS 39 -> 40. Refs: #899.
 
 - **#899 sub-PR E: extract `SwiftEvolutionStrategy` into its own SPM target.** Pattern continues from sub-PRs B-D. STRICT_PRODUCERS 38 -> 39. Refs: #899.

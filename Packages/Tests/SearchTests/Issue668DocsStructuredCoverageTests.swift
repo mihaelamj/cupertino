@@ -1,10 +1,10 @@
+@testable import AppleArchiveStrategy
 import Foundation
 @testable import HIGStrategy
 import LoggingModels
 @testable import Search
 import SearchModels
 @testable import SearchSQLite
-@testable import SearchStrategies
 import SharedConstants
 import SQLite3
 @testable import SwiftEvolutionStrategy

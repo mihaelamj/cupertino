@@ -1,8 +1,8 @@
+import AppleArchiveStrategy
 import AppleDocsStrategy
 import HIGStrategy
 import SampleCodeStrategy
 import SearchModels
-import SearchStrategies
 import SwiftEvolutionStrategy
 import SwiftOrgStrategy
 import Testing

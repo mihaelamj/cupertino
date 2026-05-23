@@ -1,5 +1,4 @@
 import Foundation
-@testable import SearchStrategies
 @testable import Search
 import SearchModels
 @testable import SearchSQLite
@@ -127,6 +126,7 @@ struct IndexBuilderJavaScriptFallbackDefenseTests {
         rawMarkdown: String? = nil
     ) -> Shared.Models.StructuredDocumentationPage {
         Shared.Models.StructuredDocumentationPage(
+            // swiftlint:disable:next force_try
             url: try! URL(knownGood: "https://developer.apple.com/documentation/test"),
             title: title,
             kind: kind,

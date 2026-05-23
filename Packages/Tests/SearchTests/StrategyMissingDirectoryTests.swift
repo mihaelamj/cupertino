@@ -1,3 +1,4 @@
+import AppleArchiveStrategy
 import AppleDocsStrategy
 import Foundation
 import HIGStrategy
