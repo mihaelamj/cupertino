@@ -47,7 +47,6 @@ func downloadRealAppleDocPage() async throws {
         htmlParser: LiveTestHTMLParserStrategy(),
         appleJSONParser: LiveTestAppleJSONParserStrategy(),
         priorityPackageStrategy: LiveTestPriorityPackageStrategy(),
-
         fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
         logger: Logging.NoopRecording()
     )

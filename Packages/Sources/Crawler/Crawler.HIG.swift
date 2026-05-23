@@ -97,10 +97,10 @@ extension Crawler {
                     // Rate limiting
                     try await Task.sleep(for: Shared.Constants.Delay.archivePage)
 
-                    // Recycle WKWebView every N pages to prevent memory buildup
+                    // Recycle the fetcher every N pages to free memory
                     if (index + 1) % Shared.Constants.Interval.webViewRecycleEvery == 0 {
                         fetcher?.recycle()
-                        logInfo("♻️ Recycled WKWebView at page \(index + 1)")
+                        logInfo("♻️ Recycled fetcher at page \(index + 1)")
                     }
                 } catch {
                     stats.errors += 1

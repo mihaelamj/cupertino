@@ -64,7 +64,6 @@ struct SaveCommandTests {
             htmlParser: LiveTestHTMLParserStrategy(),
             appleJSONParser: LiveTestAppleJSONParserStrategy(),
             priorityPackageStrategy: LiveTestPriorityPackageStrategy(),
-
             fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )
@@ -135,7 +134,6 @@ struct SaveCommandTests {
             htmlParser: LiveTestHTMLParserStrategy(),
             appleJSONParser: LiveTestAppleJSONParserStrategy(),
             priorityPackageStrategy: LiveTestPriorityPackageStrategy(),
-
             fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )

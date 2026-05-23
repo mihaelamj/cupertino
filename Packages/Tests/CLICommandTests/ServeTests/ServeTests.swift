@@ -437,7 +437,6 @@ struct MCPServerIntegrationTests {
             htmlParser: Crawler.NoopHTMLParserStrategy(),
             appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
             priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy(),
-
             fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )

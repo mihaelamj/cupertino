@@ -49,7 +49,6 @@ struct WebCrawlTests {
             htmlParser: LiveTestHTMLParserStrategy(),
             appleJSONParser: LiveTestAppleJSONParserStrategy(),
             priorityPackageStrategy: LiveTestPriorityPackageStrategy(),
-
             fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )
@@ -119,7 +118,6 @@ struct WebCrawlTests {
             htmlParser: LiveTestHTMLParserStrategy(),
             appleJSONParser: LiveTestAppleJSONParserStrategy(),
             priorityPackageStrategy: LiveTestPriorityPackageStrategy(),
-
             fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )
@@ -132,7 +130,6 @@ struct WebCrawlTests {
             htmlParser: LiveTestHTMLParserStrategy(),
             appleJSONParser: LiveTestAppleJSONParserStrategy(),
             priorityPackageStrategy: LiveTestPriorityPackageStrategy(),
-
             fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )

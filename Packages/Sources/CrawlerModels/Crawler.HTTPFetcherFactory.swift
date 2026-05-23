@@ -3,7 +3,7 @@ import Foundation
 
 // MARK: - Crawler.HTTPFetcherFactory
 
-/// Strategy seam (GoF 1994 p. 315) for producing `Core.Protocols.ContentFetcher`
+/// Strategy seam (GoF 1994 p. 315) for producing `Core.Protocols.StringContentFetcher`
 /// instances of the WebKit-or-equivalent variety the `Crawler` producer needs.
 ///
 /// The Crawler target conforms to the strict foundation-only allow-list
@@ -27,7 +27,7 @@ import Foundation
 public extension Crawler {
     @MainActor
     protocol HTTPFetcherFactory: Sendable {
-        /// Produce a fresh `ContentFetcher<String>` configured with the
+        /// Produce a fresh `StringContentFetcher` configured with the
         /// supplied page-load + javascript-wait timeouts. The crawler
         /// producer holds the factory at construction time and calls this
         /// method during `crawl()` to obtain a per-crawl fetcher

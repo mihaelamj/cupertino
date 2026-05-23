@@ -71,12 +71,11 @@ extension Crawler {
             self.priorityPackageStrategy = priorityPackageStrategy
             self.fetcherFactory = fetcherFactory
             self.logger = logger
-            // Initialize the web-page fetcher via the injected factory (#903).
+            // Initialize the web-page fetcher via the injected factory.
             // AppleDocs uses default timeouts (the docs site is not a SPA).
-            // Set as `let` before `super.init()` so the field is non-optional;
-            // the IUO pattern from the pre-#903 inner `WKWebView` no longer
-            // applies at this layer (recycle() is a method call on the same
-            // protocol-existential, never a reassignment).
+            // The fetcher is a `let` because `recycle()` mutates state
+            // behind the protocol existential rather than swapping
+            // references.
             webPageFetcher = fetcherFactory.makeFetcher(
                 pageLoadTimeout: Shared.Constants.Timeout.pageLoad,
                 javascriptWaitTime: Shared.Constants.Timeout.javascriptWait
