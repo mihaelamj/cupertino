@@ -18,6 +18,7 @@ import PackagesAppleImportsPass
 import SampleCodeStrategy
 import SampleIndex
 import SampleIndexSQLite
+import SamplesAppleConstraintsPass
 import Search
 import SearchModels
 import SearchSQLite
