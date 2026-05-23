@@ -42,10 +42,13 @@ extension Enrichment {
                     durationMs: 0
                 )
             }
-            try await searchIndex.applyAppleStaticConstraints(lookup: lookup)
+            let affected = try await searchIndex.applyAppleStaticConstraints(lookup: lookup)
+            // rowsSkipped is intentionally 0 for SET-based UPDATE passes;
+            // see EnrichmentModels.Result doc. durationMs is patched by
+            // Enrichment.LiveRunner via the 0-sentinel.
             return EnrichmentModels.Result(
                 passIdentifier: identifier,
-                rowsAffected: 0,
+                rowsAffected: affected,
                 rowsSkipped: 0,
                 durationMs: 0
             )

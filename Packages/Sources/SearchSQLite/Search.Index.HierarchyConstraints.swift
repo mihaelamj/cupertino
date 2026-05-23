@@ -48,7 +48,8 @@ extension Search.Index {
     /// than the O(N) memory dictionary. Cost: ~120k entries × ~80
     /// bytes/entry = ~10 MB for the full v1.0.x corpus. Negligible
     /// against the 2.3 GB raw markdown the indexer already streams.
-    public func propagateConstraintsFromParents() async throws {
+    @discardableResult
+    public func propagateConstraintsFromParents() async throws -> Int {
         guard let database else {
             throw Search.Error.databaseNotInitialized
         }
@@ -58,11 +59,11 @@ extension Search.Index {
 
         guard !parentMap.isEmpty else {
             // No type rows carry constraints; nothing to propagate.
-            return
+            return 0
         }
 
         // Pass 2. update each child row whose parent lives in the map.
-        try applyInheritedConstraints(database, parentMap: parentMap)
+        return try applyInheritedConstraints(database, parentMap: parentMap)
     }
 
     /// Pass 1: collect parent-type rows whose `generic_constraints`
@@ -160,7 +161,7 @@ extension Search.Index {
     private func applyInheritedConstraints(
         _ database: OpaquePointer,
         parentMap: [String: (constraints: String, paramNames: [String])]
-    ) throws {
+    ) throws -> Int {
         let selectSQL = """
         SELECT id, doc_uri, generic_params, signature
         FROM doc_symbols
@@ -217,7 +218,7 @@ extension Search.Index {
         }
 
         guard !updates.isEmpty else {
-            return
+            return 0
         }
 
         // Apply staged updates in a single transaction. The N row
@@ -252,6 +253,7 @@ extension Search.Index {
             _ = sqlite3_exec(database, "ROLLBACK;", nil, nil, nil)
             throw Search.Error.sqliteError("propagateConstraintsFromParents COMMIT failed: \(errorMessage)")
         }
+        return updates.count
     }
 
     /// Extract bare type-parameter NAMES from the `generic_params`

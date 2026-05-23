@@ -117,6 +117,7 @@ extension Search {
         }
 
         // MARK: - Build
+
         //
         // The pre-#899 convenience initialiser (`init(searchIndex:metadata:docsDirectory:...)`)
         // that took the source-directory tuple and built strategies inline
@@ -207,8 +208,8 @@ extension Search {
                 // call is a no-op and the build falls back to iter 1 +
                 // iter 2 alone.
                 if staticConstraintsLookup != nil {
-                    try await searchIndex.applyAppleStaticConstraints(lookup: staticConstraintsLookup)
-                    logger.info("   Applied authoritative Apple constraints table (#759 iteration 3)", category: .search)
+                    let affected = try await searchIndex.applyAppleStaticConstraints(lookup: staticConstraintsLookup)
+                    logger.info("   Applied authoritative Apple constraints table (#759 iteration 3): \(affected) rows", category: .search)
                 }
 
                 // #755 / #759 iteration 2 — hierarchy walk. Iteration 1's
@@ -222,8 +223,8 @@ extension Search {
                 // `Destination` but no constraint clause inherits the
                 // struct's `Destination: View`). Sub-second on the full
                 // 351k-row corpus.
-                try await searchIndex.propagateConstraintsFromParents()
-                logger.info("   Inherited generic constraints from parents (#759 iteration 2)", category: .search)
+                let inherited = try await searchIndex.propagateConstraintsFromParents()
+                logger.info("   Inherited generic constraints from parents (#759 iteration 2): \(inherited) rows", category: .search)
             }
 
             // Log per-source breakdown so operators can diagnose index-build issues

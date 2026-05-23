@@ -39,15 +39,16 @@ extension Search.Index {
     /// **Optional dependency.** If `lookup` is nil (no static table
     /// configured at the composition root), the method returns
     /// immediately without touching the DB.
+    @discardableResult
     public func applyAppleStaticConstraints(
         lookup: (any Search.StaticConstraintsLookup)?
-    ) async throws {
+    ) async throws -> Int {
         guard let lookup, let database else {
-            return
+            return 0
         }
         let entries = try await lookup.allEntries()
         guard !entries.isEmpty else {
-            return
+            return 0
         }
 
         // Both prepared statements stay alive across the entry loop ,
@@ -82,6 +83,7 @@ extension Search.Index {
             throw Search.Error.sqliteError("applyAppleStaticConstraints BEGIN failed: \(errorMessage)")
         }
 
+        var affected = 0
         for entry in entries {
             let joined = entry.constraints.joined(separator: ",")
             let likePattern = entry.docURI + "-%"
@@ -94,6 +96,7 @@ extension Search.Index {
                 _ = sqlite3_exec(database, "ROLLBACK;", nil, nil, nil)
                 throw Search.Error.sqliteError("applyAppleStaticConstraints exact-update failed: \(errorMessage)")
             }
+            affected += Int(sqlite3_changes(database))
 
             sqlite3_reset(prefixStmt)
             sqlite3_bind_text(prefixStmt, 1, (joined as NSString).utf8String, -1, nil)
@@ -103,6 +106,7 @@ extension Search.Index {
                 _ = sqlite3_exec(database, "ROLLBACK;", nil, nil, nil)
                 throw Search.Error.sqliteError("applyAppleStaticConstraints prefix-update failed: \(errorMessage)")
             }
+            affected += Int(sqlite3_changes(database))
         }
 
         guard sqlite3_exec(database, "COMMIT;", nil, nil, nil) == SQLITE_OK else {
@@ -110,5 +114,6 @@ extension Search.Index {
             _ = sqlite3_exec(database, "ROLLBACK;", nil, nil, nil)
             throw Search.Error.sqliteError("applyAppleStaticConstraints COMMIT failed: \(errorMessage)")
         }
+        return affected
     }
 }
