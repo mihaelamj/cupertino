@@ -13,7 +13,7 @@
 #   - Per-producer protocol seams (*Models companions)
 #
 # The principle: each producer plus its protocol-seam companion(s) is
-# the standalone-portable unit. Pull out (Search + SearchModels) into
+# the standalone-portable unit. Pull out (SearchAPI + SearchModels) into
 # a fresh repo with the foundation-tier deps and it builds against
 # external SwiftPM dependencies alone.
 #
