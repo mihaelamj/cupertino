@@ -13,7 +13,7 @@ import WebKit
 extension Crawler.WebKit {
     #if canImport(WebKit)
     @MainActor
-    public final class ContentFetcher: NSObject, @preconcurrency Core.Protocols.ContentFetcher {
+    public final class ContentFetcher: NSObject, @preconcurrency Core.Protocols.ContentFetcher, @preconcurrency Core.Protocols.StringContentFetcher {
         public typealias RawContent = String
 
         // `webView` is an IUO on purpose: `recycle()` (below) is called

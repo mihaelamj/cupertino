@@ -3,6 +3,7 @@
 import CoreProtocols
 @testable import Crawler
 import CrawlerModels
+import CrawlerWebKit
 import Foundation
 import LoggingModels
 import SharedConstants
@@ -42,6 +43,7 @@ struct CrawlerTests {
             htmlParser: Crawler.NoopHTMLParserStrategy(),
             appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
             priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy(),
+            fetcherFactory: Crawler.NoopHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )
 
@@ -334,6 +336,7 @@ struct CrawlerTests {
             htmlParser: Crawler.NoopHTMLParserStrategy(),
             appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
             priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy(),
+            fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )
 
@@ -381,6 +384,7 @@ struct CrawlerTests {
             htmlParser: Crawler.NoopHTMLParserStrategy(),
             appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
             priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy(),
+            fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )
 

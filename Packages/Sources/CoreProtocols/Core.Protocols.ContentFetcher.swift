@@ -37,6 +37,38 @@ public extension Core.Protocols.ContentFetcher {
     }
 }
 
+// MARK: - String-typed Content Fetcher (#903 seam)
+
+/// Non-generic counterpart to `ContentFetcher` specialised for `String`
+/// content. Used by `Crawler.HTTPFetcherFactory` so the Crawler producer
+/// can name the existential `any StringContentFetcher` without needing
+/// generic-existential primary-associated-type machinery (which Swift
+/// does not synthesise on protocols declared inside an `extension`
+/// block). The two protocols are deliberately parallel: concretes that
+/// already conform `ContentFetcher` with `RawContent == String`
+/// (`Crawler.WebKit.ContentFetcher`) declare the conformance twice (the
+/// generic and the String-specialised one) at the conformer site. There
+/// is no automatic bridge: Swift can't synthesise a conformance to a
+/// non-generic protocol from a conditional `where RawContent == String`
+/// clause on a protocol with an associatedtype.
+extension Core.Protocols {
+    public protocol StringContentFetcher: Sendable {
+        func fetch(url: URL) async throws -> FetchResult<String>
+        func recycle()
+        func getMemoryUsageMB() -> Double
+    }
+}
+
+public extension Core.Protocols.StringContentFetcher {
+    func recycle() {
+        // Default: no-op
+    }
+
+    func getMemoryUsageMB() -> Double {
+        0
+    }
+}
+
 // MARK: - Fetch Result
 
 /// Result of a content fetch operation

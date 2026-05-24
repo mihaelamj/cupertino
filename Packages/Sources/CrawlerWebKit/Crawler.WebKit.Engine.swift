@@ -10,7 +10,7 @@ import WebKit
 
 /// Complete crawler engine using WKWebView for JavaScript-rendered pages.
 /// Uses `Crawler.WebKit.ContentFetcher` for fetching and an injected
-/// `Crawler.HTMLParserStrategy` for HTML→markdown transformation —
+/// `Crawler.HTMLParserStrategy` for HTML→markdown transformation. The
 /// composition root supplies the strategy so this target doesn't
 /// import the concrete `Core` HTML parser.
 extension Crawler.WebKit {

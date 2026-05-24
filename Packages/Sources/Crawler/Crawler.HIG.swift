@@ -1,16 +1,15 @@
+import CoreProtocols
 import CrawlerModels
 import Foundation
 import LoggingModels
-#if canImport(WebKit)
-import CoreProtocols
 import SharedConstants
-import WebKit
-#endif
 
 // MARK: - HIG Crawler
 
 /// Crawls Apple's Human Interface Guidelines
-/// The HIG website is a JavaScript SPA, requiring WKWebView-based crawling
+/// The HIG website is a JavaScript SPA, requiring a JS-rendering
+/// fetcher (the production composition root wires
+/// `Crawler.WebKit.LiveHTTPFetcherFactory`).
 extension Crawler {
     @MainActor
     // #673 Phase D iter-5: 395-line class — page discovery + HTML parsing
@@ -24,20 +23,24 @@ extension Crawler {
         /// GoF Strategy seam for log emission (1994 p. 315). Threaded
         /// in from the CLI composition root.
         private let logger: any LoggingModels.Logging.Recording
+        /// Strategy seam (#903): the CLI composition root constructs
+        /// `Crawler.WebKit.LiveHTTPFetcherFactory()` and passes it here.
+        /// The Crawler producer is foundation-only and never links WebKit.
+        private let fetcherFactory: any Crawler.HTTPFetcherFactory
 
-        #if canImport(WebKit)
-        private var fetcher: Crawler.WebKit.ContentFetcher?
-        #endif
+        private var fetcher: (any Core.Protocols.StringContentFetcher)?
 
         public init(
             outputDirectory: URL,
             forceRecrawl: Bool = false,
             maxPages: Int = 500,
+            fetcherFactory: any Crawler.HTTPFetcherFactory,
             logger: any LoggingModels.Logging.Recording
         ) {
             self.outputDirectory = outputDirectory
             self.forceRecrawl = forceRecrawl
             self.maxPages = maxPages
+            self.fetcherFactory = fetcherFactory
             self.logger = logger
         }
 
@@ -61,9 +64,10 @@ extension Crawler {
                 withIntermediateDirectories: true
             )
 
-            #if canImport(WebKit)
-            // Initialize content fetcher with HIG-specific wait time
-            fetcher = Crawler.WebKit.ContentFetcher(
+            // Initialize content fetcher via the injected factory (#903).
+            // HIG needs the longer javascript-wait because the HIG SPA
+            // settles in stages.
+            fetcher = fetcherFactory.makeFetcher(
                 pageLoadTimeout: Shared.Constants.Timeout.pageLoad,
                 javascriptWaitTime: Shared.Constants.Timeout.higJavascriptWait
             )
@@ -95,10 +99,10 @@ extension Crawler {
                     // Rate limiting
                     try await Task.sleep(for: Shared.Constants.Delay.archivePage)
 
-                    // Recycle WKWebView every N pages to prevent memory buildup
+                    // Recycle the fetcher every N pages to free memory
                     if (index + 1) % Shared.Constants.Interval.webViewRecycleEvery == 0 {
                         fetcher?.recycle()
-                        logInfo("♻️ Recycled WKWebView at page \(index + 1)")
+                        logInfo("♻️ Recycled fetcher at page \(index + 1)")
                     }
                 } catch {
                     stats.errors += 1
@@ -111,10 +115,6 @@ extension Crawler {
 
             // Cleanup
             fetcher = nil
-            #else
-            logError("WebKit not available - HIG crawler requires macOS")
-            throw Error.webKitNotAvailable
-            #endif
 
             stats.endTime = Date()
 
@@ -126,7 +126,6 @@ extension Crawler {
 
         // MARK: - Private Methods
 
-        #if canImport(WebKit)
         private func discoverPages(
             from rootURL: URL,
             stats: inout Crawler.HIGStatistics
@@ -237,7 +236,6 @@ extension Crawler {
 
             stats.totalPages += 1
         }
-        #endif
 
         private func extractTitle(from html: String) -> String? {
             // Try to extract from <title> tag
@@ -523,13 +521,9 @@ extension Crawler {
         // MARK: - Logging
 
         private func logInfo(_ message: String) {
-            #if canImport(WebKit)
             let memoryMB = fetcher?.getMemoryUsageMB() ?? 0
             let memoryMsg = "\(String(format: "%.1f", memoryMB))MB | \(message)"
             logger.info(memoryMsg, category: .hig)
-            #else
-            logger.info(message, category: .hig)
-            #endif
         }
 
         private func logError(_ message: String) {
@@ -627,15 +621,12 @@ extension Crawler.HIG {
 extension Crawler.HIG {
     public enum Error: Swift.Error, LocalizedError, Sendable {
         case invalidResponse(URL)
-        case webKitNotAvailable
         case webViewNotInitialized
 
         public var errorDescription: String? {
             switch self {
             case .invalidResponse(let url):
                 return "Invalid response from \(url)"
-            case .webKitNotAvailable:
-                return "WebKit not available - HIG crawler requires macOS"
             case .webViewNotInitialized:
                 return "WebView not initialized"
             }

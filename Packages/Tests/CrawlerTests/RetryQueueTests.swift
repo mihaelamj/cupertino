@@ -1,5 +1,6 @@
 @testable import Crawler
 import CrawlerModels
+import CrawlerWebKit
 import Foundation
 import LoggingModels
 import SharedConstants
@@ -106,7 +107,10 @@ struct RetryQueueTests {
     ///
     /// - Requires: network access and WKWebView (macOS only). Tagged `.integration`.
     /// - Runtime: ~30s (one retry-queue window).
-    @Test("looksLikeHTTPErrorPage defers URL; successful retry increments retriesSucceeded not errors", .tags(.integration))
+    @Test(
+        "looksLikeHTTPErrorPage defers URL; successful retry increments retriesSucceeded not errors",
+        .tags(.integration)
+    )
     @MainActor
     func httpErrorPageDefersAndRetriesSuccessfully() async throws {
         let tempDir = FileManager.default.temporaryDirectory
@@ -137,6 +141,7 @@ struct RetryQueueTests {
             htmlParser: htmlParser,
             appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
             priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy(),
+            fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )
 
@@ -211,6 +216,7 @@ struct RetryQueueTests {
             htmlParser: AlwaysHTTPErrorHTMLParserStrategy(),
             appleJSONParser: Crawler.NoopAppleJSONParserStrategy(),
             priorityPackageStrategy: Crawler.NoopPriorityPackageStrategy(),
+            fetcherFactory: Crawler.CannedHTMLFetcherFactory(),
             logger: Logging.NoopRecording()
         )
 
@@ -231,7 +237,7 @@ struct RetryQueueTests {
         decoder.dateDecodingStrategy = .iso8601
         let record = try decoder.decode(
             Crawler.AppleDocs.State.RejectedURLRecord.self,
-            from: try #require(logLines.first?.data(using: .utf8))
+            from: Data(#require(logLines.first).utf8)
         )
         #expect(record.reason == .httpErrorTemplate)
         #expect(record.url == targetURL)
@@ -246,18 +252,26 @@ struct RetryQueueTests {
 
 /// HTML parser that always signals an HTTP error page. Used to drive the retry-exhaustion path.
 private struct AlwaysHTTPErrorHTMLParserStrategy: Crawler.HTMLParserStrategy {
-    func convert(html: String, url: URL) -> String { "" }
+    func convert(html: String, url: URL) -> String {
+        ""
+    }
 
     func toStructuredPage(
         html: String,
         url: URL,
         source: Shared.Models.StructuredDocumentationPage.Source,
         depth: Int?
-    ) -> Shared.Models.StructuredDocumentationPage? { nil }
+    ) -> Shared.Models.StructuredDocumentationPage? {
+        nil
+    }
 
-    func looksLikeHTTPErrorPage(html: String) -> Bool { true }
+    func looksLikeHTTPErrorPage(html: String) -> Bool {
+        true
+    }
 
-    func looksLikeJavaScriptFallback(html: String) -> Bool { false }
+    func looksLikeJavaScriptFallback(html: String) -> Bool {
+        false
+    }
 }
 
 /// HTML parser that signals an HTTP error page on the first call only, then acts normally.
@@ -265,19 +279,25 @@ private struct AlwaysHTTPErrorHTMLParserStrategy: Crawler.HTMLParserStrategy {
 private final class RecoveringHTTPErrorHTMLParserStrategy: Crawler.HTMLParserStrategy, @unchecked Sendable {
     private var callCount = 0
 
-    func convert(html: String, url: URL) -> String { "" }
+    func convert(html: String, url: URL) -> String {
+        ""
+    }
 
     func toStructuredPage(
         html: String,
         url: URL,
         source: Shared.Models.StructuredDocumentationPage.Source,
         depth: Int?
-    ) -> Shared.Models.StructuredDocumentationPage? { nil }
+    ) -> Shared.Models.StructuredDocumentationPage? {
+        nil
+    }
 
     func looksLikeHTTPErrorPage(html: String) -> Bool {
         callCount += 1
-        return callCount == 1  // true only on the first call
+        return callCount == 1 // true only on the first call
     }
 
-    func looksLikeJavaScriptFallback(html: String) -> Bool { false }
+    func looksLikeJavaScriptFallback(html: String) -> Bool {
+        false
+    }
 }

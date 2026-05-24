@@ -5,6 +5,7 @@ import AppleDocsStrategy
 import CoreProtocols
 import Crawler
 import CrawlerModels
+import CrawlerWebKit
 import Foundation
 import LoggingModels
 @testable import Search
@@ -63,6 +64,7 @@ struct SaveCommandTests {
             htmlParser: LiveTestHTMLParserStrategy(),
             appleJSONParser: LiveTestAppleJSONParserStrategy(),
             priorityPackageStrategy: LiveTestPriorityPackageStrategy(),
+            fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )
         _ = try await crawler.crawl()
@@ -132,6 +134,7 @@ struct SaveCommandTests {
             htmlParser: LiveTestHTMLParserStrategy(),
             appleJSONParser: LiveTestAppleJSONParserStrategy(),
             priorityPackageStrategy: LiveTestPriorityPackageStrategy(),
+            fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
             logger: Logging.NoopRecording()
         )
         _ = try await crawler.crawl()

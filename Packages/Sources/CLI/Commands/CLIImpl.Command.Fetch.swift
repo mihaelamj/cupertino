@@ -10,6 +10,7 @@ import CoreSampleCode
 import CoreSampleCodeModels
 import Crawler
 import CrawlerModels
+import CrawlerWebKit
 import Foundation
 import Ingest
 import Logging
@@ -501,6 +502,7 @@ extension CLIImpl.Command {
                 htmlParser: htmlParser,
                 appleJSONParser: appleJSONParser,
                 priorityPackageStrategy: priorityPackageStrategy,
+                fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
                 logger: logger
             )
             let stats = try await crawler.crawl(progress: AppleDocsCrawlProgressObserver(
@@ -1060,6 +1062,7 @@ extension CLIImpl.Command {
             let crawler = await Crawler.HIG(
                 outputDirectory: outputURL,
                 forceRecrawl: force,
+                fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
                 logger: logger
             )
 

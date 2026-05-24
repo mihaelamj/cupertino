@@ -1,5 +1,4 @@
 import CoreProtocols
-import CrawlerModels
 import Foundation
 
 // MARK: - Crawler.Engine
@@ -15,6 +14,7 @@ extension Crawler {
     /// because parser-side engines (`Core.JSONParser.Engine`) conform too, and
     /// CoreProtocols is the lowest-leaf target everyone can see. This typealias
     /// promotes the natural read site `Crawler.Engine` while keeping the
-    /// dependency graph honest.
+    /// dependency graph honest. Lives in `CrawlerModels` (foundation seam)
+    /// post-#903 so the `CrawlerWebKit` sibling can name the alias.
     public typealias Engine = Core.Protocols.CrawlerEngine
 }

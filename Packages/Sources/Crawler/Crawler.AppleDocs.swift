@@ -7,7 +7,9 @@ import SharedConstants
 
 // MARK: - Documentation Crawler
 
-/// Main crawler for Apple documentation using WKWebView
+/// Main crawler for Apple documentation. Fetches HTML via an injected
+/// `Crawler.HTTPFetcherFactory` (the production composition root wires
+/// `Crawler.WebKit.LiveHTTPFetcherFactory`).
 extension Crawler {
     @MainActor
     public final class AppleDocs: NSObject {
@@ -16,7 +18,7 @@ extension Crawler {
         private let output: Shared.Configuration.Output
         private let state: State
 
-        private var webPageFetcher: Crawler.WebKit.ContentFetcher!
+        private let webPageFetcher: any Core.Protocols.StringContentFetcher
         private var visited = Set<String>()
         private var queue: [(url: URL, depth: Int)] = []
         private var retryQueue: [Shared.Models.QueuedRetryURL] = []
@@ -45,6 +47,10 @@ extension Crawler {
         /// protocol surface) and never reaches for the `Logging.Log`
         /// static.
         private let logger: any LoggingModels.Logging.Recording
+        /// Strategy seam (#903). CLI composition root constructs
+        /// `Crawler.WebKit.LiveHTTPFetcherFactory()`; the Crawler producer
+        /// itself is foundation-only and never links WebKit.
+        private let fetcherFactory: any Crawler.HTTPFetcherFactory
 
         private var progressObserver: (any Crawler.AppleDocsProgressObserving)?
         private var logFileHandle: FileHandle?
@@ -54,6 +60,7 @@ extension Crawler {
             htmlParser: any Crawler.HTMLParserStrategy,
             appleJSONParser: any Crawler.AppleJSONParserStrategy,
             priorityPackageStrategy: any Crawler.PriorityPackageStrategy,
+            fetcherFactory: any Crawler.HTTPFetcherFactory,
             logger: any LoggingModels.Logging.Recording
         ) async {
             self.configuration = configuration.crawler
@@ -64,11 +71,18 @@ extension Crawler {
             self.htmlParser = htmlParser
             self.appleJSONParser = appleJSONParser
             self.priorityPackageStrategy = priorityPackageStrategy
+            self.fetcherFactory = fetcherFactory
             self.logger = logger
+            // Initialize the web-page fetcher via the injected factory.
+            // AppleDocs uses default timeouts (the docs site is not a SPA).
+            // The fetcher is a `let` because `recycle()` mutates state
+            // behind the protocol existential rather than swapping
+            // references.
+            webPageFetcher = fetcherFactory.makeFetcher(
+                pageLoadTimeout: Shared.Constants.Timeout.pageLoad,
+                javascriptWaitTime: Shared.Constants.Timeout.javascriptWait
+            )
             super.init()
-
-            // Initialize Crawler.WebKit.ContentFetcher from WKWebCrawler namespace
-            webPageFetcher = Crawler.WebKit.ContentFetcher()
 
             // Temporary debug logging for #25
             let logPath = self.configuration.outputDirectory
@@ -261,7 +275,7 @@ extension Crawler {
                     // minutes later, confirming the rate-limit-burst hypothesis.
                     let delay = Shared.Constants.Delay.retryBackoff(attempt: attempt)
                     let last = url.lastPathComponent
-                    logInfo("🔄 Retry \(attempt)/\(maxRetries) for \(last) — waiting \(delay), recycling WebView")
+                    logInfo("🔄 Retry \(attempt)/\(maxRetries) for \(last), waiting \(delay), recycling fetcher")
                     await recycleWebView()
                     try await Task.sleep(for: delay)
                 }
@@ -629,7 +643,7 @@ extension Crawler {
         }
 
         private func loadPage(url: URL) async throws -> String {
-            // Delegate to WKWebCrawler's Crawler.WebKit.ContentFetcher
+            // Delegate to the injected StringContentFetcher (#903)
             try await webPageFetcher.fetch(url: url).content
         }
 
@@ -765,18 +779,18 @@ extension Crawler {
         }
 
         private func getMemoryUsageMB() -> Double {
-            // Delegate to WKWebCrawler's Crawler.WebKit.ContentFetcher
+            // Delegate to the injected StringContentFetcher (#903)
             webPageFetcher.getMemoryUsageMB()
         }
 
         private func recycleWebView() async {
             let memBefore = getMemoryUsageMB()
-            // Delegate to WKWebCrawler's Crawler.WebKit.ContentFetcher
+            // Delegate to the injected StringContentFetcher (#903)
             webPageFetcher.recycle()
             let memAfter = getMemoryUsageMB()
             let before = String(format: "%.1f", memBefore)
             let after = String(format: "%.1f", memAfter)
-            logInfo("♻️ Recycled Crawler.WebKit.ContentFetcher: \(before)MB → \(after)MB")
+            logInfo("♻️ Recycled fetcher: \(before)MB → \(after)MB")
         }
 
         /// Auto-generate priority package list if this was a Swift.org crawl
@@ -813,7 +827,6 @@ extension Crawler.AppleDocs {
         case timeout
         case invalidState
         case invalidHTML
-        case unsupportedPlatform
         /// Apple's CDN served a styled HTTP error page (502/429/403 at HTTP 200).
         /// Thrown by `crawlPage` so callers can defer the URL for retry (#292).
         case httpErrorPage
@@ -826,8 +839,6 @@ extension Crawler.AppleDocs {
                 return "Invalid crawler state"
             case .invalidHTML:
                 return "Invalid HTML received"
-            case .unsupportedPlatform:
-                return "WKWebView is not available on this platform"
             case .httpErrorPage:
                 return "HTTP error template page received"
             }

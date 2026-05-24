@@ -4,8 +4,8 @@ import CoreProtocols
 @testable import Crawler
 import CrawlerModels
 import Foundation
-import LoggingModels
 import Ingest
+import LoggingModels
 import SharedConstants
 import Testing
 import TestSupport
@@ -1089,7 +1089,7 @@ struct ResumeAndStartCleanTests {
                 urlsFile: urlsFile,
                 maxDepth: 15,
                 startURL: Self.seedURL,
-            logger: Logging.NoopRecording()
+                logger: Logging.NoopRecording()
             )
         } catch is Ingest.FetchURLsError {
             threw = true

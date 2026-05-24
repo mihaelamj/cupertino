@@ -3,6 +3,7 @@ import AppKit
 import CoreProtocols
 import Crawler
 import CrawlerModels
+import CrawlerWebKit
 import Foundation
 import LoggingModels
 import SharedConstants
@@ -46,6 +47,7 @@ func downloadRealAppleDocPage() async throws {
         htmlParser: LiveTestHTMLParserStrategy(),
         appleJSONParser: LiveTestAppleJSONParserStrategy(),
         priorityPackageStrategy: LiveTestPriorityPackageStrategy(),
+        fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
         logger: Logging.NoopRecording()
     )
     let stats = try await crawler.crawl()
