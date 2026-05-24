@@ -310,3 +310,12 @@ jobs:
         env:
           CUPERTINO_BINARY: Packages/.build/release/cupertino
         run: bash scripts/eval/mcp-smoke.sh
+
+      - name: "Smoke: mock-ai-agent end-to-end demo (closes #1004)"
+        timeout-minutes: 3
+        env:
+          CUPERTINO_BINARY: Packages/.build/release/cupertino
+          MOCK_AI_AGENT_BINARY: Packages/.build/release/mock-ai-agent
+        run: |
+          xcrun swift build --package-path Packages -c release --product mock-ai-agent
+          bash scripts/eval/mock-ai-agent-smoke.sh
