@@ -34,7 +34,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("AppleDocsSource"),
     .singleTargetLibrary("HIGSource"),
     .singleTargetLibrary("SampleCodeSource"),
-    .singleTargetLibrary("SwiftEvolutionStrategy"),
+    .singleTargetLibrary("SwiftEvolutionSource"),
     .singleTargetLibrary("SwiftOrgStrategy"),
     .singleTargetLibrary("AppleArchiveSource"),
     .singleTargetLibrary("SampleIndex"),
@@ -459,7 +459,7 @@ let targets: [Target] = {
     )
     let searchModelsTestsTarget = Target.testTarget(
         name: "SearchModelsTests",
-        dependencies: ["SearchModels", "SharedConstants", "TestSupport", "HIGSource", "SampleCodeSource", "AppleArchiveSource", "LoggingModels"]
+        dependencies: ["SearchModels", "SharedConstants", "TestSupport", "HIGSource", "SampleCodeSource", "AppleArchiveSource", "SwiftEvolutionSource", "LoggingModels"]
     )
 
     // ---------- SampleIndexModels (#408 partial: value types + Reader protocol lifted out of
@@ -544,7 +544,7 @@ let targets: [Target] = {
             "AppleDocsSource",
             "HIGSource",
             "SampleCodeSource",
-            "SwiftEvolutionStrategy",
+            "SwiftEvolutionSource",
             "SwiftOrgStrategy",
             "AppleArchiveSource",
             "AppleConstraintsPass",
@@ -595,7 +595,7 @@ let targets: [Target] = {
             "AppleDocsSource",
             "HIGSource",
             "SampleCodeSource",
-            "SwiftEvolutionStrategy",
+            "SwiftEvolutionSource",
             "SwiftOrgStrategy",
             "AppleArchiveSource",
             "AppleConstraintsPass",
@@ -656,10 +656,14 @@ let targets: [Target] = {
         ]
     )
 
-    // #899 sub-PR E: extract SwiftEvolutionStrategy.
-    let swiftEvolutionStrategyTarget = Target.target(
-        name: "SwiftEvolutionStrategy",
+    // #899 sub-PR E: extract SwiftEvolutionStrategy (renamed to SwiftEvolutionSource in #1017).
+    // ASTIndexer dep is load-bearing: Search.SwiftEvolutionIndexer.extractCode runs
+    // ASTIndexer.Extractor over Swift code blocks lifted from proposal markdown via the
+    // private extractAllCodeBlocks helper.
+    let swiftEvolutionSourceTarget = Target.target(
+        name: "SwiftEvolutionSource",
         dependencies: [
+            "ASTIndexer",
             "SearchModels",
             "SharedConstants",
             "LoggingModels",
@@ -1024,7 +1028,7 @@ let targets: [Target] = {
             "AppleDocsSource",
             "HIGSource",
             "SampleCodeSource",
-            "SwiftEvolutionStrategy",
+            "SwiftEvolutionSource",
             "SwiftOrgStrategy",
             "AppleArchiveSource",
             "AppleConstraintsPass",
@@ -1260,7 +1264,7 @@ let targets: [Target] = {
         appleDocsSourceTarget,
         higSourceTarget,
         sampleCodeSourceTarget,
-        swiftEvolutionStrategyTarget,
+        swiftEvolutionSourceTarget,
         swiftOrgStrategyTarget,
         appleArchiveSourceTarget,
         sampleIndexTarget,

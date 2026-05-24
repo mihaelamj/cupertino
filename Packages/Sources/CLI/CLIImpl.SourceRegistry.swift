@@ -4,6 +4,7 @@ import Foundation
 import HIGSource
 import SampleCodeSource
 import SearchModels
+import SwiftEvolutionSource
 
 // MARK: - CLIImpl.makeProductionSourceRegistry
 
@@ -35,7 +36,8 @@ extension CLIImpl {
         registry.register(HIGSource())
         registry.register(SampleCodeSource())
         registry.register(AppleArchiveSource())
-        // #1007 Phase 1E-1H: 4 more sources migrate one PR at a time.
+        registry.register(SwiftEvolutionSource())
+        // #1007 Phase 1F-1H: 3 more sources migrate one PR at a time.
         // Each migration appends one `.register(<X>Source())` line above
         // and removes the corresponding entry from the older
         // `makeProductionSourceLookup()` literal list.

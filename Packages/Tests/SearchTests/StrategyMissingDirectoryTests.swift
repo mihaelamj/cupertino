@@ -7,7 +7,7 @@ import LoggingModels
 import SearchModels
 @testable import SearchSQLite
 import SharedConstants
-import SwiftEvolutionStrategy
+import SwiftEvolutionSource
 import SwiftOrgStrategy
 import Testing
 

@@ -11,7 +11,7 @@ import LoggingModels
 @testable import SearchAPI
 import SearchModels
 import SharedConstants
-import SwiftEvolutionStrategy
+import SwiftEvolutionSource
 import Testing
 import TestSupport
 

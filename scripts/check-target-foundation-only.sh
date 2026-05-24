@@ -263,7 +263,7 @@ STRICT_PRODUCERS=(
     AppleDocsSource
     HIGSource
     SampleCodeSource
-    SwiftEvolutionStrategy
+    SwiftEvolutionSource
     SwiftOrgStrategy
     AppleArchiveSource
     AppleConstraintsPass
