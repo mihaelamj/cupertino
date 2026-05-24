@@ -58,6 +58,27 @@ struct Issue1008SourceProviderProtocolShapeTests {
         #expect(registry.entry(for: "a")?.isEnabled == false) // but the entry survives
     }
 
+    @Test("Re-register preserves a prior `isEnabled: false` flag when isEnabled: is not passed explicitly")
+    func reregisterPreservesDisabledFlag() {
+        var registry = Search.SourceRegistry()
+        registry.register(FixtureProvider(idValue: "a"))
+        registry.setEnabled(false, forSourceID: "a")
+        #expect(registry.entry(for: "a")?.isEnabled == false)
+
+        // Re-register without passing isEnabled — operator's earlier disable
+        // MUST be preserved. Pre-#1008-critic-fix, the default `isEnabled: true`
+        // silently clobbered the disabled state on this call path.
+        registry.register(FixtureProvider(idValue: "a", displayNameValue: "replaced"))
+        #expect(registry.entry(for: "a")?.isEnabled == false) // still disabled
+        #expect(registry.entry(for: "a")?.provider.definition.displayName == "replaced") // but provider replaced
+        #expect(registry.provider(for: "a") == nil) // still hidden from lookup
+
+        // Explicit re-enable on re-register is honored.
+        registry.register(FixtureProvider(idValue: "a"), isEnabled: true)
+        #expect(registry.entry(for: "a")?.isEnabled == true)
+        #expect(registry.provider(for: "a") != nil)
+    }
+
     @Test("Iteration preserves insertion order, not id order")
     func iterationOrder() {
         var registry = Search.SourceRegistry()

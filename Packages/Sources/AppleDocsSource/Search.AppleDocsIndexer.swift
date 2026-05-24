@@ -79,7 +79,3 @@ extension Search {
         }
     }
 }
-
-// MARK: - HIG Indexer
-
-/// Indexer for Human Interface Guidelines

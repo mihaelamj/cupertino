@@ -31,19 +31,23 @@ extension Search {
 
         /// Register a provider. Idempotent on `definition.id`: a
         /// re-register replaces the prior entry, preserving its
-        /// insertion-order slot.
-        @discardableResult
+        /// insertion-order slot AND its prior `isEnabled` flag (unless
+        /// `isEnabled:` is passed explicitly). The flag-preservation
+        /// avoids silently re-enabling a source that operators
+        /// disabled via `setEnabled(false, …)` after a composition
+        /// root refresh or hot-reload re-runs the same `register`
+        /// calls. Pass `isEnabled: true` to explicitly force-enable
+        /// on re-register.
         public mutating func register(
             _ provider: any Search.SourceProvider,
-            isEnabled: Bool = true
-        ) -> Self {
-            let newEntry = Entry(provider: provider, isEnabled: isEnabled)
+            isEnabled: Bool? = nil
+        ) {
             if let existingIndex = entries.firstIndex(where: { $0.provider.definition.id == provider.definition.id }) {
-                entries[existingIndex] = newEntry
+                let preserved = isEnabled ?? entries[existingIndex].isEnabled
+                entries[existingIndex] = Entry(provider: provider, isEnabled: preserved)
             } else {
-                entries.append(newEntry)
+                entries.append(Entry(provider: provider, isEnabled: isEnabled ?? true))
             }
-            return self
         }
 
         /// Mutate the enabled flag on an existing entry by id. No-op

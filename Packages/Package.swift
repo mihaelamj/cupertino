@@ -616,6 +616,7 @@ let targets: [Target] = {
     let appleDocsSourceTarget = Target.target(
         name: "AppleDocsSource",
         dependencies: [
+            "ASTIndexer",
             "SearchModels",
             "SharedConstants",
             "LoggingModels",

@@ -56,7 +56,7 @@ Validated against five independent references (see `mihaela-agents/Rules/swift/p
 | `CoreProtocols` | Foundation, SharedConstants, Resources | ✅ Foundation, Resources, SharedConstants (post-#536 2a: GitHubCanonicalizer + ExclusionList moved out to CorePackageIndexing) |
 | `CrawlerModels` | Foundation, SharedConstants | ✅ Foundation, SharedConstants |
 | `CorePackageIndexingModels` | Foundation, ASTIndexer, CoreProtocols, SharedConstants | ✅ Foundation, ASTIndexer, CoreProtocols, SharedConstants |
-| `SearchModels` | Foundation, SharedConstants | ✅ Foundation, SharedConstants |
+| `SearchModels` | Foundation, ASTIndexer, LoggingModels, SharedConstants | ✅ Foundation, ASTIndexer, LoggingModels, SharedConstants (#1008: gained ASTIndexer for `Search.ExtractedContent.symbols: [ASTIndexer.Symbol]` and LoggingModels for `Search.IndexEnvironment.logger: any Logging.Recording` after the lift of `Search.SourceItem` + `Search.ExtractedContent` + `Search.SourceIndexer` from SearchSQLite plus the addition of the new `Search.SourceProvider` + `SourceRegistry` + `FetchInfo` + `IndexEnvironment` seam) |
 | `SampleIndexModels` | Foundation, SharedConstants | ✅ Foundation, SharedConstants |
 | `ServicesModels` | Foundation, SearchModels, SampleIndexModels, SharedConstants | ✅ Foundation, SampleIndexModels, SearchModels, SharedConstants |
 | `IndexerModels` | Foundation | ✅ Foundation (closures-to-Observer epic seam: owns `Indexer.*Service.Request`/`Outcome`/`Event` value types + the three `*Service.EventObserving` Observer protocols) |
