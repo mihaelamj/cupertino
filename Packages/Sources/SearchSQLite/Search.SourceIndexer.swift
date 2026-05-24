@@ -3,6 +3,9 @@ import Foundation
 import SearchModels
 import SharedConstants
 
+// MARK: - HIG Indexer
+
+/// Indexer for Human Interface Guidelines
 extension Search {
     public struct HIGIndexer: Search.SourceIndexer {
         public let sourceID = Shared.Constants.SourcePrefix.hig

@@ -17,8 +17,9 @@ import SharedConstants
 /// - `fetchInfo`: `Search.FetchInfo` static literal in
 ///   `AppleDocsSource.FetchInfo.swift` (lifted from
 ///   `CLI/SupportingTypes.swift`'s pre-#1007 `FetchType.docs` case).
-/// - `makeStrategy(env:)`: constructs `Search.Strategies.AppleDocs`
-///   (the indexing strategy concrete also in this target).
+/// - `makeStrategy(env:)`: constructs `Search.AppleDocsStrategy`
+///   (the indexing strategy concrete declared in
+///   `Search.Strategies.AppleDocs.swift`, also in this target).
 /// - `makeIndexer()`: constructs `Search.AppleDocsIndexer` (the
 ///   indexer concrete also in this target).
 public struct AppleDocsSource: Search.SourceProvider {
