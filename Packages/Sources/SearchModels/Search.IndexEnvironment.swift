@@ -34,16 +34,29 @@ extension Search {
         /// audit log read this; others ignore it.
         public let importLogSink: (any Search.ImportLogSink)?
 
+        /// Optional catalog provider for the sample-code source.
+        /// Established as the seam pattern by #1012 (Phase 1C of
+        /// epic #1007): when a per-source strategy needs a
+        /// domain-specific dep not shared with other sources, add
+        /// it here as an optional field. Sources that don't need it
+        /// (apple-docs, hig) ignore it; SampleCodeSource preconditions
+        /// non-nil at `makeStrategy(env:)` time per fail-loud-at-the-door
+        /// (docs/PRINCIPLES.md). Future per-source migrations follow
+        /// the same pattern.
+        public let sampleCatalogProvider: (any Search.SampleCatalogProvider)?
+
         public init(
             sourceDirectory: URL,
             logger: any LoggingModels.Logging.Recording,
             markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
-            importLogSink: (any Search.ImportLogSink)? = nil
+            importLogSink: (any Search.ImportLogSink)? = nil,
+            sampleCatalogProvider: (any Search.SampleCatalogProvider)? = nil
         ) {
             self.sourceDirectory = sourceDirectory
             self.logger = logger
             self.markdownStrategy = markdownStrategy
             self.importLogSink = importLogSink
+            self.sampleCatalogProvider = sampleCatalogProvider
         }
     }
 }

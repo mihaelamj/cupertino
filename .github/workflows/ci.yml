@@ -195,10 +195,11 @@ jobs:
       # #899 sub-PR G deleted SearchStrategies as a target (the 6
       # strategies moved to their own SPM siblings: AppleDocsSource
       # (renamed from AppleDocsStrategy in #1008), HIGSource (renamed
-      # from HIGStrategy in #1010), SampleCodeStrategy,
-      # SwiftEvolutionStrategy, SwiftOrgStrategy, AppleArchiveStrategy,
-      # with SearchStrategyHelpers as the shared seam). Portability
-      # proofs for the 6 + helpers follow as separate steps.
+      # from HIGStrategy in #1010), SampleCodeSource (renamed from
+      # SampleCodeStrategy in #1012), SwiftEvolutionStrategy,
+      # SwiftOrgStrategy, AppleArchiveStrategy, with SearchStrategyHelpers
+      # as the shared seam). Portability proofs for the 6 + helpers
+      # follow as separate steps.
       - name: "Portability: AppleDocsSource"
         timeout-minutes: 5
         run: ./scripts/check-target-portability.sh AppleDocsSource
@@ -211,9 +212,9 @@ jobs:
         timeout-minutes: 5
         run: ./scripts/check-target-portability.sh HIGSource
 
-      - name: "Portability: SampleCodeStrategy"
+      - name: "Portability: SampleCodeSource"
         timeout-minutes: 5
-        run: ./scripts/check-target-portability.sh SampleCodeStrategy
+        run: ./scripts/check-target-portability.sh SampleCodeSource
 
       - name: "Portability: SwiftEvolutionStrategy"
         timeout-minutes: 5

@@ -15,7 +15,7 @@ import Logging
 import LoggingModels
 import PackagesAppleConstraintsPass
 import PackagesAppleImportsPass
-import SampleCodeStrategy
+import SampleCodeSource
 import SampleIndex
 import SampleIndexSQLite
 import SamplesAppleConstraintsPass
