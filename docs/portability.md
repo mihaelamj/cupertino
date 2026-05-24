@@ -88,7 +88,7 @@ the layers below it. The portability test enforces this empirically.
   `EnrichmentModels`, `SearchSchema`. (`CoreProtocols` is grouped with
   the seams despite the unsuffixed name. `SearchSchema` carries the
   search.db DDL SQL constants + `Search.Schema.currentVersion`; lifted
-  out of the SearchAPI target by #898 sub-PR A.)
+  out of the Search target (renamed to SearchAPI in #900) by #898 sub-PR A.)
 - **Features** (the producers in the `STRICT_PRODUCERS` array's
   Phase 3 block): `AppleConstraintsKit`, `Availability`, `Cleanup`,
   `Core`, `CoreJSONParser`, `CorePackageIndexing`, `CoreSampleCode`,
