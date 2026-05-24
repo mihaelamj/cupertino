@@ -203,8 +203,11 @@ jobs:
       # SearchStrategyHelpers as the shared seam). #1021 (Phase 1G of
       # epic #1007) added SwiftBookSource as a new per-source target
       # (first net-add; view-source pattern, no prior SwiftBookStrategy
-      # to rename). Portability proofs for the 6 + new + helpers follow
-      # as separate steps.
+      # to rename). #1023 (Phase 1H of #1007; final per-source
+      # migration) added PackagesSource as the first source whose
+      # destinationDB is .packages (not .search); validates the
+      # destinationDB protocol contract. Portability proofs for all
+      # per-source targets + helpers follow as separate steps.
       - name: "Portability: AppleDocsSource"
         timeout-minutes: 5
         run: ./scripts/check-target-portability.sh AppleDocsSource
@@ -232,6 +235,10 @@ jobs:
       - name: "Portability: SwiftBookSource"
         timeout-minutes: 5
         run: ./scripts/check-target-portability.sh SwiftBookSource
+
+      - name: "Portability: PackagesSource"
+        timeout-minutes: 5
+        run: ./scripts/check-target-portability.sh PackagesSource
 
       - name: "Portability: SearchStrategyHelpers"
         timeout-minutes: 5

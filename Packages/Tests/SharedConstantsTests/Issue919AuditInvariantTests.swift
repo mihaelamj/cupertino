@@ -46,7 +46,7 @@ struct Issue919AuditInvariantTests {
     }
 
     @Test(
-        "check-target-foundation-only.sh STRICT_PRODUCERS contains exactly 48 entries (post-#1021 SwiftBookSource net-add; WebKit-companion siblings excluded)"
+        "check-target-foundation-only.sh STRICT_PRODUCERS contains exactly 49 entries (post-#1023 PackagesSource net-add; WebKit-companion siblings excluded)"
     )
     func strictProducersHasExpectedCount() throws {
         let scriptURL = Self.repoRoot().appendingPathComponent("scripts/check-target-foundation-only.sh")
@@ -73,7 +73,7 @@ struct Issue919AuditInvariantTests {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
             .filter { $0.first.map { $0.isLetter || $0 == "_" } ?? false } // identifier-shaped
-        // Post-#1021: 48 producers strict. CoreJSONParserWebKit +
+        // Post-#1023: 49 producers strict. CoreJSONParserWebKit +
         // CoreSampleCodeWebKit (added by #904) are WebKit-companion
         // siblings that legitimately import their parent producer to
         // extend its types. They are off STRICT_PRODUCERS but on
@@ -86,9 +86,11 @@ struct Issue919AuditInvariantTests {
         // - #904: CoreJSONParserWebKit + CoreSampleCodeWebKit excluded
         //   per WebKit-companion carve-out above.
         // - #1021 (Phase 1G of epic #1007): SwiftBookSource net-add
-        //   (+1, view-source pattern). First net-add since #903; the
-        //   prior phases 1A-1F were renames (count held at 47).
-        #expect(entries.count == 48, "expected 48 strict producers, found \(entries.count): \(entries)")
+        //   (+1, view-source pattern; prior phases 1A-1F were renames).
+        // - #1023 (Phase 1H, final per-source migration of #1007):
+        //   PackagesSource net-add (+1; first non-`.search` destinationDB
+        //   declaration, validates the protocol contract).
+        #expect(entries.count == 49, "expected 49 strict producers, found \(entries.count): \(entries)")
     }
 
     @Test("FORBIDDEN_MODULES list contains every concrete + the two *SQLite siblings")

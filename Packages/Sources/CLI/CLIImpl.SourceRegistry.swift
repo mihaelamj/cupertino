@@ -2,6 +2,7 @@ import AppleArchiveSource
 import AppleDocsSource
 import Foundation
 import HIGSource
+import PackagesSource
 import SampleCodeSource
 import SearchModels
 import SwiftBookSource
@@ -41,7 +42,11 @@ extension CLIImpl {
         registry.register(SwiftEvolutionSource())
         registry.register(SwiftOrgSource())
         registry.register(SwiftBookSource())
-        // #1007 Phase 1H: 1 more source migrates one PR at a time.
+        registry.register(PackagesSource())
+        // #1007 Phase 1A-1H complete: registry now carries all 8 sources.
+        // Phase 1I (next + final epic step) dissolves `makeProductionSourceLookup`
+        // + the `FetchType` enum and wires the destinationDB-aware composition
+        // root.
         // Each migration appends one `.register(<X>Source())` line above
         // and removes the corresponding entry from the older
         // `makeProductionSourceLookup()` literal list.

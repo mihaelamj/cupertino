@@ -37,6 +37,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("SwiftEvolutionSource"),
     .singleTargetLibrary("SwiftOrgSource"),
     .singleTargetLibrary("SwiftBookSource"),
+    .singleTargetLibrary("PackagesSource"),
     .singleTargetLibrary("AppleArchiveSource"),
     .singleTargetLibrary("SampleIndex"),
     .singleTargetLibrary("SampleIndexSQLite"),
@@ -470,6 +471,7 @@ let targets: [Target] = {
             "SwiftEvolutionSource",
             "SwiftOrgSource",
             "SwiftBookSource",
+            "PackagesSource",
             "LoggingModels",
         ]
     )
@@ -559,6 +561,7 @@ let targets: [Target] = {
             "SwiftEvolutionSource",
             "SwiftOrgSource",
             "SwiftBookSource",
+            "PackagesSource",
             "AppleArchiveSource",
             "AppleConstraintsPass",
             "SearchModels",
@@ -611,6 +614,7 @@ let targets: [Target] = {
             "SwiftEvolutionSource",
             "SwiftOrgSource",
             "SwiftBookSource",
+            "PackagesSource",
             "AppleArchiveSource",
             "AppleConstraintsPass",
             "SearchModels",
@@ -718,6 +722,25 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
+        ]
+    )
+
+    // #1023 (Phase 1H of epic #1007; FINAL): PackagesSource is the
+    // first source whose destinationDB is NOT .search. No prior
+    // PackagesStrategy or PackagesIndexer: #789 removed both alongside
+    // the search.db `packages` table; packages indexing today runs
+    // through Indexer.PackagesService against packages.db. PackagesSource
+    // contributes a SourceDefinition + FetchInfo + destinationDB = .packages
+    // discriminator; makeStrategy + makeIndexer return private noop
+    // concretes. No ASTIndexer dep (no indexer logic) and no
+    // SearchStrategyHelpers dep (no strategy concrete). Second net-add
+    // (count goes 48 -> 49).
+    let packagesSourceTarget = Target.target(
+        name: "PackagesSource",
+        dependencies: [
+            "SearchModels",
+            "SharedConstants",
+            "CoreProtocols",
         ]
     )
 
@@ -1068,6 +1091,7 @@ let targets: [Target] = {
             "SwiftEvolutionSource",
             "SwiftOrgSource",
             "SwiftBookSource",
+            "PackagesSource",
             "AppleArchiveSource",
             "AppleConstraintsPass",
             "HierarchyPass",
@@ -1305,6 +1329,7 @@ let targets: [Target] = {
         swiftEvolutionSourceTarget,
         swiftOrgSourceTarget,
         swiftBookSourceTarget,
+        packagesSourceTarget,
         appleArchiveSourceTarget,
         sampleIndexTarget,
         sampleIndexTestsTarget,
