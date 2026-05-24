@@ -304,3 +304,9 @@ jobs:
             --search-db ~/.cupertino-dev/search.db \
             --label smoke --version smoke \
             --smoke --strict
+
+      - name: "Smoke: MCP protocol surface (initialize + tools/list + tools/call)"
+        timeout-minutes: 2
+        env:
+          CUPERTINO_BINARY: Packages/.build/release/cupertino
+        run: bash scripts/eval/mcp-smoke.sh
