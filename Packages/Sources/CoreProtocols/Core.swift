@@ -5,15 +5,14 @@ import Foundation
 /// Namespace for the core crawling / fetching / transforming layer.
 ///
 /// Layout:
-/// - `Core.Protocols.*` — protocols (`ContentFetcher`, `ContentTransformer`,
+/// - `Core.Protocols.*`: protocols (`ContentFetcher`, `ContentTransformer`,
 ///                       `CrawlerEngine`) and their companion result types
-///                       (`FetchResult`, `TransformResult`, `TransformMetadata`).
-///                       Also folds in the concrete utilities that ship in the
-///                       same SPM target (`Core.PackageIndexing.ExclusionList`,
-///                       `Core.PackageIndexing.GitHubCanonicalizer`,
-///                       `Core.Protocols.SwiftPackagesCatalog`,
-///                       `Core.Protocols.SwiftPackageEntry`) so the namespace
-///                       mirrors the folder on disk.
+///                       (`FetchResult`, `TransformResult`, `TransformMetadata`),
+///                       plus `Core.Protocols.SwiftPackagesCatalog` +
+///                       `Core.Protocols.SwiftPackageEntry`. The previously
+///                       co-located `Core.PackageIndexing.ExclusionList` +
+///                       `GitHubCanonicalizer` moved to `CorePackageIndexing`
+///                       in #536 phase 2a.
 /// - The rest of `Core.*` lives in sibling SPM targets and extends
 ///   this same root from their own files:
 ///   `Core.Parser.*` (HTML / XML transformers) in `Core`;

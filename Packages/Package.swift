@@ -365,8 +365,6 @@ let targets: [Target] = {
         dependencies: [
             "CoreProtocols",
             "SharedConstants",
-            "Resources",
-            "ASTIndexer",
         ],
         exclude: ["JSONParser", "PackageIndexing"]
     )

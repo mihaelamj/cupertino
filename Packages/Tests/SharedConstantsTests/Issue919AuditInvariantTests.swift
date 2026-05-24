@@ -76,9 +76,10 @@ struct Issue919AuditInvariantTests {
         // Post-#904: 47 producers strict. CoreJSONParserWebKit +
         // CoreSampleCodeWebKit (added by #904) are WebKit-companion
         // siblings that legitimately import their parent producer to
-        // extend its types. Same exclusion shape Enrichment had pre-#906.
-        // They are tracked by check-package-purity.sh FORBIDDEN_MODULES
-        // instead (no consumer target may import them).
+        // extend its types. They are off STRICT_PRODUCERS but on
+        // check-package-purity.sh's FORBIDDEN_MODULES + EXEMPT_TARGETS
+        // carve-out so no consumer target may import them; only
+        // composition root binaries link them.
         // - #899 sub-PR G closed the 6-of-6 strategy split (net +5).
         // - #906 sub-PRs B-G: 6 enrichment-pass siblings (+6).
         // - #903: CrawlerWebKit sibling (+1).
