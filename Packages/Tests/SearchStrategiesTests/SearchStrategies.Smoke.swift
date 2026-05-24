@@ -4,7 +4,7 @@ import HIGSource
 import SampleCodeSource
 import SearchModels
 import SwiftEvolutionSource
-import SwiftOrgStrategy
+import SwiftOrgSource
 import Testing
 
 @Suite("SearchStrategies smoke")
