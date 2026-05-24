@@ -88,12 +88,16 @@ extension CLIImpl.Command {
             // No edit to `Distribution.SetupService.run` required; the
             // service iterates `request.required` end-to-end.
             //
-            // Out-of-scope for this seam (still requires further edits to
-            // surface a new DB everywhere): `Distribution.DatabaseHealthCheck`
-            // conformer for Doctor's per-DB section (#931 seam), the
-            // `printSchemaVersions` entries array in `Doctor.swift`, and
-            // per-descriptor download URLs (the bundle currently ships
-            // every DB inside `cupertino-databases-vX.Y.Z.zip`).
+            // Out-of-scope for this seam (still requires further edits
+            // to surface a new DB across the rest of the CLI): write a
+            // new `Distribution.DatabaseHealthCheck` conformer (via the
+            // #931 strategy seam, already merged) and append it to the
+            // Doctor command's healthChecks list; update the
+            // `printSchemaVersions` entries array in `Doctor.swift`
+            // (each DB uses a different URL-resolution helper, so this
+            // doesn't yet plug in declaratively); per-descriptor
+            // download URLs (the bundle currently ships every DB
+            // inside `cupertino-databases-vX.Y.Z.zip`).
             let request = Distribution.SetupService.Request(
                 baseDir: baseURL,
                 keepExisting: keepExisting,

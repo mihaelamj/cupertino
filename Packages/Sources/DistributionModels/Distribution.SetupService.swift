@@ -24,9 +24,17 @@ extension Distribution {
             /// `CLIImpl.Command.Setup.run` assembles the list and passes it
             /// in) so adding a 4th DB no longer touches `Distribution.SetupService.run`.
             ///
-            /// **Required at construction.** Per `gof-di-rules.md` Rule 1, the
-            /// caller MUST supply the list explicitly; there is no default. Test
-            /// fixtures pass `[.search, .samples, .packages]` when exercising the
+            /// **Required at construction; no default.** The other init
+            /// parameters carry defaults (`currentDocsVersion`,
+            /// `docsReleaseBaseURL`) that read from `Shared.Constants.App`
+            /// constants — those are version-roll metadata with a single
+            /// source of truth, so a default is informational. `required`
+            /// is different: it encodes which databases the CLI is currently
+            /// shipping, an architectural decision the composition root
+            /// must own. Hiding it inside the init as a default would make
+            /// "add a 4th DB" appear at a hidden site instead of at the
+            /// composition root. Test fixtures pass
+            /// `[.search, .samples, .packages]` when exercising the
             /// production 3-DB shape.
             ///
             /// **Bundle-coupling assumption.** Setup downloads a single
@@ -44,9 +52,15 @@ extension Distribution {
                 keepExisting: Bool = false,
                 required: [Shared.Models.DatabaseDescriptor]
             ) {
+                // Reject duplicate-by-`id` (the routing key everywhere downstream:
+                // `Outcome.path(forDatabaseId:)`, status classification). Full
+                // struct equality (id + filename + displayName) is not enough
+                // because a future code path could fork a descriptor with the
+                // same id but a typo'd filename; the first id-match wins and
+                // the second is silently shadowed.
                 precondition(
-                    Set(required).count == required.count,
-                    "Distribution.SetupService.Request.required carries duplicate descriptors: \(required.map(\.id))"
+                    Set(required.map(\.id)).count == required.count,
+                    "Distribution.SetupService.Request.required carries duplicate descriptor ids: \(required.map(\.id))"
                 )
                 self.baseDir = baseDir
                 self.currentDocsVersion = currentDocsVersion
