@@ -9,7 +9,7 @@ import Enrichment
 import EnrichmentModels
 import Foundation
 import HierarchyPass
-import HIGStrategy
+import HIGSource
 import Indexer
 import Logging
 import LoggingModels

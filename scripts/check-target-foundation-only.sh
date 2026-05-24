@@ -261,7 +261,7 @@ STRICT_PRODUCERS=(
     SearchAPI
     SearchSQLite
     AppleDocsSource
-    HIGStrategy
+    HIGSource
     SampleCodeStrategy
     SwiftEvolutionStrategy
     SwiftOrgStrategy

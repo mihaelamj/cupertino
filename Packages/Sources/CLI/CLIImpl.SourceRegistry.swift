@@ -1,5 +1,6 @@
 import AppleDocsSource
 import Foundation
+import HIGSource
 import SearchModels
 
 // MARK: - CLIImpl.makeProductionSourceRegistry
@@ -13,10 +14,9 @@ import SearchModels
 /// **Parallel path** during the #1007 epic transition: this factory
 /// runs alongside the older `makeProductionSourceLookup()` (which
 /// holds 8 inline `SourceDefinition` literals) until phases 1B-1H
-/// migrate the remaining 7 sources into per-source targets and
-/// phase 1I dissolves the older factory. During the transition,
-/// only AppleDocs is migrated, so this factory registers just one
-/// provider; the registry surface stays valid for the eventual
+/// migrate the remaining sources into per-source targets and phase
+/// 1I dissolves the older factory. As of #1010, AppleDocs and HIG
+/// are migrated; the registry surface stays valid for the eventual
 /// full set.
 ///
 /// **Adding a new source post-#1007:** one new `<X>Source` target +
@@ -27,7 +27,8 @@ extension CLIImpl {
     static func makeProductionSourceRegistry() -> Search.SourceRegistry {
         var registry = Search.SourceRegistry()
         registry.register(AppleDocsSource())
-        // #1007 Phase 1B-1H: 7 more sources migrate one PR at a time.
+        registry.register(HIGSource())
+        // #1007 Phase 1C-1H: 6 more sources migrate one PR at a time.
         // Each migration appends one `.register(<X>Source())` line above
         // and removes the corresponding entry from the older
         // `makeProductionSourceLookup()` literal list.

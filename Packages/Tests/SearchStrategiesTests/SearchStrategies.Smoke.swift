@@ -1,6 +1,6 @@
 import AppleArchiveStrategy
 import AppleDocsSource
-import HIGStrategy
+import HIGSource
 import SampleCodeStrategy
 import SearchModels
 import SwiftEvolutionStrategy

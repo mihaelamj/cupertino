@@ -32,7 +32,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("SearchSQLite"),
     .singleTargetLibrary("SearchStrategyHelpers"),
     .singleTargetLibrary("AppleDocsSource"),
-    .singleTargetLibrary("HIGStrategy"),
+    .singleTargetLibrary("HIGSource"),
     .singleTargetLibrary("SampleCodeStrategy"),
     .singleTargetLibrary("SwiftEvolutionStrategy"),
     .singleTargetLibrary("SwiftOrgStrategy"),
@@ -459,7 +459,7 @@ let targets: [Target] = {
     )
     let searchModelsTestsTarget = Target.testTarget(
         name: "SearchModelsTests",
-        dependencies: ["SearchModels", "SharedConstants", "TestSupport"]
+        dependencies: ["SearchModels", "SharedConstants", "TestSupport", "HIGSource"]
     )
 
     // ---------- SampleIndexModels (#408 partial: value types + Reader protocol lifted out of
@@ -542,7 +542,7 @@ let targets: [Target] = {
             "SearchAPI",
             "SearchSQLite",
             "AppleDocsSource",
-            "HIGStrategy",
+            "HIGSource",
             "SampleCodeStrategy",
             "SwiftEvolutionStrategy",
             "SwiftOrgStrategy",
@@ -593,7 +593,7 @@ let targets: [Target] = {
         name: "SearchStrategiesTests",
         dependencies: [
             "AppleDocsSource",
-            "HIGStrategy",
+            "HIGSource",
             "SampleCodeStrategy",
             "SwiftEvolutionStrategy",
             "SwiftOrgStrategy",
@@ -625,10 +625,11 @@ let targets: [Target] = {
         ]
     )
 
-    // #899 sub-PR C: extract HIGStrategy.
-    let higStrategyTarget = Target.target(
-        name: "HIGStrategy",
+    // #899 sub-PR C: extract HIGStrategy (renamed to HIGSource in #1010).
+    let higSourceTarget = Target.target(
+        name: "HIGSource",
         dependencies: [
+            "ASTIndexer",
             "SearchModels",
             "SharedConstants",
             "LoggingModels",
@@ -1014,7 +1015,7 @@ let targets: [Target] = {
             "SearchAPI",
             "SearchSQLite",
             "AppleDocsSource",
-            "HIGStrategy",
+            "HIGSource",
             "SampleCodeStrategy",
             "SwiftEvolutionStrategy",
             "SwiftOrgStrategy",
@@ -1250,7 +1251,7 @@ let targets: [Target] = {
         searchStrategyHelpersTarget,
         searchStrategiesTestsTarget,
         appleDocsSourceTarget,
-        higStrategyTarget,
+        higSourceTarget,
         sampleCodeStrategyTarget,
         swiftEvolutionStrategyTarget,
         swiftOrgStrategyTarget,
