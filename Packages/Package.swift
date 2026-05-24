@@ -33,7 +33,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("SearchStrategyHelpers"),
     .singleTargetLibrary("AppleDocsSource"),
     .singleTargetLibrary("HIGSource"),
-    .singleTargetLibrary("SampleCodeStrategy"),
+    .singleTargetLibrary("SampleCodeSource"),
     .singleTargetLibrary("SwiftEvolutionStrategy"),
     .singleTargetLibrary("SwiftOrgStrategy"),
     .singleTargetLibrary("AppleArchiveStrategy"),
@@ -459,7 +459,7 @@ let targets: [Target] = {
     )
     let searchModelsTestsTarget = Target.testTarget(
         name: "SearchModelsTests",
-        dependencies: ["SearchModels", "SharedConstants", "TestSupport", "HIGSource"]
+        dependencies: ["SearchModels", "SharedConstants", "TestSupport", "HIGSource", "SampleCodeSource", "LoggingModels"]
     )
 
     // ---------- SampleIndexModels (#408 partial: value types + Reader protocol lifted out of
@@ -543,7 +543,7 @@ let targets: [Target] = {
             "SearchSQLite",
             "AppleDocsSource",
             "HIGSource",
-            "SampleCodeStrategy",
+            "SampleCodeSource",
             "SwiftEvolutionStrategy",
             "SwiftOrgStrategy",
             "AppleArchiveStrategy",
@@ -594,7 +594,7 @@ let targets: [Target] = {
         dependencies: [
             "AppleDocsSource",
             "HIGSource",
-            "SampleCodeStrategy",
+            "SampleCodeSource",
             "SwiftEvolutionStrategy",
             "SwiftOrgStrategy",
             "AppleArchiveStrategy",
@@ -641,10 +641,13 @@ let targets: [Target] = {
         ]
     )
 
-    // #899 sub-PR D: extract SampleCodeStrategy.
-    let sampleCodeStrategyTarget = Target.target(
-        name: "SampleCodeStrategy",
+    // #899 sub-PR D: extract SampleCodeStrategy (renamed to SampleCodeSource in #1012).
+    // ASTIndexer dep is load-bearing here (unlike HIGSource): Search.SampleCodeIndexer.swift
+    // runs ASTIndexer.Extractor over full Swift files to capture symbols + imports.
+    let sampleCodeSourceTarget = Target.target(
+        name: "SampleCodeSource",
         dependencies: [
+            "ASTIndexer",
             "SearchModels",
             "SharedConstants",
             "LoggingModels",
@@ -1019,7 +1022,7 @@ let targets: [Target] = {
             "SearchSQLite",
             "AppleDocsSource",
             "HIGSource",
-            "SampleCodeStrategy",
+            "SampleCodeSource",
             "SwiftEvolutionStrategy",
             "SwiftOrgStrategy",
             "AppleArchiveStrategy",
@@ -1255,7 +1258,7 @@ let targets: [Target] = {
         searchStrategiesTestsTarget,
         appleDocsSourceTarget,
         higSourceTarget,
-        sampleCodeStrategyTarget,
+        sampleCodeSourceTarget,
         swiftEvolutionStrategyTarget,
         swiftOrgStrategyTarget,
         appleArchiveStrategyTarget,

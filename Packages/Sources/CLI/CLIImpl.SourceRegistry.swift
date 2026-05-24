@@ -1,6 +1,7 @@
 import AppleDocsSource
 import Foundation
 import HIGSource
+import SampleCodeSource
 import SearchModels
 
 // MARK: - CLIImpl.makeProductionSourceRegistry
@@ -15,9 +16,9 @@ import SearchModels
 /// runs alongside the older `makeProductionSourceLookup()` (which
 /// holds 8 inline `SourceDefinition` literals) until phases 1B-1H
 /// migrate the remaining sources into per-source targets and phase
-/// 1I dissolves the older factory. As of #1010, AppleDocs and HIG
-/// are migrated; the registry surface stays valid for the eventual
-/// full set.
+/// 1I dissolves the older factory. As of #1012, AppleDocs / HIG /
+/// SampleCode are migrated; the registry surface stays valid for
+/// the eventual full set.
 ///
 /// **Adding a new source post-#1007:** one new `<X>Source` target +
 /// one `.register(<X>Source())` append below. Zero edits to
@@ -28,7 +29,8 @@ extension CLIImpl {
         var registry = Search.SourceRegistry()
         registry.register(AppleDocsSource())
         registry.register(HIGSource())
-        // #1007 Phase 1C-1H: 6 more sources migrate one PR at a time.
+        registry.register(SampleCodeSource())
+        // #1007 Phase 1D-1H: 5 more sources migrate one PR at a time.
         // Each migration appends one `.register(<X>Source())` line above
         // and removes the corresponding entry from the older
         // `makeProductionSourceLookup()` literal list.

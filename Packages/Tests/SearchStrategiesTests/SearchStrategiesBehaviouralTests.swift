@@ -5,7 +5,7 @@ import EnrichmentModels
 import Foundation
 import HIGSource
 import LoggingModels
-import SampleCodeStrategy
+import SampleCodeSource
 import SearchModels
 import SearchSQLite
 import SharedConstants
