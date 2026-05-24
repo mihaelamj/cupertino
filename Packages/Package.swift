@@ -626,10 +626,13 @@ let targets: [Target] = {
     )
 
     // #899 sub-PR C: extract HIGStrategy (renamed to HIGSource in #1010).
+    // No ASTIndexer dep: HIGIndexer.extractCode returns
+    // Search.ExtractedContent.empty and references no ASTIndexer.* symbols
+    // (HIG is pure design guidance, no code extraction). Diverges from the
+    // AppleDocsSource template where ASTIndexer is load-bearing.
     let higSourceTarget = Target.target(
         name: "HIGSource",
         dependencies: [
-            "ASTIndexer",
             "SearchModels",
             "SharedConstants",
             "LoggingModels",

@@ -1,4 +1,3 @@
-import ASTIndexer
 import Foundation
 import SearchModels
 import SharedConstants
