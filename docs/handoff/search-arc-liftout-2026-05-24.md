@@ -1,12 +1,12 @@
 # Search arc lift-out trace, 2026-05-24
 
-Mechanical trace evidence for [#901](https://github.com/mihaelamj/cupertino/issues/901) (verification PR for the Search arc standalone-portability claim under epic [#893](https://github.com/mihaelamj/cupertino/issues/893)). Per `mihaela-agents/Rules/swift/gof-di-rules.md` rule 5 (standalone-portable packages) and the `mihaela-analytics/secret-life/Docs/protocol-seam-audit.md` "Lift-out checks (mechanical, repeatable)" template.
+Mechanical trace evidence for [#901](https://github.com/mihaelamj/cupertino/issues/901) (verification PR for the Search arc standalone-portability claim under epic [#893](https://github.com/mihaelamj/cupertino/issues/893)). Per `mihaela-agents/Rules/swift/gof-di-rules.md` rule 5 (standalone-portable packages) and `mihaela-agents/Rules/swift/per-package-import-contract.md` (the import-contract this trace verifies, sequencing the cupertino strict-DI epic). #901's "See also" referenced an external `protocol-seam-audit.md` template; that file does not exist on this checkout, so the trace inlines the lift-out check methodology directly: per-target portability harness (`scripts/check-target-portability.sh`) running `swift build --target <T>` against a generated minimal `Package.swift` containing only the target and its transitive closure.
 
 Recorded against develop @ commit 835b621 (PR #997 squash-merge of #900 sub-PR B: Search to SearchAPI rename).
 
 ## What this trace proves
 
-Each of the 10 producer + Models-tier targets that came out of the Search dissection arc (#898 + #899 + #900) builds standalone. The dependency closure for each is foundation-only by contract: Foundation tier targets (`SharedConstants`, `LoggingModels`, `Resources`, `ASTIndexer`) plus Models tier seams (`CoreProtocols`, `CorePackageIndexingModels`, `SearchModels`, `SearchSchema`, `EnrichmentModels`). The two tiers are defined in `docs/package-import-contract.md`; this trace cross-checks the empirical closure against that contract.
+Each of the 10 producer + Models-tier targets that came out of the Search dissection arc (#898 + #899 + #900) builds standalone. The dependency closure for each is foundation-only by contract: Foundation tier targets (`SharedConstants`, `LoggingModels`, `Resources`, `ASTIndexer`) plus Models tier seams (`CoreProtocols`, `CorePackageIndexingModels`, `SearchModels`, `SearchSchema`, `SearchStrategyHelpers`, `EnrichmentModels`). The two tiers are defined in `docs/package-import-contract.md`; this trace cross-checks the empirical closure against that contract.
 
 The producer-backend-split principle (epic #893) holds for the Search arc: the orchestration target (`SearchAPI`) is backend-agnostic, the concrete (`SearchSQLite`) is the only target in the arc carrying `import SQLite3`, and the 6 source-indexing strategies plus 1 strategy-helpers utility lift independently of both.
 
@@ -53,6 +53,7 @@ Zero hits. The only target in the Search arc that imports SQLite3 is `SearchSQLi
 
 The Producers table in `docs/package-import-contract.md` carries a `✅` mark for every Search-arc target, meaning the actual production-truth dependencies match the foundation-only allowlist. Empirical row content (verified by reading the file at HEAD):
 
+- `SearchModels`: Foundation, SharedConstants
 - `SearchAPI`: Foundation, EnrichmentModels, LoggingModels, SearchModels, SharedConstants
 - `SearchSQLite`: Foundation, SQLite3, ASTIndexer, CorePackageIndexingModels, CoreProtocols, LoggingModels, SearchModels, SearchSchema, SharedConstants
 - `SearchSchema`: Foundation, SearchModels
@@ -85,7 +86,7 @@ Each strategy's actual closure (per `Packages/Package.swift` and `scripts/check-
 <X>Strategy + SearchModels + SharedConstants + LoggingModels + CoreProtocols + Resources + SearchStrategyHelpers
 ```
 
-7 targets per strategy. The #901 spec listed a 4-target closure (`<X>Strategy + SearchModels + SharedConstants + LoggingModels`); the actual closure adds `CoreProtocols` (Models-tier seam for the strategy's protocol interface), `Resources` (foundation-tier embedded resources), and `SearchStrategyHelpers` (foundation-only utility extracted by #899 so per-strategy targets share helpers without dragging the SearchStrategies concrete). All 3 extra targets are foundation- or Models-tier, so the foundation-only contract holds.
+7 targets per strategy. The #901 spec listed a 4-target closure (`<X>Strategy + SearchModels + SharedConstants + LoggingModels`); the actual closure adds `CoreProtocols` (Models-tier seam for the strategy's protocol interface), `Resources` (Foundation-tier embedded resources), and `SearchStrategyHelpers` (Models-tier helper, foundation-only by contract; extracted by #899 so per-strategy targets share helpers without dragging the SearchStrategies concrete). All 3 extra targets are Foundation- or Models-tier, so the foundation-only contract holds.
 
 All 6 strategy builds green via `bash scripts/check-target-portability.sh <X>Strategy`.
 
@@ -96,7 +97,7 @@ All 6 strategy builds green via `bash scripts/check-target-portability.sh <X>Str
 
 ## Note on #901 spec drift
 
-#901's acceptance-criteria grep enumerates `Packages/Sources/SearchQuery/`, `Packages/Sources/SearchRanking/`, `Packages/Sources/SearchIntent/`, `Packages/Sources/SearchUtilities/`. None of these targets materialized. #900 stopped at the `Search` to `SearchAPI` rename (sub-PR B) and explicitly deferred sub-PR A (the `SearchQuery` extraction) as low-value organizational churn (the `Search.Database` protocol seam already operates through `SearchModels`). The other 3 names (`SearchRanking`, `SearchIntent`, `SearchUtilities`) appear in early planning sketches but never made it into the executed plan. The acceptance grep is therefore reduced to the targets that do exist, all of which are covered by the table in section 1.
+#901's acceptance-criteria grep enumerates `Packages/Sources/SearchQuery/`, `Packages/Sources/SearchRanking/`, `Packages/Sources/SearchIntent/`, `Packages/Sources/SearchUtilities/`. None of these targets materialized. #900 stopped at the `Search` to `SearchAPI` rename (sub-PR B) and explicitly deferred sub-PR A (the `SearchQuery` extraction) as low-value organizational churn (the `Search.Database` protocol seam already operates through `SearchModels`). The other 3 names (`SearchRanking`, `SearchIntent`, `SearchUtilities`) were #898 sub-PRs B/C/D in the original dissection plan; only sub-PRs A (`SearchSchema`, PR #913) and E (`SearchSQLite`, PR #914) plus follow-up F (PR #917) shipped. B/C/D were dropped at execution time and their material folded into `SearchModels` (the `Search.QueryIntent` enum + `detectQueryIntent` + `Search.SourceProperties` + `Search.SourceDefinition`) and `SearchSQLite` (the BM25 + heuristics ranking path, the query-parsing helpers). The acceptance grep is therefore reduced to the targets that do exist, all of which are covered by the table in section 1.
 
 ## Cross-refs
 
