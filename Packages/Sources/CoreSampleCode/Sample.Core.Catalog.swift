@@ -127,8 +127,9 @@ extension Sample.Core {
 
         /// Read `<directory>/catalog.json` if present and parseable. Static so
         /// tests can drive disk parsing without constructing an actor.
-        /// (`internal` because `SampleCodeCatalogJSON` is internal — exposing
-        /// the JSON shape was never part of the public surface.)
+        /// Stays `internal`: an implementation detail of `Sample.Core.Catalog`;
+        /// public callers should go through the actor's `allEntries` /
+        /// `entries(for:)` / `loadedSource` surface.
         static func loadFromDisk(at directory: URL) -> SampleCodeCatalogJSON? {
             let url = directory.appendingPathComponent(onDiskCatalogFilename)
             guard let data = try? Data(contentsOf: url) else { return nil }
