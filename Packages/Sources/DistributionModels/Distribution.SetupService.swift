@@ -19,14 +19,22 @@ extension Distribution {
             public let docsReleaseBaseURL: String
             public let keepExisting: Bool
             /// Descriptors for every database the CLI must classify, download,
-            /// and place. Ordered by the historical printable sequence
-            /// (`search → samples → packages`); the success-summary printer
-            /// iterates this order. Composition-root injected (the CLI's
+            /// and place. Ordered by the printable sequence the success-summary
+            /// printer iterates. Composition-root injected (the CLI's
             /// `CLIImpl.Command.Setup.run` assembles the list and passes it
-            /// in) so adding a 4th DB plugs in via a single append at the
-            /// composition root plus a new `DatabaseDescriptor.<name>`
-            /// constant in `Shared.Models.DatabaseDescriptor`. No edit to
-            /// `Distribution.SetupService.run` required.
+            /// in) so adding a 4th DB no longer touches `Distribution.SetupService.run`.
+            ///
+            /// **Required at construction.** Per `gof-di-rules.md` Rule 1, the
+            /// caller MUST supply the list explicitly; there is no default. Test
+            /// fixtures pass `[.search, .samples, .packages]` when exercising the
+            /// production 3-DB shape.
+            ///
+            /// **Bundle-coupling assumption.** Setup downloads a single
+            /// `cupertino-databases-vX.Y.Z.zip` shipped from
+            /// `mihaelamj/cupertino-docs` releases. A descriptor passed here
+            /// is assumed to arrive inside that bundle; per-descriptor
+            /// download URLs are out-of-scope for this seam (future #248
+            /// scope per the original proposal's `downloadURL` field).
             public let required: [Shared.Models.DatabaseDescriptor]
 
             public init(
@@ -34,8 +42,12 @@ extension Distribution {
                 currentDocsVersion: String = Shared.Constants.App.databaseVersion,
                 docsReleaseBaseURL: String = Shared.Constants.App.docsReleaseBaseURL,
                 keepExisting: Bool = false,
-                required: [Shared.Models.DatabaseDescriptor] = [.search, .samples, .packages]
+                required: [Shared.Models.DatabaseDescriptor]
             ) {
+                precondition(
+                    Set(required).count == required.count,
+                    "Distribution.SetupService.Request.required carries duplicate descriptors: \(required.map(\.id))"
+                )
                 self.baseDir = baseDir
                 self.currentDocsVersion = currentDocsVersion
                 self.docsReleaseBaseURL = docsReleaseBaseURL

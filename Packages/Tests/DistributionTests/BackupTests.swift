@@ -67,7 +67,8 @@ struct DBBackupIntegrationTests {
         let request = Distribution.SetupService.Request(
             baseDir: dir,
             currentDocsVersion: "1.0.0", docsReleaseBaseURL: "http://127.0.0.1:1/",
-            keepExisting: false
+            keepExisting: false,
+            required: [.search, .samples, .packages]
         )
 
         // We don't care that the run errors at download — only that the
@@ -141,7 +142,8 @@ struct DBBackupIntegrationTests {
 
         let request = Distribution.SetupService.Request(
             baseDir: dir,
-            currentDocsVersion: "1.0.0", docsReleaseBaseURL: "http://127.0.0.1:1/"
+            currentDocsVersion: "1.0.0", docsReleaseBaseURL: "http://127.0.0.1:1/",
+            required: [.search, .samples, .packages]
         )
         _ = try? await Distribution.SetupService.run(request, events: NoopObserver())
         try await Task.sleep(nanoseconds: 100000000)
@@ -168,7 +170,8 @@ struct DBBackupIntegrationTests {
         // No DBs, no version stamp.
         let request = Distribution.SetupService.Request(
             baseDir: dir,
-            currentDocsVersion: "1.0.0", docsReleaseBaseURL: "http://127.0.0.1:1/"
+            currentDocsVersion: "1.0.0", docsReleaseBaseURL: "http://127.0.0.1:1/",
+            required: [.search, .samples, .packages]
         )
 
         _ = try? await Distribution.SetupService.run(request, events: NoopObserver())

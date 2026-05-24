@@ -75,13 +75,25 @@ extension CLIImpl.Command {
             }
 
             let renderer = SetupRenderer()
-            // Composition root for the per-DB descriptor list. Adding a
-            // 4th cupertino-managed database requires:
+            // Composition root for the per-DB descriptor list driving
+            // `cupertino setup`. Order is load-bearing because
+            // `Distribution.SetupService.Outcome.databases` is order-sensitive
+            // and the success-summary printer iterates this order.
+            //
+            // Adding a 4th cupertino-managed database to `cupertino setup`
+            // requires:
             //   1. one new `static let <name>: DatabaseDescriptor` in
             //      `Shared.Models.DatabaseDescriptor`
             //   2. one append below
             // No edit to `Distribution.SetupService.run` required; the
             // service iterates `request.required` end-to-end.
+            //
+            // Out-of-scope for this seam (still requires further edits to
+            // surface a new DB everywhere): `Distribution.DatabaseHealthCheck`
+            // conformer for Doctor's per-DB section (#931 seam), the
+            // `printSchemaVersions` entries array in `Doctor.swift`, and
+            // per-descriptor download URLs (the bundle currently ships
+            // every DB inside `cupertino-databases-vX.Y.Z.zip`).
             let request = Distribution.SetupService.Request(
                 baseDir: baseURL,
                 keepExisting: keepExisting,

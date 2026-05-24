@@ -4,6 +4,7 @@ import SharedConstants
 import Testing
 
 // MARK: - DistributionModels public surface smoke tests
+
 //
 // DistributionModels is the foundation-only seam target for the
 // `cupertino setup` pipeline (extracted in PR #563 during the
@@ -60,24 +61,30 @@ struct SetupServiceModelTests {
             baseDir: baseDir,
             currentDocsVersion: "1.2.3",
             docsReleaseBaseURL: "https://example.com/releases",
-            keepExisting: true
+            keepExisting: true,
+            required: [.search, .samples, .packages]
         )
         #expect(request.baseDir == baseDir)
         #expect(request.currentDocsVersion == "1.2.3")
         #expect(request.docsReleaseBaseURL == "https://example.com/releases")
         #expect(request.keepExisting == true)
+        #expect(request.required == [.search, .samples, .packages])
     }
 
-    @Test("Request defaults pick up SharedConstants App values")
+    @Test("Request defaults pick up SharedConstants App values; required is explicit at the call site")
     func requestDefaults() {
         let baseDir = URL(fileURLWithPath: "/tmp/cupertino-setup-defaults")
-        let request = Distribution.SetupService.Request(baseDir: baseDir)
+        let request = Distribution.SetupService.Request(
+            baseDir: baseDir,
+            required: [.search, .samples, .packages]
+        )
         // Default values come from `Shared.Constants.App.*`; we don't
         // hard-code them here because they roll with each cupertino
         // release. Pinning that they're non-empty is enough.
         #expect(!request.currentDocsVersion.isEmpty)
         #expect(!request.docsReleaseBaseURL.isEmpty)
         #expect(request.keepExisting == false)
+        #expect(request.required == [.search, .samples, .packages])
     }
 
     // #248 second cut: tests share the canonical descriptor constants
@@ -112,7 +119,7 @@ struct SetupServiceModelTests {
 
     @Test("Outcome is Equatable")
     func outcomeEquatable() {
-        let a = Distribution.SetupService.Outcome(
+        let lhs = Distribution.SetupService.Outcome(
             databases: [
                 .init(descriptor: Self.searchDB, path: URL(fileURLWithPath: "/tmp/x.db")),
                 .init(descriptor: Self.samplesDB, path: URL(fileURLWithPath: "/tmp/y.db")),
@@ -122,14 +129,17 @@ struct SetupServiceModelTests {
             skippedDownload: true,
             priorStatus: .current(version: "1.0")
         )
-        let b = a
-        #expect(a == b)
+        let rhs = lhs
+        #expect(lhs == rhs)
     }
 
     @Test("Event exposes the documented case list")
     func eventCaseList() {
         // Pin the case list so a rename or deletion breaks compilation.
-        let req = Distribution.SetupService.Request(baseDir: URL(fileURLWithPath: "/tmp/x"))
+        let req = Distribution.SetupService.Request(
+            baseDir: URL(fileURLWithPath: "/tmp/x"),
+            required: [.search, .samples, .packages]
+        )
         let outcome = Distribution.SetupService.Outcome(
             databases: [
                 .init(descriptor: Self.searchDB, path: URL(fileURLWithPath: "/tmp/s")),
