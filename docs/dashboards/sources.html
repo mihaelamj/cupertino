@@ -226,7 +226,7 @@
                     <h3 class="card-title">BM25F (field-weighted BM25)</h3>
                     <p class="card-subtitle">BM25 with per-column weights.</p>
                     <p class="card-finding">
-                        Each indexed column gets its own weight. Cupertino's main FTS5 table uses a 9-weight vector: <code>title=10</code>, <code>symbols=5</code>, <code>summary=3</code>, <code>framework=2</code>, <code>symbol_components=1.5</code>, others=1. The cupertino-specific tuning lives in <code>Packages/Sources/Search/Search.Index.Search.swift</code>.
+                        Each indexed column gets its own weight. Cupertino's main FTS5 table uses a 9-weight vector: <code>title=10</code>, <code>symbols=5</code>, <code>summary=3</code>, <code>framework=2</code>, <code>symbol_components=1.5</code>, others=1. The cupertino-specific tuning lives in <code>Packages/Sources/SearchSQLite/Search.Index.Search.swift</code>.
                     </p>
                     <p class="card-finding">
                         <strong>Source:</strong> Robertson, S., Zaragoza, H., &amp; Taylor, M. (2004). <em>Simple BM25 extension to multiple weighted fields.</em> Proceedings of CIKM 2004.

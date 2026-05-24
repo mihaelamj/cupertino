@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Method · Search-quality version diff (Phase 2): v1.2.0 to v1.2.1-dev</title>
+    <link rel="stylesheet" href="../../_styles.css">
+</head>
+<body class="doc-page">
+    <div class="container doc-container">
+        <a class="back-link" href="../phase2-versiondiff-v1.2.0-to-v1.2.1.html">Back to Search-quality version diff (Phase 2): v1.2.0 to v1.2.1-dev</a>
+        <header class="doc-header">
+            <div class="eyebrow">Search-quality version diff (Phase 2): v1.2.0 to v1.2.1-dev</div>
+            <h1>Method</h1>
+        </header>
+        <main class="doc-content section-detail">
+            <section class="doc-section"><p>Each fixture spawns a fresh <code>cupertino serve --no-reap</code> subprocess and sends <code>initialize</code> + <code>notifications/initialized</code> + a single <code>tools/call</code> over stdio (20 fixtures x 2 arms = 40 cold starts per paired run; per-query cost dominated by serve startup). A persistent-Popen rewrite is a follow-up that would amortize startup; the current shape is the simpler robust default. Scoring: response text is parsed into per-result <code>### &lt;name&gt;</code> blocks; fixtures fail hard when the response carries <code>_No &lt;kind&gt; found_</code> or has zero <code>### </code> blocks (no false-positive PASS on empty result sets, per iter-1 critic). Two scoring modes: <code>expect_any</code> matches any of a substring set against the parsed result-block body (not the response header); <code>expect_nonempty</code> requires at least one <code>### </code> block to exist.</p>
+<p>Per #948 these 5 tools have no CLI equivalent yet , once CLI subcommands land, the harness can collapse to shell-out (same shape as Phase 1).</p></section>
+        </main>
+        <nav class="section-nav">
+            <a class="section-nav-link prev" href="paired-tests.html">← Paired Tests</a>
+            <span></span>
+        </nav>
+        <footer>
+            <p><a href="../phase2-versiondiff-v1.2.0-to-v1.2.1.html">↑ Back to Search-quality version diff (Phase 2): v1.2.0 to v1.2.1-dev</a></p>
+        </footer>
+    </div>
+
+</body>
+</html>

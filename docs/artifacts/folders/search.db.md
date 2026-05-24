@@ -60,7 +60,7 @@ CREATE VIRTUAL TABLE docs_fts USING fts5(
 );
 ```
 
-BM25 weights are passed per-column at query time, not stamped into the FTS schema. The main docs-search call uses `bm25(docs_fts, 1.0, 1.0, 2.0, 1.0, 10.0, 1.0, 3.0, 5.0)` — `title` 10×, `symbols` 5×, `summary` 3×, `framework` 2×, everything else 1× (#181). Heuristic boosts on top (exact title match 50× / 20×, framework-authority tiebreak, force-include canonical type pages) live in [`SearchIndex+Search.swift`](../../../Packages/Sources/SearchSQLite/SearchIndex+Search.swift) — the multi-pass `search()` function and its supporting `fetchCanonicalTypePages` / `fetchFrameworkRoot` / `fetchMatchingSymbols` helpers.
+BM25 weights are passed per-column at query time, not stamped into the FTS schema. The main docs-search call uses `bm25(docs_fts, 1.0, 1.0, 2.0, 1.0, 10.0, 1.0, 3.0, 5.0)` — `title` 10×, `symbols` 5×, `summary` 3×, `framework` 2×, everything else 1× (#181). Heuristic boosts on top (exact title match 50× / 20×, framework-authority tiebreak, force-include canonical type pages) live in [`Search.Index.Search.swift`](../../../Packages/Sources/SearchSQLite/Search.Index.Search.swift) — the multi-pass `search()` function and its supporting `fetchCanonicalTypePages` / `fetchFrameworkRoot` / `fetchMatchingSymbols` helpers.
 
 ### `docs_metadata` — per-document relational mirror
 
@@ -292,7 +292,7 @@ CREATE VIRTUAL TABLE doc_symbols_fts USING fts5(
 );
 ```
 
-Used by the docs-search ranker (`SearchIndex+Search.swift`) to boost canonical Swift type pages — when a query exactly matches a symbol name with an indexed `kind`, the corresponding doc page gets a 3× post-rank boost. Pre-1.0 a sign error in the multiplier was demoting these instead; fixed in v1.0.0 (#254).
+Used by the docs-search ranker (`Search.Index.Search.swift`) to boost canonical Swift type pages — when a query exactly matches a symbol name with an indexed `kind`, the corresponding doc page gets a 3× post-rank boost. Pre-1.0 a sign error in the multiplier was demoting these instead; fixed in v1.0.0 (#254).
 
 ### `doc_imports` — `import` statements in code examples
 
