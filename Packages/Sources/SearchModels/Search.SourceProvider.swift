@@ -60,7 +60,7 @@ extension Search {
         /// name will become meaningless. Conformers should not rely
         /// on the literal `.search` staying stable across the future
         /// split; the descriptor abstraction is what's stable, not
-        /// the specific descriptor instances ([[Shared.Models.DatabaseDescriptor]]
+        /// the specific descriptor instances (``Shared.Models.DatabaseDescriptor``
         /// will gain new instances over time).
         var destinationDB: Shared.Models.DatabaseDescriptor { get }
 
