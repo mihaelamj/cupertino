@@ -3,7 +3,7 @@ import AppleConstraintsPass
 import AppleDocsSource
 import EnrichmentModels
 import Foundation
-import HIGStrategy
+import HIGSource
 import LoggingModels
 import SampleCodeStrategy
 import SearchModels

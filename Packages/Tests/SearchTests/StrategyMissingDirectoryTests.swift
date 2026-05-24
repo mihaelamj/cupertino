@@ -1,7 +1,7 @@
 import AppleArchiveStrategy
 import AppleDocsSource
 import Foundation
-import HIGStrategy
+import HIGSource
 import LoggingModels
 @testable import SearchAPI
 import SearchModels
