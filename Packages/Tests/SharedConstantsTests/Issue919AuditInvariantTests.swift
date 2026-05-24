@@ -93,6 +93,7 @@ struct Issue919AuditInvariantTests {
             "SampleIndex",
             "SampleIndexSQLite",
             "Enrichment",
+            "CrawlerWebKit",
         ]
         for module in mustContain {
             #expect(

@@ -76,6 +76,7 @@ FORBIDDEN_MODULES=(
     Search
     SearchSQLite
     SampleIndexSQLite
+    CrawlerWebKit
 )
 
 # Targets that ARE composition roots; they may import any concrete.

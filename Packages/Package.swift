@@ -361,7 +361,7 @@ let targets: [Target] = {
     // ---------- Crawler (v1.2 refactor 2.5: extracted from Core — web crawlers + WebKit fetcher) ----------
     let crawlerModelsTarget = Target.target(
         name: "CrawlerModels",
-        dependencies: ["SharedConstants"]
+        dependencies: ["CoreProtocols", "SharedConstants"]
     )
     let crawlerModelsTestsTarget = Target.testTarget(
         name: "CrawlerModelsTests",
