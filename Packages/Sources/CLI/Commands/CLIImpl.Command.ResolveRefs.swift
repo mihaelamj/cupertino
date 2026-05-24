@@ -6,11 +6,9 @@ import LoggingModels
 #if canImport(AppKit)
 import AppKit
 #endif
-#if canImport(WebKit)
 import CoreJSONParser
+import CoreJSONParserWebKit
 import CoreProtocols
-import WebKit
-#endif
 
 // MARK: - Resolve-Refs Command
 
@@ -133,11 +131,11 @@ extension CLIImpl.Command {
                 return json
             }
 
-            #if canImport(AppKit) && canImport(WebKit)
+            #if canImport(AppKit)
             // WKWebView needs the AppKit runloop attached (otherwise its
-            // navigation observer never fires). The same bootstrap the auth
-            // flow in SampleCodeDownloader uses, but headless — we don't
-            // surface a Dock icon for a background resolve pass.
+            // navigation observer never fires). Bootstrap headlessly via
+            // `setActivationPolicy(.prohibited)` + `finishLaunching()` so
+            // no Dock icon appears for this background resolve pass.
             let webView = await MainActor.run { () -> any Core.JSONParser.RefResolver.TitleFetcher in
                 NSApplication.shared.setActivationPolicy(.prohibited)
                 NSApplication.shared.finishLaunching()

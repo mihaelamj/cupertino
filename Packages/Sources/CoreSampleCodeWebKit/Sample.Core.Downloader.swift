@@ -1,3 +1,4 @@
+import CoreSampleCode
 import CoreSampleCodeModels
 import Foundation
 import LoggingModels
@@ -64,7 +65,8 @@ extension Sample.Core {
         /// foundation-only `CoreSampleCodeModels` seam target
         /// (`Sample.Core.DownloaderProgressObserving` /
         /// `Sample.Core.Progress`) so any conformer can implement
-        /// without `import CoreSampleCode` pulling in WebKit.
+        /// against the seam without depending on the
+        /// `CoreSampleCodeWebKit` producer that owns this class.
         public func download(
             progress: (any Sample.Core.DownloaderProgressObserving)? = nil
         ) async throws -> Sample.Core.Statistics {
@@ -162,7 +164,7 @@ extension Sample.Core {
         /// from `writeCatalogJSON` so unit tests can exercise the disk
         /// behaviour without touching the network. `nonisolated` because
         /// there's no instance state — it's a static utility.
-        nonisolated static func writeCatalog(_ catalog: SampleCodeCatalogJSON, to url: URL) throws {
+        public nonisolated static func writeCatalog(_ catalog: SampleCodeCatalogJSON, to url: URL) throws {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             let encoded = try encoder.encode(catalog)
@@ -173,7 +175,7 @@ extension Sample.Core {
         /// a `SampleCodeCatalogJSON`. Returns nil when the input doesn't decode
         /// as expected. Pure on its inputs (no instance state, no MainActor
         /// hop) so tests can call it directly from any context.
-        nonisolated static func transformAppleListingToCatalog(data: Data) -> SampleCodeCatalogJSON? {
+        public nonisolated static func transformAppleListingToCatalog(data: Data) -> SampleCodeCatalogJSON? {
             guard let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let refs = raw["references"] as? [String: [String: Any]] else {
                 return nil
@@ -558,10 +560,16 @@ extension Sample.Core {
 
 // MARK: - Models
 
-struct SampleMetadata {
-    let name: String
-    let url: String
-    let slug: String
+public struct SampleMetadata: Sendable {
+    public let name: String
+    public let url: String
+    public let slug: String
+
+    public init(name: String, url: String, slug: String) {
+        self.name = name
+        self.url = url
+        self.slug = slug
+    }
 }
 
 // Statistics / Progress / Error split into their own files:

@@ -8,6 +8,7 @@ import CorePackageIndexingModels
 import CoreProtocols
 import CoreSampleCode
 import CoreSampleCodeModels
+import CoreSampleCodeWebKit
 import Crawler
 import CrawlerModels
 import CrawlerWebKit

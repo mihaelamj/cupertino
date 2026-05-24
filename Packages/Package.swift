@@ -59,6 +59,8 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Availability"),
     .singleTargetLibrary("AvailabilityFoundationNetworking"),
     .singleTargetLibrary("CrawlerWebKit"),
+    .singleTargetLibrary("CoreJSONParserWebKit"),
+    .singleTargetLibrary("CoreSampleCodeWebKit"),
     .singleTargetLibrary("ASTIndexer"),
     .singleTargetLibrary("MCPSupport"),
     .singleTargetLibrary("SearchToolProvider"),
@@ -263,6 +265,15 @@ let targets: [Target] = {
         dependencies: ["CoreProtocols", "SharedConstants"],
         path: "Sources/Core/JSONParser"
     )
+
+    // #904: CoreJSONParserWebKit sibling carries the WKWebView-backed
+    // `Core.JSONParser.WKWebViewTitleFetcher` (the last-resort title
+    // resolver for documentation URLs the JSON API can't serve).
+    // The CoreJSONParser producer is foundation-only post-#904.
+    let coreJSONParserWebKitTarget = Target.target(
+        name: "CoreJSONParserWebKit",
+        dependencies: ["CoreJSONParser", "CoreProtocols"]
+    )
     let coreJSONParserTestsTarget = Target.testTarget(
         name: "CoreJSONParserTests",
         // #626 — tests directly reference `Shared.Models.StructuredDocumentationPage.Kind`
@@ -331,7 +342,22 @@ let targets: [Target] = {
     )
     let coreSampleCodeTestsTarget = Target.testTarget(
         name: "CoreSampleCodeTests",
-        dependencies: ["CoreSampleCode", "CoreSampleCodeModels", "SharedConstants", "TestSupport"]
+        dependencies: ["CoreSampleCode", "CoreSampleCodeModels", "CoreSampleCodeWebKit", "SharedConstants", "TestSupport"]
+    )
+
+    // #904: CoreSampleCodeWebKit sibling carries the WKWebView-backed
+    // `Sample.Core.Downloader` (hidden-WKWebView driver that scrapes
+    // the Apple sample-code listing + per-sample download URLs via JS).
+    // The CoreSampleCode producer is foundation-only post-#904; only
+    // `Sample.Core.Catalog` + `Sample.Core.GitHubFetcher` remain.
+    let coreSampleCodeWebKitTarget = Target.target(
+        name: "CoreSampleCodeWebKit",
+        dependencies: [
+            "CoreSampleCode",
+            "CoreSampleCodeModels",
+            "LoggingModels",
+            "SharedConstants",
+        ]
     )
 
     let coreTarget = Target.target(
@@ -339,8 +365,6 @@ let targets: [Target] = {
         dependencies: [
             "CoreProtocols",
             "SharedConstants",
-            "Resources",
-            "ASTIndexer",
         ],
         exclude: ["JSONParser", "PackageIndexing"]
     )
@@ -984,7 +1008,7 @@ let targets: [Target] = {
         name: "CLI",
         dependencies: [
             "SharedConstants",
-            "CoreProtocols", "CoreJSONParser", "CorePackageIndexing", "CorePackageIndexingModels", "Core", "CoreSampleCode",
+            "CoreProtocols", "CoreJSONParser", "CoreJSONParserWebKit", "CorePackageIndexing", "CorePackageIndexingModels", "Core", "CoreSampleCode", "CoreSampleCodeWebKit",
             "Crawler",
             "CrawlerWebKit",
             "Cleanup",
@@ -1191,6 +1215,7 @@ let targets: [Target] = {
         coreProtocolsTestsTarget,
         coreJSONParserTarget,
         coreJSONParserTestsTarget,
+        coreJSONParserWebKitTarget,
         corePackageIndexingModelsTarget,
         corePackageIndexingModelsTestsTarget,
         corePackageIndexingTarget,
@@ -1201,6 +1226,7 @@ let targets: [Target] = {
         coreSampleCodeModelsTestsTarget,
         coreSampleCodeTarget,
         coreSampleCodeTestsTarget,
+        coreSampleCodeWebKitTarget,
         coreTarget,
         coreTestsTarget,
         crawlerModelsTarget,

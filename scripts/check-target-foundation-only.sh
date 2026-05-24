@@ -277,6 +277,14 @@ STRICT_PRODUCERS=(
     Services
 )
 
+# WebKit-companion siblings that legitimately import their parent
+# producer to extend its types (Core.JSONParser.RefResolver.TitleFetcher
+# conformance, Sample.Core.Downloader namespace). Same exclusion shape
+# Enrichment had pre-#906. Tracked separately by check-package-purity.sh
+# FORBIDDEN_MODULES (no consumer target may import them).
+#   - CoreJSONParserWebKit (#904)
+#   - CoreSampleCodeWebKit (#904)
+
 # Grandfathered: producers still under the legacy contract (enforced
 # by scripts/check-package-purity.sh, not this script). Stayed empty
 # after #536 phase 3 and remains empty post-#906: the per-pass split

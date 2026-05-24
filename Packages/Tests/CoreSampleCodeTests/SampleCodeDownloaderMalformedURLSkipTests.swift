@@ -1,4 +1,5 @@
 @testable import CoreSampleCode
+@testable import CoreSampleCodeWebKit
 import Foundation
 import LoggingModels
 import SharedConstants

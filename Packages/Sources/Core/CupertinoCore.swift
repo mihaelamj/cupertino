@@ -1,39 +1,13 @@
-// MARK: - CupertinoCore Package
+// MARK: - Core Package
 
 //
-// Core crawler implementation for Apple Documentation.
-// Uses WKWebView for page loading and HTML→Markdown conversion.
+// HTML-to-Markdown / XML parser implementations for Apple documentation
+// pages. Foundation-only post-#904; WebKit-backed concretes live in
+// `CoreJSONParserWebKit` + `CoreSampleCodeWebKit` sibling targets. The
+// Crawler concretes that drive these parsers live in the `Crawler` +
+// `CrawlerWebKit` targets.
 //
-// Depends on: CupertinoShared
-// Platform: macOS only (requires WebKit)
-
-#if canImport(WebKit)
-@_exported import WebKit
-#endif
+// Declared dependencies live in `Packages/Package.swift` and are
+// tracked by `docs/package-import-contract.md`.
 
 import SharedConstants
-// SharedCore was absorbed into SharedConstants in #536 phase 1a. The
-// `@_exported` here was reaching for the SharedCore module surface;
-// now that surface is part of SharedConstants which is already imported above.
-
-// MARK: - Usage Example
-
-/*
- // Create configuration
- let config = Shared.Configuration(
-     crawler: Shared.Configuration.Crawler(
-         startURL: URL(string: "\(Shared.Constants.BaseURL.appleDeveloperDocs)swiftui")!,
-         maxPages: 100
-     )
- )
-
- // Create and run crawler
- let crawler = await Core.Crawler(configuration: config)
-
- let stats = try await crawler.crawl { progress in
-     print("Progress: \(progress.percentage)% - \(progress.currentURL)")
- }
-
- print("Crawled \(stats.totalPages) pages")
- print("New: \(stats.newPages), Updated: \(stats.updatedPages), Skipped: \(stats.skippedPages)")
- */

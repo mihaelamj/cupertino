@@ -35,8 +35,8 @@ extension Sample.Core {
         /// `CoreSampleCodeModels` seam target
         /// (`Sample.Core.GitHubFetcherProgressObserving` /
         /// `Sample.Core.GitHubFetcherProgress`) so any conformer can
-        /// implement without `import CoreSampleCode` pulling in
-        /// WebKit / AppKit.
+        /// implement against the foundation-only Models seam without
+        /// depending on the producer.
         public func fetch(
             progress: (any Sample.Core.GitHubFetcherProgressObserving)? = nil
         ) async throws -> FetchStatistics {
