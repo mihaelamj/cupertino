@@ -6,7 +6,7 @@ Last refresh: 2026-05-24 (#904 closed: Core / CoreJSONParser / CoreSampleCode We
 
 ## The target regime (post-#536)
 
-**Goal:** every producer target plus its `*Models` companion is a standalone-portable unit. Pull out `(Search + SearchModels)` into a fresh repo with the foundation tier and it builds against external SwiftPM deps alone.
+**Goal:** every producer target plus its `*Models` companion is a standalone-portable unit. Pull out `(SearchAPI + SearchModels)` into a fresh repo with the foundation tier and it builds against external SwiftPM deps alone.
 
 **Allowed imports for a producer target:**
 
