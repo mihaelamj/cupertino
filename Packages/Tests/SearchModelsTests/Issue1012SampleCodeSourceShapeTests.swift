@@ -56,7 +56,7 @@ struct Issue1012SampleCodeSourceShapeTests {
         // existing construction shape (default nil).
         let env = Search.IndexEnvironment(
             sourceDirectory: URL(fileURLWithPath: "/tmp"),
-            logger: NoopRecorder(),
+            logger: LoggingModels.Logging.NoopRecording(),
             markdownStrategy: NoopMarkdownStrategy()
         )
         #expect(env.sampleCatalogProvider == nil)
@@ -65,17 +65,11 @@ struct Issue1012SampleCodeSourceShapeTests {
 
 // MARK: - Test fixtures
 
-/// No-op `LoggingModels.Logging.Recording` conformer so the
-/// IndexEnvironment fixture compiles without dragging in the live
-/// logging stack.
-private struct NoopRecorder: LoggingModels.Logging.Recording {
-    func record(_: String, level _: LoggingModels.Logging.Level, category _: LoggingModels.Logging.Category) {}
-    func output(_: String) {}
-}
-
 /// No-op `Search.MarkdownToStructuredPageStrategy` for
 /// IndexEnvironment fixtures. Tests don't exercise the markdown
 /// conversion path; this conformer returns nil for any input.
+/// (Logger is supplied by the canonical `LoggingModels.Logging.NoopRecording`;
+/// no markdown-strategy noop ships in SearchModels yet — kept local.)
 private struct NoopMarkdownStrategy: Search.MarkdownToStructuredPageStrategy {
     func convert(markdown _: String, url _: URL?) -> Shared.Models.StructuredDocumentationPage? {
         nil
