@@ -36,6 +36,19 @@ echo
 ERRLOG="${LOG}.stderr"
 trap 'rm -f "$LOG" "$ERRLOG"' EXIT
 
+# `timeout` is GNU coreutils (Linux); macOS has it as `gtimeout` if
+# Homebrew installed coreutils, otherwise absent. Detect a portable
+# wrapper so the smoke runs in CI on macos-15 (no coreutils) and on
+# Linux/CI runners + dev boxes that may have either.
+TIMEOUT_PREFIX=""
+if command -v timeout >/dev/null 2>&1; then
+  TIMEOUT_PREFIX="timeout 60"
+elif command -v gtimeout >/dev/null 2>&1; then
+  TIMEOUT_PREFIX="gtimeout 60"
+fi
+# else: no bounded-runtime helper available; rely on the calling
+# environment to enforce a budget (CI sets `timeout-minutes`).
+
 # Send three JSON-RPC messages over stdio: initialize, tools/list, tools/call.
 # Each is on its own line per the MCP stdio framing rule. Sleep windows
 # give the server time to respond before the next message lands.
@@ -52,7 +65,7 @@ trap 'rm -f "$LOG" "$ERRLOG"' EXIT
   sleep 5
   printf '%s\n' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"search","arguments":{"query":"NSURLSession","limit":3}}}' 2>/dev/null || true
   sleep 10  # query execution budget
-} | timeout 60 "$BINARY" serve 2>"$ERRLOG" > "$LOG" || true
+} | $TIMEOUT_PREFIX "$BINARY" serve 2>"$ERRLOG" > "$LOG" || true
 
 # If the server log is empty or near-empty, the server died early.
 # Surface its stderr instead of asserting on an empty file.
