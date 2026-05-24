@@ -10,7 +10,7 @@ import SearchModels
 import SearchSQLite
 import SharedConstants
 import SwiftEvolutionSource
-import SwiftOrgStrategy
+import SwiftOrgSource
 import Testing
 
 // MARK: - #978 behavioural tests for the 6 strategy siblings + AppleConstraintsPass

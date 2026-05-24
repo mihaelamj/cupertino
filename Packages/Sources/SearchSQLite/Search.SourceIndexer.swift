@@ -59,18 +59,6 @@ extension Search {
     }
 }
 
-// MARK: - Swift.org Indexer
-
-/// Indexer for Swift.org content
-extension Search {
-    public struct SwiftOrgIndexer: Search.SourceIndexer {
-        public let sourceID = Shared.Constants.SourcePrefix.swiftOrg
-        public let displayName = "Swift.org"
-
-        public init() {}
-    }
-}
-
 // MARK: - Packages Indexer
 
 // #789: PackagesIndexer removed along with the search.db `packages`

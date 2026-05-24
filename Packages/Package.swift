@@ -35,7 +35,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("HIGSource"),
     .singleTargetLibrary("SampleCodeSource"),
     .singleTargetLibrary("SwiftEvolutionSource"),
-    .singleTargetLibrary("SwiftOrgStrategy"),
+    .singleTargetLibrary("SwiftOrgSource"),
     .singleTargetLibrary("AppleArchiveSource"),
     .singleTargetLibrary("SampleIndex"),
     .singleTargetLibrary("SampleIndexSQLite"),
@@ -459,7 +459,17 @@ let targets: [Target] = {
     )
     let searchModelsTestsTarget = Target.testTarget(
         name: "SearchModelsTests",
-        dependencies: ["SearchModels", "SharedConstants", "TestSupport", "HIGSource", "SampleCodeSource", "AppleArchiveSource", "SwiftEvolutionSource", "LoggingModels"]
+        dependencies: [
+            "SearchModels",
+            "SharedConstants",
+            "TestSupport",
+            "HIGSource",
+            "SampleCodeSource",
+            "AppleArchiveSource",
+            "SwiftEvolutionSource",
+            "SwiftOrgSource",
+            "LoggingModels",
+        ]
     )
 
     // ---------- SampleIndexModels (#408 partial: value types + Reader protocol lifted out of
@@ -545,7 +555,7 @@ let targets: [Target] = {
             "HIGSource",
             "SampleCodeSource",
             "SwiftEvolutionSource",
-            "SwiftOrgStrategy",
+            "SwiftOrgSource",
             "AppleArchiveSource",
             "AppleConstraintsPass",
             "SearchModels",
@@ -596,7 +606,7 @@ let targets: [Target] = {
             "HIGSource",
             "SampleCodeSource",
             "SwiftEvolutionSource",
-            "SwiftOrgStrategy",
+            "SwiftOrgSource",
             "AppleArchiveSource",
             "AppleConstraintsPass",
             "SearchModels",
@@ -672,9 +682,12 @@ let targets: [Target] = {
         ]
     )
 
-    // #899 sub-PR F: extract SwiftOrgStrategy.
-    let swiftOrgStrategyTarget = Target.target(
-        name: "SwiftOrgStrategy",
+    // #899 sub-PR F: extract SwiftOrgStrategy (renamed to SwiftOrgSource in #1019).
+    // No ASTIndexer dep: SwiftOrgIndexer uses the default Search.SourceIndexer.extractCode
+    // implementation (returns Search.ExtractedContent.empty) and references no
+    // ASTIndexer.* symbols. Per the per-source-dep-set rule (see HIGSource).
+    let swiftOrgSourceTarget = Target.target(
+        name: "SwiftOrgSource",
         dependencies: [
             "SearchModels",
             "SharedConstants",
@@ -1029,7 +1042,7 @@ let targets: [Target] = {
             "HIGSource",
             "SampleCodeSource",
             "SwiftEvolutionSource",
-            "SwiftOrgStrategy",
+            "SwiftOrgSource",
             "AppleArchiveSource",
             "AppleConstraintsPass",
             "HierarchyPass",
@@ -1265,7 +1278,7 @@ let targets: [Target] = {
         higSourceTarget,
         sampleCodeSourceTarget,
         swiftEvolutionSourceTarget,
-        swiftOrgStrategyTarget,
+        swiftOrgSourceTarget,
         appleArchiveSourceTarget,
         sampleIndexTarget,
         sampleIndexTestsTarget,
