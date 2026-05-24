@@ -42,7 +42,7 @@ trap 'rm -f "$LOG" "$ERRLOG"' EXIT
 # Linux/CI runners + dev boxes that may have either.
 TIMEOUT_PREFIX=""
 if command -v timeout >/dev/null 2>&1; then
-  TIMEOUT_PREFIX="timeout 60"
+  TIMEOUT_PREFIX="timeout 90"
 elif command -v gtimeout >/dev/null 2>&1; then
   TIMEOUT_PREFIX="gtimeout 60"
 fi
@@ -64,7 +64,15 @@ fi
   printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' 2>/dev/null || true
   sleep 5
   printf '%s\n' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"search","arguments":{"query":"NSURLSession","limit":3}}}' 2>/dev/null || true
-  sleep 10  # query execution budget
+  sleep 8
+  printf '%s\n' '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"read_document","arguments":{"uri":"apple-docs://swiftui/view"}}}' 2>/dev/null || true
+  sleep 8
+  printf '%s\n' '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_inheritance","arguments":{"symbol":"UIButton","direction":"up","depth":3}}}' 2>/dev/null || true
+  sleep 5
+  printf '%s\n' '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"list_frameworks","arguments":{}}}' 2>/dev/null || true
+  sleep 5
+  printf '%s\n' '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"search_property_wrappers","arguments":{"wrapper":"State"}}}' 2>/dev/null || true
+  sleep 8
 } | $TIMEOUT_PREFIX "$BINARY" serve 2>"$ERRLOG" > "$LOG" || true
 
 # If the server log is empty or near-empty, the server died early.
@@ -95,18 +103,28 @@ def assert_(cond, label):
     print(f"  {OK if cond else FAIL} {label}")
     if not cond: errors += 1
 
-initialize_result = None
-tools_list_result = None
-tools_call_result = None
+results = {}
 with open('$LOG') as f:
     for line in f.read().splitlines():
         if not line.startswith('{'): continue
         try:
             d = json.loads(line)
         except: continue
-        if d.get('id') == 1: initialize_result = d.get('result')
-        elif d.get('id') == 2: tools_list_result = d.get('result')
-        elif d.get('id') == 3: tools_call_result = d.get('result')
+        rid = d.get('id')
+        if rid is not None: results[rid] = d.get('result')
+
+initialize_result = results.get(1)
+tools_list_result = results.get(2)
+search_result = results.get(3)
+read_doc_result = results.get(4)
+inheritance_result = results.get(5)
+list_fw_result = results.get(6)
+prop_wrap_result = results.get(7)
+
+def body_text(result):
+    if not result: return ""
+    content = result.get('content', [])
+    return content[0].get('text', '') if content else ''
 
 print("Probe 1: initialize")
 assert_(initialize_result is not None, "id=1 response received")
@@ -127,15 +145,51 @@ if tools_list_result:
         assert_(required in tool_names, f"tools contains '{required}'")
 
 print()
-print("Probe 3: tools/call name=search")
-assert_(tools_call_result is not None, "id=3 response received")
-if tools_call_result:
-    assert_(not tools_call_result.get('isError', False), "isError == false")
-    content = tools_call_result.get('content', [])
-    text = content[0].get('text', '') if content else ''
+print("Probe 3: tools/call name=search (query=NSURLSession)")
+assert_(search_result is not None, "id=3 response received")
+if search_result:
+    assert_(not search_result.get('isError', False), "isError == false")
+    text = body_text(search_result)
     assert_('NSURLSession' in text, "response body contains 'NSURLSession'")
     assert_('apple-docs' in text, "response body contains 'apple-docs' source marker")
     assert_(len(text) > 500, f"response body non-trivial size ({len(text)} chars)")
+
+print()
+print("Probe 4: tools/call name=read_document (uri=apple-docs://swiftui/view)")
+assert_(read_doc_result is not None, "id=4 response received")
+if read_doc_result:
+    assert_(not read_doc_result.get('isError', False), "isError == false")
+    text = body_text(read_doc_result)
+    assert_(len(text) > 1000, f"read_document body non-trivial size ({len(text)} chars)")
+    assert_('View' in text or 'view' in text, "read_document body references View")
+
+print()
+print("Probe 5: tools/call name=get_inheritance (symbol=UIButton direction=up)")
+assert_(inheritance_result is not None, "id=5 response received")
+if inheritance_result:
+    assert_(not inheritance_result.get('isError', False), "isError == false")
+    text = body_text(inheritance_result)
+    assert_('UIButton' in text, "inheritance body contains 'UIButton'")
+    assert_('uicontrol' in text.lower(), "inheritance chain contains UIControl")
+
+print()
+print("Probe 6: tools/call name=list_frameworks")
+assert_(list_fw_result is not None, "id=6 response received")
+if list_fw_result:
+    assert_(not list_fw_result.get('isError', False), "isError == false")
+    text = body_text(list_fw_result)
+    assert_(len(text) > 5000, f"list_frameworks body non-trivial size ({len(text)} chars)")
+    for fw in ['swiftui', 'uikit', 'foundation']:
+        assert_(fw in text.lower(), f"list_frameworks output mentions '{fw}'")
+
+print()
+print("Probe 7: tools/call name=search_property_wrappers (wrapper=State)")
+assert_(prop_wrap_result is not None, "id=7 response received")
+if prop_wrap_result:
+    assert_(not prop_wrap_result.get('isError', False), "isError == false")
+    text = body_text(prop_wrap_result)
+    assert_('Property Wrapper:' in text, "search_property_wrappers body contains 'Property Wrapper:' marker")
+    assert_('State' in text, "search_property_wrappers body contains 'State'")
 
 print()
 if errors == 0:
