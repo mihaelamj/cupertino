@@ -11,13 +11,13 @@ import SharedConstants
 /// test stub conforming to `Search.Database`. The composition root
 /// (CLI / MCP / TUI) constructs the database and passes it in via
 /// `init(database:)`; this file no longer takes a behavioural dependency
-/// on the Search target.
+/// on the SearchAPI target.
 extension Services {
     public actor DocsSearchService: Services.SearchService {
         private let index: any Search.Database
 
         /// Initialize with any `Search.Database` conformer. Production:
-        /// pass a `Search.Index` from the Search target — it conforms to
+        /// pass a `Search.Index` from the SearchSQLite target; it conforms to
         /// `Search.Database`, so the actor flows through this protocol-
         /// typed init unchanged. Tests pass a mock.
         public init(database: any Search.Database) {

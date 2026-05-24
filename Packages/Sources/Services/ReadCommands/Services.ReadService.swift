@@ -3,6 +3,7 @@ import SampleIndexModels
 import SearchModels
 import ServicesModels
 import SharedConstants
+
 // MARK: - Unified read service
 
 /// Cross-source document reader. Dispatches by either an explicit `--source`
@@ -75,7 +76,7 @@ extension Services {
         /// `LivePackageFileLookupStrategy` that wraps
         /// `Search.PackageQuery(dbPath:).fileContent(...)` + a
         /// matching `disconnect()`. ReadService doesn't import the
-        /// Search target, so the actor stays opaque behind this seam.
+        /// SearchAPI / SearchSQLite targets, so the actor stays opaque behind this seam.
         ///
         /// Replaces the previous
         /// `PackageFileLookup = @Sendable (URL, String, String, String) async throws -> String?`
