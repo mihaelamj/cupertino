@@ -634,8 +634,10 @@ private actor MCPClient {
             print()
         }
 
-        // 3) Write the complete message
-        stdin.write(messageData)
+        // 3) Write the complete message. `write(contentsOf:)` is the
+        // throwing variant; it surfaces EPIPE-class errors instead of
+        // silently dropping them like the legacy `write(_:)` overload.
+        try stdin.write(contentsOf: messageData)
 
         // 4) Wait for one newline-delimited response
         let responseLine = try await readLine(from: stdout, timeoutSeconds: responseTimeoutSeconds)
@@ -699,7 +701,7 @@ private actor MCPClient {
         }
 
         // 3) Write the wire message
-        stdin.write(messageData)
+        try stdin.write(contentsOf: messageData)
     }
 
     private func handleLine(_ line: String) {

@@ -202,15 +202,15 @@ extension Search {
             if fIOS == nil, fMac == nil, fTv == nil, fWatch == nil, fVision == nil { return true }
             guard let minima else { return false }
             if let floor = fIOS, let rv = minima.minIOS, !isVersion(rv, lessThanOrEqualTo: floor) { return false }
-            if let floor = fIOS, minima.minIOS == nil { return false }
+            if fIOS != nil, minima.minIOS == nil { return false }
             if let floor = fMac, let rv = minima.minMacOS, !isVersion(rv, lessThanOrEqualTo: floor) { return false }
-            if let floor = fMac, minima.minMacOS == nil { return false }
+            if fMac != nil, minima.minMacOS == nil { return false }
             if let floor = fTv, let rv = minima.minTvOS, !isVersion(rv, lessThanOrEqualTo: floor) { return false }
-            if let floor = fTv, minima.minTvOS == nil { return false }
+            if fTv != nil, minima.minTvOS == nil { return false }
             if let floor = fWatch, let rv = minima.minWatchOS, !isVersion(rv, lessThanOrEqualTo: floor) { return false }
-            if let floor = fWatch, minima.minWatchOS == nil { return false }
+            if fWatch != nil, minima.minWatchOS == nil { return false }
             if let floor = fVision, let rv = minima.minVisionOS, !isVersion(rv, lessThanOrEqualTo: floor) { return false }
-            if let floor = fVision, minima.minVisionOS == nil { return false }
+            if fVision != nil, minima.minVisionOS == nil { return false }
             return true
         }
 

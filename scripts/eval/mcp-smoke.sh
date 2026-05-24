@@ -30,19 +30,39 @@ fi
 echo "🧪 MCP smoke test against $BINARY"
 echo
 
+# Server stderr is captured to a sibling log so a premature exit
+# (e.g. missing DB at the dev base directory) shows up here instead
+# of being silently swallowed and reported as a broken-pipe upstream.
+ERRLOG="${LOG}.stderr"
+trap 'rm -f "$LOG" "$ERRLOG"' EXIT
+
 # Send three JSON-RPC messages over stdio: initialize, tools/list, tools/call.
 # Each is on its own line per the MCP stdio framing rule. Sleep windows
 # give the server time to respond before the next message lands.
+# `|| true` on the subshell suppresses the SIGPIPE exit (EPIPE = 141)
+# we get if cupertino serve exits early; the assertion block below
+# catches the real failure mode (missing responses in $LOG) and the
+# stderr block surfaces the underlying cause.
 {
   printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"mcp-smoke","version":"1"}}}'
   sleep 8  # cold-start budget
-  printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+  printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized"}' 2>/dev/null || true
   sleep 1
-  printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+  printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' 2>/dev/null || true
   sleep 5
-  printf '%s\n' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"search","arguments":{"query":"NSURLSession","limit":3}}}'
+  printf '%s\n' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"search","arguments":{"query":"NSURLSession","limit":3}}}' 2>/dev/null || true
   sleep 10  # query execution budget
-} | timeout 60 "$BINARY" serve 2>/dev/null > "$LOG"
+} | timeout 60 "$BINARY" serve 2>"$ERRLOG" > "$LOG" || true
+
+# If the server log is empty or near-empty, the server died early.
+# Surface its stderr instead of asserting on an empty file.
+if [ "$(wc -c < "$LOG" | tr -d ' ')" -lt 100 ]; then
+  echo "❌ cupertino serve produced no/empty response; stderr follows:"
+  echo "--- server stderr ---"
+  cat "$ERRLOG"
+  echo "--- end stderr ---"
+  exit 1
+fi
 
 bytes=$(wc -c < "$LOG" | tr -d ' ')
 echo "captured: $bytes bytes from MCP server"
