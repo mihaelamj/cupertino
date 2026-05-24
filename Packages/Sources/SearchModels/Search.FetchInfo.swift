@@ -41,6 +41,10 @@ extension Search {
         /// - `"sample-code"` -> `Shared.Paths.sampleCodeDirectory`
         /// - `"archive"` -> `Shared.Paths.archiveDirectory`
         /// - `"hig"` -> `Shared.Paths.higDirectory`
+        /// - `"base-directory"` -> `Shared.Paths.baseDirectory` (catch-all
+        ///   for sources whose fetch dumps directly under the base dir
+        ///   without a per-source subdir; pinned by the
+        ///   `fetchInfoOutputDirCases` test at the 8-case count).
         ///
         /// The CLI's path-DI layer translates the key to a concrete
         /// URL at composition time; per-source targets do not reach

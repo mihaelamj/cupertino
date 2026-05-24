@@ -65,7 +65,7 @@ struct Issue1008SourceProviderProtocolShapeTests {
         registry.setEnabled(false, forSourceID: "a")
         #expect(registry.entry(for: "a")?.isEnabled == false)
 
-        // Re-register without passing isEnabled — operator's earlier disable
+        // Re-register without passing isEnabled: operator's earlier disable
         // MUST be preserved. Pre-#1008-critic-fix, the default `isEnabled: true`
         // silently clobbered the disabled state on this call path.
         registry.register(FixtureProvider(idValue: "a", displayNameValue: "replaced"))

@@ -11,15 +11,15 @@ import SharedConstants
 /// to existing CLI / SearchSQLite / SearchModels code.
 ///
 /// Conformance assembles 4 per-source artefacts:
-/// - `definition` — `Search.SourceDefinition` static literal in
+/// - `definition`: `Search.SourceDefinition` static literal in
 ///   `AppleDocsSource.Definition.swift` (lifted from
 ///   `CLI/CLIImpl.SourceLookup.swift`).
-/// - `fetchInfo` — `Search.FetchInfo` static literal in
+/// - `fetchInfo`: `Search.FetchInfo` static literal in
 ///   `AppleDocsSource.FetchInfo.swift` (lifted from
 ///   `CLI/SupportingTypes.swift`'s pre-#1007 `FetchType.docs` case).
-/// - `makeStrategy(env:)` — constructs `Search.Strategies.AppleDocs`
+/// - `makeStrategy(env:)`: constructs `Search.Strategies.AppleDocs`
 ///   (the indexing strategy concrete also in this target).
-/// - `makeIndexer()` — constructs `Search.AppleDocsIndexer` (the
+/// - `makeIndexer()`: constructs `Search.AppleDocsIndexer` (the
 ///   indexer concrete also in this target).
 public struct AppleDocsSource: Search.SourceProvider {
     public init() {}
