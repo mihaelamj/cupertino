@@ -36,7 +36,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("SampleCodeSource"),
     .singleTargetLibrary("SwiftEvolutionStrategy"),
     .singleTargetLibrary("SwiftOrgStrategy"),
-    .singleTargetLibrary("AppleArchiveStrategy"),
+    .singleTargetLibrary("AppleArchiveSource"),
     .singleTargetLibrary("SampleIndex"),
     .singleTargetLibrary("SampleIndexSQLite"),
     .singleTargetLibrary("Services"),
@@ -459,7 +459,7 @@ let targets: [Target] = {
     )
     let searchModelsTestsTarget = Target.testTarget(
         name: "SearchModelsTests",
-        dependencies: ["SearchModels", "SharedConstants", "TestSupport", "HIGSource", "SampleCodeSource", "LoggingModels"]
+        dependencies: ["SearchModels", "SharedConstants", "TestSupport", "HIGSource", "SampleCodeSource", "AppleArchiveSource", "LoggingModels"]
     )
 
     // ---------- SampleIndexModels (#408 partial: value types + Reader protocol lifted out of
@@ -546,7 +546,7 @@ let targets: [Target] = {
             "SampleCodeSource",
             "SwiftEvolutionStrategy",
             "SwiftOrgStrategy",
-            "AppleArchiveStrategy",
+            "AppleArchiveSource",
             "AppleConstraintsPass",
             "SearchModels",
             "SharedConstants",
@@ -597,7 +597,7 @@ let targets: [Target] = {
             "SampleCodeSource",
             "SwiftEvolutionStrategy",
             "SwiftOrgStrategy",
-            "AppleArchiveStrategy",
+            "AppleArchiveSource",
             "AppleConstraintsPass",
             "SearchModels",
             "SearchSQLite",
@@ -680,14 +680,15 @@ let targets: [Target] = {
         ]
     )
 
-    // #899 sub-PR G: extract AppleArchiveStrategy (final per-strategy
-    // split; closes the 6-of-6 extraction. After this, SearchStrategies
-    // is empty of strategy concretes; only the StrategyHelpers
-    // companion target remains, which itself was extracted as
-    // SearchStrategyHelpers in sub-PR B.).
-    let appleArchiveStrategyTarget = Target.target(
-        name: "AppleArchiveStrategy",
+    // #899 sub-PR G: extract AppleArchiveStrategy (renamed to AppleArchiveSource in #1014).
+    // ASTIndexer dep is load-bearing: Search.AppleArchiveIndexer.swift runs ASTIndexer.Extractor
+    // conditionally over Swift-shaped content (guarded by a contains-`func ` / `struct ` /
+    // `class ` / `import ` check; Apple Archive content is mixed Swift + Objective-C, parsed
+    // best-effort).
+    let appleArchiveSourceTarget = Target.target(
+        name: "AppleArchiveSource",
         dependencies: [
+            "ASTIndexer",
             "SearchModels",
             "SharedConstants",
             "LoggingModels",
@@ -1025,7 +1026,7 @@ let targets: [Target] = {
             "SampleCodeSource",
             "SwiftEvolutionStrategy",
             "SwiftOrgStrategy",
-            "AppleArchiveStrategy",
+            "AppleArchiveSource",
             "AppleConstraintsPass",
             "HierarchyPass",
             "PackagesAppleConstraintsPass",
@@ -1261,7 +1262,7 @@ let targets: [Target] = {
         sampleCodeSourceTarget,
         swiftEvolutionStrategyTarget,
         swiftOrgStrategyTarget,
-        appleArchiveStrategyTarget,
+        appleArchiveSourceTarget,
         sampleIndexTarget,
         sampleIndexTestsTarget,
         sampleIndexSQLiteTarget,

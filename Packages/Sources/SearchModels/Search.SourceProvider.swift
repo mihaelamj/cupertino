@@ -1,4 +1,5 @@
 import Foundation
+import SharedConstants
 
 // MARK: - Search.SourceProvider
 
@@ -34,6 +35,34 @@ extension Search {
         /// crawled, downloaded, or otherwise materialised return a
         /// non-nil value.
         var fetchInfo: Search.FetchInfo? { get }
+
+        /// Destination database this source's indexer writes to.
+        /// **Required, no default**: every conformer must declare its
+        /// destination explicitly (no implicit search.db routing).
+        /// Composition root logic for the post-#1007 registry-driven
+        /// path groups providers by `destinationDB.id` and dispatches
+        /// to the right index builder. Until phase 1I wires that
+        /// consumer, the field is a structural declaration the
+        /// providers carry; the existing search.db routing in
+        /// `CLIImpl.Command.Save.Indexers.swift` stays as-is.
+        /// Filed as #1015 (origin) and folded into #1014's Phase 1D
+        /// scope (the protocol extension lands alongside the
+        /// AppleArchiveSource migration; the 3 prior conformers get
+        /// retrofitted in the same PR).
+        ///
+        /// **Forward-looking note on the descriptor name**: today
+        /// every search-bound source declares `.search`, but the
+        /// `.search` name is a temporary stand-in for "the shared
+        /// prose-text FTS database" that holds 6+ sources today. When
+        /// the per-source DB split lands (separate epic, post-1I),
+        /// each source will declare its own descriptor (e.g.
+        /// `.appleDocs`, `.hig`, `.appleArchive`) and `.search` as a
+        /// name will become meaningless. Conformers should not rely
+        /// on the literal `.search` staying stable across the future
+        /// split; the descriptor abstraction is what's stable, not
+        /// the specific descriptor instances (``Shared.Models.DatabaseDescriptor``
+        /// will gain new instances over time).
+        var destinationDB: Shared.Models.DatabaseDescriptor { get }
 
         /// Construct this source's indexing strategy. The composition
         /// root calls this once at index-time and passes the result

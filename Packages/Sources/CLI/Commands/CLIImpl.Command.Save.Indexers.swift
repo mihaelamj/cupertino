@@ -1,4 +1,4 @@
-import AppleArchiveStrategy
+import AppleArchiveSource
 import AppleConstraintsKit
 import AppleConstraintsPass
 import AppleDocsSource

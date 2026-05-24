@@ -1,4 +1,4 @@
-import AppleArchiveStrategy
+import AppleArchiveSource
 import AppleConstraintsPass
 import AppleDocsSource
 import EnrichmentModels
