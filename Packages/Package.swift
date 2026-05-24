@@ -348,7 +348,7 @@ let targets: [Target] = {
     // #904: CoreSampleCodeWebKit sibling carries the WKWebView-backed
     // `Sample.Core.Downloader` (hidden-WKWebView driver that scrapes
     // the Apple sample-code listing + per-sample download URLs via JS).
-    // The CoreSampleCode producer is foundation-only post-#904 — only
+    // The CoreSampleCode producer is foundation-only post-#904; only
     // `Sample.Core.Catalog` + `Sample.Core.GitHubFetcher` remain.
     let coreSampleCodeWebKitTarget = Target.target(
         name: "CoreSampleCodeWebKit",

@@ -65,7 +65,8 @@ extension Sample.Core {
         /// foundation-only `CoreSampleCodeModels` seam target
         /// (`Sample.Core.DownloaderProgressObserving` /
         /// `Sample.Core.Progress`) so any conformer can implement
-        /// without `import CoreSampleCode` pulling in WebKit.
+        /// against the seam without depending on the
+        /// `CoreSampleCodeWebKit` producer that owns this class.
         public func download(
             progress: (any Sample.Core.DownloaderProgressObserving)? = nil
         ) async throws -> Sample.Core.Statistics {

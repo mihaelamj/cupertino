@@ -93,7 +93,7 @@ EXEMPT_TARGETS=(
     MockAIAgent
     ReleaseTool
     ConstraintsGen
-    # WebKit-companion siblings (#904) — each extends its parent
+    # WebKit-companion siblings (#904); each extends its parent
     # producer's types so it legitimately imports the parent. They are
     # themselves on FORBIDDEN_MODULES (no other consumer may import them);
     # only the composition root binaries link them.
