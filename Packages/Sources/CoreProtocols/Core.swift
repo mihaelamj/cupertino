@@ -14,9 +14,12 @@ import Foundation
 ///                       `Core.Protocols.SwiftPackagesCatalog`,
 ///                       `Core.Protocols.SwiftPackageEntry`) so the namespace
 ///                       mirrors the folder on disk.
-/// - The rest of `Core.*` (`Core.Crawler`, `Core.Parser.*`, `Core.JSONParser.*`,
-///   `Core.PackageIndexing.*`, `Core.WKWebCrawler.*`, …) lives in sibling SPM
-///   targets and extends this same root from their own files.
+/// - The rest of `Core.*` lives in sibling SPM targets and extends
+///   this same root from their own files:
+///   `Core.Parser.*` (HTML / XML transformers) in `Core`;
+///   `Core.JSONParser.*` (DocC JSON pipeline) in `CoreJSONParser` +
+///   `Core.JSONParser.WKWebViewTitleFetcher` in `CoreJSONParserWebKit`
+///   (#904); `Core.PackageIndexing.*` in `CorePackageIndexing`.
 public enum Core {
     /// Folder-mirror sub-namespace for the `Sources/CoreProtocols/` SPM target:
     /// protocols, their result-value companions, and the small utilities that
