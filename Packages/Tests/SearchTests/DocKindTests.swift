@@ -1,7 +1,6 @@
-import SearchModels
-
 import Foundation
 @testable import SearchAPI
+import SearchModels
 @testable import SearchSQLite
 import SharedConstants
 import Testing

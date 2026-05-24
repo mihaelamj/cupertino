@@ -1,10 +1,9 @@
-import SearchModels
-
 import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
 import LoggingModels
 @testable import SearchAPI
+import SearchModels
 @testable import SearchSQLite
 import SQLite3
 import Testing

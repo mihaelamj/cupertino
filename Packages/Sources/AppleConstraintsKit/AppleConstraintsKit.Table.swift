@@ -6,7 +6,7 @@ extension AppleConstraintsKit {
     /// constraint table. Conforms to `Search.StaticConstraintsLookup`
     /// so a binary can construct one and inject it into
     /// `Search.IndexBuilder` without crossing the
-    /// AppleConstraintsKit-importing boundary in Search itself
+    /// AppleConstraintsKit-importing boundary in SearchAPI itself
     /// (rule 3. cross-target seam via protocol in Models).
     ///
     /// **JSON-on-disk shape.** Single top-level object with two

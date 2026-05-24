@@ -7,7 +7,7 @@ extension Search {
     /// Write-side seam for the search-index database.
     ///
     /// Production implementation: `Search.Index` (the actor in the
-    /// Search SPM target). Consumers ( `Search.IndexBuilder`, the 6
+    /// SearchAPI SPM target). Consumers ( `Search.IndexBuilder`, the 6
     /// source-indexing strategies, the indexer-side CLI runner ) accept
     /// this protocol instead of taking a behavioural dependency on the
     /// concrete SearchAPI target.
