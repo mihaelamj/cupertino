@@ -1,5 +1,3 @@
-// swiftlint:disable identifier_name empty_count line_length large_tuple
-// Pre-existing tech debt; cleanup deferred (file touched by #900 rename only).
 import Foundation
 @testable import SearchAPI
 import SearchModels
@@ -87,11 +85,11 @@ struct JSONLImportLogSinkTests {
         let logPath = tempDir.appendingPathComponent("save.jsonl")
 
         let sink = try Search.JSONLImportLogSink(path: logPath)
-        for i in 0..<50 {
+        for index in 0..<50 {
             await sink.record(Search.ImportLogEntry(
-                sourceFile: "/tmp/file\(i).json",
-                resolvedURL: "https://developer.apple.com/documentation/test/\(i)",
-                uri: "apple-docs://test/\(i)",
+                sourceFile: "/tmp/file\(index).json",
+                resolvedURL: "https://developer.apple.com/documentation/test/\(index)",
+                uri: "apple-docs://test/\(index)",
                 state: .indexed
             ))
         }

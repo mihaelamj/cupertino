@@ -27,7 +27,7 @@ extension Search {
     /// ## Building with the default strategy set
     ///
     /// ```swift
-    /// import Search
+    /// import SearchAPI
     /// import SearchSQLite
     ///
     /// // #933: composition root assembles strategies inline; the

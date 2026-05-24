@@ -23,7 +23,7 @@ import SharedConstants
 
 // Concrete `Services.ReadService.PackageFileLookupStrategy` (GoF Strategy)
 // wrapping the `SearchModule.PackageQuery` actor. Lives at the CLI
-// composition root so `Services` doesn't need `import Search`.
+// composition root so `Services` doesn't need `import SearchAPI`.
 // `cupertino read` wires one of these into every `Services.ReadService.read`
 // call.
 

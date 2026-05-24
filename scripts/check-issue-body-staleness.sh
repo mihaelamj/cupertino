@@ -120,8 +120,9 @@ fi
 # the right hint.
 
 RENAME_MAP=$(cat <<'EOF'
-Packages/Sources/Search/SearchIndex\.swift	split into Search.Index.*.swift (Search.Index.swift / Search.Index.Search.swift / Search.Index.Schema.swift / Search.Index.SemanticSearch.swift / etc.)
-Packages/Sources/Search/SearchIndexBuilder\.swift	renamed to Search.IndexBuilder.swift
+Packages/Sources/Search/SearchIndex\.swift	split into Search.Index.*.swift (Search.Index.swift / Search.Index.Search.swift / Search.Index.Schema.swift / Search.Index.SemanticSearch.swift / etc.) under Packages/Sources/SearchSQLite/ post-#898
+Packages/Sources/Search/SearchIndexBuilder\.swift	renamed to Search.IndexBuilder.swift; lives under Packages/Sources/SearchAPI/ post-#900
+Packages/Sources/Search/	target renamed to Packages/Sources/SearchAPI/ in #900; SQLite-backed concretes split to Packages/Sources/SearchSQLite/ in #898
 Packages/Sources/SampleIndex/SampleIndexDatabase\.swift	renamed to Sample.Index.Database.swift
 Packages/Sources/Resources/Embedded/ArchiveGuidesCatalogEmbedded\.swift	renamed to Resources.Embedded.ArchiveGuidesCatalog.swift
 Packages/Sources/Resources/Embedded/SampleCodeCatalogEmbedded\.swift	deleted in #215 (sample-code metadata now lives in samples.db + ~/.cupertino/sample-code/catalog.json)

@@ -1,3 +1,5 @@
+// swiftformat:disable numberFormatting
+
 @testable import CLI
 import Foundation
 import LoggingModels
@@ -56,7 +58,7 @@ private struct FakeWWDCStrategy: Search.SourceIndexingStrategy {
             content: "Welcome to WWDC. This session covers SwiftUI animations and the new declarative APIs.",
             filePath: "wwdc-101.json",
             contentHash: "fixture-hash-101",
-            lastCrawled: Date(timeIntervalSince1970: 1700000000),
+            lastCrawled: Date(timeIntervalSince1970: 1_700_000_000),
             sourceType: "wwdc-transcripts",
             packageId: nil,
             jsonData: nil
@@ -70,7 +72,7 @@ private struct FakeWWDCStrategy: Search.SourceIndexingStrategy {
             content: "Swift Testing is the new framework that replaces XCTest for unit test authoring.",
             filePath: "wwdc-238.json",
             contentHash: "fixture-hash-238",
-            lastCrawled: Date(timeIntervalSince1970: 1700000000),
+            lastCrawled: Date(timeIntervalSince1970: 1_700_000_000),
             sourceType: "wwdc-transcripts",
             packageId: nil,
             jsonData: nil
@@ -84,7 +86,7 @@ private struct FakeWWDCStrategy: Search.SourceIndexingStrategy {
             content: "Async / await and structured concurrency unlock safer parallelism for iOS apps.",
             filePath: "wwdc-410.json",
             contentHash: "fixture-hash-410",
-            lastCrawled: Date(timeIntervalSince1970: 1700000000),
+            lastCrawled: Date(timeIntervalSince1970: 1_700_000_000),
             sourceType: "wwdc-transcripts",
             packageId: nil,
             jsonData: nil
@@ -114,9 +116,18 @@ private struct FakeWWDCIndexer: Search.SourceIndexer {
     let sourceID = "wwdc-transcripts"
     let displayName = "WWDC Transcripts"
 
-    func validate(_: Search.SourceItem) -> Bool { true }
-    func extractCode(from _: Search.SourceItem) -> Search.ExtractedContent { .empty }
-    func preprocess(_ item: Search.SourceItem) -> Search.SourceItem { item }
+    func validate(_: Search.SourceItem) -> Bool {
+        true
+    }
+
+    func extractCode(from _: Search.SourceItem) -> Search.ExtractedContent {
+        .empty
+    }
+
+    func preprocess(_ item: Search.SourceItem) -> Search.SourceItem {
+        item
+    }
+
     func postprocess(_: Search.SourceItem) {}
 }
 
@@ -230,7 +241,7 @@ struct Issue935EndToEndPluggabilityTests {
     }
 
     @Test("Independence Day exit criterion: this PR's diff stat against Packages/Sources/ is +0 / -0")
-    func noProductionEditsClaim() throws {
+    func noProductionEditsClaim() {
         // This test is a doc anchor, not a CI-enforceable mechanical
         // check (that would require shelling out to git from within
         // Swift Testing). The PR body carries the diff stat the

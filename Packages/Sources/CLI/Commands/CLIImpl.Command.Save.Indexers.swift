@@ -205,7 +205,7 @@ extension CLIImpl.Command.Save {
     /// Concrete `Search.DocsIndexingRunner` (GoF Strategy) used by
     /// `Indexer.DocsService`. Wraps `Search.Index` + `Search.IndexBuilder`.
     /// Lives at the CLI composition root so Indexer doesn't need
-    /// `import Search` for these actor types.
+    /// `import SearchAPI` for these actor types.
     ///
     /// Post-Observer-protocol cleanup: this runner is now closure-free.
     /// The `progress: any Search.IndexingProgressReporting` value
