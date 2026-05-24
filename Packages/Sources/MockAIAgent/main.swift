@@ -638,6 +638,13 @@ private actor MCPClient {
         // throwing variant; it surfaces EPIPE-class errors instead of
         // silently dropping them like the legacy `write(_:)` overload.
         try stdin.write(contentsOf: messageData)
+        // 3a) Yield so the runtime can interleave the stdout reader Task
+        // and the server's stdin reader actor. Without this, consecutive
+        // sendRequest calls write back-to-back on the actor's serial
+        // executor and the kernel pipe doesn't drain between them; the
+        // server only sees the first message of a back-to-back pair.
+        // Observed empirically against `cupertino serve` (issue #1004).
+        await Task.yield()
 
         // 4) Wait for one newline-delimited response
         let responseLine = try await readLine(from: stdout, timeoutSeconds: responseTimeoutSeconds)
