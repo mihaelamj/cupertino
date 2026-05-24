@@ -1,20 +1,13 @@
 // MARK: - CupertinoCore Package
 
 //
-// Core crawler implementation for Apple Documentation.
-// Uses WKWebView for page loading and HTML→Markdown conversion.
+// Core crawler implementation for Apple Documentation. Foundation-only
+// post-#904: WebKit-backed concretes live in `CoreJSONParserWebKit` +
+// `CoreSampleCodeWebKit` sibling targets.
 //
-// Depends on: CupertinoShared
-// Platform: macOS only (requires WebKit)
-
-#if canImport(WebKit)
-@_exported import WebKit
-#endif
+// Depends on: SharedConstants.
 
 import SharedConstants
-// SharedCore was absorbed into SharedConstants in #536 phase 1a. The
-// `@_exported` here was reaching for the SharedCore module surface;
-// now that surface is part of SharedConstants which is already imported above.
 
 // MARK: - Usage Example
 

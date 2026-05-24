@@ -4,13 +4,14 @@ import SharedConstants
 // MARK: - Sample.Core.Downloader Observer protocol
 
 //
-// Naming note: the producer-target `Sample.Core.Downloader` is an actor
-// in the `CoreSampleCode` SPM target. To keep its progress Observer
-// protocol in this foundation-only seam target (so any conformer can
-// implement without `import CoreSampleCode`, which pulls in WebKit +
-// AppKit), the seam type is flat-named under `Sample.Core`
+// Naming note: the producer-target `Sample.Core.Downloader` is a
+// `public final class` in the `CoreSampleCodeWebKit` SPM target post-#904
+// (the WebKit-companion sibling of `CoreSampleCode`). To keep its progress
+// Observer protocol in this foundation-only seam target so any conformer
+// can implement against the seam without depending on the WebKit-carrying
+// sibling, the seam type is flat-named under `Sample.Core`
 // (`DownloaderProgressObserving`) rather than nested under the producer
-// actor. Mirrors the `GitHubFetcherProgressObserving` shape from #567.
+// class. Mirrors the `GitHubFetcherProgressObserving` shape from #567.
 //
 // The payload type `Sample.Core.Progress` lives next to this file in the
 // same seam target. The `Sample.Core` namespace anchor is owned by

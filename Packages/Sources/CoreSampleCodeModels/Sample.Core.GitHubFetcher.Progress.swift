@@ -7,8 +7,8 @@ import SharedConstants
 // Naming note: the producer-target `Sample.Core.GitHubFetcher` is a
 // `public final class` in the `CoreSampleCode` SPM target. To keep its
 // progress payload + Observer protocol in this foundation-only seam
-// target (so any conformer can implement without `import CoreSampleCode`,
-// which pulls in WebKit + AppKit), the seam types are flat-named under
+// target so any conformer can implement against the seam without
+// depending on the producer, the seam types are flat-named under
 // `Sample.Core` (`GitHubFetcherProgress`, `GitHubFetcherProgressObserving`)
 // rather than nested under the producer class.
 //
