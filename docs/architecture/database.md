@@ -420,7 +420,7 @@ The architecture would be incomplete without a way to claim "the new build is be
 | AST extraction (iter-1 substrate) | `Packages/Sources/ASTIndexer/` |
 | Symbol-graph constraint extraction | `Packages/Sources/AppleConstraintsKit/` |
 | Indexer orchestration | `Packages/Sources/Indexer/` and `Packages/Sources/SearchAPI/Search.IndexBuilder.swift` |
-| Source-specific strategies | per-source SPM packages: `Packages/Sources/{HIGSource,AppleDocsSource,AppleArchiveSource,SampleCodeSource,SwiftEvolutionSource,SwiftOrgSource}/Search.Strategies.*.swift` (AppleDocsSource renamed from AppleDocsStrategy in #1008; HIGSource renamed from HIGStrategy in #1010; SampleCodeSource renamed from SampleCodeStrategy in #1012; AppleArchiveSource renamed from AppleArchiveStrategy in #1014; SwiftEvolutionSource renamed from SwiftEvolutionStrategy in #1017; SwiftOrgSource renamed from SwiftOrgStrategy in #1019; all as part of the #1007 source-unification epic) |
+| Source-specific strategies | per-source SPM packages: `Packages/Sources/{HIGSource,AppleDocsSource,AppleArchiveSource,SampleCodeSource,SwiftEvolutionSource,SwiftOrgSource,SwiftBookSource}/{Search.Strategies.*.swift, *.Definition.swift, *.FetchInfo.swift, *Indexer.swift}` (renames in #1008/#1010/#1012/#1014/#1017/#1019; new SwiftBookSource view-source target landed in #1021; all as part of the #1007 source-unification epic) |
 | Door dedup and garbage filter | per-source strategy classes |
 | Three-database save command | `Packages/Sources/CLI/Commands/CLIImpl.Command.Save.swift` |
 | Phase 1 search-quality harness (single-arm + paired) | `scripts/eval/search-quality-phase1.py` |

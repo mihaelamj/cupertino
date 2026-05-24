@@ -200,8 +200,11 @@ jobs:
       # from AppleArchiveStrategy in #1014), SwiftEvolutionSource
       # (renamed from SwiftEvolutionStrategy in #1017), SwiftOrgSource
       # (renamed from SwiftOrgStrategy in #1019), with
-      # SearchStrategyHelpers as the shared seam). Portability proofs
-      # for the 6 + helpers follow as separate steps.
+      # SearchStrategyHelpers as the shared seam). #1021 (Phase 1G of
+      # epic #1007) added SwiftBookSource as a new per-source target
+      # (first net-add; view-source pattern, no prior SwiftBookStrategy
+      # to rename). Portability proofs for the 6 + new + helpers follow
+      # as separate steps.
       - name: "Portability: AppleDocsSource"
         timeout-minutes: 5
         run: ./scripts/check-target-portability.sh AppleDocsSource
@@ -225,6 +228,10 @@ jobs:
       - name: "Portability: SwiftOrgSource"
         timeout-minutes: 5
         run: ./scripts/check-target-portability.sh SwiftOrgSource
+
+      - name: "Portability: SwiftBookSource"
+        timeout-minutes: 5
+        run: ./scripts/check-target-portability.sh SwiftBookSource
 
       - name: "Portability: SearchStrategyHelpers"
         timeout-minutes: 5
