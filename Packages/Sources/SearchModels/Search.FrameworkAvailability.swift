@@ -8,11 +8,11 @@ extension Search {
     /// can stamp per-framework minimum versions onto pages that don't
     /// carry their own (Apple sample-code zips, Apple Archive guides, etc.).
     ///
-    /// Lifted from a previous nested location in the Search target's
+    /// Lifted from a previous nested location in the SearchAPI target's
     /// `Search.SearchResult.swift` up to `SearchModels` by epic #893's
     /// child #897, so the `Search.Database` read protocol can carry the
     /// `getFrameworkAvailability` requirement without taking a
-    /// behavioural dependency on the concrete Search target.
+    /// behavioural dependency on the concrete SearchAPI target.
     public struct FrameworkAvailability: Sendable {
         public let minIOS: String?
         public let minMacOS: String?

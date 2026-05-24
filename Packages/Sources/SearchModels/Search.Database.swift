@@ -1,12 +1,14 @@
 import Foundation
 import SharedConstants
 
+// swiftlint:disable identifier_name
+
 /// Behavioural contract for the search-index database.
 ///
 /// Production implementation: `Search.Index` (the actor in the Search SPM
 /// target). Consumers — Services read commands, MCPSupport responders,
 /// CLI runners — accept this protocol instead of taking a behavioural
-/// dependency on the Search target.
+/// dependency on the SearchAPI target.
 ///
 /// The protocol surfaces every method Services calls on `Search.Index`:
 /// `search`, `getDocumentContent`, `listFrameworks`, `documentCount`,

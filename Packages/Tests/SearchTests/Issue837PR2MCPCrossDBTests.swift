@@ -1,5 +1,3 @@
-// swiftlint:disable identifier_name empty_count line_length large_tuple
-// Pre-existing tech debt; cleanup deferred (file touched by #900 rename only).
 import Foundation
 import LoggingModels
 @testable import SearchAPI

@@ -3,10 +3,10 @@ import Foundation
 /// Platform-version availability filter applied to package search.
 ///
 /// Lifted out of `Search.PackageQuery.AvailabilityFilter` (nested
-/// inside the PackageQuery actor in the Search target) to top-level
+/// inside the PackageQuery actor in the SearchAPI target) to top-level
 /// `Search.AvailabilityFilter` in SearchModels so consumers can
 /// construct and pass it without taking a behavioural dependency on
-/// the Search target.
+/// the SearchAPI target.
 ///
 /// `platform` is one of `iOS`, `macOS`, `tvOS`, `watchOS`, `visionOS`
 /// (case-insensitive). `minVersion` is a dotted decimal like `"16.0"`

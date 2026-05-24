@@ -1,5 +1,3 @@
-// swiftlint:disable identifier_name empty_count line_length large_tuple
-// Pre-existing tech debt; cleanup deferred (file touched by #900 rename only).
 import SearchModels
 
 import CorePackageIndexingModels
@@ -10,6 +8,8 @@ import LoggingModels
 @testable import SearchSQLite
 import SQLite3
 import Testing
+
+// swiftlint:disable identifier_name
 
 // MARK: - PackageIndexTests
 

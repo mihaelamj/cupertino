@@ -10,16 +10,16 @@ extension Search {
     /// Search SPM target). Consumers ( `Search.IndexBuilder`, the 6
     /// source-indexing strategies, the indexer-side CLI runner ) accept
     /// this protocol instead of taking a behavioural dependency on the
-    /// concrete Search target.
+    /// concrete SearchAPI target.
     ///
     /// Mirrors the existing `Search.Database` seam in `SearchModels`,
     /// which covers the READ surface of the same `Search.Index` actor.
     /// `Search.Database` + `Search.IndexWriter` together cover every
     /// public method on `Search.Index` that is called from OUTSIDE the
-    /// Search target. A handful of Search-internal-only write methods
+    /// SearchAPI target. A handful of Search-internal-only write methods
     /// (`indexItem`, `indexItems`, `indexPackage`) are not on either
     /// protocol because no external caller needs them today; if a
-    /// future consumer outside the Search target needs one, lift it
+    /// future consumer outside the SearchAPI target needs one, lift it
     /// onto `Search.IndexWriter` then.
     ///
     /// The protocol carries 10 write methods: `indexDocument`,

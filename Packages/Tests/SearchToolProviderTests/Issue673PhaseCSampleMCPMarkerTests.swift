@@ -1,5 +1,3 @@
-// swiftlint:disable identifier_name empty_count line_length large_tuple
-// Pre-existing tech debt; cleanup deferred (file touched by #900 rename only).
 import Foundation
 import LoggingModels
 import MCPCore
@@ -11,6 +9,8 @@ import SearchModels
 @testable import SearchToolProvider
 import SharedConstants
 import Testing
+
+// swiftlint:disable identifier_name
 
 /// Phase C iter-8 of #673. Final iteration of the MCP semantic-marker
 /// coverage — pins the **3 sample-database-backed tools**, bringing total

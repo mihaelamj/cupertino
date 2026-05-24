@@ -18,7 +18,7 @@ extension Search {
     /// the page; defaults flow through.
     ///
     /// Lifted from the previous nested location inside the `Search.Index`
-    /// actor in the Search target up to top-level `Search.IndexDocumentParams`
+    /// actor in the SearchAPI target up to top-level `Search.IndexDocumentParams`
     /// here in `SearchModels` by epic #893's child #896, so the new
     /// `Search.IndexWriter` protocol seam can name the parameter type
     /// without taking a behavioural dependency on the concrete Search

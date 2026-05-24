@@ -1,5 +1,3 @@
-// swiftlint:disable identifier_name empty_count line_length large_tuple
-// Pre-existing tech debt; cleanup deferred (file touched by #900 rename only).
 import Foundation
 import LoggingModels
 @testable import SearchAPI
@@ -32,6 +30,7 @@ import Testing
 /// peer principle against the OLD URI shape (legacy fixtures still
 /// covered by H1 + H1.5).
 @Suite("#610 Class A: bare type-name query surfaces canonical page (lossless URI shape)")
+// swiftlint:disable:next type_body_length
 struct Issue610ClassARankingTests {
     // MARK: - Helpers
 

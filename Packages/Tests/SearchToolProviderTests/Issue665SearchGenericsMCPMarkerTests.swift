@@ -1,5 +1,3 @@
-// swiftlint:disable identifier_name empty_count line_length large_tuple
-// Pre-existing tech debt; cleanup deferred (file touched by #900 rename only).
 import ASTIndexer
 import Foundation
 import LoggingModels
@@ -112,6 +110,7 @@ struct Issue665SearchGenericsMCPMarkerTests {
             name: Shared.Constants.Search.toolSearchGenerics,
             arguments: args
         )
+        // swiftlint:disable:next identifier_name
         guard case let .text(t) = result.content.first else {
             Issue.record("expected text content")
             return
@@ -149,6 +148,7 @@ struct Issue665SearchGenericsMCPMarkerTests {
             name: Shared.Constants.Search.toolSearchGenerics,
             arguments: args
         )
+        // swiftlint:disable:next identifier_name
         guard case let .text(t) = result.content.first else {
             Issue.record("expected text content")
             return
@@ -202,6 +202,7 @@ struct Issue665SearchGenericsMCPMarkerTests {
             name: Shared.Constants.Search.toolSearchGenerics,
             arguments: args
         )
+        // swiftlint:disable:next identifier_name
         guard case let .text(t) = result.content.first else {
             Issue.record("expected text content")
             return
@@ -245,6 +246,7 @@ struct Issue665SearchGenericsMCPMarkerTests {
             name: Shared.Constants.Search.toolSearchGenerics,
             arguments: args
         )
+        // swiftlint:disable:next identifier_name
         guard case let .text(t) = result.content.first else {
             Issue.record("expected text content")
             return
@@ -277,8 +279,11 @@ struct Issue665SearchGenericsMCPMarkerTests {
             arguments: [Shared.Constants.Search.schemaParamPattern: MCP.Core.Protocols.AnyCodable("foo")]
         )
 
+        // swiftlint:disable:next identifier_name
         guard case let .text(g) = generics.content.first,
+              // swiftlint:disable:next identifier_name
               case let .text(c) = conformances.content.first,
+              // swiftlint:disable:next identifier_name
               case let .text(w) = wrappers.content.first,
               case let .text(cc) = concurrency.content.first
         else {

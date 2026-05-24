@@ -1,5 +1,3 @@
-// swiftlint:disable identifier_name empty_count line_length large_tuple
-// Pre-existing tech debt; cleanup deferred (file touched by #900 rename only).
 import SearchModels
 
 import Foundation
@@ -7,6 +5,8 @@ import Foundation
 @testable import SearchSQLite
 import SharedConstants
 import Testing
+
+// swiftlint:disable identifier_name
 
 // MARK: - DocKind taxonomy (#192 section C1)
 

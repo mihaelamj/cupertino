@@ -16,7 +16,7 @@ extension Search {
     /// `Search.ImportDiligenceBreakdown.zero`.
     ///
     /// Lifted from `Search/Strategies/Search.SourceIndexingStrategy.swift`
-    /// (Search target) to `SearchModels` by epic #893's child #897 so
+    /// (SearchAPI target) to `SearchModels` by epic #893's child #897 so
     /// `Search.SourceIndexingStrategy` itself could lift alongside its
     /// return type.
     public struct IndexStats: Sendable {

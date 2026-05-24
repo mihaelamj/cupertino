@@ -479,7 +479,7 @@ let targets: [Target] = {
     // ---------- SearchSchema (#898 sub-PR A: foundation-only target carrying the
     // DDL SQL strings + the `Search.Schema.currentVersion` Int32 constant.
     // SearchSchema mirrors the SearchModels shape: foundation-only, no
-    // actors, no I/O, no SQLite import. Both the orchestration Search target
+    // actors, no I/O, no SQLite import. Both the orchestration SearchAPI target
     // and the concrete SearchSQLite target consume it.
     let searchSchemaTarget = Target.target(
         name: "SearchSchema",
@@ -497,7 +497,7 @@ let targets: [Target] = {
     // pieces tightly coupled to those concretes (`Search.PackageIndexer`,
     // `Search.PackageFTSCandidateFetcher`, `Search.DocsSourceCandidateFetcher`).
     // This is the ONLY producer target that imports `SQLite3` for the
-    // search.db / packages.db handles; the orchestration Search target now
+    // search.db / packages.db handles; the orchestration SearchAPI target now
     // operates exclusively through the SearchModels protocol seams.
     let searchSQLiteTarget = Target.target(
         name: "SearchSQLite",
@@ -563,7 +563,7 @@ let targets: [Target] = {
 
     // ---------- SearchStrategies (#899: 6 source-indexing strategy
     // concretes + StrategyHelpers + `Search.makeDefaultStrategies`
-    // factory function, lifted out of the orchestration Search target
+    // factory function, lifted out of the orchestration SearchAPI target
     // so Search has no concrete strategy dependency. Strict-compliant:
     // imports SearchModels + Foundation tier only; the strategies
     // operate through the `Search.SourceIndexingStrategy` protocol seam.

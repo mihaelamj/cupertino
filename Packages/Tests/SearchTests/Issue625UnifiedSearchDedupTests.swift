@@ -1,5 +1,3 @@
-// swiftlint:disable identifier_name empty_count line_length large_tuple
-// Pre-existing tech debt; cleanup deferred (file touched by #900 rename only).
 import Foundation
 import LoggingModels
 @testable import SearchAPI
@@ -7,6 +5,8 @@ import SearchModels
 @testable import SearchSQLite
 import SQLite3
 import Testing
+
+// swiftlint:disable identifier_name
 
 /// Regression suite for [#625](https://github.com/mihaelamj/cupertino/issues/625).
 ///

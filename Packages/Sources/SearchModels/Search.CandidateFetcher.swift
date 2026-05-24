@@ -10,7 +10,7 @@ import Foundation
 /// ordering is source-agnostic.
 ///
 /// The protocol lives in SearchModels (not in Search) so consumers
-/// outside the Search target — Services-side adapters that bridge
+/// outside the SearchAPI target — Services-side adapters that bridge
 /// cupertino-internal stores into the smart-query fan-out — can
 /// conform without taking a behavioural dependency on the Search
 /// target.

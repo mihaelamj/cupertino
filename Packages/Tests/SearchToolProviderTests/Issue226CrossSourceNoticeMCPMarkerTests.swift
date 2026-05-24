@@ -1,5 +1,3 @@
-// swiftlint:disable identifier_name empty_count line_length large_tuple
-// Pre-existing tech debt; cleanup deferred (file touched by #900 rename only).
 import ASTIndexer
 import Foundation
 import LoggingModels
@@ -10,6 +8,8 @@ import SearchModels
 @testable import SearchToolProvider
 import SharedConstants
 import Testing
+
+// swiftlint:disable identifier_name
 
 // MARK: - #226 — Cross-source partial-filter notice MCP E2E
 

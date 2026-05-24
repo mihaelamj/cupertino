@@ -2,10 +2,12 @@ import Foundation
 @testable import SearchModels
 import Testing
 
+// swiftlint:disable identifier_name
+
 // MARK: - SearchModels Public API Smoke Tests
 
 // SearchModels owns the value types that flow through search-result
-// rendering. The Search target produces values of these types; every
+// rendering. The SearchAPI target produces values of these types; every
 // downstream consumer (Services formatters, MCP responders, CLI
 // rendering) decodes + renders them without taking a behavioural
 // dep on Search.
@@ -44,9 +46,9 @@ struct SearchModelsPublicSurfaceTests {
 
     @Test("Search.PlatformAvailability decodes from canonical JSON")
     func platformAvailabilityDecodes() throws {
-        let json = """
+        let json = Data("""
         {"name": "macOS", "introducedAt": "12.0", "deprecated": false, "unavailable": false, "beta": true}
-        """.data(using: .utf8)!
+        """.utf8)
         let availability = try JSONDecoder().decode(Search.PlatformAvailability.self, from: json)
         #expect(availability.name == "macOS")
         #expect(availability.introducedAt == "12.0")

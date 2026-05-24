@@ -2,10 +2,10 @@ import Foundation
 
 /// A single candidate surfaced by a `Search.CandidateFetcher`.
 ///
-/// Lifted out of the Search target into SearchModels so consumers
+/// Lifted out of the SearchAPI target into SearchModels so consumers
 /// (Services-side adapters that bridge the cupertino-internal stores
 /// into the smart-query fan-out) can construct + return candidates
-/// without taking a behavioural dependency on the Search target.
+/// without taking a behavioural dependency on the SearchAPI target.
 ///
 /// Scores are source-local and not comparable across fetchers —
 /// `Search.SmartQuery` does the cross-source ranking via rank fusion
