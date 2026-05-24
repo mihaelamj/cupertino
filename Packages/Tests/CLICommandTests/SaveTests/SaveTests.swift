@@ -1,5 +1,5 @@
 import AppKit
-import AppleDocsStrategy
+import AppleDocsSource
 @testable import CLI
 @testable import Core
 import CoreProtocols

@@ -1,6 +1,6 @@
 import AppleArchiveStrategy
 import AppleConstraintsPass
-import AppleDocsStrategy
+import AppleDocsSource
 import EnrichmentModels
 import Foundation
 import HIGStrategy

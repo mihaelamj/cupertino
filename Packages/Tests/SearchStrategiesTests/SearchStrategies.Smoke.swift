@@ -1,5 +1,5 @@
 import AppleArchiveStrategy
-import AppleDocsStrategy
+import AppleDocsSource
 import HIGStrategy
 import SampleCodeStrategy
 import SearchModels

@@ -420,7 +420,7 @@ The architecture would be incomplete without a way to claim "the new build is be
 | AST extraction (iter-1 substrate) | `Packages/Sources/ASTIndexer/` |
 | Symbol-graph constraint extraction | `Packages/Sources/AppleConstraintsKit/` |
 | Indexer orchestration | `Packages/Sources/Indexer/` and `Packages/Sources/SearchAPI/Search.IndexBuilder.swift` |
-| Source-specific strategies | per-source SPM packages: `Packages/Sources/{HIGStrategy,AppleDocsStrategy,AppleArchiveStrategy,SampleCodeStrategy,SwiftEvolutionStrategy,SwiftOrgStrategy}/Search.Strategies.*.swift` |
+| Source-specific strategies | per-source SPM packages: `Packages/Sources/{HIGStrategy,AppleDocsSource,AppleArchiveStrategy,SampleCodeStrategy,SwiftEvolutionStrategy,SwiftOrgStrategy}/Search.Strategies.*.swift` (AppleDocsSource renamed from AppleDocsStrategy in #1008 as the first per-source SPM target) |
 | Door dedup and garbage filter | per-source strategy classes |
 | Three-database save command | `Packages/Sources/CLI/Commands/CLIImpl.Command.Save.swift` |
 | Phase 1 search-quality harness (single-arm + paired) | `scripts/eval/search-quality-phase1.py` |

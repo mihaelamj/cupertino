@@ -31,7 +31,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("SearchSchema"),
     .singleTargetLibrary("SearchSQLite"),
     .singleTargetLibrary("SearchStrategyHelpers"),
-    .singleTargetLibrary("AppleDocsStrategy"),
+    .singleTargetLibrary("AppleDocsSource"),
     .singleTargetLibrary("HIGStrategy"),
     .singleTargetLibrary("SampleCodeStrategy"),
     .singleTargetLibrary("SwiftEvolutionStrategy"),
@@ -455,7 +455,7 @@ let targets: [Target] = {
     // Search.Result, Search.MatchedSymbol, Search.PlatformAvailability, Search.DocumentFormat.
     let searchModelsTarget = Target.target(
         name: "SearchModels",
-        dependencies: ["SharedConstants"]
+        dependencies: ["SharedConstants", "ASTIndexer", "LoggingModels"]
     )
     let searchModelsTestsTarget = Target.testTarget(
         name: "SearchModelsTests",
@@ -541,7 +541,7 @@ let targets: [Target] = {
         dependencies: [
             "SearchAPI",
             "SearchSQLite",
-            "AppleDocsStrategy",
+            "AppleDocsSource",
             "HIGStrategy",
             "SampleCodeStrategy",
             "SwiftEvolutionStrategy",
@@ -592,7 +592,7 @@ let targets: [Target] = {
     let searchStrategiesTestsTarget = Target.testTarget(
         name: "SearchStrategiesTests",
         dependencies: [
-            "AppleDocsStrategy",
+            "AppleDocsSource",
             "HIGStrategy",
             "SampleCodeStrategy",
             "SwiftEvolutionStrategy",
@@ -607,15 +607,16 @@ let targets: [Target] = {
         ]
     )
 
-    // #899 sub-PR B: extract AppleDocsStrategy into its own SPM
+    // #899 sub-PR B: extract AppleDocsStrategy (renamed to AppleDocsSource in #1008) into its own SPM
     // target. Pattern-setter for the remaining 5 per-strategy splits
     // (HIG, SwiftEvolution, SwiftOrg, AppleArchive, SampleCode). Each
     // strategy ends up as a sibling SPM target conforming
     // `Search.SourceIndexingStrategy`; the composition root (CLI)
     // registers each via `import <X>Strategy` + struct construction.
-    let appleDocsStrategyTarget = Target.target(
-        name: "AppleDocsStrategy",
+    let appleDocsSourceTarget = Target.target(
+        name: "AppleDocsSource",
         dependencies: [
+            "ASTIndexer",
             "SearchModels",
             "SharedConstants",
             "LoggingModels",
@@ -1012,7 +1013,7 @@ let targets: [Target] = {
             "Cleanup",
             "SearchAPI",
             "SearchSQLite",
-            "AppleDocsStrategy",
+            "AppleDocsSource",
             "HIGStrategy",
             "SampleCodeStrategy",
             "SwiftEvolutionStrategy",
@@ -1118,7 +1119,7 @@ let targets: [Target] = {
     let serveTestsTarget = Target.testTarget(
         name: "ServeTests",
         dependencies: [
-            "AppleDocsStrategy",
+            "AppleDocsSource",
             "CLI",
             "Crawler",
             "CrawlerWebKit",
@@ -1153,7 +1154,7 @@ let targets: [Target] = {
     let saveTestsTarget = Target.testTarget(
         name: "SaveTests",
         dependencies: [
-            "AppleDocsStrategy",
+            "AppleDocsSource",
             "CLI",
             "CoreProtocols",
             "Core",
@@ -1248,7 +1249,7 @@ let targets: [Target] = {
         searchTestsTarget,
         searchStrategyHelpersTarget,
         searchStrategiesTestsTarget,
-        appleDocsStrategyTarget,
+        appleDocsSourceTarget,
         higStrategyTarget,
         sampleCodeStrategyTarget,
         swiftEvolutionStrategyTarget,

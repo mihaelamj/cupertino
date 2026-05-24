@@ -1,5 +1,5 @@
 import AppleArchiveStrategy
-import AppleDocsStrategy
+import AppleDocsSource
 import Foundation
 import HIGStrategy
 import LoggingModels

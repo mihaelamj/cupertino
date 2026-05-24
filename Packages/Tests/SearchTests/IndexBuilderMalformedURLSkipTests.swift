@@ -1,4 +1,4 @@
-@testable import AppleDocsStrategy
+@testable import AppleDocsSource
 import Foundation
 import LoggingModels
 @testable import SearchAPI
