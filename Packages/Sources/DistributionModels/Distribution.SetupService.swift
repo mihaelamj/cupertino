@@ -1,7 +1,7 @@
 import Foundation
 import SharedConstants
 
-// MARK: - Distribution.SetupService — value types + Observer protocol
+// MARK: - Distribution.SetupService: value types + Observer protocol
 
 extension Distribution {
     /// `cupertino setup` orchestrator namespace. The concrete
@@ -27,12 +27,14 @@ extension Distribution {
             /// **Required at construction; no default.** The other init
             /// parameters carry defaults (`currentDocsVersion`,
             /// `docsReleaseBaseURL`) that read from `Shared.Constants.App`
-            /// constants — those are version-roll metadata with a single
-            /// source of truth, so a default is informational. `required`
-            /// is different: it encodes which databases the CLI is currently
-            /// shipping, an architectural decision the composition root
-            /// must own. Hiding it inside the init as a default would make
-            /// "add a 4th DB" appear at a hidden site instead of at the
+            /// immutable `static let` literal constants; those are
+            /// version-roll metadata with a single source of truth, not
+            /// the mutable process-wide config holders Rule 1 forbids, so
+            /// an informational default is fine. `required` is different:
+            /// it encodes which databases the CLI is currently shipping,
+            /// an architectural decision the composition root must own.
+            /// Hiding it inside the init as a default would make "add a
+            /// 4th DB" appear at a hidden site instead of at the
             /// composition root. Test fixtures pass
             /// `[.search, .samples, .packages]` when exercising the
             /// production 3-DB shape.
@@ -52,6 +54,13 @@ extension Distribution {
                 keepExisting: Bool = false,
                 required: [Shared.Models.DatabaseDescriptor]
             ) {
+                // Reject empty: `cupertino setup` with zero required DBs is
+                // a meaningless invocation; `classify` would return `.current`
+                // vacuously and the run would silently no-op-succeed.
+                precondition(
+                    !required.isEmpty,
+                    "Distribution.SetupService.Request.required must list at least one database"
+                )
                 // Reject duplicate-by-`id` (the routing key everywhere downstream:
                 // `Outcome.path(forDatabaseId:)`, status classification). Full
                 // struct equality (id + filename + displayName) is not enough
