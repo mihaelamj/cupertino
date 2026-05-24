@@ -62,15 +62,16 @@ struct DBBackupIntegrationTests {
         try Distribution.InstalledVersion.write("0.11.0", in: dir)
 
         // Run through a localhost release URL that won't actually serve
-        // — the run will fail at download, but the backup pass executes
+        // the run will fail at download, but the backup pass executes
         // first because it's step 0 of the pipeline.
         let request = Distribution.SetupService.Request(
             baseDir: dir,
             currentDocsVersion: "1.0.0", docsReleaseBaseURL: "http://127.0.0.1:1/",
-            keepExisting: false
+            keepExisting: false,
+            required: [.search, .samples, .packages]
         )
 
-        // We don't care that the run errors at download — only that the
+        // We don't care that the run errors at download, only that the
         // backup happened first. Capture the events.
         actor EventCollector {
             var events: [Distribution.SetupService.Event] = []
@@ -141,7 +142,8 @@ struct DBBackupIntegrationTests {
 
         let request = Distribution.SetupService.Request(
             baseDir: dir,
-            currentDocsVersion: "1.0.0", docsReleaseBaseURL: "http://127.0.0.1:1/"
+            currentDocsVersion: "1.0.0", docsReleaseBaseURL: "http://127.0.0.1:1/",
+            required: [.search, .samples, .packages]
         )
         _ = try? await Distribution.SetupService.run(request, events: NoopObserver())
         try await Task.sleep(nanoseconds: 100000000)
@@ -168,7 +170,8 @@ struct DBBackupIntegrationTests {
         // No DBs, no version stamp.
         let request = Distribution.SetupService.Request(
             baseDir: dir,
-            currentDocsVersion: "1.0.0", docsReleaseBaseURL: "http://127.0.0.1:1/"
+            currentDocsVersion: "1.0.0", docsReleaseBaseURL: "http://127.0.0.1:1/",
+            required: [.search, .samples, .packages]
         )
 
         _ = try? await Distribution.SetupService.run(request, events: NoopObserver())

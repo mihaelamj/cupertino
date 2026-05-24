@@ -1,7 +1,7 @@
 import Foundation
 import SharedConstants
 
-// MARK: - Distribution.SetupService — value types + Observer protocol
+// MARK: - Distribution.SetupService: value types + Observer protocol
 
 extension Distribution {
     /// `cupertino setup` orchestrator namespace. The concrete
@@ -18,17 +18,66 @@ extension Distribution {
             public let currentDocsVersion: String
             public let docsReleaseBaseURL: String
             public let keepExisting: Bool
+            /// Descriptors for every database the CLI must classify, download,
+            /// and place. Ordered by the printable sequence the success-summary
+            /// printer iterates. Composition-root injected (the CLI's
+            /// `CLIImpl.Command.Setup.run` assembles the list and passes it
+            /// in) so adding a 4th DB no longer touches `Distribution.SetupService.run`.
+            ///
+            /// **Required at construction; no default.** The other init
+            /// parameters carry defaults (`currentDocsVersion`,
+            /// `docsReleaseBaseURL`) that read from `Shared.Constants.App`
+            /// immutable `static let` literal constants; those are
+            /// version-roll metadata with a single source of truth, not
+            /// the mutable process-wide config holders Rule 1 forbids, so
+            /// an informational default is fine. `required` is different:
+            /// it encodes which databases the CLI is currently shipping,
+            /// an architectural decision the composition root must own.
+            /// Hiding it inside the init as a default would make "add a
+            /// 4th DB" appear at a hidden site instead of at the
+            /// composition root. Test fixtures pass
+            /// `[.search, .samples, .packages]` when exercising the
+            /// production 3-DB shape.
+            ///
+            /// **Bundle-coupling assumption.** Setup downloads a single
+            /// `cupertino-databases-vX.Y.Z.zip` shipped from
+            /// `mihaelamj/cupertino-docs` releases. A descriptor passed here
+            /// is assumed to arrive inside that bundle; per-descriptor
+            /// download URLs are out-of-scope for this seam (future #248
+            /// scope per the original proposal's `downloadURL` field).
+            public let required: [Shared.Models.DatabaseDescriptor]
 
             public init(
                 baseDir: URL,
                 currentDocsVersion: String = Shared.Constants.App.databaseVersion,
                 docsReleaseBaseURL: String = Shared.Constants.App.docsReleaseBaseURL,
-                keepExisting: Bool = false
+                keepExisting: Bool = false,
+                required: [Shared.Models.DatabaseDescriptor]
             ) {
+                // Reject empty: a meaningless invocation. `classify`'s own
+                // non-empty precondition would catch this later in the
+                // pipeline (after `createDirectory` + `InstalledVersion.read`
+                // already ran), but rejecting at the door gives a
+                // Request-specific error before any side effects.
+                precondition(
+                    !required.isEmpty,
+                    "Distribution.SetupService.Request.required must list at least one database"
+                )
+                // Reject duplicate-by-`id` (the routing key everywhere downstream:
+                // `Outcome.path(forDatabaseId:)`, status classification). Full
+                // struct equality (id + filename + displayName) is not enough
+                // because a future code path could fork a descriptor with the
+                // same id but a typo'd filename; the first id-match wins and
+                // the second is silently shadowed.
+                precondition(
+                    Set(required.map(\.id)).count == required.count,
+                    "Distribution.SetupService.Request.required carries duplicate descriptor ids: \(required.map(\.id))"
+                )
                 self.baseDir = baseDir
                 self.currentDocsVersion = currentDocsVersion
                 self.docsReleaseBaseURL = docsReleaseBaseURL
                 self.keepExisting = keepExisting
+                self.required = required
             }
         }
 

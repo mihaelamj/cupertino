@@ -21,29 +21,24 @@ extension Distribution.SetupService {
             withIntermediateDirectories: true
         )
 
-        let searchDBURL = request.baseDir
-            .appendingPathComponent(Shared.Constants.FileName.searchDatabase)
-        let samplesDBURL = request.baseDir
-            .appendingPathComponent(Shared.Constants.FileName.samplesDatabase)
-        let packagesDBURL = request.baseDir
-            .appendingPathComponent(Shared.Constants.FileName.packagesIndexDatabase)
-
         let installedVersion = Distribution.InstalledVersion.read(in: request.baseDir)
-        // #248 first cut: classify is DB-count-agnostic. The required
-        // descriptor set is constructed locally here for now; a
-        // follow-up wires this through a composition-root registry
-        // so a 4th DB plugs in without touching this file.
-        let required: Set<Shared.Models.DatabaseDescriptor> = [
-            .search, .samples, .packages,
-        ]
-        let onDiskByFilename: [(URL, Shared.Models.DatabaseDescriptor)] = [
-            (searchDBURL, .search),
-            (samplesDBURL, .samples),
-            (packagesDBURL, .packages),
-        ]
+
+        // Database placement list, ordered by the printable sequence
+        // declared at the composition root via `request.required`. The
+        // CLI's success-summary printer iterates this list rather than
+        // addressing fixed fields, so a 4th DB drops in by appending
+        // its descriptor at the composition root.
+        let placements: [DatabasePlacement] = request.required.map { descriptor in
+            DatabasePlacement(
+                descriptor: descriptor,
+                path: request.baseDir.appendingPathComponent(descriptor.filename)
+            )
+        }
+
+        let required: Set<Shared.Models.DatabaseDescriptor> = Set(request.required)
         let present: Set<Shared.Models.DatabaseDescriptor> = Set(
-            onDiskByFilename.compactMap { url, descriptor in
-                FileManager.default.fileExists(atPath: url.path) ? descriptor : nil
+            placements.compactMap { placement in
+                FileManager.default.fileExists(atPath: placement.path.path) ? placement.descriptor : nil
             }
         )
         let status = Distribution.InstalledVersion.classify(
@@ -53,16 +48,6 @@ extension Distribution.SetupService {
             currentVersion: request.currentDocsVersion
         )
         events.observe(event: .statusResolved(status))
-
-        // Database placement list, ordered by the historical printable
-        // order: search → samples → packages. The CLI's success-summary
-        // printer iterates this list rather than addressing 3 fixed
-        // outcome fields, so a 4th DB drops in by extending this array.
-        let placements: [DatabasePlacement] = [
-            .init(descriptor: .search, path: searchDBURL),
-            .init(descriptor: .samples, path: samplesDBURL),
-            .init(descriptor: .packages, path: packagesDBURL),
-        ]
 
         // Honour --keep-existing only when every DB is already on disk.
         if request.keepExisting,
@@ -78,13 +63,13 @@ extension Distribution.SetupService {
         }
 
         // 0. Back up any pre-existing DBs before the extractor would
-        // overwrite them (#249). Each of the three DBs is backed up
-        // only when present on disk; the helper skips whichever
-        // doesn't exist (e.g. legacy installs where packages.db
-        // wasn't yet part of the bundle).
+        // overwrite them (#249). Each required DB is backed up only
+        // when present on disk; the helper skips whichever doesn't
+        // exist (e.g. legacy installs where packages.db wasn't yet
+        // part of the bundle).
         try backupExistingDBs(
             in: request.baseDir,
-            dbURLs: [searchDBURL, samplesDBURL, packagesDBURL],
+            dbURLs: placements.map(\.path),
             installedVersion: installedVersion,
             events: events
         )
@@ -107,14 +92,10 @@ extension Distribution.SetupService {
         )
 
         // Hard-fail if any expected DB didn't appear post-extract.
-        guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
-            throw Distribution.SetupError.missingFile(Shared.Constants.FileName.searchDatabase)
-        }
-        guard FileManager.default.fileExists(atPath: samplesDBURL.path) else {
-            throw Distribution.SetupError.missingFile(Shared.Constants.FileName.samplesDatabase)
-        }
-        guard FileManager.default.fileExists(atPath: packagesDBURL.path) else {
-            throw Distribution.SetupError.missingFile(Shared.Constants.FileName.packagesIndexDatabase)
+        // Iteration is driven by `placements` (composition-root list),
+        // so adding a 4th DB requires no edit here.
+        for placement in placements where !FileManager.default.fileExists(atPath: placement.path.path) {
+            throw Distribution.SetupError.missingFile(placement.descriptor.filename)
         }
 
         // Stamp version on success. Non-fatal; the file is an
@@ -130,9 +111,7 @@ extension Distribution.SetupService {
                 "\(request.baseDir.path)/.setup-version: \(error). " +
                 "Setup succeeded but `cupertino doctor` may not report the " +
                 "current version. Re-running `cupertino setup` will retry.\n"
-            if let data = message.data(using: .utf8) {
-                FileHandle.standardError.write(data)
-            }
+            FileHandle.standardError.write(Data(message.utf8))
         }
 
         let outcome = Outcome(
