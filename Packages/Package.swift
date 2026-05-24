@@ -455,7 +455,7 @@ let targets: [Target] = {
     // Search.Result, Search.MatchedSymbol, Search.PlatformAvailability, Search.DocumentFormat.
     let searchModelsTarget = Target.target(
         name: "SearchModels",
-        dependencies: ["SharedConstants"]
+        dependencies: ["SharedConstants", "ASTIndexer"]
     )
     let searchModelsTestsTarget = Target.testTarget(
         name: "SearchModelsTests",
