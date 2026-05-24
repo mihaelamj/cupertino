@@ -8,6 +8,7 @@
 
 import Foundation
 import SharedConstants
+
 /// Represents a sample code project from Apple
 extension Sample.Core {
     public struct Entry: Codable, Sendable {
@@ -32,12 +33,21 @@ extension Sample.Core {
     }
 }
 
-/// JSON structure for sample code catalog
-struct SampleCodeCatalogJSON: Codable {
-    let version: String
-    let lastCrawled: String
-    let count: Int
-    let entries: [Sample.Core.Entry]
+/// JSON structure for sample code catalog. Public so `Sample.Core.Downloader`
+/// (in the `CoreSampleCodeWebKit` sibling target post-#904) can write
+/// + transform it.
+public struct SampleCodeCatalogJSON: Codable, Sendable {
+    public let version: String
+    public let lastCrawled: String
+    public let count: Int
+    public let entries: [Sample.Core.Entry]
+
+    public init(version: String, lastCrawled: String, count: Int, entries: [Sample.Core.Entry]) {
+        self.version = version
+        self.lastCrawled = lastCrawled
+        self.count = count
+        self.entries = entries
+    }
 }
 
 /// Complete catalog of all Apple sample code projects.

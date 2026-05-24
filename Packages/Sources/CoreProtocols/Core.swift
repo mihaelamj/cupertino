@@ -22,4 +22,11 @@ public enum Core {
     /// protocols, their result-value companions, and the small utilities that
     /// ship alongside them.
     public enum Protocols {}
+
+    /// Sub-namespace anchor for the `CoreJSONParser` SPM target and its
+    /// `CoreJSONParserWebKit` sibling. The actual types live in those
+    /// producers; this anchor lives in CoreProtocols (foundation tier) so
+    /// the sibling target can extend `Core.JSONParser.*` without
+    /// importing the parent producer (#904 strict-DI seam).
+    public enum JSONParser {}
 }

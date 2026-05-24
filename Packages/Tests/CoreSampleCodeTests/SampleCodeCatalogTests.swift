@@ -1,4 +1,5 @@
 @testable import CoreSampleCode
+@testable import CoreSampleCodeWebKit
 import Foundation
 import SharedConstants
 import Testing
@@ -170,6 +171,7 @@ struct SampleCodeCatalogTests {
     }
 
     // MARK: - allEntries with per-instance directory (#215 / #535 integration)
+
     //
     // Pre-#535 these tests used `setTestOverrideDirectory` on a process-wide
     // singleton. Post-#535 the catalog is per-instance — each test just

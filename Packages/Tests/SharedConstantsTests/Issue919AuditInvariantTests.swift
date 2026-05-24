@@ -45,7 +45,9 @@ struct Issue919AuditInvariantTests {
         #expect(arrayDecl.trimmingCharacters(in: .whitespaces) == "GRANDFATHERED_TARGETS=()")
     }
 
-    @Test("check-target-foundation-only.sh STRICT_PRODUCERS contains exactly 47 entries (post-#903 Crawler WebKit extraction lifts to CrawlerWebKit sibling)")
+    @Test(
+        "check-target-foundation-only.sh STRICT_PRODUCERS contains exactly 47 entries (post-#904 WebKit-companion siblings excluded)"
+    )
     func strictProducersHasExpectedCount() throws {
         let scriptURL = Self.repoRoot().appendingPathComponent("scripts/check-target-foundation-only.sh")
         let body = try String(contentsOf: scriptURL, encoding: .utf8)
@@ -71,11 +73,17 @@ struct Issue919AuditInvariantTests {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
             .filter { $0.first.map { $0.isLetter || $0 == "_" } ?? false } // identifier-shaped
-        // Post-#903: 47 producers strict. Crawler WebKit extraction lifts
-        // the WebKit-backed concretes to the new CrawlerWebKit sibling.
+        // Post-#904: 47 producers strict. CoreJSONParserWebKit +
+        // CoreSampleCodeWebKit (added by #904) are WebKit-companion
+        // siblings that legitimately import their parent producer to
+        // extend its types — same exclusion shape Enrichment had pre-#906.
+        // They are tracked by check-package-purity.sh FORBIDDEN_MODULES
+        // instead (no consumer target may import them).
         // - #899 sub-PR G closed the 6-of-6 strategy split (net +5).
         // - #906 sub-PRs B-G: 6 enrichment-pass siblings (+6).
         // - #903: CrawlerWebKit sibling (+1).
+        // - #904: CoreJSONParserWebKit + CoreSampleCodeWebKit excluded
+        //   per WebKit-companion carve-out above.
         #expect(entries.count == 47, "expected 47 strict producers, found \(entries.count): \(entries)")
     }
 
@@ -94,6 +102,8 @@ struct Issue919AuditInvariantTests {
             "SampleIndexSQLite",
             "Enrichment",
             "CrawlerWebKit",
+            "CoreJSONParserWebKit",
+            "CoreSampleCodeWebKit",
         ]
         for module in mustContain {
             #expect(
