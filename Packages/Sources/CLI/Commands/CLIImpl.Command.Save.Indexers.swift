@@ -19,7 +19,7 @@ import SampleCodeStrategy
 import SampleIndex
 import SampleIndexSQLite
 import SamplesAppleConstraintsPass
-import Search
+import SearchAPI
 import SearchModels
 import SearchSQLite
 import SharedConstants

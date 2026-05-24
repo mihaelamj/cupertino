@@ -27,7 +27,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Cleanup"),
     .singleTargetLibrary("CleanupModels"),
     .singleTargetLibrary("CoreSampleCodeModels"),
-    .singleTargetLibrary("Search"),
+    .singleTargetLibrary("SearchAPI"),
     .singleTargetLibrary("SearchSchema"),
     .singleTargetLibrary("SearchSQLite"),
     .singleTargetLibrary("SearchStrategyHelpers"),
@@ -517,7 +517,7 @@ let targets: [Target] = {
     )
 
     let searchTarget = Target.target(
-        name: "Search",
+        name: "SearchAPI",
         // Search is the orchestration layer over the SearchModels protocol
         // seams. After #898 sub-PR E it no longer imports `SQLite3` and no
         // longer depends on the concrete SearchSQLite target: `Search.Index`,
@@ -541,7 +541,7 @@ let targets: [Target] = {
     let searchTestsTarget = Target.testTarget(
         name: "SearchTests",
         dependencies: [
-            "Search",
+            "SearchAPI",
             "SearchSQLite",
             "AppleDocsStrategy",
             "HIGStrategy",
@@ -772,7 +772,7 @@ let targets: [Target] = {
         name: "SearchToolProviderTests",
         dependencies: [
             "SearchToolProvider",
-            "Search",
+            "SearchAPI",
             "SearchSQLite",
             "SearchModels",
             "SampleIndex",
@@ -1012,7 +1012,7 @@ let targets: [Target] = {
             "Crawler",
             "CrawlerWebKit",
             "Cleanup",
-            "Search",
+            "SearchAPI",
             "SearchSQLite",
             "AppleDocsStrategy",
             "HIGStrategy",
@@ -1056,7 +1056,7 @@ let targets: [Target] = {
         dependencies: [
             "SharedConstants",
             "CoreProtocols", "CorePackageIndexing", "Core",
-            "Search",
+            "SearchAPI",
             "Resources",
             "Logging",
         ],
@@ -1126,7 +1126,7 @@ let targets: [Target] = {
             "CrawlerWebKit",
             "MCPCore",
             "MCPSupport",
-            "Search",
+            "SearchAPI",
             "SearchModels",
             "SearchToolProvider",
             "SampleIndex",
@@ -1142,7 +1142,7 @@ let targets: [Target] = {
 
     let doctorTestsTarget = Target.testTarget(
         name: "DoctorTests",
-        dependencies: ["CLI", "Diagnostics", "MCPCore", "MCPSupport", "Search", "SearchModels", "TestSupport"],
+        dependencies: ["CLI", "Diagnostics", "MCPCore", "MCPSupport", "SearchAPI", "SearchModels", "TestSupport"],
         path: "Tests/CLICommandTests/DoctorTests"
     )
 
@@ -1165,7 +1165,7 @@ let targets: [Target] = {
             "CrawlerModels",
             "CrawlerWebKit",
             "Indexer",
-            "Search",
+            "SearchAPI",
             "SearchModels",
             "TestSupport",
         ],

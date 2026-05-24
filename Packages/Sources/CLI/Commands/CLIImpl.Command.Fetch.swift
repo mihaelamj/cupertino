@@ -16,7 +16,7 @@ import Foundation
 import Ingest
 import Logging
 import LoggingModels
-import Search
+import SearchAPI
 import SearchModels
 import SharedConstants
 

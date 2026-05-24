@@ -8,9 +8,9 @@ import LoggingModels
 import MCPCore
 import MCPSupport
 import SampleIndex
-import SampleIndexSQLite
 import SampleIndexModels
-import Search
+import SampleIndexSQLite
+import SearchAPI
 import SearchModels
 import SearchToolProvider
 import Services

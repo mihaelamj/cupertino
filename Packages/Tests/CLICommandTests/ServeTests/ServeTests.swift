@@ -9,7 +9,7 @@ import Foundation
 import LoggingModels
 @testable import MCPCore
 @testable import MCPSupport
-@testable import Search
+@testable import SearchAPI
 import SearchModels
 @testable import SearchToolProvider
 import SharedConstants

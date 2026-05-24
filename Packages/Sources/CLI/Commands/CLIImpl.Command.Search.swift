@@ -3,7 +3,7 @@ import Foundation
 import Logging
 import LoggingModels
 import SampleIndex
-import Search
+import SearchAPI
 import SearchModels
 import Services
 import ServicesModels

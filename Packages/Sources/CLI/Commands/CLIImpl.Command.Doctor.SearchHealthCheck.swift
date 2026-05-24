@@ -2,7 +2,7 @@ import Diagnostics
 import DistributionModels
 import Foundation
 import LoggingModels
-import Search
+import SearchAPI
 import SharedConstants
 
 extension CLIImpl.Command.Doctor {

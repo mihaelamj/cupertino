@@ -3,7 +3,7 @@ import CoreProtocols
 import Foundation
 import Logging
 import LoggingModels
-@testable import Search
+@testable import SearchAPI
 import SearchModels
 @testable import SearchSQLite
 import SharedConstants

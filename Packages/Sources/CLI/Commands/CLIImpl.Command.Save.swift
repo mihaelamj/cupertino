@@ -7,7 +7,7 @@ import LoggingModels
 import RemoteSync
 import RemoteSyncModels
 import SampleIndex
-import Search
+import SearchAPI
 import SearchModels
 import SharedConstants
 

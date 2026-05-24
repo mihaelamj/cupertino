@@ -1,4 +1,4 @@
-import Search
+import SearchAPI
 import SearchModels
 
 // MARK: - Search Module Disambiguator

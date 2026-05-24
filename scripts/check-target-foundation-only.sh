@@ -258,7 +258,7 @@ STRICT_PRODUCERS=(
     RemoteSync
     SampleIndex
     SampleIndexSQLite
-    Search
+    SearchAPI
     SearchSQLite
     AppleDocsStrategy
     HIGStrategy

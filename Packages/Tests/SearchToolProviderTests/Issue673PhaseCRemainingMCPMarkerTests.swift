@@ -1,7 +1,7 @@
 import Foundation
 import LoggingModels
 import MCPCore
-@testable import Search
+@testable import SearchAPI
 import SearchModels
 @testable import SearchSQLite
 @testable import SearchToolProvider

@@ -11,7 +11,7 @@ import LoggingModels
 import MCPCore
 import MCPSupport
 import SampleIndex
-import Search
+import SearchAPI
 import SearchModels
 import SearchToolProvider
 import SharedConstants

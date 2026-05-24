@@ -2,7 +2,7 @@
 import Foundation
 @testable import HIGStrategy
 import LoggingModels
-@testable import Search
+@testable import SearchAPI
 import SearchModels
 @testable import SearchSQLite
 import SharedConstants

@@ -97,7 +97,7 @@ struct Issue919AuditInvariantTests {
         // they're concrete data layers; only composition roots may
         // import them.
         let mustContain: [String] = [
-            "Search",
+            "SearchAPI",
             "SearchSQLite",
             "SampleIndex",
             "SampleIndexSQLite",

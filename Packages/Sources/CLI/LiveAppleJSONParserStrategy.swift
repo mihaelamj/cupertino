@@ -12,7 +12,7 @@ import MCPSupport
 import SampleIndex
 import SampleIndexModels
 import SampleIndexSQLite
-import Search
+import SearchAPI
 import SearchModels
 import SearchSQLite
 import Services

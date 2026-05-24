@@ -9,7 +9,7 @@ import LoggingModels
 import MCPCore
 @testable import SampleIndex
 import SampleIndexSQLite
-@testable import Search
+@testable import SearchAPI
 import SearchModels
 @testable import SearchSQLite
 @testable import SearchToolProvider

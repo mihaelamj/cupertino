@@ -172,9 +172,9 @@ jobs:
       - name: Show Swift Version
         run: swift --version
 
-      - name: "Portability: Search"
+      - name: "Portability: SearchAPI"
         timeout-minutes: 5
-        run: ./scripts/check-target-portability.sh Search
+        run: ./scripts/check-target-portability.sh SearchAPI
 
       - name: "Portability: SearchSQLite"
         timeout-minutes: 5

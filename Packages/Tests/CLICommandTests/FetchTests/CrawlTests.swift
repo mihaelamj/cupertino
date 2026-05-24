@@ -7,7 +7,7 @@ import CrawlerModels
 import CrawlerWebKit
 import Foundation
 import LoggingModels
-@testable import Search
+@testable import SearchAPI
 import SearchModels
 import SharedConstants
 import Testing
