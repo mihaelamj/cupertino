@@ -8,8 +8,6 @@ import SearchModels
 import SQLite3
 import Testing
 
-// swiftlint:disable identifier_name
-
 // MARK: - PackageIndexTests
 
 @Suite("PackageIndex — symbol tokenization + extractTitle")
@@ -164,8 +162,8 @@ struct PackageIndexTests {
         while sqlite3_step(statement) == SQLITE_ROW {
             let colCount = sqlite3_column_count(statement)
             var row: [String] = []
-            for i in 0..<colCount {
-                if let cstr = sqlite3_column_text(statement, i) {
+            for index in 0..<colCount {
+                if let cstr = sqlite3_column_text(statement, index) {
                     row.append(String(cString: cstr))
                 } else {
                     row.append("")

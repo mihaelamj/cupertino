@@ -6,8 +6,6 @@ import SearchModels
 import SQLite3
 import Testing
 
-// swiftlint:disable identifier_name
-
 /// Regression suite for [#625](https://github.com/mihaelamj/cupertino/issues/625).
 ///
 /// `cupertino search <type>` **without** `--source` runs the
@@ -88,14 +86,14 @@ struct Issue625UnifiedSearchDedupTests {
         defer { try? FileManager.default.removeItem(at: dbURL) }
 
         let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
-        for i in 1...5 {
+        for iteration in 1...5 {
             try await index.indexDocument(Search.IndexDocumentParams(
-                uri: "apple-docs://demo/x\(i)",
+                uri: "apple-docs://demo/x\(iteration)",
                 source: "apple-docs",
                 framework: "demo",
-                title: "X\(i)",
-                content: "Demo string content number \(i).",
-                filePath: "/tmp/x\(i).md",
+                title: "X\(iteration)",
+                content: "Demo string content number \(iteration).",
+                filePath: "/tmp/x\(iteration).md",
                 contentHash: UUID().uuidString,
                 lastCrawled: Date()
             ))

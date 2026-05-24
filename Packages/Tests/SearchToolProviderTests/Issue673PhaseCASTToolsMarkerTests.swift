@@ -8,8 +8,6 @@ import SearchModels
 import SharedConstants
 import Testing
 
-// swiftlint:disable identifier_name
-
 /// Phase C iter-6 of #673. Extends the semantic-marker pattern to the
 /// **3 AST-side MCP tools** (the same `signalRankOrderClause` surface
 /// main hardened in #670 exact-name tier work):
@@ -88,14 +86,14 @@ struct Issue673PhaseCASTToolsMarkerTests {
             "query": MCP.Core.Protocols.AnyCodable("DefinitelyNoMatch"),
         ]
         let result = try await provider.callTool(name: "search_symbols", arguments: args)
-        guard case let .text(t) = result.content.first else { Issue.record("expected text"); return }
+        guard case let .text(textNode) = result.content.first else { Issue.record("expected text"); return }
         #expect(
-            t.text.contains("Symbol Search Results"),
-            "title marker missing — body: \(t.text.prefix(200))"
+            textNode.text.contains("Symbol Search Results"),
+            "title marker missing — body: \(textNode.text.prefix(200))"
         )
         #expect(
-            t.text.contains("_No symbols found matching your criteria._"),
-            "empty-results marker missing — body: \(t.text.prefix(200))"
+            textNode.text.contains("_No symbols found matching your criteria._"),
+            "empty-results marker missing — body: \(textNode.text.prefix(200))"
         )
     }
 
@@ -114,14 +112,14 @@ struct Issue673PhaseCASTToolsMarkerTests {
             "query": MCP.Core.Protocols.AnyCodable("MySpecial"),
         ]
         let result = try await provider.callTool(name: "search_symbols", arguments: args)
-        guard case let .text(t) = result.content.first else { Issue.record("expected text"); return }
-        #expect(t.text.contains("Symbol Search Results"))
+        guard case let .text(textNode) = result.content.first else { Issue.record("expected text"); return }
+        #expect(textNode.text.contains("Symbol Search Results"))
         #expect(
-            t.text.contains("MySpecialClass"),
-            "success response must echo seeded symbol — body: \(t.text.prefix(300))"
+            textNode.text.contains("MySpecialClass"),
+            "success response must echo seeded symbol — body: \(textNode.text.prefix(300))"
         )
         #expect(
-            !t.text.contains("_No symbols found matching your criteria._"),
+            !textNode.text.contains("_No symbols found matching your criteria._"),
             "success response must NOT contain the empty-results marker"
         )
     }
@@ -148,13 +146,13 @@ struct Issue673PhaseCASTToolsMarkerTests {
             "wrapper": MCP.Core.Protocols.AnyCodable("NonExistentWrapper"),
         ]
         let result = try await provider.callTool(name: "search_property_wrappers", arguments: args)
-        guard case let .text(t) = result.content.first else { Issue.record("expected text"); return }
+        guard case let .text(textNode) = result.content.first else { Issue.record("expected text"); return }
         // Title carries the normalised @-prefixed form (NonExistentWrapper → @NonExistentWrapper).
         #expect(
-            t.text.contains("Property Wrapper: @NonExistentWrapper"),
-            "normalised title missing — body: \(t.text.prefix(200))"
+            textNode.text.contains("Property Wrapper: @NonExistentWrapper"),
+            "normalised title missing — body: \(textNode.text.prefix(200))"
         )
-        #expect(t.text.contains("_No symbols found matching your criteria._"))
+        #expect(textNode.text.contains("_No symbols found matching your criteria._"))
     }
 
     @Test("search_property_wrappers: input with @ prefix is preserved (not double-@d)")
@@ -165,14 +163,14 @@ struct Issue673PhaseCASTToolsMarkerTests {
             "wrapper": MCP.Core.Protocols.AnyCodable("@MainActor"),
         ]
         let result = try await provider.callTool(name: "search_property_wrappers", arguments: args)
-        guard case let .text(t) = result.content.first else { Issue.record("expected text"); return }
+        guard case let .text(textNode) = result.content.first else { Issue.record("expected text"); return }
         // Header should be exactly "@MainActor", not "@@MainActor".
         #expect(
-            t.text.contains("Property Wrapper: @MainActor"),
-            "@-prefixed input should not be double-prefixed — body: \(t.text.prefix(200))"
+            textNode.text.contains("Property Wrapper: @MainActor"),
+            "@-prefixed input should not be double-prefixed — body: \(textNode.text.prefix(200))"
         )
         #expect(
-            !t.text.contains("@@"),
+            !textNode.text.contains("@@"),
             "must NOT double-prefix the @ symbol"
         )
     }
@@ -199,12 +197,12 @@ struct Issue673PhaseCASTToolsMarkerTests {
             "protocol": MCP.Core.Protocols.AnyCodable("Sendable"),
         ]
         let result = try await provider.callTool(name: "search_conformances", arguments: args)
-        guard case let .text(t) = result.content.first else { Issue.record("expected text"); return }
+        guard case let .text(textNode) = result.content.first else { Issue.record("expected text"); return }
         #expect(
-            t.text.contains("Protocol Conformance: Sendable"),
-            "header missing — body: \(t.text.prefix(200))"
+            textNode.text.contains("Protocol Conformance: Sendable"),
+            "header missing — body: \(textNode.text.prefix(200))"
         )
-        #expect(t.text.contains("_No symbols found matching your criteria._"))
+        #expect(textNode.text.contains("_No symbols found matching your criteria._"))
     }
 
     @Test("search_conformances success: response echoes seeded conformer name")
@@ -224,17 +222,17 @@ struct Issue673PhaseCASTToolsMarkerTests {
             "protocol": MCP.Core.Protocols.AnyCodable("Sendable"),
         ]
         let result = try await provider.callTool(name: "search_conformances", arguments: args)
-        guard case let .text(t) = result.content.first else { Issue.record("expected text"); return }
-        #expect(t.text.contains("Protocol Conformance: Sendable"))
+        guard case let .text(textNode) = result.content.first else { Issue.record("expected text"); return }
+        #expect(textNode.text.contains("Protocol Conformance: Sendable"))
         // Either the type appears (full success) OR the empty marker (if
         // AST extraction didn't capture the conformance — possible with
         // very minimal declarations). Locks the contract either way.
-        if t.text.contains("_No symbols found matching your criteria._") {
+        if textNode.text.contains("_No symbols found matching your criteria._") {
             Issue.record("conformance extraction may not handle inline 'struct X: Protocol {}' shape; consider seeding with explicit conformsTo")
         } else {
             #expect(
-                t.text.contains("MySendableType"),
-                "non-empty response must echo seeded conformer — body: \(t.text.prefix(300))"
+                textNode.text.contains("MySendableType"),
+                "non-empty response must echo seeded conformer — body: \(textNode.text.prefix(300))"
             )
         }
     }
@@ -262,25 +260,25 @@ struct Issue673PhaseCASTToolsMarkerTests {
             arguments: ["protocol": MCP.Core.Protocols.AnyCodable("Foo")]
         )
 
-        guard case let .text(s) = symbols.content.first,
-              case let .text(w) = wrappers.content.first,
-              case let .text(c) = conformances.content.first
+        guard case let .text(symbolsText) = symbols.content.first,
+              case let .text(wrappersText) = wrappers.content.first,
+              case let .text(conformancesText) = conformances.content.first
         else {
             Issue.record("expected text contents on all 3")
             return
         }
         // Each tool's title is unique — a regression that swaps the
         // handlers would surface as wrong title for the response.
-        #expect(s.text.contains("Symbol Search Results"))
-        #expect(!s.text.contains("Property Wrapper:"))
-        #expect(!s.text.contains("Protocol Conformance:"))
+        #expect(symbolsText.text.contains("Symbol Search Results"))
+        #expect(!symbolsText.text.contains("Property Wrapper:"))
+        #expect(!symbolsText.text.contains("Protocol Conformance:"))
 
-        #expect(w.text.contains("Property Wrapper:"))
-        #expect(!w.text.contains("Symbol Search Results"))
-        #expect(!w.text.contains("Protocol Conformance:"))
+        #expect(wrappersText.text.contains("Property Wrapper:"))
+        #expect(!wrappersText.text.contains("Symbol Search Results"))
+        #expect(!wrappersText.text.contains("Protocol Conformance:"))
 
-        #expect(c.text.contains("Protocol Conformance:"))
-        #expect(!c.text.contains("Symbol Search Results"))
-        #expect(!c.text.contains("Property Wrapper:"))
+        #expect(conformancesText.text.contains("Protocol Conformance:"))
+        #expect(!conformancesText.text.contains("Symbol Search Results"))
+        #expect(!conformancesText.text.contains("Property Wrapper:"))
     }
 }

@@ -9,8 +9,6 @@ import SearchModels
 import SharedConstants
 import Testing
 
-// swiftlint:disable identifier_name
-
 // MARK: - #226 — Cross-source partial-filter notice MCP E2E
 
 /// Pre-#226 the MCP `search` tool accepted `min_ios` / `min_macos` /
@@ -152,11 +150,11 @@ struct Issue226CrossSourceNoticeMCPMarkerTests {
             .text(MCP.Core.Protocols.TextContent(text: "## Results\n\nbody")),
         ])
         let result = CompositeToolProvider.prependNoticeIfNeeded(notice: nil, to: raw)
-        guard case let .text(t) = result.content.first else {
+        guard case let .text(textNode) = result.content.first else {
             Issue.record("expected text content")
             return
         }
-        #expect(t.text == "## Results\n\nbody")
+        #expect(textNode.text == "## Results\n\nbody")
     }
 
     @Test("prependNoticeIfNeeded prepends notice to first text block")
@@ -166,12 +164,12 @@ struct Issue226CrossSourceNoticeMCPMarkerTests {
         ])
         let notice = "> ℹ️ **platform_filter_partial** — test\n\n"
         let result = CompositeToolProvider.prependNoticeIfNeeded(notice: notice, to: raw)
-        guard case let .text(t) = result.content.first else {
+        guard case let .text(textNode) = result.content.first else {
             Issue.record("expected text content")
             return
         }
-        #expect(t.text.hasPrefix(notice))
-        #expect(t.text.contains("## Results"))
+        #expect(textNode.text.hasPrefix(notice))
+        #expect(textNode.text.contains("## Results"))
     }
 
     @Test("prependNoticeIfNeeded preserves isError flag")

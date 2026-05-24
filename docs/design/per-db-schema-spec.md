@@ -197,7 +197,7 @@ takes ≈12 hours on the Studio against the ~412 K-page Apple-docs
 corpus. Output file is ≈2.7 GB.
 
 **Schema version:** `PRAGMA user_version = 18`. Declared in
-`Packages/Sources/Search/Search.Index.swift:88` as
+`Packages/Sources/SearchSQLite/Search.Index.swift:88` as
 `Search.Index.schemaVersion: Int32 = 18`.
 
 **Sources stored.** A single search.db can hold rows from
@@ -560,8 +560,8 @@ Calling out gaps that surprise readers:
 
 ## 8. References
 
-- Source code: `Packages/Sources/Search/Search.Index.Schema.swift`
-  (CREATE TABLE statements), `Packages/Sources/Search/Search.Index.Migrations.swift`
+- Source code: `Packages/Sources/SearchSQLite/Search.Index.Schema.swift`
+  (CREATE TABLE statements), `Packages/Sources/SearchSQLite/Search.Index.Migrations.swift`
   (in-place ALTER paths).
 - Companion docs: `docs/design/per-db-enrichment.md` (the *why*),
   `docs/design/how-cupertino-answers-a-query.md` (the *read
@@ -790,7 +790,7 @@ catastrophic amount of bytes (one row per Swift symbol across
 the corpus).
 
 **Schema version:** `PRAGMA user_version = 4`. Declared in
-`Packages/Sources/Search/PackageIndex.swift:36` as
+`Packages/Sources/SearchSQLite/PackageIndex.swift:36` as
 `Search.PackageIndex.schemaVersion: Int32 = 4`.
 
 **Migration policy.** packages.db uses **in-place ALTER**
@@ -997,10 +997,10 @@ matrix:
 ## 12. References
 
 - Source code:
-  - `Packages/Sources/Search/Search.Index.Schema.swift`
-  - `Packages/Sources/Search/Search.Index.Migrations.swift`
+  - `Packages/Sources/SearchSQLite/Search.Index.Schema.swift`
+  - `Packages/Sources/SearchSQLite/Search.Index.Migrations.swift`
   - `Packages/Sources/SampleIndex/Sample.Index.Database.swift`
-  - `Packages/Sources/Search/PackageIndex.swift`
+  - `Packages/Sources/SearchSQLite/PackageIndex.swift`
 - Companion docs:
   - `docs/design/per-db-enrichment.md` (the *why*)
   - `docs/design/how-cupertino-answers-a-query.md` (the *read path*)

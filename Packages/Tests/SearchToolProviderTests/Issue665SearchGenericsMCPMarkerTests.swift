@@ -110,18 +110,17 @@ struct Issue665SearchGenericsMCPMarkerTests {
             name: Shared.Constants.Search.toolSearchGenerics,
             arguments: args
         )
-        // swiftlint:disable:next identifier_name
-        guard case let .text(t) = result.content.first else {
+        guard case let .text(textNode) = result.content.first else {
             Issue.record("expected text content")
             return
         }
         #expect(
-            t.text.contains("Generic Constraint: Sendable"),
-            "title marker missing — body: \(t.text.prefix(200))"
+            textNode.text.contains("Generic Constraint: Sendable"),
+            "title marker missing — body: \(textNode.text.prefix(200))"
         )
         #expect(
-            t.text.contains("_No symbols found matching your criteria._"),
-            "shared empty-results marker missing — body: \(t.text.prefix(300))"
+            textNode.text.contains("_No symbols found matching your criteria._"),
+            "shared empty-results marker missing — body: \(textNode.text.prefix(300))"
         )
     }
 
@@ -148,26 +147,25 @@ struct Issue665SearchGenericsMCPMarkerTests {
             name: Shared.Constants.Search.toolSearchGenerics,
             arguments: args
         )
-        // swiftlint:disable:next identifier_name
-        guard case let .text(t) = result.content.first else {
+        guard case let .text(textNode) = result.content.first else {
             Issue.record("expected text content")
             return
         }
-        #expect(t.text.contains("Generic Constraint: Sendable"))
+        #expect(textNode.text.contains("Generic Constraint: Sendable"))
         #expect(
-            t.text.contains("SendableBox"),
-            "success response must echo seeded symbol — body: \(t.text.prefix(300))"
+            textNode.text.contains("SendableBox"),
+            "success response must echo seeded symbol — body: \(textNode.text.prefix(300))"
         )
         #expect(
-            !t.text.contains("_No symbols found matching your criteria._"),
+            !textNode.text.contains("_No symbols found matching your criteria._"),
             "success response must NOT contain the empty-results marker"
         )
         // The renderer's "Generic params:" surface comes from the
         // result.genericParams field — locks #665's contract that the
         // matched clause echoes back through MCP.
         #expect(
-            t.text.contains("Generic params:") && t.text.contains("Sendable"),
-            "response must echo the matched generic clause — body: \(t.text.prefix(400))"
+            textNode.text.contains("Generic params:") && textNode.text.contains("Sendable"),
+            "response must echo the matched generic clause — body: \(textNode.text.prefix(400))"
         )
     }
 
@@ -202,17 +200,16 @@ struct Issue665SearchGenericsMCPMarkerTests {
             name: Shared.Constants.Search.toolSearchGenerics,
             arguments: args
         )
-        // swiftlint:disable:next identifier_name
-        guard case let .text(t) = result.content.first else {
+        guard case let .text(textNode) = result.content.first else {
             Issue.record("expected text content")
             return
         }
-        #expect(t.text.contains("SwiftUIHosting"), "swiftui row must appear")
-        #expect(!t.text.contains("UIHostingClass"), "uikit row must be filtered out — got body: \(t.text.prefix(400))")
+        #expect(textNode.text.contains("SwiftUIHosting"), "swiftui row must appear")
+        #expect(!textNode.text.contains("UIHostingClass"), "uikit row must be filtered out — got body: \(textNode.text.prefix(400))")
         // Active-filter line surfaces the framework filter.
         #expect(
-            t.text.contains("framework=swiftui"),
-            "active-filters line must surface the framework filter — body: \(t.text.prefix(300))"
+            textNode.text.contains("framework=swiftui"),
+            "active-filters line must surface the framework filter — body: \(textNode.text.prefix(300))"
         )
     }
 
@@ -246,13 +243,12 @@ struct Issue665SearchGenericsMCPMarkerTests {
             name: Shared.Constants.Search.toolSearchGenerics,
             arguments: args
         )
-        // swiftlint:disable:next identifier_name
-        guard case let .text(t) = result.content.first else {
+        guard case let .text(textNode) = result.content.first else {
             Issue.record("expected text content")
             return
         }
-        #expect(t.text.contains("Generic Constraint: \(constraint)"))
-        #expect(t.text.contains(symbolName), "constraint=\(constraint) must echo \(symbolName) — body: \(t.text.prefix(300))")
+        #expect(textNode.text.contains("Generic Constraint: \(constraint)"))
+        #expect(textNode.text.contains(symbolName), "constraint=\(constraint) must echo \(symbolName) — body: \(textNode.text.prefix(300))")
     }
 
     // MARK: - Cross-tool title-distinctness (regression guard against handler swap)
@@ -278,30 +274,26 @@ struct Issue665SearchGenericsMCPMarkerTests {
             name: Shared.Constants.Search.toolSearchConcurrency,
             arguments: [Shared.Constants.Search.schemaParamPattern: MCP.Core.Protocols.AnyCodable("foo")]
         )
-
-        // swiftlint:disable:next identifier_name
-        guard case let .text(g) = generics.content.first,
-              // swiftlint:disable:next identifier_name
-              case let .text(c) = conformances.content.first,
-              // swiftlint:disable:next identifier_name
-              case let .text(w) = wrappers.content.first,
-              case let .text(cc) = concurrency.content.first
+        guard case let .text(genericsText) = generics.content.first,
+              case let .text(conformancesText) = conformances.content.first,
+              case let .text(wrappersText) = wrappers.content.first,
+              case let .text(concurrencyText) = concurrency.content.first
         else {
             Issue.record("expected text on all 4 tools")
             return
         }
 
         // Each title is unique to its tool.
-        #expect(g.text.contains("Generic Constraint:"))
-        #expect(!g.text.contains("Protocol Conformance:"))
-        #expect(!g.text.contains("Property Wrapper:"))
-        #expect(!g.text.contains("Concurrency Pattern:"))
+        #expect(genericsText.text.contains("Generic Constraint:"))
+        #expect(!genericsText.text.contains("Protocol Conformance:"))
+        #expect(!genericsText.text.contains("Property Wrapper:"))
+        #expect(!genericsText.text.contains("Concurrency Pattern:"))
 
         // The other three must NOT carry the new generic-constraint
         // marker (regression guard against a handler-swap bug).
-        #expect(!c.text.contains("Generic Constraint:"))
-        #expect(!w.text.contains("Generic Constraint:"))
-        #expect(!cc.text.contains("Generic Constraint:"))
+        #expect(!conformancesText.text.contains("Generic Constraint:"))
+        #expect(!wrappersText.text.contains("Generic Constraint:"))
+        #expect(!concurrencyText.text.contains("Generic Constraint:"))
     }
 
     // MARK: - tools/list surfaces the new tool

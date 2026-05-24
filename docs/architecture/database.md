@@ -22,7 +22,7 @@ The remainder of this document describes how these three constraints were addres
 
 The database is **off-the-shelf SQLite 3.x as bundled with the Apple operating system** (`/usr/lib/libsqlite3.dylib`, exposed to Swift via `import SQLite3`). No custom SQLite build, no engine patches, and no third-party loadable extensions are used. The only SQLite extension activated is FTS5, which is itself bundled with the Apple SQLite distribution and requires no separate enablement.
 
-Database files are opened via `sqlite3_open` and accessed through the C API directly from Swift code in `Packages/Sources/Search/Search.Index.swift`. Concurrent access is mediated by a `Swift.Actor` (`Search.Index`) wrapping the connection handle; multiple readers concurrent with a single writer are supported via SQLite's write-ahead-log journaling mode (see Section 5.2).
+Database files are opened via `sqlite3_open` and accessed through the C API directly from Swift code in `Packages/Sources/SearchSQLite/Search.Index.swift`. Concurrent access is mediated by a `Swift.Actor` (`Search.Index`) wrapping the connection handle; multiple readers concurrent with a single writer are supported via SQLite's write-ahead-log journaling mode (see Section 5.2).
 
 ### 2.2 Three-database split
 
@@ -78,7 +78,7 @@ The diagram above zooms from the three-database bundle down into `search.db`'s t
 
 ## 3. Schema
 
-The live schema definition is in `Packages/Sources/Search/Search.Index.Schema.swift`. The current value of `PRAGMA user_version` is **18**. We describe each table by the role it plays in the indexing or query pipeline, deferring the detailed column lists to the schema file itself.
+The live schema definition is in `Packages/Sources/SearchSQLite/Search.Index.Schema.swift`. The current value of `PRAGMA user_version` is **18**. We describe each table by the role it plays in the indexing or query pipeline, deferring the detailed column lists to the schema file itself.
 
 ### 3.1 Relational (B-tree) tables
 
@@ -187,7 +187,7 @@ The entire save operation writes to `search.db.in-flight` rather than `search.db
 
 ## 5. Query layer
 
-The query path is implemented in `Packages/Sources/Search/Search.Index.Search.swift`. Three components warrant explicit treatment.
+The query path is implemented in `Packages/Sources/SearchSQLite/Search.Index.Search.swift`. Three components warrant explicit treatment.
 
 ```mermaid
 flowchart TD
@@ -246,7 +246,7 @@ Symbol-attribute filters (e.g., "find all `@MainActor` properties") resolve to p
 
 ### 5.3 Cross-source rank fusion
 
-When `--source` is not specified, the search path is `Search.SmartQuery` (`Packages/Sources/Search/SmartQuery.swift`), which composes one ranked candidate list from each enabled source and fuses them using **reciprocal rank fusion** (Cormack, Clarke, and Büttcher, 2009):
+When `--source` is not specified, the search path is `Search.SmartQuery` (`Packages/Sources/SearchAPI/SmartQuery.swift`), which composes one ranked candidate list from each enabled source and fuses them using **reciprocal rank fusion** (Cormack, Clarke, and Büttcher, 2009):
 
 ```
 fused_score(d) = Σ_{s ∈ sources(d)} sourceWeight(s) / (k + rank_s(d))
@@ -288,7 +288,7 @@ An experimental branch (#800) introduces three additional PRAGMAs (`cache_size =
 
 ## 7. Schema evolution
 
-`PRAGMA user_version` is the load-bearing schema-version flag. Migrations are imperatively defined in `Packages/Sources/Search/Search.Index.Migrations.swift` and executed at database open time. A binary opening a database with `user_version > schemaVersion` refuses to read it ("rebuild required"). A binary opening one with `user_version < schemaVersion` runs the migration chain.
+`PRAGMA user_version` is the load-bearing schema-version flag. Migrations are imperatively defined in `Packages/Sources/SearchSQLite/Search.Index.Migrations.swift` and executed at database open time. A binary opening a database with `user_version > schemaVersion` refuses to read it ("rebuild required"). A binary opening one with `user_version < schemaVersion` runs the migration chain.
 
 Selected milestones:
 
@@ -407,20 +407,20 @@ The architecture would be incomplete without a way to claim "the new build is be
 
 | Concern | Path |
 |---|---|
-| Schema definition | `Packages/Sources/Search/Search.Index.Schema.swift` |
-| Migrations | `Packages/Sources/Search/Search.Index.Migrations.swift` |
-| Connection open, PRAGMAs | `Packages/Sources/Search/Search.Index.swift` |
-| Query implementation, BM25F weights | `Packages/Sources/Search/Search.Index.Search.swift` |
-| Filter-based search | `Packages/Sources/Search/Search.Index.SearchByAttribute.swift` |
-| CamelCase splitter | `Packages/Sources/Search/Search.Index.CamelCaseSplitter.swift` |
-| Cross-source RRF fan-out | `Packages/Sources/Search/SmartQuery.swift` |
-| Candidate-fetcher protocol | `Packages/Sources/Search/CandidateFetcher.swift` |
-| Authoritative constraint pipeline (iter-3) | `Packages/Sources/Search/Search.Index.AppleStaticConstraints.swift` |
-| Inheritance walk (iter-2) | `Packages/Sources/Search/Search.Index.HierarchyConstraints.swift` |
+| Schema definition | `Packages/Sources/SearchSQLite/Search.Index.Schema.swift` |
+| Migrations | `Packages/Sources/SearchSQLite/Search.Index.Migrations.swift` |
+| Connection open, PRAGMAs | `Packages/Sources/SearchSQLite/Search.Index.swift` |
+| Query implementation, BM25F weights | `Packages/Sources/SearchSQLite/Search.Index.Search.swift` |
+| Filter-based search | `Packages/Sources/SearchSQLite/Search.Index.SearchByAttribute.swift` |
+| CamelCase splitter | `Packages/Sources/SearchSQLite/Search.Index.CamelCaseSplitter.swift` |
+| Cross-source RRF fan-out | `Packages/Sources/SearchAPI/SmartQuery.swift` |
+| Candidate-fetcher protocol | `Packages/Sources/SearchSQLite/CandidateFetcher.swift` |
+| Authoritative constraint pipeline (iter-3) | `Packages/Sources/SearchSQLite/Search.Index.AppleStaticConstraints.swift` |
+| Inheritance walk (iter-2) | `Packages/Sources/SearchSQLite/Search.Index.HierarchyConstraints.swift` |
 | AST extraction (iter-1 substrate) | `Packages/Sources/ASTIndexer/` |
 | Symbol-graph constraint extraction | `Packages/Sources/AppleConstraintsKit/` |
-| Indexer orchestration | `Packages/Sources/Indexer/` and `Packages/Sources/Search/Search.IndexBuilder.swift` |
-| Source-specific strategies | `Packages/Sources/Search/Search.Strategies.*` |
+| Indexer orchestration | `Packages/Sources/Indexer/` and `Packages/Sources/SearchAPI/Search.IndexBuilder.swift` |
+| Source-specific strategies | `Packages/Sources/SearchAPI/Search.Strategies.*` |
 | Door dedup and garbage filter | per-source strategy classes |
 | Three-database save command | `Packages/Sources/CLI/Commands/CLIImpl.Command.Save.swift` |
 | Phase 1 search-quality harness (single-arm + paired) | `scripts/eval/search-quality-phase1.py` |

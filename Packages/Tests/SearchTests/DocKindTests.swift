@@ -5,8 +5,6 @@ import SearchModels
 import SharedConstants
 import Testing
 
-// swiftlint:disable identifier_name
-
 // MARK: - DocKind taxonomy (#192 section C1)
 
 @Suite("Search.Classify.kind")
@@ -54,10 +52,10 @@ struct DocKindClassifyTests {
             "function", "property", "method", "operator",
             "typealias", "macro", "framework",
         ]
-        for k in declKinds {
+        for declKind in declKinds {
             #expect(
-                Search.Classify.kind(source: "apple-docs", structuredKind: k) == .symbolPage,
-                "Expected \(k) → symbolPage"
+                Search.Classify.kind(source: "apple-docs", structuredKind: declKind) == .symbolPage,
+                "Expected \(declKind) → symbolPage"
             )
         }
     }

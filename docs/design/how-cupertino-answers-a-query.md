@@ -477,9 +477,9 @@ Path:
 - `Packages/Sources/CLI/Commands/CLIImpl.Command.Search.SourceRunners.swift` —
   per-source runner implementations (`runDocsSearch`,
   `runSampleSearch`, `runHIGSearch`, `runPackageSearch`).
-- `Packages/Sources/Search/CandidateFetcher.swift` — fetcher
+- `Packages/Sources/SearchSQLite/CandidateFetcher.swift` — fetcher
   protocol + RRF merging.
-- `Packages/Sources/Search/Search.Index.SemanticSearch.swift` —
+- `Packages/Sources/SearchSQLite/Search.Index.SemanticSearch.swift` —
   search.db's symbol-search SQL (the one path that already reads
   `generic_constraints`).
 - `Packages/Sources/SearchToolProvider/CompositeToolProvider.swift` —

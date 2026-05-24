@@ -320,9 +320,9 @@ parser doesn't recognise.
 ## 10. References
 
 - Source files modified by the fix:
-  - `Packages/Sources/Search/PackageIndex.swift` (schema v4 → v5 + new
+  - `Packages/Sources/SearchSQLite/PackageIndex.swift` (schema v4 → v5 + new
     table + `indexPackageImports` + join rewrite)
-  - `Packages/Sources/Search/PackageIndexer.swift` (#861 fallback
+  - `Packages/Sources/SearchSQLite/PackageIndexer.swift` (#861 fallback
     helper + `loadAvailability` glue)
 - Source files modified by #864 companion (FK CASCADE on re-run):
   same `PackageIndex.swift` (PRAGMA line in `openDatabase`).

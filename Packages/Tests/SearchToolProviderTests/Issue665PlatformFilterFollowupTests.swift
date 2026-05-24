@@ -9,8 +9,6 @@ import SearchModels
 import SharedConstants
 import Testing
 
-// swiftlint:disable identifier_name
-
 // MARK: - #665 follow-up — search_generics platform filter (E2E)
 
 //
@@ -125,11 +123,11 @@ struct Issue665PlatformFilterFollowupTests {
             name: Shared.Constants.Search.toolSearchGenerics,
             arguments: args
         )
-        guard case let .text(t) = result.content.first else {
+        guard case let .text(textNode) = result.content.first else {
             Issue.record("expected text content")
             return
         }
-        #expect(t.text.contains("PassthroughBox"), "no-filter call must return the seeded row — body: \(t.text.prefix(300))")
+        #expect(textNode.text.contains("PassthroughBox"), "no-filter call must return the seeded row — body: \(textNode.text.prefix(300))")
     }
 
     // MARK: - 2. Filter drops too-new symbols
@@ -158,17 +156,17 @@ struct Issue665PlatformFilterFollowupTests {
             name: Shared.Constants.Search.toolSearchGenerics,
             arguments: args
         )
-        guard case let .text(t) = result.content.first else {
+        guard case let .text(textNode) = result.content.first else {
             Issue.record("expected text content")
             return
         }
         #expect(
-            !t.text.contains("IOS18OnlyGeneric"),
-            "iOS 18 API must be filtered out at min_ios=15.0 — body: \(t.text.prefix(300))"
+            !textNode.text.contains("IOS18OnlyGeneric"),
+            "iOS 18 API must be filtered out at min_ios=15.0 — body: \(textNode.text.prefix(300))"
         )
         #expect(
-            t.text.contains("_No symbols found matching your criteria._"),
-            "empty-results marker must appear post-filter — body: \(t.text.prefix(300))"
+            textNode.text.contains("_No symbols found matching your criteria._"),
+            "empty-results marker must appear post-filter — body: \(textNode.text.prefix(300))"
         )
     }
 
@@ -198,11 +196,11 @@ struct Issue665PlatformFilterFollowupTests {
             name: Shared.Constants.Search.toolSearchGenerics,
             arguments: args
         )
-        guard case let .text(t) = result.content.first else {
+        guard case let .text(textNode) = result.content.first else {
             Issue.record("expected text content")
             return
         }
-        #expect(t.text.contains("IOS14Generic"), "iOS 14 API must pass min_ios=17.0 filter — body: \(t.text.prefix(300))")
+        #expect(textNode.text.contains("IOS14Generic"), "iOS 14 API must pass min_ios=17.0 filter — body: \(textNode.text.prefix(300))")
     }
 
     // MARK: - 4. Rows without min_ios metadata dropped when filter is active
@@ -230,13 +228,13 @@ struct Issue665PlatformFilterFollowupTests {
             name: Shared.Constants.Search.toolSearchGenerics,
             arguments: args
         )
-        guard case let .text(t) = result.content.first else {
+        guard case let .text(textNode) = result.content.first else {
             Issue.record("expected text content")
             return
         }
         #expect(
-            !t.text.contains("NoAvailabilityGeneric"),
-            "NULL-min_ios row must be dropped when filter is active — body: \(t.text.prefix(300))"
+            !textNode.text.contains("NoAvailabilityGeneric"),
+            "NULL-min_ios row must be dropped when filter is active — body: \(textNode.text.prefix(300))"
         )
     }
 
