@@ -59,39 +59,6 @@ extension Search {
     }
 }
 
-// MARK: - Archive Indexer
-
-/// Indexer for Apple Archive (legacy documentation)
-extension Search {
-    public struct AppleArchiveIndexer: Search.SourceIndexer {
-        public let sourceID = Shared.Constants.SourcePrefix.appleArchive
-        public let displayName = "Apple Archive"
-
-        public init() {}
-
-        public func extractCode(from item: Search.SourceItem) -> Search.ExtractedContent {
-            // Archive may have Objective-C code which we can't parse with SwiftSyntax
-            // Only extract if content looks like Swift
-            guard item.content.contains("func ") ||
-                item.content.contains("struct ") ||
-                item.content.contains("class ") ||
-                item.content.contains("import ")
-            else {
-                return .empty
-            }
-
-            let extractor = ASTIndexer.Extractor()
-            let result = extractor.extract(from: item.content)
-
-            return Search.ExtractedContent(
-                symbols: result.symbols,
-                imports: result.imports,
-                hasErrors: result.hasErrors
-            )
-        }
-    }
-}
-
 // MARK: - Swift Book Indexer
 
 /// Indexer for The Swift Programming Language book

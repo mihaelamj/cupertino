@@ -1,4 +1,4 @@
-import AppleArchiveStrategy
+import AppleArchiveSource
 import AppleDocsSource
 import HIGSource
 import SampleCodeSource

@@ -165,6 +165,8 @@ private struct FixtureProvider: Search.SourceProvider {
 
     var fetchInfo: Search.FetchInfo? { nil }
 
+    var destinationDB: Shared.Models.DatabaseDescriptor { .search }
+
     func makeStrategy(env _: Search.IndexEnvironment) -> any Search.SourceIndexingStrategy {
         FixtureStrategy(source: idValue)
     }

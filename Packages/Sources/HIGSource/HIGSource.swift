@@ -31,6 +31,8 @@ public struct HIGSource: Search.SourceProvider {
 
     public var fetchInfo: Search.FetchInfo? { Self.fetchInfo }
 
+    public var destinationDB: Shared.Models.DatabaseDescriptor { .search }
+
     public func makeStrategy(env: Search.IndexEnvironment) -> any Search.SourceIndexingStrategy {
         Search.HIGStrategy(
             higDirectory: env.sourceDirectory,
