@@ -69,7 +69,7 @@ struct Issue1012SampleCodeSourceShapeTests {
 /// IndexEnvironment fixtures. Tests don't exercise the markdown
 /// conversion path; this conformer returns nil for any input.
 /// (Logger is supplied by the canonical `LoggingModels.Logging.NoopRecording`;
-/// no markdown-strategy noop ships in SearchModels yet — kept local.)
+/// no markdown-strategy noop ships in SearchModels yet, kept local.)
 private struct NoopMarkdownStrategy: Search.MarkdownToStructuredPageStrategy {
     func convert(markdown _: String, url _: URL?) -> Shared.Models.StructuredDocumentationPage? {
         nil
