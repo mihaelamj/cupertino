@@ -143,9 +143,9 @@ WHERE fts MATCH ?
 <pre><code>let swiftToolsVersion: String? = result.swiftToolsVersion
     ?? readSwiftToolsVersionFromPackageManifest(at: dir)</code></pre>
 <p>The fallback opens <code>&lt;dir&gt;/Package.swift</code>, reads it, runs <code>ASTIndexer.AvailabilityParsers.parseSwiftToolsVersion</code> over line 1 (the same parser the annotator uses). Coverage on the dev corpus went 0/183 → 182/183. The 1 NULL is <code>swiftlang/swift</code> itself, whose top-level Package.swift uses a non-standard pattern the parser doesn't recognise.</p>
-<hr></section><section id="10-references" class="doc-section"><h2><span class="section-number-badge">10</span><span class="section-title">References</span></h2><ul><li>Source files modified by the fix:</li><li><code>Packages/Sources/Search/PackageIndex.swift</code> (schema v4 → v5 + new</li></ul>
+<hr></section><section id="10-references" class="doc-section"><h2><span class="section-number-badge">10</span><span class="section-title">References</span></h2><ul><li>Source files modified by the fix:</li><li><code>Packages/Sources/SearchSQLite/PackageIndex.swift</code> (schema v4 → v5 + new</li></ul>
 <p class="lead">table + <code>indexPackageImports</code> + join rewrite)</p>
-<ul><li><code>Packages/Sources/Search/PackageIndexer.swift</code> (#861 fallback</li></ul>
+<ul><li><code>Packages/Sources/SearchSQLite/PackageIndexer.swift</code> (#861 fallback</li></ul>
 <p>helper + <code>loadAvailability</code> glue)</p>
 <ul><li>Source files modified by #864 companion (FK CASCADE on re-run):</li></ul>
 <p>same <code>PackageIndex.swift</code> (PRAGMA line in <code>openDatabase</code>).</p>

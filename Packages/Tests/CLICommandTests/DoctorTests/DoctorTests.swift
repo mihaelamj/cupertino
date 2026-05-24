@@ -6,7 +6,7 @@ import Foundation
 import LoggingModels
 import MCPCore
 import MCPSupport
-import Search
+import SearchAPI
 import SearchModels
 import SQLite3
 import Testing

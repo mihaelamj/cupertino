@@ -1319,7 +1319,7 @@ extension Search.Index {
 
     // `SymbolSearchResult` lives in SearchModels as `Search.SymbolSearchResult`
     // so consumers (SearchToolProvider, MCP responders) can render symbol
-    // hits without importing the Search target. The semantic-search
+    // hits without importing the SearchAPI target. The semantic-search
     // methods below produce values of that lifted type.
 
     // Search symbols by name pattern and optional filters

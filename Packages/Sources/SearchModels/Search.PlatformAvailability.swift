@@ -2,9 +2,9 @@ import Foundation
 
 /// Lightweight platform availability for search results.
 ///
-/// Lifted out of the Search target into SearchModels so Services formatters
+/// Lifted out of the SearchAPI target into SearchModels so Services formatters
 /// (and any future consumer) can deserialize `Search.Result.availability`
-/// without taking a behavioural dependency on the Search target.
+/// without taking a behavioural dependency on the SearchAPI target.
 extension Search {
     public struct PlatformAvailability: Codable, Sendable, Hashable {
         public let name: String

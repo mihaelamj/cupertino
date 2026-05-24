@@ -13,7 +13,7 @@
 #   - Per-producer protocol seams (*Models companions)
 #
 # The principle: each producer plus its protocol-seam companion(s) is
-# the standalone-portable unit. Pull out (Search + SearchModels) into
+# the standalone-portable unit. Pull out (SearchAPI + SearchModels) into
 # a fresh repo with the foundation-tier deps and it builds against
 # external SwiftPM dependencies alone.
 #
@@ -233,7 +233,7 @@ STRICT_PRODUCERS=(
     # PackageResult), `DocKind`/`Classify`, `Search.SourceIndexer`
     # protocol + indexer concretes + `Search.IndexerRegistry`, and
     # `DocLinkRewriter` whole-file moved to `SearchSQLite` (no external
-    # consumers in the Search target). The target now imports only
+    # consumers in the SearchAPI target). The target now imports only
     # foundation + Models + SQLite3 and audits clean.
 
     # Producer (#759): AppleConstraintsKit ships `Search.StaticConstraintsLookup`
@@ -258,7 +258,7 @@ STRICT_PRODUCERS=(
     RemoteSync
     SampleIndex
     SampleIndexSQLite
-    Search
+    SearchAPI
     SearchSQLite
     AppleDocsStrategy
     HIGStrategy

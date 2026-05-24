@@ -73,7 +73,7 @@ FORBIDDEN_MODULES=(
     Ingest
     RemoteSync
     SampleIndex
-    Search
+    SearchAPI
     SearchSQLite
     SampleIndexSQLite
     CrawlerWebKit

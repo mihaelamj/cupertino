@@ -3,7 +3,7 @@ import Foundation
 /// Symbol search result with document context.
 ///
 /// Lifted out of `Search.Index.SymbolSearchResult` (the nested type
-/// inside the Search.Index actor in the Search target) to top-level
+/// inside the Search.Index actor in the SearchAPI target) to top-level
 /// `Search.SymbolSearchResult` in SearchModels so consumers
 /// (SearchToolProvider, MCP responders) can decode + render semantic-
 /// search hits without taking a behavioural dependency on the Search

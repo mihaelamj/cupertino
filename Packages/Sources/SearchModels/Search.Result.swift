@@ -5,7 +5,7 @@ import SharedConstants
 ///
 /// Lifted into SearchModels so every consumer (Services formatters,
 /// MCP layer, CLI rendering) decodes + renders results without importing
-/// the Search target's behavioural surface. The Search target still
+/// the SearchAPI target's behavioural surface. The SearchAPI target still
 /// produces values of this type; consumers stay free of the actor + DB
 /// machinery that backs that production.
 extension Search {

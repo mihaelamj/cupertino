@@ -1,11 +1,9 @@
-import SearchModels
-
-// swiftlint:disable identifier_name
 import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
 import LoggingModels
-@testable import Search
+@testable import SearchAPI
+import SearchModels
 @testable import SearchSQLite
 import SQLite3
 import Testing
@@ -164,8 +162,8 @@ struct PackageIndexTests {
         while sqlite3_step(statement) == SQLITE_ROW {
             let colCount = sqlite3_column_count(statement)
             var row: [String] = []
-            for i in 0..<colCount {
-                if let cstr = sqlite3_column_text(statement, i) {
+            for index in 0..<colCount {
+                if let cstr = sqlite3_column_text(statement, index) {
                     row.append(String(cString: cstr))
                 } else {
                     row.append("")

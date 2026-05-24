@@ -31,7 +31,7 @@ Builds the index from per-package source archives downloaded by `cupertino fetch
 
 ## Database Schema
 
-Schema version `3` (per `PRAGMA user_version`). Defined end-to-end in [`Packages/Sources/Search/PackageIndex.swift`](../../../Packages/Sources/Search/PackageIndex.swift); the version constant is `PackageIndex.schemaVersion`. Migrations are incremental — fresh DBs created by `cupertino save --packages` write directly at v3; older DBs run `ALTER TABLE` migrations on open (v1→v2 added the `min_*` availability columns via #219; v2→v3 added the `swift_tools_version` column + `idx_pkg_swift_tools` index via #225 Part A).
+Schema version `3` (per `PRAGMA user_version`). Defined end-to-end in [`Packages/Sources/SearchSQLite/PackageIndex.swift`](../../../Packages/Sources/SearchSQLite/PackageIndex.swift); the version constant is `PackageIndex.schemaVersion`. Migrations are incremental — fresh DBs created by `cupertino save --packages` write directly at v3; older DBs run `ALTER TABLE` migrations on open (v1→v2 added the `min_*` availability columns via #219; v2→v3 added the `swift_tools_version` column + `idx_pkg_swift_tools` index via #225 Part A).
 
 `packages.db` holds **3 tables**:
 

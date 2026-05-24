@@ -3,7 +3,7 @@ import LoggingModels
 import MCPCore
 @testable import SampleIndex
 import SampleIndexSQLite
-@testable import Search
+@testable import SearchAPI
 import SearchModels
 @testable import SearchSQLite
 @testable import SearchToolProvider
@@ -92,22 +92,22 @@ struct Issue673PhaseCSampleMCPMarkerTests {
         }
         defer { cleanup() }
         let result = try await provider.callTool(name: "list_samples", arguments: [:])
-        guard case let .text(t) = result.content.first else {
+        guard case let .text(textNode) = result.content.first else {
             Issue.record("expected text content")
             return
         }
         #expect(
-            t.text.contains("# Indexed Sample Code Projects"),
-            "list_samples must contain canonical header — body: \(t.text.prefix(300))"
+            textNode.text.contains("# Indexed Sample Code Projects"),
+            "list_samples must contain canonical header — body: \(textNode.text.prefix(300))"
         )
-        #expect(t.text.contains("Total projects:"))
-        #expect(t.text.contains("Total files:"))
+        #expect(textNode.text.contains("Total projects:"))
+        #expect(textNode.text.contains("Total files:"))
         #expect(
-            t.text.contains("_No projects found. Run `cupertino save --samples`"),
-            "empty-projects marker missing — body: \(t.text.prefix(300))"
+            textNode.text.contains("_No projects found. Run `cupertino save --samples`"),
+            "empty-projects marker missing — body: \(textNode.text.prefix(300))"
         )
         // Negative: empty path must NOT emit the populated-table header.
-        #expect(!t.text.contains("| Project | Framework | Files |"))
+        #expect(!textNode.text.contains("| Project | Framework | Files |"))
     }
 
     @Test("list_samples populated: table header + each seeded project row")
@@ -128,10 +128,10 @@ struct Issue673PhaseCSampleMCPMarkerTests {
         }
         defer { cleanup() }
         let result = try await provider.callTool(name: "list_samples", arguments: [:])
-        guard case let .text(t) = result.content.first else { Issue.record("expected text"); return }
+        guard case let .text(textNode) = result.content.first else { Issue.record("expected text"); return }
         // Diagnostic dump on assertion failure so the next test author
         // can see what shape the handler emits.
-        let body = t.text
+        let body = textNode.text
         #expect(
             body.contains("# Indexed Sample Code Projects"),
             "header missing — body: \(body)"
@@ -153,7 +153,7 @@ struct Issue673PhaseCSampleMCPMarkerTests {
         #expect(body.contains("swiftui"))
         #expect(body.contains("combine"))
         // Footer tip.
-        #expect(t.text.contains("source: samples"))
+        #expect(textNode.text.contains("source: samples"))
     }
 
     // MARK: - read_sample
@@ -201,24 +201,24 @@ struct Issue673PhaseCSampleMCPMarkerTests {
             "project_id": MCP.Core.Protocols.AnyCodable("animation-sample"),
         ]
         let result = try await provider.callTool(name: "read_sample", arguments: args)
-        guard case let .text(t) = result.content.first else { Issue.record("expected text"); return }
+        guard case let .text(textNode) = result.content.first else { Issue.record("expected text"); return }
         // Title pulled from project title.
         #expect(
-            t.text.contains("# Animation Sample Project"),
-            "title header missing — body: \(t.text.prefix(300))"
+            textNode.text.contains("# Animation Sample Project"),
+            "title header missing — body: \(textNode.text.prefix(300))"
         )
         // Project ID marker.
-        #expect(t.text.contains("**Project ID:**"))
-        #expect(t.text.contains("`animation-sample`"))
+        #expect(textNode.text.contains("**Project ID:**"))
+        #expect(textNode.text.contains("`animation-sample`"))
         // Section headers.
-        #expect(t.text.contains("## Description"))
-        #expect(t.text.contains("## Metadata"))
-        #expect(t.text.contains("## README"))
+        #expect(textNode.text.contains("## Description"))
+        #expect(textNode.text.contains("## Metadata"))
+        #expect(textNode.text.contains("## README"))
         // Metadata items.
-        #expect(t.text.contains("**Frameworks:**"))
-        #expect(t.text.contains("**Files:**"))
+        #expect(textNode.text.contains("**Frameworks:**"))
+        #expect(textNode.text.contains("**Files:**"))
         // Negative — must NOT be the not-found error frame.
-        #expect(!t.text.contains("Project not found"))
+        #expect(!textNode.text.contains("Project not found"))
     }
 
     // MARK: - read_sample_file
@@ -297,28 +297,28 @@ struct Issue673PhaseCSampleMCPMarkerTests {
             "file_path": MCP.Core.Protocols.AnyCodable("ContentView.swift"),
         ]
         let result = try await provider.callTool(name: "read_sample_file", arguments: args)
-        guard case let .text(t) = result.content.first else { Issue.record("expected text"); return }
+        guard case let .text(textNode) = result.content.first else { Issue.record("expected text"); return }
         // Filename header.
         #expect(
-            t.text.contains("# ContentView.swift"),
-            "filename header missing — body: \(t.text.prefix(300))"
+            textNode.text.contains("# ContentView.swift"),
+            "filename header missing — body: \(textNode.text.prefix(300))"
         )
         // Project + path markers.
-        #expect(t.text.contains("**Project:**"))
-        #expect(t.text.contains("`animation-sample`"))
-        #expect(t.text.contains("**Path:**"))
-        #expect(t.text.contains("`ContentView.swift`"))
+        #expect(textNode.text.contains("**Project:**"))
+        #expect(textNode.text.contains("`animation-sample`"))
+        #expect(textNode.text.contains("**Path:**"))
+        #expect(textNode.text.contains("`ContentView.swift`"))
         // Fenced code block with content.
         #expect(
-            t.text.contains("```swift"),
-            "Swift code fence missing — body: \(t.text.prefix(400))"
+            textNode.text.contains("```swift"),
+            "Swift code fence missing — body: \(textNode.text.prefix(400))"
         )
         #expect(
-            t.text.contains("ContentView"),
+            textNode.text.contains("ContentView"),
             "file content must appear in the fence"
         )
         // Negative: not the error frame.
-        #expect(!t.text.contains("File not found"))
+        #expect(!textNode.text.contains("File not found"))
     }
 
     // MARK: - Cross-tool title-distinctness regression guard
@@ -354,21 +354,21 @@ struct Issue673PhaseCSampleMCPMarkerTests {
             ]
         )
 
-        guard case let .text(l) = list.content.first,
-              case let .text(r) = read.content.first,
-              case let .text(rf) = readFile.content.first
+        guard case let .text(listText) = list.content.first,
+              case let .text(readText) = read.content.first,
+              case let .text(readFileText) = readFile.content.first
         else { Issue.record("expected text on all 3"); return }
 
-        #expect(l.text.contains("# Indexed Sample Code Projects"))
-        #expect(!l.text.contains("# TestProj"))
-        #expect(!l.text.contains("# File.swift"))
+        #expect(listText.text.contains("# Indexed Sample Code Projects"))
+        #expect(!listText.text.contains("# TestProj"))
+        #expect(!listText.text.contains("# File.swift"))
 
-        #expect(r.text.contains("# TestProj"))
-        #expect(!r.text.contains("# Indexed Sample Code Projects"))
-        #expect(!r.text.contains("# File.swift"))
+        #expect(readText.text.contains("# TestProj"))
+        #expect(!readText.text.contains("# Indexed Sample Code Projects"))
+        #expect(!readText.text.contains("# File.swift"))
 
-        #expect(rf.text.contains("# File.swift"))
-        #expect(!rf.text.contains("# Indexed Sample Code Projects"))
-        #expect(!rf.text.contains("# TestProj"))
+        #expect(readFileText.text.contains("# File.swift"))
+        #expect(!readFileText.text.contains("# Indexed Sample Code Projects"))
+        #expect(!readFileText.text.contains("# TestProj"))
     }
 }

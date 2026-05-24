@@ -5,7 +5,7 @@ import Testing
 // MARK: - SearchModels Public API Smoke Tests
 
 // SearchModels owns the value types that flow through search-result
-// rendering. The Search target produces values of these types; every
+// rendering. The SearchAPI target produces values of these types; every
 // downstream consumer (Services formatters, MCP responders, CLI
 // rendering) decodes + renders them without taking a behavioural
 // dep on Search.
@@ -44,9 +44,9 @@ struct SearchModelsPublicSurfaceTests {
 
     @Test("Search.PlatformAvailability decodes from canonical JSON")
     func platformAvailabilityDecodes() throws {
-        let json = """
+        let json = Data("""
         {"name": "macOS", "introducedAt": "12.0", "deprecated": false, "unavailable": false, "beta": true}
-        """.data(using: .utf8)!
+        """.utf8)
         let availability = try JSONDecoder().decode(Search.PlatformAvailability.self, from: json)
         #expect(availability.name == "macOS")
         #expect(availability.introducedAt == "12.0")
@@ -124,11 +124,11 @@ struct SearchModelsPublicSurfaceTests {
         // The public `score` flips the sign so consumers can sort
         // descending without thinking about the inversion. Pin that
         // contract.
-        let r = Search.Result(
+        let result = Search.Result(
             uri: "x", source: "y", framework: "z",
             title: "t", summary: "s", filePath: "/", wordCount: 1, rank: -2.5
         )
-        #expect(r.score == 2.5)
+        #expect(result.score == 2.5)
     }
 
     @Test("Search.Result.availabilityString omits unavailable platforms")
@@ -138,12 +138,12 @@ struct SearchModelsPublicSurfaceTests {
             Search.PlatformAvailability(name: "macOS", introducedAt: "12.0", deprecated: true),
             Search.PlatformAvailability(name: "tvOS", introducedAt: "15.0", unavailable: true),
         ]
-        let r = Search.Result(
+        let result = Search.Result(
             uri: "x", source: "y", framework: "z",
             title: "t", summary: "s", filePath: "/", wordCount: 1, rank: 0,
             availability: platforms
         )
-        let str = r.availabilityString ?? ""
+        let str = result.availabilityString ?? ""
         #expect(str.contains("iOS 15.0+"))
         #expect(str.contains("macOS 12.0+ (deprecated)"))
         #expect(!str.contains("tvOS")) // unavailable filtered out

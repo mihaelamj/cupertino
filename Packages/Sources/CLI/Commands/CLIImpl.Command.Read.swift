@@ -4,7 +4,7 @@ import Logging
 import LoggingModels
 import SampleIndex
 import SampleIndexModels
-import Search
+import SearchAPI
 import SearchModels
 import Services
 import ServicesModels

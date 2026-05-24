@@ -12,7 +12,7 @@ extension Search {
     /// only a new conforming type, with `Search.IndexBuilder` unchanged.
     ///
     /// Lifted from `Search/Strategies/Search.SourceIndexingStrategy.swift`
-    /// (Search target) to `SearchModels` by epic #893's child #897 so
+    /// (SearchAPI target) to `SearchModels` by epic #893's child #897 so
     /// the protocol is reachable from foundation-only consumers. The
     /// rewire of `Search.IndexBuilder` + the 6 concrete strategies to
     /// consume `any Search.Database & Search.IndexWriter` via the

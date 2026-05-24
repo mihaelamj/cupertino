@@ -1,5 +1,5 @@
 import Foundation
-@testable import Search
+@testable import SearchAPI
 @testable import SearchSQLite
 import Testing
 
@@ -122,6 +122,7 @@ struct Issue113DocLinkRewriterTests {
         let input = "Plain prose with https://developer.apple.com/documentation/swiftui/view embedded."
         let (output, count) = DocLinkRewriter.rewrite(input)
         #expect(output == input)
+        // swiftlint:disable:next empty_count
         #expect(count == 0)
     }
 
@@ -129,6 +130,7 @@ struct Issue113DocLinkRewriterTests {
     func emptyInput() {
         let (output, count) = DocLinkRewriter.rewrite("")
         #expect(output == "")
+        // swiftlint:disable:next empty_count
         #expect(count == 0)
     }
 
@@ -142,6 +144,7 @@ struct Issue113DocLinkRewriterTests {
         let input = "Apple's internal scheme is doc://com.apple.unrelated/topic/foo."
         let (output, count) = DocLinkRewriter.rewrite(input)
         #expect(output == input)
+        // swiftlint:disable:next empty_count
         #expect(count == 0)
     }
 
@@ -215,6 +218,7 @@ struct Issue113DocLinkRewriterTests {
     @Test("count equals exact number of substitutions")
     func countAudit() {
         let zero = DocLinkRewriter.rewrite("no links here")
+        // swiftlint:disable:next empty_count
         #expect(zero.count == 0)
 
         let one = DocLinkRewriter.rewrite("doc://X/documentation/foo/a")

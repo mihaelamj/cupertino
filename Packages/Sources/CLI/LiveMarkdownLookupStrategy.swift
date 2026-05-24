@@ -12,7 +12,7 @@ import MCPSupport
 import SampleIndex
 import SampleIndexModels
 import SampleIndexSQLite
-import Search
+import SearchAPI
 import SearchModels
 import SearchSQLite
 import Services
@@ -25,7 +25,7 @@ import SharedConstants
 // wrapping a `SearchModule.Index` actor's `getDocumentContent(uri:format:)`.
 // Wired by `cupertino serve` when a search.db is available so the MCP
 // resource provider can fall back to indexed markdown before going to
-// the filesystem. MCPSupport stays free of `import Search`; only the
+// the filesystem. MCPSupport stays free of `import SearchAPI`; only the
 // CLI composition root reaches the actor.
 
 struct LiveMarkdownLookupStrategy: MCP.Support.MarkdownLookupStrategy {

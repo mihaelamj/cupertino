@@ -6,10 +6,10 @@ extension Search {
     /// Read-only seam for the packages-database half of the smart-query
     /// fan-out. Captures the surface that the Services and MCP layers
     /// need against `packages.db`, so callers don't take a behavioural
-    /// dependency on the Search target's BM25 + intent + chunk-extraction
+    /// dependency on the SearchAPI target's BM25 + intent + chunk-extraction
     /// internals (`Search.PackageQuery`).
     ///
-    /// Production conformer: `Search.PackageQuery` in the Search target.
+    /// Production conformer: `Search.PackageQuery` in the SearchAPI target.
     /// Tests pass an in-memory stub.
     ///
     /// Filed against `#789`-style architectural gap discovered during the

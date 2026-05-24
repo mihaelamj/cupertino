@@ -6,7 +6,7 @@ import Foundation
 /// Lifted out of `Search.Index.DocumentFormat` (the indexer-internal
 /// enum) into the SearchModels target so resource-rendering consumers
 /// (Services, MCPSupport, CLI) can pass a format value to the indexer
-/// without taking a behavioural dependency on the Search target.
+/// without taking a behavioural dependency on the SearchAPI target.
 extension Search {
     public enum DocumentFormat: Sendable {
         /// Return the full structured JSON serialization of the page.

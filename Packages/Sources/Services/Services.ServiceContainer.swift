@@ -3,6 +3,7 @@ import SampleIndexModels
 import SearchModels
 import ServicesModels
 import SharedConstants
+
 // MARK: - Service Container
 
 /// Composition utility for the Services target's read-side services
@@ -12,7 +13,7 @@ import SharedConstants
 /// CLI / MCP / TUI callers don't have to repeat that boilerplate per
 /// command.
 ///
-/// The container does not import the Search target. Every search-side
+/// The container does not import the SearchAPI target. Every search-side
 /// database (`Search.Index`) is constructed by an injected
 /// `Search.DatabaseFactory` (GoF Factory Method) that callers wire
 /// from the composition root: CLI supplies a concrete

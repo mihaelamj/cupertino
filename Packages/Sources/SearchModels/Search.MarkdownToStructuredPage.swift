@@ -9,7 +9,7 @@ import SharedConstants
 /// (one production parser, many test stubs) interchangeable behind a
 /// named protocol.
 ///
-/// The Search target's strategies (`AppleDocsStrategy`,
+/// The SearchAPI target's strategies (`AppleDocsStrategy`,
 /// `SwiftOrgStrategy`) accept a conformer at init so they can parse
 /// markdown pages without directly depending on the `CoreJSONParser`
 /// target where the concrete

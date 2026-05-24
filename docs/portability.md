@@ -88,13 +88,13 @@ the layers below it. The portability test enforces this empirically.
   `EnrichmentModels`, `SearchSchema`. (`CoreProtocols` is grouped with
   the seams despite the unsuffixed name. `SearchSchema` carries the
   search.db DDL SQL constants + `Search.Schema.currentVersion`; lifted
-  out of the Search target by #898 sub-PR A.)
+  out of the Search target (renamed to SearchAPI in #900) by #898 sub-PR A.)
 - **Features** (the producers in the `STRICT_PRODUCERS` array's
   Phase 3 block): `AppleConstraintsKit`, `Availability`, `Cleanup`,
   `Core`, `CoreJSONParser`, `CorePackageIndexing`, `CoreSampleCode`,
   `Crawler`, `Distribution`, `Enrichment`, `Indexer`, `Ingest`,
   `Logging`, `MCPSupport`, `RemoteSync`, `SampleIndex`,
-  `SampleIndexSQLite`, `Search`, `SearchSQLite`, `SearchToolProvider`,
+  `SampleIndexSQLite`, `SearchAPI`, `SearchSQLite`, `SearchToolProvider`,
   `Services`. (`Logging` is a writer concrete: the audited feature
   producer over `LoggingModels` + `OSLog`, and composition roots are
   the only places that may import the `Logging` target. Producers

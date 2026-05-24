@@ -2,7 +2,7 @@ import ArgumentParser
 import Darwin
 import Diagnostics
 import Foundation
-import Search
+import SearchAPI
 import SharedConstants
 
 // MARK: - Cupertino CLI

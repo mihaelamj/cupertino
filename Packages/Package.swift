@@ -27,7 +27,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Cleanup"),
     .singleTargetLibrary("CleanupModels"),
     .singleTargetLibrary("CoreSampleCodeModels"),
-    .singleTargetLibrary("Search"),
+    .singleTargetLibrary("SearchAPI"),
     .singleTargetLibrary("SearchSchema"),
     .singleTargetLibrary("SearchSQLite"),
     .singleTargetLibrary("SearchStrategyHelpers"),
@@ -479,7 +479,7 @@ let targets: [Target] = {
     // ---------- SearchSchema (#898 sub-PR A: foundation-only target carrying the
     // DDL SQL strings + the `Search.Schema.currentVersion` Int32 constant.
     // SearchSchema mirrors the SearchModels shape: foundation-only, no
-    // actors, no I/O, no SQLite import. Both the orchestration Search target
+    // actors, no I/O, no SQLite import. Both the orchestration SearchAPI target
     // and the concrete SearchSQLite target consume it.
     let searchSchemaTarget = Target.target(
         name: "SearchSchema",
@@ -497,7 +497,7 @@ let targets: [Target] = {
     // pieces tightly coupled to those concretes (`Search.PackageIndexer`,
     // `Search.PackageFTSCandidateFetcher`, `Search.DocsSourceCandidateFetcher`).
     // This is the ONLY producer target that imports `SQLite3` for the
-    // search.db / packages.db handles; the orchestration Search target now
+    // search.db / packages.db handles; the orchestration SearchAPI target now
     // operates exclusively through the SearchModels protocol seams.
     let searchSQLiteTarget = Target.target(
         name: "SearchSQLite",
@@ -517,7 +517,7 @@ let targets: [Target] = {
     )
 
     let searchTarget = Target.target(
-        name: "Search",
+        name: "SearchAPI",
         // Search is the orchestration layer over the SearchModels protocol
         // seams. After #898 sub-PR E it no longer imports `SQLite3` and no
         // longer depends on the concrete SearchSQLite target: `Search.Index`,
@@ -533,15 +533,13 @@ let targets: [Target] = {
             "SearchModels",
             "SharedConstants",
             "LoggingModels",
-            "CoreProtocols",
-            "ASTIndexer",
             "EnrichmentModels",
         ]
     )
     let searchTestsTarget = Target.testTarget(
         name: "SearchTests",
         dependencies: [
-            "Search",
+            "SearchAPI",
             "SearchSQLite",
             "AppleDocsStrategy",
             "HIGStrategy",
@@ -565,7 +563,7 @@ let targets: [Target] = {
 
     // ---------- SearchStrategies (#899: 6 source-indexing strategy
     // concretes + StrategyHelpers + `Search.makeDefaultStrategies`
-    // factory function, lifted out of the orchestration Search target
+    // factory function, lifted out of the orchestration SearchAPI target
     // so Search has no concrete strategy dependency. Strict-compliant:
     // imports SearchModels + Foundation tier only; the strategies
     // operate through the `Search.SourceIndexingStrategy` protocol seam.
@@ -772,7 +770,7 @@ let targets: [Target] = {
         name: "SearchToolProviderTests",
         dependencies: [
             "SearchToolProvider",
-            "Search",
+            "SearchAPI",
             "SearchSQLite",
             "SearchModels",
             "SampleIndex",
@@ -1012,7 +1010,7 @@ let targets: [Target] = {
             "Crawler",
             "CrawlerWebKit",
             "Cleanup",
-            "Search",
+            "SearchAPI",
             "SearchSQLite",
             "AppleDocsStrategy",
             "HIGStrategy",
@@ -1056,7 +1054,7 @@ let targets: [Target] = {
         dependencies: [
             "SharedConstants",
             "CoreProtocols", "CorePackageIndexing", "Core",
-            "Search",
+            "SearchAPI",
             "Resources",
             "Logging",
         ],
@@ -1126,7 +1124,7 @@ let targets: [Target] = {
             "CrawlerWebKit",
             "MCPCore",
             "MCPSupport",
-            "Search",
+            "SearchAPI",
             "SearchModels",
             "SearchToolProvider",
             "SampleIndex",
@@ -1142,7 +1140,7 @@ let targets: [Target] = {
 
     let doctorTestsTarget = Target.testTarget(
         name: "DoctorTests",
-        dependencies: ["CLI", "Diagnostics", "MCPCore", "MCPSupport", "Search", "SearchModels", "TestSupport"],
+        dependencies: ["CLI", "Diagnostics", "MCPCore", "MCPSupport", "SearchAPI", "SearchModels", "TestSupport"],
         path: "Tests/CLICommandTests/DoctorTests"
     )
 
@@ -1165,7 +1163,7 @@ let targets: [Target] = {
             "CrawlerModels",
             "CrawlerWebKit",
             "Indexer",
-            "Search",
+            "SearchAPI",
             "SearchModels",
             "TestSupport",
         ],

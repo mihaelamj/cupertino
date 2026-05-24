@@ -6,7 +6,7 @@ Last refresh: 2026-05-24 (#904 closed: Core / CoreJSONParser / CoreSampleCode We
 
 ## The target regime (post-#536)
 
-**Goal:** every producer target plus its `*Models` companion is a standalone-portable unit. Pull out `(Search + SearchModels)` into a fresh repo with the foundation tier and it builds against external SwiftPM deps alone.
+**Goal:** every producer target plus its `*Models` companion is a standalone-portable unit. Pull out `(SearchAPI + SearchModels)` into a fresh repo with the foundation tier and it builds against external SwiftPM deps alone.
 
 **Allowed imports for a producer target:**
 
@@ -16,7 +16,7 @@ Last refresh: 2026-05-24 (#904 closed: Core / CoreJSONParser / CoreSampleCode We
 
 **Forbidden for a producer:**
 
-- Another producer's concrete writer target (e.g. `Search` cannot `import Indexer`).
+- Another producer's concrete writer target (e.g. `SearchAPI` cannot `import Indexer`).
 - `Logging` (the writer concrete). Only `LoggingModels` allowed.
 - `SharedCore`, `SharedUtils`, `SharedModels`, `SharedConfiguration` — these were absorbed into `SharedConstants` during #536 phase 1; they no longer exist.
 - `Shared.Constants.BinaryConfig.shared` or any `Shared.Constants.defaultX` static accessor (deleted in #535).
@@ -65,7 +65,7 @@ Validated against five independent references (see `mihaela-agents/Rules/swift/p
 | `CoreSampleCodeModels` | Foundation, SharedConstants | ✅ Foundation, SharedConstants (closures-to-Observer epic seam: owns `Sample.Core.GitHubFetcherProgress` value type + `Sample.Core.GitHubFetcherProgressObserving` Observer protocol; flat-named because the producer `Sample.Core.GitHubFetcher` is a `public final class`, extends the `Sample.Core` namespace owned by `SharedConstants`) |
 | `RemoteSyncModels` | Foundation, SharedConstants | ✅ Foundation, SharedConstants (closures-to-Observer epic seam: owns the `RemoteSync` namespace anchor + `Progress` / `IndexState` / `IndexerResult` / `IndexerError` value types + `DocumentIndexing` Strategy protocol + `IndexerProgressObserving` / `IndexerDocumentObserving` Observer protocols; flat-named because the producer `RemoteSync.Indexer` is a `public actor`) |
 | `EnrichmentModels` | Foundation | ✅ Foundation (#837 postprocessor seam: owns `EnrichmentPass` protocol + `EnrichmentModels.Target` enum + `EnrichmentModels.Result` value type. Consumed by the postprocessor binary planned under #769 + by the `Enrichment` producer for live conformances) |
-| `SearchSchema` | Foundation, SearchModels | ✅ Foundation, SearchModels (#898 sub-PR A: foundation-only target carrying the search.db DDL SQL constant `Search.Schema.createAllTablesSQL` + the `Search.Schema.currentVersion: Int32` constant. Executor methods on `Search.Index` consume these constants via `import SearchSchema`; the executors themselves stay in the Search target until #898 sub-PR E moves them into `SearchSQLite`.) |
+| `SearchSchema` | Foundation, SearchModels | ✅ Foundation, SearchModels (#898 sub-PR A: foundation-only target carrying the search.db DDL SQL constant `Search.Schema.createAllTablesSQL` + the `Search.Schema.currentVersion: Int32` constant. Executor methods on `Search.Index` consume these constants via `import SearchSchema`; the executors themselves stay in the SearchAPI target until #898 sub-PR E moves them into `SearchSQLite`.) |
 
 ### Infrastructure tier (wraps a system API; foundation-tier deps)
 
@@ -99,7 +99,7 @@ Validated against five independent references (see `mihaela-agents/Rules/swift/p
 | `MCPSupport` | Foundation, LoggingModels, MCPCore, MCPSharedTools, SharedConstants | ✅ Foundation, LoggingModels, MCPCore, MCPSharedTools, SharedConstants |
 | `RemoteSync` | Foundation, RemoteSyncModels, SharedConstants | ✅ Foundation, RemoteSyncModels, SharedConstants (closures-to-Observer epic: `@_exported import RemoteSyncModels` so existing callers reading `RemoteSync.Indexer`/`Progress`/`IndexState` via `import RemoteSync` still resolve; `Indexer.run` signature now takes `any DocumentIndexing` Strategy + `any IndexerProgressObserving` Observer + optional `any IndexerDocumentObserving` Observer) |
 | `SampleIndex` | Foundation, OSLog, SQLite3, ASTIndexer, LoggingModels, SampleIndexModels, SharedConstants | ✅ ASTIndexer, Foundation, LoggingModels, OSLog, SQLite3, SampleIndexModels, SharedConstants |
-| `Search` | Foundation, ASTIndexer, CoreProtocols, EnrichmentModels, LoggingModels, SearchModels, SharedConstants | ✅ ASTIndexer, CoreProtocols, EnrichmentModels, Foundation, LoggingModels, SearchModels, SharedConstants (#898 sub-PR E: SQLite3 dropped. `Search.Index` plus 19 extensions, `PackageIndex`, `Search.PackageQuery`, `PackageIndexer`, and the two `CandidateFetcher` concretes lifted into `SearchSQLite`. Search now operates strictly through the `SearchModels` protocol seams: `Search.IndexBuilder` + the 6 strategies + `Search.SmartQuery` consume `any Search.Database & Search.IndexWriter` / `any Search.CandidateFetcher`. `SearchSchema` and `CorePackageIndexingModels` deps dropped because the executors that consumed them moved to SearchSQLite.) |
+| `SearchAPI` | Foundation, EnrichmentModels, LoggingModels, SearchModels, SharedConstants | ✅ EnrichmentModels, Foundation, LoggingModels, SearchModels, SharedConstants (#900: renamed from `Search` to `SearchAPI` per the 2026-05-12 plan §3.8. Thin orchestrator carrying `Search.IndexBuilder`, `Search.SmartQuery`, `Search.ComposableResult`, `Search.JSONLImportLogSink`. Operates strictly through `SearchModels` protocol seams; `any Search.Database & Search.IndexWriter` consumed via init injection. The `Search` namespace anchor stays in `SearchModels`. Earlier (#898 sub-PR E): SQLite3 dropped, `Search.Index` + 19 extensions + `PackageIndex` + `Search.PackageQuery` + 2 `CandidateFetcher` concretes lifted to `SearchSQLite`.) |
 | `SearchSQLite` | Foundation, SQLite3, ASTIndexer, CorePackageIndexingModels, CoreProtocols, LoggingModels, SearchModels, SearchSchema, SharedConstants | ✅ ASTIndexer, CorePackageIndexingModels, CoreProtocols, Foundation, LoggingModels, SQLite3, SearchModels, SearchSchema, SharedConstants (#898 sub-PR E shipped the extraction; #898F dropped the `import Search` by lifting `Search.Source`, `Search.QueryIntent`, `detectQueryIntent`, `Search.SourceProperties` out of `Search.ComposableResult.swift` into `SearchModels`, moving `Search.SourceDefinition.swift` whole to `SearchModels`, and moving `Search.SearchResult.swift`, `DocKind.swift`, `Search.SourceIndexer.swift`, `Search.Index.DocLinkRewriter.swift` whole to `SearchSQLite`. `Sample.Indexer` was renamed to `Search.SampleCodeIndexer` to remove the `Sample.Search` namespace ambiguity exposed by the move. SearchSQLite now audits cleanly against the strict rule and is the only target outside Diagnostics + SampleIndexSQLite + ReleaseTool that imports SQLite3.) |
 | `SearchStrategyHelpers` | Foundation, SearchModels, SharedConstants | ✅ Foundation, SearchModels, SharedConstants (#899: foundation-only shared utility target carrying `Search.StrategyHelpers` enum. Extracted from SearchStrategies so per-strategy SPM targets can consume the helpers without depending on the SearchStrategies concrete.) |
 | `AppleDocsStrategy` | Foundation, CoreProtocols, LoggingModels, SearchModels, SearchStrategyHelpers, SharedConstants | ✅ Foundation, CoreProtocols, LoggingModels, SearchModels, SearchStrategyHelpers, SharedConstants (#899 sub-PR B: first per-strategy extraction; extracts Search.AppleDocsStrategy out of the deleted SearchStrategies umbrella into its own SPM sibling target conforming `Search.SourceIndexingStrategy`. Pattern-setter for remaining 5 strategy splits; HIG / SwiftEvolution / SwiftOrg / AppleArchive / SampleCode follow.) |
@@ -146,7 +146,7 @@ Both scripts run as part of every PR's verification.
 
 If you grep `^import ` under `Sources/<Target>/` and see anything not in the **Allowed imports** column for that target — it's a violation. Examples:
 
-- `Sources/Search/**` importing `Core` (concrete feature → feature). Fix: lift the type to a `*Models` target or define a protocol seam.
+- `Sources/SearchAPI/**` importing `Core` (concrete feature → feature). Fix: lift the type to a `*Models` target or define a protocol seam.
 - `Sources/Crawler/**` importing `Logging` (concrete writer; only `LoggingModels` is allowed).
 - Any producer target importing `SharedCore` / `SharedUtils` / `SharedModels` / `SharedConfiguration` — those don't exist anymore (absorbed in #536 phase 1). Use `SharedConstants`.
 - Any producer target reading `Shared.Constants.BinaryConfig.shared` or `Shared.Constants.defaultBaseDirectory` — those are deleted (#535). Receive `Shared.Paths` or an explicit `URL` by parameter.

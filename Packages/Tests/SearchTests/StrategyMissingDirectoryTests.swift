@@ -3,7 +3,7 @@ import AppleDocsStrategy
 import Foundation
 import HIGStrategy
 import LoggingModels
-@testable import Search
+@testable import SearchAPI
 import SearchModels
 @testable import SearchSQLite
 import SharedConstants

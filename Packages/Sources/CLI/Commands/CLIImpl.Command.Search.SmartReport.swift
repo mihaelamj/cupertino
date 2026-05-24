@@ -4,7 +4,7 @@ import Logging
 import LoggingModels
 import SampleIndex
 import SampleIndexSQLite
-import Search
+import SearchAPI
 import SearchModels
 import SearchSQLite
 import Services

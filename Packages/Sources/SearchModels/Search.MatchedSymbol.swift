@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Lifted into SearchModels so result-consuming layers (Services formatters,
 /// MCP responders, CLI) can decode + render matched-symbol entries without
-/// importing the Search target's behavioural surface.
+/// importing the SearchAPI target's behavioural surface.
 extension Search {
     public struct MatchedSymbol: Codable, Sendable, Hashable {
         /// Symbol kind label as emitted by the indexer

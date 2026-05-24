@@ -3,10 +3,10 @@ import SharedConstants
 
 /// Behavioural contract for the search-index database.
 ///
-/// Production implementation: `Search.Index` (the actor in the Search SPM
+/// Production implementation: `Search.Index` (the actor in the SearchAPI SPM
 /// target). Consumers — Services read commands, MCPSupport responders,
 /// CLI runners — accept this protocol instead of taking a behavioural
-/// dependency on the Search target.
+/// dependency on the SearchAPI target.
 ///
 /// The protocol surfaces every method Services calls on `Search.Index`:
 /// `search`, `getDocumentContent`, `listFrameworks`, `documentCount`,
@@ -178,7 +178,7 @@ extension Search {
     /// #226 — predicate used by `CompositeToolProvider`'s search-style
     /// tool handlers to filter result rows by the MCP `--platform` /
     /// `--min-version` args. Lives in `SearchModels` (not `Search`)
-    /// because the caller doesn't import the Search SPM target.
+    /// because the caller doesn't import the SearchAPI SPM target.
     ///
     /// Semantics: a row passes when *every set filter* is `>=` the row's
     /// own minimum (semver-aware — `"10.13" <= "10.2"` is **false**).
@@ -201,22 +201,22 @@ extension Search {
             let fVision = (minVisionOS?.isEmpty == true) ? nil : minVisionOS
             if fIOS == nil, fMac == nil, fTv == nil, fWatch == nil, fVision == nil { return true }
             guard let minima else { return false }
-            if let f = fIOS, let rv = minima.minIOS, !isVersion(rv, lessThanOrEqualTo: f) { return false }
-            if let f = fIOS, minima.minIOS == nil { return false }
-            if let f = fMac, let rv = minima.minMacOS, !isVersion(rv, lessThanOrEqualTo: f) { return false }
-            if let f = fMac, minima.minMacOS == nil { return false }
-            if let f = fTv, let rv = minima.minTvOS, !isVersion(rv, lessThanOrEqualTo: f) { return false }
-            if let f = fTv, minima.minTvOS == nil { return false }
-            if let f = fWatch, let rv = minima.minWatchOS, !isVersion(rv, lessThanOrEqualTo: f) { return false }
-            if let f = fWatch, minima.minWatchOS == nil { return false }
-            if let f = fVision, let rv = minima.minVisionOS, !isVersion(rv, lessThanOrEqualTo: f) { return false }
-            if let f = fVision, minima.minVisionOS == nil { return false }
+            if let floor = fIOS, let rv = minima.minIOS, !isVersion(rv, lessThanOrEqualTo: floor) { return false }
+            if let floor = fIOS, minima.minIOS == nil { return false }
+            if let floor = fMac, let rv = minima.minMacOS, !isVersion(rv, lessThanOrEqualTo: floor) { return false }
+            if let floor = fMac, minima.minMacOS == nil { return false }
+            if let floor = fTv, let rv = minima.minTvOS, !isVersion(rv, lessThanOrEqualTo: floor) { return false }
+            if let floor = fTv, minima.minTvOS == nil { return false }
+            if let floor = fWatch, let rv = minima.minWatchOS, !isVersion(rv, lessThanOrEqualTo: floor) { return false }
+            if let floor = fWatch, minima.minWatchOS == nil { return false }
+            if let floor = fVision, let rv = minima.minVisionOS, !isVersion(rv, lessThanOrEqualTo: floor) { return false }
+            if let floor = fVision, minima.minVisionOS == nil { return false }
             return true
         }
 
         /// Semver-correct `lhs <= rhs` (string compare gets `"10.13" <= "10.2"` wrong).
         /// Identical algorithm to `Search.Index.isVersion`; duplicated here as `public`
-        /// so consumers outside the Search SPM target can use the same predicate.
+        /// so consumers outside the SearchAPI SPM target can use the same predicate.
         public static func isVersion(_ lhs: String, lessThanOrEqualTo rhs: String) -> Bool {
             let lhsComponents = lhs.split(separator: ".").compactMap { Int($0) }
             let rhsComponents = rhs.split(separator: ".").compactMap { Int($0) }

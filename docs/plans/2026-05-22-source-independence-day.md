@@ -45,7 +45,7 @@ Each step is a separate PR with its own critic loop (2-iteration minimum per the
 **Files touched**:
 
 - `Packages/Sources/SearchSQLite/Search.SourceIndexer.swift`: remove `IndexerRegistry.all` static dict (or reduce to a thin lookup over the injected list).
-- `Packages/Sources/Search/`: consumer takes the list at init.
+- `Packages/Sources/SearchSQLite/Search.Index.swift`: the actor that owns the dict-on-actor relocation per #932; takes the list at init.
 - `Packages/Sources/CLI/Commands/CLIImpl.Command.Save.Indexers.swift`: composition root assembles `[any Search.SourceIndexer]` from the 7 existing concretes.
 - `Packages/Tests/CLITests/`: new test pinning the composition-root list as the sole assembly point + a fake indexer test proving SearchSQLite need not be edited.
 
@@ -62,7 +62,7 @@ Each step is a separate PR with its own critic loop (2-iteration minimum per the
 **Files touched**:
 
 - `Packages/Sources/SearchStrategies/Search.MakeDefaultStrategies.swift`: remove the factory or downgrade it to a test default.
-- `Packages/Sources/Search/`: consumer's init signature changes.
+- `Packages/Sources/SearchAPI/`: consumer's init signature changes.
 - `Packages/Sources/CLI/Commands/CLIImpl.Command.Save.Indexers.swift`: composition root extends the assembly to include strategies.
 - `Packages/Tests/CLITests/`: fake strategy test.
 
@@ -81,7 +81,7 @@ Each step is a separate PR with its own critic loop (2-iteration minimum per the
 **Files touched**:
 
 - `Packages/Sources/SearchModels/Search.SourceDefinition.swift`: `SourceRegistry.all` no longer the production source of truth.
-- `Packages/Sources/Search/`: ranking path takes the descriptor list at init.
+- `Packages/Sources/SearchSQLite/Search.Index.Search.swift`: ranking path takes the descriptor list at init.
 - `Packages/Sources/CLI/Commands/CLIImpl.Command.Save.Indexers.swift`: composition root assembles `[Search.SourceDefinition]`.
 - `Packages/Tests/SearchModelsTests/`, `Packages/Tests/CLITests/`: pin the data-driven lookup surface.
 

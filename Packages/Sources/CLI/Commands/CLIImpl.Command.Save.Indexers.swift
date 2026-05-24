@@ -19,7 +19,7 @@ import SampleCodeStrategy
 import SampleIndex
 import SampleIndexSQLite
 import SamplesAppleConstraintsPass
-import Search
+import SearchAPI
 import SearchModels
 import SearchSQLite
 import SharedConstants
@@ -205,7 +205,7 @@ extension CLIImpl.Command.Save {
     /// Concrete `Search.DocsIndexingRunner` (GoF Strategy) used by
     /// `Indexer.DocsService`. Wraps `Search.Index` + `Search.IndexBuilder`.
     /// Lives at the CLI composition root so Indexer doesn't need
-    /// `import Search` for these actor types.
+    /// `import SearchAPI` for these actor types.
     ///
     /// Post-Observer-protocol cleanup: this runner is now closure-free.
     /// The `progress: any Search.IndexingProgressReporting` value
@@ -397,7 +397,7 @@ extension CLIImpl.Command.Save {
     /// wrapping the `Core.JSONParser.MarkdownToStructuredPage.convert`
     /// static method. Lives at the CLI composition root so neither
     /// Search nor Indexer needs to import `CoreJSONParser` —
-    /// the Search target sees only the protocol from SearchModels.
+    /// the SearchAPI target sees only the protocol from SearchModels.
     struct LiveMarkdownToStructuredPageStrategy: Search.MarkdownToStructuredPageStrategy {
         func convert(markdown: String, url: URL?) -> Shared.Models.StructuredDocumentationPage? {
             Core.JSONParser.MarkdownToStructuredPage.convert(markdown, url: url)

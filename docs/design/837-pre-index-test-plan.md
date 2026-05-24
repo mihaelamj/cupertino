@@ -343,7 +343,7 @@ failure mode the production save would have hit:**
 **Code under test:**
 
 - `Search.PackageIndex.applyAppleStaticConstraints(lookup:enrichmentVersion:)`
-  in `Packages/Sources/Search/PackageIndex.swift`.
+  in `Packages/Sources/SearchSQLite/PackageIndex.swift`.
 - `Enrichment.PackagesAppleConstraintsPass` in
   `Packages/Sources/Enrichment/Enrichment.PackagesAppleConstraintsPass.swift`.
 

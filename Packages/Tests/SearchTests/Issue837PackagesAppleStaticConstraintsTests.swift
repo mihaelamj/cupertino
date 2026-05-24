@@ -1,6 +1,6 @@
 import Foundation
 import LoggingModels
-@testable import Search
+@testable import SearchAPI
 import SearchModels
 @testable import SearchSQLite
 import SQLite3
@@ -12,7 +12,7 @@ import Testing
 /// Parallel to the samples test suite (§9.2) but writes to packages.db's
 /// `package_symbols.generic_constraints` column instead of samples'
 /// `file_symbols.generic_constraints`. The SQL is written separately
-/// in `Packages/Sources/Search/PackageIndex.swift`; this suite catches
+/// in `Packages/Sources/SearchSQLite/PackageIndex.swift`; this suite catches
 /// divergence from the samples implementation.
 ///
 /// Subject under test:

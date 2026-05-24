@@ -1,5 +1,5 @@
 import Foundation
-@testable import Search
+@testable import SearchAPI
 import SearchModels
 @testable import SearchSQLite
 import Testing
@@ -85,11 +85,11 @@ struct JSONLImportLogSinkTests {
         let logPath = tempDir.appendingPathComponent("save.jsonl")
 
         let sink = try Search.JSONLImportLogSink(path: logPath)
-        for i in 0..<50 {
+        for index in 0..<50 {
             await sink.record(Search.ImportLogEntry(
-                sourceFile: "/tmp/file\(i).json",
-                resolvedURL: "https://developer.apple.com/documentation/test/\(i)",
-                uri: "apple-docs://test/\(i)",
+                sourceFile: "/tmp/file\(index).json",
+                resolvedURL: "https://developer.apple.com/documentation/test/\(index)",
+                uri: "apple-docs://test/\(index)",
                 state: .indexed
             ))
         }

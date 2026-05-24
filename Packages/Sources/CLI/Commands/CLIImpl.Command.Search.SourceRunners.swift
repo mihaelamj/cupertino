@@ -2,7 +2,7 @@ import ArgumentParser
 import Foundation
 import Logging
 import LoggingModels
-import Search
+import SearchAPI
 import SearchModels
 import SearchSQLite
 import Services

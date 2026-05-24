@@ -8,9 +8,9 @@ import LoggingModels
 import MCPCore
 import MCPSupport
 import SampleIndex
-import SampleIndexSQLite
 import SampleIndexModels
-import Search
+import SampleIndexSQLite
+import SearchAPI
 import SearchModels
 import SearchToolProvider
 import Services
@@ -193,9 +193,9 @@ extension CLIImpl.Command {
             let searchIndexDisabledReason: String? = searchLoadResult.disabledReason
 
             // Register resource provider with optional search-index markdown
-            // lookup. The provider doesn't see the Search target — it just
+            // lookup. The provider doesn't see the SearchAPI target; it just
             // gets a strategy that returns markdown for a URI, or nil if the
-            // URI isn't indexed. This keeps MCPSupport free of the Search
+            // URI isn't indexed. This keeps MCPSupport free of the SearchAPI
             // import per the DI epic (#406).
             let markdownLookup: (any MCP.Support.MarkdownLookupStrategy)?
             if let searchIndex {

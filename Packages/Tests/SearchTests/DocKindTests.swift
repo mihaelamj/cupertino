@@ -1,8 +1,6 @@
-import SearchModels
-
-// swiftlint:disable identifier_name
 import Foundation
-@testable import Search
+@testable import SearchAPI
+import SearchModels
 @testable import SearchSQLite
 import SharedConstants
 import Testing
@@ -54,10 +52,10 @@ struct DocKindClassifyTests {
             "function", "property", "method", "operator",
             "typealias", "macro", "framework",
         ]
-        for k in declKinds {
+        for declKind in declKinds {
             #expect(
-                Search.Classify.kind(source: "apple-docs", structuredKind: k) == .symbolPage,
-                "Expected \(k) → symbolPage"
+                Search.Classify.kind(source: "apple-docs", structuredKind: declKind) == .symbolPage,
+                "Expected \(declKind) → symbolPage"
             )
         }
     }

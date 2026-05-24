@@ -8,7 +8,7 @@ import SharedConstants
 /// algorithms (load from on-disk JSON, embedded fallback, test
 /// fixture) interchangeable behind a named protocol.
 ///
-/// The Search target's `SampleCodeStrategy` accepts a conformer at
+/// The SearchAPI target's `SampleCodeStrategy` accepts a conformer at
 /// init so it can index the catalog without reaching into
 /// `CoreSampleCode` directly. The composition root (the CLI binary)
 /// supplies a concrete conformer that adapts from `Sample.Core.Catalog`'s

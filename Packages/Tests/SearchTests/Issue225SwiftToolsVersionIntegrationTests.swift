@@ -2,7 +2,7 @@ import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
 import LoggingModels
-@testable import Search
+@testable import SearchAPI
 import SearchModels
 @testable import SearchSQLite
 import SharedConstants

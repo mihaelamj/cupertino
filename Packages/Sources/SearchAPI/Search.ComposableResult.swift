@@ -2,7 +2,7 @@ import Foundation
 import SearchModels
 import SharedConstants
 
-/// Sample.Search (in SharedConstants) shadows the Search SPM target inside any
+/// Sample.Search (in SharedConstants) shadows the SearchAPI SPM target inside any
 /// extension Sample {} scope. Pin the SPM target so Sample.Atom.source can still
 /// reach SearchModule.Source via SearchModule.Source.
 public typealias SearchModule = Search

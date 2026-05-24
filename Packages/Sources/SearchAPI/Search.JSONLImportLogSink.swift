@@ -79,9 +79,7 @@ extension Search {
             hasWarnedAboutWriteFailure = true
             let message = "⚠️  JSONL audit log write failure on \(path.lastPathComponent): " +
                 "\(error). Subsequent failures will be silent; the audit log may be incomplete.\n"
-            if let data = message.data(using: .utf8) {
-                FileHandle.standardError.write(data)
-            }
+            FileHandle.standardError.write(Data(message.utf8))
         }
 
         /// Flush + close. Call once at the end of the indexing run so
