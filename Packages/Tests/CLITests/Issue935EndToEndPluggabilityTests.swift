@@ -1,5 +1,3 @@
-// swiftformat:disable numberFormatting
-
 @testable import CLI
 import Foundation
 import LoggingModels
@@ -58,7 +56,7 @@ private struct FakeWWDCStrategy: Search.SourceIndexingStrategy {
             content: "Welcome to WWDC. This session covers SwiftUI animations and the new declarative APIs.",
             filePath: "wwdc-101.json",
             contentHash: "fixture-hash-101",
-            lastCrawled: Date(timeIntervalSince1970: 1_700_000_000),
+            lastCrawled: Date(timeIntervalSince1970: 1700000000),
             sourceType: "wwdc-transcripts",
             packageId: nil,
             jsonData: nil
@@ -72,7 +70,7 @@ private struct FakeWWDCStrategy: Search.SourceIndexingStrategy {
             content: "Swift Testing is the new framework that replaces XCTest for unit test authoring.",
             filePath: "wwdc-238.json",
             contentHash: "fixture-hash-238",
-            lastCrawled: Date(timeIntervalSince1970: 1_700_000_000),
+            lastCrawled: Date(timeIntervalSince1970: 1700000000),
             sourceType: "wwdc-transcripts",
             packageId: nil,
             jsonData: nil
@@ -86,7 +84,7 @@ private struct FakeWWDCStrategy: Search.SourceIndexingStrategy {
             content: "Async / await and structured concurrency unlock safer parallelism for iOS apps.",
             filePath: "wwdc-410.json",
             contentHash: "fixture-hash-410",
-            lastCrawled: Date(timeIntervalSince1970: 1_700_000_000),
+            lastCrawled: Date(timeIntervalSince1970: 1700000000),
             sourceType: "wwdc-transcripts",
             packageId: nil,
             jsonData: nil

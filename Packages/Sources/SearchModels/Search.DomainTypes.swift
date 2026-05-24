@@ -1,18 +1,21 @@
 import Foundation
 import SharedConstants
 
-// MARK: - Domain types lifted from `Search/Search.ComposableResult.swift`
+// MARK: - Domain types lifted from `Search.ComposableResult.swift`
+
 // to `SearchModels` by the #898F follow-up to #898 sub-PR E. Carrying
 // `Search.Source`, `Search.QueryIntent`, `detectQueryIntent(_:)`, and
 // `Search.SourceProperties` here lets `SearchSQLite` reach them via the
 // Models tier seam so the concrete target no longer needs
-// `import Search`. The types themselves are byte-identical to their
-// pre-lift definitions; behaviour is preserved.
+// `import SearchAPI` (renamed from `Search` in #900). The types
+// themselves are byte-identical to their pre-lift definitions;
+// behaviour is preserved.
 
 // MARK: - Source Identity
 
 /// Identifies which documentation source produced a result
 // MARK: - Source (formerly an enum, now a String-wrapping struct)
+
 //
 // Open. The closed `enum Source: String, CaseIterable { case appleDocs;
 // case samples; ... }` shape was the single biggest blocker to adding a
@@ -59,7 +62,7 @@ extension Search {
 
         public init(from decoder: Decoder) throws {
             let container = try decoder.singleValueContainer()
-            self.rawValue = try container.decode(String.self)
+            rawValue = try container.decode(String.self)
         }
 
         public func encode(to encoder: Encoder) throws {

@@ -397,5 +397,5 @@ extension Services {
 
 // The `withUnifiedSearchService` factory lives in
 // `Services.ServiceContainer.swift` alongside the other `with*Service`
-// factories — that file keeps `import Search` for the Search.Index
-// instantiation; this file no longer needs it.
+// factories; that file keeps `import SearchAPI` / `import SearchSQLite`
+// for the Search.Index instantiation, but this file no longer needs them.

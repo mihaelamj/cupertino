@@ -3,6 +3,7 @@ import SampleIndexModels
 import SearchModels
 import ServicesModels
 import SharedConstants
+
 // MARK: - Teaser Service
 
 /// Service for fetching teaser results from sources the user didn't search.
@@ -143,9 +144,10 @@ extension Services {
 }
 
 // The `withTeaserService` factory used to live here, but it needed to
-// construct a `Search.Index` (which lives in the Search target) and so
-// dragged `import Search` into this file. The factory now lives in
-// `Services.ServiceContainer.swift`, alongside the other
-// `with*Service` factories — that file keeps its `import Search` for
-// the same Search.Index-instantiation responsibility, but this file no
-// longer needs it.
+// construct a `Search.Index` (which lives in `SearchSQLite` post-#898 and
+// the orchestration target was renamed to `SearchAPI` in #900) and so
+// dragged `import SearchAPI` / `import SearchSQLite` into this file. The
+// factory now lives in `Services.ServiceContainer.swift`, alongside the
+// other `with*Service` factories; that file keeps the search-target
+// imports for the same Search.Index-instantiation responsibility, but
+// this file no longer needs them.
