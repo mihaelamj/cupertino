@@ -8,7 +8,14 @@ import Testing
 
 @Suite("#919 production display-name regression guard (post-#934)")
 struct Issue919DisplayNameProductionTests {
-    private static let production: Search.SourceLookup = CLIImpl.makeProductionSourceLookup()
+    // Post-#1025 (Phase 1I.a of #1007): production SourceLookup is
+    // derived from the per-source registry rather than the dissolved
+    // `makeProductionSourceLookup` inline literal list. The
+    // definitions are the per-source targets' static `.definition`
+    // literals (e.g. `AppleDocsSource.definition`).
+    private static let production: Search.SourceLookup = .init(
+        definitions: CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition)
+    )
 
     @Test("All 8 historical sources have non-empty display names + emojis in the production lookup")
     func allHistoricalSourcesAreRegistered() {
@@ -52,9 +59,11 @@ struct Issue919DisplayNameProductionTests {
     @Test("Production lookup carries exactly the 8 historical sources (silent-row-add guard)")
     func productionLookupCountIs8() {
         // The pre-#934 `SourceRegistry.all.count == 8` invariant lives
-        // here now. Adding a 9th source = +1 SourceDefinition in
-        // `CLIImpl.makeProductionSourceLookup()` and +1 row in this
-        // test (so the addition is conscious, not silent).
+        // here now. Post-#1025 (Phase 1I.a), the definitions come from
+        // `CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition)`;
+        // adding a 9th source = one `.register(<X>Source())` line at the
+        // composition root and +1 row in this test (so the addition is
+        // conscious, not silent).
         #expect(Self.production.definitions.count == 8)
     }
 

@@ -132,7 +132,7 @@ private struct FakeWWDCIndexer: Search.SourceIndexer {
 /// Inline fake `Search.SourceDefinition` for the wwdc-transcripts
 /// source. Pluggability claim: this descriptor lives entirely in the
 /// test file. The production composition root in
-/// `CLIImpl.makeProductionSourceLookup()` is NOT edited; the test's
+/// `CLIImpl.makeProductionSourceRegistry()` is NOT edited; the test's
 /// own composition root assembles a `Search.SourceLookup` that
 /// includes both the production 8 + this fake 1.
 private extension Search.SourceDefinition {
@@ -224,10 +224,13 @@ struct Issue935EndToEndPluggabilityTests {
     @Test("the 8 production sources stay reachable through the production composition-root lookup; the fake is NOT in production")
     func productionSourcesAreUntouched() {
         // Pins that this PR's fake source does NOT leak into the
-        // production composition root. The CLI's
-        // `CLIImpl.makeProductionSourceLookup()` continues to return
-        // exactly the 8 historical sources.
-        let production = CLIImpl.makeProductionSourceLookup()
+        // production composition root. Post-#1025 (Phase 1I.a of
+        // #1007), the production `Search.SourceLookup` is derived
+        // from the per-source registry rather than the dissolved
+        // `makeProductionSourceLookup` inline literal list.
+        let production = Search.SourceLookup(
+            definitions: CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition)
+        )
         let productionIds = Set(production.allIDs)
         #expect(productionIds.count == 8)
         #expect(!productionIds.contains("wwdc-transcripts"), "Fake WWDC source must not have leaked into production")
