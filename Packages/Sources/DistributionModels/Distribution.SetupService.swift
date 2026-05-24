@@ -18,17 +18,29 @@ extension Distribution {
             public let currentDocsVersion: String
             public let docsReleaseBaseURL: String
             public let keepExisting: Bool
+            /// Descriptors for every database the CLI must classify, download,
+            /// and place. Ordered by the historical printable sequence
+            /// (`search → samples → packages`); the success-summary printer
+            /// iterates this order. Composition-root injected (the CLI's
+            /// `CLIImpl.Command.Setup.run` assembles the list and passes it
+            /// in) so adding a 4th DB plugs in via a single append at the
+            /// composition root plus a new `DatabaseDescriptor.<name>`
+            /// constant in `Shared.Models.DatabaseDescriptor`. No edit to
+            /// `Distribution.SetupService.run` required.
+            public let required: [Shared.Models.DatabaseDescriptor]
 
             public init(
                 baseDir: URL,
                 currentDocsVersion: String = Shared.Constants.App.databaseVersion,
                 docsReleaseBaseURL: String = Shared.Constants.App.docsReleaseBaseURL,
-                keepExisting: Bool = false
+                keepExisting: Bool = false,
+                required: [Shared.Models.DatabaseDescriptor] = [.search, .samples, .packages]
             ) {
                 self.baseDir = baseDir
                 self.currentDocsVersion = currentDocsVersion
                 self.docsReleaseBaseURL = docsReleaseBaseURL
                 self.keepExisting = keepExisting
+                self.required = required
             }
         }
 

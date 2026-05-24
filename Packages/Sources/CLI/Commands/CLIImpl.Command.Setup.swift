@@ -75,9 +75,17 @@ extension CLIImpl.Command {
             }
 
             let renderer = SetupRenderer()
+            // Composition root for the per-DB descriptor list. Adding a
+            // 4th cupertino-managed database requires:
+            //   1. one new `static let <name>: DatabaseDescriptor` in
+            //      `Shared.Models.DatabaseDescriptor`
+            //   2. one append below
+            // No edit to `Distribution.SetupService.run` required; the
+            // service iterates `request.required` end-to-end.
             let request = Distribution.SetupService.Request(
                 baseDir: baseURL,
-                keepExisting: keepExisting
+                keepExisting: keepExisting,
+                required: [.search, .samples, .packages]
             )
 
             do {
