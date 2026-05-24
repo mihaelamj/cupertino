@@ -1,4 +1,5 @@
 import Foundation
+import LoggingModels
 import PackagesSource
 import SearchModels
 import SharedConstants
@@ -61,8 +62,6 @@ struct Issue1023PackagesSourceShapeTests {
 }
 
 // MARK: - Test fixtures
-
-import LoggingModels
 
 /// No-op `Search.MarkdownToStructuredPageStrategy` for IndexEnvironment fixtures.
 private struct NoopMarkdownStrategy: Search.MarkdownToStructuredPageStrategy {

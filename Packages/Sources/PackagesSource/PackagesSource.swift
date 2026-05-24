@@ -5,7 +5,7 @@ import SharedConstants
 // MARK: - PackagesSource
 
 /// `Search.SourceProvider` conformer for the `packages` source.
-/// Eighth (final) per-source target of the #1007 epic — and the
+/// Eighth (final) per-source target of the #1007 epic, and the
 /// first source whose `destinationDB` is **not** `.search`.
 ///
 /// PackagesSource validates the destinationDB protocol extension
