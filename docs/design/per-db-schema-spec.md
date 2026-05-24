@@ -197,8 +197,9 @@ takes ≈12 hours on the Studio against the ~412 K-page Apple-docs
 corpus. Output file is ≈2.7 GB.
 
 **Schema version:** `PRAGMA user_version = 18`. Declared in
-`Packages/Sources/SearchSQLite/Search.Index.swift:88` as
-`Search.Index.schemaVersion: Int32 = 18`.
+`Packages/Sources/SearchSQLite/Search.Index.swift` as
+`Search.Index.schemaVersion: Int32 = Search.Schema.currentVersion`
+(the source-of-truth constant lives in `SearchSchema/Search.Schema.swift`).
 
 **Sources stored.** A single search.db can hold rows from
 multiple logically-distinct corpora. The `source` column on
@@ -789,9 +790,9 @@ the #837 `package_symbols` addition adds a meaningful but not
 catastrophic amount of bytes (one row per Swift symbol across
 the corpus).
 
-**Schema version:** `PRAGMA user_version = 4`. Declared in
-`Packages/Sources/SearchSQLite/PackageIndex.swift:36` as
-`Search.PackageIndex.schemaVersion: Int32 = 4`.
+**Schema version:** `PRAGMA user_version = 5`. Declared in
+`Packages/Sources/SearchSQLite/PackageIndex.swift` as
+`Search.PackageIndex.schemaVersion: Int32 = 5`.
 
 **Migration policy.** packages.db uses **in-place ALTER**
 migration (not wipe-and-rebuild). The migration runner is
@@ -963,7 +964,7 @@ behaviour touches which column on which DB.
 | Default-search symbol boost on `generic_constraints` | `doc_symbols.generic_constraints` (#837 PR-1, `rank * 3.0`) | `file_symbols.generic_constraints` (#837 PR-1, `rank * 3.0`) | `package_symbols.generic_constraints` (#837 PR-2, `rank * 3.0`) |
 | MCP `search source=packages` dispatch | n/a (search.db carries no `packages` source rows) | n/a | `Search.PackagesSearcher` against `package_files_fts` (#837 PR-2 fix for the pre-v1.2.0 dead-letter path) |
 | BM25 ranking on full-text query | `docs_fts.title/content/summary/symbols/symbol_components` | `projects_fts.title/description/readme/frameworks` + `files_fts.path/filename/content` | `package_files_fts.title/content/symbols` |
-| Schema-stamp safety guard | `Search.Index.schemaVersion: Int32 = 18` | `Sample.Index.Database.schemaVersion: Int32 = 4` | `Search.PackageIndex.schemaVersion: Int32 = 4` |
+| Schema-stamp safety guard | `Search.Index.schemaVersion: Int32 = 18` | `Sample.Index.Database.schemaVersion: Int32 = 4` | `Search.PackageIndex.schemaVersion: Int32 = 5` |
 
 Rows marked **(not yet wired)** in samples.db / packages.db columns
 remain tracked at `docs/design/how-cupertino-answers-a-query.md` §6.
