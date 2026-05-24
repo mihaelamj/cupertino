@@ -26,7 +26,29 @@ struct MockAIAgent {
         // SERVER → CLIENT response sections are kept so the demo still
         // tells a story without burying the audience in protocol noise.
         let quiet = rawArgs.contains("--quiet") || rawArgs.contains("-q")
-        let args = rawArgs.filter { $0 != "--quiet" && $0 != "-q" }
+
+        // Parse --response-timeout <seconds>. Default 30s preserved for
+        // back-compat; CI smoke runs that hit a cold-start MCP server
+        // (search.db open ~10-15s + Composition bootstrap on slower
+        // machines) pass `--response-timeout 60` to absorb the worst
+        // observed cold start without flaking. Matches the 60s default
+        // adopted in the Phase 2 search-quality harness for the same
+        // reason. See memory: cupertino-mcp-cold-start-ci-timeout.md.
+        var responseTimeoutSeconds = MCPClient.defaultResponseTimeoutSeconds
+        if let flagIdx = rawArgs.firstIndex(of: "--response-timeout"),
+           flagIdx + 1 < rawArgs.count,
+           let parsed = Int(rawArgs[flagIdx + 1]),
+           parsed > 0 {
+            responseTimeoutSeconds = parsed
+        }
+
+        let args = rawArgs.enumerated().filter { idx, value in
+            if value == "--quiet" || value == "-q" { return false }
+            if value == "--response-timeout" { return false }
+            // Drop the value paired with --response-timeout (idx-1 holds the flag).
+            if idx > 0, rawArgs[idx - 1] == "--response-timeout" { return false }
+            return true
+        }.map(\.element)
 
         print("🤖 Mock AI Agent Starting...")
         print("=".repeating(80))
@@ -45,7 +67,11 @@ struct MockAIAgent {
         }
 
         do {
-            let agent = MCPClient(externalServerCommand: serverCommand, quiet: quiet)
+            let agent = MCPClient(
+                externalServerCommand: serverCommand,
+                quiet: quiet,
+                responseTimeoutSeconds: responseTimeoutSeconds
+            )
             try await agent.run()
         } catch {
             print("❌ Error: \(error)")
@@ -68,10 +94,24 @@ private actor MCPClient {
     private let externalServerCommand: [String]?
     private let quiet: Bool
     private var pendingResponses: [CheckedContinuation<String, Error>] = []
+    /// Lines that arrived from the server before any `readLine` caller
+    /// could register a continuation. The race fired on warm requests
+    /// (e.g. `tools/list` after `initialize`'s cold-start) where the
+    /// server's response was already in the pipe by the time
+    /// `sendRequest` got past `stdin.write` and into the continuation
+    /// closure. Pre-fix, those lines were dropped with "Received
+    /// unexpected line"; post-fix, `readLine` consumes them first.
+    private var bufferedLines: [String] = []
+    private let responseTimeoutSeconds: Int
 
-    init(externalServerCommand: [String]? = nil, quiet: Bool = false) {
+    init(
+        externalServerCommand: [String]? = nil,
+        quiet: Bool = false,
+        responseTimeoutSeconds: Int = MCPClient.defaultResponseTimeoutSeconds
+    ) {
         self.externalServerCommand = externalServerCommand
         self.quiet = quiet
+        self.responseTimeoutSeconds = responseTimeoutSeconds
     }
 
     func run() async throws {
@@ -93,6 +133,14 @@ private actor MCPClient {
 
         // Initialize the connection
         try await initialize()
+
+        // Per MCP spec lifecycle (2025-11-25), the client MUST send a
+        // `notifications/initialized` notification after a successful
+        // `initialize` response before issuing any other requests.
+        // A spec-compliant server (cupertino's `serve`) blocks further
+        // request dispatch until this notification arrives, which is
+        // why `tools/list` previously hung forever post-initialize.
+        try await sendInitializedNotification()
 
         // List available tools
         try await listTools()
@@ -526,6 +574,18 @@ private actor MCPClient {
         print()
     }
 
+    private func sendInitializedNotification() async throws {
+        print("📨 CLIENT → SERVER: notifications/initialized")
+        print("-".repeating(80))
+        let notification = MCP.Core.Protocols.JSONRPCNotification(
+            method: "notifications/initialized",
+            params: nil
+        )
+        try sendNotification(notification)
+        print("✅ Initialized notification sent")
+        print()
+    }
+
     private func shutdown() async throws {
         print("📨 CLIENT → SERVER: shutdown (notification)")
         print("-".repeating(80))
@@ -574,11 +634,13 @@ private actor MCPClient {
             print()
         }
 
-        // 3) Write the complete message
-        stdin.write(messageData)
+        // 3) Write the complete message. `write(contentsOf:)` is the
+        // throwing variant; it surfaces EPIPE-class errors instead of
+        // silently dropping them like the legacy `write(_:)` overload.
+        try stdin.write(contentsOf: messageData)
 
         // 4) Wait for one newline-delimited response
-        let responseLine = try await readLine(from: stdout)
+        let responseLine = try await readLine(from: stdout, timeoutSeconds: responseTimeoutSeconds)
 
         // Log the raw JSON response (skipped in demo mode — the dedicated
         // pretty "📬 SERVER → CLIENT: <method> response" block follows).
@@ -639,7 +701,7 @@ private actor MCPClient {
         }
 
         // 3) Write the wire message
-        stdin.write(messageData)
+        try stdin.write(contentsOf: messageData)
     }
 
     private func handleLine(_ line: String) {
@@ -651,7 +713,10 @@ private actor MCPClient {
             let continuation = pendingResponses.removeFirst()
             continuation.resume(returning: line)
         } else {
-            print("⚠️  Received unexpected line: \(line.prefix(100))...")
+            // Race: response arrived before sendRequest could register a
+            // continuation. Buffer it so the next readLine call consumes it
+            // instead of waiting forever.
+            bufferedLines.append(line)
         }
     }
 
@@ -659,17 +724,24 @@ private actor MCPClient {
     /// agent forever. 30s covers the worst observed clean-rebuild cold-start
     /// (~10-15s for SPM-relinked binary + DB open + Composition bootstrap),
     /// with margin for slower machines. Tuneable via the parameter for tests.
-    private static let defaultResponseTimeoutSeconds = 30
+    static let defaultResponseTimeoutSeconds = 30
 
     private func readLine(
         from fileHandle: FileHandle,
         timeoutSeconds: Int = MCPClient.defaultResponseTimeoutSeconds
     ) async throws -> String {
+        // First-cut: if a line already arrived while sendRequest was still
+        // mid-write, consume it before waiting. Closes the race that
+        // dropped `tools/list` responses pre-fix.
+        if !bufferedLines.isEmpty {
+            return bufferedLines.removeFirst()
+        }
+
         // Spawn a sibling task that fires `timeoutSeconds` later and dequeues
         // the parked continuation with a timeout error if it's still there.
         // Both tasks run on this actor, so the array mutation is serialised
         // between handleLine (response arrived) and dequeueOldestAsTimeout
-        // (timeout fired) — exactly one of them will resume the continuation.
+        // (timeout fired); exactly one of them will resume the continuation.
         let timeoutTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(timeoutSeconds))
             await self?.dequeueOldestAsTimeout(seconds: timeoutSeconds)
