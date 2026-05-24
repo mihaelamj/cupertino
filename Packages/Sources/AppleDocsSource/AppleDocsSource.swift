@@ -1,0 +1,43 @@
+import Foundation
+import SearchModels
+import SharedConstants
+
+// MARK: - AppleDocsSource
+
+/// `Search.SourceProvider` conformer for the apple-docs source.
+/// Lives in its own SPM target (`Packages/Sources/AppleDocsSource/`)
+/// per the #1007 epic: a new source = a new per-source target + one
+/// `.register(<X>Source())` line at the composition root, zero edits
+/// to existing CLI / SearchSQLite / SearchModels code.
+///
+/// Conformance assembles 4 per-source artefacts:
+/// - `definition` — `Search.SourceDefinition` static literal in
+///   `AppleDocsSource.Definition.swift` (lifted from
+///   `CLI/CLIImpl.SourceLookup.swift`).
+/// - `fetchInfo` — `Search.FetchInfo` static literal in
+///   `AppleDocsSource.FetchInfo.swift` (lifted from
+///   `CLI/SupportingTypes.swift`'s pre-#1007 `FetchType.docs` case).
+/// - `makeStrategy(env:)` — constructs `Search.Strategies.AppleDocs`
+///   (the indexing strategy concrete also in this target).
+/// - `makeIndexer()` — constructs `Search.AppleDocsIndexer` (the
+///   indexer concrete also in this target).
+public struct AppleDocsSource: Search.SourceProvider {
+    public init() {}
+
+    public var definition: Search.SourceDefinition { Self.definition }
+
+    public var fetchInfo: Search.FetchInfo? { Self.fetchInfo }
+
+    public func makeStrategy(env: Search.IndexEnvironment) -> any Search.SourceIndexingStrategy {
+        Search.AppleDocsStrategy(
+            docsDirectory: env.sourceDirectory,
+            markdownStrategy: env.markdownStrategy,
+            logger: env.logger,
+            importLogSink: env.importLogSink
+        )
+    }
+
+    public func makeIndexer() -> any Search.SourceIndexer {
+        Search.AppleDocsIndexer()
+    }
+}

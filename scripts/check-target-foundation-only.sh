@@ -260,7 +260,7 @@ STRICT_PRODUCERS=(
     SampleIndexSQLite
     SearchAPI
     SearchSQLite
-    AppleDocsStrategy
+    AppleDocsSource
     HIGStrategy
     SampleCodeStrategy
     SwiftEvolutionStrategy

@@ -1,4 +1,4 @@
-import AppleDocsStrategy
+import AppleDocsSource
 import CoreProtocols
 import Foundation
 import Logging

@@ -1,7 +1,7 @@
 import AppleArchiveStrategy
 import AppleConstraintsKit
 import AppleConstraintsPass
-import AppleDocsStrategy
+import AppleDocsSource
 import CoreJSONParser
 import CoreProtocols
 import CoreSampleCode
