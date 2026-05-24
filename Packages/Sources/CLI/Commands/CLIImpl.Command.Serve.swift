@@ -193,7 +193,7 @@ extension CLIImpl.Command {
             let searchIndexDisabledReason: String? = searchLoadResult.disabledReason
 
             // Register resource provider with optional search-index markdown
-            // lookup. The provider doesn't see the Search target — it just
+            // lookup. The provider doesn't see the SearchAPI target — it just
             // gets a strategy that returns markdown for a URI, or nil if the
             // URI isn't indexed. This keeps MCPSupport free of the Search
             // import per the DI epic (#406).

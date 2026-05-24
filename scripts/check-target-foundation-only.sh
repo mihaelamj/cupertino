@@ -233,7 +233,7 @@ STRICT_PRODUCERS=(
     # PackageResult), `DocKind`/`Classify`, `Search.SourceIndexer`
     # protocol + indexer concretes + `Search.IndexerRegistry`, and
     # `DocLinkRewriter` whole-file moved to `SearchSQLite` (no external
-    # consumers in the Search target). The target now imports only
+    # consumers in the SearchAPI target). The target now imports only
     # foundation + Models + SQLite3 and audits clean.
 
     # Producer (#759): AppleConstraintsKit ships `Search.StaticConstraintsLookup`

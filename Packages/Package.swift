@@ -533,8 +533,6 @@ let targets: [Target] = {
             "SearchModels",
             "SharedConstants",
             "LoggingModels",
-            "CoreProtocols",
-            "ASTIndexer",
             "EnrichmentModels",
         ]
     )

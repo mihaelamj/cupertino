@@ -69,8 +69,8 @@ DRY_RUN=false
 # table's `CREATE TABLE` block. Pre-#886 the script read only
 # search.db's schema, so any packages.db or samples.db column citation
 # false-flagged as "column not found." Origin: #886.
-SCHEMA_SEARCH="Packages/Sources/Search/Search.Index.Schema.swift"
-SCHEMA_PACKAGES="Packages/Sources/Search/PackageIndex.swift"
+SCHEMA_SEARCH="Packages/Sources/SearchSQLite/Search.Index.Schema.swift"
+SCHEMA_PACKAGES="Packages/Sources/SearchSQLite/PackageIndex.swift"
 SCHEMA_SAMPLES="Packages/Sources/SampleIndex/Sample.Index.Database.swift"
 
 # Resolve the schema source file for a given table name. Echoes the

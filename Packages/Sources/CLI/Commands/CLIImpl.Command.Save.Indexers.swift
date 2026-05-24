@@ -397,7 +397,7 @@ extension CLIImpl.Command.Save {
     /// wrapping the `Core.JSONParser.MarkdownToStructuredPage.convert`
     /// static method. Lives at the CLI composition root so neither
     /// Search nor Indexer needs to import `CoreJSONParser` —
-    /// the Search target sees only the protocol from SearchModels.
+    /// the SearchAPI target sees only the protocol from SearchModels.
     struct LiveMarkdownToStructuredPageStrategy: Search.MarkdownToStructuredPageStrategy {
         func convert(markdown: String, url: URL?) -> Shared.Models.StructuredDocumentationPage? {
             Core.JSONParser.MarkdownToStructuredPage.convert(markdown, url: url)

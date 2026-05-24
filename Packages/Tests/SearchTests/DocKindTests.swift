@@ -2,7 +2,6 @@
 // Pre-existing tech debt; cleanup deferred (file touched by #900 rename only).
 import SearchModels
 
-// swiftlint:disable identifier_name empty_count line_length large_tuple
 import Foundation
 @testable import SearchAPI
 @testable import SearchSQLite

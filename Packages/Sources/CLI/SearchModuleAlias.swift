@@ -3,16 +3,20 @@ import SearchModels
 
 // MARK: - Search Module Disambiguator
 
-// `CLIImpl.Command.Search` (the subcommand struct under `Sources/CLI/Commands/`) and
-// the `Search` SPM target share a name. From inside any `extension CLIImpl.Command`
-// scope, bare `Search.<Type>` resolves to the nested subcommand struct, not
-// the SPM target — Swift's name lookup checks enclosing types before
-// imported modules, so the local match wins.
+// `SearchModule` aliases the `Search` namespace enum (declared in
+// `SearchModels`). The disambiguation matters because
+// `CLIImpl.Command.Search` (the subcommand struct under
+// `Sources/CLI/Commands/`) shadows the namespace inside any
+// `extension CLIImpl.Command` scope: bare `Search.<Type>` resolves
+// to the nested subcommand struct, not the namespace, because
+// Swift's name lookup checks enclosing types before imported modules.
 //
-// `SearchModule` pins the SPM target at module-internal scope so callers in
-// the CLI target can write `SearchModule.Index`, `SearchModule.SmartQuery`,
-// etc. and reach the actual module types. One declaration covers every file
-// in the CLI target.
+// Callers needing to reach types like `Search.Index` (extension in
+// `SearchSQLite`) or `Search.SmartQuery` (extension in `SearchAPI`)
+// from inside an `extension CLIImpl.Command` block write
+// `SearchModule.Index` / `SearchModule.SmartQuery` and get the
+// intended namespace-extension types. One declaration covers every
+// file in the CLI target.
 //
 // #974: this file used to also carry 8 `Live*` factory / strategy
 // structs. They were split into their own files under
