@@ -36,6 +36,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("SampleCodeSource"),
     .singleTargetLibrary("SwiftEvolutionSource"),
     .singleTargetLibrary("SwiftOrgSource"),
+    .singleTargetLibrary("SwiftBookSource"),
     .singleTargetLibrary("AppleArchiveSource"),
     .singleTargetLibrary("SampleIndex"),
     .singleTargetLibrary("SampleIndexSQLite"),
@@ -468,6 +469,7 @@ let targets: [Target] = {
             "AppleArchiveSource",
             "SwiftEvolutionSource",
             "SwiftOrgSource",
+            "SwiftBookSource",
             "LoggingModels",
         ]
     )
@@ -556,6 +558,7 @@ let targets: [Target] = {
             "SampleCodeSource",
             "SwiftEvolutionSource",
             "SwiftOrgSource",
+            "SwiftBookSource",
             "AppleArchiveSource",
             "AppleConstraintsPass",
             "SearchModels",
@@ -607,6 +610,7 @@ let targets: [Target] = {
             "SampleCodeSource",
             "SwiftEvolutionSource",
             "SwiftOrgSource",
+            "SwiftBookSource",
             "AppleArchiveSource",
             "AppleConstraintsPass",
             "SearchModels",
@@ -689,6 +693,26 @@ let targets: [Target] = {
     let swiftOrgSourceTarget = Target.target(
         name: "SwiftOrgSource",
         dependencies: [
+            "SearchModels",
+            "SharedConstants",
+            "LoggingModels",
+            "CoreProtocols",
+            "SearchStrategyHelpers",
+        ]
+    )
+
+    // #1021 (Phase 1G of epic #1007): SwiftBookSource is the first view-source
+    // per-source target. No prior SwiftBookStrategy to rename: SwiftBook is a
+    // sub-source of SwiftOrgStrategy (URL-prefix tagging at emission time);
+    // SwiftBookSource contributes only the SourceDefinition + SwiftBookIndexer.
+    // makeStrategy returns a private no-op strategy. ASTIndexer dep is
+    // load-bearing for SwiftBookIndexer.extractCode's Extractor call over
+    // chapter code blocks. First net STRICT_PRODUCERS add since #893 closed at
+    // 47 (count goes to 48 in this PR).
+    let swiftBookSourceTarget = Target.target(
+        name: "SwiftBookSource",
+        dependencies: [
+            "ASTIndexer",
             "SearchModels",
             "SharedConstants",
             "LoggingModels",
@@ -1043,6 +1067,7 @@ let targets: [Target] = {
             "SampleCodeSource",
             "SwiftEvolutionSource",
             "SwiftOrgSource",
+            "SwiftBookSource",
             "AppleArchiveSource",
             "AppleConstraintsPass",
             "HierarchyPass",
@@ -1279,6 +1304,7 @@ let targets: [Target] = {
         sampleCodeSourceTarget,
         swiftEvolutionSourceTarget,
         swiftOrgSourceTarget,
+        swiftBookSourceTarget,
         appleArchiveSourceTarget,
         sampleIndexTarget,
         sampleIndexTestsTarget,

@@ -1,77 +1,28 @@
-import ASTIndexer
 import Foundation
-import SearchModels
-import SharedConstants
 
-// MARK: - Swift Book Indexer
+// MARK: - Vestigial after #1021
 
-/// Indexer for The Swift Programming Language book
-extension Search {
-    public struct SwiftBookIndexer: Search.SourceIndexer {
-        public let sourceID = Shared.Constants.SourcePrefix.swiftBook
-        public let displayName = "The Swift Programming Language"
-
-        public init() {}
-
-        public func extractCode(from item: Search.SourceItem) -> Search.ExtractedContent {
-            // Swift book has extensive code examples
-            let extractor = ASTIndexer.Extractor()
-
-            // Extract code blocks from markdown
-            let codeBlocks = extractCodeBlocks(from: item.content)
-            if codeBlocks.isEmpty {
-                return .empty
-            }
-
-            let combinedCode = codeBlocks.joined(separator: "\n\n")
-            let result = extractor.extract(from: combinedCode)
-
-            return Search.ExtractedContent(
-                symbols: result.symbols,
-                imports: result.imports,
-                hasErrors: result.hasErrors
-            )
-        }
-
-        private func extractCodeBlocks(from content: String) -> [String] {
-            var blocks: [String] = []
-            let lines = content.components(separatedBy: .newlines)
-            var inCodeBlock = false
-            var currentBlock: [String] = []
-
-            for line in lines {
-                if line.hasPrefix("```"), !inCodeBlock {
-                    inCodeBlock = true
-                    currentBlock = []
-                } else if line.hasPrefix("```"), inCodeBlock {
-                    if !currentBlock.isEmpty {
-                        blocks.append(currentBlock.joined(separator: "\n"))
-                    }
-                    inCodeBlock = false
-                    currentBlock = []
-                } else if inCodeBlock {
-                    currentBlock.append(line)
-                }
-            }
-
-            return blocks
-        }
-    }
-}
-
-// MARK: - Packages Indexer
-
+// As of #1021 (Phase 1G of epic #1007), all 7 per-source indexer
+// concretes have been lifted out of this file into their own
+// per-source SPM targets:
+//
+//   - Search.AppleDocsIndexer       lives in AppleDocsSource     (#1009)
+//   - Search.HIGIndexer             lives in HIGSource           (#1011)
+//   - Search.SampleCodeIndexer      lives in SampleCodeSource    (#1013)
+//   - Search.AppleArchiveIndexer    lives in AppleArchiveSource  (#1016)
+//   - Search.SwiftEvolutionIndexer  lives in SwiftEvolutionSource (#1018)
+//   - Search.SwiftOrgIndexer        lives in SwiftOrgSource      (#1020)
+//   - Search.SwiftBookIndexer       lives in SwiftBookSource     (#1021)
+//
 // #789: PackagesIndexer removed along with the search.db `packages`
 // table. Package indexing lives in packages.db via the dedicated
-// `Indexer.PackagesService` (`cupertino save --packages`); the
-// in-search.db indexer was a shallow shadow that fed the now-dropped
-// `packages` table.
-
-// #932: the static `Search.IndexerRegistry` enum that lived here was
-// dissolved. The 7 production indexer concretes are assembled inline
-// at the composition root in `CLIImpl.Command.Save.Indexers.swift`,
-// not via a named helper on the `Search` namespace. Naming a helper
-// here would reintroduce a Service Locator surface (gof-di-rules.md
-// Rule 1): the composition root is the only place that should hold
-// the production list. Tests that need a fake-indexer dict construct
-// their own literal.
+// `Indexer.PackagesService` (`cupertino save --packages`).
+//
+// #932: the static `Search.IndexerRegistry` enum was dissolved. The
+// production indexer concretes are assembled inline at the
+// composition root in `CLIImpl.Command.Save.Indexers.swift`. Naming a
+// helper here would reintroduce a Service Locator surface
+// (gof-di-rules.md Rule 1).
+//
+// File kept as a historical marker until phase 1I dissolves the
+// older composition-root paths.
