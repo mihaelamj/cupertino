@@ -16,7 +16,7 @@ Last refresh: 2026-05-24 (#904 closed: Core / CoreJSONParser / CoreSampleCode We
 
 **Forbidden for a producer:**
 
-- Another producer's concrete writer target (e.g. `Search` cannot `import Indexer`).
+- Another producer's concrete writer target (e.g. `SearchAPI` cannot `import Indexer`).
 - `Logging` (the writer concrete). Only `LoggingModels` allowed.
 - `SharedCore`, `SharedUtils`, `SharedModels`, `SharedConfiguration` — these were absorbed into `SharedConstants` during #536 phase 1; they no longer exist.
 - `Shared.Constants.BinaryConfig.shared` or any `Shared.Constants.defaultX` static accessor (deleted in #535).
@@ -146,7 +146,7 @@ Both scripts run as part of every PR's verification.
 
 If you grep `^import ` under `Sources/<Target>/` and see anything not in the **Allowed imports** column for that target — it's a violation. Examples:
 
-- `Sources/Search/**` importing `Core` (concrete feature → feature). Fix: lift the type to a `*Models` target or define a protocol seam.
+- `Sources/SearchAPI/**` importing `Core` (concrete feature → feature). Fix: lift the type to a `*Models` target or define a protocol seam.
 - `Sources/Crawler/**` importing `Logging` (concrete writer; only `LoggingModels` is allowed).
 - Any producer target importing `SharedCore` / `SharedUtils` / `SharedModels` / `SharedConfiguration` — those don't exist anymore (absorbed in #536 phase 1). Use `SharedConstants`.
 - Any producer target reading `Shared.Constants.BinaryConfig.shared` or `Shared.Constants.defaultBaseDirectory` — those are deleted (#535). Receive `Shared.Paths` or an explicit `URL` by parameter.

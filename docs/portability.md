@@ -94,7 +94,7 @@ the layers below it. The portability test enforces this empirically.
   `Core`, `CoreJSONParser`, `CorePackageIndexing`, `CoreSampleCode`,
   `Crawler`, `Distribution`, `Enrichment`, `Indexer`, `Ingest`,
   `Logging`, `MCPSupport`, `RemoteSync`, `SampleIndex`,
-  `SampleIndexSQLite`, `Search`, `SearchSQLite`, `SearchToolProvider`,
+  `SampleIndexSQLite`, `SearchAPI`, `SearchSQLite`, `SearchToolProvider`,
   `Services`. (`Logging` is a writer concrete: the audited feature
   producer over `LoggingModels` + `OSLog`, and composition roots are
   the only places that may import the `Logging` target. Producers
