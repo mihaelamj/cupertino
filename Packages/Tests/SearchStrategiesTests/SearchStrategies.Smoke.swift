@@ -3,7 +3,7 @@ import AppleDocsSource
 import HIGSource
 import SampleCodeSource
 import SearchModels
-import SwiftEvolutionStrategy
+import SwiftEvolutionSource
 import SwiftOrgStrategy
 import Testing
 

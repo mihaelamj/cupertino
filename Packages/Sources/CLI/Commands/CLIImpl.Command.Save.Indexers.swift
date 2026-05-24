@@ -23,7 +23,7 @@ import SearchAPI
 import SearchModels
 import SearchSQLite
 import SharedConstants
-import SwiftEvolutionStrategy
+import SwiftEvolutionSource
 import SwiftOrgStrategy
 import SynonymsPass
 

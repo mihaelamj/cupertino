@@ -4,7 +4,7 @@ import LoggingModels
 import SearchModels
 @testable import SearchSQLite
 import SharedConstants
-@testable import SwiftEvolutionStrategy
+@testable import SwiftEvolutionSource
 import Testing
 
 // MARK: - Test Helpers

@@ -197,10 +197,10 @@ jobs:
       # (renamed from AppleDocsStrategy in #1008), HIGSource (renamed
       # from HIGStrategy in #1010), SampleCodeSource (renamed from
       # SampleCodeStrategy in #1012), AppleArchiveSource (renamed
-      # from AppleArchiveStrategy in #1014), SwiftEvolutionStrategy,
-      # SwiftOrgStrategy, with SearchStrategyHelpers as the shared
-      # seam). Portability proofs for the 6 + helpers follow as
-      # separate steps.
+      # from AppleArchiveStrategy in #1014), SwiftEvolutionSource
+      # (renamed from SwiftEvolutionStrategy in #1017), SwiftOrgStrategy,
+      # with SearchStrategyHelpers as the shared seam). Portability
+      # proofs for the 6 + helpers follow as separate steps.
       - name: "Portability: AppleDocsSource"
         timeout-minutes: 5
         run: ./scripts/check-target-portability.sh AppleDocsSource
@@ -217,9 +217,9 @@ jobs:
         timeout-minutes: 5
         run: ./scripts/check-target-portability.sh SampleCodeSource
 
-      - name: "Portability: SwiftEvolutionStrategy"
+      - name: "Portability: SwiftEvolutionSource"
         timeout-minutes: 5
-        run: ./scripts/check-target-portability.sh SwiftEvolutionStrategy
+        run: ./scripts/check-target-portability.sh SwiftEvolutionSource
 
       - name: "Portability: SwiftOrgStrategy"
         timeout-minutes: 5

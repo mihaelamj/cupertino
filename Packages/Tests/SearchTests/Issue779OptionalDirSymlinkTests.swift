@@ -4,7 +4,7 @@ import LoggingModels
 import SearchModels
 @testable import SearchSQLite
 import SharedConstants
-@testable import SwiftEvolutionStrategy
+@testable import SwiftEvolutionSource
 import Testing
 
 // MARK: - #779 / optional source dir symlink resolution

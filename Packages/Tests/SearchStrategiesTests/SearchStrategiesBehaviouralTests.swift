@@ -9,7 +9,7 @@ import SampleCodeSource
 import SearchModels
 import SearchSQLite
 import SharedConstants
-import SwiftEvolutionStrategy
+import SwiftEvolutionSource
 import SwiftOrgStrategy
 import Testing
 

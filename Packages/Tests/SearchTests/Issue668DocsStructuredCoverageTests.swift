@@ -7,7 +7,7 @@ import SearchModels
 @testable import SearchSQLite
 import SharedConstants
 import SQLite3
-@testable import SwiftEvolutionStrategy
+@testable import SwiftEvolutionSource
 import Testing
 
 // MARK: - #668 — docs_structured coverage gap for HIG / SwiftEvolution / AppleArchive
