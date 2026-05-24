@@ -54,9 +54,11 @@ extension Distribution {
                 keepExisting: Bool = false,
                 required: [Shared.Models.DatabaseDescriptor]
             ) {
-                // Reject empty: `cupertino setup` with zero required DBs is
-                // a meaningless invocation; `classify` would return `.current`
-                // vacuously and the run would silently no-op-succeed.
+                // Reject empty: a meaningless invocation. `classify`'s own
+                // non-empty precondition would catch this later in the
+                // pipeline (after `createDirectory` + `InstalledVersion.read`
+                // already ran), but rejecting at the door gives a
+                // Request-specific error before any side effects.
                 precondition(
                     !required.isEmpty,
                     "Distribution.SetupService.Request.required must list at least one database"
