@@ -240,54 +240,27 @@ extension CLIImpl.Command.Save {
             let importLogSink = try? Search.JSONLImportLogSink(path: logURL)
             logPathCapture.path = importLogSink == nil ? nil : logURL
 
-            // Post-#1027 (Phase 1I.b of epic #1007): indexer dict
-            // derived from the per-source registry, filtered to
-            // search.db destinations. Pre-#1027 this was a 7-entry
-            // inline literal (per #932 the dispatch reads from an
-            // injected dependency instead of a static registry; that
-            // injection-not-static contract holds, only the assembly
-            // moves from an inline literal to a registry-derived
-            // filter+reduce). PackagesSource self-excludes
-            // (destinationDB == .packages); packages live in packages.db
-            // via the dedicated Indexer.PackagesService (#789), not
-            // search.db's IndexBuilder. The 7 search.db indexers come
-            // from their per-source target's makeIndexer() factory.
-            // Adding a new source post-#1027 is one `.register(<X>Source())`
-            // line in `CLIImpl.SourceRegistry.swift`; zero edits here.
+            // Step 5b of per-source-db-split.md: replaces the
+            // transitional `destinationDB != .packages` filter with a
+            // per-DB fan-out via `Search.SourceRegistry.groupedByDestinationDB`.
+            // Each group opens its own `Search.Index` (path derived from
+            // its descriptor's filename), builds a per-group indexer
+            // dict + strategies list, runs an IndexBuilder against
+            // that DB, and contributes its stats to aggregate totals
+            // returned at the end. PackagesSource is excluded because
+            // its DB is written by the dedicated `Indexer.PackagesService`
+            // outside `Search.IndexBuilder` (post-#789).
+            //
+            // Adding a new source post-step-5b is still one
+            // `.register(<X>Source())` line in
+            // `CLIImpl.SourceRegistry.swift`; zero edits here.
             let productionRegistry = CLIImpl.makeProductionSourceRegistry()
-            let searchIndex = try await Search.Index(
-                dbPath: input.searchDBPath,
-                logger: Cupertino.Context.composition.logging.recording,
-                // Transitional filter (step 4 of per-source-db-split.md):
-                // 6 sources flipped their destinationDB from .search to
-                // per-source descriptors (.appleDocumentation, .hig, etc.).
-                // Until step 5 wires per-DB fan-out, all search-style
-                // sources still write to a single search.db. The filter
-                // is now "every source except .packages" (PackagesSource
-                // is a registered SourceProvider whose destinationDB is
-                // .packages, which routes its rows via the separate
-                // Indexer.PackagesService pipeline rather than through
-                // Search.IndexBuilder). Step 5 replaces this with
-                // Dictionary(grouping: by:) over destinationDB.
-                indexers: productionRegistry.allEnabled
-                    .filter { $0.destinationDB != .packages }
-                    .reduce(into: [:]) { dict, provider in
-                        dict[provider.definition.id] = provider.makeIndexer()
-                    },
-                sourceLookup: Search.SourceLookup(
-                    definitions: productionRegistry.allEnabled.map(\.definition)
-                )
-            )
+            let logger = Cupertino.Context.composition.logging.recording
+            let baseDirectory = input.searchDBPath.deletingLastPathComponent()
 
-            // #759 iteration 3 — load the authoritative Apple-type
-            // constraints table from `<base-dir>/apple-constraints.json`
-            // if present. The composition root is the rule-7-allowed
-            // place to import AppleConstraintsKit's concrete table;
-            // Search itself stays foundation-only and consumes the
-            // `Search.StaticConstraintsLookup` protocol. Absent file
-            // is silently OK — the build falls back to iter 1 + iter 2.
-            let constraintsPath = input.searchDBPath.deletingLastPathComponent()
-                .appendingPathComponent("apple-constraints.json")
+            // Load the authoritative Apple-type constraints once;
+            // shared across every per-DB enrichment runner. (#759 iter 3)
+            let constraintsPath = baseDirectory.appendingPathComponent("apple-constraints.json")
             let staticConstraintsLookup: (any Search.StaticConstraintsLookup)? = {
                 guard FileManager.default.fileExists(atPath: constraintsPath.path) else {
                     return nil
@@ -295,7 +268,7 @@ extension CLIImpl.Command.Save {
                 do {
                     return try AppleConstraintsKit.Table.from(fileURL: constraintsPath)
                 } catch {
-                    Cupertino.Context.composition.logging.recording.warning(
+                    logger.warning(
                         "Failed to load \(constraintsPath.lastPathComponent): \(error). Falling back to iter 1 + iter 2.",
                         category: .search
                     )
@@ -303,101 +276,97 @@ extension CLIImpl.Command.Save {
                 }
             }()
 
-            // #837 phase 1B-2 activation — construct the EnrichmentRunner
-            // with the three search-target passes and inject it into
-            // IndexBuilder. IndexBuilder routes the post-strategy
-            // enrichment through `runner.run(target: .search)` instead of
-            // the inline calls; the inline fallback in IndexBuilder is
-            // preserved so direct constructors (tests, smoke harnesses)
-            // continue to work without modification.
-            let enrichmentRunner: any EnrichmentRunner = Enrichment.LiveRunner(
-                passes: [
-                    Enrichment.SynonymsPass(searchIndex: searchIndex),
-                    Enrichment.AppleConstraintsPass(
-                        searchIndex: searchIndex,
-                        lookup: staticConstraintsLookup
-                    ),
-                    Enrichment.HierarchyPass(searchIndex: searchIndex),
-                ]
+            // Cross-DB SourceLookup so each per-DB index can resolve
+            // any source-id at result-formatting time (a swift-org row
+            // reading a swift-evolution-flavored URI still gets the
+            // right display name). Built once, shared across groups.
+            let sourceLookup = Search.SourceLookup(
+                definitions: productionRegistry.allEnabled.map(\.definition)
             )
 
-            // Post-#1029 (Phase 1I.c.1 of epic #1007): strategies-list
-            // assembly derived from the per-source registry, filtered
-            // to search.db destinations. Pre-#1029 this was an inline
-            // 6-strategy literal with conditional appends keyed on the
-            // optional `input.<X>Directory` fields. Post-#1029 the
-            // assembly delegates to each provider's `makeStrategy(env:)`;
-            // the per-source target's conformer knows which env fields
-            // it consumes. The bridge between the old per-field
-            // `DocsIndexingInput` and the registry-driven assembly is
-            // `resolveSourceDirectory(for:input:)`, which maps each
-            // provider's source-id to the matching optional input
-            // field. compactMap drops sources whose CLI input is nil
-            // (mirrors the pre-#1029 conditional-append shape).
-            //
-            // SwiftBookSource is a view-source: its `makeStrategy`
-            // returns a noop (real emission runs in SwiftOrgStrategy).
-            // SampleCodeStrategy ignores `env.sourceDirectory` (uses
-            // `env.sampleCatalogProvider` instead). Both receive a
-            // sentinel URL from the helper so compactMap includes them.
-            //
-            // Adding a new source post-#1029: one `.register(<X>Source())`
-            // line in `CLIImpl.SourceRegistry.swift`; if the new source
-            // needs a per-source CLI input directory, add a case to the
-            // helper. (The `DocsIndexingInput`-redesign-to-sourceID-keyed-dict
-            // follow-up dissolves the switch entirely; out of scope here.)
-            let logger = Cupertino.Context.composition.logging.recording
-            let strategies: [any Search.SourceIndexingStrategy] = productionRegistry.allEnabled
-                // Same transitional filter as the indexer dict above (step 4
-                // of per-source-db-split.md): everything except packages,
-                // which has its own DB outside the SourceProvider abstraction.
-                // Step 5 replaces with proper per-DB grouping.
-                .filter { $0.destinationDB != .packages }
-                .compactMap { provider -> (any Search.SourceIndexingStrategy)? in
-                    guard let sourceDir = Self.resolveSourceDirectory(for: provider, input: input) else {
-                        return nil
+            let groups = productionRegistry.groupedByDestinationDB(excluding: [.packages])
+            // Sort by descriptor.id for deterministic build order +
+            // stable progress reporting; counts + frameworks + breakdown
+            // aggregate across DBs.
+            let orderedGroups = groups.sorted { $0.key.id < $1.key.id }
+
+            var aggregateDocCount = 0
+            var aggregateFrameworks: Set<String> = []
+            var aggregateBreakdown = Search.ImportDiligenceBreakdown.zero
+
+            for (descriptor, providers) in orderedGroups {
+                let dbPath = baseDirectory.appendingPathComponent(descriptor.filename)
+                let index = try await Search.Index(
+                    dbPath: dbPath,
+                    logger: logger,
+                    indexers: providers.reduce(into: [:]) { dict, provider in
+                        dict[provider.definition.id] = provider.makeIndexer()
+                    },
+                    sourceLookup: sourceLookup
+                )
+
+                // Per-DB enrichment runner: passes bind to THIS index;
+                // the same `staticConstraintsLookup` table is reused.
+                let enrichmentRunner: any EnrichmentRunner = Enrichment.LiveRunner(
+                    passes: [
+                        Enrichment.SynonymsPass(searchIndex: index),
+                        Enrichment.AppleConstraintsPass(
+                            searchIndex: index,
+                            lookup: staticConstraintsLookup
+                        ),
+                        Enrichment.HierarchyPass(searchIndex: index),
+                    ]
+                )
+
+                // Per-group strategies. compactMap drops providers
+                // whose CLI input directory is nil (pre-#1029 shape).
+                let strategies: [any Search.SourceIndexingStrategy] = providers
+                    .compactMap { provider -> (any Search.SourceIndexingStrategy)? in
+                        guard let sourceDir = Self.resolveSourceDirectory(for: provider, input: input) else {
+                            return nil
+                        }
+                        let env = Search.IndexEnvironment(
+                            sourceDirectory: sourceDir,
+                            logger: logger,
+                            markdownStrategy: input.markdownStrategy,
+                            importLogSink: importLogSink,
+                            sampleCatalogProvider: input.sampleCatalogProvider
+                        )
+                        return provider.makeStrategy(env: env)
                     }
-                    let env = Search.IndexEnvironment(
-                        sourceDirectory: sourceDir,
-                        logger: logger,
-                        markdownStrategy: input.markdownStrategy,
-                        importLogSink: importLogSink,
-                        sampleCatalogProvider: input.sampleCatalogProvider
-                    )
-                    return provider.makeStrategy(env: env)
-                }
-            let builder = Search.IndexBuilder(
-                searchIndex: searchIndex,
-                strategies: strategies,
-                logger: Cupertino.Context.composition.logging.recording,
-                staticConstraintsLookup: staticConstraintsLookup,
-                enrichmentRunner: enrichmentRunner
-            )
-            try await builder.buildIndex(
-                clearExisting: input.clearExisting,
-                onProgress: progress
-            )
+
+                let builder = Search.IndexBuilder(
+                    searchIndex: index,
+                    strategies: strategies,
+                    logger: logger,
+                    staticConstraintsLookup: staticConstraintsLookup,
+                    enrichmentRunner: enrichmentRunner
+                )
+                try await builder.buildIndex(
+                    clearExisting: input.clearExisting,
+                    onProgress: progress
+                )
+
+                let docCount = try await index.documentCount()
+                let frameworks = try await index.listFrameworks()
+                let breakdown = await builder.lastBuildStats
+                    .map(\.breakdown)
+                    .reduce(Search.ImportDiligenceBreakdown.zero, +)
+
+                aggregateDocCount += docCount
+                aggregateFrameworks.formUnion(frameworks.keys)
+                aggregateBreakdown = aggregateBreakdown + breakdown // swiftlint:disable:this shorthand_operator
+
+                await index.disconnect()
+            }
+
             await importLogSink?.close()
-            let docCount = try await searchIndex.documentCount()
-            let frameworks = try await searchIndex.listFrameworks()
-            // #588 — read the per-strategy stats the IndexBuilder
-            // stashed so the door + garbage-filter breakdown reaches
-            // the save report and dry-run audit. Aggregate across all
-            // strategies using `+` on `Search.ImportDiligenceBreakdown`
-            // (the operator is defined element-wise on that type).
-            // The breakdown crosses the IndexerModels seam via the
-            // CLI-owned `breakdownCapture` side-channel, not through
-            // `Indexer.DocsService.Outcome`, so IndexerModels stays
-            // dep-free.
-            let totalBreakdown = await builder.lastBuildStats
-                .map(\.breakdown)
-                .reduce(Search.ImportDiligenceBreakdown.zero, +)
-            breakdownCapture.breakdown = totalBreakdown
-            await searchIndex.disconnect()
+            breakdownCapture.breakdown = aggregateBreakdown
+
             return Search.DocsIndexingOutcome(
-                documentCount: docCount,
-                frameworkCount: frameworks.count,
-                breakdown: totalBreakdown
+                documentCount: aggregateDocCount,
+                frameworkCount: aggregateFrameworks.count,
+                breakdown: aggregateBreakdown
             )
         }
 
