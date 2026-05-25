@@ -15,6 +15,17 @@ public struct SwiftOrgSource: Search.SourceProvider {
 
     public var destinationDB: Shared.Models.DatabaseDescriptor { .search }
 
+    public var capabilities: Search.Capabilities {
+        .init(
+            searchers: [.text, .symbols, .generics],
+            operations: [.readByURI],
+            metadata: [
+                .hasGenerics: true,
+                .hasAvailabilityAttrs: true,
+            ]
+        )
+    }
+
     public func makeStrategy(env: Search.IndexEnvironment) -> any Search.SourceIndexingStrategy {
         Search.SwiftOrgStrategy(
             swiftOrgDirectory: env.sourceDirectory,

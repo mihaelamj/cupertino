@@ -16,6 +16,17 @@ public struct SwiftEvolutionSource: Search.SourceProvider {
 
     public var destinationDB: Shared.Models.DatabaseDescriptor { .search }
 
+    public var capabilities: Search.Capabilities {
+        .init(
+            searchers: [.text],
+            operations: [.readByURI],
+            metadata: [
+                .hasMinSwiftVersion: true,
+                .hasProposalNumber: true,
+            ]
+        )
+    }
+
     public func makeStrategy(env: Search.IndexEnvironment) -> any Search.SourceIndexingStrategy {
         Search.SwiftEvolutionStrategy(
             evolutionDirectory: env.sourceDirectory,

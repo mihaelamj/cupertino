@@ -43,6 +43,17 @@ public struct PackagesSource: Search.SourceProvider {
 
     public var destinationDB: Shared.Models.DatabaseDescriptor { .packages }
 
+    public var capabilities: Search.Capabilities {
+        .init(
+            searchers: [.text, .packageSearch],
+            operations: [.readByURI],
+            metadata: [
+                .hasMinSwiftVersion: true,
+                .hasPackageMetadata: true,
+            ]
+        )
+    }
+
     public func makeStrategy(env _: Search.IndexEnvironment) -> any Search.SourceIndexingStrategy {
         PackagesViewSourceStrategy()
     }

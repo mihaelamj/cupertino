@@ -40,6 +40,14 @@ public struct SwiftBookSource: Search.SourceProvider {
 
     public var destinationDB: Shared.Models.DatabaseDescriptor { .search }
 
+    /// Empty capabilities (view-source). swift-book rows live in
+    /// swift-documentation.db; queries against that DB go through
+    /// SwiftOrgSource's capabilities, not SwiftBookSource's. The
+    /// dispatcher's groupBy(destinationDB) sees the swift-org
+    /// provider's full capability matrix; SwiftBookSource registers
+    /// for SourceLookup parity but contributes no capability bits.
+    public var capabilities: Search.Capabilities { .empty }
+
     public func makeStrategy(env _: Search.IndexEnvironment) -> any Search.SourceIndexingStrategy {
         SwiftBookViewSourceStrategy()
     }

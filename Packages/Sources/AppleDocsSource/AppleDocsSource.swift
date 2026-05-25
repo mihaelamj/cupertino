@@ -31,6 +31,20 @@ public struct AppleDocsSource: Search.SourceProvider {
 
     public var destinationDB: Shared.Models.DatabaseDescriptor { .search }
 
+    public var capabilities: Search.Capabilities {
+        .init(
+            searchers: [.text, .symbols, .propertyWrappers, .concurrency, .conformances, .generics],
+            operations: [.readByURI, .listFrameworks, .resolveRefs],
+            metadata: [
+                .hasMinPlatformVersion: true,
+                .hasGenerics: true,
+                .hasDeprecationAttrs: true,
+                .hasAvailabilityAttrs: true,
+                .hasFrameworkColumn: true,
+            ]
+        )
+    }
+
     public func makeStrategy(env: Search.IndexEnvironment) -> any Search.SourceIndexingStrategy {
         Search.AppleDocsStrategy(
             docsDirectory: env.sourceDirectory,

@@ -33,6 +33,18 @@ public struct HIGSource: Search.SourceProvider {
 
     public var destinationDB: Shared.Models.DatabaseDescriptor { .search }
 
+    public var capabilities: Search.Capabilities {
+        .init(
+            searchers: [.text],
+            operations: [.readByURI],
+            metadata: [
+                .hasMinPlatformVersion: true,
+                .hasDeprecationAttrs: true,
+                .hasAvailabilityAttrs: true,
+            ]
+        )
+    }
+
     public func makeStrategy(env: Search.IndexEnvironment) -> any Search.SourceIndexingStrategy {
         Search.HIGStrategy(
             higDirectory: env.sourceDirectory,

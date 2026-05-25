@@ -64,6 +64,17 @@ extension Search {
         /// will gain new instances over time).
         var destinationDB: Shared.Models.DatabaseDescriptor { get }
 
+        /// What this source's DB can answer at read time (searchers +
+        /// operations + typed metadata flags). Drives the CLI
+        /// dispatcher's fan-out to per-source DBs once step 4 of the
+        /// per-source DB split epic lands. A default extension on
+        /// `SourceProvider` returns `Search.Capabilities.empty`, so
+        /// adding this property is not a breaking change for external
+        /// conformers; every in-tree source overrides with its
+        /// declared matrix matching its YAML manifest at
+        /// `docs/sources/<sourceId>/manifest.yaml`.
+        var capabilities: Search.Capabilities { get }
+
         /// Construct this source's indexing strategy. The composition
         /// root calls this once at index-time and passes the result
         /// to `Search.IndexBuilder`.

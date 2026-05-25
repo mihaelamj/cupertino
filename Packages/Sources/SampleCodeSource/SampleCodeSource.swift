@@ -32,6 +32,17 @@ public struct SampleCodeSource: Search.SourceProvider {
 
     public var destinationDB: Shared.Models.DatabaseDescriptor { .search }
 
+    public var capabilities: Search.Capabilities {
+        .init(
+            searchers: [.text, .sampleFiles],
+            operations: [.readByURI, .listSamples],
+            metadata: [
+                .hasMinPlatformVersion: true,
+                .hasSampleCode: true,
+            ]
+        )
+    }
+
     public func makeStrategy(env: Search.IndexEnvironment) -> any Search.SourceIndexingStrategy {
         guard let sampleCatalogProvider = env.sampleCatalogProvider else {
             preconditionFailure(

@@ -29,6 +29,17 @@ public struct AppleArchiveSource: Search.SourceProvider {
 
     public var destinationDB: Shared.Models.DatabaseDescriptor { .search }
 
+    public var capabilities: Search.Capabilities {
+        .init(
+            searchers: [.text],
+            operations: [.readByURI, .listFrameworks],
+            metadata: [
+                .hasMinPlatformVersion: true,
+                .hasFrameworkColumn: true,
+            ]
+        )
+    }
+
     public func makeStrategy(env: Search.IndexEnvironment) -> any Search.SourceIndexingStrategy {
         Search.AppleArchiveStrategy(
             archiveDirectory: env.sourceDirectory,
