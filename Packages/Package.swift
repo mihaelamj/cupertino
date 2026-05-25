@@ -937,11 +937,11 @@ let targets: [Target] = {
     // ---------- Distribution (#246: SetupCommand lift) ----------
     let distributionTarget = Target.target(
         name: "Distribution",
-        dependencies: ["DistributionModels", "SharedConstants"]
+        dependencies: ["DistributionModels", "SearchModels", "SharedConstants"]
     )
     let distributionTestsTarget = Target.testTarget(
         name: "DistributionTests",
-        dependencies: ["Distribution", "DistributionModels", "TestSupport"]
+        dependencies: ["Distribution", "DistributionModels", "SearchModels", "TestSupport"]
     )
 
     // ---------- Diagnostics (#245: DoctorCommand probe lift) ----------

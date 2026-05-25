@@ -1,4 +1,5 @@
 import Foundation
+import SearchModels
 import SharedConstants
 
 // MARK: - Distribution.PerSourceDBSplitMigrator
@@ -210,25 +211,21 @@ extension Distribution {
         /// per-source DB split migration is needed. Pure read-only:
         /// does NOT touch any file.
         ///
-        /// **`splitDestinationFilenames` must list ONLY the 5 search.db
-        /// split destinations** (`apple-documentation.db`, `hig.db`,
-        /// `apple-archive.db`, `swift-evolution.db`,
-        /// `swift-documentation.db`). It MUST NOT include the 2 sibling
-        /// rename destinations (`apple-sample-code.db`,
-        /// `swift-packages.db`). Renames of samples.db / packages.db
-        /// are separate work: their presence in the base directory says
-        /// nothing about whether search.db was split. If callers pass
-        /// rename destinations into this list, the detection
-        /// false-positives `alreadyMigrated` after a crash that
-        /// renamed samples but never split search.db, wedging the
-        /// user with unmigrated apple-docs/HIG/archive/evolution/swift-org
-        /// rows trapped in the legacy file. See
-        /// `PerSourceDBSplitMigratorDetectionTests` for the contract pin.
+        /// **Registry-derived split destinations.** The migrator
+        /// derives the list of split destinations from `registry`
+        /// itself: every `destinationDB` declared by an enabled
+        /// provider, MINUS `.packages` (its own pipeline) and
+        /// `.search` (legacy descriptor; the split's SOURCE not a
+        /// destination). Callers do NOT enumerate filenames; the
+        /// registry is the single source of truth. If you add a new
+        /// source whose destinationDB is a fresh DB, that DB's
+        /// filename automatically joins the detection set.
         ///
         /// The detection rule:
         ///   1. If `<baseDirectory>/search.db` does not exist → `noLegacyDBFound`
         ///   2. If `<baseDirectory>/search.db` exists AND any of the
-        ///      named split DBs exists with non-zero size → `alreadyMigrated`
+        ///      registry-derived split DBs exists with non-zero size
+        ///      → `alreadyMigrated`
         ///   3. If `<baseDirectory>/search.db` exists AND no split DBs
         ///      are present → `migrationNeeded`
         ///   4. If `<baseDirectory>/search.db` exists but its schema is
@@ -240,7 +237,7 @@ extension Distribution {
         /// metadata.
         public static func detect(
             inBaseDirectory baseDirectory: URL,
-            splitDestinationFilenames: [String]
+            registry: Search.SourceRegistry
         ) -> DetectionOutcome {
             let fileManager = FileManager.default
             let legacyFile = baseDirectory.appendingPathComponent(
@@ -251,8 +248,15 @@ extension Distribution {
                 return .noLegacyDBFound
             }
 
-            let splitFiles: [URL] = splitDestinationFilenames
-                .map { baseDirectory.appendingPathComponent($0) }
+            // Registry-derived: every destination DB declared by an
+            // enabled provider, excluding .packages (its own pipeline)
+            // and .search (the legacy SOURCE, not a split destination).
+            let splitDestinations = registry.groupedByDestinationDB(
+                excluding: [.packages, .search]
+            ).keys
+
+            let splitFiles: [URL] = splitDestinations
+                .map { baseDirectory.appendingPathComponent($0.filename) }
                 .filter { fileManager.fileExists(atPath: $0.path) }
                 .filter {
                     let attrs = try? fileManager.attributesOfItem(atPath: $0.path)
@@ -273,35 +277,38 @@ extension Distribution {
         /// source-id + count, and derive a `MigrationPlan` mapping each
         /// source-id to its destination descriptor's DB file.
         ///
-        /// **Step 6a stub**: returns a synthetic plan based on the
-        /// caller-supplied `sourceIDsToPlan` argument (no DB I/O). Step
-        /// 6b replaces with the real `SELECT source, COUNT(*) FROM
-        /// docs_metadata GROUP BY source` query + a `SourceLookup`
-        /// pass to resolve each source-id to its destination descriptor.
+        /// **Registry-derived**: callers pass only the legacy source-id
+        /// row counts (the part 6b reads from
+        /// `SELECT source, COUNT(*) FROM docs_metadata GROUP BY source`).
+        /// The migrator resolves each source-id to its destination
+        /// descriptor via the registry. Source-ids the registry does
+        /// not recognise are returned in the plan with a nil destination
+        /// (callers surface as `MigrationError.unknownSourceIDs`); the
+        /// migrator does NOT silently route them anywhere.
         ///
-        /// **Tuple field `destinationFilename` (not `destinationDescriptorID`)**:
-        /// callers MUST pass the descriptor's canonical filename
-        /// (`Shared.Models.DatabaseDescriptor.<X>.filename`,
-        /// e.g. `"apple-documentation.db"`) rather than deriving it
-        /// from the descriptor's id. Today every descriptor's filename
-        /// equals `<id>.db`, but the descriptor's filename field is
-        /// the declared single source of truth for the on-disk
-        /// filename. If a future descriptor renames its filename
-        /// (e.g. to `apple-developer-documentation.db`), the migrator
-        /// follows the descriptor's declaration automatically.
-        public static func planFromKnownSources(
+        /// Step 6a stub: takes `legacySourceIDRowCounts` as data. Step
+        /// 6b replaces the data argument with the real SQL query that
+        /// reads the counts from the legacy DB.
+        public static func planFromLegacySourceIDCounts(
             legacyFile: URL,
             baseDirectory: URL,
-            sourceIDsToPlan: [(sourceID: String, destinationDescriptorID: String, destinationFilename: String, rowCount: Int)]
+            registry: Search.SourceRegistry,
+            legacySourceIDRowCounts: [String: Int]
         ) -> MigrationPlan {
-            let sourcePlans = sourceIDsToPlan.map { entry in
-                SourcePlan(
-                    sourceID: entry.sourceID,
-                    destinationDescriptorID: entry.destinationDescriptorID,
-                    destinationDBPath: baseDirectory.appendingPathComponent(entry.destinationFilename),
-                    estimatedRowCount: entry.rowCount
-                )
-            }
+            let sourcePlans: [SourcePlan] = legacySourceIDRowCounts
+                .sorted { $0.key < $1.key }
+                .compactMap { sourceID, rowCount in
+                    guard let provider = registry.entry(for: sourceID)?.provider else {
+                        return nil
+                    }
+                    let descriptor = provider.destinationDB
+                    return SourcePlan(
+                        sourceID: sourceID,
+                        destinationDescriptorID: descriptor.id,
+                        destinationDBPath: baseDirectory.appendingPathComponent(descriptor.filename),
+                        estimatedRowCount: rowCount
+                    )
+                }
             let renameTarget = legacyFile.appendingPathExtension(
                 String(legacyRenameSuffix.dropFirst())
             )
