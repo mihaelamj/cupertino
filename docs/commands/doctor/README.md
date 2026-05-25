@@ -242,7 +242,7 @@ Default `cupertino doctor` output before `cupertino setup` has been run:
 
 🧪 Sample Code Index (apple-sample-code.db)
    ⚠  Database: /Users/you/.cupertino/apple-sample-code.db (not found)
-     → Run: cupertino fetch --source samples && cupertino cleanup && cupertino save --samples
+     → Run: cupertino fetch --source samples && cupertino cleanup && cupertino save --source samples
 
 🔍 Search Index
    ✗ Database: /Users/you/.cupertino/search.db (not found)

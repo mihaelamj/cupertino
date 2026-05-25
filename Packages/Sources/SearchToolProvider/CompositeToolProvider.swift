@@ -1198,7 +1198,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         }
 
         if projects.isEmpty {
-            markdown += "_No projects found. Run `cupertino save --samples` to index sample code._\n"
+            markdown += "_No projects found. Run `cupertino save --source samples` to index sample code._\n"
         } else {
             markdown += "| Project | Framework | Files |\n"
             markdown += "|---------|-----------|------:|\n"

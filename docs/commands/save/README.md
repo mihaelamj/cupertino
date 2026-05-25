@@ -12,25 +12,31 @@ cupertino save [options]
 
 ## Description
 
-The `save` command builds the local SQLite databases that back `cupertino search` (both the default fan-out mode and `--source`-filtered queries). As of [#231](https://github.com/mihaelamj/cupertino/issues/231) it covers all three databases via scope flags:
+The `save` command builds the local SQLite databases that back `cupertino search` (both the default fan-out mode and `--source`-filtered queries). Post-#1037 the build scope is selected per source via `--source <id>` (repeatable) or `--all`:
 
-| Flag | Builds | Source |
+| Source id | Builds | Input |
 |---|---|---|
-| `--docs` | `search.db` | `~/.cupertino/docs/`, `swift-evolution/`, `swift-org/`, `archive/`, `hig/` |
-| `--packages` | `packages.db` | `~/.cupertino/packages/<owner>/<repo>/` |
-| `--samples` | `apple-sample-code.db` | `~/.cupertino/sample-code/*.zip` |
+| `apple-docs` | `apple-documentation.db` | `~/.cupertino/docs/` |
+| `swift-evolution` | `swift-evolution.db` | `~/.cupertino/swift-evolution/` |
+| `hig` | `hig.db` | `~/.cupertino/hig/` |
+| `apple-archive` | `apple-archive.db` | `~/.cupertino/archive/` |
+| `swift-org` | `swift-documentation.db` (view-source, shared with `swift-book`) | `~/.cupertino/swift-org/` |
+| `swift-book` | `swift-documentation.db` (view-source, shared with `swift-org`) | `~/.cupertino/swift-org/swift-book/` |
+| `samples` | `apple-sample-code.db` (Sample.Index rich schema + SampleCodeSource FTS rows; one DB, two table tracks per #1037) | `~/.cupertino/sample-code/*.zip` |
+| `packages` | `packages.db` | `~/.cupertino/packages/<owner>/<repo>/` |
 
-When **no scope flag is passed**, `save` builds **all three** in fixed order (docs → packages → samples). Sources whose input directory is absent or whose catalog is empty are skipped cleanly, the per-source summary shows `[source] skipped (no local corpus)` instead of `[source] indexed: 0, skipped: 0`, and the run does not count as a failure ([#671](https://github.com/mihaelamj/cupertino/issues/671)).
+`apple-sample-code` is accepted as an alias for `samples` (cross-command consistency with `cupertino fetch --source apple-sample-code`).
 
-The `--samples` form replaces the old `cupertino index` command (removed in #231). No backwards-compat alias, pre-1.0 clean break.
+Bare `cupertino save` (no `--source` and no `--all`) is a usage error post-#1037. Sources whose input directory is absent or whose catalog is empty are skipped cleanly; the per-source summary shows `[source] skipped (no local corpus)` and the run does not count as a failure ([#671](https://github.com/mihaelamj/cupertino/issues/671)).
+
+**Dispatch granularity (current state)**: the CLI accepts per-source ids but the internal indexer still runs in docs/packages/samples buckets. `--source apple-docs` runs the full docs runner (which builds every docs-bucket DB whose corpus is on disk); `--source samples` runs both the Sample.Index rich-data pipeline AND the docs runner. The per-source-id dispatch refactor (so `--source apple-docs` builds ONLY apple-documentation.db) lands in a follow-up commit. The CLI surface is final.
 
 ## Options
 
-### Scope (combinable)
+### Scope (mutually exclusive; one is required)
 
-- `--docs`, build `search.db` only
-- `--packages`, build `packages.db` only
-- `--samples`, build `apple-sample-code.db` only (replaces `cupertino index`, [#231](https://github.com/mihaelamj/cupertino/issues/231))
+- [--source](option%20%28--%29/source.md), source id to build, repeatable. Valid ids: `apple-docs`, `swift-evolution`, `hig`, `apple-archive`, `swift-org`, `swift-book`, `samples`, `packages` (plus `apple-sample-code` alias for `samples`).
+- [--all](option%20%28--%29/all.md), build every source's DB (explicit replacement for the pre-#1037 bare-`cupertino save` default).
 
 ### Docs-build options
 
@@ -45,7 +51,7 @@ The `--samples` form replaces the old `cupertino index` command (removed in #231
 - [--search-db](option%20%28--%29/search-db.md) - Output path for search database
 - [--clear](option%20%28--%29/clear.md) - Clear existing index before building
 
-### Samples-build options ([#231](https://github.com/mihaelamj/cupertino/issues/231))
+### Samples-build options (consumed only when `--source samples` is in scope; passing them otherwise emits a warning)
 
 - `--samples-dir <path>`, sample-code source directory (defaults to `~/.cupertino/sample-code/`)
 - `--samples-db <path>`, `apple-sample-code.db` output path
@@ -57,9 +63,9 @@ The `--samples` form replaces the old `cupertino index` command (removed in #231
 
 ## Examples
 
-### Build everything (default)
+### Build everything
 ```bash
-cupertino save                          # docs → packages → samples, in order
+cupertino save --all                    # build every source's DB
 ```
 
 ### Quick docs setup via remote stream

@@ -26,43 +26,47 @@ struct ParseSaveTargetsTests {
         #expect(SaveSiblingGate.parseSaveTargets(argv: argv).isEmpty)
     }
 
-    @Test("'save' with no scope flag → all three targets")
-    func defaultBuildsAllThree() {
+    @Test("Post-#1037: 'save' with no scope flag → empty set (binary rejects, sibling detector ignores)")
+    func bareNoFlagYieldsEmpty() {
+        // Load-bearing rationale: post-#1037 bare `cupertino save` is a
+        // usage error. An in-flight sibling that somehow lacks scope
+        // (stale wrapper, parser failure) MUST NOT default to all-three
+        // or it would spuriously block every legitimate parallel save.
         let argv = ["/usr/local/bin/cupertino", "save"]
         let targets = SaveSiblingGate.parseSaveTargets(argv: argv)
-        #expect(targets == [.search, .packages, .samples])
+        #expect(targets.isEmpty)
     }
 
-    @Test("--docs only → search.db only")
-    func docsOnly() {
+    @Test("Pre-#1037 backward compat: --docs only → search.db only")
+    func legacyDocsOnly() {
         let argv = ["/usr/local/bin/cupertino", "save", "--docs"]
         let targets = SaveSiblingGate.parseSaveTargets(argv: argv)
         #expect(targets == [.search])
     }
 
-    @Test("--packages only → packages.db only")
-    func packagesOnly() {
+    @Test("Pre-#1037 backward compat: --packages only → packages.db only")
+    func legacyPackagesOnly() {
         let argv = ["cupertino", "save", "--packages"]
         let targets = SaveSiblingGate.parseSaveTargets(argv: argv)
         #expect(targets == [.packages])
     }
 
-    @Test("--samples only → samples.db only")
-    func samplesOnly() {
+    @Test("Pre-#1037 backward compat: --samples only → samples.db only")
+    func legacySamplesOnly() {
         let argv = ["cupertino", "save", "--samples"]
         let targets = SaveSiblingGate.parseSaveTargets(argv: argv)
         #expect(targets == [.samples])
     }
 
-    @Test("--docs + --samples → search + samples (packages excluded)")
-    func docsAndSamples() {
+    @Test("Pre-#1037 backward compat: --docs + --samples → search + samples (packages excluded)")
+    func legacyDocsAndSamples() {
         let argv = ["cupertino", "save", "--docs", "--samples"]
         let targets = SaveSiblingGate.parseSaveTargets(argv: argv)
         #expect(targets == [.search, .samples])
     }
 
-    @Test("--docs --packages --samples → all three explicitly")
-    func allThreeExplicit() {
+    @Test("Pre-#1037 backward compat: --docs --packages --samples → all three explicitly")
+    func legacyAllThreeExplicit() {
         let argv = ["cupertino", "save", "--docs", "--packages", "--samples"]
         let targets = SaveSiblingGate.parseSaveTargets(argv: argv)
         #expect(targets == [.search, .packages, .samples])
@@ -73,6 +77,70 @@ struct ParseSaveTargetsTests {
         let argv = ["cupertino", "save", "--docs", "--yes", "--base-dir", "/tmp/c", "--samples"]
         let targets = SaveSiblingGate.parseSaveTargets(argv: argv)
         #expect(targets == [.search, .samples])
+    }
+
+    // MARK: - Post-#1037 per-source surface
+
+    @Test("Post-#1037: `--all` → all three targets")
+    func postSplitAllFlag() {
+        let argv = ["cupertino", "save", "--all"]
+        let targets = SaveSiblingGate.parseSaveTargets(argv: argv)
+        #expect(targets == [.search, .packages, .samples])
+    }
+
+    @Test("Post-#1037: `--source apple-docs` → search.db (docs bucket)")
+    func postSplitSourceAppleDocs() {
+        let argv = ["cupertino", "save", "--source", "apple-docs"]
+        let targets = SaveSiblingGate.parseSaveTargets(argv: argv)
+        #expect(targets == [.search])
+    }
+
+    @Test("Post-#1037: `--source packages` → packages.db only")
+    func postSplitSourcePackages() {
+        let argv = ["cupertino", "save", "--source", "packages"]
+        let targets = SaveSiblingGate.parseSaveTargets(argv: argv)
+        #expect(targets == [.packages])
+    }
+
+    @Test("Post-#1037: `--source samples` → both .samples AND .search (one-DB-two-tracks dispatch)")
+    func postSplitSourceSamples() {
+        // Samples scope fires the Sample.Index pipeline (.samples) AND
+        // the docs runner (.search) for SampleCodeSource's FTS rows per
+        // the one-DB-two-tracks design.
+        let argv = ["cupertino", "save", "--source", "samples"]
+        let targets = SaveSiblingGate.parseSaveTargets(argv: argv)
+        #expect(targets == [.search, .samples])
+    }
+
+    @Test("Post-#1037: `--source apple-sample-code` aliases to samples (same dispatch as --source samples)")
+    func postSplitSourceAppleSampleCodeAlias() {
+        let argv = ["cupertino", "save", "--source", "apple-sample-code"]
+        let targets = SaveSiblingGate.parseSaveTargets(argv: argv)
+        #expect(targets == [.search, .samples])
+    }
+
+    @Test("Post-#1037: equals-form `--source=apple-docs` parses too")
+    func postSplitSourceEqualsForm() {
+        let argv = ["cupertino", "save", "--source=apple-docs"]
+        let targets = SaveSiblingGate.parseSaveTargets(argv: argv)
+        #expect(targets == [.search])
+    }
+
+    @Test("Post-#1037: multiple `--source` values combine (apple-docs + packages → search + packages, samples excluded)")
+    func postSplitMultipleSources() {
+        let argv = ["cupertino", "save", "--source", "apple-docs", "--source", "packages"]
+        let targets = SaveSiblingGate.parseSaveTargets(argv: argv)
+        #expect(targets == [.search, .packages])
+    }
+
+    @Test("Post-#1037: unknown `--source` id ignored (binary's resolver raises; sibling detector tolerates)")
+    func postSplitUnknownSourceIDIgnored() {
+        // Unknown source id contributes no bucket; the binary's own
+        // resolver surfaces the unknown-id error to the user at run
+        // time.
+        let argv = ["cupertino", "save", "--source", "not-a-real-source"]
+        let targets = SaveSiblingGate.parseSaveTargets(argv: argv)
+        #expect(targets.isEmpty)
     }
 
     @Test("'save' appearing after a leading non-binary token still parses")
@@ -89,6 +157,21 @@ struct ParseSaveTargetsTests {
         #expect(SaveSiblingGate.Target.search.dbFilename == "search.db")
         #expect(SaveSiblingGate.Target.packages.dbFilename == "packages.db")
         #expect(SaveSiblingGate.Target.samples.dbFilename == "samples.db")
+    }
+
+    @Test("Post-#1037 regression: `--source apple-docs` does NOT spuriously claim packages or samples targets")
+    func postSplitNoSpuriousTargets() {
+        // Load-bearing for the critic round-8 finding #1: pre-fix the
+        // parser saw `--source apple-docs` as unrecognised, missed
+        // setting sawScopeFlag, and defaulted to all three targets.
+        // Any concurrent `cupertino save --source packages` would then
+        // fire the sibling-conflict gate against a process that never
+        // touches packages.db.
+        let argv = ["cupertino", "save", "--source", "apple-docs"]
+        let targets = SaveSiblingGate.parseSaveTargets(argv: argv)
+        #expect(!targets.contains(.packages), "apple-docs MUST NOT claim packages target")
+        #expect(!targets.contains(.samples), "apple-docs MUST NOT claim samples target")
+        #expect(targets == [.search])
     }
 }
 

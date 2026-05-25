@@ -103,7 +103,7 @@ cupertino fetch --source availability  # Platform availability data
 cupertino fetch --source all           # All types in parallel
 
 # Build indexes
-cupertino save                       # Build documentation search index (from local files)
+cupertino save --all                  # Build every source DB (from local files)
 cupertino save --remote              # Build from GitHub (no local files needed)
 cupertino save --source samples                      # Index sample code for search
 
@@ -149,7 +149,7 @@ cupertino fetch --source swift-evolution
 cupertino fetch --source samples
 
 # Build search index (~2-5 minutes)
-cupertino save
+cupertino save --all
 ```
 
 ### Use with Claude Desktop
@@ -496,7 +496,7 @@ Cupertino includes pre-indexed catalog data bundled directly into the applicatio
   - Apple official packages (31) + essential ecosystem packages (5)
   - High-priority Swift packages for quick access
 
-These catalogs are indexed during `cupertino save` and enable instant search without requiring multi-hour downloads. You can still fetch package READMEs and sample code separately via `cupertino fetch` if needed.
+These catalogs are indexed during `cupertino save --all` and enable instant search without requiring multi-hour downloads. You can still fetch package READMEs and sample code separately via `cupertino fetch` if needed.
 
 ### 3. Full-Text Search Engine
 
@@ -519,7 +519,7 @@ These catalogs are indexed during `cupertino save` and enable instant search wit
   - `swift-evolution://{proposal-id}`
   - `hig://{category}/{page}`
 - **Tools**: Search and read capabilities for AI agents
-  - **Documentation Tools** (requires `cupertino save`):
+  - **Documentation Tools** (requires `cupertino save --all`):
     - `search` - **Unified full-text search** across every indexed source: Apple Developer Documentation, sample code, Human Interface Guidelines, Apple Archive, Swift Evolution, swift.org, the Swift Book, and Swift package metadata. Replaces the pre-[#239](https://github.com/mihaelamj/cupertino/issues/239) per-source tools (`search_docs`, `search_hig`, `search_samples`, `search_all`).
       - Parameters: `query` (required), `source` (optional: `all`, `apple-docs`, `samples`, `hig`, `apple-archive`, `swift-evolution`, `swift-org`, `swift-book`, `packages`), `framework`, `language`, `include_archive`, `limit`, `min_ios`, `min_macos`, `min_tvos`, `min_watchos`, `min_visionos`, `min_swift` (all optional)
       - Platform filtering (#226, #732): the 5 `min_*` parameters apply on every source whose data carries platform-availability metadata (apple-docs, apple-archive, packages, swift-evolution, swift-org, swift-book, samples). Multi-platform values AND-combine (e.g. `min_ios=18.0` + `min_macos=14.0` keeps only results that satisfy both). HIG content has no version axis and the filter doesn't apply there; the response prefixes a `platform_filter_partial` notice when HIG contributes to the result set so AI clients know the filter was non-uniform. Malformed `min_*` values (`"v18.0"`, `""`, `"18..0"`) are rejected at the MCP boundary with a clear `invalidArgument` error frame instead of silently no-oping.
@@ -555,7 +555,7 @@ These catalogs are indexed during `cupertino save` and enable instant search wit
 | `cupertino setup` | Download pre-built databases from GitHub |
 | `cupertino serve` | Start MCP server |
 | `cupertino fetch` | Download documentation |
-| `cupertino save` | Build search index |
+| `cupertino save --all` | Build search index |
 | `cupertino search` | Search documentation from CLI |
 | `cupertino read` | Read full document by URI |
 | `cupertino doctor` | Check server health |
@@ -587,7 +587,7 @@ Auxiliary:         MockAIAgent, ReleaseTool, RemoteSync, TestSupport
    ↓
    WKWebView → Apple JSON API response → JSON files → disk (~/.cupertino/docs/)
 
-2. Save:   cupertino save
+2. Save:   cupertino save --all
    ↓
    JSON files → parse + AST extract → SQLite FTS5 index (~/.cupertino/search.db)
 
@@ -690,7 +690,7 @@ This is a **one-time operation**. Incremental updates use change detection to sk
 # Download everything for offline access
 cupertino fetch --source apple-docs --max-pages 15000
 cupertino fetch --source swift-evolution
-cupertino save
+cupertino save --all
 ```
 
 ### 2. Framework-Specific Research
@@ -721,7 +721,7 @@ cupertino save --base-dir ~/docs --search-db ~/docs/search.db
 cupertino serve --docs-dir ~/docs/apple --search-db ~/docs/search.db
 ```
 
-`cupertino save` emits diagnostic lines at startup so long-running re-index jobs surface their state upfront in any captured log:
+`cupertino save --all` emits diagnostic lines at startup so long-running re-index jobs surface their state upfront in any captured log:
 
 ```
 💾 Output: <resolved-search-db-path>

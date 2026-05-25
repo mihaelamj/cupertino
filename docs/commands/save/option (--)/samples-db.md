@@ -5,7 +5,7 @@ apple-sample-code.db output path for `--samples`
 ## Synopsis
 
 ```bash
-cupertino save --samples --samples-db <path>
+cupertino save --source samples --samples-db <path>
 ```
 
 ## Description
@@ -19,7 +19,7 @@ Override the default `~/.cupertino/apple-sample-code.db` location. ([#231](https
 ## Example
 
 ```bash
-cupertino save --samples --samples-db ~/dev/apple-sample-code.db
+cupertino save --source samples --samples-db ~/dev/apple-sample-code.db
 ```
 
 ## Notes

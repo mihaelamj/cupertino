@@ -197,6 +197,45 @@ extension CLIImpl.Command {
 
             let recording = Cupertino.Context.composition.logging.recording
 
+            // Warn when samples-scoped flags are passed but the
+            // current invocation doesn't include the samples scope
+            // (either via `--source samples` or under `--remote` which
+            // bypasses samples entirely). The warning must fire BEFORE
+            // the --remote short-circuit so a user running
+            // `cupertino save --remote --samples-db /tmp/x.db` sees
+            // that their --samples-db is being ignored, rather than
+            // discovering it after a multi-hour remote stream
+            // (critic round-8 finding #7).
+            //
+            // `--remote` mode always ignores samples (it only streams
+            // docs from GitHub); during the resolver path we recompute
+            // whether samples is in scope below.
+            let samplesIsInScope = !remote && (all || source.contains(Shared.Constants.SourcePrefix.samples) ||
+                source.contains(Shared.Constants.SourcePrefix.appleSampleCode))
+            if !samplesIsInScope {
+                let category: LoggingModels.Logging.Category = .samples
+                if samplesDir != nil {
+                    recording.warning(
+                        "⚠️  `--samples-dir` is ignored because `--source samples` was not passed. " +
+                            "Either add `--source samples` or drop the flag.",
+                        category: category
+                    )
+                }
+                if samplesDB != nil {
+                    recording.warning(
+                        "⚠️  `--samples-db` is ignored because `--source samples` was not passed.",
+                        category: category
+                    )
+                }
+                if force {
+                    recording.warning(
+                        "⚠️  `--force` only re-indexes the samples scope; pass `--source samples` " +
+                            "to use it. Currently ignored.",
+                        category: category
+                    )
+                }
+            }
+
             // `--remote` is its own mode and bypasses the per-source
             // resolver. Pre-#1037 it could combine with the legacy
             // flag triplet (and just ignored the triplet); post-#1037
@@ -226,33 +265,6 @@ extension CLIImpl.Command {
             let buildDocs = selectedSourceIDs.contains { Self.isDocsBucketSource($0) }
             let buildPackages = selectedSourceIDs.contains(Shared.Constants.SourcePrefix.packages)
             let buildSamples = selectedSourceIDs.contains(Shared.Constants.SourcePrefix.samples)
-
-            // Warn when samples-scoped flags are passed without samples
-            // in scope; they would otherwise silently no-op (especially
-            // `--force` which the user could mistake for a universal
-            // "force re-index" knob).
-            if !buildSamples {
-                if samplesDir != nil {
-                    recording.warning(
-                        "⚠️  `--samples-dir` is ignored because `--source samples` was not passed. " +
-                            "Either add `--source samples` or drop the flag.",
-                        category: .cli
-                    )
-                }
-                if samplesDB != nil {
-                    recording.warning(
-                        "⚠️  `--samples-db` is ignored because `--source samples` was not passed.",
-                        category: .cli
-                    )
-                }
-                if force {
-                    recording.warning(
-                        "⚠️  `--force` only re-indexes the samples scope; pass `--source samples` " +
-                            "to use it. Currently ignored.",
-                        category: .cli
-                    )
-                }
-            }
 
             // #253: gate on concurrent siblings before any preflight or
             // write. Detect other `cupertino save` processes targeting

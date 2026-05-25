@@ -23,7 +23,7 @@ The prompt is also auto-skipped when stdin isn't a TTY (CI / pipes), so this fla
 
 ```bash
 cupertino save --yes
-cupertino save --packages --samples -y
+cupertino save --source packages --source samples -y
 ```
 
 ## Notes

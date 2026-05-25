@@ -5,7 +5,7 @@ Force re-index of every sample under `--samples`
 ## Synopsis
 
 ```bash
-cupertino save --samples --force
+cupertino save --source samples --force
 ```
 
 ## Description
@@ -19,7 +19,7 @@ Forces the samples indexer to re-index every project even if its rows already ex
 ## Example
 
 ```bash
-cupertino save --samples --force
+cupertino save --source samples --force
 ```
 
 ## Notes

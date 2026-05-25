@@ -472,9 +472,24 @@ enum SaveSiblingGate {
     // MARK: - Argv → targets (pure, testable)
 
     /// Parse a `cupertino save` argv vector into the set of target DBs
-    /// the invocation will build. Same defaulting rules as
-    /// `Save.run()`: passing no scope flag builds all three; explicit
-    /// `--docs` / `--packages` / `--samples` narrow the set.
+    /// the invocation will build. Recognises both the pre-#1037 flag
+    /// triplet (`--docs` / `--packages` / `--samples`) and the post-#1037
+    /// per-source surface (`--source <id>` repeatable + `--all`).
+    ///
+    /// Post-#1037 mapping (mirrors `CLIImpl.Command.Save.run()`'s
+    /// `isDocsBucketSource` classifier):
+    ///   - `--all` → every target
+    ///   - `--source packages` → `.packages`
+    ///   - `--source samples` (or alias `apple-sample-code`) → `.samples` + `.search`
+    ///     (samples scope fires BOTH Sample.Index.Builder AND the docs runner
+    ///     for SampleCodeSource's FTS rows per the one-DB-two-tracks design)
+    ///   - any other `--source <id>` (apple-docs, hig, swift-evolution,
+    ///     apple-archive, swift-org, swift-book) → `.search`
+    ///
+    /// Pre-#1037 backward compat: still recognises the old triplet so
+    /// sibling-save detection of a stale binary process (e.g. a
+    /// long-running save started before the user upgraded) keeps
+    /// working.
     ///
     /// Accepts any `argv` shape: with or without the leading executable
     /// path, with or without an intervening `save` token. Detects only
@@ -482,6 +497,12 @@ enum SaveSiblingGate {
     /// values).
     ///
     /// Returns an empty set when `save` doesn't appear in argv at all.
+    /// **Returns an empty set when scope is unparseable** (post-#1037
+    /// the binary REFUSES bare `cupertino save` with no scope flag, so
+    /// there's no longer a "default to all three" fallback; a sibling
+    /// whose argv can't be classified is treated as no-targets rather
+    /// than every-target, avoiding spurious conflicts when an
+    /// `--unknown-flag` confuses the parser).
     static func parseSaveTargets(argv: [String]) -> Set<Target> {
         guard let saveIndex = argv.firstIndex(of: "save") else { return [] }
         let rest = Array(argv[(saveIndex + 1)...])
@@ -489,8 +510,11 @@ enum SaveSiblingGate {
         var hasDocs = false
         var hasPackages = false
         var hasSamples = false
+        var hasAll = false
         var sawScopeFlag = false
-        for token in rest {
+        var index = 0
+        while index < rest.count {
+            let token = rest[index]
             switch token {
             case "--docs":
                 hasDocs = true
@@ -501,19 +525,89 @@ enum SaveSiblingGate {
             case "--samples":
                 hasSamples = true
                 sawScopeFlag = true
+            case "--all":
+                hasAll = true
+                sawScopeFlag = true
+            case "--source":
+                // Next token is the source id (post-#1037 repeatable
+                // option). Advance past it after classifying.
+                sawScopeFlag = true
+                let nextIndex = index + 1
+                if nextIndex < rest.count {
+                    let id = rest[nextIndex]
+                    classifyPostSplitSourceID(
+                        id,
+                        hasDocs: &hasDocs,
+                        hasPackages: &hasPackages,
+                        hasSamples: &hasSamples
+                    )
+                    index = nextIndex
+                }
             default:
-                continue
+                // Handle `--source=<id>` equals-form too. ArgumentParser
+                // accepts both `--source X` and `--source=X`.
+                if token.hasPrefix("--source=") {
+                    sawScopeFlag = true
+                    let id = String(token.dropFirst("--source=".count))
+                    classifyPostSplitSourceID(
+                        id,
+                        hasDocs: &hasDocs,
+                        hasPackages: &hasPackages,
+                        hasSamples: &hasSamples
+                    )
+                }
             }
+            index += 1
         }
-        // No scope flag → all three (same default as Save.run).
-        if !sawScopeFlag {
+        if hasAll {
             return [.search, .packages, .samples]
+        }
+        // Post-#1037 no longer defaults to "all three" when no scope
+        // flag is recognised; the binary rejects bare save outright.
+        // Returning an empty set here means a sibling whose argv we
+        // can't classify will NOT trigger spurious gate conflicts.
+        if !sawScopeFlag {
+            return []
         }
         var set: Set<Target> = []
         if hasDocs { set.insert(.search) }
         if hasPackages { set.insert(.packages) }
         if hasSamples { set.insert(.samples) }
         return set
+    }
+
+    /// Classify a `--source <id>` value into the same bucket-level
+    /// `.search` / `.packages` / `.samples` targets that
+    /// `CLIImpl.Command.Save.run()` uses. Mirrors the dispatch logic so
+    /// sibling-save detection stays in lockstep with the actual save
+    /// pipeline.
+    ///
+    /// - `apple-sample-code` is accepted as an alias for `samples`
+    ///   (matches `CLIImpl.Command.Save.sourceIDAliases`).
+    /// - Unknown ids are ignored (treated as no-bucket); the binary's
+    ///   own resolver will surface the unknown-id error at run time.
+    private static func classifyPostSplitSourceID(
+        _ id: String,
+        hasDocs: inout Bool,
+        hasPackages: inout Bool,
+        hasSamples: inout Bool
+    ) {
+        switch id {
+        case "packages":
+            hasPackages = true
+        case "samples", "apple-sample-code":
+            // Samples scope fires BOTH the standalone Sample.Index
+            // pipeline (.samples target) AND the docs runner (.search
+            // target) for SampleCodeSource's FTS rows. Per the
+            // one-DB-two-tracks design (#1037).
+            hasSamples = true
+            hasDocs = true
+        case "apple-docs", "swift-evolution", "hig", "apple-archive", "swift-org", "swift-book":
+            hasDocs = true
+        default:
+            // Unknown id: ignore. Save.run's resolver will raise.
+            break
+        }
     }
 
     // MARK: - Process snapshot
@@ -615,29 +709,29 @@ enum SaveSiblingGate {
         guard buffer.count >= 4 else { return nil }
         var argc: Int32 = 0
         withUnsafeMutableBytes(of: &argc) { argcBytes in
-            for i in 0..<4 {
-                argcBytes[i] = buffer[i]
+            for idx in 0..<4 {
+                argcBytes[idx] = buffer[idx]
             }
         }
         guard argc > 0 else { return nil }
 
         var offset = 4
-        while offset < buffer.count && buffer[offset] != 0 {
+        while offset < buffer.count, buffer[offset] != 0 {
             offset += 1
         }
-        while offset < buffer.count && buffer[offset] == 0 {
+        while offset < buffer.count, buffer[offset] == 0 {
             offset += 1
         }
 
         var argv: [String] = []
         var stringStart = offset
-        while offset < buffer.count && argv.count < Int(argc) {
+        while offset < buffer.count, argv.count < Int(argc) {
             if buffer[offset] == 0 {
                 let bytes = Array(buffer[stringStart..<offset])
-                guard let s = String(bytes: bytes, encoding: .utf8) else {
+                guard let str = String(bytes: bytes, encoding: .utf8) else {
                     return nil
                 }
-                argv.append(s)
+                argv.append(str)
                 stringStart = offset + 1
             }
             offset += 1

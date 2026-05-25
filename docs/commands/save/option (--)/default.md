@@ -1,21 +1,23 @@
 # Default Options Behavior
 
-When no options are specified for `save` command
+Post-#1037 `cupertino save` requires an explicit scope flag (`--source <id>` repeatable, or `--all`). Bare `cupertino save` is a usage error. This page documents the default-value behaviour for every other option.
 
 ## Synopsis
 
 ```bash
-cupertino save
+cupertino save --all
+# or
+cupertino save --source <id> [--source <id>]...
 ```
 
 ## Default Behavior
 
-`cupertino save` with no scope flag runs the **full pipeline**, it builds `search.db` (the docs scope, default ON) plus `packages.db` and `apple-sample-code.db` if their source data is present (#231). Each scope reads from its standard directory under `~/.cupertino/` and writes to its standard DB path.
+`cupertino save --all` runs the **full pipeline**: every source's DB is built if its source data is present. Each source reads from its standard directory under `~/.cupertino/` and writes to its standard DB path. With explicit `--source <id>`, only the selected scope(s) fire (current internal dispatch is bucket-level; see [source.md](source.md) Notes for the per-source-id dispatch refactor that lands in a follow-up commit).
 
-Equivalent to:
+Equivalent to specifying every default explicitly:
 
 ```bash
-cupertino save --docs --packages --samples \
+cupertino save --all \
   --base-dir ~/.cupertino \
   --search-db ~/.cupertino/search.db \
   --samples-db ~/.cupertino/apple-sample-code.db
@@ -37,25 +39,24 @@ cupertino save --docs --packages --samples \
 | `--metadata-file` | `~/.cupertino/docs/metadata.json` | Crawler-side metadata index |
 | `--search-db` | `~/.cupertino/search.db` | search.db output path |
 | `--samples-db` | `~/.cupertino/apple-sample-code.db` | apple-sample-code.db output path |
-| `--docs` | (on by default if no scope flag set) | Build search.db |
-| `--packages` | (off unless explicit, or implied default) | Build packages.db |
-| `--samples` | (off unless explicit, or implied default) | Build apple-sample-code.db |
+| `--source <id>` | (no default; required unless `--all` is passed) | Source id to build, repeatable |
+| `--all` | `false` (no default; required unless `--source` is passed) | Build every source's DB |
 | `--clear` | `false` | Incremental build (default); `--clear` to wipe and rebuild |
-| `--remote` | `false` | Stream from GitHub instead of reading local files |
-| `--force` | `false` | Re-index every sample under `--samples` even if unchanged |
+| `--remote` | `false` | Stream from GitHub instead of reading local files. Mutually exclusive with `--source` / `--all`. |
+| `--force` | `false` | Re-index every sample under `--source samples` even if unchanged |
 | `--yes` / `-y` | `false` | Skip the preflight summary + confirmation prompt |
 
 ## Build Behavior
 
-With no scope flag, `cupertino save`:
+Under `cupertino save --all` (or `--source` covering all three buckets), `cupertino save`:
 
 1. **Loads `BinaryConfig`**, resolves `defaultBaseDirectory` (overridable via `cupertino.config.json` next to the binary).
 2. **Runs the preflight**, prints the resolved scope set, source directories, output DB paths, and asks for confirmation (skipped when stdin isn't a TTY or `--yes` is set; #232).
-3. **Builds `search.db`** (docs scope), iterates `--docs-dir`, `--evolution-dir`, `--swift-org-dir`, `--archive-dir`, `--metadata-file`. Missing directories are skipped with an info-level log (not a hard error).
-4. **Builds `packages.db`** (packages scope), iterates `--packages-dir/<owner>/<repo>/`. Skipped if no extracted archives exist.
-5. **Builds `apple-sample-code.db`** (samples scope), iterates `--samples-dir`. Always wipes-and-rebuilds (the samples-side schema doesn't yet support partial updates).
+3. **Builds `search.db` and its per-source siblings** (docs bucket), iterates `--docs-dir`, `--evolution-dir`, `--swift-org-dir`, `--archive-dir`, `--metadata-file`. Missing directories are skipped with an info-level log (not a hard error).
+4. **Builds `packages.db`** (packages bucket), iterates `--packages-dir/<owner>/<repo>/`. Skipped if no extracted archives exist.
+5. **Builds `apple-sample-code.db`** (samples bucket), iterates `--samples-dir`. Always wipes-and-rebuilds (the samples-side schema doesn't yet support partial updates).
 
-Steps 3–5 are independent. Failures in one scope don't block the others.
+Steps 3-5 are independent. Failures in one scope don't block the others.
 
 ## Directory Requirements
 
@@ -86,16 +87,16 @@ None of the source directories are individually required. Each scope is best-eff
 
 ### Default (incremental)
 ```bash
-cupertino save
+cupertino save --all
 ```
 - Computes content hash per document; only re-indexes documents whose hash changed.
 - Drops rows whose source files have been removed.
 - Fast for partial recrawls.
-- Note: `--samples` scope is always wipe-and-rebuild; `--clear` is meaningful for `--docs` and `--packages`.
+- Note: `--source samples` scope is always wipe-and-rebuild; `--clear` is meaningful for the docs + packages buckets.
 
 ### Full rebuild
 ```bash
-cupertino save --clear
+cupertino save --all --clear
 ```
 - Wipes the in-scope DB(s).
 - Re-indexes everything.
@@ -103,24 +104,24 @@ cupertino save --clear
 
 ## Common Usage Patterns
 
-### Default (build all three scopes)
+### Build every source's DB
 ```bash
-cupertino save
+cupertino save --all
 ```
 
 ### Only docs (skip packages and samples)
 ```bash
-cupertino save --docs
+cupertino save --source apple-docs
 ```
 
 ### Only samples
 ```bash
-cupertino save --samples
+cupertino save --source samples
 ```
 
 ### Force samples re-index
 ```bash
-cupertino save --samples --force
+cupertino save --source samples --force
 ```
 
 ### Stream-from-GitHub mode (no local crawl needed)

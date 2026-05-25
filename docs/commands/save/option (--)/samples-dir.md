@@ -5,7 +5,7 @@ Sample-code source directory for `--samples`
 ## Synopsis
 
 ```bash
-cupertino save --samples --samples-dir <path>
+cupertino save --source samples --samples-dir <path>
 ```
 
 ## Description
@@ -19,7 +19,7 @@ Override the default `~/.cupertino/sample-code/` source location. The samples in
 ## Example
 
 ```bash
-cupertino save --samples --samples-dir ~/Downloads/sample-code
+cupertino save --source samples --samples-dir ~/Downloads/sample-code
 ```
 
 ## Notes

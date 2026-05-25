@@ -30,7 +30,7 @@ The `--remote` flag enables **instant setup** by streaming pre-crawled documenta
 
 ### Phases
 
-`--remote` only feeds the **docs scope**, the search.db that `cupertino save --docs` builds. The `--packages` and `--samples` scopes still require local extracted archives (run `cupertino fetch --source packages` / `cupertino fetch --source samples` first).
+`--remote` only feeds the **docs scope**, the search.db that `cupertino save --source apple-docs` builds. The `--packages` and `--samples` scopes still require local extracted archives (run `cupertino fetch --source packages` / `cupertino fetch --source samples` first).
 
 | Phase | Source | Description |
 |-------|--------|-------------|
