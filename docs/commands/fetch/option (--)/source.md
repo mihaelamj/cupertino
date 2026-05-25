@@ -18,6 +18,7 @@ Specifies which source to fetch. Each canonical id matches one of the per-source
 |-------|-------------|
 | `apple-docs` | Apple Developer Documentation (default) |
 | `swift-org` | Swift.org documentation |
+| `swift-book` | The Swift Programming Language (view-source; co-crawled by swift-org via URL-prefix tagging) |
 | `swift-evolution` | Swift Evolution proposals |
 | `packages` | Swift package metadata + GitHub source archives (#217, see `--skip-metadata` / `--skip-archives`) |
 | `apple-sample-code` | Apple sample code, legacy bundle download (prefer `samples`) |
@@ -53,6 +54,7 @@ cupertino fetch --source all
 
 - [apple-docs](source%20(=value)/apple-docs.md) - Apple Developer Documentation
 - [swift-org](source%20(=value)/swift-org.md) - Swift.org documentation
+- [swift-book](source%20(=value)/swift-book.md) - The Swift Programming Language (view-source)
 - [swift-evolution](source%20(=value)/swift-evolution.md) - Swift Evolution proposals
 - [packages](source%20(=value)/packages.md) - Swift package metadata + source archives
 - [apple-sample-code](source%20(=value)/apple-sample-code.md) - Apple sample code (Apple bundle)

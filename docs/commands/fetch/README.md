@@ -156,32 +156,33 @@ cupertino fetch --source apple-docs --force
 
 ## Output
 
-### Web Crawl Types (docs, swift, evolution)
+### Web Crawl Sources (apple-docs, swift-org, swift-evolution, apple-archive, hig, swift-book)
 
 Default locations:
-- **docs**: `~/.cupertino/docs/`
-- **swift**: `~/.cupertino/swift-org/`
-- **evolution**: `~/.cupertino/swift-evolution/`
-- **archive**: `~/.cupertino/archive/`
+- **apple-docs**: `~/.cupertino/docs/`
+- **swift-org**: `~/.cupertino/swift-org/`
+- **swift-evolution**: `~/.cupertino/swift-evolution/`
+- **apple-archive**: `~/.cupertino/archive/`
 - **hig**: `~/.cupertino/hig/`
+- **swift-book**: co-crawled with `swift-org` (SwiftOrgStrategy tags swift-book pages via URL-prefix during emission; no separate output dir)
 
 Output files:
-- **Markdown files** - Converted documentation pages
-- **metadata.json** - Crawl metadata for change detection and resume
-- **session.json** - Session state for resuming interrupted crawls
+- **Markdown files**, converted documentation pages
+- **metadata.json**, crawl metadata for change detection and resume
+- **session.json**, session state for resuming interrupted crawls
 
-### Direct Fetch Types (packages, code, samples)
+### Direct Fetch Sources (packages, apple-sample-code, samples)
 
 Default locations:
 - **packages**: `~/.cupertino/packages/`
-- **code**: `~/.cupertino/sample-code/` (ZIP files)
-- **samples**: `~/.cupertino/sample-code/cupertino-sample-code/` (extracted folders)
+- **apple-sample-code**: `~/.cupertino/sample-code/` (legacy Apple ZIP bundle)
+- **samples**: `~/.cupertino/sample-code/cupertino-sample-code/` (extracted folders from GitHub clone)
 
 Output files:
-- **packages-with-stars.json** - Package metadata with GitHub information
-- **checkpoint.json** - Progress tracking for resume capability
-- **ZIP files** - Downloaded sample code projects (code type)
-- **Project folders** - Extracted Xcode projects (samples type)
+- **packages-with-stars.json**, package metadata with GitHub information
+- **checkpoint.json**, progress tracking for resume capability
+- **ZIP files**, downloaded sample code projects (apple-sample-code path)
+- **Project folders**, extracted Xcode projects (samples path)
 
 ## Features
 
@@ -204,7 +205,7 @@ All types resume interrupted operations automatically — just re-run the same c
 The `all` type fetches everything concurrently:
 ```bash
 cupertino fetch --source all
-# Runs: docs, swift, evolution, packages, code, samples, archive, hig, availability in parallel
+# Runs: apple-docs, swift-org, swift-evolution, packages, apple-sample-code, samples, apple-archive, hig, availability in parallel
 ```
 
 ### Rate Limiting

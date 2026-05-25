@@ -491,9 +491,22 @@ extension CLIImpl.Command {
         /// registered providers reads `fetchInfo.crawlBaseURLs.first`;
         /// returns empty string for non-web-crawl sources (matches the
         /// pre-#1031 `FetchType.defaultURL` switch arms).
+        ///
+        /// swift-book special case: SwiftBookSource is a view-source
+        /// with `fetchInfo == nil` (SwiftOrgStrategy owns the crawl);
+        /// `cupertino fetch --source swift-book` reaches this helper
+        /// during `runStandardCrawl`. Falls through to SwiftOrgSource's
+        /// crawl base URL so the swift-org crawl is what actually runs
+        /// (SwiftOrgStrategy then tags swift-book pages via URL-prefix
+        /// during emission). Without this fallthrough, validateStartURL
+        /// would see an empty URL and throw.
         private static func defaultCrawlBaseURL(forSource source: String) -> String {
-            // Registered providers.
-            if let provider = CLIImpl.makeProductionSourceRegistry().allEnabled.first(where: { $0.definition.id == source }) {
+            let registry = CLIImpl.makeProductionSourceRegistry()
+            // swift-book view-source -> piggyback on swift-org's crawl.
+            let effectiveSource = (source == Shared.Constants.SourcePrefix.swiftBook)
+                ? Shared.Constants.SourcePrefix.swiftOrg
+                : source
+            if let provider = registry.allEnabled.first(where: { $0.definition.id == effectiveSource }) {
                 return provider.fetchInfo?.crawlBaseURLs.first ?? ""
             }
             return ""

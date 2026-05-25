@@ -171,7 +171,13 @@ check_enum_explicit() {
     rm -f "$b" "$d"
 }
 
-check_enum_explicit fetch  type    docs swift evolution packages code samples archive hig availability all
+# Post-#1031: `fetch` uses `--source` keyed against canonical source-ids
+# (matching `Search.SourceProvider.definition.id`) instead of the dissolved
+# `--type` enum. Pre-#1031 short names (docs / swift / evolution / archive
+# / code) are no longer accepted; the canonical IDs are the same set as
+# `search --source` plus the two special tokens (`apple-sample-code` legacy
+# bundle path and `availability` maintenance op) not in the registry.
+check_enum_explicit fetch  source  apple-docs swift-org swift-evolution swift-book packages apple-sample-code samples apple-archive hig availability all
 check_enum_explicit search source  apple-docs samples hig apple-archive swift-evolution swift-org swift-book packages all
 
 # --- report ---------------------------------------------------------------
