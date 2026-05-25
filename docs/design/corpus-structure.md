@@ -195,9 +195,12 @@ fetcher:
                                     #         http-archive,
                                     #         github-api,
                                     #         file-bundle
-  options:
-    rootURL: https://developer.apple.com/tutorials/data/index
-    requestDelaySeconds: 0.05
+  options:                          # MUST be a [string -> string] map
+                                    # at decode time. Quote numeric
+                                    # values (per-kind typed views land
+                                    # in step 3 of per-source-db-split.md).
+    rootURL: "https://developer.apple.com/tutorials/data/index"
+    requestDelaySeconds: "0.05"
 
 # Required: how the indexer walks the corpus folder
 indexer:
@@ -510,7 +513,7 @@ destinationDB: wwdc
 fetcher:
   kind: apple-docs-api
   options:
-    rootURL: https://developer.apple.com/videos/play/
+    rootURL: "https://developer.apple.com/videos/play/"
 
 indexer:
   fileGlobs:
