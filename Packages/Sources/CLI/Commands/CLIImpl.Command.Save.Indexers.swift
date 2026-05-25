@@ -264,9 +264,11 @@ extension CLIImpl.Command.Save {
                 // Until step 5 wires per-DB fan-out, all search-style
                 // sources still write to a single search.db. The filter
                 // is now "every source except .packages" (PackagesSource
-                // is the only one with a non-search-style destination).
-                // Step 5 replaces this with Dictionary(grouping: by:)
-                // over destinationDB.
+                // is a registered SourceProvider whose destinationDB is
+                // .packages, which routes its rows via the separate
+                // Indexer.PackagesService pipeline rather than through
+                // Search.IndexBuilder). Step 5 replaces this with
+                // Dictionary(grouping: by:) over destinationDB.
                 indexers: productionRegistry.allEnabled
                     .filter { $0.destinationDB != .packages }
                     .reduce(into: [:]) { dict, provider in

@@ -40,9 +40,10 @@ struct Issue1017SwiftEvolutionSourceShapeTests {
         #expect(indexer.displayName == "Swift Evolution")
     }
 
-    @Test("SwiftEvolutionSource.destinationDB == .search")
+    @Test("SwiftEvolutionSource.destinationDB == .swiftEvolution (post step 4 of per-source-db-split.md)")
     func destinationDBExplicit() {
         let provider = SwiftEvolutionSource()
-        #expect(provider.destinationDB == .search)
+        #expect(provider.destinationDB == .swiftEvolution)
+        #expect(provider.destinationDB.id == "swift-evolution")
     }
 }

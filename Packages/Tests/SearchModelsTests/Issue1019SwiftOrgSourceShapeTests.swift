@@ -39,9 +39,10 @@ struct Issue1019SwiftOrgSourceShapeTests {
         #expect(indexer.displayName == "Swift.org")
     }
 
-    @Test("SwiftOrgSource.destinationDB == .search")
+    @Test("SwiftOrgSource.destinationDB == .swiftDocumentation (post step 4; host of swift-book view-source)")
     func destinationDBExplicit() {
         let provider = SwiftOrgSource()
-        #expect(provider.destinationDB == .search)
+        #expect(provider.destinationDB == .swiftDocumentation)
+        #expect(provider.destinationDB.id == "swift-documentation")
     }
 }

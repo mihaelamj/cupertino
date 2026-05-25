@@ -27,10 +27,11 @@ struct Issue1021SwiftBookSourceShapeTests {
         #expect(provider.fetchInfo == nil)
     }
 
-    @Test("SwiftBookSource.destinationDB == .search")
+    @Test("SwiftBookSource.destinationDB == .swiftDocumentation (post step 4; co-located with swift-org via view-source)")
     func destinationDBExplicit() {
         let provider = SwiftBookSource()
-        #expect(provider.destinationDB == .search)
+        #expect(provider.destinationDB == .swiftDocumentation)
+        #expect(provider.destinationDB.id == "swift-documentation")
     }
 
     @Test("SwiftBookSource.makeIndexer produces a Search.SwiftBookIndexer carrying the expected sourceID")

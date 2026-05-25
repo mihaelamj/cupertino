@@ -20,7 +20,8 @@ import SharedConstants
 /// - `definition`: lifted from `CLI/CLIImpl.SourceLookup.swift`
 /// - `fetchInfo`: **`nil`** (no dedicated fetch; SwiftOrgStrategy's
 ///   crawl over `docs.swift.org` covers the swift-book corpus)
-/// - `destinationDB`: `.search`
+/// - `destinationDB`: `.swiftDocumentation` (post step 4 of
+///   per-source-db-split.md; co-located with swift-org via view-source)
 /// - `makeStrategy(env:)`: returns a private no-op
 ///   `SwiftBookViewSourceStrategy` that emits zero items and an
 ///   empty `IndexStats`. The real strategy emission is owned by
