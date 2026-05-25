@@ -6,6 +6,7 @@ import SearchAPI
 import SearchModels
 import SearchSQLite
 import SharedConstants
+import SQLite3
 import Testing
 
 // MARK: - LivePerDBWriter + LivePerDBWriterFactory integration tests
@@ -171,5 +172,122 @@ struct LivePerDBWriterTests {
         // type's docstring. Listed here as a marker test so a future
         // contributor knows the contract exists.
         #expect(Bool(true), "precondition is a documented programming error; no runtime assertion")
+    }
+
+    // MARK: - #1037 foreign-table-aware destination preservation
+
+    /// Seed a DB at `path` with a Sample.Index-shaped `projects` table
+    /// + one row. The migrator's foreign-table check uses table-name
+    /// presence (not row count) so a single row is enough to exercise
+    /// the preserve branch. Raw sqlite3 to avoid bringing the
+    /// SampleIndex target in as a test dependency.
+    private func seedSampleIndexProjectsTable(at path: URL) throws {
+        var db: OpaquePointer?
+        try #require(sqlite3_open(path.path, &db) == SQLITE_OK)
+        defer { sqlite3_close(db) }
+        let sql = """
+        CREATE TABLE projects (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL
+        );
+        INSERT INTO projects (id, title) VALUES ('preserve-me', 'Sentinel row');
+        """
+        try #require(sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK)
+    }
+
+    /// Read the `projects` row count to verify the foreign-table
+    /// preservation worked end-to-end.
+    private func projectsRowCount(at path: URL) throws -> Int32 {
+        var db: OpaquePointer?
+        try #require(sqlite3_open(path.path, &db) == SQLITE_OK)
+        defer { sqlite3_close(db) }
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+        try #require(sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM projects", -1, &stmt, nil) == SQLITE_OK)
+        try #require(sqlite3_step(stmt) == SQLITE_ROW)
+        return sqlite3_column_int(stmt, 0)
+    }
+
+    @Test("#1037: factory preserves a destination DB that already carries Sample.Index tables")
+    func factoryPreservesForeignSampleIndexTables() async throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let dbPath = dir.appendingPathComponent("apple-sample-code.db")
+
+        // Pre-seed: existing Sample.Index data in the file.
+        try seedSampleIndexProjectsTable(at: dbPath)
+        #expect(try projectsRowCount(at: dbPath) == 1)
+
+        // Run the factory. The destination is recognised as carrying
+        // foreign tables and is preserved.
+        let factory = LivePerDBWriterFactory.make(
+            logger: LoggingModels.Logging.NoopRecording()
+        )
+        let writer = try await factory(.appleSampleCode, dbPath)
+
+        // Write a row to confirm Search.Index opened cleanly on top
+        // of the pre-existing file.
+        try await writer.write(Distribution.PerSourceDBSplitMigrator.LegacyRow(
+            uri: "sample-code://test/row",
+            source: "sample-code",
+            framework: "Samples",
+            title: "Test FTS row",
+            content: "Content body for the foreign-table coexistence test.",
+            filePath: "/tmp/test",
+            contentHash: "test-hash",
+            lastCrawled: Date()
+        ))
+        let rowsWritten = try await writer.rowCount()
+        #expect(rowsWritten == 1, "Search.Index docs_metadata count post-write")
+        await writer.disconnect()
+
+        // The original projects row MUST still be there. This is the
+        // bug fix's load-bearing assertion.
+        #expect(
+            try projectsRowCount(at: dbPath) == 1,
+            "Pre-existing Sample.Index projects row must survive the migrator's open of the same file"
+        )
+    }
+
+    @Test("#1037: factory STILL wipes a destination DB that is a stale Search.Index-only file (no foreign tables)")
+    func factoryWipesStaleSearchOnlyFile() async throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let dbPath = dir.appendingPathComponent("hig.db")
+
+        // Pre-seed: a stale Search.Index-only DB. Create a docs_metadata
+        // table + a sentinel row that, if preserved across a migrator
+        // run, would indicate the wipe branch failed to fire.
+        var db: OpaquePointer?
+        try #require(sqlite3_open(dbPath.path, &db) == SQLITE_OK)
+        let seedSQL = """
+        CREATE TABLE docs_metadata (id INTEGER PRIMARY KEY, uri TEXT NOT NULL);
+        INSERT INTO docs_metadata (id, uri) VALUES (999, 'stale://row');
+        """
+        try #require(sqlite3_exec(db, seedSQL, nil, nil, nil) == SQLITE_OK)
+        sqlite3_close(db)
+
+        // Run the factory. No `projects` table → wipe branch fires.
+        let factory = LivePerDBWriterFactory.make(
+            logger: LoggingModels.Logging.NoopRecording()
+        )
+        let writer = try await factory(.hig, dbPath)
+
+        // Search.Index opened a fresh DB after the wipe; the sentinel
+        // row is gone, the only rows in docs_metadata are the ones the
+        // writer is about to add.
+        try await writer.write(Distribution.PerSourceDBSplitMigrator.LegacyRow(
+            uri: "hig://post-wipe/row",
+            source: Shared.Constants.SourcePrefix.hig,
+            framework: "DesignTokens",
+            title: "Post-wipe row",
+            content: "Content body after the legacy wipe path fires.",
+            filePath: "/tmp/post-wipe",
+            contentHash: "post-wipe-hash",
+            lastCrawled: Date()
+        ))
+        let rowsWritten = try await writer.rowCount()
+        #expect(rowsWritten == 1, "fresh DB carries only the row we just wrote (stale 999/stale://row gone)")
+        await writer.disconnect()
     }
 }

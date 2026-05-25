@@ -244,12 +244,22 @@ public enum LivePerDBWriterFactory {
     /// Build a factory closure bound to the supplied `logger`. The
     /// closure constructs a `LivePerDBWriter` per destination call.
     ///
-    /// **Pre-open cleanup**: deletes any stale file at the destination
-    /// path AND its SQLite WAL companions (`<path>-wal`, `<path>-shm`)
-    /// before opening Search.Index. The companion cleanup is safe
-    /// because the migrator only runs when `detect()` returned
-    /// `.migrationNeeded`, by definition meaning no live writes are
-    /// in flight against these paths.
+    /// **Pre-open cleanup, foreign-table-aware (#1037)**: the legacy
+    /// behaviour (unconditional wipe) is correct ONLY when the
+    /// destination is exclusively a Search.Index DB. Post-#1037 the
+    /// `apple-sample-code.db` destination also carries
+    /// `Sample.Index.Builder`'s rich schema (`projects`, `files`,
+    /// `file_symbols`, `file_imports`); wiping that file destroys
+    /// rich-schema rows that the user built via `cupertino save
+    /// --samples`. The migrator therefore checks for the `projects`
+    /// table BEFORE the wipe; if it is present the destination file
+    /// is preserved AND we just open Search.Index on top of it
+    /// (which creates `docs_metadata` + `docs_fts` alongside the
+    /// existing tables on first open). WAL/SHM cleanup still runs in
+    /// both branches because the migrator only fires when
+    /// `detect()` returned `.migrationNeeded`, by definition meaning
+    /// no live writes are in flight; SQLite's WAL recovery handles
+    /// salt-mismatched sidecars by discarding the WAL.
     ///
     /// **Empty indexer dict + sourceLookup**: Search.Index's
     /// `indexDocument(_:)` (the path the migrator's writer.write
@@ -264,18 +274,37 @@ public enum LivePerDBWriterFactory {
         logger: any LoggingModels.Logging.Recording
     ) -> Distribution.PerSourceDBSplitMigrator.PerDBWriterFactory {
         { _, destinationPath in
-            // Primary destinationPath: must succeed if it exists. A
-            // failure here (permissions, busy file, read-only volume)
-            // would let Search.Index then open the stale file and
-            // surface a confusing sqlite "file is encrypted or not a
-            // database" error instead of the actual cause.
-            if FileManager.default.fileExists(atPath: destinationPath.path) {
+            // Foreign-table check (#1037): preserve the destination
+            // file when it carries Sample.Index rich data so the
+            // migrator does not destroy it on its way into the shared
+            // file. Logged so an operator inspecting the migrate(...)
+            // output sees explicitly which destinations took the
+            // preserve path vs the wipe path.
+            let preserveDestination =
+                FileManager.default.fileExists(atPath: destinationPath.path) &&
+                hasForeignSampleIndexTables(at: destinationPath)
+
+            if preserveDestination {
+                logger.info(
+                    "Migrator: preserving existing destination \(destinationPath.lastPathComponent) " +
+                        "because it carries Sample.Index tables (rich-schema data " +
+                        "from `cupertino save --samples`). Search.Index will open " +
+                        "on top of the file and create its own tables alongside.",
+                    category: .cli
+                )
+            } else if FileManager.default.fileExists(atPath: destinationPath.path) {
+                // Primary destinationPath: must succeed if it exists. A
+                // failure here (permissions, busy file, read-only volume)
+                // would let Search.Index then open the stale file and
+                // surface a confusing sqlite "file is encrypted or not a
+                // database" error instead of the actual cause.
                 try FileManager.default.removeItem(at: destinationPath)
             }
-            // WAL/SHM sidecars: best-effort cleanup. A stale -shm file
-            // alone shouldn't abort the whole migration; SQLite's WAL
-            // recovery handles salt-mismatched sidecars by discarding
-            // the WAL. try? here is intentional asymmetry with the
+            // WAL/SHM sidecars: best-effort cleanup in both branches.
+            // For the preserve case any uncommitted WAL data is already
+            // checkpointed (per the .migrationNeeded precondition);
+            // SQLite handles salt-mismatched sidecars by ignoring them
+            // anyway. try? here is intentional asymmetry with the
             // primary path's try above.
             let sidecarPaths = [
                 destinationPath.appendingPathExtension("wal"),
@@ -297,5 +326,25 @@ public enum LivePerDBWriterFactory {
             )
             return LivePerDBWriter(searchIndex: searchIndex)
         }
+    }
+
+    /// Inspect the destination DB for a `projects` table, the
+    /// canonical marker that `Sample.Index.Builder` has written its
+    /// rich schema here. Returns `false` on any failure (file not a
+    /// SQLite DB, can't open, etc.) so the migrator falls through to
+    /// the legacy wipe path. Opens read-only and closes immediately.
+    private static func hasForeignSampleIndexTables(at path: URL) -> Bool {
+        var db: OpaquePointer?
+        defer { sqlite3_close(db) }
+        guard sqlite3_open_v2(path.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+            return false
+        }
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+        let sql = "SELECT name FROM sqlite_master WHERE type='table' AND name='projects' LIMIT 1"
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            return false
+        }
+        return sqlite3_step(stmt) == SQLITE_ROW
     }
 }
