@@ -456,7 +456,7 @@ extension CLIImpl.Command {
                     Cupertino.Context.composition.logging.recording.output("   ✓ \(entry.label): \(entry.url.path) (\(count) \(entry.suffix))")
                 } else {
                     Cupertino.Context.composition.logging.recording.output("   ⚠  \(entry.label): \(entry.url.path) (not found)")
-                    Cupertino.Context.composition.logging.recording.output("     → Run: cupertino fetch --type \(entry.fetchType)  (only needed to rebuild from scratch)")
+                    Cupertino.Context.composition.logging.recording.output("     → Run: cupertino fetch --source \(entry.fetchType)  (only needed to rebuild from scratch)")
                 }
             }
 
@@ -484,7 +484,7 @@ extension CLIImpl.Command {
 
             guard FileManager.default.fileExists(atPath: directory.path) else {
                 Cupertino.Context.composition.logging.recording.output("   ⚠  Directory: \(directory.path) (not found)")
-                Cupertino.Context.composition.logging.recording.output("     → Run: cupertino fetch --type samples")
+                Cupertino.Context.composition.logging.recording.output("     → Run: cupertino fetch --source samples")
                 Cupertino.Context.composition.logging.recording.output("")
                 return
             }
@@ -509,7 +509,7 @@ extension CLIImpl.Command {
                     Cupertino.Context.composition.logging.recording.output("     - … and \(invalid.count - 5) more")
                 }
                 Cupertino.Context.composition.logging.recording.output("     → These are likely HTML landing pages saved as .zip (Apple CDN transient 200s).")
-                Cupertino.Context.composition.logging.recording.output("     → Remove them manually, or re-run: cupertino fetch --type samples --force")
+                Cupertino.Context.composition.logging.recording.output("     → Remove them manually, or re-run: cupertino fetch --source samples --force")
             }
             Cupertino.Context.composition.logging.recording.output("")
         }
@@ -695,7 +695,7 @@ extension CLIImpl.Command {
                         }
                         if !missing.isEmpty {
                             Cupertino.Context.composition.logging.recording.output("   ⚠  Missing READMEs: \(missing.count) (selected but not yet downloaded)")
-                            Cupertino.Context.composition.logging.recording.output("     → Run: cupertino fetch --type packages")
+                            Cupertino.Context.composition.logging.recording.output("     → Run: cupertino fetch --source packages")
                         }
                     }
                 }

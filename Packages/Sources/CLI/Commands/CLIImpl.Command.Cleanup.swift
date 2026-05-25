@@ -31,7 +31,11 @@ extension CLIImpl.Command {
 
         @Option(
             name: .long,
-            help: "Sample code directory to clean (defaults to the sample-code/ subdirectory of the resolved base directory — typically ~/.cupertino/sample-code, unless overridden by cupertino.config.json)"
+            help: """
+            Sample code directory to clean (defaults to the sample-code/ \
+            subdirectory of the resolved base directory; typically \
+            ~/.cupertino/sample-code, unless overridden by cupertino.config.json)
+            """
         )
         var sampleCodeDir: String?
 
@@ -74,7 +78,7 @@ extension CLIImpl.Command {
 
             guard FileManager.default.fileExists(atPath: directory.path) else {
                 Cupertino.Context.composition.logging.recording.error("Sample code directory not found: \(directory.path)")
-                Cupertino.Context.composition.logging.recording.error("Run 'cupertino fetch --type code' first to download sample code.")
+                Cupertino.Context.composition.logging.recording.error("Run 'cupertino fetch --source apple-sample-code' first to download sample code.")
                 throw ExitCode.failure
             }
 

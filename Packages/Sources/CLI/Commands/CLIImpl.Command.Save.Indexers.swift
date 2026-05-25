@@ -511,7 +511,7 @@ extension CLIImpl.Command.Save {
         case .availabilityMissing:
             Cupertino.Context.composition.logging.recording.info("")
             Cupertino.Context.composition.logging.recording.info("⚠️  Docs don't have availability data yet")
-            Cupertino.Context.composition.logging.recording.info("   Run 'cupertino fetch --type availability' first for best results")
+            Cupertino.Context.composition.logging.recording.info("   Run 'cupertino fetch --source availability' first for best results")
             Cupertino.Context.composition.logging.recording.info("")
         case .progress(let processed, let total, let percent):
             if percent - tracker.lastPercent >= 5.0 {
@@ -619,7 +619,7 @@ extension CLIImpl.Command.Save {
         guard FileManager.default.fileExists(atPath: packagesRoot.path) else {
             Cupertino.Context.composition.logging.recording.info(
                 "ℹ️  packages directory not found at \(packagesRoot.path) — skipping packages step. "
-                    + "Run `cupertino fetch --type packages` first."
+                    + "Run `cupertino fetch --source packages` first."
             )
             return
         }
@@ -758,7 +758,7 @@ extension CLIImpl.Command.Save {
         guard FileManager.default.fileExists(atPath: sampleCodeURL.path) else {
             Cupertino.Context.composition.logging.recording.info(
                 "ℹ️  sample-code directory not found at \(sampleCodeURL.path) — skipping samples step. "
-                    + "Run `cupertino fetch --type samples` first."
+                    + "Run `cupertino fetch --source samples` first."
             )
             return
         }

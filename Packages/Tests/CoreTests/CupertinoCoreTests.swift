@@ -20,7 +20,7 @@ import TestSupport
 // The 5 legacy tests in this section assumed the embedded catalog was
 // always populated (`SampleCodeCatalogEmbedded.json` was a build-time
 // blob with ~600 entries). After #215 deleted that blob, the catalog
-// only exists when `cupertino fetch --type code` has written
+// only exists when `cupertino fetch --source apple-sample-code` has written
 // `<sample-code-dir>/catalog.json`, so a CI machine with no fetched
 // data would fail those tests.
 //
@@ -41,7 +41,13 @@ import TestSupport
 
 @Test("SwiftPackagesCatalog returns 0 count post-#194 (embedded list deleted)")
 func swiftPackagesCatalogIsEmpty() async {
+    // swiftlint:disable:next empty_count
     let count = await Core.Protocols.SwiftPackagesCatalog.count
+    // The test name + assertion pin the post-#194 contract that the
+    // embedded list is empty; comparing against 0 is the load-bearing
+    // assertion here (Core.Protocols.SwiftPackagesCatalog exposes
+    // `count` but not `isEmpty`, so `== 0` is the canonical check).
+    // swiftlint:disable:next empty_count
     #expect(count == 0, "post-#194 the embedded catalog is gone; count must be 0")
 }
 

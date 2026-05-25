@@ -65,7 +65,7 @@ Archive docs are indexed with framework synonyms for better discoverability:
 
 ```bash
 # Fetch archive guides (~5-10 minutes)
-cupertino fetch --type archive
+cupertino fetch --source apple-archive
 
 # Build index
 cupertino save

@@ -7,7 +7,7 @@
 #
 #   • CLI options that have no corresponding option .md file
 #   • option .md files for flags that no longer exist in --help
-#   • enum-value drift (--type, --source values added or renamed)
+#   • enum-value drift (--source values added or renamed; pre-#1031 also --type)
 #
 # Run from the repo root:
 #
@@ -117,7 +117,7 @@ for cmd in "${COMMANDS[@]}"; do
     rm -f "$bin_file" "$doc_file"
 done
 
-# --- enum-value drift: --type and --source values vs (=value) subdirs -----
+# --- enum-value drift: --source values vs (=value) subdirs ---------------
 
 # Hardcoded expected enum values per (command, option). Update in lockstep
 # with the Swift enum definitions in:
@@ -171,7 +171,13 @@ check_enum_explicit() {
     rm -f "$b" "$d"
 }
 
-check_enum_explicit fetch  type    docs swift evolution packages code samples archive hig availability all
+# Post-#1031: `fetch` uses `--source` keyed against canonical source-ids
+# (matching `Search.SourceProvider.definition.id`) instead of the dissolved
+# `--type` enum. Pre-#1031 short names (docs / swift / evolution / archive
+# / code) are no longer accepted; the canonical IDs are the same set as
+# `search --source` plus the two special tokens (`apple-sample-code` legacy
+# bundle path and `availability` maintenance op) not in the registry.
+check_enum_explicit fetch  source  apple-docs swift-org swift-evolution swift-book packages apple-sample-code samples apple-archive hig availability all
 check_enum_explicit search source  apple-docs samples hig apple-archive swift-evolution swift-org swift-book packages all
 
 # --- report ---------------------------------------------------------------

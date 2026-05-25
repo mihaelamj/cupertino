@@ -15,7 +15,7 @@
 #
 # Note: sample-code-catalog.json is NO LONGER embedded (#215). Sample-code
 # metadata is sourced from `<sample-code-dir>/catalog.json`, written at
-# fetch time by `cupertino fetch --type code`. If you place a
+# fetch time by `cupertino fetch --source apple-sample-code`. If you place a
 # sample-code-catalog.json in /tmp/catalogs/, this script ignores it.
 #
 # Note: swift-packages-catalog.json is NO LONGER embedded (#194). The 568 KB

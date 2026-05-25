@@ -65,7 +65,7 @@ swift-book://{chapter_path}
 
 ```bash
 # Fetch Swift book (part of swift type)
-cupertino fetch --type swift
+cupertino fetch --source swift-org
 
 # Build index
 cupertino save

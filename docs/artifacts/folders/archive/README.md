@@ -9,7 +9,7 @@ Legacy Apple programming guides from the developer.apple.com/library/archive.
 ## Created By
 
 ```bash
-cupertino fetch --type archive
+cupertino fetch --source apple-archive
 ```
 
 ## Structure

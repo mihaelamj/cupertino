@@ -81,6 +81,6 @@ When included, archive results have a slight ranking penalty to ensure modern do
 
 ## Notes
 
-- Archive docs are crawled separately via `cupertino fetch --type archive`
+- Archive docs are crawled separately via `cupertino fetch --source apple-archive`
 - Framework synonyms help discover archive content (QuartzCore = CoreAnimation)
 - Great for understanding foundational concepts not covered in modern docs

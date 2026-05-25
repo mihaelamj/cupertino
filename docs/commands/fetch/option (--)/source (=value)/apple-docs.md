@@ -1,11 +1,11 @@
-# --type docs
+# --source apple-docs
 
 Fetch Apple Developer Documentation
 
 ## Synopsis
 
 ```bash
-cupertino fetch --type docs
+cupertino fetch --source apple-docs
 ```
 
 ## Description
@@ -39,38 +39,38 @@ Creates Markdown files for each documentation page:
 
 ### Fetch Apple Documentation (Default)
 ```bash
-cupertino fetch --type docs
+cupertino fetch --source apple-docs
 ```
 
 ### Fetch with Custom Max Pages
 ```bash
-cupertino fetch --type docs --max-pages 5000
+cupertino fetch --source apple-docs --max-pages 5000
 ```
 
 ### Fetch Specific Framework
 ```bash
-cupertino fetch --type docs --start-url https://developer.apple.com/documentation/swiftui
+cupertino fetch --source apple-docs --start-url https://developer.apple.com/documentation/swiftui
 ```
 
 ### Resume Interrupted Crawl (automatic)
 ```bash
 # Auto-resumes from metadata.json — no flag needed
-cupertino fetch --type docs
+cupertino fetch --source apple-docs
 ```
 
 ### Discard the Saved Session and Start Over
 ```bash
-cupertino fetch --type docs --start-clean
+cupertino fetch --source apple-docs --start-clean
 ```
 
 ### Force Recrawl All Pages
 ```bash
-cupertino fetch --type docs --force
+cupertino fetch --source apple-docs --force
 ```
 
 ### Custom Output Directory
 ```bash
-cupertino fetch --type docs --output-dir ./my-docs
+cupertino fetch --source apple-docs --output-dir ./my-docs
 ```
 
 ## Output Structure
@@ -163,7 +163,7 @@ cupertino fetch --type docs --output-dir ./my-docs
 
 ## Notes
 
-- **Default fetch type** - `--type docs` can be omitted
+- **Default fetch type** - `--source apple-docs` can be omitted
 - Requires internet connection
 - No authentication needed
 - HTML automatically converted to Markdown

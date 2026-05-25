@@ -5,36 +5,36 @@ Fetch Apple documentation, Swift Evolution proposals, Swift packages, and sample
 ## Synopsis
 
 ```bash
-cupertino fetch [--type <type>] [options]
+cupertino fetch [--source <id>] [options]
 ```
 
 ## Description
 
 The `fetch` command is the unified fetching command that handles both web crawling and direct downloads:
 
-- **Web Crawling** (docs, swift, evolution): Uses WKWebView to render and crawl JavaScript-heavy documentation sites
-- **Direct Fetching** (packages, code): Downloads resources directly from APIs without web crawling
-- **Parallel Fetching** (all): Fetches all types concurrently for maximum efficiency
+- **Web Crawling** (apple-docs, swift-org, swift-evolution): Uses WKWebView to render and crawl JavaScript-heavy documentation sites
+- **Direct Fetching** (packages, apple-sample-code, samples): Downloads resources directly from APIs without web crawling
+- **Parallel Fetching** (all): Fetches all sources concurrently for maximum efficiency
 
 ## Options
 
 ### Core Options
 
-- [--type](type/) - Type of documentation to fetch **[default: docs]**
-  - `docs` - Apple Developer Documentation (web crawl)
-  - `swift` - Swift.org Documentation (web crawl)
-  - `evolution` - Swift Evolution Proposals (web crawl)
-  - `packages` - Swift Package Index metadata + GitHub source archives ([#217](https://github.com/mihaelamj/cupertino/issues/217) — see `--skip-metadata` / `--skip-archives`)
-  - `code` - Apple Sample Code (direct download from Apple, requires auth)
+- [--source](source.md) - Source to fetch (canonical id from the per-source registry) **[default: apple-docs]**
+  - `apple-docs` - Apple Developer Documentation (web crawl)
+  - `swift-org` - Swift.org Documentation (web crawl)
+  - `swift-evolution` - Swift Evolution Proposals (web crawl)
+  - `packages` - Swift Package Index metadata + GitHub source archives ([#217](https://github.com/mihaelamj/cupertino/issues/217), see `--skip-metadata` / `--skip-archives`)
+  - `apple-sample-code` - Apple Sample Code (direct download from Apple, legacy bundle path, requires auth)
   - `samples` - Apple Sample Code (git clone from GitHub, recommended)
-  - `archive` - Apple Archive guides (legacy programming guides)
+  - `apple-archive` - Apple Archive guides (legacy programming guides)
   - `hig` - Human Interface Guidelines (web crawl)
   - `availability` - API version info for existing docs (annotates already-crawled pages)
-  - `all` - All types in parallel
+  - `all` - All sources in parallel
 
 ### Web Crawl Options
 
-- `--start-url` - Start URL to crawl from (overrides --type default)
+- `--start-url` - Start URL to crawl from (overrides --source default)
 - `--max-pages` - Maximum number of pages to crawl (default: 1,000,000)
 - `--max-depth` - Maximum crawl depth (default: 15)
 - `--allowed-prefixes` - Comma-separated URL prefixes to allow (auto-detected if not specified)
@@ -72,11 +72,11 @@ No-op in `--discovery-mode json-only` and `--discovery-mode webview-only`.
 ### Direct Fetch Options
 
 - [--output-dir](output-dir.md) - Output directory for downloaded resources
-- [--limit](limit.md) - Maximum number of items to fetch (packages/code types only)
-- `--skip-metadata` - Skip the metadata-refresh stage of `--type packages` ([#217](https://github.com/mihaelamj/cupertino/issues/217))
-- `--skip-archives` - Skip the archive-download stage of `--type packages` ([#217](https://github.com/mihaelamj/cupertino/issues/217))
+- [--limit](limit.md) - Maximum number of items to fetch (packages / apple-sample-code sources only)
+- `--skip-metadata` - Skip the metadata-refresh stage of `--source packages` ([#217](https://github.com/mihaelamj/cupertino/issues/217))
+- `--skip-archives` - Skip the archive-download stage of `--source packages` ([#217](https://github.com/mihaelamj/cupertino/issues/217))
 - `--annotate-availability` - Opt-in stage 3: walk the on-disk packages corpus and write per-package `availability.json` (deployment targets + `@available` attrs) ([#219](https://github.com/mihaelamj/cupertino/issues/219))
-- `--fast` - Use higher concurrency and shorter timeouts for `--type availability` (faster but more aggressive)
+- `--fast` - Use higher concurrency and shorter timeouts for `--source availability` (faster but more aggressive)
 
 ## Examples
 
@@ -84,27 +84,27 @@ No-op in `--discovery-mode json-only` and `--discovery-mode webview-only`.
 ```bash
 cupertino fetch
 # or explicitly:
-cupertino fetch --type docs
+cupertino fetch --source apple-docs
 ```
 
 ### Fetch Swift Evolution Proposals
 ```bash
-cupertino fetch --type evolution
+cupertino fetch --source swift-evolution
 ```
 
 ### Fetch All Types in Parallel
 ```bash
-cupertino fetch --type all
+cupertino fetch --source all
 ```
 
 ### Fetch Swift Packages (Limited)
 ```bash
-cupertino fetch --type packages --limit 100
+cupertino fetch --source packages --limit 100
 ```
 
 ### Fetch Apple Sample Code from GitHub (Recommended)
 ```bash
-cupertino fetch --type samples
+cupertino fetch --source samples
 # Clones https://github.com/mihaelamj/cupertino-sample-code
 # 619 projects, ~10GB with Git LFS, ~4 minutes
 ```
@@ -112,7 +112,7 @@ cupertino fetch --type samples
 ### Fetch Apple Sample Code from Apple
 
 ```bash
-cupertino fetch --type code
+cupertino fetch --source apple-sample-code
 # Reuses Apple Developer cookies from your Safari session.
 # Sign in to https://developer.apple.com/ via Safari first; the
 # fetcher detects the `myacinfo` cookie automatically.
@@ -120,13 +120,13 @@ cupertino fetch --type code
 
 ### Fetch Apple Archive Guides (Legacy Documentation)
 ```bash
-cupertino fetch --type archive
+cupertino fetch --source apple-archive
 # Fetches: Core Animation, Core Graphics, Core Text, etc.
 ```
 
 ### Fetch Human Interface Guidelines
 ```bash
-cupertino fetch --type hig
+cupertino fetch --source hig
 # Fetches: Design guidelines for iOS, macOS, watchOS, visionOS, tvOS
 ```
 
@@ -140,48 +140,49 @@ cupertino fetch --start-url https://developer.apple.com/documentation/swiftui \
 ### Resume Interrupted Crawl (automatic)
 ```bash
 # Just re-run the same command — fetch auto-resumes from metadata.json
-cupertino fetch --type docs
+cupertino fetch --source apple-docs
 ```
 
 ### Force a Truly Fresh Start
 ```bash
 # Clear the saved session AND re-fetch every page
-cupertino fetch --type docs --start-clean --force
+cupertino fetch --source apple-docs --start-clean --force
 ```
 
 ### Force Recrawl Without Resetting the Queue
 ```bash
-cupertino fetch --type docs --force
+cupertino fetch --source apple-docs --force
 ```
 
 ## Output
 
-### Web Crawl Types (docs, swift, evolution)
+### Web Crawl Sources (apple-docs, swift-org, swift-evolution, apple-archive, hig, swift-book)
 
 Default locations:
-- **docs**: `~/.cupertino/docs/`
-- **swift**: `~/.cupertino/swift-org/`
-- **evolution**: `~/.cupertino/swift-evolution/`
-- **archive**: `~/.cupertino/archive/`
+- **apple-docs**: `~/.cupertino/docs/`
+- **swift-org**: `~/.cupertino/swift-org/`
+- **swift-evolution**: `~/.cupertino/swift-evolution/`
+- **apple-archive**: `~/.cupertino/archive/`
 - **hig**: `~/.cupertino/hig/`
+- **swift-book**: co-crawled with `swift-org` (SwiftOrgStrategy tags swift-book pages via URL-prefix during emission; no separate output dir)
 
 Output files:
-- **Markdown files** - Converted documentation pages
-- **metadata.json** - Crawl metadata for change detection and resume
-- **session.json** - Session state for resuming interrupted crawls
+- **Markdown files**, converted documentation pages
+- **metadata.json**, crawl metadata for change detection and resume
+- **session.json**, session state for resuming interrupted crawls
 
-### Direct Fetch Types (packages, code, samples)
+### Direct Fetch Sources (packages, apple-sample-code, samples)
 
 Default locations:
 - **packages**: `~/.cupertino/packages/`
-- **code**: `~/.cupertino/sample-code/` (ZIP files)
-- **samples**: `~/.cupertino/sample-code/cupertino-sample-code/` (extracted folders)
+- **apple-sample-code**: `~/.cupertino/sample-code/` (legacy Apple ZIP bundle)
+- **samples**: `~/.cupertino/sample-code/cupertino-sample-code/` (extracted folders from GitHub clone)
 
 Output files:
-- **packages-with-stars.json** - Package metadata with GitHub information
-- **checkpoint.json** - Progress tracking for resume capability
-- **ZIP files** - Downloaded sample code projects (code type)
-- **Project folders** - Extracted Xcode projects (samples type)
+- **packages-with-stars.json**, package metadata with GitHub information
+- **checkpoint.json**, progress tracking for resume capability
+- **ZIP files**, downloaded sample code projects (apple-sample-code path)
+- **Project folders**, extracted Xcode projects (samples path)
 
 ## Features
 
@@ -203,8 +204,8 @@ All types resume interrupted operations automatically — just re-run the same c
 
 The `all` type fetches everything concurrently:
 ```bash
-cupertino fetch --type all
-# Runs: docs, swift, evolution, packages, code, samples, archive, hig, availability in parallel
+cupertino fetch --source all
+# Runs: apple-docs, swift-org, swift-evolution, packages, apple-sample-code, samples, apple-archive, hig, availability in parallel
 ```
 
 ### Rate Limiting
@@ -217,10 +218,10 @@ cupertino fetch --type all
 
 ### Authentication
 
-**Sample Code (`--type code`)** requires Apple ID authentication, but the in-process auth window is currently broken (#6 partial; full replacement #193). The supported path is:
+**Sample Code (`--source apple-sample-code`)** requires Apple ID authentication, but the in-process auth window is currently broken (#6 partial; full replacement #193). The supported path is:
 
 - Sign in to `https://developer.apple.com/` in Safari
-- Run `cupertino fetch --type code` (no extra flags)
+- Run `cupertino fetch --source apple-sample-code` (no extra flags)
 - The fetcher reuses Safari's `myacinfo` cookie from the system cookie store
 - No authentication is needed for `docs`, `swift`, `evolution`, `packages`, `samples` (GitHub mirror), `archive`, `hig`, `availability`
 
@@ -229,7 +230,7 @@ cupertino fetch --type all
 For faster package fetching, set GITHUB_TOKEN:
 ```bash
 export GITHUB_TOKEN=ghp_your_token_here
-cupertino fetch --type packages
+cupertino fetch --source packages
 ```
 
 This increases rate limit from 60/hour to 5000/hour.

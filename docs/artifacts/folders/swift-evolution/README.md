@@ -10,10 +10,10 @@ Swift Evolution proposals documenting the evolution of the Swift language.
 
 ```bash
 # All proposals
-cupertino fetch --type evolution
+cupertino fetch --source swift-evolution
 
 # Only accepted/implemented
-cupertino fetch --type evolution --only-accepted
+cupertino fetch --source swift-evolution --only-accepted
 ```
 
 ## Structure
@@ -50,7 +50,7 @@ cupertino fetch --type evolution --only-accepted
 
 ### Get Only Accepted
 ```bash
-cupertino fetch --type evolution --only-accepted
+cupertino fetch --source swift-evolution --only-accepted
 ```
 
 Downloads only proposals with status:
@@ -100,7 +100,7 @@ ls ~/.cupertino/swift-evolution/proposals/SE-0123*.md
 
 ```bash
 # Use custom directory
-cupertino fetch --type evolution --output-dir ./evolution
+cupertino fetch --source swift-evolution --output-dir ./evolution
 ```
 
 ## Notes

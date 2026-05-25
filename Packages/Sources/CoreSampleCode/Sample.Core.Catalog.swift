@@ -1,7 +1,7 @@
 // This file loads the Apple Sample Code Library from JSON.
 //
 // Source of truth: `<sample-code-dir>/catalog.json` written by
-// `cupertino fetch --type code` (Apple's `samplecode.json` listing
+// `cupertino fetch --source apple-sample-code` (Apple's `samplecode.json` listing
 // transformed to the SampleCodeCatalogJSON shape). The previous
 // embedded blob (SampleCodeCatalogEmbedded) was deleted in #215 —
 // auto-discovery is the only path now.
@@ -53,7 +53,7 @@ public struct SampleCodeCatalogJSON: Codable, Sendable {
 /// Complete catalog of all Apple sample code projects.
 ///
 /// Reads from `<sampleCodeDirectory>/catalog.json` (written by
-/// `cupertino fetch --type code`). Returns an empty catalog when no
+/// `cupertino fetch --source apple-sample-code`). Returns an empty catalog when no
 /// on-disk file exists or it fails to decode — there is no embedded
 /// fallback (#215). Callers (e.g. `SearchIndexBuilder`) should check
 /// `loadedSource` and warn the user when the catalog is missing so the
@@ -80,7 +80,7 @@ extension Sample.Core {
             /// `<sampleCodeDirectory>/catalog.json` was found and decoded successfully.
             case onDisk
             /// No on-disk catalog (file absent or unparseable). Caller should
-            /// hint at running `cupertino fetch --type code` to populate it.
+            /// hint at running `cupertino fetch --source apple-sample-code` to populate it.
             case missing
         }
 

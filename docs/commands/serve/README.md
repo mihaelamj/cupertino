@@ -36,8 +36,8 @@ Before starting the MCP server, you need:
 
 1. **Downloaded documentation**:
    ```bash
-   cupertino fetch --type docs
-   cupertino fetch --type evolution
+   cupertino fetch --source apple-docs
+   cupertino fetch --source swift-evolution
    ```
 
 2. **Search index** (recommended):
@@ -312,8 +312,8 @@ ls -la ~/.cupertino/swift-evolution
 
 **Solution:** Download documentation first:
 ```bash
-cupertino fetch --type docs
-cupertino fetch --type evolution
+cupertino fetch --source apple-docs
+cupertino fetch --source swift-evolution
 ```
 
 ### No Search Tools Available

@@ -2,11 +2,12 @@ import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
 import SharedConstants
+
 // MARK: - Package Documentation Downloader
 
 /// Narrow helper for fetching individual README files and detecting known hosted
 /// documentation sites. Kept for backward compatibility with existing integration
-/// tests; the main `cupertino fetch --type packages` pipeline now goes through
+/// tests; the main `cupertino fetch --source packages` pipeline now goes through
 /// `PackageArchiveExtractor` + `Search.PackageIndex` directly and does not call
 /// any method on this type.
 extension Core.PackageIndexing {

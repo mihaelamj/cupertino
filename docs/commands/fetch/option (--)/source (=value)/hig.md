@@ -1,11 +1,11 @@
-# --type hig
+# --source hig
 
 Fetch Apple Human Interface Guidelines
 
 ## Synopsis
 
 ```bash
-cupertino fetch --type hig
+cupertino fetch --source hig
 ```
 
 ## Description
@@ -37,28 +37,28 @@ Creates Markdown files with YAML front matter:
 
 ### Fetch All HIG Content
 ```bash
-cupertino fetch --type hig
+cupertino fetch --source hig
 ```
 
 ### Resume Interrupted Download (automatic)
 ```bash
 # Auto-resumes from metadata.json — no flag needed
-cupertino fetch --type hig
+cupertino fetch --source hig
 ```
 
 ### Discard the Saved Session and Start Over
 ```bash
-cupertino fetch --type hig --start-clean
+cupertino fetch --source hig --start-clean
 ```
 
 ### Force Re-download
 ```bash
-cupertino fetch --type hig --force
+cupertino fetch --source hig --force
 ```
 
 ### Custom Output Directory
 ```bash
-cupertino fetch --type hig --output-dir ./hig-docs
+cupertino fetch --source hig --output-dir ./hig-docs
 ```
 
 ## Output Structure

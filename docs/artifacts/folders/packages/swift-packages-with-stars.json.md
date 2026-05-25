@@ -11,7 +11,7 @@ Complete Swift package metadata from Swift Package Index + GitHub API.
 ## Created By
 
 ```bash
-cupertino fetch --type packages
+cupertino fetch --source packages
 ```
 
 ## Purpose
@@ -117,7 +117,7 @@ This file serves as the **source data** for curating packages to embed in the ap
 
 ### 1. Fetch All Packages
 ```bash
-cupertino fetch --type packages
+cupertino fetch --source packages
 # → Creates swift-packages-with-stars.json
 ```
 
@@ -155,7 +155,7 @@ This file should be regenerated periodically to capture new packages:
 
 ```bash
 # Regenerate (takes ~1-2 hours with rate limiting)
-cupertino fetch --type packages --limit 10000
+cupertino fetch --source packages --limit 10000
 
 # Check what's new
 jq -r '.packages[0:50] | .[] | "\(.stars) ⭐ \(.owner)/\(.repo)"' swift-packages-with-stars.json

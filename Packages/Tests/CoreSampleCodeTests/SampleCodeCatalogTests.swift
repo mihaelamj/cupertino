@@ -5,7 +5,7 @@ import SharedConstants
 import Testing
 
 /// Coverage for #214: `Sample.Core.Catalog` should prefer the on-disk
-/// `catalog.json` (written by `cupertino fetch --type code`) over the
+/// `catalog.json` (written by `cupertino fetch --source apple-sample-code`) over the
 /// embedded snapshot, and gracefully fall back when the on-disk file is
 /// missing or malformed. Also covers
 /// `Sample.Core.Downloader.transformAppleListingToCatalog`.

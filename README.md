@@ -91,16 +91,16 @@ cupertino serve                      # Start MCP server
 cupertino save --remote              # Stream and build locally
 
 # Or fetch documentation yourself
-cupertino fetch --type docs          # Apple Developer Documentation
-cupertino fetch --type swift         # Swift.org documentation
-cupertino fetch --type evolution     # Swift Evolution proposals
-cupertino fetch --type packages      # Swift package metadata + GitHub archives
-cupertino fetch --type code          # Sample code from Apple (requires auth)
-cupertino fetch --type samples       # Sample code from GitHub (recommended)
-cupertino fetch --type archive       # Apple Archive programming guides
-cupertino fetch --type hig           # Human Interface Guidelines
-cupertino fetch --type availability  # Platform availability data
-cupertino fetch --type all           # All types in parallel
+cupertino fetch --source apple-docs          # Apple Developer Documentation
+cupertino fetch --source swift-org         # Swift.org documentation
+cupertino fetch --source swift-evolution     # Swift Evolution proposals
+cupertino fetch --source packages      # Swift package metadata + GitHub archives
+cupertino fetch --source apple-sample-code          # Sample code from Apple (requires auth)
+cupertino fetch --source samples       # Sample code from GitHub (recommended)
+cupertino fetch --source apple-archive       # Apple Archive programming guides
+cupertino fetch --source hig           # Human Interface Guidelines
+cupertino fetch --source availability  # Platform availability data
+cupertino fetch --source all           # All types in parallel
 
 # Build indexes
 cupertino save                       # Build documentation search index (from local files)
@@ -140,13 +140,13 @@ cupertino serve
 ```bash
 # Download Apple documentation (~12+ days for ~404,000+ raw pages, indexed down to ~277,640)
 # Takes time due to 0.05s default delay between requests
-cupertino fetch --type docs --max-pages 15000
+cupertino fetch --source apple-docs --max-pages 15000
 
 # Download Swift Evolution proposals (~2-5 minutes)
-cupertino fetch --type evolution
+cupertino fetch --source swift-evolution
 
 # Download sample code from GitHub (~4 minutes, 619 projects)
-cupertino fetch --type samples
+cupertino fetch --source samples
 
 # Build search index (~2-5 minutes)
 cupertino save
@@ -485,7 +485,7 @@ Cupertino includes pre-indexed catalog data bundled directly into the applicatio
 - **Swift Packages Catalog** (183 Apple-official packages with full source + metadata in `packages.db`; the previous 9,699-entry embedded URL list was removed in #194 — `packages.db` is now the canonical corpus, shipped via `cupertino setup`)
   - Curated from Swift Package Index + GitHub API
   - Includes package metadata, stars, licenses, descriptions, deployment-target platforms, **and** authored `swift-tools-version` (#225)
-  - Updated by re-running `cupertino fetch --type packages` then `cupertino save --packages`
+  - Updated by re-running `cupertino fetch --source packages` then `cupertino save --packages`
 
 - **Sample Code Catalog** (619 entries)
   - Apple's official sample code projects
@@ -583,7 +583,7 @@ Auxiliary:         MockAIAgent, ReleaseTool, RemoteSync, TestSupport
 ### Data Flow
 
 ```
-1. Fetch:  cupertino fetch --type docs
+1. Fetch:  cupertino fetch --source apple-docs
    ↓
    WKWebView → Apple JSON API response → JSON files → disk (~/.cupertino/docs/)
 
@@ -688,8 +688,8 @@ This is a **one-time operation**. Incremental updates use change detection to sk
 
 ```bash
 # Download everything for offline access
-cupertino fetch --type docs --max-pages 15000
-cupertino fetch --type evolution
+cupertino fetch --source apple-docs --max-pages 15000
+cupertino fetch --source swift-evolution
 cupertino save
 ```
 
@@ -697,7 +697,7 @@ cupertino save
 
 ```bash
 # Just SwiftUI documentation
-cupertino fetch --type docs \
+cupertino fetch --source apple-docs \
   --start-url "https://developer.apple.com/documentation/swiftui" \
   --max-pages 500
 ```
@@ -715,8 +715,8 @@ cupertino serve
 
 ```bash
 # Multiple sources with custom paths
-cupertino fetch --type docs --output-dir ~/docs/apple
-cupertino fetch --type evolution --output-dir ~/docs/evolution
+cupertino fetch --source apple-docs --output-dir ~/docs/apple
+cupertino fetch --source swift-evolution --output-dir ~/docs/evolution
 cupertino save --base-dir ~/docs --search-db ~/docs/search.db
 cupertino serve --docs-dir ~/docs/apple --search-db ~/docs/search.db
 ```

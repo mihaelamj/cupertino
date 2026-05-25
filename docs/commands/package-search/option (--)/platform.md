@@ -10,7 +10,7 @@ cupertino package-search <question> --platform <platform> --min-version <version
 
 ## Description
 
-Filters the candidate set to packages whose declared deployment target is compatible with the named Apple platform. The package's deployment-target metadata is harvested during `cupertino fetch --type packages` (annotated by `--annotate-availability`) and stored in `packages.db`.
+Filters the candidate set to packages whose declared deployment target is compatible with the named Apple platform. The package's deployment-target metadata is harvested during `cupertino fetch --source packages` (annotated by `--annotate-availability`) and stored in `packages.db`.
 
 Packages with **no** annotation source (no `Package.swift` deployment-targets parsed, no per-package `availability.json`) are dropped from the result set when `--platform` is in effect — the filter is exclusive, not best-effort.
 

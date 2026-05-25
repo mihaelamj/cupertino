@@ -9,7 +9,7 @@ Crawled Apple developer documentation in Markdown format.
 ## Created By
 
 ```bash
-cupertino fetch --type docs
+cupertino fetch --source apple-docs
 ```
 
 ## Structure
@@ -103,12 +103,12 @@ open ~/.cupertino/docs/swiftui/view/index.md
 
 ```bash
 # Use custom directory
-cupertino fetch --type docs --output-dir ./my-apple-docs
+cupertino fetch --source apple-docs --output-dir ./my-apple-docs
 ```
 
 ## Availability Data
 
-After running `cupertino fetch --type availability`, JSON files are updated with platform availability:
+After running `cupertino fetch --source availability`, JSON files are updated with platform availability:
 
 ```json
 {
@@ -128,8 +128,8 @@ This enables:
 
 **Recommended workflow:**
 ```bash
-cupertino fetch --type docs         # Fetch documentation
-cupertino fetch --type availability # Add availability data
+cupertino fetch --source apple-docs         # Fetch documentation
+cupertino fetch --source availability # Add availability data
 cupertino save                       # Build search index
 ```
 

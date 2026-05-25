@@ -5,7 +5,7 @@ Re-queue URLs visited but never saved (post-bug retry)
 ## Synopsis
 
 ```bash
-cupertino fetch --type docs --retry-errors
+cupertino fetch --source apple-docs --retry-errors
 ```
 
 ## Description
@@ -20,7 +20,7 @@ Re-queues URLs that the crawler visited but never wrote to the `pages` dict — 
 
 ```bash
 # After fixing a save bug:
-cupertino fetch --type docs --retry-errors
+cupertino fetch --source apple-docs --retry-errors
 ```
 
 ## Notes

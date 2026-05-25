@@ -67,7 +67,7 @@ Examples:
 
 ```bash
 # Fetch all HIG content (10-30 minutes)
-cupertino fetch --type hig
+cupertino fetch --source hig
 
 # Build index
 cupertino save

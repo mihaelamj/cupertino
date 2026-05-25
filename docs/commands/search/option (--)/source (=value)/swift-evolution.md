@@ -59,7 +59,7 @@ Examples:
 
 ```bash
 # Fetch all proposals (2-5 minutes)
-cupertino fetch --type evolution
+cupertino fetch --source swift-evolution
 
 # Build index
 cupertino save

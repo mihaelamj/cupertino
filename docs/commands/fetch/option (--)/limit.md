@@ -5,7 +5,7 @@ Maximum number of items to fetch
 ## Synopsis
 
 ```bash
-cupertino fetch --type <type> --limit <number>
+cupertino fetch --source <id> --limit <number>
 ```
 
 ## Description
@@ -20,17 +20,17 @@ No limit (fetches all available items)
 
 ### Fetch First 50 Packages
 ```bash
-cupertino fetch --type packages --limit 50
+cupertino fetch --source packages --limit 50
 ```
 
 ### Fetch First 10 Sample Code Projects
 ```bash
-cupertino fetch --type code --limit 10
+cupertino fetch --source apple-sample-code --limit 10
 ```
 
 ### Fetch 100 Packages to Custom Directory
 ```bash
-cupertino fetch --type packages --limit 100 --output-dir ./test-packages
+cupertino fetch --source packages --limit 100 --output-dir ./test-packages
 ```
 
 ## Behavior

@@ -19,7 +19,7 @@ Copy all three together, or run `PRAGMA wal_checkpoint(TRUNCATE)` first to fold 
 cupertino save --packages
 ```
 
-Builds the index from per-package source archives downloaded by `cupertino fetch --type packages` (which itself runs the Swift Package Index metadata refresh and the GitHub source-archive download stage). See [`fetch --type packages`](../../commands/fetch/) and [`save --packages`](../../commands/save/) for the full pipeline.
+Builds the index from per-package source archives downloaded by `cupertino fetch --source packages` (which itself runs the Swift Package Index metadata refresh and the GitHub source-archive download stage). See [`fetch --source packages`](../../commands/fetch/) and [`save --packages`](../../commands/save/) for the full pipeline.
 
 ## Purpose
 
@@ -164,7 +164,7 @@ cupertino save --packages --packages-dir ~/my-packages
 ## Notes
 
 - Separate from `search.db` (documentation FTS) and `samples.db` (sample-code FTS)
-- Index reads `~/.cupertino/packages/` source trees written by `cupertino fetch --type packages`
+- Index reads `~/.cupertino/packages/` source trees written by `cupertino fetch --source packages`
 - Pre-#246 / pre-v1.0 the package metadata lived in a separate `cupertino-packages` GitHub repo with its own release zip; that companion repo was folded into `cupertino-docs` and the bundle is now single-zip
 - Thread-safe for concurrent reads
 - Uses the same dev-base override pattern as the docs index: `--packages-db <path>` for explicit override, `cupertino.config.json` next to the dev binary for redirection (#211)

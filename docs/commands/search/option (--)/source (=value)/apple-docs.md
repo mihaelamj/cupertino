@@ -59,10 +59,10 @@ Examples:
 ```bash
 # Full crawl (multi-day on full corpus, auto-resumable — `cupertino setup` is the
 # fast path for end users; use `fetch` only when re-crawling).
-cupertino fetch --type docs
+cupertino fetch --source apple-docs
 
 # Framework-specific crawl
-cupertino fetch --type docs \
+cupertino fetch --source apple-docs \
   --start-url "https://developer.apple.com/documentation/swiftui" \
   --max-pages 500
 

@@ -5,7 +5,7 @@ How the crawler discovers new URLs
 ## Synopsis
 
 ```bash
-cupertino fetch --type docs --discovery-mode <auto|json-only|webview-only>
+cupertino fetch --source apple-docs --discovery-mode <auto|json-only|webview-only>
 ```
 
 ## Description
@@ -27,8 +27,8 @@ Controls the per-URL fetch strategy. Apple's docs serve both a JSON API and a WK
 ## Example
 
 ```bash
-cupertino fetch --type docs --discovery-mode json-only
-cupertino fetch --type docs --discovery-mode webview-only
+cupertino fetch --source apple-docs --discovery-mode json-only
+cupertino fetch --source apple-docs --discovery-mode webview-only
 ```
 
 ## Notes

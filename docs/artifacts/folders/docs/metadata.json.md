@@ -12,7 +12,7 @@ Created in the output directory of crawl operations:
 ## Created By
 
 ```bash
-cupertino fetch --type <docs|swift|evolution>
+cupertino fetch --source <apple-docs|swift-org|swift-evolution>
 ```
 
 ## Purpose

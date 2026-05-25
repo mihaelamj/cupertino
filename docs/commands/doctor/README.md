@@ -242,7 +242,7 @@ Default `cupertino doctor` output before `cupertino setup` has been run:
 
 🧪 Sample Code Index (samples.db)
    ⚠  Database: /Users/you/.cupertino/samples.db (not found)
-     → Run: cupertino fetch --type samples && cupertino cleanup && cupertino save --samples
+     → Run: cupertino fetch --source samples && cupertino cleanup && cupertino save --samples
 
 🔍 Search Index
    ✗ Database: /Users/you/.cupertino/search.db (not found)
@@ -334,7 +334,7 @@ Shows:
 
 Checks:
 - **User selections file** (`~/.cupertino/selected-packages.json`), additively merged with the embedded priority list on every load ([#218](https://github.com/mihaelamj/cupertino/issues/218)). New seeds shipped in `PriorityPackagesEmbedded.swift` propagate into existing installs the next time any subcommand touches the catalog. User deletions don't stick: the merge is set-diff.
-- **Downloaded packages** under `~/.cupertino/packages/<owner>/<repo>/` (whole archives, not just READMEs, see `fetch --type packages` stage 2)
+- **Downloaded packages** under `~/.cupertino/packages/<owner>/<repo>/` (whole archives, not just READMEs, see `fetch --source packages` stage 2)
 - Reports orphaned READMEs (packages no longer selected)
 - Counts priority packages bundled with the binary (Apple + Ecosystem)
 
@@ -355,7 +355,7 @@ Same output `cupertino save` prints before its confirmation prompt: per-source p
 
 ```bash
 # Download documentation
-cupertino fetch --type docs
+cupertino fetch --source apple-docs
 
 # Build search index
 cupertino save
@@ -376,7 +376,7 @@ If the server won't start or clients can't access resources:
 cupertino doctor
 
 # Follow the suggestions in the output
-# Example: "Run: cupertino fetch --type docs"
+# Example: "Run: cupertino fetch --source apple-docs"
 ```
 
 ### CI/CD Validation
@@ -412,12 +412,12 @@ cupertino doctor \
 **Problem:**
 ```
 ✗ Apple docs: /Users/username/.cupertino/docs (not found)
-  → Run: cupertino fetch --type docs
+  → Run: cupertino fetch --source apple-docs
 ```
 
 **Solution:**
 ```bash
-cupertino fetch --type docs
+cupertino fetch --source apple-docs
 ```
 
 ### Search Database Not Found

@@ -26,7 +26,7 @@ extension CLIImpl.Command.Doctor {
 
             guard FileManager.default.fileExists(atPath: samplesDBURL.path) else {
                 recording.output("   ⚠  Database: \(samplesDBURL.path) (not found)")
-                recording.output("     → Run: cupertino fetch --type samples && cupertino cleanup && cupertino save --samples")
+                recording.output("     → Run: cupertino fetch --source samples && cupertino cleanup && cupertino save --samples")
                 recording.output("")
                 return true
             }

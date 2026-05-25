@@ -67,6 +67,6 @@ Shows progress and statistics:
 
 ## Notes
 
-- Run `cupertino fetch --type code` first to download sample code
+- Run `cupertino fetch --source apple-sample-code` first to download sample code
 - Backup important files before running without `--dry-run`
 - Use `--keep-originals` for safe first run

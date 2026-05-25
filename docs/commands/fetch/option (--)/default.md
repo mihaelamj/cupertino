@@ -14,7 +14,7 @@ When you run `cupertino fetch` without any options, it uses these defaults:
 
 ```bash
 cupertino fetch \
-  --type docs \
+  --source apple-docs \
   --max-pages 1000000 \
   --max-depth 15 \
   --output-dir ~/.cupertino/docs
@@ -24,7 +24,7 @@ cupertino fetch \
 
 | Option | Default Value | Description |
 |--------|---------------|-------------|
-| `--type` | `docs` | Apple Developer Documentation |
+| `--source` | `docs` | Apple Developer Documentation |
 | `--start-url` | (auto-detected from type) | Starting URL for crawl |
 | `--max-pages` | `1000000` | Maximum pages to crawl (effectively uncapped) |
 | `--max-depth` | `15` | Maximum depth from start URL |
@@ -38,7 +38,7 @@ cupertino fetch \
 ## Auto-Detection Features
 
 ### Start URL
-Automatically set based on `--type`:
+Automatically set based on `--source`:
 - `docs` → `https://developer.apple.com/documentation/`
 - `swift` → `https://docs.swift.org/swift-book/...`
 - `evolution` → (GitHub API)
@@ -46,7 +46,7 @@ Automatically set based on `--type`:
 - `code` → (Apple Developer portal)
 
 ### Output Directory
-Automatically set based on `--type`:
+Automatically set based on `--source`:
 - `docs` → `~/.cupertino/docs`
 - `swift` → `~/.cupertino/swift-book`
 - `evolution` → `~/.cupertino/swift-evolution`
@@ -65,7 +65,7 @@ cupertino fetch
 
 ### With Type Only
 ```bash
-cupertino fetch --type evolution
+cupertino fetch --source swift-evolution
 ```
 
 ### Override Specific Options
@@ -82,7 +82,7 @@ cupertino fetch --force
 
 ### Multiple Options
 ```bash
-cupertino fetch --type docs --max-pages 1000 --output-dir ./docs
+cupertino fetch --source apple-docs --max-pages 1000 --output-dir ./docs
 ```
 
 ## Resuming Behavior

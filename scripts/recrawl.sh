@@ -65,35 +65,35 @@ phase_end "0/10" "Wipe"
 
 # ---------- 1-7. Web + direct fetches in dependency-friendly order ----------
 phase_start "1/10" "Apple Developer Documentation (largest, ~hours)"
-# `fetch --type docs` tries Apple's JSON API per URL and falls back to
+# `fetch --source apple-docs` tries Apple's JSON API per URL and falls back to
 # WKWebView when a page has no JSON endpoint — single pass, all coverage.
 # Auto-resumes from metadata.json if interrupted; pass --start-clean to
 # start over.
-"$BIN" fetch --type docs
+"$BIN" fetch --source apple-docs
 phase_end "1/10" "Apple Developer Documentation"
 
 phase_start "2/10" "Swift Evolution proposals"
-"$BIN" fetch --type evolution
+"$BIN" fetch --source swift-evolution
 phase_end "2/10" "Swift Evolution"
 
 phase_start "3/10" "Swift.org documentation + Swift book"
-"$BIN" fetch --type swift
+"$BIN" fetch --source swift-org
 phase_end "3/10" "Swift.org"
 
 phase_start "4/10" "Human Interface Guidelines"
-"$BIN" fetch --type hig
+"$BIN" fetch --source hig
 phase_end "4/10" "HIG"
 
 phase_start "5/10" "Apple Archive (legacy guides)"
-"$BIN" fetch --type archive
+"$BIN" fetch --source apple-archive
 phase_end "5/10" "Apple Archive"
 
 phase_start "6/10" "Priority package metadata"
-"$BIN" fetch --type packages
+"$BIN" fetch --source packages
 phase_end "6/10" "Package metadata"
 
 phase_start "7/10" "Per-package documentation (READMEs + source)"
-"$BIN" fetch --type package-docs
+"$BIN" fetch --source package-docs
 phase_end "7/10" "Package docs"
 
 # ---------- 8. Sample code (interactive) ----------
@@ -103,7 +103,7 @@ echo "   Sign in, then the download proceeds automatically."
 echo "   If the WKWebView path fails, you can Ctrl-C and skip — save still"
 echo "   works on what's been fetched so far."
 PHASE_START=$(date +%s)
-"$BIN" fetch --type code || {
+"$BIN" fetch --source apple-sample-code || {
     echo "   ⚠️  Sample code fetch failed or was skipped — continuing without it."
 }
 phase_end "8/10" "Sample code"

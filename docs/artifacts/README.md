@@ -73,15 +73,15 @@ All Cupertino artifacts are stored under:
 
 | Operation | Creates | Location |
 |-----------|---------|----------|
-| `cupertino fetch --type docs` | Markdown files + metadata | `~/.cupertino/docs/` |
-| `cupertino fetch --type swift` | Markdown files + metadata | `~/.cupertino/swift-org/` |
-| `cupertino fetch --type evolution` | Proposal files + metadata | `~/.cupertino/swift-evolution/` |
-| `cupertino fetch --type archive` | Markdown files | `~/.cupertino/archive/` |
-| `cupertino fetch --type hig` | Markdown files | `~/.cupertino/hig/` |
-| `cupertino fetch --type code` | ZIP files + checkpoint | `~/.cupertino/sample-code/` |
-| `cupertino fetch --type samples` | Git clone (619 projects) | `~/.cupertino/sample-code/cupertino-sample-code/` |
-| `cupertino fetch --type packages` | Package data + checkpoint | `~/.cupertino/packages/` |
-| `cupertino fetch --type availability` | Updates JSON with availability | `~/.cupertino/docs/*.json` |
+| `cupertino fetch --source apple-docs` | Markdown files + metadata | `~/.cupertino/docs/` |
+| `cupertino fetch --source swift-org` | Markdown files + metadata | `~/.cupertino/swift-org/` |
+| `cupertino fetch --source swift-evolution` | Proposal files + metadata | `~/.cupertino/swift-evolution/` |
+| `cupertino fetch --source apple-archive` | Markdown files | `~/.cupertino/archive/` |
+| `cupertino fetch --source hig` | Markdown files | `~/.cupertino/hig/` |
+| `cupertino fetch --source apple-sample-code` | ZIP files + checkpoint | `~/.cupertino/sample-code/` |
+| `cupertino fetch --source samples` | Git clone (619 projects) | `~/.cupertino/sample-code/cupertino-sample-code/` |
+| `cupertino fetch --source packages` | Package data + checkpoint | `~/.cupertino/packages/` |
+| `cupertino fetch --source availability` | Updates JSON with availability | `~/.cupertino/docs/*.json` |
 | `cupertino save` | Documentation search database | `~/.cupertino/search.db` |
 | `cupertino save --samples` | Sample code search database | `~/.cupertino/samples.db` |
 

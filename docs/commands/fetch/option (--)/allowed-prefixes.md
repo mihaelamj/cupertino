@@ -5,7 +5,7 @@ URL prefixes the crawler is allowed to follow (comma-separated)
 ## Synopsis
 
 ```bash
-cupertino fetch --type docs --allowed-prefixes <prefix1,prefix2,…>
+cupertino fetch --source apple-docs --allowed-prefixes <prefix1,prefix2,…>
 ```
 
 ## Description
@@ -19,7 +19,7 @@ Auto-derived from `--start-url` when not set — the host + first path segment b
 ## Example
 
 ```bash
-cupertino fetch --type docs --start-url https://developer.apple.com/documentation/swiftui \
+cupertino fetch --source apple-docs --start-url https://developer.apple.com/documentation/swiftui \
   --allowed-prefixes https://developer.apple.com/documentation/
 ```
 

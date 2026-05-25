@@ -50,7 +50,7 @@ cupertino search "async await" --min-ios 15.0 --min-macos 12.0
 - Only documents with availability data are included in filtered results
 - The filter checks if the API was **introduced** at or before the version (not deprecated)
 - Use with `--framework` for more precise results
-- Availability data comes from `cupertino fetch --type availability`
+- Availability data comes from `cupertino fetch --source availability`
 
 ## See Also
 

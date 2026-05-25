@@ -2,7 +2,7 @@ import Foundation
 
 extension Shared.Utils {
     /// #657 — quick header validation for ZIP archives downloaded by
-    /// `cupertino fetch --type samples`. Apple's CDN sometimes returns
+    /// `cupertino fetch --source samples`. Apple's CDN sometimes returns
     /// an HTML landing page or a partial body with HTTP 200 (transient
     /// CDN issues, redirect chains, auth gates) and the fetcher saves
     /// the body to disk with a `.zip` extension. Pre-#657 those entries

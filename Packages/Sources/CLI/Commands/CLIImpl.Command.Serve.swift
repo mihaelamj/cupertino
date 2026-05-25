@@ -433,16 +433,16 @@ extension CLIImpl.Command {
             Step 1 — Fetch documentation:
 
             • Apple Developer Documentation (recommended):
-              $ \(cmd) fetch --type docs
+              $ \(cmd) fetch --source apple-docs
 
             • Swift Evolution Proposals:
-              $ \(cmd) fetch --type evolution
+              $ \(cmd) fetch --source swift-evolution
 
             • Swift.org Documentation:
-              $ \(cmd) fetch --type swift
+              $ \(cmd) fetch --source swift-org
 
             • Swift Packages (priority packages):
-              $ \(cmd) fetch --type packages
+              $ \(cmd) fetch --source packages
 
             ⏱️  Fetching takes 10-30 minutes depending on content type.
                If interrupted, just re-run the same command — fetch resumes by default.

@@ -44,7 +44,7 @@ cupertino package-search "json codable" --platform iOS --min-version 13.0
 ## Platform filter notes (#220)
 
 - Both `--platform` and `--min-version` must be passed; one without the other errors out.
-- Packages with no annotation source are dropped from results when the filter is active. To populate annotation, run `cupertino fetch --type packages --annotate-availability` followed by `cupertino save --packages` (#219).
+- Packages with no annotation source are dropped from results when the filter is active. To populate annotation, run `cupertino fetch --source packages --annotate-availability` followed by `cupertino save --packages` (#219).
 - Comparison is lexicographic on the dotted-decimal `min_<platform>` column — correct for current Apple platforms (iOS 13+, macOS 11+, tvOS 13+, watchOS 6+, visionOS 1+). macOS 10.x with multi-digit minors (`10.15` vs `10.5`) would mis-order; not currently a concern for the priority package set.
 
 ## Relationship to `search`

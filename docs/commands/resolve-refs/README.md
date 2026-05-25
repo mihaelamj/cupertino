@@ -29,7 +29,7 @@ Tracked in [#208](https://github.com/mihaelamj/cupertino/issues/208).
 
 ## When to use
 
-The default `cupertino fetch --type docs` writes structured pages where `doc://` markers are already resolved through link discovery. Use `resolve-refs` when:
+The default `cupertino fetch --source apple-docs` writes structured pages where `doc://` markers are already resolved through link discovery. Use `resolve-refs` when:
 
 - A `--discovery-mode json-only` crawl produced pages whose `rawMarkdown` still contains raw `doc://` markers because JSON fetches don't see the rendered HTML the WKWebView pass would have resolved.
 - You need to upgrade an older corpus that was crawled before the marker-resolution stage existed.

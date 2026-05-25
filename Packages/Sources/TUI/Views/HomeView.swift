@@ -1,5 +1,6 @@
 import Foundation
 import SharedConstants
+
 // MenuItem moved to MenuItem.swift
 // HomeStats moved to HomeStats.swift
 
@@ -34,8 +35,8 @@ struct HomeView {
 
         // Quick Commands section
         result += renderPaddedLine("Quick Commands:", width: width)
-        result += renderPaddedLine("  cupertino fetch --type packages", width: width)
-        result += renderPaddedLine("  cupertino fetch --type archive", width: width)
+        result += renderPaddedLine("  cupertino fetch --source packages", width: width)
+        result += renderPaddedLine("  cupertino fetch --source apple-archive", width: width)
         result += Box.teeRight + String(repeating: Box.horizontal, count: width - 2) + Box.teeLeft + "\r\n"
 
         // Menu - compact

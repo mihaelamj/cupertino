@@ -7,7 +7,7 @@ import Testing
 //
 // Background: Apple's CDN occasionally returns an HTML landing page or
 // partial body with HTTP 200 (transient CDN issues, redirect chains,
-// auth gates). The `cupertino fetch --type samples` path trusted the
+// auth gates). The `cupertino fetch --source samples` path trusted the
 // HTTP status code and saved the body to disk with a `.zip`
 // extension. Main's 2026-05-16 post-#653 retest found 3 such
 // corruptions on the live corpus (`accessibility.zip`,

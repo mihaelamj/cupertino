@@ -5,7 +5,7 @@ Ignore any saved session and start the fetch fresh from the seed URL.
 ## Synopsis
 
 ```bash
-cupertino fetch --type <type> --start-clean
+cupertino fetch --source <id> --start-clean
 ```
 
 ## Description
@@ -32,17 +32,17 @@ For direct fetches (`packages`, `code`):
 
 ### Restart a Botched Apple Docs Crawl
 ```bash
-cupertino fetch --type docs --start-clean
+cupertino fetch --source apple-docs --start-clean
 ```
 
 ### Restart and Re-fetch Every Page
 ```bash
-cupertino fetch --type docs --start-clean --force
+cupertino fetch --source apple-docs --start-clean --force
 ```
 
 ### Re-walk the Package Catalog from Scratch
 ```bash
-cupertino fetch --type packages --start-clean
+cupertino fetch --source packages --start-clean
 ```
 
 ## When to Use It

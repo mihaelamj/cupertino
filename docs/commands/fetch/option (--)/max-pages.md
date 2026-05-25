@@ -5,7 +5,7 @@ Cap on number of pages to crawl
 ## Synopsis
 
 ```bash
-cupertino fetch --type docs --max-pages <n>
+cupertino fetch --source apple-docs --max-pages <n>
 ```
 
 ## Description
@@ -19,7 +19,7 @@ Hard cap on the crawler's queue pull. Once `n` pages have been visited, the craw
 ## Example
 
 ```bash
-cupertino fetch --type docs --max-pages 5000
+cupertino fetch --source apple-docs --max-pages 5000
 ```
 
 ## Notes
