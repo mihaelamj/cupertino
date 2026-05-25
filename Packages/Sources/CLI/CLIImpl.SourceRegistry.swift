@@ -22,9 +22,14 @@ import SwiftOrgSource
 /// older `makeProductionSourceLookup()` was deleted in #1025; today
 /// `Search.SourceLookup` is constructed from
 /// `makeProductionSourceRegistry().allEnabled.map(\.definition)`. The
-/// protocol's `destinationDB` requirement (introduced in #1014) lets
-/// the future composition-root index-builder dispatch (#1007 Phase
-/// 1I.c) group providers by destination DB.
+/// protocol's `destinationDB` requirement (introduced in #1014) is
+/// the discriminator the composition root uses to dispatch each
+/// provider to its destination DB: the indexer dict at the search.db
+/// composition site filters by `destinationDB == .search` (1I.b /
+/// #1027); the strategies-list assembly does the same (1I.c.1 /
+/// #1029). The remaining 1I.c.2 work dissolves the `FetchType`
+/// enum + Fetch CLI command and uses the same destinationDB
+/// discriminator for write-DB dispatch.
 ///
 /// **Adding a new source post-#1007:** one new `<X>Source` target +
 /// one `.register(<X>Source())` append below. Zero edits to
@@ -46,11 +51,13 @@ extension CLIImpl {
         registry.register(SwiftOrgSource())
         registry.register(SwiftBookSource())
         registry.register(PackagesSource())
-        // #1007 Phase 1A-1I.b complete: registry carries all 8 sources;
+        // #1007 Phase 1A-1I.c.1 complete: registry carries all 8 sources;
         // sourceLookup derived from the registry (1I.a, #1025); indexer
         // dict derived from the registry filtered by `destinationDB ==
-        // .search` (1I.b, #1027). Phase 1I.c (final epic step) dissolves
-        // the strategies-list assembly + `FetchType` enum at
+        // .search` (1I.b, #1027); strategies-list derived from the
+        // same registry+filter (1I.c.1, #1029). Phase 1I.c.2
+        // (final-of-final) dissolves the `FetchType` enum + Fetch CLI
+        // command at
         // `CLI/SupportingTypes.swift`; wires the destinationDB-aware
         // composition root that groups providers by destination DB.
         return registry
