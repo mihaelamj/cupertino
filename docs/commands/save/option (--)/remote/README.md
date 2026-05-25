@@ -30,7 +30,7 @@ The `--remote` flag enables **instant setup** by streaming pre-crawled documenta
 
 ### Phases
 
-`--remote` only feeds the **docs scope** — the search.db that `cupertino save --docs` builds. The `--packages` and `--samples` scopes still require local extracted archives (run `cupertino fetch --type packages` / `cupertino fetch --type samples` first).
+`--remote` only feeds the **docs scope**, the search.db that `cupertino save --docs` builds. The `--packages` and `--samples` scopes still require local extracted archives (run `cupertino fetch --source packages` / `cupertino fetch --source samples` first).
 
 | Phase | Source | Description |
 |-------|--------|-------------|
@@ -42,7 +42,7 @@ The `--remote` flag enables **instant setup** by streaming pre-crawled documenta
 
 ### State File
 
-Progress is saved to `~/.cupertino/remote-save-state.json` for resume support. Schema (illustrative — exact field set may evolve across releases):
+Progress is saved to `~/.cupertino/remote-save-state.json` for resume support. Schema (illustrative, exact field set may evolve across releases):
 
 ```json
 {
@@ -94,7 +94,7 @@ When using `--remote`, these options change behavior:
 
 | Method | What it produces | Notes |
 |--------|------------------|-------|
-| `cupertino setup` | All three databases (search.db + packages.db + samples.db) | Fastest — single zip download |
+| `cupertino setup` | All three databases (search.db + packages.db + samples.db) | Fastest, single zip download |
 | `cupertino save --remote` | search.db only (docs scope) | Streams from cupertino-docs repo, no local crawl needed |
 | `cupertino fetch && cupertino save` | Whichever scopes you fetched | Multi-hour fresh crawl + local index build |
 

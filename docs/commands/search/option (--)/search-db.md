@@ -44,7 +44,7 @@ cupertino search "Array" --search-db ./local-search.db
 
 ```bash
 # Fetch documentation to custom location
-cupertino fetch --type docs --output-dir ~/custom-docs
+cupertino fetch --source apple-docs --output-dir ~/custom-docs
 
 # Build index with custom database path
 cupertino save --base-dir ~/custom-docs --search-db ~/custom-docs/search.db

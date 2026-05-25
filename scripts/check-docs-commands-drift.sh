@@ -7,7 +7,7 @@
 #
 #   • CLI options that have no corresponding option .md file
 #   • option .md files for flags that no longer exist in --help
-#   • enum-value drift (--type, --source values added or renamed)
+#   • enum-value drift (--source values added or renamed; pre-#1031 also --type)
 #
 # Run from the repo root:
 #
@@ -117,7 +117,7 @@ for cmd in "${COMMANDS[@]}"; do
     rm -f "$bin_file" "$doc_file"
 done
 
-# --- enum-value drift: --type and --source values vs (=value) subdirs -----
+# --- enum-value drift: --source values vs (=value) subdirs ---------------
 
 # Hardcoded expected enum values per (command, option). Update in lockstep
 # with the Swift enum definitions in:

@@ -63,8 +63,8 @@ cupertino save
 To fetch package source archives (optional):
 
 ```bash
-# Fetch source archives for priority packages (#217 — bundled into --type packages)
-cupertino fetch --type packages --skip-metadata
+# Fetch source archives for priority packages (#217, bundled into --source packages)
+cupertino fetch --source packages --skip-metadata
 
 # Rebuild index
 cupertino save

@@ -303,8 +303,8 @@ Before searching, you need a populated search index:
 
 1. **Download documentation:**
    ```bash
-   cupertino fetch --type docs
-   cupertino fetch --type evolution
+   cupertino fetch --source apple-docs
+   cupertino fetch --source swift-evolution
    ```
 
 2. **Build search index:**

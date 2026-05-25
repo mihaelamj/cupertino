@@ -162,11 +162,11 @@ const FLOWS = {
     },
     {
       id: "fetch-docs",
-      name: "cupertino fetch --type docs",
-      cmd: "cupertino fetch --type docs",
+      name: "cupertino fetch --source apple-docs",
+      cmd: "cupertino fetch --source apple-docs",
       description: "Crawls Apple's developer documentation. Seeds from the technologies index, walks the JSON API where available and falls back to a WKWebView render for HTML-only pages. Writes one JSON per symbol under ~/.cupertino/docs/<framework>/.",
       steps: [
-        { from: "CLI",          to: "Ingest",        label: "FetchCommand.run(--type docs)",    annotation: "Parses CLI flags, resolves baseDir + discovery mode" },
+        { from: "CLI",          to: "Ingest",        label: "FetchCommand.run(--source apple-docs)",    annotation: "Parses CLI flags, resolves baseDir + discovery mode" },
         { from: "Ingest",       to: "Core",          label: "Crawler(configuration: …).crawl()", annotation: "Hands off the crawl session with persistence + retry config" },
         { from: "Core",         to: "Core",          label: "WKWebContentFetcher / AppleJSONToMarkdown / HTMLToMarkdown", annotation: "Fetches each page, prefers JSON API, falls back to WebView render" },
         { from: "Core",         to: "Shared",        label: "URLUtilities.normalize / filename",  annotation: "Canonicalizes URL case + derives stable on-disk filenames" },

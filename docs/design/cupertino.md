@@ -129,7 +129,7 @@ Four sequential stages. Each is independently runnable; the user-facing `cuperti
 
 | Stage | Binary | Input | Output | Idempotent |
 |---|---|---|---|---|
-| Crawl | `cupertino fetch --type docs` | Apple JSON API over the network | `~/.cupertino/docs/**/*.json` | Yes (content hash skip) |
+| Crawl | `cupertino fetch --source apple-docs` | Apple JSON API over the network | `~/.cupertino/docs/**/*.json` | Yes (content hash skip) |
 | Import / Index | `cupertino save --docs` | JSON files on disk | `search.db` | Yes (`INSERT OR REPLACE`) |
 | Enrich | `cupertino-postprocessor` (after #769) | `search.db` | enrichment columns in same DB | Yes (upsert + version column) |
 | Serve | `cupertino serve` | `search.db` | MCP responses over stdio | Read-only |
@@ -229,7 +229,7 @@ Configurable knobs:
 
 | Flag | Default | Purpose |
 |---|---|---|
-| `--max-pages` | unbounded for `--type docs --type all` | safety bound for testing |
+| `--max-pages` | unbounded for `--source apple-docs --source all` | safety bound for testing |
 | `--max-depth` | 21 | empirical; depth at which Apple's deeper symbol pages live |
 | `--request-delay` | 0.05s | conservative rate limit; nothing publicly documented but 50ms is well below Apple's threshold |
 | `--start-url` | docs home | for targeted re-crawls |
@@ -809,7 +809,7 @@ There is no in-place migration. The rebuild-instead policy is documented in `doc
 The full pipeline runs out-of-band on the maintainer's hardware:
 
 1. Apple changes its docs (continuously).
-2. Maintainer kicks off `cupertino fetch --type all` (~14 days wall clock).
+2. Maintainer kicks off `cupertino fetch --source all` (~14 days wall clock).
 3. Cron-committed to `cupertino-docs` git repo (one commit per crawl session).
 4. Maintainer runs `cupertino save` on the corpus (~12 hours).
 5. Maintainer verifies via doctor + regression queries.

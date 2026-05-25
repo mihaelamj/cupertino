@@ -12,10 +12,10 @@ Created in the output directory of fetch operations:
 
 ```bash
 # For packages
-cupertino fetch --type packages
+cupertino fetch --source packages
 
 # For sample code
-cupertino fetch --type code
+cupertino fetch --source apple-sample-code
 ```
 
 ## Purpose
@@ -26,7 +26,7 @@ cupertino fetch --type code
 
 ## Format: Packages
 
-For `--type packages`, checkpoint.json contains ALL package data:
+For `--source packages`, checkpoint.json contains ALL package data:
 
 ```json
 {
@@ -55,7 +55,7 @@ See [packages/](packages/) for detailed structure.
 
 ## Format: Sample Code
 
-For `--type code`, checkpoint.json tracks download progress:
+For `--source apple-sample-code`, checkpoint.json tracks download progress:
 
 ```json
 {
@@ -89,14 +89,14 @@ jq '{total: .totalCount, downloaded: .downloadedCount}' ~/.cupertino/sample-code
 ### Resume Download (automatic)
 ```bash
 # Auto-resumes from checkpoint.json — no flag needed
-cupertino fetch --type packages
-cupertino fetch --type code
+cupertino fetch --source packages
+cupertino fetch --source apple-sample-code
 ```
 
 ### Discard the Checkpoint and Start Over
 ```bash
-cupertino fetch --type packages --start-clean
-cupertino fetch --type code --start-clean
+cupertino fetch --source packages --start-clean
+cupertino fetch --source apple-sample-code --start-clean
 ```
 
 ### Query Package Data

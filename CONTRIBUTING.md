@@ -88,7 +88,7 @@ CI is unaffected (always a fresh build). This only bites local dev after method-
 
 - new flag `--foo` → author `docs/commands/<cmd>/option (--)/foo.md`
 - removed flag → `git rm` its `.md`
-- new enum value (`--type` / `--source` / …) → author `docs/commands/<cmd>/option (--)/<opt> (=value)/<value>.md` and update the hardcoded list inside `scripts/check-docs-commands-drift.sh`
+- new enum value (`--source` / `--source` / …) → author `docs/commands/<cmd>/option (--)/<opt> (=value)/<value>.md` and update the hardcoded list inside `scripts/check-docs-commands-drift.sh`
 - renamed flag or value → `git mv` then rewrite the body
 
 A drift detector lives at `scripts/check-docs-commands-drift.sh`. Run it before opening a PR:

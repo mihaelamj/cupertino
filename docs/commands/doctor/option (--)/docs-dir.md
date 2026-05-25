@@ -56,7 +56,7 @@ If not found:
 ```
 📚 Documentation Directories
    ✗ Apple docs: ~/.cupertino/docs (not found)
-     → Run: cupertino fetch --type docs
+     → Run: cupertino fetch --source apple-docs
 ```
 
 ## Expected Structure

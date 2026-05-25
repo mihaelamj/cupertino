@@ -53,6 +53,6 @@ evolution-dir/
 
 - Directory must exist if specified
 - Should contain Markdown (`.md`) files from Swift Evolution
-- Works with output from `cupertino fetch --type evolution`
+- Works with output from `cupertino fetch --source swift-evolution`
 - Indexed separately but searchable together
 - Can be empty or omitted if not needed

@@ -54,7 +54,7 @@ swift-org://{page_path}
 
 ```bash
 # Fetch Swift.org docs (5-10 minutes)
-cupertino fetch --type swift
+cupertino fetch --source swift-org
 
 # Build index
 cupertino save

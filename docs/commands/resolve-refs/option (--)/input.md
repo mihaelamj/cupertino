@@ -10,7 +10,7 @@ cupertino resolve-refs --input <path>
 
 ## Description
 
-Path to a directory containing saved `StructuredDocumentationPage` JSON files (typically the output of `cupertino fetch --type docs --discovery-mode json-only`). `resolve-refs` walks every `.json`, harvests a global `identifier → title` map from each page's `sections[].items[]`, and rewrites every `doc://com.apple.<bundle>/...` marker in `rawMarkdown` to the readable title.
+Path to a directory containing saved `StructuredDocumentationPage` JSON files (typically the output of `cupertino fetch --source apple-docs --discovery-mode json-only`). `resolve-refs` walks every `.json`, harvests a global `identifier → title` map from each page's `sections[].items[]`, and rewrites every `doc://com.apple.<bundle>/...` marker in `rawMarkdown` to the readable title.
 
 ## Default
 

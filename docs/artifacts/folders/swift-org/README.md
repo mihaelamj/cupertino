@@ -9,7 +9,7 @@ Crawled Swift.org documentation including The Swift Programming Language book.
 ## Created By
 
 ```bash
-cupertino fetch --type swift
+cupertino fetch --source swift-org
 ```
 
 ## Structure
@@ -117,7 +117,7 @@ open ~/.cupertino/swift-org/swift-book/
 
 ```bash
 # Use custom directory
-cupertino fetch --type swift --output-dir ./swift-docs
+cupertino fetch --source swift-org --output-dir ./swift-docs
 ```
 
 ## Notes

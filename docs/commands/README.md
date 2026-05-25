@@ -29,10 +29,10 @@ cupertino setup
 cupertino serve
 
 # Or download documentation manually
-cupertino fetch --type docs
-cupertino fetch --type evolution
-cupertino fetch --type hig
-cupertino fetch --type archive
+cupertino fetch --source apple-docs
+cupertino fetch --source swift-evolution
+cupertino fetch --source hig
+cupertino fetch --source apple-archive
 
 # Build search index (from local files)
 cupertino save
@@ -79,13 +79,13 @@ cupertino serve
 
 ```bash
 # 1. Download documentation (takes time)
-cupertino fetch --type docs      # Apple developer docs (full corpus, ~400k+ pages, multi-hour)
-cupertino fetch --type evolution
-cupertino fetch --type hig       # Human Interface Guidelines
-cupertino fetch --type archive   # Legacy programming guides
+cupertino fetch --source apple-docs      # Apple developer docs (full corpus, ~400k+ pages, multi-hour)
+cupertino fetch --source swift-evolution
+cupertino fetch --source hig       # Human Interface Guidelines
+cupertino fetch --source apple-archive   # Legacy programming guides
 
 # 2. Fetch availability data (adds iOS/macOS version info)
-cupertino fetch --type availability
+cupertino fetch --source availability
 
 # 3. Build search index
 cupertino save
@@ -99,11 +99,11 @@ cupertino search "your query"  # For CLI usage
 
 ```bash
 # Option 1: From GitHub (recommended - faster, no auth)
-cupertino fetch --type samples
+cupertino fetch --source samples
 cupertino save --samples
 
 # Option 2: From Apple (slower, requires Apple ID)
-cupertino fetch --type code
+cupertino fetch --source apple-sample-code
 cupertino cleanup
 cupertino save --samples
 ```

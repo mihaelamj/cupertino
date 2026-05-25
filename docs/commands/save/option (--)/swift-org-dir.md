@@ -53,7 +53,7 @@ swift-org-dir/
 
 - Directory must exist if specified
 - Should contain Markdown (`.md`) files from Swift.org
-- Works with output from `cupertino fetch --type swift`
+- Works with output from `cupertino fetch --source swift-org`
 - Indexed separately but searchable together
 - Can be empty or omitted if not needed
 

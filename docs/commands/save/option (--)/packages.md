@@ -26,4 +26,4 @@ cupertino save --packages
 
 - Combinable with `--docs` and `--samples`.
 - Backed by `Indexer.PackagesService` (lifted in #244) → `Search.PackageIndexer`.
-- Reads `availability.json` sidecars produced by `cupertino fetch --type packages --annotate-availability` (#219).
+- Reads `availability.json` sidecars produced by `cupertino fetch --source packages --annotate-availability` (#219).

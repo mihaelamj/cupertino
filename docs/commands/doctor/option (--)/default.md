@@ -209,7 +209,7 @@ cupertino doctor --search-db /opt/search.db
 
 🧪 Sample Code Index (samples.db)
    ⚠  Database: ~/.cupertino/samples.db (not found)
-     → Run: cupertino fetch --type samples && cupertino cleanup && cupertino save --samples
+     → Run: cupertino fetch --source samples && cupertino cleanup && cupertino save --samples
 
 🔍 Search Index
    ✗ Database: ~/.cupertino/search.db (not found)

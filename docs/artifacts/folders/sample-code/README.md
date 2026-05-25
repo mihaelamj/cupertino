@@ -10,10 +10,10 @@ Downloaded Apple sample code projects - either as ZIP files or extracted folders
 
 ```bash
 # Option 1: GitHub (recommended - faster, no auth required)
-cupertino fetch --type samples
+cupertino fetch --source samples
 
 # Option 2: Apple Website (slower, requires Apple ID)
-cupertino fetch --type code
+cupertino fetch --source apple-sample-code
 ```
 
 ## Structure
@@ -109,7 +109,7 @@ ls ~/.cupertino/sample-code/arkit-*.zip
 
 ### GitHub (samples type) - No authentication required
 ```bash
-cupertino fetch --type samples
+cupertino fetch --source samples
 ```
 Requires Git and Git LFS installed:
 ```bash
@@ -119,7 +119,7 @@ git lfs install
 
 ### Apple Website (code type) - Apple ID required
 ```bash
-cupertino fetch --type code
+cupertino fetch --source apple-sample-code
 ```
 Requires:
 - Valid Apple ID
@@ -149,10 +149,10 @@ After indexing, these MCP tools become available:
 
 ```bash
 # GitHub clone to custom directory
-cupertino fetch --type samples --output-dir ./samples
+cupertino fetch --source samples --output-dir ./samples
 
 # Apple download to custom directory
-cupertino fetch --type code --output-dir ./samples
+cupertino fetch --source apple-sample-code --output-dir ./samples
 ```
 
 ## Notes

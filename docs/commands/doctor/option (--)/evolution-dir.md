@@ -51,7 +51,7 @@ If not found (warning, not failure):
 ```
 📚 Documentation Directories
    ⚠  Swift Evolution: ~/.cupertino/swift-evolution (not found)
-     → Run: cupertino fetch --type evolution
+     → Run: cupertino fetch --source swift-evolution
 ```
 
 ## Expected Structure
@@ -73,5 +73,5 @@ evolution-dir/
 - Reports total proposal count
 - **Warning only** if missing (not required for server to run)
 - Used by both `doctor` and `serve` commands
-- Directory should be created by `cupertino fetch --type evolution`
+- Directory should be created by `cupertino fetch --source swift-evolution`
 - Evolution proposals are optional but recommended

@@ -53,7 +53,7 @@ packages-dir/
 
 - Directory must exist if specified
 - Should contain README Markdown (`.md`) files from Swift packages
-- Works with output from `cupertino fetch --type packages`
+- Works with output from `cupertino fetch --source packages`
 - Indexed separately but searchable together
 - Can be empty or omitted if not needed
 

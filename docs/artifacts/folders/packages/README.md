@@ -1,6 +1,6 @@
 # packages/ - Swift Package Documentation
 
-Swift package metadata from the Swift Package Index + GitHub, plus extracted source archives for the priority-package set. Both produced by `cupertino fetch --type packages` after the [#217](https://github.com/mihaelamj/cupertino/issues/217) merge.
+Swift package metadata from the Swift Package Index + GitHub, plus extracted source archives for the priority-package set. Both produced by `cupertino fetch --source packages` after the [#217](https://github.com/mihaelamj/cupertino/issues/217) merge.
 
 ## Location
 
@@ -9,9 +9,9 @@ Swift package metadata from the Swift Package Index + GitHub, plus extracted sou
 ## Created By
 
 ```bash
-cupertino fetch --type packages                     # both stages
-cupertino fetch --type packages --skip-archives     # stage 1 only (metadata)
-cupertino fetch --type packages --skip-metadata     # stage 2 only (archives)
+cupertino fetch --source packages                     # both stages
+cupertino fetch --source packages --skip-archives     # stage 1 only (metadata)
+cupertino fetch --source packages --skip-metadata     # stage 2 only (archives)
 ```
 
 ## Structure
@@ -137,17 +137,17 @@ Resume is automatic. Just re-run the same command:
 
 ```bash
 # Auto-resumes from checkpoint.json
-cupertino fetch --type packages
+cupertino fetch --source packages
 
 # Discard checkpoint and start over
-cupertino fetch --type packages --start-clean
+cupertino fetch --source packages --start-clean
 ```
 
 ## Customizing Location
 
 ```bash
 # Use custom directory
-cupertino fetch --type packages --output-dir ./my-packages
+cupertino fetch --source packages --output-dir ./my-packages
 ```
 
 ## Workflow: From Fetch to Embedded Catalog
@@ -156,7 +156,7 @@ This directory contains the **source data** for package curation:
 
 ### 1. Fetch Packages (Automatic)
 ```bash
-cupertino fetch --type packages
+cupertino fetch --source packages
 # → Creates checkpoint.json (for resume)
 # → Creates swift-packages-with-stars.json (clean output)
 ```
@@ -171,7 +171,7 @@ cupertino fetch --type packages
   - Swift ecosystem essentials
   - Packages mentioned in Swift.org docs
 
-### 3. Source Archive Download (Stage 2 of `--type packages`)
+### 3. Source Archive Download (Stage 2 of `--source packages`)
 - `PackageArchiveExtractor` pulls `https://codeload.github.com/<owner>/<repo>/tar.gz/<ref>` (HEAD → main → master fallback) for every package in the resolved closure of `PriorityPackagesCatalog`.
 - Filtered extraction: README/CHANGELOG/LICENSE, `Package.swift`, full `Sources/` + `Tests/`, every `.docc` article and tutorial, `Examples/` / `Demo/` directories.
 - Per-package `manifest.json` records owner, repo, branch, dependency parents, file count, byte totals.

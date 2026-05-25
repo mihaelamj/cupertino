@@ -9,7 +9,7 @@ Apple Human Interface Guidelines from developer.apple.com/design/human-interface
 ## Created By
 
 ```bash
-cupertino fetch --type hig
+cupertino fetch --source hig
 ```
 
 ## Structure
