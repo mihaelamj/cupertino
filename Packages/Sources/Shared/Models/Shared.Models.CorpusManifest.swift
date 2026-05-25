@@ -91,18 +91,22 @@ extension Shared.Models {
 
         /// Fetcher descriptor. `kind` selects the fetch family
         /// (`apple-docs-api`, `git-clone`, `http-archive`, `github-api`,
-        /// `file-bundle`); per-kind options live in `optionsJSON` as a
-        /// stable JSON-serialised string. This avoids dragging an
-        /// `AnyCodable` polymorphic-options abstraction into the model
-        /// tier. Step 3 introduces per-kind typed views over the same
-        /// data when the loader wires up.
+        /// `file-bundle`); per-kind options live in `options` as a
+        /// `[String: String]` map. String-valued options are sufficient
+        /// for every fetcher today (URL, request delay encoded as a
+        /// numeric string, etc.); avoiding an `AnyCodable` polymorphic
+        /// type keeps the foundation-tier model dependency-free. Step 3
+        /// introduces per-kind typed views over the same data when the
+        /// loader wires up. Matches the YAML schema in
+        /// `docs/design/corpus-structure.md` §3 verbatim (key name +
+        /// shape), so a step-3 YAML loader can decode without translation.
         public struct Fetcher: Codable, Sendable, Hashable {
             public let kind: String
-            public let optionsJSON: String?
+            public let options: [String: String]?
 
-            public init(kind: String, optionsJSON: String? = nil) {
+            public init(kind: String, options: [String: String]? = nil) {
                 self.kind = kind
-                self.optionsJSON = optionsJSON
+                self.options = options
             }
         }
 
@@ -191,6 +195,10 @@ extension Shared.Models {
             /// `hasFrameworkColumn`, `hasProposalNumber`,
             /// `hasPackageMetadata`). Absent flags are `false` by
             /// default; only true flags appear in each manifest.
+            /// A manifest with no metadata key at all is legal: the
+            /// custom `init(from:)` below defaults the field to `[:]`
+            /// when the JSON / YAML omits it (Swift's `= [:]` init
+            /// default does not apply to Codable's synthesized init).
             public let metadata: [String: Bool]
 
             public init(
@@ -201,6 +209,19 @@ extension Shared.Models {
                 self.searchers = searchers
                 self.operations = operations
                 self.metadata = metadata
+            }
+
+            private enum CodingKeys: String, CodingKey {
+                case searchers
+                case operations
+                case metadata
+            }
+
+            public init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                searchers = try container.decode([String].self, forKey: .searchers)
+                operations = try container.decode([String].self, forKey: .operations)
+                metadata = try container.decodeIfPresent([String: Bool].self, forKey: .metadata) ?? [:]
             }
         }
 

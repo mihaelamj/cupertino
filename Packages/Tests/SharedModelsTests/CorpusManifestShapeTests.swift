@@ -52,7 +52,7 @@ struct CorpusManifestShapeTests {
             displayName: "Swift Documentation",
             corpusFolder: "swift-documentation",
             destinationDB: "swift-documentation",
-            fetcher: .init(kind: "git-clone", optionsJSON: #"{"repo":"https://github.com/swiftlang/swift-org-website"}"#),
+            fetcher: .init(kind: "git-clone", options: ["repo": "https://github.com/swiftlang/swift-org-website"]),
             indexer: .init(
                 fileGlobs: ["swift-org/**/*.md", "swift-book/**/*.md"],
                 entryPoints: ["swift-org/index.md"],
@@ -107,11 +107,124 @@ struct CorpusManifestShapeTests {
         #expect(manifest.sourceId == "hig")
         #expect(manifest.destinationDB == "hig")
         #expect(manifest.fetcher.kind == "apple-docs-api")
-        #expect(manifest.fetcher.optionsJSON == nil)
+        #expect(manifest.fetcher.options == nil)
         #expect(manifest.indexer.fileGlobs == ["pages/**/*.json"])
         #expect(manifest.indexer.excludes == nil)
         #expect(manifest.capabilities.metadata["hasMinPlatformVersion"] == true)
         #expect(manifest.description == nil)
+    }
+
+    @Test("Manifest decodes when capabilities.metadata is omitted entirely (custom init(from:) defaults to [:])")
+    func metadataKeyOmittedDecodesToEmpty() throws {
+        // Critic-fix: Swift `metadata: [String: Bool] = [:]` init default does NOT
+        // apply to Codable's synthesized init(from:). A manifest with no metadata
+        // key would fail decode with keyNotFound. Custom init(from:) on
+        // Capabilities makes the key optional with [:] default.
+        let json = """
+        {
+          "sourceId": "swift-evolution",
+          "displayName": "Swift Evolution",
+          "corpusFolder": "swift-evolution",
+          "destinationDB": "swift-evolution",
+          "fetcher": { "kind": "git-clone" },
+          "indexer": {
+            "fileGlobs": ["proposals/**/*.md"],
+            "extractor": "Search.SwiftEvolutionStrategy"
+          },
+          "capabilities": {
+            "searchers": ["text"],
+            "operations": ["read-by-uri"]
+          }
+        }
+        """
+        let data = Data(json.utf8)
+        let manifest = try JSONDecoder().decode(Shared.Models.CorpusManifest.self, from: data)
+
+        #expect(manifest.capabilities.searchers == ["text"])
+        #expect(manifest.capabilities.metadata.isEmpty, "metadata MUST default to [:] when omitted")
+    }
+
+    @Test("Encoded manifest's metadata dict carries ONLY the flags set by the source (on-disk shape contract)")
+    func encodedMetadataOmitsAbsentFlags() throws {
+        let manifest = Shared.Models.CorpusManifest(
+            sourceId: "swift-evolution",
+            displayName: "Swift Evolution",
+            corpusFolder: "swift-evolution",
+            destinationDB: "swift-evolution",
+            fetcher: .init(kind: "git-clone"),
+            indexer: .init(fileGlobs: ["proposals/**/*.md"], extractor: "Search.SwiftEvolutionStrategy"),
+            capabilities: .init(
+                searchers: ["text"],
+                operations: ["read-by-uri"],
+                metadata: ["hasMinSwiftVersion": true, "hasProposalNumber": true]
+            )
+        )
+        let encoded = try JSONEncoder().encode(manifest)
+        let json = try #require(try JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        let capabilities = try #require(json["capabilities"] as? [String: Any])
+        let metadata = try #require(capabilities["metadata"] as? [String: Bool])
+
+        #expect(metadata.count == 2, "encoded metadata must carry only the 2 set flags, not phantom 'false' defaults")
+        #expect(metadata["hasMinSwiftVersion"] == true)
+        #expect(metadata["hasProposalNumber"] == true)
+        #expect(metadata["hasMinPlatformVersion"] == nil, "absent flag must NOT appear in the encoded JSON")
+        #expect(metadata["hasSampleCode"] == nil)
+    }
+
+    // MARK: - Negative tests (schema-drift insurance)
+
+    @Test("Decode FAILS when required field sourceId is missing")
+    func decodeFailsOnMissingSourceId() {
+        let json = """
+        {
+          "displayName": "X",
+          "corpusFolder": "x",
+          "destinationDB": "x",
+          "fetcher": { "kind": "apple-docs-api" },
+          "indexer": { "fileGlobs": ["**/*"], "extractor": "X" },
+          "capabilities": { "searchers": ["text"], "operations": ["read-by-uri"] }
+        }
+        """
+        let data = Data(json.utf8)
+        #expect(throws: DecodingError.self) {
+            _ = try JSONDecoder().decode(Shared.Models.CorpusManifest.self, from: data)
+        }
+    }
+
+    @Test("Decode FAILS when required field destinationDB is missing")
+    func decodeFailsOnMissingDestinationDB() {
+        let json = """
+        {
+          "sourceId": "x",
+          "displayName": "X",
+          "corpusFolder": "x",
+          "fetcher": { "kind": "apple-docs-api" },
+          "indexer": { "fileGlobs": ["**/*"], "extractor": "X" },
+          "capabilities": { "searchers": ["text"], "operations": ["read-by-uri"] }
+        }
+        """
+        let data = Data(json.utf8)
+        #expect(throws: DecodingError.self) {
+            _ = try JSONDecoder().decode(Shared.Models.CorpusManifest.self, from: data)
+        }
+    }
+
+    @Test("Decode FAILS when required field capabilities is missing")
+    func decodeFailsOnMissingCapabilities() {
+        let json = """
+        {
+          "sourceId": "x",
+          "displayName": "X",
+          "corpusFolder": "x",
+          "destinationDB": "x",
+          "fetcher": { "kind": "apple-docs-api" },
+          "indexer": { "fileGlobs": ["**/*"], "extractor": "X" }
+        }
+        """
+        let data = Data(json.utf8)
+        #expect(throws: DecodingError.self) {
+            _ = try JSONDecoder().decode(Shared.Models.CorpusManifest.self, from: data)
+        }
     }
 
     @Test("Capabilities.metadata absent flags default to absent (not false): allows narrow per-source manifests")
