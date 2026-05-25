@@ -368,17 +368,25 @@ public enum LivePerDBWriterFactory {
     ///   data. Search.Index will surface the actual error to the user
     ///   when it tries to open the same file itself).
     /// - `sqlite3_open_v2` fails entirely (path resolution, permission)
-    ///   → return `false` (file can't even be opened; wipe path will
-    ///   surface the same underlying error to the user).
+    ///   → return `false` (proceed to the wipe branch). The original
+    ///   open error is NOT preserved by this helper; the caller's
+    ///   `removeItem` may succeed (and Search.Index then opens a fresh
+    ///   DB) or fail (surfacing a removeItem error rather than the
+    ///   sqlite3_open error). This is a deliberate trade-off: the
+    ///   "wipe" path is the only progress-making option when we can't
+    ///   inspect the file at all, and the user will see SOMETHING
+    ///   either way. Callers that need the original error must call
+    ///   `sqlite3_open_v2` themselves first.
     private static func hasForeignSampleIndexTables(at path: URL) -> Bool {
         var db: OpaquePointer?
         defer { sqlite3_close(db) }
         guard sqlite3_open_v2(path.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
             // Open itself failed. SQLite's sqlite3_open_v2 returns OK
             // for nearly anything that exists; an outright failure here
-            // is exotic (path resolution / permissions). Fall through
-            // to wipe so the user sees the real error from the next
-            // step, not silently-preserved unreachable state.
+            // is exotic (path resolution / permissions on the parent
+            // directory). Return false (wipe) so the migrator makes
+            // progress; the docstring acknowledges this loses the
+            // original error message.
             return false
         }
         var stmt: OpaquePointer?

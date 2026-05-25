@@ -274,6 +274,31 @@ extension CLIImpl.Command {
             case (true, false):
                 do {
                     try fm.moveItem(at: legacyPath, to: currentPath)
+                    // Critic round-6 finding #2: SQLite WAL/SHM sidecars
+                    // are independent files (samples.db-wal /
+                    // samples.db-shm). Renaming only samples.db leaves
+                    // the sidecars stranded at the old path; SQLite's
+                    // next open of apple-sample-code.db looks for
+                    // apple-sample-code.db-wal and finds nothing,
+                    // losing any un-checkpointed transactions from a
+                    // crashed prior `cupertino save --samples`. Move
+                    // the sidecars too. Both naming forms (with and
+                    // without the .db suffix) covered defensively.
+                    for suffix in ["-wal", "-shm"] {
+                        let legacySidecar = URL(fileURLWithPath: legacyPath.path + suffix)
+                        guard fm.fileExists(atPath: legacySidecar.path) else { continue }
+                        let currentSidecar = URL(fileURLWithPath: currentPath.path + suffix)
+                        do {
+                            try fm.moveItem(at: legacySidecar, to: currentSidecar)
+                        } catch {
+                            logger.warning(
+                                "⚠️  Renamed \(legacyPath.lastPathComponent) but could not move sidecar " +
+                                    "\(legacySidecar.lastPathComponent): \(error). Un-checkpointed Sample.Index " +
+                                    "transactions in that sidecar may be lost. Re-run `cupertino save --samples` " +
+                                    "to rebuild if `cupertino doctor` flags missing rows."
+                            )
+                        }
+                    }
                     logger.info(
                         "📦 Migrated legacy \(legacyPath.lastPathComponent) → \(currentPath.lastPathComponent) (#1037 filename rename)."
                     )

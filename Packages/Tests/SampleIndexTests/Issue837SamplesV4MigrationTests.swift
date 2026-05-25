@@ -289,6 +289,46 @@ struct Issue837SamplesV4MigrationTests {
         #expect(try Self.readScalar(at: path, sql: "SELECT version FROM samples_schema_version LIMIT 1") == "4")
     }
 
+    @Test("#1037 round-6 fix: a corrupt samples DB throws on init rather than silently bypassing the wipe")
+    func corruptDBThrowsRatherThanSilentBypass() async throws {
+        let dir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let path = dir.appendingPathComponent("apple-sample-code.db")
+
+        // Seed a legit samples DB at v4, then corrupt its header so
+        // the next open sees SQLITE_NOTADB / SQLITE_CORRUPT on the
+        // samples_schema_version probe. We can't reliably synthesize
+        // partial corruption (real fs damage required) but writing
+        // garbage to the first 16 bytes of the file makes SQLite
+        // report SQLITE_NOTADB at prepare time, which the probe
+        // categorises as `.corrupt`.
+        let first = try await Sample.Index.Database(dbPath: path, logger: Logging.NoopRecording())
+        try await first.indexProject(.init(
+            id: "pre-corrupt",
+            title: "Pre-corrupt sentinel",
+            description: "",
+            frameworks: ["SwiftUI"],
+            readme: nil,
+            webURL: "https://example.test/p",
+            zipFilename: "p.zip",
+            fileCount: 0,
+            totalSize: 0
+        ))
+        await first.disconnect()
+        var data = try Data(contentsOf: path)
+        for index in 0..<16 {
+            data[index] = 0xff
+        }
+        try data.write(to: path)
+
+        // The corrupt file MUST throw, not silently fall into
+        // wipeIfStale's `.empty` branch (which would let the init
+        // proceed and produce confusing errors at query time).
+        await #expect(throws: Sample.Index.Error.self) {
+            _ = try await Sample.Index.Database(dbPath: path, logger: Logging.NoopRecording())
+        }
+    }
+
     @Test("#1037: legacy samples.db (user_version=4, no tracking table) migrates seamlessly to samples_schema_version")
     func legacyDBMigratesPragmaIntoTrackingTable() async throws {
         let dir = try Self.makeTempDir()

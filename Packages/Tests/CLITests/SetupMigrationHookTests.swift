@@ -182,6 +182,67 @@ struct SetupMigrationHookTests {
         #expect(try String(contentsOf: currentPath, encoding: .utf8) == "current")
     }
 
+    @Test("#1037 round-6 fix: legacy rename also moves -wal and -shm sidecars (data-loss guard)")
+    func legacyRenameMovesWALAndSHMSidecars() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let legacyPath = Sample.Index.legacySamplesDatabasePath(baseDirectory: dir)
+        let currentPath = Sample.Index.databasePath(baseDirectory: dir)
+
+        // Seed the main file + both SQLite sidecars at the legacy
+        // path. A crashed `cupertino save --samples` on pre-#1037 binary
+        // would have left this exact shape on disk; the un-checkpointed
+        // pages live in samples.db-wal.
+        try Data("main".utf8).write(to: legacyPath)
+        let legacyWAL = URL(fileURLWithPath: legacyPath.path + "-wal")
+        let legacySHM = URL(fileURLWithPath: legacyPath.path + "-shm")
+        try Data("wal-content".utf8).write(to: legacyWAL)
+        try Data("shm-content".utf8).write(to: legacySHM)
+
+        CLIImpl.Command.Setup.migrateLegacySamplesDatabaseIfNeeded(
+            baseDirectory: dir,
+            logger: LoggingModels.Logging.NoopRecording()
+        )
+
+        // Main file renamed.
+        #expect(!FileManager.default.fileExists(atPath: legacyPath.path))
+        #expect(FileManager.default.fileExists(atPath: currentPath.path))
+        // Sidecars moved with the main file; SQLite WAL recovery on
+        // the next open finds apple-sample-code.db-wal and replays
+        // the un-checkpointed transactions.
+        #expect(!FileManager.default.fileExists(atPath: legacyWAL.path))
+        #expect(!FileManager.default.fileExists(atPath: legacySHM.path))
+        let currentWAL = URL(fileURLWithPath: currentPath.path + "-wal")
+        let currentSHM = URL(fileURLWithPath: currentPath.path + "-shm")
+        #expect(FileManager.default.fileExists(atPath: currentWAL.path))
+        #expect(FileManager.default.fileExists(atPath: currentSHM.path))
+        #expect(try String(contentsOf: currentWAL, encoding: .utf8) == "wal-content")
+        #expect(try String(contentsOf: currentSHM, encoding: .utf8) == "shm-content")
+    }
+
+    @Test("#1037 round-6 fix: legacy rename tolerates missing sidecars (only main file present)")
+    func legacyRenameWithoutSidecars() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let legacyPath = Sample.Index.legacySamplesDatabasePath(baseDirectory: dir)
+        let currentPath = Sample.Index.databasePath(baseDirectory: dir)
+
+        // Main file only, no sidecars (a clean save --samples that
+        // checkpointed before exiting).
+        try Data("main".utf8).write(to: legacyPath)
+
+        CLIImpl.Command.Setup.migrateLegacySamplesDatabaseIfNeeded(
+            baseDirectory: dir,
+            logger: LoggingModels.Logging.NoopRecording()
+        )
+
+        #expect(FileManager.default.fileExists(atPath: currentPath.path))
+        let currentWAL = URL(fileURLWithPath: currentPath.path + "-wal")
+        let currentSHM = URL(fileURLWithPath: currentPath.path + "-shm")
+        #expect(!FileManager.default.fileExists(atPath: currentWAL.path))
+        #expect(!FileManager.default.fileExists(atPath: currentSHM.path))
+    }
+
     @Test("#1037: helper is a no-op when neither file exists")
     func helperNoOpsWhenNeitherFileExists() throws {
         let dir = try makeTempDir()

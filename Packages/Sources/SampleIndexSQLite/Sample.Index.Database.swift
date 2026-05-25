@@ -133,22 +133,46 @@ extension Sample.Index {
                 if legacyPragma > 0, legacyPragma != Self.schemaVersion {
                     try await wipeAndReopen()
                 }
+            case let .corrupt(reason):
+                // Critic round-6 finding #6: a corrupted DB previously
+                // collapsed into .empty (silent wipe-suppress), so a
+                // half-corrupt file would proceed into createTables +
+                // setSchemaVersion against partially-readable storage
+                // and let queries fail with mysterious "database disk
+                // image is malformed" errors at read time. Throw
+                // explicitly so the user investigates the file (e.g.
+                // restore from backup, re-run save --samples) rather
+                // than silently producing wrong results.
+                throw Sample.Index.Error.sqliteError(
+                    "Sample.Index.Database refused to open \(dbPath.lastPathComponent): " +
+                        "samples_schema_version probe reported \(reason). The file may be " +
+                        "corrupted. Inspect with `sqlite3 \(dbPath.path) 'PRAGMA integrity_check'`, " +
+                        "or move it aside and re-run `cupertino save --samples` to rebuild."
+                )
             }
         }
 
         /// Tri-state shape used by `wipeIfStale` to disambiguate "no
-        /// tracking row" from "tracking table missing entirely".
+        /// tracking row" from "tracking table missing entirely" from
+        /// "tracking table is here but the read failed in a way that
+        /// indicates DB corruption".
         private enum SchemaVersionTablePresence {
             case populated(Int32)
             case empty
             case absent
+            case corrupt(reason: String)
         }
 
         /// Read the presence + value of the `samples_schema_version`
         /// row. `.populated` if SELECT returned a row; `.empty` if the
-        /// table exists but is empty (SQLITE_DONE); `.absent` if prepare
-        /// failed because the table doesn't exist yet (the pre-#1037
-        /// legacy DB on first post-#1037 open).
+        /// table exists but is empty (SQLITE_DONE); `.absent` if
+        /// prepare failed because the table doesn't exist yet (the
+        /// pre-#1037 legacy DB on first post-#1037 open); `.corrupt`
+        /// if SQLite reports DB-integrity errors at prepare or step
+        /// (`SQLITE_CORRUPT` / `SQLITE_IOERR` / `SQLITE_NOTADB`).
+        /// SQLITE_BUSY / SQLITE_LOCKED collapse into `.empty` (the
+        /// suppress-wipe path) because they are transient and we'd
+        /// rather not destroy data on a race with another reader.
         private func samplesSchemaVersionTablePresence() async throws -> SchemaVersionTablePresence {
             guard let database else { return .absent }
             var stmt: OpaquePointer?
@@ -157,7 +181,14 @@ extension Sample.Index {
             let prepareResult = sqlite3_prepare_v2(database, select, -1, &stmt, nil)
             guard prepareResult == SQLITE_OK else {
                 // Most common cause: table doesn't exist yet.
-                return .absent
+                // Differentiate "table missing" from "DB integrity
+                // failure on prepare" by examining the result code.
+                switch prepareResult {
+                case SQLITE_CORRUPT, SQLITE_IOERR, SQLITE_NOTADB:
+                    return .corrupt(reason: sqliteResultName(prepareResult) + " at prepare")
+                default:
+                    return .absent
+                }
             }
             let stepResult = sqlite3_step(stmt)
             switch stepResult {
@@ -165,10 +196,28 @@ extension Sample.Index {
                 return .populated(sqlite3_column_int(stmt, 0))
             case SQLITE_DONE:
                 return .empty
+            case SQLITE_CORRUPT, SQLITE_IOERR, SQLITE_NOTADB:
+                return .corrupt(reason: sqliteResultName(stepResult) + " at step")
             default:
-                // Transient error (SQLITE_BUSY etc.); treat as empty to
-                // suppress wipe (safer default).
+                // SQLITE_BUSY / SQLITE_LOCKED / other transient: treat
+                // as empty to suppress wipe (data preservation > probe
+                // accuracy in the face of contention).
                 return .empty
+            }
+        }
+
+        /// Human-readable name for the SQLite result codes we
+        /// distinguish in `samplesSchemaVersionTablePresence`. Used to
+        /// emit a useful message in the `.corrupt` throw path. Not
+        /// exhaustive; only covers the cases we actually surface.
+        private func sqliteResultName(_ code: Int32) -> String {
+            switch code {
+            case SQLITE_CORRUPT: return "SQLITE_CORRUPT"
+            case SQLITE_IOERR: return "SQLITE_IOERR"
+            case SQLITE_NOTADB: return "SQLITE_NOTADB"
+            case SQLITE_BUSY: return "SQLITE_BUSY"
+            case SQLITE_LOCKED: return "SQLITE_LOCKED"
+            default: return "SQLite error \(code)"
             }
         }
 
@@ -384,7 +433,8 @@ extension Sample.Index {
             -- a SQLite file with Search.Index without trampling each
             -- other's version stamps. Single-row design: id always = 1,
             -- version carries our compiled schemaVersion. Read by
-            -- `readSchemaVersion()`, written by `setSchemaVersion()`.
+            -- `samplesSchemaVersionTablePresence()` (tri-state probe),
+            -- written by `setSchemaVersion()`.
             CREATE TABLE IF NOT EXISTS samples_schema_version (
                 id INTEGER PRIMARY KEY CHECK (id = 1),
                 version INTEGER NOT NULL

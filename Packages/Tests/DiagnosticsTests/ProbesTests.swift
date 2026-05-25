@@ -1,5 +1,6 @@
 @testable import Diagnostics
 import Foundation
+import SQLite3
 import Testing
 
 // MARK: - Probes file-system + URL helpers (#245)
@@ -146,5 +147,84 @@ struct UserSelectedPackageURLsTests {
         #expect(urls.count == 3)
         #expect(urls.contains("https://github.com/apple/swift-nio"))
         #expect(urls.contains("https://github.com/pointfreeco/swift-navigation"))
+    }
+}
+
+// MARK: - #1037 samplesSchemaVersion probe
+
+/// Tests for `Diagnostics.Probes.samplesSchemaVersion(at:)`. The
+/// probe's job is to read the per-pipeline samples version from
+/// `samples_schema_version` post-#1037, with backward-compat fallback
+/// to `PRAGMA user_version` ONLY for legitimate pre-#1037 samples DBs
+/// (identified by the presence of a `projects` table). The
+/// projects-table guard prevents the probe from leaking Search.Index's
+/// stamp (e.g. 18) when called against a Search-only file in the
+/// post-#1037 shared-file world.
+@Suite("Diagnostics.Probes.samplesSchemaVersion (#1037)")
+struct SamplesSchemaVersionProbeTests {
+    private func makeTempDir() throws -> URL {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("samples-schema-probe-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    private func exec(at path: URL, sql: String) throws {
+        var db: OpaquePointer?
+        try #require(sqlite3_open(path.path, &db) == SQLITE_OK)
+        defer { sqlite3_close(db) }
+        try #require(sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK)
+    }
+
+    @Test("Returns value from samples_schema_version when populated")
+    func returnsTrackingTableValue() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let path = dir.appendingPathComponent("apple-sample-code.db")
+        try exec(at: path, sql: """
+        CREATE TABLE samples_schema_version (id INTEGER PRIMARY KEY CHECK (id = 1), version INTEGER NOT NULL);
+        INSERT INTO samples_schema_version (id, version) VALUES (1, 7);
+        """)
+        #expect(Diagnostics.Probes.samplesSchemaVersion(at: path) == 7)
+    }
+
+    @Test("Falls back to PRAGMA user_version when tracking table is missing AND `projects` table is present (pre-#1037 legacy samples.db)")
+    func legacySamplesFallsBackToPRAGMA() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let path = dir.appendingPathComponent("samples.db")
+        try exec(at: path, sql: """
+        CREATE TABLE projects (id TEXT PRIMARY KEY);
+        PRAGMA user_version = 4;
+        """)
+        #expect(Diagnostics.Probes.samplesSchemaVersion(at: path) == 4)
+    }
+
+    @Test("Returns nil for a Search.Index-only file (no projects table) so Doctor doesn't display foreign PRAGMA stamp as samples version")
+    func searchOnlyFileReturnsNil() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let path = dir.appendingPathComponent("apple-sample-code.db")
+        // Mimic a freshly-wiped Search.Index-only file: has docs_metadata
+        // + Search.Index's user_version stamp (18), no projects table,
+        // no samples_schema_version table.
+        try exec(at: path, sql: """
+        CREATE TABLE docs_metadata (id INTEGER PRIMARY KEY);
+        PRAGMA user_version = 18;
+        """)
+        // Without the projects-table guard, the legacy fallback would
+        // return Search.Index's stamp (18) and Doctor would render the
+        // sample-code DB at schema version 18 (totally wrong).
+        #expect(
+            Diagnostics.Probes.samplesSchemaVersion(at: path) == nil,
+            "Probe must NOT leak Search.Index's PRAGMA user_version stamp when no projects table is present"
+        )
+    }
+
+    @Test("Returns nil for a nonexistent file")
+    func missingFileReturnsNil() throws {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("does-not-exist-\(UUID().uuidString).db")
+        #expect(Diagnostics.Probes.samplesSchemaVersion(at: path) == nil)
     }
 }
