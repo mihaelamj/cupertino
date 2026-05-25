@@ -150,6 +150,7 @@ struct PerSourceDBSplitMigratorMigrateTests {
     }
 
     private static func makeRow(uri: String, source: String) -> Distribution.PerSourceDBSplitMigrator.LegacyRow {
+        // LegacyRow = Search.IndexDocumentParams (full-fidelity typealias)
         Distribution.PerSourceDBSplitMigrator.LegacyRow(
             uri: uri,
             source: source,

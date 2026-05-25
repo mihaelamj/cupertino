@@ -208,38 +208,18 @@ extension Distribution {
         // Search.Index machinery.
 
         /// A single row from the legacy `search.db`'s `docs_metadata`
-        /// table, carried as opaque data the writer can ingest.
-        /// Step 6c's Live writer encodes this from `Search.IndexDocumentParams`.
-        public struct LegacyRow: Sendable, Hashable {
-            public let uri: String
-            public let source: String
-            public let framework: String
-            public let title: String
-            public let content: String
-            public let filePath: String
-            public let contentHash: String
-            public let lastCrawled: Date
-
-            public init(
-                uri: String,
-                source: String,
-                framework: String,
-                title: String,
-                content: String,
-                filePath: String,
-                contentHash: String,
-                lastCrawled: Date
-            ) {
-                self.uri = uri
-                self.source = source
-                self.framework = framework
-                self.title = title
-                self.content = content
-                self.filePath = filePath
-                self.contentHash = contentHash
-                self.lastCrawled = lastCrawled
-            }
-        }
+        /// table. Typealiased to `Search.IndexDocumentParams` directly
+        /// to preserve full fidelity across the migration: every
+        /// optional metadata field (language, sourceType, packageId,
+        /// jsonData, minIOS / minMacOS / minTvOS / minWatchOS /
+        /// minVisionOS, availabilitySource) round-trips from legacy
+        /// → destination without per-field translation in the migrator.
+        ///
+        /// Future growth of `IndexDocumentParams` (e.g. a new platform-
+        /// version field) automatically propagates through the migrator
+        /// without any change here. Reader fills + writer reads the
+        /// same shape the production indexer uses.
+        public typealias LegacyRow = Search.IndexDocumentParams
 
         /// Reads rows from the legacy `search.db`. Step 6c's Live
         /// conformer opens a `Search.Index` against the legacy file in
