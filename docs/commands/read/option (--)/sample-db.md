@@ -1,6 +1,6 @@
 # --sample-db
 
-Path to sample-code database (`samples.db`)
+Path to sample-code database (`apple-sample-code.db`)
 
 ## Synopsis
 
@@ -10,16 +10,16 @@ cupertino read <identifier> --sample-db <path>
 
 ## Description
 
-Override the default `~/.cupertino/samples.db` location. Used when `--source samples` (or auto-source dispatching to samples) needs to query.
+Override the default `~/.cupertino/apple-sample-code.db` location. Used when `--source samples` (or auto-source dispatching to samples) needs to query.
 
 ## Default
 
-`~/.cupertino/samples.db`
+`~/.cupertino/apple-sample-code.db`
 
 ## Example
 
 ```bash
-cupertino read my-sample-id --source samples --sample-db ~/dev/samples.db
+cupertino read my-sample-id --source samples --sample-db ~/dev/apple-sample-code.db
 ```
 
 ## Notes

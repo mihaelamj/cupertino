@@ -38,5 +38,5 @@ cupertino search "structured concurrency" --platform iOS --min-version 16.0
 
 - Fan-out mode only.
 - Filter pushes through `Search.PackageQuery.AvailabilityFilter` → SQL JOIN on `package_metadata.min_<x>` (lex compare).
-- Swift-language-version sources (`swift-evolution`, `swift-org`, `swift-book`) silently drop the filter — they don't carry `min_<platform>` columns. The unfiltered-source notice in the search output names them.
+- Swift-language-version sources (`swift-evolution`, `swift-org`, `swift-book`) silently drop the filter, they don't carry `min_<platform>` columns. The unfiltered-source notice in the search output names them.
 - Packages with `availability_source = NULL` are excluded (no annotation = unknown = excluded under a platform filter).

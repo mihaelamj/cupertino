@@ -12,7 +12,7 @@ cupertino package-search <question> --platform <platform> --min-version <version
 
 Together with `--platform`, restricts results to packages whose declared deployment target for that platform is **at or below** the named version (i.e., the package supports your target version or earlier). Required whenever `--platform` is set.
 
-Format: dotted version string — `16.0`, `13.0`, `10.15`, etc.
+Format: dotted version string, `16.0`, `13.0`, `10.15`, etc.
 
 ## Examples
 
@@ -33,6 +33,6 @@ cupertino package-search "RealityKit" --platform visionOS --min-version 1.0
 
 ## Notes
 
-- Comparison is lexicographic in SQL — works correctly for current Apple platform versions (iOS 13+, macOS 11+) where component widths are stable.
+- Comparison is lexicographic in SQL, works correctly for current Apple platform versions (iOS 13+, macOS 11+) where component widths are stable.
 - Without `--platform`, this option is ignored.
 - Mirrors `cupertino search --min-version` for the multi-source path. (#220)

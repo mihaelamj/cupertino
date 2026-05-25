@@ -66,6 +66,6 @@ cupertino search "async" --limit 5 --per-source 3
 
 - Results are sorted by relevance (highest first).
 - The search engine processes all matches but only returns up to the limit.
-- In fan-out mode, also see `--per-source` (caps each source's contribution before RRF) — `--limit` is the final cap, `--per-source` is the per-source cap.
+- In fan-out mode, also see `--per-source` (caps each source's contribution before RRF), `--limit` is the final cap, `--per-source` is the per-source cap.
 - Combine with filters (`--source`, `--framework`) for more targeted results.
 - `--limit` has no short alias. (`-l` is the short alias for `--language`.)

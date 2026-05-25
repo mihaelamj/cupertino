@@ -28,7 +28,7 @@ Output format: `text` (default), `json`, or `markdown`.
 
 ### --sample-db
 
-Path to sample index database. Defaults to `~/.cupertino/samples.db`.
+Path to sample index database. Defaults to `~/.cupertino/apple-sample-code.db`.
 
 ## Examples
 
@@ -65,6 +65,6 @@ Total: 619 projects, 18928 files
 
 ## See Also
 
-- [search](../search/) — search sample code with `cupertino search "<query>" --source samples`
-- [read-sample](../read-sample/) — read project README
-- [save](../save/) — build the sample code FTS index (`cupertino save --samples`)
+- [search](../search/), search sample code with `cupertino search "<query>" --source samples`
+- [read-sample](../read-sample/), read project README
+- [save](../save/), build the sample code FTS index (`cupertino save --samples`)

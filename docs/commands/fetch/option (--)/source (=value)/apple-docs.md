@@ -54,7 +54,7 @@ cupertino fetch --source apple-docs --start-url https://developer.apple.com/docu
 
 ### Resume Interrupted Crawl (automatic)
 ```bash
-# Auto-resumes from metadata.json — no flag needed
+# Auto-resumes from metadata.json, no flag needed
 cupertino fetch --source apple-docs
 ```
 

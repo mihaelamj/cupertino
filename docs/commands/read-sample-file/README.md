@@ -30,7 +30,7 @@ Output format: `text` (default), `json`, or `markdown`.
 
 ### --sample-db
 
-Path to sample index database. Defaults to `~/.cupertino/samples.db`.
+Path to sample index database. Defaults to `~/.cupertino/apple-sample-code.db`.
 
 ## Examples
 
@@ -65,6 +65,6 @@ struct ContentView: View {
 
 ## See Also
 
-- [read-sample](../read-sample/) — read project README and file list
-- [search](../search/) — search for files with `cupertino search "<query>" --source samples`
-- [list-samples](../list-samples/) — list all projects
+- [read-sample](../read-sample/), read project README and file list
+- [search](../search/), search for files with `cupertino search "<query>" --source samples`
+- [list-samples](../list-samples/), list all projects

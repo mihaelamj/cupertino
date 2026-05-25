@@ -94,7 +94,7 @@ When using `--remote`, these options change behavior:
 
 | Method | What it produces | Notes |
 |--------|------------------|-------|
-| `cupertino setup` | All three databases (search.db + packages.db + samples.db) | Fastest, single zip download |
+| `cupertino setup` | All three databases (search.db + packages.db + apple-sample-code.db) | Fastest, single zip download |
 | `cupertino save --remote` | search.db only (docs scope) | Streams from cupertino-docs repo, no local crawl needed |
 | `cupertino fetch && cupertino save` | Whichever scopes you fetched | Multi-hour fresh crawl + local index build |
 

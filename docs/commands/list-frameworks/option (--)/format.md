@@ -16,7 +16,7 @@ Controls how the framework list is rendered. Different formats suit different co
 
 | Format | Description |
 |--------|-------------|
-| `text` | Human-readable list — `Available Frameworks (N total, M documents):` header followed by `  framework: count documents` rows (default) |
+| `text` | Human-readable list, `Available Frameworks (N total, M documents):` header followed by `  framework: count documents` rows (default) |
 | `json` | Bare array `[ { "name": "...", "documentCount": N }, ... ]`, sorted by `documentCount` descending |
 | `markdown` | Markdown table with `Framework | Documents` columns |
 
@@ -56,5 +56,5 @@ cupertino list-frameworks --format markdown
 ## Notes
 
 - All three formats list the same frameworks in the same order (descending document count).
-- JSON top-level is a bare array — iterate as `.[]`.
+- JSON top-level is a bare array, iterate as `.[]`.
 - Per-entry JSON fields: `name` (string), `documentCount` (int).

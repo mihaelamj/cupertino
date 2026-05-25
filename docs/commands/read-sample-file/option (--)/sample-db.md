@@ -10,11 +10,11 @@ cupertino read-sample-file <project-id> <file-path> --sample-db <path>
 
 ## Description
 
-Override the default `samples.db` location. Useful when running against a non-default base directory (e.g., a `~/.cupertino-dev/` development instance).
+Override the default `apple-sample-code.db` location. Useful when running against a non-default base directory (e.g., a `~/.cupertino-dev/` development instance).
 
 ## Default
 
-`~/.cupertino/samples.db` (or the override resolved via `cupertino.config.json` next to the running binary).
+`~/.cupertino/apple-sample-code.db` (or the override resolved via `cupertino.config.json` next to the running binary).
 
 ## Examples
 
@@ -22,7 +22,7 @@ Override the default `samples.db` location. Useful when running against a non-de
 ```bash
 cupertino read-sample-file building-a-document-based-app-with-swiftui \
   ContentView.swift \
-  --sample-db ~/.cupertino-dev/samples.db
+  --sample-db ~/.cupertino-dev/apple-sample-code.db
 ```
 
 ## Notes

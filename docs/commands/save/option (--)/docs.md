@@ -10,7 +10,7 @@ cupertino save --docs
 
 ## Description
 
-Scope flag — selects the docs subset of `cupertino save`. Build only `search.db` from on-disk corpus directories; skip packages.db and samples.db. ([#231](https://github.com/mihaelamj/cupertino/issues/231))
+Scope flag, selects the docs subset of `cupertino save`. Build only `search.db` from on-disk corpus directories; skip packages.db and apple-sample-code.db. ([#231](https://github.com/mihaelamj/cupertino/issues/231))
 
 ## Default
 
@@ -25,5 +25,5 @@ cupertino save --docs
 ## Notes
 
 - Combinable: `cupertino save --docs --samples` builds two of three.
-- Pre-1.0 clean break — replaces the legacy "build everything" default.
+- Pre-1.0 clean break, replaces the legacy "build everything" default.
 - Backed by `Indexer.DocsService` (lifted in #244).

@@ -10,7 +10,7 @@ cupertino save --packages
 
 ## Description
 
-Scope flag — selects the packages subset. Build only `packages.db` from `~/.cupertino/packages/<owner>/<repo>/`. ([#231](https://github.com/mihaelamj/cupertino/issues/231))
+Scope flag, selects the packages subset. Build only `packages.db` from `~/.cupertino/packages/<owner>/<repo>/`. ([#231](https://github.com/mihaelamj/cupertino/issues/231))
 
 ## Default
 

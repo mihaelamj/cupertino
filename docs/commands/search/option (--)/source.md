@@ -18,7 +18,7 @@ Filters search results to only include documents from the specified documentatio
 | Value | Description |
 |-------|-------------|
 | `apple-docs` | Apple Developer Documentation |
-| `samples` | Sample code projects (samples.db, populated by `cupertino save --samples`) |
+| `samples` | Sample code projects (apple-sample-code.db, populated by `cupertino save --samples`) |
 | `hig` | Human Interface Guidelines |
 | `apple-archive` | Apple Archive legacy programming guides |
 | `swift-evolution` | Swift Evolution proposals |
@@ -29,7 +29,7 @@ Filters search results to only include documents from the specified documentatio
 
 ## Default
 
-None — when `--source` is omitted, `cupertino search` runs in fan-out mode (chunked excerpts, RRF-fused across every available DB).
+None, when `--source` is omitted, `cupertino search` runs in fan-out mode (chunked excerpts, RRF-fused across every available DB).
 
 ## Examples
 
@@ -55,15 +55,15 @@ cupertino search "buttons" --source hig
 
 ## Value Details
 
-- [apple-docs](source%20(=value)/apple-docs.md) — Apple Developer Documentation
-- [samples](source%20(=value)/samples.md) — Sample code projects (samples.db)
-- [hig](source%20(=value)/hig.md) — Human Interface Guidelines
-- [apple-archive](source%20(=value)/apple-archive.md) — Apple Archive legacy guides
-- [swift-evolution](source%20(=value)/swift-evolution.md) — Swift Evolution proposals
-- [swift-org](source%20(=value)/swift-org.md) — Swift.org documentation
-- [swift-book](source%20(=value)/swift-book.md) — The Swift Programming Language book
-- [packages](source%20(=value)/packages.md) — Swift package documentation
-- [all](source%20(=value)/all.md) — Explicit fan-out across every source
+- [apple-docs](source%20(=value)/apple-docs.md), Apple Developer Documentation
+- [samples](source%20(=value)/samples.md), Sample code projects (apple-sample-code.db)
+- [hig](source%20(=value)/hig.md), Human Interface Guidelines
+- [apple-archive](source%20(=value)/apple-archive.md), Apple Archive legacy guides
+- [swift-evolution](source%20(=value)/swift-evolution.md), Swift Evolution proposals
+- [swift-org](source%20(=value)/swift-org.md), Swift.org documentation
+- [swift-book](source%20(=value)/swift-book.md), The Swift Programming Language book
+- [packages](source%20(=value)/packages.md), Swift package documentation
+- [all](source%20(=value)/all.md), Explicit fan-out across every source
 
 ## Combining with Other Filters
 

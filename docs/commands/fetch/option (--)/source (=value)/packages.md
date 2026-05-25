@@ -17,28 +17,28 @@ cupertino fetch --source packages --skip-metadata --skip-archives \
 
 Runs up to three stages. Stages 1 and 2 run by default; stage 3 is opt-in. Any stage can be skipped via the corresponding flag (#217 merged the previous separate `--source package-docs` into stage 2; #219 added stage 3).
 
-### Stage 1 — Metadata refresh
+### Stage 1, Metadata refresh
 
 Pulls the full Swift Package Index listing and decorates each entry with GitHub repo metadata (stars, language, license, last-update timestamp, fork/archived status). Output: `swift-packages-with-stars.json` in the packages directory. Used to regenerate the embedded `SwiftPackagesCatalogEmbedded.swift` and to power package-related search/analysis.
 
-### Stage 2 — Priority archive download
+### Stage 2, Priority archive download
 
 Reads the priority-packages list (`PriorityPackagesCatalog`), resolves the transitive dependency closure of each seed via `Package.swift` (and `Package.resolved` as fallback for apps), then downloads + extracts a tarball per package via `PackageArchiveExtractor`. The extractor pulls `https://codeload.github.com/<owner>/<repo>/tar.gz/<ref>` (HEAD → main → master fallback) and keeps a filtered subset: `README*`, `CHANGELOG*`, `LICENSE*`, `Package.swift`, all of `Sources/` + `Tests/`, every `.docc` article and tutorial, plus `Examples/` / `Demo/` directories. Each package gets a `manifest.json`.
 
-### Stage 3 — Availability annotation ([#219](https://github.com/mihaelamj/cupertino/issues/219), opt-in via `--annotate-availability`)
+### Stage 3, Availability annotation ([#219](https://github.com/mihaelamj/cupertino/issues/219), opt-in via `--annotate-availability`)
 
 Walks every `<owner>/<repo>/` subdir on disk and writes a per-package `availability.json` next to `manifest.json`. Captures:
 
 - `Package.swift` `platforms: [...]` deployment-target block (mapped to `{iOS: 13.0, macOS: 10.15, …}`).
 - Every `@available(...)` attribute occurrence in `.swift` files under `Sources/` and `Tests/`, with file path, line number, and parsed platform list.
 
-Pure on-disk pass — no network. Idempotent. Regex-based; multi-line attrs aren't handled and hits aren't associated with specific declarations (AST upgrade is a follow-up). Runs whether or not stages 1 and 2 just executed, so you can re-annotate an existing corpus with `--skip-metadata --skip-archives --annotate-availability`.
+Pure on-disk pass, no network. Idempotent. Regex-based; multi-line attrs aren't handled and hits aren't associated with specific declarations (AST upgrade is a follow-up). Runs whether or not stages 1 and 2 just executed, so you can re-annotate an existing corpus with `--skip-metadata --skip-archives --annotate-availability`.
 
 ## Data Sources
 
-1. **Swift Package Index API** — package listings
-2. **GitHub API** — repository metadata (stars, description, language, license, …) for stage 1; tarball download for stage 2
-3. **PriorityPackagesCatalog** — `~/.cupertino/selected-packages.json` (or the embedded fallback) drives which packages stage 2 downloads
+1. **Swift Package Index API**, package listings
+2. **GitHub API**, repository metadata (stars, description, language, license, …) for stage 1; tarball download for stage 2
+3. **PriorityPackagesCatalog**, `~/.cupertino/selected-packages.json` (or the embedded fallback) drives which packages stage 2 downloads
 
 ## Output
 
@@ -63,7 +63,7 @@ Pure on-disk pass — no network. Idempotent. Regex-based; multi-line attrs aren
 |--------|-------------|
 | `--skip-metadata` | Skip stage 1 and run only the archive download |
 | `--skip-archives` | Skip stage 2 and run only the metadata refresh |
-| `--annotate-availability` | Run stage 3 (availability annotation) after the chosen stages — opt-in (#219) |
+| `--annotate-availability` | Run stage 3 (availability annotation) after the chosen stages, opt-in (#219) |
 | `--limit <N>` | (stage 1) cap the number of packages fetched from SPI |
 | `--start-clean` | (stage 1) discard any saved metadata-fetch checkpoint |
 | `--output-dir <path>` | override the output directory |
@@ -72,7 +72,7 @@ Passing both `--skip-metadata` and `--skip-archives` without `--annotate-availab
 
 ## Examples
 
-### Default — both stages
+### Default, both stages
 
 ```bash
 cupertino fetch --source packages
@@ -142,6 +142,6 @@ cupertino fetch --source packages --start-clean
 
 ## Notes
 
-- A GitHub token (`GH_TOKEN`) is strongly recommended — without it stage 1 hits the unauthenticated rate limit (60 req/h) very quickly and stage 2 can stall on tarball downloads.
+- A GitHub token (`GH_TOKEN`) is strongly recommended, without it stage 1 hits the unauthenticated rate limit (60 req/h) very quickly and stage 2 can stall on tarball downloads.
 - Stages run sequentially; if stage 1 fails, stage 2 is still attempted (priority list comes from `PriorityPackagesCatalog`, not from the metadata catalog).
 - `--source all` invokes this command and so picks up both stages by default.

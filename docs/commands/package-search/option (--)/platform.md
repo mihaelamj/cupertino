@@ -12,7 +12,7 @@ cupertino package-search <question> --platform <platform> --min-version <version
 
 Filters the candidate set to packages whose declared deployment target is compatible with the named Apple platform. The package's deployment-target metadata is harvested during `cupertino fetch --source packages` (annotated by `--annotate-availability`) and stored in `packages.db`.
 
-Packages with **no** annotation source (no `Package.swift` deployment-targets parsed, no per-package `availability.json`) are dropped from the result set when `--platform` is in effect — the filter is exclusive, not best-effort.
+Packages with **no** annotation source (no `Package.swift` deployment-targets parsed, no per-package `availability.json`) are dropped from the result set when `--platform` is in effect, the filter is exclusive, not best-effort.
 
 `--platform` requires `--min-version`.
 
@@ -34,6 +34,6 @@ cupertino package-search "swift-syntax" --platform macos --min-version 13.0
 
 ## Notes
 
-- Lexicographic version compare in SQL — works correctly for current Apple platform versions (iOS 13+, macOS 11+, etc.) where component widths are stable.
+- Lexicographic version compare in SQL, works correctly for current Apple platform versions (iOS 13+, macOS 11+, etc.) where component widths are stable.
 - Mirrors `cupertino search --platform` for the multi-source path. (#220)
 - Without `--platform`, every package in `packages.db` is eligible.

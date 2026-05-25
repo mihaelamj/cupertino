@@ -17,7 +17,7 @@ cupertino read <identifier> --source <name>
 | Value | DB | Identifier shape |
 |---|---|---|
 | `apple-docs`, `apple-archive`, `hig`, `swift-evolution`, `swift-org`, `swift-book` | `search.db` | URI |
-| `samples` | `samples.db` | slug or `<projectId>/<path>` |
+| `samples` | `apple-sample-code.db` | slug or `<projectId>/<path>` |
 | `packages` | `packages.db` | `<owner>/<repo>/<relpath>` |
 
 ## Default

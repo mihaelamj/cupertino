@@ -1,6 +1,6 @@
 # --sample-db
 
-Path to sample-code database (`samples.db`)
+Path to sample-code database (`apple-sample-code.db`)
 
 ## Synopsis
 
@@ -10,16 +10,16 @@ cupertino search <query> --sample-db <path>
 
 ## Description
 
-Override the default `~/.cupertino/samples.db` location. Used when `--source samples` (or default fan-out) needs to query sample-code.
+Override the default `~/.cupertino/apple-sample-code.db` location. Used when `--source samples` (or default fan-out) needs to query sample-code.
 
 ## Default
 
-`~/.cupertino/samples.db`
+`~/.cupertino/apple-sample-code.db`
 
 ## Example
 
 ```bash
-cupertino search "@Observable" --source samples --sample-db ~/custom/samples.db
+cupertino search "@Observable" --source samples --sample-db ~/custom/apple-sample-code.db
 ```
 
 ## Notes

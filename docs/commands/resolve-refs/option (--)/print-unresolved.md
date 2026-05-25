@@ -34,4 +34,4 @@ doc://com.apple.documentation/swift/range
 
 - Output goes to stdout; pipe to a file for later analysis.
 - Each marker appears once even if referenced from multiple pages.
-- Combines with the rest of the flags — doesn't suppress the rewrite.
+- Combines with the rest of the flags, doesn't suppress the rewrite.

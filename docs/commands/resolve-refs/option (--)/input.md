@@ -25,5 +25,5 @@ cupertino resolve-refs --input ~/.cupertino/docs
 ## Notes
 
 - Pure post-process: no network by default. Use `--use-network` / `--use-webview` to fetch titles for unresolved markers.
-- Idempotent — running twice is a no-op for already-resolved pages.
+- Idempotent, running twice is a no-op for already-resolved pages.
 - Only `.json` files are processed; markdown / other files ignored.

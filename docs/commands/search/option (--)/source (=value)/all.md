@@ -10,7 +10,7 @@ cupertino search <query> --source all
 
 ## Description
 
-Equivalent to running `cupertino search <query>` with **no** `--source` filter — fans the query out across every database that exists locally and merges the per-source candidate lists with reciprocal-rank fusion (`k = 60`, source-weighted) into a single chunked result list.
+Equivalent to running `cupertino search <query>` with **no** `--source` filter, fans the query out across every database that exists locally and merges the per-source candidate lists with reciprocal-rank fusion (`k = 60`, source-weighted) into a single chunked result list.
 
 `--source all` is provided so a script can ask for fan-out behavior **explicitly** rather than relying on the default. Scripts that always pass `--source <something>` benefit from a value that means "every source" without removing the flag.
 
@@ -34,6 +34,6 @@ cupertino search "Observable" --source all --per-source 5
 
 ## Notes
 
-- Identical to omitting `--source` entirely — provided for script clarity.
+- Identical to omitting `--source` entirely, provided for script clarity.
 - Use `--skip-docs` / `--skip-packages` / `--skip-samples` to prune the fan-out without picking a single source.
 - Apple Archive is excluded unless you also pass `--include-archive`.

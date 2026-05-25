@@ -10,7 +10,7 @@ cupertino save --samples --force
 
 ## Description
 
-Forces the samples indexer to re-index every project even if its rows already exist in `samples.db`. Without `--force`, the indexer skips projects whose `id` already has rows.
+Forces the samples indexer to re-index every project even if its rows already exist in `apple-sample-code.db`. Without `--force`, the indexer skips projects whose `id` already has rows.
 
 ## Default
 

@@ -340,6 +340,17 @@ public enum LivePerDBWriterFactory {
     /// canonical marker that `Sample.Index.Builder` has written its
     /// rich schema here.
     ///
+    /// **Name-only match (intentional)**: the check looks at the
+    /// table NAME only, not its column shape, so any future pipeline
+    /// that introduces a sibling table also named `projects` would
+    /// trigger the preserve path here. Today there is no such other
+    /// pipeline; if one is added, this helper must be tightened (e.g.
+    /// require a sentinel column like `min_visionos` that's specific
+    /// to `Sample.Index.Builder`'s schema). The narrower the match,
+    /// the lower the false-positive rate but the higher the
+    /// false-negative rate as the Sample.Index schema evolves; the
+    /// name-only check trades the latter for the former.
+    ///
     /// **Outcomes (defensive default = preserve, but only when there
     /// is plausibly SQLite data to preserve)**:
     /// - `SQLITE_ROW` on the sqlite_master query: the `projects` table

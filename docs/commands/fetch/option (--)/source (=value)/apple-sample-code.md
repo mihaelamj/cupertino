@@ -52,7 +52,7 @@ cupertino fetch --source apple-sample-code --output-dir ./samples
 
 ### Resume Interrupted Download (automatic)
 ```bash
-# Auto-resumes from checkpoint.json — no flag needed
+# Auto-resumes from checkpoint.json, no flag needed
 cupertino fetch --source apple-sample-code
 ```
 

@@ -38,10 +38,10 @@ cupertino read-sample-file <project-id> Package.swift --format json | jq '.conte
 
 JSON fields:
 
-- `projectId` (string) — sample slug
-- `path` (string) — relative path within the project
-- `filename` (string) — basename of `path`
-- `content` (string) — full file body, plain text
+- `projectId` (string), sample slug
+- `path` (string), relative path within the project
+- `filename` (string), basename of `path`
+- `content` (string), full file body, plain text
 
 ### Markdown for embedding
 ```bash

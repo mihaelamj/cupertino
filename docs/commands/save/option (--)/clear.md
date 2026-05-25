@@ -19,7 +19,7 @@ Off (`--clear` not set → incremental). The flag is a plain `@Flag` without an 
 ## Behavior
 
 ### With `--clear`
-- Drops or wipes the rows for the in-scope database (search.db / packages.db / samples.db depending on which scope flags are set).
+- Drops or wipes the rows for the in-scope database (search.db / packages.db / apple-sample-code.db depending on which scope flags are set).
 - Recreates schema from the current SchemaVersion.
 - Rebuilds the entire index.
 - Previous index data is lost.
@@ -65,6 +65,6 @@ cupertino save --clear --search-db ./my-search.db
 
 ## Notes
 
-- Default is incremental (no clear). `--no-clear` is not a valid flag — there's no inversion pair.
+- Default is incremental (no clear). `--no-clear` is not a valid flag, there's no inversion pair.
 - Clearing scope depends on which scope flags are passed (`--docs` / `--packages` / `--samples`); when none are passed, `--clear` applies to whichever scopes the default run touches.
 - For `--samples` the scope is always wiped-and-rebuilt regardless of `--clear`.

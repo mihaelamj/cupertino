@@ -46,8 +46,8 @@ zero if the import succeeds, non-zero otherwise.
 
 ## See also
 
-- `cupertino save` — write the index for real
-- `cupertino save --clear` — wipe the existing DB and rebuild
-- `cupertino doctor --save` — preflight only, no DB at all
-- `docs/PRINCIPLES.md` — the import-time invariants verified by this
+- `cupertino save`, write the index for real
+- `cupertino save --clear`, wipe the existing DB and rebuild
+- `cupertino doctor --save`, preflight only, no DB at all
+- `docs/PRINCIPLES.md`, the import-time invariants verified by this
   command

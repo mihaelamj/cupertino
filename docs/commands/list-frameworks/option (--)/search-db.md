@@ -30,5 +30,5 @@ cupertino list-frameworks --search-db /tmp/search.snapshot.db
 
 ## Notes
 
-- Read-only access — `list-frameworks` doesn't modify the DB.
+- Read-only access, `list-frameworks` doesn't modify the DB.
 - If the file doesn't exist, the command exits with a missing-DB error.

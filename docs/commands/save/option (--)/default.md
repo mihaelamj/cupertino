@@ -10,7 +10,7 @@ cupertino save
 
 ## Default Behavior
 
-`cupertino save` with no scope flag runs the **full pipeline** — it builds `search.db` (the docs scope, default ON) plus `packages.db` and `samples.db` if their source data is present (#231). Each scope reads from its standard directory under `~/.cupertino/` and writes to its standard DB path.
+`cupertino save` with no scope flag runs the **full pipeline**, it builds `search.db` (the docs scope, default ON) plus `packages.db` and `apple-sample-code.db` if their source data is present (#231). Each scope reads from its standard directory under `~/.cupertino/` and writes to its standard DB path.
 
 Equivalent to:
 
@@ -18,7 +18,7 @@ Equivalent to:
 cupertino save --docs --packages --samples \
   --base-dir ~/.cupertino \
   --search-db ~/.cupertino/search.db \
-  --samples-db ~/.cupertino/samples.db
+  --samples-db ~/.cupertino/apple-sample-code.db
 ```
 
 (There is no `--packages-db` flag yet; the packages-scope DB path is derived from `--base-dir`.)
@@ -36,10 +36,10 @@ cupertino save --docs --packages --samples \
 | `--samples-dir` | `~/.cupertino/sample-code` | Extracted sample-code projects |
 | `--metadata-file` | `~/.cupertino/docs/metadata.json` | Crawler-side metadata index |
 | `--search-db` | `~/.cupertino/search.db` | search.db output path |
-| `--samples-db` | `~/.cupertino/samples.db` | samples.db output path |
+| `--samples-db` | `~/.cupertino/apple-sample-code.db` | apple-sample-code.db output path |
 | `--docs` | (on by default if no scope flag set) | Build search.db |
 | `--packages` | (off unless explicit, or implied default) | Build packages.db |
-| `--samples` | (off unless explicit, or implied default) | Build samples.db |
+| `--samples` | (off unless explicit, or implied default) | Build apple-sample-code.db |
 | `--clear` | `false` | Incremental build (default); `--clear` to wipe and rebuild |
 | `--remote` | `false` | Stream from GitHub instead of reading local files |
 | `--force` | `false` | Re-index every sample under `--samples` even if unchanged |
@@ -49,11 +49,11 @@ cupertino save --docs --packages --samples \
 
 With no scope flag, `cupertino save`:
 
-1. **Loads `BinaryConfig`** — resolves `defaultBaseDirectory` (overridable via `cupertino.config.json` next to the binary).
-2. **Runs the preflight** — prints the resolved scope set, source directories, output DB paths, and asks for confirmation (skipped when stdin isn't a TTY or `--yes` is set; #232).
-3. **Builds `search.db`** (docs scope) — iterates `--docs-dir`, `--evolution-dir`, `--swift-org-dir`, `--archive-dir`, `--metadata-file`. Missing directories are skipped with an info-level log (not a hard error).
-4. **Builds `packages.db`** (packages scope) — iterates `--packages-dir/<owner>/<repo>/`. Skipped if no extracted archives exist.
-5. **Builds `samples.db`** (samples scope) — iterates `--samples-dir`. Always wipes-and-rebuilds (the samples-side schema doesn't yet support partial updates).
+1. **Loads `BinaryConfig`**, resolves `defaultBaseDirectory` (overridable via `cupertino.config.json` next to the binary).
+2. **Runs the preflight**, prints the resolved scope set, source directories, output DB paths, and asks for confirmation (skipped when stdin isn't a TTY or `--yes` is set; #232).
+3. **Builds `search.db`** (docs scope), iterates `--docs-dir`, `--evolution-dir`, `--swift-org-dir`, `--archive-dir`, `--metadata-file`. Missing directories are skipped with an info-level log (not a hard error).
+4. **Builds `packages.db`** (packages scope), iterates `--packages-dir/<owner>/<repo>/`. Skipped if no extracted archives exist.
+5. **Builds `apple-sample-code.db`** (samples scope), iterates `--samples-dir`. Always wipes-and-rebuilds (the samples-side schema doesn't yet support partial updates).
 
 Steps 3–5 are independent. Failures in one scope don't block the others.
 
@@ -75,11 +75,11 @@ None of the source directories are individually required. Each scope is best-eff
 ├── hig/                           # search.db scope
 ├── packages/                      # --packages-dir   (packages.db scope)
 │   └── <owner>/<repo>/...
-├── sample-code/                   # --samples-dir    (samples.db scope)
+├── sample-code/                   # --samples-dir    (apple-sample-code.db scope)
 │   └── <project_id>/
 ├── search.db                      # --search-db      (output)
 ├── packages.db                    #                  (output, derived path)
-└── samples.db                     # --samples-db     (output)
+└── apple-sample-code.db                     # --samples-db     (output)
 ```
 
 ## Incremental vs. Full Build
@@ -139,7 +139,7 @@ cupertino save --yes
 |-------|-----|---------|
 | `--docs` | `search.db` | `docs_fts`, `docs_metadata`, `docs_structured`, `doc_symbols`, `doc_imports`, `framework_aliases`, `doc_code_examples`, `doc_code_fts`, `packages` (legacy), `package_dependencies` (legacy), `sample_code` (legacy) |
 | `--packages` | `packages.db` | `package_files_fts`, `package_files`, `packages` |
-| `--samples` | `samples.db` | `samples_fts`, `samples`, `projects`, `project_imports` |
+| `--samples` | `apple-sample-code.db` | `samples_fts`, `samples`, `projects`, `project_imports` |
 
 ## Error Handling
 
@@ -151,13 +151,13 @@ cupertino save --yes
 
 ### One scope's source dir missing (others continue)
 ```
-ℹ️  No package archives at ~/.cupertino/packages/ — skipping packages scope.
-ℹ️  No sample-code at ~/.cupertino/sample-code/ — skipping samples scope.
+ℹ️  No package archives at ~/.cupertino/packages/, skipping packages scope.
+ℹ️  No sample-code at ~/.cupertino/sample-code/, skipping samples scope.
 ✓ search.db built (docs scope).
 ```
 
 ## Notes
 
-- The `cupertino index` subcommand is gone — `--samples` absorbed it (#231).
+- The `cupertino index` subcommand is gone, `--samples` absorbed it (#231).
 - All paths support tilde (`~`) expansion.
 - Run `cupertino save --help` for the complete current flag list.
