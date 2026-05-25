@@ -36,8 +36,8 @@ Trade-offs we accept:
 - FTS5 dictionaries don't share across DBs. Net disk growth is in
   the low MB, negligible against the ~2.7 GB apple-documentation DB
   dominating bundle size.
-- `cupertino setup` ships 8 files instead of 1. Already a manifest
-  + zip; the manifest grows from 3 entries to 8.
+- `cupertino setup` ships 7 files instead of 1. Already a manifest
+  + zip; the manifest grows from 3 entries to 7.
 
 ---
 
@@ -219,14 +219,14 @@ exist with the right schema version), reversible up to step 5.
 
 ### Step 7 (task #89): cupertino setup / doctor / search no-filter
 
-`cupertino setup`: bundle manifest grows from 3 file entries to 8.
-GitHub Releases ship 8 zips per release tag instead of 1. Download
+`cupertino setup`: bundle manifest grows from 3 file entries to 7.
+GitHub Releases ship 7 zips per release tag instead of 1. Download
 order: smallest to largest so cancellation costs the user only
 unfinished work. Manifest format change is forward-compatible (old
 binaries reading the new manifest fail with a clear error pointing
 at upgrading).
 
-`cupertino doctor`: per-DB section repeats 8 times. Per-source
+`cupertino doctor`: per-DB section repeats 7 times. Per-source
 capability matrix displayed inline.
 
 `cupertino search` (no `--source` filter): fan-out across all
@@ -254,7 +254,7 @@ Once all steps green locally:
    user direction.
 3. CI runs the full battery + the new fan-out + migration tests.
 4. Rebuild on Claw mini (internal SSD only; ~12h overnight per
-   memory) to produce the 8 bundle files.
+   memory) to produce the 7 bundle files.
 5. Validate against v1.2.0 baseline.
 6. Squash-merge to develop.
 
@@ -298,7 +298,7 @@ queries run in parallel. The merge step is a k-way sort of
 
 ## 6. Bundle layout (cupertino setup)
 
-GitHub Releases per tag carry 8 zip files:
+GitHub Releases per tag carry 7 zip files:
 
 ```
 cupertino-bundle-v1.3.0-apple-documentation.db.zip   ~1.2 GB
@@ -306,13 +306,12 @@ cupertino-bundle-v1.3.0-hig.db.zip                    ~6 MB
 cupertino-bundle-v1.3.0-apple-archive.db.zip          ~30 MB
 cupertino-bundle-v1.3.0-swift-evolution.db.zip        ~12 MB
 cupertino-bundle-v1.3.0-swift-documentation.db.zip    ~40 MB
-cupertino-bundle-v1.3.0-apple-sample-code.db.zip      ~80 MB
-cupertino-bundle-v1.3.0-apple-sample-code-search.db.zip  ~5 MB
+cupertino-bundle-v1.3.0-apple-sample-code.db.zip      ~85 MB
 cupertino-bundle-v1.3.0-swift-packages.db.zip         ~250 MB
 ```
 
 Plus a `manifest.json` listing tag, per-DB checksums, schema
-versions. `cupertino setup` downloads all 8 by default;
+versions. `cupertino setup` downloads all 7 by default;
 `cupertino setup --source X` downloads only X's DB.
 
 ---

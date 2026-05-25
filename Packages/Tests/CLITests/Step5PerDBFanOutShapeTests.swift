@@ -28,6 +28,9 @@ struct Step5PerDBFanOutShapeTests {
         let groups = registry.groupedByDestinationDB(excluding: [.packages])
         // 6 distinct destinationDBs across the 7 search-style sources
         // (swift-org + swift-book co-located in .swiftDocumentation).
+        // SampleCodeSource lives at .appleSampleCode (one DB shared
+        // with the Sample.Index.Builder rich-schema pipeline; two table
+        // tracks in one file).
         #expect(groups.count == 6, "expected 6 groups; got \(groups.count): \(groups.keys.map(\.id).sorted())")
         #expect(groups[.appleDocumentation]?.count == 1, "AppleDocsSource alone")
         #expect(groups[.hig]?.count == 1, "HIGSource alone")
@@ -35,8 +38,8 @@ struct Step5PerDBFanOutShapeTests {
         #expect(groups[.swiftEvolution]?.count == 1, "SwiftEvolutionSource alone")
         #expect(groups[.swiftDocumentation]?.count == 2, "swift-org + swift-book co-located")
         #expect(
-            groups[.appleSampleCodeSearch]?.count == 1,
-            "SampleCodeSource at .appleSampleCodeSearch post step-7a flip"
+            groups[.appleSampleCode]?.count == 1,
+            "SampleCodeSource at .appleSampleCode (sharing samples.db with Sample.Index.Builder)"
         )
         #expect(groups[.search] == nil, "post step-7a flip, no provider is at .search")
         #expect(groups[.packages] == nil, "PackagesSource is filtered out by excluding: [.packages]")
@@ -50,7 +53,7 @@ struct Step5PerDBFanOutShapeTests {
         #expect(order == [
             "apple-archive",
             "apple-documentation",
-            "apple-sample-code-search",
+            "apple-sample-code",
             "hig",
             "swift-documentation",
             "swift-evolution",
@@ -77,8 +80,8 @@ struct Step5PerDBFanOutShapeTests {
         let swiftDoc = Set(groups[.swiftDocumentation]?.map(\.definition.id) ?? [])
         #expect(swiftDoc == ["swift-org", "swift-book"], "swift-org + swift-book co-located via view-source pattern")
 
-        let samples = groups[.appleSampleCodeSearch]?.map(\.definition.id) ?? []
-        #expect(samples == ["samples"], "SampleCodeSource (definition.id 'samples') alone at .appleSampleCodeSearch post step-7a flip")
+        let samples = groups[.appleSampleCode]?.map(\.definition.id) ?? []
+        #expect(samples == ["samples"], "SampleCodeSource (definition.id 'samples') alone at .appleSampleCode (one-DB collapse)")
     }
 
     @Test("Per-DB output paths derived from the base directory + descriptor.filename")

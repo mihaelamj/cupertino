@@ -402,7 +402,7 @@ struct PerSourceDBSplitMigratorMigrateTests {
         // makes those rows route correctly.
         registry.register(FakeProvider(
             id: "fake-samples",
-            dbDescriptor: .appleSampleCodeSearch,
+            dbDescriptor: .appleSampleCode,
             aliases: ["fake-sample-code"]
         ))
 
@@ -466,7 +466,7 @@ struct PerSourceDBSplitMigratorMigrateTests {
         var registry = Search.SourceRegistry()
         registry.register(FakeProvider(
             id: "fake-samples",
-            dbDescriptor: .appleSampleCodeSearch,
+            dbDescriptor: .appleSampleCode,
             aliases: ["fake-sample-code"]
         ))
 

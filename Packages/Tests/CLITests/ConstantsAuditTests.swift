@@ -191,7 +191,6 @@ struct ConstantsAuditTests {
             "swift-evolution": "swift-evolution.db",
             "swift-documentation": "swift-documentation.db",
             "apple-sample-code": "apple-sample-code.db",
-            "apple-sample-code-search": "apple-sample-code-search.db",
             "swift-packages": "swift-packages.db",
             "search": "search.db",
             "samples": "samples.db",

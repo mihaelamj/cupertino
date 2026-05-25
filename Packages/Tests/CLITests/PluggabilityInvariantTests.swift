@@ -152,7 +152,7 @@ struct PluggabilityInvariantTests {
             .search, .samples, .packages,
             .appleDocumentation, .hig, .appleArchive,
             .swiftEvolution, .swiftDocumentation,
-            .appleSampleCode, .appleSampleCodeSearch, .swiftPackages,
+            .appleSampleCode, .swiftPackages,
         ]
         #expect(!existingDescriptors.contains(fake.destinationDB), "fake's destinationDB collides with an existing static; new-DB invariant broken")
         #expect(fake.destinationDB.id == "audit-fixture")
@@ -211,8 +211,8 @@ struct PluggabilityInvariantTests {
         #expect(grouped[.appleDocumentation]?.count == 1)
         #expect(grouped[.swiftDocumentation]?.count == 2, "swift-org + swift-book co-located via view-source")
         #expect(
-            grouped[.appleSampleCodeSearch]?.count == 1,
-            "SampleCodeSource at .appleSampleCodeSearch post step-7a flip"
+            grouped[.appleSampleCode]?.count == 1,
+            "SampleCodeSource at .appleSampleCode (one-DB collapse: shares samples.db with Sample.Index.Builder)"
         )
         #expect(grouped[.search] == nil, "post step-7a flip, no provider is at .search")
     }

@@ -75,20 +75,12 @@ struct PerSourceDBDescriptorTests {
         #expect(descriptor.displayName == "Swift Documentation")
     }
 
-    @Test("appleSampleCode descriptor (rename of .samples; Sample.Index per-file rich schema): id + filename + displayName")
+    @Test("appleSampleCode descriptor (one DB for sample-code: rich Sample.Index schema + SampleCodeSource FTS rows): id + filename + displayName")
     func appleSampleCode() {
         let descriptor = Shared.Models.DatabaseDescriptor.appleSampleCode
         #expect(descriptor.id == "apple-sample-code")
         #expect(descriptor.filename == "apple-sample-code.db")
         #expect(descriptor.displayName == "Apple Sample Code")
-    }
-
-    @Test("appleSampleCodeSearch descriptor (post step-7a; SampleCodeSource's docs_metadata + docs_fts rows): id + filename + displayName")
-    func appleSampleCodeSearch() {
-        let descriptor = Shared.Models.DatabaseDescriptor.appleSampleCodeSearch
-        #expect(descriptor.id == "apple-sample-code-search")
-        #expect(descriptor.filename == "apple-sample-code-search.db")
-        #expect(descriptor.displayName == "Apple Sample Code (Search)")
     }
 
     @Test("swiftPackages descriptor (rename of .packages): id + filename + displayName")
