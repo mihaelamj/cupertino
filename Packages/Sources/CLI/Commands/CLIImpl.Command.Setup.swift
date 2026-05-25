@@ -110,9 +110,92 @@ extension CLIImpl.Command {
                     events: SetupEventObserver(renderer: renderer)
                 )
                 renderer.printFinalSummary(outcome: outcome)
+
+                // Step 6c-iii: per-source DB split migration hook.
+                // After the bundle download + extract completes, check
+                // whether the just-extracted `search.db` needs splitting
+                // into per-source DBs and run the migrator if so. The
+                // migration is a one-shot: subsequent runs see
+                // `alreadyMigrated` and skip cleanly.
+                try await Self.runPerSourceDBSplitMigrationIfNeeded(
+                    baseDirectory: baseURL,
+                    logger: Cupertino.Context.composition.logging.recording
+                )
             } catch {
                 Cupertino.Context.composition.logging.recording.error("❌ Setup failed: \(error)")
                 throw ExitCode.failure
+            }
+        }
+
+        // MARK: - Per-source DB split migration (step 6c-iii)
+
+        /// Detects whether a legacy `search.db` needs splitting into
+        /// per-source DBs; runs the migration if so; emits user-facing
+        /// progress lines. Wraps any `MigrationError` as a non-fatal
+        /// warning (the legacy file stays intact; the user can re-run
+        /// `cupertino setup` to retry).
+        ///
+        /// The split is mandatory for users whose installed bundle is
+        /// pre-v1.3.0 (one shared search.db). Post-v1.3.0 bundles ship
+        /// the 6 per-source DBs directly + the migrator's `detect()`
+        /// returns `.noLegacyDBFound` (no legacy file present), so this
+        /// helper short-circuits cleanly.
+        static func runPerSourceDBSplitMigrationIfNeeded(
+            baseDirectory: URL,
+            logger: any LoggingModels.Logging.Recording
+        ) async throws {
+            let registry = CLIImpl.makeProductionSourceRegistry()
+            let detection = Distribution.PerSourceDBSplitMigrator.detect(
+                inBaseDirectory: baseDirectory,
+                registry: registry
+            )
+
+            switch detection {
+            case .noLegacyDBFound:
+                // Fresh install or post-v1.3.0 user: bundle shipped
+                // per-source DBs directly; no migration needed.
+                return
+            case let .alreadyMigrated(legacyFile, splitFiles):
+                let legacyName = legacyFile.lastPathComponent
+                let perSourceCount = splitFiles.count
+                logger.info("✅ Per-source DB split already complete: legacy \(legacyName) is a stale leftover.")
+                logger.info("   \(perSourceCount) per-source DB(s) live. Safe to delete the legacy file manually.")
+                return
+            case let .legacyFileMalformed(legacyFile, reason):
+                logger.warning(
+                    "⚠️  Legacy \(legacyFile.lastPathComponent) found but schema is malformed (\(reason)); skipping migration. Re-run `cupertino setup` after manual cleanup."
+                )
+                return
+            case let .migrationNeeded(legacyFile):
+                logger.info("🔀 Per-source DB split migration needed: splitting \(legacyFile.lastPathComponent) into per-source DBs...")
+                let reader = LiveLegacyDBReader(legacyFile: legacyFile)
+                let writerFactory = LivePerDBWriterFactory.make(logger: logger)
+                do {
+                    let outcome = try await Distribution.PerSourceDBSplitMigrator.migrate(
+                        legacyFile: legacyFile,
+                        baseDirectory: baseDirectory,
+                        registry: registry,
+                        reader: reader,
+                        writerFactory: writerFactory
+                    )
+                    for result in outcome.results {
+                        let mb = Double(result.bytesWritten) / 1048576
+                        logger.info(
+                            String(
+                                format: "  [%@] split: %d rows → %@ (%.1f MB)",
+                                result.sourceID,
+                                result.rowsWritten,
+                                result.destinationDBPath.lastPathComponent,
+                                mb
+                            )
+                        )
+                    }
+                    if let target = outcome.actualLegacyRenameTarget {
+                        logger.info("📦 Legacy file preserved at \(target.lastPathComponent) for one release.")
+                    }
+                } catch {
+                    logger.warning("⚠️  Per-source DB split migration failed: \(error). Legacy \(legacyFile.lastPathComponent) preserved; re-run `cupertino setup` to retry.")
+                }
             }
         }
     }
