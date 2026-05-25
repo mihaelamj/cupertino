@@ -20,8 +20,11 @@ import Testing
 //   - Initialism kept where industry-standard (`hig`, not
 //     `human-interface-guidelines`).
 //   - swift-book co-located in `swift-documentation.db` via the
-//     SwiftOrgStrategy URL-prefix view-source pattern (no separate
-//     swift-book.db).
+//     SwiftOrgStrategy path-based view-source pattern: at index time
+//     the strategy inspects the file-system path of each crawled doc
+//     (Search.StrategyHelpers.extractFrameworkFromPath) and tags rows
+//     under a `swift-book/` subdirectory with source-id "swift-book",
+//     everything else with "swift-org". No separate swift-book.db.
 //
 // These pins are additive: the legacy `.search`, `.samples`,
 // `.packages` descriptors keep their existing pins in
