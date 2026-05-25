@@ -135,7 +135,19 @@ extension Distribution {
 
             public let plan: MigrationPlan
             public let results: [SourceResult]
+
+            /// `true` when the migrator successfully renamed
+            /// `search.db` → `search.db.legacy-pre-per-source-split`
+            /// after all per-source row-copies completed and verified.
+            /// `false` when the rename step was skipped (dry-run mode)
+            /// or aborted (rowCountMismatch before the rename ran).
             public let legacyFileRenamed: Bool
+
+            /// The actual on-disk URL the legacy file was renamed to,
+            /// when `legacyFileRenamed == true`. **Invariant**:
+            /// non-nil iff `legacyFileRenamed == true`; nil iff
+            /// `legacyFileRenamed == false`. Callers can force-unwrap
+            /// when they have verified `legacyFileRenamed`.
             public let actualLegacyRenameTarget: URL?
 
             public init(
@@ -163,10 +175,18 @@ extension Distribution {
 
             /// A source-id appears in `docs_metadata.source` that the
             /// supplied `SourceLookup` does not recognise. Per-row
-            /// behavior: rows for unknown sources stay in the legacy
-            /// file (not lost); the migration completes for known
-            /// sources only. This case wraps the unknown-source list
-            /// so callers can surface a warning.
+            /// behavior: rows for unknown sources are LEFT BEHIND in
+            /// the renamed legacy file (`search.db.legacy-pre-per-source-split`).
+            /// The bytes are preserved on disk for forensic inspection
+            /// but the production read path does NOT consult the
+            /// renamed file, so those rows are effectively unreachable
+            /// to `cupertino search`. The migration completes for
+            /// known sources only. This case wraps the unknown-source
+            /// list so callers can surface an actionable warning
+            /// (e.g. "your bundle has 12 rows tagged 'experimental-x'
+            /// that won't appear in search post-upgrade; if you need
+            /// them, downgrade to v1.2.x or file an issue with the
+            /// source-id list").
             case unknownSourceIDs([String])
 
             /// Verification step (post-copy row-count compare) detected
@@ -190,12 +210,26 @@ extension Distribution {
         /// per-source DB split migration is needed. Pure read-only:
         /// does NOT touch any file.
         ///
+        /// **`splitDestinationFilenames` must list ONLY the 5 search.db
+        /// split destinations** (`apple-documentation.db`, `hig.db`,
+        /// `apple-archive.db`, `swift-evolution.db`,
+        /// `swift-documentation.db`). It MUST NOT include the 2 sibling
+        /// rename destinations (`apple-sample-code.db`,
+        /// `swift-packages.db`). Renames of samples.db / packages.db
+        /// are separate work: their presence in the base directory says
+        /// nothing about whether search.db was split. If callers pass
+        /// rename destinations into this list, the detection
+        /// false-positives `alreadyMigrated` after a crash that
+        /// renamed samples but never split search.db, wedging the
+        /// user with unmigrated apple-docs/HIG/archive/evolution/swift-org
+        /// rows trapped in the legacy file. See
+        /// `PerSourceDBSplitMigratorDetectionTests` for the contract pin.
+        ///
         /// The detection rule:
         ///   1. If `<baseDirectory>/search.db` does not exist → `noLegacyDBFound`
-        ///   2. If `<baseDirectory>/search.db` exists AND any per-source DB
-        ///      (e.g. `apple-documentation.db`) exists with non-zero size
-        ///      → `alreadyMigrated`
-        ///   3. If `<baseDirectory>/search.db` exists AND no per-source DBs
+        ///   2. If `<baseDirectory>/search.db` exists AND any of the
+        ///      named split DBs exists with non-zero size → `alreadyMigrated`
+        ///   3. If `<baseDirectory>/search.db` exists AND no split DBs
         ///      are present → `migrationNeeded`
         ///   4. If `<baseDirectory>/search.db` exists but its schema is
         ///      malformed → `legacyFileMalformed`
@@ -206,7 +240,7 @@ extension Distribution {
         /// metadata.
         public static func detect(
             inBaseDirectory baseDirectory: URL,
-            candidatePerSourceFilenames: [String]
+            splitDestinationFilenames: [String]
         ) -> DetectionOutcome {
             let fileManager = FileManager.default
             let legacyFile = baseDirectory.appendingPathComponent(
@@ -217,7 +251,7 @@ extension Distribution {
                 return .noLegacyDBFound
             }
 
-            let splitFiles: [URL] = candidatePerSourceFilenames
+            let splitFiles: [URL] = splitDestinationFilenames
                 .map { baseDirectory.appendingPathComponent($0) }
                 .filter { fileManager.fileExists(atPath: $0.path) }
                 .filter {
@@ -244,16 +278,27 @@ extension Distribution {
         /// 6b replaces with the real `SELECT source, COUNT(*) FROM
         /// docs_metadata GROUP BY source` query + a `SourceLookup`
         /// pass to resolve each source-id to its destination descriptor.
+        ///
+        /// **Tuple field `destinationFilename` (not `destinationDescriptorID`)**:
+        /// callers MUST pass the descriptor's canonical filename
+        /// (`Shared.Models.DatabaseDescriptor.<X>.filename`,
+        /// e.g. `"apple-documentation.db"`) rather than deriving it
+        /// from the descriptor's id. Today every descriptor's filename
+        /// equals `<id>.db`, but the descriptor's filename field is
+        /// the declared single source of truth for the on-disk
+        /// filename. If a future descriptor renames its filename
+        /// (e.g. to `apple-developer-documentation.db`), the migrator
+        /// follows the descriptor's declaration automatically.
         public static func planFromKnownSources(
             legacyFile: URL,
             baseDirectory: URL,
-            sourceIDsToPlan: [(sourceID: String, destinationDescriptorID: String, rowCount: Int)]
+            sourceIDsToPlan: [(sourceID: String, destinationDescriptorID: String, destinationFilename: String, rowCount: Int)]
         ) -> MigrationPlan {
             let sourcePlans = sourceIDsToPlan.map { entry in
                 SourcePlan(
                     sourceID: entry.sourceID,
                     destinationDescriptorID: entry.destinationDescriptorID,
-                    destinationDBPath: baseDirectory.appendingPathComponent("\(entry.destinationDescriptorID).db"),
+                    destinationDBPath: baseDirectory.appendingPathComponent(entry.destinationFilename),
                     estimatedRowCount: entry.rowCount
                 )
             }

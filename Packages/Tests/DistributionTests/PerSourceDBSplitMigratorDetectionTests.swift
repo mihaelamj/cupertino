@@ -25,14 +25,18 @@ struct PerSourceDBSplitMigratorDetectionTests {
         try data.write(to: url)
     }
 
-    private static let candidateFilenames: [String] = [
+    /// SPLIT destinations only (5 search.db descendants). MUST NOT include
+    /// apple-sample-code.db or swift-packages.db (those are renames of
+    /// samples.db / packages.db, not splits of search.db). See
+    /// `Distribution.PerSourceDBSplitMigrator.detect` doc for the
+    /// rationale: mixing them causes false-positive `alreadyMigrated`
+    /// after a crash that renamed samples but never split search.db.
+    private static let splitDestinationFilenames: [String] = [
         Shared.Constants.FileName.appleDocumentationDatabase,
         Shared.Constants.FileName.higDatabase,
         Shared.Constants.FileName.appleArchiveDatabase,
         Shared.Constants.FileName.swiftEvolutionDatabase,
         Shared.Constants.FileName.swiftDocumentationDatabase,
-        Shared.Constants.FileName.appleSampleCodeDatabase,
-        Shared.Constants.FileName.swiftPackagesDatabase,
     ]
 
     @Test("Empty base directory: no legacy DB found")
@@ -42,7 +46,7 @@ struct PerSourceDBSplitMigratorDetectionTests {
 
         let outcome = Distribution.PerSourceDBSplitMigrator.detect(
             inBaseDirectory: dir,
-            candidatePerSourceFilenames: Self.candidateFilenames
+            splitDestinationFilenames: Self.splitDestinationFilenames
         )
         #expect(outcome == .noLegacyDBFound)
     }
@@ -56,7 +60,7 @@ struct PerSourceDBSplitMigratorDetectionTests {
 
         let outcome = Distribution.PerSourceDBSplitMigrator.detect(
             inBaseDirectory: dir,
-            candidatePerSourceFilenames: Self.candidateFilenames
+            splitDestinationFilenames: Self.splitDestinationFilenames
         )
         if case let .migrationNeeded(legacyFile) = outcome {
             #expect(legacyFile.lastPathComponent == "search.db")
@@ -75,7 +79,7 @@ struct PerSourceDBSplitMigratorDetectionTests {
 
         let outcome = Distribution.PerSourceDBSplitMigrator.detect(
             inBaseDirectory: dir,
-            candidatePerSourceFilenames: Self.candidateFilenames
+            splitDestinationFilenames: Self.splitDestinationFilenames
         )
         if case let .alreadyMigrated(legacyFile, splitFiles) = outcome {
             #expect(legacyFile.lastPathComponent == "search.db")
@@ -95,7 +99,7 @@ struct PerSourceDBSplitMigratorDetectionTests {
 
         let outcome = Distribution.PerSourceDBSplitMigrator.detect(
             inBaseDirectory: dir,
-            candidatePerSourceFilenames: Self.candidateFilenames
+            splitDestinationFilenames: Self.splitDestinationFilenames
         )
         if case .migrationNeeded = outcome {
             // pass
@@ -116,9 +120,24 @@ struct PerSourceDBSplitMigratorDetectionTests {
             legacyFile: legacy,
             baseDirectory: dir,
             sourceIDsToPlan: [
-                (sourceID: "apple-docs", destinationDescriptorID: "apple-documentation", rowCount: 379124),
-                (sourceID: "hig", destinationDescriptorID: "hig", rowCount: 247),
-                (sourceID: "swift-org", destinationDescriptorID: "swift-documentation", rowCount: 1500),
+                (
+                    sourceID: "apple-docs",
+                    destinationDescriptorID: "apple-documentation",
+                    destinationFilename: Shared.Constants.FileName.appleDocumentationDatabase,
+                    rowCount: 379124
+                ),
+                (
+                    sourceID: "hig",
+                    destinationDescriptorID: "hig",
+                    destinationFilename: Shared.Constants.FileName.higDatabase,
+                    rowCount: 247
+                ),
+                (
+                    sourceID: "swift-org",
+                    destinationDescriptorID: "swift-documentation",
+                    destinationFilename: Shared.Constants.FileName.swiftDocumentationDatabase,
+                    rowCount: 1500
+                ),
             ]
         )
         #expect(plan.sourcePlans.count == 3)
