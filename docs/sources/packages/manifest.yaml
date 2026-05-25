@@ -1,0 +1,49 @@
+# Swift Packages source manifest.
+# Schema: docs/design/corpus-structure.md §3
+
+sourceId: packages
+displayName: Swift Packages
+description: |
+  Open-source Swift Package Manager packages: GitHub metadata,
+  Package.swift contents, READMEs, and source archives for the
+  ~10k-package curated catalog. Independent of search.db; lives in
+  its own DB (swift-packages.db) so package-search queries don't
+  scan apple-documentation rows.
+
+corpusFolder: packages
+destinationDB: swift-packages
+
+fetcher:
+  kind: github-api
+  options:
+    rootURL: "https://api.github.com/"
+    catalogManifest: "swift-packages-with-stars.json"
+
+indexer:
+  fileGlobs:
+    - "metadata/**/*.json"
+    - "archives/**/*"
+  excludes:
+    - "**/.git/**"
+  extractor: Search.PackagesStrategy
+
+snapshotPolicy:
+  staleAfterDays: 14
+  refetchOn:
+    - schema-bump
+    - explicit-recrawl
+
+searchProperties:
+  searchQuality: 0.75
+  intentDefault: reference
+  rankWeight: 0.7
+
+capabilities:
+  searchers:
+    - text
+    - package-search
+  operations:
+    - read-by-uri
+  metadata:
+    hasMinSwiftVersion: true
+    hasPackageMetadata: true

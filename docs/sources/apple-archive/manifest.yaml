@@ -1,0 +1,43 @@
+# Apple Archive (legacy programming guides) source manifest.
+# Schema: docs/design/corpus-structure.md §3
+
+sourceId: apple-archive
+displayName: Apple Archive (Legacy)
+description: |
+  Apple's archived legacy programming guides (pre-DocC reference
+  material that's still useful for foundational topics not yet
+  reproduced in apple-docs).
+
+corpusFolder: archive
+destinationDB: apple-archive
+
+fetcher:
+  kind: http-archive
+  options:
+    rootURL: "https://developer.apple.com/library/archive/"
+    requestDelaySeconds: "0.1"
+
+indexer:
+  fileGlobs:
+    - "**/*.html"
+    - "**/*.json"
+  extractor: Search.AppleArchiveStrategy
+
+snapshotPolicy:
+  staleAfterDays: 365
+  refetchOn:
+    - schema-bump
+
+searchProperties:
+  searchQuality: 0.6
+  intentDefault: reference
+  rankWeight: 0.6
+
+capabilities:
+  searchers:
+    - text
+  operations:
+    - read-by-uri
+  metadata:
+    hasMinPlatformVersion: true
+    hasFrameworkColumn: true

@@ -1,0 +1,47 @@
+# Human Interface Guidelines source manifest.
+# Schema: docs/design/corpus-structure.md §3
+
+sourceId: hig
+displayName: Human Interface Guidelines
+description: |
+  Apple's design guidelines for native UI on every Apple platform.
+  Initialism kept per the agreed naming (HIG is industry-standard;
+  spelled-out form does not add discoverability).
+
+corpusFolder: hig
+destinationDB: hig
+
+fetcher:
+  kind: apple-docs-api
+  options:
+    rootURL: "https://developer.apple.com/design/human-interface-guidelines/"
+    requestDelaySeconds: "0.05"
+
+indexer:
+  fileGlobs:
+    - "**/*.json"
+  excludes:
+    - "**/_metadata.json"
+  extractor: Search.HIGStrategy
+
+snapshotPolicy:
+  staleAfterDays: 60
+  refetchOn:
+    - schema-bump
+
+searchProperties:
+  searchQuality: 0.9
+  intentDefault: conceptual
+  rankWeight: 0.9
+
+capabilities:
+  searchers:
+    - text
+  operations:
+    - read-by-uri
+    - list-frameworks
+  metadata:
+    hasMinPlatformVersion: true
+    hasDeprecationAttrs: true
+    hasAvailabilityAttrs: true
+    hasFrameworkColumn: true

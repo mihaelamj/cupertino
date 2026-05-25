@@ -1,0 +1,61 @@
+# Swift.org documentation source manifest.
+# Schema: docs/design/corpus-structure.md §3
+#
+# This source is the HOST for the swift-book view-source: at index time
+# SwiftOrgStrategy emits rows for BOTH source-ids by inspecting the
+# file-system path under the corpus folder (see Search.StrategyHelpers
+# .extractFrameworkFromPath). Rows are tagged with the first path
+# component, which today is either "swift-org" or "swift-book". The
+# `viewSources` block below declares the companion source-id; the
+# SwiftBookSource SourceProvider registers separately in
+# CLIImpl.makeProductionSourceRegistry() with a noop strategy
+# (SwiftBookViewSourceStrategy reports wasSkipped: true so the
+# per-source log doesn't imply a failed indexing attempt).
+
+sourceId: swift-org
+displayName: Swift.org
+description: |
+  Swift.org documentation tree (swift.org/documentation/*), including
+  the Swift Programming Language book co-located via the view-source
+  pattern. See Shared.Models.DatabaseDescriptor.swiftDocumentation for
+  the write-time mechanism.
+
+corpusFolder: swift-org
+destinationDB: swift-documentation
+
+fetcher:
+  kind: git-clone
+  options:
+    repo: "https://github.com/swiftlang/swift-org-website"
+    branch: "main"
+
+indexer:
+  fileGlobs:
+    - "swift-org/**/*"
+    - "swift-book/**/*"
+  extractor: Search.SwiftOrgStrategy
+
+viewSources:
+  - id: swift-book
+    urlPrefix: "https://docs.swift.org/swift-book/"
+
+snapshotPolicy:
+  staleAfterDays: 30
+  refetchOn:
+    - schema-bump
+
+searchProperties:
+  searchQuality: 0.95
+  intentDefault: reference
+  rankWeight: 0.95
+
+capabilities:
+  searchers:
+    - text
+    - symbols
+    - generics
+  operations:
+    - read-by-uri
+  metadata:
+    hasGenerics: true
+    hasAvailabilityAttrs: true

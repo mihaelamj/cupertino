@@ -1,0 +1,42 @@
+# Swift Evolution proposals source manifest.
+# Schema: docs/design/corpus-structure.md §3
+
+sourceId: swift-evolution
+displayName: Swift Evolution
+description: |
+  Swift Evolution proposals (SE-NNNN markdown documents) tracking
+  language changes proposed and accepted into the Swift toolchain.
+
+corpusFolder: swift-evolution
+destinationDB: swift-evolution
+
+fetcher:
+  kind: git-clone
+  options:
+    repo: "https://github.com/swiftlang/swift-evolution"
+    branch: "main"
+
+indexer:
+  fileGlobs:
+    - "proposals/**/*.md"
+  extractor: Search.SwiftEvolutionStrategy
+
+snapshotPolicy:
+  staleAfterDays: 14
+  refetchOn:
+    - schema-bump
+    - explicit-recrawl
+
+searchProperties:
+  searchQuality: 0.85
+  intentDefault: reference
+  rankWeight: 0.8
+
+capabilities:
+  searchers:
+    - text
+  operations:
+    - read-by-uri
+  metadata:
+    hasMinSwiftVersion: true
+    hasProposalNumber: true

@@ -135,6 +135,15 @@ jobs:
         timeout-minutes: 2
         run: ./scripts/check-import-contract-coverage.sh
 
+      - name: Install yq (required by check-source-manifests.sh)
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Run check-source-manifests.sh
+        timeout-minutes: 2
+        run: ./scripts/check-source-manifests.sh
+
   portability:
     name: Standalone-portability proof
     runs-on: macos-15

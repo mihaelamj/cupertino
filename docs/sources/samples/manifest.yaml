@@ -1,0 +1,59 @@
+# Apple Sample Code source manifest.
+# Schema: docs/design/corpus-structure.md §3
+#
+# Naming note: this source's definition.id is "samples" (matching
+# Shared.Constants.SourcePrefix.samples), but rows are emitted by
+# SampleCodeStrategy with source = "sample-code" (a hardcoded literal
+# at SampleCodeStrategy.source). The "samples" / "sample-code"
+# divergence is intentional historical legacy and is fully documented
+# in the per-source identifier-discipline block at
+# Shared.Models.DatabaseDescriptor.swift.
+
+sourceId: samples
+displayName: Sample Code
+description: |
+  Apple sample code projects fetched from GitHub (developer-apple
+  organisation + curated archive bundles). Rich per-file index lives
+  in apple-sample-code.db; the post-#161 search.db rows reference
+  the per-file detail via the URI scheme.
+
+corpusFolder: sample-code
+destinationDB: apple-sample-code
+
+fetcher:
+  kind: github-api
+  options:
+    organization: "developer-apple"
+    rootURL: "https://developer.apple.com/sample-code/"
+
+indexer:
+  fileGlobs:
+    - "**/Package.swift"
+    - "**/*.swift"
+    - "**/Info.plist"
+  excludes:
+    - "**/.build/**"
+    - "**/DerivedData/**"
+  extractor: Search.SampleCodeStrategy
+
+snapshotPolicy:
+  staleAfterDays: 60
+  refetchOn:
+    - schema-bump
+    - explicit-recrawl
+
+searchProperties:
+  searchQuality: 0.7
+  intentDefault: sample
+  rankWeight: 0.7
+
+capabilities:
+  searchers:
+    - text
+    - sample-files
+  operations:
+    - read-by-uri
+    - list-samples
+  metadata:
+    hasMinPlatformVersion: true
+    hasSampleCode: true
