@@ -189,7 +189,13 @@ struct ConstantsAuditTests {
             "hig": "hig.db",
             "apple-archive": "apple-archive.db",
             "swift-evolution": "swift-evolution.db",
+            // Pre-#1038 view-source descriptor (kept for migration
+            // detection of legacy bundles).
             "swift-documentation": "swift-documentation.db",
+            // Post #1038 ("diff db for each source"): swift-org and
+            // swift-book each own their own DB.
+            "swift-org": "swift-org.db",
+            "swift-book": "swift-book.db",
             "apple-sample-code": "apple-sample-code.db",
             "swift-packages": "swift-packages.db",
             "search": "search.db",

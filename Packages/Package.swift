@@ -595,6 +595,7 @@ let targets: [Target] = {
     let searchStrategyHelpersTarget = Target.target(
         name: "SearchStrategyHelpers",
         dependencies: [
+            "LoggingModels",
             "SearchModels",
             "SharedConstants",
         ]

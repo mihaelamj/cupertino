@@ -22,25 +22,28 @@ import Testing
 
 @Suite("Step 5b: production registry grouping shape (the dispatcher's input)")
 struct Step5PerDBFanOutShapeTests {
-    @Test("Production registry groupedByDestinationDB(excluding: [.packages]) yields the expected 6 groups")
+    @Test("Production registry groupedByDestinationDB(excluding: [.packages]) yields the expected 7 groups")
     func productionGroupingShape() {
         let registry = CLIImpl.makeProductionSourceRegistry()
         let groups = registry.groupedByDestinationDB(excluding: [.packages])
-        // 6 distinct destinationDBs across the 7 search-style sources
-        // (swift-org + swift-book co-located in .swiftDocumentation).
-        // SampleCodeSource lives at .appleSampleCode (one DB shared
-        // with the Sample.Index.Builder rich-schema pipeline; two table
-        // tracks in one file).
-        #expect(groups.count == 6, "expected 6 groups; got \(groups.count): \(groups.keys.map(\.id).sorted())")
+        // Post #1038 ("diff db for each source"), swift-org and
+        // swift-book each own their own DB; the 7 search-style
+        // sources fan out into 7 distinct destinationDBs.
+        // SampleCodeSource still lives at .appleSampleCode (one DB
+        // shared with the Sample.Index.Builder rich-schema pipeline;
+        // two table tracks in one file per #1037).
+        #expect(groups.count == 7, "expected 7 groups; got \(groups.count): \(groups.keys.map(\.id).sorted())")
         #expect(groups[.appleDocumentation]?.count == 1, "AppleDocsSource alone")
         #expect(groups[.hig]?.count == 1, "HIGSource alone")
         #expect(groups[.appleArchive]?.count == 1, "AppleArchiveSource alone")
         #expect(groups[.swiftEvolution]?.count == 1, "SwiftEvolutionSource alone")
-        #expect(groups[.swiftDocumentation]?.count == 2, "swift-org + swift-book co-located")
+        #expect(groups[.swiftOrg]?.count == 1, "SwiftOrgSource alone post #1038 (was co-located with swift-book)")
+        #expect(groups[.swiftBook]?.count == 1, "SwiftBookSource alone post #1038 (was view-source under swiftDocumentation)")
         #expect(
             groups[.appleSampleCode]?.count == 1,
             "SampleCodeSource at .appleSampleCode (sharing samples.db with Sample.Index.Builder)"
         )
+        #expect(groups[.swiftDocumentation] == nil, "post #1038 no provider targets the legacy .swiftDocumentation descriptor")
         #expect(groups[.search] == nil, "post step-7a flip, no provider is at .search")
         #expect(groups[.packages] == nil, "PackagesSource is filtered out by excluding: [.packages]")
     }
@@ -55,8 +58,9 @@ struct Step5PerDBFanOutShapeTests {
             "apple-documentation",
             "apple-sample-code",
             "hig",
-            "swift-documentation",
+            "swift-book",
             "swift-evolution",
+            "swift-org",
         ], "alphabetical-by-id order makes the per-DB fan-out reproducible across runs")
     }
 
@@ -77,8 +81,12 @@ struct Step5PerDBFanOutShapeTests {
         let evolution = groups[.swiftEvolution]?.map(\.definition.id) ?? []
         #expect(evolution == ["swift-evolution"])
 
-        let swiftDoc = Set(groups[.swiftDocumentation]?.map(\.definition.id) ?? [])
-        #expect(swiftDoc == ["swift-org", "swift-book"], "swift-org + swift-book co-located via view-source pattern")
+        // Post #1038: each sub-source owns its own group.
+        let swiftOrg = groups[.swiftOrg]?.map(\.definition.id) ?? []
+        #expect(swiftOrg == ["swift-org"])
+
+        let swiftBook = groups[.swiftBook]?.map(\.definition.id) ?? []
+        #expect(swiftBook == ["swift-book"])
 
         let samples = groups[.appleSampleCode]?.map(\.definition.id) ?? []
         #expect(samples == ["samples"], "SampleCodeSource (definition.id 'samples') alone at .appleSampleCode (one-DB collapse)")

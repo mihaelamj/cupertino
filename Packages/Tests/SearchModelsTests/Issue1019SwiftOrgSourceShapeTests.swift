@@ -39,10 +39,17 @@ struct Issue1019SwiftOrgSourceShapeTests {
         #expect(indexer.displayName == "Swift.org")
     }
 
-    @Test("SwiftOrgSource.destinationDB == .swiftDocumentation (post step 4; host of swift-book view-source)")
+    @Test("SwiftOrgSource.destinationDB == .swiftOrg (post #1038 'diff db for each source'; swift-org owns swift-org.db)")
     func destinationDBExplicit() {
+        // Pre-#1038 SwiftOrgSource was the view-source host for
+        // swift-book and wrote to `.swiftDocumentation`
+        // (`swift-documentation.db`). Post-#1038 each sub-source owns
+        // its own DB; SwiftOrgSource writes to `swift-org.db` via its
+        // strategy's `.swiftOrgOnly` scope filter on the shared
+        // `Search.StrategyHelpers.crawlSwiftDocumentation` helper.
         let provider = SwiftOrgSource()
-        #expect(provider.destinationDB == .swiftDocumentation)
-        #expect(provider.destinationDB.id == "swift-documentation")
+        #expect(provider.destinationDB == .swiftOrg)
+        #expect(provider.destinationDB.id == "swift-org")
+        #expect(provider.destinationDB.filename == "swift-org.db")
     }
 }

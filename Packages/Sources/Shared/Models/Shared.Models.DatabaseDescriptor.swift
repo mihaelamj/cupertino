@@ -159,6 +159,30 @@ extension Shared.Models {
             displayName: "Swift Evolution"
         )
 
+        /// Swift.org. Holds only `swift-org`-tagged rows (post #1038).
+        /// `SwiftOrgSource.destinationDB` returns this descriptor;
+        /// per-page filter via `Search.StrategyHelpers.crawlSwiftDocumentation(
+        /// scope: .swiftOrgOnly)`. Pre-#1038 this content lived in
+        /// `.swiftDocumentation` (view-source co-located with swift-book).
+        public static let swiftOrg: DatabaseDescriptor = .init(
+            id: "swift-org",
+            filename: Shared.Constants.FileName.swiftOrgDatabase,
+            displayName: "Swift.org"
+        )
+
+        /// Swift Book. Holds only `swift-book`-tagged rows (post #1038).
+        /// `SwiftBookSource.destinationDB` returns this descriptor;
+        /// per-page filter via `Search.StrategyHelpers.crawlSwiftDocumentation(
+        /// scope: .swiftBookOnly)`. Each source target owns its own
+        /// `Search.SourceIndexingStrategy` concrete; neither source
+        /// imports the other, per
+        /// `mihaela-agents/Rules/swift/per-package-import-contract.md`.
+        public static let swiftBook: DatabaseDescriptor = .init(
+            id: "swift-book",
+            filename: Shared.Constants.FileName.swiftBookDatabase,
+            displayName: "Swift Book"
+        )
+
         /// Swift documentation. Co-locates swift-org + swift-book rows in
         /// one DB. Write-time mechanism (post-#1029 view-source pattern, see
         /// `docs/design/corpus-structure.md` §3.5.5): `SwiftOrgStrategy`
@@ -243,6 +267,8 @@ extension Shared.Models {
             .appleArchive,
             .swiftEvolution,
             .swiftDocumentation,
+            .swiftOrg,
+            .swiftBook,
             .appleSampleCode,
             .swiftPackages,
         ]

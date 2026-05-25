@@ -209,7 +209,12 @@ struct PluggabilityInvariantTests {
         // Sanity: existing sources still group as expected post step 4.
         #expect(grouped[.packages]?.count == 1)
         #expect(grouped[.appleDocumentation]?.count == 1)
-        #expect(grouped[.swiftDocumentation]?.count == 2, "swift-org + swift-book co-located via view-source")
+        // Post #1038 ("diff db for each source"), swift-org and
+        // swift-book each own their own DB; the pre-#1038 view-source
+        // co-location in .swiftDocumentation is gone.
+        #expect(grouped[.swiftOrg]?.count == 1, "SwiftOrgSource alone post #1038")
+        #expect(grouped[.swiftBook]?.count == 1, "SwiftBookSource alone post #1038")
+        #expect(grouped[.swiftDocumentation] == nil, "post #1038 no provider targets the legacy .swiftDocumentation descriptor")
         #expect(
             grouped[.appleSampleCode]?.count == 1,
             "SampleCodeSource at .appleSampleCode (one-DB collapse: shares samples.db with Sample.Index.Builder)"

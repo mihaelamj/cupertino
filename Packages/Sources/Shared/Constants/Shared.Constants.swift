@@ -127,11 +127,34 @@ extension Shared.Constants {
         /// Swift Evolution proposals database (splits from search.db).
         public static let swiftEvolutionDatabase = "swift-evolution.db"
 
-        /// Swift documentation database (splits from search.db). Co-locates
-        /// swift-org + swift-book rows via the SwiftOrgStrategy path-based
-        /// view-source pattern; rows are tagged with the first path
-        /// component under the strategy's base directory.
+        /// Swift documentation database. Pre-#1038 this was the
+        /// view-source destination where SwiftOrgStrategy emitted BOTH
+        /// swift-org and swift-book pages from a single crawl. Post-#1038
+        /// the two sub-sources have their own dedicated DBs
+        /// (`swiftOrgDatabase` + `swiftBookDatabase`); this constant
+        /// stays as a legacy migration-detection target for users on
+        /// pre-#1038 bundles that still ship swift-documentation.db.
         public static let swiftDocumentationDatabase = "swift-documentation.db"
+
+        /// Swift.org database (post #1038 "diff db for each source"
+        /// follow-up). Holds only `swift-org`-tagged rows; swift-book
+        /// pages from the same crawl land in `swiftBookDatabase`.
+        /// `SwiftOrgSource.destinationDB` returns the matching
+        /// descriptor; `Search.SwiftOrgStrategy` filters per-page
+        /// emission via `Search.StrategyHelpers.crawlSwiftDocumentation(...)`
+        /// with `scope: .swiftOrgOnly`.
+        public static let swiftOrgDatabase = "swift-org.db"
+
+        /// Swift Book database (post #1038). Holds only
+        /// `swift-book`-tagged rows; swift-org pages land in
+        /// `swiftOrgDatabase`. `SwiftBookSource.destinationDB` returns
+        /// the matching descriptor; `Search.SwiftBookStrategy` filters
+        /// per-page emission via the shared crawl helper with
+        /// `scope: .swiftBookOnly`. Pre-#1038 SwiftBookSource was a
+        /// view-source; the dedicated DB + thin Strategy concrete
+        /// shape was settled 2026-05-26 per the GoF + pluggability
+        /// directives in #1038.
+        public static let swiftBookDatabase = "swift-book.db"
 
         /// Apple sample code database. One on-disk file holding both
         /// the `Sample.Index.Builder` rich schema (projects + files +

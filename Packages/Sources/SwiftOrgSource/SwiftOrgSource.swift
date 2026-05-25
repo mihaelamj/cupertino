@@ -13,7 +13,14 @@ public struct SwiftOrgSource: Search.SourceProvider {
 
     public var fetchInfo: Search.FetchInfo? { Self.fetchInfo }
 
-    public var destinationDB: Shared.Models.DatabaseDescriptor { .swiftDocumentation }
+    /// Post #1038: swift-org gets its own dedicated DB
+    /// (`swift-org.db`) rather than the pre-#1038 view-source
+    /// co-location in `swift-documentation.db` with swift-book.
+    /// Per-page emission filtering lives in
+    /// `Search.SwiftOrgStrategy.indexItems` which calls the shared
+    /// `Search.StrategyHelpers.crawlSwiftDocumentation` helper with
+    /// `scope: .swiftOrgOnly`.
+    public var destinationDB: Shared.Models.DatabaseDescriptor { .swiftOrg }
 
     public var capabilities: Search.Capabilities {
         .init(

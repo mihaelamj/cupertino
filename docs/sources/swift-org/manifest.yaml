@@ -1,27 +1,25 @@
 # Swift.org documentation source manifest.
 # Schema: docs/design/corpus-structure.md §3
 #
-# This source is the HOST for the swift-book view-source: at index time
-# SwiftOrgStrategy emits rows for BOTH source-ids by inspecting the
-# file-system path under the corpus folder (see Search.StrategyHelpers
-# .extractFrameworkFromPath). Rows are tagged with the first path
-# component, which today is either "swift-org" or "swift-book". The
-# `viewSources` block below declares the companion source-id; the
-# SwiftBookSource SourceProvider registers separately in
-# CLIImpl.makeProductionSourceRegistry() with a noop strategy
-# (SwiftBookViewSourceStrategy reports wasSkipped: true so the
-# per-source log doesn't imply a failed indexing attempt).
+# Post #1038 ("diff db for each source"): swift-org and swift-book each
+# own their own DB. SwiftOrgStrategy filters per-page emission via the
+# shared Search.StrategyHelpers.crawlSwiftDocumentation helper with
+# scope=.swiftOrgOnly so only pages whose URL-prefix tag is "swift-org"
+# land in swift-org.db. Swift-book pages are emitted by
+# Search.SwiftBookStrategy (lives in the SwiftBookSource target, calls
+# the same shared helper with scope=.swiftBookOnly into swift-book.db).
+# Pre-#1038 swift-book was a view-source companion sharing
+# swift-documentation.db with swift-org; see docs/sources/swift-book/.
 
 sourceId: swift-org
 displayName: Swift.org
 description: |
-  Swift.org documentation tree (swift.org/documentation/*), including
-  the Swift Programming Language book co-located via the view-source
-  pattern. See Shared.Models.DatabaseDescriptor.swiftDocumentation for
-  the write-time mechanism.
+  Swift.org documentation tree (swift.org/documentation/*). Post #1038
+  swift-org rows write to swift-org.db; the Swift Programming Language
+  book is its own source/DB (see docs/sources/swift-book/manifest.yaml).
 
 corpusFolder: swift-org
-destinationDB: swift-documentation
+destinationDB: swift-org
 
 fetcher:
   kind: web-crawl
@@ -32,12 +30,7 @@ fetcher:
 indexer:
   fileGlobs:
     - "swift-org/**/*"
-    - "swift-book/**/*"
   extractor: Search.SwiftOrgStrategy
-
-viewSources:
-  - id: swift-book
-    urlPrefix: "https://docs.swift.org/swift-book/"
 
 snapshotPolicy:
   staleAfterDays: 30

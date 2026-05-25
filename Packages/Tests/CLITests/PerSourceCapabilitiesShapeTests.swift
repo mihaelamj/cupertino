@@ -83,12 +83,17 @@ struct PerSourceCapabilitiesShapeTests {
         #expect(capabilities.metadata[.hasAvailabilityAttrs] == true)
     }
 
-    @Test("swift-book: empty capabilities (view-source; swift-org carries the matrix for swift-documentation.db)")
+    @Test("swift-book: text searcher + readByURI + hasAvailabilityAttrs (post #1038; swift-book owns its own DB with active capabilities)")
     func swiftBookCapabilities() {
+        // Pre-#1038 swift-book was a view-source with empty
+        // capabilities (matrix lived on SwiftOrgSource). Post-#1038
+        // swift-book owns its own DB (swift-book.db) and its own
+        // active strategy; its capability matrix is the Book's
+        // universal-text + readByURI subset of swift-org's.
         let capabilities = provider(forSourceId: Shared.Constants.SourcePrefix.swiftBook).capabilities
-        #expect(capabilities.searchers.isEmpty, "swift-book is a view-source; capabilities live on the host SwiftOrgSource")
-        #expect(capabilities.operations.isEmpty)
-        #expect(capabilities.metadata.isEmpty)
+        #expect(capabilities.searchers == [.text])
+        #expect(capabilities.operations == [.readByURI])
+        #expect(capabilities.metadata[.hasAvailabilityAttrs] == true)
     }
 
     @Test("samples: sample-files searcher + list-samples operation + hasSampleCode flag")

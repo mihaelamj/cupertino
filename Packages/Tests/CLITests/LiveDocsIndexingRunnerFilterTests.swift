@@ -52,13 +52,16 @@ struct LiveDocsIndexingRunnerFilterTests {
     @Test("nil selectedSourceIDs builds every docs-bucket destination (pre-#1037 bucket-level default)")
     func nilFilterBuildsAll() {
         let destinations = filterGroups(selectedSourceIDs: nil)
+        // Post #1038, swift-org and swift-book are separate
+        // destinations (no more view-source co-location).
         #expect(destinations == [
             "apple-archive",
             "apple-documentation",
             "apple-sample-code",
             "hig",
-            "swift-documentation",
+            "swift-book",
             "swift-evolution",
+            "swift-org",
         ])
     }
 
@@ -96,31 +99,34 @@ struct LiveDocsIndexingRunnerFilterTests {
         #expect(destinations == ["apple-sample-code"])
     }
 
-    // MARK: - View-source co-location
+    // MARK: - Swift-org / Swift-Book separation (#1038)
 
-    @Test("--source swift-org pulls swift-book (view-source: both share swift-documentation.db)")
-    func swiftOrgPullsSwiftBook() {
-        // User directive 2026-05-25: "swift-org pulls swift-book
-        // (one DB, one unit)". The filter selects DESTINATIONS, not
-        // individual providers, so picking either id includes both
-        // in the same group.
+    @Test("--source swift-org narrows to swift-org.db only (no longer pulls swift-book)")
+    func swiftOrgAlone() {
+        // Pre-#1038 view-source: --source swift-org pulled swift-book
+        // because they shared swift-documentation.db. Post-#1038
+        // ("diff db for each source"), each has its own DB.
+        // SwiftOrgStrategy walks the shared corpus directory but its
+        // per-page emission is filtered to `.swiftOrgOnly` via the
+        // shared crawl helper; swift-book pages land in swift-book.db
+        // via SwiftBookStrategy's separate invocation.
         let destinations = filterGroups(selectedSourceIDs: [Shared.Constants.SourcePrefix.swiftOrg])
-        #expect(destinations == ["swift-documentation"])
+        #expect(destinations == ["swift-org"])
     }
 
-    @Test("--source swift-book pulls swift-org (reverse direction of the view-source pair)")
-    func swiftBookPullsSwiftOrg() {
+    @Test("--source swift-book narrows to swift-book.db only (no longer pulls swift-org)")
+    func swiftBookAlone() {
         let destinations = filterGroups(selectedSourceIDs: [Shared.Constants.SourcePrefix.swiftBook])
-        #expect(destinations == ["swift-documentation"])
+        #expect(destinations == ["swift-book"])
     }
 
-    @Test("--source swift-org AND --source swift-book collapses to one destination (deduped via Set)")
-    func swiftOrgAndSwiftBookOneGroup() {
+    @Test("--source swift-org AND --source swift-book builds BOTH destinations (post #1038 each owns its own DB)")
+    func swiftOrgAndSwiftBookBothGroups() {
         let destinations = filterGroups(selectedSourceIDs: [
             Shared.Constants.SourcePrefix.swiftOrg,
             Shared.Constants.SourcePrefix.swiftBook,
         ])
-        #expect(destinations == ["swift-documentation"])
+        #expect(destinations == ["swift-org", "swift-book"])
     }
 
     // MARK: - Multi-source
