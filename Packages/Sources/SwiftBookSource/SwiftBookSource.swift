@@ -66,6 +66,18 @@ private struct SwiftBookViewSourceStrategy: Search.SourceIndexingStrategy {
         into _: any Search.Database & Search.IndexWriter,
         progress _: (any Search.IndexingProgressReporting)?
     ) async throws -> Search.IndexStats {
-        Search.IndexStats(source: source, indexed: 0, skipped: 0)
+        // Report wasSkipped so IndexBuilder's per-source breakdown log
+        // emits `[swift-book] skipped (view-source; ...)` instead of
+        // the misleading `[swift-book] indexed: 0, skipped: 0` (the
+        // #671 anti-pattern of implying a failed indexing attempt
+        // when nothing was attempted). Real swift-book rows are
+        // emitted by Search.SwiftOrgStrategy via URL-prefix tagging.
+        Search.IndexStats(
+            source: source,
+            indexed: 0,
+            skipped: 0,
+            wasSkipped: true,
+            skipReason: "view-source; rows emitted by Search.SwiftOrgStrategy"
+        )
     }
 }
