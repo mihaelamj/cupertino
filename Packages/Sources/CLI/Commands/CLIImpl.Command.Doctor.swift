@@ -237,18 +237,33 @@ extension CLIImpl.Command {
             Cupertino.Context.composition.logging.recording.output("")
             // Path-DI composition sub-root (#535).
             let paths = Shared.Paths.live()
-            // #1037: the sample-code DB descriptor flipped to
-            // `.appleSampleCode` and the Sample.Index pipeline no
-            // longer writes `PRAGMA user_version`. The descriptor label
-            // displayed here therefore says "apple-sample-code.db"
-            // (the actual on-disk filename) and we read the version
-            // from the per-pipeline `samples_schema_version` table via
-            // `Diagnostics.Probes.samplesSchemaVersion(at:)` instead of
-            // the PRAGMA probe used for the other DBs.
+            // Per-source DB sections (post-#1037 split + #1038
+            // swift-org/swift-book separation). Each descriptor's
+            // filename is the on-disk path under the base directory;
+            // the legacy `.search` descriptor (pre-#1037 monolithic
+            // search.db) is kept for transition-period visibility but
+            // post-migration users see "not built" for it once the
+            // per-source DBs are populated.
+            //
+            // `.appleSampleCode` uses the per-pipeline
+            // `samples_schema_version` table probe instead of PRAGMA
+            // user_version (post-#1037 the Sample.Index pipeline does
+            // not stamp the PRAGMA so it can coexist with Search.Index
+            // tables in the same file).
+            //
+            // Adding a new per-source DB: append one entry below. The
+            // loop is otherwise descriptor-agnostic.
+            let docsBase = paths.baseDirectory
             let entries: [(Shared.Models.DatabaseDescriptor, URL)] = [
                 (.search, URL(fileURLWithPath: searchDB).expandingTildeInPath),
+                (.appleDocumentation, docsBase.appendingPathComponent(Shared.Models.DatabaseDescriptor.appleDocumentation.filename)),
+                (.hig, docsBase.appendingPathComponent(Shared.Models.DatabaseDescriptor.hig.filename)),
+                (.appleArchive, docsBase.appendingPathComponent(Shared.Models.DatabaseDescriptor.appleArchive.filename)),
+                (.swiftEvolution, docsBase.appendingPathComponent(Shared.Models.DatabaseDescriptor.swiftEvolution.filename)),
+                (.swiftOrg, docsBase.appendingPathComponent(Shared.Models.DatabaseDescriptor.swiftOrg.filename)),
+                (.swiftBook, docsBase.appendingPathComponent(Shared.Models.DatabaseDescriptor.swiftBook.filename)),
                 (.packages, paths.packagesDatabase),
-                (.appleSampleCode, Sample.Index.databasePath(baseDirectory: paths.baseDirectory)),
+                (.appleSampleCode, Sample.Index.databasePath(baseDirectory: docsBase)),
             ]
             for (descriptor, url) in entries {
                 let label = descriptor.filename
