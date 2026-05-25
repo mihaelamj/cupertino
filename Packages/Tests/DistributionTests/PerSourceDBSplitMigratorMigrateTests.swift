@@ -207,6 +207,64 @@ struct PerSourceDBSplitMigratorMigrateTests {
         #expect(FileManager.default.fileExists(atPath: renamed.path))
     }
 
+    @Test("View-source pattern: two source-ids sharing one destinationDB get ONE writer call, both sources' rows preserved")
+    func viewSourceTwoSourceIDsShareOneWriter() async throws {
+        // Load-bearing test for step-6c-ii critic-fix round-1 finding #1.
+        // Pre-fix, migrate() called writerFactory twice for the same
+        // destinationPath (once per source-id); a factory implementation
+        // that cleared the destination file on each call would silently
+        // drop the first source's rows. Post-fix, migrate() groups
+        // source-plans by destinationPath and calls the factory ONCE
+        // per group; multiple sources stream through the same writer.
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let legacy = try touchLegacy(at: dir)
+
+        var registry = Search.SourceRegistry()
+        // Two FakeProviders sharing the same destinationDB (mirrors
+        // the production swift-org + swift-book → .swiftDocumentation
+        // view-source pattern).
+        registry.register(FakeProvider(id: "fake-swift-org", dbDescriptor: .swiftDocumentation))
+        registry.register(FakeProvider(id: "fake-swift-book", dbDescriptor: .swiftDocumentation))
+
+        let reader = FakeLegacyReader(rowsBySource: [
+            "fake-swift-org": [
+                Self.makeRow(uri: "so://1", source: "fake-swift-org"),
+                Self.makeRow(uri: "so://2", source: "fake-swift-org"),
+            ],
+            "fake-swift-book": [
+                Self.makeRow(uri: "sb://1", source: "fake-swift-book"),
+            ],
+        ])
+
+        // Track factory invocations to verify the grouping.
+        final class FactoryCallCounter: @unchecked Sendable {
+            var invocationsByPath: [URL: Int] = [:]
+        }
+        let counter = FactoryCallCounter()
+
+        let outcome = try await Distribution.PerSourceDBSplitMigrator.migrate(
+            legacyFile: legacy,
+            baseDirectory: dir,
+            registry: registry,
+            reader: reader,
+            writerFactory: { destination, path in
+                counter.invocationsByPath[path, default: 0] += 1
+                return FakePerDBWriter(destination: destination, destinationPath: path)
+            }
+        )
+
+        // EXACTLY ONE factory call per destinationPath, regardless of
+        // how many source-ids share it.
+        #expect(counter.invocationsByPath.count == 1, "all sources share one destination → one factory invocation")
+        #expect(counter.invocationsByPath.values.first == 1, "factory called exactly once for the shared destination")
+
+        // Outcome has one SourceResult per source-plan; total rows = 3.
+        #expect(outcome.results.count == 2)
+        #expect(outcome.totalRowsWritten == 3, "both sources' rows preserved (swift-org=2 + swift-book=1)")
+        #expect(outcome.legacyFileRenamed == true)
+    }
+
     @Test("Unknown source-id (not in registry) throws MigrationError.unknownSourceIDs by default")
     func unknownSourceIDThrowsByDefault() async throws {
         let dir = try makeTempDir()

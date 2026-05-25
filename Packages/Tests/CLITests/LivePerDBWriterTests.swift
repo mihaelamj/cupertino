@@ -34,9 +34,7 @@ struct LivePerDBWriterTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         let dbPath = dir.appendingPathComponent("test.db")
 
-        let registry = CLIImpl.makeProductionSourceRegistry()
         let factory = LivePerDBWriterFactory.make(
-            registry: registry,
             logger: LoggingModels.Logging.NoopRecording()
         )
         let writer = try await factory(.hig, dbPath)
@@ -73,7 +71,6 @@ struct LivePerDBWriterTests {
         #expect(FileManager.default.fileExists(atPath: dbPath.path))
 
         let factory = LivePerDBWriterFactory.make(
-            registry: CLIImpl.makeProductionSourceRegistry(),
             logger: LoggingModels.Logging.NoopRecording()
         )
         let writer = try await factory(.hig, dbPath)
@@ -93,6 +90,75 @@ struct LivePerDBWriterTests {
         ))
         let count = try await writer.rowCount()
         #expect(count == 1, "fresh DB after factory clears stale file")
+        await writer.disconnect()
+    }
+
+    @Test("Factory clears WAL companions (-wal/-shm) alongside the .db file")
+    func factoryClearsWALCompanions() async throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let dbPath = dir.appendingPathComponent("with-wal.db")
+        let walPath = URL(fileURLWithPath: dbPath.path + "-wal")
+        let shmPath = URL(fileURLWithPath: dbPath.path + "-shm")
+        try Data("stale db".utf8).write(to: dbPath)
+        try Data("stale wal".utf8).write(to: walPath)
+        try Data("stale shm".utf8).write(to: shmPath)
+
+        let factory = LivePerDBWriterFactory.make(
+            logger: LoggingModels.Logging.NoopRecording()
+        )
+        let writer = try await factory(.hig, dbPath)
+        // Factory removed the stale sidecars before opening Search.Index;
+        // Search.Index then created its own fresh -wal/-shm files (SQLite
+        // WAL mode behavior). Write one row to force a WAL checkpoint;
+        // count must return 1 (which can only happen if the schema
+        // initialised cleanly on a non-corrupted .db).
+        try await writer.write(Distribution.PerSourceDBSplitMigrator.LegacyRow(
+            uri: "hig://wal",
+            source: Shared.Constants.SourcePrefix.hig,
+            framework: "F", title: "T", content: "C",
+            filePath: "/tmp/f", contentHash: "h", lastCrawled: Date()
+        ))
+        let count = try await writer.rowCount()
+        #expect(count == 1, "Search.Index initialised cleanly after stale WAL companions were cleared")
+        await writer.disconnect()
+    }
+
+    @Test("View-source pattern: two source-ids writing to the same destination both land in the final DB")
+    func viewSourceCoLocationPreservesBothSourcesRows() async throws {
+        // Load-bearing test for the step-6c-ii critic-fix round-1
+        // finding #1. Pre-fix, the migrator called the factory twice
+        // for the same destinationPath (once per source-id), and the
+        // factory's file-delete dropped the first source's rows.
+        // Post-fix, the migrator groups by destinationPath + calls the
+        // factory once per group; both source-ids stream through the
+        // same writer. This test exercises the writer directly; the
+        // migrator's grouping is verified separately in
+        // PerSourceDBSplitMigratorMigrateTests.
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let dbPath = dir.appendingPathComponent("co-located.db")
+
+        let factory = LivePerDBWriterFactory.make(
+            logger: LoggingModels.Logging.NoopRecording()
+        )
+        let writer = try await factory(.swiftDocumentation, dbPath)
+
+        try await writer.write(Distribution.PerSourceDBSplitMigrator.LegacyRow(
+            uri: "swift-org://a",
+            source: Shared.Constants.SourcePrefix.swiftOrg,
+            framework: "SwiftOrg", title: "A", content: "swift-org content",
+            filePath: "/tmp/a", contentHash: "a", lastCrawled: Date()
+        ))
+        try await writer.write(Distribution.PerSourceDBSplitMigrator.LegacyRow(
+            uri: "swift-book://b",
+            source: Shared.Constants.SourcePrefix.swiftBook,
+            framework: "SwiftBook", title: "B", content: "swift-book content",
+            filePath: "/tmp/b", contentHash: "b", lastCrawled: Date()
+        ))
+
+        let count = try await writer.rowCount()
+        #expect(count == 2, "swift-org + swift-book rows must both land in swift-documentation.db (view-source co-location)")
         await writer.disconnect()
     }
 

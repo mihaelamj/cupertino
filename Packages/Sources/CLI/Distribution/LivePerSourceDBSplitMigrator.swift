@@ -61,37 +61,49 @@ public actor LivePerDBWriter: Distribution.PerSourceDBSplitMigrator.PerDBWriter 
 /// the migrator runs only when `detect()` returns `.migrationNeeded`,
 /// which by definition means no non-empty split DBs exist yet.
 public enum LivePerDBWriterFactory {
-    /// Build a factory closure bound to the supplied registry +
-    /// logger. The closure constructs a `LivePerDBWriter` per
-    /// destination call; the registry lookup at construction time
-    /// yields the per-destination indexer dict (single entry today,
-    /// since the migrator writes one source's rows per destination).
+    /// Build a factory closure bound to the supplied `logger`. The
+    /// closure constructs a `LivePerDBWriter` per destination call.
+    ///
+    /// **Pre-open cleanup**: deletes any stale file at the destination
+    /// path AND its SQLite WAL companions (`<path>-wal`, `<path>-shm`)
+    /// before opening Search.Index. The companion cleanup is safe
+    /// because the migrator only runs when `detect()` returned
+    /// `.migrationNeeded`, by definition meaning no live writes are
+    /// in flight against these paths.
+    ///
+    /// **Empty indexer dict + sourceLookup**: Search.Index's
+    /// `indexDocument(_:)` (the path the migrator's writer.write
+    /// uses) does NOT consult the indexer dict or sourceLookup;
+    /// those are read-side concerns. The factory passes
+    /// `Search.SourceLookup.empty` and `[:]` rather than building
+    /// dead per-destination subsets. If `indexDocument` ever starts
+    /// reading the indexer dict, the migrator's contract (one writer
+    /// per destination DB, multiple sources may share a destination
+    /// via the view-source pattern) needs revisiting.
     public static func make(
-        registry: Search.SourceRegistry,
         logger: any LoggingModels.Logging.Recording
     ) -> Distribution.PerSourceDBSplitMigrator.PerDBWriterFactory {
-        { destination, destinationPath in
-            // Fresh DB: delete any stale file from a partial prior run.
-            if FileManager.default.fileExists(atPath: destinationPath.path) {
-                try FileManager.default.removeItem(at: destinationPath)
-            }
-            // Look up the provider whose destinationDB matches; build
-            // a single-entry indexer dict keyed by its source-id. The
-            // migrator routes rows whose source-id matches the provider
-            // through this indexer at indexDocument time.
-            let indexers: [String: any Search.SourceIndexer] = registry.allEnabled
-                .filter { $0.destinationDB == destination }
-                .reduce(into: [:]) { dict, provider in
-                    dict[provider.definition.id] = provider.makeIndexer()
+        { _, destinationPath in
+            let pathsToClean = [
+                destinationPath,
+                destinationPath.appendingPathExtension("wal"),
+                destinationPath.appendingPathExtension("shm"),
+                // SQLite also names them <path>-wal / <path>-shm
+                // depending on whether the .db extension was already
+                // present. Cover both forms defensively.
+                URL(fileURLWithPath: destinationPath.path + "-wal"),
+                URL(fileURLWithPath: destinationPath.path + "-shm"),
+            ]
+            for path in pathsToClean {
+                if FileManager.default.fileExists(atPath: path.path) {
+                    try? FileManager.default.removeItem(at: path)
                 }
-            let sourceLookup = Search.SourceLookup(
-                definitions: registry.allEnabled.map(\.definition)
-            )
+            }
             let searchIndex = try await Search.Index(
                 dbPath: destinationPath,
                 logger: logger,
-                indexers: indexers,
-                sourceLookup: sourceLookup
+                indexers: [:],
+                sourceLookup: .empty
             )
             return LivePerDBWriter(searchIndex: searchIndex)
         }

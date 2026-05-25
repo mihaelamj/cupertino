@@ -310,46 +310,83 @@ extension Distribution {
                 legacySourceIDRowCounts: knownCounts
             )
 
-            // 4. For each source, open the destination writer, copy
-            // rows, verify count, close writer.
+            // 4. Group source plans by destination DB path. This is
+            // load-bearing for the view-source pattern: two source-ids
+            // (swift-org + swift-book) share the swift-documentation.db
+            // destination, so the migrator must open ONE writer for that
+            // path and stream BOTH sources' rows through it. Calling the
+            // factory twice for the same path would let the second call's
+            // factory-side cleanup (file delete, if any) drop the first
+            // source's rows.
+            //
+            // Group keyed by destinationDBPath; preserve source-plan
+            // order within each group via sortedPlans (alphabetical by
+            // sourceID, matching the production grouped-build order).
+            let plansByPath: [URL: [SourcePlan]] = Dictionary(
+                grouping: plan.sourcePlans.sorted { $0.sourceID < $1.sourceID },
+                by: { $0.destinationDBPath }
+            )
+
             var results: [MigrationOutcome.SourceResult] = []
-            for sourcePlan in plan.sourcePlans {
-                guard let provider = registry.entry(for: sourcePlan.sourceID)?.provider else {
+            for (destinationPath, plansForPath) in plansByPath.sorted(by: { $0.key.path < $1.key.path }) {
+                // Resolve the destination descriptor from the first
+                // plan in the group; all plans in the group share it
+                // by construction (same destinationDBPath -> same
+                // descriptor since DatabaseDescriptor.filename is
+                // unique per descriptor).
+                guard let firstPlan = plansForPath.first,
+                      let firstProvider = registry.entry(for: firstPlan.sourceID)?.provider else {
                     continue
                 }
-                let writer = try await writerFactory(provider.destinationDB, sourcePlan.destinationDBPath)
-                var rowsCopied = 0
+                let destination = firstProvider.destinationDB
+
+                let writer = try await writerFactory(destination, destinationPath)
+                var rowsCopiedByPlan: [String: Int] = [:]
                 do {
-                    for try await row in reader.rows(forSourceID: sourcePlan.sourceID) {
-                        try await writer.write(row)
-                        rowsCopied += 1
+                    for sourcePlan in plansForPath {
+                        var rowsCopied = 0
+                        for try await row in reader.rows(forSourceID: sourcePlan.sourceID) {
+                            try await writer.write(row)
+                            rowsCopied += 1
+                        }
+                        rowsCopiedByPlan[sourcePlan.sourceID] = rowsCopied
                     }
                 } catch {
                     await writer.disconnect()
                     throw MigrationError.ioFailure(
-                        sourceID: sourcePlan.sourceID,
+                        sourceID: plansForPath.first?.sourceID,
                         underlying: String(describing: error)
                     )
                 }
 
-                let actualCount = try await writer.rowCount()
+                let totalActualCount = try await writer.rowCount()
                 await writer.disconnect()
 
-                if actualCount != sourcePlan.estimatedRowCount {
+                let totalExpectedCount = plansForPath.reduce(0) { $0 + $1.estimatedRowCount }
+                if totalActualCount != totalExpectedCount {
+                    // Surface as a mismatch on the first source-id of
+                    // the group (the per-group nature is in the
+                    // expected/actual numbers). Caller sees aggregate.
                     throw MigrationError.rowCountMismatch(
-                        sourceID: sourcePlan.sourceID,
-                        expected: sourcePlan.estimatedRowCount,
-                        actual: actualCount
+                        sourceID: plansForPath.first?.sourceID ?? "<unknown>",
+                        expected: totalExpectedCount,
+                        actual: totalActualCount
                     )
                 }
 
-                let bytes = (try? fileManager.attributesOfItem(atPath: sourcePlan.destinationDBPath.path)[.size] as? Int64) ?? 0
-                results.append(MigrationOutcome.SourceResult(
-                    sourceID: sourcePlan.sourceID,
-                    destinationDBPath: sourcePlan.destinationDBPath,
-                    rowsWritten: rowsCopied,
-                    bytesWritten: bytes
-                ))
+                // Emit one SourceResult per plan in the group. The
+                // bytesWritten value is identical across the group's
+                // results because the file is shared.
+                let bytes = (try? fileManager.attributesOfItem(atPath: destinationPath.path)[.size] as? Int64) ?? 0
+                for sourcePlan in plansForPath {
+                    let rowsForThisPlan = rowsCopiedByPlan[sourcePlan.sourceID] ?? 0
+                    results.append(MigrationOutcome.SourceResult(
+                        sourceID: sourcePlan.sourceID,
+                        destinationDBPath: sourcePlan.destinationDBPath,
+                        rowsWritten: rowsForThisPlan,
+                        bytesWritten: bytes
+                    ))
+                }
             }
 
             // 5. Rename the legacy file. Atomic on same volume.
