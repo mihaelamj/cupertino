@@ -81,17 +81,104 @@ extension Sample.Index {
             // first; in both cases we treat it as a fresh-create-our-
             // tables path with no wipe.
             try await openDatabase()
-            if FileManager.default.fileExists(atPath: dbPath.path),
-               try await projectsTableExists(),
-               try await readSchemaVersion() != Self.schemaVersion {
-                disconnect()
-                try? FileManager.default.removeItem(at: dbPath)
-                try await openDatabase()
-            }
+            try await wipeIfStale()
             try await createTables()
             try await migrateUserVersionStampIfNeeded()
             try await setSchemaVersion()
             isInitialized = true
+        }
+
+        /// Decide whether the file on disk represents a stale samples
+        /// schema and wipe-and-rebuild if so. Wipe fires in exactly two
+        /// scenarios:
+        ///
+        ///   1. **`samples_schema_version` table is present and
+        ///      populated**, and its version differs from
+        ///      `Self.schemaVersion` (a genuine post-#1037 schema bump).
+        ///   2. **`samples_schema_version` table is absent**, PRAGMA
+        ///      user_version is non-zero, AND that PRAGMA value differs
+        ///      from `Self.schemaVersion` (the pre-#1037 legacy-upgrade
+        ///      path: user samples.db built by a pre-#1037 binary with
+        ///      `PRAGMA user_version = <old version>` stamped directly).
+        ///
+        /// Wipe is suppressed when:
+        ///   - `projects` table is absent (fresh DB or a shared file
+        ///     Search.Index seeded without samples tables; nothing to
+        ///     wipe).
+        ///   - `samples_schema_version` table exists but is empty (e.g.
+        ///     manual `DELETE FROM samples_schema_version` for debug);
+        ///     the version stamp is unknown, so falling back to PRAGMA
+        ///     could mis-read another pipeline's stamp on a shared file
+        ///     (round-5 critic finding). Restoring the entry happens
+        ///     via the normal `setSchemaVersion()` call after
+        ///     `createTables`.
+        private func wipeIfStale() async throws {
+            guard FileManager.default.fileExists(atPath: dbPath.path),
+                  try await projectsTableExists()
+            else {
+                return
+            }
+            let tablePresence = try await samplesSchemaVersionTablePresence()
+            switch tablePresence {
+            case let .populated(version):
+                if version != Self.schemaVersion {
+                    try await wipeAndReopen()
+                }
+            case .empty:
+                // Empty tracking table: don't wipe (we can't tell the
+                // schema version from PRAGMA on a shared file).
+                return
+            case .absent:
+                let legacyPragma = try await readUserVersion()
+                if legacyPragma > 0, legacyPragma != Self.schemaVersion {
+                    try await wipeAndReopen()
+                }
+            }
+        }
+
+        /// Tri-state shape used by `wipeIfStale` to disambiguate "no
+        /// tracking row" from "tracking table missing entirely".
+        private enum SchemaVersionTablePresence {
+            case populated(Int32)
+            case empty
+            case absent
+        }
+
+        /// Read the presence + value of the `samples_schema_version`
+        /// row. `.populated` if SELECT returned a row; `.empty` if the
+        /// table exists but is empty (SQLITE_DONE); `.absent` if prepare
+        /// failed because the table doesn't exist yet (the pre-#1037
+        /// legacy DB on first post-#1037 open).
+        private func samplesSchemaVersionTablePresence() async throws -> SchemaVersionTablePresence {
+            guard let database else { return .absent }
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            let select = "SELECT version FROM samples_schema_version LIMIT 1"
+            let prepareResult = sqlite3_prepare_v2(database, select, -1, &stmt, nil)
+            guard prepareResult == SQLITE_OK else {
+                // Most common cause: table doesn't exist yet.
+                return .absent
+            }
+            let stepResult = sqlite3_step(stmt)
+            switch stepResult {
+            case SQLITE_ROW:
+                return .populated(sqlite3_column_int(stmt, 0))
+            case SQLITE_DONE:
+                return .empty
+            default:
+                // Transient error (SQLITE_BUSY etc.); treat as empty to
+                // suppress wipe (safer default).
+                return .empty
+            }
+        }
+
+        /// The wipe step itself: disconnect, remove the file, reopen.
+        /// Called only when `wipeIfStale` has confirmed the file is
+        /// stale per the criteria documented there.
+        private func wipeAndReopen() async throws {
+            disconnect()
+            try? FileManager.default.removeItem(at: dbPath)
+            try await openDatabase()
         }
 
         /// Check whether the `projects` table exists in the open DB.
@@ -110,34 +197,11 @@ extension Sample.Index {
             return sqlite3_step(statement) == SQLITE_ROW
         }
 
-        /// Read this pipeline's schema version from the open DB. Reads
-        /// from `samples_schema_version` (post-#1037) if that table
-        /// exists; otherwise falls back to `PRAGMA user_version`
-        /// (pre-#1037 stamping path, kept for backward compatibility
-        /// with user samples.db files built by older binaries). Returns
-        /// `0` when neither is present (fresh DB).
-        private func readSchemaVersion() async throws -> Int32 {
-            guard let database else { return 0 }
-            // Try the new tracking table first.
-            var stmt: OpaquePointer?
-            let select = "SELECT version FROM samples_schema_version LIMIT 1"
-            if sqlite3_prepare_v2(database, select, -1, &stmt, nil) == SQLITE_OK,
-               sqlite3_step(stmt) == SQLITE_ROW {
-                let version = sqlite3_column_int(stmt, 0)
-                sqlite3_finalize(stmt)
-                return version
-            }
-            sqlite3_finalize(stmt)
-            // Fallback: legacy PRAGMA user_version stamp on existing
-            // samples.db files written by pre-#1037 cupertino binaries.
-            // Returns 0 on a fresh DB.
-            return try await readUserVersion()
-        }
-
-        /// Read `PRAGMA user_version`. Kept as a private helper for the
-        /// pre-#1037 legacy-stamp fallback in `readSchemaVersion()` and
-        /// for `migrateUserVersionStampIfNeeded()`'s one-time copy of
-        /// the legacy stamp into `samples_schema_version`. Returns `0`
+        /// Read `PRAGMA user_version`. Used by
+        /// `migrateUserVersionStampIfNeeded` to copy the legacy stamp
+        /// into `samples_schema_version` on first post-#1037 open of a
+        /// pre-#1037 user samples.db, and by `wipeIfStale` to detect
+        /// the `.absent` branch's legacy-mismatch case. Returns `0`
         /// when the DB is freshly created (SQLite's default).
         private func readUserVersion() async throws -> Int32 {
             guard let database else { return 0 }
@@ -175,7 +239,11 @@ extension Sample.Index {
             // Empty new table. Read legacy PRAGMA; if non-zero, copy it.
             let legacyVersion = try await readUserVersion()
             guard legacyVersion > 0 else { return }
-            let sql = "INSERT INTO samples_schema_version (version) VALUES (\(legacyVersion))"
+            // Explicit `id` column for symmetry with `setSchemaVersion()`
+            // and defense against a future schema refactor that adds
+            // `WITHOUT ROWID` or otherwise changes rowid auto-assign
+            // semantics. The CHECK constraint requires id = 1.
+            let sql = "INSERT INTO samples_schema_version (id, version) VALUES (1, \(legacyVersion))"
             guard sqlite3_exec(database, sql, nil, nil, nil) == SQLITE_OK else {
                 let errorMessage = String(cString: sqlite3_errmsg(database))
                 throw Sample.Index.Error.sqliteError(

@@ -236,6 +236,59 @@ struct Issue837SamplesV4MigrationTests {
     /// legacy PRAGMA so the version read returns the correct value
     /// (not 0, which would trigger a spurious wipe-and-rebuild on the
     /// NEXT open if `projects` is present).
+    @Test("#1037: manual `DELETE FROM samples_schema_version` does NOT wipe the projects table (critic round 5 finding #14)")
+    func emptyTrackingTableDoesNotTriggerWipe() async throws {
+        let dir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let path = dir.appendingPathComponent("apple-sample-code.db")
+
+        // First open: creates fresh DB at v4. Seed a sentinel project so
+        // we can detect the wipe.
+        let first = try await Sample.Index.Database(dbPath: path, logger: Logging.NoopRecording())
+        try await first.indexProject(.init(
+            id: "sentinel",
+            title: "Sentinel",
+            description: "Pre-truncation sentinel",
+            frameworks: ["SwiftUI"],
+            readme: nil,
+            webURL: "https://example.test/sentinel",
+            zipFilename: "s.zip",
+            fileCount: 0,
+            totalSize: 0
+        ))
+        await first.disconnect()
+        #expect(try Self.readScalar(at: path, sql: "SELECT COUNT(*) FROM projects;") == "1")
+
+        // Simulate an operator running `DELETE FROM samples_schema_version`
+        // as part of debug recovery. Plus simulate a foreign Search.Index
+        // PRAGMA stamp on the same file (shared-file world) to exercise
+        // the worst case: PRAGMA mismatches schemaVersion.
+        var db: OpaquePointer?
+        try #require(sqlite3_open(path.path, &db) == SQLITE_OK)
+        let trash = """
+        DELETE FROM samples_schema_version;
+        PRAGMA user_version = 18;
+        """
+        try #require(sqlite3_exec(db, trash, nil, nil, nil) == SQLITE_OK)
+        sqlite3_close(db)
+        #expect(try Self.readScalar(at: path, sql: "SELECT COUNT(*) FROM samples_schema_version;") == "0")
+        #expect(try Self.readScalar(at: path, sql: "PRAGMA user_version;") == "18")
+
+        // Reopen with the post-#1037 binary. The wipe MUST NOT fire:
+        // the tracking table is empty (debug action), and falling back
+        // to PRAGMA=18 on a shared file would mis-classify the schema
+        // as stale. The sentinel project must survive.
+        let second = try await Sample.Index.Database(dbPath: path, logger: Logging.NoopRecording())
+        await second.disconnect()
+
+        #expect(
+            try Self.readScalar(at: path, sql: "SELECT COUNT(*) FROM projects;") == "1",
+            "sentinel project must survive: empty tracking table is ambiguous, NOT a wipe trigger"
+        )
+        // setSchemaVersion restored the row at the correct version.
+        #expect(try Self.readScalar(at: path, sql: "SELECT version FROM samples_schema_version LIMIT 1") == "4")
+    }
+
     @Test("#1037: legacy samples.db (user_version=4, no tracking table) migrates seamlessly to samples_schema_version")
     func legacyDBMigratesPragmaIntoTrackingTable() async throws {
         let dir = try Self.makeTempDir()

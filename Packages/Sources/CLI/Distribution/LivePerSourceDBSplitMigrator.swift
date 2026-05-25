@@ -300,23 +300,31 @@ public enum LivePerDBWriterFactory {
                 // database" error instead of the actual cause.
                 try FileManager.default.removeItem(at: destinationPath)
             }
-            // WAL/SHM sidecars: best-effort cleanup in both branches.
-            // For the preserve case any uncommitted WAL data is already
-            // checkpointed (per the .migrationNeeded precondition);
-            // SQLite handles salt-mismatched sidecars by ignoring them
-            // anyway. try? here is intentional asymmetry with the
-            // primary path's try above.
-            let sidecarPaths = [
-                destinationPath.appendingPathExtension("wal"),
-                destinationPath.appendingPathExtension("shm"),
-                // SQLite also names them <path>-wal / <path>-shm
-                // depending on whether the .db extension was already
-                // present. Cover both forms defensively.
-                URL(fileURLWithPath: destinationPath.path + "-wal"),
-                URL(fileURLWithPath: destinationPath.path + "-shm"),
-            ]
-            for path in sidecarPaths where FileManager.default.fileExists(atPath: path.path) {
-                try? FileManager.default.removeItem(at: path)
+            // WAL/SHM sidecars cleanup. In the wipe branch the main
+            // file is already gone, so any companions left behind would
+            // confuse SQLite on the fresh open and must be cleared. In
+            // the PRESERVE branch we must NOT delete the companions:
+            // they might carry un-checkpointed Sample.Index writes from
+            // a prior `cupertino save --samples` that exited before
+            // SQLite auto-checkpointed (the .migrationNeeded
+            // precondition the migrator inherits is about Search.Index,
+            // not Sample.Index; nothing guarantees the WAL is empty
+            // there). Trusting SQLite's own WAL recovery on the next
+            // open preserves any committed-but-uncheckpointed Sample.Index
+            // pages.
+            if !preserveDestination {
+                let sidecarPaths = [
+                    destinationPath.appendingPathExtension("wal"),
+                    destinationPath.appendingPathExtension("shm"),
+                    // SQLite also names them <path>-wal / <path>-shm
+                    // depending on whether the .db extension was already
+                    // present. Cover both forms defensively.
+                    URL(fileURLWithPath: destinationPath.path + "-wal"),
+                    URL(fileURLWithPath: destinationPath.path + "-shm"),
+                ]
+                for path in sidecarPaths where FileManager.default.fileExists(atPath: path.path) {
+                    try? FileManager.default.removeItem(at: path)
+                }
             }
             let searchIndex = try await Search.Index(
                 dbPath: destinationPath,
@@ -330,21 +338,66 @@ public enum LivePerDBWriterFactory {
 
     /// Inspect the destination DB for a `projects` table, the
     /// canonical marker that `Sample.Index.Builder` has written its
-    /// rich schema here. Returns `false` on any failure (file not a
-    /// SQLite DB, can't open, etc.) so the migrator falls through to
-    /// the legacy wipe path. Opens read-only and closes immediately.
+    /// rich schema here.
+    ///
+    /// **Outcomes (defensive default = preserve, but only when there
+    /// is plausibly SQLite data to preserve)**:
+    /// - `SQLITE_ROW` on the sqlite_master query: the `projects` table
+    ///   is present → return `true` (preserve the file).
+    /// - `SQLITE_DONE`: we successfully read sqlite_master and
+    ///   confirmed no `projects` row → return `false` (wipe is safe).
+    /// - prepare or step fails with `SQLITE_NOTADB`: the file is
+    ///   definitively not a SQLite database (e.g. zero-byte stub,
+    ///   stale raw bytes) → return `false` (wipe is safe; there's
+    ///   nothing to preserve).
+    /// - prepare or step fails with `SQLITE_BUSY` / `SQLITE_LOCKED`
+    ///   / `SQLITE_CORRUPT` / `SQLITE_IOERR` / other → return `true`
+    ///   (preserve as the safer default; the file IS a SQLite file
+    ///   but transiently unreadable, so wiping risks destroying real
+    ///   data. Search.Index will surface the actual error to the user
+    ///   when it tries to open the same file itself).
+    /// - `sqlite3_open_v2` fails entirely (path resolution, permission)
+    ///   → return `false` (file can't even be opened; wipe path will
+    ///   surface the same underlying error to the user).
     private static func hasForeignSampleIndexTables(at path: URL) -> Bool {
         var db: OpaquePointer?
         defer { sqlite3_close(db) }
         guard sqlite3_open_v2(path.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+            // Open itself failed. SQLite's sqlite3_open_v2 returns OK
+            // for nearly anything that exists; an outright failure here
+            // is exotic (path resolution / permissions). Fall through
+            // to wipe so the user sees the real error from the next
+            // step, not silently-preserved unreachable state.
             return false
         }
         var stmt: OpaquePointer?
         defer { sqlite3_finalize(stmt) }
         let sql = "SELECT name FROM sqlite_master WHERE type='table' AND name='projects' LIMIT 1"
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-            return false
+        let prepareCode = sqlite3_prepare_v2(db, sql, -1, &stmt, nil)
+        guard prepareCode == SQLITE_OK else {
+            // Prepare failed. Differentiate "not a SQLite file"
+            // (wipe-safe) from transient errors (preserve).
+            switch prepareCode {
+            case SQLITE_NOTADB:
+                return false
+            default:
+                return true
+            }
         }
-        return sqlite3_step(stmt) == SQLITE_ROW
+        let step = sqlite3_step(stmt)
+        switch step {
+        case SQLITE_ROW:
+            return true
+        case SQLITE_DONE:
+            // Confirmed no projects table; wipe is safe.
+            return false
+        case SQLITE_NOTADB:
+            return false
+        default:
+            // SQLITE_BUSY / SQLITE_LOCKED / SQLITE_CORRUPT / SQLITE_IOERR
+            // etc. The query couldn't run to completion; we don't know
+            // what's in the file. Preserve.
+            return true
+        }
     }
 }
