@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import SharedConstants
+
 // MARK: - Database Release Command (search.db + samples.db + packages.db → cupertino-docs)
 
 //
@@ -43,7 +44,15 @@ extension Release.Command {
         var allowMissingPackages: Bool = false
 
         private static let searchDBFilename = Shared.Constants.FileName.searchDatabase
-        private static let samplesDBFilename = Shared.Constants.FileName.samplesDatabase
+        // #1037 part 4: the operator's local sample-code DB is now
+        // `apple-sample-code.db` (Sample.Index.databasePath +
+        // SampleCodeSource.destinationDB.filename both resolve there).
+        // The release bundle MUST ship the file under this name so
+        // `cupertino setup` extractors land it where readers look.
+        // Pre-#1037 ReleaseTool builds packaged `samples.db`; consumers
+        // of those legacy bundles get the filename renamed at setup
+        // time by `CLIImpl.Command.Setup.migrateLegacySamplesDatabaseIfNeeded`.
+        private static let samplesDBFilename = Shared.Constants.FileName.appleSampleCodeDatabase
         private static let packagesDBFilename = Shared.Constants.FileName.packagesIndexDatabase
 
         mutating func run() async throws {
@@ -85,7 +94,7 @@ extension Release.Command {
             let packagesSize = try packagesDBPresent ? (Release.Publishing.fileSize(at: packagesDBURL)) : 0
             Release.Console.info("📊 Database sizes:")
             Release.Console.substep("search.db:   \(Shared.Utils.Formatting.formatBytes(searchSize))")
-            Release.Console.substep("samples.db:  \(Shared.Utils.Formatting.formatBytes(samplesSize))")
+            Release.Console.substep("\(Self.samplesDBFilename):  \(Shared.Utils.Formatting.formatBytes(samplesSize))")
             if packagesDBPresent {
                 Release.Console.substep("packages.db: \(Shared.Utils.Formatting.formatBytes(packagesSize))")
             } else {
@@ -101,7 +110,7 @@ extension Release.Command {
             Release.Console.info("\n💾 Checkpoint-truncating WAL sidecars before bundle...")
             for (label, url) in [
                 ("search.db", searchDBURL),
-                ("samples.db", samplesDBURL),
+                (Self.samplesDBFilename, samplesDBURL),
             ] + (packagesDBPresent ? [("packages.db", packagesDBURL)] : []) {
                 let outcome = try Release.Publishing.checkpointTruncate(at: url)
                 let detail = outcome.walFileExisted

@@ -2,6 +2,7 @@
 import Distribution
 import Foundation
 import LoggingModels
+import SampleIndexModels
 import SearchAPI
 import SearchModels
 import SearchSQLite
@@ -111,5 +112,92 @@ struct SetupMigrationHookTests {
         // No `.legacy-pre-per-source-split` rename happened.
         let renamed = dir.appendingPathComponent("search.db.legacy-pre-per-source-split")
         #expect(!FileManager.default.fileExists(atPath: renamed.path))
+    }
+
+    // MARK: - #1037 part 4: legacy samples.db filename migration
+
+    @Test("#1037: migrateLegacySamplesDatabaseIfNeeded renames samples.db → apple-sample-code.db when only the legacy file exists")
+    func legacySamplesRenamedWhenAloneOnDisk() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let legacyPath = Sample.Index.legacySamplesDatabasePath(baseDirectory: dir)
+        let currentPath = Sample.Index.databasePath(baseDirectory: dir)
+        // Seed a sentinel byte so the rename is observable end-to-end.
+        try Data("legacy-content".utf8).write(to: legacyPath)
+        #expect(FileManager.default.fileExists(atPath: legacyPath.path))
+        #expect(!FileManager.default.fileExists(atPath: currentPath.path))
+
+        CLIImpl.Command.Setup.migrateLegacySamplesDatabaseIfNeeded(
+            baseDirectory: dir,
+            logger: LoggingModels.Logging.NoopRecording()
+        )
+
+        #expect(!FileManager.default.fileExists(atPath: legacyPath.path), "legacy samples.db should be gone after rename")
+        #expect(FileManager.default.fileExists(atPath: currentPath.path), "apple-sample-code.db should now exist")
+        // Content survives the rename (it's a file move, not a copy).
+        let surviving = try String(contentsOf: currentPath, encoding: .utf8)
+        #expect(surviving == "legacy-content")
+    }
+
+    @Test("#1037: helper is a no-op when only apple-sample-code.db exists (fresh post-#1037 install)")
+    func helperNoOpsOnFreshInstall() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let currentPath = Sample.Index.databasePath(baseDirectory: dir)
+        try Data("fresh".utf8).write(to: currentPath)
+
+        CLIImpl.Command.Setup.migrateLegacySamplesDatabaseIfNeeded(
+            baseDirectory: dir,
+            logger: LoggingModels.Logging.NoopRecording()
+        )
+
+        // The new file is untouched.
+        #expect(FileManager.default.fileExists(atPath: currentPath.path))
+        let surviving = try String(contentsOf: currentPath, encoding: .utf8)
+        #expect(surviving == "fresh")
+        // No legacy file got conjured.
+        let legacyPath = Sample.Index.legacySamplesDatabasePath(baseDirectory: dir)
+        #expect(!FileManager.default.fileExists(atPath: legacyPath.path))
+    }
+
+    @Test("#1037: helper warns and leaves both files alone when legacy + current both exist")
+    func bothFilesExistKeepsBoth() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let legacyPath = Sample.Index.legacySamplesDatabasePath(baseDirectory: dir)
+        let currentPath = Sample.Index.databasePath(baseDirectory: dir)
+        try Data("legacy".utf8).write(to: legacyPath)
+        try Data("current".utf8).write(to: currentPath)
+
+        CLIImpl.Command.Setup.migrateLegacySamplesDatabaseIfNeeded(
+            baseDirectory: dir,
+            logger: LoggingModels.Logging.NoopRecording()
+        )
+
+        // Both files survive; the helper does not destroy data.
+        #expect(FileManager.default.fileExists(atPath: legacyPath.path))
+        #expect(FileManager.default.fileExists(atPath: currentPath.path))
+        // Contents unchanged: helper did not silently overwrite.
+        #expect(try String(contentsOf: legacyPath, encoding: .utf8) == "legacy")
+        #expect(try String(contentsOf: currentPath, encoding: .utf8) == "current")
+    }
+
+    @Test("#1037: helper is a no-op when neither file exists")
+    func helperNoOpsWhenNeitherFileExists() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let legacyPath = Sample.Index.legacySamplesDatabasePath(baseDirectory: dir)
+        let currentPath = Sample.Index.databasePath(baseDirectory: dir)
+        #expect(!FileManager.default.fileExists(atPath: legacyPath.path))
+        #expect(!FileManager.default.fileExists(atPath: currentPath.path))
+
+        CLIImpl.Command.Setup.migrateLegacySamplesDatabaseIfNeeded(
+            baseDirectory: dir,
+            logger: LoggingModels.Logging.NoopRecording()
+        )
+
+        // Still none.
+        #expect(!FileManager.default.fileExists(atPath: legacyPath.path))
+        #expect(!FileManager.default.fileExists(atPath: currentPath.path))
     }
 }

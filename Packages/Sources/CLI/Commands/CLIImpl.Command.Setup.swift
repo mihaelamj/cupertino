@@ -4,6 +4,7 @@ import Distribution
 import Foundation
 import Logging
 import LoggingModels
+import SampleIndexModels
 import SharedConstants
 
 // MARK: - Setup Command
@@ -98,10 +99,24 @@ extension CLIImpl.Command {
             // doesn't yet plug in declaratively); per-descriptor
             // download URLs (the bundle currently ships every DB
             // inside `cupertino-databases-vX.Y.Z.zip`).
+            // #1037 part 4: bundle/reader filename alignment. The
+            // `.samples` descriptor (filename `samples.db`) was the
+            // pre-#1037 bundle target; post-#1037 the canonical filename
+            // is `apple-sample-code.db` (descriptor `.appleSampleCode`)
+            // because `Sample.Index.databasePath` and
+            // `SampleCodeSource.destinationDB` both resolve there. The
+            // bundle must extract under the same filename the readers
+            // open, otherwise every fresh-install user gets the
+            // sample-code feature dark. Legacy bundles built by pre-#1037
+            // ReleaseTool runs still ship `samples.db`; the migration
+            // hook (see `runPerSourceDBSplitMigrationIfNeeded` /
+            // `migrateLegacySamplesDatabaseIfNeeded` below) detects and
+            // renames that filename to the new one on first post-#1037
+            // setup invocation.
             let request = Distribution.SetupService.Request(
                 baseDir: baseURL,
                 keepExisting: keepExisting,
-                required: [.search, .samples, .packages]
+                required: [.search, .appleSampleCode, .packages]
             )
 
             do {
@@ -118,6 +133,20 @@ extension CLIImpl.Command {
                 // migration is a one-shot: subsequent runs see
                 // `alreadyMigrated` and skip cleanly.
                 try await Self.runPerSourceDBSplitMigrationIfNeeded(
+                    baseDirectory: baseURL,
+                    logger: Cupertino.Context.composition.logging.recording
+                )
+
+                // #1037 part 4: legacy samples.db filename migration.
+                // Pre-#1037 bundles shipped the sample-code DB as
+                // `samples.db`; post-#1037 the canonical filename is
+                // `apple-sample-code.db`. Detect a leftover legacy
+                // file on disk and rename it to the new name so
+                // readers (`cupertino list-samples`, etc) find it.
+                // No-op when only the new file exists (fresh install
+                // on a post-#1037 bundle) or only the legacy file is
+                // gone (already-migrated steady state).
+                Self.migrateLegacySamplesDatabaseIfNeeded(
                     baseDirectory: baseURL,
                     logger: Cupertino.Context.composition.logging.recording
                 )
@@ -195,6 +224,65 @@ extension CLIImpl.Command {
                     }
                 } catch {
                     logger.warning("⚠️  Per-source DB split migration failed: \(error). Legacy \(legacyFile.lastPathComponent) preserved; re-run `cupertino setup` to retry.")
+                }
+            }
+        }
+
+        // MARK: - #1037 legacy samples.db filename migration
+
+        /// Detects a leftover pre-#1037 `samples.db` on disk and renames
+        /// it to `apple-sample-code.db` so the post-#1037 readers find
+        /// it. No-ops in every case except the one transition shape:
+        ///   - both files exist: legacy is a stale leftover. Log a
+        ///     warning and leave both in place (user manually deletes
+        ///     after verifying the new file is intact).
+        ///   - only the new file exists: fresh install on a post-#1037
+        ///     bundle, nothing to do.
+        ///   - only the legacy file exists: pre-#1037 user upgrading
+        ///     across the rename. Rename in place; the
+        ///     `samples_schema_version` table is created on the next
+        ///     `Sample.Index.Database` open (the schema-version
+        ///     fallback path from commit `ce4605d` handles the
+        ///     PRAGMA-based version stamp seamlessly).
+        ///   - neither exists: nothing to do.
+        ///
+        /// Best-effort: any FileManager error is logged as a warning
+        /// and the helper returns. The legacy file stays in place so
+        /// the user can inspect / re-run later. This is a UX nicety
+        /// for the upgrade path, not a correctness gate.
+        static func migrateLegacySamplesDatabaseIfNeeded(
+            baseDirectory: URL,
+            logger: any LoggingModels.Logging.Recording
+        ) {
+            let legacyPath = Sample.Index.legacySamplesDatabasePath(baseDirectory: baseDirectory)
+            let currentPath = Sample.Index.databasePath(baseDirectory: baseDirectory)
+            let fm = FileManager.default
+            let legacyExists = fm.fileExists(atPath: legacyPath.path)
+            let currentExists = fm.fileExists(atPath: currentPath.path)
+
+            switch (legacyExists, currentExists) {
+            case (false, _):
+                // Steady state or fresh install: nothing to migrate.
+                return
+            case (true, true):
+                logger.warning(
+                    "⚠️  Both \(legacyPath.lastPathComponent) and \(currentPath.lastPathComponent) exist. " +
+                        "The legacy filename is no longer read by cupertino post-#1037. " +
+                        "Verify \(currentPath.lastPathComponent) is intact, then `rm \(legacyPath.path)` to clean up."
+                )
+                return
+            case (true, false):
+                do {
+                    try fm.moveItem(at: legacyPath, to: currentPath)
+                    logger.info(
+                        "📦 Migrated legacy \(legacyPath.lastPathComponent) → \(currentPath.lastPathComponent) (#1037 filename rename)."
+                    )
+                } catch {
+                    logger.warning(
+                        "⚠️  Could not rename \(legacyPath.lastPathComponent) → \(currentPath.lastPathComponent): \(error). " +
+                            "Sample-code search will be empty until you re-run `cupertino save --samples` " +
+                            "or manually rename the file."
+                    )
                 }
             }
         }
