@@ -84,14 +84,29 @@ extension Shared.Models {
         // Diverging pairs (step 4 must route via the descriptor reference,
         // not the source-id literal):
         //
-        //   - SourcePrefix.appleDocs ("apple-docs")    → .appleDocumentation ("apple-documentation")
-        //   - SourcePrefix.swiftOrg  ("swift-org")     → .swiftDocumentation ("swift-documentation")
-        //   - SourcePrefix.packages  ("packages")      → .swiftPackages      ("swift-packages")
-        //   - SourcePrefix.sampleCode ("sample-code") + .samples ("samples") → .appleSampleCode ("apple-sample-code")
+        //   - SourcePrefix.appleDocs       ("apple-docs")        → .appleDocumentation ("apple-documentation")
+        //   - SourcePrefix.swiftOrg        ("swift-org")
+        //     + SourcePrefix.swiftBook     ("swift-book")        → .swiftDocumentation ("swift-documentation")  (co-located view-source)
+        //   - SourcePrefix.packages        ("packages")          → .swiftPackages      ("swift-packages")
+        //   - SourcePrefix.samples         ("samples")
+        //     + SourcePrefix.appleSampleCode ("apple-sample-code") → .appleSampleCode  ("apple-sample-code")    (both short + long forms route to one DB)
         //
         // Source-ids `hig`, `apple-archive`, `swift-evolution` happen to
         // match their descriptors verbatim, but that's a coincidence of the
         // current naming, not a contract.
+        //
+        // **Producer-graph reality (step 4 / step 6 planners):** today,
+        // SampleCodeSource has `destinationDB = .search` (sample-code rows
+        // live in search.db), and the `.samples` descriptor is fed by a
+        // separate `Sample.Index.Builder` pipeline that is NOT yet wrapped
+        // in the SourceProvider abstraction. So step 6's migration shim has
+        // two distinct samples-related tasks: (a) extract sample-code rows
+        // from search.db into apple-sample-code.db, AND (b) rename the
+        // sample-files-index DB from samples.db to apple-sample-code.db
+        // (or merge it with the extracted rows). This is intentionally
+        // unspecified in this comment; the per-source-db-split.md step 6
+        // section owns the resolution. PackagesSource currently routes at
+        // `.packages` not `.swiftPackages`; that flip lands in step 4.
 
         /// Apple Developer Documentation. Receives the apple-docs rows that
         /// live in search.db today (~379k rows; ~1.2 GB at v1.2.0).
@@ -127,12 +142,15 @@ extension Shared.Models {
         /// Swift documentation. Co-locates swift-org + swift-book rows in
         /// one DB. Write-time mechanism (post-#1029 view-source pattern, see
         /// `docs/design/corpus-structure.md` §3.5.5): `SwiftOrgStrategy`
-        /// emits rows for BOTH source-ids by URL-prefix tagging, and
-        /// `SwiftBookViewSourceStrategy` reports `wasSkipped: true` so the
-        /// per-source breakdown log doesn't imply a failed indexing attempt
-        /// for swift-book. Two registered SourceProviders, one effective
-        /// indexer writing all rows, one DB. Distinguished at read time by
-        /// the `source` column.
+        /// derives the per-row source-id from the file-system path of the
+        /// crawled doc tree (via `Search.StrategyHelpers.extractFrameworkFromPath`,
+        /// which inspects the directory components and returns either
+        /// `"swift-org"` or `"swift-book"` depending on the framework
+        /// detected). `SwiftBookViewSourceStrategy` reports
+        /// `wasSkipped: true` so the per-source breakdown log doesn't imply
+        /// a failed indexing attempt for swift-book. Net effect: two
+        /// registered SourceProviders, one effective indexer writing all
+        /// rows, one DB. Distinguished at read time by the `source` column.
         public static let swiftDocumentation: DatabaseDescriptor = .init(
             id: "swift-documentation",
             filename: Shared.Constants.FileName.swiftDocumentationDatabase,
