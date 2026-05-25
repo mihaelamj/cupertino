@@ -362,11 +362,31 @@ extension Distribution {
                 let totalActualCount = try await writer.rowCount()
                 await writer.disconnect()
 
+                // Per-plan mismatch check (catches compensating
+                // under/over-writes within a view-source group that
+                // would otherwise pass the aggregate test). For each
+                // source-plan in the group, the actual rows we
+                // streamed (rowsCopiedByPlan[sourceID]) must equal
+                // the estimated count from the reader's per-source
+                // count query. This is the primary correctness gate
+                // for the row copy.
+                for sourcePlan in plansForPath {
+                    let perSourceActual = rowsCopiedByPlan[sourcePlan.sourceID] ?? 0
+                    if perSourceActual != sourcePlan.estimatedRowCount {
+                        throw MigrationError.rowCountMismatch(
+                            sourceID: sourcePlan.sourceID,
+                            expected: sourcePlan.estimatedRowCount,
+                            actual: perSourceActual
+                        )
+                    }
+                }
+                // Aggregate sanity check: per-plan totals must sum to
+                // writer.rowCount(). If they diverge, either the
+                // writer dropped/duplicated rows internally OR the
+                // per-plan tracking missed an iteration. Either way
+                // the migration is unsafe.
                 let totalExpectedCount = plansForPath.reduce(0) { $0 + $1.estimatedRowCount }
                 if totalActualCount != totalExpectedCount {
-                    // Surface as a mismatch on the first source-id of
-                    // the group (the per-group nature is in the
-                    // expected/actual numbers). Caller sees aggregate.
                     throw MigrationError.rowCountMismatch(
                         sourceID: plansForPath.first?.sourceID ?? "<unknown>",
                         expected: totalExpectedCount,

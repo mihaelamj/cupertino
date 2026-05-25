@@ -84,8 +84,20 @@ public enum LivePerDBWriterFactory {
         logger: any LoggingModels.Logging.Recording
     ) -> Distribution.PerSourceDBSplitMigrator.PerDBWriterFactory {
         { _, destinationPath in
-            let pathsToClean = [
-                destinationPath,
+            // Primary destinationPath: must succeed if it exists. A
+            // failure here (permissions, busy file, read-only volume)
+            // would let Search.Index then open the stale file and
+            // surface a confusing sqlite "file is encrypted or not a
+            // database" error instead of the actual cause.
+            if FileManager.default.fileExists(atPath: destinationPath.path) {
+                try FileManager.default.removeItem(at: destinationPath)
+            }
+            // WAL/SHM sidecars: best-effort cleanup. A stale -shm file
+            // alone shouldn't abort the whole migration; SQLite's WAL
+            // recovery handles salt-mismatched sidecars by discarding
+            // the WAL. try? here is intentional asymmetry with the
+            // primary path's try above.
+            let sidecarPaths = [
                 destinationPath.appendingPathExtension("wal"),
                 destinationPath.appendingPathExtension("shm"),
                 // SQLite also names them <path>-wal / <path>-shm
@@ -94,10 +106,8 @@ public enum LivePerDBWriterFactory {
                 URL(fileURLWithPath: destinationPath.path + "-wal"),
                 URL(fileURLWithPath: destinationPath.path + "-shm"),
             ]
-            for path in pathsToClean {
-                if FileManager.default.fileExists(atPath: path.path) {
-                    try? FileManager.default.removeItem(at: path)
-                }
+            for path in sidecarPaths where FileManager.default.fileExists(atPath: path.path) {
+                try? FileManager.default.removeItem(at: path)
             }
             let searchIndex = try await Search.Index(
                 dbPath: destinationPath,
