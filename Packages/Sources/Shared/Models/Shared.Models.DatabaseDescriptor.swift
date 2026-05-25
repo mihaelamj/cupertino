@@ -186,13 +186,33 @@ extension Shared.Models {
             displayName: "Swift Documentation"
         )
 
-        /// Apple sample code (rename of `.samples`; step 6 file-rename
-        /// migration flips user bundles). Lives in parallel with `.samples`
-        /// until step 6 lands, then `.samples` is removed.
+        /// Apple sample code per-file rich schema (rename of `.samples`;
+        /// step 6 file-rename migration flips user bundles). Carries
+        /// `Sample.Index.Builder`'s schema (file_symbols + project rows,
+        /// NOT docs_metadata + docs_fts). Lives in parallel with
+        /// `.samples` until step 6 lands, then `.samples` is removed.
+        /// **Distinct from `.appleSampleCodeSearch`**: the two
+        /// descriptors target different SQLite files with different
+        /// schemas so neither schema collides with the other.
         public static let appleSampleCode: DatabaseDescriptor = .init(
             id: "apple-sample-code",
             filename: Shared.Constants.FileName.appleSampleCodeDatabase,
             displayName: "Apple Sample Code"
+        )
+
+        /// Apple sample code search-style FTS rows. `SampleCodeSource`'s
+        /// `destinationDB` points here post the step-7a refactor: rows
+        /// emitted by `SampleCodeStrategy` (docs_metadata + docs_fts
+        /// schema) land in `apple-sample-code-search.db`. Pre-step-7a,
+        /// these rows lived in the shared `search.db`; the split into
+        /// this dedicated file keeps SampleCodeSource's search-side
+        /// data alongside the rest of the per-source DBs and avoids
+        /// the schema collision with `.appleSampleCode` (per-file rich
+        /// data renamed from samples.db).
+        public static let appleSampleCodeSearch: DatabaseDescriptor = .init(
+            id: "apple-sample-code-search",
+            filename: Shared.Constants.FileName.appleSampleCodeSearchDatabase,
+            displayName: "Apple Sample Code (Search)"
         )
 
         /// Swift packages (rename of `.packages`; step 6 file-rename
@@ -219,6 +239,7 @@ extension Shared.Models {
             .swiftEvolution,
             .swiftDocumentation,
             .appleSampleCode,
+            .appleSampleCodeSearch,
             .swiftPackages,
         ]
 

@@ -134,8 +134,21 @@ extension Shared.Constants {
         public static let swiftDocumentationDatabase = "swift-documentation.db"
 
         /// Apple sample code database (rename of samples.db; step 6 migration
-        /// flips the on-disk filename in user bundles).
+        /// flips the on-disk filename in user bundles). Carries the
+        /// `Sample.Index.Builder` per-file rich schema (file_symbols
+        /// etc.), NOT the search-style docs_metadata + docs_fts rows.
         public static let appleSampleCodeDatabase = "apple-sample-code.db"
+
+        /// Apple sample code search-style database. Carries the
+        /// docs_metadata + docs_fts rows that SampleCodeSource emits
+        /// (titles + text content for sample-code projects, indexed
+        /// for `cupertino search "<query>"` discoverability). Distinct
+        /// from `appleSampleCodeDatabase` because the two schemas don't
+        /// share storage: rich per-file structure lives in
+        /// `apple-sample-code.db` (Sample.Index.Builder pipeline);
+        /// search-style FTS rows live in `apple-sample-code-search.db`
+        /// (Search.IndexBuilder pipeline via SampleCodeSource).
+        public static let appleSampleCodeSearchDatabase = "apple-sample-code-search.db"
 
         /// Swift packages database (rename of packages.db; step 6 migration
         /// flips the on-disk filename in user bundles).

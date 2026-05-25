@@ -307,6 +307,7 @@ cupertino-bundle-v1.3.0-apple-archive.db.zip          ~30 MB
 cupertino-bundle-v1.3.0-swift-evolution.db.zip        ~12 MB
 cupertino-bundle-v1.3.0-swift-documentation.db.zip    ~40 MB
 cupertino-bundle-v1.3.0-apple-sample-code.db.zip      ~80 MB
+cupertino-bundle-v1.3.0-apple-sample-code-search.db.zip  ~5 MB
 cupertino-bundle-v1.3.0-swift-packages.db.zip         ~250 MB
 ```
 

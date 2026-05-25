@@ -18,7 +18,7 @@ description: |
   the per-file detail via the URI scheme.
 
 corpusFolder: sample-code
-destinationDB: apple-sample-code
+destinationDB: apple-sample-code-search
 
 fetcher:
   kind: webkit-scrape

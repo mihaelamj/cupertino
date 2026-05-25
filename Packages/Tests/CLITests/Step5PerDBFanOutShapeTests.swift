@@ -35,9 +35,10 @@ struct Step5PerDBFanOutShapeTests {
         #expect(groups[.swiftEvolution]?.count == 1, "SwiftEvolutionSource alone")
         #expect(groups[.swiftDocumentation]?.count == 2, "swift-org + swift-book co-located")
         #expect(
-            groups[.search]?.count == 1,
-            "SampleCodeSource is the only source still at .search post step 4; flip lands in step 6"
+            groups[.appleSampleCodeSearch]?.count == 1,
+            "SampleCodeSource at .appleSampleCodeSearch post step-7a flip"
         )
+        #expect(groups[.search] == nil, "post step-7a flip, no provider is at .search")
         #expect(groups[.packages] == nil, "PackagesSource is filtered out by excluding: [.packages]")
     }
 
@@ -49,8 +50,8 @@ struct Step5PerDBFanOutShapeTests {
         #expect(order == [
             "apple-archive",
             "apple-documentation",
+            "apple-sample-code-search",
             "hig",
-            "search",
             "swift-documentation",
             "swift-evolution",
         ], "alphabetical-by-id order makes the per-DB fan-out reproducible across runs")
@@ -76,8 +77,8 @@ struct Step5PerDBFanOutShapeTests {
         let swiftDoc = Set(groups[.swiftDocumentation]?.map(\.definition.id) ?? [])
         #expect(swiftDoc == ["swift-org", "swift-book"], "swift-org + swift-book co-located via view-source pattern")
 
-        let samples = groups[.search]?.map(\.definition.id) ?? []
-        #expect(samples == ["samples"], "SampleCodeSource alone at .search until step 6 renames to .appleSampleCode")
+        let samples = groups[.appleSampleCodeSearch]?.map(\.definition.id) ?? []
+        #expect(samples == ["samples"], "SampleCodeSource (definition.id 'samples') alone at .appleSampleCodeSearch post step-7a flip")
     }
 
     @Test("Per-DB output paths derived from the base directory + descriptor.filename")
