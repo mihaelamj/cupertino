@@ -186,20 +186,38 @@ extension Shared.Models {
             displayName: "Swift Documentation"
         )
 
-        /// Apple sample code. ONE physical SQLite file holds both the
-        /// `Sample.Index.Builder` rich schema (projects + files +
-        /// file_symbols + imports) AND the search-style FTS schema
-        /// (docs_metadata + docs_fts) that `SampleCodeSource` emits.
-        /// Two independent table tracks in the same DB, each with its
-        /// own schema_version row, both deriving from the same on-disk
-        /// sample-code zips. `SampleCodeSource.destinationDB` points
-        /// here so its FTS rows land alongside the rich data instead of
-        /// in a separate file. The dual-DB split that briefly existed
-        /// during step-7a foundation work (apple-sample-code-search.db)
-        /// was collapsed once the architectural decision settled that
-        /// "samples is one source = one DB"; sample code is searched
-        /// alongside other DBs via the unified search fan-out, with
-        /// source attribution distinguishing hits at result time.
+        /// Apple sample code. **Design target** (tracked at #1037): ONE
+        /// physical SQLite file holds both the `Sample.Index.Builder`
+        /// rich schema (projects + files + file_symbols + imports) AND
+        /// the search-style FTS schema (docs_metadata + docs_fts) that
+        /// `SampleCodeSource` emits.
+        ///
+        /// **Current state (2026-05-25, post commit `6713b3a`)**: this
+        /// descriptor is the target, NOT yet the wired state. Today's
+        /// code still writes the two schemas to two different on-disk
+        /// files: `Sample.Index.databasePath` resolves to `samples.db`
+        /// (via `Shared.Constants.FileName.samplesDatabase`) while
+        /// `SampleCodeSource.destinationDB` points here at
+        /// `apple-sample-code.db`. The full wiring (filename rename +
+        /// schema-version reconcile + `LivePerDBWriterFactory` foreign-
+        /// table awareness + migrator `detect()` legacy-samples
+        /// awareness) lands in the follow-up commits tracked by #1037.
+        ///
+        /// **Schema-version coexistence is the load-bearing prerequisite**.
+        /// SQLite has ONE `PRAGMA user_version` per file. Both pipelines
+        /// must move off `PRAGMA user_version` to per-pipeline schema-
+        /// version tracking tables before the one-file collapse is safe
+        /// (otherwise Search.Index's stamp of 18 would trip
+        /// Sample.Index.Database's `removeItem` branch on next open).
+        ///
+        /// Architectural rationale: sample code as a content type lives
+        /// across many DBs (apple-docs has code in body content,
+        /// swift-book is mostly code examples, samples.db is the Apple
+        /// GitHub sample-code projects with rich schema); the unified
+        /// `cupertino search` already fans across all 6 search-side
+        /// destination DBs and merges, so source attribution at result
+        /// time distinguishes sample-code hits without needing a
+        /// dedicated `apple-sample-code-search.db`.
         public static let appleSampleCode: DatabaseDescriptor = .init(
             id: "apple-sample-code",
             filename: Shared.Constants.FileName.appleSampleCodeDatabase,

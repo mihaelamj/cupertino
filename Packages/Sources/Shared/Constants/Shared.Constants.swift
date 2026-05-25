@@ -133,16 +133,20 @@ extension Shared.Constants {
         /// component under the strategy's base directory.
         public static let swiftDocumentationDatabase = "swift-documentation.db"
 
-        /// Apple sample code database (rename of samples.db; step 6 migration
-        /// flips the on-disk filename in user bundles). Holds BOTH the
-        /// `Sample.Index.Builder` rich schema (projects + files +
-        /// file_symbols + imports) AND the search-style FTS rows
-        /// (docs_metadata + docs_fts) that `SampleCodeSource` emits.
-        /// One on-disk file, two independent table tracks, each with its
-        /// own schema_version row, both deriving from the same
-        /// sample-code zips. Source attribution at query time
-        /// distinguishes sample-code hits across the unified search
-        /// fan-out.
+        /// Apple sample code database. **Design target** (tracked at
+        /// #1037): one on-disk file holding both the `Sample.Index.Builder`
+        /// rich schema (projects + files + file_symbols + imports) AND the
+        /// search-style FTS rows (docs_metadata + docs_fts) that
+        /// `SampleCodeSource` emits, with both pipelines moved off
+        /// `PRAGMA user_version` to per-pipeline tracking tables so they
+        /// coexist safely.
+        ///
+        /// **Current state (2026-05-25)**: this constant is the future
+        /// filename. `SampleCodeSource.destinationDB` already points at
+        /// the matching `.appleSampleCode` descriptor. `Sample.Index`
+        /// still writes to the old `samplesDatabase` constant; the
+        /// filename rename + schema-version reconcile land in the
+        /// follow-up commits tracked by #1037.
         public static let appleSampleCodeDatabase = "apple-sample-code.db"
 
         /// Swift packages database (rename of packages.db; step 6 migration

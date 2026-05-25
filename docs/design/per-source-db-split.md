@@ -32,7 +32,10 @@ Trade-offs we accept:
 - Cross-source `cupertino search "View"` becomes fan-out + merge in
   code instead of one FTS5 query. Code surface grows; per-query
   latency is comparable (we already query 7 sources' rows from one
-  DB; we'll query 8 DBs of 1 source's rows each).
+  DB; we'll query 6 destination DBs of 1 source's rows each, because
+  swift-org + swift-book co-locate in swift-documentation.db via the
+  view-source pattern, so the dispatcher opens 6 files for the 7
+  search-side sources excluding `.packages`).
 - FTS5 dictionaries don't share across DBs. Net disk growth is in
   the low MB, negligible against the ~2.7 GB apple-documentation DB
   dominating bundle size.
