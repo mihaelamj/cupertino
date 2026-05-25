@@ -16,6 +16,25 @@ import SharedConstants
 /// (no `--source`) fan-out + chunked report lives in
 /// `CLIImpl.Command.Search+SmartReport.swift` (#239).
 extension CLIImpl.Command.Search {
+    /// Resolve a docs source-id (`apple-docs`, `hig`, `apple-archive`,
+    /// `swift-evolution`, `swift-org`, `swift-book`) to its per-source
+    /// SQLite path. Post-#1037/#1038 every docs source owns its own DB
+    /// file (no more monolithic `search.db`); the production source
+    /// registry's `SourceProvider.destinationDB.filename` is the
+    /// canonical mapping. `--search-db` override wins when set (legacy
+    /// debug path; opens that single file for any source).
+    func resolveDocsDBURL(for sourceID: String) -> URL? {
+        if let searchDb {
+            return URL(fileURLWithPath: searchDb).expandingTildeInPath
+        }
+        let registry = CLIImpl.makeProductionSourceRegistry()
+        guard let provider = registry.allEnabled.first(where: { $0.definition.id == sourceID }) else {
+            return nil
+        }
+        let baseDirectory = Shared.Paths.live().baseDirectory
+        return baseDirectory.appendingPathComponent(provider.destinationDB.filename)
+    }
+
     func runDocsSearch() async throws {
         // GoF Factory Method (1994 p. 107): the search command's
         // composition sub-root. Each per-source runner constructs its
@@ -24,9 +43,17 @@ extension CLIImpl.Command.Search {
         let searchDatabaseFactory: any SearchModule.DatabaseFactory = LiveSearchDatabaseFactory()
         let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
 
-        // Path-DI composition sub-root (#535).
-        let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Shared.Paths.live().searchDatabase
+        // Path-DI composition sub-root (#535). Post-#1037/#1038 the
+        // docs source's DB is per-source (apple-documentation.db /
+        // apple-archive.db / swift-evolution.db / swift-org.db /
+        // swift-book.db); resolve through the source registry.
+        guard let sourceID = source,
+              let searchDBURL = resolveDocsDBURL(for: sourceID) else {
+            Cupertino.Context.composition.logging.recording.error(
+                "❌ Unknown docs source: '\(source ?? "<nil>")'."
+            )
+            throw ExitCode.failure
+        }
 
         let results = try await Services.ServiceContainer.withDocsService(searchDB: searchDBURL, searchDatabaseFactory: searchDatabaseFactory) { service in
             try await service.search(Services.SearchQuery(
@@ -106,14 +133,22 @@ extension CLIImpl.Command.Search {
             ))
         }
 
-        // Best-effort teaser fetch: when search.db is locked (typically
-        // another process running `cupertino save --source apple-docs`) or missing, log
-        // and fall back to empty teasers rather than aborting the samples
-        // query (#237).
+        // Best-effort teaser fetch: when the apple-docs DB is locked
+        // (typically another process running
+        // `cupertino save --source apple-docs`) or missing, log and
+        // fall back to empty teasers rather than aborting the samples
+        // query (#237). Teasers come from apple-docs by convention --
+        // that's the dominant docs corpus and the cross-source teaser
+        // surface the samples-search runner has always emitted; with
+        // per-source DBs post-#1037, point at apple-documentation.db
+        // (or the override) explicitly.
         let teasers: Services.Formatter.TeaserResults
         do {
-            let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-                ?? Shared.Paths.live().searchDatabase
+            let searchDBURL = resolveDocsDBURL(
+                for: Shared.Constants.SourcePrefix.appleDocs
+            ) ?? Shared.Paths.live().baseDirectory.appendingPathComponent(
+                Shared.Models.DatabaseDescriptor.appleDocumentation.filename
+            )
             teasers = try await Services.ServiceContainer.withTeaserService(
                 searchDB: searchDBURL,
                 samplesDB: resolveSampleDbPath(),
@@ -202,9 +237,16 @@ extension CLIImpl.Command.Search {
         let searchDatabaseFactory: any SearchModule.DatabaseFactory = LiveSearchDatabaseFactory()
         let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
 
-        // Path-DI composition sub-root (#535).
-        let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Shared.Paths.live().searchDatabase
+        // Path-DI composition sub-root (#535). Post-#1037 HIG lives in
+        // its own `hig.db`.
+        guard let searchDBURL = resolveDocsDBURL(
+            for: Shared.Constants.SourcePrefix.hig
+        ) else {
+            Cupertino.Context.composition.logging.recording.error(
+                "❌ HIG source not registered in production source registry."
+            )
+            throw ExitCode.failure
+        }
 
         let results = try await Services.ServiceContainer.withDocsService(searchDB: searchDBURL, searchDatabaseFactory: searchDatabaseFactory) { service in
             try await service.search(Services.SearchQuery(
