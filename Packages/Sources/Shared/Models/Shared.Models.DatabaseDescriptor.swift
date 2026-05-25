@@ -204,6 +204,24 @@ extension Shared.Models {
             displayName: "Swift Packages"
         )
 
+        /// All declared descriptors (legacy 3 + per-source 7). Used by
+        /// `ConstantsAuditTests` to iterate the full descriptor surface
+        /// without hardcoding the list in test files. Future descriptors
+        /// MUST be appended here; CI's audit tests catch a missing
+        /// addition automatically.
+        public static let allKnown: [DatabaseDescriptor] = [
+            .search,
+            .samples,
+            .packages,
+            .appleDocumentation,
+            .hig,
+            .appleArchive,
+            .swiftEvolution,
+            .swiftDocumentation,
+            .appleSampleCode,
+            .swiftPackages,
+        ]
+
         /// Stable identifier the CLI uses to route per-DB commands
         /// (`cupertino setup`, `cupertino doctor`,
         /// `cupertino save --<db>`). Matches the historical short

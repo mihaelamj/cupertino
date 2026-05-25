@@ -98,7 +98,18 @@ struct ConstantsAuditTests {
                     listIndent = leading
                 }
                 if leading == listIndent {
-                    values.append(String(trimmed.dropFirst(2)).trimmingCharacters(in: .whitespaces))
+                    // Strip optional inline `# comment` + surrounding
+                    // quotes, symmetric with extractFetcherKind. Future
+                    // YAML edits using quoted or commented list values
+                    // would otherwise return the raw text including
+                    // those markers and break the YAML-Swift pin.
+                    let raw = String(trimmed.dropFirst(2)).trimmingCharacters(in: .whitespaces)
+                    let beforeComment: String = if let hashIndex = raw.firstIndex(of: "#") {
+                        String(raw[..<hashIndex]).trimmingCharacters(in: .whitespaces)
+                    } else {
+                        raw
+                    }
+                    values.append(beforeComment.trimmingCharacters(in: CharacterSet(charactersIn: "\"'")))
                     continue
                 }
             }
@@ -150,43 +161,50 @@ struct ConstantsAuditTests {
     // FileName constant (which would silently propagate to the
     // descriptor without breaking any test that compares them).
 
-    @Test("Per-source DatabaseDescriptor.filename pinned against the canonical on-disk filename literal")
-    func descriptorFilenamePinnedAgainstCanonicalLiteral() {
-        // These literal strings are the bundle filenames the user's
-        // ~/.cupertino/ directory will contain. They are the wire
-        // contract; the FileName constants + DatabaseDescriptor statics
-        // both follow this contract. Pin the contract here.
-        let canonical: [(Shared.Models.DatabaseDescriptor, String)] = [
-            (.appleDocumentation, "apple-documentation.db"),
-            (.hig, "hig.db"),
-            (.appleArchive, "apple-archive.db"),
-            (.swiftEvolution, "swift-evolution.db"),
-            (.swiftDocumentation, "swift-documentation.db"),
-            (.appleSampleCode, "apple-sample-code.db"),
-            (.swiftPackages, "swift-packages.db"),
-            // Legacy descriptors stay live during the transition;
-            // pinning them here catches a renaming of any of the 3.
-            (.search, "search.db"),
-            (.samples, "samples.db"),
-            (.packages, "packages.db"),
-        ]
-        for (descriptor, expected) in canonical {
-            #expect(
-                descriptor.filename == expected,
-                "descriptor '\(descriptor.id)' filename '\(descriptor.filename)' drifted from the canonical bundle filename '\(expected)'"
-            )
+    @Test("DatabaseDescriptor.allKnown.count is at least the 10 descriptors that exist today (catches accidental deletion)")
+    func descriptorRegistryFloor() {
+        #expect(
+            Shared.Models.DatabaseDescriptor.allKnown.count >= 10,
+            "DatabaseDescriptor.allKnown must include all declared descriptors; a future addition append; never delete a still-shipping descriptor"
+        )
+    }
+
+    @Test("Every DatabaseDescriptor.id + '.db' == filename (iterates allKnown; new descriptors join automatically)")
+    func descriptorIDMatchesFilenameStem() {
+        for descriptor in Shared.Models.DatabaseDescriptor.allKnown {
+            #expect(descriptor.filename == "\(descriptor.id).db", "descriptor id '\(descriptor.id)' and filename '\(descriptor.filename)' diverged")
         }
     }
 
-    @Test("Per-source DatabaseDescriptor.id + '.db' == filename for ALL 10 descriptors (legacy + new)")
-    func descriptorIDMatchesFilenameStem() {
-        let descriptors: [Shared.Models.DatabaseDescriptor] = [
-            .search, .samples, .packages,
-            .appleDocumentation, .hig, .appleArchive, .swiftEvolution,
-            .swiftDocumentation, .appleSampleCode, .swiftPackages,
+    @Test("Every DatabaseDescriptor.filename matches the canonical on-disk literal (drift sweep; iterates allKnown)")
+    func descriptorFilenamePinnedAgainstCanonicalLiteral() {
+        // The expected-filename lookup uses descriptor.id as key (NOT
+        // the FileName constant, which would be tautological). The
+        // table is what future code-readers grep for when asking
+        // "what filename does cupertino ship for source X?".
+        // Adding a new descriptor REQUIRES extending this table; the
+        // test fails on a missing entry.
+        let expectedByID: [String: String] = [
+            "apple-documentation": "apple-documentation.db",
+            "hig": "hig.db",
+            "apple-archive": "apple-archive.db",
+            "swift-evolution": "swift-evolution.db",
+            "swift-documentation": "swift-documentation.db",
+            "apple-sample-code": "apple-sample-code.db",
+            "swift-packages": "swift-packages.db",
+            "search": "search.db",
+            "samples": "samples.db",
+            "packages": "packages.db",
         ]
-        for descriptor in descriptors {
-            #expect(descriptor.filename == "\(descriptor.id).db", "descriptor id '\(descriptor.id)' and filename '\(descriptor.filename)' diverged")
+        for descriptor in Shared.Models.DatabaseDescriptor.allKnown {
+            let expected = expectedByID[descriptor.id]
+            #expect(expected != nil, "DatabaseDescriptor.allKnown has descriptor '\(descriptor.id)' not in the canonical-filename map; extend expectedByID with the new entry")
+            if let expected {
+                #expect(
+                    descriptor.filename == expected,
+                    "descriptor '\(descriptor.id)' filename '\(descriptor.filename)' drifted from the canonical bundle filename '\(expected)'"
+                )
+            }
         }
     }
 
@@ -325,32 +343,43 @@ struct ConstantsAuditTests {
     // YAML directly + asserts against the Swift property only,
     // collapsing to a 2-way pin.
 
-    @Test("Every registered source's Swift capabilities.searchers matches its manifest.yaml searchers list (YAML ↔ Swift pin)")
-    func swiftSearchersMatchManifestYAML() {
+    /// A provider is a view-source (no fetcher of its own; rows
+    /// emitted by another source's strategy) iff `fetchInfo == nil`.
+    /// Today's only view-source is SwiftBookSource; the contract is
+    /// the protocol shape rather than a hardcoded source-id check.
+    /// View-sources do NOT have their own manifest.yaml.
+    private func isViewSource(_ provider: any Search.SourceProvider) -> Bool {
+        provider.fetchInfo == nil
+    }
+
+    @Test("Every non-view-source provider has a manifest AND its Swift capabilities.searchers matches the YAML (registry-iterated)")
+    func swiftSearchersMatchManifestYAML() throws {
         let registry = CLIImpl.makeProductionSourceRegistry()
+        var checked = 0
         for provider in registry.allEnabled {
+            if isViewSource(provider) { continue }
             let folder = manifestFolderName(forSourceID: provider.definition.id)
-            guard let yaml = try? Self.manifestText(forSourceFolder: folder) else {
-                // PackagesSource manifest exists at "packages"; SwiftBookSource
-                // (view-source) has no manifest of its own (declared inside
-                // swift-org's manifest's viewSources block). Skip cleanly.
-                continue
-            }
+            // Non-view-source providers MUST have a manifest. A missing
+            // file is a real failure, not a silent skip.
+            let yaml = try Self.manifestText(forSourceFolder: folder)
             let yamlSearchers = Self.parseYAMLList(underParent: "capabilities", nestedKey: "searchers", in: yaml)
             let swiftSearchers = Set(provider.capabilities.searchers.map(\.rawValue))
             #expect(
                 yamlSearchers == swiftSearchers,
                 "drift in source '\(provider.definition.id)': YAML searchers = \(yamlSearchers.sorted()); Swift = \(swiftSearchers.sorted())"
             )
+            checked += 1
         }
+        #expect(checked > 0, "expected at least one non-view-source provider to verify")
     }
 
-    @Test("Every registered source's Swift capabilities.operations matches its manifest.yaml operations list (YAML ↔ Swift pin)")
-    func swiftOperationsMatchManifestYAML() {
+    @Test("Every non-view-source provider's Swift capabilities.operations matches the YAML (registry-iterated)")
+    func swiftOperationsMatchManifestYAML() throws {
         let registry = CLIImpl.makeProductionSourceRegistry()
         for provider in registry.allEnabled {
+            if isViewSource(provider) { continue }
             let folder = manifestFolderName(forSourceID: provider.definition.id)
-            guard let yaml = try? Self.manifestText(forSourceFolder: folder) else { continue }
+            let yaml = try Self.manifestText(forSourceFolder: folder)
             let yamlOperations = Self.parseYAMLList(underParent: "capabilities", nestedKey: "operations", in: yaml)
             let swiftOperations = Set(provider.capabilities.operations.map(\.rawValue))
             #expect(
@@ -358,6 +387,23 @@ struct ConstantsAuditTests {
                 "drift in source '\(provider.definition.id)': YAML operations = \(yamlOperations.sorted()); Swift = \(swiftOperations.sorted())"
             )
         }
+    }
+
+    @Test("HIG operations MUST NOT contain list-frameworks (production CandidateFetcher.frameworkScopedSources contract; pinned on both sides)")
+    func higHasNoListFrameworksOperation() throws {
+        // The YAML-iterating tests above catch drift but not "both
+        // sides incorrectly gain list-frameworks". This explicit pin
+        // catches the failure where someone edits both files at once
+        // without realising HIG rows carry framework="" at index time.
+        let provider = providerForSourceID(Shared.Constants.SourcePrefix.hig)
+        let swiftOperations = Set(provider.capabilities.operations.map(\.rawValue))
+        #expect(
+            !swiftOperations.contains("list-frameworks"),
+            "HIG MUST NOT advertise list-frameworks (frameworkScopedSources = {appleDocs, appleArchive}; HIG rows carry framework=\"\")"
+        )
+        let yaml = try Self.manifestText(forSourceFolder: "hig")
+        let yamlOperations = Self.parseYAMLList(underParent: "capabilities", nestedKey: "operations", in: yaml)
+        #expect(!yamlOperations.contains("list-frameworks"), "docs/sources/hig/manifest.yaml MUST NOT declare list-frameworks")
     }
 
     // MARK: - Helpers
