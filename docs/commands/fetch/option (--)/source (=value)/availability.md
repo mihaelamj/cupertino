@@ -1,11 +1,11 @@
-# --type availability
+# --source availability
 
 Fetch platform availability data for Apple documentation
 
 ## Synopsis
 
 ```bash
-cupertino fetch --type availability
+cupertino fetch --source availability
 ```
 
 ## Description
@@ -58,7 +58,7 @@ Updates existing JSON files in `~/.cupertino/docs/` with an `availability` array
 Re-fetch availability for all documents, even those that already have data.
 
 ```bash
-cupertino fetch --type availability --force
+cupertino fetch --source availability --force
 ```
 
 ### --fast
@@ -69,13 +69,13 @@ Use aggressive settings for faster fetching:
 - Skips documents that already have availability
 
 ```bash
-cupertino fetch --type availability --fast
+cupertino fetch --source availability --fast
 ```
 
 ### Combined
 
 ```bash
-cupertino fetch --type availability --force --fast
+cupertino fetch --source availability --force --fast
 ```
 
 ## Fallback Strategy
@@ -93,10 +93,10 @@ When the API returns 404 or times out, availability is derived using fallbacks:
 
 ```bash
 # First, fetch docs
-cupertino fetch --type docs
+cupertino fetch --source apple-docs
 
 # Then, fetch availability
-cupertino fetch --type availability
+cupertino fetch --source availability
 
 # Finally, build index with availability
 cupertino save
@@ -105,14 +105,14 @@ cupertino save
 ### Update Availability Only
 
 ```bash
-cupertino fetch --type availability --force
+cupertino fetch --source availability --force
 cupertino save
 ```
 
 ### Fast Mode for Large Datasets
 
 ```bash
-cupertino fetch --type availability --fast
+cupertino fetch --source availability --fast
 ```
 
 ## Performance
@@ -158,8 +158,8 @@ When availability is indexed, the source is tracked:
 **Requires docs to be fetched first:**
 
 ```bash
-cupertino fetch --type docs   # Must run first
-cupertino fetch --type availability
+cupertino fetch --source apple-docs   # Must run first
+cupertino fetch --source availability
 ```
 
 **Other sources derive availability during indexing:**

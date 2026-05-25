@@ -5,7 +5,7 @@ Force re-download of existing files
 ## Synopsis
 
 ```bash
-cupertino fetch --type <type> --force
+cupertino fetch --source <type> --force
 ```
 
 ## Description
@@ -29,17 +29,17 @@ Forces re-downloading of all files, even if they already exist. Ignores checkpoi
 
 ### Force Re-download All Packages
 ```bash
-cupertino fetch --type packages --force
+cupertino fetch --source packages --force
 ```
 
 ### Force Re-download Sample Code
 ```bash
-cupertino fetch --type code --force
+cupertino fetch --source apple-sample-code --force
 ```
 
 ### Force with Limit
 ```bash
-cupertino fetch --type packages --force --limit 100
+cupertino fetch --source packages --force --limit 100
 ```
 
 ## Use Cases

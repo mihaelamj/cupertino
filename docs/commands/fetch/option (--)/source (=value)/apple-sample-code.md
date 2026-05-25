@@ -1,11 +1,11 @@
-# --type code
+# --source apple-sample-code
 
 Fetch Apple Sample Code Projects
 
 ## Synopsis
 
 ```bash
-cupertino fetch --type code
+cupertino fetch --source apple-sample-code
 ```
 
 ## Description
@@ -37,28 +37,28 @@ Creates individual ZIP files:
 
 ### Fetch All Sample Code
 ```bash
-cupertino fetch --type code
+cupertino fetch --source apple-sample-code
 ```
 
 ### Fetch Limited Number
 ```bash
-cupertino fetch --type code --limit 50
+cupertino fetch --source apple-sample-code --limit 50
 ```
 
 ### Custom Output Directory
 ```bash
-cupertino fetch --type code --output-dir ./samples
+cupertino fetch --source apple-sample-code --output-dir ./samples
 ```
 
 ### Resume Interrupted Download (automatic)
 ```bash
 # Auto-resumes from checkpoint.json — no flag needed
-cupertino fetch --type code
+cupertino fetch --source apple-sample-code
 ```
 
 ### Discard the Saved Session and Start Over
 ```bash
-cupertino fetch --type code --start-clean
+cupertino fetch --source apple-sample-code --start-clean
 ```
 
 ## Authentication Process

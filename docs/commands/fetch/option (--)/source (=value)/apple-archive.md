@@ -1,11 +1,11 @@
-# --type archive
+# --source apple-archive
 
 Fetch Apple Archive Legacy Programming Guides
 
 ## Synopsis
 
 ```bash
-cupertino fetch --type archive
+cupertino fetch --source apple-archive
 ```
 
 ## Description
@@ -37,28 +37,28 @@ Creates Markdown files with YAML front matter:
 
 ### Fetch All Essential Guides
 ```bash
-cupertino fetch --type archive
+cupertino fetch --source apple-archive
 ```
 
 ### Resume Interrupted Download (automatic)
 ```bash
 # Auto-resumes from metadata.json — no flag needed
-cupertino fetch --type archive
+cupertino fetch --source apple-archive
 ```
 
 ### Discard the Saved Session and Start Over
 ```bash
-cupertino fetch --type archive --start-clean
+cupertino fetch --source apple-archive --start-clean
 ```
 
 ### Force Re-download
 ```bash
-cupertino fetch --type archive --force
+cupertino fetch --source apple-archive --force
 ```
 
 ### Custom Output Directory
 ```bash
-cupertino fetch --type archive --output-dir ./archive
+cupertino fetch --source apple-archive --output-dir ./archive
 ```
 
 ## Output Structure

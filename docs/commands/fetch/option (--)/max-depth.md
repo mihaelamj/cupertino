@@ -5,7 +5,7 @@ Maximum link depth to follow from the start URL
 ## Synopsis
 
 ```bash
-cupertino fetch --type docs --max-depth <n>
+cupertino fetch --source apple-docs --max-depth <n>
 ```
 
 ## Description
@@ -20,10 +20,10 @@ Each newly enqueued URL is tagged with the depth at which it was discovered. The
 
 ```bash
 # Shallow crawl: only the seed + direct children
-cupertino fetch --type docs --max-depth 1
+cupertino fetch --source apple-docs --max-depth 1
 
 # Fetch only the URLs in --urls, no descent
-cupertino fetch --type docs --urls my-urls.txt --max-depth 0
+cupertino fetch --source apple-docs --urls my-urls.txt --max-depth 0
 ```
 
 ## Notes

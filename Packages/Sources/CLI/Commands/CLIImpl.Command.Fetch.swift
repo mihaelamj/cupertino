@@ -41,54 +41,52 @@ extension CLIImpl.Command {
     /// / `@Flag` for every `--type` value must live on one struct.
     // swiftlint:disable:next type_body_length
     struct Fetch: AsyncParsableCommand {
-        typealias FetchType = Cupertino.FetchType
-
         static let configuration = CommandConfiguration(
             commandName: "fetch",
             abstract: "Download documentation, packages, and sample code for local indexing",
             discussion: """
             Downloads content from Apple and GitHub into ~/.cupertino/ ready for 'cupertino save'.
 
-            TYPES (--type)
-              docs          Apple developer documentation (default)
-              swift         Swift.org documentation
-              evolution     Swift Evolution proposals
-              hig           Human Interface Guidelines
-              archive       Apple Archive guides (legacy Core Animation, Quartz 2D, KVO/KVC, etc.)
-              availability  Update API availability metadata for an existing docs corpus (on-disk pass)
-              packages      Swift package metadata + source archives — two-stage fetch:
-                              Stage 1: refresh metadata from Swift Package Index
-                              Stage 2: download GitHub source archives
-                            Use --skip-metadata or --skip-archives to run only one stage.
-                            Use --annotate-availability after stage 2 to write availability.json.
-              code          Sample code zip archives from Apple (use 'samples' instead)
-              samples       Apple sample-code projects from GitHub (recommended)
-              all           Run all types in parallel
+            SOURCES (--source). Post-#1031 each source is the canonical ID from the per-source target registry.
+
+              apple-docs        Apple developer documentation (default)
+              swift-org         Swift.org documentation
+              swift-evolution   Swift Evolution proposals
+              hig               Human Interface Guidelines
+              apple-archive     Apple Archive guides (legacy Core Animation, Quartz 2D, KVO/KVC, etc.)
+              availability      Update API availability metadata for an existing docs corpus (on-disk maintenance pass; not a registry source)
+              packages          Swift package metadata + source archives, two-stage fetch:
+                                  Stage 1: refresh metadata from Swift Package Index
+                                  Stage 2: download GitHub source archives
+                                Use --skip-metadata or --skip-archives to run only one stage.
+                                Use --annotate-availability after stage 2 to write availability.json.
+              apple-sample-code Sample code zip archives from Apple (legacy bundle download; prefer 'samples')
+              samples           Apple sample-code projects from GitHub (recommended)
+              all               Run all sources in parallel
 
             EXAMPLES
-              cupertino fetch                              # Apple docs (default)
-              cupertino fetch --type evolution             # Swift Evolution proposals
-              cupertino fetch --type packages              # package metadata + archives
-              cupertino fetch --type packages --skip-metadata  # archives only
-              cupertino fetch --type packages --skip-archives  # metadata only
-              cupertino fetch --type samples               # Apple sample-code from GitHub
+              cupertino fetch                                  # Apple docs (default)
+              cupertino fetch --source swift-evolution         # Swift Evolution proposals
+              cupertino fetch --source packages                # package metadata + archives
+              cupertino fetch --source packages --skip-metadata    # archives only
+              cupertino fetch --source packages --skip-archives    # metadata only
+              cupertino fetch --source samples                 # Apple sample-code from GitHub
             """
         )
 
         @Option(
             name: .long,
             help: """
-            Type of documentation to fetch: docs (Apple), swift (Swift.org), \
-            evolution (Swift Evolution), \
-            packages (Swift package metadata + archives — see --skip-metadata / --skip-archives), \
-            code (Sample code from Apple), \
-            samples (Sample code from GitHub - recommended), \
-            archive (Apple Archive guides), hig (Human Interface Guidelines), \
-            availability (API version info for existing docs), \
-            all (all types in parallel)
+            Source to fetch (canonical id from the registry post-#1007 source-unification): \
+            apple-docs (Apple), swift-org (Swift.org), swift-evolution (Swift Evolution), \
+            packages (Swift package metadata + archives, see --skip-metadata / --skip-archives), \
+            apple-sample-code (sample code zip from Apple), samples (sample code from GitHub, recommended), \
+            apple-archive (Apple Archive guides), hig (Human Interface Guidelines), \
+            availability (API version info for existing docs, maintenance pass), \
+            all (all sources in parallel)
             """
         )
-        var type: FetchType = .docs
+        var source: String = Shared.Constants.SourcePrefix.appleDocs
 
         @Option(name: .long, help: "Start URL to crawl from (overrides --type default)")
         var startURL: String?
@@ -217,49 +215,36 @@ extension CLIImpl.Command {
 
             logStartMessage()
 
-            if type == .all {
+            // Post-#1031 (Phase 1I.c.2 of epic #1007): dispatch on
+            // canonical source-id strings instead of the dissolved
+            // FetchType enum. Special tokens: "all" (iterate all
+            // fetchable sources sequentially), "availability"
+            // (maintenance op, not a registry source).
+            switch source {
+            case "all":
                 try await runAllFetches()
-                return
-            }
-
-            // Direct fetch types (packages, code)
-            if type == .packages {
+            case Shared.Constants.SourcePrefix.packages:
                 try await runPackageFetch()
-                return
-            }
-
-            if type == .code {
+            case Shared.Constants.SourcePrefix.appleSampleCode:
                 try await runCodeFetch()
-                return
-            }
-
-            if type == .samples {
+            case Shared.Constants.SourcePrefix.samples:
                 try await runSamplesFetch()
-                return
-            }
-
-            if type == .archive {
+            case Shared.Constants.SourcePrefix.appleArchive:
                 try await runArchiveCrawl()
-                return
-            }
-
-            if type == .hig {
+            case Shared.Constants.SourcePrefix.hig:
                 try await runHIGCrawl()
-                return
-            }
-
-            if type == .availability {
+            case "availability":
                 try await runAvailabilityFetch()
-                return
-            }
-
-            // Web crawl types (docs, swift, evolution)
-            if type == .evolution {
+            case Shared.Constants.SourcePrefix.swiftEvolution:
                 try await runEvolutionCrawl()
-                return
+            case Shared.Constants.SourcePrefix.appleDocs, Shared.Constants.SourcePrefix.swiftOrg:
+                // Web-crawl fall-through: apple-docs + swift-org.
+                try await runStandardCrawl()
+            default:
+                throw ValidationError(
+                    "Unknown --source value '\(source)'. Valid sources: apple-docs, swift-org, swift-evolution, packages, apple-sample-code, samples, apple-archive, hig, availability, all."
+                )
             }
-
-            try await runStandardCrawl()
         }
 
         private func logStartMessage() {
@@ -267,22 +252,101 @@ extension CLIImpl.Command {
             // and matches the start URL — no flag needed. We log "Fetching" here
             // unconditionally; the Crawler itself prints "🔄 Found resumable session"
             // when it actually loads saved state.
-            Cupertino.Context.composition.logging.recording.info("🚀 Cupertino - Fetching \(type.displayName)")
+            Cupertino.Context.composition.logging.recording.info("🚀 Cupertino - Fetching \(Self.displayName(forSource: source))")
             // Print the resolved output directory at startup so #212-style
             // BinaryConfig misrouting is immediately visible.
             let resolvedOutputDir = outputDir.flatMap { URL(fileURLWithPath: $0).expandingTildeInPath.path }
-                ?? type.defaultOutputDir(paths: Shared.Paths.live())
+                ?? Self.defaultOutputDir(forSource: source, paths: Shared.Paths.live())
             Cupertino.Context.composition.logging.recording.info("   Output: \(resolvedOutputDir)\n")
+        }
+
+        /// Post-#1031 (Phase 1I.c.2): canonical sourceID list for the
+        /// `--source all` iteration. Includes the 8 registry source-ids
+        /// plus the two special tokens that aren't in the registry
+        /// (`apple-sample-code` legacy bundle + `availability`
+        /// maintenance op). `apple-sample-code` is omitted from
+        /// `--source all` because it overlaps with the GitHub-based
+        /// `samples` and would double-fetch (matches the pre-#1031
+        /// FetchType.allTypes which split `.code` and `.samples` into
+        /// directFetchTypes but the all-iteration is over both).
+        private static let allFetchableSources: [String] = [
+            Shared.Constants.SourcePrefix.appleDocs,
+            Shared.Constants.SourcePrefix.swiftOrg,
+            Shared.Constants.SourcePrefix.swiftEvolution,
+            Shared.Constants.SourcePrefix.packages,
+            Shared.Constants.SourcePrefix.appleSampleCode,
+            Shared.Constants.SourcePrefix.samples,
+            Shared.Constants.SourcePrefix.appleArchive,
+            Shared.Constants.SourcePrefix.hig,
+            "availability",
+        ]
+
+        /// Lookup the user-facing display name for a source-id. For
+        /// registered providers, reads from the registry's FetchInfo;
+        /// for special tokens (`all`, `availability`,
+        /// `apple-sample-code`), uses hardcoded labels.
+        private static func displayName(forSource source: String) -> String {
+            // Special tokens (not in the registry).
+            switch source {
+            case "all": return Shared.Constants.DisplayName.allDocs
+            case "availability": return "API Availability Data"
+            default:
+                break
+            }
+            // Registered providers.
+            if let provider = CLIImpl.makeProductionSourceRegistry().allEnabled.first(where: { $0.definition.id == source }) {
+                return provider.fetchInfo?.displayName ?? provider.definition.displayName
+            }
+            return source
+        }
+
+        /// Lookup the default output directory for a source-id.
+        /// Source-ids that map to a registered provider's FetchInfo
+        /// resolve their `defaultOutputDirKey` against `Shared.Paths`;
+        /// the special tokens are mapped directly.
+        private static func defaultOutputDir(forSource source: String, paths: Shared.Paths) -> String {
+            switch source {
+            case "all":
+                return paths.baseDirectory.path
+            case "availability":
+                return paths.docsDirectory.path
+            default:
+                break
+            }
+            guard let provider = CLIImpl.makeProductionSourceRegistry().allEnabled.first(where: { $0.definition.id == source }),
+                  let key = provider.fetchInfo?.defaultOutputDirKey else {
+                return paths.baseDirectory.path
+            }
+            return resolveDirectory(forKey: key, paths: paths).path
+        }
+
+        /// Map a `Search.FetchInfo.DefaultOutputDirKey` to the matching
+        /// `Shared.Paths` accessor URL. (See `Search.FetchInfo.DefaultOutputDirKey`
+        /// in `SearchModels/Search.FetchInfo.swift` for the canonical
+        /// 8-case enum.) `SearchModels.Search` fully qualifies the
+        /// namespace because `Search` resolves to
+        /// `CLIImpl.Command.Search` inside `extension CLIImpl.Command`.
+        private static func resolveDirectory(forKey key: SearchModels.Search.FetchInfo.DefaultOutputDirKey, paths: Shared.Paths) -> URL {
+            switch key {
+            case .docs: return paths.docsDirectory
+            case .swiftOrg: return paths.swiftOrgDirectory
+            case .swiftEvolution: return paths.swiftEvolutionDirectory
+            case .packages: return paths.packagesDirectory
+            case .sampleCode: return paths.sampleCodeDirectory
+            case .archive: return paths.archiveDirectory
+            case .hig: return paths.higDirectory
+            case .baseDirectory: return paths.baseDirectory
+            }
         }
 
         private mutating func runAllFetches() async throws {
             Cupertino.Context.composition.logging.recording.info("📚 Fetching all documentation types in parallel:\n")
             let baseCommand = self
 
-            try await withThrowingTaskGroup(of: (FetchType, Result<Void, Error>).self) { group in
-                for fetchType in FetchType.allTypes {
+            try await withThrowingTaskGroup(of: (String, Result<Void, Error>).self) { group in
+                for sourceID in Self.allFetchableSources {
                     group.addTask {
-                        await Self.fetchSingleType(fetchType, baseCommand: baseCommand)
+                        await Self.fetchSingleSource(sourceID, baseCommand: baseCommand)
                     }
                 }
 
@@ -291,41 +355,41 @@ extension CLIImpl.Command {
             }
         }
 
-        private static func fetchSingleType(
-            _ fetchType: FetchType,
+        private static func fetchSingleSource(
+            _ sourceID: String,
             baseCommand: CLIImpl.Command.Fetch
-        ) async -> (FetchType, Result<Void, Error>) {
-            Cupertino.Context.composition.logging.recording.info("🚀 Starting \(fetchType.displayName)...")
+        ) async -> (String, Result<Void, Error>) {
+            Cupertino.Context.composition.logging.recording.info("🚀 Starting \(displayName(forSource: sourceID))...")
             var fetchCommand = baseCommand
-            fetchCommand.type = fetchType
-            fetchCommand.outputDir = fetchType.defaultOutputDir(paths: Shared.Paths.live())
+            fetchCommand.source = sourceID
+            fetchCommand.outputDir = defaultOutputDir(forSource: sourceID, paths: Shared.Paths.live())
 
             do {
                 try await fetchCommand.run()
-                return (fetchType, .success(()))
+                return (sourceID, .success(()))
             } catch {
-                return (fetchType, .failure(error))
+                return (sourceID, .failure(error))
             }
         }
 
         private func collectFetchResults(
-            from group: inout ThrowingTaskGroup<(FetchType, Result<Void, Error>), Error>
-        ) async throws -> [(FetchType, Result<Void, Error>)] {
-            var results: [(FetchType, Result<Void, Error>)] = []
+            from group: inout ThrowingTaskGroup<(String, Result<Void, Error>), Error>
+        ) async throws -> [(String, Result<Void, Error>)] {
+            var results: [(String, Result<Void, Error>)] = []
             for try await result in group {
                 results.append(result)
-                let (fetchType, outcome) = result
+                let (sourceID, outcome) = result
                 switch outcome {
                 case .success:
-                    Cupertino.Context.composition.logging.recording.info("✅ Completed \(fetchType.displayName)")
+                    Cupertino.Context.composition.logging.recording.info("✅ Completed \(Self.displayName(forSource: sourceID))")
                 case .failure(let error):
-                    Cupertino.Context.composition.logging.recording.error("❌ Failed \(fetchType.displayName): \(error)")
+                    Cupertino.Context.composition.logging.recording.error("❌ Failed \(Self.displayName(forSource: sourceID)): \(error)")
                 }
             }
             return results
         }
 
-        private func validateFetchResults(_ results: [(FetchType, Result<Void, Error>)]) throws {
+        private func validateFetchResults(_ results: [(String, Result<Void, Error>)]) throws {
             let failures = results.filter {
                 if case .failure = $0.1 { return true }
                 return false
@@ -395,11 +459,42 @@ extension CLIImpl.Command {
         // to Ingest.Session in #247.
 
         private func validateStartURL() throws -> URL {
-            let urlString = startURL ?? type.defaultURL
+            let urlString = startURL ?? Self.defaultCrawlBaseURL(forSource: source)
             guard let url = URL(string: urlString) else {
                 throw ValidationError("Invalid start URL: \(urlString)")
             }
             return url
+        }
+
+        /// Map a source-id to the canonical crawl base URL. For
+        /// registered providers reads `fetchInfo.crawlBaseURLs.first`;
+        /// returns empty string for non-web-crawl sources (matches the
+        /// pre-#1031 `FetchType.defaultURL` switch arms).
+        private static func defaultCrawlBaseURL(forSource source: String) -> String {
+            // Registered providers.
+            if let provider = CLIImpl.makeProductionSourceRegistry().allEnabled.first(where: { $0.definition.id == source }) {
+                return provider.fetchInfo?.crawlBaseURLs.first ?? ""
+            }
+            return ""
+        }
+
+        /// Map a source-id to its default URL-prefix allowlist for the
+        /// crawler. Returns the full `fetchInfo.crawlBaseURLs` array
+        /// (swift-org spans www.swift.org + docs.swift.org); returns
+        /// nil for sources that should auto-detect from the start URL
+        /// (matches the pre-#1031 `FetchType.defaultAllowedPrefixes`
+        /// switch shape).
+        private static func defaultAllowedPrefixes(forSource source: String) -> [String]? {
+            guard source == Shared.Constants.SourcePrefix.swiftOrg else {
+                // Auto-detect from start URL for non-swift-org sources.
+                return nil
+            }
+            // swift-org needs explicit prefixes covering both www.swift.org
+            // and docs.swift.org (swift-book content lives under the latter).
+            return [
+                Shared.Constants.BaseURL.swiftOrg,
+                Shared.Constants.BaseURL.swiftBook,
+            ]
         }
 
         private func determineOutputDirectory(for url: URL) async throws -> URL {
@@ -407,7 +502,7 @@ extension CLIImpl.Command {
                 return URL(fileURLWithPath: outputDir).expandingTildeInPath
             }
             return try await findExistingSession(for: url)
-                ?? URL(fileURLWithPath: type.defaultOutputDir(paths: Shared.Paths.live())).expandingTildeInPath
+                ?? URL(fileURLWithPath: Self.defaultOutputDir(forSource: source, paths: Shared.Paths.live())).expandingTildeInPath
         }
 
         private func findExistingSession(for url: URL) async throws -> URL? {
@@ -458,11 +553,13 @@ extension CLIImpl.Command {
             url: URL,
             outputDirectory: URL
         ) -> Shared.Configuration {
-            // Use user-provided prefixes, or fall back to type defaults
+            // Use user-provided prefixes, or fall back to source defaults
+            // (swift-org spans www.swift.org + docs.swift.org per the
+            // pre-#1031 FetchType.swift.defaultAllowedPrefixes arm).
             let prefixes: [String]? = allowedPrefixes?
                 .split(separator: ",")
                 .map { String($0.trimmingCharacters(in: .whitespaces)) }
-                ?? type.defaultAllowedPrefixes
+                ?? Self.defaultAllowedPrefixes(forSource: source)
 
             return Shared.Configuration(
                 crawler: Shared.Configuration.Crawler(

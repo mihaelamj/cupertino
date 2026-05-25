@@ -1,11 +1,11 @@
 # --annotate-availability
 
-Stage 3 of `--type packages`: write per-package `availability.json` sidecars
+Stage 3 of `--source packages`: write per-package `availability.json` sidecars
 
 ## Synopsis
 
 ```bash
-cupertino fetch --type packages --annotate-availability
+cupertino fetch --source packages --annotate-availability
 ```
 
 ## Description
@@ -22,10 +22,10 @@ Walks every `<owner>/<repo>/` subdir under `~/.cupertino/packages/` and writes a
 
 ```bash
 # Full packages pipeline including annotation
-cupertino fetch --type packages --annotate-availability
+cupertino fetch --source packages --annotate-availability
 
 # Re-annotate without re-fetching
-cupertino fetch --type packages --skip-metadata --skip-archives --annotate-availability
+cupertino fetch --source packages --skip-metadata --skip-archives --annotate-availability
 ```
 
 ## Notes

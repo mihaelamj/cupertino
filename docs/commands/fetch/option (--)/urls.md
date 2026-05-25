@@ -5,7 +5,7 @@ Path to a text file containing one URL per line; enqueue each at depth 0
 ## Synopsis
 
 ```bash
-cupertino fetch --type docs --urls <path>
+cupertino fetch --source apple-docs --urls <path>
 ```
 
 ## Description
@@ -20,10 +20,10 @@ None
 
 ```bash
 # Fetch only the listed URLs, no descent:
-cupertino fetch --type docs --urls missing-urls.txt --max-depth 0
+cupertino fetch --source apple-docs --urls missing-urls.txt --max-depth 0
 
 # Fetch + follow up to 3 levels:
-cupertino fetch --type docs --urls seeds.txt --max-depth 3
+cupertino fetch --source apple-docs --urls seeds.txt --max-depth 3
 ```
 
 ## File format

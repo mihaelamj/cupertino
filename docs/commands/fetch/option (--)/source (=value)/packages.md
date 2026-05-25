@@ -1,21 +1,21 @@
-# --type packages
+# --source packages
 
 Fetch Swift Package Documentation: metadata catalog (Swift Package Index + GitHub stars) plus the priority-package source archives in a single run.
 
 ## Synopsis
 
 ```bash
-cupertino fetch --type packages
-cupertino fetch --type packages --skip-archives                     # metadata only
-cupertino fetch --type packages --skip-metadata                     # archives only
-cupertino fetch --type packages --annotate-availability             # all three stages
-cupertino fetch --type packages --skip-metadata --skip-archives \
+cupertino fetch --source packages
+cupertino fetch --source packages --skip-archives                     # metadata only
+cupertino fetch --source packages --skip-metadata                     # archives only
+cupertino fetch --source packages --annotate-availability             # all three stages
+cupertino fetch --source packages --skip-metadata --skip-archives \
                                 --annotate-availability             # annotation pass over an existing on-disk corpus
 ```
 
 ## Description
 
-Runs up to three stages. Stages 1 and 2 run by default; stage 3 is opt-in. Any stage can be skipped via the corresponding flag (#217 merged the previous separate `--type package-docs` into stage 2; #219 added stage 3).
+Runs up to three stages. Stages 1 and 2 run by default; stage 3 is opt-in. Any stage can be skipped via the corresponding flag (#217 merged the previous separate `--source package-docs` into stage 2; #219 added stage 3).
 
 ### Stage 1 — Metadata refresh
 
@@ -75,37 +75,37 @@ Passing both `--skip-metadata` and `--skip-archives` without `--annotate-availab
 ### Default — both stages
 
 ```bash
-cupertino fetch --type packages
+cupertino fetch --source packages
 ```
 
 ### Refresh metadata only (e.g. before regenerating the embedded catalog)
 
 ```bash
-cupertino fetch --type packages --skip-archives
+cupertino fetch --source packages --skip-archives
 ```
 
 ### Download archives only (when metadata is already current)
 
 ```bash
-cupertino fetch --type packages --skip-metadata
+cupertino fetch --source packages --skip-metadata
 ```
 
 ### Fetch a limited metadata sample
 
 ```bash
-cupertino fetch --type packages --skip-archives --limit 100
+cupertino fetch --source packages --skip-archives --limit 100
 ```
 
 ### Custom output directory
 
 ```bash
-cupertino fetch --type packages --output-dir ./my-packages
+cupertino fetch --source packages --output-dir ./my-packages
 ```
 
 ### Discard saved session and start over
 
 ```bash
-cupertino fetch --type packages --start-clean
+cupertino fetch --source packages --start-clean
 ```
 
 ## Output File Structure (stage 1)
@@ -136,7 +136,7 @@ cupertino fetch --type packages --start-clean
 ## Use Cases
 
 - Refresh `SwiftPackagesCatalogEmbedded.swift` after Swift Package Index updates
-- Build `packages.db` via `cupertino save --type packages`
+- Build `packages.db` via `cupertino save --source packages`
 - Provide source for `cupertino package-search` queries
 - Analyse the Swift package ecosystem (stars, licences, activity)
 
@@ -144,4 +144,4 @@ cupertino fetch --type packages --start-clean
 
 - A GitHub token (`GH_TOKEN`) is strongly recommended — without it stage 1 hits the unauthenticated rate limit (60 req/h) very quickly and stage 2 can stall on tarball downloads.
 - Stages run sequentially; if stage 1 fails, stage 2 is still attempted (priority list comes from `PriorityPackagesCatalog`, not from the metadata catalog).
-- `--type all` invokes this command and so picks up both stages by default.
+- `--source all` invokes this command and so picks up both stages by default.

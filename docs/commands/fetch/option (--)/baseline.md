@@ -5,7 +5,7 @@ Path to a known-good baseline corpus directory; prepend missing URLs
 ## Synopsis
 
 ```bash
-cupertino fetch --type docs --baseline <path>
+cupertino fetch --source apple-docs --baseline <path>
 ```
 
 ## Description
@@ -19,7 +19,7 @@ None (no baseline injection)
 ## Example
 
 ```bash
-cupertino fetch --type docs \
+cupertino fetch --source apple-docs \
   --baseline ~/Developer/cupertino-docs/docs
 ```
 

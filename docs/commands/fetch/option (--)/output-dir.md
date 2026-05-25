@@ -5,7 +5,7 @@ Output directory for downloaded resources
 ## Synopsis
 
 ```bash
-cupertino fetch --type <type> --output-dir <path>
+cupertino fetch --source <type> --output-dir <path>
 ```
 
 ## Description
@@ -14,7 +14,7 @@ Specifies where to save the fetched resources.
 
 ## Default
 
-Depends on `--type`:
+Depends on `--source`:
 - `packages`: `~/.cupertino/packages`
 - `code`: `~/.cupertino/sample-code`
 
@@ -22,17 +22,17 @@ Depends on `--type`:
 
 ### Custom Output for Packages
 ```bash
-cupertino fetch --type packages --output-dir ./my-packages
+cupertino fetch --source packages --output-dir ./my-packages
 ```
 
 ### Custom Output for Sample Code
 ```bash
-cupertino fetch --type code --output-dir ./sample-code
+cupertino fetch --source apple-sample-code --output-dir ./sample-code
 ```
 
 ### Absolute Path
 ```bash
-cupertino fetch --type packages --output-dir /Users/username/Documents/swift-packages
+cupertino fetch --source packages --output-dir /Users/username/Documents/swift-packages
 ```
 
 ## Output Structure

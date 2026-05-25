@@ -1,6 +1,6 @@
 # Default Type Behavior
 
-When no `--type` is specified
+When no `--source` is specified
 
 ## Synopsis
 
@@ -10,10 +10,10 @@ cupertino fetch
 
 ## Default Behavior
 
-When you run `cupertino fetch` without the `--type` option, it defaults to:
+When you run `cupertino fetch` without the `--source` option, it defaults to:
 
 ```bash
-cupertino fetch --type docs
+cupertino fetch --source apple-docs
 ```
 
 This fetches **Apple Developer Documentation** from developer.apple.com.
@@ -31,29 +31,29 @@ These commands are identical:
 
 ```bash
 cupertino fetch
-cupertino fetch --type docs
-cupertino fetch --type docs --max-pages 1000000
+cupertino fetch --source apple-docs
+cupertino fetch --source apple-docs --max-pages 1000000
 ```
 
 ## Other Type Options
 
-To fetch different types, explicitly specify `--type`:
+To fetch different types, explicitly specify `--source`:
 
 ```bash
 # Swift.org documentation
-cupertino fetch --type swift
+cupertino fetch --source swift-org
 
 # Swift Evolution proposals
-cupertino fetch --type evolution
+cupertino fetch --source swift-evolution
 
 # Swift packages metadata
-cupertino fetch --type packages
+cupertino fetch --source packages
 
 # Apple sample code
-cupertino fetch --type code
+cupertino fetch --source apple-sample-code
 
 # Everything
-cupertino fetch --type all
+cupertino fetch --source all
 ```
 
 ## Default Settings Summary
@@ -85,12 +85,12 @@ cupertino fetch --force         # re-fetch even unchanged pages
 ### Explicit Type
 ```bash
 # Explicitly specify type
-cupertino fetch --type evolution
+cupertino fetch --source swift-evolution
 ```
 
 ## Notes
 
-- Default can be overridden with `--type`
+- Default can be overridden with `--source`
 - All other options still apply with default type
 - Use `cupertino fetch --help` to see all available types
 - Default behavior matches most common use case

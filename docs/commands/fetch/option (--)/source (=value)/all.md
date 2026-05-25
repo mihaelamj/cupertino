@@ -1,11 +1,11 @@
-# --type all
+# --source all
 
 Fetch All Documentation Types
 
 ## Synopsis
 
 ```bash
-cupertino fetch --type all
+cupertino fetch --source all
 ```
 
 ## Description
@@ -39,17 +39,17 @@ Runs every non-`all` fetch type **in parallel**:
 
 ### Fetch Everything
 ```bash
-cupertino fetch --type all
+cupertino fetch --source all
 ```
 
 ### Fetch Everything Including Sample Code
 ```bash
-cupertino fetch --type all
+cupertino fetch --source all
 ```
 
 ### Fetch Everything with Custom Settings
 ```bash
-cupertino fetch --type all --max-pages 5000 --limit 100
+cupertino fetch --source all --max-pages 5000 --limit 100
 ```
 
 ## Output Structure
@@ -143,23 +143,23 @@ Options like `--max-pages`, `--force`, and `--start-clean` apply to all relevant
 
 ```bash
 # Force re-fetch all types
-cupertino fetch --type all --force
+cupertino fetch --source all --force
 
 # Discard saved sessions and start every type fresh
-cupertino fetch --type all --start-clean
+cupertino fetch --source all --start-clean
 
 # Limit pages for web crawl types
-cupertino fetch --type all --max-pages 1000
+cupertino fetch --source all --max-pages 1000
 ```
 
 Resume is automatic across all types — interrupted fetches pick up where they left off on the next run with no flag.
 
 ## Sample Code Authentication
 
-To include `--type code`, sign in to `https://developer.apple.com/` in Safari first. The fetcher reuses Safari's `myacinfo` cookie from the system cookie store:
+To include `--source apple-sample-code`, sign in to `https://developer.apple.com/` in Safari first. The fetcher reuses Safari's `myacinfo` cookie from the system cookie store:
 
 ```bash
-cupertino fetch --type all
+cupertino fetch --source all
 ```
 
 Without a valid Safari sign-in:
@@ -191,7 +191,7 @@ Alternative: drop `code` and use `samples` (GitHub mirror, no auth required) for
 
 1. **Initial fetch** (one-time):
    ```bash
-   cupertino fetch --type all
+   cupertino fetch --source all
    ```
 
 2. **Build search index**:
@@ -201,7 +201,7 @@ Alternative: drop `code` and use `samples` (GitHub mirror, no auth required) for
 
 3. **Future updates** (individual types):
    ```bash
-   cupertino fetch --type docs        # auto-resumes if interrupted previously
-   cupertino fetch --type evolution
+   cupertino fetch --source apple-docs        # auto-resumes if interrupted previously
+   cupertino fetch --source swift-evolution
    cupertino save --clear
    ```

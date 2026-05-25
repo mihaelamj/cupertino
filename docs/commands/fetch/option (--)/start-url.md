@@ -1,25 +1,25 @@
 # --start-url
 
-Override the default start URL for the chosen `--type`
+Override the default start URL for the chosen `--source`
 
 ## Synopsis
 
 ```bash
-cupertino fetch --type <type> --start-url <url>
+cupertino fetch --source <type> --start-url <url>
 ```
 
 ## Description
 
-Each web-crawl `--type` (docs, swift, evolution) has a default start URL baked in (`Cupertino.FetchType.defaultURL`). Override here to crawl a different seed.
+Each web-crawl `--source` (docs, swift, evolution) has a default start URL baked in (`Cupertino.FetchType.defaultURL`). Override here to crawl a different seed.
 
 ## Default
 
-Type-dependent. For `--type docs`: `https://developer.apple.com/documentation/`. For `--type swift`: swift.org docs root.
+Type-dependent. For `--source apple-docs`: `https://developer.apple.com/documentation/`. For `--source swift-org`: swift.org docs root.
 
 ## Example
 
 ```bash
-cupertino fetch --type docs --start-url https://developer.apple.com/documentation/swiftui
+cupertino fetch --source apple-docs --start-url https://developer.apple.com/documentation/swiftui
 ```
 
 ## Notes

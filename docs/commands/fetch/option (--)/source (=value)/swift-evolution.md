@@ -1,11 +1,11 @@
-# --type evolution
+# --source swift-evolution
 
 Fetch Swift Evolution Proposals
 
 ## Synopsis
 
 ```bash
-cupertino fetch --type evolution
+cupertino fetch --source swift-evolution
 ```
 
 ## Description
@@ -37,33 +37,33 @@ Creates Markdown files for each proposal:
 
 ### Fetch All Proposals
 ```bash
-cupertino fetch --type evolution
+cupertino fetch --source swift-evolution
 ```
 
 ### Fetch Only Accepted/Implemented Proposals
 ```bash
-cupertino fetch --type evolution --only-accepted
+cupertino fetch --source swift-evolution --only-accepted
 ```
 
 ### Resume Interrupted Download (automatic)
 ```bash
 # Auto-resumes from metadata.json — no flag needed
-cupertino fetch --type evolution
+cupertino fetch --source swift-evolution
 ```
 
 ### Discard the Saved Session and Start Over
 ```bash
-cupertino fetch --type evolution --start-clean
+cupertino fetch --source swift-evolution --start-clean
 ```
 
 ### Force Re-download All Proposals
 ```bash
-cupertino fetch --type evolution --force
+cupertino fetch --source swift-evolution --force
 ```
 
 ### Custom Output Directory
 ```bash
-cupertino fetch --type evolution --output-dir ./evolution
+cupertino fetch --source swift-evolution --output-dir ./evolution
 ```
 
 ## Output Structure
@@ -104,7 +104,7 @@ This excludes:
 - Proposals under review
 
 ```bash
-cupertino fetch --type evolution --only-accepted
+cupertino fetch --source swift-evolution --only-accepted
 ```
 
 ## Metadata File

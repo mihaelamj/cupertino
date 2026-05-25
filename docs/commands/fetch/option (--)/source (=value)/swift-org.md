@@ -1,11 +1,11 @@
-# --type swift
+# --source swift-org
 
 Fetch Swift.org Documentation
 
 ## Synopsis
 
 ```bash
-cupertino fetch --type swift
+cupertino fetch --source swift-org
 ```
 
 ## Description
@@ -29,7 +29,7 @@ Creates Markdown files for each documentation page:
 |---------|-------|
 | Output Directory | `~/.cupertino/swift-book` |
 | Start URL | `https://docs.swift.org/swift-book/...` |
-| Max Pages | 1,000,000 (effectively uncapped — same as `--type docs`) |
+| Max Pages | 1,000,000 (effectively uncapped, same as `--source apple-docs`) |
 | Max Depth | 15 |
 | Crawl Method | Web crawl via WKWebView |
 | Authentication | Not required |
@@ -39,33 +39,33 @@ Creates Markdown files for each documentation page:
 
 ### Fetch Swift.org Documentation
 ```bash
-cupertino fetch --type swift
+cupertino fetch --source swift-org
 ```
 
 ### Fetch with Custom Max Pages
 ```bash
-cupertino fetch --type swift --max-pages 500
+cupertino fetch --source swift-org --max-pages 500
 ```
 
 ### Resume Interrupted Crawl (automatic)
 ```bash
 # Auto-resumes from metadata.json — no flag needed
-cupertino fetch --type swift
+cupertino fetch --source swift-org
 ```
 
 ### Discard the Saved Session and Start Over
 ```bash
-cupertino fetch --type swift --start-clean
+cupertino fetch --source swift-org --start-clean
 ```
 
 ### Force Recrawl All Pages
 ```bash
-cupertino fetch --type swift --force
+cupertino fetch --source swift-org --force
 ```
 
 ### Custom Output Directory
 ```bash
-cupertino fetch --type swift --output-dir ./swift-docs
+cupertino fetch --source swift-org --output-dir ./swift-docs
 ```
 
 ## Output Structure
@@ -158,7 +158,7 @@ cupertino fetch --type swift --output-dir ./swift-docs
 ## Notes
 
 - Focuses on Swift language documentation
-- Does not include API documentation (use `--type docs` for APIs)
+- Does not include API documentation (use `--source apple-docs` for APIs)
 - No authentication required
 - HTML automatically converted to Markdown
 - Compatible with `cupertino save` for search indexing
