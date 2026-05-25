@@ -214,23 +214,32 @@ extension CLIImpl.Command {
                 source.contains(Shared.Constants.SourcePrefix.appleSampleCode))
             if !samplesIsInScope {
                 let category: LoggingModels.Logging.Category = .samples
+                // Critic round-9 finding #2: under --remote, the user
+                // cannot follow the natural fix ("add --source samples")
+                // because --source is mutex with --remote. Emit a
+                // different hint that doesn't recommend a flag combo
+                // that the binary will reject.
+                let remediation = remote
+                    ? "drop the flag (`--remote` streams docs only, no samples build)"
+                    : "Either add `--source samples` or drop the flag"
                 if samplesDir != nil {
                     recording.warning(
-                        "⚠️  `--samples-dir` is ignored because `--source samples` was not passed. " +
-                            "Either add `--source samples` or drop the flag.",
+                        "⚠️  `--samples-dir` is ignored: \(remediation).",
                         category: category
                     )
                 }
                 if samplesDB != nil {
                     recording.warning(
-                        "⚠️  `--samples-db` is ignored because `--source samples` was not passed.",
+                        "⚠️  `--samples-db` is ignored: \(remediation).",
                         category: category
                     )
                 }
                 if force {
+                    let forceRemediation = remote
+                        ? "drop the flag (`--remote` doesn't index samples)"
+                        : "pass `--source samples` to use it. Currently ignored"
                     recording.warning(
-                        "⚠️  `--force` only re-indexes the samples scope; pass `--source samples` " +
-                            "to use it. Currently ignored.",
+                        "⚠️  `--force` only re-indexes the samples scope; \(forceRemediation).",
                         category: category
                     )
                 }

@@ -136,11 +136,11 @@ cupertino save --yes
 
 ## Output
 
-| Scope | DB | Tables (top-level) |
+| Scope (`--source <id>`) | DB | Tables (top-level) |
 |-------|-----|---------|
-| `--docs` | `search.db` | `docs_fts`, `docs_metadata`, `docs_structured`, `doc_symbols`, `doc_imports`, `framework_aliases`, `doc_code_examples`, `doc_code_fts`, `packages` (legacy), `package_dependencies` (legacy), `sample_code` (legacy) |
-| `--packages` | `packages.db` | `package_files_fts`, `package_files`, `packages` |
-| `--samples` | `apple-sample-code.db` | `samples_fts`, `samples`, `projects`, `project_imports` |
+| docs-bucket sources (`apple-docs`, `swift-evolution`, `hig`, `apple-archive`, `swift-org`, `swift-book`) | `apple-documentation.db` + sibling per-source DBs | `docs_fts`, `docs_metadata`, `docs_structured`, `doc_symbols`, `doc_imports`, `framework_aliases`, `doc_code_examples`, `doc_code_fts` |
+| `packages` | `packages.db` | `package_files_fts`, `package_files`, `packages` |
+| `samples` | `apple-sample-code.db` (one file, two table tracks per #1037) | rich: `projects`, `files`, `file_symbols`, `file_imports`, `samples_schema_version`; FTS: `docs_metadata`, `docs_fts` |
 
 ## Error Handling
 

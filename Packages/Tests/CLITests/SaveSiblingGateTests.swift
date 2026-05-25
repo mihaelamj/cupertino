@@ -26,15 +26,18 @@ struct ParseSaveTargetsTests {
         #expect(SaveSiblingGate.parseSaveTargets(argv: argv).isEmpty)
     }
 
-    @Test("Post-#1037: 'save' with no scope flag → empty set (binary rejects, sibling detector ignores)")
-    func bareNoFlagYieldsEmpty() {
-        // Load-bearing rationale: post-#1037 bare `cupertino save` is a
-        // usage error. An in-flight sibling that somehow lacks scope
-        // (stale wrapper, parser failure) MUST NOT default to all-three
-        // or it would spuriously block every legitimate parallel save.
+    @Test("Bare 'save' with no scope flag → all three targets (covers pre-#1037 stale in-flight binaries)")
+    func bareNoFlagDefaultsToAllThree() {
+        // Critic round-9 regression guard. Bare `cupertino save` is
+        // a legitimate pre-#1037 invocation that builds all three DBs
+        // (and may still be in flight on a brew-upgraded machine).
+        // The new post-#1037 binary rejects bare save outright at
+        // run-time, but a stale pre-#1037 process can still be in
+        // the proc table writing concurrently. The parser must report
+        // all-three targets so sibling-detection catches the case.
         let argv = ["/usr/local/bin/cupertino", "save"]
         let targets = SaveSiblingGate.parseSaveTargets(argv: argv)
-        #expect(targets.isEmpty)
+        #expect(targets == [.search, .packages, .samples])
     }
 
     @Test("Pre-#1037 backward compat: --docs only → search.db only")
@@ -157,6 +160,36 @@ struct ParseSaveTargetsTests {
         #expect(SaveSiblingGate.Target.search.dbFilename == "search.db")
         #expect(SaveSiblingGate.Target.packages.dbFilename == "packages.db")
         #expect(SaveSiblingGate.Target.samples.dbFilename == "samples.db")
+    }
+
+    // MARK: - Critic round-9 regression guards
+
+    @Test("Critic round-9: `--all --source apple-docs` returns empty (real binary mutex-errors)")
+    func postSplitAllAndSourceMutex() {
+        // Real binary throws ExitCode.failure at
+        // resolveSelectedSourceIDs(source:all:) when both flags are
+        // present. The sibling-detector returns empty so the gate
+        // doesn't spuriously block a legitimate parallel save on
+        // behalf of a process that's about to die.
+        let argv = ["cupertino", "save", "--all", "--source", "apple-docs"]
+        let targets = SaveSiblingGate.parseSaveTargets(argv: argv)
+        #expect(targets.isEmpty)
+    }
+
+    @Test("Critic round-9: trailing `--source` with no value contributes no bucket")
+    func postSplitTrailingSourceNoValue() {
+        // Trailing --source with no value is malformed; no bucket
+        // should be set.
+        let argv = ["cupertino", "save", "--source"]
+        let targets = SaveSiblingGate.parseSaveTargets(argv: argv)
+        #expect(targets.isEmpty)
+    }
+
+    @Test("Critic round-9: canonical + alias for the same bucket collapse via Set semantics")
+    func postSplitCanonicalAndAliasCollapse() {
+        let argv = ["cupertino", "save", "--source", "samples", "--source", "apple-sample-code"]
+        let targets = SaveSiblingGate.parseSaveTargets(argv: argv)
+        #expect(targets == [.search, .samples])
     }
 
     @Test("Post-#1037 regression: `--source apple-docs` does NOT spuriously claim packages or samples targets")

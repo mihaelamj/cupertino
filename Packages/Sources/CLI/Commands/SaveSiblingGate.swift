@@ -511,6 +511,7 @@ enum SaveSiblingGate {
         var hasPackages = false
         var hasSamples = false
         var hasAll = false
+        var sawSourceFlag = false
         var sawScopeFlag = false
         var index = 0
         while index < rest.count {
@@ -532,6 +533,7 @@ enum SaveSiblingGate {
                 // Next token is the source id (post-#1037 repeatable
                 // option). Advance past it after classifying.
                 sawScopeFlag = true
+                sawSourceFlag = true
                 let nextIndex = index + 1
                 if nextIndex < rest.count {
                     let id = rest[nextIndex]
@@ -548,6 +550,7 @@ enum SaveSiblingGate {
                 // accepts both `--source X` and `--source=X`.
                 if token.hasPrefix("--source=") {
                     sawScopeFlag = true
+                    sawSourceFlag = true
                     let id = String(token.dropFirst("--source=".count))
                     classifyPostSplitSourceID(
                         id,
@@ -559,15 +562,35 @@ enum SaveSiblingGate {
             }
             index += 1
         }
+        // `--all` + `--source` combined: the real binary throws a
+        // mutex error on this combination and exits without opening any
+        // DB. Return empty so the gate doesn't spuriously block a
+        // legitimate sibling on behalf of a process that's about to
+        // die.
+        if hasAll, sawSourceFlag {
+            return []
+        }
         if hasAll {
             return [.search, .packages, .samples]
         }
-        // Post-#1037 no longer defaults to "all three" when no scope
-        // flag is recognised; the binary rejects bare save outright.
-        // Returning an empty set here means a sibling whose argv we
-        // can't classify will NOT trigger spurious gate conflicts.
+        // No scope flag recognised. There are two real-world argvs
+        // that produce this shape:
+        //   1. A bare pre-#1037 `cupertino save` (no flags) that's
+        //      still in flight after a brew upgrade. That binary DID
+        //      accept bare save and IS writing all three DBs; the gate
+        //      must still detect it.
+        //   2. A post-#1037 binary with no scope flag, which the
+        //      resolver rejects at run-time (so the argv was ephemeral
+        //      and the process is already dead by the time we read it).
+        // Since we can't tell the two cases apart from argv alone,
+        // defaulting to all-three is the safe choice: we over-detect
+        // (case 2 gates spuriously, which costs the new save a prompt)
+        // rather than under-detect (case 1 silent corruption of three
+        // DBs). The new binary's `Save.run()` exits before any DB
+        // open if no scope flag was passed, so case 2's process won't
+        // actually hold a lock; the gate just sees it briefly.
         if !sawScopeFlag {
-            return []
+            return [.search, .packages, .samples]
         }
         var set: Set<Target> = []
         if hasDocs { set.insert(.search) }

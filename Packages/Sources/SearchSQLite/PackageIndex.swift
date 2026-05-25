@@ -338,7 +338,7 @@ extension Search {
 
             -- #837 stage 2: per-symbol storage on packages.db, parallel
             -- to samples.db's file_symbols. Populated by the AST
-            -- extraction pass during cupertino save --packages so the
+            -- extraction pass during cupertino save --source packages so the
             -- postprocessor's apple-constraints pass can annotate
             -- generic_constraints on packages the same way it does on
             -- search.db's doc_symbols and samples.db's file_symbols.
@@ -1112,7 +1112,7 @@ extension Search {
 
             // #236: WAL journal mode lets readers (`cupertino search
             // --source packages`, `cupertino doctor`) proceed while a
-            // `cupertino save --packages` writer holds the DB. PRAGMA is
+            // `cupertino save --source packages` writer holds the DB. PRAGMA is
             // idempotent and persists in the file header. Log and
             // continue on failure.
             if sqlite3_exec(dbPointer, "PRAGMA journal_mode = WAL", nil, nil, nil) != SQLITE_OK {
