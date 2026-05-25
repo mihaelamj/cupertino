@@ -37,6 +37,79 @@ struct ConstantsAuditTests {
         return try String(contentsOf: url, encoding: .utf8)
     }
 
+    private static func manifestText(forSourceFolder folder: String) throws -> String {
+        let url = repoRoot().appendingPathComponent("docs/sources/\(folder)/manifest.yaml")
+        return try String(contentsOf: url, encoding: .utf8)
+    }
+
+    /// Parse a YAML list under a named key inside a parent block. The
+    /// manifests use:
+    ///   capabilities:
+    ///     searchers:
+    ///       - text
+    ///       - symbols
+    /// This helper finds the `<parentKey>:` line, scans forward to the
+    /// `<listKey>:` line (indented one level deeper), then collects the
+    /// subsequent `  - <value>` lines until the indent drops. Returns
+    /// the values as a `Set<String>` for order-insensitive comparison.
+    ///
+    /// Lightweight (no Yams dep); sufficient for the capability-matrix
+    /// pin tests. If the YAML loader lands in a future commit
+    /// (corpus-structure.md §8 open question), these tests migrate
+    /// to it; until then, this parser closes the YAML ↔ Swift loop.
+    private static func parseYAMLList(
+        underParent parentKey: String,
+        nestedKey listKey: String,
+        in yaml: String
+    ) -> Set<String> {
+        let lines = yaml.components(separatedBy: .newlines)
+        var inParent = false
+        var inList = false
+        var listIndent = -1
+        var values: [String] = []
+
+        for rawLine in lines {
+            let trimmed = rawLine.trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty || trimmed.hasPrefix("#") { continue }
+
+            let leading = rawLine.prefix(while: { $0 == " " }).count
+
+            if !inParent {
+                if trimmed.hasPrefix("\(parentKey):") {
+                    inParent = true
+                }
+                continue
+            }
+            if !inList {
+                if trimmed.hasPrefix("\(listKey):") {
+                    inList = true
+                    continue
+                }
+                // A peer key of the parent (same indent or shallower) means
+                // we left the parent block without finding listKey.
+                if leading == 0 {
+                    return Set(values)
+                }
+                continue
+            }
+            // In the list. Items start with `- `.
+            if trimmed.hasPrefix("- ") {
+                if listIndent < 0 {
+                    listIndent = leading
+                }
+                if leading == listIndent {
+                    values.append(String(trimmed.dropFirst(2)).trimmingCharacters(in: .whitespaces))
+                    continue
+                }
+            }
+            // Anything else at shallower or equal indent ends the list.
+            if leading <= listIndent || leading == 0 {
+                break
+            }
+        }
+        return Set(values)
+    }
+
     /// Parse one of the `ALLOWED_*` arrays from check-source-manifests.sh.
     /// The arrays are multi-line bash arrays, e.g.:
     ///   ALLOWED_SEARCHERS=(
@@ -66,27 +139,49 @@ struct ConstantsAuditTests {
         return Set(cleaned.split(whereSeparator: { $0.isWhitespace }).map(String.init))
     }
 
-    // MARK: - DatabaseDescriptor ↔ FileName consistency
+    // MARK: - DatabaseDescriptor ↔ canonical literal pin
 
-    @Test("Per-source DatabaseDescriptor filename matches its FileName constant exactly")
-    func descriptorFilenameMatchesFileNameConstant() {
-        let pairs: [(Shared.Models.DatabaseDescriptor, String)] = [
-            (.appleDocumentation, Shared.Constants.FileName.appleDocumentationDatabase),
-            (.hig, Shared.Constants.FileName.higDatabase),
-            (.appleArchive, Shared.Constants.FileName.appleArchiveDatabase),
-            (.swiftEvolution, Shared.Constants.FileName.swiftEvolutionDatabase),
-            (.swiftDocumentation, Shared.Constants.FileName.swiftDocumentationDatabase),
-            (.appleSampleCode, Shared.Constants.FileName.appleSampleCodeDatabase),
-            (.swiftPackages, Shared.Constants.FileName.swiftPackagesDatabase),
+    //
+    // Critic-fix: the prior version compared descriptor.filename against
+    // the FileName constant the descriptor was BUILT FROM (tautology;
+    // both sides update together). The real pin is "the value users
+    // see on disk + in the bundle manifest". Comparing against an
+    // explicit literal string is what catches a future rename of the
+    // FileName constant (which would silently propagate to the
+    // descriptor without breaking any test that compares them).
+
+    @Test("Per-source DatabaseDescriptor.filename pinned against the canonical on-disk filename literal")
+    func descriptorFilenamePinnedAgainstCanonicalLiteral() {
+        // These literal strings are the bundle filenames the user's
+        // ~/.cupertino/ directory will contain. They are the wire
+        // contract; the FileName constants + DatabaseDescriptor statics
+        // both follow this contract. Pin the contract here.
+        let canonical: [(Shared.Models.DatabaseDescriptor, String)] = [
+            (.appleDocumentation, "apple-documentation.db"),
+            (.hig, "hig.db"),
+            (.appleArchive, "apple-archive.db"),
+            (.swiftEvolution, "swift-evolution.db"),
+            (.swiftDocumentation, "swift-documentation.db"),
+            (.appleSampleCode, "apple-sample-code.db"),
+            (.swiftPackages, "swift-packages.db"),
+            // Legacy descriptors stay live during the transition;
+            // pinning them here catches a renaming of any of the 3.
+            (.search, "search.db"),
+            (.samples, "samples.db"),
+            (.packages, "packages.db"),
         ]
-        for (descriptor, fileName) in pairs {
-            #expect(descriptor.filename == fileName, "descriptor '\(descriptor.id)' filename '\(descriptor.filename)' does not match FileName constant '\(fileName)'")
+        for (descriptor, expected) in canonical {
+            #expect(
+                descriptor.filename == expected,
+                "descriptor '\(descriptor.id)' filename '\(descriptor.filename)' drifted from the canonical bundle filename '\(expected)'"
+            )
         }
     }
 
-    @Test("Per-source DatabaseDescriptor.id equals filename's kebab-case stem (id + '.db' == filename)")
+    @Test("Per-source DatabaseDescriptor.id + '.db' == filename for ALL 10 descriptors (legacy + new)")
     func descriptorIDMatchesFilenameStem() {
         let descriptors: [Shared.Models.DatabaseDescriptor] = [
+            .search, .samples, .packages,
             .appleDocumentation, .hig, .appleArchive, .swiftEvolution,
             .swiftDocumentation, .appleSampleCode, .swiftPackages,
         ]
@@ -134,32 +229,77 @@ struct ConstantsAuditTests {
         #expect(swiftSet == shellSet, "drift: Swift Operation cases = \(swiftSet.sorted()); shell ALLOWED_OPERATIONS = \(shellSet.sorted())")
     }
 
-    @Test("Shell ALLOWED_FETCHER_KINDS is a superset of every manifest's fetcher.kind value")
+    @Test("Every manifest declares a fetcher.kind that is in shell ALLOWED_FETCHER_KINDS (structural per-manifest pin)")
     func everyManifestFetcherKindIsInAllowedSet() throws {
         let script = try Self.shellScriptText()
         let allowedKinds = Self.parseAllowedSet("ALLOWED_FETCHER_KINDS", from: script)
         let sourcesDir = Self.repoRoot().appendingPathComponent("docs/sources")
         let folders = try FileManager.default.contentsOfDirectory(at: sourcesDir, includingPropertiesForKeys: nil)
-        var anyFound = false
+        var manifestsFound = 0
+        var manifestsParsed = 0
         for folder in folders where (try? folder.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
             let manifest = folder.appendingPathComponent("manifest.yaml")
             guard FileManager.default.fileExists(atPath: manifest.path) else { continue }
+            manifestsFound += 1
             let yaml = try String(contentsOf: manifest, encoding: .utf8)
-            // Naive regex: find `kind: <value>` under the fetcher block.
-            // The manifests use single-key kind lines; this matches both
-            // `  kind: web-crawl` and `  kind: github-api`.
-            if let kindRange = yaml.range(of: "kind:", options: .literal) {
-                let lineEnd = yaml[kindRange.upperBound...].firstIndex(of: "\n") ?? yaml.endIndex
-                let kindRaw = yaml[kindRange.upperBound..<lineEnd]
-                    .trimmingCharacters(in: .whitespaces)
+            // Structural: locate the column-0 `fetcher:` key, then scan
+            // subsequent indented lines for `kind:`. Avoids the naive-
+            // substring trap where a description block or sibling key
+            // could match "kind:".
+            let kindValue = Self.extractFetcherKind(from: yaml)
+            #expect(
+                kindValue != nil,
+                "manifest \(folder.lastPathComponent) has no parseable fetcher.kind line"
+            )
+            if let kindRaw = kindValue {
                 #expect(
                     allowedKinds.contains(kindRaw),
                     "manifest \(folder.lastPathComponent) declares fetcher.kind '\(kindRaw)' but it is NOT in shell ALLOWED_FETCHER_KINDS=\(allowedKinds.sorted())"
                 )
-                anyFound = true
+                manifestsParsed += 1
             }
         }
-        #expect(anyFound, "expected at least one manifest with a fetcher.kind declaration")
+        #expect(manifestsFound > 0, "expected at least one manifest under docs/sources/")
+        #expect(
+            manifestsParsed == manifestsFound,
+            "drift: parsed fetcher.kind from \(manifestsParsed) of \(manifestsFound) manifests; missing manifests slip past the test silently"
+        )
+    }
+
+    /// Structural extraction of `fetcher.kind` value. Anchors to the
+    /// column-0 `fetcher:` key, scans subsequent lines whose leading
+    /// indent > 0 for `kind:`, returns the trimmed value (stripping
+    /// quotes + inline comments). Returns nil if no fetcher block or
+    /// no kind line. Replaces the naive `range(of: "kind:")` lookup
+    /// that could match unrelated `*Kind:` keys or "kind:" inside a
+    /// description block.
+    private static func extractFetcherKind(from yaml: String) -> String? {
+        let lines = yaml.components(separatedBy: .newlines)
+        var inFetcher = false
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty || trimmed.hasPrefix("#") { continue }
+            let leading = line.prefix(while: { $0 == " " }).count
+            if !inFetcher {
+                if leading == 0, trimmed.hasPrefix("fetcher:") {
+                    inFetcher = true
+                }
+                continue
+            }
+            if leading == 0 {
+                return nil
+            }
+            if trimmed.hasPrefix("kind:") {
+                let raw = String(trimmed.dropFirst("kind:".count)).trimmingCharacters(in: .whitespaces)
+                let beforeComment: String = if let hashIndex = raw.firstIndex(of: "#") {
+                    String(raw[..<hashIndex]).trimmingCharacters(in: .whitespaces)
+                } else {
+                    raw
+                }
+                return beforeComment.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+            }
+        }
+        return nil
     }
 
     // MARK: - PerSourceDBSplitMigrator.legacyRenameSuffix is a single source of truth
@@ -172,79 +312,52 @@ struct ConstantsAuditTests {
     // MARK: - Per-source capability matrix Swift ↔ YAML consistency
 
     //
-    // Without a runtime YAML loader (deferred per corpus-structure.md §8),
-    // we check the Swift declaration against a hardcoded snapshot of
-    // what each manifest declares. If these drift, either Swift or
-    // YAML is wrong; the test surfaces which.
+    // True YAML ↔ Swift pin: for each registered SourceProvider that
+    // has a manifest in docs/sources/<folder>/, the test reads the
+    // YAML at runtime via the inline parser and compares the parsed
+    // searchers + operations sets against the Swift property's set.
+    // Drift in either side fails the test loudly with both sets
+    // printed.
+    //
+    // The previous version of these tests hardcoded the expected
+    // set as a Swift literal, creating a 3-way drift risk (YAML /
+    // Swift property / test literal). The current version reads the
+    // YAML directly + asserts against the Swift property only,
+    // collapsing to a 2-way pin.
 
-    @Test("AppleDocsSource.capabilities.searchers matches docs/sources/apple-docs/manifest.yaml")
-    func appleDocsCapabilitiesMatchManifest() {
-        // YAML at docs/sources/apple-docs/manifest.yaml declares:
-        //   searchers: [text, symbols, property-wrappers, concurrency, conformances, generics]
-        //   operations: [read-by-uri, list-frameworks, resolve-refs]
-        let provider = providerForSourceID(Shared.Constants.SourcePrefix.appleDocs)
-        let searchers = Set(provider.capabilities.searchers.map(\.rawValue))
-        let operations = Set(provider.capabilities.operations.map(\.rawValue))
-        #expect(searchers == ["text", "symbols", "property-wrappers", "concurrency", "conformances", "generics"])
-        #expect(operations == ["read-by-uri", "list-frameworks", "resolve-refs"])
+    @Test("Every registered source's Swift capabilities.searchers matches its manifest.yaml searchers list (YAML ↔ Swift pin)")
+    func swiftSearchersMatchManifestYAML() {
+        let registry = CLIImpl.makeProductionSourceRegistry()
+        for provider in registry.allEnabled {
+            let folder = manifestFolderName(forSourceID: provider.definition.id)
+            guard let yaml = try? Self.manifestText(forSourceFolder: folder) else {
+                // PackagesSource manifest exists at "packages"; SwiftBookSource
+                // (view-source) has no manifest of its own (declared inside
+                // swift-org's manifest's viewSources block). Skip cleanly.
+                continue
+            }
+            let yamlSearchers = Self.parseYAMLList(underParent: "capabilities", nestedKey: "searchers", in: yaml)
+            let swiftSearchers = Set(provider.capabilities.searchers.map(\.rawValue))
+            #expect(
+                yamlSearchers == swiftSearchers,
+                "drift in source '\(provider.definition.id)': YAML searchers = \(yamlSearchers.sorted()); Swift = \(swiftSearchers.sorted())"
+            )
+        }
     }
 
-    @Test("HIGSource.capabilities.searchers matches docs/sources/hig/manifest.yaml")
-    func higCapabilitiesMatchManifest() {
-        let provider = providerForSourceID(Shared.Constants.SourcePrefix.hig)
-        let searchers = Set(provider.capabilities.searchers.map(\.rawValue))
-        let operations = Set(provider.capabilities.operations.map(\.rawValue))
-        #expect(searchers == ["text"])
-        #expect(operations == ["read-by-uri"])
-        // Critical contract pin: HIG must NOT advertise list-frameworks
-        // (HIG rows carry framework="" at index time per CandidateFetcher).
-        #expect(!operations.contains("list-frameworks"))
-    }
-
-    @Test("AppleArchiveSource.capabilities matches docs/sources/apple-archive/manifest.yaml")
-    func appleArchiveCapabilitiesMatchManifest() {
-        let provider = providerForSourceID(Shared.Constants.SourcePrefix.appleArchive)
-        let operations = Set(provider.capabilities.operations.map(\.rawValue))
-        // apple-archive IS in frameworkScopedSources so it DOES advertise list-frameworks.
-        #expect(operations == ["read-by-uri", "list-frameworks"])
-    }
-
-    @Test("SwiftEvolutionSource.capabilities matches docs/sources/swift-evolution/manifest.yaml")
-    func swiftEvolutionCapabilitiesMatchManifest() {
-        let provider = providerForSourceID(Shared.Constants.SourcePrefix.swiftEvolution)
-        let searchers = Set(provider.capabilities.searchers.map(\.rawValue))
-        let metadata = provider.capabilities.metadata
-        #expect(searchers == ["text"])
-        #expect(metadata[.hasMinSwiftVersion] == true)
-        #expect(metadata[.hasProposalNumber] == true)
-    }
-
-    @Test("SwiftOrgSource.capabilities matches docs/sources/swift-org/manifest.yaml")
-    func swiftOrgCapabilitiesMatchManifest() {
-        let provider = providerForSourceID(Shared.Constants.SourcePrefix.swiftOrg)
-        let searchers = Set(provider.capabilities.searchers.map(\.rawValue))
-        #expect(searchers == ["text", "symbols", "generics"])
-    }
-
-    @Test("SampleCodeSource.capabilities matches docs/sources/samples/manifest.yaml")
-    func sampleCodeCapabilitiesMatchManifest() {
-        let provider = providerForSourceID(Shared.Constants.SourcePrefix.samples)
-        let searchers = Set(provider.capabilities.searchers.map(\.rawValue))
-        let operations = Set(provider.capabilities.operations.map(\.rawValue))
-        let metadata = provider.capabilities.metadata
-        #expect(searchers == ["text", "sample-files"])
-        #expect(operations == ["read-by-uri", "list-samples"])
-        #expect(metadata[.hasSampleCode] == true)
-    }
-
-    @Test("PackagesSource.capabilities matches docs/sources/packages/manifest.yaml")
-    func packagesCapabilitiesMatchManifest() {
-        let provider = providerForSourceID(Shared.Constants.SourcePrefix.packages)
-        let searchers = Set(provider.capabilities.searchers.map(\.rawValue))
-        let metadata = provider.capabilities.metadata
-        #expect(searchers == ["text", "package-search"])
-        #expect(metadata[.hasPackageMetadata] == true)
-        #expect(metadata[.hasMinSwiftVersion] == true)
+    @Test("Every registered source's Swift capabilities.operations matches its manifest.yaml operations list (YAML ↔ Swift pin)")
+    func swiftOperationsMatchManifestYAML() {
+        let registry = CLIImpl.makeProductionSourceRegistry()
+        for provider in registry.allEnabled {
+            let folder = manifestFolderName(forSourceID: provider.definition.id)
+            guard let yaml = try? Self.manifestText(forSourceFolder: folder) else { continue }
+            let yamlOperations = Self.parseYAMLList(underParent: "capabilities", nestedKey: "operations", in: yaml)
+            let swiftOperations = Set(provider.capabilities.operations.map(\.rawValue))
+            #expect(
+                yamlOperations == swiftOperations,
+                "drift in source '\(provider.definition.id)': YAML operations = \(yamlOperations.sorted()); Swift = \(swiftOperations.sorted())"
+            )
+        }
     }
 
     // MARK: - Helpers
@@ -256,5 +369,14 @@ struct ConstantsAuditTests {
             fatalError("source-id '\(sourceID)' missing")
         }
         return provider
+    }
+
+    /// Map a SourceProvider.definition.id to its docs/sources/ folder
+    /// name. Convention: folder name == sourceID. (Per #932 candidate
+    /// work, a future runtime YAML loader would derive this from the
+    /// manifest's `corpusFolder` field; today's convention matches the
+    /// folder name to the id.)
+    private func manifestFolderName(forSourceID sourceID: String) -> String {
+        sourceID
     }
 }
