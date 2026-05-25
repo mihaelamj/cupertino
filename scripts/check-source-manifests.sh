@@ -43,7 +43,7 @@ fi
 
 REQUIRED_FIELDS=(sourceId displayName corpusFolder destinationDB fetcher indexer capabilities)
 
-ALLOWED_FETCHER_KINDS=(apple-docs-api git-clone http-archive github-api file-bundle)
+ALLOWED_FETCHER_KINDS=(apple-docs-api web-crawl git-clone http-archive github-api webkit-scrape file-bundle)
 
 ALLOWED_SEARCHERS=(
     text symbols property-wrappers concurrency conformances generics
@@ -83,13 +83,35 @@ for manifest_dir in docs/sources/*/; do
         continue
     fi
 
-    # Required fields.
+    # Required fields. Catches both missing-entirely AND
+    # present-but-empty (e.g. `fetcher: {}` or `capabilities: {}`),
+    # which the earlier check missed (yq returned `{}` which is neither
+    # 'null' nor empty so the test passed).
     for field in "${REQUIRED_FIELDS[@]}"; do
         value=$(yq eval ".$field" "$manifest_path")
         if [[ "$value" == "null" || -z "$value" ]]; then
             errors+=("REQUIRED $manifest_path  →  missing required field: $field")
+            continue
         fi
+        # For block-typed fields, also reject empty-map / empty-array.
+        case "$field" in
+            fetcher|indexer|capabilities)
+                key_count=$(yq eval ".$field | length" "$manifest_path" 2>/dev/null || echo 0)
+                if [[ "$key_count" == "0" ]]; then
+                    errors+=("REQUIRED $manifest_path  →  required field '$field' is present but empty ({}); fill the sub-fields")
+                fi
+                ;;
+        esac
     done
+
+    # Indexer.extractor must be a non-empty string (the manifest's
+    # cross-reference to the source's Swift indexer type). Step 3's
+    # loader uses this as advisory; a non-empty assertion now catches
+    # the degenerate `extractor: ""` and `extractor: null` cases.
+    extractor=$(yq eval '.indexer.extractor' "$manifest_path")
+    if [[ "$extractor" == "null" || -z "$extractor" ]]; then
+        errors+=("EXTRACTOR $manifest_path  →  indexer.extractor missing or empty")
+    fi
 
     # sourceId matches folder name.
     source_id=$(yq eval '.sourceId' "$manifest_path")

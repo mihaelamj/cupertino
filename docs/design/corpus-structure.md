@@ -191,9 +191,11 @@ destinationDB: apple-documentation  # canonical DatabaseDescriptor name
 # Required: how the fetcher acquires content
 fetcher:
   kind: apple-docs-api              # one of: apple-docs-api,
+                                    #         web-crawl,
                                     #         git-clone,
                                     #         http-archive,
                                     #         github-api,
+                                    #         webkit-scrape,
                                     #         file-bundle
   options:                          # MUST be a [string -> string] map
                                     # at decode time. Quote numeric
@@ -343,7 +345,7 @@ filter against a DB whose `hasMinPlatformVersion` is false).
 | `hasGenerics` | apple-documentation, swift-documentation | The `generic_constraints` column is populated. |
 | `hasDeprecationAttrs` | apple-documentation, hig | `@available(*, deprecated)` attributes preserved per row. |
 | `hasAvailabilityAttrs` | apple-documentation, hig, swift-documentation | `@available(iOS 16.0, *)` etc. preserved per row. |
-| `hasFrameworkColumn` | apple-documentation, hig, apple-archive | The `framework` column is populated; `list-frameworks` works. |
+| `hasFrameworkColumn` | apple-documentation, apple-archive | The `framework` column is populated; `list-frameworks` works. HIG rows carry `framework=""` at index time (see `SearchSQLite/CandidateFetcher.swift` `frameworkScopedSources = {appleDocs, appleArchive}`); the original draft listed HIG here but production behavior excludes it. |
 | `hasProposalNumber` | swift-evolution | Rows have `SE-NNNN` identifiers; `--proposal SE-0123` filter applies. |
 | `hasPackageMetadata` | swift-packages | Rows are SwiftPM packages with Package.swift + GitHub metadata; `package-search` operates on them. |
 
@@ -390,8 +392,8 @@ dispatcher's fan-out:
 | Source | searchers | operations | metadata flags (true) |
 |--------|-----------|------------|------------------------|
 | `apple-documentation` | text, symbols, property-wrappers, concurrency, conformances, generics | read-by-uri, list-frameworks, resolve-refs | hasMinPlatformVersion, hasGenerics, hasDeprecationAttrs, hasAvailabilityAttrs, hasFrameworkColumn |
-| `hig` | text | read-by-uri, list-frameworks | hasMinPlatformVersion, hasDeprecationAttrs, hasAvailabilityAttrs, hasFrameworkColumn |
-| `apple-archive` | text | read-by-uri | hasMinPlatformVersion, hasFrameworkColumn |
+| `hig` | text | read-by-uri | hasMinPlatformVersion, hasDeprecationAttrs, hasAvailabilityAttrs |
+| `apple-archive` | text | read-by-uri, list-frameworks | hasMinPlatformVersion, hasFrameworkColumn |
 | `swift-evolution` | text | read-by-uri | hasMinSwiftVersion, hasProposalNumber |
 | `swift-documentation` (swift-org + swift-book view-source) | text, symbols, generics | read-by-uri | hasGenerics, hasAvailabilityAttrs |
 | `apple-sample-code` | text, sample-files | read-by-uri, list-samples | hasMinPlatformVersion, hasSampleCode |

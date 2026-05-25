@@ -38,6 +38,11 @@ capabilities:
     - text
   operations:
     - read-by-uri
+    - list-frameworks
   metadata:
     hasMinPlatformVersion: true
+    # apple-archive IS in SearchSQLite/CandidateFetcher.swift
+    # frameworkScopedSources = {appleDocs, appleArchive}. Framework
+    # column is populated for legacy guide topics (Quartz 2D, Core
+    # Animation, KVO/KVC, etc.) and list-frameworks works.
     hasFrameworkColumn: true

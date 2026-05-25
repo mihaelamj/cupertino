@@ -25,7 +25,14 @@ indexer:
     - "archives/**/*"
   excludes:
     - "**/.git/**"
-  extractor: Search.PackagesStrategy
+  # PackagesSource intentionally has no Search.SourceIndexer concrete:
+  # packages.db is written by the bespoke Indexer.PackagesService outside
+  # the SourceProvider abstraction (post-#789). The extractor field
+  # names the actual writer for cross-reference; step 3's loader will
+  # treat extractor as advisory for this source (the makeIndexer()
+  # return value is the binding, and it's a no-op view-source strategy
+  # — Search.PackagesViewSourceStrategy).
+  extractor: Indexer.PackagesService
 
 snapshotPolicy:
   staleAfterDays: 14

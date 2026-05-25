@@ -21,10 +21,10 @@ corpusFolder: sample-code
 destinationDB: apple-sample-code
 
 fetcher:
-  kind: github-api
+  kind: webkit-scrape
   options:
-    organization: "developer-apple"
     rootURL: "https://developer.apple.com/sample-code/"
+    listingSelector: "[data-sample-id]"
 
 indexer:
   fileGlobs:

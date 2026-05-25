@@ -39,9 +39,11 @@ capabilities:
     - text
   operations:
     - read-by-uri
-    - list-frameworks
   metadata:
     hasMinPlatformVersion: true
     hasDeprecationAttrs: true
     hasAvailabilityAttrs: true
-    hasFrameworkColumn: true
+    # hasFrameworkColumn intentionally omitted: HIG rows carry
+    # framework="" at index time (see SearchSQLite/CandidateFetcher.swift
+    # frameworkScopedSources = {appleDocs, appleArchive}). list-frameworks
+    # is excluded from operations for the same reason.

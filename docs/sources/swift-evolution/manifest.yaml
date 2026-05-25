@@ -11,10 +11,10 @@ corpusFolder: swift-evolution
 destinationDB: swift-evolution
 
 fetcher:
-  kind: git-clone
+  kind: github-api
   options:
-    repo: "https://github.com/swiftlang/swift-evolution"
-    branch: "main"
+    rootURL: "https://api.github.com/repos/swiftlang/swift-evolution/contents/proposals"
+    rawURLPrefix: "https://raw.githubusercontent.com/swiftlang/swift-evolution/main/"
 
 indexer:
   fileGlobs:
