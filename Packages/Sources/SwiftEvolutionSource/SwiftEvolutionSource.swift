@@ -14,7 +14,7 @@ public struct SwiftEvolutionSource: Search.SourceProvider {
 
     public var fetchInfo: Search.FetchInfo? { Self.fetchInfo }
 
-    public var destinationDB: Shared.Models.DatabaseDescriptor { .search }
+    public var destinationDB: Shared.Models.DatabaseDescriptor { .swiftEvolution }
 
     public var capabilities: Search.Capabilities {
         .init(

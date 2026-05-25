@@ -258,8 +258,17 @@ extension CLIImpl.Command.Save {
             let searchIndex = try await Search.Index(
                 dbPath: input.searchDBPath,
                 logger: Cupertino.Context.composition.logging.recording,
+                // Transitional filter (step 4 of per-source-db-split.md):
+                // 6 sources flipped their destinationDB from .search to
+                // per-source descriptors (.appleDocumentation, .hig, etc.).
+                // Until step 5 wires per-DB fan-out, all search-style
+                // sources still write to a single search.db. The filter
+                // is now "every source except .packages" (PackagesSource
+                // is the only one with a non-search-style destination).
+                // Step 5 replaces this with Dictionary(grouping: by:)
+                // over destinationDB.
                 indexers: productionRegistry.allEnabled
-                    .filter { $0.destinationDB == .search }
+                    .filter { $0.destinationDB != .packages }
                     .reduce(into: [:]) { dict, provider in
                         dict[provider.definition.id] = provider.makeIndexer()
                     },
@@ -337,7 +346,11 @@ extension CLIImpl.Command.Save {
             // follow-up dissolves the switch entirely; out of scope here.)
             let logger = Cupertino.Context.composition.logging.recording
             let strategies: [any Search.SourceIndexingStrategy] = productionRegistry.allEnabled
-                .filter { $0.destinationDB == .search }
+                // Same transitional filter as the indexer dict above (step 4
+                // of per-source-db-split.md): everything except packages,
+                // which has its own DB outside the SourceProvider abstraction.
+                // Step 5 replaces with proper per-DB grouping.
+                .filter { $0.destinationDB != .packages }
                 .compactMap { provider -> (any Search.SourceIndexingStrategy)? in
                     guard let sourceDir = Self.resolveSourceDirectory(for: provider, input: input) else {
                         return nil

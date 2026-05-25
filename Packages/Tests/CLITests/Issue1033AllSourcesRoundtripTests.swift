@@ -23,7 +23,7 @@ import Testing
 ///   2. Cross-source query covers all search.db-destined sources.
 ///   3. Per-source `--source X` filter is exact (no leakage).
 ///   4. PackagesSource is correctly excluded from the search.db indexer
-///      dict by the `destinationDB == .search` gate.
+///      dict by the `destinationDB != .packages` gate.
 ///
 /// **Out of scope intentionally**: cross-source ranking behavior (the
 /// `SourceProperties` 8-axis weights + `intentPriority` map at query
@@ -41,7 +41,7 @@ struct Issue1033AllSourcesRoundtripTests {
             .appendingPathComponent("issue1033-\(UUID().uuidString).db")
         let registry = CLIImpl.makeProductionSourceRegistry()
         let indexers: [String: any Search.SourceIndexer] = registry.allEnabled
-            .filter { $0.destinationDB == .search }
+            .filter { $0.destinationDB != .packages }
             .reduce(into: [:]) { dict, provider in
                 dict[provider.definition.id] = provider.makeIndexer()
             }
@@ -56,12 +56,12 @@ struct Issue1033AllSourcesRoundtripTests {
     }
 
     /// Source-ids the test sweep iterates: every provider in the
-    /// production registry whose `destinationDB == .search`. Derived,
+    /// production registry whose `destinationDB != .packages`. Derived,
     /// not hardcoded: adding a new search-bound source automatically
     /// joins the sweep via this filter.
     private var searchDBSourceIDs: [String] {
         CLIImpl.makeProductionSourceRegistry().allEnabled
-            .filter { $0.destinationDB == .search }
+            .filter { $0.destinationDB != .packages }
             .map(\.definition.id)
     }
 
@@ -189,7 +189,7 @@ struct Issue1033AllSourcesRoundtripTests {
     func packagesSourceExcludedFromSearchDBIndexerDict() {
         let registry = CLIImpl.makeProductionSourceRegistry()
         let dict: [String: any Search.SourceIndexer] = registry.allEnabled
-            .filter { $0.destinationDB == .search }
+            .filter { $0.destinationDB != .packages }
             .reduce(into: [:]) { partial, provider in
                 partial[provider.definition.id] = provider.makeIndexer()
             }

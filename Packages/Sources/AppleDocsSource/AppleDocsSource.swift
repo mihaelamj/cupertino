@@ -29,7 +29,7 @@ public struct AppleDocsSource: Search.SourceProvider {
 
     public var fetchInfo: Search.FetchInfo? { Self.fetchInfo }
 
-    public var destinationDB: Shared.Models.DatabaseDescriptor { .search }
+    public var destinationDB: Shared.Models.DatabaseDescriptor { .appleDocumentation }
 
     public var capabilities: Search.Capabilities {
         .init(

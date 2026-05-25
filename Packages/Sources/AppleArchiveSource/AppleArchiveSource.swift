@@ -27,7 +27,7 @@ public struct AppleArchiveSource: Search.SourceProvider {
 
     public var fetchInfo: Search.FetchInfo? { Self.fetchInfo }
 
-    public var destinationDB: Shared.Models.DatabaseDescriptor { .search }
+    public var destinationDB: Shared.Models.DatabaseDescriptor { .appleArchive }
 
     public var capabilities: Search.Capabilities {
         .init(

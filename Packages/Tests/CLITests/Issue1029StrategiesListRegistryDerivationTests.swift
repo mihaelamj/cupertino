@@ -42,10 +42,10 @@ struct Issue1029StrategiesListRegistryDerivationTests {
         #expect(resolved?.path == "/dev/null")
     }
 
-    @Test("PackagesSource is filtered out by destinationDB == .search (not in strategies list)")
+    @Test("PackagesSource is filtered out by destinationDB != .packages (not in strategies list)")
     func packagesSourceExcludedByDestinationDB() {
         let registry = CLIImpl.makeProductionSourceRegistry()
-        let searchOnlyProviders = registry.allEnabled.filter { $0.destinationDB == .search }
+        let searchOnlyProviders = registry.allEnabled.filter { $0.destinationDB != .packages }
         let searchOnlyIDs = Set(searchOnlyProviders.map(\.definition.id))
         #expect(!searchOnlyIDs.contains(Shared.Constants.SourcePrefix.packages))
         #expect(searchOnlyProviders.count == 7) // 8 total - 1 PackagesSource
@@ -57,7 +57,7 @@ struct Issue1029StrategiesListRegistryDerivationTests {
         let registry = CLIImpl.makeProductionSourceRegistry()
         let logger = LoggingModels.Logging.NoopRecording()
         let strategies = registry.allEnabled
-            .filter { $0.destinationDB == .search }
+            .filter { $0.destinationDB != .packages }
             .compactMap { provider -> (any Search.SourceIndexingStrategy)? in
                 guard let dir = CLIImpl.Command.Save.LiveDocsIndexingRunner.resolveSourceDirectory(for: provider, input: input) else {
                     return nil
@@ -80,7 +80,7 @@ struct Issue1029StrategiesListRegistryDerivationTests {
         let registry = CLIImpl.makeProductionSourceRegistry()
         let logger = LoggingModels.Logging.NoopRecording()
         let strategies = registry.allEnabled
-            .filter { $0.destinationDB == .search }
+            .filter { $0.destinationDB != .packages }
             .compactMap { provider -> (any Search.SourceIndexingStrategy)? in
                 guard let dir = CLIImpl.Command.Save.LiveDocsIndexingRunner.resolveSourceDirectory(for: provider, input: input) else {
                     return nil

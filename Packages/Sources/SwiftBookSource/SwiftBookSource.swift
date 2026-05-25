@@ -38,7 +38,7 @@ public struct SwiftBookSource: Search.SourceProvider {
 
     public var fetchInfo: Search.FetchInfo? { nil }
 
-    public var destinationDB: Shared.Models.DatabaseDescriptor { .search }
+    public var destinationDB: Shared.Models.DatabaseDescriptor { .swiftDocumentation }
 
     /// Empty capabilities (view-source). swift-book rows live in
     /// swift-documentation.db; queries against that DB go through
