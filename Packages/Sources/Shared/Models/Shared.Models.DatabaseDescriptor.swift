@@ -86,24 +86,34 @@ extension Shared.Models {
         //
         //   - SourcePrefix.appleDocs       ("apple-docs")        → .appleDocumentation ("apple-documentation")
         //   - SourcePrefix.swiftOrg        ("swift-org")
-        //     + literal                    "swift-book"
-        //       (path-tagged by SwiftOrgStrategy + matched against
-        //        SourcePrefix.swiftBook in downstream code)      → .swiftDocumentation ("swift-documentation")  (co-located view-source)
+        //     + SourcePrefix.swiftBook     ("swift-book")        → .swiftDocumentation ("swift-documentation")  (co-located view-source)
         //   - SourcePrefix.packages        ("packages")          → .swiftPackages      ("swift-packages")
-        //   - literal                      "sample-code"
-        //     (SampleCodeStrategy emits this hardcoded literal as
-        //      the row tag, see SampleCodeSource/Search.Strategies.SampleCode.swift:30;
-        //      NOT the same as SourcePrefix.samples / SourcePrefix.appleSampleCode,
-        //      which are CLI-query aliases used by PlatformFilterScope and
-        //      CompositeToolProvider, not row-emission tags)      → .appleSampleCode    ("apple-sample-code")
+        //   - SourcePrefix.samples         ("samples")
+        //     + SourcePrefix.appleSampleCode ("apple-sample-code")
+        //     + literal                    "sample-code"          → .appleSampleCode    ("apple-sample-code")
         //
         // Source-ids `hig`, `apple-archive`, `swift-evolution` happen to
         // match their descriptors verbatim, but that's a coincidence of the
-        // current naming, not a contract. The `sample-code` and `swift-book`
-        // literals are particularly important to remember at step 4 + step 6
-        // time: a string-match dispatcher against `SourcePrefix.*` will miss
-        // these rows because their emission tags are not declared in the
-        // SourcePrefix enum at all.
+        // current naming, not a contract.
+        //
+        // **Important non-SourcePrefix tag:** sample-code rows are written
+        // by `SampleCodeStrategy` with a hardcoded `source = "sample-code"`
+        // literal (see `SampleCodeStrategy.source` in
+        // `SampleCodeSource/Search.Strategies.SampleCode.swift`). This
+        // literal does NOT match `SourcePrefix.samples` ("samples") OR
+        // `SourcePrefix.appleSampleCode` ("apple-sample-code"); those
+        // constants are CLI-query aliases used by `PlatformFilterScope` +
+        // `CompositeToolProvider`, NOT row-emission tags. A step-4 / step-6
+        // dispatcher walking search.db rows by `source IN (SourcePrefix.*)`
+        // will miss sample-code rows entirely. Use the literal value or
+        // route via descriptor reference instead.
+        //
+        // swift-book DOES have a matching SourcePrefix constant
+        // (`SourcePrefix.swiftBook = "swift-book"`), but the emission path
+        // is via `extractFrameworkFromPath` returning the literal "swift-book"
+        // from the file's directory components, not via the constant itself.
+        // Downstream code in SwiftOrgStrategy matches the result against
+        // `SourcePrefix.swiftBook` for type-safe branching.
         //
         // **Producer-graph reality (step 4 / step 6 planners):** today,
         // SampleCodeSource has `destinationDB = .search` (sample-code rows
@@ -156,14 +166,20 @@ extension Shared.Models {
         /// crawled doc. Specifically it calls
         /// `Search.StrategyHelpers.extractFrameworkFromPath`, which returns
         /// the first path component under the strategy's base directory.
-        /// Pages under a `swift-book/` subdirectory yield the literal
-        /// `"swift-book"`; everything else falls through to the strategy's
-        /// default tag `Shared.Constants.SourcePrefix.swiftOrg`
-        /// (`"swift-org"`). `SwiftBookViewSourceStrategy` reports
-        /// `wasSkipped: true` so the per-source breakdown log doesn't imply
-        /// a failed indexing attempt for swift-book. Net effect: two
-        /// registered SourceProviders, one effective indexer writing all
-        /// rows, one DB. Distinguished at read time by the `source` column.
+        /// Today's corpus shape (cupertino-docs swift-org/ tree) places
+        /// every doc under either `swift-org/` or `swift-book/`, so the
+        /// helper returns one of those two literal strings, and rows are
+        /// tagged accordingly. If a future corpus snapshot adds a third
+        /// subdirectory (e.g. `swift-org/migration-guide/`), the helper
+        /// will return that name and emit rows tagged with it. The fallback
+        /// `?? Shared.Constants.SourcePrefix.swiftOrg` covers only the case
+        /// where the helper returns nil (file directly in the base
+        /// directory with no subdirectory). `SwiftBookViewSourceStrategy`
+        /// reports `wasSkipped: true` so the per-source breakdown log
+        /// doesn't imply a failed indexing attempt for swift-book. Net
+        /// effect: two registered SourceProviders, one effective indexer
+        /// writing all rows, one DB. Distinguished at read time by the
+        /// `source` column.
         public static let swiftDocumentation: DatabaseDescriptor = .init(
             id: "swift-documentation",
             filename: Shared.Constants.FileName.swiftDocumentationDatabase,

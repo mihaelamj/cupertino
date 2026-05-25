@@ -23,8 +23,11 @@ import Testing
 //     SwiftOrgStrategy path-based view-source pattern: at index time
 //     the strategy inspects the file-system path of each crawled doc
 //     (Search.StrategyHelpers.extractFrameworkFromPath) and tags rows
-//     under a `swift-book/` subdirectory with source-id "swift-book",
-//     everything else with "swift-org". No separate swift-book.db.
+//     with the first path component under the base directory. Today's
+//     corpus has only `swift-book/` and `swift-org/` subdirs so the
+//     emitted source-ids are "swift-book" and "swift-org"; a future
+//     corpus snapshot adding a third subdirectory would emit that name
+//     verbatim. No separate swift-book.db.
 //
 // These pins are additive: the legacy `.search`, `.samples`,
 // `.packages` descriptors keep their existing pins in

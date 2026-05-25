@@ -127,9 +127,10 @@ extension Shared.Constants {
         /// Swift Evolution proposals database (splits from search.db).
         public static let swiftEvolutionDatabase = "swift-evolution.db"
 
-        /// Swift documentation database (splits from search.db; co-locates
-        /// swift-org + swift-book rows via the SwiftOrgStrategy URL-prefix
-        /// view-source pattern).
+        /// Swift documentation database (splits from search.db). Co-locates
+        /// swift-org + swift-book rows via the SwiftOrgStrategy path-based
+        /// view-source pattern; rows are tagged with the first path
+        /// component under the strategy's base directory.
         public static let swiftDocumentationDatabase = "swift-documentation.db"
 
         /// Apple sample code database (rename of samples.db; step 6 migration
