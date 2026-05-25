@@ -57,7 +57,7 @@ struct Issue1033AllSourcesRoundtripTests {
 
     /// Source-ids the test sweep iterates: every provider in the
     /// production registry whose `destinationDB == .search`. Derived,
-    /// not hardcoded — adding a new search-bound source automatically
+    /// not hardcoded: adding a new search-bound source automatically
     /// joins the sweep via this filter.
     private var searchDBSourceIDs: [String] {
         CLIImpl.makeProductionSourceRegistry().allEnabled
