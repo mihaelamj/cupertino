@@ -5,32 +5,32 @@ Fetch Apple documentation, Swift Evolution proposals, Swift packages, and sample
 ## Synopsis
 
 ```bash
-cupertino fetch [--source <type>] [options]
+cupertino fetch [--source <id>] [options]
 ```
 
 ## Description
 
 The `fetch` command is the unified fetching command that handles both web crawling and direct downloads:
 
-- **Web Crawling** (docs, swift, evolution): Uses WKWebView to render and crawl JavaScript-heavy documentation sites
-- **Direct Fetching** (packages, code): Downloads resources directly from APIs without web crawling
-- **Parallel Fetching** (all): Fetches all types concurrently for maximum efficiency
+- **Web Crawling** (apple-docs, swift-org, swift-evolution): Uses WKWebView to render and crawl JavaScript-heavy documentation sites
+- **Direct Fetching** (packages, apple-sample-code, samples): Downloads resources directly from APIs without web crawling
+- **Parallel Fetching** (all): Fetches all sources concurrently for maximum efficiency
 
 ## Options
 
 ### Core Options
 
 - [--source](source.md) - Source to fetch (canonical id from the per-source registry) **[default: apple-docs]**
-  - `docs` - Apple Developer Documentation (web crawl)
-  - `swift` - Swift.org Documentation (web crawl)
-  - `evolution` - Swift Evolution Proposals (web crawl)
-  - `packages` - Swift Package Index metadata + GitHub source archives ([#217](https://github.com/mihaelamj/cupertino/issues/217) — see `--skip-metadata` / `--skip-archives`)
-  - `code` - Apple Sample Code (direct download from Apple, requires auth)
+  - `apple-docs` - Apple Developer Documentation (web crawl)
+  - `swift-org` - Swift.org Documentation (web crawl)
+  - `swift-evolution` - Swift Evolution Proposals (web crawl)
+  - `packages` - Swift Package Index metadata + GitHub source archives ([#217](https://github.com/mihaelamj/cupertino/issues/217), see `--skip-metadata` / `--skip-archives`)
+  - `apple-sample-code` - Apple Sample Code (direct download from Apple, legacy bundle path, requires auth)
   - `samples` - Apple Sample Code (git clone from GitHub, recommended)
-  - `archive` - Apple Archive guides (legacy programming guides)
+  - `apple-archive` - Apple Archive guides (legacy programming guides)
   - `hig` - Human Interface Guidelines (web crawl)
   - `availability` - API version info for existing docs (annotates already-crawled pages)
-  - `all` - All types in parallel
+  - `all` - All sources in parallel
 
 ### Web Crawl Options
 
@@ -72,7 +72,7 @@ No-op in `--discovery-mode json-only` and `--discovery-mode webview-only`.
 ### Direct Fetch Options
 
 - [--output-dir](output-dir.md) - Output directory for downloaded resources
-- [--limit](limit.md) - Maximum number of items to fetch (packages/code types only)
+- [--limit](limit.md) - Maximum number of items to fetch (packages / apple-sample-code sources only)
 - `--skip-metadata` - Skip the metadata-refresh stage of `--source packages` ([#217](https://github.com/mihaelamj/cupertino/issues/217))
 - `--skip-archives` - Skip the archive-download stage of `--source packages` ([#217](https://github.com/mihaelamj/cupertino/issues/217))
 - `--annotate-availability` - Opt-in stage 3: walk the on-disk packages corpus and write per-package `availability.json` (deployment targets + `@available` attrs) ([#219](https://github.com/mihaelamj/cupertino/issues/219))

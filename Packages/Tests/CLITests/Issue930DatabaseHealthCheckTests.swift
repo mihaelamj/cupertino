@@ -106,7 +106,7 @@ struct Issue930SamplesHealthCheckTests {
         #expect(recorder.records == [
             "🧪 Sample Code Index (samples.db)",
             "   ⚠  Database: \(url.path) (not found)",
-            "     → Run: cupertino fetch --type samples && cupertino cleanup && cupertino save --samples",
+            "     → Run: cupertino fetch --source samples && cupertino cleanup && cupertino save --samples",
             "",
         ])
     }

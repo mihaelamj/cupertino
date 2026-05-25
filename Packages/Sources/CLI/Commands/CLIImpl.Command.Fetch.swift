@@ -36,9 +36,12 @@ extension Shared.Configuration.DiscoveryMode: ExpressibleByArgument {}
 
 @available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
 extension CLIImpl.Command {
-    /// #673 Phase D iter-5: 916-line struct — ArgumentParser doesn't
+    /// #673 Phase D iter-5: 916-line struct. ArgumentParser doesn't
     /// support partial-struct command composition, so every `@Option`
-    /// / `@Flag` for every `--type` value must live on one struct.
+    /// / `@Flag` for every `--source` value must live on one struct.
+    /// Post-#1031 (epic #1007 final step) the flag is `--source` keyed
+    /// against canonical source-ids; pre-#1031 it was `--type` keyed
+    /// against the dissolved `FetchType` enum's short names.
     // swiftlint:disable:next type_body_length
     struct Fetch: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
@@ -88,7 +91,7 @@ extension CLIImpl.Command {
         )
         var source: String = Shared.Constants.SourcePrefix.appleDocs
 
-        @Option(name: .long, help: "Start URL to crawl from (overrides --type default)")
+        @Option(name: .long, help: "Start URL to crawl from (overrides --source default)")
         var startURL: String?
 
         @Option(name: .long, help: "Maximum number of pages to crawl")
@@ -188,20 +191,20 @@ extension CLIImpl.Command {
 
         @Flag(
             name: .long,
-            help: "Skip the Swift Package Index metadata refresh stage of `--type packages` (run only the archive download)."
+            help: "Skip the Swift Package Index metadata refresh stage of `--source packages` (run only the archive download)."
         )
         var skipMetadata: Bool = false
 
         @Flag(
             name: .long,
-            help: "Skip the GitHub archive download stage of `--type packages` (run only the metadata refresh)."
+            help: "Skip the GitHub archive download stage of `--source packages` (run only the metadata refresh)."
         )
         var skipArchives: Bool = false
 
         @Flag(
             name: .long,
             help: """
-            After `--type packages` stage 2, walk the on-disk corpus and \
+            After `--source packages` stage 2, walk the on-disk corpus and \
             write a per-package `availability.json` recording \
             `Package.swift` deployment targets and every `@available(...)` \
             attribute in `Sources/` and `Tests/`. Pure on-disk pass — no network. Idempotent.
@@ -237,12 +240,22 @@ extension CLIImpl.Command {
                 try await runAvailabilityFetch()
             case Shared.Constants.SourcePrefix.swiftEvolution:
                 try await runEvolutionCrawl()
-            case Shared.Constants.SourcePrefix.appleDocs, Shared.Constants.SourcePrefix.swiftOrg:
-                // Web-crawl fall-through: apple-docs + swift-org.
+            case Shared.Constants.SourcePrefix.appleDocs,
+                 Shared.Constants.SourcePrefix.swiftOrg,
+                 Shared.Constants.SourcePrefix.swiftBook:
+                // Web-crawl fall-through: apple-docs + swift-org +
+                // swift-book. swift-book is a view-source whose pages
+                // are co-crawled by SwiftOrgStrategy (URL-prefix tagging
+                // at emission time); routing --source swift-book here
+                // means the user gets the swift-org crawl (which also
+                // emits swift-book-tagged pages).
                 try await runStandardCrawl()
             default:
                 throw ValidationError(
-                    "Unknown --source value '\(source)'. Valid sources: apple-docs, swift-org, swift-evolution, packages, apple-sample-code, samples, apple-archive, hig, availability, all."
+                    "Unknown --source value '\(source)'. Valid sources: " +
+                        "apple-docs, swift-org, swift-book, swift-evolution, " +
+                        "packages, apple-sample-code, samples, apple-archive, " +
+                        "hig, availability, all."
                 )
             }
         }
@@ -261,14 +274,15 @@ extension CLIImpl.Command {
         }
 
         /// Post-#1031 (Phase 1I.c.2): canonical sourceID list for the
-        /// `--source all` iteration. Includes the 8 registry source-ids
-        /// plus the two special tokens that aren't in the registry
-        /// (`apple-sample-code` legacy bundle + `availability`
-        /// maintenance op). `apple-sample-code` is omitted from
-        /// `--source all` because it overlaps with the GitHub-based
-        /// `samples` and would double-fetch (matches the pre-#1031
-        /// FetchType.allTypes which split `.code` and `.samples` into
-        /// directFetchTypes but the all-iteration is over both).
+        /// `--source all` iteration. Mirrors pre-#1031
+        /// `FetchType.allTypes` (which was `webCrawlTypes` +
+        /// `directFetchTypes` covering 9 cases including BOTH `.code`
+        /// and `.samples`). Includes the 8 fetchable registry sources
+        /// + `availability` maintenance token + `apple-sample-code`
+        /// legacy bundle. `swift-book` view-source is NOT in this list:
+        /// its pages are co-crawled by SwiftOrgStrategy via URL-prefix
+        /// tagging, so iterating `swift-org` already covers them; a
+        /// separate `swift-book` leg would double-fetch.
         private static let allFetchableSources: [String] = [
             Shared.Constants.SourcePrefix.appleDocs,
             Shared.Constants.SourcePrefix.swiftOrg,
@@ -290,6 +304,8 @@ extension CLIImpl.Command {
             switch source {
             case "all": return Shared.Constants.DisplayName.allDocs
             case "availability": return "API Availability Data"
+            case Shared.Constants.SourcePrefix.appleSampleCode:
+                return Shared.Constants.DisplayName.sampleCode
             default:
                 break
             }
@@ -310,6 +326,11 @@ extension CLIImpl.Command {
                 return paths.baseDirectory.path
             case "availability":
                 return paths.docsDirectory.path
+            case Shared.Constants.SourcePrefix.appleSampleCode:
+                // apple-sample-code shares the sample-code directory with
+                // the GitHub-based `samples` source (pre-#1031 FetchType
+                // .code and .samples both mapped to .sampleCodeDirectory).
+                return paths.sampleCodeDirectory.path
             default:
                 break
             }
@@ -661,7 +682,7 @@ extension CLIImpl.Command {
             }
         }
 
-        /// `--type packages` — runs metadata refresh then archive download in
+        /// `--source packages`: runs metadata refresh then archive download in
         /// sequence. Either stage can be skipped via `--skip-metadata` /
         /// `--skip-archives`. The two were separate fetch types until #217;
         /// merged because they always ran back-to-back, shared the output dir,
@@ -1199,7 +1220,7 @@ extension CLIImpl.Command {
 
             guard FileManager.default.fileExists(atPath: docsDir.path) else {
                 Cupertino.Context.composition.logging.recording.error("❌ Documentation directory not found: \(docsDir.path)")
-                Cupertino.Context.composition.logging.recording.info("   Run 'cupertino fetch --type docs' first to download documentation.")
+                Cupertino.Context.composition.logging.recording.info("   Run 'cupertino fetch --source apple-docs' first to download documentation.")
                 throw ExitCode.failure
             }
 

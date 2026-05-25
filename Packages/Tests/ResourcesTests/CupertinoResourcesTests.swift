@@ -11,7 +11,7 @@ import Testing
 @Suite("Resources embedded accessors (#161)")
 struct CupertinoResourcesTests {
     /// sample-code-catalog removed in #215 — auto-discovery via
-    /// `cupertino fetch --type code` is the source of truth for sample-code
+    /// `cupertino fetch --source apple-sample-code` is the source of truth for sample-code
     /// metadata, materialized at `<sample-code-dir>/catalog.json` rather
     /// than in the binary.
     private static let knownNames = [

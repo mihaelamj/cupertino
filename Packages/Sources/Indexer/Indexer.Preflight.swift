@@ -1,5 +1,6 @@
 import Foundation
 import SharedConstants
+
 extension Indexer {
     /// Pre-write inspection of the on-disk corpus state. Surfaces missing
     /// or un-annotated sources before any DB write so the user can bail
@@ -71,7 +72,7 @@ extension Indexer {
                 } else {
                     lines.append("    ⚠  Availability annotation NOT detected")
                     lines.append("       min_ios / min_macos / etc. columns will be NULL.")
-                    lines.append("       Run `cupertino fetch --type availability` first for platform filtering.")
+                    lines.append("       Run `cupertino fetch --source availability` first for platform filtering.")
                 }
             } else {
                 lines.append("    ✗  \(docsURL.path)  (missing — docs scope will be skipped)")
@@ -94,7 +95,7 @@ extension Indexer {
                     lines.append("    ⚠  availability.json sidecars  (\(stats.sidecars)/\(stats.packages))")
                     lines.append(
                         "       Missing \(stats.packages - stats.sidecars) — run "
-                            + "`cupertino fetch --type packages --skip-metadata --skip-archives "
+                            + "`cupertino fetch --source packages --skip-metadata --skip-archives "
                             + "--annotate-availability` to backfill."
                     )
                 }
@@ -132,7 +133,7 @@ extension Indexer {
         // MARK: - Standalone probes
 
         /// Heuristic: does the docs corpus on disk carry availability
-        /// annotations from `cupertino fetch --type availability`? Sampled
+        /// annotations from `cupertino fetch --source availability`? Sampled
         /// — we don't read every page. Good enough for preflight + the
         /// inline docs-mode warning. True when at least half of the
         /// sampled JSONs carry an `availability` key.

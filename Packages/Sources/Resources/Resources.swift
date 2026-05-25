@@ -38,7 +38,7 @@ extension Resources {
     /// `Core.SwiftPackagesCatalog` directly instead of looking up the raw JSON.
     ///
     /// Note: `sample-code-catalog` was removed in #215. Auto-discovery via
-    /// `cupertino fetch --type code` is the source of truth; the fetched
+    /// `cupertino fetch --source apple-sample-code` is the source of truth; the fetched
     /// catalog lands at `<sample-code-dir>/catalog.json` and is consumed by
     /// `Core.SampleCodeCatalog.loadFromDisk(at:)`.
     public static func jsonData(named name: String) -> Data? {

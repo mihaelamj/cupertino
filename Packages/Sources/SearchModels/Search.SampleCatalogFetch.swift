@@ -44,7 +44,7 @@ public extension Search {
 
         /// The catalog file was not found. The associated path is the
         /// fully-resolved on-disk location the indexer is reporting in
-        /// the "run `cupertino fetch --type code` to populate" message.
+        /// the "run `cupertino fetch --source apple-sample-code` to populate" message.
         case missing(onDiskPath: String)
     }
 }

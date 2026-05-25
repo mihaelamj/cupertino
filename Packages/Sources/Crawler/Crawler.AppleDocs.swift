@@ -248,7 +248,7 @@ extension Crawler {
 
             // Removed in #213: the post-Swift.org crawl side-effect that
             // overwrote `priority-packages.json` with the package-mention scan
-            // result has been disabled. `cupertino fetch --type swift` is now
+            // result has been disabled. `cupertino fetch --source swift-org` is now
             // a pure Swift.org docs crawl. The `generatePriorityPackagesIfSwiftOrg`
             // helper is retained below for a future opt-in
             // `cupertino generate-priority-packages` subcommand or `--update-priority-packages`

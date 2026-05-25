@@ -57,8 +57,8 @@ extension Shared.Constants {
         public static let setupBytes: Int64 = 4 * 1024 * 1024 * 1024
 
         /// `cupertino fetch` peak: conservative single number that covers
-        /// the typical `--type docs` (~6 GB JSON), `--type code` (~2 GB
-        /// zips), and `--type metadata` paths. The full `--type packages`
+        /// the typical `--source apple-docs` (~6 GB JSON), `--source apple-sample-code` (~2 GB
+        /// zips), and `--source packages` (metadata stage) paths. The full `--source packages`
         /// crawl (~15 GB) exceeds this and will be refused on a fresh
         /// 8 GB-free volume — a future per-type override can shrink the
         /// estimate for the smaller fetch types or grow it for the

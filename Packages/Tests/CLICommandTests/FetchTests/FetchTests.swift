@@ -41,7 +41,7 @@ struct FetchCommandTests {
 
 // MARK: - #217 packages-merge tests
 
-/// Coverage for #217: `--type packages` now runs metadata refresh + archive
+/// Coverage for #217: `--source packages` now runs metadata refresh + archive
 /// download as two stages, gated by `--skip-metadata` / `--skip-archives`.
 /// These tests exercise argument parsing and the both-skipped early-exit
 /// guard without touching the network.
@@ -49,21 +49,21 @@ struct FetchCommandTests {
 struct FetchPackagesMergeTests {
     @Test("--skip-metadata parses to true; archives flag defaults to false")
     func skipMetadataParses() throws {
-        let cmd = try CLIImpl.Command.Fetch.parse(["--type", "packages", "--skip-metadata"])
+        let cmd = try CLIImpl.Command.Fetch.parse(["--source", "packages", "--skip-metadata"])
         #expect(cmd.skipMetadata == true)
         #expect(cmd.skipArchives == false)
     }
 
     @Test("--skip-archives parses to true; metadata flag defaults to false")
     func skipArchivesParses() throws {
-        let cmd = try CLIImpl.Command.Fetch.parse(["--type", "packages", "--skip-archives"])
+        let cmd = try CLIImpl.Command.Fetch.parse(["--source", "packages", "--skip-archives"])
         #expect(cmd.skipMetadata == false)
         #expect(cmd.skipArchives == true)
     }
 
-    @Test("Default --type packages invocation has both skip flags false")
+    @Test("Default --source packages invocation has both skip flags false")
     func defaultsAreFalse() throws {
-        let cmd = try CLIImpl.Command.Fetch.parse(["--type", "packages"])
+        let cmd = try CLIImpl.Command.Fetch.parse(["--source", "packages"])
         #expect(cmd.skipMetadata == false)
         #expect(cmd.skipArchives == false)
     }
@@ -77,7 +77,7 @@ struct FetchPackagesMergeTests {
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         var cmd = try CLIImpl.Command.Fetch.parse([
-            "--type", "packages",
+            "--source", "packages",
             "--skip-metadata",
             "--skip-archives",
             "--output-dir", tempDir.path,
@@ -88,11 +88,21 @@ struct FetchPackagesMergeTests {
         }
     }
 
-    @Test("--type package-docs no longer parses (#217 dropped the case)")
-    func packageDocsRejected() {
-        // ArgumentParser surfaces invalid enum values as ValidationError.
-        #expect(throws: (any Error).self) {
-            _ = try CLIImpl.Command.Fetch.parse(["--type", "package-docs"])
+    @Test("--source package-docs no longer parses (#217 dropped the case; #1031 dissolved FetchType enum)")
+    func packageDocsRejected() async {
+        // Pre-#1031: ArgumentParser surfaced invalid FetchType enum values
+        // as a parse-time ValidationError (FetchType.init?(rawValue:) failed
+        // for "package-docs"). Post-#1031: `--source` is a free-form String,
+        // so parsing succeeds; the run() dispatch's `default:` arm throws
+        // a ValidationError listing the valid source-ids. Test the new
+        // run-time validation shape.
+        let cmd = try? CLIImpl.Command.Fetch.parse(["--source", "package-docs"])
+        guard var cmd else {
+            Issue.record("Expected --source package-docs to parse successfully (Post-#1031 the validation happens at run-time, not parse-time).")
+            return
+        }
+        await #expect(throws: (any Error).self) {
+            try await cmd.run()
         }
     }
 }
