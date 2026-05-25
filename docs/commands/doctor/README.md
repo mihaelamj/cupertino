@@ -157,9 +157,15 @@ Default `cupertino doctor` output (no flags):
 
 8. Schema versions (#234)
 
-   ✓ search.db: 13 (sequential), journal=wal
+   ⚠ search.db: not built
+   ✓ apple-documentation.db: 18 (sequential), journal=wal
+   ✓ hig.db: 18 (sequential), journal=wal
+   ✓ apple-archive.db: 18 (sequential), journal=wal
+   ✓ swift-evolution.db: 18 (sequential), journal=wal
+   ✓ swift-org.db: 18 (sequential), journal=wal
+   ✓ swift-book.db: 18 (sequential), journal=wal
    ✓ packages.db: 2 (sequential), journal=delete
-   ✓ apple-sample-code.db: 3 (sequential), journal=wal
+   ✓ apple-sample-code.db: 4 (sequential), journal=wal
 
 ✅ All checks passed - MCP server ready
 ```
