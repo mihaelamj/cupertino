@@ -27,7 +27,6 @@ fetcher:
   kind: web-crawl
   options:
     rootURL: "https://www.swift.org/documentation/"
-    swiftBookURL: "https://docs.swift.org/swift-book/"
     requestDelaySeconds: "0.1"
 
 indexer:

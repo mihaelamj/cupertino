@@ -24,7 +24,7 @@ fetcher:
   kind: webkit-scrape
   options:
     rootURL: "https://developer.apple.com/sample-code/"
-    listingSelector: "[data-sample-id]"
+    listingSelector: "a[href*=\"/documentation/\"]"
 
 indexer:
   fileGlobs:

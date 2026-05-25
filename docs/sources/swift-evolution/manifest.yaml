@@ -13,7 +13,11 @@ destinationDB: swift-evolution
 fetcher:
   kind: github-api
   options:
-    rootURL: "https://api.github.com/repos/swiftlang/swift-evolution/contents/proposals"
+    # Crawler.Evolution.fetchProposalsList() calls TWO paths under this
+    # contents root: /proposals (SE-NNNN) and /proposals/testing (ST-NNNN).
+    # rootURL is the contents parent; per-directory listing is the
+    # fetcher's responsibility, not the manifest's.
+    rootURL: "https://api.github.com/repos/swiftlang/swift-evolution/contents/"
     rawURLPrefix: "https://raw.githubusercontent.com/swiftlang/swift-evolution/main/"
 
 indexer:

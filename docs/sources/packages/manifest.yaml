@@ -25,13 +25,17 @@ indexer:
     - "archives/**/*"
   excludes:
     - "**/.git/**"
-  # PackagesSource intentionally has no Search.SourceIndexer concrete:
-  # packages.db is written by the bespoke Indexer.PackagesService outside
-  # the SourceProvider abstraction (post-#789). The extractor field
-  # names the actual writer for cross-reference; step 3's loader will
-  # treat extractor as advisory for this source (the makeIndexer()
-  # return value is the binding, and it's a no-op view-source strategy
-  # named Search.PackagesViewSourceStrategy).
+  # PackagesSource is the one registered source that intentionally
+  # does NOT conform to the corpus-structure.md §3 extractor contract
+  # ("Must conform to Search.SourceIndexer and be in the source's SPM
+  # target"). packages.db is written by the bespoke Indexer.PackagesService
+  # (target: IndexerModels) OUTSIDE the SourceProvider abstraction
+  # (post-#789). PackagesSource.makeIndexer() returns a private no-op
+  # PackagesViewSourceStrategy whose role is to make PackagesSource
+  # registrable while routing the actual work elsewhere. Step 3's
+  # loader special-cases this source (the only one with a non-Search
+  # extractor); see docs/design/corpus-structure.md §3.1 note added
+  # in step 2b critic-fix round 1 followup.
   extractor: Indexer.PackagesService
 
 snapshotPolicy:

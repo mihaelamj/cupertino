@@ -218,6 +218,10 @@ indexer:
     - documentation/*.json
   # Reference to the Swift type that owns extraction.
   # Must conform to Search.SourceIndexer and be in the source's SPM target.
+  # Exception: PackagesSource (`docs/sources/packages/manifest.yaml`)
+  # names `Indexer.PackagesService` instead, because packages.db is
+  # written outside the SourceProvider abstraction (post-#789). Step 3's
+  # loader special-cases this one source.
   extractor: Search.AppleDocsExtractor
 
 # Optional: view-source companions (see swift-documentation)
