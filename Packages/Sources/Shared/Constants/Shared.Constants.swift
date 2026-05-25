@@ -104,6 +104,42 @@ extension Shared.Constants {
         /// Package source + docs FTS index (separate from search.db; hidden feature)
         public static let packagesIndexDatabase = "packages.db"
 
+        // MARK: Per-source database files (post-2026-05-25, per-source DB split epic)
+
+        //
+        // Filenames for the 5 DBs that split out of search.db plus the 2
+        // renames of samples.db / packages.db. Introduced additively in step 1
+        // of `docs/design/per-source-db-split.md`; sources still write to
+        // search.db / samples.db / packages.db until their destinationDB flips
+        // in step 4. See `cupertino-per-source-db-names-agreed` memory and
+        // `docs/design/corpus-structure.md` §3.5.6 for the authoritative name
+        // list + capability matrix.
+
+        /// Apple Developer Documentation database (splits from search.db).
+        public static let appleDocumentationDatabase = "apple-documentation.db"
+
+        /// Human Interface Guidelines database (splits from search.db).
+        public static let higDatabase = "hig.db"
+
+        /// Apple Archive legacy programming guides database (splits from search.db).
+        public static let appleArchiveDatabase = "apple-archive.db"
+
+        /// Swift Evolution proposals database (splits from search.db).
+        public static let swiftEvolutionDatabase = "swift-evolution.db"
+
+        /// Swift documentation database (splits from search.db; co-locates
+        /// swift-org + swift-book rows via the SwiftOrgStrategy URL-prefix
+        /// view-source pattern).
+        public static let swiftDocumentationDatabase = "swift-documentation.db"
+
+        /// Apple sample code database (rename of samples.db; step 6 migration
+        /// flips the on-disk filename in user bundles).
+        public static let appleSampleCodeDatabase = "apple-sample-code.db"
+
+        /// Swift packages database (rename of packages.db; step 6 migration
+        /// flips the on-disk filename in user bundles).
+        public static let swiftPackagesDatabase = "swift-packages.db"
+
         /// Stores the `databaseVersion` that was active when `setup` last succeeded.
         /// Read on subsequent setup invocations to distinguish stale DBs from current ones (#168).
         public static let setupVersionFile = ".setup-version"
