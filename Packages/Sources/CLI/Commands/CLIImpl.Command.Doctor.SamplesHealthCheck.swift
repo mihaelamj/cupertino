@@ -5,14 +5,19 @@ import LoggingModels
 import SharedConstants
 
 extension CLIImpl.Command.Doctor {
-    /// `Distribution.DatabaseHealthCheck` conformer for `samples.db`.
-    /// Warning-only: a missing or empty samples index emits a warning
-    /// line but does not fail the overall doctor verdict; the server
-    /// runs without the sample-code search just unavailable. Renders
-    /// the same section as the pre-#930 `Doctor.checkSamplesDatabase`
-    /// private method, byte-for-byte. Always returns `true`.
+    /// `Distribution.DatabaseHealthCheck` conformer for the sample-code
+    /// index database. Warning-only: a missing or empty samples index
+    /// emits a warning line but does not fail the overall doctor
+    /// verdict; the server runs without the sample-code search just
+    /// unavailable. Always returns `true`.
+    ///
+    /// **#1037 label**: the descriptor is `.appleSampleCode` (filename
+    /// `apple-sample-code.db`); the section header reflects that
+    /// filename so the operator sees what's actually on disk. Pre-#1037
+    /// the descriptor was `.samples` (filename `samples.db`); the
+    /// rename is documented at `Shared.Models.DatabaseDescriptor.appleSampleCode`.
     struct SamplesHealthCheck: Distribution.DatabaseHealthCheck {
-        let descriptor: Shared.Models.DatabaseDescriptor = .samples
+        let descriptor: Shared.Models.DatabaseDescriptor = .appleSampleCode
         let isRequired: Bool = false
 
         let samplesDBURL: URL
@@ -22,7 +27,7 @@ extension CLIImpl.Command.Doctor {
         }
 
         func run(output recording: any Logging.Recording) async -> Bool {
-            recording.output("🧪 Sample Code Index (samples.db)")
+            recording.output("🧪 Sample Code Index (\(descriptor.filename))")
 
             guard FileManager.default.fileExists(atPath: samplesDBURL.path) else {
                 recording.output("   ⚠  Database: \(samplesDBURL.path) (not found)")

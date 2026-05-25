@@ -54,6 +54,48 @@ extension Diagnostics {
             return sqlite3_column_int(stmt, 0)
         }
 
+        /// Read the `Sample.Index.Database` schema version from the
+        /// per-pipeline `samples_schema_version` table (#1037). Falls
+        /// back to `PRAGMA user_version` if the table is missing so
+        /// pre-#1037 user samples.db files (built by binaries that
+        /// stamped the PRAGMA directly) still report a meaningful
+        /// version. Returns nil for unreadable / unopenable files.
+        ///
+        /// Companion to `userVersion(at:)`. Use this probe for the
+        /// sample-code DB: post-#1037 the Sample.Index pipeline does
+        /// not write `PRAGMA user_version`, so reading the PRAGMA on
+        /// the post-rename `apple-sample-code.db` returns 0 (or
+        /// Search.Index's stamp on a shared file), neither of which
+        /// reflects the Sample.Index pipeline's actual schema version.
+        public static func samplesSchemaVersion(at dbPath: URL) -> Int32? {
+            var db: OpaquePointer?
+            guard sqlite3_open_v2(dbPath.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+                return nil
+            }
+            defer { sqlite3_close(db) }
+
+            // Try the per-pipeline tracking table first.
+            var stmt: OpaquePointer?
+            let select = "SELECT version FROM samples_schema_version LIMIT 1"
+            if sqlite3_prepare_v2(db, select, -1, &stmt, nil) == SQLITE_OK,
+               sqlite3_step(stmt) == SQLITE_ROW {
+                let version = sqlite3_column_int(stmt, 0)
+                sqlite3_finalize(stmt)
+                return version
+            }
+            sqlite3_finalize(stmt)
+
+            // Fallback: legacy PRAGMA user_version (pre-#1037 stamp).
+            var legacy: OpaquePointer?
+            defer { sqlite3_finalize(legacy) }
+            guard sqlite3_prepare_v2(db, "PRAGMA user_version;", -1, &legacy, nil) == SQLITE_OK,
+                  sqlite3_step(legacy) == SQLITE_ROW
+            else {
+                return nil
+            }
+            return sqlite3_column_int(legacy, 0)
+        }
+
         /// Read `PRAGMA journal_mode` from a SQLite file using a
         /// read-only connection. Used by `cupertino doctor` to verify
         /// each local DB is in WAL mode (#236) — anything else (`delete`,

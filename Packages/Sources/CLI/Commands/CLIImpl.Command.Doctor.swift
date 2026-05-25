@@ -237,10 +237,18 @@ extension CLIImpl.Command {
             Cupertino.Context.composition.logging.recording.output("")
             // Path-DI composition sub-root (#535).
             let paths = Shared.Paths.live()
+            // #1037: the sample-code DB descriptor flipped to
+            // `.appleSampleCode` and the Sample.Index pipeline no
+            // longer writes `PRAGMA user_version`. The descriptor label
+            // displayed here therefore says "apple-sample-code.db"
+            // (the actual on-disk filename) and we read the version
+            // from the per-pipeline `samples_schema_version` table via
+            // `Diagnostics.Probes.samplesSchemaVersion(at:)` instead of
+            // the PRAGMA probe used for the other DBs.
             let entries: [(Shared.Models.DatabaseDescriptor, URL)] = [
                 (.search, URL(fileURLWithPath: searchDB).expandingTildeInPath),
                 (.packages, paths.packagesDatabase),
-                (.samples, Sample.Index.databasePath(baseDirectory: paths.baseDirectory)),
+                (.appleSampleCode, Sample.Index.databasePath(baseDirectory: paths.baseDirectory)),
             ]
             for (descriptor, url) in entries {
                 let label = descriptor.filename
@@ -248,7 +256,11 @@ extension CLIImpl.Command {
                     Cupertino.Context.composition.logging.recording.output("   ⚠ \(label): not built")
                     continue
                 }
-                let version = Diagnostics.Probes.userVersion(at: url) ?? 0
+                let version: Int32 = if descriptor == .appleSampleCode {
+                    Diagnostics.Probes.samplesSchemaVersion(at: url) ?? 0
+                } else {
+                    Diagnostics.Probes.userVersion(at: url) ?? 0
+                }
                 let formatted = Diagnostics.SchemaVersion.format(version)
                 // #236: surface the journal mode alongside the schema
                 // version so a DB stuck in default rollback mode jumps
