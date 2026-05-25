@@ -50,23 +50,24 @@ extension CLIImpl.Command {
             to skip the confirmation prompt. Run 'cupertino doctor --save' to preview the
             preflight output without writing any database.
 
-            CURRENT DISPATCH (post-#1037, pre per-source-id refactor):
-              The CLI surface is per-source but the internal dispatch is still
-              bucket-level. Passing any docs-style source (`apple-docs`, `hig`,
-              `swift-evolution`, `apple-archive`, `swift-org`, `swift-book`,
-              `samples`) runs the docs runner, which builds every docs-bucket DB
-              that has on-disk corpus. `--source packages` runs the packages
-              runner. `--source samples` ALSO runs the standalone Sample.Index
-              pipeline so apple-sample-code.db gets both table tracks. The
-              follow-up commit narrows the docs runner to only the selected
-              source-ids so `--source apple-docs` will build ONLY
-              apple-documentation.db.
+            DISPATCH:
+              `--source <id>` narrows the docs runner to ONLY the
+              destination DB whose providers include that id.
+              `--source apple-docs` builds apple-documentation.db
+              alone; `--source hig` builds hig.db alone, etc.
+              View-source pairs (`swift-org` + `swift-book`) co-locate
+              in `swift-documentation.db`, so either id pulls both.
+              `--source samples` runs both the Sample.Index rich-data
+              pipeline AND the SampleCodeSource FTS rows under the
+              single `apple-sample-code.db` file (one-DB-two-tracks
+              per #1037). `--source packages` runs the standalone
+              PackagesService against `packages.db`.
 
             EXAMPLES
               cupertino save --all                          # build every source's DB
-              cupertino save --source apple-docs            # build apple-docs scope (docs runner; intermediate)
-              cupertino save --source samples               # build samples (rich + FTS); also runs docs runner
-              cupertino save --source apple-docs --source hig   # two sources
+              cupertino save --source apple-docs            # apple-documentation.db only
+              cupertino save --source samples               # apple-sample-code.db (both tracks)
+              cupertino save --source apple-docs --source hig   # two DBs
               cupertino save --remote                       # stream docs from GitHub
             """
         )
@@ -358,7 +359,10 @@ extension CLIImpl.Command {
                 ?? Shared.Paths.live().baseDirectory
 
             if buildDocs {
-                try await runDocsIndexer(effectiveBase: effectiveBase)
+                try await runDocsIndexer(
+                    effectiveBase: effectiveBase,
+                    selectedSourceIDs: selectedSourceIDs
+                )
             }
             if buildPackages {
                 try await runPackagesIndexerSafely(effectiveBase: effectiveBase)

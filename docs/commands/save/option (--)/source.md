@@ -42,15 +42,17 @@ cupertino save --source apple-docs --source hig
 cupertino save --source samples
 ```
 
-## Notes
+## Dispatch
 
-**Internal dispatch is currently bucket-level**: the CLI accepts per-source granularity but the indexer still runs in docs/packages/samples buckets. Practically:
+`--source <id>` narrows the docs runner to ONLY the destination DB whose providers include that id.
 
-- `--source apple-docs` triggers the docs runner, which builds every docs-bucket DB (apple-documentation.db, hig.db, swift-evolution.db, apple-archive.db, swift-documentation.db, apple-sample-code.db FTS rows) whose corpus is on disk.
-- `--source packages` triggers the standalone PackagesService.
-- `--source samples` triggers both the Sample.Index rich-data pipeline AND the docs runner (so `apple-sample-code.db` gets both table tracks).
+- `--source apple-docs` builds `apple-documentation.db` alone.
+- `--source hig` builds `hig.db` alone (and analogously for `swift-evolution`, `apple-archive`).
+- `--source swift-org` (or `--source swift-book`) builds `swift-documentation.db`, with BOTH SwiftOrgSource and SwiftBookSource indexers running into the same DB (view-source co-location per `docs/design/corpus-structure.md` §3.5.5; either id pulls both).
+- `--source samples` (or `--source apple-sample-code` alias) writes to `apple-sample-code.db` via BOTH the standalone `Sample.Index.Builder` pipeline (rich schema: projects + files + file_symbols + imports) AND the docs runner's `SampleCodeSource` group (FTS rows: docs_metadata + docs_fts). One file, two table tracks per #1037.
+- `--source packages` runs the standalone `Indexer.PackagesService` against `packages.db` (not via the docs runner; PackagesSource is excluded from `groupedByDestinationDB`).
 
-The per-source-id dispatch refactor (so `--source apple-docs` builds ONLY apple-documentation.db) lands in a follow-up commit. The CLI surface is final; only the internal scope narrowing remains.
+Multiple `--source` values build the union of their destinations. `--all` builds every source's DB.
 
 ## Related
 

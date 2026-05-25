@@ -57,7 +57,7 @@ extension CLIImpl.Command.Save {
         var path: URL?
     }
 
-    func runDocsIndexer(effectiveBase: URL) async throws {
+    func runDocsIndexer(effectiveBase: URL, selectedSourceIDs: Set<String>?) async throws {
         // Resolve searchDB destination. In --dry-run, route writes to a
         // throwaway temp file so the existing on-disk search.db is
         // untouched; the temp file is deleted after the run regardless of
@@ -137,7 +137,8 @@ extension CLIImpl.Command.Save {
                 sampleCatalogProvider: LiveSampleCatalogProvider(catalog: sampleCatalogActor),
                 docsIndexingRunner: LiveDocsIndexingRunner(
                     breakdownCapture: breakdownCapture,
-                    logPathCapture: logPathCapture
+                    logPathCapture: logPathCapture,
+                    selectedSourceIDs: selectedSourceIDs
                 ),
                 events: DocsEventObserver(tracker: tracker)
             )
@@ -219,8 +220,29 @@ extension CLIImpl.Command.Save {
         /// Side-channel where the runner stashes the per-doc audit log
         /// path so `runDocsIndexer` can surface it in the final report
         /// after `Indexer.DocsService.run` returns. Same pattern as
-        /// `breakdownCapture` — keeps `IndexerModels` dep-free.
+        /// `breakdownCapture`; keeps `IndexerModels` dep-free.
         let logPathCapture: DocsImportLogPathCapture
+
+        /// Per-source-id filter for the docs runner's group fan-out.
+        /// When non-nil, only DB groups whose providers include at
+        /// least one matching `definition.id` are built; the rest are
+        /// skipped. When nil, every group fires (backward compat with
+        /// the pre-#1037 bucket-level dispatch).
+        ///
+        /// **View-source co-location is preserved**: filtering selects
+        /// DESTINATIONS, not individual providers within a destination.
+        /// If `selectedSourceIDs = ["swift-org"]`, the swift-documentation
+        /// destination is in scope, and BOTH SwiftOrgSource and
+        /// SwiftBookSource run against it (they share a DB by design
+        /// per the view-source pattern in
+        /// `docs/design/corpus-structure.md` §3.5.5). User-direction
+        /// settled 2026-05-25: "swift-org pulls swift-book (one DB,
+        /// one unit)".
+        ///
+        /// PackagesSource is excluded by `groupedByDestinationDB(
+        /// excluding: [.packages])` regardless of the filter; its write
+        /// pipeline is the standalone `Indexer.PackagesService`.
+        let selectedSourceIDs: Set<String>?
 
         func run(
             input: Search.DocsIndexingInput,
@@ -284,7 +306,30 @@ extension CLIImpl.Command.Save {
                 definitions: productionRegistry.allEnabled.map(\.definition)
             )
 
-            let groups = productionRegistry.groupedByDestinationDB(excluding: [.packages])
+            let allGroups = productionRegistry.groupedByDestinationDB(excluding: [.packages])
+
+            // Per-source dispatch filter (#1037 follow-up). When
+            // `selectedSourceIDs` is non-nil, narrow the groups to only
+            // the destinations that contain at least one selected
+            // provider. Closes the round-7/8 critic findings around
+            // bucket-level over-build, disk-preflight over-estimate,
+            // and `--clear` blast radius.
+            //
+            // View-source co-location is preserved: filtering selects
+            // DESTINATIONS, not individual providers. `--source
+            // swift-org` keeps swift-book in the same group (they
+            // share swift-documentation.db). User-direction settled
+            // 2026-05-25.
+            let groups: [Shared.Models.DatabaseDescriptor: [any Search.SourceProvider]]
+            if let selectedSourceIDs {
+                groups = allGroups.filter { _, providers in
+                    providers.contains { provider in
+                        selectedSourceIDs.contains(provider.definition.id)
+                    }
+                }
+            } else {
+                groups = allGroups
+            }
             // Sort by descriptor.id for deterministic build order +
             // stable progress reporting; counts + frameworks + breakdown
             // aggregate across DBs.

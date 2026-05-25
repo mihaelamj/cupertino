@@ -29,7 +29,7 @@ The `save` command builds the local SQLite databases that back `cupertino search
 
 Bare `cupertino save` (no `--source` and no `--all`) is a usage error post-#1037. Sources whose input directory is absent or whose catalog is empty are skipped cleanly; the per-source summary shows `[source] skipped (no local corpus)` and the run does not count as a failure ([#671](https://github.com/mihaelamj/cupertino/issues/671)).
 
-**Dispatch granularity (current state)**: the CLI accepts per-source ids but the internal indexer still runs in docs/packages/samples buckets. `--source apple-docs` runs the full docs runner (which builds every docs-bucket DB whose corpus is on disk); `--source samples` runs both the Sample.Index rich-data pipeline AND the docs runner. The per-source-id dispatch refactor (so `--source apple-docs` builds ONLY apple-documentation.db) lands in a follow-up commit. The CLI surface is final.
+**Dispatch granularity**: `--source <id>` narrows the docs runner to ONLY the destination DB whose providers include that id. `--source apple-docs` builds `apple-documentation.db` alone; view-source pairs (`swift-org` + `swift-book`) co-locate so either id pulls both; `--source samples` writes to `apple-sample-code.db` via BOTH the Sample.Index rich-data pipeline AND the docs runner's SampleCodeSource group; `--source packages` runs the standalone PackagesService outside the docs runner. See [source.md](option%20%28--%29/source.md) Dispatch section.
 
 ## Options
 
