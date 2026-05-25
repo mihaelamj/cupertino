@@ -493,6 +493,136 @@ struct PerSourceDBSplitMigratorMigrateTests {
         #expect(outcome.legacyFileRenamed == true)
     }
 
+    @Test("Cross-provider alias collision: first-claimant owns the tag; second claimant does NOT double-stream those rows")
+    func crossProviderAliasCollisionFirstClaimantOnly() async throws {
+        // Regression guard for the critic-round-2 finding on the
+        // step-7a-alias fix. Two providers compete for the same legacy
+        // tag literal: A claims "shared" as its canonical id; B claims
+        // "shared" as a legacy alias. Step-2 first-wins tie-break gives
+        // ownership of "shared" to A. Streaming MUST respect that
+        // ownership: B's plan must NOT re-stream "shared" rows into B's
+        // writer, otherwise the colliding rows land twice on disk under
+        // two different destinationDBs.
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let legacy = try touchLegacy(at: dir)
+
+        var registry = Search.SourceRegistry()
+        // A wins "shared" (canonical id, registered first).
+        registry.register(FakeProvider(id: "shared", dbDescriptor: .hig))
+        // B declares "shared" as an alias and "b-canonical" as its id.
+        registry.register(FakeProvider(
+            id: "b-canonical",
+            dbDescriptor: .appleArchive,
+            aliases: ["shared"]
+        ))
+
+        let reader = FakeLegacyReader(rowsBySource: [
+            "shared": [
+                Self.makeRow(uri: "s://1", source: "shared"),
+                Self.makeRow(uri: "s://2", source: "shared"),
+                Self.makeRow(uri: "s://3", source: "shared"),
+            ],
+            "b-canonical": [
+                Self.makeRow(uri: "b://1", source: "b-canonical"),
+                Self.makeRow(uri: "b://2", source: "b-canonical"),
+            ],
+        ])
+
+        // Track per-writer row writes to confirm "shared" rows did NOT
+        // leak into the second claimant's destination.
+        final class WriterTracker: @unchecked Sendable {
+            var writtenByDestination: [String: [String]] = [:]
+        }
+        let tracker = WriterTracker()
+
+        final class TrackingWriter: Distribution.PerSourceDBSplitMigrator.PerDBWriter, @unchecked Sendable {
+            let destination: Shared.Models.DatabaseDescriptor
+            let destinationPath: URL
+            let tracker: WriterTracker
+            var written: [Distribution.PerSourceDBSplitMigrator.LegacyRow] = []
+            init(destination: Shared.Models.DatabaseDescriptor, destinationPath: URL, tracker: WriterTracker) {
+                self.destination = destination
+                self.destinationPath = destinationPath
+                self.tracker = tracker
+            }
+
+            func write(_ row: Distribution.PerSourceDBSplitMigrator.LegacyRow) async throws {
+                written.append(row)
+                tracker.writtenByDestination[destination.id, default: []].append(row.uri)
+                if !FileManager.default.fileExists(atPath: destinationPath.path) {
+                    try Data("d".utf8).write(to: destinationPath)
+                }
+            }
+
+            func rowCount() async throws -> Int { written.count }
+            func disconnect() async {}
+        }
+
+        let outcome = try await Distribution.PerSourceDBSplitMigrator.migrate(
+            legacyFile: legacy,
+            baseDirectory: dir,
+            registry: registry,
+            reader: reader,
+            writerFactory: { destination, path in
+                TrackingWriter(destination: destination, destinationPath: path, tracker: tracker)
+            }
+        )
+
+        // A's destination (.hig) holds exactly the 3 "shared" rows.
+        let aWrites = (tracker.writtenByDestination[Shared.Models.DatabaseDescriptor.hig.id] ?? []).sorted()
+        #expect(aWrites == ["s://1", "s://2", "s://3"], "A owns 'shared'; got: \(aWrites)")
+
+        // B's destination (.appleArchive) holds exactly the 2
+        // "b-canonical" rows; the colliding "shared" rows MUST NOT
+        // appear here.
+        let bWrites = (tracker.writtenByDestination[Shared.Models.DatabaseDescriptor.appleArchive.id] ?? []).sorted()
+        #expect(bWrites == ["b://1", "b://2"], "B does NOT re-stream 'shared'; got: \(bWrites)")
+
+        #expect(outcome.totalRowsWritten == 5, "3 + 2, no duplicates")
+        #expect(outcome.legacyFileRenamed == true)
+    }
+
+    @Test("Self-aliasing (provider lists its own definition.id in legacySourceIDAliases) does not double-stream")
+    func selfAliasingDoesNotDoubleStream() async throws {
+        // Defensive regression guard. If a future conformer mistakenly
+        // declares `legacySourceIDAliases = [definition.id]`, the alias
+        // mechanism must still stream each row exactly once. The
+        // legacyTagsByProviderID inversion is set-deduped by
+        // construction, so the duplicate alias collapses naturally.
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let legacy = try touchLegacy(at: dir)
+
+        var registry = Search.SourceRegistry()
+        registry.register(FakeProvider(
+            id: "self-aliased",
+            dbDescriptor: .hig,
+            aliases: ["self-aliased"]
+        ))
+
+        let reader = FakeLegacyReader(rowsBySource: [
+            "self-aliased": [
+                Self.makeRow(uri: "sa://1", source: "self-aliased"),
+                Self.makeRow(uri: "sa://2", source: "self-aliased"),
+            ],
+        ])
+
+        let outcome = try await Distribution.PerSourceDBSplitMigrator.migrate(
+            legacyFile: legacy,
+            baseDirectory: dir,
+            registry: registry,
+            reader: reader,
+            writerFactory: { destination, path in
+                FakePerDBWriter(destination: destination, destinationPath: path)
+            }
+        )
+
+        #expect(outcome.results.count == 1)
+        #expect(outcome.totalRowsWritten == 2, "exactly 2 rows, NOT 4 (no double-stream)")
+        #expect(outcome.legacyFileRenamed == true)
+    }
+
     @Test("Empty legacy DB: outcome has zero results, legacy still renamed")
     func emptyLegacyDBRenamesWithNoResults() async throws {
         let dir = try makeTempDir()

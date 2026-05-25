@@ -326,7 +326,7 @@ extension Distribution {
 
             // 4. Build the plan (known sources only). Group by the
             // RESOLVED provider's definition.id so legacy aliases
-            // collapse into a single SourcePlan per provider — e.g.
+            // collapse into a single SourcePlan per provider. Concretely:
             // legacy rows tagged "sample-code" and "samples" both
             // resolve to SampleCodeSource and contribute to one plan
             // with `sourceID = "samples"` (the canonical id).
@@ -342,7 +342,29 @@ extension Distribution {
                 legacySourceIDRowCounts: aggregatedCounts
             )
 
-            // 4. Group source plans by destination DB path. This is
+            // 5. Invert the resolution map to get, for each canonical
+            // provider id, the set of legacy tags that resolve to it
+            // (definition.id plus every alias that this provider
+            // actually won in step 2's tie-break). The streaming loop
+            // below uses THIS list, not provider.legacySourceIDAliases
+            // directly: if two providers both declare the same alias,
+            // step 2's first-wins rule already picked one owner, and
+            // streaming must respect that ownership so the colliding
+            // tag's rows aren't double-streamed (once per claimant)
+            // into the shared destination DB. The same lookup also
+            // makes the legacyTags list set-deduped by construction,
+            // so a conformer that mistakenly lists its own
+            // definition.id inside legacySourceIDAliases still gets
+            // its rows streamed exactly once.
+            var legacyTagsByProviderID: [String: [String]] = [:]
+            for (tag, provider) in legacyTagToProvider {
+                legacyTagsByProviderID[provider.definition.id, default: []].append(tag)
+            }
+            for providerID in legacyTagsByProviderID.keys {
+                legacyTagsByProviderID[providerID]?.sort()
+            }
+
+            // 6. Group source plans by destination DB path. This is
             // load-bearing for the view-source pattern: two source-ids
             // (swift-org + swift-book) share the swift-documentation.db
             // destination, so the migrator must open ONE writer for that
@@ -376,17 +398,18 @@ extension Distribution {
                 var rowsCopiedByPlan: [String: Int] = [:]
                 do {
                     for sourcePlan in plansForPath {
-                        // Resolve ALL legacy tags that map to this
-                        // provider (definition.id + every alias). Stream
-                        // rows from each tag in turn; sum into a single
-                        // per-plan count. The alias mechanism lets
-                        // SampleCodeSource collect both "sample-code"
-                        // (strategy literal) AND "samples" (legacy
-                        // canonical) row-tags from the legacy DB.
-                        guard let provider = registry.entry(for: sourcePlan.sourceID)?.provider else {
-                            continue
-                        }
-                        let legacyTags = [provider.definition.id] + provider.legacySourceIDAliases.sorted()
+                        // Stream rows from every legacy tag that step 2
+                        // resolved to THIS provider (canonical id + any
+                        // aliases this provider won in the first-wins
+                        // tie-break). Sum into one per-plan count. The
+                        // alias mechanism lets SampleCodeSource collect
+                        // both "sample-code" (strategy literal) and
+                        // "samples" (canonical) row-tags. Using the
+                        // pre-built legacyTagsByProviderID dict (rather
+                        // than re-reading provider.legacySourceIDAliases)
+                        // prevents two-claimants-of-the-same-alias from
+                        // double-streaming the colliding rows.
+                        let legacyTags = legacyTagsByProviderID[sourcePlan.sourceID] ?? [sourcePlan.sourceID]
                         var rowsCopied = 0
                         for legacyTag in legacyTags {
                             for try await row in reader.rows(forSourceID: legacyTag) {
@@ -454,7 +477,7 @@ extension Distribution {
                 }
             }
 
-            // 5. Rename the legacy file. Atomic on same volume.
+            // 7. Rename the legacy file. Atomic on same volume.
             var renamed = false
             var actualRenameTarget: URL?
             do {
