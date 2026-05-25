@@ -175,19 +175,15 @@ extension Distribution {
             case legacyFileMalformed(URL, reason: String)
 
             /// A source-id appears in `docs_metadata.source` that the
-            /// supplied `SourceLookup` does not recognise. Per-row
-            /// behavior: rows for unknown sources are LEFT BEHIND in
-            /// the renamed legacy file (`search.db.legacy-pre-per-source-split`).
+            /// supplied registry does not recognise. Per-row behavior:
+            /// rows for unknown sources are LEFT BEHIND in the renamed
+            /// legacy file (`search.db.legacy-pre-per-source-split`).
             /// The bytes are preserved on disk for forensic inspection
             /// but the production read path does NOT consult the
             /// renamed file, so those rows are effectively unreachable
             /// to `cupertino search`. The migration completes for
             /// known sources only. This case wraps the unknown-source
-            /// list so callers can surface an actionable warning
-            /// (e.g. "your bundle has 12 rows tagged 'experimental-x'
-            /// that won't appear in search post-upgrade; if you need
-            /// them, downgrade to v1.2.x or file an issue with the
-            /// source-id list").
+            /// list so callers can surface an actionable warning.
             case unknownSourceIDs([String])
 
             /// Verification step (post-copy row-count compare) detected
@@ -195,6 +191,207 @@ extension Distribution {
             /// is NOT renamed; per-source DBs may be in a partial state
             /// and should be deleted before retry.
             case rowCountMismatch(sourceID: String, expected: Int, actual: Int)
+
+            /// An I/O error occurred while reading the legacy DB or
+            /// writing to a per-source DB. The reader/writer protocol
+            /// surfaces it; the migrator wraps it for the caller.
+            case ioFailure(sourceID: String?, underlying: String)
+        }
+
+        // MARK: - DI seams for the row-copy (step 6b)
+
+        //
+        // The migrator stays in Distribution (registry-driven, no
+        // SQLite dep). Actual reads from the legacy DB + writes to
+        // per-source DBs are surfaced as protocol seams; CLI in
+        // step 6c supplies Live conformers using SearchSQLite's
+        // Search.Index machinery.
+
+        /// A single row from the legacy `search.db`'s `docs_metadata`
+        /// table, carried as opaque data the writer can ingest.
+        /// Step 6c's Live writer encodes this from `Search.IndexDocumentParams`.
+        public struct LegacyRow: Sendable, Hashable {
+            public let uri: String
+            public let source: String
+            public let framework: String
+            public let title: String
+            public let content: String
+            public let filePath: String
+            public let contentHash: String
+            public let lastCrawled: Date
+
+            public init(
+                uri: String,
+                source: String,
+                framework: String,
+                title: String,
+                content: String,
+                filePath: String,
+                contentHash: String,
+                lastCrawled: Date
+            ) {
+                self.uri = uri
+                self.source = source
+                self.framework = framework
+                self.title = title
+                self.content = content
+                self.filePath = filePath
+                self.contentHash = contentHash
+                self.lastCrawled = lastCrawled
+            }
+        }
+
+        /// Reads rows from the legacy `search.db`. Step 6c's Live
+        /// conformer opens a `Search.Index` against the legacy file in
+        /// read-only mode and queries `docs_metadata`.
+        public protocol LegacyDBReader: Sendable {
+            /// `[source-id: row count]` derived from
+            /// `SELECT source, COUNT(*) FROM docs_metadata GROUP BY source`.
+            func sourceIDCounts() async throws -> [String: Int]
+
+            /// Stream all rows for a given source-id. Reader closes the
+            /// underlying connection when the iterator drains or the
+            /// caller cancels.
+            func rows(forSourceID sourceID: String) -> AsyncThrowingStream<LegacyRow, Error>
+        }
+
+        /// Writes rows into a single destination per-source DB. Step 6c's
+        /// Live conformer opens a `Search.Index` at the descriptor's
+        /// filename and calls `indexDocument` per row.
+        public protocol PerDBWriter: Sendable {
+            /// Insert one row into the destination. Writer batches
+            /// internally if it cares to.
+            func write(_ row: LegacyRow) async throws
+
+            /// Final post-copy row-count read for verification. Called
+            /// once after all `write` calls complete for a given source.
+            func rowCount() async throws -> Int
+
+            /// Flush + release the underlying connection. The migrator
+            /// closes each writer between sources.
+            func disconnect() async
+        }
+
+        /// Constructs a `PerDBWriter` for a specific destination DB
+        /// file. Step 6c's Live factory routes to `Search.Index`
+        /// instantiation at the descriptor's path.
+        public typealias PerDBWriterFactory = @Sendable (
+            _ destination: Shared.Models.DatabaseDescriptor,
+            _ destinationDBPath: URL
+        ) async throws -> any PerDBWriter
+
+        // MARK: - Migration coordinator (step 6b)
+
+        /// Execute a migration plan. Reads source-id counts from
+        /// `reader`, resolves each known source-id to its destination
+        /// descriptor via `registry`, copies rows source-by-source
+        /// using `writerFactory` to open per-destination writers,
+        /// verifies row counts, then renames the legacy file.
+        ///
+        /// Returns a `MigrationOutcome` summarising rows-written + byte
+        /// sizes + whether the legacy file was renamed.
+        ///
+        /// On `MigrationError.rowCountMismatch`, the migration aborts
+        /// BEFORE the legacy rename; the legacy file stays in place,
+        /// per-source DBs may be partial (caller should delete + retry).
+        ///
+        /// Unknown source-ids (rows whose `source` value is not in
+        /// `registry`) are NOT silently routed: the migrator throws
+        /// `MigrationError.unknownSourceIDs([...])` listing them. The
+        /// caller decides whether to (a) abort, (b) re-call with
+        /// `tolerateUnknownSourceIDs: true` to skip unknowns and
+        /// proceed for known sources only.
+        public static func migrate(
+            legacyFile: URL,
+            baseDirectory: URL,
+            registry: Search.SourceRegistry,
+            reader: any LegacyDBReader,
+            writerFactory: PerDBWriterFactory,
+            tolerateUnknownSourceIDs: Bool = false,
+            fileManager: FileManager = .default
+        ) async throws -> MigrationOutcome {
+            // 1. Read source-id counts from legacy.
+            let counts = try await reader.sourceIDCounts()
+
+            // 2. Identify unknowns. Surface them unless tolerated.
+            let unknownSourceIDs = counts.keys.filter { sourceID in
+                registry.entry(for: sourceID) == nil
+            }.sorted()
+            if !unknownSourceIDs.isEmpty, !tolerateUnknownSourceIDs {
+                throw MigrationError.unknownSourceIDs(unknownSourceIDs)
+            }
+
+            // 3. Build the plan (known sources only).
+            let knownCounts = counts.filter { registry.entry(for: $0.key) != nil }
+            let plan = planFromLegacySourceIDCounts(
+                legacyFile: legacyFile,
+                baseDirectory: baseDirectory,
+                registry: registry,
+                legacySourceIDRowCounts: knownCounts
+            )
+
+            // 4. For each source, open the destination writer, copy
+            // rows, verify count, close writer.
+            var results: [MigrationOutcome.SourceResult] = []
+            for sourcePlan in plan.sourcePlans {
+                guard let provider = registry.entry(for: sourcePlan.sourceID)?.provider else {
+                    continue
+                }
+                let writer = try await writerFactory(provider.destinationDB, sourcePlan.destinationDBPath)
+                var rowsCopied = 0
+                do {
+                    for try await row in reader.rows(forSourceID: sourcePlan.sourceID) {
+                        try await writer.write(row)
+                        rowsCopied += 1
+                    }
+                } catch {
+                    await writer.disconnect()
+                    throw MigrationError.ioFailure(
+                        sourceID: sourcePlan.sourceID,
+                        underlying: String(describing: error)
+                    )
+                }
+
+                let actualCount = try await writer.rowCount()
+                await writer.disconnect()
+
+                if actualCount != sourcePlan.estimatedRowCount {
+                    throw MigrationError.rowCountMismatch(
+                        sourceID: sourcePlan.sourceID,
+                        expected: sourcePlan.estimatedRowCount,
+                        actual: actualCount
+                    )
+                }
+
+                let bytes = (try? fileManager.attributesOfItem(atPath: sourcePlan.destinationDBPath.path)[.size] as? Int64) ?? 0
+                results.append(MigrationOutcome.SourceResult(
+                    sourceID: sourcePlan.sourceID,
+                    destinationDBPath: sourcePlan.destinationDBPath,
+                    rowsWritten: rowsCopied,
+                    bytesWritten: bytes
+                ))
+            }
+
+            // 5. Rename the legacy file. Atomic on same volume.
+            var renamed = false
+            var actualRenameTarget: URL?
+            do {
+                try fileManager.moveItem(at: legacyFile, to: plan.legacyRenameTarget)
+                renamed = true
+                actualRenameTarget = plan.legacyRenameTarget
+            } catch {
+                throw MigrationError.ioFailure(
+                    sourceID: nil,
+                    underlying: "rename \(legacyFile.lastPathComponent) -> \(plan.legacyRenameTarget.lastPathComponent): \(error)"
+                )
+            }
+
+            return MigrationOutcome(
+                plan: plan,
+                results: results,
+                legacyFileRenamed: renamed,
+                actualLegacyRenameTarget: actualRenameTarget
+            )
         }
 
         // MARK: - Constants
