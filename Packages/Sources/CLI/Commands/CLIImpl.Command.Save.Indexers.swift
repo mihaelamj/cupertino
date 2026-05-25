@@ -240,31 +240,31 @@ extension CLIImpl.Command.Save {
             let importLogSink = try? Search.JSONLImportLogSink(path: logURL)
             logPathCapture.path = importLogSink == nil ? nil : logURL
 
-            // #932: composition root assembles the production indexer dict
-            // inline so `Search.Index.indexItem`-style dispatch reads from
-            // an injected dependency instead of a static registry. This is
-            // the SOLE production assembly point: a new source appends one
-            // line here and nothing else. No `Search.productionIndexers()`
-            // helper exists (gof-di-rules.md Rule 1: no Service Locator
-            // surface on producer namespaces). The 7 indexer concretes
-            // referenced below all live in SearchSQLite today; the
-            // protocol-move-to-SearchModels follow-up will let new
-            // indexers live in their own packages.
+            // Post-#1027 (Phase 1I.b of epic #1007): indexer dict
+            // derived from the per-source registry, filtered to
+            // search.db destinations. Pre-#1027 this was a 7-entry
+            // inline literal (per #932 the dispatch reads from an
+            // injected dependency instead of a static registry; that
+            // injection-not-static contract holds, only the assembly
+            // moves from an inline literal to a registry-derived
+            // filter+reduce). PackagesSource self-excludes
+            // (destinationDB == .packages); packages live in packages.db
+            // via the dedicated Indexer.PackagesService (#789), not
+            // search.db's IndexBuilder. The 7 search.db indexers come
+            // from their per-source target's makeIndexer() factory.
+            // Adding a new source post-#1027 is one `.register(<X>Source())`
+            // line in `CLIImpl.SourceRegistry.swift`; zero edits here.
+            let productionRegistry = CLIImpl.makeProductionSourceRegistry()
             let searchIndex = try await Search.Index(
                 dbPath: input.searchDBPath,
                 logger: Cupertino.Context.composition.logging.recording,
-                indexers: [
-                    Shared.Constants.SourcePrefix.appleDocs: Search.AppleDocsIndexer(),
-                    Shared.Constants.SourcePrefix.hig: Search.HIGIndexer(),
-                    Shared.Constants.SourcePrefix.swiftEvolution: Search.SwiftEvolutionIndexer(),
-                    Shared.Constants.SourcePrefix.samples: Search.SampleCodeIndexer(),
-                    Shared.Constants.SourcePrefix.appleArchive: Search.AppleArchiveIndexer(),
-                    Shared.Constants.SourcePrefix.swiftBook: Search.SwiftBookIndexer(),
-                    Shared.Constants.SourcePrefix.swiftOrg: Search.SwiftOrgIndexer(),
-                    // #789: "packages" indexer removed; packages live in packages.db
-                ],
+                indexers: productionRegistry.allEnabled
+                    .filter { $0.destinationDB == .search }
+                    .reduce(into: [:]) { dict, provider in
+                        dict[provider.definition.id] = provider.makeIndexer()
+                    },
                 sourceLookup: Search.SourceLookup(
-                    definitions: CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition)
+                    definitions: productionRegistry.allEnabled.map(\.definition)
                 )
             )
 
