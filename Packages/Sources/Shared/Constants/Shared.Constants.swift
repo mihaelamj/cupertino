@@ -133,20 +133,21 @@ extension Shared.Constants {
         /// component under the strategy's base directory.
         public static let swiftDocumentationDatabase = "swift-documentation.db"
 
-        /// Apple sample code database. **Design target** (tracked at
-        /// #1037): one on-disk file holding both the `Sample.Index.Builder`
-        /// rich schema (projects + files + file_symbols + imports) AND the
-        /// search-style FTS rows (docs_metadata + docs_fts) that
-        /// `SampleCodeSource` emits, with both pipelines moved off
-        /// `PRAGMA user_version` to per-pipeline tracking tables so they
-        /// coexist safely.
+        /// Apple sample code database. One on-disk file holding both
+        /// the `Sample.Index.Builder` rich schema (projects + files +
+        /// file_symbols + imports) AND the search-style FTS rows
+        /// (docs_metadata + docs_fts) that `SampleCodeSource` emits.
+        /// Both pipelines coexist via per-pipeline schema-version
+        /// tables: Sample.Index uses `samples_schema_version`,
+        /// Search.Index keeps `PRAGMA user_version` (which Sample.Index
+        /// no longer writes).
         ///
-        /// **Current state (2026-05-25)**: this constant is the future
-        /// filename. `SampleCodeSource.destinationDB` already points at
-        /// the matching `.appleSampleCode` descriptor. `Sample.Index`
-        /// still writes to the old `samplesDatabase` constant; the
-        /// filename rename + schema-version reconcile land in the
-        /// follow-up commits tracked by #1037.
+        /// Production wiring active post-#1037:
+        /// - `Sample.Index.databasePath` returns
+        ///   `<base>/apple-sample-code.db`.
+        /// - `SampleCodeSource.destinationDB` is `.appleSampleCode`.
+        /// - The legacy `samplesDatabase` constant ("samples.db") is
+        ///   retained for migration-detection codepaths only.
         public static let appleSampleCodeDatabase = "apple-sample-code.db"
 
         /// Swift packages database (rename of packages.db; step 6 migration

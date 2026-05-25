@@ -186,38 +186,34 @@ extension Shared.Models {
             displayName: "Swift Documentation"
         )
 
-        /// Apple sample code. **Design target** (tracked at #1037): ONE
-        /// physical SQLite file holds both the `Sample.Index.Builder`
-        /// rich schema (projects + files + file_symbols + imports) AND
-        /// the search-style FTS schema (docs_metadata + docs_fts) that
-        /// `SampleCodeSource` emits.
+        /// Apple sample code. ONE physical SQLite file holds both the
+        /// `Sample.Index.Builder` rich schema (projects + files +
+        /// file_symbols + imports) AND the search-style FTS schema
+        /// (docs_metadata + docs_fts) that `SampleCodeSource` emits.
+        /// Two table tracks in one file, both deriving from the same
+        /// on-disk sample-code zips at `~/.cupertino/sample-code/`.
         ///
-        /// **Current state (2026-05-25, post commit `6713b3a`)**: this
-        /// descriptor is the target, NOT yet the wired state. Today's
-        /// code still writes the two schemas to two different on-disk
-        /// files: `Sample.Index.databasePath` resolves to `samples.db`
-        /// (via `Shared.Constants.FileName.samplesDatabase`) while
-        /// `SampleCodeSource.destinationDB` points here at
-        /// `apple-sample-code.db`. The full wiring (filename rename +
-        /// schema-version reconcile + `LivePerDBWriterFactory` foreign-
-        /// table awareness + migrator `detect()` legacy-samples
-        /// awareness) lands in the follow-up commits tracked by #1037.
-        ///
-        /// **Schema-version coexistence is the load-bearing prerequisite**.
-        /// SQLite has ONE `PRAGMA user_version` per file. Both pipelines
-        /// must move off `PRAGMA user_version` to per-pipeline schema-
-        /// version tracking tables before the one-file collapse is safe
-        /// (otherwise Search.Index's stamp of 18 would trip
-        /// Sample.Index.Database's `removeItem` branch on next open).
+        /// **Wiring state (post commit pinned by #1037)**:
+        /// - `Sample.Index.databasePath` resolves to
+        ///   `<base>/apple-sample-code.db` (the value of this
+        ///   descriptor's `filename`).
+        /// - `SampleCodeSource.destinationDB` returns this descriptor.
+        /// - Sample.Index uses a `samples_schema_version` regular table
+        ///   for its version stamp (no `PRAGMA user_version` write),
+        ///   leaving the file-level PRAGMA available for Search.Index.
+        /// - The legacy descriptor `.samples` (filename `samples.db`)
+        ///   stays in `allKnown` for migration detection; existing user
+        ///   bundles built by pre-#1037 binaries still have a
+        ///   `samples.db` on disk until the user re-runs save.
         ///
         /// Architectural rationale: sample code as a content type lives
         /// across many DBs (apple-docs has code in body content,
-        /// swift-book is mostly code examples, samples.db is the Apple
-        /// GitHub sample-code projects with rich schema); the unified
-        /// `cupertino search` already fans across all 6 search-side
-        /// destination DBs and merges, so source attribution at result
-        /// time distinguishes sample-code hits without needing a
-        /// dedicated `apple-sample-code-search.db`.
+        /// swift-book is mostly code examples, this DB carries the
+        /// Apple GitHub sample-code projects with rich schema). The
+        /// unified `cupertino search` already fans across all 6
+        /// search-side destination DBs and merges, so source
+        /// attribution at result time distinguishes sample-code hits
+        /// without needing a dedicated `apple-sample-code-search.db`.
         public static let appleSampleCode: DatabaseDescriptor = .init(
             id: "apple-sample-code",
             filename: Shared.Constants.FileName.appleSampleCodeDatabase,
