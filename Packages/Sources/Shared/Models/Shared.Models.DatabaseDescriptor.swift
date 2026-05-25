@@ -22,14 +22,23 @@ import Foundation
 /// namespace that already exists in this target).
 extension Shared.Models {
     public struct DatabaseDescriptor: Sendable, Hashable, Identifiable {
-        // MARK: - Canonical descriptors for the three databases cupertino ships today
+        // MARK: - Legacy descriptors (pre per-source DB split)
 
         //
-        // Single source of truth used by production code AND tests. Pre-#248,
-        // both sides duplicated the literals; a rename to `id` / `filename` /
-        // `displayName` in production silently left tests green while live
-        // callers got nil from `Outcome.path(forDatabaseId:)`. Centralising
-        // here makes that drift structurally impossible.
+        // The three descriptors cupertino's bundle shipped before the per-source
+        // DB split epic (2026-05-25). Single source of truth used by production
+        // code AND tests. Pre-#248, both sides duplicated the literals; a rename
+        // to `id` / `filename` / `displayName` in production silently left tests
+        // green while live callers got nil from `Outcome.path(forDatabaseId:)`.
+        // Centralising here makes that drift structurally impossible.
+        //
+        // These three live in parallel with the per-source descriptors below
+        // until step 4 of `docs/design/per-source-db-split.md` flips every
+        // source's `destinationDB` to its own per-source descriptor. After
+        // step 6 (the on-disk migration shim) lands, `.search` is removed;
+        // `.samples` and `.packages` get removed in the same pass once the
+        // `.appleSampleCode` / `.swiftPackages` renames are wired through
+        // `cupertino setup`, `cupertino doctor`, and the bundle manifest.
 
         public static let search: DatabaseDescriptor = .init(
             id: "search",
@@ -52,13 +61,37 @@ extension Shared.Models {
         // MARK: - Per-source descriptors (post-2026-05-25, per-source DB split epic)
 
         //
-        // Step 1 of `docs/design/per-source-db-split.md`: introduce 5 new
-        // descriptors for the DBs that split out of search.db. Names settled
-        // 2026-05-25 (see `cupertino-per-source-db-names-agreed` memory).
+        // Step 1 of `docs/design/per-source-db-split.md`: introduce 7 new
+        // descriptors. 5 of them split out of `.search` (apple-documentation,
+        // hig, apple-archive, swift-evolution, swift-documentation); the other
+        // 2 (.appleSampleCode, .swiftPackages) are renames-in-waiting for
+        // `.samples` and `.packages` whose on-disk filename flips in step 6's
+        // migration shim. Names settled 2026-05-25 (see
+        // `cupertino-per-source-db-names-agreed` memory).
+        //
         // Step 1 is purely additive: no source provider's destinationDB
         // points at these yet. Sources flip one at a time in step 4. After
-        // all 5 flip, `.search` is removed; tests until then keep using
-        // `.search` so the suite stays green.
+        // all 5 search-bound flips land, `.search` is removed. `.samples`
+        // and `.packages` are removed alongside step 6 (the on-disk file
+        // rename + bundle migration).
+        //
+        // **Identifier discipline (important for step 4 readers):** the
+        // descriptor's `id` (e.g. `apple-documentation`) is intentionally
+        // NOT the same as the source's `Shared.Constants.SourcePrefix.*`
+        // value (e.g. `apple-docs`). DB ids and source ids are separate
+        // naming spaces. The binding from one to the other is via
+        // `SourceProvider.destinationDB`, never via string matching.
+        // Diverging pairs (step 4 must route via the descriptor reference,
+        // not the source-id literal):
+        //
+        //   - SourcePrefix.appleDocs ("apple-docs")    → .appleDocumentation ("apple-documentation")
+        //   - SourcePrefix.swiftOrg  ("swift-org")     → .swiftDocumentation ("swift-documentation")
+        //   - SourcePrefix.packages  ("packages")      → .swiftPackages      ("swift-packages")
+        //   - SourcePrefix.sampleCode ("sample-code") + .samples ("samples") → .appleSampleCode ("apple-sample-code")
+        //
+        // Source-ids `hig`, `apple-archive`, `swift-evolution` happen to
+        // match their descriptors verbatim, but that's a coincidence of the
+        // current naming, not a contract.
 
         /// Apple Developer Documentation. Receives the apple-docs rows that
         /// live in search.db today (~379k rows; ~1.2 GB at v1.2.0).
@@ -91,10 +124,15 @@ extension Shared.Models {
             displayName: "Swift Evolution"
         )
 
-        /// Swift documentation. Co-locates swift-org + swift-book rows via
-        /// the SwiftOrgStrategy URL-prefix view-source pattern (see
-        /// `docs/design/corpus-structure.md` §3.5.5). One indexer, one DB,
-        /// two source-id tags distinguished by URL prefix at index time.
+        /// Swift documentation. Co-locates swift-org + swift-book rows in
+        /// one DB. Write-time mechanism (post-#1029 view-source pattern, see
+        /// `docs/design/corpus-structure.md` §3.5.5): `SwiftOrgStrategy`
+        /// emits rows for BOTH source-ids by URL-prefix tagging, and
+        /// `SwiftBookViewSourceStrategy` reports `wasSkipped: true` so the
+        /// per-source breakdown log doesn't imply a failed indexing attempt
+        /// for swift-book. Two registered SourceProviders, one effective
+        /// indexer writing all rows, one DB. Distinguished at read time by
+        /// the `source` column.
         public static let swiftDocumentation: DatabaseDescriptor = .init(
             id: "swift-documentation",
             filename: Shared.Constants.FileName.swiftDocumentationDatabase,

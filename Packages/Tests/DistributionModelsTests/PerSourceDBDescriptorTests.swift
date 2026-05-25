@@ -132,4 +132,42 @@ struct PerSourceDBDescriptorTests {
             #expect(!legacyIDs.contains(descriptor.id), "new descriptor '\(descriptor.id)' collides with a legacy id")
         }
     }
+
+    @Test("Per-source descriptors do not collide with legacy filenames (search.db / samples.db / packages.db)")
+    func noLegacyFilenameCollision() {
+        let legacyFilenames: Set<String> = ["search.db", "samples.db", "packages.db"]
+        let newDescriptors: [Shared.Models.DatabaseDescriptor] = [
+            .appleDocumentation,
+            .hig,
+            .appleArchive,
+            .swiftEvolution,
+            .swiftDocumentation,
+            .appleSampleCode,
+            .swiftPackages,
+        ]
+        for descriptor in newDescriptors {
+            #expect(
+                !legacyFilenames.contains(descriptor.filename),
+                "new descriptor '\(descriptor.id)' shadows the legacy filename '\(descriptor.filename)' (step 4 flip would silently corrupt bundle layout)"
+            )
+        }
+    }
+
+    @Test("Per-source descriptor + legacy union is 10 unique ids and 10 unique filenames")
+    func unionDistinctness() {
+        let allDescriptors: [Shared.Models.DatabaseDescriptor] = [
+            .search,
+            .samples,
+            .packages,
+            .appleDocumentation,
+            .hig,
+            .appleArchive,
+            .swiftEvolution,
+            .swiftDocumentation,
+            .appleSampleCode,
+            .swiftPackages,
+        ]
+        #expect(Set(allDescriptors.map(\.id)).count == allDescriptors.count, "Duplicate id across legacy+new union")
+        #expect(Set(allDescriptors.map(\.filename)).count == allDescriptors.count, "Duplicate filename across legacy+new union")
+    }
 }
