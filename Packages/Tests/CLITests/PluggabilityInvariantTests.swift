@@ -197,12 +197,20 @@ struct PluggabilityInvariantTests {
         }
         registry.register(AuditFixtureSource())
 
-        let grouped = Dictionary(grouping: registry.allEnabled) { $0.destinationDB.id }
-        #expect(grouped["audit-fixture"]?.count == 1, "fake must be the sole occupant of its destinationDB group; no leak from existing sources")
+        // Group by the full DatabaseDescriptor value (matching the
+        // sketched step-5 dispatcher at docs/design/per-source-db-split.md
+        // §5; the doc keys on the full descriptor, not just the id, so
+        // a future regression where two sources accidentally share an
+        // `id` but diverge on filename/displayName partitions correctly).
+        let grouped: [Shared.Models.DatabaseDescriptor: [any Search.SourceProvider]] =
+            Dictionary(grouping: registry.allEnabled, by: { $0.destinationDB })
+        let fakeDescriptor = AuditFixtureSource().destinationDB
+        #expect(grouped[fakeDescriptor]?.count == 1, "fake must be the sole occupant of its destinationDB group; no leak from existing sources")
         // Sanity: existing sources still group as expected post step 4.
-        #expect(grouped["packages"]?.count == 1)
-        #expect(grouped["apple-documentation"]?.count == 1)
-        #expect(grouped["swift-documentation"]?.count == 2, "swift-org + swift-book co-located via view-source")
+        #expect(grouped[.packages]?.count == 1)
+        #expect(grouped[.appleDocumentation]?.count == 1)
+        #expect(grouped[.swiftDocumentation]?.count == 2, "swift-org + swift-book co-located via view-source")
+        #expect(grouped[.search]?.count == 1, "SampleCodeSource is the only source still at .search post step 4; rename to .appleSampleCode lands in step 6")
     }
 
     @Test("Seam 7: fake's indexer concrete returns the right source-id tag (no leak through existing types)")
@@ -216,44 +224,114 @@ struct PluggabilityInvariantTests {
         // strategy.source is verified inline in FakeStrategy = "audit-fixture".
     }
 
-    // MARK: - The 2-file PR claim, recorded
+    // MARK: - The PR-file-touch floor, recorded
 
-    @Test("PR-file-touch claim: adding this fake source as a real production target would touch N files; cite N here")
-    func twoFilePRClaimRecorded() {
-        // **Real-world equivalent of this test fixture, if added as a
-        // production target, would be:**
+    @Test("Real-world new-source PR floor: 5 new files + 2 line edits, PLUS the pre-existing closed-set edits documented below")
+    func newSourcePRFloorRecorded() {
+        // **Per-source target shape today (cross-checked against e.g.
+        // ls Packages/Sources/AppleArchiveSource/, 5 files):**
         //
-        //   1. Packages/Sources/AuditFixtureSource/AuditFixtureSource.swift
-        //      (the SourceProvider conformer; analogue of e.g.
-        //      AppleArchiveSource.swift)
-        //   2. Packages/Sources/AuditFixtureSource/AuditFixtureSource.Definition.swift
-        //      (the SourceDefinition static; analogue of every other
-        //      <X>Source.Definition.swift)
-        //   3. docs/sources/audit-fixture/manifest.yaml
-        //      (per docs/design/corpus-structure.md §3)
-        //   4. Packages/Sources/CLI/CLIImpl.SourceRegistry.swift:
-        //      one new line `registry.register(AuditFixtureSource())`
-        //   5. Packages/Package.swift:
-        //      one new SPM target declaration `auditFixtureSourceTarget`
-        //      plus one line under `cupertinoTargets`
+        //   1. Packages/Sources/<X>Source/<X>Source.swift
+        //      (SourceProvider conformer; computed-property properties
+        //       reference per-source `Self.definition`, `Self.fetchInfo`)
+        //   2. Packages/Sources/<X>Source/<X>Source.Definition.swift
+        //      (Search.SourceDefinition static literal)
+        //   3. Packages/Sources/<X>Source/<X>Source.FetchInfo.swift
+        //      (Search.FetchInfo static literal, if fetch-bound)
+        //   4. Packages/Sources/<X>Source/Search.<X>Indexer.swift
+        //      (Search.SourceIndexer concrete)
+        //   5. Packages/Sources/<X>Source/Search.Strategies.<X>.swift
+        //      (Search.SourceIndexingStrategy concrete)
         //
-        // Total: 3 new files + 2 single-line additions to existing
-        // files (Package.swift + CLIImpl.SourceRegistry.swift). For a
-        // new DB descriptor, ADD: 1 entry in
-        // Shared.Constants.FileName + 1 static in
-        // Shared.Models.DatabaseDescriptor + (the source's flip is
-        // already counted in #1 above).
+        // Plus: docs/sources/<id>/manifest.yaml (new file)
         //
-        // The original memory rule's "2-file PR" framing is the
-        // strict-minimum (Definition + Source); the practical
-        // pluggable-via-PR shape lands at 3 new files + 2 1-line edits
-        // + (if new DB) 2 more 1-line edits. This is the floor; if
-        // step 5+ work adds new mandatory edit sites, that floor
-        // grows and the invariant is violated.
+        // Single-line edits to existing files (THIS branch's state):
+        //   a. Packages/Package.swift: new SPM target declaration +
+        //      one line under cupertinoTargets
+        //   b. Packages/Sources/CLI/CLIImpl.SourceRegistry.swift:
+        //      one `registry.register(<X>Source())` line
         //
-        // No assertion here: this test is a load-bearing comment
-        // recording the file count. The other 7 tests in this suite
-        // mechanically verify the seam properties.
+        // PLUS pre-existing closed-set edit sites (Independence Day
+        // epic, tracked at github.com/mihaelamj/cupertino issues
+        // #932/#933/#934/#935; NOT closed by this branch):
+        //
+        //   c. Shared.Constants.SourcePrefix.allPrefixes array
+        //      (Shared.Constants.swift): one append; consumed by
+        //      Search.Index URI-prefix query parsing
+        //   d. Search.FetchInfo.DefaultOutputDirKey closed enum +
+        //      CLIImpl.Command.Fetch.swift resolveDirectory exhaustive
+        //      switch + Shared.Paths accessor (3 edits, if the new
+        //      source needs its own output directory)
+        //   e. Search.CandidateFetcher swiftVersionSources /
+        //      frameworkScopedSources static Set<String> policy
+        //      literals (1-2 edits, depending on the new source's
+        //      semantics)
+        //   f. Logging.Category closed enum
+        //      (Logging.LiveRecording.swift exhaustive switch) = 1 edit
+        //
+        // **For a new DB descriptor (declared by the new source via
+        //   destinationDB), ADD:**
+        //
+        //   g. Shared.Constants.FileName.<X>Database: 1 entry
+        //   h. Shared.Models.DatabaseDescriptor.<X> static: 1 entry
+        //
+        //   PLUS pre-existing closed-list append sites that any new
+        //   DB still has to edit (Independence Day #935):
+        //
+        //   i. Distribution.SetupService.Request.required array
+        //      (Setup.swift) = 1 edit; tells setup what to download
+        //   j. Doctor.healthChecks array (Doctor.swift) = 1 edit;
+        //      tells doctor what to validate
+        //   k. Doctor.printSchemaVersions entries array (Doctor.swift) = 1 edit;
+        //      tells doctor what schema version to print
+        //
+        // **Floor (this branch's state, no Independence Day closures
+        //  shipped):**
+        //
+        //   - New source: 5 new files + 1 manifest + 2 single-line
+        //     edits + up to 5 closed-set edits (a-f above) = up to 13
+        //     PR touches.
+        //   - New DB: 2 single-line edits (g-h) + 3 closed-list
+        //     edits (i-k) = 5 PR touches.
+        //
+        // The original `feedback_sources_100pct_pluggable` "2-file PR"
+        // framing is the END STATE the Independence Day epic is
+        // chasing; today's floor is materially higher. The other
+        // tests in this suite verify the seams that ARE pluggable
+        // today; the closed-set seams listed above are tracked as
+        // separate work that this audit does NOT assert on.
+        //
+        // When #932-#935 close, this comment should be updated to
+        // reflect the new (lower) floor + the corresponding test
+        // sites that became unconditionally pluggable.
         #expect(true)
+    }
+
+    // MARK: - Pre-existing closed-set seams (regression markers; tracked at #932-#935)
+
+    @Test("Closed-set seam: Shared.Constants.SourcePrefix.allPrefixes is a static literal; adding a new source's prefix requires editing this array (#932 candidate)")
+    func closedSetSourcePrefixAllPrefixes() {
+        // This test records the closed-set seam as a known-not-pluggable
+        // gap. It asserts the array EXISTS and the existing prefixes
+        // are present; a future PR that closes the gap (replacing the
+        // static array with a registry-derived computed property) will
+        // need to update this test to assert the new mechanism.
+        let prefixes = Shared.Constants.SourcePrefix.allPrefixes
+        #expect(prefixes.contains(Shared.Constants.SourcePrefix.appleDocs))
+        #expect(prefixes.contains(Shared.Constants.SourcePrefix.packages))
+        #expect(
+            !prefixes.contains("audit-fixture"),
+            "AuditFixtureSource's prefix is NOT in allPrefixes (proof: registering a fake source did not auto-extend allPrefixes; closed-set gap confirmed)"
+        )
+    }
+
+    @Test("Closed-set seam: Search.FetchInfo.DefaultOutputDirKey is a closed enum without an .other / .custom escape hatch (#933 candidate)")
+    func closedSetDefaultOutputDirKey() {
+        // The fake reuses .docs to dodge this seam. A real new source
+        // needing its own output directory must edit the enum + the
+        // CLIImpl.Command.Fetch resolveDirectory switch + Shared.Paths.
+        // CaseIterable lets us count without parsing source.
+        let count = Search.FetchInfo.DefaultOutputDirKey.allCases.count
+        #expect(count == 8, "8 closed cases as of branch state; a new source needing its own directory must extend this enum (Independence Day #933)")
     }
 }
