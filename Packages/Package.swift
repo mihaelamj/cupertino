@@ -1258,7 +1258,9 @@ let targets: [Target] = {
         // DistributionModels added in #930 so tests can name
         // `Distribution.DatabaseHealthCheck` for the strategy-seam
         // conformance checks on the 3 CLI conformers.
-        dependencies: ["CLI", "DistributionModels"]
+        // Distribution added by the per-source-db-split epic so
+        // ConstantsAuditTests can pin PerSourceDBSplitMigrator.legacyRenameSuffix.
+        dependencies: ["CLI", "Distribution", "DistributionModels"]
     )
     let mockAIAgentTestsTarget = Target.testTarget(
         name: "MockAIAgentTests",
