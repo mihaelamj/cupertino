@@ -1,6 +1,6 @@
 # samples
 
-Sample code projects source (apple-sample-code.db, populated by `cupertino save --samples`)
+Sample code projects source (apple-sample-code.db, populated by `cupertino save --source samples`)
 
 ## Synopsis
 
@@ -10,7 +10,7 @@ cupertino search <query> --source samples
 
 ## Description
 
-Filters search results to only include sample code projects. Searches the dedicated `apple-sample-code.db` (built by `cupertino save --samples`) which holds README text + per-source-file content for every sample project crawled from GitHub via `cupertino fetch --source samples`.
+Filters search results to only include sample code projects. Searches the dedicated `apple-sample-code.db` (built by `cupertino save --source samples`) which holds README text + per-source-file content for every sample project crawled from GitHub via `cupertino fetch --source samples`.
 
 ## Content
 
@@ -53,7 +53,7 @@ Results use the `samples://` URI scheme. The CLI's `cupertino read --source samp
 cupertino fetch --source samples
 
 # Build apple-sample-code.db
-cupertino save --samples
+cupertino save --source samples
 ```
 
 ## Use Cases

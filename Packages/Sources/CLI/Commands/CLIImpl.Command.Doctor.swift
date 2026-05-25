@@ -407,7 +407,7 @@ extension CLIImpl.Command {
             // its own line for actionability) / orange / green.
             if usage.freeBytes < savedNeed {
                 Cupertino.Context.composition.logging.recording.output(
-                    "   ✗ Volume \(target.path): \(free) free of \(total) (\(pct) %) — `cupertino save --docs` would REFUSE (needs \(savedNeedStr))"
+                    "   ✗ Volume \(target.path): \(free) free of \(total) (\(pct) %); `cupertino save --source apple-docs` would REFUSE (needs \(savedNeedStr))"
                 )
                 Cupertino.Context.composition.logging.recording.output(
                     "     → Free at least \(formatter.string(fromByteCount: savedNeed - usage.freeBytes)) on this volume before the next save / setup"

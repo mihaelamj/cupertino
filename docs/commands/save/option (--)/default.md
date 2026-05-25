@@ -159,6 +159,6 @@ cupertino save --yes
 
 ## Notes
 
-- The `cupertino index` subcommand is gone, `--samples` absorbed it (#231).
+- The `cupertino index` subcommand is gone, `--source samples` absorbed it (#231).
 - All paths support tilde (`~`) expansion.
 - Run `cupertino save --help` for the complete current flag list.

@@ -107,7 +107,7 @@ extension CLIImpl.Command.Search {
         }
 
         // Best-effort teaser fetch: when search.db is locked (typically
-        // another process running `cupertino save --docs`) or missing, log
+        // another process running `cupertino save --source apple-docs`) or missing, log
         // and fall back to empty teasers rather than aborting the samples
         // query (#237).
         let teasers: Services.Formatter.TeaserResults

@@ -165,7 +165,7 @@ Return their stored UTF-8 content as-is, README markdown for sample projects, fi
 Error: Document not found in search.db: apple-docs://invalid/path
 ```
 
-**Solutions:** check spelling; run `cupertino search` to find valid URIs; ensure the doc is indexed (`cupertino save --docs`).
+**Solutions:** check spelling; run `cupertino search` to find valid URIs; ensure the doc is indexed (`cupertino save --source apple-docs`).
 
 ### Not found in apple-sample-code.db
 
@@ -173,7 +173,7 @@ Error: Document not found in search.db: apple-docs://invalid/path
 Error: Not found in apple-sample-code.db: <projectId>
 ```
 
-**Solutions:** verify the projectId via `cupertino list-samples`; rebuild via `cupertino save --samples`.
+**Solutions:** verify the projectId via `cupertino list-samples`; rebuild via `cupertino save --source samples`.
 
 ### Not found in packages.db
 

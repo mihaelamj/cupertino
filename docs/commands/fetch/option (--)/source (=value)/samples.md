@@ -39,7 +39,7 @@ cupertino fetch --source samples
 
 ### Then build the index
 ```bash
-cupertino save --samples
+cupertino save --source samples
 ```
 
 ## Notes
@@ -47,4 +47,4 @@ cupertino save --samples
 - Replaces the older `--source apple-sample-code` Apple-catalog path for everyday use.
 - Project list is bundled in `Resources` (priority-package catalog).
 - Resumable: re-running picks up where the last fetch left off.
-- Pair with `cupertino save --samples` to populate `apple-sample-code.db`.
+- Pair with `cupertino save --source samples` to populate `apple-sample-code.db`.

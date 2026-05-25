@@ -288,7 +288,7 @@ public enum LivePerDBWriterFactory {
                 logger.info(
                     "Migrator: preserving existing destination \(destinationPath.lastPathComponent) " +
                         "because it carries Sample.Index tables (rich-schema data " +
-                        "from `cupertino save --samples`). Search.Index will open " +
+                        "from `cupertino save --source samples`). Search.Index will open " +
                         "on top of the file and create its own tables alongside.",
                     category: .cli
                 )
@@ -305,7 +305,7 @@ public enum LivePerDBWriterFactory {
             // confuse SQLite on the fresh open and must be cleared. In
             // the PRESERVE branch we must NOT delete the companions:
             // they might carry un-checkpointed Sample.Index writes from
-            // a prior `cupertino save --samples` that exited before
+            // a prior `cupertino save --source samples` that exited before
             // SQLite auto-checkpointed (the .migrationNeeded
             // precondition the migrator inherits is about Search.Index,
             // not Sample.Index; nothing guarantees the WAL is empty

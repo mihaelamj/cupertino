@@ -230,7 +230,7 @@ extension Search {
 
             // #236: WAL journal mode lets readers (`cupertino search`,
             // `cupertino ask`, `cupertino doctor`) proceed while a
-            // `cupertino save --docs` writer holds the DB. PRAGMA is
+            // `cupertino save --source apple-docs` writer holds the DB. PRAGMA is
             // idempotent — re-setting on an already-WAL DB is a no-op,
             // and the mode persists in the file header so subsequent
             // connections inherit it without setting again. Log and

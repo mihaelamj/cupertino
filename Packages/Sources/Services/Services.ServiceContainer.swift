@@ -65,7 +65,7 @@ extension Services {
             operation: (any Sample.Search.Searcher) async throws -> T
         ) async throws -> T {
             guard FileManager.default.fileExists(atPath: samplesDB.path) else {
-                throw Shared.Core.ToolError.noData("Sample database not found at \(samplesDB.path). Run 'cupertino save --samples' to build the index.")
+                throw Shared.Core.ToolError.noData("Sample database not found at \(samplesDB.path). Run 'cupertino save --source samples' to build the index.")
             }
 
             let database = try await sampleDatabaseFactory.openDatabase(at: samplesDB)

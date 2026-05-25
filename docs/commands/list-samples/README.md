@@ -67,4 +67,4 @@ Total: 619 projects, 18928 files
 
 - [search](../search/), search sample code with `cupertino search "<query>" --source samples`
 - [read-sample](../read-sample/), read project README
-- [save](../save/), build the sample code FTS index (`cupertino save --samples`)
+- [save](../save/), build the sample code FTS index (`cupertino save --source samples`)

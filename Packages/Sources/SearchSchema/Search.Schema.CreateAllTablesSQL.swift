@@ -126,7 +126,7 @@ public extension Search.Schema {
 
     -- #789: `packages` + `package_dependencies` tables removed from
     -- search.db. The canonical packages store is `packages.db`
-    -- (built by `cupertino save --packages`, queried by
+    -- (built by `cupertino save --source packages`, queried by
     -- `cupertino package-search`). DROP-on-upgrade lives in
     -- Search.Index.Migrations migrateToVersion18.
 

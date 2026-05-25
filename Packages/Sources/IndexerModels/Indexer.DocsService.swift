@@ -88,7 +88,7 @@ extension Indexer {
         /// `handler: @escaping @Sendable (Event) -> Void` closure
         /// parameter previously taken by `Indexer.DocsService.run`.
         ///
-        /// The CLI binary's `cupertino save --docs` composition root
+        /// The CLI binary's `cupertino save --source apple-docs` composition root
         /// builds a named struct conformer that translates events into
         /// progress-bar updates and log lines. A test stub can return a
         /// non-blocking observer that collects events into an array for

@@ -14,7 +14,7 @@ extension Sample.Core {
         /// check on disk. Apple's CDN sometimes returns an HTML landing
         /// page or partial body with HTTP 200; pre-#657 those slipped
         /// straight into `~/.cupertino/sample-code/` and tripped up
-        /// `cupertino save --samples` at index time. They're now
+        /// `cupertino save --source samples` at index time. They're now
         /// renamed to `<filename>.invalid` and tallied separately
         /// from `downloadedSamples` so the fetch summary surfaces the
         /// failure mode rather than hiding it under the success bucket.

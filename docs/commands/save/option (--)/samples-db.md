@@ -1,6 +1,6 @@
 # --samples-db
 
-apple-sample-code.db output path for `--samples`
+apple-sample-code.db output path for `--source samples`
 
 ## Synopsis
 

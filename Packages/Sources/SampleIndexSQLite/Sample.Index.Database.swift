@@ -147,7 +147,7 @@ extension Sample.Index {
                     "Sample.Index.Database refused to open \(dbPath.lastPathComponent): " +
                         "samples_schema_version probe reported \(reason). The file may be " +
                         "corrupted. Inspect with `sqlite3 \(dbPath.path) 'PRAGMA integrity_check'`, " +
-                        "or move it aside and re-run `cupertino save --samples` to rebuild."
+                        "or move it aside and re-run `cupertino save --source samples` to rebuild."
                 )
             }
         }
@@ -352,7 +352,7 @@ extension Sample.Index {
 
             // #236: WAL journal mode lets readers (`cupertino read-sample`,
             // `cupertino list-samples`, `cupertino doctor`) proceed while
-            // a `cupertino save --samples` writer holds the DB. PRAGMA is
+            // a `cupertino save --source samples` writer holds the DB. PRAGMA is
             // idempotent and persists in the file header. Log and
             // continue on failure.
             if sqlite3_exec(dbPointer, "PRAGMA journal_mode = WAL", nil, nil, nil) != SQLITE_OK {

@@ -281,7 +281,7 @@ extension CLIImpl.Command {
                     // next open of apple-sample-code.db looks for
                     // apple-sample-code.db-wal and finds nothing,
                     // losing any un-checkpointed transactions from a
-                    // crashed prior `cupertino save --samples`. Move
+                    // crashed prior `cupertino save --source samples`. Move
                     // the sidecars too. Both naming forms (with and
                     // without the .db suffix) covered defensively.
                     for suffix in ["-wal", "-shm"] {
@@ -294,7 +294,7 @@ extension CLIImpl.Command {
                             logger.warning(
                                 "⚠️  Renamed \(legacyPath.lastPathComponent) but could not move sidecar " +
                                     "\(legacySidecar.lastPathComponent): \(error). Un-checkpointed Sample.Index " +
-                                    "transactions in that sidecar may be lost. Re-run `cupertino save --samples` " +
+                                    "transactions in that sidecar may be lost. Re-run `cupertino save --source samples` " +
                                     "to rebuild if `cupertino doctor` flags missing rows."
                             )
                         }
@@ -305,7 +305,7 @@ extension CLIImpl.Command {
                 } catch {
                     logger.warning(
                         "⚠️  Could not rename \(legacyPath.lastPathComponent) → \(currentPath.lastPathComponent): \(error). " +
-                            "Sample-code search will be empty until you re-run `cupertino save --samples` " +
+                            "Sample-code search will be empty until you re-run `cupertino save --source samples` " +
                             "or manually rename the file."
                     )
                 }

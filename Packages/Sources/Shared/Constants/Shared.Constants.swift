@@ -38,16 +38,16 @@ extension Shared.Constants {
     /// `Issue673PhaseFDiskPreflightTests` unit suite pins each value
     /// against its rationale comment.
     public enum DiskBudget {
-        /// `cupertino save --docs` peak: search.db (~2.5 GB at v15 full
+        /// `cupertino save --source apple-docs` peak: search.db (~2.5 GB at v15 full
         /// reindex) + WAL (~1 GB during commit) + per-doc audit JSONL
         /// (~120 MB on the 285k-row corpus). Round up to 4 GB.
         public static let docsSaveBytes: Int64 = 4 * 1024 * 1024 * 1024
 
-        /// `cupertino save --samples` peak: samples.db (~200 MB after
+        /// `cupertino save --source samples` peak: samples.db (~200 MB after
         /// the 8.6k indexed-files run) + WAL. Round up to 500 MB.
         public static let samplesSaveBytes: Int64 = 500 * 1024 * 1024
 
-        /// `cupertino save --packages` peak: packages.db (~50 MB at
+        /// `cupertino save --source packages` peak: packages.db (~50 MB at
         /// today's 9.7k-package catalog) + WAL. Round up to 200 MB.
         public static let packagesSaveBytes: Int64 = 200 * 1024 * 1024
 

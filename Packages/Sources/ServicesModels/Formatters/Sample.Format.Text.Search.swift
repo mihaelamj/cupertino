@@ -1,6 +1,7 @@
 import Foundation
 import SampleIndexModels
 import SharedConstants
+
 // MARK: - Sample Search Text Formatter
 
 /// Formats sample search results as plain text for CLI output
@@ -83,7 +84,7 @@ extension Sample.Format.Text {
 
         public func format(_ projects: [Sample.Index.Project]) -> String {
             if projects.isEmpty {
-                return "No sample projects found. Run 'cupertino save --samples' to build the sample index."
+                return "No sample projects found. Run 'cupertino save --source samples' to build the sample index."
             }
 
             var output = "Sample Projects (\(projects.count) of \(totalCount) total):\n\n"

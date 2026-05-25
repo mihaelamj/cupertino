@@ -271,7 +271,7 @@ Read a document by URI. Returns the full document content in the requested forma
 
 ## Sample Code Tools
 
-If sample code is indexed (via `cupertino save --samples`), the server provides these additional tools (and the unified `search` tool above accepts `source: "samples"`):
+If sample code is indexed (via `cupertino save --source samples`), the server provides these additional tools (and the unified `search` tool above accepts `source: "samples"`):
 
 ### list_samples
 

@@ -18,7 +18,7 @@ Filters search results to only include documents from the specified documentatio
 | Value | Description |
 |-------|-------------|
 | `apple-docs` | Apple Developer Documentation |
-| `samples` | Sample code projects (apple-sample-code.db, populated by `cupertino save --samples`) |
+| `samples` | Sample code projects (apple-sample-code.db, populated by `cupertino save --source samples`) |
 | `hig` | Human Interface Guidelines |
 | `apple-archive` | Apple Archive legacy programming guides |
 | `swift-evolution` | Swift Evolution proposals |

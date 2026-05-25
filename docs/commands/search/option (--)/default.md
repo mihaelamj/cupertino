@@ -65,8 +65,8 @@ At least one of `search.db`, `packages.db`, or `apple-sample-code.db` must exist
 
 ```bash
 cupertino save           # populate search.db (apple-docs / evolution / archive / org / book / HIG)
-cupertino save --packages   # populate packages.db
-cupertino save --samples    # populate apple-sample-code.db
+cupertino save --source packages   # populate packages.db
+cupertino save --source samples    # populate apple-sample-code.db
 ```
 
 ## Example Output

@@ -30,7 +30,7 @@ extension CLIImpl.Command {
 
             The server communicates via stdio using JSON-RPC and provides:
 
-            Unified Search (requires 'cupertino save' or 'cupertino save --samples'):
+            Unified Search (requires 'cupertino save' or 'cupertino save --source samples'):
             • search - Smart query fanned out across every available source
                        (apple-docs, samples, swift-evolution, swift-org, swift-book,
                        packages, hig, apple-archive), reciprocal-rank fused.
@@ -39,7 +39,7 @@ extension CLIImpl.Command {
             • list_frameworks - List available frameworks with document counts
             • read_document   - Read full document content by URI
 
-            Sample Code Tools (requires 'cupertino save --samples'):
+            Sample Code Tools (requires 'cupertino save --source samples'):
             • list_samples     - List all indexed sample projects
             • read_sample      - Read sample project README and metadata
             • read_sample_file - Read a specific source file from a sample

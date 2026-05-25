@@ -12,7 +12,7 @@ cupertino fetch --source packages --annotate-availability
 
 Walks every `<owner>/<repo>/` subdir under `~/.cupertino/packages/` and writes a per-package `availability.json` capturing the `Package.swift` `platforms: [...]` deployment-target block plus every `@available(...)` attribute occurrence in `Sources/` and `Tests/` (file path + line + parsed platform list). Pure on-disk pass, no network. Idempotent. ([#219](https://github.com/mihaelamj/cupertino/issues/219))
 
-`cupertino save --packages` then reads these sidecars and persists the data into `packages.db`'s `min_*` columns.
+`cupertino save --source packages` then reads these sidecars and persists the data into `packages.db`'s `min_*` columns.
 
 ## Default
 

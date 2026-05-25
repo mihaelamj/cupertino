@@ -1,6 +1,6 @@
 # --samples-dir
 
-Sample-code source directory for `--samples`
+Sample-code source directory for `--source samples`
 
 ## Synopsis
 
@@ -26,4 +26,4 @@ cupertino save --source samples --samples-dir ~/Downloads/sample-code
 
 - Tilde (`~`) expansion supported.
 - Honours `Shared.BinaryConfig.baseDirectory` overrides (#211).
-- If the directory is missing, the samples scope is skipped with an info log (when running multi-scope) or errors (when only `--samples` was passed).
+- If the directory is missing, the samples scope is skipped with an info log (when running multi-scope) or errors (when only `--source samples` was passed).

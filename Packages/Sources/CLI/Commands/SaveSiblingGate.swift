@@ -497,12 +497,21 @@ enum SaveSiblingGate {
     /// values).
     ///
     /// Returns an empty set when `save` doesn't appear in argv at all.
-    /// **Returns an empty set when scope is unparseable** (post-#1037
-    /// the binary REFUSES bare `cupertino save` with no scope flag, so
-    /// there's no longer a "default to all three" fallback; a sibling
-    /// whose argv can't be classified is treated as no-targets rather
-    /// than every-target, avoiding spurious conflicts when an
-    /// `--unknown-flag` confuses the parser).
+    /// **Bare `cupertino save` with no scope flag returns all three
+    /// targets** (`[.search, .packages, .samples]`). The post-#1037
+    /// binary rejects bare invocations before opening any DB, so an
+    /// in-flight bare-no-flag sibling can only be a pre-#1037 binary
+    /// that genuinely IS writing every DB; over-detecting (gating the
+    /// new caller briefly until that process exits) is the safe choice
+    /// vs. under-detecting (silently letting the new save race a
+    /// concurrent write to all three DBs). Round-9 critic-fix
+    /// restored this semantic; round-8 had briefly flipped it to `[]`
+    /// before the regression was caught.
+    ///
+    /// **Returns an empty set when `--all` AND `--source` are both
+    /// present** (the binary's resolver throws on this mutex; the
+    /// process is about to exit without opening any DB, so the gate
+    /// shouldn't block a legitimate sibling on its behalf).
     static func parseSaveTargets(argv: [String]) -> Set<Target> {
         guard let saveIndex = argv.firstIndex(of: "save") else { return [] }
         let rest = Array(argv[(saveIndex + 1)...])
