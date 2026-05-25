@@ -1,8 +1,8 @@
 import Foundation
 import LoggingModels
 @testable import SampleIndex
-import SampleIndexSQLite
 import SampleIndexModels
+import SampleIndexSQLite
 import SharedConstants
 import SQLite3
 import Testing
@@ -14,7 +14,10 @@ import Testing
 /// (see `Sample.Index.Database.swift:54-69`). This suite seeds a v3
 /// samples.db, opens it with the v4 binary, and asserts:
 ///   - the wipe-and-rebuild fired (the seeded v3 row is gone)
-///   - the resulting DB stamps `PRAGMA user_version = 4`
+///   - the resulting DB stamps version 4 in the `samples_schema_version`
+///     table (post-#1037 the pipeline no longer writes `PRAGMA
+///     user_version`; the per-pipeline tracking table is the source of
+///     truth)
 ///   - the fresh schema includes the new `generic_constraints` and
 ///     `enrichment_version` columns on `file_symbols`
 @Suite("#837 / #849 — samples.db v3 → v4 wipe-and-rebuild", .serialized)
@@ -104,8 +107,12 @@ struct Issue837SamplesV4MigrationTests {
         let db = try await Sample.Index.Database(dbPath: path, logger: Logging.NoopRecording())
         await db.disconnect()
 
-        #expect(try Self.readScalar(at: path, sql: "PRAGMA user_version;") == String(Sample.Index.Database.schemaVersion))
-        #expect(try Self.readScalar(at: path, sql: "PRAGMA user_version;") == "4")
+        // Post-#1037: the per-pipeline `samples_schema_version` table is
+        // the source of truth. `PRAGMA user_version` is no longer
+        // written by this pipeline (so it stays at 0 on a freshly-wiped
+        // file, distinct from the rebuilt schema's actual version).
+        #expect(try Self.readScalar(at: path, sql: "SELECT version FROM samples_schema_version LIMIT 1") == String(Sample.Index.Database.schemaVersion))
+        #expect(try Self.readScalar(at: path, sql: "SELECT version FROM samples_schema_version LIMIT 1") == "4")
         // Wipe semantics: the seeded v3 row must be gone.
         #expect(try Self.readScalar(at: path, sql: "SELECT COUNT(*) FROM projects;") == "0")
     }
@@ -157,7 +164,128 @@ struct Issue837SamplesV4MigrationTests {
         let second = try await Sample.Index.Database(dbPath: path, logger: Logging.NoopRecording())
         await second.disconnect()
 
-        #expect(try Self.readScalar(at: path, sql: "PRAGMA user_version;") == "4")
+        // Post-#1037: per-pipeline tracking table; PRAGMA user_version
+        // is no longer written by Sample.Index (stays at 0 here).
+        #expect(try Self.readScalar(at: path, sql: "SELECT version FROM samples_schema_version LIMIT 1") == "4")
         #expect(try Self.readScalar(at: path, sql: "SELECT COUNT(*) FROM projects;") == "1")
+    }
+
+    // MARK: - 4. #1037: shared-file safety (the trample-prevention case)
+
+    /// Regression guard for the round-4 critic finding: pre-#1037
+    /// `Sample.Index.Database.init` wiped any file whose `PRAGMA
+    /// user_version` did not match its own `schemaVersion`. In the
+    /// one-DB collapse target state, Search.Index would have stamped
+    /// `user_version = 18` first; opening the file with Sample.Index
+    /// would then have wiped both pipelines' tables. Post-#1037 the
+    /// wipe gates on `projects` table presence (not user_version), so
+    /// foreign tables in the same file are preserved.
+    @Test("#1037: shared-file path, Sample.Index opens a DB whose user_version was set by another pipeline (no wipe)")
+    func sharedFileForeignUserVersionIsHonoured() async throws {
+        let dir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let path = dir.appendingPathComponent("apple-sample-code.db")
+
+        // Seed a file with foreign tables + a high user_version (mimics
+        // Search.Index having stamped its v18 schema before Sample.Index
+        // opens). No `projects` table, so this file is NOT a samples DB.
+        var db: OpaquePointer?
+        try #require(sqlite3_open(path.path, &db) == SQLITE_OK)
+        let seedSQL = """
+        CREATE TABLE docs_metadata (id INTEGER PRIMARY KEY, uri TEXT NOT NULL);
+        INSERT INTO docs_metadata (id, uri) VALUES (1, 'foreign://row');
+        PRAGMA user_version = 18;
+        """
+        try #require(sqlite3_exec(db, seedSQL, nil, nil, nil) == SQLITE_OK)
+        sqlite3_close(db)
+
+        #expect(try Self.readScalar(at: path, sql: "PRAGMA user_version;") == "18")
+        #expect(try Self.readScalar(at: path, sql: "SELECT COUNT(*) FROM docs_metadata;") == "1")
+
+        // Open with Sample.Index. The foreign user_version=18 must NOT
+        // trip a wipe (no `projects` table = no samples data to be wrong
+        // about). The foreign docs_metadata table must survive.
+        let sampleIndex = try await Sample.Index.Database(dbPath: path, logger: Logging.NoopRecording())
+        await sampleIndex.disconnect()
+
+        // Foreign data preserved.
+        #expect(
+            try Self.readScalar(at: path, sql: "SELECT COUNT(*) FROM docs_metadata;") == "1",
+            "Search.Index's pre-existing docs_metadata row must NOT be wiped by Sample.Index opening the shared file"
+        )
+        // Sample.Index now has its own tables.
+        #expect(
+            try Self.readScalar(at: path, sql: "SELECT COUNT(*) FROM projects;") == "0",
+            "Sample.Index's projects table must be created fresh (no samples data yet, but the table is ready)"
+        )
+        // Sample.Index stamped its version in the per-pipeline table.
+        #expect(try Self.readScalar(at: path, sql: "SELECT version FROM samples_schema_version LIMIT 1") == "4")
+        // Foreign PRAGMA user_version untouched.
+        #expect(
+            try Self.readScalar(at: path, sql: "PRAGMA user_version;") == "18",
+            "Sample.Index post-#1037 no longer writes PRAGMA user_version; another pipeline's stamp survives"
+        )
+    }
+
+    // MARK: - 5. #1037: legacy samples.db migration into samples_schema_version
+
+    /// Regression guard for the one-time fallback: existing samples.db
+    /// files built by pre-#1037 binaries carry `PRAGMA user_version = 4`
+    /// but no `samples_schema_version` table. On first open by a
+    /// post-#1037 binary the new table must be populated from the
+    /// legacy PRAGMA so the version read returns the correct value
+    /// (not 0, which would trigger a spurious wipe-and-rebuild on the
+    /// NEXT open if `projects` is present).
+    @Test("#1037: legacy samples.db (user_version=4, no tracking table) migrates seamlessly to samples_schema_version")
+    func legacyDBMigratesPragmaIntoTrackingTable() async throws {
+        let dir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let path = dir.appendingPathComponent("samples.db")
+
+        // Seed a "v4-shaped" samples.db without the new tracking table.
+        // Pre-#1037 binaries stamped only PRAGMA user_version.
+        var db: OpaquePointer?
+        try #require(sqlite3_open(path.path, &db) == SQLITE_OK)
+        let seedSQL = """
+        CREATE TABLE projects (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL,
+            frameworks TEXT NOT NULL,
+            readme TEXT,
+            web_url TEXT NOT NULL,
+            zip_filename TEXT NOT NULL,
+            file_count INTEGER NOT NULL,
+            total_size INTEGER NOT NULL,
+            indexed_at INTEGER NOT NULL,
+            min_ios TEXT, min_macos TEXT, min_tvos TEXT, min_watchos TEXT,
+            min_visionos TEXT, availability_source TEXT
+        );
+        INSERT INTO projects
+            (id, title, description, frameworks, readme, web_url, zip_filename,
+             file_count, total_size, indexed_at, min_ios, min_macos, min_tvos,
+             min_watchos, min_visionos, availability_source)
+            VALUES ('legacy', 'L', 'L', 'SwiftUI', NULL, 'https://example.test',
+                    'l.zip', 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL);
+        PRAGMA user_version = 4;
+        """
+        try #require(sqlite3_exec(db, seedSQL, nil, nil, nil) == SQLITE_OK)
+        sqlite3_close(db)
+
+        // Open with the post-#1037 binary. Migration MUST recognise the
+        // legacy stamp, populate `samples_schema_version`, NOT wipe.
+        let sampleIndex = try await Sample.Index.Database(dbPath: path, logger: Logging.NoopRecording())
+        await sampleIndex.disconnect()
+
+        // The pre-existing legacy project row survives (no spurious wipe).
+        #expect(
+            try Self.readScalar(at: path, sql: "SELECT COUNT(*) FROM projects;") == "1",
+            "Legacy v4 samples.db must not be wiped on first post-#1037 open"
+        )
+        // The tracking table is populated from the legacy PRAGMA.
+        #expect(
+            try Self.readScalar(at: path, sql: "SELECT version FROM samples_schema_version LIMIT 1") == "4",
+            "samples_schema_version must carry the legacy user_version value after one-time migration"
+        )
     }
 }
