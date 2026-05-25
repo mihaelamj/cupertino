@@ -35,6 +35,17 @@ struct PerSourceDBSplitMigratorMigrateTests {
     private struct FakeProvider: Search.SourceProvider {
         let id: String
         let dbDescriptor: Shared.Models.DatabaseDescriptor
+        let aliases: Set<String>
+
+        init(id: String, dbDescriptor: Shared.Models.DatabaseDescriptor, aliases: Set<String> = []) {
+            self.id = id
+            self.dbDescriptor = dbDescriptor
+            self.aliases = aliases
+        }
+
+        var legacySourceIDAliases: Set<String> {
+            aliases
+        }
 
         var definition: Search.SourceDefinition {
             Search.SourceDefinition(
@@ -370,6 +381,116 @@ struct PerSourceDBSplitMigratorMigrateTests {
 
         // Legacy file MUST remain (no partial-rename).
         #expect(FileManager.default.fileExists(atPath: legacy.path))
+    }
+
+    @Test("legacySourceIDAliases: legacy literal tags route to alias-claiming provider's destinationDB")
+    func legacyAliasRoutesToProviderDestination() async throws {
+        // Load-bearing test for step-6c-ii critic-fix round-2 finding #1.
+        // Mirrors the production failure mode: SampleCodeStrategy emits
+        // rows tagged `source = "sample-code"` while
+        // SampleCodeSource.definition.id = "samples". Without the
+        // legacySourceIDAliases registry-driven lookup, those rows
+        // would surface as unknownSourceIDs and the migration would
+        // abort.
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let legacy = try touchLegacy(at: dir)
+
+        var registry = Search.SourceRegistry()
+        // Provider's definition.id is "fake-samples" but its strategy
+        // historically tagged rows "fake-sample-code". The alias claim
+        // makes those rows route correctly.
+        registry.register(FakeProvider(
+            id: "fake-samples",
+            dbDescriptor: .appleSampleCodeSearch,
+            aliases: ["fake-sample-code"]
+        ))
+
+        let reader = FakeLegacyReader(rowsBySource: [
+            // Both the canonical id AND the legacy alias appear in
+            // counts; both should route to the same provider's destination.
+            "fake-samples": [
+                Self.makeRow(uri: "s://canonical/1", source: "fake-samples"),
+            ],
+            "fake-sample-code": [
+                Self.makeRow(uri: "s://alias/1", source: "fake-sample-code"),
+                Self.makeRow(uri: "s://alias/2", source: "fake-sample-code"),
+            ],
+        ])
+
+        // Track factory invocations to verify the alias is collapsed
+        // into one writer per destination (the canonical + alias rows
+        // share one destinationDB).
+        final class FactoryCallCounter: @unchecked Sendable {
+            var invocationsByPath: [URL: Int] = [:]
+        }
+        let counter = FactoryCallCounter()
+
+        let outcome = try await Distribution.PerSourceDBSplitMigrator.migrate(
+            legacyFile: legacy,
+            baseDirectory: dir,
+            registry: registry,
+            reader: reader,
+            writerFactory: { destination, path in
+                counter.invocationsByPath[path, default: 0] += 1
+                return FakePerDBWriter(destination: destination, destinationPath: path)
+            }
+        )
+
+        // ONE factory call (canonical + alias collapse to one provider
+        // → one destination).
+        #expect(counter.invocationsByPath.count == 1)
+        #expect(counter.invocationsByPath.values.first == 1)
+
+        // ONE result row (the alias collapses into the canonical
+        // provider's SourcePlan), total 3 rows written (1 canonical + 2
+        // alias).
+        #expect(outcome.results.count == 1)
+        #expect(outcome.totalRowsWritten == 3, "1 canonical row + 2 alias rows all routed correctly")
+        // The canonical sourceID, NOT the alias literal, is what the
+        // SourceResult is keyed under.
+        #expect(outcome.results.first?.sourceID == "fake-samples")
+        #expect(outcome.legacyFileRenamed == true)
+    }
+
+    @Test("legacySourceIDAliases: alias-only rows (no canonical-id rows) still route correctly")
+    func legacyAliasOnlyRowsRoute() async throws {
+        // Reflects the realistic shape of legacy search.db today:
+        // SampleCodeStrategy ALWAYS tags rows "sample-code"; the
+        // canonical id "samples" never appears in
+        // legacy docs_metadata.source. The migrator must still resolve.
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let legacy = try touchLegacy(at: dir)
+
+        var registry = Search.SourceRegistry()
+        registry.register(FakeProvider(
+            id: "fake-samples",
+            dbDescriptor: .appleSampleCodeSearch,
+            aliases: ["fake-sample-code"]
+        ))
+
+        let reader = FakeLegacyReader(rowsBySource: [
+            "fake-sample-code": [
+                Self.makeRow(uri: "s://alias/1", source: "fake-sample-code"),
+                Self.makeRow(uri: "s://alias/2", source: "fake-sample-code"),
+            ],
+        ])
+
+        let outcome = try await Distribution.PerSourceDBSplitMigrator.migrate(
+            legacyFile: legacy,
+            baseDirectory: dir,
+            registry: registry,
+            reader: reader,
+            writerFactory: { destination, path in
+                FakePerDBWriter(destination: destination, destinationPath: path)
+            }
+        )
+
+        #expect(outcome.results.count == 1, "alias-only rows still produce a result keyed under the canonical id")
+        #expect(outcome.results.first?.sourceID == "fake-samples")
+        #expect(outcome.totalRowsWritten == 2)
+        #expect(outcome.legacyFileRenamed == true)
     }
 
     @Test("Empty legacy DB: outcome has zero results, legacy still renamed")

@@ -32,6 +32,15 @@ public struct SampleCodeSource: Search.SourceProvider {
 
     public var destinationDB: Shared.Models.DatabaseDescriptor { .appleSampleCodeSearch }
 
+    /// SampleCodeStrategy emits rows tagged `source = "sample-code"`
+    /// (a literal at `Search.Strategies.SampleCode.swift`, distinct
+    /// from `definition.id = "samples"`). Without this alias, the
+    /// step-6 migrator would surface those legacy rows as
+    /// `unknownSourceIDs(["sample-code"])` and abort. The alias lets
+    /// the migrator route `"sample-code"`-tagged rows to
+    /// SampleCodeSource → `.appleSampleCodeSearch` correctly.
+    public var legacySourceIDAliases: Set<String> { ["sample-code"] }
+
     public var capabilities: Search.Capabilities {
         .init(
             searchers: [.text, .sampleFiles],

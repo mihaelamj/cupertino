@@ -97,4 +97,12 @@ extension Search.SourceProvider {
     public var capabilities: Search.Capabilities {
         .empty
     }
+
+    /// Default: no legacy aliases. SampleCodeSource is today's only
+    /// override (declaring `["sample-code"]` to claim rows tagged with
+    /// the strategy's literal source string from the legacy search.db
+    /// during step-6 migration).
+    public var legacySourceIDAliases: Set<String> {
+        []
+    }
 }

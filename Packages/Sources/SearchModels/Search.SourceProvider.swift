@@ -75,6 +75,23 @@ extension Search {
         /// `docs/sources/<sourceId>/manifest.yaml`.
         var capabilities: Search.Capabilities { get }
 
+        /// Legacy source-id literals this provider should claim during
+        /// the per-source DB split migration. Most sources don't need
+        /// this; the migrator resolves rows by `docs_metadata.source`
+        /// matching `definition.id` directly. But some sources emit
+        /// rows tagged with a DIFFERENT literal than their definition.id
+        /// (e.g. `SampleCodeStrategy.source = "sample-code"` while
+        /// `SampleCodeSource.definition.id = "samples"`); without this
+        /// declaration, the migrator would surface those rows as
+        /// `unknownSourceIDs` and abort. Declaring the legacy literals
+        /// here lets the migrator route them to this provider's
+        /// `destinationDB` post-migration.
+        ///
+        /// Default `[]` (no aliases) makes this additive for external
+        /// conformers. SampleCodeSource is the only in-tree source
+        /// declaring an alias today: `["sample-code"]`.
+        var legacySourceIDAliases: Set<String> { get }
+
         /// Construct this source's indexing strategy. The composition
         /// root calls this once at index-time and passes the result
         /// to `Search.IndexBuilder`.

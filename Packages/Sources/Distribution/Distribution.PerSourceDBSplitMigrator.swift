@@ -293,21 +293,53 @@ extension Distribution {
             // 1. Read source-id counts from legacy.
             let counts = try await reader.sourceIDCounts()
 
-            // 2. Identify unknowns. Surface them unless tolerated.
+            // 2. Build the legacy-tag → provider resolution map from
+            // the registry: every provider claims its definition.id
+            // PLUS every literal in its legacySourceIDAliases set. The
+            // alias mechanism handles the case where a strategy emits
+            // rows tagged with a different literal than the provider's
+            // canonical id (e.g. SampleCodeStrategy.source = "sample-code"
+            // while SampleCodeSource.definition.id = "samples"; alias
+            // ["sample-code"]).
+            //
+            // If two providers claim the same id (either as primary or
+            // alias), the FIRST one in registry order wins. This isn't
+            // expected in production today but is documented as the
+            // tie-break.
+            var legacyTagToProvider: [String: any Search.SourceProvider] = [:]
+            for provider in registry.allEnabled {
+                if legacyTagToProvider[provider.definition.id] == nil {
+                    legacyTagToProvider[provider.definition.id] = provider
+                }
+                for alias in provider.legacySourceIDAliases where legacyTagToProvider[alias] == nil {
+                    legacyTagToProvider[alias] = provider
+                }
+            }
+
+            // 3. Identify unknowns. Surface them unless tolerated.
             let unknownSourceIDs = counts.keys.filter { sourceID in
-                registry.entry(for: sourceID) == nil
+                legacyTagToProvider[sourceID] == nil
             }.sorted()
             if !unknownSourceIDs.isEmpty, !tolerateUnknownSourceIDs {
                 throw MigrationError.unknownSourceIDs(unknownSourceIDs)
             }
 
-            // 3. Build the plan (known sources only).
-            let knownCounts = counts.filter { registry.entry(for: $0.key) != nil }
+            // 4. Build the plan (known sources only). Group by the
+            // RESOLVED provider's definition.id so legacy aliases
+            // collapse into a single SourcePlan per provider — e.g.
+            // legacy rows tagged "sample-code" and "samples" both
+            // resolve to SampleCodeSource and contribute to one plan
+            // with `sourceID = "samples"` (the canonical id).
+            var aggregatedCounts: [String: Int] = [:]
+            for (tag, count) in counts {
+                guard let provider = legacyTagToProvider[tag] else { continue }
+                aggregatedCounts[provider.definition.id, default: 0] += count
+            }
             let plan = planFromLegacySourceIDCounts(
                 legacyFile: legacyFile,
                 baseDirectory: baseDirectory,
                 registry: registry,
-                legacySourceIDRowCounts: knownCounts
+                legacySourceIDRowCounts: aggregatedCounts
             )
 
             // 4. Group source plans by destination DB path. This is
@@ -344,10 +376,23 @@ extension Distribution {
                 var rowsCopiedByPlan: [String: Int] = [:]
                 do {
                     for sourcePlan in plansForPath {
+                        // Resolve ALL legacy tags that map to this
+                        // provider (definition.id + every alias). Stream
+                        // rows from each tag in turn; sum into a single
+                        // per-plan count. The alias mechanism lets
+                        // SampleCodeSource collect both "sample-code"
+                        // (strategy literal) AND "samples" (legacy
+                        // canonical) row-tags from the legacy DB.
+                        guard let provider = registry.entry(for: sourcePlan.sourceID)?.provider else {
+                            continue
+                        }
+                        let legacyTags = [provider.definition.id] + provider.legacySourceIDAliases.sorted()
                         var rowsCopied = 0
-                        for try await row in reader.rows(forSourceID: sourcePlan.sourceID) {
-                            try await writer.write(row)
-                            rowsCopied += 1
+                        for legacyTag in legacyTags {
+                            for try await row in reader.rows(forSourceID: legacyTag) {
+                                try await writer.write(row)
+                                rowsCopied += 1
+                            }
                         }
                         rowsCopiedByPlan[sourcePlan.sourceID] = rowsCopied
                     }
