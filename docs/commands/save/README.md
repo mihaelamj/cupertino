@@ -69,26 +69,26 @@ cupertino save --remote
 
 ### Scoped builds
 ```bash
-cupertino save --docs                   # search.db only
-cupertino save --packages               # packages.db only
-cupertino save --samples                # apple-sample-code.db only (was: cupertino index)
-cupertino save --packages --samples     # both packages and samples, skip docs
+cupertino save --source apple-docs                   # search.db only
+cupertino save --source packages               # packages.db only
+cupertino save --source samples                # apple-sample-code.db only (was: cupertino index)
+cupertino save --source packages --source samples     # both packages and samples, skip docs
 ```
 
 ### Custom paths
 ```bash
-cupertino save --docs --docs-dir ./my-docs --search-db ./my-search.db
-cupertino save --samples --samples-dir ~/my-samples --samples-db ~/my-apple-sample-code.db
+cupertino save --source apple-docs --docs-dir ./my-docs --search-db ./my-search.db
+cupertino save --source samples --samples-dir ~/my-samples --samples-db ~/my-apple-sample-code.db
 ```
 
 ### Rebuild docs index
 ```bash
-cupertino save --docs --clear
+cupertino save --source apple-docs --clear
 ```
 
 ### Index Multiple Sources
 ```bash
-cupertino save --docs-dir ./apple-docs --evolution-dir ./evolution
+cupertino save --source apple-docs --docs-dir ./apple-docs --evolution-dir ./evolution
 ```
 
 ## Output

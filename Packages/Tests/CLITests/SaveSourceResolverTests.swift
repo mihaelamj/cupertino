@@ -111,6 +111,31 @@ struct SaveSourceResolverTests {
         }
     }
 
+    // MARK: - apple-sample-code alias
+
+    @Test("`apple-sample-code` is accepted as an alias for `samples` (cross-command consistency with fetch)")
+    func appleSampleCodeAliasMapsToSamples() throws {
+        let resolved = try CLIImpl.Command.Save.resolveSelectedSourceIDs(
+            source: [Shared.Constants.SourcePrefix.appleSampleCode],
+            all: false
+        )
+        // The alias normalizes to the canonical save-side id.
+        #expect(resolved == [Shared.Constants.SourcePrefix.samples])
+        #expect(!resolved.contains(Shared.Constants.SourcePrefix.appleSampleCode))
+    }
+
+    @Test("Mixed canonical + alias values collapse via Set semantics")
+    func aliasAndCanonicalCollapse() throws {
+        let resolved = try CLIImpl.Command.Save.resolveSelectedSourceIDs(
+            source: [
+                Shared.Constants.SourcePrefix.appleSampleCode,
+                Shared.Constants.SourcePrefix.samples,
+            ],
+            all: false
+        )
+        #expect(resolved == [Shared.Constants.SourcePrefix.samples])
+    }
+
     // MARK: - Docs-bucket classifier
 
     @Test("isDocsBucketSource maps every non-packages source to the docs bucket")

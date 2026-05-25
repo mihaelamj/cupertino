@@ -50,10 +50,22 @@ extension CLIImpl.Command {
             to skip the confirmation prompt. Run 'cupertino doctor --save' to preview the
             preflight output without writing any database.
 
+            CURRENT DISPATCH (post-#1037, pre per-source-id refactor):
+              The CLI surface is per-source but the internal dispatch is still
+              bucket-level. Passing any docs-style source (`apple-docs`, `hig`,
+              `swift-evolution`, `apple-archive`, `swift-org`, `swift-book`,
+              `samples`) runs the docs runner, which builds every docs-bucket DB
+              that has on-disk corpus. `--source packages` runs the packages
+              runner. `--source samples` ALSO runs the standalone Sample.Index
+              pipeline so apple-sample-code.db gets both table tracks. The
+              follow-up commit narrows the docs runner to only the selected
+              source-ids so `--source apple-docs` will build ONLY
+              apple-documentation.db.
+
             EXAMPLES
               cupertino save --all                          # build every source's DB
-              cupertino save --source apple-docs            # apple-documentation.db only
-              cupertino save --source samples               # apple-sample-code.db only
+              cupertino save --source apple-docs            # build apple-docs scope (docs runner; intermediate)
+              cupertino save --source samples               # build samples (rich + FTS); also runs docs runner
               cupertino save --source apple-docs --source hig   # two sources
               cupertino save --remote                       # stream docs from GitHub
             """
@@ -183,7 +195,22 @@ extension CLIImpl.Command {
             // future operator everything they need to reproduce.
             Cupertino.Context.composition.logging.logInvocation()
 
+            let recording = Cupertino.Context.composition.logging.recording
+
+            // `--remote` is its own mode and bypasses the per-source
+            // resolver. Pre-#1037 it could combine with the legacy
+            // flag triplet (and just ignored the triplet); post-#1037
+            // we surface the conflict as a usage error so the user
+            // doesn't think their `--source` value is being honoured.
             if remote {
+                guard source.isEmpty, !all else {
+                    recording.error(
+                        "❌ `--remote` is incompatible with `--source` / `--all`. " +
+                            "`--remote` streams every docs source from GitHub; per-source " +
+                            "selection is not yet supported in remote mode (#1037 follow-up)."
+                    )
+                    throw ExitCode.failure
+                }
                 try await runRemote()
                 return
             }
@@ -200,6 +227,33 @@ extension CLIImpl.Command {
             let buildPackages = selectedSourceIDs.contains(Shared.Constants.SourcePrefix.packages)
             let buildSamples = selectedSourceIDs.contains(Shared.Constants.SourcePrefix.samples)
 
+            // Warn when samples-scoped flags are passed without samples
+            // in scope; they would otherwise silently no-op (especially
+            // `--force` which the user could mistake for a universal
+            // "force re-index" knob).
+            if !buildSamples {
+                if samplesDir != nil {
+                    recording.warning(
+                        "⚠️  `--samples-dir` is ignored because `--source samples` was not passed. " +
+                            "Either add `--source samples` or drop the flag.",
+                        category: .cli
+                    )
+                }
+                if samplesDB != nil {
+                    recording.warning(
+                        "⚠️  `--samples-db` is ignored because `--source samples` was not passed.",
+                        category: .cli
+                    )
+                }
+                if force {
+                    recording.warning(
+                        "⚠️  `--force` only re-indexes the samples scope; pass `--source samples` " +
+                            "to use it. Currently ignored.",
+                        category: .cli
+                    )
+                }
+            }
+
             // #253: gate on concurrent siblings before any preflight or
             // write. Detect other `cupertino save` processes targeting
             // the same DB(s) we're about to write and either continue
@@ -210,7 +264,6 @@ extension CLIImpl.Command {
             if buildPackages { myTargets.insert(.packages) }
             if buildSamples { myTargets.insert(.samples) }
 
-            let recording = Cupertino.Context.composition.logging.recording
             switch SaveSiblingGate.gate(
                 myTargets: myTargets,
                 recording: recording,
@@ -403,6 +456,24 @@ extension CLIImpl.Command {
             return ids
         }
 
+        /// Aliases that the resolver accepts alongside the canonical
+        /// `--source <id>` set. Cross-command consistency with
+        /// `cupertino fetch --source apple-sample-code` (which has
+        /// historically accepted both `apple-sample-code` and `samples`
+        /// for the same source). Each alias maps onto its canonical id
+        /// before validation.
+        static let sourceIDAliases: [String: String] = [
+            // Historical fetch-side alias for SampleCodeSource. The
+            // canonical save-side id is `samples`
+            // (`SourcePrefix.samples`); `apple-sample-code` is what
+            // `cupertino fetch` accepts (`SourcePrefix.appleSampleCode`).
+            // Maps onto `samples` so a user who runs
+            // `cupertino fetch --source apple-sample-code` can run the
+            // matching `cupertino save --source apple-sample-code`
+            // without hitting an unknown-id error.
+            Shared.Constants.SourcePrefix.appleSampleCode: Shared.Constants.SourcePrefix.samples,
+        ]
+
         /// Source-ids that map to the docs-runner bucket (`buildDocs`).
         /// Every registry-enabled source EXCEPT `packages` lives there
         /// today; `samples` is in the docs runner via
@@ -448,8 +519,11 @@ extension CLIImpl.Command {
                 )
                 throw ExitCode.failure
             case (false, false):
-                let selected = Set(source)
-                let unknown = selected.subtracting(valid).sorted()
+                // Apply aliases before validating so cross-command
+                // names (e.g. fetch's `apple-sample-code`) collapse
+                // onto canonical save-side ids.
+                let normalized = Set(source.map { sourceIDAliases[$0] ?? $0 })
+                let unknown = normalized.subtracting(valid).sorted()
                 guard unknown.isEmpty else {
                     let sortedValid = valid.sorted().joined(separator: ", ")
                     recording.error(
@@ -458,7 +532,7 @@ extension CLIImpl.Command {
                     )
                     throw ExitCode.failure
                 }
-                return selected
+                return normalized
             }
         }
 

@@ -111,7 +111,7 @@ struct Issue930SamplesHealthCheckTests {
             // #1037: label flips to `apple-sample-code.db` (descriptor.filename)
             "🧪 Sample Code Index (apple-sample-code.db)",
             "   ⚠  Database: \(url.path) (not found)",
-            "     → Run: cupertino fetch --source samples && cupertino cleanup && cupertino save --samples",
+            "     → Run: cupertino fetch --source samples && cupertino cleanup && cupertino save --source samples",
             "",
         ])
     }

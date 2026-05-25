@@ -169,7 +169,7 @@ extension CLIImpl.Command.Search {
 
         guard FileManager.default.fileExists(atPath: dbURL.path) else {
             Cupertino.Context.composition.logging.recording.error("❌ packages.db not found at \(dbURL.path)")
-            Cupertino.Context.composition.logging.recording.error("   Run `cupertino setup` to download it, or `cupertino save --packages` to build locally.")
+            Cupertino.Context.composition.logging.recording.error("   Run `cupertino setup` to download it, or `cupertino save --source packages` to build locally.")
             throw ExitCode.failure
         }
 

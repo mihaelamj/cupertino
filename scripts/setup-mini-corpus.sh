@@ -59,7 +59,7 @@
 # Validation:
 #
 #   After running this script, validate with:
-#     cupertino save --docs --docs-dir <OUTPUT_DIR>/docs \
+#     cupertino save --source apple-docs --docs-dir <OUTPUT_DIR>/docs \
 #                          --base-dir <OUTPUT_DIR> --yes
 #
 #   Pre-#779-fix : expect failure on swift-evolution after the apple-docs phase.
@@ -191,7 +191,7 @@ echo "=== mini-corpus ready ==="
 echo "  $OUTPUT_DIR"
 echo
 echo "Validate end-to-end:"
-echo "  cupertino save --docs --docs-dir $OUTPUT_DIR/docs --base-dir $OUTPUT_DIR --yes"
+echo "  cupertino save --source apple-docs --docs-dir $OUTPUT_DIR/docs --base-dir $OUTPUT_DIR --yes"
 echo
 echo "Expected:"
 echo "  Pre-#779-fix  : Error 'The file \"swift-evolution\" couldn'\''t be opened.' after apple-docs phase."

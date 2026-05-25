@@ -105,7 +105,7 @@ cupertino fetch --source all           # All types in parallel
 # Build indexes
 cupertino save                       # Build documentation search index (from local files)
 cupertino save --remote              # Build from GitHub (no local files needed)
-cupertino save --samples                      # Index sample code for search
+cupertino save --source samples                      # Index sample code for search
 
 # Start server
 cupertino                            # Start MCP server (default command)
@@ -485,7 +485,7 @@ Cupertino includes pre-indexed catalog data bundled directly into the applicatio
 - **Swift Packages Catalog** (183 Apple-official packages with full source + metadata in `packages.db`; the previous 9,699-entry embedded URL list was removed in #194 — `packages.db` is now the canonical corpus, shipped via `cupertino setup`)
   - Curated from Swift Package Index + GitHub API
   - Includes package metadata, stars, licenses, descriptions, deployment-target platforms, **and** authored `swift-tools-version` (#225)
-  - Updated by re-running `cupertino fetch --source packages` then `cupertino save --packages`
+  - Updated by re-running `cupertino fetch --source packages` then `cupertino save --source packages`
 
 - **Sample Code Catalog** (619 entries)
   - Apple's official sample code projects
@@ -528,7 +528,7 @@ These catalogs are indexed during `cupertino save` and enable instant search wit
       - Parameters: `uri` (required), `format` (optional: `json` or `markdown`, default: `json`)
       - JSON format returns the full structured document data (recommended for AI)
       - Markdown format returns rendered content for human reading
-  - **Sample Code Tools** (requires `cupertino save --samples`):
+  - **Sample Code Tools** (requires `cupertino save --source samples`):
     - `list_samples` - List indexed sample projects
     - `read_sample` - Read sample project README and metadata
     - `read_sample_file` - Read source file from a sample project
@@ -559,7 +559,7 @@ These catalogs are indexed during `cupertino save` and enable instant search wit
 | `cupertino search` | Search documentation from CLI |
 | `cupertino read` | Read full document by URI |
 | `cupertino doctor` | Check server health |
-| `cupertino save --samples` | Index sample code for search |
+| `cupertino save --source samples` | Index sample code for search |
 | `cupertino cleanup` | Clean up sample code archives |
 
 See [docs/commands/](docs/commands/) for detailed usage and options.

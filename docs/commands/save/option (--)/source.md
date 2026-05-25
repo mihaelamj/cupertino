@@ -25,6 +25,10 @@ Selects which source's database `cupertino save` will rebuild. Pass `--source <i
 | `samples` | `apple-sample-code.db` (BOTH the Sample.Index rich schema AND SampleCodeSource FTS rows; one DB, two table tracks per #1037) |
 | `packages` | `packages.db` (standalone PackagesService pipeline) |
 
+### Aliases
+
+`apple-sample-code` is accepted as an alias for `samples` (matches the `cupertino fetch --source apple-sample-code` shape so the two commands take the same id).
+
 ## Examples
 
 ```bash
@@ -40,7 +44,13 @@ cupertino save --source samples
 
 ## Notes
 
-Internal-dispatch granularity, current state (post the commit that added this flag): `--source <id>` resolves to bucket-level booleans (`buildDocs` / `buildPackages` / `buildSamples`) for now; passing any docs-style source today triggers the full docs runner, which still builds every docs-side DB. The per-source-id dispatch refactor (so `--source apple-docs` builds ONLY apple-documentation.db) lands in a follow-up commit. The CLI surface is final.
+**Internal dispatch is currently bucket-level**: the CLI accepts per-source granularity but the indexer still runs in docs/packages/samples buckets. Practically:
+
+- `--source apple-docs` triggers the docs runner, which builds every docs-bucket DB (apple-documentation.db, hig.db, swift-evolution.db, apple-archive.db, swift-documentation.db, apple-sample-code.db FTS rows) whose corpus is on disk.
+- `--source packages` triggers the standalone PackagesService.
+- `--source samples` triggers both the Sample.Index rich-data pipeline AND the docs runner (so `apple-sample-code.db` gets both table tracks).
+
+The per-source-id dispatch refactor (so `--source apple-docs` builds ONLY apple-documentation.db) lands in a follow-up commit. The CLI surface is final; only the internal scope narrowing remains.
 
 ## Related
 
